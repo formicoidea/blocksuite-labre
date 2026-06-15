@@ -47,7 +47,9 @@
     }
   },
   "author": "lajola",
-  "contributors": ["toeverything"],
+  "contributors": [
+    "toeverything"
+  ],
   "license": "MPL-2.0",
   "files": [
     "src",
@@ -66,5 +68,5 @@
   "devDependencies": {
     "vitest": "3.1.3"
   },
-  "version": "0.22.4"
+  "version": "0.23.0"
 }
