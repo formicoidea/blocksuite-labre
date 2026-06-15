@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-frame",
+  "private": true,
   "description": "Frame block for BlockSuite.",
   "type": "module",
   "scripts": {

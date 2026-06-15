@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-keyboard-toolbar",
+  "private": true,
   "description": "Affine keyboard toolbar widget.",
   "type": "module",
   "scripts": {

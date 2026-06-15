@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-frame-title",
+  "private": true,
   "description": "Affine frame title widget.",
   "type": "module",
   "scripts": {

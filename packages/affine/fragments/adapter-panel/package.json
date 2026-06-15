@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-fragment-adapter-panel",
+  "private": true,
   "description": "Adapter panel fragment for BlockSuite.",
   "type": "module",
   "scripts": {

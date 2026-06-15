@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-bpmn",
+  "private": true,
   "description": "Gfx BPMN process basics (events, task, gateway, sequence flow) + pool for BlockSuite.",
   "type": "module",
   "scripts": {

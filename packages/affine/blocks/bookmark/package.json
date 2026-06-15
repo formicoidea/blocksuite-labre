@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-bookmark",
+  "private": true,
   "description": "Bookmark block for BlockSuite.",
   "type": "module",
   "scripts": {

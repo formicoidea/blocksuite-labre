@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine",
+  "private": true,
   "description": "BlockSuite for Affine",
   "type": "module",
   "scripts": {

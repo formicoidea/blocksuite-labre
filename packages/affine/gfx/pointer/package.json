@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-pointer",
+  "private": true,
   "description": "Gfx pointer for BlockSuite.",
   "type": "module",
   "scripts": {

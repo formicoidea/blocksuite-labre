@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-attachment",
+  "private": true,
   "description": "Attachment block for BlockSuite.",
   "type": "module",
   "scripts": {

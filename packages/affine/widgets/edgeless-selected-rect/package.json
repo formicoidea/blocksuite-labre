@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-edgeless-selected-rect",
+  "private": true,
   "description": "Affine edgeless selected-rect widget.",
   "type": "module",
   "scripts": {

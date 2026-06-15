@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-note-slicer",
+  "private": true,
   "description": "Affine note slicer widget.",
   "type": "module",
   "scripts": {

@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-edgeless-dragging-area",
+  "private": true,
   "description": "Affine edgeless dragging area widget.",
   "type": "module",
   "scripts": {

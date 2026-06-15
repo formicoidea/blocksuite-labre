@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-viewport-overlay",
+  "private": true,
   "description": "Affine viewport overlay widget.",
   "type": "module",
   "scripts": {

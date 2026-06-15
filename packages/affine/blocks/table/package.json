@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-table",
+  "private": true,
   "description": "Table block for BlockSuite.",
   "type": "module",
   "scripts": {

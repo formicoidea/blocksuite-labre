@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-database",
+  "private": true,
   "description": "Database block for BlockSuite.",
   "type": "module",
   "scripts": {

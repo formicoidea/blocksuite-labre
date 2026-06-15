@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-latex",
+  "private": true,
   "description": "Latex block for BlockSuite.",
   "type": "module",
   "scripts": {

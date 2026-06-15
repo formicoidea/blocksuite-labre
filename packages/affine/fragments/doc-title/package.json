@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-fragment-doc-title",
+  "private": true,
   "description": "Doc title fragment for BlockSuite.",
   "type": "module",
   "scripts": {

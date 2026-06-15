@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-edgy",
+  "private": true,
   "description": "Gfx EDGY enterprise-design facets diagram + base shapes for BlockSuite.",
   "type": "module",
   "scripts": {

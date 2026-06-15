@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-list",
+  "private": true,
   "description": "List block for BlockSuite.",
   "type": "module",
   "scripts": {

@@ -1,5 +1,6 @@
 {
   "name": "@labre/sync",
+  "private": true,
   "description": "BlockSuite data synchronization engine abstraction and implementation.",
   "type": "module",
   "scripts": {

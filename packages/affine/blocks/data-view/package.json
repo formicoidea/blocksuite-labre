@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-data-view",
+  "private": true,
   "description": "Data view block for BlockSuite.",
   "type": "module",
   "scripts": {

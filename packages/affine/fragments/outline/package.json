@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-fragment-outline",
+  "private": true,
   "description": "Outline fragment for BlockSuite.",
   "type": "module",
   "scripts": {

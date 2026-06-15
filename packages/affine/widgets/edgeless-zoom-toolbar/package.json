@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-edgeless-zoom-toolbar",
+  "private": true,
   "description": "Affine edgeless zoom toolbar widget.",
   "type": "module",
   "scripts": {

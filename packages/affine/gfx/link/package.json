@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-link",
+  "private": true,
   "description": "Gfx link for BlockSuite.",
   "type": "module",
   "scripts": {

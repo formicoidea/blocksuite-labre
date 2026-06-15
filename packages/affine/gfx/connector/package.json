@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-connector",
+  "private": true,
   "description": "Gfx connector for BlockSuite.",
   "type": "module",
   "scripts": {

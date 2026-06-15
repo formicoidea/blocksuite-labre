@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-template",
+  "private": true,
   "description": "Gfx template for BlockSuite.",
   "type": "module",
   "scripts": {

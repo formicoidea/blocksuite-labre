@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-inline-comment",
+  "private": true,
   "description": "Inline comment for BlockSuite.",
   "type": "module",
   "scripts": {

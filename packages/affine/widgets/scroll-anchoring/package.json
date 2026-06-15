@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-scroll-anchoring",
+  "private": true,
   "description": "Affine scroll anchoring widget.",
   "type": "module",
   "scripts": {

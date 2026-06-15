@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-turbo-renderer",
+  "private": true,
   "description": "Turbo renderer for viewport in BlockSuite.",
   "type": "module",
   "scripts": {

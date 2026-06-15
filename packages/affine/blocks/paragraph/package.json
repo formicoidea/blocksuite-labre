@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-paragraph",
+  "private": true,
   "description": "Paragraph block for BlockSuite.",
   "type": "module",
   "scripts": {

@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-foundation",
+  "private": true,
   "description": "Foundation extensions for affine.",
   "type": "module",
   "scripts": {

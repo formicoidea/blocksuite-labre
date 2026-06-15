@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-embed-doc",
+  "private": true,
   "description": "Embed doc blocks for BlockSuite.",
   "type": "module",
   "scripts": {

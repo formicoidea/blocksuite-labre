@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-divider",
+  "private": true,
   "description": "Divider block for BlockSuite.",
   "type": "module",
   "scripts": {

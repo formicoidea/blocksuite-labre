@@ -26,13 +26,7 @@ jobs:
       - name: Update package version
         run: yarn ci:version:canary
 
-      - name: Build packages
-        run: yarn build:packages
-
-      - name: Publish to NPM
-        run: |
-          yarn config set npmAuthToken "$NODE_AUTH_TOKEN"
-          yarn config set 'npmRegistries["//registry.npmjs.org"].npmAuthToken' "$NODE_AUTH_TOKEN"
-          yarn ci:publish:canary
+      - name: Build & publish canary bundles to NPM
+        run: yarn ci:publish:canary
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

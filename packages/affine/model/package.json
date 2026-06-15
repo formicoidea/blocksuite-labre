@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-model",
+  "private": true,
   "description": "Models for BlockSuite in Affine.",
   "type": "module",
   "scripts": {

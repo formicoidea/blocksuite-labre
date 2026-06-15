@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-edgeless-auto-connect",
+  "private": true,
   "description": "Affine edgeless auto connect widget.",
   "type": "module",
   "scripts": {

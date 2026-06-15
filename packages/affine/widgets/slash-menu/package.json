@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-slash-menu",
+  "private": true,
   "description": "Affine slash menu widget.",
   "type": "module",
   "scripts": {

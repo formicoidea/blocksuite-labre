@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-components",
+  "private": true,
   "description": "Default BlockSuite editable blocks.",
   "type": "module",
   "scripts": {

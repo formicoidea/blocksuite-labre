@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-brush",
+  "private": true,
   "description": "Gfx brush for BlockSuite.",
   "type": "module",
   "scripts": {

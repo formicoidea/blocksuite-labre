@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-cynefin-estuarine",
+  "private": true,
   "description": "Gfx Cynefin (Liminal) + Estuarine framework backgrounds for BlockSuite.",
   "type": "module",
   "scripts": {

@@ -32,10 +32,9 @@ const folders = getFoldersWithPackageJson(entry)
     return { json, path: p };
   })
   .filter(data => {
-    return !data.json.private;
-  })
-  .filter(data => {
-    // We only want to include packages that need to be installed by the user
+    // @labre/affine is private now (it ships re-bundled as @labre/core), but it
+    // stays the representative size target: core === the umbrella minus the 4
+    // business frameworks.
     return ['@labre/affine'].includes(data.json.name);
   })
   .flatMap(data => {

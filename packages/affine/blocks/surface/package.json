@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-surface",
+  "private": true,
   "description": "Surface block for BlockSuite.",
   "type": "module",
   "scripts": {

@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-inline-link",
+  "private": true,
   "description": "Inline link for BlockSuite.",
   "type": "module",
   "scripts": {

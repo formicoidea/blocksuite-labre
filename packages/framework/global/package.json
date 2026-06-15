@@ -1,5 +1,6 @@
 {
   "name": "@labre/global",
+  "private": true,
   "types": "./index.d.ts",
   "type": "module",
   "scripts": {

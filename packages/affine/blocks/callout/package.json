@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-callout",
+  "private": true,
   "description": "Callout block for BlockSuite.",
   "type": "module",
   "scripts": {

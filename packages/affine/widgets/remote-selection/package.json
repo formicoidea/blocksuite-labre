@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-remote-selection",
+  "private": true,
   "description": "Affine remote selection widget.",
   "type": "module",
   "scripts": {

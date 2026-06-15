@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-rich-text",
+  "private": true,
   "description": "Inline rich text for BlockSuite.",
   "type": "module",
   "scripts": {

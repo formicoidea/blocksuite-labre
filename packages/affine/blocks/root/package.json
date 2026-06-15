@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-root",
+  "private": true,
   "description": "Root block for BlockSuite.",
   "type": "module",
   "scripts": {

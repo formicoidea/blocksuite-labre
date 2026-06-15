@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-page-dragging-area",
+  "private": true,
   "description": "Affine page dragging area widget.",
   "type": "module",
   "scripts": {

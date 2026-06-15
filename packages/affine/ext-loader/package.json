@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-ext-loader",
+  "private": true,
   "description": "Extension loader for affine",
   "type": "module",
   "scripts": {

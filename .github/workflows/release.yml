@@ -41,14 +41,8 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Build packages
-        run: yarn build:packages
-
-      - name: Publish to NPM
-        run: |
-          yarn config set npmAuthToken "$NODE_AUTH_TOKEN"
-          yarn config set 'npmRegistries["//registry.npmjs.org"].npmAuthToken' "$NODE_AUTH_TOKEN"
-          yarn ci:publish
+      - name: Build & publish bundles to NPM
+        run: yarn ci:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

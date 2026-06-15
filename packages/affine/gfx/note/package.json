@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-note",
+  "private": true,
   "description": "Gfx note for BlockSuite.",
   "type": "module",
   "scripts": {

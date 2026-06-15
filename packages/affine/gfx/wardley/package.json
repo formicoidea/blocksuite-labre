@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-wardley",
+  "private": true,
   "description": "Gfx Wardley map background for BlockSuite.",
   "type": "module",
   "scripts": {

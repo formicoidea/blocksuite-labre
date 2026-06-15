@@ -1,5 +1,6 @@
 {
   "name": "@labre/std",
+  "private": true,
   "description": "Std for blocksuite blocks",
   "type": "module",
   "scripts": {

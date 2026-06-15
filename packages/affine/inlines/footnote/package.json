@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-inline-footnote",
+  "private": true,
   "description": "Inline footnote for BlockSuite.",
   "type": "module",
   "scripts": {

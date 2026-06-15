@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-block-image",
+  "private": true,
   "description": "Image block for BlockSuite.",
   "type": "module",
   "scripts": {

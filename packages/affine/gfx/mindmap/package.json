@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-gfx-mindmap",
+  "private": true,
   "description": "Gfx mindmap for BlockSuite.",
   "type": "module",
   "scripts": {

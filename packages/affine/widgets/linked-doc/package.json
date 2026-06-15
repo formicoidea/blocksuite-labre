@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-widget-linked-doc",
+  "private": true,
   "description": "Affine linked doc widget.",
   "type": "module",
   "scripts": {

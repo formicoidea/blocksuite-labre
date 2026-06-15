@@ -1,5 +1,6 @@
 {
   "name": "@labre/data-view",
+  "private": true,
   "description": "Views of database in affine",
   "type": "module",
   "scripts": {

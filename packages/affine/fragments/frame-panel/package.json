@@ -1,5 +1,6 @@
 {
   "name": "@labre/affine-fragment-frame-panel",
+  "private": true,
   "description": "Frame panel fragment for BlockSuite.",
   "type": "module",
   "scripts": {
