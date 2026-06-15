@@ -12,7 +12,9 @@
   "sideEffects": false,
   "keywords": [],
   "author": "lajola",
-  "contributors": ["toeverything"],
+  "contributors": [
+    "toeverything"
+  ],
   "license": "MPL-2.0",
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
