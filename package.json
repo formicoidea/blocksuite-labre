@@ -18,7 +18,7 @@
     "format": "prettier . --write",
     "build": "tsc -b tsconfig.json --verbose",
     "build:packages": "yarn workspace @labre/affine build",
-    "build:bundles": "node scripts/build-bundles.mjs",
+    "build:bundles": "node scripts/build-bundles.mjs && node scripts/compile-bundles.mjs",
     "build:playground": "yarn workspace @labre/playground build",
     "ci:version": "changeset version && yarn install --no-frozen-lockfile",
     "ci:publish": "yarn build:packages && yarn build:bundles && node scripts/publish-bundles.mjs latest",
