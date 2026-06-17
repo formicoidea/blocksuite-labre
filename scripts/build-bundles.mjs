@@ -79,6 +79,13 @@ const toPosix = p => p.split(path.sep).join('/');
 const readJson = p => JSON.parse(fs.readFileSync(p, 'utf8'));
 const vname = name => name.replace('@labre/', '');
 
+// Published bundle names live under the @formicoidea scope. The source
+// workspace packages stay @labre/* (private, never published) — only the
+// generated bundles below are renamed, so upstream AFFiNE cherry-picks on the
+// source tree stay cheap.
+const CORE_PKG = '@formicoidea/labre-core';
+const fwPkgName = out => `@formicoidea/labre-${out}`;
+
 /** Recursively list files under `dir`, skipping `__tests__` and `node_modules`. */
 function listFiles(dir, acc = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -273,7 +280,7 @@ function buildCore() {
     path.join(CORE_OUT, 'package.json'),
     JSON.stringify(
       {
-        name: '@labre/core',
+        name: CORE_PKG,
         description:
           'Labre editor — the full BlockSuite-derived editor as one package.',
         version: VERSION,
@@ -304,7 +311,7 @@ function buildCoreReverseMap() {
     const content = fs.readFileSync(fileAbs, 'utf8');
     const m = content.match(/export \* from ['"](@labre\/[^'"]+)['"]/);
     if (!m) continue; // assembly file, not a pure shim
-    const coreSpec = key === '.' ? '@labre/core' : `@labre/core${key.slice(1)}`;
+    const coreSpec = key === '.' ? CORE_PKG : `${CORE_PKG}${key.slice(1)}`;
     map.set(m[1], coreSpec);
   }
   return map;
@@ -350,8 +357,8 @@ function buildFramework(fw, reverseMap) {
     path.join(out, 'package.json'),
     JSON.stringify(
       {
-        name: `@labre/${fw.out}`,
-        description: `Labre ${fw.flag} framework for @labre/core.`,
+        name: fwPkgName(fw.out),
+        description: `Labre ${fw.flag} framework for ${CORE_PKG}.`,
         version: VERSION,
         type: 'module',
         sideEffects: false,
@@ -364,7 +371,7 @@ function buildFramework(fw, reverseMap) {
           './descriptor': './src/descriptor.ts',
         },
         files: ['src'],
-        dependencies: { '@labre/core': VERSION, ...thirdPartyDeps([fw.pkg]) },
+        dependencies: { [CORE_PKG]: VERSION, ...thirdPartyDeps([fw.pkg]) },
       },
       null,
       2
@@ -381,5 +388,5 @@ for (const fw of FRAMEWORKS) buildFramework(fw, reverseMap);
 console.log(
   `@labre/core: vendored ${core.vendored} packages, ${core.exportsCount} exports, version ${VERSION}`
 );
-console.log(`frameworks: ${FRAMEWORKS.map(f => '@labre/' + f.out).join(', ')}`);
+console.log(`frameworks: ${FRAMEWORKS.map(f => fwPkgName(f.out)).join(', ')}`);
 console.log(`output: ${path.relative(ROOT, OUT_DIR)}/`);
