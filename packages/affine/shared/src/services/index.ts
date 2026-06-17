@@ -14,6 +14,7 @@ export * from './file-size-limit-service';
 export * from './font-loader';
 export * from './generate-url-service';
 export * from './link-preview-service';
+export * from './linked-doc-creation-service';
 export * from './native-clipboard-service';
 export * from './notification-service';
 export * from './open-doc-config';

@@ -6,7 +6,10 @@ import {
   NoteDisplayMode,
 } from '@labre/affine-model';
 import { replaceIdMiddleware } from '@labre/affine-shared/adapters';
-import { DocModeProvider } from '@labre/affine-shared/services';
+import {
+  DocModeProvider,
+  LinkedDocCreationProvider,
+} from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import type { EditorHost } from '@labre/std';
 import { GfxBlockElementModel, type GfxModel } from '@labre/std/gfx';
@@ -52,9 +55,13 @@ export function createLinkedDocFromEdgelessElements(
   elements: GfxModel[],
   docTitle?: string
 ) {
-  const _doc = host.store.workspace.createDoc();
+  // The host can override creation to persist/register the doc (see
+  // LinkedDocCreationProvider); otherwise fall back to an in-workspace doc.
+  const creation = host.std.getOptional(LinkedDocCreationProvider);
+  const linkedDoc = creation
+    ? creation.createLinkedDoc(host, docTitle)
+    : host.store.workspace.createDoc().getStore();
   const transformer = host.store.getTransformer();
-  const linkedDoc = _doc.getStore();
   linkedDoc.load(() => {
     const rootId = linkedDoc.addBlock('affine:page', {
       title: new Text(docTitle),
