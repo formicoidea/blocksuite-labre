@@ -1,5 +1,5 @@
 ---
-'@labre/affine-shared': patch
+'@labre/affine-shared': minor
 ---
 
 feat(edgeless): injectable `LinkedDocCreationProvider`
