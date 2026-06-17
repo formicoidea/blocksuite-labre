@@ -4,22 +4,31 @@
  *
  * Consolidates the ~73 fine-grained `@labre/*` workspace packages into a small
  * set of PUBLISHED bundles, WITHOUT moving the source tree (so upstream AFFiNE
- * cherry-picks stay cheap). It only READS the workspace packages and WRITES
- * into `dist-bundles/` — it never edits anything under `packages/`.
+ * cherry-picks stay cheap). It READS the per-package COMPILED `dist/` (run
+ * `yarn build:packages` first) and WRITES into `dist-bundles/` — it never edits
+ * anything under `packages/`.
  *
- * Output (all source-first, like the existing packages — `exports` → `./src`):
- *   - `@labre/core`             : the whole editor (every `@labre/affine`
- *                                 dependency except the 4 business frameworks),
- *                                 source-vendored into `src/_pkgs/<pkg>/…` with
- *                                 cross-package `@labre/*` imports rewritten to
- *                                 relative paths → zero `@labre/*` runtime deps.
- *   - `@labre/framework-<fw>`   : one per business framework (wardley/edgy/bpmn/
- *                                 cynefin), depending only on `@labre/core`.
+ * Output (COMPILED, like the old vendored tarballs — `exports` → `./dist`):
+ *   - `@formicoidea/labre-core`           : the whole editor (every
+ *                                           `@labre/affine` dependency except the
+ *                                           4 business frameworks), dist-vendored
+ *                                           into `dist/_pkgs/<pkg>/…` with
+ *                                           cross-package `@labre/*` imports
+ *                                           rewritten to relative paths → zero
+ *                                           `@labre/*` runtime deps.
+ *   - `@formicoidea/labre-framework-<fw>` : one per business framework (wardley/
+ *                                           edgy/bpmn/cynefin), depending only on
+ *                                           `@formicoidea/labre-core`.
  *
- * `@labre/core` IS the `@labre/affine` umbrella, retargeted: the umbrella's own
- * src (one-line re-export shims + the assembly files) becomes `core/src`, with
- * the 4 frameworks trimmed from `extensions/view.ts` + `flags.ts`.
+ * Two transforms make the bundles consumable by a downstream Vite/Rollup/tsc app
+ * — the same two the old `pack-editor-lib.mjs` applied per package:
+ *   1. `exports` point at compiled `./dist/*.js` + `*.d.ts`, NOT `./src/*.ts`, so
+ *      the consuming app's tsc does not typecheck the library internals.
+ *   2. ES2023 auto-accessors (`accessor x = …`, emitted verbatim under the lib's
+ *      `target: esnext`) are lowered to ES2022 with esbuild — Rollup (Vite build)
+ *      and the vanilla-extract child compiler cannot parse that syntax.
  */
+import { transformSync } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -69,8 +78,9 @@ const FRAMEWORKS = [
 ];
 const FRAMEWORK_PKGS = new Set(FRAMEWORKS.map(f => f.pkg));
 
-// Matches a `@labre/*` module specifier in `from '…'`, `import '…'` (side-effect)
-// or `import('…')` position — NOT arbitrary `@labre/…` string literals in code.
+// Matches a `@labre/*` module specifier in `from '…'`, `import '…'` (side-effect
+// or type), `import('…')` or `export … from '…'` position — NOT arbitrary
+// `@labre/…` string literals in code.
 const IMPORT_RE = /((?:from|import)\s*\(?\s*)(['"])(@labre\/[^'"]+)\2/g;
 // Matches `declare module '@labre/…'` augmentation targets.
 const MODULE_AUG_RE = /(declare\s+module\s+)(['"])(@labre\/[^'"]+)\2/g;
@@ -147,10 +157,46 @@ function thirdPartyDeps(pkgNames, extraDirs = []) {
   return Object.fromEntries(Object.entries(out).sort());
 }
 
+/** `./src/foo/bar.ts` → `{ types: ./dist/foo/bar.d.ts, import: ./dist/foo/bar.js }`. */
+function srcExportToDist(value) {
+  if (typeof value !== 'string') return value;
+  const m = value.match(/^\.\/src\/(.+)\.ts$/);
+  if (!m) return value;
+  return { types: `./dist/${m[1]}.d.ts`, import: `./dist/${m[1]}.js` };
+}
+
+function distExports(srcExportsMap) {
+  const out = {};
+  for (const [k, v] of Object.entries(srcExportsMap))
+    out[k] = srcExportToDist(v);
+  return out;
+}
+
+/** Lower ES2023 auto-accessors to ES2022 in every `.js` under `dir`. */
+function lowerAutoAccessors(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      lowerAutoAccessors(full);
+      continue;
+    }
+    // `.css.js` are vanilla-extract style files — never carry accessors, and the
+    // downstream VE compiler must see them untouched.
+    if (!e.name.endsWith('.js') || e.name.endsWith('.css.js')) continue;
+    const code = fs.readFileSync(full, 'utf8');
+    if (!code.includes('accessor ')) continue;
+    fs.writeFileSync(
+      full,
+      transformSync(code, { loader: 'js', target: 'es2022' }).code
+    );
+  }
+}
+
 /**
- * Resolve a bare `@labre/<pkg>[/<sub>]` specifier to its vendored file location
- * under `_pkgs/<vname>/<filerel>` (the file that the package's own `exports`
- * point at). Throws on anything unmapped or pointing at a framework.
+ * Resolve a bare `@labre/<pkg>[/<sub>]` specifier to its vendored COMPILED file
+ * under `_pkgs/<vname>/<filerel.js>` (the dist file the package's own `exports`
+ * point at, retargeted src→dist). Throws on anything unmapped or framework.
  */
 function resolveToVendored(spec) {
   const parts = spec.split('/');
@@ -158,7 +204,7 @@ function resolveToVendored(spec) {
   const sub = parts.slice(2).join('/');
   if (FRAMEWORK_PKGS.has(pkgName)) {
     throw new Error(
-      `@labre/core must not reference framework ${pkgName} (spec "${spec}")`
+      `${CORE_PKG} must not reference framework ${pkgName} (spec "${spec}")`
     );
   }
   const info = byName.get(pkgName);
@@ -172,11 +218,14 @@ function resolveToVendored(spec) {
     );
   if (!val.startsWith('./src/'))
     throw new Error(`Unexpected export value "${val}" for ${pkgName} ${key}`);
-  return { vname: vname(pkgName), filerel: val.slice('./src/'.length) };
+  return {
+    vname: vname(pkgName),
+    filerel: val.slice('./src/'.length).replace(/\.ts$/, '.js'),
+  };
 }
 
 const CORE_OUT = path.join(OUT_DIR, 'core');
-const CORE_SRC = path.join(CORE_OUT, 'src');
+const CORE_DIST = path.join(CORE_OUT, 'dist');
 
 /** Rewrite every `@labre/*` specifier in a core-bundle file to a relative path. */
 function rewriteCoreImports(fileAbs, content) {
@@ -184,7 +233,7 @@ function rewriteCoreImports(fileAbs, content) {
   const toRel = spec => {
     let targetAbs;
     if (spec === '@labre/affine' || spec.startsWith('@labre/affine/')) {
-      // self-reference to an umbrella export → local file in core/src
+      // self-reference to an umbrella export → local file in core/dist
       const sub =
         spec === '@labre/affine'
           ? '.'
@@ -192,15 +241,15 @@ function rewriteCoreImports(fileAbs, content) {
       const val = umbrella.exports[sub];
       if (!val)
         throw new Error(`@labre/affine self-ref to missing export "${sub}"`);
-      targetAbs = path.join(CORE_SRC, val.slice('./src/'.length));
+      targetAbs = path.join(
+        CORE_DIST,
+        val.slice('./src/'.length).replace(/\.ts$/, '.js')
+      );
     } else {
       const { vname: vn, filerel } = resolveToVendored(spec);
-      targetAbs = path.join(CORE_SRC, '_pkgs', vn, filerel);
+      targetAbs = path.join(CORE_DIST, '_pkgs', vn, filerel);
     }
-    let rel = toPosix(path.relative(fileDir, targetAbs)).replace(
-      /\.ts$/,
-      '.js'
-    );
+    let rel = toPosix(path.relative(fileDir, targetAbs));
     if (!rel.startsWith('.')) rel = `./${rel}`;
     return rel;
   };
@@ -212,11 +261,23 @@ function rewriteCoreImports(fileAbs, content) {
     );
 }
 
-/** Copy a package's src/ into a destination dir (skipping tests). */
-function copySrc(srcDir, destDir) {
-  for (const abs of listFiles(srcDir)) {
-    if (abs.endsWith('.md')) continue; // docs aren't part of the published bundle
-    const rel = path.relative(srcDir, abs);
+/** Copy a package's `dist/` into a destination dir (skip maps/tsbuildinfo/docs). */
+function copyDist(distDir, destDir) {
+  if (!fs.existsSync(distDir)) {
+    throw new Error(
+      `Missing compiled dist: ${path.relative(ROOT, distDir)} — run \`yarn build:packages\` first`
+    );
+  }
+  for (const abs of listFiles(distDir)) {
+    const base = path.basename(abs);
+    if (
+      base.endsWith('.map') ||
+      base.endsWith('.md') ||
+      base === 'tsconfig.tsbuildinfo'
+    ) {
+      continue;
+    }
+    const rel = path.relative(distDir, abs);
     const dest = path.join(destDir, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(abs, dest);
@@ -236,46 +297,67 @@ function dropLines(fileAbs, re, expected, label) {
   fs.writeFileSync(fileAbs, kept.join('\n'));
 }
 
-function buildCore() {
-  fs.rmSync(CORE_OUT, { recursive: true, force: true });
-  // 1. umbrella's own src → core/src
-  copySrc(path.join(UMBRELLA_DIR, 'src'), CORE_SRC);
-  // 2. vendor every core package's src → core/src/_pkgs/<vname>/
-  for (const n of corePkgNames) {
-    copySrc(
-      path.join(byName.get(n).dir, 'src'),
-      path.join(CORE_SRC, '_pkgs', vname(n))
+/** Strip the 4 framework names from the inline tuple in a compiled `flags.d.ts`. */
+function trimFrameworkTypes(dtsAbs) {
+  const before = fs.readFileSync(dtsAbs, 'utf8');
+  const after = before.replace(
+    /,\s*"wardley",\s*"edgy",\s*"cynefin-estuarine",\s*"bpmn"/g,
+    ''
+  );
+  if (after === before) {
+    throw new Error(
+      `flags.d.ts framework tuple anchor not found in ${path.relative(ROOT, dtsAbs)} (drift)`
     );
   }
-  // 3. trim the 4 frameworks from the COPIED assembly files (source untouched)
-  const viewTs = path.join(CORE_SRC, 'extensions', 'view.ts');
+  fs.writeFileSync(dtsAbs, after);
+}
+
+function buildCore() {
+  fs.rmSync(CORE_OUT, { recursive: true, force: true });
+  // 1. umbrella's own dist → core/dist
+  copyDist(path.join(UMBRELLA_DIR, 'dist'), CORE_DIST);
+  // 2. vendor every core package's dist → core/dist/_pkgs/<vname>/
+  for (const n of corePkgNames) {
+    copyDist(
+      path.join(byName.get(n).dir, 'dist'),
+      path.join(CORE_DIST, '_pkgs', vname(n))
+    );
+  }
+  // 3. trim the 4 frameworks from the COMPILED assembly files (source untouched)
+  const viewJs = path.join(CORE_DIST, 'extensions', 'view.js');
   dropLines(
-    viewTs,
+    viewJs,
     /@labre\/affine-gfx-(wardley|edgy|bpmn|cynefin-estuarine)\/view/,
     4,
     'framework import'
   );
   dropLines(
-    viewTs,
+    viewJs,
     /on\('(wardley|edgy|cynefin-estuarine|bpmn)'\)/,
     4,
     'framework registration'
   );
   dropLines(
-    path.join(CORE_SRC, 'flags.ts'),
+    path.join(CORE_DIST, 'flags.js'),
     /^\s*'(wardley|edgy|cynefin-estuarine|bpmn)',\s*$/,
     4,
     'framework flag'
   );
-  // 4. rewrite all @labre/* imports → relative vendored paths
-  for (const abs of listFiles(CORE_SRC)) {
-    if (!abs.endsWith('.ts')) continue;
+  // flags.d.ts holds the 4 names inline in the OPTIONAL_BLOCKS tuple type
+  // (OptionalBlock derives from it) — strip them so the public BlockFlags type
+  // drops the framework keys.
+  trimFrameworkTypes(path.join(CORE_DIST, 'flags.d.ts'));
+  // 4. rewrite all @labre/* imports → relative vendored paths (.js and .d.ts)
+  for (const abs of listFiles(CORE_DIST)) {
+    if (!abs.endsWith('.js') && !abs.endsWith('.d.ts')) continue;
     const before = fs.readFileSync(abs, 'utf8');
     const after = rewriteCoreImports(abs, before);
     if (after !== before) fs.writeFileSync(abs, after);
   }
-  // 5. package.json (no @labre/* deps)
-  const exportsMap = { ...umbrella.exports }; // frameworks are not umbrella subpaths
+  // 5. lower ES2023 auto-accessors → ES2022 (Rollup + VE child compiler safe)
+  lowerAutoAccessors(CORE_DIST);
+  // 6. package.json (exports → dist, no @labre/* deps)
+  const exportsMap = distExports(umbrella.exports); // frameworks aren't subpaths
   fs.writeFileSync(
     path.join(CORE_OUT, 'package.json'),
     JSON.stringify(
@@ -290,7 +372,7 @@ function buildCore() {
         contributors: ['toeverything'],
         license: 'MPL-2.0',
         exports: exportsMap,
-        files: ['src'],
+        files: ['dist'],
         dependencies: thirdPartyDeps(corePkgNames, [UMBRELLA_DIR]),
       },
       null,
@@ -303,7 +385,7 @@ function buildCore() {
   };
 }
 
-/** Build the `@labre/<pkg>/<sub>` → `@labre/core/<subpath>` rewrite table. */
+/** Build the `@labre/<pkg>/<sub>` → `@formicoidea/labre-core/<subpath>` table. */
 function buildCoreReverseMap() {
   const map = new Map();
   for (const [key, val] of Object.entries(umbrella.exports)) {
@@ -319,12 +401,12 @@ function buildCoreReverseMap() {
 
 function buildFramework(fw, reverseMap) {
   const out = path.join(OUT_DIR, fw.out);
-  const src = path.join(out, 'src');
+  const dist = path.join(out, 'dist');
   fs.rmSync(out, { recursive: true, force: true });
-  copySrc(path.join(PKGS_DIR, fw.dir, 'src'), src);
-  // rewrite @labre/<core> imports → @labre/core/<sub>; self-refs untouched
-  for (const abs of listFiles(src)) {
-    if (!abs.endsWith('.ts')) continue;
+  copyDist(path.join(PKGS_DIR, fw.dir, 'dist'), dist);
+  // rewrite @labre/<core> imports → @formicoidea/labre-core/<sub>; self untouched
+  for (const abs of listFiles(dist)) {
+    if (!abs.endsWith('.js') && !abs.endsWith('.d.ts')) continue;
     const before = fs.readFileSync(abs, 'utf8');
     const replace = (_m, pre, q, spec) => {
       const parts = spec.split('/');
@@ -333,7 +415,7 @@ function buildFramework(fw, reverseMap) {
       const mapped = reverseMap.get(spec);
       if (!mapped)
         throw new Error(
-          `${fw.out} imports "${spec}" which @labre/core does not expose`
+          `${fw.out} imports "${spec}" which ${CORE_PKG} does not expose`
         );
       return `${pre}${q}${mapped}${q}`;
     };
@@ -342,17 +424,28 @@ function buildFramework(fw, reverseMap) {
       .replace(MODULE_AUG_RE, replace);
     if (after !== before) fs.writeFileSync(abs, after);
   }
-  // descriptor.ts — one-line host wiring
+  // descriptor.{js,d.ts} — one-line host wiring (generated, not in package src)
   fs.writeFileSync(
-    path.join(src, 'descriptor.ts'),
+    path.join(dist, 'descriptor.js'),
     `import { ${fw.ext} } from './view.js';\n\n` +
       `/** Host wiring for the ${fw.flag} framework. */\n` +
       `export const ${fw.info} = {\n` +
       `  flag: '${fw.flag}',\n` +
       `  telemetry: '${fw.telemetry}',\n` +
       `  viewExtension: ${fw.ext},\n` +
-      `} as const;\n`
+      `};\n`
   );
+  fs.writeFileSync(
+    path.join(dist, 'descriptor.d.ts'),
+    `import { ${fw.ext} } from './view.js';\n\n` +
+      `export declare const ${fw.info}: {\n` +
+      `  readonly flag: '${fw.flag}';\n` +
+      `  readonly telemetry: '${fw.telemetry}';\n` +
+      `  readonly viewExtension: typeof ${fw.ext};\n` +
+      `};\n`
+  );
+  // lower auto-accessors in the framework's own compiled view/element files
+  lowerAutoAccessors(dist);
   fs.writeFileSync(
     path.join(out, 'package.json'),
     JSON.stringify(
@@ -366,11 +459,14 @@ function buildFramework(fw, reverseMap) {
         contributors: ['toeverything'],
         license: 'MPL-2.0',
         exports: {
-          '.': './src/index.ts',
-          './view': './src/view.ts',
-          './descriptor': './src/descriptor.ts',
+          '.': { types: './dist/index.d.ts', import: './dist/index.js' },
+          './view': { types: './dist/view.d.ts', import: './dist/view.js' },
+          './descriptor': {
+            types: './dist/descriptor.d.ts',
+            import: './dist/descriptor.js',
+          },
         },
-        files: ['src'],
+        files: ['dist'],
         dependencies: { [CORE_PKG]: VERSION, ...thirdPartyDeps([fw.pkg]) },
       },
       null,
@@ -386,7 +482,7 @@ const reverseMap = buildCoreReverseMap();
 for (const fw of FRAMEWORKS) buildFramework(fw, reverseMap);
 
 console.log(
-  `@labre/core: vendored ${core.vendored} packages, ${core.exportsCount} exports, version ${VERSION}`
+  `${CORE_PKG}: vendored ${core.vendored} packages, ${core.exportsCount} exports, version ${VERSION}`
 );
 console.log(`frameworks: ${FRAMEWORKS.map(f => fwPkgName(f.out)).join(', ')}`);
 console.log(`output: ${path.relative(ROOT, OUT_DIR)}/`);
