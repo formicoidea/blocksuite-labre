@@ -1,5 +1,18 @@
 # @labre/affine-shared
 
+## 0.23.2
+
+### Patch Changes
+
+- ee682da: Publish the `LinkedDocCreationProvider` seam (the edgeless "Create linked doc"
+  injection point) and the `@formicoidea` bundle-scope fix. Forces a fresh,
+  publishable version — npm 0.23.1 was a prior manual publish that predates these
+  changes.
+  - @labre/affine-model@0.23.2
+  - @labre/global@0.23.2
+  - @labre/std@0.23.2
+  - @labre/store@0.23.2
+
 ## 0.23.1
 
 ### Patch Changes
