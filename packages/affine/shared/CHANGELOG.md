@@ -1,5 +1,17 @@
 # @labre/affine-shared
 
+## 0.23.3
+
+### Patch Changes
+
+- Release 0.23.3: ships the `LinkedDocCreationProvider` seam and the
+  `@formicoidea` bundle-scope fix in a compiled build (0.23.2 was a source-only
+  generator publish that breaks downstream `tsc`/build).
+  - @labre/affine-model@0.23.3
+  - @labre/global@0.23.3
+  - @labre/std@0.23.3
+  - @labre/store@0.23.3
+
 ## 0.23.2
 
 ### Patch Changes

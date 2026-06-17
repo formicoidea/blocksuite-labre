@@ -1,5 +1,13 @@
 # @labre/affine-model
 
+## 0.23.3
+
+### Patch Changes
+
+- @labre/global@0.23.3
+- @labre/std@0.23.3
+- @labre/store@0.23.3
+
 ## 0.23.2
 
 ### Patch Changes
