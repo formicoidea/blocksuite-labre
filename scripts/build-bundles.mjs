@@ -121,6 +121,13 @@ if (!umbrella)
   throw new Error('Could not find @labre/affine (packages/affine/all)');
 const VERSION = umbrella.version;
 
+// Published npm scope + names. The generated bundles ship under @formicoidea
+// (override with NPM_SCOPE): @formicoidea/labre-core is the editor, the
+// frameworks are @formicoidea/labre-framework-*. These are the exact names
+// downstream apps consume via their npm aliases.
+const SCOPE = process.env.NPM_SCOPE ?? '@formicoidea';
+const CORE = `${SCOPE}/labre-core`;
+
 /** Core packages = umbrella deps minus the 4 frameworks. */
 const corePkgNames = Object.keys(umbrella.deps).filter(
   d => d.startsWith('@labre/') && !FRAMEWORK_PKGS.has(d)
@@ -273,7 +280,7 @@ function buildCore() {
     path.join(CORE_OUT, 'package.json'),
     JSON.stringify(
       {
-        name: '@labre/core',
+        name: CORE,
         description:
           'Labre editor — the full BlockSuite-derived editor as one package.',
         version: VERSION,
@@ -304,7 +311,7 @@ function buildCoreReverseMap() {
     const content = fs.readFileSync(fileAbs, 'utf8');
     const m = content.match(/export \* from ['"](@labre\/[^'"]+)['"]/);
     if (!m) continue; // assembly file, not a pure shim
-    const coreSpec = key === '.' ? '@labre/core' : `@labre/core${key.slice(1)}`;
+    const coreSpec = key === '.' ? CORE : `${CORE}${key.slice(1)}`;
     map.set(m[1], coreSpec);
   }
   return map;
@@ -350,8 +357,8 @@ function buildFramework(fw, reverseMap) {
     path.join(out, 'package.json'),
     JSON.stringify(
       {
-        name: `@labre/${fw.out}`,
-        description: `Labre ${fw.flag} framework for @labre/core.`,
+        name: `${SCOPE}/labre-${fw.out}`,
+        description: `Labre ${fw.flag} framework for ${CORE}.`,
         version: VERSION,
         type: 'module',
         sideEffects: false,
@@ -364,7 +371,7 @@ function buildFramework(fw, reverseMap) {
           './descriptor': './src/descriptor.ts',
         },
         files: ['src'],
-        dependencies: { '@labre/core': VERSION, ...thirdPartyDeps([fw.pkg]) },
+        dependencies: { [CORE]: VERSION, ...thirdPartyDeps([fw.pkg]) },
       },
       null,
       2
