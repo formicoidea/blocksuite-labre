@@ -52,9 +52,7 @@ During the development of AFFiNE, it became clear that BlockSuite was advancing 
 
 ## Features
 
-With BlockSuite editors, you can selectively reuse all the editing features in [AFFiNE](https://affine.pro/):
-
-[![affine-demo](./packages/docs/images/affine-demo.jpg)](https://affine.pro)
+With BlockSuite editors, you can selectively reuse all the editing features in [AFFiNE](https://affine.pro/).
 
 And under the hood, the vanilla BlockSuite framework supports:
 
@@ -82,7 +80,7 @@ To that end, the BlockSuite project is structured around key packages that are c
     <th colspan="2">Framework</th>
   </tr>
   <tr>
-    <td><code>@blocksuite/store</code></td>
+    <td><code>@labre/store</code></td>
     <td>Data layer for modeling collaborative document states. It is natively built on the CRDT library <a href="https://github.com/yjs/yjs">Yjs</a>, powering all BlockSuite documents with built-in real-time collaboration and time-travel capabilities.</td>
   </tr>
   <tr>

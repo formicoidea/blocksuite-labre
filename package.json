@@ -1,5 +1,5 @@
 {
-  "name": "blocksuite",
+  "name": "blocksuite-labre",
   "private": true,
   "type": "commonjs",
   "engines": {
@@ -7,23 +7,23 @@
   },
   "packageManager": "yarn@4.7.0",
   "workspaces": [
-    "packages/**/*",
-    "docs"
+    "packages/**/*"
   ],
   "scripts": {
-    "preview": "yarn workspace @blocksuite/playground preview",
-    "dev": "yarn workspace @blocksuite/playground dev",
-    "dev:docs": "yarn workspace @blocksuite/docs dev",
+    "preview": "yarn workspace @labre/playground preview",
+    "dev": "yarn workspace @labre/playground dev",
+    "test:unit": "vitest run --coverage.enabled=false",
+    "test:integration": "yarn workspace @labre/integration-test test:unit --no-file-parallelism",
     "lint:format": "prettier . --check",
     "format": "prettier . --write",
     "build": "tsc -b tsconfig.json --verbose",
-    "build:packages": "yarn workspace @blocksuite/affine build",
-    "build:playground": "yarn workspace @blocksuite/playground build",
-    "build:docs": "yarn workspace @blocksuite/docs build",
+    "build:packages": "yarn workspace @labre/affine build",
+    "build:bundles": "node scripts/build-bundles.mjs",
+    "build:playground": "yarn workspace @labre/playground build",
     "ci:version": "changeset version && yarn install --no-frozen-lockfile",
-    "ci:publish": "yarn build:packages && yarn workspaces foreach -Ap --no-private npm publish --tolerate-republish --access public --tag latest",
+    "ci:publish": "yarn build:packages && yarn build:bundles && node scripts/publish-bundles.mjs latest",
     "ci:version:canary": "changeset version --snapshot canary && yarn install --no-frozen-lockfile",
-    "ci:publish:canary": "yarn build:packages && yarn workspaces foreach -Ap --no-private npm publish --access public --tag canary",
+    "ci:publish:canary": "yarn build:packages && yarn build:bundles && node scripts/publish-bundles.mjs canary",
     "postinstall": "husky",
     "changeset": "changeset && node scripts/changelog.mjs"
   },
@@ -44,6 +44,7 @@
     "@size-limit/preset-small-lib": "^11.1.4",
     "@types/node": "^22.13.10",
     "@types/react": "^19",
+    "@vitest/browser": "3.1.3",
     "es-module-lexer": "^1.5.4",
     "esbuild": "^0.25.0",
     "husky": "^9.1.5",
@@ -54,8 +55,9 @@
     "size-limit": "^11.1.4",
     "tsx": "^4.19.0",
     "typescript": "5.8.2",
-    "vite": "6.2.7",
-    "vite-plugin-web-components-hmr": "^0.1.3"
+    "vite": "6.4.2",
+    "vite-plugin-web-components-hmr": "^0.1.3",
+    "vitest": "3.1.3"
   },
   "stackblitz": {
     "startCommand": "yarn run dev"

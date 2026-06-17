@@ -1,19 +1,19 @@
-import type { RoughCanvas } from '@blocksuite/affine-block-surface';
+import type { RoughCanvas } from '@labre/affine-block-surface';
 import {
   type ConnectorElementModel,
   ConnectorMode,
   type LocalConnectorElementModel,
-} from '@blocksuite/affine-model';
+} from '@labre/affine-model';
 import type {
   BezierCurveParameters,
   IVec,
   PointLocation,
-} from '@blocksuite/global/gfx';
+} from '@labre/global/gfx';
 import {
   getBezierParameters,
   getBezierTangent,
   Vec,
-} from '@blocksuite/global/gfx';
+} from '@labre/global/gfx';
 
 type ConnectorEnd = 'Front' | 'Rear';
 
@@ -85,10 +85,25 @@ export function getPointWithTangent(
         ? Vec.tangent(anchorPoint, pointToAnchor)
         : Vec.tangent(pointToAnchor, anchorPoint);
   } else {
-    tangent =
-      endPoint === 'Rear'
-        ? getBezierTangent(bezierParameters, 1)
-        : getBezierTangent(bezierParameters, 0);
+    // Preserve shape-provided edge tangent for arrow direction rather than
+    // deriving it from the Bezier curve.  For shapes whose vertices follow
+    // clockwise winding (rect, diamond, triangle, ellipse, polygon), the
+    // edge tangent's perpendicular gives the correct inward / outward normal
+    // that matches the connector's approach or departure direction.
+    const shapeTangent = anchorPoint.tangent;
+    if (shapeTangent[0] !== 0 || shapeTangent[1] !== 0) {
+      // CW winding: CCW 90° rotation → inward normal (Rear / approach),
+      //             CW  90° rotation → outward normal (Front / departure).
+      tangent =
+        endPoint === 'Rear'
+          ? ([-shapeTangent[1], shapeTangent[0]] as IVec)
+          : ([shapeTangent[1], -shapeTangent[0]] as IVec);
+    } else {
+      tangent =
+        endPoint === 'Rear'
+          ? getBezierTangent(bezierParameters, 1)
+          : getBezierTangent(bezierParameters, 0);
+    }
   }
   clone.tangent = tangent ?? [0, 0];
 

@@ -1,4 +1,4 @@
-import type { IVec, SerializedXYWH, XYWH } from '@blocksuite/global/gfx';
+import type { IVec, SerializedXYWH, XYWH } from '@labre/global/gfx';
 import {
   Bound,
   curveIntersects,
@@ -11,18 +11,18 @@ import {
   Polyline,
   polyLineNearestPoint,
   Vec,
-} from '@blocksuite/global/gfx';
+} from '@labre/global/gfx';
 import type {
   BaseElementProps,
   PointTestOptions,
   SerializedElement,
-} from '@blocksuite/std/gfx';
+} from '@labre/std/gfx';
 import {
   derive,
   field,
   GfxPrimitiveElementModel,
   local,
-} from '@blocksuite/std/gfx';
+} from '@labre/std/gfx';
 import * as Y from 'yjs';
 
 import {
@@ -338,6 +338,11 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
       };
     }
 
+    // Translate curveControlPoint by the same offset
+    if (this.curveControlPoint) {
+      this.curveControlPoint = Vec.add(this.curveControlPoint, offset) as IVec;
+    }
+
     // Updates Connector's Label position.
     if (this.hasLabel()) {
       const [x, y, w, h] = this.labelXYWH!;
@@ -352,6 +357,7 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     const props: {
       source?: Connection;
       target?: Connection;
+      curveControlPoint?: IVec | null;
     } = {};
 
     if (!this.source.id) {
@@ -365,6 +371,15 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
         ...this.target,
         position: path[path.length - 1].toVec() as [number, number],
       };
+    }
+
+    // Proportionally transform curveControlPoint via the same matrix
+    if (this.curveControlPoint) {
+      const { x, y } = new DOMPoint(
+        this.curveControlPoint[0],
+        this.curveControlPoint[1]
+      ).matrixTransform(matrix);
+      props.curveControlPoint = [x, y];
     }
 
     return props;
@@ -404,6 +419,17 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
 
   @local()
   accessor absolutePath: PointLocation[] = [];
+
+  /**
+   * Absolute control point (in model/world coordinates) for Curve connectors.
+   * When set, the cubic Bézier is recalculated so that the curve passes
+   * through this point at t = 0.5.  Stored via @field() for Yjs/CRDT
+   * persistence.  `null` means "use default automatic tangents".
+   *
+   * Cleared when connector mode changes.
+   */
+  @field()
+  accessor curveControlPoint: IVec | null = null;
 
   @field('None' as PointStyle)
   accessor frontEndpointStyle!: PointStyle;

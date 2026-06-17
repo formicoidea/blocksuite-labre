@@ -1,10 +1,10 @@
-import { EdgelessCRUDIdentifier } from '@blocksuite/affine-block-surface';
+import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
   packColor,
   type PickColorEvent,
-} from '@blocksuite/affine-components/color-picker';
-import type { LineDetailType } from '@blocksuite/affine-components/edgeless-line-styles-panel';
-import { createTextActions } from '@blocksuite/affine-gfx-text';
+} from '@labre/affine-components/color-picker';
+import type { LineDetailType } from '@labre/affine-components/edgeless-line-styles-panel';
+import { createTextActions } from '@labre/affine-gfx-text';
 import {
   type Color,
   DefaultTheme,
@@ -22,25 +22,26 @@ import {
   ShapeStyle,
   ShapeType,
   StrokeStyle,
-} from '@blocksuite/affine-model';
+} from '@labre/affine-model';
 import {
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
-} from '@blocksuite/affine-shared/services';
-import { getMostCommonValue } from '@blocksuite/affine-shared/utils';
+} from '@labre/affine-shared/services';
+import { getMostCommonValue } from '@labre/affine-shared/utils';
 import {
   getRootBlock,
   LINE_STYLE_LIST,
   renderMenu,
-} from '@blocksuite/affine-widget-edgeless-toolbar';
-import { Bound } from '@blocksuite/global/gfx';
-import { AddTextIcon, ShapeIcon } from '@blocksuite/icons/lit';
-import { BlockFlavourIdentifier } from '@blocksuite/std';
+} from '@labre/affine-widget-edgeless-toolbar';
+import { Bound } from '@labre/global/gfx';
+import { AddTextIcon, EditIcon, ShapeIcon } from '@blocksuite/icons/lit';
+import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
 import isEqual from 'lodash-es/isEqual';
 
 import { normalizeShapeBound } from '../element-renderer';
+import { ShapeElementView } from '../element-view';
 import type { ShapeToolOption } from '../shape-tool';
 import { mountShapeTextEditor } from '../text/edgeless-shape-text-editor';
 import { ShapeComponentConfig } from './shape-menu-config';
@@ -274,6 +275,28 @@ export const shapeToolbarConfig = {
         if (!rootBlock) return;
 
         mountShapeTextEditor(model, rootBlock);
+      },
+    },
+    {
+      id: 'f1.edit-vertices',
+      tooltip: 'Edit vertices',
+      icon: EditIcon(),
+      when(ctx) {
+        const models = ctx.getSurfaceModelsByType(ShapeElementModel);
+        return (
+          models.length === 1 &&
+          models[0].shapeType === ShapeType.Polygon &&
+          !hasGrouped(models[0])
+        );
+      },
+      run(ctx) {
+        const model = ctx.getCurrentModelByType(ShapeElementModel);
+        if (!model) return;
+
+        const view = ctx.gfx.view.get(model.id);
+        if (view instanceof ShapeElementView) {
+          view.enterVertexEditingMode();
+        }
       },
     },
     // id: `g.text`

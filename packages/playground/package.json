@@ -1,5 +1,5 @@
 {
-  "name": "@blocksuite/playground",
+  "name": "@labre/playground",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blocksuite/affine": "workspace:*",
-    "@blocksuite/affine-components": "workspace:*",
-    "@blocksuite/affine-model": "workspace:*",
-    "@blocksuite/affine-shared": "workspace:*",
-    "@blocksuite/data-view": "workspace:*",
     "@blocksuite/icons": "^2.2.12",
-    "@blocksuite/integration-test": "workspace:*",
+    "@labre/affine": "workspace:*",
+    "@labre/affine-components": "workspace:*",
+    "@labre/affine-model": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/data-view": "workspace:*",
+    "@labre/integration-test": "workspace:*",
     "@preact/signals-core": "^1.8.0",
     "@shoelace-style/shoelace": "2.20.1",
     "@toeverything/pdf-viewer": "^0.1.1",
@@ -34,7 +34,7 @@
     "yjs": "^13.6.21",
     "zod": "^3.23.8"
   },
-  "license": "MIT",
+  "license": "MPL-2.0",
   "devDependencies": {
     "@tweakpane/core": "^2.0.4",
     "@types/micromatch": "^4.0.9",

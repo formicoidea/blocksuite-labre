@@ -1,8 +1,8 @@
-import { ColorSchema } from '@blocksuite/affine-model';
-import { DisposableGroup } from '@blocksuite/global/disposable';
-import { BlockSuiteError, ErrorCode } from '@blocksuite/global/exceptions';
-import type { DeepPartial } from '@blocksuite/global/utils';
-import { type BlockStdScope, LifeCycleWatcher } from '@blocksuite/std';
+import { ColorSchema } from '@labre/affine-model';
+import { DisposableGroup } from '@labre/global/disposable';
+import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
+import type { DeepPartial } from '@labre/global/utils';
+import { type BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import { computed, type Signal, signal } from '@preact/signals-core';
 import clonedeep from 'lodash-es/cloneDeep';
 import mergeWith from 'lodash-es/mergeWith';
@@ -44,6 +44,7 @@ const LocalPropsSchema = z.object({
   presentNoFrameToastShown: z.boolean(),
 
   autoHideEmbedHTMLFullScreenToolbar: z.boolean(),
+  connectorCenterAnchor: z.boolean().default(false),
 });
 
 type SessionProps = z.infer<typeof SessionPropsSchema>;
@@ -137,6 +138,8 @@ export class EditPropsStore extends LifeCycleWatcher {
         return 'blocksuite:' + id + ':showBidirectional';
       case 'autoHideEmbedHTMLFullScreenToolbar':
         return 'blocksuite:embedHTML:autoHideFullScreenToolbar';
+      case 'connectorCenterAnchor':
+        return 'blocksuite:connector:centerAnchor';
       default:
         return key;
     }

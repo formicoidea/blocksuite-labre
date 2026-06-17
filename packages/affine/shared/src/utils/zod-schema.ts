@@ -27,7 +27,7 @@ import {
   TextAlign,
   TextAlignSchema,
   TextVerticalAlign,
-} from '@blocksuite/affine-model';
+} from '@labre/affine-model';
 import {
   z,
   ZodDefault,
@@ -188,6 +188,7 @@ export const NodePropsSchema = z.object({
   'shape:ellipse': ShapeSchema,
   'shape:rect': ShapeSchema,
   'shape:triangle': ShapeSchema,
+  'shape:polygon': ShapeSchema,
   'shape:roundedRect': RoundedShapeSchema,
 });
 

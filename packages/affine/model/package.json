@@ -1,5 +1,6 @@
 {
-  "name": "@blocksuite/affine-model",
+  "name": "@labre/affine-model",
+  "private": true,
   "description": "Models for BlockSuite in Affine.",
   "type": "module",
   "scripts": {
@@ -7,12 +8,15 @@
   },
   "sideEffects": false,
   "keywords": [],
-  "author": "toeverything",
-  "license": "MIT",
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
   "dependencies": {
-    "@blocksuite/global": "workspace:*",
-    "@blocksuite/std": "workspace:*",
-    "@blocksuite/store": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
+    "@labre/store": "workspace:*",
     "@toeverything/theme": "^1.1.15",
     "@types/lodash-es": "^4.17.12",
     "fractional-indexing": "^3.2.0",
@@ -30,5 +34,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.22.4"
+  "version": "0.23.0"
 }

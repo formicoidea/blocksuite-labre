@@ -1,7 +1,7 @@
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
-} from '@blocksuite/affine-ext-loader';
+} from '@labre/affine-ext-loader';
 
 import { effects } from './effects';
 import {
@@ -10,6 +10,7 @@ import {
 } from './element-renderer';
 import { ShapeDomRendererExtension } from './element-renderer/shape-dom';
 import { ShapeElementView, ShapeViewInteraction } from './element-view';
+import { PolygonTool } from './polygon-tool';
 import { ShapeTool } from './shape-tool';
 import { shapeSeniorTool, shapeToolbarExtension } from './toolbar';
 
@@ -29,6 +30,7 @@ export class ShapeViewExtension extends ViewExtensionProvider {
       context.register(ShapeDomRendererExtension);
       context.register(ShapeElementView);
       context.register(ShapeTool);
+      context.register(PolygonTool);
       context.register(shapeSeniorTool);
       context.register(shapeToolbarExtension);
       context.register(ShapeViewInteraction);

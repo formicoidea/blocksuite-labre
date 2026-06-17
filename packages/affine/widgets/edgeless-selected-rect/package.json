@@ -1,5 +1,6 @@
 {
-  "name": "@blocksuite/affine-widget-edgeless-selected-rect",
+  "name": "@labre/affine-widget-edgeless-selected-rect",
+  "private": true,
   "description": "Affine edgeless selected-rect widget.",
   "type": "module",
   "scripts": {
@@ -7,22 +8,25 @@
   },
   "sideEffects": false,
   "keywords": [],
-  "author": "toeverything",
-  "license": "MIT",
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
   "dependencies": {
-    "@blocksuite/affine-block-frame": "workspace:*",
-    "@blocksuite/affine-block-note": "workspace:*",
-    "@blocksuite/affine-block-surface": "workspace:*",
-    "@blocksuite/affine-components": "workspace:*",
-    "@blocksuite/affine-ext-loader": "workspace:*",
-    "@blocksuite/affine-gfx-connector": "workspace:*",
-    "@blocksuite/affine-gfx-shape": "workspace:*",
-    "@blocksuite/affine-gfx-text": "workspace:*",
-    "@blocksuite/affine-model": "workspace:*",
-    "@blocksuite/affine-shared": "workspace:*",
-    "@blocksuite/global": "workspace:*",
     "@blocksuite/icons": "^2.2.12",
-    "@blocksuite/std": "workspace:*",
+    "@labre/affine-block-frame": "workspace:*",
+    "@labre/affine-block-note": "workspace:*",
+    "@labre/affine-block-surface": "workspace:*",
+    "@labre/affine-components": "workspace:*",
+    "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-gfx-connector": "workspace:*",
+    "@labre/affine-gfx-shape": "workspace:*",
+    "@labre/affine-gfx-text": "workspace:*",
+    "@labre/affine-model": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
     "@lit/context": "^1.1.2",
     "@preact/signals-core": "^1.8.0",
     "@toeverything/theme": "^1.1.15",
@@ -40,5 +44,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.22.4"
+  "version": "0.23.0"
 }

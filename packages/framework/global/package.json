@@ -1,5 +1,6 @@
 {
-  "name": "@blocksuite/global",
+  "name": "@labre/global",
+  "private": true,
   "types": "./index.d.ts",
   "type": "module",
   "scripts": {
@@ -45,8 +46,11 @@
       ]
     }
   },
-  "author": "toeverything",
-  "license": "MIT",
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
   "files": [
     "src",
     "dist",
@@ -64,5 +68,5 @@
   "devDependencies": {
     "vitest": "3.1.3"
   },
-  "version": "0.22.4"
+  "version": "0.23.0"
 }

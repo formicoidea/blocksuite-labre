@@ -1,9 +1,10 @@
-import type { Options } from '@blocksuite/affine-block-surface';
-import type { ShapeStyle } from '@blocksuite/affine-model';
-import type { XYWH } from '@blocksuite/global/gfx';
+import type { Options } from '@labre/affine-block-surface';
+import type { ShapeStyle } from '@labre/affine-model';
+import type { XYWH } from '@labre/global/gfx';
 
 import { DiamondShape } from './diamond';
 import { EllipseShape } from './ellipse';
+import { PolygonShape } from './polygon';
 import { RectShape } from './rect';
 import { RoundedRectShape } from './rounded-rect';
 import type { Shape } from './shape';
@@ -27,6 +28,8 @@ export class ShapeFactory {
         return new EllipseShape(xywh, type, options, shapeStyle);
       case 'roundedRect':
         return new RoundedRectShape(xywh, type, options, shapeStyle);
+      case 'polygon':
+        return new PolygonShape(xywh, type, options, shapeStyle);
       default:
         throw new Error(`Unknown shape type: ${type}`);
     }

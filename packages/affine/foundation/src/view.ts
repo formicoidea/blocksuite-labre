@@ -1,15 +1,16 @@
-import { FileDropExtension } from '@blocksuite/affine-components/drop-indicator';
+import { FileDropExtension } from '@labre/affine-components/drop-indicator';
 import {
   PeekViewExtension,
   type PeekViewService,
-} from '@blocksuite/affine-components/peek';
+} from '@labre/affine-components/peek';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
-} from '@blocksuite/affine-ext-loader';
+} from '@labre/affine-ext-loader';
 import {
   AutoClearSelectionService,
   BlockCommentManager,
+  BlockLifecycleTelemetryWatcher,
   CitationService,
   DefaultOpenDocExtension,
   DNDAPIExtension,
@@ -30,8 +31,8 @@ import {
   type TelemetryService,
   ThemeService,
   ToolbarRegistryExtension,
-} from '@blocksuite/affine-shared/services';
-import { InteractivityManager, ToolController } from '@blocksuite/std/gfx';
+} from '@labre/affine-shared/services';
+import { InteractivityManager, ToolController } from '@labre/std/gfx';
 import { z } from 'zod';
 
 import { clipboardConfigs } from './clipboard';
@@ -80,6 +81,8 @@ export class FoundationViewExtension extends ViewExtensionProvider<FoundationVie
       LinkPreviewService,
       CitationService,
       BlockCommentManager,
+      // Inert without an injected TelemetryService; see telemetry README.
+      BlockLifecycleTelemetryWatcher,
     ]);
     context.register(clipboardConfigs);
     if (this.isEdgeless(context.scope)) {

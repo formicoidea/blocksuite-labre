@@ -1,17 +1,16 @@
 import '../../style.css';
 
-import * as databaseBlocks from '@blocksuite/affine/blocks/database';
-import * as noteBlocks from '@blocksuite/affine/blocks/note';
-import * as globalUtils from '@blocksuite/affine/global/utils';
-import * as services from '@blocksuite/affine/shared/services';
-import * as blockStd from '@blocksuite/affine/std';
-import * as store from '@blocksuite/affine/store';
-import * as affineModel from '@blocksuite/affine-model';
-import * as editor from '@blocksuite/integration-test';
-import { effects as itEffects } from '@blocksuite/integration-test/effects';
-import { getTestStoreManager } from '@blocksuite/integration-test/store';
+import * as databaseBlocks from '@labre/affine/blocks/database';
+import * as noteBlocks from '@labre/affine/blocks/note';
+import * as globalUtils from '@labre/affine/global/utils';
+import * as services from '@labre/affine/shared/services';
+import * as blockStd from '@labre/affine/std';
+import * as store from '@labre/affine/store';
+import * as affineModel from '@labre/affine-model';
+import * as editor from '@labre/integration-test';
+import { effects as itEffects } from '@labre/integration-test/effects';
+import { getTestStoreManager } from '@labre/integration-test/store';
 
-import { setupEdgelessTemplate } from '../_common/setup.js';
 import { effects as commentEffects } from '../comment/effects.js';
 import {
   createStarterDocCollection,
@@ -26,8 +25,6 @@ commentEffects();
 
 async function main() {
   if (window.collection) return;
-
-  setupEdgelessTemplate();
 
   const params = new URLSearchParams(location.search);
   const room = params.get('room') ?? Math.random().toString(16).slice(2, 8);

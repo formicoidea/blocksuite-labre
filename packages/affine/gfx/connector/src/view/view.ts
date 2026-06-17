@@ -1,9 +1,9 @@
 import {
   type ConnectorElementModel,
   LocalShapeElementModel,
-} from '@blocksuite/affine-model';
-import { Bound, serializeXYWH, Vec } from '@blocksuite/global/gfx';
-import type { PointerEventState } from '@blocksuite/std';
+} from '@labre/affine-model';
+import { Bound, serializeXYWH, Vec } from '@labre/global/gfx';
+import type { PointerEventState } from '@labre/std';
 import {
   type DragEndContext,
   type DragMoveContext,
@@ -11,7 +11,7 @@ import {
   generateKeyBetween,
   GfxElementModelView,
   GfxViewInteractionExtension,
-} from '@blocksuite/std/gfx';
+} from '@labre/std/gfx';
 
 import { mountConnectorLabelEditor } from '../text/edgeless-connector-label-editor';
 
@@ -205,6 +205,8 @@ export const ConnectorInteraction =
           model.stash('labelXYWH');
           model.stash('source');
           model.stash('target');
+          model.stash('curveControlPoint');
+
         },
 
         onResizeMove(context): void {
@@ -218,6 +220,8 @@ export const ConnectorInteraction =
           model.pop('labelXYWH');
           model.pop('source');
           model.pop('target');
+          model.pop('curveControlPoint');
+
         },
       };
     },
@@ -229,6 +233,8 @@ export const ConnectorInteraction =
           model.stash('labelXYWH');
           model.stash('source');
           model.stash('target');
+          model.stash('curveControlPoint');
+
         },
 
         onRotateMove(context): void {
@@ -242,6 +248,8 @@ export const ConnectorInteraction =
           model.pop('labelXYWH');
           model.pop('source');
           model.pop('target');
+          model.pop('curveControlPoint');
+
         },
       };
     },

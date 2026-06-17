@@ -1,8 +1,8 @@
-import type { MenuConfig } from '@blocksuite/affine-components/context-menu';
-import { createIdentifier } from '@blocksuite/global/di';
-import type { BlockComponent } from '@blocksuite/std';
-import type { GfxController } from '@blocksuite/std/gfx';
-import type { ExtensionType } from '@blocksuite/store';
+import type { MenuConfig } from '@labre/affine-components/context-menu';
+import { createIdentifier } from '@labre/global/di';
+import type { BlockComponent } from '@labre/std';
+import type { GfxController } from '@labre/std/gfx';
+import type { ExtensionType } from '@labre/store';
 import { type TemplateResult } from 'lit';
 
 export interface QuickTool {
@@ -23,6 +23,11 @@ export interface SeniorTool {
   name: string;
   content: TemplateResult;
   enable?: boolean;
+  /**
+   * Ascending sort key for the senior-tool row (default 0). Higher renders
+   * further right; e.g. the template tool uses a high value to sit last.
+   */
+  order?: number;
 }
 
 export type ToolBuilder<T> = (options: {

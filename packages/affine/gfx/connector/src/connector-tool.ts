@@ -2,26 +2,32 @@ import {
   CanvasElementType,
   DefaultTool,
   OverlayIdentifier,
-} from '@blocksuite/affine-block-surface';
+} from '@labre/affine-block-surface';
 import {
   type Connection,
   type ConnectorElementModel,
   ConnectorMode,
+  DEFAULT_POLYGON_VERTICES,
   GroupElementModel,
   ShapeElementModel,
   ShapeType,
-} from '@blocksuite/affine-model';
-import { TelemetryProvider } from '@blocksuite/affine-shared/services';
-import type { IBound, IVec } from '@blocksuite/global/gfx';
-import { Bound } from '@blocksuite/global/gfx';
-import type { PointerEventState } from '@blocksuite/std';
-import { BaseTool, type GfxModel } from '@blocksuite/std/gfx';
+} from '@labre/affine-model';
+import {
+  EditPropsStore,
+  TelemetryProvider,
+} from '@labre/affine-shared/services';
+import type { IBound, IVec } from '@labre/global/gfx';
+import { Bound, polygonCentroid } from '@labre/global/gfx';
+import type { PointerEventState } from '@labre/std';
+import { BaseTool, type GfxModel } from '@labre/std/gfx';
 
 import {
   calculateNearestLocation,
   type ConnectionOverlay,
   ConnectorEndpointLocations,
   ConnectorEndpointLocationsOnTriangle,
+  ConnectorEndpointLocationsWithCenter,
+  isCenterAnchorEligible,
 } from './connector-manager';
 
 enum ConnectorToolMode {
@@ -197,11 +203,47 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
     this._mode = ConnectorToolMode.Quick;
     this._sourceBounds = Bound.deserialize(element.xywh);
     this._sourceBounds.rotate = element.rotate;
-    this._sourceLocations =
+    if (
       element instanceof ShapeElementModel &&
-      element.shapeType === ShapeType.Triangle
-        ? ConnectorEndpointLocationsOnTriangle
-        : ConnectorEndpointLocations;
+      element.shapeType === ShapeType.Polygon
+    ) {
+      // Use polygon vertices and edge midpoints as endpoint locations
+      const verts: number[][] = element.vertices ?? DEFAULT_POLYGON_VERTICES;
+      const locations: IVec[] = [];
+      for (let i = 0; i < verts.length; i++) {
+        locations.push([verts[i][0], verts[i][1]]);
+        const next = verts[(i + 1) % verts.length];
+        locations.push([
+          (verts[i][0] + next[0]) / 2,
+          (verts[i][1] + next[1]) / 2,
+        ]);
+      }
+      // Geometric centroid as a center anchor (gated on the global toggle),
+      // mirroring the center anchor offered for other shape types.
+      const centerAnchorEnabled =
+        this.std.getOptional(EditPropsStore)?.getStorage(
+          'connectorCenterAnchor'
+        ) ?? true;
+      if (centerAnchorEnabled) {
+        locations.push(polygonCentroid(verts));
+      }
+      this._sourceLocations = locations;
+    } else if ((element as { centerAnchorOnly?: boolean }).centerAnchorOnly) {
+      // Wardley nodes connect from their center only.
+      this._sourceLocations = [[0.5, 0.5]];
+    } else {
+      const centerAnchorEnabled =
+        this.std.getOptional(EditPropsStore)?.getStorage(
+          'connectorCenterAnchor'
+        ) ?? true;
+      this._sourceLocations =
+        element instanceof ShapeElementModel &&
+        element.shapeType === ShapeType.Triangle
+          ? ConnectorEndpointLocationsOnTriangle
+          : centerAnchorEnabled && isCenterAnchorEligible(element)
+            ? ConnectorEndpointLocationsWithCenter
+            : ConnectorEndpointLocations;
+    }
 
     this._source = {
       id: element.id,

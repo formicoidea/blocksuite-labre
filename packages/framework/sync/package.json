@@ -1,5 +1,6 @@
 {
-  "name": "@blocksuite/sync",
+  "name": "@labre/sync",
+  "private": true,
   "description": "BlockSuite data synchronization engine abstraction and implementation.",
   "type": "module",
   "scripts": {
@@ -7,10 +8,13 @@
   },
   "sideEffects": false,
   "keywords": [],
-  "author": "toeverything",
-  "license": "MIT",
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
   "dependencies": {
-    "@blocksuite/global": "workspace:*",
+    "@labre/global": "workspace:*",
     "@types/lodash-es": "^4.17.12",
     "idb": "^8.0.0",
     "idb-keyval": "^6.2.1",
@@ -33,5 +37,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.22.4"
+  "version": "0.23.0"
 }

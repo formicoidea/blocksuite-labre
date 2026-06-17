@@ -32,11 +32,10 @@ const folders = getFoldersWithPackageJson(entry)
     return { json, path: p };
   })
   .filter(data => {
-    return !data.json.private;
-  })
-  .filter(data => {
-    // We only want to include packages that need to be installed by the user
-    return ['@blocksuite/affine'].includes(data.json.name);
+    // @labre/affine is private now (it ships re-bundled as @labre/core), but it
+    // stays the representative size target: core === the umbrella minus the 4
+    // business frameworks.
+    return ['@labre/affine'].includes(data.json.name);
   })
   .flatMap(data => {
     const pathList = Object.entries(data.json.exports).map(([key, p]) => {
@@ -49,7 +48,7 @@ const folders = getFoldersWithPackageJson(entry)
       ...data.json.dependencies,
       ...data.json.devDependencies,
     })
-      .filter(name => !name.startsWith('@blocksuite/'))
+      .filter(name => !name.startsWith('@labre/'))
       .concat(ignoreList);
     return pathList.map(p => ({
       name: path.join(data.json.name, p.subpath),

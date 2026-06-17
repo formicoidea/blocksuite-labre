@@ -1,5 +1,6 @@
 {
-  "name": "@blocksuite/affine-ext-loader",
+  "name": "@labre/affine-ext-loader",
+  "private": true,
   "description": "Extension loader for affine",
   "type": "module",
   "scripts": {
@@ -7,11 +8,14 @@
   },
   "sideEffects": false,
   "keywords": [],
-  "author": "toeverything",
-  "license": "MIT",
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
   "dependencies": {
-    "@blocksuite/global": "workspace:*",
-    "@blocksuite/store": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/store": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -26,5 +30,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.22.4"
+  "version": "0.23.0"
 }
