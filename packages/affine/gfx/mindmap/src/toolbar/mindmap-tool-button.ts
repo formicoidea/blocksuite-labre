@@ -10,7 +10,6 @@ import type {
 } from '@labre/affine-model';
 import {
   EditPropsStore,
-  ThemeProvider,
   ViewportElementProvider,
 } from '@labre/affine-shared/services';
 import {
@@ -37,12 +36,7 @@ import {
   textRender,
   toolConfig2StyleObj,
 } from './basket-elements.js';
-import {
-  basketIconDark,
-  basketIconLight,
-  mindmapMenuMediaIcon,
-  textIcon,
-} from './icons.js';
+import { mindmapMenuMediaIcon, textIcon } from './icons.js';
 import { importMindmap } from './utils/import-mindmap.js';
 
 export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
@@ -55,6 +49,11 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Make this button the containing block of the popup's clip wrapper so
+         the "Others" sub-menu anchors to THIS button (not the whole toolbar)
+         and can be right-aligned to it — mirrors the framework senior buttons.
+         Without this the menu drifts when senior buttons are hidden. */
+      position: relative;
     }
     .partial-clip {
       flex-shrink: 0;
@@ -64,83 +63,39 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       padding: 0 10px;
       overflow: hidden;
     }
+    /* Icons sit centered in the slot — no basket tray. */
     .basket-wrapper {
       pointer-events: auto;
       height: 64px;
       width: 96px;
       display: flex;
       justify-content: center;
-      align-items: flex-end;
+      align-items: center;
+      gap: 4px;
       position: relative;
     }
-    .basket,
     .basket-tool-item {
-      transition: transform 0.3s ease-in-out;
-      position: absolute;
-    }
-
-    .basket {
-      bottom: 0;
-      height: 17px;
-      width: 76px;
-    }
-    .basket > div,
-    .basket > svg {
-      position: absolute;
-    }
-    .glass {
-      width: 76px;
-      height: 17px;
-      border-radius: 2px;
-      mask: url(#mindmap-basket-body-mask);
-    }
-    .glass.enabled {
-      backdrop-filter: blur(2px);
-    }
-    @-moz-document url-prefix() {
-      .glass.enabled {
-        backdrop-filter: none;
-      }
-    }
-
-    .basket {
-      z-index: 3;
-    }
-    .basket-tool-item {
+      position: relative;
       cursor: grab;
+      transition: transform 0.3s ease-in-out;
     }
     .basket-tool-item svg {
       display: block;
+      max-width: 46px;
+      max-height: 46px;
+      width: auto;
+      height: auto;
     }
-    .basket-tool-item {
-      transform: translate(var(--default-x, 0), var(--default-y, 0))
-        rotate(var(--default-r, 0)) scale(var(--default-s, 1));
-      z-index: var(--default-z, 0);
-    }
-
+    /* the drag clone flies in/out using its captured offsets */
     .basket-tool-item.next {
+      position: absolute;
       transform: translate(var(--next-x, 0), var(--next-y, 0))
         rotate(var(--next-r, 0)) scale(var(--next-s, 1));
       z-index: var(--next-z, 0);
     }
-
-    /* active & hover */
-    .basket-wrapper:hover .basket,
-    .basket-wrapper.active .basket {
-      z-index: 0;
-    }
     .basket-wrapper:hover .basket-tool-item.current,
     .basket-wrapper.active .basket-tool-item.current {
-      transform: translate(var(--active-x, 0), var(--active-y, 0))
-        rotate(var(--active-r, 0)) scale(var(--active-s, 1));
-      z-index: var(--active-z, 0);
-    }
-
-    .basket-tool-item.next.coming,
-    .basket-wrapper:hover .basket-tool-item.current:hover {
-      transform: translate(var(--hover-x, 0), var(--hover-y, 0))
-        rotate(var(--hover-r, 0)) scale(var(--hover-s, 1));
-      z-index: var(--hover-z, 0);
+      transform: translateY(-6px) scale(1.06);
     }
   `;
 
@@ -157,9 +112,22 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
   override type = [EmptyTool, TextTool];
 
   get draggableTools(): DraggableTool[] {
-    const style = this._style$.value;
-    const mindmap =
-      this.mindmaps.find(m => m.style === style) || this.mindmaps[0];
+    // The dedicated "Mind Map" button carries only the mindmap tool; the
+    // "Others" button keeps free-text + add-file.
+    if (this.variant === 'mindmap') {
+      const style = this._style$.value;
+      const mindmap =
+        this.mindmaps.find(m => m.style === style) || this.mindmaps[0];
+      return [
+        {
+          name: 'mindmap',
+          icon: mindmap.icon,
+          config: mindmapConfig,
+          standardWidth: 350,
+          render: getMindmapRender(style),
+        },
+      ];
+    }
     return [
       {
         name: 'media',
@@ -174,13 +142,6 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
         config: textConfig,
         standardWidth: 100,
         render: textRender,
-      },
-      {
-        name: 'mindmap',
-        icon: mindmap.icon,
-        config: mindmapConfig,
-        standardWidth: 350,
-        render: getMindmapRender(style),
       },
     ];
   }
@@ -200,6 +161,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
     const menu = this.createPopper('edgeless-mindmap-menu', this);
     Object.assign(menu.element, {
       edgeless: this.edgeless,
+      variant: this.variant,
       onActiveStyleChange: (style: MindmapStyle) => {
         this.edgeless.std.get(EditPropsStore).recordLastProps('mindmap', {
           style,
@@ -222,6 +184,21 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
           });
         });
       },
+    });
+
+    // Right-align the menu's right edge to this button's right edge, like the
+    // framework senior buttons. Stays correct however many buttons are hidden.
+    const el = menu.element as HTMLElement;
+    const wrap = el.parentElement;
+    if (wrap) {
+      wrap.style.overflow = 'visible';
+      wrap.style.justifyContent = 'flex-end';
+    }
+    Object.assign(el.style, {
+      position: 'static',
+      width: 'max-content',
+      maxWidth: 'calc(100vw - 16px)',
+      marginLeft: '0',
     });
   }
 
@@ -288,15 +265,17 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       },
     });
 
-    this.edgeless.bindHotKey(
-      {
-        m: () => {
-          const gfx = this.gfx;
-          const locked = gfx.viewport.locked;
-          if (locked) return;
-          if (gfx.selection.editing) return;
+    // The `m` shortcut belongs to the dedicated Mind Map button only.
+    if (this.variant === 'mindmap') {
+      this.edgeless.bindHotKey(
+        {
+          m: () => {
+            const gfx = this.gfx;
+            const locked = gfx.viewport.locked;
+            if (locked) return;
+            if (gfx.selection.editing) return;
 
-          if (this.readyToDrop) {
+            if (this.readyToDrop) {
             // change the style
             const activeIndex = this.mindmaps.findIndex(
               m => m.style === this._style$.value
@@ -324,6 +303,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       },
       { global: true }
     );
+    }
 
     // since there is not a tool called mindmap, we need to cancel the drag when the tool is changed
     this.disposables.add(
@@ -338,11 +318,6 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
 
   override render() {
     const { popper } = this;
-    const appTheme = this.edgeless.std.get(ThemeProvider).app$.value;
-    const basketIcon = appTheme === 'light' ? basketIconLight : basketIconDark;
-    const glassBg =
-      appTheme === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(74, 74, 74, 0.6)';
-
     const { cancelled, dragOut, draggingElement } =
       this.draggableController?.states || {};
 
@@ -351,7 +326,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
     return html`<edgeless-toolbar-button
       class="edgeless-mindmap-button"
       ?withHover=${true}
-      .tooltip=${popper ? '' : 'Others'}
+      .tooltip=${popper ? '' : this.variant === 'mindmap' ? 'Mind Map' : 'Others'}
       .tooltipOffset=${4}
       @click=${this._toggleMenu}
       style="width: 100%; height: 100%; display: inline-block"
@@ -407,41 +382,8 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
                 </div>`;
             }
           )}
-
-          <div class="basket">
-            <div
-              class="glass ${this.enableBlur ? 'enabled' : ''}"
-              style="background: ${glassBg}"
-            ></div>
-            ${basketIcon}
-          </div>
         </div>
       </div>
-
-      <svg width="0" height="0" style="opacity: 0; pointer-events: none">
-        <defs>
-          <mask id="mindmap-basket-body-mask">
-            <rect
-              x="2"
-              width="71.8"
-              y="2"
-              height="15"
-              rx="1.5"
-              ry="1.5"
-              fill="white"
-            />
-            <rect
-              width="32"
-              height="6"
-              x="22"
-              y="5.9"
-              fill="black"
-              rx="3"
-              ry="3"
-            />
-          </mask>
-        </defs>
-      </svg>
     </edgeless-toolbar-button>`;
   }
 
@@ -455,8 +397,10 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
     }
   }
 
-  @property({ type: Boolean })
-  accessor enableBlur = true;
+  /** `'mindmap'` → the dedicated Mind Map button; `'other'` → free-text +
+   * add-file ("Others"). Drives the tools, tooltip, `m` shortcut and menu. */
+  @property({ attribute: false })
+  accessor variant: 'mindmap' | 'other' = 'other';
 
   @query('.basket-tool-item.mindmap')
   accessor mindmapElement!: HTMLElement;

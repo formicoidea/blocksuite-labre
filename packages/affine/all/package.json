@@ -45,6 +45,7 @@
     "@labre/affine-gfx-brush": "workspace:*",
     "@labre/affine-gfx-connector": "workspace:*",
     "@labre/affine-gfx-cynefin-estuarine": "workspace:*",
+    "@labre/affine-gfx-ddd": "workspace:*",
     "@labre/affine-gfx-edgy": "workspace:*",
     "@labre/affine-gfx-group": "workspace:*",
     "@labre/affine-gfx-link": "workspace:*",

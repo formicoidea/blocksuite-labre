@@ -27,10 +27,21 @@ import { BpmnViewExtension } from '@labre/affine-gfx-bpmn/view';
 import { BrushViewExtension } from '@labre/affine-gfx-brush/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
 import { CynefinEstuarineViewExtension } from '@labre/affine-gfx-cynefin-estuarine/view';
+import {
+  DddContextMapViewExtension,
+  DddCoreDomainRenderViewExtension,
+  DddCoreDomainViewExtension,
+  DddEventStormingViewExtension,
+  DddTemplatesViewExtension,
+} from '@labre/affine-gfx-ddd/view';
 import { EdgyViewExtension } from '@labre/affine-gfx-edgy/view';
 import { GroupViewExtension } from '@labre/affine-gfx-group/view';
 import { LinkViewExtension as GfxLinkViewExtension } from '@labre/affine-gfx-link/view';
-import { MindmapViewExtension } from '@labre/affine-gfx-mindmap/view';
+import {
+  MindmapRenderViewExtension,
+  MindmapToolViewExtension,
+  OtherToolViewExtension,
+} from '@labre/affine-gfx-mindmap/view';
 import { NoteViewExtension as GfxNoteViewExtension } from '@labre/affine-gfx-note/view';
 import { PointerViewExtension } from '@labre/affine-gfx-pointer/view';
 import { ShapeViewExtension } from '@labre/affine-gfx-shape/view';
@@ -81,7 +92,10 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
     GfxNoteViewExtension,
     ...(on('brush') ? [BrushViewExtension] : []),
     ShapeViewExtension,
-    ...(on('mindmap') ? [MindmapViewExtension] : []),
+    // Mindmap rendering is always on; the flags gate only the senior buttons.
+    MindmapRenderViewExtension,
+    ...(on('mindmap') ? [MindmapToolViewExtension] : []),
+    ...(on('other') ? [OtherToolViewExtension] : []),
     ConnectorViewExtension,
     GroupViewExtension,
     TextViewExtension,
@@ -91,6 +105,12 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
     ...(on('edgy') ? [EdgyViewExtension] : []),
     ...(on('cynefin-estuarine') ? [CynefinEstuarineViewExtension] : []),
     ...(on('bpmn') ? [BpmnViewExtension] : []),
+    // Core Domain rendering is always on; the flag gates only the senior button.
+    DddCoreDomainRenderViewExtension,
+    ...(on('ddd-event-storming') ? [DddEventStormingViewExtension] : []),
+    ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),
+    ...(on('ddd-context-map') ? [DddContextMapViewExtension] : []),
+    ...(on('ddd-templates') ? [DddTemplatesViewExtension] : []),
 
     // Block
     ...(on('attachment') ? [AttachmentViewExtension] : []),

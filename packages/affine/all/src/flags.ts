@@ -43,12 +43,17 @@ export const OPTIONAL_BLOCKS = [
   // gfx modules
   'brush',
   'mindmap',
+  'other',
   'template',
   'link',
   'wardley',
   'edgy',
   'cynefin-estuarine',
   'bpmn',
+  'ddd-event-storming',
+  'ddd-core-domain',
+  'ddd-context-map',
+  'ddd-templates',
 ] as const;
 
 export type OptionalBlock = (typeof OPTIONAL_BLOCKS)[number];

@@ -83,58 +83,23 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
     const menu = this.createPopper('edgeless-wardley-menu', this);
     menu.element.edgeless = this.edgeless;
 
-    // Anchor the sub-menu to THIS button (the clip wrapper is now button-
-    // relative thanks to `:host{position:relative}`): make the menu an in-flow
-    // flex item sized to its content, centered over the button. Now that other
-    // senior tools (EDGY, Cynefin/Estuarine) sit to the right of Wardley, there
-    // is room on both sides, so the menu no longer needs to be pinned to the
-    // right edge. Native sub-menus are untouched.
+    // Anchor the sub-menu to THIS button (the clip wrapper is button-relative
+    // thanks to `:host{position:relative}`): right-align the menu's right edge
+    // to the button's right edge via the wrap's `flex-end`. Mirrors every other
+    // framework senior button (Cynefin, EDGY, BPMN, DDD). This stays correct
+    // regardless of how many senior buttons are hidden — unlike aligning to the
+    // rightmost toolbar slot, which moves when buttons are toggled off.
     const el = menu.element as HTMLElement;
     const wrap = el.parentElement;
     if (wrap) {
       wrap.style.overflow = 'visible';
-      wrap.style.justifyContent = 'center';
+      wrap.style.justifyContent = 'flex-end';
     }
     Object.assign(el.style, {
       position: 'static',
       width: 'max-content',
       maxWidth: 'calc(100vw - 16px)',
       marginLeft: '0',
-    });
-
-    // The Wardley menu is wide (~13 items). After layout, right-align its right
-    // edge to the right edge of the rightmost senior tool (the right end of the
-    // senior toolbar), so it fills the space to the right instead of sitting
-    // centered with a gap. The menu then extends leftwards.
-    requestAnimationFrame(() => {
-      const rect = el.getBoundingClientRect();
-
-      // Right edge of the rightmost senior tool slot (scan across shadow roots).
-      let target = 0;
-      const seen = new Set<ShadowRoot>();
-      const scan = (root: ParentNode) => {
-        root.querySelectorAll('*').forEach(node => {
-          const cls = (node as HTMLElement).className;
-          if (
-            typeof cls === 'string' &&
-            cls.split(' ').includes('senior-tool-item')
-          ) {
-            const b = node.getBoundingClientRect();
-            if (b.width > 0) target = Math.max(target, b.right);
-          }
-          const sr = (node as HTMLElement).shadowRoot;
-          if (sr && !seen.has(sr)) {
-            seen.add(sr);
-            scan(sr);
-          }
-        });
-      };
-      scan(document);
-
-      if (target > 0) {
-        const dx = Math.round(target - rect.right);
-        if (dx) el.style.transform = `translateX(${dx}px)`;
-      }
     });
   }
 

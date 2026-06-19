@@ -275,73 +275,81 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
     const isDraggingMedia = draggingElement?.data?.type === 'media';
     const isDraggingText = draggingElement?.data?.type === 'text';
     const showNextText = dragOut && !cancelled;
-    return html`<edgeless-slide-menu .height=${'64px'}>
-      <div class="text-and-mindmap">
-        <div class="media-item">
-          ${isDraggingMedia
-            ? html`<button
-                class="next"
-                style="transform: translateY(${showNextText ? 0 : 64}px)"
+
+    // The menu is shared by two senior buttons: the "Others" button (media +
+    // text) and the dedicated "Mind Map" button (mindmap styles + import).
+    const otherSection =
+      this.variant === 'other'
+        ? html`
+            <div class="media-item">
+              ${isDraggingMedia
+                ? html`<button
+                    class="next"
+                    style="transform: translateY(${showNextText ? 0 : 64}px)"
+                  >
+                    ${mediaItem.icon}
+                  </button>`
+                : nothing}
+              <button
+                style="opacity: ${isDraggingMedia ? 0 : 1}"
+                @mousedown=${(e: MouseEvent) =>
+                  this.draggableController.onMouseDown(e, {
+                    preview: mediaItem.icon,
+                    data: mediaItem,
+                  })}
+                @touchstart=${(e: TouchEvent) =>
+                  this.draggableController.onTouchStart(e, {
+                    preview: mediaItem.icon,
+                    data: mediaItem,
+                  })}
               >
                 ${mediaItem.icon}
-              </button>`
-            : nothing}
-          <button
-            style="opacity: ${isDraggingMedia ? 0 : 1}"
-            @mousedown=${(e: MouseEvent) =>
-              this.draggableController.onMouseDown(e, {
-                preview: mediaItem.icon,
-                data: mediaItem,
-              })}
-            @touchstart=${(e: TouchEvent) =>
-              this.draggableController.onTouchStart(e, {
-                preview: mediaItem.icon,
-                data: mediaItem,
-              })}
-          >
-            ${mediaItem.icon}
-          </button>
-          <affine-tooltip tip-position="top" .offset=${12}>
-            <affine-tooltip-content-with-shortcut
-              data-tip="${'Add media'}"
-            ></affine-tooltip-content-with-shortcut>
-          </affine-tooltip>
-        </div>
-        <div class="thin-divider"></div>
-        <div class="text-item">
-          ${isDraggingText
-            ? html`<button
-                class="next"
-                style="transform: translateY(${showNextText ? 0 : 64}px)"
+              </button>
+              <affine-tooltip tip-position="top" .offset=${12}>
+                <affine-tooltip-content-with-shortcut
+                  data-tip="${'Add media'}"
+                ></affine-tooltip-content-with-shortcut>
+              </affine-tooltip>
+            </div>
+            <div class="thin-divider"></div>
+            <div class="text-item">
+              ${isDraggingText
+                ? html`<button
+                    class="next"
+                    style="transform: translateY(${showNextText ? 0 : 64}px)"
+                  >
+                    ${textItem.icon}
+                  </button>`
+                : nothing}
+              <button
+                style="opacity: ${isDraggingText ? 0 : 1}"
+                @mousedown=${(e: MouseEvent) =>
+                  this.draggableController.onMouseDown(e, {
+                    preview: textItem.icon,
+                    data: textItem,
+                  })}
+                @touchstart=${(e: TouchEvent) =>
+                  this.draggableController.onTouchStart(e, {
+                    preview: textItem.icon,
+                    data: textItem,
+                  })}
               >
                 ${textItem.icon}
-              </button>`
-            : nothing}
-          <button
-            style="opacity: ${isDraggingText ? 0 : 1}"
-            @mousedown=${(e: MouseEvent) =>
-              this.draggableController.onMouseDown(e, {
-                preview: textItem.icon,
-                data: textItem,
-              })}
-            @touchstart=${(e: TouchEvent) =>
-              this.draggableController.onTouchStart(e, {
-                preview: textItem.icon,
-                data: textItem,
-              })}
-          >
-            ${textItem.icon}
-          </button>
-          <affine-tooltip tip-position="top" .offset=${12}>
-            <affine-tooltip-content-with-shortcut
-              data-tip="${'Edgeless Text'}"
-              data-shortcup="${'T'}"
-            ></affine-tooltip-content-with-shortcut>
-          </affine-tooltip>
-        </div>
-        <div class="thin-divider"></div>
-        <!-- mind map -->
-        ${repeat(this.mindMaps, mindMap => {
+              </button>
+              <affine-tooltip tip-position="top" .offset=${12}>
+                <affine-tooltip-content-with-shortcut
+                  data-tip="${'Edgeless Text'}"
+                  data-shortcup="${'T'}"
+                ></affine-tooltip-content-with-shortcut>
+              </affine-tooltip>
+            </div>
+          `
+        : nothing;
+
+    const mindmapSection =
+      this.variant === 'mindmap'
+        ? html`
+            ${repeat(this.mindMaps, mindMap => {
           const isDraggingMindMap = draggingElement?.data?.type !== 'text';
           const draggingEle = draggingElement?.data as ToolbarMindmapItem;
           const isBeingDragged =
@@ -386,13 +394,17 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
               </affine-tooltip>
             </div>
           `;
-        })}
-        ${this.std.store
-          .get(FeatureFlagService)
-          .getFlag('enable_mind_map_import')
-          ? this._importMindMapEntry()
-          : nothing}
-      </div>
+            })}
+            ${this.std.store
+              .get(FeatureFlagService)
+              .getFlag('enable_mind_map_import')
+              ? this._importMindMapEntry()
+              : nothing}
+          `
+        : nothing;
+
+    return html`<edgeless-slide-menu .height=${'64px'}>
+      <div class="text-and-mindmap">${otherSection}${mindmapSection}</div>
     </edgeless-slide-menu>`;
   }
 
@@ -403,6 +415,11 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
 
   @consume({ context: modelContext })
   accessor model!: BlockModel;
+
+  /** Which sections to render: the "Others" button shows media + text, the
+   * dedicated "Mind Map" button shows the mindmap styles + import. */
+  @property({ attribute: false })
+  accessor variant: 'mindmap' | 'other' = 'mindmap';
 
   @property({ attribute: false })
   accessor onActiveStyleChange!: (style: MindmapStyle) => void;

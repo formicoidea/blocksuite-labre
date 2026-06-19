@@ -5,6 +5,7 @@ import type {
 } from './bpmn/index.js';
 import type { BrushElementModel } from './brush/index.js';
 import type { ConnectorElementModel } from './connector/index.js';
+import type { CoreDomainChartElementModel } from './core-domain/index.js';
 import type {
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
@@ -24,6 +25,7 @@ import type {
 export * from './bpmn/index.js';
 export * from './brush/index.js';
 export * from './connector/index.js';
+export * from './core-domain/index.js';
 export * from './cynefin/index.js';
 export * from './edgy/index.js';
 export * from './estuarine/index.js';
@@ -50,6 +52,7 @@ export type SurfaceElementModelMap = {
   edgyNode: EdgyNodeElementModel;
   cynefin: CynefinElementModel;
   estuarine: EstuarineElementModel;
+  coreDomain: CoreDomainChartElementModel;
 };
 
 export type SurfaceTextModelMap = {

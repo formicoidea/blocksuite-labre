@@ -39,7 +39,14 @@ export type BlockLifecycleEvents = {
  * manipulated ('background:classic', 'node:market', 'connector:link'…).
  */
 export interface FrameworkElementEvent extends TelemetryEvent {
-  framework: 'wardley' | 'edgy' | 'cynefin' | 'bpmn';
+  framework:
+    | 'wardley'
+    | 'edgy'
+    | 'cynefin'
+    | 'bpmn'
+    | 'event-storming'
+    | 'core-domain'
+    | 'context-map';
   element: string;
 }
 

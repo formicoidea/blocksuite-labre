@@ -57,7 +57,7 @@ export const replaceIdMiddleware = (job: TemplateJob) => {
         val.id = newId;
         elements[newId] = val;
 
-        if (['connector', 'group'].includes(val['type'] as string)) {
+        if (['connector', 'group', 'mindmap'].includes(val['type'] as string)) {
           defered.push(newId);
         }
       });
@@ -104,6 +104,33 @@ export const replaceIdMiddleware = (job: TemplateJob) => {
                   id: regeneratedIdMap.get(source.id),
                 };
               }
+            }
+            break;
+          case 'mindmap':
+            {
+              // A mindmap stores its node-shape ids as the keys (and `parent`
+              // back-refs) of its `children` y-map; remap both to the
+              // regenerated shape ids. Same wrapped `{ json }` shape as a group.
+              type MindmapNodeDetail = {
+                index: string;
+                parent?: string;
+                collapsed?: boolean;
+              };
+              const children = element['children'] as {
+                json: Record<string, MindmapNodeDetail>;
+              };
+              const newJson: Record<string, MindmapNodeDetail> = {};
+
+              Object.entries(children.json).forEach(([key, val]) => {
+                const newVal = { ...val };
+                if (newVal.parent) {
+                  newVal.parent =
+                    regeneratedIdMap.get(newVal.parent) ?? newVal.parent;
+                }
+                newJson[regeneratedIdMap.get(key) ?? key] = newVal;
+              });
+
+              children.json = newJson;
             }
             break;
         }

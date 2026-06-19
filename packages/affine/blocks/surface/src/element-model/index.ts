@@ -3,6 +3,7 @@ import {
   BpmnPoolElementModel,
   BrushElementModel,
   ConnectorElementModel,
+  CoreDomainChartElementModel,
   CynefinElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
@@ -32,6 +33,7 @@ export const elementsCtorMap = {
   edgyNode: EdgyNodeElementModel,
   cynefin: CynefinElementModel,
   estuarine: EstuarineElementModel,
+  coreDomain: CoreDomainChartElementModel,
   bpmnNode: BpmnNodeElementModel,
   bpmnPool: BpmnPoolElementModel,
 };
@@ -41,6 +43,7 @@ export {
   BpmnPoolElementModel,
   BrushElementModel,
   ConnectorElementModel,
+  CoreDomainChartElementModel,
   CynefinElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
@@ -69,6 +72,7 @@ export enum CanvasElementType {
   EDGYNODE = 'edgyNode',
   CYNEFIN = 'cynefin',
   ESTUARINE = 'estuarine',
+  COREDOMAIN = 'coreDomain',
   BPMNNODE = 'bpmnNode',
   BPMNPOOL = 'bpmnPool',
 }
@@ -87,6 +91,7 @@ export type ElementModelMap = {
   ['edgyNode']: EdgyNodeElementModel;
   ['cynefin']: CynefinElementModel;
   ['estuarine']: EstuarineElementModel;
+  ['coreDomain']: CoreDomainChartElementModel;
   ['bpmnNode']: BpmnNodeElementModel;
   ['bpmnPool']: BpmnPoolElementModel;
 };
