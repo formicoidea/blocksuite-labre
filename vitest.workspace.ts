@@ -11,6 +11,7 @@ export default [
   'packages/affine/ext-loader/vitest.config.ts',
   'packages/affine/gfx/bpmn/vitest.config.ts',
   'packages/affine/gfx/connector/vitest.config.ts',
+  'packages/affine/gfx/ddd/vitest.config.ts',
   'packages/affine/inlines/footnote/vitest.config.ts',
   'packages/affine/shared/vitest.config.ts',
   'packages/framework/global/vitest.config.ts',
