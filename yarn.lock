@@ -2275,9 +2275,89 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@labre/affine-gfx-ddd@workspace:*, @labre/affine-gfx-ddd@workspace:packages/affine/gfx/ddd":
+"@labre/affine-gfx-ddd-aggregate@workspace:*, @labre/affine-gfx-ddd-aggregate@workspace:packages/affine/gfx/ddd-aggregate":
   version: 0.0.0-use.local
-  resolution: "@labre/affine-gfx-ddd@workspace:packages/affine/gfx/ddd"
+  resolution: "@labre/affine-gfx-ddd-aggregate@workspace:packages/affine/gfx/ddd-aggregate"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-group": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-template": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-ddd-context-map@workspace:*, @labre/affine-gfx-ddd-context-map@workspace:packages/affine/gfx/ddd-context-map":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-ddd-context-map@workspace:packages/affine/gfx/ddd-context-map"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-group": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-template": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-ddd-core-domain@workspace:*, @labre/affine-gfx-ddd-core-domain@workspace:packages/affine/gfx/ddd-core-domain":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-ddd-core-domain@workspace:packages/affine/gfx/ddd-core-domain"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-group": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-template": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-ddd-event-storming@workspace:*, @labre/affine-gfx-ddd-event-storming@workspace:packages/affine/gfx/ddd-event-storming":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-ddd-event-storming@workspace:packages/affine/gfx/ddd-event-storming"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-group": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-template": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-ddd-shared@workspace:*, @labre/affine-gfx-ddd-shared@workspace:packages/affine/gfx/ddd-shared":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-ddd-shared@workspace:packages/affine/gfx/ddd-shared"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -3319,7 +3399,11 @@ __metadata:
     "@labre/affine-gfx-brush": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-cynefin-estuarine": "workspace:*"
-    "@labre/affine-gfx-ddd": "workspace:*"
+    "@labre/affine-gfx-ddd-aggregate": "workspace:*"
+    "@labre/affine-gfx-ddd-context-map": "workspace:*"
+    "@labre/affine-gfx-ddd-core-domain": "workspace:*"
+    "@labre/affine-gfx-ddd-event-storming": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
     "@labre/affine-gfx-edgy": "workspace:*"
     "@labre/affine-gfx-group": "workspace:*"
     "@labre/affine-gfx-link": "workspace:*"

@@ -27,13 +27,13 @@ import { BpmnViewExtension } from '@labre/affine-gfx-bpmn/view';
 import { BrushViewExtension } from '@labre/affine-gfx-brush/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
 import { CynefinEstuarineViewExtension } from '@labre/affine-gfx-cynefin-estuarine/view';
+import { DddTemplatesViewExtension } from '@labre/affine-gfx-ddd-aggregate/view';
+import { DddContextMapViewExtension } from '@labre/affine-gfx-ddd-context-map/view';
 import {
-  DddContextMapViewExtension,
   DddCoreDomainRenderViewExtension,
   DddCoreDomainViewExtension,
-  DddEventStormingViewExtension,
-  DddTemplatesViewExtension,
-} from '@labre/affine-gfx-ddd/view';
+} from '@labre/affine-gfx-ddd-core-domain/view';
+import { DddEventStormingViewExtension } from '@labre/affine-gfx-ddd-event-storming/view';
 import { EdgyViewExtension } from '@labre/affine-gfx-edgy/view';
 import { GroupViewExtension } from '@labre/affine-gfx-group/view';
 import { LinkViewExtension as GfxLinkViewExtension } from '@labre/affine-gfx-link/view';

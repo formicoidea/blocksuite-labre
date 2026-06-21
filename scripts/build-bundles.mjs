@@ -28,46 +28,107 @@ const PKGS_DIR = path.join(ROOT, 'packages');
 const OUT_DIR = path.join(ROOT, 'dist-bundles');
 const UMBRELLA_DIR = path.join(PKGS_DIR, 'affine', 'all');
 
-/** Business frameworks: source dir (under packages/) + the wiring they expose. */
+/**
+ * Business frameworks: each is a senior-button gfx module shipped as its OWN
+ * bundle. `extensions` lists the view extension(s) the bundle exposes, each with
+ * the flag that gates it; omit `flag` for an always-on extension (e.g. element
+ * rendering that must paint even when the senior button is hidden). Adding a new
+ * senior-button package = one entry here.
+ */
 const FRAMEWORKS = [
   {
     out: 'framework-wardley',
     pkg: '@labre/affine-gfx-wardley',
     dir: 'affine/gfx/wardley',
-    ext: 'WardleyViewExtension',
-    flag: 'wardley',
     telemetry: 'wardley',
     info: 'wardleyFramework',
+    extensions: [{ ext: 'WardleyViewExtension', flag: 'wardley' }],
   },
   {
     out: 'framework-edgy',
     pkg: '@labre/affine-gfx-edgy',
     dir: 'affine/gfx/edgy',
-    ext: 'EdgyViewExtension',
-    flag: 'edgy',
     telemetry: 'edgy',
     info: 'edgyFramework',
+    extensions: [{ ext: 'EdgyViewExtension', flag: 'edgy' }],
   },
   {
     out: 'framework-bpmn',
     pkg: '@labre/affine-gfx-bpmn',
     dir: 'affine/gfx/bpmn',
-    ext: 'BpmnViewExtension',
-    flag: 'bpmn',
     telemetry: 'bpmn',
     info: 'bpmnFramework',
+    extensions: [{ ext: 'BpmnViewExtension', flag: 'bpmn' }],
   },
   {
     out: 'framework-cynefin',
     pkg: '@labre/affine-gfx-cynefin-estuarine',
     dir: 'affine/gfx/cynefin-estuarine',
-    ext: 'CynefinEstuarineViewExtension',
-    flag: 'cynefin-estuarine',
     telemetry: 'cynefin',
     info: 'cynefinFramework',
+    extensions: [
+      { ext: 'CynefinEstuarineViewExtension', flag: 'cynefin-estuarine' },
+    ],
+  },
+  {
+    out: 'framework-ddd-event-storming',
+    pkg: '@labre/affine-gfx-ddd-event-storming',
+    dir: 'affine/gfx/ddd-event-storming',
+    telemetry: 'ddd-event-storming',
+    info: 'dddEventStormingFramework',
+    extensions: [
+      { ext: 'DddEventStormingViewExtension', flag: 'ddd-event-storming' },
+    ],
+  },
+  {
+    out: 'framework-ddd-core-domain',
+    pkg: '@labre/affine-gfx-ddd-core-domain',
+    dir: 'affine/gfx/ddd-core-domain',
+    telemetry: 'ddd-core-domain',
+    info: 'dddCoreDomainFramework',
+    extensions: [
+      // always-on: placed Core Domain charts must paint even with the button off
+      { ext: 'DddCoreDomainRenderViewExtension' },
+      { ext: 'DddCoreDomainViewExtension', flag: 'ddd-core-domain' },
+    ],
+  },
+  {
+    out: 'framework-ddd-context-map',
+    pkg: '@labre/affine-gfx-ddd-context-map',
+    dir: 'affine/gfx/ddd-context-map',
+    telemetry: 'ddd-context-map',
+    info: 'dddContextMapFramework',
+    extensions: [
+      { ext: 'DddContextMapViewExtension', flag: 'ddd-context-map' },
+    ],
+  },
+  {
+    out: 'framework-ddd-aggregate',
+    pkg: '@labre/affine-gfx-ddd-aggregate',
+    dir: 'affine/gfx/ddd-aggregate',
+    telemetry: 'ddd-aggregate',
+    info: 'dddAggregateFramework',
+    extensions: [{ ext: 'DddTemplatesViewExtension', flag: 'ddd-templates' }],
   },
 ];
+
+/**
+ * Shared (non-framework) bundles: published packages with NO senior button that
+ * one or more framework bundles depend on. Like frameworks they are vendored OUT
+ * of core, but they are emitted as their own bundle depending only on core.
+ */
+const SHARED = [
+  {
+    out: 'ddd-shared',
+    pkg: '@labre/affine-gfx-ddd-shared',
+    dir: 'affine/gfx/ddd-shared',
+  },
+];
+
 const FRAMEWORK_PKGS = new Set(FRAMEWORKS.map(f => f.pkg));
+const SHARED_PKGS = new Set(SHARED.map(s => s.pkg));
+/** Packages that must NOT be vendored into core (they ship as their own bundle). */
+const EXCLUDED_FROM_CORE = new Set([...FRAMEWORK_PKGS, ...SHARED_PKGS]);
 
 // Matches a `@labre/*` module specifier in `from '…'`, `import '…'` (side-effect)
 // or `import('…')` position — NOT arbitrary `@labre/…` string literals in code.
@@ -128,9 +189,16 @@ const VERSION = umbrella.version;
 const SCOPE = process.env.NPM_SCOPE ?? '@formicoidea';
 const CORE = `${SCOPE}/labre-core`;
 
-/** Core packages = umbrella deps minus the 4 frameworks. */
+/** Published bundle name for a workspace pkg that ships as its own bundle. */
+function bundleNameOf(pkg) {
+  const b =
+    FRAMEWORKS.find(f => f.pkg === pkg) ?? SHARED.find(s => s.pkg === pkg);
+  return b ? `${SCOPE}/labre-${b.out}` : null;
+}
+
+/** Core packages = umbrella deps minus the frameworks AND the shared bundles. */
 const corePkgNames = Object.keys(umbrella.deps).filter(
-  d => d.startsWith('@labre/') && !FRAMEWORK_PKGS.has(d)
+  d => d.startsWith('@labre/') && !EXCLUDED_FROM_CORE.has(d)
 );
 
 /** Third-party (non-@labre) deps across a set of packages → a deps object. */
@@ -156,9 +224,9 @@ function resolveToVendored(spec) {
   const parts = spec.split('/');
   const pkgName = `${parts[0]}/${parts[1]}`;
   const sub = parts.slice(2).join('/');
-  if (FRAMEWORK_PKGS.has(pkgName)) {
+  if (EXCLUDED_FROM_CORE.has(pkgName)) {
     throw new Error(
-      `@labre/core must not reference framework ${pkgName} (spec "${spec}")`
+      `@labre/core must not reference bundled package ${pkgName} (spec "${spec}")`
     );
   }
   const info = byName.get(pkgName);
@@ -236,6 +304,25 @@ function dropLines(fileAbs, re, expected, label) {
   fs.writeFileSync(fileAbs, kept.join('\n'));
 }
 
+const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Remove whole statements matching `re` (multi-line safe); assert `expected`. */
+function dropStatement(fileAbs, re, expected, label) {
+  let removed = 0;
+  const content = fs
+    .readFileSync(fileAbs, 'utf8')
+    .replace(new RegExp(re.source, 'g'), () => {
+      removed++;
+      return '';
+    });
+  if (removed !== expected) {
+    throw new Error(
+      `Expected to drop ${expected} ${label} statements from ${path.relative(ROOT, fileAbs)}, dropped ${removed} (anchor drift — re-review upstream)`
+    );
+  }
+  fs.writeFileSync(fileAbs, content);
+}
+
 function buildCore() {
   fs.rmSync(CORE_OUT, { recursive: true, force: true });
   // 1. umbrella's own src → core/src
@@ -247,26 +334,50 @@ function buildCore() {
       path.join(CORE_SRC, '_pkgs', vname(n))
     );
   }
-  // 3. trim the 4 frameworks from the COPIED assembly files (source untouched)
+  // 3. trim every framework from the COPIED assembly files (source untouched),
+  //    derived from FRAMEWORKS so a new senior-button package needs no edit here.
   const viewTs = path.join(CORE_SRC, 'extensions', 'view.ts');
-  dropLines(
-    viewTs,
-    /@labre\/affine-gfx-(wardley|edgy|bpmn|cynefin-estuarine)\/view/,
-    4,
-    'framework import'
-  );
-  dropLines(
-    viewTs,
-    /on\('(wardley|edgy|cynefin-estuarine|bpmn)'\)/,
-    4,
-    'framework registration'
-  );
-  dropLines(
-    path.join(CORE_SRC, 'flags.ts'),
-    /^\s*'(wardley|edgy|cynefin-estuarine|bpmn)',\s*$/,
-    4,
-    'framework flag'
-  );
+  const flagsTs = path.join(CORE_SRC, 'flags.ts');
+  for (const fw of FRAMEWORKS) {
+    // the framework's `/view` import (single- or multi-line)
+    dropStatement(
+      viewTs,
+      new RegExp(
+        `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}/view['"];?\\r?\\n`
+      ),
+      1,
+      `${fw.out} import`
+    );
+    for (const e of fw.extensions) {
+      if (e.flag) {
+        dropLines(
+          viewTs,
+          new RegExp(
+            `^\\s*\\.\\.\\.\\(on\\('${escapeRe(e.flag)}'\\)\\s*\\?\\s*\\[${e.ext}\\]`
+          ),
+          1,
+          `${e.ext} registration`
+        );
+      } else {
+        // always-on extension: a bare `    <Ext>,` registration line
+        dropLines(
+          viewTs,
+          new RegExp(`^\\s*${e.ext},\\s*$`),
+          1,
+          `${e.ext} registration`
+        );
+      }
+    }
+    for (const e of fw.extensions) {
+      if (!e.flag) continue;
+      dropLines(
+        flagsTs,
+        new RegExp(`^\\s*'${escapeRe(e.flag)}',\\s*$`),
+        1,
+        `${e.flag} flag`
+      );
+    }
+  }
   // 4. rewrite all @labre/* imports → relative vendored paths
   for (const abs of listFiles(CORE_SRC)) {
     if (!abs.endsWith('.ts')) continue;
@@ -317,23 +428,19 @@ function buildCoreReverseMap() {
   return map;
 }
 
-function buildFramework(fw, reverseMap) {
-  const out = path.join(OUT_DIR, fw.out);
-  const src = path.join(out, 'src');
-  fs.rmSync(out, { recursive: true, force: true });
-  copySrc(path.join(PKGS_DIR, fw.dir, 'src'), src);
-  // rewrite @labre/<core> imports → @labre/core/<sub>; self-refs untouched
+/** Rewrite a bundle's `@labre/*` imports: own-pkg kept, else mapped via `reverseMap`. */
+function rewriteBundleImports(src, ownPkg, reverseMap, label) {
   for (const abs of listFiles(src)) {
     if (!abs.endsWith('.ts')) continue;
     const before = fs.readFileSync(abs, 'utf8');
     const replace = (_m, pre, q, spec) => {
       const parts = spec.split('/');
       const pkgName = `${parts[0]}/${parts[1]}`;
-      if (pkgName === fw.pkg) return `${pre}${q}${spec}${q}`; // own package (rare)
+      if (pkgName === ownPkg) return `${pre}${q}${spec}${q}`; // own package
       const mapped = reverseMap.get(spec);
       if (!mapped)
         throw new Error(
-          `${fw.out} imports "${spec}" which @labre/core does not expose`
+          `${label} imports "${spec}" which core / a sibling bundle does not expose`
         );
       return `${pre}${q}${mapped}${q}`;
     };
@@ -342,23 +449,58 @@ function buildFramework(fw, reverseMap) {
       .replace(MODULE_AUG_RE, replace);
     if (after !== before) fs.writeFileSync(abs, after);
   }
-  // descriptor.ts — one-line host wiring
+}
+
+/** Sibling SHARED-bundle deps a package pulls in → { bundleName: VERSION }. */
+function sharedBundleDeps(pkg) {
+  const out = {};
+  for (const d of Object.keys(byName.get(pkg)?.deps ?? {})) {
+    if (SHARED_PKGS.has(d)) out[bundleNameOf(d)] = VERSION;
+  }
+  return out;
+}
+
+function buildFramework(fw, reverseMap) {
+  const out = path.join(OUT_DIR, fw.out);
+  const src = path.join(out, 'src');
+  fs.rmSync(out, { recursive: true, force: true });
+  copySrc(path.join(PKGS_DIR, fw.dir, 'src'), src);
+  rewriteBundleImports(src, fw.pkg, reverseMap, fw.out);
+
+  // descriptor.ts — host wiring. A single flag-gated extension keeps the
+  // original { flag, telemetry, viewExtension } shape; multi-extension
+  // frameworks (e.g. an always-on renderer + a flag-gated button) use a list.
+  const names = fw.extensions.map(e => e.ext).join(', ');
+  const single = fw.extensions.length === 1 && fw.extensions[0].flag;
+  const body = single
+    ? `export const ${fw.info} = {\n` +
+      `  flag: '${fw.extensions[0].flag}',\n` +
+      `  telemetry: '${fw.telemetry}',\n` +
+      `  viewExtension: ${fw.extensions[0].ext},\n` +
+      `} as const;\n`
+    : `export const ${fw.info} = {\n` +
+      `  telemetry: '${fw.telemetry}',\n` +
+      `  extensions: [\n` +
+      fw.extensions
+        .map(
+          e =>
+            `    { ${e.flag ? `flag: '${e.flag}', ` : ''}viewExtension: ${e.ext} },`
+        )
+        .join('\n') +
+      `\n  ],\n} as const;\n`;
   fs.writeFileSync(
     path.join(src, 'descriptor.ts'),
-    `import { ${fw.ext} } from './view.js';\n\n` +
-      `/** Host wiring for the ${fw.flag} framework. */\n` +
-      `export const ${fw.info} = {\n` +
-      `  flag: '${fw.flag}',\n` +
-      `  telemetry: '${fw.telemetry}',\n` +
-      `  viewExtension: ${fw.ext},\n` +
-      `} as const;\n`
+    `import { ${names} } from './view.js';\n\n` +
+      `/** Host wiring for the ${fw.telemetry} framework. */\n` +
+      body
   );
+
   fs.writeFileSync(
     path.join(out, 'package.json'),
     JSON.stringify(
       {
-        name: `${SCOPE}/labre-${fw.out}`,
-        description: `Labre ${fw.flag} framework for ${CORE}.`,
+        name: bundleNameOf(fw.pkg),
+        description: `Labre ${fw.telemetry} framework for ${CORE}.`,
         version: VERSION,
         type: 'module',
         sideEffects: false,
@@ -371,7 +513,40 @@ function buildFramework(fw, reverseMap) {
           './descriptor': './src/descriptor.ts',
         },
         files: ['src'],
-        dependencies: { [CORE]: VERSION, ...thirdPartyDeps([fw.pkg]) },
+        dependencies: {
+          [CORE]: VERSION,
+          ...sharedBundleDeps(fw.pkg),
+          ...thirdPartyDeps([fw.pkg]),
+        },
+      },
+      null,
+      2
+    ) + '\n'
+  );
+}
+
+/** A shared bundle: no senior button / descriptor; depends only on core. */
+function buildShared(sh, reverseMap) {
+  const out = path.join(OUT_DIR, sh.out);
+  const src = path.join(out, 'src');
+  fs.rmSync(out, { recursive: true, force: true });
+  copySrc(path.join(PKGS_DIR, sh.dir, 'src'), src);
+  rewriteBundleImports(src, sh.pkg, reverseMap, sh.out);
+  fs.writeFileSync(
+    path.join(out, 'package.json'),
+    JSON.stringify(
+      {
+        name: bundleNameOf(sh.pkg),
+        description: `Labre ${sh.out} — shared building blocks for ${CORE} frameworks.`,
+        version: VERSION,
+        type: 'module',
+        sideEffects: false,
+        author: 'lajola',
+        contributors: ['toeverything'],
+        license: 'MPL-2.0',
+        exports: byName.get(sh.pkg).exports,
+        files: ['src'],
+        dependencies: { [CORE]: VERSION, ...thirdPartyDeps([sh.pkg]) },
       },
       null,
       2
@@ -382,11 +557,19 @@ function buildFramework(fw, reverseMap) {
 // --- run ---
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const core = buildCore();
-const reverseMap = buildCoreReverseMap();
-for (const fw of FRAMEWORKS) buildFramework(fw, reverseMap);
+const coreReverseMap = buildCoreReverseMap();
+// shared bundles depend only on core
+for (const sh of SHARED) buildShared(sh, coreReverseMap);
+// frameworks may also import sibling shared bundles → map those to bundle names
+const fwReverseMap = new Map(coreReverseMap);
+for (const sh of SHARED) fwReverseMap.set(sh.pkg, bundleNameOf(sh.pkg));
+for (const fw of FRAMEWORKS) buildFramework(fw, fwReverseMap);
 
 console.log(
   `@labre/core: vendored ${core.vendored} packages, ${core.exportsCount} exports, version ${VERSION}`
 );
-console.log(`frameworks: ${FRAMEWORKS.map(f => '@labre/' + f.out).join(', ')}`);
+console.log(`shared: ${SHARED.map(s => bundleNameOf(s.pkg)).join(', ')}`);
+console.log(
+  `frameworks: ${FRAMEWORKS.map(f => bundleNameOf(f.pkg)).join(', ')}`
+);
 console.log(`output: ${path.relative(ROOT, OUT_DIR)}/`);

@@ -24,15 +24,35 @@ if (!fs.existsSync(outDir)) {
   );
 }
 
-// Publish core before frameworks (frameworks depend on @labre/core).
-const dirs = fs.readdirSync(outDir).sort();
+// Publish in dependency order (core → shared → frameworks) so a dependency is
+// always on the registry before its dependents.
+const bundles = fs
+  .readdirSync(outDir)
+  .map(name => path.join(outDir, name))
+  .filter(
+    dir =>
+      fs.statSync(dir).isDirectory() &&
+      fs.existsSync(path.join(dir, 'package.json'))
+  )
+  .map(dir => ({
+    dir,
+    pkg: JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')),
+  }));
 
-for (const name of dirs) {
-  const dir = path.join(outDir, name);
-  const pjPath = path.join(dir, 'package.json');
-  if (!fs.statSync(dir).isDirectory() || !fs.existsSync(pjPath)) continue;
-  const pj = JSON.parse(fs.readFileSync(pjPath, 'utf8'));
+const byName = new Map(bundles.map(b => [b.pkg.name, b]));
+const bundleDeps = b =>
+  Object.keys(b.pkg.dependencies || {}).filter(d => byName.has(d));
+const ordered = [];
+const done = new Set();
+const visit = b => {
+  if (done.has(b.pkg.name)) return;
+  done.add(b.pkg.name);
+  for (const d of bundleDeps(b)) visit(byName.get(d));
+  ordered.push(b); // pushed after its deps → deps publish first
+};
+for (const b of bundles) visit(b);
 
+for (const { dir, pkg: pj } of ordered) {
   const url = `https://registry.npmjs.org/${pj.name.replace('/', '%2F')}/${pj.version}`;
   const res = await fetch(url);
   if (res.status === 200) {
