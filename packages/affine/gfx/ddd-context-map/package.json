@@ -1,0 +1,42 @@
+{
+  "name": "@labre/affine-gfx-ddd-context-map",
+  "private": true,
+  "description": "Gfx Domain-Driven Design Context Map senior tool + templates for BlockSuite.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@labre/affine-block-surface": "workspace:*",
+    "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-gfx-ddd-shared": "workspace:*",
+    "@labre/affine-gfx-group": "workspace:*",
+    "@labre/affine-gfx-pointer": "workspace:*",
+    "@labre/affine-gfx-template": "workspace:*",
+    "@labre/affine-model": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
+    "@labre/store": "workspace:*",
+    "lit": "^3.2.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./view": "./src/view.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!dist/__tests__"
+  ],
+  "version": "0.24.0"
+}

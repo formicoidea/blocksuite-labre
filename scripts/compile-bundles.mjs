@@ -42,10 +42,27 @@ const bundles = fs
     pkg: JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')),
   }));
 
-const core = bundles.find(b => b.pkg.name.endsWith('/labre-core'));
-if (!core)
-  throw new Error('core bundle (*/labre-core) not found in dist-bundles/');
-const frameworks = bundles.filter(b => b !== core);
+const byBundleName = new Map(bundles.map(b => [b.pkg.name, b]));
+/** Sibling-bundle deps (core + shared) of a bundle, from its package.json. */
+const bundleDeps = b =>
+  Object.keys(b.pkg.dependencies || {}).filter(d => byBundleName.has(d));
+
+// Topological order: compile a bundle only after every bundle it depends on
+// (core → shared → frameworks) so each resolves its deps' freshly emitted d.ts.
+const ordered = [];
+const done = new Set();
+const onStack = new Set();
+const visit = b => {
+  if (done.has(b.pkg.name)) return;
+  if (onStack.has(b.pkg.name))
+    throw new Error(`bundle dependency cycle at ${b.pkg.name}`);
+  onStack.add(b.pkg.name);
+  for (const d of bundleDeps(b)) visit(byBundleName.get(d));
+  onStack.delete(b.pkg.name);
+  done.add(b.pkg.name);
+  ordered.push(b);
+};
+for (const b of bundles) visit(b);
 
 /** `./src/<p>.ts` → { types: ./dist/<p>.d.ts, import: ./dist/<p>.js }. */
 function remapExports(exportsMap) {
@@ -118,16 +135,15 @@ function compile({ dir, pkg }, paths) {
   console.log(`  ✓ ${pkg.name} → dist`);
 }
 
-// Core first so the frameworks can resolve its compiled types.
-compile(core);
-
-const coreDist = path.join(core.dir, 'dist');
-for (const fw of frameworks) {
-  const rel = toPosix(path.relative(fw.dir, coreDist));
-  compile(fw, {
-    [core.pkg.name]: [`${rel}/index.d.ts`],
-    [`${core.pkg.name}/*`]: [`${rel}/*`],
-  });
+for (const b of ordered) {
+  const paths = {};
+  for (const d of bundleDeps(b)) {
+    const dep = byBundleName.get(d);
+    const rel = toPosix(path.relative(b.dir, path.join(dep.dir, 'dist')));
+    paths[dep.pkg.name] = [`${rel}/index.d.ts`];
+    paths[`${dep.pkg.name}/*`] = [`${rel}/*`];
+  }
+  compile(b, Object.keys(paths).length ? paths : undefined);
 }
 
 console.log(`compiled ${bundles.length} bundles → dist`);
