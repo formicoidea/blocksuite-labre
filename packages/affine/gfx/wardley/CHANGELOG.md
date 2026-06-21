@@ -1,5 +1,38 @@
 # @labre/affine-gfx-wardley
 
+## 0.24.0
+
+### Patch Changes
+
+- bc31490: fix(edgeless): keep senior-button sub-menus anchored to their button
+
+  Two senior-button sub-menus positioned themselves against the whole toolbar
+  instead of their own button, so they drifted once senior buttons can be hidden
+  at runtime:
+
+  - **Wardley map** right-aligned to the rightmost senior-tool slot (via a layout
+    scan), which moves when buttons are toggled off.
+  - **Others** (the mindmap basket) had no `position: relative` on its host, so
+    the popup's clip wrapper anchored to the toolbar and left-aligned there.
+
+  Both now right-align to their own button edge like every framework senior button
+  (Cynefin, EDGY, BPMN, DDD), which stays correct whatever buttons are hidden.
+
+- Updated dependencies [bc31490]
+  - @labre/affine-gfx-template@0.24.0
+  - @labre/affine-block-surface@0.24.0
+  - @labre/affine-ext-loader@0.24.0
+  - @labre/affine-gfx-connector@0.24.0
+  - @labre/affine-gfx-group@0.24.0
+  - @labre/affine-gfx-pointer@0.24.0
+  - @labre/affine-gfx-shape@0.24.0
+  - @labre/affine-model@0.24.0
+  - @labre/affine-shared@0.24.0
+  - @labre/affine-widget-edgeless-toolbar@0.24.0
+  - @labre/global@0.24.0
+  - @labre/std@0.24.0
+  - @labre/store@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes

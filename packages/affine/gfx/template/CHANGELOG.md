@@ -1,5 +1,41 @@
 # @labre/affine-gfx-template
 
+## 0.24.0
+
+### Patch Changes
+
+- bc31490: feat(edgeless): split the "Others" toolbox into a dedicated Mind Map button
+
+  The combined senior button now splits in two:
+
+  - **Mind Map** — a dedicated senior button (the mindmap glyph, the `m` shortcut,
+    the style picker + import), flag-gated by `mindmap`.
+  - **Others** — keeps free-text and add-file, flag-gated by a new `other` flag
+    (it no longer rides the `mindmap` flag), same basket icon minus the mindmap.
+
+  Both buttons share one parameterized component/menu (`variant`). Mindmap
+  rendering (element view, painter, interaction, contextual toolbars) is now
+  always registered, independent of either flag — so disabling a button never
+  un-paints existing mindmaps nor breaks Templates-panel insertion.
+
+  A new **"Mind Map"** section in the Templates panel offers the 4 built-in styles
+  as starter mindmaps. Inserting a mindmap template required teaching the
+  template id-regeneration middleware (`replaceIdMiddleware`) to remap a mindmap's
+  node-id references (`children` keys + `parent` back-refs), so inserted mindmaps
+  rebuild correctly.
+
+  - @labre/affine-block-surface@0.24.0
+  - @labre/affine-components@0.24.0
+  - @labre/affine-ext-loader@0.24.0
+  - @labre/affine-gfx-text@0.24.0
+  - @labre/affine-model@0.24.0
+  - @labre/affine-rich-text@0.24.0
+  - @labre/affine-shared@0.24.0
+  - @labre/affine-widget-edgeless-toolbar@0.24.0
+  - @labre/global@0.24.0
+  - @labre/std@0.24.0
+  - @labre/store@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes
