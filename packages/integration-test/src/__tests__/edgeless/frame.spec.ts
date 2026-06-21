@@ -16,6 +16,14 @@ describe('frame', () => {
   beforeEach(async () => {
     const cleanup = await setupEditor('edgeless');
     service = getDocRootBlock(window.doc, window.editor, 'edgeless').service;
+    // Pin the viewport (zoom 1, centered) so `toModelCoord` of the title rect is
+    // deterministic. The headless CI browser otherwise initialises a non-1 zoom
+    // from its container size, throwing the model-coord assertions far off.
+    service.viewport.setViewport(1, [
+      service.viewport.width / 2,
+      service.viewport.height / 2,
+    ]);
+    await wait();
 
     return cleanup;
   });
@@ -48,7 +56,10 @@ describe('frame', () => {
     expect(rect!.height).toBeGreaterThan(0);
 
     const [titleX, titleY] = service.viewport.toModelCoord(rect!.x, rect!.y);
-    expect(titleX).toBeCloseTo(0);
+    // Within ~half a model unit (sub-pixel at zoom 1): the title's measured
+    // left edge carries sub-pixel layout noise (~0.09), so the default
+    // two-decimal precision of toBeCloseTo is too strict here.
+    expect(titleX).toBeCloseTo(0, 0);
     expect(titleY).toBeLessThan(0);
 
     const nestedFrame = service.doc.addBlock(
