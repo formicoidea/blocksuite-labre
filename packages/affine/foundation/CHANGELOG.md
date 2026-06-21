@@ -1,5 +1,18 @@
 # @labre/affine-foundation
 
+## 0.24.0
+
+### Patch Changes
+
+- @labre/affine-components@0.24.0
+- @labre/data-view@0.24.0
+- @labre/affine-ext-loader@0.24.0
+- @labre/affine-rich-text@0.24.0
+- @labre/affine-shared@0.24.0
+- @labre/global@0.24.0
+- @labre/std@0.24.0
+- @labre/store@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes

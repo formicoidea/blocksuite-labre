@@ -1,5 +1,25 @@
 # @labre/affine-gfx-edgy
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [bc31490]
+  - @labre/affine-gfx-template@0.24.0
+  - @labre/affine-block-surface@0.24.0
+  - @labre/affine-components@0.24.0
+  - @labre/affine-ext-loader@0.24.0
+  - @labre/affine-gfx-connector@0.24.0
+  - @labre/affine-gfx-group@0.24.0
+  - @labre/affine-gfx-pointer@0.24.0
+  - @labre/affine-gfx-shape@0.24.0
+  - @labre/affine-model@0.24.0
+  - @labre/affine-shared@0.24.0
+  - @labre/affine-widget-edgeless-toolbar@0.24.0
+  - @labre/global@0.24.0
+  - @labre/std@0.24.0
+  - @labre/store@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes

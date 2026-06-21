@@ -2,7 +2,7 @@ import { DomRenderer } from '@labre/affine-block-surface';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
-import { getSurface } from '../utils/edgeless.js';
+import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 describe('Shape rendering with DOM renderer', () => {
@@ -10,6 +10,17 @@ describe('Shape rendering with DOM renderer', () => {
     const cleanup = await setupEditor('edgeless', [], {
       enableDomRenderer: true,
     });
+    // Pin the viewport to zoom 1 so DOM-rendered sizes are deterministic. The
+    // DOM renderer scales every element by the viewport zoom (dom-renderer.ts:
+    // `width: w * zoom`), and the headless CI browser otherwise initialises a
+    // non-1 zoom (~1.23) from its container size, making `80px` assertions flaky.
+    const { viewport } = getDocRootBlock(
+      window.doc,
+      window.editor,
+      'edgeless'
+    ).service;
+    viewport.setViewport(1, [viewport.width / 2, viewport.height / 2]);
+    await wait(50);
     return cleanup;
   });
 

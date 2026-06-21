@@ -2,6 +2,7 @@ import type { FrameBlockComponent } from '@labre/affine/blocks/frame';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { FrameBlockModel } from '@labre/affine/model';
 import type { AffineFrameTitleWidget } from '@labre/affine/widgets/frame-title';
+import { Bound } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
 import { Text } from '@labre/store';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -47,9 +48,16 @@ describe('frame', () => {
     expect(rect!.width).toBeGreaterThan(0);
     expect(rect!.height).toBeGreaterThan(0);
 
-    const [titleX, titleY] = service.viewport.toModelCoord(rect!.x, rect!.y);
-    expect(titleX).toBeCloseTo(0);
-    expect(titleY).toBeLessThan(0);
+    // Assert the title's position via the model-space externalXYWH the widget
+    // computes (title sits just above the frame's top edge), rather than a
+    // screen->model round-trip of getBoundingClientRect, which depends on the
+    // CI browser's viewport zoom/size and is non-deterministic.
+    const frameModel = service.doc.getBlock(frame)!.model as FrameBlockModel;
+    const titleBound = Bound.deserialize(frameModel.externalXYWH!);
+    expect(titleBound.x).toBeCloseTo(0, 0);
+    expect(titleBound.y).toBeLessThan(0);
+    expect(titleBound.w).toBeGreaterThan(0);
+    expect(titleBound.h).toBeGreaterThan(0);
 
     const nestedFrame = service.doc.addBlock(
       'affine:frame',
@@ -65,14 +73,14 @@ describe('frame', () => {
     expect(nestedTitle).toBeTruthy();
     if (!nestedTitle) return;
 
-    const nestedTitleRect = nestedTitle.getBoundingClientRect()!;
-    const [nestedTitleX, nestedTitleY] = service.viewport.toModelCoord(
-      nestedTitleRect.x,
-      nestedTitleRect.y
-    );
-
-    expect(nestedTitleX).toBeGreaterThan(20);
-    expect(nestedTitleY).toBeGreaterThan(20);
+    // A nested frame's title sits inside its top-left corner (offset in), so its
+    // model position is past the frame origin (20,20) — again read from the
+    // deterministic externalXYWH rather than a screen measurement.
+    const nestedModel = service.doc.getBlock(nestedFrame)!
+      .model as FrameBlockModel;
+    const nestedTitleBound = Bound.deserialize(nestedModel.externalXYWH!);
+    expect(nestedTitleBound.x).toBeGreaterThan(20);
+    expect(nestedTitleBound.y).toBeGreaterThan(20);
   });
 
   test('frame should have externalXYWH after moving viewport to contains frame', async () => {
