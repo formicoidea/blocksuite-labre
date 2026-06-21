@@ -16,13 +16,13 @@ describe('frame', () => {
   beforeEach(async () => {
     const cleanup = await setupEditor('edgeless');
     service = getDocRootBlock(window.doc, window.editor, 'edgeless').service;
-    // Pin the viewport (zoom 1, centered) so `toModelCoord` of the title rect is
-    // deterministic. The headless CI browser otherwise initialises a non-1 zoom
-    // from its container size, throwing the model-coord assertions far off.
-    service.viewport.setViewport(1, [
-      service.viewport.width / 2,
-      service.viewport.height / 2,
-    ]);
+    // Pin the viewport (zoom 1) centered on the frame the tests create
+    // ([0,0,300,300] → center 150,150) so it sits mid-screen with its title in
+    // the normal above-edge position, and `toModelCoord` of the title rect is
+    // deterministic. Without this the headless CI browser derives a non-1 zoom
+    // and a container-dependent center that push the frame to the edge, flipping
+    // the title position and throwing the model-coord assertions far off.
+    service.viewport.setViewport(1, [150, 150]);
     await wait();
 
     return cleanup;
