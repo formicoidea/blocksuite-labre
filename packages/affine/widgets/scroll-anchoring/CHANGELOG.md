@@ -1,5 +1,15 @@
 # @labre/affine-widget-scroll-anchoring
 
+## 0.24.0
+
+### Patch Changes
+
+- @labre/affine-ext-loader@0.24.0
+- @labre/affine-model@0.24.0
+- @labre/affine-shared@0.24.0
+- @labre/global@0.24.0
+- @labre/std@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes

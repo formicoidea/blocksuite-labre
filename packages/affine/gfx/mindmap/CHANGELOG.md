@@ -1,5 +1,65 @@
 # @labre/affine-gfx-mindmap
 
+## 0.24.0
+
+### Minor Changes
+
+- bc31490: feat(edgeless): split the "Others" toolbox into a dedicated Mind Map button
+
+  The combined senior button now splits in two:
+
+  - **Mind Map** — a dedicated senior button (the mindmap glyph, the `m` shortcut,
+    the style picker + import), flag-gated by `mindmap`.
+  - **Others** — keeps free-text and add-file, flag-gated by a new `other` flag
+    (it no longer rides the `mindmap` flag), same basket icon minus the mindmap.
+
+  Both buttons share one parameterized component/menu (`variant`). Mindmap
+  rendering (element view, painter, interaction, contextual toolbars) is now
+  always registered, independent of either flag — so disabling a button never
+  un-paints existing mindmaps nor breaks Templates-panel insertion.
+
+  A new **"Mind Map"** section in the Templates panel offers the 4 built-in styles
+  as starter mindmaps. Inserting a mindmap template required teaching the
+  template id-regeneration middleware (`replaceIdMiddleware`) to remap a mindmap's
+  node-id references (`children` keys + `parent` back-refs), so inserted mindmaps
+  rebuild correctly.
+
+### Patch Changes
+
+- bc31490: fix(edgeless): keep senior-button sub-menus anchored to their button
+
+  Two senior-button sub-menus positioned themselves against the whole toolbar
+  instead of their own button, so they drifted once senior buttons can be hidden
+  at runtime:
+
+  - **Wardley map** right-aligned to the rightmost senior-tool slot (via a layout
+    scan), which moves when buttons are toggled off.
+  - **Others** (the mindmap basket) had no `position: relative` on its host, so
+    the popup's clip wrapper anchored to the toolbar and left-aligned there.
+
+  Both now right-align to their own button edge like every framework senior button
+  (Cynefin, EDGY, BPMN, DDD), which stays correct whatever buttons are hidden.
+
+- Updated dependencies [bc31490]
+  - @labre/affine-gfx-template@0.24.0
+  - @labre/affine-block-attachment@0.24.0
+  - @labre/affine-block-edgeless-text@0.24.0
+  - @labre/affine-block-image@0.24.0
+  - @labre/affine-block-surface@0.24.0
+  - @labre/affine-components@0.24.0
+  - @labre/affine-ext-loader@0.24.0
+  - @labre/affine-gfx-connector@0.24.0
+  - @labre/affine-gfx-pointer@0.24.0
+  - @labre/affine-gfx-shape@0.24.0
+  - @labre/affine-gfx-text@0.24.0
+  - @labre/affine-model@0.24.0
+  - @labre/affine-rich-text@0.24.0
+  - @labre/affine-shared@0.24.0
+  - @labre/affine-widget-edgeless-toolbar@0.24.0
+  - @labre/global@0.24.0
+  - @labre/std@0.24.0
+  - @labre/store@0.24.0
+
 ## 0.23.3
 
 ### Patch Changes
