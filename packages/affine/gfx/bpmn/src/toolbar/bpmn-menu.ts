@@ -67,7 +67,7 @@ export class EdgelessBpmnMenu extends EdgelessToolbarToolMixin(LitElement) {
     :host {
       display: flex;
       z-index: -1;
-      justify-content: flex-end;
+      justify-content: center;
     }
     .menu-content {
       display: flex;

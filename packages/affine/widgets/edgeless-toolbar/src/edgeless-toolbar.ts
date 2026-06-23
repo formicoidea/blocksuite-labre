@@ -60,6 +60,11 @@ const DIVIDER_WIDTH = 8;
 const DIVIDER_SPACE = 8;
 const SAFE_AREA_WIDTH = 64;
 
+// Cap the whole toolbar width so the centered senior sub-menus land close to
+// the buttons. The ResizeObserver reads the host width, so the senior-tool
+// scroll adapts to this cap; on viewports narrower than it, it has no effect.
+const TOOLBAR_MAX_WIDTH = 900;
+
 export const EDGELESS_TOOLBAR_WIDGET = 'edgeless-toolbar-widget';
 export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
@@ -73,6 +78,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       -webkit-user-select: none;
       user-select: none;
       width: 100%;
+      /* cap + center the toolbar so centered senior sub-menus stay near the buttons */
+      max-width: ${unsafeCSS(TOOLBAR_MAX_WIDTH)}px;
       pointer-events: none;
     }
     .edgeless-toolbar-wrapper {
