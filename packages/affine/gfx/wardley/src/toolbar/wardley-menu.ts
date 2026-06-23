@@ -124,9 +124,9 @@ const NODE_PRESETS = {
 export class EdgelessWardleyMenu extends EdgelessToolbarToolMixin(LitElement) {
   static override styles = css`
     :host {
-      position: absolute;
       display: flex;
       z-index: -1;
+      justify-content: center;
     }
     .menu-content {
       display: flex;

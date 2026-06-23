@@ -20,9 +20,6 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 100%;
     }
-    :host {
-      position: relative;
-    }
     .ddd-root {
       width: 100%;
       height: 64px;
@@ -71,18 +68,6 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
     const menu = this.createPopper(this.menuTag, this);
     (menu.element as unknown as { edgeless: unknown }).edgeless = this.edgeless;
 
-    const el = menu.element as HTMLElement;
-    const wrap = el.parentElement;
-    if (wrap) {
-      wrap.style.overflow = 'visible';
-      wrap.style.justifyContent = 'flex-end';
-    }
-    Object.assign(el.style, {
-      position: 'static',
-      width: 'max-content',
-      maxWidth: 'calc(100vw - 16px)',
-      marginLeft: '0',
-    });
   }
 
   override render() {

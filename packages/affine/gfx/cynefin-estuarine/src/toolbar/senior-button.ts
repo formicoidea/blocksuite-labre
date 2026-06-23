@@ -17,9 +17,6 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
       width: 100%;
       height: 100%;
     }
-    :host {
-      position: relative;
-    }
     .ce-root {
       width: 100%;
       height: 64px;
@@ -65,18 +62,6 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
     const menu = this.createPopper('edgeless-cynefin-estuarine-menu', this);
     menu.element.edgeless = this.edgeless;
 
-    const el = menu.element as HTMLElement;
-    const wrap = el.parentElement;
-    if (wrap) {
-      wrap.style.overflow = 'visible';
-      wrap.style.justifyContent = 'flex-end';
-    }
-    Object.assign(el.style, {
-      position: 'static',
-      width: 'max-content',
-      maxWidth: 'calc(100vw - 16px)',
-      marginLeft: '0',
-    });
   }
 
   override render() {

@@ -60,7 +60,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
     :host {
       display: flex;
       z-index: -1;
-      justify-content: flex-end;
+      justify-content: center;
     }
     .text-and-mindmap {
       display: flex;

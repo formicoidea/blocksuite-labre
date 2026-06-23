@@ -37,9 +37,9 @@ export class EdgelessCynefinEstuarineMenu extends EdgelessToolbarToolMixin(
 ) {
   static override styles = css`
     :host {
-      position: absolute;
       display: flex;
       z-index: -1;
+      justify-content: center;
     }
     .menu-content {
       display: flex;
