@@ -39,6 +39,7 @@ export class EdgelessCynefinEstuarineMenu extends EdgelessToolbarToolMixin(
     :host {
       display: flex;
       z-index: -1;
+      justify-content: flex-end;
     }
     .menu-content {
       display: flex;

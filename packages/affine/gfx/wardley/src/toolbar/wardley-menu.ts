@@ -126,6 +126,7 @@ export class EdgelessWardleyMenu extends EdgelessToolbarToolMixin(LitElement) {
     :host {
       display: flex;
       z-index: -1;
+      justify-content: flex-end;
     }
     .menu-content {
       display: flex;
