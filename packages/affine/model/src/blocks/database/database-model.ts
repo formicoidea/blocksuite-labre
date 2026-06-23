@@ -17,6 +17,11 @@ export type DatabaseBlockProps = {
   cells: SerializedCells;
   columns: Array<ColumnDataType>;
   comments?: Record<string, boolean>;
+  // Optional id of a host-provided external data source. When set and a
+  // DatabaseDataSourceProvider is registered, the block renders via the
+  // injected source instead of the inline blob source. Default undefined =
+  // identical to legacy behavior.
+  externalSourceId?: string;
 };
 
 export class DatabaseBlockModel extends BlockModel<DatabaseBlockProps> {}
@@ -29,10 +34,11 @@ export const DatabaseBlockSchema = defineBlockSchema({
     cells: Object.create(null),
     columns: [],
     comments: undefined,
+    externalSourceId: undefined,
   }),
   metadata: {
     role: 'hub',
-    version: 3,
+    version: 4,
     parent: ['affine:note'],
     children: ['affine:paragraph', 'affine:list'],
   },
