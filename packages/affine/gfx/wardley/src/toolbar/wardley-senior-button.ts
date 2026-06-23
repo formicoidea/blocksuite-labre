@@ -1,6 +1,9 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
+import {
+  clampSeniorMenuToToolbar,
+  EdgelessToolbarToolMixin,
+} from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -83,24 +86,7 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
     const menu = this.createPopper('edgeless-wardley-menu', this);
     menu.element.edgeless = this.edgeless;
 
-    // Anchor the sub-menu to THIS button (the clip wrapper is button-relative
-    // thanks to `:host{position:relative}`): right-align the menu's right edge
-    // to the button's right edge via the wrap's `flex-end`. Mirrors every other
-    // framework senior button (Cynefin, EDGY, BPMN, DDD). This stays correct
-    // regardless of how many senior buttons are hidden — unlike aligning to the
-    // rightmost toolbar slot, which moves when buttons are toggled off.
-    const el = menu.element as HTMLElement;
-    const wrap = el.parentElement;
-    if (wrap) {
-      wrap.style.overflow = 'visible';
-      wrap.style.justifyContent = 'flex-end';
-    }
-    Object.assign(el.style, {
-      position: 'static',
-      width: 'max-content',
-      maxWidth: 'calc(100vw - 16px)',
-      marginLeft: '0',
-    });
+    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   override render() {

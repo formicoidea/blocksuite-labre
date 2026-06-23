@@ -7,8 +7,14 @@ export class EditorToolbar extends WithDisposable(LitElement) {
   static override styles = css`
     ${panelBaseStyle(':host')}
     :host {
-      height: 36px;
+      min-height: 36px;
       box-sizing: content-box;
+      /* ponytail: wrap to a second row instead of overflowing on mobile. The
+         width is capped to availableWidth by floating-ui's size middleware;
+         wrapping (not scrolling) keeps the "More" dropdown clickable — it is a
+         descendant of this toolbar, so an overflow container would clip it. */
+      flex-wrap: wrap;
+      row-gap: 4px;
     }
 
     :host([data-without-bg]) {
@@ -19,7 +25,9 @@ export class EditorToolbar extends WithDisposable(LitElement) {
 
     ::slotted(*) {
       display: flex;
-      height: 100%;
+      /* fixed row height (not 100%) so each item stays one row tall when the
+         toolbar wraps to multiple rows */
+      height: 36px;
       justify-content: center;
       align-items: center;
       gap: 8px;

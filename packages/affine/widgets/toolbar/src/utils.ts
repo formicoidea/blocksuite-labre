@@ -82,8 +82,12 @@ export function autoUpdatePosition(
         middleware: [
           offset(10 + offsetY),
           size({
-            apply: ({ elements }) => {
+            padding: 10,
+            apply: ({ elements, availableWidth }) => {
               elements.floating.style.width = 'fit-content';
+              // ponytail: cap to viewport so the toolbar scrolls instead of
+              // overflowing off-screen on mobile; drop into "⋮" if scroll feels off
+              elements.floating.style.maxWidth = `${availableWidth}px`;
             },
           }),
           isInline ? inline() : undefined,

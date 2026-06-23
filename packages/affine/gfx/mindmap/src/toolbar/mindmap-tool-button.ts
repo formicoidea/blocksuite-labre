@@ -14,6 +14,7 @@ import {
 } from '@labre/affine-shared/services';
 import {
   EdgelessDraggableElementController,
+  clampSeniorMenuToToolbar,
   EdgelessToolbarToolMixin,
 } from '@labre/affine-widget-edgeless-toolbar';
 import type { Bound } from '@labre/global/gfx';
@@ -186,20 +187,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       },
     });
 
-    // Right-align the menu's right edge to this button's right edge, like the
-    // framework senior buttons. Stays correct however many buttons are hidden.
-    const el = menu.element as HTMLElement;
-    const wrap = el.parentElement;
-    if (wrap) {
-      wrap.style.overflow = 'visible';
-      wrap.style.justifyContent = 'flex-end';
-    }
-    Object.assign(el.style, {
-      position: 'static',
-      width: 'max-content',
-      maxWidth: 'calc(100vw - 16px)',
-      marginLeft: '0',
-    });
+    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   initDragController() {
