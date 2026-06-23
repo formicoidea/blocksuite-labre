@@ -21,6 +21,7 @@ import { getDropResult } from '@labre/affine-widget-drag-handle';
 import {
   createRecordDetail,
   createUniComponentFromWebComponent,
+  type DataSourceBase,
   DataViewRootUILogic,
   type DataViewSelection,
   type DataViewUILogicBase,
@@ -66,6 +67,7 @@ import {
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { DatabaseSelection } from './selection.js';
+import { DatabaseDataSourceProvider } from './service/index.js';
 import { currentViewStorage } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
 import type { DatabaseViewExtensionOptions } from './view';
@@ -136,7 +138,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   };
 
   private readonly dataSource = lazy(() => {
-    const dataSource = new DatabaseBlockDataSource(this.model, dataSource => {
+    const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
       this.std.provider
         .getAll(ExternalGroupByConfigProvider)
@@ -146,7 +148,12 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             config
           );
         });
-    });
+    };
+    const provider = this.std.getOptional(DatabaseDataSourceProvider);
+    const dataSource =
+      provider && this.model.props.externalSourceId
+        ? provider.createDataSource(this.model, initFn)
+        : new DatabaseBlockDataSource(this.model, initFn);
     const id = currentViewStorage.getCurrentView(this.model.id);
     if (id && dataSource.viewManager.viewGet(id)) {
       dataSource.viewManager.setCurrentView(id);
