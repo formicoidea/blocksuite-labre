@@ -1,5 +1,79 @@
 # @labre/affine-block-root
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-block-database@0.26.0
+  - @labre/affine-model@0.26.0
+  - @labre/affine-components@0.26.0
+  - @labre/affine-gfx-mindmap@0.26.0
+  - @labre/affine-block-attachment@0.26.0
+  - @labre/affine-block-bookmark@0.26.0
+  - @labre/affine-block-edgeless-text@0.26.0
+  - @labre/affine-block-embed@0.26.0
+  - @labre/affine-block-frame@0.26.0
+  - @labre/affine-block-image@0.26.0
+  - @labre/affine-block-note@0.26.0
+  - @labre/affine-block-paragraph@0.26.0
+  - @labre/affine-block-surface@0.26.0
+  - @labre/affine-gfx-brush@0.26.0
+  - @labre/affine-gfx-connector@0.26.0
+  - @labre/affine-gfx-group@0.26.0
+  - @labre/affine-gfx-note@0.26.0
+  - @labre/affine-gfx-pointer@0.26.0
+  - @labre/affine-gfx-shape@0.26.0
+  - @labre/affine-gfx-text@0.26.0
+  - @labre/affine-inline-preset@0.26.0
+  - @labre/affine-rich-text@0.26.0
+  - @labre/affine-shared@0.26.0
+  - @labre/affine-widget-edgeless-selected-rect@0.26.0
+  - @labre/affine-widget-edgeless-toolbar@0.26.0
+  - @labre/data-view@0.26.0
+  - @labre/affine-ext-loader@0.26.0
+  - @labre/global@0.26.0
+  - @labre/std@0.26.0
+  - @labre/store@0.26.0
+
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-block-database@0.25.0
+  - @labre/affine-model@0.25.0
+  - @labre/affine-components@0.25.0
+  - @labre/affine-gfx-mindmap@0.25.0
+  - @labre/affine-block-attachment@0.25.0
+  - @labre/affine-block-bookmark@0.25.0
+  - @labre/affine-block-edgeless-text@0.25.0
+  - @labre/affine-block-embed@0.25.0
+  - @labre/affine-block-frame@0.25.0
+  - @labre/affine-block-image@0.25.0
+  - @labre/affine-block-note@0.25.0
+  - @labre/affine-block-paragraph@0.25.0
+  - @labre/affine-block-surface@0.25.0
+  - @labre/affine-gfx-brush@0.25.0
+  - @labre/affine-gfx-connector@0.25.0
+  - @labre/affine-gfx-group@0.25.0
+  - @labre/affine-gfx-note@0.25.0
+  - @labre/affine-gfx-pointer@0.25.0
+  - @labre/affine-gfx-shape@0.25.0
+  - @labre/affine-gfx-text@0.25.0
+  - @labre/affine-inline-preset@0.25.0
+  - @labre/affine-rich-text@0.25.0
+  - @labre/affine-shared@0.25.0
+  - @labre/affine-widget-edgeless-selected-rect@0.25.0
+  - @labre/affine-widget-edgeless-toolbar@0.25.0
+  - @labre/data-view@0.25.0
+  - @labre/affine-ext-loader@0.25.0
+  - @labre/global@0.25.0
+  - @labre/std@0.25.0
+  - @labre/store@0.25.0
+
 ## 0.24.0
 
 ### Patch Changes
