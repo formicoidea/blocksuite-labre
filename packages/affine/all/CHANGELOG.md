@@ -1,5 +1,217 @@
 # @labre/affine
 
+## 0.26.0
+
+### Minor Changes
+
+- 66cd7e6: feat(blocks): ship each DDD senior button as its own package + bundle
+
+  DDD was a single package holding three senior buttons (Event Storming, Core
+  Domain Chart, Context Map), so the release bundler vendored it into
+  `labre-core` instead of emitting framework bundles. It is now split per the
+  "one senior button = one package" rule:
+
+  - `@labre/affine-gfx-ddd-shared` → published as `@formicoidea/labre-ddd-shared`
+    (shared base: consts/prefabs/menu-base/icons/template builders).
+  - `@labre/affine-gfx-ddd-event-storming`, `-core-domain`, `-context-map`,
+    `-aggregate` → published as `@formicoidea/labre-framework-ddd-*`, each
+    depending on `labre-core` + `labre-ddd-shared`.
+
+  `scripts/build-bundles.mjs` is now data-driven (adding a senior-button package
+  is one `FRAMEWORKS` entry, with multi-extension/flag support), and
+  `compile-/publish-bundles.mjs` resolve and order bundle→bundle dependencies
+  (core → shared → frameworks). DDD no longer ships inside `labre-core` —
+  consumers import it from the dedicated framework packages.
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-block-database@0.26.0
+  - @labre/affine-model@0.26.0
+  - @labre/affine-components@0.26.0
+  - @labre/affine-widget-toolbar@0.26.0
+  - @labre/affine-gfx-wardley@0.26.0
+  - @labre/affine-gfx-bpmn@0.26.0
+  - @labre/affine-gfx-cynefin-estuarine@0.26.0
+  - @labre/affine-gfx-edgy@0.26.0
+  - @labre/affine-gfx-mindmap@0.26.0
+  - @labre/affine-gfx-ddd-shared@0.26.0
+  - @labre/affine-block-data-view@0.26.0
+  - @labre/affine-block-root@0.26.0
+  - @labre/affine-widget-keyboard-toolbar@0.26.0
+  - @labre/affine-block-attachment@0.26.0
+  - @labre/affine-block-bookmark@0.26.0
+  - @labre/affine-block-callout@0.26.0
+  - @labre/affine-block-code@0.26.0
+  - @labre/affine-block-divider@0.26.0
+  - @labre/affine-block-edgeless-text@0.26.0
+  - @labre/affine-block-embed@0.26.0
+  - @labre/affine-block-embed-doc@0.26.0
+  - @labre/affine-block-frame@0.26.0
+  - @labre/affine-block-image@0.26.0
+  - @labre/affine-block-latex@0.26.0
+  - @labre/affine-block-list@0.26.0
+  - @labre/affine-block-note@0.26.0
+  - @labre/affine-block-paragraph@0.26.0
+  - @labre/affine-block-surface@0.26.0
+  - @labre/affine-block-surface-ref@0.26.0
+  - @labre/affine-block-table@0.26.0
+  - @labre/affine-fragment-adapter-panel@0.26.0
+  - @labre/affine-fragment-doc-title@0.26.0
+  - @labre/affine-fragment-frame-panel@0.26.0
+  - @labre/affine-fragment-outline@0.26.0
+  - @labre/affine-gfx-brush@0.26.0
+  - @labre/affine-gfx-connector@0.26.0
+  - @labre/affine-gfx-ddd-aggregate@0.26.0
+  - @labre/affine-gfx-ddd-context-map@0.26.0
+  - @labre/affine-gfx-ddd-core-domain@0.26.0
+  - @labre/affine-gfx-ddd-event-storming@0.26.0
+  - @labre/affine-gfx-group@0.26.0
+  - @labre/affine-gfx-link@0.26.0
+  - @labre/affine-gfx-note@0.26.0
+  - @labre/affine-gfx-pointer@0.26.0
+  - @labre/affine-gfx-shape@0.26.0
+  - @labre/affine-gfx-template@0.26.0
+  - @labre/affine-gfx-text@0.26.0
+  - @labre/affine-inline-comment@0.26.0
+  - @labre/affine-inline-footnote@0.26.0
+  - @labre/affine-inline-latex@0.26.0
+  - @labre/affine-inline-link@0.26.0
+  - @labre/affine-inline-mention@0.26.0
+  - @labre/affine-inline-preset@0.26.0
+  - @labre/affine-inline-reference@0.26.0
+  - @labre/affine-rich-text@0.26.0
+  - @labre/affine-shared@0.26.0
+  - @labre/affine-widget-drag-handle@0.26.0
+  - @labre/affine-widget-edgeless-auto-connect@0.26.0
+  - @labre/affine-widget-edgeless-dragging-area@0.26.0
+  - @labre/affine-widget-edgeless-selected-rect@0.26.0
+  - @labre/affine-widget-edgeless-toolbar@0.26.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.26.0
+  - @labre/affine-widget-frame-title@0.26.0
+  - @labre/affine-widget-linked-doc@0.26.0
+  - @labre/affine-widget-note-slicer@0.26.0
+  - @labre/affine-widget-page-dragging-area@0.26.0
+  - @labre/affine-widget-remote-selection@0.26.0
+  - @labre/affine-widget-scroll-anchoring@0.26.0
+  - @labre/affine-widget-viewport-overlay@0.26.0
+  - @labre/data-view@0.26.0
+  - @labre/affine-foundation@0.26.0
+  - @labre/affine-widget-slash-menu@0.26.0
+  - @labre/affine-ext-loader@0.26.0
+  - @labre/affine-gfx-turbo-renderer@0.26.0
+  - @labre/global@0.26.0
+  - @labre/std@0.26.0
+  - @labre/store@0.26.0
+  - @labre/sync@0.26.0
+
+## 0.25.0
+
+### Minor Changes
+
+- 66cd7e6: feat(blocks): ship each DDD senior button as its own package + bundle
+
+  DDD was a single package holding three senior buttons (Event Storming, Core
+  Domain Chart, Context Map), so the release bundler vendored it into
+  `labre-core` instead of emitting framework bundles. It is now split per the
+  "one senior button = one package" rule:
+
+  - `@labre/affine-gfx-ddd-shared` → published as `@formicoidea/labre-ddd-shared`
+    (shared base: consts/prefabs/menu-base/icons/template builders).
+  - `@labre/affine-gfx-ddd-event-storming`, `-core-domain`, `-context-map`,
+    `-aggregate` → published as `@formicoidea/labre-framework-ddd-*`, each
+    depending on `labre-core` + `labre-ddd-shared`.
+
+  `scripts/build-bundles.mjs` is now data-driven (adding a senior-button package
+  is one `FRAMEWORKS` entry, with multi-extension/flag support), and
+  `compile-/publish-bundles.mjs` resolve and order bundle→bundle dependencies
+  (core → shared → frameworks). DDD no longer ships inside `labre-core` —
+  consumers import it from the dedicated framework packages.
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-block-database@0.25.0
+  - @labre/affine-model@0.25.0
+  - @labre/affine-components@0.25.0
+  - @labre/affine-widget-toolbar@0.25.0
+  - @labre/affine-gfx-wardley@0.25.0
+  - @labre/affine-gfx-bpmn@0.25.0
+  - @labre/affine-gfx-cynefin-estuarine@0.25.0
+  - @labre/affine-gfx-edgy@0.25.0
+  - @labre/affine-gfx-mindmap@0.25.0
+  - @labre/affine-gfx-ddd-shared@0.25.0
+  - @labre/affine-block-data-view@0.25.0
+  - @labre/affine-block-root@0.25.0
+  - @labre/affine-widget-keyboard-toolbar@0.25.0
+  - @labre/affine-block-attachment@0.25.0
+  - @labre/affine-block-bookmark@0.25.0
+  - @labre/affine-block-callout@0.25.0
+  - @labre/affine-block-code@0.25.0
+  - @labre/affine-block-divider@0.25.0
+  - @labre/affine-block-edgeless-text@0.25.0
+  - @labre/affine-block-embed@0.25.0
+  - @labre/affine-block-embed-doc@0.25.0
+  - @labre/affine-block-frame@0.25.0
+  - @labre/affine-block-image@0.25.0
+  - @labre/affine-block-latex@0.25.0
+  - @labre/affine-block-list@0.25.0
+  - @labre/affine-block-note@0.25.0
+  - @labre/affine-block-paragraph@0.25.0
+  - @labre/affine-block-surface@0.25.0
+  - @labre/affine-block-surface-ref@0.25.0
+  - @labre/affine-block-table@0.25.0
+  - @labre/affine-fragment-adapter-panel@0.25.0
+  - @labre/affine-fragment-doc-title@0.25.0
+  - @labre/affine-fragment-frame-panel@0.25.0
+  - @labre/affine-fragment-outline@0.25.0
+  - @labre/affine-gfx-brush@0.25.0
+  - @labre/affine-gfx-connector@0.25.0
+  - @labre/affine-gfx-ddd-aggregate@0.25.0
+  - @labre/affine-gfx-ddd-context-map@0.25.0
+  - @labre/affine-gfx-ddd-core-domain@0.25.0
+  - @labre/affine-gfx-ddd-event-storming@0.25.0
+  - @labre/affine-gfx-group@0.25.0
+  - @labre/affine-gfx-link@0.25.0
+  - @labre/affine-gfx-note@0.25.0
+  - @labre/affine-gfx-pointer@0.25.0
+  - @labre/affine-gfx-shape@0.25.0
+  - @labre/affine-gfx-template@0.25.0
+  - @labre/affine-gfx-text@0.25.0
+  - @labre/affine-inline-comment@0.25.0
+  - @labre/affine-inline-footnote@0.25.0
+  - @labre/affine-inline-latex@0.25.0
+  - @labre/affine-inline-link@0.25.0
+  - @labre/affine-inline-mention@0.25.0
+  - @labre/affine-inline-preset@0.25.0
+  - @labre/affine-inline-reference@0.25.0
+  - @labre/affine-rich-text@0.25.0
+  - @labre/affine-shared@0.25.0
+  - @labre/affine-widget-drag-handle@0.25.0
+  - @labre/affine-widget-edgeless-auto-connect@0.25.0
+  - @labre/affine-widget-edgeless-dragging-area@0.25.0
+  - @labre/affine-widget-edgeless-selected-rect@0.25.0
+  - @labre/affine-widget-edgeless-toolbar@0.25.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.25.0
+  - @labre/affine-widget-frame-title@0.25.0
+  - @labre/affine-widget-linked-doc@0.25.0
+  - @labre/affine-widget-note-slicer@0.25.0
+  - @labre/affine-widget-page-dragging-area@0.25.0
+  - @labre/affine-widget-remote-selection@0.25.0
+  - @labre/affine-widget-scroll-anchoring@0.25.0
+  - @labre/affine-widget-viewport-overlay@0.25.0
+  - @labre/data-view@0.25.0
+  - @labre/affine-foundation@0.25.0
+  - @labre/affine-widget-slash-menu@0.25.0
+  - @labre/affine-ext-loader@0.25.0
+  - @labre/affine-gfx-turbo-renderer@0.25.0
+  - @labre/global@0.25.0
+  - @labre/std@0.25.0
+  - @labre/store@0.25.0
+  - @labre/sync@0.25.0
+
 ## 0.24.0
 
 ### Minor Changes

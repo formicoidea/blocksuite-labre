@@ -1,5 +1,25 @@
 # @labre/affine-shared
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+  - @labre/affine-model@0.26.0
+  - @labre/global@0.26.0
+  - @labre/std@0.26.0
+  - @labre/store@0.26.0
+
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+  - @labre/affine-model@0.25.0
+  - @labre/global@0.25.0
+  - @labre/std@0.25.0
+  - @labre/store@0.25.0
+
 ## 0.24.0
 
 ### Patch Changes

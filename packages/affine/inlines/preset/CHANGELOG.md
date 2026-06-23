@@ -1,5 +1,47 @@
 # @labre/affine-inline-preset
 
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-model@0.26.0
+  - @labre/affine-components@0.26.0
+  - @labre/affine-inline-comment@0.26.0
+  - @labre/affine-inline-footnote@0.26.0
+  - @labre/affine-inline-latex@0.26.0
+  - @labre/affine-inline-link@0.26.0
+  - @labre/affine-inline-mention@0.26.0
+  - @labre/affine-inline-reference@0.26.0
+  - @labre/affine-rich-text@0.26.0
+  - @labre/affine-shared@0.26.0
+  - @labre/affine-ext-loader@0.26.0
+  - @labre/global@0.26.0
+  - @labre/std@0.26.0
+  - @labre/store@0.26.0
+
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-model@0.25.0
+  - @labre/affine-components@0.25.0
+  - @labre/affine-inline-comment@0.25.0
+  - @labre/affine-inline-footnote@0.25.0
+  - @labre/affine-inline-latex@0.25.0
+  - @labre/affine-inline-link@0.25.0
+  - @labre/affine-inline-mention@0.25.0
+  - @labre/affine-inline-reference@0.25.0
+  - @labre/affine-rich-text@0.25.0
+  - @labre/affine-shared@0.25.0
+  - @labre/affine-ext-loader@0.25.0
+  - @labre/global@0.25.0
+  - @labre/std@0.25.0
+  - @labre/store@0.25.0
+
 ## 0.24.0
 
 ### Patch Changes

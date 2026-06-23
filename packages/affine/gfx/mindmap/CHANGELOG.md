@@ -1,5 +1,93 @@
 # @labre/affine-gfx-mindmap
 
+## 0.26.0
+
+### Patch Changes
+
+- 6795191: fix(edgeless): keep mobile canvas toolbars within the viewport
+
+  On narrow (mobile) viewports two canvas toolbars overflowed off-screen,
+  hiding actions:
+
+  - The selected-element contextual toolbar grew to `max-content` with no
+    upper bound. It is now capped to the available viewport width (floating-ui
+    `size` middleware) and wraps to a second row instead of overflowing. (A
+    scroll container was avoided on purpose: the "More" dropdown is a descendant
+    of the toolbar, so `overflow` would clip it and make it unclickable.)
+  - The senior framework slide-menu was sized to `max-width: calc(100vw - 16px)`
+    but right-aligned to a center-ish toolbar button, so a near-full-width menu
+    hung off the LEFT edge on mobile. It is now centered on the main toolbar and
+    capped to 95% of the toolbar's width (the existing slide-menu scroll handles
+    any remaining overflow), via a shared `clampSeniorMenuToToolbar` helper that
+    replaces the duplicated inline positioning in all six framework senior
+    buttons (Wardley, BPMN, Cynefin, EDGY, Mind Map, DDD). Desktop is unaffected
+    since those menus are narrower than the cap.
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-model@0.26.0
+  - @labre/affine-components@0.26.0
+  - @labre/affine-block-attachment@0.26.0
+  - @labre/affine-block-edgeless-text@0.26.0
+  - @labre/affine-block-image@0.26.0
+  - @labre/affine-block-surface@0.26.0
+  - @labre/affine-gfx-connector@0.26.0
+  - @labre/affine-gfx-pointer@0.26.0
+  - @labre/affine-gfx-shape@0.26.0
+  - @labre/affine-gfx-template@0.26.0
+  - @labre/affine-gfx-text@0.26.0
+  - @labre/affine-rich-text@0.26.0
+  - @labre/affine-shared@0.26.0
+  - @labre/affine-widget-edgeless-toolbar@0.26.0
+  - @labre/affine-ext-loader@0.26.0
+  - @labre/global@0.26.0
+  - @labre/std@0.26.0
+  - @labre/store@0.26.0
+
+## 0.25.0
+
+### Patch Changes
+
+- 6795191: fix(edgeless): keep mobile canvas toolbars within the viewport
+
+  On narrow (mobile) viewports two canvas toolbars overflowed off-screen,
+  hiding actions:
+
+  - The selected-element contextual toolbar grew to `max-content` with no
+    upper bound. It is now capped to the available viewport width (floating-ui
+    `size` middleware) and wraps to a second row instead of overflowing. (A
+    scroll container was avoided on purpose: the "More" dropdown is a descendant
+    of the toolbar, so `overflow` would clip it and make it unclickable.)
+  - The senior framework slide-menu was sized to `max-width: calc(100vw - 16px)`
+    but right-aligned to a center-ish toolbar button, so a near-full-width menu
+    hung off the LEFT edge on mobile. It is now centered on the main toolbar and
+    capped to 95% of the toolbar's width (the existing slide-menu scroll handles
+    any remaining overflow), via a shared `clampSeniorMenuToToolbar` helper that
+    replaces the duplicated inline positioning in all six framework senior
+    buttons (Wardley, BPMN, Cynefin, EDGY, Mind Map, DDD). Desktop is unaffected
+    since those menus are narrower than the cap.
+
+- Updated dependencies [8960a6c]
+- Updated dependencies [6795191]
+  - @labre/affine-model@0.25.0
+  - @labre/affine-components@0.25.0
+  - @labre/affine-block-attachment@0.25.0
+  - @labre/affine-block-edgeless-text@0.25.0
+  - @labre/affine-block-image@0.25.0
+  - @labre/affine-block-surface@0.25.0
+  - @labre/affine-gfx-connector@0.25.0
+  - @labre/affine-gfx-pointer@0.25.0
+  - @labre/affine-gfx-shape@0.25.0
+  - @labre/affine-gfx-template@0.25.0
+  - @labre/affine-gfx-text@0.25.0
+  - @labre/affine-rich-text@0.25.0
+  - @labre/affine-shared@0.25.0
+  - @labre/affine-widget-edgeless-toolbar@0.25.0
+  - @labre/affine-ext-loader@0.25.0
+  - @labre/global@0.25.0
+  - @labre/std@0.25.0
+  - @labre/store@0.25.0
+
 ## 0.24.0
 
 ### Minor Changes
