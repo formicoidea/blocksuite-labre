@@ -1,9 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import {
-  clampSeniorMenuToToolbar,
-  EdgelessToolbarToolMixin,
-} from '@labre/affine-widget-edgeless-toolbar';
+import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -19,9 +16,6 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
       display: block;
       width: 100%;
       height: 100%;
-    }
-    :host {
-      position: relative;
     }
     .ce-root {
       width: 100%;
@@ -68,7 +62,6 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
     const menu = this.createPopper('edgeless-cynefin-estuarine-menu', this);
     menu.element.edgeless = this.edgeless;
 
-    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   override render() {

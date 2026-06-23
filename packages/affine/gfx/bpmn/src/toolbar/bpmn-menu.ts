@@ -65,7 +65,6 @@ const NODE_PRESETS: Record<
 export class EdgelessBpmnMenu extends EdgelessToolbarToolMixin(LitElement) {
   static override styles = css`
     :host {
-      position: absolute;
       display: flex;
       z-index: -1;
     }

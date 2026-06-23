@@ -14,7 +14,6 @@ import {
 } from '@labre/affine-shared/services';
 import {
   EdgelessDraggableElementController,
-  clampSeniorMenuToToolbar,
   EdgelessToolbarToolMixin,
 } from '@labre/affine-widget-edgeless-toolbar';
 import type { Bound } from '@labre/global/gfx';
@@ -50,11 +49,6 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       display: flex;
       justify-content: center;
       align-items: center;
-      /* Make this button the containing block of the popup's clip wrapper so
-         the "Others" sub-menu anchors to THIS button (not the whole toolbar)
-         and can be right-aligned to it — mirrors the framework senior buttons.
-         Without this the menu drifts when senior buttons are hidden. */
-      position: relative;
     }
     .partial-clip {
       flex-shrink: 0;
@@ -187,7 +181,6 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       },
     });
 
-    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   initDragController() {

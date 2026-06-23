@@ -46,7 +46,6 @@ const LABEL_H = LABEL_FONT_SIZE + 8;
 export class EdgelessEdgyMenu extends EdgelessToolbarToolMixin(LitElement) {
   static override styles = css`
     :host {
-      position: absolute;
       display: flex;
       z-index: -1;
     }

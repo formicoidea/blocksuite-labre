@@ -1,9 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import {
-  clampSeniorMenuToToolbar,
-  EdgelessToolbarToolMixin,
-} from '@labre/affine-widget-edgeless-toolbar';
+import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 
@@ -22,9 +19,6 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
       display: block;
       width: 100%;
       height: 100%;
-    }
-    :host {
-      position: relative;
     }
     .ddd-root {
       width: 100%;
@@ -74,7 +68,6 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
     const menu = this.createPopper(this.menuTag, this);
     (menu.element as unknown as { edgeless: unknown }).edgeless = this.edgeless;
 
-    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   override render() {

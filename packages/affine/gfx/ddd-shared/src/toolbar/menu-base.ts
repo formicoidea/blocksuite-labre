@@ -13,7 +13,6 @@ import { css, LitElement } from 'lit';
 export abstract class DddMenuBase extends EdgelessToolbarToolMixin(LitElement) {
   static override styles = css`
     :host {
-      position: absolute;
       display: flex;
       z-index: -1;
     }

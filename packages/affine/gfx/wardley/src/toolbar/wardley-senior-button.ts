@@ -1,9 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import {
-  clampSeniorMenuToToolbar,
-  EdgelessToolbarToolMixin,
-} from '@labre/affine-widget-edgeless-toolbar';
+import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -24,12 +21,6 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
       display: block;
       width: 100%;
       height: 100%;
-    }
-    /* Make this 96px button the containing block of the popup's clip wrapper
-       (it is appended to our shadow root) so the sub-menu anchors to THIS
-       button — not the whole toolbar — and can be centered over it. */
-    :host {
-      position: relative;
     }
     .wardley-root {
       width: 100%;
@@ -86,7 +77,6 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
     const menu = this.createPopper('edgeless-wardley-menu', this);
     menu.element.edgeless = this.edgeless;
 
-    clampSeniorMenuToToolbar(this, this.toolbarContainer, menu.element);
   }
 
   override render() {
