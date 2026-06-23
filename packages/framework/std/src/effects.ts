@@ -4,11 +4,19 @@ import { EditorHost } from './view/index.js';
 
 export function effects() {
   // editor host
-  customElements.define('editor-host', EditorHost);
+  define('editor-host', EditorHost);
   // gfx
-  customElements.define('gfx-viewport', GfxViewportElement);
+  define('gfx-viewport', GfxViewportElement);
   // inline
-  customElements.define('v-element', VElement);
-  customElements.define('v-line', VLine);
-  customElements.define('v-text', VText);
+  define('v-element', VElement);
+  define('v-line', VLine);
+  define('v-text', VText);
+}
+
+// ponytail: idempotent so effects() can run more than once (e.g. across browser
+// unit-test files sharing a registry) without throwing on re-registration.
+function define(name: string, ctor: CustomElementConstructor) {
+  if (!customElements.get(name)) {
+    customElements.define(name, ctor);
+  }
 }
