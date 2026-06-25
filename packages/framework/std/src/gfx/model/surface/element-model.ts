@@ -361,6 +361,17 @@ export abstract class GfxPrimitiveElementModel<
   @field()
   accessor index!: string;
 
+  /**
+   * Minimal link target attached to the element. At most one is set.
+   * Opaque to the framework; an affine widget shows a hover arrow that
+   * opens the doc ({@link linkedDocId}) or the URL ({@link externalLink}).
+   */
+  @field()
+  accessor externalLink: string | undefined = undefined;
+
+  @field()
+  accessor linkedDocId: string | undefined = undefined;
+
   @field()
   accessor lockedBySelf: boolean | undefined = false;
 

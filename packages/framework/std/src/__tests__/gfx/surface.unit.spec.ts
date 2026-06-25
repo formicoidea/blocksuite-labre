@@ -88,6 +88,25 @@ describe('surface basic', () => {
     expect(model.getElementById('not-found')).toBeNull();
   });
 
+  test('element link fields default to undefined and round-trip', () => {
+    const { surfaceModel: model } = commonSetup();
+    const id = model.addElement({ type: 'testShape' });
+    const el = model.getElementById(id) as TestShapeElement;
+
+    // backward-compat: elements created without the fields read undefined
+    expect(el.linkedDocId).toBeUndefined();
+    expect(el.externalLink).toBeUndefined();
+
+    model.updateElement(id, { linkedDocId: 'doc-1' });
+    expect(el.linkedDocId).toBe('doc-1');
+    // persisted into the shared yMap, not just the in-memory accessor
+    expect(el.yMap.get('linkedDocId')).toBe('doc-1');
+
+    model.updateElement(id, { linkedDocId: undefined, externalLink: 'https://x' });
+    expect(el.linkedDocId).toBeUndefined();
+    expect(el.externalLink).toBe('https://x');
+  });
+
   test('created observer should be called', () => {
     const { surfaceModel } = commonSetup();
 

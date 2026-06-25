@@ -29,6 +29,7 @@ import type {
   ToolbarActions,
   ToolbarContext,
 } from '@labre/affine-shared/services';
+import { QuickSearchProvider } from '@labre/affine-shared/services';
 import {
   matchModels,
   type ReorderingType,
@@ -44,11 +45,16 @@ import {
   DuplicateIcon,
   FrameIcon,
   GroupIcon,
+  LinkIcon,
   LinkedPageIcon,
   ResetIcon,
 } from '@blocksuite/icons/lit';
 import type { BlockComponent } from '@labre/std';
-import { GfxBlockElementModel, type GfxModel } from '@labre/std/gfx';
+import {
+  GfxBlockElementModel,
+  GfxPrimitiveElementModel,
+  type GfxModel,
+} from '@labre/std/gfx';
 
 import { EdgelessClipboardController } from '../../clipboard/clipboard';
 import { duplicate } from '../../utils/clipboard-utils';
@@ -365,6 +371,51 @@ export const moreActions = [
           };
 
           create().catch(console.error);
+        },
+      },
+      {
+        id: 'c.link-element',
+        // Attach a link (existing doc or external URL) to a single drawing
+        // element. A hover arrow (edgeless-element-link widget) opens it.
+        label: 'Link',
+        icon: LinkIcon(),
+        when(ctx) {
+          const models = ctx.getSurfaceModels();
+          return (
+            models.length === 1 &&
+            models[0] instanceof GfxPrimitiveElementModel
+          );
+        },
+        run(ctx) {
+          const el = ctx.getSurfaceModels()[0];
+          if (!(el instanceof GfxPrimitiveElementModel)) return;
+
+          const quickSearch = ctx.std.getOptional(QuickSearchProvider);
+          if (!quickSearch) return;
+
+          quickSearch
+            .openQuickSearch()
+            .then(result => {
+              if (!result) return;
+              const crud = ctx.std.get(EdgelessCRUDIdentifier);
+              if ('docId' in result) {
+                crud.updateElement(el.id, {
+                  linkedDocId: result.docId,
+                  externalLink: undefined,
+                });
+                ctx.track('LinkedDocCreated', {
+                  control: 'link element',
+                  type: 'element-ref',
+                  other: 'existing doc',
+                });
+              } else if ('externalUrl' in result) {
+                crud.updateElement(el.id, {
+                  externalLink: result.externalUrl,
+                  linkedDocId: undefined,
+                });
+              }
+            })
+            .catch(console.error);
         },
       },
     ],
