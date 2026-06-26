@@ -1,6 +1,6 @@
 ---
 '@labre/affine-block-database': minor
-'@labre/affine-data-view': minor
+'@labre/data-view': minor
 ---
 
 Add `ExternalDataSourceBase` and a rebuildable, disposable database source
