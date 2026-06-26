@@ -4,7 +4,7 @@ import {
 } from '@labre/affine-ext-loader';
 
 import { effects } from './effects';
-import { edgelessSelectedRectWidget } from './spec';
+import { edgelessElementLinkWidget, edgelessSelectedRectWidget } from './spec';
 
 export class EdgelessSelectedRectViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgeless-selected-rect-widget';
@@ -18,6 +18,7 @@ export class EdgelessSelectedRectViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(edgelessSelectedRectWidget);
+      context.register(edgelessElementLinkWidget);
     }
   }
 }

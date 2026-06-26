@@ -29,6 +29,7 @@ import type {
   ToolbarActions,
   ToolbarContext,
 } from '@labre/affine-shared/services';
+import { QuickSearchProvider } from '@labre/affine-shared/services';
 import {
   matchModels,
   type ReorderingType,
@@ -44,11 +45,17 @@ import {
   DuplicateIcon,
   FrameIcon,
   GroupIcon,
+  LinkIcon,
   LinkedPageIcon,
   ResetIcon,
+  UnlinkIcon,
 } from '@blocksuite/icons/lit';
 import type { BlockComponent } from '@labre/std';
-import { GfxBlockElementModel, type GfxModel } from '@labre/std/gfx';
+import {
+  GfxBlockElementModel,
+  GfxPrimitiveElementModel,
+  type GfxModel,
+} from '@labre/std/gfx';
 
 import { EdgelessClipboardController } from '../../clipboard/clipboard';
 import { duplicate } from '../../utils/clipboard-utils';
@@ -367,6 +374,51 @@ export const moreActions = [
           create().catch(console.error);
         },
       },
+      {
+        id: 'c.link-element',
+        // Attach a link (existing doc or external URL) to a single drawing
+        // element. A hover arrow (edgeless-element-link widget) opens it.
+        label: 'Link',
+        icon: LinkIcon(),
+        when(ctx) {
+          const el = getLinkableElement(ctx);
+          return el !== null && !hasElementLink(el) && canPickLink(ctx);
+        },
+        run(ctx) {
+          const el = getLinkableElement(ctx);
+          if (el) linkElementViaQuickSearch(ctx, el);
+        },
+      },
+      {
+        id: 'c.edit-element-link',
+        label: 'Edit link',
+        icon: LinkIcon(),
+        when(ctx) {
+          const el = getLinkableElement(ctx);
+          return el !== null && hasElementLink(el) && canPickLink(ctx);
+        },
+        run(ctx) {
+          const el = getLinkableElement(ctx);
+          if (el) linkElementViaQuickSearch(ctx, el);
+        },
+      },
+      {
+        id: 'c.remove-element-link',
+        label: 'Remove link',
+        icon: UnlinkIcon(),
+        when(ctx) {
+          const el = getLinkableElement(ctx);
+          return el !== null && hasElementLink(el);
+        },
+        run(ctx) {
+          const el = getLinkableElement(ctx);
+          if (!el) return;
+          ctx.std.get(EdgelessCRUDIdentifier).updateElement(el.id, {
+            linkedDocId: undefined,
+            externalLink: undefined,
+          });
+        },
+      },
     ],
   },
 
@@ -393,6 +445,66 @@ export const moreActions = [
     },
   },
 ] as const satisfies ToolbarActions;
+
+/** The single selected drawing element a link can be attached to, or null. */
+function getLinkableElement(
+  ctx: ToolbarContext
+): GfxPrimitiveElementModel | null {
+  const models = ctx.getSurfaceModels();
+  return models.length === 1 && models[0] instanceof GfxPrimitiveElementModel
+    ? models[0]
+    : null;
+}
+
+function hasElementLink(el: GfxPrimitiveElementModel): boolean {
+  return Boolean(el.linkedDocId || el.externalLink);
+}
+
+/**
+ * Picking a doc/URL needs the host-provided quick-search modal. Hide the
+ * Link / Edit link items where it is absent (they would no-op); Remove link
+ * stays available since clearing needs no picker.
+ */
+function canPickLink(ctx: ToolbarContext): boolean {
+  return Boolean(ctx.std.getOptional(QuickSearchProvider));
+}
+
+/** Pick a doc or URL via the quick-search modal and store it on the element. */
+function linkElementViaQuickSearch(
+  ctx: ToolbarContext,
+  el: GfxPrimitiveElementModel
+) {
+  const quickSearch = ctx.std.getOptional(QuickSearchProvider);
+  if (!quickSearch) return;
+
+  quickSearch
+    .openQuickSearch()
+    .then(result => {
+      if (!result) return;
+      const crud = ctx.std.get(EdgelessCRUDIdentifier);
+      if ('docId' in result) {
+        crud.updateElement(el.id, {
+          linkedDocId: result.docId,
+          externalLink: undefined,
+        });
+        ctx.track('LinkedDocCreated', {
+          control: 'link element',
+          type: 'element-ref',
+          other: 'existing doc',
+        });
+      } else if ('externalUrl' in result) {
+        crud.updateElement(el.id, {
+          externalLink: result.externalUrl,
+          linkedDocId: undefined,
+        });
+        ctx.track('Link', {
+          control: 'link element',
+          type: 'external url',
+        });
+      }
+    })
+    .catch(console.error);
+}
 
 function reorderElements(
   ctx: ToolbarContext,
