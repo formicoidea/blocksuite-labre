@@ -15,6 +15,7 @@
     { "path": "../../gfx/connector" },
     { "path": "../../gfx/shape" },
     { "path": "../../gfx/text" },
+    { "path": "../../inlines/reference" },
     { "path": "../../model" },
     { "path": "../../shared" },
     { "path": "../../../framework/global" },

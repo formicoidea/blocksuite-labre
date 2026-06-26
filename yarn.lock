@@ -3068,6 +3068,7 @@ __metadata:
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-text": "workspace:*"
+    "@labre/affine-inline-reference": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
     "@labre/global": "workspace:*"
