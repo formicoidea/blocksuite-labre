@@ -1,5 +1,17 @@
 # @labre/std
 
+## 0.28.0
+
+### Patch Changes
+
+- 65cc055: Fix a `TypeError: Cannot read properties of null (reading 'firstElementChild')`
+  in the inline editor. `VElement.getUpdateComplete` assumed the inner
+  `[data-v-element]` span (and its child) were always present; when awaited while
+  the element is mounting/unmounting, `querySelector` returns `null` and it threw.
+  Now guarded — it resolves instead of crashing when the inner DOM isn't ready yet.
+  - @labre/global@0.28.0
+  - @labre/store@0.28.0
+
 ## 0.27.0
 
 ### Minor Changes

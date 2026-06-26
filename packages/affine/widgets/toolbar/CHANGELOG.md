@@ -1,5 +1,21 @@
 # @labre/affine-widget-toolbar
 
+## 0.28.0
+
+### Patch Changes
+
+- Updated dependencies [1cd6c92]
+- Updated dependencies [65cc055]
+  - @labre/affine-block-database@0.28.0
+  - @labre/std@0.28.0
+  - @labre/affine-block-table@0.28.0
+  - @labre/affine-block-surface@0.28.0
+  - @labre/affine-components@0.28.0
+  - @labre/affine-model@0.28.0
+  - @labre/affine-shared@0.28.0
+  - @labre/affine-ext-loader@0.28.0
+  - @labre/global@0.28.0
+
 ## 0.27.0
 
 ### Patch Changes
