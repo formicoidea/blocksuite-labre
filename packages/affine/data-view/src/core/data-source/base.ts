@@ -302,4 +302,11 @@ export abstract class DataSourceBase implements DataSource {
     }
     return false;
   }
+
+  /**
+   * Tear down anything the source subscribed to (e.g. external observers).
+   * No-op by default — the inline blob source holds no subscriptions. The
+   * owning block calls this when it rebuilds the source or disconnects.
+   */
+  dispose(): void {}
 }

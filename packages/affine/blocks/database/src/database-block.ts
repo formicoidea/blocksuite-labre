@@ -29,7 +29,6 @@ import {
   type DataViewWidgetProps,
   defineUniComponent,
   ExternalGroupByConfigProvider,
-  lazy,
   renderUniLit,
   type SingleView,
   uniMap,
@@ -48,6 +47,7 @@ import { Slice } from '@labre/store';
 import { autoUpdate } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
+import { keyed } from 'lit/directives/keyed.js';
 
 import { popSideDetail } from './components/layout.js';
 import { DatabaseConfigExtension } from './config.js';
@@ -137,7 +137,20 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     });
   };
 
-  private readonly dataSource = lazy(() => {
+  // The block holds a *reference* to its source, rebuilt whenever
+  // `externalSourceId` flips (promote-swap / detach / import / re-point) and
+  // disposed on disconnect. It never owns the external collection's lifecycle
+  // (a single source may be embedded in several blocks).
+  private _dataSource?: DataSourceBase;
+
+  private _dataViewRootLogic?: DataViewRootUILogic;
+
+  // Bumps on every rebuild so `renderBlock` can `keyed()` the renderer element,
+  // forcing Lit to tear the old one down (disposing its listeners) and mount a
+  // fresh one bound to the new source.
+  private _sourceVersion = 0;
+
+  private _buildDataSource(): DataSourceBase {
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
       this.std.provider
@@ -159,7 +172,22 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       dataSource.viewManager.setCurrentView(id);
     }
     return dataSource;
-  });
+  }
+
+  get dataSource(): DataSourceBase {
+    if (!this._dataSource) {
+      this._dataSource = this._buildDataSource();
+    }
+    return this._dataSource;
+  }
+
+  private rebuildDataSource() {
+    this._dataSource?.dispose();
+    this._dataSource = undefined;
+    this._dataViewRootLogic = undefined;
+    this._sourceVersion++;
+    this.requestUpdate();
+  }
 
   private readonly renderTitle = (dataViewLogic: DataViewUILogicBase) => {
     return html` <affine-database-title
@@ -337,7 +365,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   }
 
   private renderDatabaseOps() {
-    if (this.dataSource.value.readonly$.value) {
+    if (this.dataSource.readonly$.value) {
       return nothing;
     }
     return html` <div
@@ -355,6 +383,24 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
     this.classList.add(databaseBlockStyles);
     this.listenFullWidthChange();
+
+    // Rebuild the source whenever the block is re-pointed at (or detached from)
+    // an external collection. The first (synchronous) emission is skipped: the
+    // source is still lazy at this point, so there is nothing to rebuild.
+    this.disposables.add(
+      this.model.props.externalSourceId$.subscribe(() => {
+        if (this._dataSource) {
+          this.rebuildDataSource();
+        }
+      })
+    );
+  }
+
+  override disconnectedCallback() {
+    this._dataSource?.dispose();
+    this._dataSource = undefined;
+    this._dataViewRootLogic = undefined;
+    super.disconnectedCallback();
   }
 
   listenFullWidthChange() {
@@ -370,10 +416,16 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       })
     );
   }
-  private readonly dataViewRootLogic = lazy(
-    () =>
-      new DataViewRootUILogic({
-        virtualPadding$: this.virtualPadding$,
+  private get dataViewRootLogic(): DataViewRootUILogic {
+    if (!this._dataViewRootLogic) {
+      this._dataViewRootLogic = this._buildDataViewRootLogic();
+    }
+    return this._dataViewRootLogic;
+  }
+
+  private _buildDataViewRootLogic(): DataViewRootUILogic {
+    return new DataViewRootUILogic({
+      virtualPadding$: this.virtualPadding$,
         bindHotkey: hotkeys => {
           return {
             dispose: this.host.event.bindHotkey(hotkeys, {
@@ -390,7 +442,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
         },
         selection$: this.viewSelection$,
         setSelection: this.setSelection,
-        dataSource: this.dataSource.value,
+        dataSource: this.dataSource,
         headerWidget: this.headerWidget,
         onDrag: this.onDrag,
         clipboard: this.std.clipboard,
@@ -455,12 +507,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             }
           },
         },
-      })
-  );
+      });
+  }
+
   override renderBlock() {
     return html`
       <div contenteditable="false" class="${databaseContentStyles}">
-        ${this.dataViewRootLogic.value.render()}
+        ${keyed(this._sourceVersion, this.dataViewRootLogic.render())}
       </div>
     `;
   }
