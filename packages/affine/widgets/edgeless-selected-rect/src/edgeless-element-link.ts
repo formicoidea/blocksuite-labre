@@ -4,6 +4,7 @@ import { requestThrottledConnectedFrame } from '@labre/affine-shared/utils';
 import { WidgetComponent } from '@labre/std';
 import {
   GfxControllerIdentifier,
+  type GfxModel,
   GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
 import { OpenInNewIcon, RightSidebarIcon } from '@blocksuite/icons/lit';
@@ -116,7 +117,19 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
     }
   }
 
-  private readonly _open = (e: MouseEvent) => {
+  /** The hovered element if it carries a link, else its nearest linked group. */
+  private _resolveLinked(
+    hit: GfxModel | null
+  ): GfxPrimitiveElementModel | null {
+    if (this._hasLink(hit)) return hit;
+    const groups = hit instanceof GfxPrimitiveElementModel ? hit.groups : [];
+    for (const group of groups) {
+      if (this._hasLink(group)) return group;
+    }
+    return null;
+  }
+
+  private readonly _open = (e: Event) => {
     e.stopPropagation();
     const el = this._target;
     if (!el) return;
@@ -130,6 +143,13 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
     }
   };
 
+  private readonly _onKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this._open(e);
+    }
+  };
+
   override firstUpdated() {
     const { _disposables, gfx } = this;
 
@@ -137,8 +157,7 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
       this.std.host.event.add('pointerMove', ctx => {
         const evt = ctx.get('pointerState');
         const [x, y] = gfx.viewport.toModelCoord(evt.x, evt.y);
-        const el = gfx.getElementByPoint(x, y);
-        this._setTarget(this._hasLink(el) ? el : null);
+        this._setTarget(this._resolveLinked(gfx.getElementByPoint(x, y)));
       })
     );
 
@@ -159,14 +178,20 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
     if (!target || !rect) return nothing;
 
     const isDoc = Boolean(target.linkedDocId);
+    const label = isDoc ? 'Open linked doc' : 'Open link';
 
     return html`<div
       class="open-link-button"
+      role="button"
+      tabindex="0"
+      title=${label}
+      aria-label=${label}
       style=${styleMap({
         left: `${rect.left + rect.width}px`,
         top: `${rect.top}px`,
       })}
       @click=${this._open}
+      @keydown=${this._onKeydown}
       @pointerenter=${() => this._setTarget(target)}
       @pointerleave=${() => this._setTarget(null)}
     >
