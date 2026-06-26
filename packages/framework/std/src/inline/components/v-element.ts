@@ -40,9 +40,11 @@ export class VElement<
 
   override async getUpdateComplete(): Promise<boolean> {
     const result = await super.getUpdateComplete();
-    const span = this.querySelector('[data-v-element="true"]') as HTMLElement;
-    const el = span.firstElementChild as LitElement;
-    await el.updateComplete;
+    // The inner span (and its child) may not be in the DOM yet when this is
+    // awaited mid mount/unmount — guard instead of throwing on `null`.
+    const span = this.querySelector('[data-v-element="true"]');
+    const el = span?.firstElementChild as LitElement | null;
+    if (el) await el.updateComplete;
     const vTexts = Array.from(this.querySelectorAll('v-text'));
     await Promise.all(vTexts.map(vText => vText.updateComplete));
     return result;
