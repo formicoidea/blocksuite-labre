@@ -382,7 +382,7 @@ export const moreActions = [
         icon: LinkIcon(),
         when(ctx) {
           const el = getLinkableElement(ctx);
-          return el !== null && !hasElementLink(el);
+          return el !== null && !hasElementLink(el) && canPickLink(ctx);
         },
         run(ctx) {
           const el = getLinkableElement(ctx);
@@ -395,7 +395,7 @@ export const moreActions = [
         icon: LinkIcon(),
         when(ctx) {
           const el = getLinkableElement(ctx);
-          return el !== null && hasElementLink(el);
+          return el !== null && hasElementLink(el) && canPickLink(ctx);
         },
         run(ctx) {
           const el = getLinkableElement(ctx);
@@ -458,6 +458,15 @@ function getLinkableElement(
 
 function hasElementLink(el: GfxPrimitiveElementModel): boolean {
   return Boolean(el.linkedDocId || el.externalLink);
+}
+
+/**
+ * Picking a doc/URL needs the host-provided quick-search modal. Hide the
+ * Link / Edit link items where it is absent (they would no-op); Remove link
+ * stays available since clearing needs no picker.
+ */
+function canPickLink(ctx: ToolbarContext): boolean {
+  return Boolean(ctx.std.getOptional(QuickSearchProvider));
 }
 
 /** Pick a doc or URL via the quick-search modal and store it on the element. */

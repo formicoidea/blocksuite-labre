@@ -14,3 +14,6 @@ Round out the canvas element link feature (edit / remove / groups / a11y).
   with its own link still wins).
 - The hover arrow is keyboard accessible: `role="button"`, focusable, with an
   `aria-label`/`title` and Enter/Space activation.
+- **Link** / **Edit link** are hidden when the host does not provide
+  `QuickSearchProvider` (they would otherwise no-op); **Remove link** stays
+  available since clearing needs no picker.
