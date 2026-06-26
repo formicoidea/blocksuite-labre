@@ -1,5 +1,35 @@
 # @labre/affine-block-database
 
+## 0.27.0
+
+### Patch Changes
+
+- 14ef3e7: feat(database): export databaseBlockViews (view metas) for external DataSources
+
+  An external `DataSource` (the seam from #18) must populate `viewMetas` with the
+  table + kanban `ViewMeta`, exactly as the inline `DatabaseBlockDataSource` does
+  via `viewMetas = databaseBlockViews`. Those metas were defined in `./views` but
+  not re-exported from the package index, so host apps couldn't reach them.
+
+  Re-export `./views` from the package surface — `databaseBlockViews`,
+  `databaseBlockViewMap`, `databaseBlockViewConverts` are now importable. No
+  behavior change to the inline block.
+
+- Updated dependencies [91f6397]
+  - @labre/std@0.27.0
+  - @labre/affine-components@0.27.0
+  - @labre/data-view@0.27.0
+  - @labre/affine-inline-preset@0.27.0
+  - @labre/affine-inline-reference@0.27.0
+  - @labre/affine-model@0.27.0
+  - @labre/affine-rich-text@0.27.0
+  - @labre/affine-shared@0.27.0
+  - @labre/affine-widget-drag-handle@0.27.0
+  - @labre/affine-widget-slash-menu@0.27.0
+  - @labre/affine-ext-loader@0.27.0
+  - @labre/global@0.27.0
+  - @labre/store@0.27.0
+
 ## 0.26.0
 
 ### Minor Changes
