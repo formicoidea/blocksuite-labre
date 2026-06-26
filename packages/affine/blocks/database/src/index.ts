@@ -4,6 +4,7 @@ export * from './config';
 export * from './context';
 export * from './data-source';
 export * from './database-block';
+export * from './external-data-source';
 export * from './detail-panel/block-renderer';
 export * from './detail-panel/note-renderer';
 export * from './properties';
