@@ -96,7 +96,7 @@ describe('ExternalDataSourceBase reactive bridge', () => {
 
     // mutate the underlying data WITHOUT notifying → reads stay cached
     src.data.rows = ['r1', 'r2'];
-    src.data.cells.r1.c1 = 'b';
+    src.data.cells = { r1: { c1: 'b' } };
     expect(src.rows$.value).toEqual(['r1']);
     expect(cell$.value).toBe('a');
 
