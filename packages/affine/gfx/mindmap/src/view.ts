@@ -12,7 +12,11 @@ import {
   mindmapToolbarExtension,
   shapeMindmapToolbarExtension,
 } from './toolbar/config';
-import { mindMapSeniorTool, otherSeniorTool } from './toolbar/senior-tool';
+import {
+  mediaSeniorTool,
+  mindMapSeniorTool,
+  textSeniorTool,
+} from './toolbar/senior-tool';
 import { mindmapTemplateCategory } from './templates';
 import { MindMapInteraction, MindMapView } from './view/view';
 
@@ -55,14 +59,32 @@ export class MindmapToolViewExtension extends ViewExtensionProvider {
   }
 }
 
-/** The "Others" senior button (free-text + add-file) — flag-gated (`other`). */
-export class OtherToolViewExtension extends ViewExtensionProvider {
-  override name = 'affine-other-gfx';
+/**
+ * Standalone "Text" senior button (formerly inside the "Others" submenu) —
+ * flag-gated (`edgeless-text`).
+ */
+export class TextToolViewExtension extends ViewExtensionProvider {
+  override name = 'affine-edgeless-text-tool-gfx';
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
-      context.register(otherSeniorTool);
+      context.register(textSeniorTool);
+    }
+  }
+}
+
+/**
+ * Standalone "Add file" senior button (formerly inside the "Others" submenu) —
+ * flag-gated (`edgeless-media`).
+ */
+export class MediaToolViewExtension extends ViewExtensionProvider {
+  override name = 'affine-edgeless-media-tool-gfx';
+
+  override setup(context: ViewExtensionContext) {
+    super.setup(context);
+    if (this.isEdgeless(context.scope)) {
+      context.register(mediaSeniorTool);
     }
   }
 }
