@@ -1,5 +1,5 @@
-import { EdgelessLinkToolButton } from './toolbar/link-tool-button';
+import { EdgelessUndoToolButton } from './toolbar/undo-tool-button';
 
 export function effects() {
-  customElements.define('edgeless-link-tool-button', EdgelessLinkToolButton);
+  customElements.define('edgeless-undo-tool-button', EdgelessUndoToolButton);
 }
