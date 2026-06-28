@@ -1,9 +1,9 @@
-import { ImageIcon, TextIcon } from '@blocksuite/icons/lit';
 import { SeniorToolExtension } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
-import { html } from 'lit';
+import { html, type TemplateResult } from 'lit';
 
 import { mediaRender, textRender } from './basket-elements';
+import { mindmapMenuMediaIcon, textIcon } from './icons';
 
 export const mindMapSeniorTool = SeniorToolExtension(
   'mindMap',
@@ -19,14 +19,40 @@ export const mindMapSeniorTool = SeniorToolExtension(
   }
 );
 
-const slot = (icon: ReturnType<typeof TextIcon>, tooltip: string, onClick: () => void) =>
-  html`<div
-    style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"
-  >
-    <edgeless-tool-icon-button .tooltip=${tooltip} @click=${onClick}>
-      <span style="display:flex;width:24px;height:24px">${icon}</span>
-    </edgeless-tool-icon-button>
-  </div>`;
+// Reuse the (nicely drawn) icons from the former "Others" submenu, with a
+// playful resting tilt that pops upright + scales on hover — echoing the old
+// basket hover animation.
+const slot = (icon: TemplateResult, tooltip: string, onClick: () => void) =>
+  html`<style>
+      .promoted-tool {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .promoted-tool .promoted-tool-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(-4deg);
+        transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .promoted-tool:hover .promoted-tool-icon {
+        transform: rotate(0deg) scale(1.2);
+      }
+      .promoted-tool .promoted-tool-icon svg {
+        width: auto;
+        height: auto;
+        max-width: 48px;
+        max-height: 40px;
+      }
+    </style>
+    <div class="promoted-tool">
+      <edgeless-tool-icon-button .tooltip=${tooltip} @click=${onClick}>
+        <span class="promoted-tool-icon">${icon}</span>
+      </edgeless-tool-icon-button>
+    </div>`;
 
 /**
  * Standalone "Text" tool. Promoted out of the former "Others" submenu: a single
@@ -37,7 +63,7 @@ export const textSeniorTool = SeniorToolExtension(
   'edgeless-text',
   ({ block, gfx }) => ({
     name: 'Text',
-    content: slot(TextIcon(), 'Text', () => {
+    content: slot(textIcon, 'Text', () => {
       const { centerX, centerY } = gfx.viewport;
       void textRender(new Bound(centerX - 50, centerY - 16, 100, 32), block);
     }),
@@ -53,7 +79,7 @@ export const mediaSeniorTool = SeniorToolExtension(
   'edgeless-media',
   ({ block, gfx }) => ({
     name: 'Add file',
-    content: slot(ImageIcon(), 'Add file', () => {
+    content: slot(mindmapMenuMediaIcon, 'Add file', () => {
       const { centerX, centerY } = gfx.viewport;
       void mediaRender(new Bound(centerX - 50, centerY - 50, 100, 100), block);
     }),
