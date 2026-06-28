@@ -3,6 +3,11 @@ import { createIdentifier } from '@labre/global/di';
 import type { Command } from './command/index.js';
 import type { EventOptions, UIEventHandler } from './event/index.js';
 import type { BlockService, LifeCycleWatcher } from './extension/index.js';
+import type {
+  ShortcutConflictReporter,
+  ShortcutDescriptor,
+  ShortcutOverrides,
+} from './extension/shortcut.js';
 import type { BlockStdScope } from './scope/index.js';
 import type { BlockViewType, WidgetViewType } from './spec/type.js';
 
@@ -32,3 +37,15 @@ export const KeymapIdentifier = createIdentifier<{
   getter: (std: BlockStdScope) => Record<string, UIEventHandler>;
   options?: EventOptions;
 }>('Keymap');
+
+/** Multi-instance: one registered {@link ShortcutDescriptor} per impl. */
+export const ShortcutIdentifier =
+  createIdentifier<ShortcutDescriptor>('Shortcut');
+
+/** Host-injected rebinding table (see `KeymapOverrideExtension`). */
+export const ShortcutOverrideIdentifier =
+  createIdentifier<ShortcutOverrides>('ShortcutOverride');
+
+/** Host-injected sink for reported combo conflicts. */
+export const ShortcutConflictReporterIdentifier =
+  createIdentifier<ShortcutConflictReporter>('ShortcutConflictReporter');
