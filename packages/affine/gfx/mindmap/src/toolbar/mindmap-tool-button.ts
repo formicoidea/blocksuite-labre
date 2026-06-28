@@ -79,8 +79,10 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
     }
     .basket-tool-item svg {
       display: block;
-      max-width: 46px;
-      max-height: 46px;
+      /* Render near the icons' natural size (58x44 / 64x48) so the mindmap
+       * button reads at the same size as its neighbours (text / add-file). */
+      max-width: 64px;
+      max-height: 50px;
       width: auto;
       height: auto;
     }
