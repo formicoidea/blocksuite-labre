@@ -1,5 +1,32 @@
 # @labre/affine-gfx-link
 
+## 0.29.0
+
+### Minor Changes
+
+- ad7a655: Replace the edgeless toolbar **link** quick tool with an **undo** button. The
+  button is wired to the store undo command (the same one Ctrl/Cmd-Z uses) and
+  takes the former link slot (next to `frame`), in both desktop and dense/mobile
+  toolbars. The unused link quick-tool button, dense menu and tool are removed.
+
+### Patch Changes
+
+- Updated dependencies [7375b9a]
+- Updated dependencies [9330750]
+  - @labre/affine-shared@0.29.0
+  - @labre/std@0.29.0
+  - @labre/affine-block-bookmark@0.29.0
+  - @labre/affine-block-embed@0.29.0
+  - @labre/affine-block-surface@0.29.0
+  - @labre/affine-components@0.29.0
+  - @labre/affine-gfx-pointer@0.29.0
+  - @labre/affine-rich-text@0.29.0
+  - @labre/affine-widget-edgeless-toolbar@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/affine-ext-loader@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes

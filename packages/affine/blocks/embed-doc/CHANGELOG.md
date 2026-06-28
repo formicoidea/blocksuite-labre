@@ -1,5 +1,35 @@
 # @labre/affine-block-embed-doc
 
+## 0.29.0
+
+### Patch Changes
+
+- 7375b9a: Stop the linked-doc preview from spinning forever when the referenced doc isn't
+  loaded (#37). The embed-linked-doc and embed-synced-doc cards now wait for the
+  doc's content for a bounded time and then degrade to a title-only card instead
+  of an indefinite loader.
+
+  Adds a host content-resolution seam: `LinkedDocContentResolverExtension` lets an
+  app that doesn't preload its whole corpus hydrate a referenced doc on demand
+  (`resolve(docId)`) and tune the fallback timeout (`timeoutMs`, default 8000ms).
+  When the resolver supplies the content, the preview renders it; otherwise it
+  degrades cleanly.
+
+- Updated dependencies [7375b9a]
+- Updated dependencies [9330750]
+  - @labre/affine-shared@0.29.0
+  - @labre/std@0.29.0
+  - @labre/affine-block-embed@0.29.0
+  - @labre/affine-block-surface@0.29.0
+  - @labre/affine-components@0.29.0
+  - @labre/affine-inline-reference@0.29.0
+  - @labre/affine-rich-text@0.29.0
+  - @labre/affine-widget-slash-menu@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/affine-ext-loader@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes

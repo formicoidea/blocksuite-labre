@@ -1,5 +1,45 @@
 # @labre/affine-shared
 
+## 0.29.0
+
+### Minor Changes
+
+- 7375b9a: Stop the linked-doc preview from spinning forever when the referenced doc isn't
+  loaded (#37). The embed-linked-doc and embed-synced-doc cards now wait for the
+  doc's content for a bounded time and then degrade to a title-only card instead
+  of an indefinite loader.
+
+  Adds a host content-resolution seam: `LinkedDocContentResolverExtension` lets an
+  app that doesn't preload its whole corpus hydrate a referenced doc on demand
+  (`resolve(docId)`) and tune the fallback timeout (`timeoutMs`, default 8000ms).
+  When the resolver supplies the content, the preview renders it; otherwise it
+  degrades cleanly.
+
+- 9330750: Add an enumerable, host-overridable keyboard shortcut system (#30, phase 1).
+
+  - `ShortcutDescriptor` + `ShortcutExtension` register shortcuts that are both
+    manifest entries and binding sources; `ShortcutKeymapExtension` installs the
+    effective keymap via the normal dispatcher mechanism.
+  - `KeymapOverrideExtension(overrides)` lets the host rebind by id
+    (`{ undo: ['Ctrl','Shift','Z'] }`) or disable (`'disabled'`); the effective
+    combo is `override ?? default`.
+  - Combo conflicts within a scope are reported (via an optional
+    `ShortcutConflictReporterExtension`, else the console) and the duplicate is
+    never bound silently.
+  - Core `undo` / `redo` are migrated from the imperative page keymap to core
+    descriptors, so they are now enumerable and rebindable.
+
+  The framework-aware manifest (`getShortcutManifest(flags)`) and per-framework
+  contributions are phase 2.
+
+### Patch Changes
+
+- Updated dependencies [9330750]
+  - @labre/std@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes

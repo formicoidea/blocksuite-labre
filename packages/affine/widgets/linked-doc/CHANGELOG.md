@@ -1,5 +1,22 @@
 # @labre/affine-widget-linked-doc
 
+## 0.29.0
+
+### Patch Changes
+
+- Updated dependencies [7375b9a]
+- Updated dependencies [9330750]
+  - @labre/affine-shared@0.29.0
+  - @labre/std@0.29.0
+  - @labre/affine-block-image@0.29.0
+  - @labre/affine-components@0.29.0
+  - @labre/affine-inline-reference@0.29.0
+  - @labre/affine-rich-text@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/affine-ext-loader@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes

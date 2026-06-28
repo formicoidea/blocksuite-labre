@@ -1,5 +1,74 @@
 # @labre/affine-block-root
 
+## 0.29.0
+
+### Minor Changes
+
+- 9330750: Add an enumerable, host-overridable keyboard shortcut system (#30, phase 1).
+
+  - `ShortcutDescriptor` + `ShortcutExtension` register shortcuts that are both
+    manifest entries and binding sources; `ShortcutKeymapExtension` installs the
+    effective keymap via the normal dispatcher mechanism.
+  - `KeymapOverrideExtension(overrides)` lets the host rebind by id
+    (`{ undo: ['Ctrl','Shift','Z'] }`) or disable (`'disabled'`); the effective
+    combo is `override ?? default`.
+  - Combo conflicts within a scope are reported (via an optional
+    `ShortcutConflictReporterExtension`, else the console) and the duplicate is
+    never bound silently.
+  - Core `undo` / `redo` are migrated from the imperative page keymap to core
+    descriptors, so they are now enumerable and rebindable.
+
+  The framework-aware manifest (`getShortcutManifest(flags)`) and per-framework
+  contributions are phase 2.
+
+### Patch Changes
+
+- 7aab287: Add `getShortcutManifest(flags)` (#30, phase 2): the enumerable, framework-aware
+  shortcut manifest for a host "Shortcuts" settings panel. It returns the core
+  shortcuts plus the shortcuts contributed by the currently-enabled frameworks
+  (flag-gated like `getInternalViewExtensions`), as metadata-only entries (no
+  runtime handler). Enumerable without an editor instance. Exposed at
+  `@labre/affine/shortcuts`. The per-framework contribution seam is ready
+  (`coreShortcuts` is now exported from the root block); no framework ships
+  shortcuts yet, so the manifest currently returns core only.
+- Updated dependencies [7375b9a]
+- Updated dependencies [3a3c99b]
+- Updated dependencies [43462b5]
+- Updated dependencies [054423b]
+- Updated dependencies [ab409c5]
+- Updated dependencies [40db887]
+- Updated dependencies [9330750]
+  - @labre/affine-shared@0.29.0
+  - @labre/affine-gfx-mindmap@0.29.0
+  - @labre/std@0.29.0
+  - @labre/affine-block-attachment@0.29.0
+  - @labre/affine-block-bookmark@0.29.0
+  - @labre/affine-block-database@0.29.0
+  - @labre/affine-block-edgeless-text@0.29.0
+  - @labre/affine-block-embed@0.29.0
+  - @labre/affine-block-frame@0.29.0
+  - @labre/affine-block-image@0.29.0
+  - @labre/affine-block-note@0.29.0
+  - @labre/affine-block-paragraph@0.29.0
+  - @labre/affine-block-surface@0.29.0
+  - @labre/affine-components@0.29.0
+  - @labre/data-view@0.29.0
+  - @labre/affine-gfx-brush@0.29.0
+  - @labre/affine-gfx-connector@0.29.0
+  - @labre/affine-gfx-group@0.29.0
+  - @labre/affine-gfx-note@0.29.0
+  - @labre/affine-gfx-pointer@0.29.0
+  - @labre/affine-gfx-shape@0.29.0
+  - @labre/affine-gfx-text@0.29.0
+  - @labre/affine-inline-preset@0.29.0
+  - @labre/affine-rich-text@0.29.0
+  - @labre/affine-widget-edgeless-selected-rect@0.29.0
+  - @labre/affine-widget-edgeless-toolbar@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/affine-ext-loader@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes

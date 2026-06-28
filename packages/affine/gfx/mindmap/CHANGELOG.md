@@ -1,5 +1,54 @@
 # @labre/affine-gfx-mindmap
 
+## 0.29.0
+
+### Minor Changes
+
+- 054423b: Replace the edgeless "Others" senior toolbar button (and its submenu) with two
+  standalone senior buttons placed next to pen/eraser: **Text** (insert an
+  editable text element) and **Add file** (open the file picker and insert the
+  image/attachment). Each is a single tap and is individually flag-gated
+  (`edgeless-text`, `edgeless-media`, replacing the old `other` flag). The actions
+  reuse the former submenu's `textRender` / `mediaRender`, so text/file insertion
+  is unchanged.
+
+### Patch Changes
+
+- 3a3c99b: Render the mindmap toolbar icon at its natural size (was capped smaller than the
+  neighbouring text / add-file / shape icons), so the senior tool row reads
+  homogeneously.
+- 43462b5: Fix the Mind Map / Others senior toolbar buttons not opening on touch devices.
+  The draggable controller calls `preventDefault` on `touchstart`, which suppresses
+  the synthesized click that opens the menu, so tapping the icon did nothing
+  (Others) or only the non-icon edge responded (Mind Map). Wire the controller's
+  `onElementClick` (a tap without drag) to the same toggle as the button click,
+  and add `touch-action: manipulation` for snappier taps.
+- ab409c5: Scale up the Text / Add file toolbar icons so they read at the same size as the
+  neighbouring pen/shape icons (their natural SVG size was smaller).
+- 40db887: Use the former "Others" submenu's drawn icons for the standalone Text / Add file
+  toolbar buttons (instead of generic monochrome icons), with a playful resting
+  tilt that pops upright and scales on hover — echoing the old basket animation.
+- Updated dependencies [7375b9a]
+- Updated dependencies [9330750]
+  - @labre/affine-shared@0.29.0
+  - @labre/std@0.29.0
+  - @labre/affine-block-attachment@0.29.0
+  - @labre/affine-block-edgeless-text@0.29.0
+  - @labre/affine-block-image@0.29.0
+  - @labre/affine-block-surface@0.29.0
+  - @labre/affine-components@0.29.0
+  - @labre/affine-gfx-connector@0.29.0
+  - @labre/affine-gfx-pointer@0.29.0
+  - @labre/affine-gfx-shape@0.29.0
+  - @labre/affine-gfx-template@0.29.0
+  - @labre/affine-gfx-text@0.29.0
+  - @labre/affine-rich-text@0.29.0
+  - @labre/affine-widget-edgeless-toolbar@0.29.0
+  - @labre/affine-model@0.29.0
+  - @labre/affine-ext-loader@0.29.0
+  - @labre/global@0.29.0
+  - @labre/store@0.29.0
+
 ## 0.28.0
 
 ### Patch Changes
