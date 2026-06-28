@@ -1,5 +1,100 @@
 # @labre/affine
 
+## 0.29.1
+
+### Patch Changes
+
+- Re-publish so the host seams shipped in #30 and #37 are reachable from the
+  published bundle via `@formicoidea/labre-core/shared/services`:
+
+  - `KeymapOverrideExtension`, `ShortcutConflictReporterExtension`, `canonicalCombo`
+    and the `ShortcutOverrides` / `ShortcutManifestEntry` / `ShortcutConflict` types (#30)
+  - `LinkedDocContentResolverExtension`, `LinkedDocContentResolverIdentifier`
+    and the `LinkedDocContentResolver` type (#37)
+
+  The re-exports already exist in source (`shared/services` barrel); they only
+  predated the `0.29.0` npm tarball, so the host could not import them. No code
+  change — a fresh release exposes them. Closes #43.
+
+  - @labre/affine-block-attachment@0.29.1
+  - @labre/affine-block-bookmark@0.29.1
+  - @labre/affine-block-callout@0.29.1
+  - @labre/affine-block-code@0.29.1
+  - @labre/affine-block-data-view@0.29.1
+  - @labre/affine-block-database@0.29.1
+  - @labre/affine-block-divider@0.29.1
+  - @labre/affine-block-edgeless-text@0.29.1
+  - @labre/affine-block-embed@0.29.1
+  - @labre/affine-block-embed-doc@0.29.1
+  - @labre/affine-block-frame@0.29.1
+  - @labre/affine-block-image@0.29.1
+  - @labre/affine-block-latex@0.29.1
+  - @labre/affine-block-list@0.29.1
+  - @labre/affine-block-note@0.29.1
+  - @labre/affine-block-paragraph@0.29.1
+  - @labre/affine-block-root@0.29.1
+  - @labre/affine-block-surface@0.29.1
+  - @labre/affine-block-surface-ref@0.29.1
+  - @labre/affine-block-table@0.29.1
+  - @labre/affine-components@0.29.1
+  - @labre/data-view@0.29.1
+  - @labre/affine-ext-loader@0.29.1
+  - @labre/affine-foundation@0.29.1
+  - @labre/affine-fragment-adapter-panel@0.29.1
+  - @labre/affine-fragment-doc-title@0.29.1
+  - @labre/affine-fragment-frame-panel@0.29.1
+  - @labre/affine-fragment-outline@0.29.1
+  - @labre/affine-gfx-bpmn@0.29.1
+  - @labre/affine-gfx-brush@0.29.1
+  - @labre/affine-gfx-connector@0.29.1
+  - @labre/affine-gfx-cynefin-estuarine@0.29.1
+  - @labre/affine-gfx-ddd-aggregate@0.29.1
+  - @labre/affine-gfx-ddd-context-map@0.29.1
+  - @labre/affine-gfx-ddd-core-domain@0.29.1
+  - @labre/affine-gfx-ddd-event-storming@0.29.1
+  - @labre/affine-gfx-ddd-shared@0.29.1
+  - @labre/affine-gfx-edgy@0.29.1
+  - @labre/affine-gfx-group@0.29.1
+  - @labre/affine-gfx-link@0.29.1
+  - @labre/affine-gfx-mindmap@0.29.1
+  - @labre/affine-gfx-note@0.29.1
+  - @labre/affine-gfx-pointer@0.29.1
+  - @labre/affine-gfx-shape@0.29.1
+  - @labre/affine-gfx-template@0.29.1
+  - @labre/affine-gfx-text@0.29.1
+  - @labre/affine-gfx-turbo-renderer@0.29.1
+  - @labre/affine-gfx-wardley@0.29.1
+  - @labre/affine-inline-comment@0.29.1
+  - @labre/affine-inline-footnote@0.29.1
+  - @labre/affine-inline-latex@0.29.1
+  - @labre/affine-inline-link@0.29.1
+  - @labre/affine-inline-mention@0.29.1
+  - @labre/affine-inline-preset@0.29.1
+  - @labre/affine-inline-reference@0.29.1
+  - @labre/affine-model@0.29.1
+  - @labre/affine-rich-text@0.29.1
+  - @labre/affine-shared@0.29.1
+  - @labre/affine-widget-drag-handle@0.29.1
+  - @labre/affine-widget-edgeless-auto-connect@0.29.1
+  - @labre/affine-widget-edgeless-dragging-area@0.29.1
+  - @labre/affine-widget-edgeless-selected-rect@0.29.1
+  - @labre/affine-widget-edgeless-toolbar@0.29.1
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.29.1
+  - @labre/affine-widget-frame-title@0.29.1
+  - @labre/affine-widget-keyboard-toolbar@0.29.1
+  - @labre/affine-widget-linked-doc@0.29.1
+  - @labre/affine-widget-note-slicer@0.29.1
+  - @labre/affine-widget-page-dragging-area@0.29.1
+  - @labre/affine-widget-remote-selection@0.29.1
+  - @labre/affine-widget-scroll-anchoring@0.29.1
+  - @labre/affine-widget-slash-menu@0.29.1
+  - @labre/affine-widget-toolbar@0.29.1
+  - @labre/affine-widget-viewport-overlay@0.29.1
+  - @labre/global@0.29.1
+  - @labre/std@0.29.1
+  - @labre/store@0.29.1
+  - @labre/sync@0.29.1
+
 ## 0.29.0
 
 ### Minor Changes

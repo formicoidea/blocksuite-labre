@@ -1,5 +1,18 @@
 # @labre/affine-inline-link
 
+## 0.29.1
+
+### Patch Changes
+
+- @labre/affine-components@0.29.1
+- @labre/affine-ext-loader@0.29.1
+- @labre/affine-inline-reference@0.29.1
+- @labre/affine-model@0.29.1
+- @labre/affine-shared@0.29.1
+- @labre/global@0.29.1
+- @labre/std@0.29.1
+- @labre/store@0.29.1
+
 ## 0.29.0
 
 ### Patch Changes
