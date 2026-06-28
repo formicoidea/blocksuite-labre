@@ -38,9 +38,10 @@ import { EdgyViewExtension } from '@labre/affine-gfx-edgy/view';
 import { GroupViewExtension } from '@labre/affine-gfx-group/view';
 import { LinkViewExtension as GfxLinkViewExtension } from '@labre/affine-gfx-link/view';
 import {
+  MediaToolViewExtension,
   MindmapRenderViewExtension,
   MindmapToolViewExtension,
-  OtherToolViewExtension,
+  TextToolViewExtension,
 } from '@labre/affine-gfx-mindmap/view';
 import { NoteViewExtension as GfxNoteViewExtension } from '@labre/affine-gfx-note/view';
 import { PointerViewExtension } from '@labre/affine-gfx-pointer/view';
@@ -91,11 +92,14 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
     PointerViewExtension,
     GfxNoteViewExtension,
     ...(on('brush') ? [BrushViewExtension] : []),
+    // Standalone text / add-file senior buttons, placed right after pen/eraser
+    // (registration order = senior-row order for the default order group).
+    ...(on('edgeless-text') ? [TextToolViewExtension] : []),
+    ...(on('edgeless-media') ? [MediaToolViewExtension] : []),
     ShapeViewExtension,
     // Mindmap rendering is always on; the flags gate only the senior buttons.
     MindmapRenderViewExtension,
     ...(on('mindmap') ? [MindmapToolViewExtension] : []),
-    ...(on('other') ? [OtherToolViewExtension] : []),
     ConnectorViewExtension,
     GroupViewExtension,
     TextViewExtension,
