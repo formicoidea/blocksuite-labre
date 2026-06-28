@@ -1,6 +1,9 @@
 import { RENDER_CARD_THROTTLE_MS } from '@labre/affine-block-embed';
 import { LoadingIcon } from '@labre/affine-components/icons';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import {
+  ThemeProvider,
+  whenLinkedDocContentReady,
+} from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
 import { ResetIcon } from '@blocksuite/icons/lit';
 import {
@@ -99,10 +102,14 @@ export class EmbedSyncedDocCard extends WithDisposable(ShadowlessElement) {
       if (syncedDoc.root) {
         renderLinkedDocInCard(this);
       } else {
-        const subscription = syncedDoc.slots.rootAdded.subscribe(() => {
-          subscription.unsubscribe();
-          renderLinkedDocInCard(this);
-        });
+        // Bounded: ask the host to hydrate the doc, wait at most timeoutMs, then
+        // render regardless (degraded if still empty) rather than waiting for a
+        // `rootAdded` that may never fire when the doc isn't preloaded.
+        void whenLinkedDocContentReady(
+          this.std,
+          syncedDoc,
+          this.model.props.pageId
+        ).then(() => renderLinkedDocInCard(this));
       }
 
       this.disposables.add(
