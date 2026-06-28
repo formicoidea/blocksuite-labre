@@ -49,6 +49,9 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       display: flex;
       justify-content: center;
       align-items: center;
+      /* Treat the whole button as a tap target (no double-tap zoom / tap delay
+       * on touch browsers like Firefox mobile). */
+      touch-action: manipulation;
     }
     .partial-clip {
       flex-shrink: 0;
@@ -191,6 +194,11 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       scopeElement: this.toolbarContainer,
       standardWidth: 100,
       clickToDrag: false,
+      // On touch, the drag controller calls preventDefault on touchstart, so the
+      // native click that opens the menu never fires (button is "dead" on
+      // mobile, or only its non-icon edge responds). A tap without drag fires
+      // onElementClick instead — wire it to the same toggle as the button click.
+      onElementClick: () => this._toggleMenu(),
       onOverlayCreated: (overlay, { data }) => {
         const tool = this.draggableTools.find(t => t.name === data.name);
         if (!tool) return;
@@ -357,6 +365,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
                       preview: tool.icon,
                       standardWidth: tool.standardWidth,
                     })}
+                  @click=${(e: Event) => e.stopPropagation()}
                   class="basket-tool-item current ${tool.name}"
                 >
                   ${tool.icon}
