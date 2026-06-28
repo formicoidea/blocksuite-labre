@@ -11,7 +11,7 @@ import {
   getSelectedModelsCommand,
 } from '@labre/affine-shared/commands';
 import { matchModels } from '@labre/affine-shared/utils';
-import { IS_MAC, IS_WINDOWS } from '@labre/global/env';
+import { IS_MAC } from '@labre/global/env';
 import {
   type BlockComponent,
   BlockSelection,
@@ -82,29 +82,10 @@ export class PageKeyboardManager {
   }
 
   constructor(public rootComponent: BlockComponent) {
+    // undo / redo are now rebindable shortcut descriptors (see
+    // `keyboard/shortcuts.ts`), installed via `ShortcutKeymapExtension`.
     this.rootComponent.bindHotKey(
       {
-        'Mod-z': ctx => {
-          ctx.get('defaultState').event.preventDefault();
-
-          if (this._doc.canUndo) {
-            this._doc.undo();
-          }
-        },
-        'Shift-Mod-z': ctx => {
-          ctx.get('defaultState').event.preventDefault();
-          if (this._doc.canRedo) {
-            this._doc.redo();
-          }
-        },
-        'Control-y': ctx => {
-          if (!IS_WINDOWS) return;
-
-          ctx.get('defaultState').event.preventDefault();
-          if (this._doc.canRedo) {
-            this._doc.redo();
-          }
-        },
         'Mod-Backspace': () => true,
         Backspace: this._handleDelete,
         Delete: this._handleDelete,
