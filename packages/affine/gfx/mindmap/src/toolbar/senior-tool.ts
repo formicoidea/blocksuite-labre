@@ -35,17 +35,19 @@ const slot = (icon: TemplateResult, tooltip: string, onClick: () => void) =>
         display: flex;
         align-items: center;
         justify-content: center;
-        transform: rotate(-4deg);
+        /* Scale the drawn icons up so they read at the same size as the
+         * neighbouring pen/shape icons (their natural SVG size is smaller). */
+        transform: rotate(-4deg) scale(1.4);
         transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       .promoted-tool:hover .promoted-tool-icon {
-        transform: rotate(0deg) scale(1.2);
+        transform: rotate(0deg) scale(1.65);
       }
       .promoted-tool .promoted-tool-icon svg {
         width: auto;
         height: auto;
-        max-width: 48px;
-        max-height: 40px;
+        max-width: 52px;
+        max-height: 44px;
       }
     </style>
     <div class="promoted-tool">
