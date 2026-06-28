@@ -23,6 +23,7 @@ import {
   OpenDocExtensionIdentifier,
   type OpenDocMode,
   ThemeProvider,
+  whenLinkedDocContentReady,
 } from '@labre/affine-shared/services';
 import {
   cloneReferenceInfo,
@@ -96,12 +97,15 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     }
 
     if (!this.isError && !linkedDoc.root) {
-      await new Promise<void>(resolve => {
-        const subscription = linkedDoc.slots.rootAdded.subscribe(() => {
-          subscription.unsubscribe();
-          resolve();
-        });
-      });
+      // Bounded wait: if the host hasn't preloaded the referenced doc, ask the
+      // optional content resolver to hydrate it and wait at most `timeoutMs`.
+      // On timeout we stop loading and fall through to a degraded card (title
+      // only) instead of spinning forever.
+      await whenLinkedDocContentReady(
+        this.std,
+        linkedDoc,
+        this.model.props.pageId
+      );
     }
 
     this._loading = false;
