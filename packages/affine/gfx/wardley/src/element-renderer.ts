@@ -15,7 +15,7 @@ import {
   MARGIN,
   OFFSETS,
 } from './consts';
-import { BENEFIT_ZERO_FRAC, paintGradientBackground } from './gradient';
+import { paintGradientBackground } from './gradient';
 
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
@@ -100,15 +100,6 @@ export const wardley: ElementRenderer<WardleyBackgroundElementModel> = (
   // Hidden when `showGradient` is false → plain white background.
   if (model.variant !== 'classic' && model.showGradient) {
     paintGradientBackground(ctx, model.variant, px0, px1, py0, py1);
-    if (model.variant === 'benefit') {
-      const zy = py1 - BENEFIT_ZERO_FRAC * ph;
-      ctx.strokeStyle = COLORS.axis;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(px0, zy);
-      ctx.lineTo(px1, zy);
-      ctx.stroke();
-    }
   }
 
   // ── Optional evolution band tints ───────────────────────────────────
