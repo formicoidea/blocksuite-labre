@@ -54,8 +54,6 @@ const GRADIENT_GREY = '#7c8389';
 const GRADIENT_MAX_OPACITY = 0.45;
 /** Peak opacity for the grey evolution-gradient variant. */
 const GREY_MAX_OPACITY = 0.38;
-/** Benefit/investment zero-line height (fraction of plot height from bottom). */
-export const BENEFIT_ZERO_FRAC = 0.3;
 
 function rgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16);
