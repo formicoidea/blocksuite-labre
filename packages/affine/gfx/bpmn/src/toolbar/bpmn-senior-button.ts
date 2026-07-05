@@ -26,6 +26,8 @@ export class EdgelessBpmnSeniorButton extends EdgelessToolbarToolMixin(
       position: relative;
       overflow: hidden;
       cursor: pointer;
+      /* no double-tap-zoom / 300ms tap delay on touch screens */
+      touch-action: manipulation;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -49,7 +51,8 @@ export class EdgelessBpmnSeniorButton extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 100%;
     }
-    .bpmn-root:hover .bpmn-card {
+    .bpmn-root:hover .bpmn-card,
+    .bpmn-root:active .bpmn-card {
       --y: -10px;
       --s: 1.07;
     }
