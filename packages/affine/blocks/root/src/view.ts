@@ -73,6 +73,8 @@ export class RootViewExtension extends ViewExtensionProvider {
       BlockViewExtension('affine:page', literal`affine-page-root`)
     );
     context.register(PageClipboard);
+    // Page-scoped shortcuts only exist while a page editor is mounted.
+    context.register(ShortcutKeymapExtension('page'));
   };
 
   private readonly _setupEdgeless = (context: ViewExtensionContext) => {
@@ -96,5 +98,8 @@ export class RootViewExtension extends ViewExtensionProvider {
       AltCloneExtension,
     ]);
     context.register(EdgelessElementToolbarExtension);
+    // Edgeless-scoped shortcuts (e.g. framework chords) only exist while an
+    // edgeless editor is mounted.
+    context.register(ShortcutKeymapExtension('edgeless'));
   };
 }

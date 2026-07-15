@@ -11,7 +11,7 @@ export const coreShortcuts: ShortcutDescriptor[] = [
   {
     id: 'undo',
     labelKey: 'com.affine.keyboardShortcuts.undo',
-    defaultKeys: { mac: ['Mod', 'z'], other: ['Mod', 'z'] },
+    defaultKeys: { mac: ['Mod-z'], other: ['Mod-z'] },
     scope: 'global',
     owner: 'core',
     handler: std => ctx => {
@@ -22,7 +22,7 @@ export const coreShortcuts: ShortcutDescriptor[] = [
   {
     id: 'redo',
     labelKey: 'com.affine.keyboardShortcuts.redo',
-    defaultKeys: { mac: ['Shift', 'Mod', 'z'], other: ['Shift', 'Mod', 'z'] },
+    defaultKeys: { mac: ['Shift-Mod-z'], other: ['Shift-Mod-z'] },
     scope: 'global',
     owner: 'core',
     handler: std => ctx => {
@@ -34,7 +34,7 @@ export const coreShortcuts: ShortcutDescriptor[] = [
     // Windows-only redo alias (Ctrl+Y); not bound on mac (empty combo).
     id: 'redo-windows',
     labelKey: 'com.affine.keyboardShortcuts.redo',
-    defaultKeys: { mac: [], other: ['Control', 'y'] },
+    defaultKeys: { mac: [], other: ['Control-y'] },
     scope: 'global',
     owner: 'core',
     handler: std => ctx => {
