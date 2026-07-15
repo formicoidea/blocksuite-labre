@@ -11,6 +11,7 @@ import {
   type SerializedXYWH,
 } from '@labre/global/gfx';
 import {
+  generateKeyBetween,
   generateKeyBetweenV2,
   getTopElements,
   GfxBlockElementModel,
@@ -271,7 +272,7 @@ export class EdgelessFrameManager extends GfxExtension {
 
             // Only add elements that aren't already grouped and have a valid frame
             if (!element.group && frame) {
-              this.addElementsToFrame(frame, [element]);
+              this._adoptNewlyCreatedElement(frame, element);
             }
           });
         }
@@ -297,10 +298,44 @@ export class EdgelessFrameManager extends GfxExtension {
           ) {
             return;
           }
-          this.addElementsToFrame(frame, [payload.model]);
+          this._adoptNewlyCreatedElement(frame, payload.model);
         }
       })
     );
+  }
+
+  /**
+   * Adopt an element that was just created inside the frame's bounds.
+   *
+   * The element's index was generated in the top-level band; once it is
+   * prefixed by the frame's back-of-stack index, it can tie with or sort
+   * below its new siblings' indexes, making the render order degenerate
+   * (broken by map iteration order on every layer rebuild). Reassign the
+   * element an index strictly above all its siblings so a newly created
+   * element always lands on top inside the frame — mirroring the behavior
+   * outside frames. Frames themselves are skipped: a frame's index is
+   * intentionally at the back so it renders behind its content.
+   */
+  private _adoptNewlyCreatedElement(frame: FrameBlockModel, element: GfxModel) {
+    this.addElementsToFrame(frame, [element]);
+
+    if (isFrameBlock(element) || !frame.hasChild(element)) {
+      return;
+    }
+
+    const highestSibling = frame.childElements.reduce<string | null>(
+      (max, child) =>
+        child !== element && (max === null || child.index > max)
+          ? child.index
+          : max,
+      null
+    );
+
+    if (highestSibling !== null && element.index <= highestSibling) {
+      this.gfx.updateElement(element, {
+        index: generateKeyBetween(highestSibling, null),
+      });
+    }
   }
 
   /**

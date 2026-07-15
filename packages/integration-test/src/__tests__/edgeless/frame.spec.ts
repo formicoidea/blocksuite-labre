@@ -103,6 +103,66 @@ describe('frame', () => {
     expect(frame?.model.externalXYWH).toBeDefined();
   });
 
+  test('new element created inside a frame renders above existing frame children', async () => {
+    const surface = service.surface;
+
+    const aId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    await wait();
+
+    const a = surface.getElementById(aId)!;
+    const frame = service.frame.createFrameOnBound(new Bound(-50, -50, 300, 250));
+    await wait();
+    expect(a.group).toBe(frame);
+
+    // mimic the shape tool: a new element created inside the frame's bounds
+    // is auto-adopted by the frame one microtask later
+    const bId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[40,30,100,100]',
+    });
+    await wait();
+
+    const b = surface.getElementById(bId)!;
+    expect(b.group).toBe(frame);
+    // strict inequality: an index tie makes the render order depend on map
+    // iteration order, which flips on layer rebuilds (the original bug)
+    expect(b.index > a.index).toBe(true);
+    expect(service.layer.compare(a, b)).toBeLessThan(0);
+  });
+
+  test('framing existing elements preserves their relative z-order', async () => {
+    const surface = service.surface;
+
+    const bottomId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    const topId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[50,50,100,100]',
+    });
+    await wait();
+
+    const bottom = surface.getElementById(bottomId)!;
+    const top = surface.getElementById(topId)!;
+    const bottomIndex = bottom.index;
+    const topIndex = top.index;
+
+    service.frame.createFrameOnBound(new Bound(-50, -50, 300, 300));
+    await wait();
+
+    expect(bottom.index).toBe(bottomIndex);
+    expect(top.index).toBe(topIndex);
+    expect(service.layer.compare(bottom, top)).toBeLessThan(0);
+  });
+
   test('descendant of frame should not contain itself', async () => {
     const frameIds = [1, 2, 3].map(i => {
       return service.doc.addBlock(
