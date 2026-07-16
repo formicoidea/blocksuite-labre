@@ -43,6 +43,9 @@ const FRAMEWORKS = [
     telemetry: 'wardley',
     info: 'wardleyFramework',
     extensions: [{ ext: 'WardleyViewExtension', flag: 'wardley' }],
+    // The framework contributes shortcut-manifest entries: stripped from
+    // core's shortcuts.ts; the host composes with the bundle's own export.
+    shortcuts: true,
   },
   {
     out: 'framework-edgy',
@@ -375,6 +378,27 @@ function buildCore() {
         new RegExp(`^\\s*'${escapeRe(e.flag)}',\\s*$`),
         1,
         `${e.flag} flag`
+      );
+    }
+    // A framework's shortcut-manifest contribution ships with ITS bundle,
+    // not with core: strip the import and the group entry from the copied
+    // shortcuts.ts (the host composes core's manifest with each enabled
+    // framework bundle's exported shortcut descriptors).
+    if (fw.shortcuts) {
+      const shortcutsTs = path.join(CORE_SRC, 'shortcuts.ts');
+      dropStatement(
+        shortcutsTs,
+        new RegExp(
+          `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}['"];?\\r?\\n`
+        ),
+        1,
+        `${fw.out} shortcuts import`
+      );
+      dropLines(
+        shortcutsTs,
+        new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.telemetry)}',`),
+        1,
+        `${fw.out} shortcut group`
       );
     }
   }

@@ -20,6 +20,12 @@ interface FrameworkShortcutGroup {
  * Per-framework shortcut contributions. A framework that adds shortcuts lists
  * them here (manifest) AND registers `ShortcutExtension(...)` in its view
  * (runtime binding); both are gated by its flag.
+ *
+ * Bundled distribution note: these groups are STRIPPED from
+ * `@formicoidea/labre-core` by `scripts/build-bundles.mjs` (`shortcuts: true`
+ * on the framework's entry) — each framework bundle exports its own
+ * descriptors (e.g. `wardleyShortcuts`) and the host appends them to
+ * `getShortcutManifest()` for the frameworks it enables.
  */
 const FRAMEWORK_SHORTCUT_GROUPS: FrameworkShortcutGroup[] = [
   { owner: 'wardley', shortcuts: wardleyShortcuts },
