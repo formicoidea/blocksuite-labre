@@ -24,6 +24,8 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 64px;
       cursor: pointer;
+      /* no double-tap-zoom / 300ms tap delay on touch screens */
+      touch-action: manipulation;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -42,7 +44,8 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 100%;
     }
-    .ddd-root:hover .ddd-card {
+    .ddd-root:hover .ddd-card,
+    .ddd-root:active .ddd-card {
       --y: -10px;
       --s: 1.07;
     }

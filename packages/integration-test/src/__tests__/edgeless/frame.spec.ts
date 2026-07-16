@@ -103,6 +103,102 @@ describe('frame', () => {
     expect(frame?.model.externalXYWH).toBeDefined();
   });
 
+  test('new element created inside a frame renders above existing frame children', async () => {
+    const surface = service.surface;
+
+    const aId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    await wait();
+
+    const a = surface.getElementById(aId)!;
+    const frame = service.frame.createFrameOnBound(new Bound(-50, -50, 300, 250));
+    await wait();
+    expect(a.group).toBe(frame);
+
+    // mimic the shape tool: a new element created inside the frame's bounds
+    // is auto-adopted by the frame one microtask later
+    const bId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[40,30,100,100]',
+    });
+    await wait();
+
+    const b = surface.getElementById(bId)!;
+    expect(b.group).toBe(frame);
+    // strict inequality: an index tie makes the render order depend on map
+    // iteration order, which flips on layer rebuilds (the original bug)
+    expect(b.index > a.index).toBe(true);
+    expect(service.layer.compare(a, b)).toBeLessThan(0);
+  });
+
+  test('framing existing elements preserves their relative z-order', async () => {
+    const surface = service.surface;
+
+    const bottomId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    const topId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[50,50,100,100]',
+    });
+    await wait();
+
+    const bottom = surface.getElementById(bottomId)!;
+    const top = surface.getElementById(topId)!;
+    const bottomIndex = bottom.index;
+    const topIndex = top.index;
+
+    service.frame.createFrameOnBound(new Bound(-50, -50, 300, 300));
+    await wait();
+
+    expect(bottom.index).toBe(bottomIndex);
+    expect(top.index).toBe(topIndex);
+    expect(service.layer.compare(bottom, top)).toBeLessThan(0);
+  });
+
+  test('undo of a deleted frame child restores its z-order untouched', async () => {
+    const surface = service.surface;
+
+    surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    await wait();
+    service.frame.createFrameOnBound(new Bound(-50, -50, 300, 250));
+    await wait();
+
+    // a gfx BLOCK inside the frame (the blockUpdated adoption path)
+    const noteId = service.doc.addBlock(
+      'affine:note',
+      { xywh: '[20,20,60,60]' },
+      service.doc.root!.id
+    );
+    await wait();
+
+    const note = service.doc.getBlock(noteId)!.model as FrameBlockModel;
+    const restoredIndex = note.props.index;
+
+    service.doc.captureSync();
+    service.doc.deleteBlock(note);
+    service.doc.captureSync();
+    await wait();
+
+    service.doc.undo();
+    await wait();
+
+    // the re-added child keeps its restored index — no hoist to the top
+    const reAdded = service.doc.getBlock(noteId)!.model as FrameBlockModel;
+    expect(reAdded.props.index).toBe(restoredIndex);
+  });
+
   test('descendant of frame should not contain itself', async () => {
     const frameIds = [1, 2, 3].map(i => {
       return service.doc.addBlock(

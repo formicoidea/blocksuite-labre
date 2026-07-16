@@ -57,20 +57,111 @@ function modifiers(name: string, event: KeyboardEvent, shift = true) {
   return name;
 }
 
-function normalize(map: Record<string, UIEventHandler>) {
-  const copy: Record<string, UIEventHandler> = Object.create(null);
-  for (const prop in map) copy[normalizeKeyName(prop)] = map[prop];
-  return copy;
+/** How long a chord prefix stays armed before it is forgotten. */
+const CHORD_TIMEOUT_MS = 1200;
+
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta']);
+
+/**
+ * Chords must never swallow keystrokes the user is typing into an editable
+ * (rich text, inputs) — a chord prefix like `w` is a plain letter there.
+ */
+function isTypingTarget(event: KeyboardEvent) {
+  const target = event.composedPath?.()[0] ?? event.target;
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA'
+  );
 }
 
+/**
+ * Bind a keymap. A binding key is one keystroke (`'Mod-z'`) or a
+ * space-separated sequence of keystrokes (`'w c'`): pressing the first
+ * keystroke arms the sequence, and the next keystroke (within a short
+ * timeout) resolves it. A failed second keystroke falls through to the
+ * regular single-keystroke bindings.
+ */
 export function bindKeymap(
   bindings: Record<string, UIEventHandler>
 ): UIEventHandler {
-  const map = normalize(bindings);
+  const map: Record<string, UIEventHandler> = Object.create(null);
+  const sequences: { steps: string[]; handler: UIEventHandler }[] = [];
+
+  for (const prop in bindings) {
+    const steps = prop.split(' ').filter(Boolean);
+    if (steps.length > 1) {
+      sequences.push({
+        steps: steps.map(normalizeKeyName),
+        handler: bindings[prop],
+      });
+    } else {
+      map[normalizeKeyName(prop)] = bindings[prop];
+    }
+  }
+
+  let armed: { steps: string[]; handler: UIEventHandler }[] = [];
+  let armedDepth = 0;
+  let armedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const disarm = () => {
+    armed = [];
+    armedDepth = 0;
+    if (armedTimer !== null) {
+      clearTimeout(armedTimer);
+      armedTimer = null;
+    }
+  };
+
+  const rearmTimeout = () => {
+    if (armedTimer !== null) clearTimeout(armedTimer);
+    armedTimer = setTimeout(disarm, CHORD_TIMEOUT_MS);
+  };
+
   return ctx => {
     const state = ctx.get('keyboardState');
     const event = state.raw;
     const name = keyName(event);
+
+    if (sequences.length && !isTypingTarget(event)) {
+      // A lone modifier press must not break an armed chord.
+      if (armedDepth > 0 && MODIFIER_KEYS.has(name)) {
+        return false;
+      }
+
+      const stroke = modifiers(name, event);
+
+      if (armedDepth > 0) {
+        const matches = armed.filter(s => s.steps[armedDepth] === stroke);
+        if (matches.length) {
+          const complete = matches.find(
+            s => s.steps.length === armedDepth + 1
+          );
+          if (complete) {
+            disarm();
+            complete.handler(ctx);
+            return true;
+          }
+          armed = matches;
+          armedDepth += 1;
+          rearmTimeout();
+          return true;
+        }
+        // No continuation matched: forget the prefix and treat this
+        // keystroke as a fresh one below.
+        disarm();
+      }
+
+      const starting = sequences.filter(s => s.steps[0] === stroke);
+      if (starting.length && !map[stroke]) {
+        armed = starting;
+        armedDepth = 1;
+        rearmTimeout();
+        return true;
+      }
+    }
+
     const direct = map[modifiers(name, event)];
     if (direct && direct(ctx)) {
       return true;

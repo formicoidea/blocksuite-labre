@@ -90,25 +90,27 @@ export class KeyboardControl {
   bindHotkey(keymap: Record<string, UIEventHandler>, options?: EventOptions) {
     const disposables = new DisposableGroup();
     if (IS_ANDROID) {
+      const androidBinding = androidBindKeymapPatch(keymap);
       disposables.add(
         this._dispatcher.add(
           'beforeInput',
           ctx => {
             if (this.composition) return false;
-            const binding = androidBindKeymapPatch(keymap);
-            return binding(ctx);
+            return androidBinding(ctx);
           },
           options
         )
       );
     }
 
+    // Build the binding once: it holds the chord (multi-keystroke) pending
+    // state, which must survive between keystrokes.
+    const binding = bindKeymap(keymap);
     disposables.add(
       this._dispatcher.add(
         'keyDown',
         ctx => {
           if (this.composition) return false;
-          const binding = bindKeymap(keymap);
           return binding(ctx);
         },
         options

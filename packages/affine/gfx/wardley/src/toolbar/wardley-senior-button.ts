@@ -28,6 +28,8 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
       position: relative;
       overflow: hidden;
       cursor: pointer;
+      /* no double-tap-zoom / 300ms tap delay on touch screens */
+      touch-action: manipulation;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -51,7 +53,8 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 100%;
     }
-    .wardley-root:hover .wardley-card {
+    .wardley-root:hover .wardley-card,
+    .wardley-root:active .wardley-card {
       --y: -10px;
       --s: 1.07;
     }

@@ -24,7 +24,11 @@ export interface ShortcutDescriptor {
   id: string;
   /** i18n key; the label is resolved by the host. */
   labelKey: string;
-  /** Default key combos per platform, each as an array, e.g. `['Mod', 'z']`. */
+  /**
+   * Default keys per platform, as a **sequence of keystrokes**. Each
+   * keystroke is a dash-joined combo, e.g. `['Mod-z']` (single keystroke)
+   * or `['w', 'c']` (chord: press `w`, then `c`).
+   */
   defaultKeys: { mac: string[]; other: string[] };
   scope: ShortcutScope;
   /** `'core'` or the owning optional-block flag, for per-framework filtering. */
@@ -34,7 +38,10 @@ export interface ShortcutDescriptor {
   handler: (std: BlockStdScope) => UIEventHandler;
 }
 
-/** Host-provided rebinding table: combo array per id, or `'disabled'`. */
+/**
+ * Host-provided rebinding table: keystroke sequence per id (same shape as
+ * {@link ShortcutDescriptor.defaultKeys}), or `'disabled'`.
+ */
 export type ShortcutOverrides = Record<string, string[] | 'disabled'>;
 
 export interface ShortcutConflict {
@@ -69,13 +76,15 @@ const platformKeys = (d: ShortcutDescriptor) =>
   IS_MAC ? d.defaultKeys.mac : d.defaultKeys.other;
 
 /**
- * Canonicalize a combo (array of keys) so equivalent spellings compare equal:
- * modifiers are lowercased/sorted and `Mod` resolves to the platform modifier;
- * the final key is lowercased (Shift is a separate modifier).
+ * Canonicalize one keystroke (dash-joined combo like `'Mod-z'`) so equivalent
+ * spellings compare equal: modifiers are lowercased/sorted and `Mod` resolves
+ * to the platform modifier; the final key is lowercased (Shift is a separate
+ * modifier).
  */
-export function canonicalCombo(keys: string[]): string {
-  const key = (keys.at(-1) ?? '').toLowerCase();
-  const mods = keys
+function canonicalKeystroke(keystroke: string): string {
+  const parts = keystroke.split(/-(?!$)/);
+  const key = (parts.at(-1) ?? '').toLowerCase();
+  const mods = parts
     .slice(0, -1)
     .map(m => {
       const l = m.toLowerCase();
@@ -88,6 +97,15 @@ export function canonicalCombo(keys: string[]): string {
     })
     .sort();
   return [...mods, key].join('-');
+}
+
+/**
+ * Canonicalize a keystroke sequence (see {@link ShortcutDescriptor.defaultKeys})
+ * so equivalent spellings compare equal, e.g. `['Cmd-z']` ≡ `['Meta-z']` and
+ * `['w', 'Shift-C']` ≡ `['w', 'shift-c']`.
+ */
+export function canonicalCombo(keys: string[]): string {
+  return keys.map(canonicalKeystroke).join(' ');
 }
 
 /**
@@ -126,7 +144,9 @@ export function resolveKeymap(
     }
 
     boundBy.set(canonical, d.id);
-    keymap[keys.join('-')] = d.handler(std);
+    // A multi-keystroke sequence becomes a space-separated chord binding,
+    // resolved by the dispatcher's keymap (see `bindKeymap`).
+    keymap[keys.join(' ')] = d.handler(std);
   }
 
   return { keymap, conflicts };
@@ -138,8 +158,10 @@ export function resolveKeymap(
  * and binds via the normal dispatcher keymap mechanism. Re-runs whenever the
  * specs are rebuilt (e.g. a framework is toggled on/off).
  *
- * Only `'global'` scope is wired today; `'page'`/`'edgeless'` scoping is a
- * follow-up.
+ * Scoping works by registration site: `'global'` is installed by the root
+ * view extension for every editor, while `'page'`/`'edgeless'` installers are
+ * registered only in the matching view-extension branch, so their shortcuts
+ * exist only when that editor mode is active.
  */
 export function ShortcutKeymapExtension(
   scope: ShortcutScope = 'global'
