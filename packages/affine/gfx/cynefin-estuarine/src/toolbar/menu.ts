@@ -6,7 +6,14 @@ import { Bound } from '@labre/global/gfx';
 import { css, html, LitElement } from 'lit';
 
 import { REF_H as CYN_H, REF_W as CYN_W } from '../cynefin/consts';
-import { REF_H as EST_H, REF_W as EST_W } from '../estuarine/consts';
+import {
+  HEX_FILL,
+  HEX_SIZE,
+  HEX_STROKE,
+  HEX_VERTICES,
+  REF_H as EST_H,
+  REF_W as EST_W,
+} from '../estuarine/consts';
 import {
   cynefinMenuIcon,
   estuarineMenuIcon,
@@ -15,18 +22,6 @@ import {
 
 /** Estuarine map default size (REF aspect, scaled up so it reads on canvas). */
 const MAP_SCALE = 1.2;
-const HEX_SIZE = 60;
-const HEX_FILL = '#34c724';
-const HEX_STROKE = '#1f1f1f';
-/** Flat-top regular hexagon, normalized vertices. */
-const HEX_VERTICES: number[][] = [
-  [1, 0.5],
-  [0.75, 0.933],
-  [0.25, 0.933],
-  [0, 0.5],
-  [0.25, 0.067],
-  [0.75, 0.067],
-];
 
 /**
  * The popover above the toolbar hosting both frameworks: create the Cynefin

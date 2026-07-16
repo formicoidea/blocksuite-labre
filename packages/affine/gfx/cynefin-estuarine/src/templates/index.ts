@@ -8,19 +8,14 @@ import {
 import { FontFamily, ShapeStyle, TextAlign } from '@labre/affine-model';
 
 import { REF_H as CYN_H, REF_W as CYN_W } from '../cynefin/consts';
-import { REF_H as EST_H, REF_W as EST_W } from '../estuarine/consts';
-
-const HEX_SIZE = 60;
-const HEX_FILL = '#34c724';
-const HEX_STROKE = '#1f1f1f';
-const HEX_VERTICES = [
-  [1, 0.5],
-  [0.75, 0.933],
-  [0.25, 0.933],
-  [0, 0.5],
-  [0.25, 0.067],
-  [0.75, 0.067],
-];
+import {
+  HEX_FILL,
+  HEX_SIZE,
+  HEX_STROKE,
+  HEX_VERTICES,
+  REF_H as EST_H,
+  REF_W as EST_W,
+} from '../estuarine/consts';
 
 function sticky(x: number, y: number, text: string) {
   return {
