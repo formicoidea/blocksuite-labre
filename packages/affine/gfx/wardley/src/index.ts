@@ -1,1 +1,1 @@
-export {};
+export { wardleyShortcuts } from './shortcuts';
