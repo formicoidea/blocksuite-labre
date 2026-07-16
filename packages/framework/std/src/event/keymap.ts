@@ -98,8 +98,9 @@ export interface ChordInterceptorRegistry {
  * Bind a keymap. A binding key is one keystroke (`'Mod-z'`) or a
  * space-separated sequence of keystrokes (`'w c'`): pressing the first
  * keystroke arms the sequence, and the next keystroke (within a short
- * timeout) resolves it. A failed continuation falls through to the regular
- * single-keystroke bindings.
+ * timeout) resolves it. The prefix scopes the continuation to its namespace:
+ * an unknown continuation is swallowed (no such shortcut), it never falls
+ * through to the generic single-keystroke bindings.
  *
  * Pass `interceptors` (the dispatcher does) so an armed chord consumes its
  * continuation before earlier-registered handlers; without it, continuations
@@ -177,10 +178,12 @@ export function bindKeymap(
     const matches = armed.filter(s => s.steps[armedDepth] === stroke);
 
     if (!matches.length) {
-      // No continuation matched: forget the prefix and let this keystroke
-      // fall through to the normal chain.
+      // No continuation matched. The prefix scopes the next keystroke to
+      // its namespace ("in wardley, shortcut X"): an unknown key there
+      // means "no such shortcut" and is swallowed, never handed to the
+      // generic single-key bindings (w+e must not trigger the eraser).
       disarm();
-      return false;
+      return true;
     }
 
     const complete = matches.find(s => s.steps.length === armedDepth + 1);
