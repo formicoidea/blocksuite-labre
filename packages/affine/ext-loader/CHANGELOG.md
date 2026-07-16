@@ -1,5 +1,12 @@
 # @labre/affine-ext-loader
 
+## 0.29.1
+
+### Patch Changes
+
+- @labre/global@0.29.1
+- @labre/store@0.29.1
+
 ## 0.29.0
 
 ### Patch Changes
