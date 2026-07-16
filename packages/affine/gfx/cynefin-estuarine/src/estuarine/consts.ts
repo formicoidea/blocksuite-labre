@@ -74,7 +74,7 @@ export const LABEL_LETTER_SPACING = 4;
  * polygon vertices, clockwise from the top vertex. Shared by the toolbar
  * menu and the templates so the two can never drift apart.
  */
-export const HEX_SIZE = 60;
+export const HEX_SIZE = 120;
 export const HEX_FILL = '#34c724';
 export const HEX_STROKE = '#1f1f1f';
 export const HEX_VERTICES: number[][] = [
