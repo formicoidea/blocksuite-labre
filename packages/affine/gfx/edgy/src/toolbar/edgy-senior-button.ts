@@ -26,6 +26,8 @@ export class EdgelessEdgySeniorButton extends EdgelessToolbarToolMixin(
       position: relative;
       overflow: hidden;
       cursor: pointer;
+      /* no double-tap-zoom / 300ms tap delay on touch screens */
+      touch-action: manipulation;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -49,7 +51,8 @@ export class EdgelessEdgySeniorButton extends EdgelessToolbarToolMixin(
       width: 100%;
       height: 100%;
     }
-    .edgy-root:hover .edgy-card {
+    .edgy-root:hover .edgy-card,
+    .edgy-root:active .edgy-card {
       --y: -10px;
       --s: 1.07;
     }

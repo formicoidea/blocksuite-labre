@@ -23,6 +23,8 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
       position: relative;
       overflow: hidden;
       cursor: pointer;
+      /* no double-tap-zoom / 300ms tap delay on touch screens */
+      touch-action: manipulation;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -42,7 +44,8 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
       width: 100%;
       height: 100%;
     }
-    .ce-root:hover .ce-card {
+    .ce-root:hover .ce-card,
+    .ce-root:active .ce-card {
       --y: -10px;
       --s: 1.07;
     }
