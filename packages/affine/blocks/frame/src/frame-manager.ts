@@ -298,7 +298,14 @@ export class EdgelessFrameManager extends GfxExtension {
           ) {
             return;
           }
-          this._adoptNewlyCreatedElement(frame, payload.model);
+          if (payload.isLocal) {
+            this._adoptNewlyCreatedElement(frame, payload.model);
+          } else {
+            // Remote adds: adopt only. The originating client reassigns the
+            // index and syncs it — reindexing here too would produce
+            // competing concurrent writes for the same element.
+            this.addElementsToFrame(frame, [payload.model]);
+          }
         }
       })
     );
@@ -317,9 +324,15 @@ export class EdgelessFrameManager extends GfxExtension {
    * intentionally at the back so it renders behind its content.
    */
   private _adoptNewlyCreatedElement(frame: FrameBlockModel, element: GfxModel) {
+    // An element that is ALREADY a child (undo re-add: childElementIds are
+    // restored in the same transaction, observers fire after) keeps its
+    // restored index — reindexing would corrupt undo and push a fresh op
+    // onto the history stack. Only a genuinely new adoption is reindexed.
+    const alreadyChild = frame.hasChild(element);
+
     this.addElementsToFrame(frame, [element]);
 
-    if (isFrameBlock(element) || !frame.hasChild(element)) {
+    if (alreadyChild || isFrameBlock(element) || !frame.hasChild(element)) {
       return;
     }
 

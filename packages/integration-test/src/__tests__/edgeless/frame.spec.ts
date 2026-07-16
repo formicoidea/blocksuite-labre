@@ -163,6 +163,42 @@ describe('frame', () => {
     expect(service.layer.compare(bottom, top)).toBeLessThan(0);
   });
 
+  test('undo of a deleted frame child restores its z-order untouched', async () => {
+    const surface = service.surface;
+
+    surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,100,100]',
+    });
+    await wait();
+    service.frame.createFrameOnBound(new Bound(-50, -50, 300, 250));
+    await wait();
+
+    // a gfx BLOCK inside the frame (the blockUpdated adoption path)
+    const noteId = service.doc.addBlock(
+      'affine:note',
+      { xywh: '[20,20,60,60]' },
+      service.doc.root!.id
+    );
+    await wait();
+
+    const note = service.doc.getBlock(noteId)!.model as FrameBlockModel;
+    const restoredIndex = note.props.index;
+
+    service.doc.captureSync();
+    service.doc.deleteBlock(note);
+    service.doc.captureSync();
+    await wait();
+
+    service.doc.undo();
+    await wait();
+
+    // the re-added child keeps its restored index — no hoist to the top
+    const reAdded = service.doc.getBlock(noteId)!.model as FrameBlockModel;
+    expect(reAdded.props.index).toBe(restoredIndex);
+  });
+
   test('descendant of frame should not contain itself', async () => {
     const frameIds = [1, 2, 3].map(i => {
       return service.doc.addBlock(
