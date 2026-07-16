@@ -25,6 +25,7 @@ import {
   ShapeType,
   StrokeStyle,
   TextAlign,
+  TextFitMode,
   TextResizing,
   type TextStyleProps,
   TextVerticalAlign,
@@ -77,6 +78,7 @@ export type ShapeProps = BaseElementProps & {
   textHorizontalAlign?: TextAlign;
   textVerticalAlign?: TextVerticalAlign;
   textResizing?: TextResizing;
+  textFitMode?: TextFitMode;
   maxWidth?: false | number;
 } & Partial<TextStyleProps>;
 
@@ -233,6 +235,14 @@ export class ShapeElementModel extends GfxPrimitiveElementModel<ShapeProps> {
 
   @field(TextResizing.AUTO_HEIGHT as TextResizing)
   accessor textResizing: TextResizing = TextResizing.AUTO_HEIGHT;
+
+  /**
+   * How the text and the shape bounds reconcile (grow / contained /
+   * overflow). Documents created before this prop existed read the `Grow`
+   * fallback — the pre-existing behavior.
+   */
+  @field(TextFitMode.Grow as TextFitMode)
+  accessor textFitMode: TextFitMode = TextFitMode.Grow;
 
   @field(TextVerticalAlign.Center as TextVerticalAlign)
   accessor textVerticalAlign!: TextVerticalAlign;

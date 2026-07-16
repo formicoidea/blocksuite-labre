@@ -7,6 +7,7 @@ import {
   PointStyle,
   ShapeStyle,
   StrokeStyle,
+  TextFitMode,
   type WardleyBgVariant,
 } from '@labre/affine-model';
 import {
@@ -273,6 +274,8 @@ export function createWardleyInertia(
     shapeStyle: ShapeStyle.General,
     roughness: 0,
     radius: 0,
+    // the inertia bar has a canonical size: text overflows, never deforms
+    textFitMode: TextFitMode.Overflow,
     xywh: new Bound(centerX - w / 2, centerY - h / 2, w, h).serialize(),
   });
   track(gfx, source, 'FrameworkElementAdded', 'node:inertia');

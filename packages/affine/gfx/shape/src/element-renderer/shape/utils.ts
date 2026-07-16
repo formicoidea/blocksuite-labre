@@ -9,11 +9,12 @@ import {
   wrapText,
   wrapTextDeltas,
 } from '@labre/affine-gfx-text';
-import type {
-  LocalShapeElementModel,
-  ShapeElementModel,
-  TextAlign,
-  TextVerticalAlign,
+import {
+  type LocalShapeElementModel,
+  type ShapeElementModel,
+  type TextAlign,
+  TextFitMode,
+  type TextVerticalAlign,
 } from '@labre/affine-model';
 import { FeatureFlagService } from '@labre/affine-shared/services';
 import type { Bound, SerializedXYWH } from '@labre/global/gfx';
@@ -281,11 +282,56 @@ export function verticalOffset(
       ? verticalPadding
       : height - lineHeight * lines.length - verticalPadding;
 }
+/** The floor for `TextFitMode.Contained` font shrinking. */
+export const MIN_CONTAINED_FONT_SIZE = 8;
+
+/**
+ * The font size actually used to lay out a shape's text. In
+ * {@link TextFitMode.Contained} it is the largest size (at most the
+ * configured `fontSize`, at least {@link MIN_CONTAINED_FONT_SIZE}) whose
+ * wrapped text fits the shape's fixed bounds; every other mode uses the
+ * configured size as-is. Local shape models have no `textFitMode` and always
+ * use the configured size.
+ */
+export function effectiveShapeFontSize(
+  model: ShapeElementModel | LocalShapeElementModel
+): number {
+  const mode =
+    'textFitMode' in model ? model.textFitMode : TextFitMode.Grow;
+  const text = model.text;
+  if (mode !== TextFitMode.Contained || !text || typeof text === 'string') {
+    return model.fontSize;
+  }
+
+  const [verticalPadding, horiPadding] = model.padding;
+  const availableW = model.w - horiPadding * 2;
+  const availableH = model.h - verticalPadding * 2;
+
+  // Linear scan from the configured size down: shape text is short, so the
+  // handful of measure passes is cheap and keeps the logic obvious.
+  for (let size = model.fontSize; size > MIN_CONTAINED_FONT_SIZE; size--) {
+    const font = getFontString({
+      fontStyle: model.fontStyle,
+      fontWeight: model.fontWeight,
+      fontSize: size,
+      fontFamily: model.fontFamily,
+    });
+    const lines = deltaInsertsToChunks(wrapTextDeltas(text, font, availableW));
+    const lineHeight = getLineHeight(model.fontFamily, size, model.fontWeight);
+    if (lineHeight * lines.length <= availableH) {
+      return size;
+    }
+  }
+  return MIN_CONTAINED_FONT_SIZE;
+}
+
 export function normalizeShapeBound(
   shape: ShapeElementModel,
   bound: Bound
 ): Bound {
-  if (!shape.text) return bound;
+  // Contained / overflow: the shape's bounds are user-controlled and never
+  // grown (or clamped) to fit the text.
+  if (!shape.text || shape.textFitMode !== TextFitMode.Grow) return bound;
 
   const [verticalPadding, horiPadding] = shape.padding;
   const yText = shape.text;

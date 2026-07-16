@@ -26,7 +26,7 @@ export class EdgelessDddContextMapMenu extends DddMenuBase {
     const surface = this.surface;
     if (!surface) return;
     const { cx, cy } = this.center;
-    const id = addBubble(surface, this.edgeless.std, cx, cy, 'Bounded Context');
+    const id = addBubble(surface, cx, cy, 'Bounded Context');
     this.track('FrameworkElementAdded', 'bounded-context');
     this.finish(id);
   }

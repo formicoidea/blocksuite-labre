@@ -6,5 +6,7 @@ export * from './element-view';
 export * from './overlay';
 export * from './polygon-tool';
 export * from './shape-tool';
+export * from './shortcuts';
 export * from './text';
+export * from './text-fit';
 export * from './toolbar';
