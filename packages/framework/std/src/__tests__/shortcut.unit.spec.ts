@@ -41,6 +41,11 @@ describe('canonicalCombo', () => {
     // A sequence is distinct from a single keystroke with the same letters.
     expect(canonicalCombo(['w', 'c'])).not.toBe(canonicalCombo(['w-c']));
   });
+
+  test('matches the runtime parser: Space ≡ " ", invalid modifier → null', () => {
+    expect(canonicalCombo(['Space'])).toBe(canonicalCombo([' ']));
+    expect(canonicalCombo(['Shft-z'])).toBeNull();
+  });
 });
 
 describe('resolveKeymap', () => {
@@ -75,6 +80,46 @@ describe('resolveKeymap', () => {
     );
     expect(keymap['Mod-z']).toBeUndefined();
     expect(keymap['Ctrl-Shift-Z']).toBeDefined();
+  });
+
+  test('a legacy v0.29 modifiers-array override still binds one combo', () => {
+    const { keymap } = resolveKeymap(
+      [desc('undo', ['Mod-z'])],
+      { undo: ['Ctrl', 'Shift', 'Z'] },
+      'global',
+      std
+    );
+    // folded into a single keystroke, not a 3-step chord
+    expect(keymap['Ctrl-Shift-Z']).toBeDefined();
+    expect(Object.keys(keymap)).toHaveLength(1);
+  });
+
+  test('legacy folding leaves genuine chords alone', () => {
+    const { keymap } = resolveKeymap(
+      // 'c' is a single-letter alias but a valid chord prefix — not folded
+      [desc('x', ['c', 'x'], { scope: 'edgeless' })],
+      {},
+      'edgeless',
+      std
+    );
+    expect(Object.keys(keymap)).toEqual(['c x']);
+  });
+
+  test('an invalid override is skipped instead of breaking the scope', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { keymap } = resolveKeymap(
+        [desc('undo', ['Mod-z']), desc('redo', ['Shift-Mod-z'])],
+        { undo: ['Shft-z'] },
+        'global',
+        std
+      );
+      // the bad override is dropped; the other descriptor still binds
+      expect(Object.keys(keymap)).toEqual(['Shift-Mod-z']);
+      expect(warn).toHaveBeenCalledOnce();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   test('an override can rebind a single keystroke to a sequence', () => {

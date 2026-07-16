@@ -2,6 +2,7 @@ import { IS_MAC } from '@labre/global/env';
 import type { ExtensionType } from '@labre/store';
 
 import type { UIEventHandler } from '../event/index.js';
+import { tryNormalizeKeyName } from '../event/keymap.js';
 import {
   ShortcutConflictReporterIdentifier,
   ShortcutIdentifier,
@@ -40,7 +41,9 @@ export interface ShortcutDescriptor {
 
 /**
  * Host-provided rebinding table: keystroke sequence per id (same shape as
- * {@link ShortcutDescriptor.defaultKeys}), or `'disabled'`.
+ * {@link ShortcutDescriptor.defaultKeys}), or `'disabled'`. Tables persisted
+ * in the pre-chord v0.29 format (one combo as a modifiers array, e.g.
+ * `['Ctrl', 'Shift', 'Z']`) keep working — see {@link normalizeLegacyCombo}.
  */
 export type ShortcutOverrides = Record<string, string[] | 'disabled'>;
 
@@ -79,22 +82,18 @@ const platformKeys = (d: ShortcutDescriptor) =>
  * Canonicalize one keystroke (dash-joined combo like `'Mod-z'`) so equivalent
  * spellings compare equal: modifiers are lowercased/sorted and `Mod` resolves
  * to the platform modifier; the final key is lowercased (Shift is a separate
- * modifier).
+ * modifier). Delegates parsing to the runtime keymap parser so canonical
+ * equality always matches runtime binding equality (`'Space'` ≡ `' '`, same
+ * alias table). Returns `null` for an unparseable keystroke.
  */
-function canonicalKeystroke(keystroke: string): string {
-  const parts = keystroke.split(/-(?!$)/);
+function canonicalKeystroke(keystroke: string): string | null {
+  const normalized = tryNormalizeKeyName(keystroke);
+  if (normalized === null) return null;
+  const parts = normalized.split(/-(?!$)/);
   const key = (parts.at(-1) ?? '').toLowerCase();
   const mods = parts
     .slice(0, -1)
-    .map(m => {
-      const l = m.toLowerCase();
-      if (l === 'mod') return IS_MAC ? 'meta' : 'ctrl';
-      if (l === 'cmd' || l === 'm' || l === 'meta') return 'meta';
-      if (l === 'control' || l === 'c' || l === 'ctrl') return 'ctrl';
-      if (l === 'a' || l === 'alt') return 'alt';
-      if (l === 's' || l === 'shift') return 'shift';
-      return l;
-    })
+    .map(m => m.toLowerCase())
     .sort();
   return [...mods, key].join('-');
 }
@@ -102,10 +101,31 @@ function canonicalKeystroke(keystroke: string): string {
 /**
  * Canonicalize a keystroke sequence (see {@link ShortcutDescriptor.defaultKeys})
  * so equivalent spellings compare equal, e.g. `['Cmd-z']` ≡ `['Meta-z']` and
- * `['w', 'Shift-C']` ≡ `['w', 'shift-c']`.
+ * `['w', 'Shift-C']` ≡ `['w', 'shift-c']`. Returns `null` when any keystroke
+ * is invalid (unknown modifier) — callers must not bind such a sequence.
  */
-export function canonicalCombo(keys: string[]): string {
-  return keys.map(canonicalKeystroke).join(' ');
+export function canonicalCombo(keys: string[]): string | null {
+  const strokes = keys.map(canonicalKeystroke);
+  if (strokes.some(s => s === null)) return null;
+  return strokes.join(' ');
+}
+
+const LEGACY_MODIFIER = /^(mod|cmd|meta|ctrl|control|alt|shift)$/i;
+
+/**
+ * v0.29 compat: the previous released format expressed ONE combo as a
+ * modifiers array (`['Ctrl', 'Shift', 'Z']`). A bare multi-letter modifier
+ * name can never be a chord step (lone modifier presses are filtered by the
+ * dispatcher), so an array whose leading elements are all bare modifier
+ * names is unambiguously the legacy format — fold it into a single
+ * keystroke. Single-letter aliases (`c`, `m`, ...) are deliberately NOT
+ * folded: they are valid chord prefixes.
+ */
+export function normalizeLegacyCombo(keys: string[]): string[] {
+  if (keys.length > 1 && keys.slice(0, -1).every(k => LEGACY_MODIFIER.test(k))) {
+    return [keys.join('-')];
+  }
+  return keys;
 }
 
 /**
@@ -128,10 +148,20 @@ export function resolveKeymap(
     if (d.scope !== scope) continue;
     const override = overrides[d.id];
     if (override === 'disabled') continue;
-    const keys = override ?? platformKeys(d);
+    const keys = normalizeLegacyCombo(override ?? platformKeys(d));
     if (!keys.length) continue;
 
     const canonical = canonicalCombo(keys);
+    if (canonical === null) {
+      // Invalid keystroke (host override typo, unknown modifier): skip the
+      // binding instead of letting the keymap installer throw and take the
+      // whole scope down.
+      console.warn(
+        `[shortcut] invalid keys for "${d.id}" — not bound:`,
+        keys
+      );
+      continue;
+    }
     const existing = boundBy.get(canonical);
     if (existing) {
       const conflict = conflicts.find(c => c.combo === canonical);
