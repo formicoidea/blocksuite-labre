@@ -1,5 +1,19 @@
 # @labre/affine-inline-latex
 
+## 0.30.1
+
+### Patch Changes
+
+- @labre/affine-components@0.30.1
+- @labre/affine-ext-loader@0.30.1
+- @labre/affine-inline-reference@0.30.1
+- @labre/affine-model@0.30.1
+- @labre/affine-rich-text@0.30.1
+- @labre/affine-shared@0.30.1
+- @labre/global@0.30.1
+- @labre/std@0.30.1
+- @labre/store@0.30.1
+
 ## 0.30.0
 
 ### Patch Changes

@@ -1,5 +1,24 @@
 # @labre/affine-gfx-cynefin-estuarine
 
+## 0.30.1
+
+### Patch Changes
+
+- 09f1d82: Estuarine hexi cards: pointy-top orientation (the two-vertex symmetry
+  axis is now vertical — a 90° rotation) and default size doubled to
+  120×120. The hexi constants are shared between the toolbar menu and the
+  templates.
+  - @labre/affine-block-surface@0.30.1
+  - @labre/affine-ext-loader@0.30.1
+  - @labre/affine-gfx-pointer@0.30.1
+  - @labre/affine-gfx-template@0.30.1
+  - @labre/affine-model@0.30.1
+  - @labre/affine-shared@0.30.1
+  - @labre/affine-widget-edgeless-toolbar@0.30.1
+  - @labre/global@0.30.1
+  - @labre/std@0.30.1
+  - @labre/store@0.30.1
+
 ## 0.30.0
 
 ### Patch Changes

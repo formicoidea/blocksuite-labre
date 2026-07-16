@@ -1,5 +1,18 @@
 # @labre/affine-widget-edgeless-toolbar
 
+## 0.30.1
+
+### Patch Changes
+
+- @labre/affine-block-surface@0.30.1
+- @labre/affine-components@0.30.1
+- @labre/affine-ext-loader@0.30.1
+- @labre/affine-model@0.30.1
+- @labre/affine-rich-text@0.30.1
+- @labre/affine-shared@0.30.1
+- @labre/global@0.30.1
+- @labre/std@0.30.1
+
 ## 0.30.0
 
 ### Patch Changes
