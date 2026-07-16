@@ -1,4 +1,5 @@
 import { coreShortcuts } from '@labre/affine-block-root';
+import { wardleyShortcuts } from '@labre/affine-gfx-wardley';
 import type { ShortcutDescriptor } from '@labre/std';
 
 import { type BlockFlags, isBlockEnabled, type OptionalBlock } from './flags.js';
@@ -17,10 +18,11 @@ interface FrameworkShortcutGroup {
 /**
  * Per-framework shortcut contributions. A framework that adds shortcuts lists
  * them here (manifest) AND registers `ShortcutExtension(...)` in its view
- * (runtime binding); both are gated by its flag. No framework ships shortcuts
- * yet — the seam is ready and the manifest currently returns core only.
+ * (runtime binding); both are gated by its flag.
  */
-const FRAMEWORK_SHORTCUT_GROUPS: FrameworkShortcutGroup[] = [];
+const FRAMEWORK_SHORTCUT_GROUPS: FrameworkShortcutGroup[] = [
+  { owner: 'wardley', shortcuts: wardleyShortcuts },
+];
 
 const toEntry = (d: ShortcutDescriptor): ShortcutManifestEntry => ({
   id: d.id,
