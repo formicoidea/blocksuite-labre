@@ -67,3 +67,21 @@ export const AXIS_LABELS = {
 } as const;
 
 export const LABEL_LETTER_SPACING = 4;
+
+/**
+ * Hexi constraint node (Estuarine mapping). Pointy-top regular hexagon —
+ * two vertices on the VERTICAL symmetry axis (top/bottom) — as normalized
+ * polygon vertices, clockwise from the top vertex. Shared by the toolbar
+ * menu and the templates so the two can never drift apart.
+ */
+export const HEX_SIZE = 60;
+export const HEX_FILL = '#34c724';
+export const HEX_STROKE = '#1f1f1f';
+export const HEX_VERTICES: number[][] = [
+  [0.5, 0],
+  [0.933, 0.25],
+  [0.933, 0.75],
+  [0.5, 1],
+  [0.067, 0.75],
+  [0.067, 0.25],
+];
