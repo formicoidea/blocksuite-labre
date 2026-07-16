@@ -4,49 +4,55 @@ import { base, keyName } from 'w3c-keyname';
 
 import type { UIEventHandler } from './base.js';
 
-function normalizeKeyName(name: string) {
+/**
+ * Parse one keystroke name (`'Mod-z'`) into the runtime form used for event
+ * matching (`'Ctrl-z'` / `'Meta-z'`, `'Space'` → `' '`), or return `null`
+ * when a modifier is not recognized. Shared by the binding path (which
+ * throws on `null`) and the shortcut canonicalizer (which must validate
+ * host-provided overrides without throwing).
+ */
+export function tryNormalizeKeyName(name: string): string | null {
   const parts = name.split(/-(?!$)/);
   let result = parts.at(-1);
   if (result === 'Space') {
     result = ' ';
   }
   let alt, ctrl, shift, meta;
-  parts.slice(0, -1).forEach(mod => {
+  for (const mod of parts.slice(0, -1)) {
     if (/^(cmd|meta|m)$/i.test(mod)) {
       meta = true;
-      return;
-    }
-    if (/^a(lt)?$/i.test(mod)) {
+    } else if (/^a(lt)?$/i.test(mod)) {
       alt = true;
-      return;
-    }
-    if (/^(c|ctrl|control)$/i.test(mod)) {
+    } else if (/^(c|ctrl|control)$/i.test(mod)) {
       ctrl = true;
-      return;
-    }
-    if (/^s(hift)?$/i.test(mod)) {
+    } else if (/^s(hift)?$/i.test(mod)) {
       shift = true;
-      return;
-    }
-    if (/^mod$/i.test(mod)) {
+    } else if (/^mod$/i.test(mod)) {
       if (IS_MAC) {
         meta = true;
       } else {
         ctrl = true;
       }
-      return;
+    } else {
+      return null;
     }
-
-    throw new BlockSuiteError(
-      ErrorCode.EventDispatcherError,
-      'Unrecognized modifier name: ' + mod
-    );
-  });
+  }
   if (alt) result = 'Alt-' + result;
   if (ctrl) result = 'Ctrl-' + result;
   if (meta) result = 'Meta-' + result;
   if (shift) result = 'Shift-' + result;
   return result as string;
+}
+
+function normalizeKeyName(name: string) {
+  const normalized = tryNormalizeKeyName(name);
+  if (normalized === null) {
+    throw new BlockSuiteError(
+      ErrorCode.EventDispatcherError,
+      'Unrecognized modifier name: ' + name
+    );
+  }
+  return normalized;
 }
 
 function modifiers(name: string, event: KeyboardEvent, shift = true) {
@@ -77,15 +83,40 @@ function isTypingTarget(event: KeyboardEvent) {
 }
 
 /**
+ * Lets an armed chord preempt the rest of the dispatcher chain: the
+ * continuation handler registered here must run BEFORE every existing keyDown
+ * handler (the dispatcher unshifts new handlers, so registering at arm time
+ * achieves this). Without it, a chord like `w c` would lose its second
+ * keystroke to an earlier single-key binding (e.g. `c` = connector tool).
+ */
+export interface ChordInterceptorRegistry {
+  /** Register a keyDown handler that runs first; returns a dispose fn. */
+  register(handler: UIEventHandler): () => void;
+}
+
+/**
  * Bind a keymap. A binding key is one keystroke (`'Mod-z'`) or a
  * space-separated sequence of keystrokes (`'w c'`): pressing the first
  * keystroke arms the sequence, and the next keystroke (within a short
- * timeout) resolves it. A failed second keystroke falls through to the
- * regular single-keystroke bindings.
+ * timeout) resolves it. A failed continuation falls through to the regular
+ * single-keystroke bindings.
+ *
+ * Pass `interceptors` (the dispatcher does) so an armed chord consumes its
+ * continuation before earlier-registered handlers; without it, continuations
+ * are only matched when this handler is reached in the chain.
  */
+/**
+ * A bound keymap handler. `dispose` tears down any armed chord state (pending
+ * timer + arm-time interceptor) — the owner of the binding MUST call it when
+ * the binding is disposed, otherwise an armed chord outlives its keymap for
+ * up to the chord timeout.
+ */
+export type KeymapHandler = UIEventHandler & { dispose: () => void };
+
 export function bindKeymap(
-  bindings: Record<string, UIEventHandler>
-): UIEventHandler {
+  bindings: Record<string, UIEventHandler>,
+  interceptors?: ChordInterceptorRegistry
+): KeymapHandler {
   const map: Record<string, UIEventHandler> = Object.create(null);
   const sequences: { steps: string[]; handler: UIEventHandler }[] = [];
 
@@ -104,6 +135,7 @@ export function bindKeymap(
   let armed: { steps: string[]; handler: UIEventHandler }[] = [];
   let armedDepth = 0;
   let armedTimer: ReturnType<typeof setTimeout> | null = null;
+  let disposeInterceptor: (() => void) | null = null;
 
   const disarm = () => {
     armed = [];
@@ -112,6 +144,10 @@ export function bindKeymap(
       clearTimeout(armedTimer);
       armedTimer = null;
     }
+    if (disposeInterceptor !== null) {
+      disposeInterceptor();
+      disposeInterceptor = null;
+    }
   };
 
   const rearmTimeout = () => {
@@ -119,46 +155,72 @@ export function bindKeymap(
     armedTimer = setTimeout(disarm, CHORD_TIMEOUT_MS);
   };
 
-  return ctx => {
+  /**
+   * Match one keystroke against the armed sequences. Returns true when the
+   * keystroke was consumed (advanced or completed a chord), false when it
+   * should fall through to the normal bindings (and the chord is disarmed).
+   */
+  const continueChord: UIEventHandler = ctx => {
+    const event = ctx.get('keyboardState').raw;
+    const name = keyName(event);
+
+    // A lone modifier press must not break an armed chord.
+    if (MODIFIER_KEYS.has(name)) return false;
+
+    // Focus moved into an editable mid-chord: give the keystroke back.
+    if (isTypingTarget(event)) {
+      disarm();
+      return false;
+    }
+
+    const stroke = modifiers(name, event);
+    const matches = armed.filter(s => s.steps[armedDepth] === stroke);
+
+    if (!matches.length) {
+      // No continuation matched: forget the prefix and let this keystroke
+      // fall through to the normal chain.
+      disarm();
+      return false;
+    }
+
+    const complete = matches.find(s => s.steps.length === armedDepth + 1);
+    if (complete) {
+      disarm();
+      complete.handler(ctx);
+      return true;
+    }
+    armed = matches;
+    armedDepth += 1;
+    rearmTimeout();
+    return true;
+  };
+
+  const run: UIEventHandler = ctx => {
     const state = ctx.get('keyboardState');
     const event = state.raw;
     const name = keyName(event);
 
     if (sequences.length && !isTypingTarget(event)) {
-      // A lone modifier press must not break an armed chord.
-      if (armedDepth > 0 && MODIFIER_KEYS.has(name)) {
-        return false;
+      // Without an interceptor registry, continuations are handled here.
+      if (armedDepth > 0 && !interceptors) {
+        if (MODIFIER_KEYS.has(name)) return false;
+        if (continueChord(ctx)) return true;
+        // fall through: the keystroke starts fresh below
       }
 
-      const stroke = modifiers(name, event);
-
-      if (armedDepth > 0) {
-        const matches = armed.filter(s => s.steps[armedDepth] === stroke);
-        if (matches.length) {
-          const complete = matches.find(
-            s => s.steps.length === armedDepth + 1
-          );
-          if (complete) {
-            disarm();
-            complete.handler(ctx);
-            return true;
-          }
-          armed = matches;
-          armedDepth += 1;
+      if (armedDepth === 0) {
+        const stroke = modifiers(name, event);
+        const starting = sequences.filter(s => s.steps[0] === stroke);
+        // An existing single binding on the prefix key wins over the chord.
+        if (starting.length && !map[stroke]) {
+          armed = starting;
+          armedDepth = 1;
           rearmTimeout();
+          if (interceptors) {
+            disposeInterceptor = interceptors.register(continueChord);
+          }
           return true;
         }
-        // No continuation matched: forget the prefix and treat this
-        // keystroke as a fresh one below.
-        disarm();
-      }
-
-      const starting = sequences.filter(s => s.steps[0] === stroke);
-      if (starting.length && !map[stroke]) {
-        armed = starting;
-        armedDepth = 1;
-        rearmTimeout();
-        return true;
       }
     }
 
@@ -193,6 +255,8 @@ export function bindKeymap(
 
     return false;
   };
+
+  return Object.assign(run, { dispose: disarm });
 }
 
 // In Android, the keypress event  dose not contain

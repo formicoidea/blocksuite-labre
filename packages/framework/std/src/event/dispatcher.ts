@@ -401,7 +401,13 @@ export class UIEventDispatcher extends LifeCycleWatcher {
     this.std.provider
       .getAll(KeymapIdentifier)
       .forEach(({ getter, options }) => {
-        this.bindHotkey(getter(std), options);
+        // One broken keymap (e.g. an invalid binding key) must not prevent
+        // every later keymap from being installed.
+        try {
+          this.bindHotkey(getter(std), options);
+        } catch (error) {
+          console.error('[keymap] failed to install a keymap:', error);
+        }
       });
   }
 
