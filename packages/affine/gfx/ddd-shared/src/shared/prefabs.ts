@@ -5,10 +5,12 @@ import {
   PointStyle,
   ShapeStyle,
   StrokeStyle,
+  TextFitMode,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxController } from '@labre/std/gfx';
+import * as Y from 'yjs';
 
 import {
   CLOUD,
@@ -50,6 +52,18 @@ interface ShapeOpts {
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
+  /**
+   * Shape-owned centred label. The text belongs to the shape itself (edited
+   * by double-click, moves/resizes with it) with the given text-fit mode —
+   * `contained` mimics a physical post-it.
+   */
+  label?: {
+    text: string;
+    color: string;
+    fontFamily: string;
+    fontSize: number;
+    fit: TextFitMode;
+  };
 }
 
 function addShape(
@@ -60,7 +74,7 @@ function addShape(
   h: number,
   opts: ShapeOpts
 ): string {
-  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0 } = opts;
+  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label } = opts;
   return surface.addElement({
     type: 'shape',
     shapeType,
@@ -72,6 +86,16 @@ function addShape(
     roughness: 0,
     radius,
     xywh: new Bound(x, y, w, h).serialize(),
+    ...(label
+      ? {
+          text: new Y.Text(label.text),
+          color: label.color,
+          fontFamily: label.fontFamily,
+          fontSize: label.fontSize,
+          textAlign: 'center',
+          textFitMode: label.fit,
+        }
+      : {}),
   });
 }
 
@@ -99,7 +123,13 @@ function addText(
   });
 }
 
-/** A post-it: faux-shadow rect + coloured face + centred handwriting label, grouped. */
+/**
+ * A post-it: faux-shadow rect + coloured face whose label is the face's OWN
+ * shape text in `contained` fit mode — like a real post-it, the box size is
+ * fixed and the handwriting shrinks to fit. Grouped so shadow and face move
+ * together. (Stickies created before the text-fit feature carry a separate
+ * text element; they keep working untouched.)
+ */
 export function addSticky(
   surface: Surface,
   std: BlockStdScope,
@@ -115,37 +145,46 @@ export function addSticky(
     fill: SHADOW_COLOR,
     radius,
   });
-  const face = addShape(surface, cx - half, cy - half, size, size, { shapeType, fill, radius });
-  const lbl = addText(
-    surface,
-    cx - half + 10,
-    cy - STICKY_FONT_SIZE / 2,
-    size - 20,
-    label,
-    text,
-    STICKY_FONT,
-    STICKY_FONT_SIZE
-  );
-  return groupIds(std, [shadow, face, lbl]);
+  const face = addShape(surface, cx - half, cy - half, size, size, {
+    shapeType,
+    fill,
+    radius,
+    label: {
+      text: label,
+      color: text,
+      fontFamily: STICKY_FONT,
+      fontSize: STICKY_FONT_SIZE,
+      fit: TextFitMode.Contained,
+    },
+  });
+  return groupIds(std, [shadow, face]);
 }
 
-/** A Context Map bounded-context bubble (rounded pill + centred label). */
+/**
+ * A Context Map bounded-context bubble: a rounded pill whose label is the
+ * pill's own shape text in `overflow` fit mode (fixed pill, fixed font — a
+ * long context name may spill out rather than deform the map).
+ */
 export function addBubble(
   surface: Surface,
-  std: BlockStdScope,
   cx: number,
   cy: number,
   label: string
 ): string {
   const { w, h, radius, fill, stroke, text } = CM_BUBBLE;
-  const box = addShape(surface, cx - w / 2, cy - h / 2, w, h, {
+  return addShape(surface, cx - w / 2, cy - h / 2, w, h, {
     fill,
     stroke,
     strokeWidth: 1.5,
     radius,
+    label: {
+      text: label,
+      color: text,
+      fontFamily: LABEL_FONT,
+      fontSize: LABEL_FONT_SIZE,
+      fit: TextFitMode.Overflow,
+    },
   });
-  const lbl = addText(surface, cx - w / 2 + 8, cy - LABEL_FONT_SIZE / 2, w - 16, label, text, LABEL_FONT, LABEL_FONT_SIZE);
-  return groupIds(std, [box, lbl]);
 }
 
 /** A Core Domain dot (sub-domain / bounded context); optional label to its right. */
