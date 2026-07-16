@@ -107,19 +107,22 @@ describe('bindKeymap chords', () => {
     expect(link).not.toHaveBeenCalled();
   });
 
-  test('an unmatched second keystroke falls through to single bindings', () => {
+  test('an unmatched second keystroke is swallowed, not handed to single bindings', () => {
     const chord = vi.fn(() => true);
     const single = vi.fn(() => true);
     const h = harness();
     h.bind({ 'w c': chord, x: single });
 
     h.press('w');
+    // 'x' has no meaning in the armed namespace: nothing happens.
     expect(h.press('x')).toBe(true);
     expect(chord).not.toHaveBeenCalled();
-    expect(single).toHaveBeenCalledOnce();
-    // The prefix was forgotten: 'c' alone does nothing.
+    expect(single).not.toHaveBeenCalled();
+    // The prefix was forgotten: 'c' alone does nothing, 'x' alone works again.
     expect(h.press('c')).toBe(false);
     expect(chord).not.toHaveBeenCalled();
+    expect(h.press('x')).toBe(true);
+    expect(single).toHaveBeenCalledOnce();
   });
 
   test('an armed prefix expires after the timeout', () => {

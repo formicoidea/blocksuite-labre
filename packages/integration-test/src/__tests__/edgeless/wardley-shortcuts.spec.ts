@@ -45,6 +45,22 @@ describe('wardley canvas shortcuts', () => {
     expect(shapes.length).toBe(1);
   });
 
+  test('an unknown key in the armed wardley namespace does nothing (w+e ≠ eraser)', async () => {
+    const before = service.gfx.tool.currentToolName$.peek();
+
+    key('w');
+    key('e'); // no wardley shortcut on 'e' — must NOT reach the eraser binding
+    await wait();
+
+    expect(service.gfx.tool.currentToolName$.peek()).toBe(before);
+    expect(service.surface.elementModels.length).toBe(0);
+
+    // the namespace was left: 'e' alone still reaches the eraser tool
+    key('e');
+    await wait();
+    expect(service.gfx.tool.currentToolName$.peek()).toBe('eraser');
+  });
+
   test('the chord prefix expires and does not leak into single keys', async () => {
     key('w');
     // wait past the chord timeout (1.2s)

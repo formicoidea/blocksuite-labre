@@ -1,6 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import { ShapeStyle } from '@labre/affine-model';
+import { ShapeStyle, TextFitMode } from '@labre/affine-model';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
 import { css, html, LitElement } from 'lit';
@@ -115,6 +115,8 @@ export class EdgelessCynefinEstuarineMenu extends EdgelessToolbarToolMixin(
       strokeWidth: 2,
       shapeStyle: ShapeStyle.General,
       roughness: 0,
+      // hexi constraints behave like post-its: fixed hex, text shrinks
+      textFitMode: TextFitMode.Contained,
       xywh: new Bound(
         cx - HEX_SIZE / 2,
         cy - HEX_SIZE / 2,

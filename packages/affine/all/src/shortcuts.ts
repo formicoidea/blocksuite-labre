@@ -1,4 +1,5 @@
 import { coreShortcuts } from '@labre/affine-block-root';
+import { shapeShortcuts } from '@labre/affine-gfx-shape';
 import { wardleyShortcuts } from '@labre/affine-gfx-wardley';
 import type { ShortcutDescriptor } from '@labre/std';
 
@@ -60,5 +61,10 @@ export function buildShortcutManifest(
 export function getShortcutManifest(
   flags?: BlockFlags
 ): ShortcutManifestEntry[] {
-  return buildShortcutManifest(coreShortcuts, FRAMEWORK_SHORTCUT_GROUPS, flags);
+  return buildShortcutManifest(
+    // Shapes are core canvas: their shortcuts are always-on, like root's.
+    [...coreShortcuts, ...shapeShortcuts],
+    FRAMEWORK_SHORTCUT_GROUPS,
+    flags
+  );
 }

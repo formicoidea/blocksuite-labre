@@ -7,6 +7,7 @@ import {
   PointStyle,
   ShapeStyle,
   StrokeStyle,
+  TextFitMode,
 } from '@labre/affine-model';
 import {
   EditPropsStore,
@@ -113,6 +114,9 @@ export class EdgelessBpmnMenu extends EdgelessToolbarToolMixin(LitElement) {
       fontFamily: FontFamily.Inter,
       fontSize: INNER_FONT_SIZE,
       textAlign: 'center',
+      // BPMN symbols have normative sizes: a long label overflows rather
+      // than deforming the node
+      textFitMode: TextFitMode.Overflow,
       xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
     });
     this._track('FrameworkElementAdded', `node:${kind}`);

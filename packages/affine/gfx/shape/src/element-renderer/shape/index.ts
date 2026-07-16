@@ -27,6 +27,7 @@ import { ellipse } from './ellipse.js';
 import { polygon } from './polygon.js';
 import { rect } from './rect.js';
 import { triangle } from './triangle.js';
+import { effectiveShapeFontSize } from './utils.js';
 import { type Colors, horizontalOffset, verticalOffset } from './utils.js';
 
 const shapeRenderers: Record<
@@ -94,7 +95,6 @@ function renderText(
     x,
     y,
     text,
-    fontSize,
     fontFamily,
     fontWeight,
     textAlign,
@@ -105,8 +105,15 @@ function renderText(
   } = model;
   if (!text) return;
 
+  // Contained mode shrinks the layout font size so the text fits the bounds.
+  const fontSize = effectiveShapeFontSize(model);
   const [verticalPadding, horPadding] = padding;
-  const font = getFontString(model);
+  const font = getFontString({
+    fontStyle: model.fontStyle,
+    fontWeight,
+    fontSize,
+    fontFamily,
+  });
   const { lineGap, lineHeight } = measureTextInDOM(
     fontFamily,
     fontSize,
