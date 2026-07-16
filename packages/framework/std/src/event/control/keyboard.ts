@@ -104,8 +104,20 @@ export class KeyboardControl {
     }
 
     // Build the binding once: it holds the chord (multi-keystroke) pending
-    // state, which must survive between keystrokes.
-    const binding = bindKeymap(keymap);
+    // state, which must survive between keystrokes. The interceptor registry
+    // lets an armed chord consume its continuation before earlier-registered
+    // handlers (the dispatcher runs the most recently added handler first).
+    const binding = bindKeymap(keymap, {
+      register: handler =>
+        this._dispatcher.add(
+          'keyDown',
+          ctx => {
+            if (this.composition) return false;
+            return handler(ctx);
+          },
+          options
+        ),
+    });
     disposables.add(
       this._dispatcher.add(
         'keyDown',
@@ -116,6 +128,9 @@ export class KeyboardControl {
         options
       )
     );
+    // Tear down any armed chord (pending timer + arm-time interceptor) with
+    // the binding, so a chord can never outlive its keymap.
+    disposables.add(() => binding.dispose());
     return () => disposables.dispose();
   }
 

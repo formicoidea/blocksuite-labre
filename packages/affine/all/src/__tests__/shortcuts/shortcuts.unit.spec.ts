@@ -20,6 +20,20 @@ describe('getShortcutManifest', () => {
     // Manifest entries carry metadata only.
     expect(getShortcutManifest()[0]).not.toHaveProperty('handler');
   });
+
+  test('lists the wardley chords when the flag is on, none when off', () => {
+    const entries = getShortcutManifest();
+    const wardley = entries.filter(e => e.owner === 'wardley');
+    expect(wardley.map(e => e.id)).toContain('wardley.addComponent');
+    expect(wardley.every(e => e.scope === 'edgeless')).toBe(true);
+    // Chord sequences: prefix 'w' then the action key.
+    expect(
+      entries.find(e => e.id === 'wardley.addComponent')?.defaultKeys.other
+    ).toEqual(['w', 'c']);
+
+    const offIds = getShortcutManifest({ wardley: false }).map(e => e.id);
+    expect(offIds.some(id => id.startsWith('wardley.'))).toBe(false);
+  });
 });
 
 describe('buildShortcutManifest', () => {

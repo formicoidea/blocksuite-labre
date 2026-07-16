@@ -3,8 +3,10 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
+import { ShortcutExtension } from '@labre/std';
 
 import { effects } from './effects';
+import { wardleyShortcuts } from './shortcuts';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
 import { WardleyInteraction, WardleyView } from './element-view';
@@ -34,6 +36,10 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       context.register(wardleySeniorTool);
       context.register(wardleyToolbarExtension);
       context.register(wardleyNodeToolbarExtension);
+      // Edgeless-scoped chords (w+c, w+l, ...). Registering here inherits
+      // both the wardley flag gating and the edgeless-only availability;
+      // the installer is ShortcutKeymapExtension('edgeless') in root.
+      context.register(ShortcutExtension(wardleyShortcuts));
     }
   }
 }
