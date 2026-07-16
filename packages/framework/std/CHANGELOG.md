@@ -1,5 +1,25 @@
 # @labre/std
 
+## 0.30.0
+
+### Minor Changes
+
+- 8de86f4: Shortcut manifest: chord sequences and per-mode scoping. A shortcut's keys are
+  now a sequence of keystrokes (`['Mod-z']`, or `['w', 'c']` for "press w, then
+  c"); the dispatcher keymap resolves multi-keystroke chords with a short arming
+  timeout, never while typing in an editable. The `'page'`/`'edgeless'` shortcut
+  scopes are now installed by the matching root view-extension branch, so scoped
+  shortcuts only exist in that editor mode.
+
+### Patch Changes
+
+- 9d0fe0c: A chord prefix now fully scopes the next keystroke to its namespace: an
+  unknown continuation (e.g. `w` then `e` when no wardley shortcut binds `e`)
+  is swallowed instead of falling through to the generic single-key tool
+  bindings. The prefix timeout and typing-in-editable behaviors are unchanged.
+  - @labre/global@0.30.0
+  - @labre/store@0.30.0
+
 ## 0.29.1
 
 ### Patch Changes

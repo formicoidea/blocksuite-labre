@@ -1,5 +1,33 @@
 # @labre/affine-gfx-bpmn
 
+## 0.30.0
+
+### Patch Changes
+
+- ecba791: Per-framework text-fit defaults. Event Storming stickies and Context Map
+  bubbles now carry their label as the shape's own text (contained /
+  overflow fit) instead of a separate grouped text element — double-click
+  edits in place and the box never deforms; previously created prefabs keep
+  their old structure and keep working. Estuarine hexi constraints default
+  to contained; BPMN nodes and the Wardley inertia bar default to overflow.
+- Updated dependencies [9d0fe0c]
+- Updated dependencies [ecba791]
+- Updated dependencies [8de86f4]
+  - @labre/std@0.30.0
+  - @labre/affine-model@0.30.0
+  - @labre/affine-gfx-shape@0.30.0
+  - @labre/affine-block-surface@0.30.0
+  - @labre/affine-components@0.30.0
+  - @labre/affine-gfx-connector@0.30.0
+  - @labre/affine-gfx-group@0.30.0
+  - @labre/affine-gfx-pointer@0.30.0
+  - @labre/affine-gfx-template@0.30.0
+  - @labre/affine-shared@0.30.0
+  - @labre/affine-widget-edgeless-toolbar@0.30.0
+  - @labre/affine-ext-loader@0.30.0
+  - @labre/global@0.30.0
+  - @labre/store@0.30.0
+
 ## 0.29.1
 
 ### Patch Changes
