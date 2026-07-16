@@ -25,21 +25,28 @@ const desc = (
 
 describe('canonicalCombo', () => {
   test('treats equivalent modifier spellings as equal', () => {
-    expect(canonicalCombo(['Cmd', 'z'])).toBe(canonicalCombo(['Meta', 'z']));
-    expect(canonicalCombo(['Control', 'c'])).toBe(canonicalCombo(['Ctrl', 'c']));
+    expect(canonicalCombo(['Cmd-z'])).toBe(canonicalCombo(['Meta-z']));
+    expect(canonicalCombo(['Control-c'])).toBe(canonicalCombo(['Ctrl-c']));
   });
 
   test('is order-independent for modifiers and lowercases the key', () => {
-    expect(canonicalCombo(['Shift', 'Ctrl', 'Z'])).toBe(
-      canonicalCombo(['Ctrl', 'Shift', 'z'])
+    expect(canonicalCombo(['Shift-Ctrl-Z'])).toBe(
+      canonicalCombo(['Ctrl-Shift-z'])
     );
+  });
+
+  test('canonicalizes each keystroke of a sequence', () => {
+    expect(canonicalCombo(['w', 'C'])).toBe(canonicalCombo(['w', 'c']));
+    expect(canonicalCombo(['w', 'Cmd-k'])).toBe(canonicalCombo(['w', 'Meta-k']));
+    // A sequence is distinct from a single keystroke with the same letters.
+    expect(canonicalCombo(['w', 'c'])).not.toBe(canonicalCombo(['w-c']));
   });
 });
 
 describe('resolveKeymap', () => {
-  test('binds default combos for the matching scope', () => {
+  test('binds default keystrokes for the matching scope', () => {
     const { keymap, conflicts } = resolveKeymap(
-      [desc('undo', ['Mod', 'z']), desc('redo', ['Shift', 'Mod', 'z'])],
+      [desc('undo', ['Mod-z']), desc('redo', ['Shift-Mod-z'])],
       {},
       'global',
       std
@@ -48,10 +55,21 @@ describe('resolveKeymap', () => {
     expect(conflicts).toEqual([]);
   });
 
+  test('binds a keystroke sequence as a space-separated chord', () => {
+    const { keymap, conflicts } = resolveKeymap(
+      [desc('wardley.addComponent', ['w', 'c'], { scope: 'edgeless' })],
+      {},
+      'edgeless',
+      std
+    );
+    expect(Object.keys(keymap)).toEqual(['w c']);
+    expect(conflicts).toEqual([]);
+  });
+
   test('an override changes the effective binding', () => {
     const { keymap } = resolveKeymap(
-      [desc('undo', ['Mod', 'z'])],
-      { undo: ['Ctrl', 'Shift', 'Z'] },
+      [desc('undo', ['Mod-z'])],
+      { undo: ['Ctrl-Shift-Z'] },
       'global',
       std
     );
@@ -59,9 +77,20 @@ describe('resolveKeymap', () => {
     expect(keymap['Ctrl-Shift-Z']).toBeDefined();
   });
 
+  test('an override can rebind a single keystroke to a sequence', () => {
+    const { keymap } = resolveKeymap(
+      [desc('undo', ['Mod-z'])],
+      { undo: ['u', 'z'] },
+      'global',
+      std
+    );
+    expect(keymap['Mod-z']).toBeUndefined();
+    expect(keymap['u z']).toBeDefined();
+  });
+
   test("'disabled' removes the binding", () => {
     const { keymap } = resolveKeymap(
-      [desc('undo', ['Mod', 'z'])],
+      [desc('undo', ['Mod-z'])],
       { undo: 'disabled' },
       'global',
       std
@@ -71,7 +100,7 @@ describe('resolveKeymap', () => {
 
   test('skips descriptors of other scopes', () => {
     const { keymap } = resolveKeymap(
-      [desc('zoom', ['Mod', '='], { scope: 'edgeless' })],
+      [desc('zoom', ['Mod-='], { scope: 'edgeless' })],
       {},
       'global',
       std
@@ -84,8 +113,8 @@ describe('resolveKeymap', () => {
     const second = vi.fn(() => true);
     const { keymap, conflicts } = resolveKeymap(
       [
-        desc('undo', ['Mod', 'z'], { handler: () => first }),
-        desc('other', ['Mod', 'z'], { handler: () => second }),
+        desc('undo', ['Mod-z'], { handler: () => first }),
+        desc('other', ['Mod-z'], { handler: () => second }),
       ],
       {},
       'global',
@@ -98,5 +127,19 @@ describe('resolveKeymap', () => {
     keymap['Mod-z']({} as never);
     expect(first).toHaveBeenCalledOnce();
     expect(second).not.toHaveBeenCalled();
+  });
+
+  test('reports a conflict between identical sequences', () => {
+    const { keymap, conflicts } = resolveKeymap(
+      [
+        desc('a', ['w', 'c'], { scope: 'edgeless' }),
+        desc('b', ['w', 'C'], { scope: 'edgeless' }),
+      ],
+      {},
+      'edgeless',
+      std
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(Object.keys(keymap)).toEqual(['w c']);
   });
 });

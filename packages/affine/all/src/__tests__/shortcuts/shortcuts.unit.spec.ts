@@ -6,7 +6,7 @@ import { buildShortcutManifest, getShortcutManifest } from '../../shortcuts.js';
 const desc = (id: string, owner: string): ShortcutDescriptor => ({
   id,
   labelKey: `label.${id}`,
-  defaultKeys: { mac: ['Mod', 'k'], other: ['Mod', 'k'] },
+  defaultKeys: { mac: ['Mod-k'], other: ['Mod-k'] },
   scope: 'global',
   owner,
   handler: () => () => true,
