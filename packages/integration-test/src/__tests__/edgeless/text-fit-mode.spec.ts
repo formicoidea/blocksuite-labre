@@ -1,7 +1,9 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
+  applyTextFitMode,
   effectiveShapeFontSize,
   MIN_CONTAINED_FONT_SIZE,
+  nextTextFitMode,
   normalizeShapeBound,
 } from '@labre/affine/gfx/shape';
 import type { ShapeElementModel } from '@labre/affine/model';
@@ -87,6 +89,36 @@ describe('shape text fit mode', () => {
     service.crud.updateElement(shape.id, { text: new Y.Text('ok') });
     await wait();
     expect(effectiveShapeFontSize(shape)).toBe(28);
+  });
+
+  test('cycling: grow → contained → overflow → grow, and grow re-clamps', async () => {
+    const shape = addShape({
+      text: new Y.Text('a fairly long text that needs wrapping room'),
+    });
+    await wait();
+
+    expect(nextTextFitMode(shape.textFitMode)).toBe(TextFitMode.Contained);
+
+    applyTextFitMode(service.std, [shape], TextFitMode.Contained);
+    await wait();
+    expect(shape.textFitMode).toBe(TextFitMode.Contained);
+
+    // shrink the shape below its text: allowed in contained mode
+    service.crud.updateElement(shape.id, { xywh: '[0,0,40,30]' });
+    await wait();
+    expect(shape.w).toBe(40);
+
+    applyTextFitMode(service.std, [shape], TextFitMode.Overflow);
+    await wait();
+    expect(shape.textFitMode).toBe(TextFitMode.Overflow);
+    expect(shape.w).toBe(40); // bounds untouched
+
+    // back to grow: the bounds are re-clamped to fit the text again
+    applyTextFitMode(service.std, [shape], TextFitMode.Grow);
+    await wait();
+    expect(shape.textFitMode).toBe(TextFitMode.Grow);
+    expect(shape.w).toBeGreaterThan(40);
+    expect(shape.h).toBeGreaterThan(30);
   });
 
   test('grow and overflow always use the configured font size', async () => {

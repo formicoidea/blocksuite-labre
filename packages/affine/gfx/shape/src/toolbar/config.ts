@@ -22,6 +22,7 @@ import {
   ShapeStyle,
   ShapeType,
   StrokeStyle,
+  TextFitMode,
 } from '@labre/affine-model';
 import {
   type ToolbarGenericAction,
@@ -35,7 +36,14 @@ import {
   renderMenu,
 } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
-import { AddTextIcon, EditIcon, ShapeIcon } from '@blocksuite/icons/lit';
+import {
+  AddTextIcon,
+  AutoHeightIcon,
+  AutoSizeIcon,
+  EditIcon,
+  ScaleAltIcon,
+  ShapeIcon,
+} from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
 import isEqual from 'lodash-es/isEqual';
@@ -43,8 +51,16 @@ import isEqual from 'lodash-es/isEqual';
 import { normalizeShapeBound } from '../element-renderer';
 import { ShapeElementView } from '../element-view';
 import type { ShapeToolOption } from '../shape-tool';
+import { applyTextFitMode, nextTextFitMode } from '../text-fit';
 import { mountShapeTextEditor } from '../text/edgeless-shape-text-editor';
 import { ShapeComponentConfig } from './shape-menu-config';
+
+/** Icon + label per text fit mode for the cycling toolbar button. */
+const TEXT_FIT_UI = {
+  [TextFitMode.Grow]: { icon: AutoHeightIcon(), label: 'Grow shape' },
+  [TextFitMode.Contained]: { icon: AutoSizeIcon(), label: 'Contained text' },
+  [TextFitMode.Overflow]: { icon: ScaleAltIcon(), label: 'Overflow text' },
+} as const;
 
 export const shapeToolbarConfig = {
   actions: [
@@ -297,6 +313,35 @@ export const shapeToolbarConfig = {
         if (view instanceof ShapeElementView) {
           view.enterVertexEditingMode();
         }
+      },
+    },
+    {
+      id: 'f2.text-fit',
+      when(ctx) {
+        const models = ctx.getSurfaceModelsByType(ShapeElementModel);
+        return (
+          models.length > 0 &&
+          models.every(model => !hasGrouped(model) && model.text)
+        );
+      },
+      content(ctx) {
+        const models = ctx.getSurfaceModelsByType(ShapeElementModel);
+        if (!models.length) return null;
+
+        const mode =
+          getMostCommonValue(models, 'textFitMode') ?? TextFitMode.Grow;
+        const next = nextTextFitMode(mode);
+        const { icon, label } = TEXT_FIT_UI[mode];
+
+        return html`
+          <editor-icon-button
+            aria-label="Text fit: ${label}"
+            .tooltip=${`Text fit: ${label} — click for ${TEXT_FIT_UI[next].label}`}
+            @click=${() => applyTextFitMode(ctx.std, models, next)}
+          >
+            ${icon}
+          </editor-icon-button>
+        `;
       },
     },
     // id: `g.text`
