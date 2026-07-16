@@ -62,6 +62,24 @@ export enum TextResizing {
   AUTO_HEIGHT,
 }
 
+/**
+ * How a shape reconciles its text with its bounds. Orthogonal to
+ * {@link TextResizing} (which only applies in `Grow` mode). A string enum on
+ * purpose: the value is persisted in documents and must never depend on
+ * member order.
+ */
+export enum TextFitMode {
+  /** Fixed font size, the shape grows to fit the text (default). */
+  Grow = 'grow',
+  /**
+   * Fixed shape size, the font size shrinks so the text fits
+   * (post-it behavior).
+   */
+  Contained = 'contained',
+  /** Fixed shape size and font size; the text may paint past the bounds. */
+  Overflow = 'overflow',
+}
+
 export const FontFamilySchema = z.nativeEnum(FontFamily);
 export const FontWeightSchema = z.nativeEnum(FontWeight);
 export const FontStyleSchema = z.nativeEnum(FontStyle);

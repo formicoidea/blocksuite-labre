@@ -6,6 +6,7 @@ import {
 import {
   MindmapElementModel,
   ShapeElementModel,
+  TextFitMode,
   TextResizing,
 } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
@@ -27,6 +28,8 @@ import { html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
+
+import { effectiveShapeFontSize } from '../element-renderer/shape/utils.js';
 
 export function mountShapeTextEditor(
   shapeElement: ShapeElementModel,
@@ -172,6 +175,19 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
   }
 
   private _updateElementWH() {
+    if (this.element.textFitMode !== TextFitMode.Grow) {
+      // Fixed shape bounds: typing never resizes the shape. Contained mode
+      // re-renders so the derived font size tracks the new content.
+      if (this.element.textFitMode === TextFitMode.Contained) {
+        this.requestUpdate();
+      }
+      this.selection.set({
+        elements: [this.element.id],
+        editing: true,
+      });
+      return;
+    }
+
     const bcr = this.richText.getBoundingClientRect();
     const containerHeight = this.richText.offsetHeight;
     const containerWidth = this.richText.offsetWidth;
@@ -324,7 +340,9 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       toRadian(rotate)
     );
     const [x, y] = this.gfx.viewport.toViewCoord(leftTopX, leftTopY);
-    const autoWidth = textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT;
+    const fixedBounds = this.element.textFitMode !== TextFitMode.Grow;
+    const autoWidth =
+      !fixedBounds && textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT;
     const color = this.std
       .get(ThemeProvider)
       .generateColorProperty(this.element.color, '#000000');
@@ -333,24 +351,16 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       position: 'absolute',
       left: x + 'px',
       top: y + 'px',
-      width:
-        textResizing === TextResizing.AUTO_HEIGHT
-          ? rect.width + 'px'
-          : 'fit-content',
+      width: autoWidth ? 'fit-content' : rect.width + 'px',
       // override rich-text style (height: 100%)
       height: 'initial',
-      minHeight:
-        textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT
-          ? '1em'
-          : `${rect.height}px`,
+      minHeight: autoWidth ? '1em' : `${rect.height}px`,
       maxWidth:
-        textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT
-          ? this.element.maxWidth
-            ? `${this.element.maxWidth}px`
-            : undefined
+        autoWidth && this.element.maxWidth
+          ? `${this.element.maxWidth}px`
           : undefined,
       boxSizing: 'border-box',
-      fontSize: this.element.fontSize + 'px',
+      fontSize: effectiveShapeFontSize(this.element) + 'px',
       fontFamily: TextUtils.wrapFontFamily(this.element.fontFamily),
       fontWeight: this.element.fontWeight,
       lineHeight: 'normal',
