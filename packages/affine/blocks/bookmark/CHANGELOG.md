@@ -1,5 +1,22 @@
 # @labre/affine-block-bookmark
 
+## 0.31.0
+
+### Patch Changes
+
+- Updated dependencies [6a663b6]
+  - @labre/store@0.31.0
+  - @labre/affine-block-embed@0.31.0
+  - @labre/affine-block-embed-doc@0.31.0
+  - @labre/affine-block-surface@0.31.0
+  - @labre/affine-components@0.31.0
+  - @labre/affine-ext-loader@0.31.0
+  - @labre/affine-model@0.31.0
+  - @labre/affine-shared@0.31.0
+  - @labre/affine-widget-slash-menu@0.31.0
+  - @labre/std@0.31.0
+  - @labre/global@0.31.0
+
 ## 0.30.2
 
 ### Patch Changes

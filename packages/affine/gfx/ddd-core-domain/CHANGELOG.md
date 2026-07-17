@@ -1,5 +1,23 @@
 # @labre/affine-gfx-ddd-core-domain
 
+## 0.31.0
+
+### Patch Changes
+
+- Updated dependencies [6a663b6]
+  - @labre/store@0.31.0
+  - @labre/affine-block-surface@0.31.0
+  - @labre/affine-ext-loader@0.31.0
+  - @labre/affine-gfx-ddd-shared@0.31.0
+  - @labre/affine-gfx-group@0.31.0
+  - @labre/affine-gfx-pointer@0.31.0
+  - @labre/affine-gfx-template@0.31.0
+  - @labre/affine-model@0.31.0
+  - @labre/affine-shared@0.31.0
+  - @labre/std@0.31.0
+  - @labre/affine-widget-edgeless-toolbar@0.31.0
+  - @labre/global@0.31.0
+
 ## 0.30.2
 
 ### Patch Changes
