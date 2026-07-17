@@ -1,5 +1,23 @@
 # @labre/affine-widget-edgeless-selected-rect
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/affine-block-frame@0.30.2
+- @labre/affine-block-note@0.30.2
+- @labre/affine-block-surface@0.30.2
+- @labre/affine-components@0.30.2
+- @labre/affine-ext-loader@0.30.2
+- @labre/affine-gfx-connector@0.30.2
+- @labre/affine-gfx-shape@0.30.2
+- @labre/affine-gfx-text@0.30.2
+- @labre/affine-inline-reference@0.30.2
+- @labre/affine-model@0.30.2
+- @labre/affine-shared@0.30.2
+- @labre/global@0.30.2
+- @labre/std@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes

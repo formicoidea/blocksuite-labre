@@ -1,5 +1,12 @@
 # @labre/store
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/global@0.30.2
+- @labre/sync@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes

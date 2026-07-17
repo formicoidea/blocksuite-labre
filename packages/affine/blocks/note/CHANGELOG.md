@@ -1,5 +1,24 @@
 # @labre/affine-block-note
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/affine-block-embed@0.30.2
+- @labre/affine-block-surface@0.30.2
+- @labre/affine-components@0.30.2
+- @labre/affine-ext-loader@0.30.2
+- @labre/affine-fragment-doc-title@0.30.2
+- @labre/affine-gfx-turbo-renderer@0.30.2
+- @labre/affine-inline-preset@0.30.2
+- @labre/affine-model@0.30.2
+- @labre/affine-rich-text@0.30.2
+- @labre/affine-shared@0.30.2
+- @labre/affine-widget-slash-menu@0.30.2
+- @labre/global@0.30.2
+- @labre/std@0.30.2
+- @labre/store@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes

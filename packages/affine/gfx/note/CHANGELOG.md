@@ -1,5 +1,23 @@
 # @labre/affine-gfx-note
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/affine-block-attachment@0.30.2
+- @labre/affine-block-bookmark@0.30.2
+- @labre/affine-block-image@0.30.2
+- @labre/affine-block-surface@0.30.2
+- @labre/affine-components@0.30.2
+- @labre/affine-ext-loader@0.30.2
+- @labre/affine-model@0.30.2
+- @labre/affine-rich-text@0.30.2
+- @labre/affine-shared@0.30.2
+- @labre/affine-widget-edgeless-toolbar@0.30.2
+- @labre/global@0.30.2
+- @labre/std@0.30.2
+- @labre/store@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # @labre/affine-gfx-ddd-aggregate
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/affine-block-surface@0.30.2
+- @labre/affine-ext-loader@0.30.2
+- @labre/affine-gfx-ddd-shared@0.30.2
+- @labre/affine-gfx-group@0.30.2
+- @labre/affine-gfx-pointer@0.30.2
+- @labre/affine-gfx-template@0.30.2
+- @labre/affine-model@0.30.2
+- @labre/affine-shared@0.30.2
+- @labre/affine-widget-edgeless-toolbar@0.30.2
+- @labre/global@0.30.2
+- @labre/std@0.30.2
+- @labre/store@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes

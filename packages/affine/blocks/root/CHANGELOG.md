@@ -1,5 +1,40 @@
 # @labre/affine-block-root
 
+## 0.30.2
+
+### Patch Changes
+
+- @labre/affine-block-attachment@0.30.2
+- @labre/affine-block-bookmark@0.30.2
+- @labre/affine-block-database@0.30.2
+- @labre/affine-block-edgeless-text@0.30.2
+- @labre/affine-block-embed@0.30.2
+- @labre/affine-block-frame@0.30.2
+- @labre/affine-block-image@0.30.2
+- @labre/affine-block-note@0.30.2
+- @labre/affine-block-paragraph@0.30.2
+- @labre/affine-block-surface@0.30.2
+- @labre/affine-components@0.30.2
+- @labre/data-view@0.30.2
+- @labre/affine-ext-loader@0.30.2
+- @labre/affine-gfx-brush@0.30.2
+- @labre/affine-gfx-connector@0.30.2
+- @labre/affine-gfx-group@0.30.2
+- @labre/affine-gfx-mindmap@0.30.2
+- @labre/affine-gfx-note@0.30.2
+- @labre/affine-gfx-pointer@0.30.2
+- @labre/affine-gfx-shape@0.30.2
+- @labre/affine-gfx-text@0.30.2
+- @labre/affine-inline-preset@0.30.2
+- @labre/affine-model@0.30.2
+- @labre/affine-rich-text@0.30.2
+- @labre/affine-shared@0.30.2
+- @labre/affine-widget-edgeless-selected-rect@0.30.2
+- @labre/affine-widget-edgeless-toolbar@0.30.2
+- @labre/global@0.30.2
+- @labre/std@0.30.2
+- @labre/store@0.30.2
+
 ## 0.30.1
 
 ### Patch Changes
