@@ -163,6 +163,53 @@ describe('frame', () => {
     expect(service.layer.compare(bottom, top)).toBeLessThan(0);
   });
 
+  test('a frame drawn on top of an enclosing background is not swallowed by it', async () => {
+    const surface = service.surface;
+
+    // A Wardley map background is a large canvas element. Creating it and a
+    // frame drawn inside it in the same tick makes the background's adoption
+    // microtask run once the frame already exists: getFrameFromPoint matches
+    // because the background's center falls inside the frame.
+    const bgId = surface.addElement({
+      type: 'wardley',
+      xywh: '[0,0,1600,900]',
+    });
+    // frame fully inside the background, and containing its center [800,450]
+    const frame = service.frame.createFrameOnBound(
+      new Bound(700, 350, 400, 300)
+    );
+    await wait();
+
+    const bg = surface.getElementById(bgId)!;
+
+    // The background must NOT be adopted as the frame's child: a frame renders
+    // behind everything it owns, so swallowing its own backdrop would bury the
+    // frame with no way to raise it.
+    expect(bg.group).toBeNull();
+    expect(frame.childElements).toHaveLength(0);
+  });
+
+  test('a frame drawn on top of an enclosing background stays raisable above it', async () => {
+    const surface = service.surface;
+
+    const bgId = surface.addElement({
+      type: 'wardley',
+      xywh: '[0,0,1600,900]',
+    });
+    const frame = service.frame.createFrameOnBound(
+      new Bound(700, 350, 400, 300)
+    );
+    await wait();
+
+    const bg = surface.getElementById(bgId)!;
+
+    // "Bring to front" must be able to raise the frame above the background.
+    service.reorderElement(frame, 'front');
+    await wait();
+
+    expect(service.layer.compare(frame, bg)).toBeGreaterThan(0);
+  });
+
   test('undo of a deleted frame child restores its z-order untouched', async () => {
     const surface = service.surface;
 

@@ -270,8 +270,10 @@ export class EdgelessFrameManager extends GfxExtension {
               return;
             }
 
-            // Only add elements that aren't already grouped and have a valid frame
-            if (!element.group && frame) {
+            // Only add elements that aren't already grouped and have a valid
+            // frame, and never let the frame swallow a backdrop that encloses
+            // it (e.g. a Wardley map background the frame was drawn on top of).
+            if (!element.group && frame && !this._enclosesFrame(element, frame)) {
               this._adoptNewlyCreatedElement(frame, element);
             }
           });
@@ -298,6 +300,12 @@ export class EdgelessFrameManager extends GfxExtension {
           ) {
             return;
           }
+          // A block that encloses the frame is a backdrop, not frame content —
+          // adopting it would bury the frame behind its own child (see
+          // `_enclosesFrame`).
+          if (this._enclosesFrame(payload.model, frame)) {
+            return;
+          }
           if (payload.isLocal) {
             this._adoptNewlyCreatedElement(frame, payload.model);
           } else {
@@ -309,6 +317,22 @@ export class EdgelessFrameManager extends GfxExtension {
         }
       })
     );
+  }
+
+  /**
+   * Whether `element` fully encloses `frame`.
+   *
+   * A frame always renders behind everything it owns (`compare` short-circuits
+   * on the ancestor relationship, ignoring indexes) and "bring to front" only
+   * reorders top-level siblings — a grouped child is no longer one. So if a
+   * frame auto-adopted an element that encloses it (a Wardley map background
+   * the frame was drawn on top of, matched only because its center happened to
+   * fall inside the frame), the frame would be permanently buried behind its
+   * own child with no way to raise it. Such a backdrop must never become frame
+   * content. Mirrors the existing frame-inside-frame guard for canvas elements.
+   */
+  private _enclosesFrame(element: GfxModel, frame: FrameBlockModel) {
+    return element.elementBound.contains(frame.elementBound);
   }
 
   /**
