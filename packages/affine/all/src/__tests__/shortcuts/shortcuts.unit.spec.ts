@@ -1,4 +1,9 @@
-import type { ShortcutDescriptor } from '@labre/std';
+import { coreShortcuts } from '@labre/affine-block-root';
+import {
+  resolveKeymap,
+  type BlockStdScope,
+  type ShortcutDescriptor,
+} from '@labre/std';
 import { describe, expect, test } from 'vitest';
 
 import { buildShortcutManifest, getShortcutManifest } from '../../shortcuts.js';
@@ -21,6 +26,23 @@ describe('getShortcutManifest', () => {
     expect(getShortcutManifest()[0]).not.toHaveProperty('handler');
   });
 
+  test('exposes the edgeless duplicate and copy-style shortcuts', () => {
+    const byId = new Map(getShortcutManifest().map(e => [e.id, e]));
+
+    const dup = byId.get('duplicate');
+    expect(dup?.scope).toBe('edgeless');
+    expect(dup?.owner).toBe('core');
+    expect(dup?.defaultKeys).toEqual({ mac: ['Mod-d'], other: ['Mod-d'] });
+
+    const copyStyle = byId.get('copyStyle');
+    expect(copyStyle?.scope).toBe('edgeless');
+    expect(copyStyle?.owner).toBe('core');
+    expect(copyStyle?.defaultKeys).toEqual({
+      mac: ['Mod-y'],
+      other: ['Mod-y'],
+    });
+  });
+
   test('lists the wardley chords when the flag is on, none when off', () => {
     const entries = getShortcutManifest();
     const wardley = entries.filter(e => e.owner === 'wardley');
@@ -33,6 +55,25 @@ describe('getShortcutManifest', () => {
 
     const offIds = getShortcutManifest({ wardley: false }).map(e => e.id);
     expect(offIds.some(id => id.startsWith('wardley.'))).toBe(false);
+  });
+});
+
+describe('coreShortcuts bindings', () => {
+  const std = {} as BlockStdScope;
+
+  test('duplicate/copy-style bind in the edgeless scope, not the global one', () => {
+    const edgeless = resolveKeymap(coreShortcuts, {}, 'edgeless', std);
+    expect(edgeless.conflicts).toEqual([]);
+    expect(Object.keys(edgeless.keymap)).toEqual(
+      expect.arrayContaining(['Mod-d', 'Mod-y'])
+    );
+
+    // They are edgeless-scoped, so the global keymap (undo/redo/redo-windows)
+    // never binds them — Ctrl+Y = redo keeps working outside edgeless.
+    const global = resolveKeymap(coreShortcuts, {}, 'global', std);
+    expect(Object.keys(global.keymap)).not.toContain('Mod-d');
+    expect(Object.keys(global.keymap)).not.toContain('Mod-y');
+    expect(global.conflicts).toEqual([]);
   });
 });
 
