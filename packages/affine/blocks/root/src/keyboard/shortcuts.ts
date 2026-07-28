@@ -1,4 +1,7 @@
-import { getLastPropsKey } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  getLastPropsKey,
+} from '@labre/affine-block-surface';
 import type {
   LastProps,
   LastPropsKey,
@@ -84,16 +87,15 @@ export const coreShortcuts: ShortcutDescriptor[] = [
     },
   },
   {
-    // Copy the style of the single selected canvas element into the shared
-    // "last props" store, so the NEXT element created of the same type adopts
-    // it (the same mechanism new elements already inherit their style from).
-    // There is no paste-style-onto-an-existing-element path yet — that is out
-    // of scope. The handler only consumes the keystroke when it actually
-    // copies a style; otherwise it falls through (on Windows/Linux Mod+Y is
-    // also the `redo-windows` alias, which keeps working when the selection is
-    // not a single canvas element).
-    id: 'copyStyle',
-    labelKey: 'com.affine.keyboardShortcuts.copyStyle',
+    // Apply the last used style to the selected canvas elements. "Last used"
+    // is the shared "last props" store, which every style edit and element
+    // creation already records — so Mod+Y repaints the selection with the
+    // style you just used elsewhere. The handler only consumes the keystroke
+    // when it actually applies something; otherwise it falls through (on
+    // Windows/Linux Mod+Y is also the `redo-windows` alias, which keeps
+    // working when no canvas element is selected).
+    id: 'applyLastStyle',
+    labelKey: 'com.affine.keyboardShortcuts.applyLastStyle',
     defaultKeys: { mac: ['Mod-y'], other: ['Mod-y'] },
     scope: 'edgeless',
     owner: 'core',
@@ -102,22 +104,28 @@ export const coreShortcuts: ShortcutDescriptor[] = [
       if (gfx.selection.editing) return false;
 
       const elements = gfx.selection.selectedElements;
-      if (elements.length !== 1) return false;
+      if (!elements.length) return false;
 
-      const element = elements[0];
-      if (!(element instanceof GfxPrimitiveElementModel)) return false;
-
-      const props = element.serialize() as Partial<LastProps[LastPropsKey]>;
-      const key = getLastPropsKey(element.type, props);
-      if (!key) return false;
+      const lastProps = std.get(EditPropsStore).lastProps$.value;
+      const targets = elements.flatMap(element => {
+        if (!(element instanceof GfxPrimitiveElementModel)) return [];
+        // `lastProps` keys hold style-only props (schema-filtered), so
+        // applying the whole entry never touches geometry or content.
+        const key = getLastPropsKey(
+          element.type,
+          element.serialize() as Partial<LastProps[LastPropsKey]>
+        );
+        return key ? [{ id: element.id, props: lastProps[key] }] : [];
+      });
+      if (!targets.length) return false;
 
       ctx.get('defaultState').event.preventDefault();
-      try {
-        // `recordLastProps` re-parses against the style schema for this key,
-        // stripping non-style fields (id/index/xywh/text/...).
-        std.get(EditPropsStore).recordLastProps(key, props);
-      } catch (e) {
-        console.error(e);
+
+      // One history frame: a single undo restores the previous styles.
+      std.store.captureSync();
+      const crud = std.get(EdgelessCRUDIdentifier);
+      for (const { id, props } of targets) {
+        crud.updateElement(id, props);
       }
       return true;
     },

@@ -26,7 +26,7 @@ describe('getShortcutManifest', () => {
     expect(getShortcutManifest()[0]).not.toHaveProperty('handler');
   });
 
-  test('exposes the edgeless duplicate and copy-style shortcuts', () => {
+  test('exposes the edgeless duplicate and apply-last-style shortcuts', () => {
     const byId = new Map(getShortcutManifest().map(e => [e.id, e]));
 
     const dup = byId.get('duplicate');
@@ -34,10 +34,10 @@ describe('getShortcutManifest', () => {
     expect(dup?.owner).toBe('core');
     expect(dup?.defaultKeys).toEqual({ mac: ['Mod-d'], other: ['Mod-d'] });
 
-    const copyStyle = byId.get('copyStyle');
-    expect(copyStyle?.scope).toBe('edgeless');
-    expect(copyStyle?.owner).toBe('core');
-    expect(copyStyle?.defaultKeys).toEqual({
+    const applyLastStyle = byId.get('applyLastStyle');
+    expect(applyLastStyle?.scope).toBe('edgeless');
+    expect(applyLastStyle?.owner).toBe('core');
+    expect(applyLastStyle?.defaultKeys).toEqual({
       mac: ['Mod-y'],
       other: ['Mod-y'],
     });
@@ -61,7 +61,7 @@ describe('getShortcutManifest', () => {
 describe('coreShortcuts bindings', () => {
   const std = {} as BlockStdScope;
 
-  test('duplicate/copy-style bind in the edgeless scope, not the global one', () => {
+  test('duplicate/apply-last-style bind in the edgeless scope, not the global one', () => {
     const edgeless = resolveKeymap(coreShortcuts, {}, 'edgeless', std);
     expect(edgeless.conflicts).toEqual([]);
     expect(Object.keys(edgeless.keymap)).toEqual(
