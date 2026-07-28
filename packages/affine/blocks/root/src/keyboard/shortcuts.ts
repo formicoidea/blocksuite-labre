@@ -7,6 +7,7 @@ import type {
   LastPropsKey,
 } from '@labre/affine-shared/services';
 import { EditPropsStore } from '@labre/affine-shared/services';
+import { pickStylePropsForKey } from '@labre/affine-shared/utils';
 import { IS_WINDOWS } from '@labre/global/env';
 import type { ShortcutDescriptor } from '@labre/std';
 import {
@@ -87,13 +88,16 @@ export const coreShortcuts: ShortcutDescriptor[] = [
     },
   },
   {
-    // Apply the last used style to the selected canvas elements. "Last used"
-    // is the shared "last props" store, which every style edit and element
-    // creation already records — so Mod+Y repaints the selection with the
-    // style you just used elsewhere. The handler only consumes the keystroke
-    // when it actually applies something; otherwise it falls through (on
-    // Windows/Linux Mod+Y is also the `redo-windows` alias, which keeps
-    // working when no canvas element is selected).
+    // Apply the last used style to the selected elements. "Last used" is the
+    // flat accumulation of every style prop the user recorded (every style
+    // edit and style pick records it), across element types: a fill picked on
+    // a rect repaints an ellipse, a font style set on a text restyles a
+    // shape. Each element only receives the props its own type supports —
+    // schema-filtered per prop, so geometry and content are never touched.
+    // The handler only consumes the keystroke when it actually applies
+    // something; otherwise it falls through (on Windows/Linux Mod+Y is also
+    // the `redo-windows` alias, which keeps working when no canvas element is
+    // selected).
     id: 'applyLastStyle',
     labelKey: 'com.affine.keyboardShortcuts.applyLastStyle',
     defaultKeys: { mac: ['Mod-y'], other: ['Mod-y'] },
@@ -106,16 +110,19 @@ export const coreShortcuts: ShortcutDescriptor[] = [
       const elements = gfx.selection.selectedElements;
       if (!elements.length) return false;
 
-      const lastProps = std.get(EditPropsStore).lastProps$.value;
+      const lastStyle = std.get(EditPropsStore).lastUsedStyle$.value;
+      if (!Object.keys(lastStyle).length) return false;
+
       const targets = elements.flatMap(element => {
-        if (!(element instanceof GfxPrimitiveElementModel)) return [];
-        // `lastProps` keys hold style-only props (schema-filtered), so
-        // applying the whole entry never touches geometry or content.
+        const isPrimitive = element instanceof GfxPrimitiveElementModel;
         const key = getLastPropsKey(
-          element.type,
-          element.serialize() as Partial<LastProps[LastPropsKey]>
+          isPrimitive ? element.type : element.flavour,
+          (isPrimitive ? element.serialize() : {}) as Partial<
+            LastProps[LastPropsKey]
+          >
         );
-        return key ? [{ id: element.id, props: lastProps[key] }] : [];
+        const props = key ? pickStylePropsForKey(key, lastStyle) : null;
+        return props ? [{ id: element.id, props }] : [];
       });
       if (!targets.length) return false;
 

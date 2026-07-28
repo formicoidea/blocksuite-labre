@@ -81,6 +81,14 @@ export class EditPropsStore extends LifeCycleWatcher {
 
   lastProps$: Signal<LastProps>;
 
+  /**
+   * Flat accumulation of every style prop the user recorded, most recent
+   * value per prop, across element types. "Apply last style" (Mod+Y) reads
+   * this so a fill picked on a rect can repaint an ellipse, or a font style
+   * set on a text can restyle a shape.
+   */
+  lastUsedStyle$: Signal<Record<string, unknown>> = signal({});
+
   slots = {
     storageUpdated: new Subject<{
       key: StoragePropsKey;
@@ -190,6 +198,11 @@ export class EditPropsStore extends LifeCycleWatcher {
 
     const overrideProps = schema.parse(props);
     if (Object.keys(overrideProps).length === 0) return;
+
+    this.lastUsedStyle$.value = {
+      ...this.lastUsedStyle$.value,
+      ...overrideProps,
+    };
 
     const innerProps = this.innerProps$.value;
     const nextProps = mergeWith(
