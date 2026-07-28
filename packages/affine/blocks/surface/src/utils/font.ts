@@ -21,11 +21,19 @@ export const getFontFaces = IS_FIREFOX
     }
   : () => [...document.fonts.keys()];
 
-export const isSameFontFamily = IS_FIREFOX
-  ? (fontFamily: FontFamily | string) => (fontFace: FontFace) =>
-      fontFace.family === `"${fontFamily}"`
-  : (fontFamily: FontFamily | string) => (fontFace: FontFace) =>
-      fontFace.family === fontFamily;
+/**
+ * Surface fonts are registered with quoted family names (see `wrapFontFamily`),
+ * while models store them unquoted (`blocksuite:surface:Inter`). Browsers do not
+ * agree on whether `FontFace.family` echoes those quotes back, so compare
+ * unquoted on both sides instead of branching on the engine — a mismatch makes
+ * `getFontFacesByFontFamily` return nothing and renders an empty font style menu.
+ */
+const unquoteFontFamily = (fontFamily: string) =>
+  fontFamily.replace(/^\s*["']|["']\s*$/g, '');
+
+export const isSameFontFamily =
+  (fontFamily: FontFamily | string) => (fontFace: FontFace) =>
+    unquoteFontFamily(fontFace.family) === unquoteFontFamily(fontFamily);
 
 export function getFontFacesByFontFamily(
   fontFamily: FontFamily | string
