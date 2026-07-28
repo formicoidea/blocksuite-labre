@@ -33,6 +33,7 @@ import {
   ZodDefault,
   ZodIntersection,
   ZodObject,
+  ZodOptional,
   type ZodTypeAny,
   ZodUnion,
 } from 'zod';
@@ -216,4 +217,35 @@ export function makeDeepOptional(schema: ZodTypeAny): ZodTypeAny {
   } else {
     return schema.optional();
   }
+}
+
+const OptionalNodePropsSchema = makeDeepOptional(NodePropsSchema);
+
+/**
+ * Pick, from an arbitrary bag of style props, the subset that is valid for
+ * the given node-props key. Filtering is per prop, so a prop foreign to the
+ * target type (e.g. a connector `mode` offered to a shape) never discards
+ * the rest of the bag. Returns null when nothing applies.
+ */
+export function pickStylePropsForKey<K extends keyof NodeProps>(
+  key: K,
+  props: Record<string, unknown>
+): Partial<NodeProps[K]> | null {
+  const keySchema = OptionalNodePropsSchema._def.innerType.shape[key];
+  const inner = keySchema instanceof ZodOptional ? keySchema.unwrap() : keySchema;
+  if (!(inner instanceof ZodObject)) return null;
+
+  const picked: Record<string, unknown> = {};
+  for (const [prop, value] of Object.entries(props)) {
+    const propSchema = inner.shape[prop];
+    if (!propSchema || value === undefined) continue;
+    const parsed = propSchema.safeParse(value);
+    if (parsed.success && parsed.data !== undefined) {
+      picked[prop] = parsed.data;
+    }
+  }
+
+  return Object.keys(picked).length
+    ? (picked as Partial<NodeProps[K]>)
+    : null;
 }
