@@ -16,6 +16,26 @@ export const edgyFacetsIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24
   <circle cx="12" cy="14.5" r="6" fill="#ff0056" opacity="0.92"/>
 </svg>`;
 
+/** Menu icon — the dynamic diagram: mini Venn + three connected white shapes. */
+export const edgyDynamicIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="9.5" cy="10" r="6" fill="#00ea4e" opacity="0.92"/>
+  <circle cx="14.5" cy="10" r="6" fill="#034cee" opacity="0.92"/>
+  <circle cx="12" cy="14.5" r="6" fill="#ff0056" opacity="0.92"/>
+  <path d="M8.5 8.5 L15.5 8.5 M8.5 8.5 L12 16 M15.5 8.5 L12 16" stroke="#fff" stroke-width="1.3"/>
+  <rect x="6.9" y="6.9" width="3.2" height="3.2" fill="#fff"/>
+  <circle cx="15.5" cy="8.5" r="1.7" fill="#fff"/>
+  <path d="M10.4 14.9 H12.9 L14 16 L12.9 17.1 H10.4 Z" fill="#fff"/>
+</svg>`;
+
+/** Menu icon — the blank board: rounded rect + connected facet-colored shapes. */
+export const edgyBoardIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="4.5" width="18" height="15" rx="2.5" stroke="currentColor" stroke-width="1.4"/>
+  <path d="M8.3 9 L15.7 9 M8.3 9 L12 15.2 M15.7 9 L12 15.2" stroke="currentColor" stroke-width="1.1"/>
+  <rect x="6.8" y="7.5" width="3" height="3" fill="#00ea4e"/>
+  <circle cx="15.7" cy="9" r="1.7" fill="#034cee"/>
+  <path d="M10.5 14.1 H12.8 L13.9 15.2 L12.8 16.3 H10.5 Z" fill="#ff0056"/>
+</svg>`;
+
 /** People — person glyph (official Icon-People), uses currentColor. */
 export const edgyPeopleIcon = svg`<svg width="24" height="24" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
   <path d="m16,19c-3.308,0-6-2.692-6-6v-4c0-3.308,2.692-6,6-6s6,2.692,6,6v4c0,3.308-2.692,6-6,6Zm0-14c-2.206,0-4,1.794-4,4v4c0,2.206,1.794,4,4,4s4-1.794,4-4v-4c0-2.206-1.794-4-4-4Z"/>

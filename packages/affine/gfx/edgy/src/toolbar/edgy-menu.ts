@@ -1,6 +1,7 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { createGroupCommand } from '@labre/affine-gfx-group';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
+import { createTemplateJob } from '@labre/affine-gfx-template';
 import { FontFamily, ShapeStyle } from '@labre/affine-model';
 import { TelemetryProvider } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
@@ -21,8 +22,11 @@ import {
   NODE_STROKE_WIDTH,
   OUTCOME_RADIUS,
 } from '../node/consts';
+import { edgyDynamicTemplate } from '../templates';
 import {
   edgyActivityIcon,
+  edgyBoardIcon,
+  edgyDynamicIcon,
   edgyFacetsIcon,
   edgyObjectIcon,
   edgyOutcomeIcon,
@@ -34,6 +38,10 @@ type BoxKind = 'outcome' | 'object' | 'activity';
 
 /** Default facets-diagram size (REF aspect, scaled up so it reads on canvas). */
 const FACETS_SCALE = 1.5;
+
+/** Default blank-board size. */
+const BOARD_W = 1600;
+const BOARD_H = 1000;
 
 /** Height of the native People free-text label. */
 const LABEL_H = LABEL_FONT_SIZE + 8;
@@ -87,6 +95,50 @@ export class EdgelessEdgyMenu extends EdgelessToolbarToolMixin(LitElement) {
       ).serialize(),
     });
     this._track('facets');
+    this._finish(id);
+  }
+
+  /**
+   * Insert the "EDGY dynamic" template (facets background + the 12 elements
+   * linked by the 24 verbalised relations), then bring it into view.
+   */
+  private async _createDynamic() {
+    const { gfx } = this;
+    if (!gfx.surface) return;
+
+    const job = createTemplateJob(this.edgeless.std, 'template');
+    const bound = await job.insertTemplate(
+      structuredClone(edgyDynamicTemplate.content)
+    );
+    if (bound) {
+      const padding = 20 / gfx.viewport.zoom;
+      gfx.viewport.setViewportByBound(
+        bound,
+        [padding, padding, padding, padding],
+        true
+      );
+    }
+    this._track('template:dynamic');
+    gfx.doc.captureSync();
+    gfx.tool.setTool(DefaultTool);
+  }
+
+  /** Create a blank EDGY board (hover spotlight host) centred on the viewport. */
+  private _createBoard() {
+    const { gfx } = this;
+    if (!gfx.surface) return;
+
+    const { centerX, centerY } = gfx.viewport;
+    const id = gfx.surface.addElement({
+      type: 'edgyBoard',
+      xywh: new Bound(
+        centerX - BOARD_W / 2,
+        centerY - BOARD_H / 2,
+        BOARD_W,
+        BOARD_H
+      ).serialize(),
+    });
+    this._track('board');
     this._finish(id);
   }
 
@@ -209,6 +261,20 @@ export class EdgelessEdgyMenu extends EdgelessToolbarToolMixin(LitElement) {
               @click=${this._createFacets}
             >
               ${edgyFacetsIcon}
+            </edgeless-tool-icon-button>
+            <edgeless-tool-icon-button
+              .tooltip=${'EDGY dynamic (elements & relations)'}
+              @click=${() => {
+                this._createDynamic().catch(console.error);
+              }}
+            >
+              ${edgyDynamicIcon}
+            </edgeless-tool-icon-button>
+            <edgeless-tool-icon-button
+              .tooltip=${'EDGY board (hover spotlight)'}
+              @click=${this._createBoard}
+            >
+              ${edgyBoardIcon}
             </edgeless-tool-icon-button>
             <edgeless-tool-icon-button
               .tooltip=${'People'}

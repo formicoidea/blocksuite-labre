@@ -19,6 +19,7 @@ import {
   ACTIVITY_VERTICES,
   INNER_FONT_SIZE,
   NODE_FILL,
+  NODE_SIZE,
   NODE_STROKE,
   NODE_STROKE_WIDTH,
   OUTCOME_RADIUS,
@@ -232,11 +233,117 @@ function orgChart(): SurfaceElementsJSON {
   };
 }
 
+// ── EDGY dynamic (the relational metamodel, on the facets background) ──
+/** Background scale: REF × 4 leaves room for default-size nodes in each zone. */
+const DYN_SCALE = 4;
+
+/**
+ * The 24 canonical EDGY relations (source, target, verb) — exported for the
+ * unit tests. 7 per facet + 3 between the intersections.
+ */
+export const EDGY_DYNAMIC_RELATIONS: [string, string, string][] = [
+  // Identity
+  ['content', 'purpose', 'expresses'],
+  ['content', 'story', 'conveys'],
+  ['story', 'purpose', 'contextualises'],
+  ['organisation', 'purpose', 'pursues'],
+  ['organisation', 'story', 'authors'],
+  ['brand', 'purpose', 'represents'],
+  ['brand', 'story', 'evokes'],
+  // Architecture
+  ['organisation', 'process', 'performs'],
+  ['process', 'capability', 'realises'],
+  ['process', 'asset', 'requires'],
+  ['capability', 'asset', 'requires'],
+  ['organisation', 'capability', 'has'],
+  ['product', 'capability', 'requires'],
+  ['process', 'product', 'creates'],
+  // Experience
+  ['task', 'journey', 'is part of'],
+  ['task', 'channel', 'uses'],
+  ['journey', 'channel', 'traverses'],
+  ['product', 'task', 'serves'],
+  ['product', 'journey', 'features in'],
+  ['brand', 'task', 'supports'],
+  ['brand', 'journey', 'appears in'],
+  // Intersections
+  ['organisation', 'brand', 'builds'],
+  ['organisation', 'product', 'makes'],
+  ['product', 'brand', 'embodies'],
+];
+
+/**
+ * The 12 elements, centred coordinates in the DYN_SCALE model space
+ * (2720×1600), laid out like the reference "elements & relations" diagram:
+ * aligned top row, Story/Capability flanks, Brand/Product astride the white
+ * centre, Task/Journey/Channel triangle. Exported for the containment test.
+ */
+export const EDGY_DYNAMIC_NODES: Record<
+  string,
+  { kind: 'outcome' | 'object' | 'activity'; cx: number; cy: number; w?: number }
+> = {
+  content: { kind: 'object', cx: 950, cy: 400 },
+  purpose: { kind: 'outcome', cx: 1130, cy: 400 },
+  organisation: { kind: 'object', cx: 1360, cy: 400, w: 175 },
+  process: { kind: 'activity', cx: 1590, cy: 400 },
+  asset: { kind: 'object', cx: 1770, cy: 400 },
+  story: { kind: 'activity', cx: 1020, cy: 610 },
+  capability: { kind: 'outcome', cx: 1700, cy: 610, w: 150 },
+  brand: { kind: 'object', cx: 1120, cy: 780 },
+  product: { kind: 'object', cx: 1600, cy: 780 },
+  task: { kind: 'outcome', cx: 1240, cy: 1030 },
+  journey: { kind: 'activity', cx: 1480, cy: 1030 },
+  channel: { kind: 'object', cx: 1360, cy: 1190 },
+};
+
+function dynamic(): SurfaceElementsJSON {
+  const out: SurfaceElementsJSON = {
+    bg: {
+      type: 'edgy',
+      showLabels: false,
+      showPictos: false,
+      xywh: `[0,0,${REF_W * DYN_SCALE},${REF_H * DYN_SCALE}]`,
+    },
+  };
+  for (const [key, { kind, cx, cy, w }] of Object.entries(EDGY_DYNAMIC_NODES)) {
+    const nw = w ?? NODE_SIZE[kind].w;
+    const nh = NODE_SIZE[kind].h;
+    const name = key.charAt(0).toUpperCase() + key.slice(1);
+    out[key] = enode(kind, cx - nw / 2, cy - nh / 2, nw, nh, { text: name });
+  }
+  EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb], i) => {
+    out[`rel${i}`] = {
+      type: 'connector',
+      mode: ConnectorMode.Straight,
+      stroke: NODE_STROKE,
+      strokeWidth: 2,
+      strokeStyle: StrokeStyle.Solid,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.None,
+      source: { id: src },
+      target: { id: dst },
+      // Native connector label: the verb travels with the link. The x/y are
+      // re-centred on the path at the first layout, but the w/h ARE the label
+      // box — size it to the verb so the text lays out on one line.
+      text: surfaceText(verb),
+      labelXYWH: [0, 0, verb.length * 9 + 24, 26],
+    };
+  });
+  return out;
+}
+
 const single = (el: Record<string, unknown>): SurfaceElementsJSON => ({ a: el });
 const ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 function tpl(name: string, preview: string, elements: SurfaceElementsJSON): Template {
   return { name, type: 'template', preview, content: makeTemplateSnapshot(elements, name) };
 }
+
+/** Exported for direct insertion from the EDGY senior toolbar menu. */
+export const edgyDynamicTemplate: Template = tpl(
+  'EDGY dynamic',
+  `<svg ${ATTRS}><circle cx="55" cy="34" r="18" fill="#00ea4e" opacity="0.9"/><circle cx="80" cy="34" r="18" fill="#034cee" opacity="0.9"/><circle cx="67" cy="54" r="18" fill="#ff0056" opacity="0.9"/><path d="M55 30 H80 M56 31 L66 52 M79 31 L69 52" stroke="#fff" stroke-width="2"/><rect x="51" y="26" width="8" height="8" fill="#fff"/><circle cx="80" cy="30" r="4" fill="#fff"/><path d="M62 49 h6 l3 3 -3 3 h-6 z" fill="#fff"/></svg>`,
+  dynamic()
+);
 
 export const edgyTemplateCategory: TemplateCategory = {
   name: 'EDGY',
@@ -246,6 +353,7 @@ export const edgyTemplateCategory: TemplateCategory = {
     tpl('Service blueprint', `<svg ${ATTRS} fill="none"><rect x="8" y="14" width="119" height="16" fill="#fbd5e0"/><rect x="8" y="32" width="119" height="34" fill="#d4e9f8"/><rect x="20" y="18" width="22" height="9" fill="#f5246e" opacity="0.5"/><rect x="20" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/><rect x="60" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/></svg>`, blueprint()),
     tpl('Organisation chart', `<svg ${ATTRS} fill="none"><rect x="52" y="12" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="14" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="52" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="90" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><path d="M68 26 V32 M30 32 H106 M30 32 V38 M68 32 V38 M106 32 V38" stroke="#262626"/></svg>`, orgChart()),
     tpl('Facets diagram', `<svg ${ATTRS}><circle cx="55" cy="34" r="18" fill="#00ea4e" opacity="0.9"/><circle cx="80" cy="34" r="18" fill="#034cee" opacity="0.9"/><circle cx="67" cy="54" r="18" fill="#ff0056" opacity="0.9"/></svg>`, single({ type: 'edgy', xywh: `[0,0,${REF_W * 1.5},${REF_H * 1.5}]` })),
+    edgyDynamicTemplate,
     tpl('People', `<svg ${ATTRS} fill="#262626"><circle cx="67" cy="32" r="9" fill="none" stroke="#262626" stroke-width="2.4"/><path d="M50 60 a17 17 0 0 1 34 0" fill="none" stroke="#262626" stroke-width="2.4"/></svg>`, { n: enode('people', 0, 0, 64, 64), l: label(-28, 70, 120, 24, 'People', { fontSize: 16 }) }),
     tpl('Outcome', `<svg ${ATTRS} fill="none"><rect x="20" y="24" width="95" height="34" rx="6" stroke="#262626" stroke-width="2"/></svg>`, single(enode('outcome', 0, 0, 130, 80, { text: 'Outcome' }))),
     tpl('Object', `<svg ${ATTRS} fill="none"><rect x="20" y="24" width="95" height="34" stroke="#262626" stroke-width="2"/></svg>`, single(enode('object', 0, 0, 130, 80, { text: 'Object' }))),
