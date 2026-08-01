@@ -30,6 +30,7 @@ export * from './core-domain/index.js';
 export * from './cynefin/index.js';
 export * from './edgy/index.js';
 export * from './estuarine/index.js';
+export * from './framework-background/index.js';
 export * from './group/index.js';
 export * from './highlighter/index.js';
 export * from './mindmap/index.js';

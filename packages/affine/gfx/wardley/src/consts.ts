@@ -39,16 +39,16 @@ export const LINE = { axis: 2, divider: 1.2, card: 1.5 };
 export const ARROW = 11;
 export const CARD_RADIUS = 10;
 
-/** Evolution phase boundary ratios (interior dividers). */
-export const EVOLUTION_BOUNDARIES = [0.175, 0.4, 0.7] as const;
-
-/** Ordered phases: [label, startRatio]. */
-export const EVOLUTION_PHASES: ReadonlyArray<readonly [string, number]> = [
-  ['Genesis', 0],
-  ['Custom-Built', 0.175],
-  ['Product (+Rental)', 0.4],
-  ['Commodity (+Utility)', 0.7],
-];
+/**
+ * Default phase wording. The zone RATIOS live in `./background.ts`, with the
+ * zones they delimit — the declaration is the single source of the map's shape.
+ */
+export const PHASE_LABELS = {
+  genesis: 'Genesis',
+  customBuilt: 'Custom-Built',
+  product: 'Product (+Rental)',
+  commodity: 'Commodity (+Utility)',
+};
 
 export const AXIS_LABELS = {
   xAxis: 'Evolution',

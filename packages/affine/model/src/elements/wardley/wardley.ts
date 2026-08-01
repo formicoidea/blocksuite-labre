@@ -1,13 +1,8 @@
-import type { IVec, SerializedXYWH } from '@labre/global/gfx';
-import {
-  Bound,
-  getPointsFromBoundWithRotation,
-  linePolygonIntersects,
-  pointInPolygon,
-  polygonNearestPoint,
-} from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
-import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+import type { SerializedXYWH } from '@labre/global/gfx';
+import { field } from '@labre/std/gfx';
+
+import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
+import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 
 /**
  * Background flavour. `classic` is the plain Wardley frame; the others overlay a
@@ -19,9 +14,7 @@ export type WardleyBgVariant =
   | 'benefit'
   | 'evolution-gradient';
 
-export type WardleyBackgroundProps = BaseElementProps & {
-  /** When false (default) the resize handles are hidden — toggled from the toolbar. */
-  resizeEnabled?: boolean;
+export type WardleyBackgroundProps = FrameworkBackgroundProps & {
   /** When true the four evolution zones get a light tint (style B). */
   banded?: boolean;
   /** Gradient variant inscribed in the frame. */
@@ -55,39 +48,16 @@ export type WardleyBackgroundProps = BaseElementProps & {
  * Value Chain Y) with the four evolution phase dividers and labels, drawn on
  * the surface canvas. The user places regular edgeless elements on top of it.
  *
- * Extends {@link GfxPrimitiveElementModel} so it inherits selection, move,
- * copy/paste, duplicate, align and undo/redo for free.
+ * An INSTANCE of the framework-background primitive
+ * ({@link FrameworkBackgroundElementModel}): the geometry and the passive-canvas
+ * behaviour come from the primitive, what the map looks like comes from the
+ * `WARDLEY_BACKGROUND` declaration in `@labre/affine-gfx-wardley`, and the
+ * fields below are the persisted document — unchanged, and not the primitive's
+ * business.
  */
-export class WardleyBackgroundElementModel extends GfxPrimitiveElementModel<WardleyBackgroundProps> {
+export class WardleyBackgroundElementModel extends FrameworkBackgroundElementModel<WardleyBackgroundProps> {
   get type() {
     return 'wardley';
-  }
-
-  /**
-   * The background is a passive canvas: connectors must not snap their
-   * endpoints to it (a Wardley arrow should connect nodes, never the map).
-   */
-  override get connectable() {
-    return false;
-  }
-
-  override containsBound(bounds: Bound): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return points.some(point => bounds.containsPoint(point));
-  }
-
-  override getLineIntersections(start: IVec, end: IVec) {
-    const points = getPointsFromBoundWithRotation(this);
-    return linePolygonIntersects(start, end, points);
-  }
-
-  override getNearestPoint(point: IVec): IVec {
-    return polygonNearestPoint(Bound.deserialize(this.xywh).points, point) as IVec;
-  }
-
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
   }
 
   @field(false)
@@ -102,36 +72,47 @@ export class WardleyBackgroundElementModel extends GfxPrimitiveElementModel<Ward
   @field(false)
   accessor resizeEnabled: boolean = false;
 
-  // ── Editable label texts (defaults mirror the original hard-coded ones) ─
-  @field('Evolution')
-  accessor xAxisTitle: string = 'Evolution';
+  // ── Editable label texts ──────────────────────────────────────────────
+  //
+  // Deliberately DEFAULTED TO `undefined`, and therefore written nowhere: an
+  // `undefined` default stays absent from the Y.Map until something assigns it
+  // (see `field.ts`), which is what keeps an optional field shippable without a
+  // migration.
+  //
+  // Absent means "the user has never renamed this one", and only then can the
+  // `WARDLEY_BACKGROUND` declaration fall through to its i18n key — with a hard
+  // default here, the key would be unreachable and the map would be English
+  // forever. Any value the user types is written and wins from then on, and a
+  // map authored before this change carries all ten and is untouched.
+  @field()
+  accessor xAxisTitle: string | undefined = undefined;
 
-  @field('Value Chain')
-  accessor yAxisTitle: string = 'Value Chain';
+  @field()
+  accessor yAxisTitle: string | undefined = undefined;
 
-  @field('Uncharted')
-  accessor evolutionStart: string = 'Uncharted';
+  @field()
+  accessor evolutionStart: string | undefined = undefined;
 
-  @field('Industrialized')
-  accessor evolutionEnd: string = 'Industrialized';
+  @field()
+  accessor evolutionEnd: string | undefined = undefined;
 
-  @field('Visible')
-  accessor visibilityHigh: string = 'Visible';
+  @field()
+  accessor visibilityHigh: string | undefined = undefined;
 
-  @field('Invisible')
-  accessor visibilityLow: string = 'Invisible';
+  @field()
+  accessor visibilityLow: string | undefined = undefined;
 
-  @field('Genesis')
-  accessor phase0: string = 'Genesis';
+  @field()
+  accessor phase0: string | undefined = undefined;
 
-  @field('Custom-Built')
-  accessor phase1: string = 'Custom-Built';
+  @field()
+  accessor phase1: string | undefined = undefined;
 
-  @field('Product (+Rental)')
-  accessor phase2: string = 'Product (+Rental)';
+  @field()
+  accessor phase2: string | undefined = undefined;
 
-  @field('Commodity (+Utility)')
-  accessor phase3: string = 'Commodity (+Utility)';
+  @field()
+  accessor phase3: string | undefined = undefined;
 
   // ── Per-part visibility toggles ───────────────────────────────────────
   @field(true)

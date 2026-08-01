@@ -1,0 +1,176 @@
+import type { TranslationService } from '@labre/affine-shared/services';
+
+import type {
+  BackgroundLabelSource,
+  BackgroundTextDef,
+  FrameworkBackgroundDef,
+} from './def.js';
+import { backgroundPlot, backgroundPoint } from './def.js';
+
+/** A background element, seen from the primitive: a bag of declared props. */
+export type BackgroundModelLike = Record<string, unknown>;
+
+/**
+ * The words a label actually says.
+ *
+ * The user's own text wins over the vocabulary, and the vocabulary over the
+ * shipped default — so a framework can be fully i18n'd while still letting the
+ * user rename an axis on the canvas.
+ *
+ * i18n goes through the house seam (`TranslationProvider` /
+ * {@link translateKey}), which the host injects and the library never bundles.
+ * A key the catalogue does not know falls back to the wording the declaration
+ * ships, and a declaration that ships none shows the RAW KEY — ugly on purpose,
+ * exactly as everywhere else in the library: a dangling key is a bug the host
+ * must see, not an excuse for us to invent somebody else's wording.
+ */
+export function backgroundLabelText(
+  source: BackgroundLabelSource,
+  model: BackgroundModelLike,
+  translation?: TranslationService | null
+): string {
+  if (source.prop !== undefined) {
+    const value = model[source.prop];
+    if (value !== undefined && value !== null) return String(value);
+  }
+  if (source.labelKey !== undefined) {
+    const resolved = translation?.t(source.labelKey);
+    if (resolved !== undefined && resolved !== '') return resolved;
+    return source.fallback ?? source.labelKey;
+  }
+  return source.fallback ?? '';
+}
+
+/** Whether a `visibleProp` gate is open. No gate means always drawn. */
+export function backgroundVisible(
+  visibleProp: string | undefined,
+  model: BackgroundModelLike
+): boolean {
+  return visibleProp === undefined ? true : Boolean(model[visibleProp]);
+}
+
+/** A label's clickable box in element-local coordinates (axis-aligned, padded). */
+export interface BackgroundLabelHit {
+  /** The declaration id of the text. */
+  id: string;
+  /** The model prop the in-place editor must write back to. */
+  prop: string;
+  /**
+   * The words currently DRAWN there.
+   *
+   * The editor must open on this, not on `model[prop]`: a label whose prop has
+   * never been written shows its vocabulary, and opening an empty box on it
+   * would silently offer to erase a name the user can see.
+   */
+  text: string;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** Rough per-character advance — only used to size generous hit boxes. */
+const approxTextWidth = (text: string, fontSize: number) =>
+  Math.max(fontSize, text.length * fontSize * 0.6);
+
+/** Padding so double-clicking a label is forgiving. */
+const HIT_PAD = 6;
+
+/**
+ * Every text of a declaration, in PAINTING ORDER: zone labels, then each axis'
+ * title followed by its end labels.
+ *
+ * One walk, used by both the renderer and the hit tester, so a label can never
+ * be drawn in one place and clicked in another.
+ */
+export function backgroundTexts(
+  def: FrameworkBackgroundDef
+): BackgroundTextDef[] {
+  const texts: BackgroundTextDef[] = [];
+  for (const zone of def.zones ?? []) {
+    if (zone.label) texts.push(zone.label);
+  }
+  for (const axis of def.axes ?? []) {
+    // The title shares the axis' visibility; the end labels have their own.
+    if (axis.title) {
+      texts.push(
+        axis.visibleProp === undefined
+          ? axis.title
+          : { ...axis.title, visibleProp: axis.visibleProp }
+      );
+    }
+    texts.push(...(axis.endLabels ?? []));
+  }
+  return texts;
+}
+
+/**
+ * Clickable boxes of every VISIBLE, EDITABLE label — those the declaration
+ * binds to a model prop; a label that only names an i18n key is vocabulary,
+ * not user text, and is not offered for editing.
+ *
+ * Positions come from the same declaration the renderer paints from, so the
+ * boxes track the drawn text by construction.
+ */
+export function backgroundLabelHits(
+  def: FrameworkBackgroundDef,
+  model: BackgroundModelLike,
+  w: number,
+  h: number,
+  translation?: TranslationService | null
+): BackgroundLabelHit[] {
+  const plot = backgroundPlot(def, w, h);
+  const hits: BackgroundLabelHit[] = [];
+
+  for (const text of backgroundTexts(def)) {
+    if (text.prop === undefined) continue;
+    if (!backgroundVisible(text.visibleProp, model)) continue;
+
+    const words = backgroundLabelText(text, model, translation);
+    const size = text.style.size;
+    const tw = approxTextWidth(words, size);
+    const [ax, ay] = backgroundPoint(text.anchor, plot);
+
+    if (text.vertical) {
+      hits.push({
+        id: text.id,
+        prop: text.prop,
+        text: words,
+        minX: ax - size - HIT_PAD,
+        maxX: ax + size * 0.4 + HIT_PAD,
+        minY: ay - tw / 2 - HIT_PAD,
+        maxY: ay + tw / 2 + HIT_PAD,
+      });
+      continue;
+    }
+
+    const align = text.align ?? 'left';
+    const minX = align === 'right' ? ax - tw : align === 'center' ? ax - tw / 2 : ax;
+    const maxX = align === 'right' ? ax : align === 'center' ? ax + tw / 2 : ax + tw;
+    hits.push({
+      id: text.id,
+      prop: text.prop,
+      text: words,
+      minX: minX - HIT_PAD,
+      maxX: maxX + HIT_PAD,
+      minY: ay - size - HIT_PAD,
+      maxY: ay + size * 0.3 + HIT_PAD,
+    });
+  }
+
+  return hits;
+}
+
+/** First label whose padded box contains the element-local point, or null. */
+export function hitTestBackgroundLabel(
+  hits: readonly BackgroundLabelHit[],
+  lx: number,
+  ly: number
+): BackgroundLabelHit | null {
+  for (const hit of hits) {
+    if (lx >= hit.minX && lx <= hit.maxX && ly >= hit.minY && ly <= hit.maxY) {
+      return hit;
+    }
+  }
+  return null;
+}

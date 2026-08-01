@@ -1,17 +1,20 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  backgroundLabelHits,
+  EdgelessCRUDIdentifier,
+  FrameworkBackgroundInteractionExtension,
+  hitTestBackgroundLabel,
+} from '@labre/affine-block-surface';
 import type { WardleyBackgroundElementModel } from '@labre/affine-model';
+import { TranslationProvider } from '@labre/affine-shared/services';
 import { rotatePoint } from '@labre/global/gfx';
 import type { PointerEventState } from '@labre/std';
-import {
-  GfxElementModelView,
-  GfxViewInteractionExtension,
-} from '@labre/std/gfx';
+import { GfxElementModelView } from '@labre/std/gfx';
 
 import {
-  getWardleyLabelHits,
-  hitTestWardleyLabel,
-  type WardleyLabelField,
-} from './label-layout';
+  isWardleyLabelProp,
+  WARDLEY_BACKGROUND,
+  type WardleyLabelProp,
+} from './background';
 
 export class WardleyView extends GfxElementModelView<WardleyBackgroundElementModel> {
   static override type: string = 'wardley';
@@ -48,17 +51,42 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       ly = uy - by;
     }
 
-    const hit = hitTestWardleyLabel(getWardleyLabelHits(this.model, w, h), lx, ly);
+    // Which labels exist, where they sit, what they SAY and which are editable
+    // all come from the declaration the renderer paints — one source, resolved
+    // through the same catalogue, so a label can never be drawn in one place
+    // and clicked in another, nor read one thing and open on another.
+    const hit = hitTestBackgroundLabel(
+      backgroundLabelHits(
+        WARDLEY_BACKGROUND,
+        this.model as unknown as Record<string, unknown>,
+        w,
+        h,
+        this.gfx.std.getOptional(TranslationProvider)
+      ),
+      lx,
+      ly
+    );
     if (!hit) return;
+    // The declaration names the prop; this decides whether it may be written.
+    if (!isWardleyLabelProp(hit.prop)) return;
 
-    this._openLabelEditor(hit.field, e);
+    this._openLabelEditor(hit.prop, hit.text, e);
   }
 
-  private _openLabelEditor(field: WardleyLabelField, e: PointerEventState): void {
+  /**
+   * @param current the words currently DRAWN — which is the vocabulary, not
+   * `model[field]`, for a label the user has never renamed. Opening on the raw
+   * prop would show an empty box for a label that plainly reads "Evolution".
+   */
+  private _openLabelEditor(
+    field: WardleyLabelProp,
+    current: string,
+    e: PointerEventState
+  ): void {
     this._closeLabelEditor();
 
     const input = document.createElement('input');
-    input.value = String(this.model[field] ?? '');
+    input.value = current;
     Object.assign(input.style, {
       position: 'fixed',
       left: `${e.raw.clientX}px`,
@@ -91,6 +119,11 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       if (this._labelEditor !== input) return;
       const value = input.value;
       this._closeLabelEditor();
+      // Opening an editor is not renaming. Writing back an untouched value
+      // would persist the resolved VOCABULARY as the user's own text, freezing
+      // the label in whatever language it was read in and putting it beyond
+      // any catalogue for good — and it would push an empty entry onto undo.
+      if (value === current) return;
       this.gfx.std.store.captureSync();
       this.gfx.std
         .get(EdgelessCRUDIdentifier)
@@ -122,22 +155,9 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
 }
 
 /**
- * Resize gating: the resize handles are hidden unless `model.resizeEnabled` is
- * true. `beforeResize` is re-evaluated every time the allowed handles are
- * computed (manager.ts), so toggling the field from the toolbar updates the
- * handles reactively. Moving/selecting stays available throughout.
+ * Resize gating, from the primitive: the handles stay hidden until
+ * `resizeEnabled` is true — the runtime half of the declaration's
+ * `geometry.resizable`.
  */
-export const WardleyInteraction = GfxViewInteractionExtension<WardleyView>(
-  WardleyView.type,
-  {
-    handleResize({ model }) {
-      return {
-        beforeResize({ set }) {
-          if (!model.resizeEnabled) {
-            set({ allowedHandlers: [] });
-          }
-        },
-      };
-    },
-  }
-);
+export const WardleyInteraction =
+  FrameworkBackgroundInteractionExtension(WARDLEY_BACKGROUND);
