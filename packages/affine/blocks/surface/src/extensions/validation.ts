@@ -519,6 +519,24 @@ function backgroundsOf(
 }
 
 /**
+ * Every element on the surface acting as a framework background for SOME rule.
+ *
+ * Recorded by the manager after each evaluation, and read on the next one — the
+ * one fact about a deleted background that nothing else can reconstruct. See
+ * {@link ValidationManager._backgrounds}.
+ */
+function backgroundElementIds(
+  rules: readonly ValidationRule[],
+  elements: readonly GfxPrimitiveElementModel[]
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const rule of rules) {
+    for (const background of backgroundsOf(rule, elements)) ids.add(background.id);
+  }
+  return ids;
+}
+
+/**
  * The instance a finding is attributed to: the one that CONTAINS the subject,
  * failing that the nearest by edge-to-edge gap.
  *
@@ -1610,6 +1628,26 @@ export class ValidationManager extends InteractivityExtension {
   /** Whether {@link violations$} holds a verdict a dirty set can build on. */
   private _evaluated = false;
 
+  /**
+   * The ids that were framework BACKGROUNDS at the last evaluation.
+   *
+   * `no-overlap` already sends the surface back through a full sweep when a
+   * frame is touched, and it finds a DELETED one by looking for its id in the
+   * previous findings — the only trace a departed element leaves. That trace
+   * does not exist when the frame's profile put the rule on `'off'`: the
+   * findings measured against it were dropped by `applyProfiles`, so `previous`
+   * is empty, the deletion looks like an ordinary one, and the overlap that
+   * comes back to life under the default profile is never reported. No family
+   * can close that hole — an element that is gone from the surface AND absent
+   * from the findings is invisible to everything except a memory of it.
+   *
+   * So the manager keeps that memory. A dirty id that used to be a background
+   * forces the full pass, whatever the previous findings say or fail to say —
+   * which makes `incremental === full` true by construction rather than by the
+   * luck of no shipped profile using `'off'` yet.
+   */
+  private _backgrounds: ReadonlySet<string> = new Set();
+
   private _rules: readonly ValidationRule[] | null = null;
 
   /** Registered rules, resolved once. Empty when every framework is flagged off. */
@@ -1666,6 +1704,7 @@ export class ValidationManager extends InteractivityExtension {
     this._unsubscribe();
     this._dirty.clear();
     this._evaluated = false;
+    this._backgrounds = new Set();
     this.timeline.clear();
     super.unmounted();
   }
@@ -1723,15 +1762,20 @@ export class ValidationManager extends InteractivityExtension {
     if (rules.length === 0 || !surface) return;
 
     const previous = this.violations$.peek();
+    // A frame that WAS there and is now dirty invalidates attributions no
+    // pair-wise re-test would reach — including, when its profile silenced the
+    // rule, findings that were never recorded for the family to find.
+    const frameTouched = [...dirty].some(id => this._backgrounds.has(id));
     const violations = evaluateRules(
       rules,
       surface.elementModels,
       this._activeProfiles,
-      incremental && this._evaluated && dirty.size > 0
+      incremental && this._evaluated && dirty.size > 0 && !frameTouched
         ? { dirty, previous }
         : undefined
     );
     this._evaluated = true;
+    this._backgrounds = backgroundElementIds(rules, surface.elementModels);
     // Stay silent when nothing changed: `violations$` is the seam a host panel
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;

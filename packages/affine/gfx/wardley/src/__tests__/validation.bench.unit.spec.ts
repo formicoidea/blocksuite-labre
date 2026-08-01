@@ -378,19 +378,23 @@ describe('a drag on a dense map re-judges only what moved', () => {
  *
  * `no-overlap` is the only super-linear term in the engine: everything else is
  * a constant per element. Measured on this generator, with the three rules of
- * THIS slice and nothing else — recorded so the next slice inherits a FIGURE
- * rather than a conclusion:
+ * THIS slice and nothing else, EVALUATION ONLY — the map is built outside the
+ * timer, or the linear generator dilutes the quadratic engine and every figure
+ * below is a statement about the wrong thing. Recorded so the next slice
+ * inherits a FIGURE rather than a conclusion:
  *
  * ```
- *   500 elements :   1.1 ms     (the reference map, and the claim in the PR)
- *  1000 elements :   3.4 ms     (still inside, with most of the frame spare)
- *  2000 elements :  11.2 ms     (inside, but the whole budget is now this)
- *  4000 elements :  44.3 ms     (2.8× outside)
+ *   500 elements :   2.0 ms     (the reference map, and the claim in the PR)
+ *  1000 elements :   5.2 ms     (still inside, with two thirds of the frame spare)
+ *  2000 elements :  15.0 ms     (the whole budget, exactly — this IS the wall)
+ *  4000 elements :  50.0 ms     (3× outside)
  * ```
  *
  * Four times the elements is sixteen times the work: the wall is at roughly
- * **2500 elements today**, and it moves DOWN as rules are added — each extra
- * pair-wise rule is another full sweep.
+ * **2000 elements today** — the one figure this slice hands on, and the same
+ * one the `SCALE` line below recomputes on every run (measured across runs on
+ * one machine: 1650 to 2100, median ~1930). It moves DOWN as rules are added:
+ * each extra pair-wise rule is another full sweep.
  *
  * So the honest trigger for a spatial index is **the second pair-wise rule, or
  * the first board past ~2000 elements — whichever comes first.** Not "when we
@@ -408,13 +412,20 @@ describe('the budget horizon, recorded for the next slice', () => {
     // runner's mood, while the RATIO between two sizes is a statement about the
     // engine. Doubling the elements must cost about four times, never eight —
     // that would mean a lost hoist or a third nested loop.
+    // Both maps are BUILT OUTSIDE the timer, like every other measurement in
+    // this file. The generator is linear and the evaluation quadratic, so a
+    // build left inside the closure dominates the small point and drags the
+    // measured ratio down towards ×2 — it made the shape look better than it
+    // is, and the extrapolated wall ~60 % more pessimistic than it is.
+    const smallMap = referenceMap(500, 'wardley.strict');
+    const bigMap = referenceMap(1000, 'wardley.strict');
     const small = medianMs(
-      () => evaluateRules(WARDLEY_RULES, referenceMap(500, 'wardley.strict'), WARDLEY_PROFILES),
+      () => evaluateRules(WARDLEY_RULES, smallMap, WARDLEY_PROFILES),
       7,
       2
     );
     const big = medianMs(
-      () => evaluateRules(WARDLEY_RULES, referenceMap(1000, 'wardley.strict'), WARDLEY_PROFILES),
+      () => evaluateRules(WARDLEY_RULES, bigMap, WARDLEY_PROFILES),
       7,
       2
     );

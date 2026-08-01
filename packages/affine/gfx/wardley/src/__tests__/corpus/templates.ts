@@ -21,6 +21,11 @@ import { wardleyTemplateCategory } from '../../templates';
  * is exactly the segment between the two referenced centres. That is what this
  * builds — not an approximation of routing, the routing itself for this case.
  *
+ * The `Straight` half of that is ASSERTED rather than assumed: nothing in the
+ * repository holds it true, and a preset that quietly gained a curve would be
+ * read as its chord and judged conformant for the wrong shape. {@link cardOf}
+ * throws on any other mode.
+ *
  * A connector whose ends are not both resolvable is dropped rather than
  * guessed at.
  */
@@ -38,10 +43,20 @@ type Snapshot = {
 type RawElement = {
   type?: string;
   role?: string;
+  mode?: number;
   xywh?: string;
   source?: { id?: string; position?: [number, number] };
   target?: { id?: string; position?: [number, number] };
 };
+
+/**
+ * `ConnectorMode.Straight`, spelled out rather than imported.
+ *
+ * The corpus reads a stored SNAPSHOT — a number in a JSON blob — and the point
+ * of the check below is to catch the day that number changes. Importing the
+ * enum would make the constant follow the value it is supposed to hold still.
+ */
+const STRAIGHT_MODE = 0;
 
 const centreOf = (xywh: string): [number, number] => {
   const [x, y, w, h] = JSON.parse(xywh) as number[];
@@ -64,6 +79,20 @@ function cardOf(name: string, raw: Record<string, RawElement>): TemplateCard {
   const elements: GfxPrimitiveElementModel[] = [];
   for (const [id, el] of Object.entries(raw)) {
     if (el.type === 'connector') {
+      // The hypothesis this whole reader rests on, made VERIFIABLE instead of
+      // merely written down. "The drawn line is the segment between the two
+      // centres" is true of a straight connector and of nothing else: a preset
+      // that one day ships a curve would be read as its chord, in silence, and
+      // the conformance test above would then be judging a shape the map does
+      // not draw. `mode` is read off the snapshot, so an absent one counts as a
+      // failure too — the model's own default is `Curve`.
+      if (el.mode !== STRAIGHT_MODE) {
+        throw new Error(
+          `[corpus] template "${name}" connector "${id}" has mode ${el.mode} — ` +
+            'this reader reconstructs straight segments only. Sample the curve ' +
+            'here, or the corpus judges a shape the template does not draw.'
+        );
+      }
       const from = endpoint(el.source);
       const to = endpoint(el.target);
       // Not resolvable: dropped rather than guessed at.

@@ -35,6 +35,18 @@ import {
  * the direction of increasing value"). A framework that one day needs a
  * reversed axis adds a field there and this reads it — until then, inventing
  * one would be a knob nobody turns.
+ *
+ * ponytail: a ROTATED instance is not accounted for. `forward` is a function of
+ * the declaration alone, so it describes an upright background — turn a map
+ * 180° on the canvas and W1 reads a correct change arrow as pointing backwards
+ * (and a correct one as fine), because the axis it is compared against never
+ * turned with it. Distinct from the reversed-axis case above: that one is a
+ * framework declaring a different convention, this one is a user rotating one
+ * instance of the same convention. Left as is because nothing rotates a
+ * framework background today and no user has asked to. Upgrade: fold the
+ * instance's `rotate` into the vector — a rotation of `forward` by the
+ * instance's angle at the one call site that has the element in hand, not a new
+ * declared field.
  */
 export interface BackgroundAxisFact {
   id: string;

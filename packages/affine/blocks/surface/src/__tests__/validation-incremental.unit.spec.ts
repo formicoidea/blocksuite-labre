@@ -1,11 +1,15 @@
 import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel, RoleDefs } from '@labre/std/gfx';
+import { signal } from '@preact/signals-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   evaluateRules,
   type IncrementalContext,
+  ValidationManager,
+  type ValidationProfile,
   type ValidationRule,
+  ValidationRuleIdentifier,
   type Violation,
 } from '../extensions/validation.js';
 
@@ -222,6 +226,116 @@ describe('the bound cannot change the answer', () => {
       expect(full).toHaveLength(30);
     });
   }
+});
+
+/**
+ * The one hole the family cannot close on its own (recette #2, R5).
+ *
+ * `no-overlap` finds a DELETED frame by looking for its id among the previous
+ * findings, because that is the only trace an element that has left the surface
+ * can leave. A frame whose profile put the rule on `'off'` leaves no such
+ * trace: `applyProfiles` dropped every finding measured against it, so
+ * `previous` is empty, the deletion reads as an ordinary one — and the overlap
+ * that becomes live again under the default profile is reported by a full pass
+ * and not by the incremental one.
+ *
+ * No shipped Wardley profile uses `'off'` today, so this was latent rather than
+ * live. `'off'` is a documented state of PF9 all the same, and the first
+ * framework that ships one would reopen the bug — so the invariant is closed by
+ * construction instead of by luck: the MANAGER remembers which ids were
+ * backgrounds at the last evaluation, which is exactly the memory a family that
+ * only ever sees the current surface cannot have.
+ *
+ * Driven through the real path — subscription, dirty set, 120 ms debounce —
+ * because the decision it tests lives between them.
+ */
+describe('a background that has been SILENCED still forces a full pass', () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** A profile that switches the pair-wise rule off, and is not the default. */
+  const OFF: ValidationProfile = {
+    id: 'test.off',
+    framework: 'test',
+    labelKey: 'com.labre.test.profile.off',
+    rules: { [RULE.id]: 'off' },
+  };
+  const DEFAULT: ValidationProfile = {
+    id: 'test.sketch',
+    framework: 'test',
+    labelKey: 'com.labre.test.profile.sketch',
+    isDefault: true,
+    rules: {},
+  };
+
+  /** The minimum of a surface: the element list, and the three change feeds. */
+  function fakeSurface(elements: GfxPrimitiveElementModel[]) {
+    const feed = () => {
+      const listeners: ((payload: { id: string }) => void)[] = [];
+      return {
+        subscribe(fn: (payload: { id: string }) => void) {
+          listeners.push(fn);
+          return { unsubscribe() {} };
+        },
+        emit(id: string) {
+          for (const fn of [...listeners]) fn({ id });
+        },
+      };
+    };
+    return {
+      elementModels: elements,
+      elementAdded: feed(),
+      elementRemoved: feed(),
+      elementUpdated: feed(),
+    };
+  }
+
+  it('when the SILENCED map is deleted and the overlap comes back to life', () => {
+    vi.useFakeTimers();
+
+    // Two nodes genuinely on top of each other, on a map whose chosen level of
+    // requirement switches the rule off entirely.
+    const map = element('map', [0, 0, 1600, 900], 'test:frame') as {
+      validationProfile?: string;
+    } & GfxPrimitiveElementModel;
+    (map as { validationProfile?: string }).validationProfile = OFF.id;
+    const elements: GfxPrimitiveElementModel[] = [map, node('a', 400), node('b', 410)];
+
+    const surface = fakeSurface(elements);
+    const manager = new ValidationManager({
+      surface,
+      surface$: signal(surface),
+      std: {
+        provider: {
+          getAll: (identifier: unknown) =>
+            new Map<string, unknown>(
+              identifier === ValidationRuleIdentifier
+                ? [['rule', RULE]]
+                : [
+                    ['off', OFF],
+                    ['default', DEFAULT],
+                  ]
+            ),
+        },
+        getOptional: () => null,
+      },
+    } as never);
+
+    // First verdict: silent, and silent for the right reason — the map says so.
+    manager.mounted();
+    expect(manager.violations$.peek()).toEqual([]);
+
+    // The map is deleted. Nothing else moves.
+    elements.shift();
+    surface.elementRemoved.emit('map');
+    vi.advanceTimersByTime(200);
+
+    // What a full pass says now, which is the only right answer.
+    const full = keys(evaluateRules([RULE], elements, [OFF, DEFAULT]));
+    expect(full).toHaveLength(1);
+    expect(keys(manager.violations$.peek())).toEqual(full);
+
+    manager.unmounted();
+  });
 });
 
 describe('a rule that can never fire says so', () => {

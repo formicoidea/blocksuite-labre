@@ -223,10 +223,13 @@ describe('built-in templates are typed like hand-drawn maps', () => {
     // which name nothing and are measured by nobody.
     expect(named.length + neutral.length).toBe(texts.length);
     expect(named.length).toBeGreaterThan(10);
-    // The annotation texts of the canonical maps — titles, the numbered
-    // callouts, the note panel. Pinned so that neutralising a NAME to silence
-    // a finding cannot pass unnoticed.
-    expect(neutral.length).toBeGreaterThan(0);
+    // The annotation texts of the canonical maps: the two map titles, and the
+    // three notes of the Kodak card. Pinned as a COUNT, not as "at least one" —
+    // the two sets sum to the total either way, so neutralising a NAME to
+    // silence a W3 finding would merely move one unit from one set to the
+    // other and leave a `toBeGreaterThan(0)` untouched. Same form as the
+    // `toHaveLength(3)` above, and for the same reason.
+    expect(neutral).toHaveLength(5);
   });
 
   it('types template dependency links AND change arrows', () => {

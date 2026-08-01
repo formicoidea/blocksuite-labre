@@ -49,4 +49,11 @@ Every test that exercised the affordance, the exceptions, the profiles and the
 budget through it now exercises them through the real rules, in the same commit.
 
 The bench grew a reference map carrying arrows, bars, labels and links, and a
-worst-case drag. Both stay far inside one frame.
+worst-case drag. Both stay far inside one frame. It also records the budget's
+horizon so the next slice inherits a figure and not a conclusion: growth is
+quadratic in the pair-wise participants, the 16 ms wall sits at roughly **2000
+elements** today, and a test fails the day a SECOND pair-wise rule lands — which
+is the honest trigger for a spatial index, along with the first board past that
+wall. (An earlier draft of this slice quoted 1300 and 2500 in two places: both
+were measured with the map generator inside the timer, which dilutes a quadratic
+engine with a linear build. 2000 is the corrected, single figure.)
