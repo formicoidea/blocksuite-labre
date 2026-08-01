@@ -1,4 +1,7 @@
-import { ValidationRuleExtension } from '@labre/affine-block-surface';
+import {
+  ValidationProfileExtension,
+  ValidationRuleExtension,
+} from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -8,6 +11,7 @@ import { CommandExtension } from '@labre/std';
 
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
+import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_RULES } from './rules';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
@@ -44,8 +48,9 @@ export class WardleyRenderViewExtension extends ViewExtensionProvider {
 /**
  * Wardley creation tooling — flag-gated (`wardley`): the senior toolbar button,
  * its templates category, the edgeless chords (w+c, w+l, ...) and the
- * validation rules. Rules are tooling: a map drawn while the flag was on keeps
- * rendering when it goes off, it just stops being checked.
+ * validation rules and profiles. Both are tooling: a map drawn while the flag
+ * was on keeps rendering when it goes off, it just stops being checked — and
+ * the profile it was put on stays written, unread, until the flag comes back.
  */
 export class WardleyViewExtension extends ViewExtensionProvider {
   override name = 'affine-wardley-gfx';
@@ -61,6 +66,7 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
+      context.register(ValidationProfileExtension(WARDLEY_PROFILES));
       context.register(wardleySeniorTool);
       // The 13 Wardley commands, ONE registration for both faces: the
       // enumerable registry the sub-menu renders from, and — through

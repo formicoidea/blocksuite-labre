@@ -27,10 +27,16 @@ describe('wardley validation on the canvas', () => {
   let service!: EdgelessRootBlockComponent['service'];
   let validation!: ValidationManager;
 
+  /**
+   * A map on the STRICT profile — since PF9 the default (`wardley.sketch`)
+   * demotes the pilot rule to `audit`, which raises a finding the engine
+   * reports and the canvas deliberately never draws.
+   */
   const addBackground = () =>
     service.surface.addElement({
       type: 'wardley',
       role: 'wardley:map',
+      validationProfile: 'wardley.strict',
       xywh: '[0,0,1600,900]',
     });
 

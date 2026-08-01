@@ -84,10 +84,17 @@ describe('validation exceptions', () => {
   let tracked!: TrackedEvent[];
   let unmount: (() => void) | null = null;
 
+  /**
+   * A map on the STRICT profile — since PF9 the default (`wardley.sketch`)
+   * demotes the pilot rule to `audit`, and an arbitration you cannot see is an
+   * arbitration nobody makes. The profile and the exception are orthogonal on
+   * purpose: this suite proves the latter, on a map that asked to be checked.
+   */
   const addBackground = (xywh = '[0,0,1600,900]') =>
     service.surface.addElement({
       type: 'wardley',
       role: 'wardley:map',
+      validationProfile: 'wardley.strict',
       xywh,
     });
 
