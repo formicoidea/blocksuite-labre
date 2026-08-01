@@ -653,11 +653,16 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
           >`
         : nothing}
       <div class="violation-message">
-        ${translateKey(this.std, entry.messageKey)}
+        ${
+          // The FRAMEWORK's own wording when the host ships no catalogue, and
+          // the raw key when the framework shipped none either — the library
+          // still never invents the wording of somebody else's rule.
+          translateKey(this.std, entry.messageKey, entry.messageFallback)
+        }
       </div>
       ${entry.suggestion
         ? html`<div class="violation-suggestion">
-            ${translateKey(this.std, entry.suggestion)}
+            ${translateKey(this.std, entry.suggestion, entry.suggestionFallback)}
           </div>`
         : nothing}
       <div class="violation-actions">

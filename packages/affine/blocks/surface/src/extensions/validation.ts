@@ -1,5 +1,6 @@
 import { createIdentifier } from '@labre/global/di';
 import type { Bound } from '@labre/global/gfx';
+import { lineIntersects } from '@labre/global/gfx';
 import type {
   RoleDefs,
   RoleId,
@@ -15,6 +16,14 @@ import {
 import type { ExtensionType } from '@labre/store';
 import { effect, signal } from '@preact/signals-core';
 
+// Straight at the two leaf modules rather than at the barrel: `index.js` also
+// re-exports the RENDERER, which would pull a canvas into the evaluation path
+// and make a cycle out of what is a one-way read of pure declaration data.
+import type { FrameworkBackgroundDef } from '../framework-background/def.js';
+import {
+  backgroundAxisFact,
+  backgroundBoundaryCoords,
+} from '../framework-background/facts.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
@@ -58,10 +67,70 @@ export type ProfileSeverity = ViolationSeverity | 'off';
 
 /**
  * Rule families. One family = one evaluation function ({@link RULE_FAMILIES}).
- * Wave 1 implements a single family; adding one is adding an entry here and a
- * function below, never a change to the rule shape.
+ * Adding one is adding an entry here and a function below, never a change to
+ * the shape of a rule.
+ *
+ * - `element-in-background` — the subject must sit inside the framework's frame.
+ * - `orientation-against-axis` — a DIRECTIONAL subject (an arrow, an edge) must
+ *   not run against the declared sense of one of the frame's axes.
+ * - `attachment` — the subject must be posed ON a carrier element, and
+ *   optionally at one of the frame's zone transitions.
+ * - `no-overlap` — declared pairs of roles must not collide. The first family
+ *   that is not element-local: it evaluates PAIRS.
  */
-export type RuleFamily = 'element-in-background';
+export type RuleFamily =
+  | 'element-in-background'
+  | 'orientation-against-axis'
+  | 'attachment'
+  | 'no-overlap';
+
+/** `orientation-against-axis` configuration. */
+export interface AgainstAxisDef {
+  /** Id of the axis in the rule's {@link ValidationRule.background}. */
+  axis: string;
+  /**
+   * Dead zone, in degrees, around the perpendicular. A subject at exactly 90°
+   * to the axis runs neither with it nor against it, and a rule that indicted
+   * it would be indicting a drawing hand rather than a mistake — so the verdict
+   * only falls beyond `90 + toleranceDeg` away from the axis' forward sense.
+   */
+  toleranceDeg: number;
+}
+
+/** `attachment` configuration. */
+export interface AttachmentDef {
+  /**
+   * The role of the element the subject must be posed ON.
+   *
+   * It has to be an **edge** role: "posed on" is measured as a distance to a
+   * PATH, and a node has none. A rule naming a node role here matches nothing
+   * and warns once rather than failing silently — a rule that never fires and
+   * never says why is the worst thing declarative data can do.
+   */
+  carrierRole: RoleId;
+  /** How far, in model units, the subject may sit from its carrier. */
+  tolerance: number;
+  /**
+   * Optional second requirement: the subject must also sit at one of the ZONE
+   * TRANSITIONS the frame declares, measured ACROSS this axis. Absent means
+   * anywhere along the carrier will do.
+   */
+  boundaryAxis?: string;
+  /** How far, in model units, from a transition still counts as on it. */
+  boundaryTolerance?: number;
+}
+
+/**
+ * One `no-overlap` combination: two roles that must not collide. Order carries
+ * no meaning — `[label, node]` and `[node, label]` are the same requirement.
+ *
+ * Which GEOMETRY each side is measured with is not declared here: it follows
+ * the role's own `kind` in {@link ValidationRule.roles}. An `edge` role is
+ * measured along its PATH, a `node` role by its bounds — because the bounding
+ * box of a diagonal link covers half the map and would indict every label
+ * anywhere near it.
+ */
+export type OverlapPair = readonly [RoleId, RoleId];
 
 /**
  * A rule is declarative, versioned data owned by its framework (PRD principle
@@ -69,7 +138,7 @@ export type RuleFamily = 'element-in-background';
  * can be shipped by a host.
  */
 export interface ValidationRule {
-  /** Stable id, namespaced by framework: `wardley.component-outside-map`. */
+  /** Stable id, namespaced by framework: `wardley.change-arrow-against-evolution`. */
   id: string;
   /** Owning framework, `wardley`. Rules never leave their framework. */
   framework: string;
@@ -81,25 +150,58 @@ export interface ValidationRule {
    * `wardley:component` covers `wardley:market` for free. An element with no
    * role (a generalist square, a free text) never matches — proportionality,
    * PRD principle 8.
+   *
+   * Absent for `no-overlap`, whose subjects are declared per PAIR: the rule has
+   * no single subject role, and naming one would be data that lies.
    */
-  appliesTo: RoleId;
+  appliesTo?: RoleId;
   /** The framework's role vocabulary, for the inheritance walk. */
   roles: RoleDefs;
   /** i18n key of the message; resolved by the host. The engine holds no prose. */
   messageKey: string;
+  /**
+   * The FRAMEWORK's own wording, used when the host ships no catalogue for the
+   * key — exactly the `labelKey` + `fallback` pair a {@link ValidationProfile}
+   * and a background label already carry. The framework owns the word; the
+   * library still never invents one.
+   */
+  messageFallback?: string;
   /** i18n key of an optional remediation hint. */
   suggestionKey?: string;
+  /** The framework's own wording for {@link suggestionKey}. */
+  suggestionFallback?: string;
   /** Bumped when the rule's meaning changes, so a host can pin behaviour. */
   version: number;
   /**
-   * `element-in-background` only: the ROLE of the framework's background
-   * (`wardley:map`), i.e. the frame the subject roles must sit on.
+   * The ROLE of the framework's background (`wardley:map`), i.e. the frame the
+   * subject roles are measured against.
    *
    * A role, not an element type: the engine never looks at a shape type, on
    * either side of a rule (see `role.ts`). A background authored before its
    * role existed carries none, frames nothing and raises nothing.
+   *
+   * Required by `element-in-background` and by any family reading the frame's
+   * declared facts; optional for `no-overlap`, where it only decides whether a
+   * finding can be waived map-wide.
    */
   backgroundRole?: RoleId;
+  /**
+   * The framework's background DECLARATION, carried as data exactly like
+   * {@link roles} is.
+   *
+   * This is what lets a rule read the frame's SEMANTICS — which axes it has and
+   * which way they run, where its zones meet — without the engine owning a
+   * registry of backgrounds or importing a renderer. The facts come out of
+   * `../framework-background/facts.js`, and are a pure function of this
+   * declaration plus the bounds of the instance a finding is measured against.
+   */
+  background?: FrameworkBackgroundDef;
+  /** `orientation-against-axis` only. */
+  against?: AgainstAxisDef;
+  /** `attachment` only. */
+  attachment?: AttachmentDef;
+  /** `no-overlap` only: the combinations that must not collide. */
+  overlap?: readonly OverlapPair[];
 }
 
 /**
@@ -310,12 +412,21 @@ function applyProfiles(
  */
 export interface Violation {
   ruleId: string;
-  /** The elements the rule indicts. One for wave 1's family. */
+  /**
+   * The elements the rule indicts — one for an element-local family, TWO for
+   * `no-overlap`, which is about a pair and not about either half of it. Sorted
+   * by id, so the same collision always reports the same way whichever order
+   * the surface happened to be walked in.
+   */
   elementIds: string[];
   severity: ViolationSeverity;
   messageKey: string;
+  /** The framework's own wording for {@link messageKey}. */
+  messageFallback?: string;
   /** i18n key of a remediation hint, when the rule carries one. */
   suggestion?: string;
+  /** The framework's own wording for {@link suggestion}. */
+  suggestionFallback?: string;
   /**
    * The background this finding is attributed to — for `element-in-background`,
    * the NEAREST one, none of them having contained the element (that is what
@@ -365,6 +476,124 @@ export interface Violation {
 export type ExemptionScope = 'element' | 'map';
 
 /**
+ * Complain once per distinct problem. A family runs on every evaluation, so a
+ * bare `console.warn` about a malformed rule would fill the console at 8 Hz
+ * while somebody drags.
+ */
+const warned = new Set<string>();
+
+function warnOnce(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[validation] ${reason}`);
+}
+
+/** One instance of a framework background, as the families read it. */
+interface BackgroundInstance {
+  id: string;
+  bound: Bound;
+}
+
+/**
+ * Every background instance on the surface carrying the rule's frame role.
+ *
+ * Empty when the rule declares no frame role, and empty on a board whose maps
+ * were all authored before that role existed — which is what makes an old
+ * document stay a sketch instead of lighting up.
+ */
+function backgroundsOf(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): BackgroundInstance[] {
+  const backgroundRole = rule.backgroundRole;
+  if (backgroundRole === undefined) return [];
+
+  const backgrounds: BackgroundInstance[] = [];
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, backgroundRole, rule.roles)) {
+      backgrounds.push({ id: el.id, bound: el.elementBound });
+    }
+  }
+  return backgrounds;
+}
+
+/**
+ * Every element on the surface acting as a framework background for SOME rule.
+ *
+ * Recorded by the manager after each evaluation, and read on the next one — the
+ * one fact about a deleted background that nothing else can reconstruct. See
+ * {@link ValidationManager._backgrounds}.
+ */
+function backgroundElementIds(
+  rules: readonly ValidationRule[],
+  elements: readonly GfxPrimitiveElementModel[]
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const rule of rules) {
+    for (const background of backgroundsOf(rule, elements)) ids.add(background.id);
+  }
+  return ids;
+}
+
+/**
+ * The instance a finding is attributed to: the one that CONTAINS the subject,
+ * failing that the nearest by edge-to-edge gap.
+ *
+ * Same question `evaluateElementInBackground` answers inline, asked by the
+ * families whose subjects normally ARE on the map — an inertia bar, an arrow, a
+ * pair of overlapping labels. Ties go to the smaller id so a persisted
+ * arbitration never depends on the order a `Y.Map` was rebuilt in.
+ */
+function attributeBackground(
+  bound: Bound,
+  backgrounds: readonly BackgroundInstance[]
+): BackgroundInstance | null {
+  let nearest: BackgroundInstance | null = null;
+  let nearestDistance = Infinity;
+  for (const background of backgrounds) {
+    if (background.bound.contains(bound)) return background;
+    const distance = gapSquared(background.bound, bound);
+    if (
+      distance < nearestDistance ||
+      (distance === nearestDistance &&
+        nearest !== null &&
+        background.id < nearest.id)
+    ) {
+      nearestDistance = distance;
+      nearest = background;
+    }
+  }
+  return nearest;
+}
+
+/**
+ * Build the finding of `rule` against `elementIds`. One place, so every family
+ * carries the rule's keys, its fallbacks and its background attribution the
+ * same way.
+ */
+function raise(
+  rule: ValidationRule,
+  elementIds: string[],
+  backgroundId?: string
+): Violation {
+  return {
+    ruleId: rule.id,
+    elementIds,
+    severity: rule.severity,
+    messageKey: rule.messageKey,
+    ...(rule.messageFallback !== undefined
+      ? { messageFallback: rule.messageFallback }
+      : {}),
+    ...(rule.suggestionKey ? { suggestion: rule.suggestionKey } : {}),
+    ...(rule.suggestionFallback !== undefined
+      ? { suggestionFallback: rule.suggestionFallback }
+      : {}),
+    ...(backgroundId !== undefined ? { backgroundId } : {}),
+  };
+}
+
+/**
  * "Is this element on the framework's background?"
  *
  * An element carrying `rule.appliesTo` (or a specialisation of it) whose bounds
@@ -383,23 +612,17 @@ function evaluateElementInBackground(
   rule: ValidationRule,
   elements: readonly GfxPrimitiveElementModel[]
 ): Violation[] {
-  const backgroundRole = rule.backgroundRole;
-  if (backgroundRole === undefined) return [];
+  const subjectRole = rule.appliesTo;
+  if (subjectRole === undefined) return [];
 
-  const backgrounds: { id: string; bound: Bound }[] = [];
-  for (const el of elements) {
-    if (el.role === undefined) continue;
-    if (roleIsA(el.role, backgroundRole, rule.roles)) {
-      backgrounds.push({ id: el.id, bound: el.elementBound });
-    }
-  }
+  const backgrounds = backgroundsOf(rule, elements);
   if (backgrounds.length === 0) return [];
 
   const violations: Violation[] = [];
   for (const el of elements) {
     // Cheapest possible exit for a neutral element: no role, no evaluation.
     if (el.role === undefined) continue;
-    if (!roleIsA(el.role, rule.appliesTo, rule.roles)) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
 
     const bound = el.elementBound;
     // One pass, and it answers two questions at once: is this element on ANY
@@ -434,14 +657,7 @@ function evaluateElementInBackground(
     }
     if (framed) continue;
 
-    violations.push({
-      ruleId: rule.id,
-      elementIds: [el.id],
-      severity: rule.severity,
-      messageKey: rule.messageKey,
-      ...(rule.suggestionKey ? { suggestion: rule.suggestionKey } : {}),
-      ...(nearest ? { backgroundId: nearest.id } : {}),
-    });
+    violations.push(raise(rule, [el.id], nearest?.id));
   }
   return violations;
 }
@@ -467,14 +683,595 @@ function gapSquared(background: Bound, bound: Bound): number {
   return dx * dx + dy * dy;
 }
 
+/**
+ * A point in model space. Mutable rather than `readonly` only so it satisfies
+ * the house `IVec` (`number[]`) the geometry helpers take; nothing writes to it.
+ */
+type Point = [number, number];
+
+/**
+ * How many points a CURVED segment is sampled into. A Wardley map is ~1600
+ * units wide and the tightest tolerance any rule declares is 24, so 32 chords
+ * put the sampling error two orders of magnitude below the thing being
+ * measured. Paid only by an element that actually carries tangents.
+ */
+const CURVE_SAMPLES = 32;
+
+/** A point on the cubic Bézier `p0 → p1` with control points `c0`, `c1`. */
+function cubicAt(
+  p0: Point,
+  c0: Point,
+  c1: Point,
+  p1: Point,
+  t: number
+): Point {
+  const u = 1 - t;
+  const a = u * u * u;
+  const b = 3 * u * u * t;
+  const c = 3 * u * t * t;
+  const d = t * t * t;
+  return [
+    a * p0[0] + b * c0[0] + c * c1[0] + d * p1[0],
+    a * p0[1] + b * c0[1] + c * c1[1] + d * p1[1],
+  ];
+}
+
+/** Anything but a rounding difference away from `p`. */
+function departsFrom(candidate: unknown, p: Point): candidate is Point {
+  return (
+    isPoint(candidate) &&
+    (Math.abs(candidate[0] - p[0]) > 1e-6 || Math.abs(candidate[1] - p[1]) > 1e-6)
+  );
+}
+
+/**
+ * The POLYLINE a directional element exposes, in absolute model coordinates —
+ * `null` for anything that is not one.
+ *
+ * Duck-typed on purpose. The engine must not import a connector model: it knows
+ * roles and geometry, and "an element that runs from here to there" is
+ * geometry. Two sources, in order:
+ *
+ * 1. `absolutePath` — the ROUTED path, which is what the user sees and what a
+ *    right-angled connector actually traces;
+ * 2. the free endpoints of an unattached edge, for an element the layout has
+ *    not routed yet (a freshly pasted connector, a fixture in a unit test).
+ *
+ * An edge attached at both ends and never laid out has neither, and gets no
+ * verdict at all — silence, not a guess.
+ *
+ * ## Curved edges
+ *
+ * A routed path is not always a polyline. A curved connector stores its whole
+ * shape in TWO points carrying tangents (`absOut` on the first, `absIn` on the
+ * second) — so reading the bare coordinates gives the CHORD, and a bar sitting
+ * exactly on the drawn curve reads as 150 units off it. Wardley draws straight
+ * connectors, but the connector toolbar lets the mode be changed, and a rule
+ * that is confidently wrong about what the user can plainly see is worse than
+ * one that says nothing.
+ *
+ * Detected by geometry, not by mode: a point whose tangent departs from itself
+ * is a curve, whatever the element type calls it. The segment is then sampled
+ * ({@link CURVE_SAMPLES}) so every downstream test — distance, intersection —
+ * measures the drawn shape.
+ */
+function elementPath(el: unknown): Point[] | null {
+  const edge = el as {
+    absolutePath?: unknown;
+    source?: { position?: unknown };
+    target?: { position?: unknown };
+  };
+
+  const raw = edge.absolutePath;
+  if (Array.isArray(raw) && raw.length >= 2) {
+    const anchors: Point[] = [];
+    for (const point of raw) {
+      const x = (point as Record<number, unknown>)?.[0];
+      const y = (point as Record<number, unknown>)?.[1];
+      if (typeof x !== 'number' || typeof y !== 'number') return null;
+      anchors.push([x, y]);
+    }
+
+    const points: Point[] = [anchors[0]];
+    for (let i = 1; i < anchors.length; i++) {
+      const from = anchors[i - 1];
+      const to = anchors[i];
+      const out = (raw[i - 1] as { absOut?: unknown })?.absOut;
+      const into = (raw[i] as { absIn?: unknown })?.absIn;
+      // Straight unless a tangent says otherwise — the common case, and the
+      // one that must not pay for the other.
+      if (!departsFrom(out, from) && !departsFrom(into, to)) {
+        points.push(to);
+        continue;
+      }
+      const c0 = isPoint(out) ? out : from;
+      const c1 = isPoint(into) ? into : to;
+      for (let s = 1; s <= CURVE_SAMPLES; s++) {
+        points.push(cubicAt(from, c0, c1, to, s / CURVE_SAMPLES));
+      }
+    }
+    return points;
+  }
+
+  const from = edge.source?.position;
+  const to = edge.target?.position;
+  if (isPoint(from) && isPoint(to)) return [from, to];
+  return null;
+}
+
+function isPoint(value: unknown): value is Point {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    typeof value[0] === 'number' &&
+    typeof value[1] === 'number'
+  );
+}
+
+/**
+ * Which way a directional element RUNS: the unit vector from where it starts to
+ * where it ends.
+ *
+ * End to end, not segment by segment: an elbowed arrow wanders, but what it
+ * says is where it came from and where it points. `null` for an element with no
+ * path, or one whose ends coincide — a zero-length arrow means nothing and is
+ * not a mistake worth a message.
+ */
+function elementDirection(el: unknown): Point | null {
+  const path = elementPath(el);
+  if (path === null) return null;
+  const [sx, sy] = path[0];
+  const [ex, ey] = path[path.length - 1];
+  const dx = ex - sx;
+  const dy = ey - sy;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return null;
+  return [dx / length, dy / length];
+}
+
+/** Squared distance from `p` to the segment `a…b`. */
+function pointSegmentDistanceSquared(p: Point, a: Point, b: Point): number {
+  const vx = b[0] - a[0];
+  const vy = b[1] - a[1];
+  const lengthSquared = vx * vx + vy * vy;
+  let t = 0;
+  if (lengthSquared > 0) {
+    t = ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / lengthSquared;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+  }
+  const dx = p[0] - (a[0] + t * vx);
+  const dy = p[1] - (a[1] + t * vy);
+  return dx * dx + dy * dy;
+}
+
+/** Squared distance from `p` to the nearest point of the polyline `path`. */
+function pointPathDistanceSquared(p: Point, path: readonly Point[]): number {
+  let best = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const d = pointSegmentDistanceSquared(p, path[i - 1], path[i]);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** The centre of a bound, as a point. */
+function centreOf(bound: Bound): Point {
+  return [bound.x + bound.w / 2, bound.y + bound.h / 2];
+}
+
+/**
+ * "Does this arrow run against the axis?"
+ *
+ * The subject's direction is confronted with the declared FORWARD sense of one
+ * axis of the frame it sits on (PF5.15). The verdict is an angle and nothing
+ * else: no shape type, no colour, no element type — an arrow is a subject
+ * because it carries the role, and it is wrong because of where it points.
+ *
+ * A subject with no direction ({@link elementDirection}) and a frame that
+ * declares no such axis both yield silence rather than a guess.
+ *
+ * Cost: one `elementBound` and one path read per subject, plus the frame
+ * attribution. Constant per element — the frames are counted in units.
+ */
+function evaluateOrientationAgainstAxis(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const against = rule.against;
+  const def = rule.background;
+  if (subjectRole === undefined || against === undefined || def === undefined) {
+    return [];
+  }
+
+  const axis = backgroundAxisFact(def, against.axis);
+  if (axis === undefined) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  // No frame on the board, no sense to run against: a lone arrow is a sketch.
+  if (backgrounds.length === 0) return [];
+
+  // Beyond this angle from the axis' forward sense, the subject runs against
+  // it. Perpendicular (90°) plus the declared dead zone.
+  const limit = Math.cos(((90 + against.toleranceDeg) * Math.PI) / 180);
+
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+
+    const direction = elementDirection(el);
+    if (direction === null) continue;
+
+    const alignment = direction[0] * axis.forward[0] + direction[1] * axis.forward[1];
+    if (alignment >= limit) continue;
+
+    violations.push(
+      raise(rule, [el.id], attributeBackground(el.elementBound, backgrounds)?.id)
+    );
+  }
+  return violations;
+}
+
+/**
+ * "Is this posed on what it is supposed to be posed on?"
+ *
+ * The subject must sit within `tolerance` of an element carrying the declared
+ * CARRIER role (PF5.16) — the carrier being an edge, measured along its path —
+ * and, when the rule asks for it, at one of the frame's declared zone
+ * transitions ({@link backgroundBoundaryCoords}).
+ *
+ * Both requirements are one finding, not two: "the inertia is not on a
+ * dependency" and "it is not at a phase transition" are the same statement
+ * about the same symbol, and splitting them would put two badges on one bar.
+ *
+ * Silence when the board carries no carrier at all: a map with no dependency
+ * yet is a map being drawn, not a map with a misplaced symbol.
+ */
+function evaluateAttachment(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const attachment = rule.attachment;
+  if (subjectRole === undefined || attachment === undefined) return [];
+
+  // A carrier is something with a PATH. Declaring a node role here produces a
+  // rule that can never fire; say so once instead of shrugging.
+  if (rule.roles[attachment.carrierRole]?.kind === 'node') {
+    warnOnce(
+      `attachment rule "${rule.id}" names a node role ` +
+        `("${attachment.carrierRole}") as its carrier — "posed on" is a ` +
+        `distance to a path, so this rule can never fire.`
+    );
+    return [];
+  }
+
+  const carriers: Point[][] = [];
+  const subjects: GfxPrimitiveElementModel[] = [];
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, attachment.carrierRole, rule.roles)) {
+      const path = elementPath(el);
+      if (path !== null) carriers.push(path);
+    } else if (roleIsA(el.role, subjectRole, rule.roles)) {
+      subjects.push(el);
+    }
+  }
+  if (subjects.length === 0 || carriers.length === 0) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  const toleranceSquared = attachment.tolerance * attachment.tolerance;
+  // The transition test needs a frame to read the transitions off, so a rule
+  // asking for one on a board with no frame simply does not ask.
+  const axis =
+    attachment.boundaryAxis !== undefined && rule.background !== undefined
+      ? backgroundAxisFact(rule.background, attachment.boundaryAxis)
+      : undefined;
+
+  const violations: Violation[] = [];
+  for (const el of subjects) {
+    const bound = el.elementBound;
+    const centre = centreOf(bound);
+
+    let carried = false;
+    for (const path of carriers) {
+      if (pointPathDistanceSquared(centre, path) <= toleranceSquared) {
+        carried = true;
+        break;
+      }
+    }
+
+    const frame = attributeBackground(bound, backgrounds);
+    let onBoundary = true;
+    if (carried && axis !== undefined && frame !== null && rule.background) {
+      const coords = backgroundBoundaryCoords(rule.background, frame.bound);
+      // A transition ACROSS a horizontal axis is a vertical line, i.e. an `x`.
+      const line = axis.orientation === 'horizontal' ? coords.x : coords.y;
+      const value = axis.orientation === 'horizontal' ? centre[0] : centre[1];
+      const slack = attachment.boundaryTolerance ?? attachment.tolerance;
+      onBoundary = line.some(at => Math.abs(value - at) <= slack);
+    }
+
+    if (carried && onBoundary) continue;
+    violations.push(raise(rule, [el.id], frame?.id));
+  }
+  return violations;
+}
+
+/** One participant of a `no-overlap` pass, with its geometry read once. */
+interface OverlapSubject {
+  id: string;
+  bound: Bound;
+  /** Non-null for an `edge` role: the polyline it is measured along. */
+  path: Point[] | null;
+  /** Which of the rule's declared role slots this element fills. */
+  slots: boolean[];
+}
+
+/**
+ * How much shared extent counts as an overlap rather than a shared edge.
+ *
+ * Two boxes that TOUCH — a label ending exactly where a node begins — share no
+ * area and are perfectly readable, which is precisely what alignment and snap
+ * produce all day. The house `Bound.isOverlapWithBound` answers `true` for them
+ * (it compares against `+EPSILON`, so equality passes), so this asks for real
+ * shared extent instead. Small enough that a pixel of genuine overlap still
+ * counts, large enough that float noise on a snapped edge does not.
+ */
+const OVERLAP_EPSILON = 1e-6;
+
+/** Do these two bounds share AREA, as opposed to an edge? */
+function boundsOverlap(a: Bound, b: Bound): boolean {
+  return (
+    b.maxX - a.minX > OVERLAP_EPSILON &&
+    a.maxX - b.minX > OVERLAP_EPSILON &&
+    b.maxY - a.minY > OVERLAP_EPSILON &&
+    a.maxY - b.minY > OVERLAP_EPSILON
+  );
+}
+
+/**
+ * Do these two subjects actually collide, given each one's geometry?
+ *
+ * ## Known limit: a ROTATED node is measured by its bounding box
+ *
+ * `elementBound` is the axis-aligned box of a rotated element, so a 120×26
+ * label at 45° presents as roughly 103×103 — the same inflation this family
+ * refuses to accept for an edge, where the fix was to measure along the path.
+ * A rotated NODE has no equivalent cheap answer: it needs an oriented box and a
+ * separating-axis test on both sides of every pair, in the inner loop of the
+ * only super-linear family here.
+ *
+ * Deliberately not built, and deliberately written down. Rotating a Wardley
+ * node is not a gesture the framework has; the day a framework rotates its
+ * artefacts is the day this is worth the inner loop, and {@link OverlapSubject}
+ * is where the oriented box would go. Until then the failure mode is a
+ * false POSITIVE on a rotated pair — a warning too many, never a miss — which
+ * is the right way round for a readability rule that is only ever a warning.
+ * A test pins the behaviour so a change to it cannot be silent.
+ */
+function subjectsCollide(a: OverlapSubject, b: OverlapSubject): boolean {
+  // Bounding boxes first: on a dense map almost every pair dies here, and this
+  // is the test the O(n²) sweep is really made of.
+  if (!boundsOverlap(a.bound, b.bound)) return false;
+  if (a.path === null && b.path === null) return true;
+  if (a.path !== null && b.path !== null) return pathsCross(a.path, b.path);
+
+  const path = (a.path ?? b.path) as Point[];
+  const bound = a.path === null ? a.bound : b.bound;
+  return pathHitsBound(path, bound);
+}
+
+function pathHitsBound(path: readonly Point[], bound: Bound): boolean {
+  for (let i = 1; i < path.length; i++) {
+    if (bound.containsPoint(path[i - 1]) || bound.containsPoint(path[i])) {
+      return true;
+    }
+    if (bound.intersectLine(path[i - 1], path[i]) !== null) return true;
+  }
+  return false;
+}
+
+function pathsCross(a: readonly Point[], b: readonly Point[]): boolean {
+  for (let i = 1; i < a.length; i++) {
+    for (let j = 1; j < b.length; j++) {
+      if (lineIntersects(a[i - 1], a[i], b[j - 1], b[j])) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * "Do these two things sit on top of each other?" (PF5.13)
+ *
+ * The first family that is not element-local: it evaluates PAIRS, so a finding
+ * names two elements and neither of them alone is at fault. Which pairs is
+ * declared data — `[label, node]`, `[label, link]` — and the geometry each side
+ * is measured with follows the role's own `kind`, so an edge is measured along
+ * its path and never by the bounding box of its diagonal.
+ *
+ * ## Cost, and the dirty set
+ *
+ * Naive it is O(p²) over the PARTICIPANTS — the elements carrying one of the
+ * declared roles, never the whole surface — with every bound read exactly once
+ * and a rectangle test as the inner loop. That is what the bench measures on
+ * the reference map, and it fits.
+ *
+ * With an {@link IncrementalContext} it is O(|dirty| × p): findings that name
+ * only untouched elements are carried over from the previous evaluation, and
+ * only the couples involving something that MOVED are re-tested. A drag on a
+ * dense map is one element against the participants, not the whole grid against
+ * itself.
+ */
+function evaluateNoOverlap(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[],
+  incremental?: IncrementalContext
+): Violation[] {
+  const pairs = rule.overlap;
+  if (pairs === undefined || pairs.length === 0) return [];
+
+  // The distinct roles the pairs mention, and the pairs re-expressed as index
+  // couples into that list — so the inner loop compares booleans, not strings.
+  const slots: RoleId[] = [];
+  const couples: [number, number][] = [];
+  for (const [a, b] of pairs) {
+    const ia = slots.indexOf(a) >= 0 ? slots.indexOf(a) : slots.push(a) - 1;
+    const ib = slots.indexOf(b) >= 0 ? slots.indexOf(b) : slots.push(b) - 1;
+    couples.push([ia, ib]);
+  }
+
+  const subjects: OverlapSubject[] = [];
+  for (const el of elements) {
+    // Neutral element: never a participant, whatever it sits on.
+    if (el.role === undefined) continue;
+    let matched = false;
+    const filled = slots.map(slot => {
+      const isA = roleIsA(el.role, slot, rule.roles);
+      matched ||= isA;
+      return isA;
+    });
+    if (!matched) continue;
+    subjects.push({
+      id: el.id,
+      bound: el.elementBound,
+      // An `edge` role is measured along its path; everything else by bounds.
+      path: rule.roles[el.role]?.kind === 'edge' ? elementPath(el) : null,
+      slots: filled,
+    });
+  }
+  if (subjects.length < 2) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  const declared = (a: OverlapSubject, b: OverlapSubject) =>
+    couples.some(
+      ([i, j]) => (a.slots[i] && b.slots[j]) || (a.slots[j] && b.slots[i])
+    );
+
+  const found: Violation[] = [];
+  const test = (a: OverlapSubject, b: OverlapSubject) => {
+    if (!declared(a, b) || !subjectsCollide(a, b)) return;
+    // Sorted, so the same collision reads the same way every time — and the
+    // frame is read off the SAME half whichever end the pair was reached from,
+    // or a full pass and an incremental one could attribute one collision to
+    // two different maps.
+    const [first, second] = a.id < b.id ? [a, b] : [b, a];
+    found.push(
+      raise(
+        rule,
+        [first.id, second.id],
+        attributeBackground(first.bound, backgrounds)?.id
+      )
+    );
+  };
+
+  const sweep = () => {
+    for (let i = 0; i < subjects.length; i++) {
+      for (let j = i + 1; j < subjects.length; j++) test(subjects[i], subjects[j]);
+    }
+    return found;
+  };
+  if (incremental === undefined) return sweep();
+
+  const { dirty } = incremental;
+
+  /**
+   * Anything that IS or WAS a frame sends the whole surface back through the
+   * sweep.
+   *
+   * A frame is not a participant, so no pair-wise re-test ever reaches the
+   * findings attributed to it — and moving, resizing or DELETING one changes
+   * every one of those attributions, which is what decides the map-wide
+   * arbitration and the profile in force. Deletion is the case that made this
+   * necessary and the one a "is a current background dirty" test cannot see:
+   * once the map is gone `backgrounds` is empty, nothing looks dirty, and the
+   * findings measured against it would vanish from a live board.
+   */
+  const frameTouched =
+    backgrounds.some(background => dirty.has(background.id)) ||
+    incremental.previous.some(
+      violation =>
+        violation.backgroundId !== undefined &&
+        dirty.has(violation.backgroundId)
+    );
+  if (frameTouched) return sweep();
+
+  /**
+   * ...and so does a change big enough that the shortcut is no longer one.
+   *
+   * The dirty path costs `dirtyParticipants × p`; the sweep costs `p²/2`. Past
+   * the crossover the "optimisation" is several times the price of the thing it
+   * replaces — measured at 8× and OUT of the 16 ms budget for a lasso drag over
+   * a third of a 500-element map, against 2.2 ms for the sweep it was avoiding.
+   * One comparison buys back the worst case entirely.
+   */
+  let dirtyParticipants = 0;
+  const isDirty = subjects.map(subject => {
+    const changed = dirty.has(subject.id);
+    if (changed) dirtyParticipants++;
+    return changed;
+  });
+  if (dirtyParticipants * 2 >= subjects.length) return sweep();
+
+  // Only the couples involving something that changed. Everything else keeps
+  // the verdict it already had.
+  for (let i = 0; i < subjects.length; i++) {
+    if (!isDirty[i]) continue;
+    for (let j = 0; j < subjects.length; j++) {
+      if (j === i) continue;
+      // A dirty–dirty couple is reachable from both ends and must be tested
+      // once. The earlier index already tested it against everything, so only
+      // look forward — no per-couple key, and nothing allocated in the loop
+      // that is the whole cost of this path.
+      if (j < i && isDirty[j]) continue;
+      test(subjects[i], subjects[j]);
+    }
+  }
+
+  const alive = new Set(subjects.map(subject => subject.id));
+  // The `backgroundId` is deliberately NOT filtered on here: a pair-wise
+  // finding depends on its frame only for ATTRIBUTION, and any change to that
+  // frame already took the whole surface through the sweep above. Dropping
+  // findings on it as well is how a live overlap disappeared when its map was
+  // deleted.
+  const carried = incremental.previous.filter(
+    violation =>
+      violation.ruleId === rule.id &&
+      violation.elementIds.every(id => !dirty.has(id) && alive.has(id))
+  );
+  return [...carried, ...found];
+}
+
+/**
+ * What a caller knows about a change, when it knows anything.
+ *
+ * `dirty` is every element id added, removed or updated since the findings in
+ * `previous` were computed. Handed in only by the manager's debounced path,
+ * where exactly that is known; every other caller — the first evaluation, a
+ * gesture that must land immediately, the bench, a test — evaluates in full.
+ *
+ * Only {@link evaluateNoOverlap} honours it. The element-local families are
+ * already constant per element and would gain nothing but a way to be subtly
+ * wrong.
+ */
+export interface IncrementalContext {
+  dirty: ReadonlySet<string>;
+  previous: readonly Violation[];
+}
+
 const RULE_FAMILIES: Record<
   RuleFamily,
   (
     rule: ValidationRule,
-    elements: readonly GfxPrimitiveElementModel[]
+    elements: readonly GfxPrimitiveElementModel[],
+    incremental?: IncrementalContext
   ) => Violation[]
 > = {
   'element-in-background': evaluateElementInBackground,
+  'orientation-against-axis': evaluateOrientationAgainstAxis,
+  attachment: evaluateAttachment,
+  'no-overlap': evaluateNoOverlap,
 };
 
 /** The exceptions an element carries, always an array, never a copy to keep. */
@@ -529,6 +1326,11 @@ function applyExceptions(
     // background on the board carries the exception". An arbitration made on
     // one map says nothing about the map next to it.
     else if (excused(violation.backgroundId)) violation.exemption = 'map';
+    // Nothing covers it (any more). Stamped rather than left alone because an
+    // incremental pass CARRIES OVER finding objects from the last evaluation
+    // (see {@link IncrementalContext}), and one that kept a stale `exemption`
+    // would read as excused on a board where the exception has been revoked.
+    else delete violation.exemption;
   }
 }
 
@@ -539,11 +1341,18 @@ function applyExceptions(
  * `profiles` is the level of requirement in force (PF9). Omitted, every rule is
  * judged by its own declared severity, which is exactly what a framework
  * shipping no profile gets.
+ *
+ * `incremental` is what the caller knows about what CHANGED. Omitted — the
+ * default, and what every test and the bench's full-evaluation case pass — the
+ * whole surface is re-judged from scratch. Handed in, the pair-wise family
+ * re-tests only the couples a change can have affected; the answer is the same,
+ * it is just reached without walking the grid against itself.
  */
 export function evaluateRules(
   rules: readonly ValidationRule[],
   elements: readonly GfxPrimitiveElementModel[],
-  profiles: readonly ValidationProfile[] = []
+  profiles: readonly ValidationProfile[] = [],
+  incremental?: IncrementalContext
 ): Violation[] {
   if (rules.length === 0) return [];
 
@@ -557,7 +1366,7 @@ export function evaluateRules(
     // before a single element is touched.
     if (index && chosen && isRuleSilent(rule, chosen, index)) continue;
 
-    let raised = RULE_FAMILIES[rule.family](rule, elements);
+    let raised = RULE_FAMILIES[rule.family](rule, elements, incremental);
     if (index && chosen && raised.length > 0) {
       raised = applyProfiles(rule, raised, chosen, index);
     }
@@ -810,6 +1619,35 @@ export class ValidationManager extends InteractivityExtension {
 
   private _pending: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Element ids added, removed or updated since the last verdict — the dirty
+   * set of PF5.13. Filled by the subscriptions, drained by every evaluation.
+   */
+  private _dirty = new Set<string>();
+
+  /** Whether {@link violations$} holds a verdict a dirty set can build on. */
+  private _evaluated = false;
+
+  /**
+   * The ids that were framework BACKGROUNDS at the last evaluation.
+   *
+   * `no-overlap` already sends the surface back through a full sweep when a
+   * frame is touched, and it finds a DELETED one by looking for its id in the
+   * previous findings — the only trace a departed element leaves. That trace
+   * does not exist when the frame's profile put the rule on `'off'`: the
+   * findings measured against it were dropped by `applyProfiles`, so `previous`
+   * is empty, the deletion looks like an ordinary one, and the overlap that
+   * comes back to life under the default profile is never reported. No family
+   * can close that hole — an element that is gone from the surface AND absent
+   * from the findings is invisible to everything except a memory of it.
+   *
+   * So the manager keeps that memory. A dirty id that used to be a background
+   * forces the full pass, whatever the previous findings say or fail to say —
+   * which makes `incremental === full` true by construction rather than by the
+   * luck of no shipped profile using `'off'` yet.
+   */
+  private _backgrounds: ReadonlySet<string> = new Set();
+
   private _rules: readonly ValidationRule[] | null = null;
 
   /** Registered rules, resolved once. Empty when every framework is flagged off. */
@@ -864,6 +1702,9 @@ export class ValidationManager extends InteractivityExtension {
     this._disposeSurfaceEffect?.();
     this._disposeSurfaceEffect = null;
     this._unsubscribe();
+    this._dirty.clear();
+    this._evaluated = false;
+    this._backgrounds = new Set();
     this.timeline.clear();
     super.unmounted();
   }
@@ -878,37 +1719,63 @@ export class ValidationManager extends InteractivityExtension {
     if (!surface) return;
 
     for (const change of [surface.elementAdded, surface.elementRemoved]) {
-      this._subscriptions.push(change.subscribe(() => this._schedule()));
+      this._subscriptions.push(
+        change.subscribe(({ id }) => this._schedule(id))
+      );
     }
     this._subscriptions.push(
       surface.elementUpdated.subscribe(payload => {
         // A prop that cannot change a verdict must not even rearm the timer.
         if (!touchesVerdict(payload)) return;
-        this._schedule();
+        this._schedule(payload.id);
       })
     );
+    // A new surface knows nothing about the last one: judge it in full.
     this.evaluate();
   }
 
-  private _schedule() {
+  private _schedule(id: string) {
+    this._dirty.add(id);
     if (this._pending) clearTimeout(this._pending);
     this._pending = setTimeout(() => {
       this._pending = null;
-      this.evaluate();
+      this.evaluate(true);
     }, VALIDATION_DELAY_MS);
   }
 
-  /** Evaluate now. Exposed so a host (and the bench) can drive it directly. */
-  evaluate() {
+  /**
+   * Evaluate now. Exposed so a host (and the bench) can drive it directly.
+   *
+   * `incremental` is the DEBOUNCED path's privilege and nobody else's: it is
+   * the only caller that knows exactly which elements moved since the last
+   * verdict. Everything else — a gesture that must land on the spot, a surface
+   * arriving, a host asking — pays for a full pass, because a full pass is
+   * always right and a wrong dirty set is a board that lies.
+   */
+  evaluate(incremental = false) {
     const rules = this._activeRules;
     const surface = this.gfx.surface;
+    // Whatever happens below, what accumulated is now accounted for: a dirty
+    // set left behind would be replayed against a later, unrelated snapshot.
+    const dirty = this._dirty;
+    this._dirty = new Set();
     if (rules.length === 0 || !surface) return;
 
+    const previous = this.violations$.peek();
+    // A frame that WAS there and is now dirty invalidates attributions no
+    // pair-wise re-test would reach — including, when its profile silenced the
+    // rule, findings that were never recorded for the family to find.
+    const frameTouched = [...dirty].some(id => this._backgrounds.has(id));
     const violations = evaluateRules(
       rules,
       surface.elementModels,
-      this._activeProfiles
+      this._activeProfiles,
+      incremental && this._evaluated && dirty.size > 0 && !frameTouched
+        ? { dirty, previous }
+        : undefined
     );
+    this._evaluated = true;
+    this._backgrounds = backgroundElementIds(rules, surface.elementModels);
     // Stay silent when nothing changed: `violations$` is the seam a host panel
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;

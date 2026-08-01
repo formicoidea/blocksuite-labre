@@ -37,24 +37,27 @@ describe('wardley canvas shortcuts', () => {
 
     // The semantic role reaches the shared document, not just the model
     // accessor — the whole point of declaring `role` on the base element
-    // model. The label grouped with it stays neutral.
+    // model. Since PF13.6 the label grouped with it carries one too: it is a
+    // free text element, so its role is the only thing that says it names an
+    // artefact, and W3 is written on that.
     const node = service.surface.getElementsByType('wardleyNode')[0];
     expect(node.role).toBe('wardley:component');
     expect(node.yMap.get('role')).toBe('wardley:component');
 
     const label = service.surface.getElementsByType('text')[0];
-    expect(label.yMap.has('role')).toBe(false);
+    expect(label.yMap.get('role')).toBe('wardley:label');
   });
 
-  test('w then i creates an inertia bar, with no role', async () => {
+  test('w then i creates an inertia bar, carrying its role', async () => {
     key('w');
     key('i');
     await wait();
 
     const shapes = service.surface.getElementsByType('shape');
     expect(shapes.length).toBe(1);
-    // A generalist artefact: nothing is written on it.
-    expect(shapes[0].yMap.has('role')).toBe(false);
+    // A plain filled rect on the canvas: the role is the whole of what makes
+    // it inertia, and what W2 is written on (PF13.5).
+    expect(shapes[0].yMap.get('role')).toBe('wardley:inertia');
   });
 
   test('an unknown key in the armed wardley namespace does nothing (w+e ≠ eraser)', async () => {

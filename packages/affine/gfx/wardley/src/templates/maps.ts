@@ -23,6 +23,11 @@ import {
   NODE_STROKE,
   WARDLEY_RED,
 } from '../node/consts';
+import {
+  backgroundPlot,
+  backgroundZoneBoundaries,
+} from '@labre/affine-block-surface';
+
 import { WARDLEY_BACKGROUND } from '../background';
 import { WARDLEY_ROLE } from '../roles';
 
@@ -40,24 +45,56 @@ const W = WARDLEY_BACKGROUND.geometry.width;
 const H = WARDLEY_BACKGROUND.geometry.height;
 
 /**
- * The plot these templates lay their nodes out in.
+ * The plot these templates lay their nodes out in — THE DECLARATION'S, read off
+ * `geometry.margin` rather than copied.
  *
- * PRE-EXISTING DRIFT, deliberately left alone: the declaration's plot is
- * `x 40 → 1570, y 30 → 862` (`geometry.margin`), this one is inset further.
- * Aligning them would move every node of every template, which is a visual
- * change to canned content and not this slice's business. Templates are
- * therefore laid out against a plot that is slightly smaller than the drawn
- * one — harmless (everything lands inside the map) but not the same number.
+ * It used to be a hand-written `{x:70, y:56, w:1470, h:786}`, inset further than
+ * the drawn plot (`x 40 → 1570, y 30 → 862`), with a comment calling the drift
+ * "harmless (everything lands inside the map) but not the same number".
+ *
+ * It stopped being harmless the moment a RULE measured against the plot. W2
+ * asks whether an inertia bar sits on a declared phase transition, and a
+ * transition is a ratio OF THE PLOT: two plots means an evolution of `0.7` in a
+ * template lands 25 units away from the `0.7` the background draws. The
+ * templates were laid out in one frame of reference and judged in another.
+ *
+ * Deriving it removes the possibility. The nodes of every preset move by a few
+ * units, which is a visual change to FACTORY CONTENT — acceptable, and the
+ * reason this could be fixed at the source rather than worked around: no user
+ * document is touched, because a template is data we ship, not data they wrote.
  */
-const PL = { x: 70, y: 56, w: 1470, h: 786 };
+const PLOT = backgroundPlot(WARDLEY_BACKGROUND, W, H);
+const PL = { x: PLOT.x0, y: PLOT.y0, w: PLOT.width, h: PLOT.height };
 const ex = (e: number) => PL.x + e * PL.w;
 const vy = (v: number) => PL.y + (1 - v) * PL.h;
 const D = NODE_SIZE; // 18
 
-// The map carries `wardley:map`: rules position artefacts against the ROLE,
-// so a templated map is a first-class frame like a hand-drawn one. Its nodes
-// stay neutral for now (see the PF1 changeset), hence a template inserts a
-// frame nothing is yet measured against.
+/** The evolution transitions, as plot ratios, straight from the declaration. */
+const PHASES = backgroundZoneBoundaries(WARDLEY_BACKGROUND).x;
+
+/**
+ * Where the segment `from → to` crosses the evolution transition at `PHASES[i]`,
+ * in (evolution, value) coordinates.
+ *
+ * This is where an inertia bar belongs, and the whole of what it means (W2): on
+ * the dependency that would have to move, at the boundary the thing is refusing
+ * to cross. Computed rather than eyeballed, so the symbol stays on the line and
+ * on the boundary whatever the declaration says either of them is.
+ */
+function crossing(
+  from: readonly [number, number],
+  to: readonly [number, number],
+  i: number
+): [number, number] {
+  const at = PHASES[i];
+  const t = (at - from[0]) / (to[0] - from[0]);
+  return [at, from[1] + t * (to[1] - from[1])];
+}
+
+// The map carries `wardley:map`: rules position artefacts against the ROLE, so
+// a templated map is a first-class frame like a hand-drawn one — and since
+// PF13.4 every artefact these presets lay on it (nodes, labels, links, change
+// arrows, inertia bars) carries the same role the toolbox writes.
 const bg = (variant = 'classic') => ({
   type: WARDLEY_BACKGROUND.type,
   role: WARDLEY_BACKGROUND.role,
@@ -118,6 +155,10 @@ function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
   return {
     type: 'text',
     text: surfaceText(text),
+    // The NAME of an artefact, so it carries the label role W3 is written on.
+    // The free texts these presets also use for notes and legends stay neutral:
+    // they name nothing and nothing measures them.
+    role: WARDLEY_ROLE.label,
     color: o.color ?? NODE_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: o.size ?? LABEL_FONT_SIZE,
@@ -130,9 +171,10 @@ function link(a: string, b: string, o: { red?: boolean; arrow?: boolean } = {}) 
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
-    // An arrow is an evolution movement (an annotation), not a dependency —
-    // same split as the two Wardley connector tools.
-    role: o.arrow ? undefined : WARDLEY_ROLE.dependency,
+    // An arrow is a change (evolution) movement, not a dependency — same split
+    // as the two Wardley connector tools, and since PF13.4 both sides of that
+    // split carry a role.
+    role: o.arrow ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
     stroke: o.red ? WARDLEY_RED : LINK_GREY,
     strokeStyle: o.arrow ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
@@ -149,6 +191,7 @@ function inertia(e: number, v: number) {
   return {
     type: 'shape',
     shapeType: 'rect',
+    role: WARDLEY_ROLE.inertia,
     filled: true,
     fillColor: INERTIA_COLOR,
     strokeColor: INERTIA_COLOR,
@@ -264,7 +307,10 @@ function teaShop(): SurfaceElementsJSON {
     powerL: lbl(0.7, 0.1, 'Power', { align: 'right', dy: 6 }),
     powerFut: future(0.88, 0.1),
     powerFutL: lbl(0.88, 0.1, 'Power'),
-    limitedBy: lbl(0.56, 0.43, 'limited by', { align: 'center', w: 120, size: 13 }),
+    // ABOVE the link it annotates, not across it. Written on the line it reads
+    // as a label nobody can read — which is the finding W3 raises, and it was
+    // raising it on the map that ships as the canonical example.
+    limitedBy: lbl(0.56, 0.43, 'limited by', { align: 'center', w: 120, size: 13, dy: -34 }),
     ann1a: ann(0.5, 0.385), ann1t: annTxt(0.5, 0.385, '1'),
     ann2a: ann(0.84, 0.45), ann2t: annTxt(0.84, 0.45, '2'),
     l1: link('business', 'cupOfTea'),
@@ -282,22 +328,40 @@ function teaShop(): SurfaceElementsJSON {
 
 // ── Kodak inertia (2005) ──────────────────────────────────────────────
 function kodak(): SurfaceElementsJSON {
+  // The future dependency `capture → storage` is the movement Kodak resisted,
+  // and the inertia bar belongs where that dependency crosses into commodity —
+  // the boundary the capability refused to cross. It used to sit 105 units away
+  // from any transition and on no dependency at all: the template named after
+  // inertia was the counter-example to the inertia rule. Computed from the two
+  // node positions and the declared transitions, so it cannot drift again.
+  const CAPTURE = [0.53, 0.8] as const;
+  const STORAGE = [0.84, 0.4] as const;
+  const [barE, barV] = crossing(CAPTURE, STORAGE, 2);
+
   return {
     bg: bg(),
     title: title("Wardley map of Kodak's 2005 inertia to digital"),
     user: stake(0.54, 0.92),
     userL: lbl(0.54, 0.92, 'User'),
-    capture: dot(0.53, 0.8, 3),
-    captureL: lbl(0.53, 0.8, 'Capture a moment'),
+    capture: dot(CAPTURE[0], CAPTURE[1], 3),
+    // To the LEFT, like the other two capability names: to the right of this
+    // node runs the future dependency towards digital storage, and a name
+    // written across the line that carries the whole argument is exactly the
+    // case W3 exists for.
+    captureL: lbl(CAPTURE[0], CAPTURE[1], 'Capture a moment', {
+      align: 'right',
+    }),
     film: comp(0.52, 0.62),
     filmL: lbl(0.52, 0.62, 'Film camera', { align: 'right' }),
     digital: future(0.74, 0.62),
     digitalL: lbl(0.74, 0.62, 'Digital camera', { color: WARDLEY_RED }),
     roll: comp(0.52, 0.4),
     rollL: lbl(0.52, 0.4, 'Photographic film', { align: 'right' }),
-    storage: future(0.84, 0.4),
-    storageL: lbl(0.84, 0.4, 'Digital storage', { color: WARDLEY_RED }),
-    inertiaBar: inertia(0.78, 0.4),
+    storage: future(STORAGE[0], STORAGE[1]),
+    storageL: lbl(STORAGE[0], STORAGE[1], 'Digital storage', {
+      color: WARDLEY_RED,
+    }),
+    inertiaBar: inertia(barE, barV),
     l1: link('user', 'capture'),
     l2: link('capture', 'film'),
     l3: link('film', 'roll'),

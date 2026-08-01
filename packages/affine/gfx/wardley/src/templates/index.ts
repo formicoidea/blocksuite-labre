@@ -79,14 +79,17 @@ function node(
   y: number,
   d = NODE_SIZE,
   fill = NODE_FILL,
-  strokeWidth = NODE_STROKE_WIDTH
+  strokeWidth = NODE_STROKE_WIDTH,
+  // Neutral for the market's inner dots, exactly as `createWardleyMarket` does:
+  // glyph wiring, not artefacts.
+  neutral = false
 ) {
   return {
     type: 'wardleyNode',
     kind,
     // A template must produce the same typed artefacts as the toolbox, so a
     // map started from a preset validates like a hand-drawn one.
-    role: WARDLEY_ROLE[kind],
+    role: neutral ? undefined : WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor: fill,
@@ -102,6 +105,7 @@ function label(x: number, y: number, str: string, align: 'left' | 'center' = 'le
   return {
     type: 'text',
     text: surfaceText(str),
+    role: WARDLEY_ROLE.label,
     color: NODE_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: LABEL_FONT_SIZE,
@@ -118,8 +122,10 @@ function connect(
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
-    // `red` is the evolution arrow — a movement annotation, not a dependency.
-    role: opts.red ? undefined : WARDLEY_ROLE.dependency,
+    // `red` is the change arrow, which since PF13.4 carries a role of its own —
+    // a template must produce the same typed artefacts as the toolbox, or a map
+    // started from a preset would validate differently from a hand-drawn one.
+    role: opts.red ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
     stroke: opts.red ? WARDLEY_RED : LINK_GREY,
     strokeStyle: opts.red ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
@@ -133,6 +139,7 @@ function connect(
 const inertia = (x = 0, y = 0) => ({
   type: 'shape',
   shapeType: 'rect',
+  role: WARDLEY_ROLE.inertia,
   filled: true,
   fillColor: INERTIA_COLOR,
   strokeColor: INERTIA_COLOR,
@@ -190,7 +197,7 @@ function market(): SurfaceElementsJSON {
     [-rho * sin60, rho / 2],
   ];
   const dotAt = (vx: number, vy: number) =>
-    node('component', c + vx - MARKET_DOT_SIZE / 2, c + vy - MARKET_DOT_SIZE / 2, MARKET_DOT_SIZE, NODE_FILL, MARKET_DOT_STROKE_WIDTH);
+    node('component', c + vx - MARKET_DOT_SIZE / 2, c + vy - MARKET_DOT_SIZE / 2, MARKET_DOT_SIZE, NODE_FILL, MARKET_DOT_STROKE_WIDTH, true);
   // Neutral on purpose: the triangle is the market glyph's own wiring, not a
   // dependency the user drew (same rule as `createWardleyMarket`).
   const tri = (a: string, b: string) => ({

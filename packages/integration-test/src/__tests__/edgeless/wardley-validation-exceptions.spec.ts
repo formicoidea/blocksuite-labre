@@ -35,7 +35,7 @@ import { setupEditor } from '../utils/setup.js';
  * export, a reload, and the framework being switched off and back on.
  */
 
-const RULE_ID = 'wardley.component-outside-map';
+const RULE_ID = 'wardley.change-arrow-against-evolution';
 
 /** Native-shaped click: composed, so it crosses the widget's shadow boundary. */
 function clickElement(element: Element) {
@@ -101,13 +101,25 @@ describe('validation exceptions', () => {
   /** A second map, far enough away that "nearest" is never in doubt. */
   const addSecondBackground = () => addBackground('[40000,0,1600,900]');
 
-  const addComponent = (xywh: string) =>
-    service.surface.addElement({
-      type: 'wardleyNode',
-      kind: 'component',
-      role: 'wardley:component',
-      xywh,
+  /**
+   * A change arrow occupying `xywh`, pointing BACK towards genesis — one W1
+   * finding, wherever it sits.
+   *
+   * Ported off the tracer bullet's "a component parked off the map" (PF13,
+   * 01/08/2026): that rule is gone, and the fixture replacing it has the same
+   * shape — one element, one finding, attributable to one map — behind a rule
+   * a Wardley practitioner actually asked for. Nothing this suite pinned down
+   * was dropped in the move; only what it draws changed.
+   */
+  const addBackwardsArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + w, y + h / 2] },
+      target: { position: [x, y + h / 2] },
     });
+  };
 
   const groupOf = (ids: string[]) => {
     const [, result] = service.std.command.exec(createGroupCommand, {
@@ -239,7 +251,7 @@ describe('validation exceptions', () => {
   describe('the way out is on the message itself (PF8.1)', () => {
     test('one click on the bubble waives the rule, with no detour', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
 
@@ -253,7 +265,7 @@ describe('validation exceptions', () => {
 
     test('the finding changes state, it does not disappear (PF8.3)', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -273,7 +285,7 @@ describe('validation exceptions', () => {
 
     test('revoking restores the violation', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -292,8 +304,8 @@ describe('validation exceptions', () => {
 
     test('one click settles every member of a grouped component', async () => {
       addBackground();
-      const a = addComponent('[3000,3000,40,40]');
-      const b = addComponent('[3100,3000,40,40]');
+      const a = addBackwardsArrow('[3000,3000,40,40]');
+      const b = addBackwardsArrow('[3100,3000,40,40]');
       groupOf([a, b]);
       await settle();
       await openBubble();
@@ -319,7 +331,7 @@ describe('validation exceptions', () => {
      */
     const readyToWaive = async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       service.std.store.captureSync();
@@ -388,8 +400,8 @@ describe('validation exceptions', () => {
   describe('an exception reaches nothing else (PF8.2)', () => {
     test('the element next to it keeps its live violation', async () => {
       addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
-      const other = addComponent('[4000,3000,40,40]');
+      const excused = addBackwardsArrow('[3000,3000,40,40]');
+      const other = addBackwardsArrow('[4000,3000,40,40]');
       await settle();
       await age();
 
@@ -414,7 +426,7 @@ describe('validation exceptions', () => {
 
     test('deleting the element takes its exception with it', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -433,8 +445,8 @@ describe('validation exceptions', () => {
   describe('ignoring on the whole map (PF8.4)', () => {
     test('is offered only once the call has been repeated', async () => {
       addBackground();
-      const first = addComponent('[3000,3000,40,40]');
-      const second = addComponent('[4000,3000,40,40]');
+      const first = addBackwardsArrow('[3000,3000,40,40]');
+      const second = addBackwardsArrow('[4000,3000,40,40]');
       await settle();
       await age();
 
@@ -458,7 +470,7 @@ describe('validation exceptions', () => {
 
     test('a residual key on an element the rule never evaluates is not a decision', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       // A neutral rectangle carrying the key — a shape pasted from another
       // board, or a leftover. The rule never evaluates it (no role), so it is
       // not an arbitration and must not unlock the map-wide action on the very
@@ -480,8 +492,8 @@ describe('validation exceptions', () => {
       const mapA = addBackground();
       const mapB = addSecondBackground();
       // Two components parked next to their own map.
-      const nearA = addComponent('[3000,3000,40,40]');
-      const nearB = addComponent('[43000,3000,40,40]');
+      const nearA = addBackwardsArrow('[3000,3000,40,40]');
+      const nearB = addBackwardsArrow('[43000,3000,40,40]');
       await settle();
       expect(violationOf(nearA)?.backgroundId).toBe(mapA);
       expect(violationOf(nearB)?.backgroundId).toBe(mapB);
@@ -496,7 +508,7 @@ describe('validation exceptions', () => {
       clickElement(ignoreButton()!);
       await settle();
       await age();
-      const secondNearA = addComponent('[3200,3000,40,40]');
+      const secondNearA = addBackwardsArrow('[3200,3000,40,40]');
       await settle();
       await age();
       clickElement(badgeOf(secondNearA));
@@ -516,8 +528,8 @@ describe('validation exceptions', () => {
       addBackground();
       addSecondBackground();
       addBackground('[80000,0,1600,900]');
-      const first = addComponent('[3000,3000,40,40]');
-      const second = addComponent('[3200,3000,40,40]');
+      const first = addBackwardsArrow('[3000,3000,40,40]');
+      const second = addBackwardsArrow('[3200,3000,40,40]');
       await settle();
       await age();
 
@@ -544,8 +556,8 @@ describe('validation exceptions', () => {
     test('deleting the map takes its own arbitration and no other', async () => {
       const mapA = addBackground();
       const mapB = addSecondBackground();
-      const nearA = addComponent('[3000,3000,40,40]');
-      const nearB = addComponent('[43000,3000,40,40]');
+      const nearA = addBackwardsArrow('[3000,3000,40,40]');
+      const nearB = addBackwardsArrow('[43000,3000,40,40]');
       await settle();
 
       // Write both map-scope exceptions straight on the models: the UI path is
@@ -570,9 +582,9 @@ describe('validation exceptions', () => {
 
     test('writes the exception on the map, and covers everything it frames', async () => {
       addBackground();
-      const first = addComponent('[3000,3000,40,40]');
-      const second = addComponent('[4000,3000,40,40]');
-      const third = addComponent('[5000,3000,40,40]');
+      const first = addBackwardsArrow('[3000,3000,40,40]');
+      const second = addBackwardsArrow('[4000,3000,40,40]');
+      const third = addBackwardsArrow('[5000,3000,40,40]');
       await settle();
       await age();
 
@@ -600,8 +612,8 @@ describe('validation exceptions', () => {
 
     test('a map-scope exception is revocable like any other', async () => {
       addBackground();
-      const first = addComponent('[3000,3000,40,40]');
-      const second = addComponent('[4000,3000,40,40]');
+      const first = addBackwardsArrow('[3000,3000,40,40]');
+      const second = addBackwardsArrow('[4000,3000,40,40]');
       await settle();
       await age();
 
@@ -633,7 +645,7 @@ describe('validation exceptions', () => {
     test('the exception carries the rule and the moment of the gesture', async () => {
       addBackground();
       const before = Date.now();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -647,7 +659,7 @@ describe('validation exceptions', () => {
 
     test('it is in the Y document, not in the tab', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -661,7 +673,7 @@ describe('validation exceptions', () => {
 
     test('revoking removes the KEY, not just its value', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -679,7 +691,7 @@ describe('validation exceptions', () => {
 
     test('a mod+d duplicate carries it (PF8.2, the @field base declaration)', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -689,7 +701,7 @@ describe('validation exceptions', () => {
       press('d');
       await wait(200);
 
-      const nodes = service.surface.getElementsByType('wardleyNode');
+      const nodes = service.surface.getElementsByType('connector');
       expect(nodes).toHaveLength(2);
       // Declared on the BASE class precisely so a copy cannot strip it: an
       // arbitration the user made explicitly must survive a duplicate.
@@ -698,7 +710,7 @@ describe('validation exceptions', () => {
 
     test('a snapshot round trip keeps it (PF8.5: exceptions are exported)', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -709,7 +721,7 @@ describe('validation exceptions', () => {
       // arbitration travels with the export, it is not silently dropped.
       expect(JSON.stringify(snapshot)).toContain('validationExceptions');
 
-      const nodes = surface.getElementsByType('wardleyNode');
+      const nodes = surface.getElementsByType('connector');
       expect(nodes).toHaveLength(1);
       expect(hasException(nodes[0], RULE_ID)).toBe(true);
       expect(elementExceptions(nodes[0])[0].ruleId).toBe(RULE_ID);
@@ -727,8 +739,8 @@ describe('validation exceptions', () => {
       await mount([], { wardley: false });
 
       addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
-      addComponent('[4000,3000,40,40]');
+      const excused = addBackwardsArrow('[3000,3000,40,40]');
+      addBackwardsArrow('[4000,3000,40,40]');
       grantException(model(excused), RULE_ID);
       await settle();
 
@@ -741,8 +753,8 @@ describe('validation exceptions', () => {
 
     test('a manager mounted with the flag ON honours an exception it did not write', async () => {
       addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
-      const other = addComponent('[4000,3000,40,40]');
+      const excused = addBackwardsArrow('[3000,3000,40,40]');
+      const other = addBackwardsArrow('[4000,3000,40,40]');
       // Written before the first evaluation ever runs — i.e. exactly what a
       // reload, or a framework switched back on, is handed.
       grantException(model(excused), RULE_ID);
@@ -758,7 +770,7 @@ describe('validation exceptions', () => {
 
     test('a reloaded document still honours its exceptions', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
       clickElement(ignoreButton()!);
@@ -778,7 +790,7 @@ describe('validation exceptions', () => {
   describe('telemetry', () => {
     test('reports a grant and a revocation, and nothing for a no-op', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await openBubble();
 

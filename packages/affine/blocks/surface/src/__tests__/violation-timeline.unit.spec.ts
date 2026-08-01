@@ -251,19 +251,19 @@ describe('which of the two markers owns an anchor', () => {
 
 describe('what the detail bubble lists', () => {
   it('says the same rule once, however many elements broke it', () => {
-    // Two components of one group, both off the map: two violations, one
-    // sentence. The engine still names each element; the bubble does not.
-    const first = violation('wardley.component-outside-map', ['a']);
-    const second = violation('wardley.component-outside-map', ['b']);
+    // Two change arrows of one group, both pointing backwards: two violations,
+    // one sentence. The engine still names each element; the bubble does not.
+    const first = violation('wardley.change-arrow-against-evolution', ['a']);
+    const second = violation('wardley.change-arrow-against-evolution', ['b']);
 
     expect(distinctByRule([first, second])).toEqual([first]);
   });
 
   it('keeps one line per distinct rule', () => {
-    const outside = violation('wardley.component-outside-map', ['a']);
+    const arrow = violation('wardley.change-arrow-against-evolution', ['a']);
     const other = violation('wardley.some-other-rule', ['a']);
 
-    expect(distinctByRule([outside, other])).toEqual([outside, other]);
+    expect(distinctByRule([arrow, other])).toEqual([arrow, other]);
   });
 
   it('leaves a single finding alone', () => {

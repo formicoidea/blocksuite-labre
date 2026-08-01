@@ -83,7 +83,7 @@ const UNCLEARABLE_ELEMENT_FIELDS = new Set<string>(['index', 'seed', 'xywh']);
  * engine interprets it, and neither has to know what the other is up to.
  */
 export type ValidationException = {
-  /** The rule being excused, e.g. `wardley.component-outside-map`. */
+  /** The rule being excused, e.g. `wardley.change-arrow-against-evolution`. */
   ruleId: string;
   /** Who granted it, when the host knows. Absent rather than empty. */
   author?: string;
