@@ -42,7 +42,16 @@ const ex = (e: number) => PL.x + e * PL.w;
 const vy = (v: number) => PL.y + (1 - v) * PL.h;
 const D = NODE_SIZE; // 18
 
-const bg = (variant = 'classic') => ({ type: 'wardley', variant, xywh: `[0,0,${W},${H}]` });
+// The map carries `wardley:map`: rules position artefacts against the ROLE,
+// so a templated map is a first-class frame like a hand-drawn one. Its nodes
+// stay neutral for now (see the PF1 changeset), hence a template inserts a
+// frame nothing is yet measured against.
+const bg = (variant = 'classic') => ({
+  type: 'wardley',
+  role: WARDLEY_ROLE.map,
+  variant,
+  xywh: `[0,0,${W},${H}]`,
+});
 
 function dot(e: number, v: number, sw: number, stroke = NODE_STROKE, fill = NODE_FILL) {
   const cx = ex(e);

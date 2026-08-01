@@ -1,3 +1,4 @@
+import { ValidationRuleExtension } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -6,6 +7,7 @@ import { extendTemplateCategory } from '@labre/affine-gfx-template';
 import { ShortcutExtension } from '@labre/std';
 
 import { effects } from './effects';
+import { WARDLEY_RULES } from './rules';
 import { wardleyShortcuts } from './shortcuts';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
@@ -41,7 +43,9 @@ export class WardleyRenderViewExtension extends ViewExtensionProvider {
 
 /**
  * Wardley creation tooling — flag-gated (`wardley`): the senior toolbar button,
- * its templates category and the edgeless chords (w+c, w+l, ...).
+ * its templates category, the edgeless chords (w+c, w+l, ...) and the
+ * validation rules. Rules are tooling: a map drawn while the flag was on keeps
+ * rendering when it goes off, it just stops being checked.
  */
 export class WardleyViewExtension extends ViewExtensionProvider {
   override name = 'affine-wardley-gfx';
@@ -56,6 +60,7 @@ export class WardleyViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
+      context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(wardleySeniorTool);
       // Edgeless-scoped chords (w+c, w+l, ...). Registering here inherits
       // both the wardley flag gating and the edgeless-only availability;
