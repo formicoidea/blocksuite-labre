@@ -1,5 +1,6 @@
 export * from './adapters';
 export * from './clipboard/index.js';
+export * from './commands/pivot-commands.js';
 export * from './edgeless/edgeless-root-spec.js';
 export * from './edgeless/index.js';
 export * from './keyboard/commands.js';

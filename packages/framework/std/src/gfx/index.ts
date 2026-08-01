@@ -90,6 +90,12 @@ export {
   prop,
 } from './model/surface/local-element-model.js';
 export {
+  collectPivotOccurrences,
+  isPivotBound,
+  type PivotBoundElement,
+  type PivotOccurrence,
+} from './model/surface/pivot.js';
+export {
   type RoleDef,
   type RoleDefs,
   type RoleId,

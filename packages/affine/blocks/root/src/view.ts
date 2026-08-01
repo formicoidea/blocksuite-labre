@@ -17,6 +17,7 @@ import {
 import { literal } from 'lit/static-html.js';
 
 import { PageClipboard, ReadOnlyClipboard } from './clipboard';
+import { pivotCommands } from './commands/pivot-commands';
 import { builtinToolbarConfig } from './configs/toolbar';
 import { EdgelessClipboardController, EdgelessRootService } from './edgeless';
 import { EdgelessElementToolbarExtension } from './edgeless/configs/toolbar';
@@ -42,7 +43,7 @@ export class RootViewExtension extends ViewExtensionProvider {
       // Enumerable, host-overridable commands. Core undo/redo live here; the
       // registration also derives their shortcut descriptors, and the
       // installer binds the effective keymap (see `@labre/std` shortcut.ts).
-      CommandExtension(coreCommands),
+      CommandExtension([...coreCommands, ...pivotCommands]),
       ShortcutKeymapExtension('global'),
       ToolbarModuleExtension({
         id: BlockFlavourIdentifier(NoteBlockSchema.model.flavour),

@@ -22,6 +22,7 @@ export * from './notification-service';
 export * from './open-doc-config';
 export * from './page-viewport-service';
 export * from './parse-url-service';
+export * from './pivot-properties-service';
 export * from './quick-search-service';
 export * from './sidebar-service';
 export * from './telemetry-service';

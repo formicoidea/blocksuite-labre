@@ -218,6 +218,17 @@ projections**, all derived, none authored:
   [ADR 0006](0006-pivot-properties-provider.md)'s rule that the host seam stays
   typed and render-free.
 
+  > **Amended 2026-08-01 (PR #89).** It also carries `params?: CommandParam[]`,
+  > a minimal serializable description (`key`, `kind`, `required`, `nullable`)
+  > **derived** from `CommandDescriptor.params` rather than authored twice. The
+  > first parameterised command made the omission concrete: consumer 5 could
+  > read the whole catalogue and still have no way to learn that `pivot.bind`
+  > needs a record id, and an argument-less invocation is a silent no-op. The
+  > zod schema itself never crosses — it is a graph of functions. Derivation is
+  > all-or-nothing: one property the reader cannot describe withdraws the whole
+  > contract, because a partial one would have an agent send exactly what the
+  > manifest told it to and be rejected for a key the manifest never mentioned.
+
 ### Availability is a closed union — audit and decision
 
 The open question was whether `when: (std) => boolean` reduces to something a
@@ -795,8 +806,57 @@ resolution so the reasoning is not lost:
    descriptor module, in the `extensions` shape PR #70 introduced. See
    _Packaging_.
 
+5. **Does "emission at the bottleneck and nowhere else" survive a
+   PARAMETERISED command?** → **No, and the exception is narrow and enumerated.**
+   Added 2026-08-01 by the MF1 implementation (PR #89), which shipped the first
+   command carrying a `params` schema.
+
+   `runCommand`'s reporter receives `{ std, command, invocation }` and derives
+   the event from `CommandKind` plus a **static** `telemetry: { framework,
+element }` on the descriptor. `pivot.bind` reports
+   `FrameworkElementPromoted`, whose `direction` depends on the params
+   (`pivotDocId: null` demotes), whose `role` / `framework` depend on the
+   elements selected, and whose `elementCount` depends on how many of them
+   actually changed. None of that is expressible as a constant on a descriptor,
+   and the event is not one of the three the bottleneck maps to.
+
+   The rule therefore reads: **a command whose event is a function of its
+   parameters or of what its run actually changed emits from its own body; every
+   other command emits at the bottleneck, which stays the default and the rule.**
+   A self-emitting command MUST NOT also declare `telemetry` — that is the
+   silent failure this exception opens (the same gesture reported twice,
+   forever), and it is guarded by a registry unit test enumerating the
+   self-emitting ids plus a live-reporter test asserting one event per
+   invocation.
+
+   _Rejected alternative:_ widening `CommandTelemetryReporter` to receive
+   `params` (or making `CommandDescriptor.telemetry` a function of them). It
+   would have preserved the single-emitter letter for a comparable cost, but it
+   moves per-command event construction into a shared reporter that must then
+   switch on command id — recreating in one file the per-surface divergence this
+   ADR removed, and coupling `@labre/affine`'s reporter to every framework's
+   event vocabulary. Revisit if a second self-emitting command appears: two is a
+   pattern, and at that point the reporter should take a builder rather than the
+   list growing.
+
+6. **Does `Availability` compose?** → **No, and that is now a known gap.**
+   Recorded 2026-08-01 (PR #89). `isCommandAvailable` switches on ONE value, so
+   a command that is both selection-gated and edit-gated cannot say so: it
+   declares the precondition a host panel most needs to see and enforces the
+   other through `when`, which does not cross the seam. `pivot.bind` declares
+   `'selection'` and gates read-only in `when` and in `run` — the latter because
+   `runCommand` consults neither, so the palette and the agent reach `run`
+   directly.
+
+   This is an **amendment trigger**, not a decision: the union is small enough
+   that `Availability[]` (read as a conjunction) or a `'selection+editable'`
+   member would both work. It is not done here because the gap is older and
+   wider than this command — `duplicate` and `applyLastStyle` carry
+   `'selection'` and would throw in a read-only document today — and fixing it
+   properly means auditing every command, which belongs in its own change.
+
 Nothing is left open. What remains deliberately outside the decision is listed
-under _Out of scope_ above; the one extension point is the `Availability`
-union — closed today, with one named waiting-list candidate (`revision`, a
-document mode that does not exist yet), admitted by an amendment when that
-mode exists.
+under _Out of scope_ above; the extension points are the `Availability` union —
+closed today, with one named waiting-list candidate (`revision`, a document mode
+that does not exist yet) and the composition gap of resolved question 6 — and
+the self-emission exception of resolved question 5.

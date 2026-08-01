@@ -648,7 +648,16 @@ Hard invariants for every transition:
   only by what is _useful_, never by what is _required_.
 - Each rung is one `Y.Map` write inside the store transaction the `@field()`
   setter already opens — no I/O, no provider call.
-- **Each rung MUST call `store.captureSync()` immediately after the write.**
+- **Each rung MUST call `store.captureSync()` immediately BEFORE the write.**
+
+> **Amended 2026-08-01 (MF1 implementation, PR #89).** This rule originally read
+> "immediately after the write", which contradicted the paragraph below it.
+> `captureSync()` is `undoManager.stopCapturing()`: it opens a new undo stack
+> item for what comes **next**, so the hazard this rule exists to prevent — a
+> promotion issued within 500 ms of a drag being undone together with the drag —
+> is only closed by calling it **first**. The store's own docstring
+> (`store.ts:407-424`) and every merged call site agree. A rung implemented to
+> the old letter would reintroduce the exact defect the rule names.
 
 `captureSync()` is not a nicety. `store.transact()` is **not** an undo boundary:
 the `Y.UndoManager` is constructed with only `trackedOrigins` and **no
@@ -690,13 +699,16 @@ than a corrupted funnel.
 ```ts
 // telemetry-service/lifecycle.ts — added to FrameworkDiagramEvents
 export interface FrameworkPromotionEvent extends TelemetryEvent {
-  framework: FrameworkId;
+  page?: 'whiteboard editor';
+  framework?: FrameworkId;
   /** Which rung was crossed. */
   rung: 'role' | 'pivot' | 'tag';
   /** Forward ('shape'->'role') or the reverse gesture. */
   direction: 'promote' | 'demote';
   /** Role id at the time of the gesture, when there is one. */
   role?: string;
+  /** How many elements the single gesture wrote to. */
+  elementCount: number;
 }
 
 export type FrameworkDiagramEvents = {
@@ -710,6 +722,29 @@ export type FrameworkDiagramEvents = {
 It stays inside ADR 0003's framework taxonomy — same `framework` segmentation,
 same emission discipline — and `direction` gives the reversibility invariant a
 measurable counterpart.
+
+> **Amended 2026-08-01 (MF1 implementation, PR #89).** Two changes, both forced
+> by § 6 of this same ADR.
+>
+> `framework` is **optional**. § 6 states that no rung requires the previous
+> one — an element may carry a `pivotDocId` with no `role` at all — so a plain
+> rectangle bound to a pivot record is a legal state that belongs to no
+> framework. A required field would oblige the library to invent an identity,
+> which is precisely what taking `FrameworkId` from ADR 0008 exists to stop. It
+> is derived from the namespace of the element's `role` when there is one, and
+> absent otherwise (absent rather than `'unknown'`, per the repo convention).
+>
+> `elementCount` is added, aligning with `ValidationExceptionEvent`: one gesture
+> can promote a multi-element selection, and one event per gesture with a count
+> is both cheaper and more truthful than N events. Where the selection's roles
+> disagree, `role` and `framework` are omitted rather than guessed.
+>
+> **Emission site, for this rung.** ADR 0008 puts emission in `runCommand` "and
+> nowhere else"; `pivot.bind` is the declared exception, recorded as resolved
+> question 5 of that ADR. The bottleneck maps `CommandKind` onto the three
+> creation events from a **static** `{ framework, element }` on the descriptor
+> and receives neither the params nor the elements that actually changed, so it
+> structurally cannot produce this event.
 
 **Dependency.** `FrameworkElementEvent.framework` is a **closed union of seven
 literals** (`telemetry-service/lifecycle.ts:42-49`) whose values have already

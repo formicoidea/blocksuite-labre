@@ -52,6 +52,8 @@ export type BaseElementProps = {
   index: string;
   seed: number;
   lockedBySelf?: boolean;
+  /** See {@link GfxPrimitiveElementModel.pivotDocId}. */
+  pivotDocId?: string;
 };
 
 /**
@@ -477,6 +479,48 @@ export abstract class GfxPrimitiveElementModel<
 
   @field()
   accessor linkedDocId: string | undefined = undefined;
+
+  /**
+   * Identity binding to a host-owned **pivot record**: this element is an
+   * *occurrence* of the document `pivotDocId`. Many elements, across many
+   * boards, may carry the same `pivotDocId` — that is the point. A Wardley
+   * `component` drawn on three maps is the same component (MF1, ADR 0005).
+   *
+   * Opaque to the library: the framework never dereferences it, never fetches
+   * it, never renders it. Reading it is the host's job, through
+   * `PivotPropertiesProvider` (`@labre/affine-shared/services`, ADR 0006).
+   * No renderer, no hit-test, no layout and no exporter may read it; it
+   * participates in no `@derive`, `@convert` or `@watch` chain, so it cannot
+   * move, resize or restyle anything.
+   *
+   * Orthogonal to {@link linkedDocId} / {@link externalLink}, which are a
+   * *hyperlink* (navigation), not an identity. They differ on every axis that
+   * matters — cardinality (a hyperlink is one target per element and is
+   * exclusive with `externalLink`; a binding is many-elements-to-one-record),
+   * lifecycle (a hyperlink is picked from a search modal, a binding is created
+   * by promotion) and consumers (an arrow that navigates vs. a hover card and
+   * a rules engine). An element may legitimately carry both, and code reading
+   * one as a stand-in for the other is a bug.
+   *
+   * Declared on the BASE class for the same reason as {@link role}: an element
+   * re-created from props (paste, duplicate, alt-drag clone, template
+   * insertion) only reaches the Y.Map through keys that have a declared
+   * accessor, so a binding declared per subclass would be silently dropped on
+   * copy — and the loss would be invisible until the next reload.
+   *
+   * `undefined` = unbound, and no key is written for it, so an element that
+   * never binds stays byte-identical to one created before the field existed:
+   * optional field, no schema version bump, no migration. Clearing it goes
+   * through {@link clearField}, which removes the key rather than leaving a
+   * tombstone.
+   *
+   * A binding to a record that does not (yet) exist — or was deleted, or is
+   * invisible to this user — is a legal, persisted state: the library never
+   * validates it and never deletes host data. It resolves to `missing` at read
+   * time (ADR 0006).
+   */
+  @field()
+  accessor pivotDocId: string | undefined = undefined;
 
   /**
    * Semantic role of the element, `<framework>:<role>` (see `./role.ts`).

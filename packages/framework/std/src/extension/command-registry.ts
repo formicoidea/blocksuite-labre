@@ -161,6 +161,42 @@ export interface CommandDescriptor<P = void> {
 }
 
 /**
+ * A command with its parameter contract erased — what the REGISTRY holds.
+ *
+ * The registry is heterogeneous by design: nullary commands (`undo`,
+ * `wardley.addComponent`) sit in the same list as parameterised ones
+ * (`pivot.bind`, whose record id cannot come from the library). The default
+ * `CommandDescriptor` — i.e. `CommandDescriptor<void>` — cannot express that:
+ * under `strictFunctionTypes`, `run`'s parameter is contravariant and `params`
+ * covariant, so a `CommandDescriptor<P>` is assignable to neither direction of
+ * `CommandDescriptor<void>`.
+ *
+ * Erasure costs nothing at runtime: {@link runCommand} forwards `params`
+ * opaquely, and a parameterised command re-validates with its own zod schema
+ * inside `run` — which an agent-invocable command has to do regardless of what
+ * the static type promises.
+ */
+export type AnyCommandDescriptor = CommandDescriptor<any>;
+
+/**
+ * Value kinds a command parameter may take across the host seam. Closed and
+ * deliberately small: the seam describes what an agent must SEND, not the
+ * host's type system. Anything richer stays behind `CommandDescriptor.params`,
+ * which never crosses.
+ */
+export type CommandParamKind = 'string' | 'number' | 'boolean' | 'string[]';
+
+/** One parameter, described serializably. See {@link describeCommandParams}. */
+export interface CommandParam {
+  key: string;
+  kind: CommandParamKind;
+  /** `false` when the key may be omitted entirely. */
+  required: boolean;
+  /** `null` is an accepted value carrying a meaning of its own. */
+  nullable?: boolean;
+}
+
+/**
  * The serializable catalogue projection — no functions, no `TemplateResult`.
  * This is what crosses the host seam for the sidepanel, the palette and the
  * agent (ADR 0006: the seam stays typed and render-free).
@@ -180,6 +216,11 @@ export interface CommandManifestEntry {
   scope: ShortcutScope;
   defaultKeys: { mac: string[]; other: string[] };
   availability: Availability;
+  /**
+   * What an invoker must send. Absent = nullary, which is what almost every
+   * command is. Derived from `CommandDescriptor.params`, never authored twice.
+   */
+  params?: CommandParam[];
   telemetry?: { framework: FrameworkId; element: string };
 }
 
@@ -222,7 +263,7 @@ export interface FrameworkDescriptor {
 
 /** Multi-instance: one registered {@link CommandDescriptor} per impl. */
 export const CommandDescriptorIdentifier =
-  createIdentifier<CommandDescriptor>('CommandDescriptor');
+  createIdentifier<AnyCommandDescriptor>('CommandDescriptor');
 
 /** Multi-instance: one `iconKey → template` table per contributing package. */
 export const CommandIconsIdentifier =
@@ -235,7 +276,7 @@ export const CommandIconsIdentifier =
  */
 export type CommandTelemetryReporter = (report: {
   std: BlockStdScope;
-  command: CommandDescriptor;
+  command: AnyCommandDescriptor;
   invocation: CommandInvocation;
 }) => void;
 
@@ -268,7 +309,7 @@ const hasCanvasSelection = (std: BlockStdScope) =>
  */
 export function isCommandAvailable(
   std: BlockStdScope,
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): boolean {
   switch (command.availability ?? 'always') {
     case 'always':
@@ -289,7 +330,7 @@ export function isCommandAvailable(
  */
 export function runCommand(
   std: BlockStdScope,
-  command: CommandDescriptor,
+  command: AnyCommandDescriptor,
   invocation: CommandInvocation,
   params?: unknown
 ): void {
@@ -309,7 +350,7 @@ export function runCommand(
  * verbatim, which is what keeps hosts' persisted v0.29 override tables valid.
  */
 export function toShortcutDescriptor(
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): ShortcutDescriptor {
   return {
     id: command.id,
@@ -329,9 +370,98 @@ export function toShortcutDescriptor(
   };
 }
 
+/**
+ * The shape of a zod definition, read through `_def` rather than `instanceof`.
+ *
+ * `instanceof z.ZodOptional` would need a VALUE import of zod in `@labre/std`,
+ * which today imports it as a type only — a runtime dependency added to the
+ * core bundle for an introspection that runs once per command at assembly time.
+ * `_def.typeName` is zod-internal but stable across zod 3, and the whole reader
+ * is defensive: anything it does not recognise yields no contract at all rather
+ * than a wrong one.
+ */
+type ZodDefLike = {
+  typeName?: string;
+  innerType?: unknown;
+  type?: unknown;
+  shape?: () => Record<string, unknown>;
+};
+
+const zodDef = (schema: unknown): ZodDefLike =>
+  (schema as { _def?: ZodDefLike } | undefined)?._def ?? {};
+
+const ZOD_KIND: Record<string, CommandParamKind> = {
+  ZodString: 'string',
+  ZodNumber: 'number',
+  ZodBoolean: 'boolean',
+  ZodEnum: 'string',
+};
+
+/** Unwraps at most a few modifier layers; a deeper nesting is not describable. */
+function describeParam(key: string, schema: unknown): CommandParam | undefined {
+  let current = schema;
+  let required = true;
+  let nullable = false;
+
+  for (let depth = 0; depth < 4; depth++) {
+    const def = zodDef(current);
+    if (def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault') {
+      required = false;
+      current = def.innerType;
+      continue;
+    }
+    if (def.typeName === 'ZodNullable') {
+      nullable = true;
+      current = def.innerType;
+      continue;
+    }
+    break;
+  }
+
+  const def = zodDef(current);
+  const kind =
+    def.typeName === 'ZodArray'
+      ? zodDef(def.type).typeName === 'ZodString'
+        ? ('string[]' as const)
+        : undefined
+      : ZOD_KIND[def.typeName ?? ''];
+
+  if (!kind) return undefined;
+  return nullable ? { key, kind, required, nullable } : { key, kind, required };
+}
+
+/**
+ * Project a command's zod parameter contract onto the serializable seam, so the
+ * `'agent'` surface is usable end to end: without it an agent reading the
+ * manifest has no way to learn that `pivot.bind` needs a `pivotDocId`, and an
+ * argument-less call is a silent no-op.
+ *
+ * All or nothing on purpose. A partially described object would be worse than
+ * none: an agent would send what it was told and have its call rejected by the
+ * schema for a key the manifest never mentioned. So one undescribable property
+ * withdraws the whole contract, and the command reads as "parameters exist, but
+ * this seam cannot state them" — which is the honest answer.
+ */
+export function describeCommandParams(
+  schema: unknown
+): CommandParam[] | undefined {
+  const def = zodDef(schema);
+  if (def.typeName !== 'ZodObject' || typeof def.shape !== 'function') {
+    return undefined;
+  }
+
+  const params: CommandParam[] = [];
+  for (const [key, property] of Object.entries(def.shape())) {
+    const param = describeParam(key, property);
+    if (!param) return undefined;
+    params.push(param);
+  }
+  return params.length ? params : undefined;
+}
+
 /** The serializable projection. Functions and templates stop here. */
 export function toCommandManifestEntry(
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): CommandManifestEntry {
   return {
     id: command.id,
@@ -348,6 +478,7 @@ export function toCommandManifestEntry(
     scope: command.scope,
     defaultKeys: command.defaultKeys,
     availability: command.availability ?? 'always',
+    params: describeCommandParams(command.params),
     telemetry: command.telemetry,
   };
 }
@@ -361,7 +492,7 @@ let _commandId = 1;
  * makes a disabled framework vanish from both at once.
  */
 export function CommandExtension(
-  commands: CommandDescriptor[],
+  commands: AnyCommandDescriptor[],
   icons?: Record<string, TemplateResult>
 ): ExtensionType {
   return {
@@ -381,7 +512,9 @@ export function CommandExtension(
 }
 
 /** Every command registered in this editor assembly. */
-export function getRegisteredCommands(std: BlockStdScope): CommandDescriptor[] {
+export function getRegisteredCommands(
+  std: BlockStdScope
+): AnyCommandDescriptor[] {
   return [...std.provider.getAll(CommandDescriptorIdentifier).values()];
 }
 
@@ -394,7 +527,7 @@ export function getCommandsForSurface(
   std: BlockStdScope,
   owner: CommandOwner,
   surface: CommandSurface
-): CommandDescriptor[] {
+): AnyCommandDescriptor[] {
   return getRegisteredCommands(std)
     .filter(c => c.owner === owner && c.surfaces.includes(surface))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));

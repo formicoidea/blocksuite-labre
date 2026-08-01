@@ -62,6 +62,25 @@ Business framework diagrams share one vocabulary; `framework` segments,
 Adding a framework = reuse these three events with a new `framework` value
 (add it to the `FrameworkElementEvent['framework']` union in `lifecycle.ts`).
 
+## The promotion ladder (MF1)
+
+`FrameworkElementPromoted` is the fourth framework event, and the only one that
+is **not** a creation: shape → role → component → materialities, every rung
+reversible, no element created, destroyed or swapped.
+
+| Event                      | When                                       | Required props |
+| -------------------------- | ------------------------------------------ | -------------- |
+| `FrameworkElementPromoted` | a rung of the promotion ladder is crossed  | `rung` (`role` \| `pivot` \| `tag`), `direction` (`promote` \| `demote`), `elementCount` |
+
+It is a separate event on purpose. `FrameworkElementAdded` is a UI-intent event
+emitted at insertion sites; a promotion inserts nothing, so reusing it would
+count a drawn-then-bound shape twice and inflate "elements added per framework"
+forever. `framework` and `role` are optional here — no rung requires the
+previous one, so an element may be bound to a pivot record while carrying no
+role, and therefore belonging to no framework. Ids only: the event says which
+rung was crossed, never what the board contains, and never the `pivotDocId`
+itself.
+
 ## Validation arbitrations (PF8)
 
 No rule is a wall: every violation can be waived, and every waiver is reported.

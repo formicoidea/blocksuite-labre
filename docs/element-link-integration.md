@@ -21,6 +21,17 @@ provider contracts already used by other features, so wiring is typically
 - **Hover arrow** — `edgeless-element-link` widget, registered with the
   `edgeless-selected-rect` view extension.
 
+> **Not to be confused with `pivotDocId`.** A third doc-id-shaped field now sits
+> on the same class, and it is a different concept: `linkedDocId` is a
+> **hyperlink** (where does this arrow take me — one target per element,
+> exclusive with `externalLink`, picked from `QuickSearchProvider`, opened by
+> the hover arrow), while `pivotDocId` is an **identity** (what is this element
+> an occurrence of — many elements across many boards may carry the same value,
+> set by the `pivot.bind` command, read only by the host through
+> `PivotPropertiesProvider`; ADRs 0005/0006). An element may legitimately carry
+> both, and no code should read one as a stand-in for the other. Nothing in this
+> document applies to `pivotDocId`: it opens nothing and renders nothing.
+
 ## What the host must register
 
 | Capability            | Provider (lib identifier)                                                                 | Already used by                  |

@@ -1,3 +1,5 @@
+import type { FrameworkId } from '@labre/std';
+
 import type { TelemetryEvent } from './types.js';
 
 /**
@@ -50,10 +52,53 @@ export interface FrameworkElementEvent extends TelemetryEvent {
   element: string;
 }
 
+/**
+ * A rung of the promotion ladder was crossed (MF1 / ADR 0007 § 7):
+ * shape → role → component (a pivot record) → materialities. Promotion is
+ * never a conversion — no element is created, destroyed or swapped, and no
+ * geometry moves.
+ *
+ * **A new event name, deliberately.** An earlier draft reused
+ * `FrameworkElementAdded` under a "no new event names" rule; that was a
+ * taxonomy break. ADR 0003 § 2 defines the creation event as UI intent emitted
+ * at INSERTION sites, and a promotion inserts nothing — so drawing a shape and
+ * then binding it would emit `FrameworkElementAdded` twice and permanently
+ * inflate "elements added per framework". A new event is cheaper than a
+ * corrupted funnel.
+ *
+ * Ids only, never board content: which rung was crossed, in which direction,
+ * under which role.
+ */
+export interface FrameworkPromotionEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /**
+   * Owning framework, when the element has one — derived from the namespace of
+   * its `role` (`wardley:component` → `wardley`).
+   *
+   * OPTIONAL, which is a deviation from ADR 0007 § 7's `framework: FrameworkId`.
+   * That ADR's own § 6 states no rung requires the previous one: an element may
+   * carry a `pivotDocId` with no `role` at all, and a plain rectangle bound to
+   * a record belongs to no framework. Requiring the field would force the
+   * library to invent an identity it does not have — the one thing the
+   * `FrameworkId` unification exists to stop. Absent rather than `'unknown'`,
+   * per the repo convention.
+   */
+  framework?: FrameworkId;
+  /** Which rung was crossed. */
+  rung: 'role' | 'pivot' | 'tag';
+  /** Forward (`shape`→`role`) or the reverse gesture. */
+  direction: 'promote' | 'demote';
+  /** Role id at the time of the gesture, when there is one. */
+  role?: string;
+  /** How many elements the single gesture wrote to. */
+  elementCount: number;
+}
+
 export type FrameworkDiagramEvents = {
   FrameworkElementAdded: FrameworkElementEvent;
   FrameworkToolPicked: FrameworkElementEvent;
   FrameworkLegendCreated: FrameworkElementEvent;
+  FrameworkElementPromoted: FrameworkPromotionEvent;
 };
 
 /**

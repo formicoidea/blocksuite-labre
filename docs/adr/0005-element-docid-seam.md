@@ -152,9 +152,22 @@ Setting the binding is exactly one `Y.Map` write inside the store transaction
 already opened by the `@field()` setter (`field.ts:71-78`):
 
 ```ts
+store.captureSync(); // mandatory, and BEFORE the write — see ADR 0007 § 6
 surface.updateElement(elementId, { pivotDocId });
-store.captureSync(); // mandatory — see ADR 0007 § 6
 ```
+
+> **Amended 2026-08-01 (MF1 implementation, PR #89).** The original snippet
+> showed `captureSync()` _after_ the write. That was a slip, and it contradicted
+> this very paragraph's own rationale: `Store.captureSync` calls
+> `undoManager.stopCapturing()`, which opens a new undo stack item for what
+> comes **next** — its docstring spells it out (`op1(); op2(); captureSync();
+op3()` gives one undo for `op3`, and the next reverts `op1` and `op2`,
+> `store.ts:407-424`). Isolating the bind from a drag that _precedes_ it
+> therefore requires calling it first. Every merged call site already does
+> (`applyLastStyle` in `blocks/root/src/keyboard/commands.ts`,
+> `gfx/shape/.../polygon-tool.ts`, `default-tool.ts:223` before
+> `handleElementMove`), and the repo's real convention is "each gesture
+> `captureSync()`s before its own write".
 
 `captureSync()` is **not optional**. `store.transact()` is not an undo
 boundary: the `Y.UndoManager` is built with no `captureTimeout`
