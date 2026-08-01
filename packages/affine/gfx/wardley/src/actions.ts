@@ -49,6 +49,7 @@ import {
   PIPELINE_WIDTH,
   WARDLEY_RED,
 } from './node/consts';
+import { WARDLEY_ROLE } from './roles';
 
 /**
  * Standalone creation/activation actions for the Wardley toolbox. They are
@@ -166,6 +167,9 @@ function addEllipseNode(
   return surface.addElement({
     type: 'wardleyNode',
     kind,
+    // Semantic identity (PF1): posted next to `kind`, which stays untouched
+    // and keeps driving the rendering.
+    role: WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor,
@@ -305,6 +309,7 @@ export function createWardleyPipeline(
   const bodyId = gfx.surface.addElement({
     type: 'wardleyNode',
     kind: 'pipeline',
+    role: WARDLEY_ROLE.pipeline,
     shapeType: 'rect',
     filled: true,
     fillColor: PIPELINE_FILL,
@@ -321,6 +326,7 @@ export function createWardleyPipeline(
   const handleId = gfx.surface.addElement({
     type: 'wardleyNode',
     kind: 'handle',
+    role: WARDLEY_ROLE.handle,
     shapeType: 'rect',
     filled: true,
     fillColor: NODE_FILL,
@@ -442,7 +448,13 @@ export function activateWardleyConnector(
         };
   gfx.std.get(EditPropsStore).recordLastProps('connector', props);
   track(gfx, source, 'FrameworkToolPicked', `connector:${kind}`);
-  gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
+  gfx.tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Straight,
+    // The value-chain link IS the "depends on" edge of a Wardley map, so it
+    // carries the typed edge role. The evolution arrow is a movement
+    // annotation, not a dependency: it stays neutral.
+    role: kind === 'link' ? WARDLEY_ROLE.dependency : undefined,
+  });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.
 }

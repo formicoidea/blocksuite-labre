@@ -34,15 +34,27 @@ describe('wardley canvas shortcuts', () => {
     expect(types).toContain('wardleyNode');
     // node + label are grouped
     expect(types).toContain('group');
+
+    // The semantic role reaches the shared document, not just the model
+    // accessor — the whole point of declaring `role` on the base element
+    // model. The label grouped with it stays neutral.
+    const node = service.surface.getElementsByType('wardleyNode')[0];
+    expect(node.role).toBe('wardley:component');
+    expect(node.yMap.get('role')).toBe('wardley:component');
+
+    const label = service.surface.getElementsByType('text')[0];
+    expect(label.yMap.has('role')).toBe(false);
   });
 
-  test('w then i creates an inertia bar', async () => {
+  test('w then i creates an inertia bar, with no role', async () => {
     key('w');
     key('i');
     await wait();
 
     const shapes = service.surface.getElementsByType('shape');
     expect(shapes.length).toBe(1);
+    // A generalist artefact: nothing is written on it.
+    expect(shapes[0].yMap.has('role')).toBe(false);
   });
 
   test('an unknown key in the armed wardley namespace does nothing (w+e ≠ eraser)', async () => {
