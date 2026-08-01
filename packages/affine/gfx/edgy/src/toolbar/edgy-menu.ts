@@ -9,7 +9,7 @@ import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 import { css, html, LitElement } from 'lit';
 
-import { REF_H, REF_W } from '../consts';
+import { CROP_LABELED } from '../consts';
 import {
   ACTIVITY_VERTICES,
   INNER_FONT_SIZE,
@@ -77,16 +77,20 @@ export class EdgelessEdgyMenu extends EdgelessToolbarToolMixin(LitElement) {
 
   override type = EmptyTool;
 
-  /** Create the Enterprise Design Facets diagram centred on the viewport. */
+  /**
+   * Create the Enterprise Design Facets diagram centred on the viewport —
+   * cropped to the circles + facet labels (no dead margins around the Venn).
+   */
   private _createFacets() {
     const { gfx } = this;
     if (!gfx.surface) return;
 
-    const width = REF_W * FACETS_SCALE;
-    const height = REF_H * FACETS_SCALE;
+    const width = CROP_LABELED.w * FACETS_SCALE;
+    const height = CROP_LABELED.h * FACETS_SCALE;
     const { centerX, centerY } = gfx.viewport;
     const id = gfx.surface.addElement({
       type: 'edgy',
+      cropToCircles: true,
       xywh: new Bound(
         centerX - width / 2,
         centerY - height / 2,

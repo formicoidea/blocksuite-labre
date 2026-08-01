@@ -20,6 +20,10 @@ feat(edgeless): EDGY dynamic template, blank EDGY board and dependency spotlight
 - The facets element gains optional backward-compatible `showPictos`,
   `cropToCircles` and `spotlightEnabled` flags; the board gains
   `spotlightEnabled`. Both background toolbars expose a spotlight toggle.
+- The classic "Enterprise Design facets" diagram (senior menu + template
+  panel) is now cropped to the circles plus a facet-label allowance — no
+  more dead margins around the Venn. Existing documents keep the previous
+  letterboxed rendering (`cropToCircles` defaults to false).
 - Fix: canvas view events (click/dblclick) now route to the TOPMOST view
   under the pointer (paint order), so elements laid on a background stay
   editable — previously the background could swallow the double-click.

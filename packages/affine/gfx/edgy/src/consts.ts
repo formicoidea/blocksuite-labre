@@ -67,12 +67,35 @@ export const CROP = (() => {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 })();
 
-/** `refScale` variant fitting the cropped circles box (see {@link CROP}). */
-export function cropScale(w: number, h: number) {
-  const s = Math.min(w / CROP.w, h / CROP.h);
+/**
+ * Crop box KEEPING room for the three facet name labels (drawn outside the
+ * circles): the circles box plus a fixed text allowance left/right and below.
+ * Used when a cropped diagram still shows its labels.
+ */
+export const CROP_LABELED = (() => {
+  const sideAllowance = 140; // label offset (10) + text width headroom
+  const bottomAllowance = 35; // experience label below the bottom circle
   return {
-    s,
-    ox: (w - CROP.w * s) / 2 - CROP.x * s,
-    oy: (h - CROP.h * s) / 2 - CROP.y * s,
+    x: CROP.x - sideAllowance,
+    y: CROP.y,
+    w: CROP.w + 2 * sideAllowance,
+    h: CROP.h + bottomAllowance,
+  };
+})();
+
+function fitScale(box: { x: number; y: number; w: number; h: number }) {
+  return (w: number, h: number) => {
+    const s = Math.min(w / box.w, h / box.h);
+    return {
+      s,
+      ox: (w - box.w * s) / 2 - box.x * s,
+      oy: (h - box.h * s) / 2 - box.y * s,
+    };
   };
 }
+
+/** `refScale` variant fitting the cropped circles box (see {@link CROP}). */
+export const cropScale = fitScale(CROP);
+
+/** `refScale` variant fitting the circles + facet labels box. */
+export const cropLabeledScale = fitScale(CROP_LABELED);
