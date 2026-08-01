@@ -78,11 +78,31 @@ const changeArrowAgainstEvolution: ValidationRule = {
  * bar floating in white space, or sitting on a link in the middle of a phase,
  * has lost the whole of its meaning — it becomes a black rectangle.
  *
- * Tolerances are in model units, against a bar that is 8 × 44 and a map whose
- * reference plot is ~1530 wide: 24 units off the link is roughly "not on it",
- * and 40 units off a transition is about half a bar-width of slack on a
- * 1600-wide map — generous enough that nobody has to be precise, tight enough
- * that the symbol still points at a boundary.
+ * ## Two mistakes, two sentences
+ *
+ * Those are two different errors with two different gestures to fix them, and
+ * the PO recette of 01/08/2026 caught what one message costs: two bars dropped
+ * squarely on the "Product" and "Commodity" dividers, both flagged, both told
+ * they were "not on a dependency at a phase transition" — when the transition
+ * half was perfectly satisfied (0.00 units off the line) and the carrier half
+ * was the whole complaint (410 and 846 units from the nearest dependency). The
+ * user could read the badge ten times without learning to draw the link first.
+ * The rule stays ONE rule with one badge; it now says which half failed, and
+ * the carrier wins when both do.
+ *
+ * ## The zone of punctuated equilibrium
+ *
+ * The transition half no longer measures against a number of model units. It
+ * measures against the band the map DECLARES around each divider
+ * (`transitionBandWidth`, a ratio of the plot) — Wardley's zone of punctuated
+ * equilibrium, where inertia actually lives. The old 40 units were 2.6% of the
+ * plot on the reference map, 5.5% on an 800-wide one and 1.3% on a 3200-wide
+ * one: the same gesture judged four times as harshly for having zoomed the map
+ * out, which nothing on screen could explain.
+ *
+ * The carrier tolerance stays absolute at 24 units, and rightly so: "is the bar
+ * ON the line" is a question about ink, and the ink is 8 units wide whatever
+ * the map measures.
  */
 const inertiaOffTransition: ValidationRule = {
   id: 'wardley.inertia-off-transition',
@@ -91,21 +111,30 @@ const inertiaOffTransition: ValidationRule = {
   severity: 'warning',
   appliesTo: WARDLEY_ROLE.inertia,
   roles: WARDLEY_ROLES,
-  messageKey: 'com.labre.wardley.validation.inertia-off-transition',
-  messageFallback:
-    'This inertia bar is not on a dependency at a phase transition.',
-  suggestionKey:
-    'com.labre.wardley.validation.inertia-off-transition.suggestion',
+  // The rule's own words are the CARRIER half: the first thing to fix, and the
+  // one the other half means nothing without.
+  messageKey: 'com.labre.wardley.validation.inertia-off-carrier',
+  messageFallback: 'This inertia bar is not drawn on a dependency.',
+  suggestionKey: 'com.labre.wardley.validation.inertia-off-carrier.suggestion',
   suggestionFallback:
-    'Inertia marks resistance to a movement: put the bar across the dependency, on the phase boundary it refuses to cross.',
-  version: 1,
+    'Inertia is resistance to a movement: draw the bar across the dependency that would have to move.',
+  version: 2,
   backgroundRole: WARDLEY_ROLE.map,
   background: WARDLEY_BACKGROUND,
   attachment: {
     carrierRole: WARDLEY_ROLE.dependency,
     tolerance: 24,
     boundaryAxis: 'evolution',
-    boundaryTolerance: 40,
+    offBoundary: {
+      messageKey:
+        'com.labre.wardley.validation.inertia-off-equilibrium-zone',
+      messageFallback:
+        'This inertia bar sits mid-phase, outside the zone of punctuated equilibrium.',
+      suggestionKey:
+        'com.labre.wardley.validation.inertia-off-equilibrium-zone.suggestion',
+      suggestionFallback:
+        'Inertia bites at a frontier — slide the bar along its dependency until it reaches the dashed phase boundary it refuses to cross.',
+    },
   },
 };
 

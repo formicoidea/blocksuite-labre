@@ -282,6 +282,26 @@ export const WARDLEY_BACKGROUND: FrameworkBackgroundDef = {
   },
   zones: EVOLUTION_ZONES,
   axes: WARDLEY_AXES,
+  /**
+   * The **zone of punctuated equilibrium**: how wide, as a ratio of the plot,
+   * the frontier between two evolution phases really is.
+   *
+   * Wardley's point is that a phase transition is not a coordinate. Things do
+   * not become products at `x = 0.4`; they resist, then move, and the inertia
+   * that resists lives AROUND the frontier. A rule asking "is this symbol at
+   * the transition" therefore measures against this band, not against the
+   * dashed line the renderer draws.
+   *
+   * `0.1` of the plot — ±5% either side of the divider — chosen on the PO
+   * recette of 01/08/2026, where two bars dropped by eye on the "Product" and
+   * "Commodity" dividers had to come out green. In model units that is ±76 on
+   * the 1600-wide reference map (against the 40 absolute units it replaces) and
+   * ±36 on an 800-wide one — the same band to the eye at every size, which is
+   * the whole reason it is a ratio. Still narrow enough to mean something: the
+   * narrowest gap between two transitions is 0.225 of the plot, so its middle
+   * stays 0.0625 of the plot clear of either band.
+   */
+  transitionBandWidth: 0.1,
 };
 
 /**

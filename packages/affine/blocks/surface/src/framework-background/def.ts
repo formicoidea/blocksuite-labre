@@ -262,6 +262,21 @@ export interface FrameworkBackgroundDef {
   variantProp?: string;
   axes?: readonly BackgroundAxisDef[];
   zones?: readonly BackgroundZoneDef[];
+  /**
+   * Width of the TOLERANCE BAND around each zone transition, as a ratio of the
+   * plot span the transition is measured across. Centred on the transition, so
+   * a band of `0.1` reaches `0.05` of the plot either side of the line.
+   *
+   * A frontier between two zones is a line to the renderer and a REGION to the
+   * reader: things do not change phase at a coordinate, they change phase
+   * around one. A framework whose rules ask "is this artefact at a transition"
+   * declares here how wide "at" is — in a ratio, so the answer survives the map
+   * being resized, exactly like every other position in this file.
+   *
+   * Absent means the framework has not declared one, and a rule asking for the
+   * band gets silence rather than a guessed width.
+   */
+  transitionBandWidth?: Ratio;
   chrome?: BackgroundChromeDef;
 }
 
