@@ -42,7 +42,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/wardley',
     telemetry: 'wardley',
     info: 'wardleyFramework',
-    extensions: [{ ext: 'WardleyViewExtension', flag: 'wardley' }],
+    extensions: [
+      // always-on: placed Wardley maps must paint even with the button off
+      { ext: 'WardleyRenderViewExtension' },
+      { ext: 'WardleyViewExtension', flag: 'wardley' },
+    ],
     // The framework contributes shortcut-manifest entries: stripped from
     // core's shortcuts.ts; the host composes with the bundle's own export.
     shortcuts: true,
@@ -53,7 +57,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/edgy',
     telemetry: 'edgy',
     info: 'edgyFramework',
-    extensions: [{ ext: 'EdgyViewExtension', flag: 'edgy' }],
+    extensions: [
+      // always-on: placed EDGY boards must paint even with the button off
+      { ext: 'EdgyRenderViewExtension' },
+      { ext: 'EdgyViewExtension', flag: 'edgy' },
+    ],
   },
   {
     out: 'framework-bpmn',
@@ -61,7 +69,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/bpmn',
     telemetry: 'bpmn',
     info: 'bpmnFramework',
-    extensions: [{ ext: 'BpmnViewExtension', flag: 'bpmn' }],
+    extensions: [
+      // always-on: placed BPMN pools must paint even with the button off
+      { ext: 'BpmnRenderViewExtension' },
+      { ext: 'BpmnViewExtension', flag: 'bpmn' },
+    ],
   },
   {
     out: 'framework-cynefin',
@@ -70,6 +82,9 @@ const FRAMEWORKS = [
     telemetry: 'cynefin',
     info: 'cynefinFramework',
     extensions: [
+      // always-on: placed Cynefin / Estuarine frames must paint even with the
+      // button off
+      { ext: 'CynefinEstuarineRenderViewExtension' },
       { ext: 'CynefinEstuarineViewExtension', flag: 'cynefin-estuarine' },
     ],
   },
@@ -493,8 +508,21 @@ function buildFramework(fw, reverseMap) {
 
   // descriptor.ts — host wiring. A single flag-gated extension keeps the
   // original { flag, telemetry, viewExtension } shape; multi-extension
-  // frameworks (e.g. an always-on renderer + a flag-gated button) use a list.
+  // frameworks (an always-on renderer + a flag-gated button) use a list.
+  //
+  // `flag` is emitted in BOTH shapes — it still means exactly what it always
+  // meant (the flag that gates this framework), so a host reading it for a
+  // settings toggle keeps working. `viewExtension` is deliberately NOT
+  // aliased on the multi shape: under the reversed flag contract
+  // (docs/adr/0009) no single extension has the old
+  // `flags[flag] ? register(viewExtension) : skip` semantics. Aliasing it to
+  // the gated tooling extension would leave the renderer unregistered even
+  // when the flag is ON, and aliasing it to a composite would drop rendering
+  // when the flag is OFF — reintroducing the exact bug PF4 fixes. A host on
+  // the old field must migrate to `extensions`; failing to compile is the
+  // intended, safe outcome.
   const names = fw.extensions.map(e => e.ext).join(', ');
+  const flagged = fw.extensions.filter(e => e.flag);
   const single = fw.extensions.length === 1 && fw.extensions[0].flag;
   const body = single
     ? `export const ${fw.info} = {\n` +
@@ -503,6 +531,7 @@ function buildFramework(fw, reverseMap) {
       `  viewExtension: ${fw.extensions[0].ext},\n` +
       `} as const;\n`
     : `export const ${fw.info} = {\n` +
+      (flagged.length === 1 ? `  flag: '${flagged[0].flag}',\n` : '') +
       `  telemetry: '${fw.telemetry}',\n` +
       `  extensions: [\n` +
       fw.extensions
