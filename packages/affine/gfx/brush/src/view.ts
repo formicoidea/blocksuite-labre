@@ -23,11 +23,6 @@ import { penSeniorTool } from './toolbar/senior-tool';
 export class BrushRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-brush-render-gfx';
 
-  override effect(): void {
-    super.effect();
-    effects();
-  }
-
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(BrushElementRendererExtension);
@@ -42,6 +37,12 @@ export class BrushRenderViewExtension extends ViewExtensionProvider {
  */
 export class BrushViewExtension extends ViewExtensionProvider {
   override name = 'affine-brush-gfx';
+
+  override effect(): void {
+    super.effect();
+    // Defines the pen/eraser tool buttons and the pen menu — tooling only.
+    effects();
+  }
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);

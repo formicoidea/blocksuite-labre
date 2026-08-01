@@ -1,11 +1,17 @@
-import { StoreExtensionManager } from '@labre/affine-ext-loader';
+import {
+  StoreExtensionManager,
+  ViewExtensionManager,
+} from '@labre/affine-ext-loader';
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
+import { ElementRendererIdentifier } from '@labre/affine-block-surface';
+import { Container } from '@labre/global/di';
 import type { DocSnapshot, Store } from '@labre/store';
 import { Schema, Text, Transformer } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { describe, expect, test } from 'vitest';
 
 import { getInternalStoreExtensions } from '../../extensions/store.js';
+import { getInternalViewExtensions } from '../../extensions/view.js';
 import { type BlockFlags, OPTIONAL_BLOCKS } from '../../flags.js';
 import { getAffineSchemas } from '../../schemas.js';
 
@@ -76,27 +82,36 @@ function describeDocument(store: Store, surfaceId: string) {
   };
 }
 
+/**
+ * What {@link authorDocument} puts in the document, spelled out as a literal.
+ *
+ * Every assertion below compares against THIS, never against a summary taken
+ * from another editor built by the same helper: comparing two editors to each
+ * other would pass even if both had lost the same content, which is exactly
+ * what the old contract did.
+ */
+const EXPECTED = {
+  flavours: [
+    'affine:code',
+    'affine:note',
+    'affine:page',
+    'affine:paragraph',
+    'affine:surface',
+  ],
+  elementTypes: ['brush', 'edgyBoard', 'wardley', 'wardleyNode'],
+};
+
+const surfaceIdOf = (store: Store) =>
+  [...store.getAllModels()].find(m => m.flavour === 'affine:surface')!.id;
+
 describe('a document survives its flags being off', () => {
   test('authoring and reading works with every flag off', () => {
     const { collection } = createEditor(ALL_OFF);
     const { store, surfaceId } = authorDocument(collection, 'doc:off');
 
-    // The blocks are in the model tree — not swallowed by a missing schema.
-    const summary = describeDocument(store, surfaceId);
-    expect(summary.flavours).toEqual([
-      'affine:code',
-      'affine:note',
-      'affine:page',
-      'affine:paragraph',
-      'affine:surface',
-    ]);
-    // The framework elements are in the surface — not dropped.
-    expect(summary.elementTypes).toEqual([
-      'brush',
-      'edgyBoard',
-      'wardley',
-      'wardleyNode',
-    ]);
+    // The blocks are in the model tree — not swallowed by a missing schema —
+    // and the framework elements are in the surface, not dropped.
+    expect(describeDocument(store, surfaceId)).toEqual(EXPECTED);
     // Their schemas are registered, so validation on load cannot fail.
     expect(store.schema.flavourSchemaMap.has('affine:code')).toBe(true);
     expect(store.schema.flavourSchemaMap.has('affine:database')).toBe(true);
@@ -105,7 +120,8 @@ describe('a document survives its flags being off', () => {
   test('save/load round-trip preserves everything with every flag off', async () => {
     const { collection, transformer } = createEditor(ALL_OFF);
     const { store, surfaceId } = authorDocument(collection, 'doc:off');
-    const before = describeDocument(store, surfaceId);
+    // Anchored on the literal, not on this same editor's own reading.
+    expect(describeDocument(store, surfaceId)).toEqual(EXPECTED);
 
     // Export — this is where a missing schema used to throw
     // `Flavour schema not found` and silently produce nothing.
@@ -117,11 +133,9 @@ describe('a document survives its flags being off', () => {
       meta: { ...(snapshot as DocSnapshot).meta, id: 'doc:off-reloaded' },
     });
     expect(reloaded).toBeDefined();
-
-    const reloadedSurfaceId = [...reloaded!.getAllModels()].find(
-      m => m.flavour === 'affine:surface'
-    )!.id;
-    expect(describeDocument(reloaded!, reloadedSurfaceId)).toEqual(before);
+    expect(describeDocument(reloaded!, surfaceIdOf(reloaded!))).toEqual(
+      EXPECTED
+    );
   });
 
   test('an OFF → ON cycle gives back byte-identical content', async () => {
@@ -134,18 +148,16 @@ describe('a document survives its flags being off', () => {
     const authoredSnapshot = authoring.transformer.docToSnapshot(
       authored
     ) as DocSnapshot;
-    const authoredSummary = describeDocument(authored, surfaceId);
+    expect(describeDocument(authored, surfaceId)).toEqual(EXPECTED);
 
     // 2. opened by a tenant that has every framework DISABLED
     const disabled = createEditor(ALL_OFF);
-    const openedOff = await disabled.transformer.snapshotToDoc(
-      authoredSnapshot
-    );
+    const openedOff =
+      await disabled.transformer.snapshotToDoc(authoredSnapshot);
     expect(openedOff).toBeDefined();
-    const offSurfaceId = [...openedOff!.getAllModels()].find(
-      m => m.flavour === 'affine:surface'
-    )!.id;
-    expect(describeDocument(openedOff!, offSurfaceId)).toEqual(authoredSummary);
+    expect(describeDocument(openedOff!, surfaceIdOf(openedOff!))).toEqual(
+      EXPECTED
+    );
 
     // 3. re-exported from the disabled editor, then re-opened with the
     //    frameworks back ON: nothing was lost on the way through.
@@ -157,9 +169,39 @@ describe('a document survives its flags being off', () => {
     const reEnabled = createEditor(ALL_ON);
     const openedOn = await reEnabled.transformer.snapshotToDoc(reExported);
     expect(openedOn).toBeDefined();
-    const onSurfaceId = [...openedOn!.getAllModels()].find(
-      m => m.flavour === 'affine:surface'
-    )!.id;
-    expect(describeDocument(openedOn!, onSurfaceId)).toEqual(authoredSummary);
+    expect(describeDocument(openedOn!, surfaceIdOf(openedOn!))).toEqual(
+      EXPECTED
+    );
   });
+});
+
+/**
+ * Mount the edgeless view extensions for real and read back the DI container.
+ *
+ * This is the only assertion that exercises what the render/tooling split
+ * actually buys: `ElementRendererIdentifier(type)` is the very lookup
+ * `CanvasRenderer` performs to paint an element, so a binding present here
+ * means a placed element still paints.
+ */
+function mountEdgelessProvider(flags: BlockFlags) {
+  const manager = new ViewExtensionManager(getInternalViewExtensions(flags));
+  const container = new Container();
+  manager.get('edgeless').forEach(ext => ext.setup(container));
+  return container.provider();
+}
+
+describe('framework renderers are mounted even with every flag off', () => {
+  test.each(['wardley', 'wardleyNode', 'edgy', 'edgyBoard', 'brush', 'bpmnPool'])(
+    'the %s element renderer is bound with every flag off',
+    type => {
+      const off = mountEdgelessProvider(ALL_OFF);
+      expect(
+        off.getOptional(ElementRendererIdentifier(type))
+      ).toBeDefined();
+
+      // ...and it is the same binding as with everything enabled.
+      const on = mountEdgelessProvider(ALL_ON);
+      expect(on.getOptional(ElementRendererIdentifier(type))).toBeDefined();
+    }
+  );
 });

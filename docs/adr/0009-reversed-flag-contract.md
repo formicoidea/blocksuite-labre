@@ -63,6 +63,25 @@ it to `brush`, `wardley`, `edgy`, `bpmn` and `cynefin-estuarine`.
 entries; the four framework bundles now list their render extension alongside
 their gated one.
 
+### Published descriptor: a deliberate, breaking field change
+
+A framework bundle with a single flag-gated extension keeps emitting
+`{ flag, telemetry, viewExtension }`. The four split frameworks now emit
+`{ flag, telemetry, extensions: [{ viewExtension }, { flag, viewExtension }] }`
+— `flag` is retained (it still means exactly what it meant), but
+**`viewExtension` is gone and is deliberately NOT aliased**.
+
+Under the reversed contract no single extension carries the old
+`flags[flag] ? register(viewExtension) : skip` semantics:
+
+- aliasing it to the gated tooling extension would leave the renderer
+  unregistered _even when the flag is on_ — placed elements would never paint;
+- aliasing it to a composite of both would drop rendering when the flag is off —
+  reintroducing the exact bug this ADR exists to fix.
+
+Both aliases are silently wrong, so a host still reading `viewExtension` must
+fail to compile and migrate to `extensions`. That is the intended outcome.
+
 ## Consequences
 
 - **End of full "ship dark".** The core bundle carries every framework's
@@ -93,3 +112,39 @@ their gated one.
   the `flags.ts` documentation has been rewritten accordingly.
 - `OPTIONAL_BLOCKS` had `edgeless-text` listed twice; the duplicate is removed
   (no behaviour change — the derived union type was already deduplicated).
+- **The tooling gate is a cold-assembly gate, not a runtime toggle.** Two global
+  side effects make a mid-session flag flip leaky:
+  `extendTemplateCategory` appends to a module-level registry that is never
+  cleaned up, and `ViewExtensionProvider.effect()` is guarded by a static
+  `effectRan` so it runs at most once per class per process. A framework's
+  Templates-panel category and its custom-element definitions therefore survive
+  a later "off", and re-enabling after a disabled cold start is what actually
+  registers them. Flags must be resolved before the editor is assembled — which
+  is how the host uses them today. Making the tooling gate live would mean
+  making that registry disposable; out of scope here.
+- `effects()` for the five split frameworks lives on the **gated** extension,
+  not the render one, matching `DddCoreDomainViewExtension`. Verified
+  case by case: all five define only senior-button and menu custom elements
+  (`edgeless-wardley-menu`, `edgeless-pen-tool-button`, …), i.e. tooling. A
+  framework whose `effects()` also defined a render-side element (an inline
+  editor for a placed node, say) would have to split `effects()` too.
+
+## Test coverage and its limit
+
+`reversed-contract-doc.unit.spec.ts` covers the contract at two levels:
+
+- **Content** — a document mixing an optional block with framework surface
+  elements is authored, exported and reloaded with every flag off, and through
+  an ON → OFF → ON cycle. Every assertion compares against a literal
+  expectation, never against another editor's reading of the same helper, so
+  re-gating a single block makes all of them fail.
+- **Rendering** — the edgeless view extensions are mounted for real into a DI
+  container and `ElementRendererIdentifier(type)` — the exact lookup
+  `CanvasRenderer` performs to paint an element — is asserted bound with every
+  flag off. Re-gating a render extension fails precisely that framework's
+  assertions.
+
+What unit tests do _not_ cover: that the painted output is correct, and that the
+senior button actually disappears from the rendered toolbar. Those need the
+browser-mode integration suite; the DI-binding assertion is the closest
+proxy that runs in unit.

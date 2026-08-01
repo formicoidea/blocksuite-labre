@@ -1,7 +1,16 @@
 # ADR 0002 — Flag-gated block registry
 
-- Status: accepted (June 2026)
+- Status: **superseded in part** (July 2026) by
+  [ADR 0009 — Reversed flag contract](./0009-reversed-flag-contract.md)
 - Deciders: Mathieu Jolly
+
+> **What still holds:** the `BlockFlags` map, the `OPTIONAL_BLOCKS` list, the
+> three assembly points and "missing flags default to enabled".
+>
+> **What ADR 0009 reverses:** flags no longer gate schemas or store extensions,
+> only tooling. In particular the "Consequences" bullet below — _"a flag may
+> only be turned off for blocks that never reached users' documents"_ — is
+> **void**: disabling is now lossless, and blocks ship dark no more.
 
 ## Context
 

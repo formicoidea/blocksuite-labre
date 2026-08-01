@@ -22,11 +22,6 @@ import { bpmnSeniorTool } from './toolbar/senior-tool';
 export class BpmnRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-bpmn-render-gfx';
 
-  override effect(): void {
-    super.effect();
-    effects();
-  }
-
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(BpmnPoolView);
@@ -49,6 +44,8 @@ export class BpmnViewExtension extends ViewExtensionProvider {
 
   override effect(): void {
     super.effect();
+    // Defines the senior button and its menu — tooling-only custom elements.
+    effects();
     extendTemplateCategory(bpmnTemplateCategory);
   }
 

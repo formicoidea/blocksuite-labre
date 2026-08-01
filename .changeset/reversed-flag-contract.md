@@ -32,8 +32,41 @@ The contract is now reversed (see `docs/adr/0009`):
   `…ViewExtension` — mirroring what Mindmap and DDD Core Domain already did.
 
 Consequence accepted: the bundle now always carries every framework's renderer,
-so a framework can no longer ship fully "dark" behind a flag (bundle-level
-packaging via `@labre/framework-*` is unaffected).
+so a framework can no longer ship fully "dark" behind a flag.
+
+**BREAKING — published framework descriptors.** The four split framework
+bundles (`@formicoidea/labre-framework-{wardley,edgy,bpmn,cynefin}`) change the
+shape of their exported descriptor:
+
+```diff
+  export const wardleyFramework = {
+    flag: 'wardley',
+    telemetry: 'wardley',
+-   viewExtension: WardleyViewExtension,
++   extensions: [
++     { viewExtension: WardleyRenderViewExtension },
++     { flag: 'wardley', viewExtension: WardleyViewExtension },
++   ],
+  } as const;
+```
+
+`flag` and `telemetry` are unchanged. **`viewExtension` is removed** and is
+deliberately not aliased: no single extension has the old
+`flags[flag] ? register(viewExtension) : skip` semantics any more — aliasing it
+to the gated extension would leave the renderer unregistered even with the flag
+ON, and aliasing it to a composite would drop rendering with the flag OFF.
+
+Host migration — register every entry in `extensions`, applying `flag` only
+where present:
+
+```ts
+const exts = wardleyFramework.extensions
+  .filter(e => !e.flag || flags[e.flag] !== false)
+  .map(e => e.viewExtension);
+```
+
+`@formicoidea/labre-framework-ddd-core-domain` already shipped this list shape;
+the three single-extension DDD bundles keep the original shape untouched.
 
 Known residual: block view extensions (`database`, `code`, `image`, `frame`, …)
 still bundle renderer and tooling together, so a disabled _block_ renders as

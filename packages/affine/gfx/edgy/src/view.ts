@@ -30,11 +30,6 @@ import { edgySeniorTool } from './toolbar/senior-tool';
 export class EdgyRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgy-render-gfx';
 
-  override effect(): void {
-    super.effect();
-    effects();
-  }
-
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(EdgyView);
@@ -65,6 +60,8 @@ export class EdgyViewExtension extends ViewExtensionProvider {
 
   override effect(): void {
     super.effect();
+    // Defines the senior button and its menu — tooling-only custom elements.
+    effects();
     extendTemplateCategory(edgyTemplateCategory);
   }
 

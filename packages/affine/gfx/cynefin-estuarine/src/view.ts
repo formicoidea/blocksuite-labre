@@ -27,11 +27,6 @@ import { cynefinEstuarineSeniorTool } from './toolbar/senior-tool';
 export class CynefinEstuarineRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-cynefin-estuarine-render-gfx';
 
-  override effect(): void {
-    super.effect();
-    effects();
-  }
-
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(CynefinView);
@@ -56,6 +51,8 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
 
   override effect(): void {
     super.effect();
+    // Defines the senior button and its menu — tooling-only custom elements.
+    effects();
     extendTemplateCategory(cynefinTemplateCategory);
     extendTemplateCategory(estuarineTemplateCategory);
   }

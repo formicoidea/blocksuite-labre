@@ -27,8 +27,15 @@
  * away. The consequence is accepted: the bundle always carries every
  * framework's renderer, so a framework can no longer ship fully "dark".
  *
- * Flags default to enabled: `{ wardley: false }` hides the Wardley tooling, an
+ * Flags default to enabled: `{ mindmap: false }` hides the Mind Map tooling, an
  * empty object (or no flags at all) enables everything.
+ *
+ * Note for hosts consuming the PUBLISHED bundles: `scripts/build-bundles.mjs`
+ * strips the four business-framework flags (`wardley`, `edgy`, `bpmn`,
+ * `cynefin-estuarine`) from `@formicoidea/labre-core`'s copy of this file —
+ * they exist only when the matching `@formicoidea/labre-framework-*` bundle is
+ * installed, and the host applies them through that bundle's descriptor. The
+ * examples here therefore use a flag that always ships with core.
  *
  * Caveats:
  * - The reversal covers **surface elements** (everything living in the surface

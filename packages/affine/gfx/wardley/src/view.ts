@@ -25,11 +25,6 @@ import { wardleySeniorTool } from './toolbar/senior-tool';
 export class WardleyRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-wardley-render-gfx';
 
-  override effect(): void {
-    super.effect();
-    effects();
-  }
-
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(WardleyView);
@@ -53,6 +48,8 @@ export class WardleyViewExtension extends ViewExtensionProvider {
 
   override effect(): void {
     super.effect();
+    // Defines the senior button and its menu — tooling-only custom elements.
+    effects();
     extendTemplateCategory(wardleyTemplateCategory);
   }
 
