@@ -121,7 +121,13 @@ const NODE_PRESETS = {
   method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
 } as const;
 
-export type WardleyNodeKind = keyof typeof NODE_PRESETS;
+/**
+ * The node kinds creatable through {@link createWardleyNode} presets — a
+ * subset of the model-level `WardleyNodeKind` (@labre/affine-model), which
+ * also covers 'pipeline' | 'handle' | 'market' (created via their own
+ * dedicated functions below).
+ */
+export type WardleyNodePresetKind = keyof typeof NODE_PRESETS;
 
 function track(
   gfx: GfxController,
@@ -156,7 +162,7 @@ function group(gfx: GfxController, ids: string[]) {
 /** Add a native ellipse wardley node centred on (cx, cy). */
 function addEllipseNode(
   surface: Surface,
-  kind: WardleyNodeKind | 'market',
+  kind: WardleyNodePresetKind | 'market',
   cx: number,
   cy: number,
   d: number,
@@ -234,7 +240,7 @@ export function createWardleyBackground(
  */
 export function createWardleyNode(
   gfx: GfxController,
-  kind: WardleyNodeKind,
+  kind: WardleyNodePresetKind,
   source: WardleyActionSource = TOOLBOX_SOURCE
 ) {
   const surface = gfx.surface;
