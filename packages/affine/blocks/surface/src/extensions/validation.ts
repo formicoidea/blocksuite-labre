@@ -51,6 +51,12 @@ import { ViolationTimeline } from './violation-timeline.js';
 export type ViolationSeverity = 'blocking-overridable' | 'warning' | 'audit';
 
 /**
+ * What a PROFILE can say about a rule: one of the three severities, or `'off'`
+ * — the rule is not evaluated at all, and costs nothing.
+ */
+export type ProfileSeverity = ViolationSeverity | 'off';
+
+/**
  * Rule families. One family = one evaluation function ({@link RULE_FAMILIES}).
  * Wave 1 implements a single family; adding one is adding an entry here and a
  * function below, never a change to the rule shape.
@@ -94,6 +100,207 @@ export interface ValidationRule {
    * role existed carries none, frames nothing and raises nothing.
    */
   backgroundRole?: RoleId;
+}
+
+/**
+ * A level of requirement, as DATA (PF9) — the same declarative, versioned,
+ * host-shippable shape as a rule, a role or a background.
+ *
+ * A framework exposes several: Wardley ships a permissive learning profile and
+ * a strict one; BPMN would ship descriptive / analytic / executable. A profile
+ * says, for each rule of its framework, how hard that rule bites — or that it
+ * does not apply at all.
+ *
+ * ## What "absent from {@link rules}" means
+ *
+ * The rule keeps its OWN declared severity. A profile is an override table, not
+ * an allow-list: a rule the framework ships later must not silently vanish from
+ * a strict profile that was written before it existed. A profile that wants a
+ * rule gone says so — `'off'` — and a profile that wants it louder says that
+ * too. Nothing is ever raised implicitly (PF9.4): every severity a user gets is
+ * either the one the rule declares or one this table spells out.
+ *
+ * ## Scope
+ *
+ * A profile is CHOSEN per root instance, on the framework's background element
+ * (`GfxPrimitiveElementModel.validationProfile`) — see PF9.1. Two maps on one
+ * canvas therefore hold two independent levels of requirement, and a background
+ * that names none is checked against its framework's {@link isDefault} profile.
+ */
+export interface ValidationProfile {
+  /** Stable id, namespaced by framework: `wardley.sketch`. */
+  id: string;
+  /** Owning framework, `wardley`. A profile never applies across frameworks. */
+  framework: string;
+  /** i18n key of the human name; resolved by the host. No prose here either. */
+  labelKey: string;
+  /**
+   * The framework's own wording when the host ships no catalogue for the key —
+   * the same `labelKey` + `fallback` pair the background declaration uses for
+   * its axis and phase labels. The framework owns the word; the library still
+   * never invents one.
+   */
+  fallback?: string;
+  /**
+   * The one profile that applies when a background names none — and the one
+   * that, chosen explicitly, writes NOTHING on the element. It is the most
+   * permissive reasonable level, because the sketch wins (PRD principle 3).
+   */
+  isDefault?: boolean;
+  /** Severity override per rule id. A rule absent here keeps its own. */
+  rules: Readonly<Record<string, ProfileSeverity>>;
+}
+
+/**
+ * Severity `profile` gives `rule` — the rule's own when the profile is silent
+ * about it, or when there is no profile at all.
+ */
+export function profileSeverity(
+  rule: ValidationRule,
+  profile: ValidationProfile | undefined
+): ProfileSeverity {
+  // Own keys only: `rules` is an object literal shipped by a framework, so
+  // `rules['constructor']` must not resolve to something off the prototype.
+  return profile !== undefined && Object.hasOwn(profile.rules, rule.id)
+    ? profile.rules[rule.id]
+    : rule.severity;
+}
+
+/**
+ * The profile a background of `framework` is checked against when it names
+ * none: the one flagged {@link ValidationProfile.isDefault}, or — failing that
+ * — the first one registered, so a framework that forgot the flag still has a
+ * resolvable answer instead of silently losing its profiles.
+ */
+export function defaultProfileOf(
+  profiles: readonly ValidationProfile[],
+  framework: string
+): ValidationProfile | undefined {
+  let first: ValidationProfile | undefined;
+  for (const profile of profiles) {
+    if (profile.framework !== framework) continue;
+    if (profile.isDefault) return profile;
+    first ??= profile;
+  }
+  return first;
+}
+
+/** Profiles arranged for lookup: by id, and the default of each framework. */
+interface ProfileIndex {
+  byId: Map<string, ValidationProfile>;
+  defaults: Map<string, ValidationProfile>;
+}
+
+function indexProfiles(profiles: readonly ValidationProfile[]): ProfileIndex {
+  const byId = new Map<string, ValidationProfile>();
+  const defaults = new Map<string, ValidationProfile>();
+  for (const profile of profiles) {
+    byId.set(profile.id, profile);
+    if (defaults.has(profile.framework)) continue;
+    const fallback = defaultProfileOf(profiles, profile.framework);
+    if (fallback) defaults.set(profile.framework, fallback);
+  }
+  return { byId, defaults };
+}
+
+/**
+ * The profile a finding of `rule` is judged by: the one its background NAMES,
+ * or the framework's default.
+ *
+ * A profile id belonging to another framework is ignored rather than honoured:
+ * a background carrying `bpmn.executable` says nothing about a Wardley rule,
+ * and a stale id left behind by a paste must never silence one.
+ */
+function resolveProfile(
+  rule: ValidationRule,
+  chosenId: string | undefined,
+  index: ProfileIndex
+): ValidationProfile | undefined {
+  const named = chosenId === undefined ? undefined : index.byId.get(chosenId);
+  if (named !== undefined && named.framework === rule.framework) return named;
+  return index.defaults.get(rule.framework);
+}
+
+/**
+ * The profile id each role-carrying element names, in one pass.
+ *
+ * Role-carrying only: a profile is a decision about a framework's background,
+ * and a neutral element cannot be one. That keeps the pass on exactly the same
+ * cheap guard the rule families already use.
+ */
+function readChosenProfiles(
+  elements: readonly GfxPrimitiveElementModel[]
+): Map<string, string> {
+  const chosen = new Map<string, string>();
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    const id = el.validationProfile;
+    // Whatever a peer wrote: a client that got it wrong must not break
+    // evaluation on this one.
+    if (typeof id === 'string') chosen.set(el.id, id);
+  }
+  return chosen;
+}
+
+/**
+ * Whether `rule` is `'off'` under EVERY profile in play on this surface — in
+ * which case it is not evaluated at all, which is what `'off'` is for.
+ *
+ * The default counts as in play unconditionally: a background naming nothing
+ * falls back to it, and the surface can gain one at any moment. So the
+ * short-circuit only fires when the answer cannot change, and errs towards
+ * evaluating — a missed skip costs a linear pass, a wrong skip costs a silent
+ * rule.
+ */
+function isRuleSilent(
+  rule: ValidationRule,
+  chosen: Map<string, string>,
+  index: ProfileIndex
+): boolean {
+  if (profileSeverity(rule, index.defaults.get(rule.framework)) !== 'off') {
+    return false;
+  }
+  for (const id of chosen.values()) {
+    const profile = index.byId.get(id);
+    // Unknown id, or another framework's: falls back to the default, already
+    // known to be off.
+    if (profile === undefined || profile.framework !== rule.framework) continue;
+    if (profileSeverity(rule, profile) !== 'off') return false;
+  }
+  return true;
+}
+
+/**
+ * Re-judge what a rule raised, background by background: rewrite each finding's
+ * severity to what its own profile says, and drop the ones the profile turned
+ * off.
+ *
+ * After the family, never before: only the family knows which background a
+ * finding was measured against ({@link Violation.backgroundId}), and that is
+ * precisely what names the profile. A family measuring against no background
+ * has no instance to read a choice from and falls back to the default.
+ */
+function applyProfiles(
+  rule: ValidationRule,
+  raised: readonly Violation[],
+  chosen: Map<string, string>,
+  index: ProfileIndex
+): Violation[] {
+  const kept: Violation[] = [];
+  for (const violation of raised) {
+    const chosenId =
+      violation.backgroundId === undefined
+        ? undefined
+        : chosen.get(violation.backgroundId);
+    const severity = profileSeverity(
+      rule,
+      resolveProfile(rule, chosenId, index)
+    );
+    if (severity === 'off') continue;
+    violation.severity = severity;
+    kept.push(violation);
+  }
+  return kept;
 }
 
 /**
@@ -328,17 +535,37 @@ function applyExceptions(
 /**
  * Run every rule over every element. Pure and synchronous — the unit of the
  * 16 ms budget (PF5.12), and the only thing the bench measures.
+ *
+ * `profiles` is the level of requirement in force (PF9). Omitted, every rule is
+ * judged by its own declared severity, which is exactly what a framework
+ * shipping no profile gets.
  */
 export function evaluateRules(
   rules: readonly ValidationRule[],
-  elements: readonly GfxPrimitiveElementModel[]
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
 ): Violation[] {
   if (rules.length === 0) return [];
 
+  // No profile registered => not a single extra read on the whole surface.
+  const index = profiles.length > 0 ? indexProfiles(profiles) : null;
+  const chosen = index ? readChosenProfiles(elements) : null;
+
   const violations: Violation[] = [];
   for (const rule of rules) {
-    const raised = RULE_FAMILIES[rule.family](rule, elements);
+    // `'off'` everywhere means never walked: the cheapest exit there is, taken
+    // before a single element is touched.
+    if (index && chosen && isRuleSilent(rule, chosen, index)) continue;
+
+    let raised = RULE_FAMILIES[rule.family](rule, elements);
+    if (index && chosen && raised.length > 0) {
+      raised = applyProfiles(rule, raised, chosen, index);
+    }
     if (raised.length === 0) continue;
+
+    // Exceptions are read LAST, and independently of the profile: an
+    // arbitration a user made is theirs, and changing the level of requirement
+    // never revokes one (PF9.3).
     applyExceptions(rule, raised, elements);
     violations.push(...raised);
   }
@@ -413,6 +640,32 @@ export function ValidationRuleExtension(
   };
 }
 
+/** A framework registers its profiles here; nothing else registers profiles. */
+export const ValidationProfileIdentifier =
+  createIdentifier<ValidationProfile>('ValidationProfile');
+
+/**
+ * Register a framework's profiles. Call it from the FLAG-GATED view extension,
+ * beside {@link ValidationRuleExtension}: a level of requirement is tooling, so
+ * a disabled framework offers none — and the id already written on a background
+ * simply goes unread until the flag comes back.
+ *
+ * ```ts
+ * context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+ * ```
+ */
+export function ValidationProfileExtension(
+  profiles: readonly ValidationProfile[]
+): ExtensionType {
+  return {
+    setup: di => {
+      for (const profile of profiles) {
+        di.addImpl(ValidationProfileIdentifier(profile.id), () => profile);
+      }
+    },
+  };
+}
+
 /** Recompute delay, so a drag re-evaluates once instead of once per frame. */
 const VALIDATION_DELAY_MS = 120;
 
@@ -429,6 +682,12 @@ export const VERDICT_PROPS = [
   // A user exception changes a verdict as much as a move does: without this,
   // granting one on a peer's tab would leave the mark up until the next drag.
   'validationExceptions',
+  // Changing the level of requirement re-judges everything measured against
+  // this background (PF9). Written on a background, read for every finding
+  // attributed to it — and, like an exception, it can be DELETED (choosing the
+  // default back removes the key), which is why `touchesVerdict` reads
+  // `oldValues` too.
+  'validationProfile',
 ];
 
 /**
@@ -498,6 +757,19 @@ export class ValidationManager extends InteractivityExtension {
       this.std.provider.getAll(ValidationRuleIdentifier).values()
     );
     return this._rules;
+  }
+
+  private _profiles: readonly ValidationProfile[] | null = null;
+
+  /**
+   * Registered profiles, resolved once. Empty when no framework ships one, in
+   * which case every rule is judged by its own declared severity.
+   */
+  private get _activeProfiles(): readonly ValidationProfile[] {
+    this._profiles ??= Array.from(
+      this.std.provider.getAll(ValidationProfileIdentifier).values()
+    );
+    return this._profiles;
   }
 
   private _subscriptions: { unsubscribe(): void }[] = [];
@@ -571,7 +843,11 @@ export class ValidationManager extends InteractivityExtension {
     const surface = this.gfx.surface;
     if (rules.length === 0 || !surface) return;
 
-    const violations = evaluateRules(rules, surface.elementModels);
+    const violations = evaluateRules(
+      rules,
+      surface.elementModels,
+      this._activeProfiles
+    );
     // Stay silent when nothing changed: `violations$` is the seam a host panel
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;
@@ -593,6 +869,96 @@ export class ValidationManager extends InteractivityExtension {
   /** The registered rule with this id, if its framework is enabled. */
   ruleOf(ruleId: string): ValidationRule | undefined {
     return this._activeRules.find(rule => rule.id === ruleId);
+  }
+
+  /**
+   * The profiles selectable on `element`, i.e. those of every framework that
+   * measures against a background carrying this element's ROLE.
+   *
+   * Derived from the registered rules rather than from a second registry: a
+   * rule already names the role of the frame it measures against
+   * (`backgroundRole`), which is the only thing that makes an element a root
+   * instance in the engine's eyes. So the answer is gated for free — flag off,
+   * no rule, no profile offered — and a framework that ships profiles but no
+   * rule offers nothing to choose between, correctly.
+   *
+   * Empty for a neutral element, and for a background authored before its role
+   * existed: no role, no framework, no profile.
+   */
+  profilesFor(
+    element: GfxPrimitiveElementModel
+  ): readonly ValidationProfile[] {
+    const role = element.role;
+    if (role === undefined) return [];
+
+    const frameworks = new Set<string>();
+    for (const rule of this._activeRules) {
+      if (rule.backgroundRole === undefined) continue;
+      if (roleIsA(role, rule.backgroundRole, rule.roles)) {
+        frameworks.add(rule.framework);
+      }
+    }
+    if (frameworks.size === 0) return [];
+
+    return this._activeProfiles.filter(profile =>
+      frameworks.has(profile.framework)
+    );
+  }
+
+  /**
+   * The profile `element` is actually checked against — the one it names, or
+   * its framework's default. `undefined` when it is not a root instance of any
+   * enabled framework, or when its framework ships no profile.
+   */
+  profileOf(
+    element: GfxPrimitiveElementModel
+  ): ValidationProfile | undefined {
+    const available = this.profilesFor(element);
+    const named = available.find(
+      profile => profile.id === element.validationProfile
+    );
+    if (named) return named;
+    const framework = available[0]?.framework;
+    return framework === undefined
+      ? undefined
+      : defaultProfileOf(available, framework);
+  }
+
+  /**
+   * Put `element` on `profileId`, and re-judge the board on the spot.
+   *
+   * Choosing the DEFAULT clears the key rather than writing it, so a background
+   * that never left the default stays byte-identical to one created before
+   * profiles existed — and a user who tries strict and comes back leaves no
+   * trace. Everything else is one flat string in the same `@field()` the role
+   * and the exceptions live in: it syncs, it undoes, it survives a copy and an
+   * export, with no block schema change.
+   *
+   * Exceptions are deliberately left alone. A level of requirement is not an
+   * amnesty: raising it must not resurrect decisions the user made, and
+   * lowering it must not quietly delete them (PF9.3).
+   *
+   * @returns whether the document actually changed.
+   */
+  setProfile(element: GfxPrimitiveElementModel, profileId: string): boolean {
+    const available = this.profilesFor(element);
+    const target = available.find(profile => profile.id === profileId);
+    // Never write a profile nobody registered, nor one belonging to a framework
+    // this element is not a background of.
+    if (!target) return false;
+
+    const isDefault =
+      defaultProfileOf(available, target.framework)?.id === target.id;
+    const next = isDefault ? undefined : target.id;
+    if ((element.validationProfile ?? undefined) === next) return false;
+
+    if (next === undefined) element.clearField('validationProfile');
+    else element.validationProfile = next;
+
+    // The 120 ms debounce would get there on its own; the gesture has to land
+    // immediately, exactly like an exception does.
+    this.evaluate();
+    return true;
   }
 
   /**

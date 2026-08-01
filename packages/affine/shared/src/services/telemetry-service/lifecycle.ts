@@ -78,7 +78,26 @@ export interface ValidationExceptionEvent extends TelemetryEvent {
   elementCount: number;
 }
 
+/**
+ * A change of the level of requirement a framework instance is checked against
+ * (PF9). Worth knowing about for the same reason an exception is: a profile
+ * nobody ever leaves is a default that is right, and one everybody escapes on
+ * the first day is a default that is wrong.
+ *
+ * Ids only — the framework's own namespaced profile ids — never user content.
+ */
+export interface ValidationProfileEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the profile, e.g. `wardley`. */
+  framework: string;
+  /** Namespaced profile id now in force, e.g. `wardley.strict`. */
+  profileId: string;
+  /** The one it replaces, when it is known. */
+  previousProfileId?: string;
+}
+
 export type ValidationEvents = {
   ValidationExceptionGranted: ValidationExceptionEvent;
   ValidationExceptionRevoked: ValidationExceptionEvent;
+  ValidationProfileChanged: ValidationProfileEvent;
 };

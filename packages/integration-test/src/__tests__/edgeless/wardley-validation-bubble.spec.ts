@@ -70,10 +70,18 @@ describe('the violation markers and their detail bubble', () => {
   let root!: EdgelessRootBlockComponent;
   let validation!: ValidationManager;
 
+  /**
+   * A map on the STRICT profile.
+   *
+   * Since PF9 the default (`wardley.sketch`) demotes the pilot rule to `audit`,
+   * which is invisible on the canvas by design — so the markers this suite is
+   * about only exist on a map whose owner asked for them.
+   */
   const addBackground = () =>
     service.surface.addElement({
       type: 'wardley',
       role: 'wardley:map',
+      validationProfile: 'wardley.strict',
       xywh: '[0,0,1600,900]',
     });
 
