@@ -4,9 +4,15 @@
  * `shapeShortcuts` + `wardleyShortcuts`.
  *
  * `declarations` is what each id declared; `bindings` is the combo -> id map
- * `resolveKeymap` actually installed, per scope. Regenerating this file defeats
- * its purpose: it exists so a user's persisted v0.29 override table keeps
- * resolving to the same action after the switchover (docs/adr/0008).
+ * `resolveKeymap` actually installed, PER PLATFORM and per scope. Both
+ * platforms are frozen because they genuinely differ: `redo-windows` ships
+ * `mac: []`, so the mac global scope binds two combos where Windows/Linux bind
+ * three. A golden that only froze the host's own platform would pass on CI and
+ * fail on a maintainer's Mac.
+ *
+ * Regenerating this file defeats its purpose: it exists so a user's persisted
+ * v0.29 override table keeps resolving to the same action after the switchover
+ * (docs/adr/0008).
  */
 export const KEYMAP_GOLDEN = {
   "declarations": [
@@ -167,23 +173,44 @@ export const KEYMAP_GOLDEN = {
     }
   ],
   "bindings": {
-    "global": {
-      "Mod-z": "undo",
-      "Shift-Mod-z": "redo",
-      "Control-y": "redo-windows"
+    "mac": {
+      "global": {
+        "Mod-z": "undo",
+        "Shift-Mod-z": "redo"
+      },
+      "page": {},
+      "edgeless": {
+        "Mod-d": "duplicate",
+        "Mod-y": "applyLastStyle",
+        "Mod-Shift-f": "shape.cycleTextFit",
+        "w c": "wardley.addComponent",
+        "w l": "wardley.linkTool",
+        "w a": "wardley.evolutionArrow",
+        "w i": "wardley.addInertia",
+        "w p": "wardley.addPipeline",
+        "w m": "wardley.addMethod",
+        "w b": "wardley.addBackground"
+      }
     },
-    "page": {},
-    "edgeless": {
-      "Mod-d": "duplicate",
-      "Mod-y": "applyLastStyle",
-      "Mod-Shift-f": "shape.cycleTextFit",
-      "w c": "wardley.addComponent",
-      "w l": "wardley.linkTool",
-      "w a": "wardley.evolutionArrow",
-      "w i": "wardley.addInertia",
-      "w p": "wardley.addPipeline",
-      "w m": "wardley.addMethod",
-      "w b": "wardley.addBackground"
+    "other": {
+      "global": {
+        "Mod-z": "undo",
+        "Shift-Mod-z": "redo",
+        "Control-y": "redo-windows"
+      },
+      "page": {},
+      "edgeless": {
+        "Mod-d": "duplicate",
+        "Mod-y": "applyLastStyle",
+        "Mod-Shift-f": "shape.cycleTextFit",
+        "w c": "wardley.addComponent",
+        "w l": "wardley.linkTool",
+        "w a": "wardley.evolutionArrow",
+        "w i": "wardley.addInertia",
+        "w p": "wardley.addPipeline",
+        "w m": "wardley.addMethod",
+        "w b": "wardley.addBackground"
+      }
     }
   }
 } as const;

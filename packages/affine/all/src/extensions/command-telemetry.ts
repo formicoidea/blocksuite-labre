@@ -68,7 +68,17 @@ export function reportCommandTelemetry(
   });
 }
 
-const reporter: CommandTelemetryReporter = ({ std, command, invocation }) => {
+/**
+ * The production reporter. Exported so a test can register it on a stub `std`
+ * and drive the WHOLE path — `runCommand` → reporter → `TelemetryProvider` —
+ * rather than calling the mapping function directly, which would never notice
+ * a second emitter left behind in an action body.
+ */
+export const commandTelemetryReporter: CommandTelemetryReporter = ({
+  std,
+  command,
+  invocation,
+}) => {
   const telemetry = std.getOptional(TelemetryProvider);
   if (!telemetry) return;
   reportCommandTelemetry(
@@ -84,7 +94,7 @@ export const CommandTelemetryExtension: ExtensionType = {
   // factory, so registering the reporter directly would resolve it with the
   // service provider instead of the report.
   setup: di => {
-    di.addImpl(CommandTelemetryIdentifier, () => reporter);
+    di.addImpl(CommandTelemetryIdentifier, () => commandTelemetryReporter);
   },
 };
 

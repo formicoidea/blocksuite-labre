@@ -20,8 +20,8 @@ ddd-context-map 12), plus the 6 core ones.
 command is listed and bindable, including the ~53 that ship with no default
 chord. The effective keymap is unchanged — the same combos trigger the same
 actions, and existing override tables keep working (a golden test compares the
-resolved keymap per scope against the pre-switchover one). Cynefin/Estuarine
-starts reporting telemetry, which it never did.
+resolved keymap, per platform and per scope, against the pre-switchover one).
+Cynefin/Estuarine starts reporting telemetry, which it never did.
 
 **What hosts must change.**
 
@@ -49,7 +49,15 @@ starts reporting telemetry, which it never did.
    renamed**: `com.affine.keyboardShortcuts.*` and the seven
    `com.labre.keyboardShortcuts.wardley.*` are carried over verbatim.
 
-4. New entry points: `@labre/affine/commands` (`getCommands`,
+4. **`undo` / `redo` now stop propagation.** Their handlers used to return
+   `undefined` after `preventDefault()`, so the keystroke kept travelling; the
+   projection returns `true` uniformly. Nothing inside the editor was reading
+   `Mod-z` / `Shift-Mod-z` — they are the only handlers bound to those combos —
+   but **an application listener mounted above the editor will no longer see
+   those keystrokes**. This does not fail at compile time; if you rely on it,
+   listen in the capture phase.
+
+5. New entry points: `@labre/affine/commands` (`getCommands`,
    `getCommandManifest`, `getCommandManifestForSurface`) and
    `@labre/affine/frameworks` (`FRAMEWORK_DESCRIPTORS` — per-framework label,
    icon, chord prefix, analytics keys and packaging, the identity that was
@@ -61,8 +69,13 @@ historical PostHog values through `FrameworkDescriptor.telemetryKey` /
 `telemetrySegment`, and events gain one field — `control`, naming which surface
 invoked the command. Existing dashboards keep working untouched.
 
-Two small behaviour changes worth naming: `undo` / `redo` now consume their
-keystroke (they are the only handler bound to it, so nothing else was reading
-it), and disabling a framework's flag now removes its commands from the
-registry, the keymap and the sub-menu at once, while its already-drawn elements
-keep painting as before.
+Disabling a framework's flag now removes its commands from the registry, the
+keymap and the sub-menu at once, while its already-drawn elements keep painting
+as before.
+
+**Known limitation.** Telemetry reports that a command was _invoked_, not that
+its gesture _completed_: `edgy.insertDynamic` is asynchronous and emits while
+its template insertion is still pending. That was already true of the per-menu
+`track()` it replaces, so no metric changes — but it is now one central
+decision rather than five scattered ones, and therefore worth revisiting when
+outcome-level reporting is needed.
