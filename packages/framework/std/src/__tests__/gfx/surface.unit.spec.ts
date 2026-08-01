@@ -229,6 +229,73 @@ describe('element model', () => {
   });
 });
 
+describe('element semantic role', () => {
+  test('a generalist element is neutral: no role key is written', () => {
+    const { surfaceModel: model } = commonSetup();
+    const id = model.addElement({ type: 'testShape' });
+    const el = model.getElementById(id)!;
+
+    expect(el.role).toBeUndefined();
+    // Nothing at all lands in the shared document: a neutral element stays
+    // byte-identical to one authored before the field existed.
+    expect(el.yMap.has('role')).toBe(false);
+    expect(el.serialize()).not.toHaveProperty('role');
+  });
+
+  test('a role given at creation reaches the shared document', () => {
+    const { surfaceModel: model } = commonSetup();
+    const id = model.addElement({ type: 'testShape', role: 'wardley:market' });
+    const el = model.getElementById(id)!;
+
+    expect(el.role).toBe('wardley:market');
+    expect(el.yMap.get('role')).toBe('wardley:market');
+  });
+
+  test('the role survives a serialize / re-create round trip', () => {
+    const { surfaceModel: model } = commonSetup();
+    const sourceId = model.addElement({
+      type: 'testShape',
+      role: 'wardley:component',
+    });
+
+    // Exactly what paste / duplicate does: re-create an element from the
+    // serialized props. Only keys with a declared `@field` accessor reach the
+    // Y.Map, which is why `role` is declared on the base element model.
+    const { id: _id, ...props } = model.getElementById(sourceId)!.serialize();
+    const copy = model.getElementById(model.addElement(props))!;
+
+    expect(copy.id).not.toBe(sourceId);
+    expect(copy.role).toBe('wardley:component');
+    expect(copy.yMap.get('role')).toBe('wardley:component');
+  });
+
+  test('a neutral element stays neutral through a round trip', () => {
+    const { surfaceModel: model } = commonSetup();
+    const sourceId = model.addElement({ type: 'testShape' });
+    const { id: _id, ...props } = model.getElementById(sourceId)!.serialize();
+
+    const copy = model.getElementById(model.addElement(props))!;
+
+    expect(copy.role).toBeUndefined();
+    expect(copy.yMap.has('role')).toBe(false);
+  });
+
+  test('the role can be updated, and clearing it reads as neutral again', () => {
+    const { surfaceModel: model } = commonSetup();
+    const id = model.addElement({ type: 'testShape' });
+    const el = model.getElementById(id)!;
+
+    model.updateElement(id, { role: 'wardley:anchor' });
+    expect(el.role).toBe('wardley:anchor');
+
+    // Clearing writes an explicit `undefined` (the key survives as a
+    // tombstone, like any other field), which still reads as neutral and is
+    // dropped again on the next copy.
+    model.updateElement(id, { role: undefined });
+    expect(el.role).toBeUndefined();
+  });
+});
+
 describe('stash/pop', () => {
   const { surfaceModel: model } = commonSetup();
   test('stash and pop should work correctly', () => {
