@@ -139,10 +139,10 @@ export function mapConnectorIds(
   ids: Map<string, string>
 ) {
   if (props.source.id) {
-    props.source.id = ids.get(props.source.id);
+    props.source.id = ids.get(props.source.id) ?? props.source.id;
   }
   if (props.target.id) {
-    props.target.id = ids.get(props.target.id);
+    props.target.id = ids.get(props.target.id) ?? props.target.id;
   }
   return props;
 }
