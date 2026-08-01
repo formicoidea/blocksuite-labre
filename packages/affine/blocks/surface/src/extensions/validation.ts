@@ -1869,6 +1869,10 @@ export class ValidationManager extends InteractivityExtension {
    * @returns whether the document actually changed.
    */
   setProfile(element: GfxPrimitiveElementModel, profileId: string): boolean {
+    // The write below goes through a `@field()` accessor, i.e. `store.transact`,
+    // which has no readonly guard of its own. A readonly board arbitrates
+    // nothing — and `false` keeps the caller's telemetry silent too.
+    if (this.std.store.readonly) return false;
     const available = this.profilesFor(element);
     const target = available.find(profile => profile.id === profileId);
     // Never write a profile nobody registered, nor one belonging to a framework
@@ -1945,6 +1949,10 @@ export class ValidationManager extends InteractivityExtension {
     granted: boolean,
     author?: string
   ): GfxPrimitiveElementModel[] {
+    // Same transact hole as `setProfile`; an empty return is what keeps the
+    // bubble from emitting Granted/Revoked telemetry for a write that never
+    // happened.
+    if (this.std.store.readonly) return [];
     const ruleId = violations[0]?.ruleId;
     const surface = this.gfx.surface;
     if (ruleId === undefined || !surface) return [];
@@ -1995,6 +2003,9 @@ export class ValidationManager extends InteractivityExtension {
    * report the arbitration and tell a real one from a no-op.
    */
   revokeExceptionsOn(element: GfxPrimitiveElementModel): RevokedException[] {
+    // Same transact hole as `setProfile`, same telemetry contract: no entry
+    // returned, nothing reported.
+    if (this.std.store.readonly) return [];
     const anchored = this.revocableExceptionsOn(element);
     if (anchored.length === 0) return [];
 

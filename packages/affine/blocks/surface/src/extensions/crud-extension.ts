@@ -36,7 +36,18 @@ export class EdgelessCRUDExtension extends Extension {
     return this._gfx.surface as SurfaceBlockModel | null;
   }
 
+  /**
+   * Surface ELEMENT writes go through `store.transact`, which — unlike the
+   * store's block CRUD — carries no readonly guard. This layer is the write
+   * bottleneck for gestures and toolbars, so the guard lives here rather than
+   * in `framework/store` (red zone) or once per call site.
+   */
+  private get _readonly() {
+    return this.std.store.readonly;
+  }
+
   deleteElements = (elements: GfxModel[]) => {
+    if (this._readonly) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -90,6 +101,7 @@ export class EdgelessCRUDExtension extends Extension {
   };
 
   addElement = <T extends Record<string, unknown>>(type: string, props: T) => {
+    if (this._readonly) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -112,6 +124,7 @@ export class EdgelessCRUDExtension extends Extension {
   };
 
   updateElement = (id: string, props: Record<string, unknown>) => {
+    if (this._readonly) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -159,6 +172,7 @@ export class EdgelessCRUDExtension extends Extension {
   }
 
   removeElement(id: string | GfxModel) {
+    if (this._readonly) return;
     id = typeof id === 'string' ? id : id.id;
 
     const el = this.getElementById(id);

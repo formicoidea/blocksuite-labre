@@ -384,7 +384,13 @@ export class EdgelessRootBlockComponent extends BlockComponent<
         keymap[key] = ctx => {
           const elements = selection.selectedElements;
 
-          if (isSingleMindMapNode(elements) && !selection.editing) {
+          // The mindmap branch overwrites the node's text through a raw
+          // `transact`, which has no readonly guard of its own.
+          if (
+            isSingleMindMapNode(elements) &&
+            !selection.editing &&
+            !this.store.readonly
+          ) {
             const target = gfx.getElementById(
               elements[0].id
             ) as ShapeElementModel;

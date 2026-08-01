@@ -401,6 +401,8 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           if (!isSingleMindMapNode(elements)) {
             return;
           }
+          // `mindmap.addNode` writes through a raw `transact`.
+          if (rootComponent.store.readonly) return;
 
           const mindmap = elements[0].group as MindmapElementModel;
           const currentNode = mindmap.getNode(elements[0].id)!;
@@ -432,6 +434,8 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           if (!isSingleMindMapNode(elements)) {
             return;
           }
+          // Same raw-`transact` path as Enter's `addNode`.
+          if (rootComponent.store.readonly) return;
 
           const mindmap = elements[0].group as MindmapElementModel;
           if (mindmap.isLocked()) return;
@@ -488,7 +492,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           const elements = selection.selectedElements;
           const doc = this.rootComponent.store;
 
-          if (isSingleMindMapNode(elements)) {
+          // Raw `transact` on a surface element: readonly-guarded here, since
+          // the store itself does not guard transactions.
+          if (isSingleMindMapNode(elements) && !doc.readonly) {
             const target = gfx.getElementById(
               elements[0].id
             ) as ShapeElementModel;
@@ -523,6 +529,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
   private _delete() {
     const edgeless = this.rootComponent;
 
+    // Deletion bypasses the store's block CRUD for canvas elements
+    // (`surface.deleteElement` is a raw `transact`).
+    if (edgeless.store.readonly) return;
     if (edgeless.service.locked) return;
     if (edgeless.service.selection.editing) {
       return;
@@ -630,6 +639,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
       return;
     }
 
+    // After the mindmap branch: arrow-key NAVIGATION stays available on a
+    // readonly board, moving elements (raw field writes) does not.
+    if (edgeless.store.readonly) return;
     if (selectedElements.some(e => e.isLocked())) return;
 
     const movedElements = new Set([
