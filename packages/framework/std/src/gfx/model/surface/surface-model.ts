@@ -66,6 +66,13 @@ export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
  *   vector: assigning them mutates the class or `Object.prototype` instead of
  *   the document. They are dropped rather than forwarded to the Y.Map.
  *
+ * **This list is load-bearing for security, not just hygiene — do not assume
+ * the routing makes it redundant.** `Object.prototype.__proto__` is an
+ * accessor **with a setter**, so it is present on the prototype chain of every
+ * element type and {@link isDeclaredElementProp} would route it to the
+ * instance assignment, i.e. mutate the element's prototype. The only thing
+ * stopping that is this deny-list, which is evaluated first.
+ *
  * Everything else is either a declared accessor or an unknown key, and both
  * are handled by {@link SurfaceBlockModel._assignElementProp}.
  */
@@ -195,8 +202,14 @@ function isEncodableElementValue(
 
     // Only plain objects. A class instance would be silently flattened by the
     // Yjs encoder, which is never what the caller meant.
+    //
+    // `Object.create(null)` is rejected too, and for a sharper reason: Yjs
+    // dispatches on `value.constructor`, which is `undefined` on a
+    // null-prototype object, so `Y.Map.set` throws `Unexpected content type`
+    // — from inside `store.transact`, which swallows it and takes every
+    // remaining prop of the same payload with it.
     const proto = Object.getPrototypeOf(value);
-    if (proto !== Object.prototype && proto !== null) {
+    if (proto !== Object.prototype) {
       return false;
     }
 
@@ -205,6 +218,24 @@ function isEncodableElementValue(
     );
   } finally {
     seen.delete(value as object);
+  }
+}
+
+/**
+ * {@link isEncodableElementValue}, but it never throws.
+ *
+ * The guard is the layer that protects the assignment loop, so it must not be
+ * able to break it. Inspecting a value can raise: `Object.values` invokes
+ * getters, and a getter that throws — or a hostile proxy trap — would escape
+ * into `store.transact`, which swallows the error and silently drops every
+ * prop after this one. That is the very failure mode this change removes, so
+ * an inspection that blows up means "not storable", nothing more.
+ */
+function canStoreUnknownPropValue(value: unknown): boolean {
+  try {
+    return isEncodableElementValue(value);
+  } catch {
+    return false;
   }
 }
 
@@ -368,6 +399,14 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
    * every peer. Declared fields keep accepting `undefined`, which is how an
    * optional field is cleared.
    *
+   * The asymmetry that follows is deliberate: an unknown key already present
+   * in the Y.Map can never be removed through `updateElement`, since
+   * `undefined` is the only way to ask for that and it is ignored here. On a
+   * client that does not declare the field, an unknown key is immortal. That
+   * is the right direction to err for a preservation contract — the client
+   * that understands the field can still clear it through its accessor — but
+   * it does mean this API cannot delete what it does not understand.
+   *
    * The value is already Y-converted at this point: both call sites run the
    * whole props object through {@link _propsToY} first, which is key-agnostic.
    *
@@ -392,7 +431,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       return;
     }
 
-    if (!isEncodableElementValue(value)) {
+    if (!canStoreUnknownPropValue(value)) {
       console.warn(
         `Dropping unknown element prop "${key}": the value cannot be encoded ` +
           `into the document (expected a Yjs type, or flat JSON without cycles).`

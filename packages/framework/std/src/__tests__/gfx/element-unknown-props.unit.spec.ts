@@ -490,6 +490,64 @@ describe('US-1.8 — unknown element prop, value encodability', () => {
     expect(encodes(surfaceModel)).toBe(true);
   });
 
+  test('a null-prototype object is dropped and the payload after it survives', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    // Yjs dispatches on `value.constructor`, which is `undefined` here, so
+    // `Y.Map.set` throws `Unexpected content type` — inside `store.transact`,
+    // which swallows it and drops every remaining key of the payload.
+    surfaceModel.updateElement(id, {
+      nullproto: Object.assign(Object.create(null), { a: 1 }),
+      [UNKNOWN_KEY]: UNKNOWN_VALUE,
+    });
+
+    expect(element.yMap.has('nullproto')).toBe(false);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('a nested null-prototype object is dropped too', () => {
+    const { surfaceModel } = setupSurface();
+
+    const id = surfaceModel.addElement({
+      type: 'testShape',
+      wrapped: { inner: Object.assign(Object.create(null), { a: 1 }) },
+      [UNKNOWN_KEY]: UNKNOWN_VALUE,
+    } as unknown as SerializedElement & { type: string });
+    const element = surfaceModel.getElementById(id)!;
+
+    expect(element.yMap.has('wrapped')).toBe(false);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('a throwing getter is dropped and the payload after it survives', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    // `Object.values` invokes getters, so the inspection itself can raise. The
+    // guard must absorb that instead of letting it reach `store.transact`.
+    const evil = {
+      get boom(): never {
+        throw new Error('getter blew up');
+      },
+    };
+
+    expect(() =>
+      surfaceModel.updateElement(id, {
+        evil,
+        [UNKNOWN_KEY]: UNKNOWN_VALUE,
+      })
+    ).not.toThrow();
+
+    expect(element.yMap.has('evil')).toBe(false);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
   test('a class instance is dropped rather than silently flattened', () => {
     const { surfaceModel } = setupSurface();
     const id = surfaceModel.addElement({ type: 'testShape' });

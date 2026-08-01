@@ -99,12 +99,34 @@ else (function, symbol, bigint, class instance, cycle) is rejected: the key is
 dropped with a `console.warn`, which is exactly the pre-existing behaviour for
 that one prop, and the document stays sound.
 
+Two rejections are worth spelling out, because they fail differently from the
+cyclic case and would otherwise resurrect the swallowed-error bug the routing
+step just closed:
+
+- **a null-prototype object** (`Object.create(null)`). Yjs dispatches on
+  `value.constructor`, which is `undefined` here, so `Y.Map.set` throws
+  `Unexpected content type` — synchronously, from inside `store.transact`,
+  which swallows it and drops every remaining prop of the same payload.
+- **a value whose inspection throws** — a getter that raises, a hostile proxy.
+  `Object.values` invokes getters, so the guard itself can raise. It is wrapped
+  in `canStoreUnknownPropValue`, which turns any such failure into "not
+  storable". The guard is the layer that protects the assignment loop, so it
+  must never be the thing that breaks it.
+
 An `undefined` value is never written on the unknown branch either, so
 spreading an absent option (`{ ...opts }` with `opts.foo === undefined`) cannot
 mint a phantom Y.Map key — a real key, propagated to every peer forever, that
 `serialize()` cannot even show because `toJSON()` drops undefined. Declared
 fields keep accepting `undefined`, which is how an optional field such as
 `linkedDocId` is cleared.
+
+The asymmetry that follows is deliberate and worth knowing: **an unknown key
+already present in the Y.Map can never be removed through `updateElement`**,
+because `undefined` is the only way to ask for that and it is ignored on the
+unknown branch. On a client that does not declare the field, an unknown key is
+immortal. That is the right direction to err for a preservation contract — the
+client that _does_ understand the field can still clear it through its
+accessor — but this API cannot delete what it does not understand.
 
 ### Exclusions
 
@@ -114,6 +136,13 @@ A short deny-list (`UNSAFE_ELEMENT_PROP_KEYS`) is applied before both branches:
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `id`, `type`                            | The element identity. `_createElementFromProps` writes both explicitly and destructures them out of `rest`, but `updateElement` did not: `updateElement(id, other.serialize())` would otherwise stamp a stale identity into the document. Both are prototype getters, so the old code threw a `TypeError` instead. |
 | `__proto__`, `constructor`, `prototype` | Prototype pollution. `__proto__` is an accessor **with a setter** on `Object.prototype`, so the descriptor walk would otherwise admit it; `constructor` is a data property, and `prototype` is not on an instance at all, so both would be forwarded to the Y.Map. All three are dropped outright.                 |
+
+**This deny-list is load-bearing for security, not just hygiene.** Because
+`Object.prototype.__proto__` is an accessor with a setter, it is on the
+prototype chain of _every_ element type, and step 2 above would route it to the
+instance assignment — mutating the element's prototype. The only thing that
+prevents it is this list being evaluated first. A refactor must not weaken it
+on the assumption that the routing already covers it.
 
 Deliberately **not** excluded: `index` and `seed`. Both are declared
 `@field()` on `GfxPrimitiveElementModel`, so they already take the accessor
