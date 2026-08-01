@@ -23,10 +23,19 @@ import { AdapterPanelViewExtension } from '@labre/affine-fragment-adapter-panel/
 import { DocTitleViewExtension } from '@labre/affine-fragment-doc-title/view';
 import { FramePanelViewExtension } from '@labre/affine-fragment-frame-panel/view';
 import { OutlineViewExtension } from '@labre/affine-fragment-outline/view';
-import { BpmnViewExtension } from '@labre/affine-gfx-bpmn/view';
-import { BrushViewExtension } from '@labre/affine-gfx-brush/view';
+import {
+  BpmnRenderViewExtension,
+  BpmnViewExtension,
+} from '@labre/affine-gfx-bpmn/view';
+import {
+  BrushRenderViewExtension,
+  BrushViewExtension,
+} from '@labre/affine-gfx-brush/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
-import { CynefinEstuarineViewExtension } from '@labre/affine-gfx-cynefin-estuarine/view';
+import {
+  CynefinEstuarineRenderViewExtension,
+  CynefinEstuarineViewExtension,
+} from '@labre/affine-gfx-cynefin-estuarine/view';
 import { DddTemplatesViewExtension } from '@labre/affine-gfx-ddd-aggregate/view';
 import { DddContextMapViewExtension } from '@labre/affine-gfx-ddd-context-map/view';
 import {
@@ -34,7 +43,10 @@ import {
   DddCoreDomainViewExtension,
 } from '@labre/affine-gfx-ddd-core-domain/view';
 import { DddEventStormingViewExtension } from '@labre/affine-gfx-ddd-event-storming/view';
-import { EdgyViewExtension } from '@labre/affine-gfx-edgy/view';
+import {
+  EdgyRenderViewExtension,
+  EdgyViewExtension,
+} from '@labre/affine-gfx-edgy/view';
 import { GroupViewExtension } from '@labre/affine-gfx-group/view';
 import { LinkViewExtension as GfxLinkViewExtension } from '@labre/affine-gfx-link/view';
 import {
@@ -48,7 +60,10 @@ import { PointerViewExtension } from '@labre/affine-gfx-pointer/view';
 import { ShapeViewExtension } from '@labre/affine-gfx-shape/view';
 import { TemplateViewExtension } from '@labre/affine-gfx-template/view';
 import { TextViewExtension } from '@labre/affine-gfx-text/view';
-import { WardleyViewExtension } from '@labre/affine-gfx-wardley/view';
+import {
+  WardleyRenderViewExtension,
+  WardleyViewExtension,
+} from '@labre/affine-gfx-wardley/view';
 import { InlineCommentViewExtension } from '@labre/affine-inline-comment/view';
 import { FootnoteViewExtension } from '@labre/affine-inline-footnote/view';
 import { LatexViewExtension as InlineLatexViewExtension } from '@labre/affine-inline-latex/view';
@@ -80,24 +95,31 @@ import {
 } from '../flags.js';
 
 /**
- * View extensions, honoring block flags.
- * Omitted flags default to enabled. See {@link BlockFlags}.
+ * View extensions.
+ *
+ * Rendering is registered UNCONDITIONALLY; a flag removes only the matching
+ * TOOLING extension (senior button, its submenus and its creation shortcuts),
+ * so a framework switched off disappears from the toolbar without any element
+ * already drawn disappearing from the canvas. Omitted flags default to
+ * enabled. See {@link BlockFlags} and `docs/adr/0009`.
  */
 export function getInternalViewExtensions(flags?: BlockFlags) {
   const on = (block: OptionalBlock) => isBlockEnabled(flags, block);
   return [
     FoundationViewExtension,
 
-    // Gfx
+    // Gfx — each framework contributes an always-on `…Render…` extension
+    // (element view + renderer + interaction + contextual toolbar) and a
+    // flag-gated tooling extension (senior button + creation shortcuts).
     PointerViewExtension,
     GfxNoteViewExtension,
+    BrushRenderViewExtension,
     ...(on('brush') ? [BrushViewExtension] : []),
     // Standalone text / add-file senior buttons, placed right after pen/eraser
     // (registration order = senior-row order for the default order group).
     ...(on('edgeless-text') ? [TextToolViewExtension] : []),
     ...(on('edgeless-media') ? [MediaToolViewExtension] : []),
     ShapeViewExtension,
-    // Mindmap rendering is always on; the flags gate only the senior buttons.
     MindmapRenderViewExtension,
     ...(on('mindmap') ? [MindmapToolViewExtension] : []),
     ConnectorViewExtension,
@@ -105,11 +127,14 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
     TextViewExtension,
     ...(on('template') ? [TemplateViewExtension] : []),
     ...(on('link') ? [GfxLinkViewExtension] : []),
+    WardleyRenderViewExtension,
     ...(on('wardley') ? [WardleyViewExtension] : []),
+    EdgyRenderViewExtension,
     ...(on('edgy') ? [EdgyViewExtension] : []),
+    CynefinEstuarineRenderViewExtension,
     ...(on('cynefin-estuarine') ? [CynefinEstuarineViewExtension] : []),
+    BpmnRenderViewExtension,
     ...(on('bpmn') ? [BpmnViewExtension] : []),
-    // Core Domain rendering is always on; the flag gates only the senior button.
     DddCoreDomainRenderViewExtension,
     ...(on('ddd-event-storming') ? [DddEventStormingViewExtension] : []),
     ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),

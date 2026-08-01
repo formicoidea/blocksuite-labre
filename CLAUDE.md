@@ -23,10 +23,13 @@ in the script) and expect occasional cold-start retries.
 ## Architecture entry points
 
 - `packages/affine/all/src/schemas.ts` + `extensions/{store,view}.ts` — the
-  three assembly points. All three honor **block flags**
-  (`@labre/affine/flags`): optional blocks can be shipped dark and
-  enabled at runtime by the host app. Core (root, surface, note, paragraph,
-  base gfx) is not flaggable. See `docs/adr/0002`.
+  three assembly points. **Flags (`@labre/affine/flags`) gate TOOLING, never
+  content**: schemas and store extensions are registered unconditionally, so
+  every document opens and round-trips whatever the flags say; a flag only
+  removes a framework's senior button, submenus and shortcuts. Frameworks
+  therefore split their view layer into an always-on `…RenderViewExtension` and
+  a flag-gated `…ViewExtension`. See `docs/adr/0009` (which reverses the
+  "ship dark" half of `docs/adr/0002`).
 - `packages/affine/shared/src/services/telemetry-service/` — the telemetry
   bus. The lib emits typed events; the host injects the adapter
   (`NoopTelemetryExtension` standalone, PostHog in labreapp). Taxonomy
@@ -61,9 +64,12 @@ A new block (or gfx framework module) is DONE only when it has ALL of:
    with a migration story for existing documents.
 2. **Store extension** + **view extension**, registered in
    `packages/affine/all/src/extensions/{store,view}.ts`.
-3. **A flag** in `packages/affine/all/src/flags.ts` (`OPTIONAL_BLOCKS`) and
-   gating in the three assembly points — new blocks ship dark by default
-   until the host enables them.
+3. **A flag** in `packages/affine/all/src/flags.ts` (`OPTIONAL_BLOCKS`) gating
+   the module's TOOLING only. Schema + store extension are registered
+   unconditionally; a gfx framework splits its view into an always-on
+   `…RenderViewExtension` and a flag-gated `…ViewExtension` (senior button,
+   templates category, shortcuts). Never gate anything a stored document needs
+   to load or paint — see `docs/adr/0009`.
 4. **Telemetry**: creation sites emit `BlockCreated` (blocks) or
    `FrameworkElementAdded`/`FrameworkToolPicked` (frameworks). Lifecycle
    events (edited/deleted/abandoned/duration) come free from

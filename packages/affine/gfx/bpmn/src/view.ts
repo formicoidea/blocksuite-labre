@@ -13,14 +13,14 @@ import { BpmnNodeView } from './node/node-view';
 import { bpmnPoolToolbarExtension } from './toolbar/config';
 import { bpmnSeniorTool } from './toolbar/senior-tool';
 
-export class BpmnViewExtension extends ViewExtensionProvider {
-  override name = 'affine-bpmn-gfx';
-
-  override effect(): void {
-    super.effect();
-    effects();
-    extendTemplateCategory(bpmnTemplateCategory);
-  }
+/**
+ * BPMN rendering — ALWAYS registered, independent of any flag. Disabling `bpmn`
+ * hides only the creation tooling (see {@link BpmnViewExtension}); pools and
+ * nodes already drawn must still paint, stay selectable, stay editable and keep
+ * their contextual toolbar. See `docs/adr/0009`.
+ */
+export class BpmnRenderViewExtension extends ViewExtensionProvider {
+  override name = 'affine-bpmn-render-gfx';
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
@@ -30,8 +30,29 @@ export class BpmnViewExtension extends ViewExtensionProvider {
     context.register(BpmnNodeRendererExtension);
     if (this.isEdgeless(context.scope)) {
       context.register(BpmnPoolInteraction);
-      context.register(bpmnSeniorTool);
       context.register(bpmnPoolToolbarExtension);
+    }
+  }
+}
+
+/**
+ * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button and
+ * its templates category.
+ */
+export class BpmnViewExtension extends ViewExtensionProvider {
+  override name = 'affine-bpmn-gfx';
+
+  override effect(): void {
+    super.effect();
+    // Defines the senior button and its menu — tooling-only custom elements.
+    effects();
+    extendTemplateCategory(bpmnTemplateCategory);
+  }
+
+  override setup(context: ViewExtensionContext) {
+    super.setup(context);
+    if (this.isEdgeless(context.scope)) {
+      context.register(bpmnSeniorTool);
     }
   }
 }
