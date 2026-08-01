@@ -23,15 +23,23 @@ that reports it.
   grey, but it keeps its line in the bubble, now reading "exception" and
   carrying a **Revoke** that puts it straight back. A board can never hide an
   arbitration it was told to make.
-- **The whole map, once you have said it twice.** After the same rule has been
-  waived somewhere else on the board, the bubble offers "Ignore this rule on
-  the whole map". Accepting writes the exception on the framework's own
-  background element — the map — so it covers everything that map frames, and
-  is just as visible and just as revocable as a local one.
+- **One map, once you have said it twice.** After the same rule has been waived
+  somewhere else on the board, the bubble offers "Ignore this rule on the whole
+  map". Accepting writes the exception on the framework's own background
+  element — and on THAT one only. Every violation now records the background it
+  was measured against, so a board carrying three maps holds three independent
+  arbitrations: waiving a rule on one says nothing about the map beside it, and
+  deleting a map takes exactly its own arbitration with it. Map scope is just as
+  visible and just as revocable as a local one.
 - **Arbitrations survive the framework cycle.** Switching a framework off stops
   evaluation and cleans nothing; switching it back on brings the violations
   back, minus the ones an exception covers. Nothing is ever garbage-collected
   behind the user's back.
+- **And it can always be undone.** `validationExceptions` is the first prop
+  whose normal life includes being REMOVED — undoing a waiver deletes the key —
+  and a Y.Map delete reports only `oldValues`. Both re-evaluation guards now
+  read it, so an undo brings the live violation straight back instead of
+  freezing the board on a stale verdict behind a dead Revoke button.
 
 Two new telemetry events, `ValidationExceptionGranted` and
 `ValidationExceptionRevoked`, carry the rule id, the framework, the scope and
@@ -45,7 +53,13 @@ declared accessors and a per-subclass declaration would be silently dropped on
 copy. Its default is `undefined` and is never written, so an element that never
 got an exception stays byte-identical to one created before the field existed:
 no block schema change, no version bump, no migration, and documents written
-before and after remain mutually loadable.
+before and after remain mutually loadable. Revoking the last exception removes
+the KEY rather than assigning `undefined`, which the `@field()` setter would
+have written into the Y.Map — so an element whose exceptions were all revoked
+is byte-identical again too, in the document and not merely through the getter.
+`GfxPrimitiveElementModel.clearField` is the counterpart `@field()` was missing.
 
-Cost is nil on a conformant board: exceptions are only looked up for rules that
-actually raised something, so the 16 ms evaluation budget is untouched.
+A conformant board pays nothing: exceptions are only looked up for a rule that
+actually raised something. On the 500-element reference map, where half the
+population is in violation, the 16 ms budget still has roughly seventy times the
+headroom it needs.

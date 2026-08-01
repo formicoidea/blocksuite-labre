@@ -363,6 +363,37 @@ export abstract class GfxPrimitiveElementModel<
     unlockElementImpl(this.surface.store, this);
   }
 
+  /**
+   * Remove an optional `@field()` from the document entirely.
+   *
+   * The missing half of `@field()`. Its setter is unconditional — assigning
+   * `undefined` still calls `yMap.set(prop, undefined)` — so "clearing" an
+   * optional field through the accessor leaves the KEY behind. The getter reads
+   * `undefined` and nothing misbehaves, but the element is no longer
+   * byte-identical to one that never had the field: the phantom key syncs to
+   * every peer and ships in every snapshot. `init` is already careful to write
+   * nothing for an `undefined` default; this is how a field gets back to that
+   * state once it has been set.
+   *
+   * Emits a `delete` action rather than an `update`, so a consumer filtering on
+   * `props` will see an EMPTY payload and must inspect `oldValues` — the same
+   * shape an undo of the original write produces.
+   */
+  clearField(prop: string) {
+    if (!this.yMap.has(prop)) return;
+
+    if (this.yMap.doc) {
+      this.surface.store.transact(() => {
+        this.yMap.delete(prop);
+      });
+      // The Y.Map observer prunes `_preserved` on the delete action.
+      return;
+    }
+
+    this.yMap.delete(prop);
+    this._preserved.delete(prop);
+  }
+
   @local()
   accessor display: boolean = true;
 

@@ -14,6 +14,7 @@ import {
   hasException,
   liveViolations,
   revokeException,
+  touchesVerdict,
   type ValidationRule,
   type Violation,
 } from '../extensions/validation.js';
@@ -56,6 +57,10 @@ const RULE_B: ValidationRule = {
  * Element stand-in. `validationExceptions` is a plain writable property here,
  * which is exactly what the `@field()` accessor presents to the engine — the
  * Y.Map plumbing behind it is the integration suite's business.
+ *
+ * `clearField` stands in for the real one: the accessor's `undefined` is
+ * indistinguishable from an absent key on a plain object, which is precisely
+ * the illusion the real implementation has to break in the document.
  */
 function element(
   id: string,
@@ -63,22 +68,34 @@ function element(
   role?: string,
   validationExceptions?: ValidationException[]
 ): GfxPrimitiveElementModel {
-  return {
+  const stub = {
     id,
     type: 'test',
     role,
     validationExceptions,
+    clearField(prop: string) {
+      delete (stub as Record<string, unknown>)[prop];
+    },
     get elementBound() {
       return new Bound(...xywh);
     },
-  } as unknown as GfxPrimitiveElementModel;
+  };
+  return stub as unknown as GfxPrimitiveElementModel;
 }
 
 const frame = (exceptions?: ValidationException[]) =>
   element('frame', [0, 0, 1000, 1000], 'test:frame', exceptions);
 
+/** A second map, far enough that "nearest" is never in doubt. */
+const otherFrame = (exceptions?: ValidationException[]) =>
+  element('frame-b', [40000, 0, 1000, 1000], 'test:frame', exceptions);
+
 const offFrame = (id: string, exceptions?: ValidationException[]) =>
   element(id, [5000, 5000, 40, 40], 'test:node', exceptions);
+
+/** Parked just outside the SECOND map, so it belongs to that one. */
+const offOtherFrame = (id: string, exceptions?: ValidationException[]) =>
+  element(id, [41500, 5000, 40, 40], 'test:node', exceptions);
 
 const except = (ruleId: string): ValidationException => ({ ruleId, at: 1 });
 
@@ -149,8 +166,31 @@ describe('an exception is strictly local (PF8.2)', () => {
   });
 });
 
-describe('the map scope (PF8.4)', () => {
-  it('excuses every element the map frames when the map carries the exception', () => {
+describe('a finding names the background it was measured against', () => {
+  it('carries the id of the only map on the board', () => {
+    const [violation] = evaluate([frame(), offFrame('n1')]);
+    expect(violation.backgroundId).toBe('frame');
+  });
+
+  it('names the NEAREST map when the board carries several', () => {
+    const violations = evaluate([
+      frame(),
+      otherFrame(),
+      offFrame('near-a'),
+      offOtherFrame('near-b'),
+    ]);
+
+    const byId = new Map(violations.map(v => [v.elementIds[0], v]));
+    // The identity nothing downstream could reconstruct: by the time the
+    // finding reaches the bubble, "which map was the user working on" is only
+    // answerable because evaluation wrote it down.
+    expect(byId.get('near-a')?.backgroundId).toBe('frame');
+    expect(byId.get('near-b')?.backgroundId).toBe('frame-b');
+  });
+});
+
+describe('the map scope is ONE map, not the document (PF8.4)', () => {
+  it('excuses every element that map frames when the map carries the exception', () => {
     const violations = evaluate([
       frame([except(RULE_A.id)]),
       offFrame('n1'),
@@ -159,6 +199,38 @@ describe('the map scope (PF8.4)', () => {
 
     expect(violations).toHaveLength(2);
     expect(violations.every(v => v.exemption === 'map')).toBe(true);
+  });
+
+  it('says nothing about the map next to it', () => {
+    const violations = evaluate([
+      frame([except(RULE_A.id)]),
+      otherFrame(),
+      offFrame('near-a'),
+      offOtherFrame('near-b'),
+    ]);
+
+    const byId = new Map(violations.map(v => [v.elementIds[0], v]));
+    expect(byId.get('near-a')?.exemption).toBe('map');
+    // A board of an architect carries several maps. An arbitration made on one
+    // is not an arbitration on the document.
+    expect(byId.get('near-b')?.exemption).toBeUndefined();
+  });
+
+  it('dies with the map that carries it, leaving the other intact', () => {
+    const a = frame([except(RULE_A.id)]);
+    const b = otherFrame([except(RULE_A.id)]);
+    const nearA = offFrame('near-a');
+    const nearB = offOtherFrame('near-b');
+    expect(
+      evaluate([a, b, nearA, nearB]).every(v => v.exemption === 'map')
+    ).toBe(true);
+
+    // Map A deleted: its arbitration goes with it, B's is untouched. Elements
+    // that were near A now fall to the only map left.
+    const after = evaluate([b, nearA, nearB]);
+    const byId = new Map(after.map(v => [v.elementIds[0], v]));
+    expect(byId.get('near-b')?.exemption).toBe('map');
+    expect(byId.get('near-a')?.backgroundId).toBe('frame-b');
   });
 
   it('does not leak to another rule', () => {
@@ -234,13 +306,16 @@ describe('granting and revoking', () => {
     expect(hasException(el, RULE_B.id)).toBe(true);
   });
 
-  it('returns to undefined when the last exception is revoked', () => {
+  it('removes the field entirely when the last exception is revoked', () => {
     const el = offFrame('n1');
     grantException(el, RULE_A.id, undefined, 1);
     revokeException(el, RULE_A.id);
 
-    // Indistinguishable from an element that never had one — the same reason
-    // the field's default is never written.
+    // Not "set to undefined" — GONE. Assigning `undefined` through the
+    // `@field()` setter would leave the key in the Y.Map. The stand-in models
+    // that difference with a real `delete`; the document-level proof is in the
+    // integration suite, which reads the Y.Map itself.
+    expect('validationExceptions' in (el as object)).toBe(false);
     expect(el.validationExceptions).toBeUndefined();
   });
 
@@ -263,6 +338,37 @@ describe('granting and revoking', () => {
 
     expect(el.validationExceptions).not.toBe(first);
     expect(first).toHaveLength(1);
+  });
+});
+
+describe('what wakes a re-evaluation', () => {
+  it('reacts to a verdict prop being DELETED, not just written', () => {
+    // `syncElementFromY` fills `props` for add/update only; a delete — which is
+    // exactly what an undo of an exception produces — fills `oldValues` alone.
+    // Reading `props` on its own leaves the board showing a finding as excused
+    // when the document no longer says so, with a dead Revoke on it.
+    expect(
+      touchesVerdict({ props: {}, oldValues: { validationExceptions: [] } })
+    ).toBe(true);
+  });
+
+  it('still reacts to an ordinary write', () => {
+    expect(touchesVerdict({ props: { xywh: '[0,0,1,1]' }, oldValues: {} })).toBe(
+      true
+    );
+  });
+
+  it('stays asleep for a prop that cannot change a verdict', () => {
+    // `SpotlightManager` writes `opacity` on every element it dims.
+    expect(
+      touchesVerdict({ props: { opacity: 0.3 }, oldValues: { opacity: 1 } })
+    ).toBe(false);
+  });
+
+  it('assumes the worst when the payload says nothing', () => {
+    // A missed re-evaluation is a board that lies; a spurious one is a
+    // debounce tick.
+    expect(touchesVerdict({})).toBe(true);
   });
 });
 

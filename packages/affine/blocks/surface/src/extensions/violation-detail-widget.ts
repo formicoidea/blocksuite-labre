@@ -13,11 +13,10 @@ import {
   anchorEmphasis,
   distinctByRule,
   type ExemptionScope,
-  hasException,
   resolveViolationAnchors,
+  touchesVerdict,
   userFacingViolations,
   ValidationManager,
-  VERDICT_PROPS,
   VIOLATION_BADGE_SIZE,
   type Violation,
   type ViolationAnchor,
@@ -380,8 +379,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // worth a repaint. `SpotlightManager` writes `opacity` on every element it
     // dims, and that must not redraw a badge that has not moved.
     // `requestUpdate` is batched by lit into one render per frame anyway.
-    this._elementSubscription = surface.elementUpdated.subscribe(({ props }) => {
-      if (props && !VERDICT_PROPS.some(prop => prop in props)) return;
+    this._elementSubscription = surface.elementUpdated.subscribe(payload => {
+      if (!touchesVerdict(payload)) return;
       this.requestUpdate();
     });
   }
@@ -603,18 +602,23 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
    * PF8.4 offers "ignore this rule on the whole map" only once the choice has
    * been REPEATED — the first exception is a local judgement about one element,
    * and pre-emptively offering to disarm a rule everywhere would turn a
-   * one-element decision into a board-wide one nobody asked for.
+   * one-element decision into a map-wide one nobody asked for.
    *
-   * Only ever computed for an open bubble, so the scan costs nothing the rest
-   * of the time.
+   * Read off the ENGINE's own output — another finding of the same rule, on
+   * another element, that an exception already covers. Scanning the surface for
+   * elements merely carrying the key would count things that are not decisions:
+   * a neutral rectangle pasted from another board with a residual
+   * `validationExceptions` entry is never evaluated by this rule, so it must
+   * never be read as the user having arbitrated on it.
    */
   private _isRepeated(violations: readonly Violation[]): boolean {
-    const surface = this.gfx.surface;
-    if (!surface) return false;
     const ruleId = violations[0].ruleId;
-    const here = new Set(violations.flatMap(violation => violation.elementIds));
-    return surface.elementModels.some(
-      element => !here.has(element.id) && hasException(element, ruleId)
+    const here = new Set(violations);
+    return this._violations.some(
+      violation =>
+        !here.has(violation) &&
+        violation.ruleId === ruleId &&
+        violation.exemption !== undefined
     );
   }
 
@@ -681,15 +685,21 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
               'element',
               true
             )}
-            ${this._isRepeated(violations)
-              ? action(
-                  'com.labre.validation.action.ignore-map',
-                  'Ignore this rule on the whole map',
-                  'violation-ignore-map',
-                  'map',
-                  true
-                )
-              : nothing}`}
+            ${
+              // A family that measures against no background records no
+              // `backgroundId`, so there is no map to write the wider
+              // arbitration on and the action simply does not exist.
+              violations.some(violation => violation.backgroundId !== undefined) &&
+              this._isRepeated(violations)
+                ? action(
+                    'com.labre.validation.action.ignore-map',
+                    'Ignore this rule on the whole map',
+                    'violation-ignore-map',
+                    'map',
+                    true
+                  )
+                : nothing
+            }`}
       </div>
     </div>`;
   }
@@ -768,6 +778,16 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     const exempted = anchor.violations.every(
       violation => violation.exemption !== undefined
     );
+    // The grey dot is a STATE, and a state carried by colour alone is a state
+    // assistive technology cannot report (WCAG 1.4.1). The accessible name says
+    // it in words.
+    const name = exempted
+      ? translateKey(
+          this.std,
+          'com.labre.validation.badge.label-exempted',
+          'Show validation details — exception in force'
+        )
+      : label;
 
     return html`<button
       class="violation-badge"
@@ -776,8 +796,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       data-testid="violation-badge"
       data-exempted=${exempted}
       aria-expanded=${open}
-      aria-label=${label}
-      title=${label}
+      aria-label=${name}
+      title=${name}
       style=${styleMap({
         left: `${x}px`,
         top: `${y}px`,

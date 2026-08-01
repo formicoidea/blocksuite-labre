@@ -1,6 +1,9 @@
 import '@toeverything/theme/style.css';
 import '@toeverything/theme/fonts.css';
 
+import { ViewExtensionManager } from '@labre/affine/ext-loader';
+import { getInternalViewExtensions } from '@labre/affine/extensions/view';
+import type { BlockFlags } from '@labre/affine/flags';
 import type { DocMode } from '@labre/affine/model';
 import { AffineSchemas } from '@labre/affine/schemas';
 import {
@@ -66,8 +69,14 @@ function initCollection(collection: TestWorkspace) {
 async function createEditor(
   collection: TestWorkspace,
   mode: DocMode = 'page',
-  extensions: ExtensionType[] = []
+  extensions: ExtensionType[] = [],
+  flags?: BlockFlags
 ) {
+  // A spec asking for flags gets its own manager; everybody else keeps sharing
+  // the module-level one, so the default path is byte-for-byte what it was.
+  const views = flags
+    ? new ViewExtensionManager(getInternalViewExtensions(flags))
+    : viewManager;
   const app = document.createElement('div');
   const blockCollection = collection.docs.values().next().value;
   if (!blockCollection) {
@@ -78,12 +87,12 @@ async function createEditor(
   editor.doc = doc;
   editor.mode = mode;
   editor.pageSpecs = [
-    ...viewManager.get('page'),
+    ...views.get('page'),
     FontConfigExtension(CommunityCanvasTextFonts),
     ...extensions,
   ];
   editor.edgelessSpecs = [
-    ...viewManager.get('edgeless'),
+    ...views.get('edgeless'),
     FontConfigExtension(CommunityCanvasTextFonts),
     ...extensions,
   ];
@@ -114,6 +123,13 @@ export function createPainterWorker() {
 type SetupEditorOptions = {
   extensions?: ExtensionType[];
   enableDomRenderer?: boolean;
+  /**
+   * Tooling flags, so a spec can mount an editor with a framework switched OFF
+   * and exercise the real gated view layer rather than simulating the effect.
+   * Omitted (the default for every other spec) reuses the shared manager, with
+   * everything enabled.
+   */
+  flags?: BlockFlags;
 };
 
 export async function setupEditor(
@@ -139,7 +155,12 @@ export async function setupEditor(
     featureFlagService?.setFlag('enable_dom_renderer', true);
   }
 
-  const appElement = await createEditor(collection, mode, extensions);
+  const appElement = await createEditor(
+    collection,
+    mode,
+    extensions,
+    options.flags
+  );
 
   return () => {
     appElement?.remove();
