@@ -13,6 +13,7 @@ import {
   SpotlightManager,
   ValidationManager,
   ValidationOverlay,
+  violationDetailWidget,
 } from './extensions';
 import { ExportManagerExtension } from './extensions/export-manager/export-manager';
 import { DefaultTool } from './tool/default-tool';
@@ -46,6 +47,9 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // costs no evaluation at all.
       context.register(ValidationManager);
       context.register(ValidationOverlay);
+      // The persistent badge and its detail bubble. Renders nothing until the
+      // manager reports a violation, which it cannot do without a rule.
+      context.register(violationDetailWidget);
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

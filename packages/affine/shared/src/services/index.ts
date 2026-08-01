@@ -27,6 +27,7 @@ export * from './sidebar-service';
 export * from './telemetry-service';
 export * from './theme-service';
 export * from './toolbar-service';
+export * from './translation-service';
 export * from './user-service';
 export * from './viewport-element-service';
 export * from './virtual-keyboard-service';
