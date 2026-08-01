@@ -221,7 +221,7 @@ const VALIDATION_DELAY_MS = 120;
  * (`SpotlightManager` writes `opacity` on every element it dims) neither
  * re-evaluates the surface nor pushes the pending evaluation further away.
  */
-const VERDICT_PROPS = ['xywh', 'rotate', 'role'];
+export const VERDICT_PROPS = ['xywh', 'rotate', 'role'];
 
 /**
  * Owns the evaluation and the reactive violation list. No-op until a framework
@@ -235,6 +235,21 @@ export class ValidationManager extends InteractivityExtension {
    * wave 1 ships only the canvas affordance.
    */
   readonly violations$ = signal<readonly Violation[]>([]);
+
+  /**
+   * Which violations are still FRESH, i.e. still owed the loud bracket.
+   *
+   * It lives here rather than inside the overlay because the affordance has two
+   * halves on two different technologies — a canvas bracket that fades, and a
+   * DOM badge that takes over — and they are mutually exclusive: the badge
+   * appears only once the bracket is fully gone. Two copies of "when did I
+   * first see this" would drift, and the handover would show both at once or
+   * neither.
+   *
+   * Session state, never persisted: a document says which rules it breaks, not
+   * when you happened to look at them.
+   */
+  readonly timeline = new ViolationTimeline();
 
   private _pending: ReturnType<typeof setTimeout> | null = null;
 
@@ -279,6 +294,7 @@ export class ValidationManager extends InteractivityExtension {
     this._disposeSurfaceEffect?.();
     this._disposeSurfaceEffect = null;
     this._unsubscribe();
+    this.timeline.clear();
     super.unmounted();
   }
 
@@ -323,8 +339,14 @@ export class ValidationManager extends InteractivityExtension {
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;
 
+    // Age the marks BEFORE waking anybody, so the canvas half and the DOM half
+    // read the same clock within one evaluation and never disagree about which
+    // of the two markers is due.
+    const shown = userFacingViolations(violations);
+    this.timeline.sync(shown, performance.now());
+
     this.violations$.value = violations;
-    this._overlay?.setViolations(violations);
+    this._overlay?.setViolations(shown, this.timeline);
   }
 }
 
@@ -353,28 +375,6 @@ function anchorOf(elementId: string, surface: SurfaceBlockModel) {
 }
 
 /**
- * The bounds to mark for a set of violating elements — one per anchor, so
- * several violating members of the same group share a single bracket.
- *
- * Pure and stateless, so the mark follows a group that moves and falls back to
- * the element the moment the group is dissolved, with nothing to invalidate.
- */
-export function resolveMarkAnchors(
-  elementIds: readonly string[],
-  surface: SurfaceBlockModel
-): Bound[] {
-  const anchors = new Map<string, Bound>();
-
-  for (const id of elementIds) {
-    const anchor = anchorOf(id, surface);
-    if (!anchor) continue;
-    if (!anchors.has(anchor.id)) anchors.set(anchor.id, anchor.elementBound);
-  }
-
-  return Array.from(anchors.values());
-}
-
-/**
  * One anchor and everything reported against it: where to draw, and what the
  * detail bubble has to list when the badge on it is clicked.
  */
@@ -386,12 +386,13 @@ export interface ViolationAnchor {
 }
 
 /**
- * {@link resolveMarkAnchors} with the violations kept alongside each anchor.
+ * Group violations by the anchor their mark is drawn on — one entry per
+ * anchor, so several violating members of the same group share a single
+ * bracket, a single badge and a single bubble.
  *
- * Same grouping, same order, same "resolve at paint time" contract — this is
- * the shape the badge and the bubble need, because a badge speaks for every
- * violation sharing its anchor (a Wardley component group whose node breaks two
- * rules gets ONE badge listing both).
+ * Pure and stateless, and called at paint time by both halves of the
+ * affordance, so the mark follows a group that moves and falls back onto the
+ * element the moment the group is dissolved, with nothing to invalidate.
  */
 export function resolveViolationAnchors(
   violations: readonly Violation[],
@@ -452,21 +453,55 @@ export function distinctByRule(violations: readonly Violation[]): Violation[] {
 }
 
 /**
- * Bracket geometry in SCREEN pixels. The overlay context is scaled by the
- * viewport zoom, so each is divided by it at paint time — the house convention
- * for annotation overlays (see `snap-overlay.ts`). Without that, the mark is a
- * hairline at zoom 0.2, exactly when a user is zoomed out hunting for the node
- * that drifted off the map.
+ * How loudly an ANCHOR is drawn: the loudest of the violations sharing it, so
+ * a fresh finding is not muted by an older one on the same group.
+ *
+ * The single arbiter between the two markers. `> 0` means the bracket still has
+ * the anchor; exactly `0` means it is done and the badge takes over. Both
+ * halves call this, on the same timeline, so they can never both claim it.
+ */
+export function anchorEmphasis(
+  anchor: ViolationAnchor,
+  timeline: ViolationTimeline,
+  now: number
+): number {
+  let emphasis = 0;
+  for (const violation of anchor.violations) {
+    emphasis = Math.max(emphasis, timeline.emphasis(violation, now));
+  }
+  return emphasis;
+}
+
+/**
+ * Mark geometry in MODEL units, deliberately — the affordance zooms with the
+ * board like any element on it.
+ *
+ * The house convention for annotation overlays is the opposite (divide by the
+ * zoom, keep a constant size on screen), and that is right for a snap guide,
+ * which is transient and never numerous. It is wrong here. The dimensioning
+ * case is a hundred-component map, zoomed out: screen-constant marks grow
+ * relative to the content they annotate until the brackets are all you can see
+ * and the map underneath is unreadable. Zoomed out far enough these become
+ * small along with everything else, and that is the point — a board you cannot
+ * read is a worse answer than a mark you have to zoom in to inspect.
+ *
+ * The one exception is the CLICK target, which lives in DOM and keeps a screen
+ * minimum so it stays reachable by thumb (see the widget). Invisible padding
+ * around a model-sized visual: the pattern `edgeless-auto-complete` already
+ * uses on this canvas.
  */
 const MARK_CORNER = 10;
 const MARK_LINE_WIDTH = 2;
 
 /**
- * Gap between the anchor's bounds and the mark, in screen pixels. Exported
+ * Gap between the anchor's bounds and the mark, in MODEL units. Exported
  * because the badge sits ON the bracket's top-right corner and has to use the
- * same gap, in DOM, to land there.
+ * same gap to land there.
  */
 export const VIOLATION_MARK_PADDING = 6;
+
+/** Diameter of the persistent badge, in MODEL units. */
+export const VIOLATION_BADGE_SIZE = 16;
 
 /** The one amber the affordance is drawn in, canvas and DOM alike. */
 export const VIOLATION_MARK_COLOR = '#f5a623';
@@ -477,9 +512,14 @@ export const VIOLATION_MARK_COLOR = '#f5a623';
  * fade out (see {@link ViolationTimeline}). What stays behind afterwards is the
  * badge — `affine-violation-detail-widget`, a DOM sibling of this overlay.
  *
+ * The handover is strict: an anchor whose emphasis has reached zero is skipped
+ * here and picked up by the badge, so the two markers are never on screen at
+ * the same time. {@link anchorEmphasis} is the single arbiter, read from the
+ * one timeline the manager owns.
+ *
  * An overlay rather than a renderer change: it touches no element model, writes
  * nothing to the document, creates no undo entry, and disappears with the rule
- * that produced it. The fade is overlay state too — nothing about "when did I
+ * that produced it. The fade is session state too — nothing about "when did I
  * first see this" ever reaches the document.
  *
  * The mark is anchored on the outermost enclosing canvas group rather than on
@@ -499,7 +539,12 @@ export class ValidationOverlay extends Overlay {
    */
   private _violations: readonly Violation[] = [];
 
-  private readonly _timeline = new ViolationTimeline();
+  /**
+   * Handed in with the violations by {@link ValidationManager}, which owns it —
+   * the DOM badge reads the same instance, and the two markers must never
+   * disagree about whether the bracket is done.
+   */
+  private _timeline: ViolationTimeline | null = null;
 
   /** Armed only while something is still fading. */
   private _frame: number | null = null;
@@ -536,7 +581,7 @@ export class ValidationOverlay extends Overlay {
     if (this._detached) return;
     this.refresh();
     if (this._frame !== null) return;
-    if (!this._timeline.isAnimating(performance.now())) return;
+    if (!this._timeline?.isAnimating(performance.now())) return;
     this._frame = requestAnimationFrame(this._onFrame);
   }
 
@@ -549,13 +594,19 @@ export class ValidationOverlay extends Overlay {
   private _forget() {
     this._cancelFrame();
     this._violations = [];
-    this._timeline.clear();
+    // The timeline belongs to the manager and is shared with the badge: drop
+    // the reference, never the contents.
+    this._timeline = null;
   }
 
-  setViolations(violations: readonly Violation[]) {
+  /**
+   * @param violations already filtered to what the user is meant to see.
+   * @param timeline the manager's, already synced against these violations.
+   */
+  setViolations(violations: readonly Violation[], timeline: ViolationTimeline) {
     if (this._detached) return;
-    this._violations = userFacingViolations(violations);
-    this._timeline.sync(this._violations, performance.now());
+    this._violations = violations;
+    this._timeline = timeline;
     this._schedule();
   }
 
@@ -576,34 +627,29 @@ export class ValidationOverlay extends Overlay {
   }
 
   override render(ctx: CanvasRenderingContext2D, _rc: RoughCanvas): void {
-    if (this._violations.length === 0) return;
+    const timeline = this._timeline;
+    if (!timeline || this._violations.length === 0) return;
     const now = performance.now();
     // Everything has settled and the badges have it: the cheapest possible
     // exit, before a single group chain is walked. The canvas repaints on
     // every pan, zoom and edit — this overlay must cost nothing between the
     // rare moments it has something to say.
-    if (!this._timeline.isAnimating(now)) return;
+    if (!timeline.isAnimating(now)) return;
 
     const surface = this.gfx.surface;
     if (!surface) return;
 
-    // The context is scaled by the zoom: divide to keep the mark a constant
-    // size on screen at any zoom level.
-    const zoom = this.gfx.viewport.zoom;
-    const corner = MARK_CORNER / zoom;
-    const padding = VIOLATION_MARK_PADDING / zoom;
+    // Model units, NOT divided by the zoom: the mark scales with the board.
+    const corner = MARK_CORNER;
+    const padding = VIOLATION_MARK_PADDING;
 
     ctx.save();
     ctx.strokeStyle = VIOLATION_MARK_COLOR;
-    ctx.lineWidth = MARK_LINE_WIDTH / zoom;
+    ctx.lineWidth = MARK_LINE_WIDTH;
 
     for (const anchor of resolveViolationAnchors(this._violations, surface)) {
-      // One anchor can carry several violations of different ages: the loudest
-      // wins, so a fresh finding is not muted by an old one sharing its group.
-      let emphasis = 0;
-      for (const violation of anchor.violations) {
-        emphasis = Math.max(emphasis, this._timeline.emphasis(violation, now));
-      }
+      const emphasis = anchorEmphasis(anchor, timeline, now);
+      // Done fading: the badge has this anchor now, and the two never overlap.
       if (emphasis <= 0) continue;
 
       const { bound } = anchor;

@@ -100,6 +100,26 @@ export class ViolationTimeline {
     return false;
   }
 
+  /**
+   * When the next mark finishes fading, or `null` when none is still in its
+   * window.
+   *
+   * The bracket and the badge are mutually exclusive — the badge appears only
+   * once the bracket is fully gone — so the DOM half has to wake up at the
+   * exact moment the canvas half goes quiet. This is the one instant it needs,
+   * so it can arm a single timer instead of polling. Nothing to arm on a board
+   * whose marks have all settled: the answer is `null`.
+   */
+  nextExpiryAt(now: number): number | null {
+    let earliest: number | null = null;
+    for (const seen of this._firstSeen.values()) {
+      const expiry = seen + VIOLATION_EMPHASIS_MS;
+      if (expiry <= now) continue;
+      if (earliest === null || expiry < earliest) earliest = expiry;
+    }
+    return earliest;
+  }
+
   clear(): void {
     this._firstSeen.clear();
   }

@@ -14,15 +14,27 @@ hour later_. This slice answers both, on two clocks.
   full strength for three seconds, then fades out over half a second. That is
   when the user still remembers the gesture that caused it and can undo it in
   one move.
-- **For as long as it holds.** What the fade hands over to is a small amber
-  badge pinned to the anchor's top-right corner, persistent, discreet, and the
-  same size at every zoom level. A board left overnight still shows what it
-  breaks, without a canvas full of brackets.
-- **On demand.** Clicking the badge opens a bubble listing every violation on
-  that anchor: the rule's label, its severity, and its remediation hint when
-  the rule carries one. It closes on a click elsewhere, on Escape, or on
-  pan/zoom. Clicking the badge does not select the shape underneath — the
-  pointer pair is stopped at the badge, so neither selection nor a drag starts.
+- **For as long as it holds.** Once — and only once — the bracket has finished
+  fading, a small amber badge takes its place, just outside the anchor's
+  top-right corner. The two are never on screen together. A board left
+  overnight still shows what it breaks, without a canvas full of brackets.
+- **On demand.** Clicking either marker opens a bubble naming the rules broken
+  on that anchor: label, severity, and remediation hint when the rule carries
+  one. It closes on a click elsewhere, on Escape, or on pan/zoom, and flips
+  above or to the left of its marker rather than run off the viewport. Clicking
+  a marker does not select the shape underneath — the pointer pair is stopped
+  there, so neither selection nor a drag starts.
+
+Both markers are sized in MODEL units and scale with the board, like the
+elements they annotate. Screen-constant annotations are right for a transient
+snap guide and wrong here: on a hundred-component map, zoomed out, they grow
+relative to the content until the marks are all you can see. Zoomed out far
+enough these shrink with everything else — deliberately. The exception is the
+click target, which keeps a 44 px screen floor as invisible padding around the
+model-sized visual, so a badge three pixels wide is still reachable by thumb
+(the pattern `edgeless-auto-complete` already uses on this canvas). The bubble
+stays in screen pixels: prose rendered at quarter size is not smaller prose,
+it is unreadable prose.
 
 The bubble consumes normalised violation OBJECTS and nothing else: no rule
 logic reached the UI, and no rule wording is hard-coded in the library. Rule
@@ -42,10 +54,15 @@ nothing extra.
 severity has always said they should be: collected for reporting, invisible to
 the drawing user. They still reach `violations$` untouched, for a host panel.
 
+Escape is taken only within the editor host, never on `document`: with a bubble
+open it dismisses the bubble instead of clearing the canvas selection, and a
+library has no business making that call for the whole page.
+
 Nothing here touches evaluation, the violation object or the 16 ms budget, and
 nothing is written to the document — the "first seen" timestamps that drive the
-flash are overlay state, rebuilt on every reload, so a document records which
+flash are session state, rebuilt on every reload, so a document records which
 rules it breaks and never when you happened to look. No clock runs without a
 violation: the fade's animation frames stop by themselves once every mark has
-settled, and the badge's element-tracking subscription only exists while
-something is flagged.
+settled, the single timer that wakes the badge for the handover is armed only
+while a bracket is still up, and the element-tracking subscription only exists
+while something is flagged.

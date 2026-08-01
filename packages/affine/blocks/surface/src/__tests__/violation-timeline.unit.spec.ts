@@ -11,6 +11,7 @@ import {
   violationKey,
   ViolationTimeline,
 } from '../extensions/violation-timeline.js';
+import { anchorEmphasis } from '../extensions/validation.js';
 
 /**
  * The ephemeral → persistent state machine, driven by explicit timestamps.
@@ -184,6 +185,67 @@ describe('what the drawing user is shown', () => {
     const warning = violation('r1', ['a'], 'warning');
 
     expect(userFacingViolations([audit, warning])).toEqual([warning]);
+  });
+});
+
+describe('the handover instant', () => {
+  it('is nothing to wait for on a board with no mark', () => {
+    expect(new ViolationTimeline().nextExpiryAt(0)).toBeNull();
+  });
+
+  it('is when the fade ends', () => {
+    const timeline = new ViolationTimeline();
+    timeline.sync([violation('r', ['a'])], 1000);
+
+    expect(timeline.nextExpiryAt(1000)).toBe(1000 + VIOLATION_EMPHASIS_MS);
+  });
+
+  it('is the EARLIEST still pending, so the first badge is not late', () => {
+    const timeline = new ViolationTimeline();
+    timeline.sync([violation('r', ['a'])], 0);
+    timeline.sync([violation('r', ['a']), violation('r', ['b'])], 500);
+
+    expect(timeline.nextExpiryAt(500)).toBe(VIOLATION_EMPHASIS_MS);
+  });
+
+  it('is null again once everything has settled — no clock left running', () => {
+    const timeline = new ViolationTimeline();
+    timeline.sync([violation('r', ['a'])], 0);
+
+    expect(timeline.nextExpiryAt(VIOLATION_EMPHASIS_MS)).toBeNull();
+  });
+});
+
+describe('which of the two markers owns an anchor', () => {
+  const anchorOf = (violations: Violation[]) => ({
+    id: 'group-1',
+    bound: { x: 0, y: 0 } as never,
+    violations,
+  });
+
+  it('is the bracket while anything on it is still fresh', () => {
+    const timeline = new ViolationTimeline();
+    const old = violation('r1', ['a']);
+    const fresh = violation('r2', ['b']);
+    timeline.sync([old], 0);
+    timeline.sync([old, fresh], VIOLATION_EMPHASIS_MS);
+
+    // The older one is done, but the anchor is still loud because of the new
+    // one — a fresh finding is never muted by an old one sharing its group.
+    expect(
+      anchorEmphasis(anchorOf([old, fresh]), timeline, VIOLATION_EMPHASIS_MS)
+    ).toBe(1);
+  });
+
+  it('is the badge once every violation on it has settled', () => {
+    const timeline = new ViolationTimeline();
+    const first = violation('r1', ['a']);
+    const second = violation('r2', ['b']);
+    timeline.sync([first, second], 0);
+
+    expect(
+      anchorEmphasis(anchorOf([first, second]), timeline, VIOLATION_EMPHASIS_MS)
+    ).toBe(0);
   });
 });
 

@@ -1,6 +1,6 @@
 import {
   OverlayIdentifier,
-  resolveMarkAnchors,
+  resolveViolationAnchors,
   ValidationManager,
 } from '@labre/affine/blocks/surface';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
@@ -56,10 +56,10 @@ describe('wardley validation on the canvas', () => {
 
   /** Where the overlay would actually draw, given the current violations. */
   const markBounds = () =>
-    resolveMarkAnchors(
-      validation.violations$.value.flatMap(v => v.elementIds),
+    resolveViolationAnchors(
+      validation.violations$.value,
       service.surface
-    );
+    ).map(anchor => anchor.bound);
 
   /** Past the manager's re-evaluation debounce. */
   const settle = () => wait(250);
