@@ -72,9 +72,15 @@ const CheckIcon = html`<svg
  *
  * ## Room for its neighbours
  *
- * The dropdown renders SECTIONS, and ships with one. PF7.11 (map quality) adds
- * a second entry to this same menu: one more block in {@link renderSections},
- * not another toolbar button competing for width.
+ * The dropdown renders SECTIONS. PF9 shipped one — the level of requirement —
+ * and PF7.11 added the second: **Map quality**, one more block in
+ * {@link renderSections} rather than another toolbar button competing for
+ * width, which is exactly what the section shape was built for.
+ *
+ * The two appear on their own merits and neither drags the other onto the
+ * toolbar: a framework may ship a checklist and a single profile, or two
+ * profiles and no checklist, and the dropdown shows whichever half has
+ * something to say ({@link hasValidationMenu}).
  */
 
 /** The one selected element a profile can be chosen on. */
@@ -85,27 +91,62 @@ interface ProfileTarget {
 }
 
 /**
+ * The single selected canvas element the dropdown is about, or `null`.
+ *
+ * A single element on purpose: every entry in this menu is one decision about
+ * one instance, and a multi-selection spanning two maps has no honest "current"
+ * value to show.
+ */
+function selectedInstance(
+  ctx: ToolbarContext
+): GfxPrimitiveElementModel | null {
+  const models = ctx.getSurfaceModels();
+  if (models.length !== 1) return null;
+  const [element] = models;
+  return element instanceof GfxPrimitiveElementModel ? element : null;
+}
+
+/**
  * The selection, if it is a single root instance with a choice to make.
  *
- * A single element on purpose: a profile is one decision about one instance,
- * and a multi-selection spanning two maps on two different levels has no
- * honest "current" value to show. Fewer than two profiles is not a choice
- * either — a picker with one entry is chrome that decides nothing.
+ * Fewer than two profiles is not a choice — a picker with one entry is chrome
+ * that decides nothing.
  */
 function profileTarget(ctx: ToolbarContext): ProfileTarget | null {
   const validation = ctx.std.getOptional(ValidationManager);
   if (!validation) return null;
 
-  const models = ctx.getSurfaceModels();
-  if (models.length !== 1) return null;
-
-  const element = models[0];
-  if (!(element instanceof GfxPrimitiveElementModel)) return null;
+  const element = selectedInstance(ctx);
+  if (!element) return null;
 
   const profiles = validation.profilesFor(element);
   if (profiles.length < 2) return null;
 
   return { element, profiles, active: validation.profileOf(element) };
+}
+
+/**
+ * The selection, if it is a root instance whose framework declares a nudge or
+ * an on-demand rule (PF7.11).
+ *
+ * Independent of {@link profileTarget}: a framework may ship a checklist and no
+ * second profile, or the other way round, and the dropdown must show whichever
+ * of its sections has something to say.
+ */
+function mapQualityTarget(
+  ctx: ToolbarContext
+): GfxPrimitiveElementModel | null {
+  const validation = ctx.std.getOptional(ValidationManager);
+  if (!validation) return null;
+
+  const element = selectedInstance(ctx);
+  if (!element) return null;
+  return validation.hasMapQuality(element) ? element : null;
+}
+
+/** Whether the dropdown has anything at all to offer for this selection. */
+function hasValidationMenu(ctx: ToolbarContext): boolean {
+  return profileTarget(ctx) !== null || mapQualityTarget(ctx) !== null;
 }
 
 /**
@@ -162,39 +203,94 @@ function renderSection(
 }
 
 /**
- * Everything the Validation dropdown offers. One section today; PF7.11's map
- * quality is the next entry in this array, and needs nothing else from here.
+ * The Map quality section (PF7.11): one entry, which OPENS the panel.
+ *
+ * A menu is the wrong shape for a checklist — four tickable lines, a button and
+ * a list of remarks do not belong in a dropdown that closes on the first click.
+ * So the entry does the one thing a menu entry is good at, which is to open
+ * something; `ValidationManager.mapQualityFor$` carries the request across to
+ * the widget that draws it (`map-quality-widget.ts`).
+ *
+ * Nothing here names a framework: the entry appears when the ENGINE says the
+ * selected instance has a checklist or a check-up
+ * ({@link ValidationManager.hasMapQuality}), which is derived from what the
+ * frameworks registered. A second framework declaring either gets this entry
+ * with no change to this file.
+ */
+function renderMapQualitySection(
+  ctx: ToolbarContext,
+  element: GfxPrimitiveElementModel
+): TemplateResult {
+  const label = translateKey(
+    ctx.std,
+    'com.labre.validation.map-quality.open',
+    'Map quality…'
+  );
+
+  return renderSection(
+    translateKey(
+      ctx.std,
+      'com.labre.validation.map-quality.section',
+      'Map quality'
+    ),
+    'validation-map-quality-section',
+    [
+      html`<editor-menu-action
+        data-testid="validation-map-quality-open"
+        aria-label=${label}
+        @click=${() => {
+          ctx.std.getOptional(ValidationManager)?.openMapQuality(element);
+        }}
+      >
+        <span style="width: 20px;"></span>
+        <span class="label">${label}</span>
+      </editor-menu-action>`,
+    ]
+  );
+}
+
+/**
+ * Everything the Validation dropdown offers: the level of requirement (PF9) and
+ * the map quality panel (PF7.11), each appearing on its own merits.
  */
 function renderSections(
   ctx: ToolbarContext,
-  target: ProfileTarget
+  target: ProfileTarget | null,
+  quality: GfxPrimitiveElementModel | null
 ): TemplateResult[] {
-  const { element, profiles, active } = target;
+  const sections: TemplateResult[] = [];
 
-  const options = profiles.map(profile => {
-    const selected = profile.id === active?.id;
-    return html`<editor-menu-action
-      data-testid="validation-profile-option"
-      data-profile-id=${profile.id}
-      data-selected=${selected ? 'true' : nothing}
-      aria-label=${translateKey(ctx.std, profile.labelKey, profile.fallback)}
-      aria-pressed=${selected}
-      @click=${() => pickProfile(ctx, element, profile)}
-    >
-      ${selected ? CheckIcon : html`<span style="width: 20px;"></span>`}
-      <span class="label"
-        >${translateKey(ctx.std, profile.labelKey, profile.fallback)}</span
+  if (target) {
+    const { element, profiles, active } = target;
+    const options = profiles.map(profile => {
+      const selected = profile.id === active?.id;
+      return html`<editor-menu-action
+        data-testid="validation-profile-option"
+        data-profile-id=${profile.id}
+        data-selected=${selected ? 'true' : nothing}
+        aria-label=${translateKey(ctx.std, profile.labelKey, profile.fallback)}
+        aria-pressed=${selected}
+        @click=${() => pickProfile(ctx, element, profile)}
       >
-    </editor-menu-action>`;
-  });
+        ${selected ? CheckIcon : html`<span style="width: 20px;"></span>`}
+        <span class="label"
+          >${translateKey(ctx.std, profile.labelKey, profile.fallback)}</span
+        >
+      </editor-menu-action>`;
+    });
 
-  return [
-    renderSection(
-      translateKey(ctx.std, 'com.labre.validation.profile.section', 'Profile'),
-      'validation-profile-section',
-      options
-    ),
-  ];
+    sections.push(
+      renderSection(
+        translateKey(ctx.std, 'com.labre.validation.profile.section', 'Profile'),
+        'validation-profile-section',
+        options
+      )
+    );
+  }
+
+  if (quality) sections.push(renderMapQualitySection(ctx, quality));
+
+  return sections;
 }
 
 export const validationToolbarConfig = {
@@ -204,10 +300,11 @@ export const validationToolbarConfig = {
       // before anything the generic surface module places at the End: the
       // level of requirement is a setting of this instance, read last.
       id: 'z.validation',
-      when: (ctx: ToolbarContext) => profileTarget(ctx) !== null,
+      when: hasValidationMenu,
       content(ctx: ToolbarContext) {
         const target = profileTarget(ctx);
-        if (!target) return null;
+        const quality = mapQualityTarget(ctx);
+        if (!target && !quality) return null;
 
         const label = translateKey(
           ctx.std,
@@ -215,9 +312,11 @@ export const validationToolbarConfig = {
           'Validation'
         );
         // The dropdown's own trigger names the level in force, so the current
-        // profile is readable without opening anything.
+        // profile is readable without opening anything. An instance whose
+        // framework ships no second profile has no level to name, and the
+        // trigger falls back to the menu's own label.
         const current =
-          target.active === undefined
+          target?.active === undefined
             ? label
             : translateKey(
                 ctx.std,
@@ -250,7 +349,7 @@ export const validationToolbarConfig = {
             data-orientation="vertical"
             data-size="large"
           >
-            ${renderSections(ctx, target)}
+            ${renderSections(ctx, target, quality)}
           </div>
         </editor-menu-button>`;
       },
@@ -258,7 +357,7 @@ export const validationToolbarConfig = {
   ],
   // The whole module stands down unless the selection has a choice to make, so
   // a framework registering it pays one length check per selection change.
-  when: (ctx: ToolbarContext) => profileTarget(ctx) !== null,
+  when: hasValidationMenu,
 } as const satisfies ToolbarModuleConfig;
 
 /**

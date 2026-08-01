@@ -1,4 +1,5 @@
 import {
+  evaluateCheckup,
   evaluateRules,
   type ValidationProfile,
   type ValidationRule,
@@ -10,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 
 import { WARDLEY_PROFILES } from '../profiles';
+import { WARDLEY_CHECKUP_RULES } from '../quality';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
 
@@ -229,6 +231,50 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
     );
     expect(evaluateRules(noRules, map)).toEqual([]);
     expect(ms).toBeLessThan(0.05);
+  });
+
+  /**
+   * PF5.14's acceptance criterion, measured rather than asserted in prose: an
+   * on-demand rule must cost the drawing path ZERO.
+   *
+   * Both halves are checked, because either one alone is easy to fake: the
+   * ANSWER must be identical (the rules are never evaluated, not merely
+   * filtered out of the results afterwards), and the TIME must be
+   * indistinguishable (they are skipped before an element is touched, not
+   * walked and discarded).
+   */
+  it('pays nothing for the on-demand rules registered beside them', () => {
+    const both = [...WARDLEY_RULES, ...WARDLEY_CHECKUP_RULES];
+
+    expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
+
+    const without = medianMs(() => evaluateRules(WARDLEY_RULES, map));
+    const with_ = medianMs(() => evaluateRules(both, map));
+
+    console.info(
+      `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
+        `with ${WARDLEY_CHECKUP_RULES.length} on-demand rules also registered: ` +
+        `${with_.toFixed(3)} ms (must be the same number)`
+    );
+    // A generous bound against a noisy runner: the point is that adding
+    // check-up rules cannot move the drawing budget at all, and anything past
+    // a few percent would mean they are being walked.
+    expect(with_).toBeLessThan(without * 1.25 + 0.05);
+  });
+
+  it('runs those same rules only when asked, and finds something', () => {
+    // The other side of the coin: they are not inert data, they are rules that
+    // work — they simply work at the other moment.
+    const checked = referenceMap(MAP_SIZE);
+    const remarks = evaluateCheckup(WARDLEY_CHECKUP_RULES, checked);
+
+    console.info(
+      `[bench] check-up over ${MAP_SIZE} elements: ${remarks.length} remarks`
+    );
+    // The generator draws every node in the toolbox's own greys, so Q5 is
+    // clean; Q6 is gated on a `nature` nothing writes yet. A check-up that
+    // found something here would mean one of the two had started guessing.
+    expect(remarks).toEqual([]);
   });
 
   it(`stays inside the frame with profiles in force`, () => {

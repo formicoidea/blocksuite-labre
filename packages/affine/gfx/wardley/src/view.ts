@@ -1,5 +1,6 @@
 import {
   validationToolbarConfig,
+  QualityNudgeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -14,6 +15,7 @@ import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_PROFILES } from './profiles';
+import { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from './quality';
 import { WARDLEY_RULES } from './rules';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
@@ -69,6 +71,13 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+      // Map quality (PF13.8 / PF13.9): the four nudges the tool cannot judge,
+      // and the two on-demand rules it can. The check-up rules go through the
+      // SAME registration as the real-time ones — `moment: 'on-demand'` is what
+      // keeps them out of the drawing path, not a separate registry — while
+      // staying out of `WARDLEY_RULES`, which is what the 16 ms bench measures.
+      context.register(ValidationRuleExtension(WARDLEY_CHECKUP_RULES));
+      context.register(QualityNudgeExtension(WARDLEY_NUDGES));
       // The Validation dropdown on a selected map's contextual toolbar. A
       // SECOND module on the same element, through the `custom:` flavour slot
       // (the pattern `gfx/mindmap` uses on `custom:affine:surface:shape`):

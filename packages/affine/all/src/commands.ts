@@ -1,4 +1,5 @@
 import { coreCommands, pivotCommands } from '@labre/affine-block-root';
+import { mapQualityCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
@@ -66,11 +67,15 @@ export function buildCommandRegistry(
 
 /**
  * Every command a given flag set exposes. Shapes are core canvas, so their
- * commands are always-on like root's.
+ * commands are always-on like root's — and so is Map quality (PF7.11), which
+ * belongs to the SURFACE rather than to any framework: it appears for whichever
+ * framework declared a nudge or an on-demand rule, and its own `when` asks the
+ * engine that question. Listing it here would be wrong only if it were a
+ * framework's, and it is not.
  */
 export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
-    [...coreCommands, ...pivotCommands, ...shapeCommands],
+    [...coreCommands, ...pivotCommands, ...shapeCommands, ...mapQualityCommands],
     FRAMEWORK_COMMAND_GROUPS,
     flags
   );

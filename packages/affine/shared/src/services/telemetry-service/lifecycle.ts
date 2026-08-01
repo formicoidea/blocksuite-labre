@@ -141,8 +141,48 @@ export interface ValidationProfileEvent extends TelemetryEvent {
   previousProfileId?: string;
 }
 
+/**
+ * A map-quality NUDGE ticked or unticked (PF7.10). Worth knowing about for the
+ * same reason an exception is, and for one more: a nudge everybody ticks
+ * immediately is a reminder nobody needed, and one nobody ever ticks is an
+ * expectation the tool has failed to make actionable. Neither is visible any
+ * other way, because nothing here is ever computed.
+ *
+ * Ids only — the framework's own namespaced nudge ids — never board content.
+ */
+export interface MapQualityNudgeEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the nudge, e.g. `wardley`. */
+  framework: string;
+  /** Namespaced nudge id, e.g. `wardley.q1-title`. */
+  nudgeId: string;
+  /** `true` = ticked ("I have taken care of this"), `false` = taken back. */
+  checked: boolean;
+}
+
+/**
+ * A quality CHECK-UP asked for (PF5.14). The on-demand moment exists so these
+ * controls never touch the drawing budget, which also means nothing else
+ * records that they run: how often a user asks, and how much a run finds, are
+ * only knowable here.
+ *
+ * Counts only, never a rule id and never board content: which remarks a
+ * particular map produced is the map's business.
+ */
+export interface MapQualityCheckupEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the rules walked, when the run had any. */
+  framework?: string;
+  /** How many on-demand rules the run walked. */
+  ruleCount: number;
+  /** How many remarks came back. */
+  remarkCount: number;
+}
+
 export type ValidationEvents = {
   ValidationExceptionGranted: ValidationExceptionEvent;
   ValidationExceptionRevoked: ValidationExceptionEvent;
   ValidationProfileChanged: ValidationProfileEvent;
+  MapQualityNudgeToggled: MapQualityNudgeEvent;
+  MapQualityCheckupRun: MapQualityCheckupEvent;
 };

@@ -14,6 +14,7 @@ import {
   REF_WIDTH,
 } from './consts';
 import { WARDLEY_WASHES } from './gradient';
+import { WARDLEY_RED } from './node/consts';
 import { WARDLEY_ROLE } from './roles';
 
 /**
@@ -49,7 +50,30 @@ import { WARDLEY_ROLE } from './roles';
  * values and is completely unaffected.
  */
 
-/** The colour code: every colour below is named, never repeated as a hex. */
+/**
+ * Green, for the benefit half of the tone convention (Q5).
+ *
+ * Declared here rather than in `node/consts.ts` because nothing DRAWS it: no
+ * Wardley artefact is created green, and the framework has no "benefit" role
+ * yet. It exists so the convention has a reference colour to be judged against
+ * — the day an artefact of that kind is created, it takes this entry, and the
+ * check-up already knows about it.
+ *
+ * Picked in the same register as {@link WARDLEY_RED}, so a map using both reads
+ * as one palette rather than as two decisions.
+ */
+const BENEFIT_GREEN = '#2f9e63';
+
+/**
+ * The colour code: every colour below is named, never repeated as a hex.
+ *
+ * The last three entries are the **tone convention** (PF13.8 / Q5), and they are
+ * palette entries for a reason: the check-up rule names them
+ * (`ToneConventionDef.palette`) instead of restating a colour, so the convention
+ * and the map are restyled together, in one place, by whoever owns the frame.
+ * Nothing paints them — see {@link BENEFIT_GREEN} — which is exactly what a
+ * declared REFERENCE looks like.
+ */
 const PALETTE = {
   card: COLORS.card,
   cardBorder: COLORS.cardBorder,
@@ -60,6 +84,12 @@ const PALETTE = {
   band1: COLORS.band[1],
   band2: COLORS.band[2],
   band3: COLORS.band[3],
+  /** The landscape: everything the map is MADE of, drawn in greys. */
+  landscape: COLORS.label,
+  /** Reserved for what is moving — change points, investments, costs. */
+  change: WARDLEY_RED,
+  /** Reserved for benefits and functional differences. */
+  benefit: BENEFIT_GREEN,
 } as const;
 
 const AXIS_TEXT = { size: FONTS.axis, color: '@axis' } as const;
