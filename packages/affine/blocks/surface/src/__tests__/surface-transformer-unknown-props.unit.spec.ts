@@ -58,8 +58,16 @@ function makeSurfaceModelStub() {
   };
 }
 
-/** Integrate a detached Y.Map into a doc so its entries become readable. */
-function attach<T extends Y.Map<unknown>>(yMap: T): T {
+/**
+ * Integrate a detached Y.Map into a doc so its entries become readable.
+ *
+ * The constraint is `Y.Map<any>` rather than `Y.Map<unknown>` on purpose:
+ * `Y.Map<T>` is invariant, so `Boxed.yMap` (a `Y.Map<Y.Map<Y.Map<unknown>>>`)
+ * is not assignable to `Y.Map<unknown>`. The value type is irrelevant here —
+ * this helper only integrates the map, it never reads through it.
+ */
+// oxlint-disable-next-line @typescript-eslint/no-explicit-any
+function attach<T extends Y.Map<any>>(yMap: T): T {
   const doc = new Y.Doc();
   doc.getMap('probe').set('value', yMap);
   return yMap;

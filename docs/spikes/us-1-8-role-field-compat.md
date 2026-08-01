@@ -22,14 +22,42 @@ export type SurfaceBlockProps = {
 
 Four questions had to be answered before the epic can be planned.
 
+### Scope: primitive elements only
+
+Everything below concerns **gfx primitive elements only** — the ones stored as
+entries of that `elements` Y.Map. A surface also owns real _block_ children
+(`affine:frame`, `affine:image`, `affine:bookmark`, `affine:attachment`,
+`affine:embed-*`, `affine:edgeless-text` — see
+`packages/affine/blocks/surface/src/surface-model.ts:23-31`). Those are ordinary
+blocks with a zod-validated prop schema and an entirely different
+serialization path; **carrying `role` on them is out of scope for this spike and
+would need its own analysis.** If the product intent is "any object on the
+canvas can have a semantic role", that gap must be sized separately.
+
+### Name collision to settle before implementing
+
+`role` is already taken twice in adjacent namespaces:
+
+- `BlockModel.role` (`packages/framework/store/src/model/block/block-model.ts:112-114`)
+  returns the block's _structural_ role (`root` / `hub` / `content`);
+- surface's own schema declares `role: 'hub'`
+  (`packages/affine/blocks/surface/src/surface-model.ts:22`).
+
+Neither is persisted per element, so there is **no data collision** — the
+proposed field lives in the element Y.Map, the homonyms live in block schema
+metadata. But the ambiguity is real for anyone reading `model.role` in a mixed
+gfx context. Recommend either naming the field `semanticRole` /
+`frameworkRole`, or accepting `role` with an explicit note in the accessor's
+doc comment. This is a naming decision for the epic, not a blocker.
+
 ## TL;DR
 
-| #   | Question                                                                                               | Verdict                                                                                                                                                      |
-| --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Backward compatibility — can `role` be added without a schema version bump or an open-time conversion? | **GO** — no conversion needed                                                                                                                                |
-| 2   | Forward compatibility — does an _older_ client preserve an unknown `role`?                             | **GO with a caveat** — every _edit_ path preserves it; every _element-creation-from-props_ path (duplicate, paste, "turn into linked doc") silently drops it |
-| 3   | Cross-document copy/paste                                                                              | **NO-GO as-is** — the edgeless clipboard path drops `role` in an older client; the doc-snapshot path preserves it                                            |
-| 4   | Versioning strategy                                                                                    | **No versioning mechanism required** — and none exists to be used. Mitigate at the epic level with a rollout ordering constraint, not with a migration       |
+| #   | Question                                                                                               | Verdict                                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Backward compatibility — can `role` be added without a schema version bump or an open-time conversion? | **GO** — no conversion needed                                                                                                                                                                                                                                   |
+| 2   | Forward compatibility — does an _older_ client preserve an unknown `role`?                             | **GO with a caveat** — every _edit_ path preserves it; every _element-creation-from-props_ path (duplicate, paste, "turn into linked doc") silently drops it. "Turn into linked doc" is **destructive**: it drops the role in the copy _and_ deletes the source |
+| 3   | Cross-document copy/paste                                                                              | **NO-GO as-is** — the edgeless clipboard path drops `role` in an older client; the doc-snapshot path preserves it. Verdict established by code reading (see "What these tests do and do not prove")                                                             |
+| 4   | Versioning strategy                                                                                    | **No versioning mechanism required** — and none exists to be used. Mitigate at the epic level with a rollout ordering constraint, not with a migration                                                                                                          |
 
 **Overall verdict for "optional field, no versioning": GO.** The field can ship
 as a plain `@field()` accessor on `GfxPrimitiveElementModel` with no schema
@@ -206,8 +234,12 @@ elementFromJSON(element: Record<string, unknown>) {
 
 ### Paths that LOSE the unknown key
 
-There is exactly **one** loss mechanism, and every losing path funnels through
-it: `SurfaceBlockModel._createElementFromProps`.
+There is **one** loss mechanism — bulk-assigning a props object onto the element
+model instance — but it is implemented at **two distinct call sites** in
+`SurfaceBlockModel`. Any fix must cover both.
+
+**Site 1 — `_createElementFromProps`** (element creation: paste, duplicate,
+clone, cross-doc write):
 
 ```ts
 // packages/framework/std/src/gfx/model/surface/surface-model.ts:147,169-174
@@ -221,6 +253,28 @@ Object.keys(rest).forEach(key => {
 });
 ```
 
+**Site 2 — `updateElement`** (bulk update of an existing element):
+
+```ts
+// packages/framework/std/src/gfx/model/surface/surface-model.ts:686-695
+this.store.transact(() => {
+  props = this._propsToY(
+    elementModel.type,
+    props as Record<string, unknown>
+  ) as T;
+  Object.entries(props).forEach(([key, value]) => {
+    // @ts-expect-error ignore
+    elementModel[key] = value;
+  });
+});
+```
+
+Site 2 does not _destroy_ an existing `role` — it writes key by key and leaves
+untouched keys alone (that is why every edit path above is safe). What it loses
+is an _incoming_ `role` that the running client does not declare: the caller
+believes it wrote the field, and nothing did. It is a write-drop, not an
+overwrite.
+
 There is no explicit allow-list here — every key of the incoming props object is
 assigned. **But the assignment only reaches the Y.Map if the class declares that
 key as an `@field()` accessor.** For an undeclared key, `elementModel.model[key] = …`
@@ -232,15 +286,38 @@ The behaviour is deceptive in the worst way: the pasted element looks correct in
 the running session (the plain JS property is readable in memory) and loses the
 role on the next reload, or immediately for every other peer.
 
-The affected user actions, all confirmed to reach `_createElementFromProps`:
+The affected user actions:
 
-| Action                                 | Entry point                                                                           |
-| -------------------------------------- | ------------------------------------------------------------------------------------- |
-| Paste (canvas clipboard)               | `packages/affine/blocks/root/src/edgeless/clipboard/canvas.ts:97` → `crud.addElement` |
-| Duplicate (toolbar / keyboard)         | `packages/affine/blocks/root/src/edgeless/utils/clipboard-utils.ts:29-50`             |
-| Alt+drag clone                         | `packages/affine/blocks/root/src/edgeless/interact-extensions/clone-ext.ts:11-23`     |
-| Turn into linked doc                   | `packages/affine/blocks/root/src/edgeless/configs/toolbar/render-linked-doc.ts:94-95` |
-| `updateElement` with an undeclared key | `surface-model.ts:691-694` (same assignment)                                          |
+| Action                                 | Site | Severity               | Entry point                                                                           |
+| -------------------------------------- | ---- | ---------------------- | ------------------------------------------------------------------------------------- |
+| Paste (canvas clipboard)               | 1    | non-destructive        | `packages/affine/blocks/root/src/edgeless/clipboard/canvas.ts:97` → `crud.addElement` |
+| Duplicate (toolbar / keyboard)         | 1    | non-destructive        | `packages/affine/blocks/root/src/edgeless/utils/clipboard-utils.ts:29-50`             |
+| Alt+drag clone                         | 1    | non-destructive        | `packages/affine/blocks/root/src/edgeless/interact-extensions/clone-ext.ts:11-23`     |
+| **Turn into linked doc**               | 1    | **DESTRUCTIVE (move)** | `packages/affine/blocks/root/src/edgeless/configs/toolbar/render-linked-doc.ts:94-95` |
+| `updateElement` with an undeclared key | 2    | write-drop             | `surface-model.ts:691-694`                                                            |
+
+**"Turn into linked doc" is the severe one, and it is a move, not a copy.**
+`createLinkedDocFromEdgelessElements` writes each primitive element into the new
+doc with `surface.addElement(props)`
+(`render-linked-doc.ts:94-95`, loop at `:75-98`) — losing `role` via site 1 —
+and the caller then deletes the originals in the source doc:
+
+```ts
+// packages/affine/blocks/root/src/edgeless/configs/toolbar/more.ts:328-336
+const linkedDoc = createLinkedDocFromEdgelessElements(
+  ctx.host,
+  clonedModels,
+  title
+);
+
+ctx.store.transact(() => {
+  deleteElements(edgeless, clonedModels);
+});
+```
+
+So in a single user gesture, on an older client, the role is dropped in the
+destination **and** the only copy that still had it is destroyed. There is no
+surviving original to recover from — only undo, and only within the session.
 
 The shared tail is
 `packages/affine/blocks/surface/src/extensions/crud-extension.ts:92-112`, which
@@ -255,10 +332,18 @@ spreads the props and hands them to `SurfaceBlockModel.addElement`
 
 ### Key asymmetry to keep in mind
 
-The original element is **never** at risk. An older client editing an element
-that carries `role` keeps it. What it loses is the _copy_ it makes of that
-element. So the failure mode is not "the field disappears", it is "the field
-silently fails to propagate to derived elements", which is much harder to spot.
+For every path **except "turn into linked doc"**, the original element is not at
+risk: an older client editing an element that carries `role` keeps it, and what
+it loses is only the _copy_ it makes. The failure mode there is not "the field
+disappears" but "the field silently fails to propagate to derived elements",
+which is harder to spot but recoverable — the annotated original is still in the
+document.
+
+**"Turn into linked doc" breaks that asymmetry** and is therefore the worst
+case: it is a move, so the lossy copy is followed by deletion of the annotated
+source. Treat it as a distinct, higher-severity risk in the epic — it is the one
+path where a single click on an older client permanently destroys role data with
+no surviving copy.
 
 ---
 
@@ -358,8 +443,8 @@ Concretely:
 ### What replaces versioning: a rollout ordering constraint
 
 The real mitigation is not in the document format, it is in the release plan.
-Because the loss is confined to element-creation-from-props in an _older_
-client:
+Because the loss is confined to props-object assignment in an _older_ client
+(sites 1 and 2 of Q2):
 
 1. Ship the `@field()` declaration for `role` **first**, in a release that does
    nothing else with it (the field is inert but declared). This is the
@@ -383,10 +468,13 @@ manifests late.**
 - The loss is invisible in-session: the pasted element carries `role` as a plain
   JS own property, so anything reading `element.role` in that tab sees the right
   value. It vanishes on reload, and never existed for any other peer.
-- The loss is partial and therefore hard to reason about: the original keeps its
-  role, the copy does not. A board can drift into a state where half the
-  elements are annotated and half are not, with no user action that looks like
-  it deleted anything.
+- The loss is usually partial and therefore hard to reason about: the original
+  keeps its role, the copy does not. A board can drift into a state where half
+  the elements are annotated and half are not, with no user action that looks
+  like it deleted anything.
+- **For "turn into linked doc" the loss is total and destructive**: the source is
+  deleted right after the lossy copy (`more.ts:328-336`), so there is nothing
+  left to recover from outside the undo stack.
 - The consequence surfaces at analysis time, potentially weeks later, when a
   framework view (Wardley, EDGY, Cynefin) or an export silently under-reports.
 
@@ -395,11 +483,15 @@ Mitigations to consider at epic level (out of scope for this spike):
 - A cheap integrity check: a diagnostic that counts elements whose `type`
   suggests a framework element but whose `role` is missing.
 - Telemetry on `role` write/read ratios, so drift is visible in aggregate.
-- Long term, the sturdier fix is to make `_createElementFromProps` forward
-  unrecognised keys straight into the Y.Map instead of assigning them onto the
-  instance. That is a **red-zone change to `packages/framework/std` element
-  plumbing** and must be its own reviewed story — it would change the semantics
-  of every paste in the product.
+- Long term, the sturdier fix is to make the element model forward unrecognised
+  keys straight into the Y.Map instead of assigning them onto the instance.
+  **It must cover both call sites** — `_createElementFromProps`
+  (`surface-model.ts:169-174`) _and_ `updateElement`
+  (`surface-model.ts:686-695`); patching only the first would leave programmatic
+  bulk updates silently dropping unknown keys. That is a **red-zone change to
+  `packages/framework/std` element plumbing** and must be its own reviewed story
+  — it would change the semantics of every paste and every bulk update in the
+  product.
 
 ---
 
@@ -426,8 +518,21 @@ declares no `role` accessor, so it plays the part of an older client. 9 tests:
 
 The three `LOSS:` tests assert the _current, undesirable_ behaviour on purpose.
 They are the executable record of the Q2/Q3 caveat. If a future change makes
-`_createElementFromProps` forward unknown keys, these three tests will fail —
-that failure is the signal to update this document, not to weaken the tests.
+`_createElementFromProps` or `updateElement` forward unknown keys, these three
+tests will fail — that failure is the signal to update this document, not to
+weaken the tests.
+
+**What these tests do and do not prove.** They exercise the `SurfaceBlockModel`
+layer directly. The cross-document test drives the _serialize → JSON →
+`addElement`_ sequence between two real `TestWorkspace` documents, which is the
+mechanism the edgeless clipboard uses — but it does **not** drive the real
+clipboard: no `ClipboardEvent`, no `blocksuite/surface` MIME payload, no
+`createElementsFromClipboardDataCommand`, and no per-type id remapping. The Q3
+verdict therefore rests on **code reading** of
+`clipboard/canvas.ts` → `crud-extension.ts` → `surface-model.ts`, with the unit
+test proving the terminal step where the loss occurs. An integration spec
+driving the actual paste command would close that last gap; it is worth adding
+when the epic starts, and it is not needed to trust the verdict.
 
 ### `packages/affine/blocks/surface/src/__tests__/surface-transformer-unknown-props.unit.spec.ts`
 
