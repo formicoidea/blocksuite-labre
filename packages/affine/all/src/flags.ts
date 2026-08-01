@@ -72,8 +72,9 @@ export const OPTIONAL_BLOCKS = [
   // gfx modules
   'brush',
   'mindmap',
-  // Standalone text / add-file tools, promoted out of the former "Others"
-  // senior submenu (each individually toggleable).
+  // Media / template / link tools, promoted out of the former "Others"
+  // senior submenu (each individually toggleable). The edgeless-text tool is
+  // gated by the 'edgeless-text' block flag above.
   'edgeless-media',
   'template',
   'link',
