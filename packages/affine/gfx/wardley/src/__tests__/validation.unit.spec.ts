@@ -88,6 +88,10 @@ describe('wardley pilot rule: component outside the map', () => {
       messageKey: 'com.labre.wardley.validation.component-outside-map',
       suggestion:
         'com.labre.wardley.validation.component-outside-map.suggestion',
+      // The map the component was measured against. An id, not a bound and not
+      // a rendering: it is what lets "ignore on the whole map" mean THIS map
+      // when the board carries several.
+      backgroundId: 'bg',
     });
     // The engine renders no text: everything human-readable is an i18n key.
     expect(violation.messageKey).toMatch(/^com\.labre\./);

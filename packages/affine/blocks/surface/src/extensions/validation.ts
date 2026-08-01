@@ -5,6 +5,7 @@ import type {
   RoleDefs,
   RoleId,
   SurfaceBlockModel,
+  ValidationException,
 } from '@labre/std/gfx';
 import {
   GfxGroupLikeElementModel,
@@ -108,7 +109,53 @@ export interface Violation {
   messageKey: string;
   /** i18n key of a remediation hint, when the rule carries one. */
   suggestion?: string;
+  /**
+   * The background this finding is attributed to — for `element-in-background`,
+   * the NEAREST one, none of them having contained the element (that is what
+   * being in violation means here).
+   *
+   * Recorded by the family at the moment it picks it, because nothing
+   * downstream can reconstruct it: a board carries several maps, and "which one
+   * did the user mean" is a question only the evaluation is in a position to
+   * answer. It is what makes the `map` exemption scope mean ONE map instead of
+   * every map on the document — see {@link ExemptionScope}.
+   *
+   * A heuristic, and an honest one: nearest by edge-to-edge gap
+   * ({@link gapSquared}), ties broken by the smaller id so that it never
+   * depends on the order the surface happened to be walked in.
+   *
+   * Absent for a family that measures against no background.
+   */
+  backgroundId?: string;
+  /**
+   * Set when a user exception covers this finding (PF8), and names the SCOPE
+   * that covers it. Absent = live.
+   *
+   * The engine keeps reporting the violation either way — an exception changes
+   * its STATE, it never makes it vanish, so a board can never hide an
+   * arbitration it made (PF8.3). Suppressing the canvas affordance is a
+   * downstream filter ({@link liveViolations}); the panel and the bubble keep
+   * the whole list.
+   */
+  exemption?: ExemptionScope;
 }
+
+/**
+ * How far an exception reaches.
+ *
+ * - `element` — written on the element itself: the rule is disarmed for it and
+ *   for nothing else on the board (PF8.2).
+ * - `map` — written on ONE background element, the one named by the finding's
+ *   {@link Violation.backgroundId}: the rule is disarmed for the elements
+ *   measured against THAT map, and for no other map on the board (PF8.4).
+ *
+ * There is no third scope, and in particular no document-wide one: an exception
+ * is always carried by an element that can be selected, copied and deleted, so
+ * it has an owner, a lifetime and no hidden global state to garbage-collect.
+ * A board with three maps therefore holds three independent arbitrations, and
+ * deleting one map takes exactly its own with it.
+ */
+export type ExemptionScope = 'element' | 'map';
 
 /**
  * "Is this element on the framework's background?"
@@ -132,11 +179,11 @@ function evaluateElementInBackground(
   const backgroundRole = rule.backgroundRole;
   if (backgroundRole === undefined) return [];
 
-  const backgrounds: Bound[] = [];
+  const backgrounds: { id: string; bound: Bound }[] = [];
   for (const el of elements) {
     if (el.role === undefined) continue;
     if (roleIsA(el.role, backgroundRole, rule.roles)) {
-      backgrounds.push(el.elementBound);
+      backgrounds.push({ id: el.id, bound: el.elementBound });
     }
   }
   if (backgrounds.length === 0) return [];
@@ -148,7 +195,37 @@ function evaluateElementInBackground(
     if (!roleIsA(el.role, rule.appliesTo, rule.roles)) continue;
 
     const bound = el.elementBound;
-    if (backgrounds.some(bg => bg.contains(bound))) continue;
+    // One pass, and it answers two questions at once: is this element on ANY
+    // map (in which case there is nothing to report), and if not, which map is
+    // it nearest to. The second answer is the finding's `backgroundId`, and it
+    // has to be taken here — a board carries several maps, and by the time the
+    // violation reaches the UI there is no way left to tell which one the user
+    // was working on.
+    let nearest: { id: string; bound: Bound } | null = null;
+    let nearestDistance = Infinity;
+    let framed = false;
+    for (const background of backgrounds) {
+      if (background.bound.contains(bound)) {
+        framed = true;
+        break;
+      }
+      const distance = gapSquared(background.bound, bound);
+      // Strictly nearer wins; an exact tie is broken by the smaller id, never
+      // by which background the surface happened to be walked in first.
+      // `backgroundId` decides where a PERSISTED decision gets written and read
+      // back, so it cannot depend on the iteration order of a Map rebuilt from
+      // a Y.Map on every load and every merge.
+      if (
+        distance < nearestDistance ||
+        (distance === nearestDistance &&
+          nearest !== null &&
+          background.id < nearest.id)
+      ) {
+        nearestDistance = distance;
+        nearest = background;
+      }
+    }
+    if (framed) continue;
 
     violations.push({
       ruleId: rule.id,
@@ -156,9 +233,31 @@ function evaluateElementInBackground(
       severity: rule.severity,
       messageKey: rule.messageKey,
       ...(rule.suggestionKey ? { suggestion: rule.suggestionKey } : {}),
+      ...(nearest ? { backgroundId: nearest.id } : {}),
     });
   }
   return violations;
+}
+
+/**
+ * Squared width of the GAP between two bounds — zero when they touch or
+ * overlap, otherwise the distance from edge to edge. Squared because it is only
+ * ever compared against another one, so the square root would buy nothing and
+ * cost a call per background per violating element.
+ *
+ * Edges, not centres. "Nearest centre" reads plausibly and is wrong as soon as
+ * the maps differ in size: a component 20 units off the right edge of a large
+ * map is 900 units from its centre, so a small map 60 units further away wins —
+ * and the element gets attributed to a map it is nowhere near. Comparing gaps
+ * gives the answer the eye gives, whatever the two maps measure.
+ *
+ * A background that CONTAINS the element never reaches this: containment exits
+ * the loop first, and a framed element raises nothing at all.
+ */
+function gapSquared(background: Bound, bound: Bound): number {
+  const dx = Math.max(background.x - bound.maxX, bound.x - background.maxX, 0);
+  const dy = Math.max(background.y - bound.maxY, bound.y - background.maxY, 0);
+  return dx * dx + dy * dy;
 }
 
 const RULE_FAMILIES: Record<
@@ -170,6 +269,61 @@ const RULE_FAMILIES: Record<
 > = {
   'element-in-background': evaluateElementInBackground,
 };
+
+/** The exceptions an element carries, always an array, never a copy to keep. */
+export function elementExceptions(
+  element: GfxPrimitiveElementModel
+): readonly ValidationException[] {
+  const stored = element.validationExceptions;
+  // The value comes out of a Y.Map, so it is whatever a peer wrote: a client
+  // that got it wrong must not break evaluation on this one.
+  return Array.isArray(stored) ? stored : [];
+}
+
+/** Whether `element` is excused from `ruleId`. */
+export function hasException(
+  element: GfxPrimitiveElementModel,
+  ruleId: string
+): boolean {
+  return elementExceptions(element).some(
+    exception => exception?.ruleId === ruleId
+  );
+}
+
+/**
+ * Stamp `exemption` on the findings a user exception already covers.
+ *
+ * Called only when a rule actually raised something, so a conformant board — the
+ * common case, and the one the 16 ms budget is measured on — pays nothing at
+ * all for the feature.
+ */
+function applyExceptions(
+  rule: ValidationRule,
+  raised: readonly Violation[],
+  elements: readonly GfxPrimitiveElementModel[]
+): void {
+  const byId = new Map<string, GfxPrimitiveElementModel>();
+  for (const el of elements) byId.set(el.id, el);
+
+  const excused = (id: string | undefined) => {
+    if (id === undefined) return false;
+    const el = byId.get(id);
+    return el !== undefined && hasException(el, rule.id);
+  };
+
+  for (const violation of raised) {
+    // EVERY indicted element must be excused: a rule indicting two elements of
+    // which only one is excused is still a live finding.
+    const perElement = violation.elementIds.every(excused);
+    // Narrower scope first, so revoking walks from the local decision outward
+    // and each click visibly changes the state instead of doing nothing.
+    if (perElement) violation.exemption = 'element';
+    // ...and the map scope reads THIS finding's own background, never "some
+    // background on the board carries the exception". An arbitration made on
+    // one map says nothing about the map next to it.
+    else if (excused(violation.backgroundId)) violation.exemption = 'map';
+  }
+}
 
 /**
  * Run every rule over every element. Pure and synchronous — the unit of the
@@ -183,9 +337,56 @@ export function evaluateRules(
 
   const violations: Violation[] = [];
   for (const rule of rules) {
-    violations.push(...RULE_FAMILIES[rule.family](rule, elements));
+    const raised = RULE_FAMILIES[rule.family](rule, elements);
+    if (raised.length === 0) continue;
+    applyExceptions(rule, raised, elements);
+    violations.push(...raised);
   }
   return violations;
+}
+
+/**
+ * Grant `ruleId` an exception on `element`, unless it already has one.
+ *
+ * The write goes through the declared `@field()` accessor, so it lands in the
+ * Y.Map, syncs to every peer, joins the undo stack and survives a copy — see the
+ * note on `GfxPrimitiveElementModel.validationExceptions`.
+ */
+export function grantException(
+  element: GfxPrimitiveElementModel,
+  ruleId: string,
+  author?: string,
+  now: number = Date.now()
+): void {
+  if (hasException(element, ruleId)) return;
+  element.validationExceptions = [
+    ...elementExceptions(element),
+    // The timestamp is taken at the moment of the gesture, and an absent author
+    // stays ABSENT rather than becoming an empty string.
+    { ruleId, at: now, ...(author !== undefined ? { author } : {}) },
+  ];
+}
+
+/** Remove `ruleId`'s exception from `element`, if it has one. */
+export function revokeException(
+  element: GfxPrimitiveElementModel,
+  ruleId: string
+): void {
+  const current = elementExceptions(element);
+  const next = current.filter(exception => exception?.ruleId !== ruleId);
+  if (next.length === current.length) return;
+
+  if (next.length > 0) {
+    element.validationExceptions = next;
+    return;
+  }
+  // The last one goes, so the KEY goes. Assigning `undefined` through the
+  // accessor would leave the key in the Y.Map holding an undefined value —
+  // invisible through the getter, but synced to every peer and shipped in every
+  // snapshot. `clearField` removes it, so an element whose exceptions were all
+  // revoked really is indistinguishable from one that never had any, in the
+  // document and not just in this tab.
+  element.clearField('validationExceptions');
 }
 
 /** A framework registers its rules here; nothing else registers rules. */
@@ -221,7 +422,43 @@ const VALIDATION_DELAY_MS = 120;
  * (`SpotlightManager` writes `opacity` on every element it dims) neither
  * re-evaluates the surface nor pushes the pending evaluation further away.
  */
-export const VERDICT_PROPS = ['xywh', 'rotate', 'role'];
+export const VERDICT_PROPS = [
+  'xywh',
+  'rotate',
+  'role',
+  // A user exception changes a verdict as much as a move does: without this,
+  // granting one on a peer's tab would leave the mark up until the next drag.
+  'validationExceptions',
+];
+
+/**
+ * Whether an `elementUpdated` payload can have changed a verdict.
+ *
+ * It has to read `oldValues` as well as `props`, because a Y.Map **delete**
+ * fills only the former (`syncElementFromY` puts a key in `props` for `add` and
+ * `update` only). `validationExceptions` is the first {@link VERDICT_PROPS}
+ * entry whose normal life includes being removed — `xywh` and `rotate` are
+ * never deleted, `role` is only ever added — so this branch had never been
+ * exercised. Reading `props` alone means an UNDO of an exception, which deletes
+ * the key, wakes nothing: the board keeps showing a finding as excused when the
+ * document no longer says so, and its Revoke button becomes a no-op.
+ *
+ * A payload carrying neither is unreadable, so it counts as "might have": the
+ * cost of a spurious re-evaluation is a debounce tick, the cost of a missed one
+ * is a board that lies.
+ */
+export function touchesVerdict(payload: {
+  props?: Record<string, unknown>;
+  oldValues?: Record<string, unknown>;
+}): boolean {
+  const { props, oldValues } = payload;
+  if (!props && !oldValues) return true;
+  return VERDICT_PROPS.some(
+    prop =>
+      (props !== undefined && prop in props) ||
+      (oldValues !== undefined && prop in oldValues)
+  );
+}
 
 /**
  * Owns the evaluation and the reactive violation list. No-op until a framework
@@ -311,9 +548,9 @@ export class ValidationManager extends InteractivityExtension {
       this._subscriptions.push(change.subscribe(() => this._schedule()));
     }
     this._subscriptions.push(
-      surface.elementUpdated.subscribe(({ props }) => {
+      surface.elementUpdated.subscribe(payload => {
         // A prop that cannot change a verdict must not even rearm the timer.
-        if (props && !VERDICT_PROPS.some(prop => prop in props)) return;
+        if (!touchesVerdict(payload)) return;
         this._schedule();
       })
     );
@@ -342,11 +579,100 @@ export class ValidationManager extends InteractivityExtension {
     // Age the marks BEFORE waking anybody, so the canvas half and the DOM half
     // read the same clock within one evaluation and never disagree about which
     // of the two markers is due.
-    const shown = userFacingViolations(violations);
+    //
+    // Exempted findings are dropped HERE and only here: `violations$` keeps
+    // them, so the bubble and a host panel see the full picture, while the
+    // flash and the bracket see only what is still asking for something.
+    const shown = liveViolations(userFacingViolations(violations));
     this.timeline.sync(shown, performance.now());
 
     this.violations$.value = violations;
     this._overlay?.setViolations(shown, this.timeline);
+  }
+
+  /** The registered rule with this id, if its framework is enabled. */
+  ruleOf(ruleId: string): ValidationRule | undefined {
+    return this._activeRules.find(rule => rule.id === ruleId);
+  }
+
+  /**
+   * Which elements an exception of the given scope is written on.
+   *
+   * `element` — the elements the rule actually indicts, which is what makes the
+   * exception local (PF8.2): excusing one component says nothing about the next.
+   *
+   * `map` — the background element these findings were MEASURED AGAINST, and
+   * only that one. It comes from {@link Violation.backgroundId}, recorded by the
+   * rule family when it picked the frame, so a board carrying three maps holds
+   * three independent arbitrations and a gesture made on one writes on one.
+   * That choice is what lets a map-wide arbitration exist with NO block schema
+   * change and no hidden per-document store: it is one more value in the same
+   * `@field()`, on an element that is selected, copied, exported and deleted
+   * like any other. A family that measures against no background records no
+   * `backgroundId`, has no map to hang an exception on, and offers no map scope.
+   */
+  private _targetsOf(
+    violations: readonly Violation[],
+    scope: ExemptionScope,
+    surface: SurfaceBlockModel
+  ): GfxPrimitiveElementModel[] {
+    const ids =
+      scope === 'map'
+        ? new Set(
+            violations
+              .map(violation => violation.backgroundId)
+              .filter((id): id is string => id !== undefined)
+          )
+        : new Set(violations.flatMap(violation => violation.elementIds));
+
+    return Array.from(ids)
+      .map(id => surface.getElementById(id))
+      .filter((el): el is GfxPrimitiveElementModel => el !== null);
+  }
+
+  /**
+   * Grant or revoke `ruleId`'s exception at `scope`, over the elements the given
+   * violations indict.
+   *
+   * Takes the whole set rather than one violation on purpose: a Wardley
+   * component is a GROUP, so one bubble line can stand for several indicted
+   * members, and one click has to settle all of them.
+   *
+   * Re-evaluates on the spot instead of waiting for the 120 ms debounce the
+   * field write would trigger anyway — the gesture must apply immediately
+   * (PF8.1).
+   *
+   * @returns the elements actually written to, so the caller can tell a real
+   * arbitration from a no-op and only report the former.
+   */
+  setException(
+    violations: readonly Violation[],
+    scope: ExemptionScope,
+    granted: boolean,
+    author?: string
+  ): GfxPrimitiveElementModel[] {
+    const ruleId = violations[0]?.ruleId;
+    const surface = this.gfx.surface;
+    if (ruleId === undefined || !surface) return [];
+    // Never write an exception for a rule nobody registered: with the framework
+    // flagged off there is no rule to arbitrate on.
+    if (!this.ruleOf(ruleId)) return [];
+
+    const targets = this._targetsOf(violations, scope, surface).filter(
+      element => hasException(element, ruleId) !== granted
+    );
+    if (targets.length === 0) return [];
+
+    // One timestamp for the whole gesture: a single click is a single decision,
+    // whatever number of elements it happens to touch.
+    const at = Date.now();
+    for (const element of targets) {
+      if (granted) grantException(element, ruleId, author, at);
+      else revokeException(element, ruleId);
+    }
+
+    this.evaluate();
+    return targets;
   }
 }
 
@@ -436,6 +762,19 @@ export function userFacingViolations(
 }
 
 /**
+ * Violations still asking for something, i.e. not covered by an exception.
+ *
+ * This is the whole of PF8's canvas behaviour: an exempted finding is dropped
+ * from the timeline, so it never flashes, and from the overlay, so it carries no
+ * bracket. It keeps its badge and its line in the bubble, where it reads as
+ * "exception" and can be revoked — the state changed, the finding did not
+ * disappear.
+ */
+export function liveViolations(violations: readonly Violation[]): Violation[] {
+  return violations.filter(violation => violation.exemption === undefined);
+}
+
+/**
  * One violation per RULE, first occurrence wins.
  *
  * What a detail bubble renders is rule-level — a label, a severity, a hint —
@@ -447,7 +786,13 @@ export function userFacingViolations(
 export function distinctByRule(violations: readonly Violation[]): Violation[] {
   const byRule = new Map<string, Violation>();
   for (const violation of violations) {
-    if (!byRule.has(violation.ruleId)) byRule.set(violation.ruleId, violation);
+    const kept = byRule.get(violation.ruleId);
+    // A LIVE finding always wins the slot: two members of one group, one
+    // excused and one not, must read as "this rule still applies here" rather
+    // than as an exception that quietly covers both.
+    if (kept === undefined || (kept.exemption && !violation.exemption)) {
+      byRule.set(violation.ruleId, violation);
+    }
   }
   return Array.from(byRule.values());
 }

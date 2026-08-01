@@ -1,5 +1,5 @@
 import type { RootBlockModel } from '@labre/affine-model';
-import { translateKey } from '@labre/affine-shared/services';
+import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
 import type { SurfaceBlockModel } from '@labre/std/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -12,10 +12,11 @@ import { literal, unsafeStatic } from 'lit/static-html.js';
 import {
   anchorEmphasis,
   distinctByRule,
+  type ExemptionScope,
   resolveViolationAnchors,
+  touchesVerdict,
   userFacingViolations,
   ValidationManager,
-  VERDICT_PROPS,
   VIOLATION_BADGE_SIZE,
   type Violation,
   type ViolationAnchor,
@@ -70,6 +71,14 @@ const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
 };
 
 /**
+ * The grey a finding the user has decided to live with is drawn in. It is still
+ * on the board — an exception changes a violation's state, it never hides it
+ * (PF8.3) — but it has stopped asking for anything, so it stops using the
+ * colour that means "look at me".
+ */
+const EXEMPTED_MARK_COLOR = '#8e8d91';
+
+/**
  * The PERSISTENT half of the PF7 affordance, and the restitution behind it.
  *
  * `ValidationOverlay` flashes a bracket when a violation appears and fades it
@@ -109,6 +118,19 @@ const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
  * widget renders an invisible band over it instead, so the mark on the canvas
  * is clickable and opens the same bubble. The two markers are never on screen
  * together.
+ *
+ * ## Exceptions (PF8)
+ *
+ * Every line of the bubble carries the way out of the rule it names — one
+ * click, never a detour through a settings panel. Taking it writes an exception
+ * on the elements the rule indicts, and the finding switches to "exception":
+ * it drops out of the flash and out of the bracket, keeps a muted badge, and
+ * keeps its line in the bubble with a **Revoke** that puts it back. Nothing is
+ * ever hidden — the board stays honest about the gaps it was told to live with.
+ *
+ * The second, wider way out — "ignore this rule on the whole map" — appears
+ * only once the same call has been made elsewhere on the board (PF8.4), and
+ * writes the exception on the framework's own background element.
  *
  * ## What it knows
  *
@@ -154,6 +176,12 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       border-radius: 50%;
       background: ${unsafeCSS(VIOLATION_MARK_COLOR)};
       box-shadow: var(--affine-shadow-1);
+    }
+
+    /* Everything on this anchor is excused: still there, no longer amber. */
+    .violation-badge[data-exempted='true'] .violation-badge-dot {
+      background: ${unsafeCSS(EXEMPTED_MARK_COLOR)};
+      opacity: 0.7;
     }
 
     .violation-badge:hover .violation-badge-dot,
@@ -226,6 +254,49 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       color: var(--affine-text-secondary-color);
       font-size: 13px;
       overflow-wrap: anywhere;
+    }
+
+    /* "No rule is a wall": the way out is on the message, one click away, and
+       never behind a settings panel (PF8.1). */
+    .violation-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .violation-action {
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--affine-border-color);
+      background: transparent;
+      color: var(--affine-text-secondary-color);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .violation-action:hover {
+      background: var(--affine-hover-color);
+      color: var(--affine-text-primary-color);
+    }
+
+    .violation-action:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: 1px;
+    }
+
+    .violation-state {
+      display: inline-block;
+      margin-bottom: 4px;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--affine-hover-color);
+      color: var(--affine-text-secondary-color);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
   `;
 
@@ -308,8 +379,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // worth a repaint. `SpotlightManager` writes `opacity` on every element it
     // dims, and that must not redraw a badge that has not moved.
     // `requestUpdate` is batched by lit into one render per frame anyway.
-    this._elementSubscription = surface.elementUpdated.subscribe(({ props }) => {
-      if (props && !VERDICT_PROPS.some(prop => prop in props)) return;
+    this._elementSubscription = surface.elementUpdated.subscribe(payload => {
+      if (!touchesVerdict(payload)) return;
       this.requestUpdate();
     });
   }
@@ -462,7 +533,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
    */
   private _estimateBubbleHeight(entries: readonly Violation[]): number {
     const padding = 24;
-    const perEntry = 70;
+    // Message, optional hint, severity chip and the action row underneath it.
+    const perEntry = 100;
     return Math.min(
       BUBBLE_MAX_HEIGHT,
       padding + Math.max(1, entries.length) * perEntry
@@ -475,6 +547,161 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       `com.labre.validation.severity.${severity}`,
       SEVERITY_FALLBACK[severity]
     );
+  }
+
+  /**
+   * Grant or revoke, then report it.
+   *
+   * The AUTHOR is deliberately not filled in here: the library has no seam for
+   * "who am I" (`UserProvider` resolves an id, it does not hand one out), and
+   * inventing one for this would be a bigger change than the feature. The field
+   * and `ValidationManager.setException` both carry the parameter, so a host
+   * that knows its user can populate it without a schema change.
+   */
+  private _setException(
+    violations: readonly Violation[],
+    scope: ExemptionScope,
+    granted: boolean
+  ) {
+    const validation = this.std.getOptional(ValidationManager);
+    if (!validation) return;
+
+    const written = validation.setException(violations, scope, granted);
+    // A gesture that changed nothing is not an arbitration and is not reported.
+    if (written.length === 0) return;
+
+    const ruleId = violations[0].ruleId;
+    const framework = validation.ruleOf(ruleId)?.framework;
+    this.std
+      .getOptional(TelemetryProvider)
+      ?.track(
+        granted ? 'ValidationExceptionGranted' : 'ValidationExceptionRevoked',
+        {
+          page: 'whiteboard editor',
+          segment: 'whiteboard',
+          module: 'validation bubble',
+          control: granted ? 'ignore rule' : 'revoke exception',
+          ruleId,
+          ...(framework !== undefined ? { framework } : {}),
+          scope,
+          elementCount: written.length,
+        }
+      );
+  }
+
+  private readonly _exception =
+    (violations: readonly Violation[], scope: ExemptionScope, granted: boolean) =>
+    (event: Event) => {
+      event.stopPropagation();
+      this._setException(violations, scope, granted);
+    };
+
+  /**
+   * Whether the user has already made this same call elsewhere on the board.
+   *
+   * PF8.4 offers "ignore this rule on the whole map" only once the choice has
+   * been REPEATED — the first exception is a local judgement about one element,
+   * and pre-emptively offering to disarm a rule everywhere would turn a
+   * one-element decision into a map-wide one nobody asked for.
+   *
+   * Read off the ENGINE's own output — another finding of the same rule, on
+   * another element, that an exception already covers. Scanning the surface for
+   * elements merely carrying the key would count things that are not decisions:
+   * a neutral rectangle pasted from another board with a residual
+   * `validationExceptions` entry is never evaluated by this rule, so it must
+   * never be read as the user having arbitrated on it.
+   */
+  private _isRepeated(violations: readonly Violation[]): boolean {
+    const ruleId = violations[0].ruleId;
+    const here = new Set(violations);
+    return this._violations.some(
+      violation =>
+        !here.has(violation) &&
+        violation.ruleId === ruleId &&
+        violation.exemption !== undefined
+    );
+  }
+
+  /**
+   * The one line the bubble shows for a rule, and the ways out of it.
+   *
+   * `violations` are every finding of that rule on this anchor — one bubble line
+   * can stand for several indicted members of a group, and one click settles all
+   * of them.
+   */
+  private _renderEntry(entry: Violation, violations: readonly Violation[]) {
+    const { exemption } = entry;
+    const action = (
+      key: string,
+      fallback: string,
+      testid: string,
+      scope: ExemptionScope,
+      granted: boolean
+    ) => html`<button
+      class="violation-action"
+      type="button"
+      data-testid=${testid}
+      @pointerdown=${this._swallow}
+      @pointerup=${this._swallow}
+      @click=${this._exception(violations, scope, granted)}
+    >
+      ${translateKey(this.std, key, fallback)}
+    </button>`;
+
+    return html`<div class="violation-entry" data-exemption=${exemption ?? ''}>
+      <div class="violation-severity" data-severity=${entry.severity}>
+        ${this._severityLabel(entry.severity)}
+      </div>
+      ${exemption
+        ? html`<span class="violation-state" data-testid="violation-state"
+            >${translateKey(
+              this.std,
+              `com.labre.validation.state.exempted.${exemption}`,
+              exemption === 'map' ? 'Exception (whole map)' : 'Exception'
+            )}</span
+          >`
+        : nothing}
+      <div class="violation-message">
+        ${translateKey(this.std, entry.messageKey)}
+      </div>
+      ${entry.suggestion
+        ? html`<div class="violation-suggestion">
+            ${translateKey(this.std, entry.suggestion)}
+          </div>`
+        : nothing}
+      <div class="violation-actions">
+        ${exemption
+          ? action(
+              'com.labre.validation.action.revoke',
+              'Revoke',
+              'violation-revoke',
+              exemption,
+              false
+            )
+          : html`${action(
+              'com.labre.validation.action.ignore',
+              'Ignore this validation rule',
+              'violation-ignore',
+              'element',
+              true
+            )}
+            ${
+              // A family that measures against no background records no
+              // `backgroundId`, so there is no map to write the wider
+              // arbitration on and the action simply does not exist.
+              violations.some(violation => violation.backgroundId !== undefined) &&
+              this._isRepeated(violations)
+                ? action(
+                    'com.labre.validation.action.ignore-map',
+                    'Ignore this rule on the whole map',
+                    'violation-ignore-map',
+                    'map',
+                    true
+                  )
+                : nothing
+            }`}
+      </div>
+    </div>`;
   }
 
   private _renderBubble(violations: readonly Violation[], x: number, y: number) {
@@ -509,20 +736,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       @pointerup=${this._swallow}
       @click=${this._swallow}
     >
-      ${entries.map(
-        violation => html`<div class="violation-entry">
-          <div class="violation-severity" data-severity=${violation.severity}>
-            ${this._severityLabel(violation.severity)}
-          </div>
-          <div class="violation-message">
-            ${translateKey(this.std, violation.messageKey)}
-          </div>
-          ${violation.suggestion
-            ? html`<div class="violation-suggestion">
-                ${translateKey(this.std, violation.suggestion)}
-              </div>`
-            : nothing}
-        </div>`
+      ${entries.map(entry =>
+        this._renderEntry(
+          entry,
+          violations.filter(violation => violation.ruleId === entry.ruleId)
+        )
       )}
     </div>`;
   }
@@ -554,15 +772,32 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     const visual = VIOLATION_BADGE_SIZE * zoom;
     const target = Math.max(visual, MIN_HIT_TARGET);
     const open = this._openAnchorId === anchor.id;
+    // Every finding here is excused: the badge stays — the board must never
+    // hide an arbitration, and revoking has to remain one click away — but it
+    // goes quiet. The moment one live finding joins it, it is amber again.
+    const exempted = anchor.violations.every(
+      violation => violation.exemption !== undefined
+    );
+    // The grey dot is a STATE, and a state carried by colour alone is a state
+    // assistive technology cannot report (WCAG 1.4.1). The accessible name says
+    // it in words.
+    const name = exempted
+      ? translateKey(
+          this.std,
+          'com.labre.validation.badge.label-exempted',
+          'Show validation details — exception in force'
+        )
+      : label;
 
     return html`<button
       class="violation-badge"
       type="button"
       data-anchor-id=${anchor.id}
       data-testid="violation-badge"
+      data-exempted=${exempted}
       aria-expanded=${open}
-      aria-label=${label}
-      title=${label}
+      aria-label=${name}
+      title=${name}
       style=${styleMap({
         left: `${x}px`,
         top: `${y}px`,

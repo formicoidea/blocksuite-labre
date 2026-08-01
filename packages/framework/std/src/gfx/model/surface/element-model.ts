@@ -54,6 +54,43 @@ export type BaseElementProps = {
   lockedBySelf?: boolean;
 };
 
+/**
+ * Declared `@field()`s that {@link GfxPrimitiveElementModel.clearField} refuses
+ * to remove, because they have no meaningful ABSENT state: every one of them is
+ * read unconditionally, with no fallback, by code that has no way to cope.
+ *
+ * - `index` — the fractional z-order key. Gone, the element's stacking is
+ *   `undefined` and the layer manager sorts it nowhere, silently.
+ * - `xywh` — gone, `elementBound` collapses to `{0,0,0,0}` and the renderer
+ *   throws `"undefined" is not valid JSON` on every frame.
+ * - `seed` — the roughness seed; gone, the hand-drawn renderers produce a
+ *   different shape on every repaint.
+ *
+ * An optional field is exactly one whose accessor declares a usable default (or
+ * `undefined`), and those stay clearable. This list is the short answer to
+ * "which declared fields are not optional"; it is a deny-list on purpose, so a
+ * new optional field needs no ceremony and a new structural one is a deliberate
+ * addition here.
+ */
+const UNCLEARABLE_ELEMENT_FIELDS = new Set<string>(['index', 'seed', 'xywh']);
+
+/**
+ * One arbitration: "this element is excused from that rule".
+ *
+ * Document DATA, not session state — it records a decision the user made, so it
+ * outlives the tab, the framework flag and the client version that wrote it.
+ * Deliberately flat and rule-agnostic: the model stores it, the validation
+ * engine interprets it, and neither has to know what the other is up to.
+ */
+export type ValidationException = {
+  /** The rule being excused, e.g. `wardley.component-outside-map`. */
+  ruleId: string;
+  /** Who granted it, when the host knows. Absent rather than empty. */
+  author?: string;
+  /** Epoch ms, taken at the moment of the gesture. */
+  at: number;
+};
+
 export type SerializedElement = Record<string, unknown> & {
   type: string;
   xywh: SerializedXYWH;
@@ -346,6 +383,69 @@ export abstract class GfxPrimitiveElementModel<
     unlockElementImpl(this.surface.store, this);
   }
 
+  /**
+   * Remove an OPTIONAL `@field()` from the document entirely.
+   *
+   * The missing half of `@field()`. Its setter is unconditional — assigning
+   * `undefined` still calls `yMap.set(prop, undefined)` — so "clearing" an
+   * optional field through the accessor leaves the KEY behind. The getter reads
+   * `undefined` and nothing misbehaves, but the element is no longer
+   * byte-identical to one that never had the field: the phantom key syncs to
+   * every peer and ships in every snapshot. `init` is already careful to write
+   * nothing for an `undefined` default; this is how a field gets back to that
+   * state once it has been set.
+   *
+   * Emits a `delete` action rather than an `update`, so a consumer filtering on
+   * `props` will see an EMPTY payload and must inspect `oldValues` — the same
+   * shape an undo of the original write produces.
+   *
+   * ## What it refuses, and why that is load-bearing
+   *
+   * This is a direct write path into the element's Y.Map, on the class that
+   * carries the document format, exported by `@labre/std` and therefore
+   * callable by a host. `_assignElementProp` learned the same lesson in the
+   * unknown-props change (see `docs/spikes/us-1-8-unknown-props-preservation.md`,
+   * whose deny-list is explicitly security rather than hygiene); an unguarded
+   * delete re-opens the door from the other side. So:
+   *
+   * - a key the element class does not DECLARE as a `@field()` is refused. It
+   *   is either an unknown key preserved verbatim for a newer client — deleting
+   *   it is exactly the data loss that change exists to prevent — or not
+   *   document data at all;
+   * - a STRUCTURAL field is refused even though it is declared
+   *   ({@link UNCLEARABLE_ELEMENT_FIELDS}).
+   *
+   * Refusal is a no-op plus a `console.warn`, the same way an unencodable value
+   * is dropped rather than thrown: a misuse must not take the board down, and
+   * must not silently corrupt it either.
+   */
+  clearField(prop: string) {
+    if (UNCLEARABLE_ELEMENT_FIELDS.has(prop)) {
+      console.warn(
+        `Refusing to clear the structural element field "${prop}": it has no meaningful absent state.`
+      );
+      return;
+    }
+    if (!getFieldPropsSet(this).has(prop)) {
+      console.warn(
+        `Refusing to clear "${prop}": not a declared @field() on this element. Unknown keys are preserved deliberately.`
+      );
+      return;
+    }
+    if (!this.yMap.has(prop)) return;
+
+    if (this.yMap.doc) {
+      this.surface.store.transact(() => {
+        this.yMap.delete(prop);
+      });
+      // The Y.Map observer prunes `_preserved` on the delete action.
+      return;
+    }
+
+    this.yMap.delete(prop);
+    this._preserved.delete(prop);
+  }
+
   @local()
   accessor display: boolean = true;
 
@@ -391,6 +491,28 @@ export abstract class GfxPrimitiveElementModel<
    */
   @field()
   accessor role: string | undefined = undefined;
+
+  /**
+   * Validation rules this element is excused from (PF8, "no rule is a wall").
+   *
+   * Declared on the BASE class for the same reason as {@link role}: an element
+   * re-created from props (paste, duplicate, template insertion) only reaches
+   * the Y.Map through keys that have a declared accessor, so an exception
+   * declared per subclass would be silently dropped on copy — and an arbitration
+   * the user made explicitly is exactly the kind of thing that must survive a
+   * copy.
+   *
+   * `undefined` = no exception, and no key is written for it, so an element that
+   * never got one stays byte-identical to one created before the field existed:
+   * optional field, no schema version bump, no migration.
+   *
+   * Flat JSON on purpose — element serialization is one level deep, and a value
+   * a Yjs update can encode is the contract enforced by `_assignElementProp`.
+   * The engine that reads it lives in `@labre/affine-block-surface`; the base
+   * model only carries the data, and knows nothing about rules.
+   */
+  @field()
+  accessor validationExceptions: ValidationException[] | undefined = undefined;
 
   @field()
   accessor lockedBySelf: boolean | undefined = false;

@@ -35,6 +35,10 @@ const MAP_H = 900;
  * - `role` is a `@field()` accessor — `(yMap.doc ? yMap.get(k) : null) ??
  *   _preserved.get(k) ?? fallback`, i.e. two Map lookups, paid even by a
  *   neutral element;
+ * - `validationExceptions` is the same `@field()` accessor, and the engine
+ *   reads it for every element it indicts (PF8). Left as a plain `undefined`
+ *   property it would cost nothing and the exception lookup would be measured
+ *   against a fiction;
  * - `elementBound` is `Bound.deserialize(this.xywh)`, so a `JSON.parse` on top
  *   of a `xywh` read — not a `new Bound(...tuple)`.
  *
@@ -59,6 +63,9 @@ function element(
     id,
     get role() {
       return read('role') as string | undefined;
+    },
+    get validationExceptions() {
+      return read('validationExceptions') as unknown[] | undefined;
     },
     get xywh() {
       return read('xywh') as string;
