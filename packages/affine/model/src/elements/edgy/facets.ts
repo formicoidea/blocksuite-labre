@@ -21,6 +21,8 @@ export type EdgyFacetsProps = BaseElementProps & {
    * margins only exist for the facet name labels — pointless when hidden).
    */
   cropToCircles?: boolean;
+  /** When false the diagram stops granting the hover spotlight. */
+  spotlightEnabled?: boolean;
 
   // ── Editable labels (double-click on the canvas to edit) ──────────────
   identityLabel?: string;
@@ -82,6 +84,9 @@ export class EdgyFacetsElementModel extends GfxPrimitiveElementModel<EdgyFacetsP
 
   @field(false)
   accessor cropToCircles: boolean = false;
+
+  @field(true)
+  accessor spotlightEnabled: boolean = true;
 
   @field('Identity')
   accessor identityLabel: string = 'Identity';

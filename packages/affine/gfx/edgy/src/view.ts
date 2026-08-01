@@ -13,7 +13,10 @@ import { EdgyFacetsRendererExtension } from './element-renderer';
 import { EdgyInteraction, EdgyView } from './element-view';
 import { EdgyNodeRendererExtension } from './node/node-renderer';
 import { EdgyNodeView } from './node/node-view';
-import { edgyToolbarExtension } from './toolbar/config';
+import {
+  edgyBoardToolbarExtension,
+  edgyToolbarExtension,
+} from './toolbar/config';
 import { edgyNodeToolbarExtension } from './toolbar/node-config';
 import { edgySeniorTool } from './toolbar/senior-tool';
 
@@ -39,6 +42,7 @@ export class EdgyViewExtension extends ViewExtensionProvider {
       context.register(EdgyBoardInteraction);
       context.register(edgySeniorTool);
       context.register(edgyToolbarExtension);
+      context.register(edgyBoardToolbarExtension);
       context.register(edgyNodeToolbarExtension);
       // Both EDGY backgrounds grant the dependency spotlight on hover.
       context.register(SpotlightHostExtension('edgy'));

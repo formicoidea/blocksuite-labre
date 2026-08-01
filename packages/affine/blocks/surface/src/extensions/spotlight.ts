@@ -63,6 +63,10 @@ export function spotlightSet(
   return keep;
 }
 
+/** Delay before a new spotlight is applied / cleared, so brushing across
+ * elements doesn't flash the fade on and off. */
+const SPOTLIGHT_DELAY_MS = 140;
+
 export class SpotlightManager extends InteractivityExtension {
   static override key = 'spotlight-manager';
 
@@ -70,6 +74,24 @@ export class SpotlightManager extends InteractivityExtension {
   private _dimmed: GfxPrimitiveElementModel[] = [];
 
   private _lastTargetId: string | null = null;
+
+  /** Pending debounced transition (apply or restore). */
+  private _pending: ReturnType<typeof setTimeout> | null = null;
+
+  private _schedule(action: () => void) {
+    if (this._pending) clearTimeout(this._pending);
+    this._pending = setTimeout(() => {
+      this._pending = null;
+      action();
+    }, SPOTLIGHT_DELAY_MS);
+  }
+
+  private _cancelPending() {
+    if (this._pending) {
+      clearTimeout(this._pending);
+      this._pending = null;
+    }
+  }
 
   private get _hostTypes(): string[] {
     return Array.from(this.std.provider.getAll(SpotlightHostIdentifier).values());
@@ -83,12 +105,12 @@ export class SpotlightManager extends InteractivityExtension {
     this.event.on('pointermove', context => {
       this._update(context.event.x, context.event.y);
     });
-    this.event.on('pointerleave', () => this._restore());
-    this.event.on('dragstart', () => this._restore());
+    this.event.on('pointerleave', () => this._restoreNow());
+    this.event.on('dragstart', () => this._restoreNow());
   }
 
   override unmounted() {
-    this._restore();
+    this._restoreNow();
     super.unmounted();
   }
 
@@ -98,7 +120,7 @@ export class SpotlightManager extends InteractivityExtension {
     if (!hostTypes.length || !surface) return;
 
     if (this.gfx.tool.currentToolName$.peek() !== 'default') {
-      this._restore();
+      this._restoreNow();
       return;
     }
 
@@ -122,26 +144,48 @@ export class SpotlightManager extends InteractivityExtension {
     }
     if (!target && hits.length) target = hits[hits.length - 1];
 
-    if (!target) {
-      this._restore();
+    // The behavior is granted by a host whose bounds contain the target —
+    // unless that host opted out (`spotlightEnabled: false`, toolbar toggle).
+    const host = target
+      ? surface.elementModels.find(
+          el =>
+            hostTypes.includes(el.type) &&
+            (el as { spotlightEnabled?: boolean }).spotlightEnabled !== false &&
+            el.elementBound.contains(target.elementBound)
+        )
+      : null;
+
+    if (!target || !host) {
+      // Debounced restore: brushing across the gaps between elements must not
+      // flash the fade off and on.
+      if (this._lastTargetId !== null) this._schedule(() => this._apply(null));
+      else this._cancelPending();
       return;
     }
 
-    // The behavior is granted by a host whose bounds contain the target.
-    const host = surface.elementModels.find(
-      el =>
-        hostTypes.includes(el.type) &&
-        el.elementBound.contains(target.elementBound)
-    );
-    if (!host) {
-      this._restore();
+    if (target.id === this._lastTargetId) {
+      // Still on the applied target: keep the spotlight steady.
+      this._cancelPending();
       return;
     }
 
-    if (target.id === this._lastTargetId) return;
-    this._restore();
+    const finalTarget = target;
+    const finalHost = host;
+    this._schedule(() => this._apply(finalTarget, finalHost));
+  }
+
+  private _apply(
+    target: GfxPrimitiveElementModel | null,
+    host?: GfxPrimitiveElementModel
+  ) {
+    const surface = this._surface;
+    this._restoreDim();
+    if (!target || !host || !surface) {
+      this._lastTargetId = null;
+      return;
+    }
     this._lastTargetId = target.id;
-
+    const hostTypes = this._hostTypes;
     const keep = spotlightSet(target, id => surface.getConnectors(id));
     for (const el of surface.elementModels) {
       if (el === host || hostTypes.includes(el.type) || keep.has(el.id)) {
@@ -154,10 +198,15 @@ export class SpotlightManager extends InteractivityExtension {
     }
   }
 
-  private _restore() {
-    this._lastTargetId = null;
+  private _restoreDim() {
     if (!this._dimmed.length) return;
     for (const el of this._dimmed) el.opacity = 1;
     this._dimmed = [];
+  }
+
+  private _restoreNow() {
+    this._cancelPending();
+    this._lastTargetId = null;
+    this._restoreDim();
   }
 }

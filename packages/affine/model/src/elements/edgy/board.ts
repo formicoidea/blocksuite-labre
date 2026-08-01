@@ -13,6 +13,8 @@ import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
 export type EdgyBoardProps = BaseElementProps & {
   /** When false the resize handles are hidden — toggled from the toolbar. */
   resizeEnabled?: boolean;
+  /** When false the board stops granting the hover spotlight. */
+  spotlightEnabled?: boolean;
 };
 
 /**
@@ -57,6 +59,9 @@ export class EdgyBoardElementModel extends GfxPrimitiveElementModel<EdgyBoardPro
 
   @field(true)
   accessor resizeEnabled: boolean = true;
+
+  @field(true)
+  accessor spotlightEnabled: boolean = true;
 
   @field(0)
   accessor rotate: number = 0;

@@ -242,38 +242,41 @@ function orgChart(): SurfaceElementsJSON {
 export const DYN_SCALE = 4.8;
 
 /**
- * The 24 canonical EDGY relations (source, target, verb) — exported for the
- * unit tests. 7 per facet + 3 between the intersections.
+ * The 24 canonical EDGY relations (source, target, verb, label position along
+ * the link) — exported for the unit tests. 7 per facet + 3 between the
+ * intersections. The optional 4th member mirrors the reference diagram's
+ * placements: verbs of intersection-outgoing links sit near the far element
+ * (`labelOffset.distance` ≈ .75), short peer links keep the middle.
  */
-export const EDGY_DYNAMIC_RELATIONS: [string, string, string][] = [
+export const EDGY_DYNAMIC_RELATIONS: [string, string, string, number?][] = [
   // Identity
   ['content', 'purpose', 'expresses'],
   ['content', 'story', 'conveys'],
   ['story', 'purpose', 'contextualises'],
-  ['organisation', 'purpose', 'pursues'],
-  ['organisation', 'story', 'authors'],
-  ['brand', 'purpose', 'represents'],
+  ['organisation', 'purpose', 'pursues', 0.8],
+  ['organisation', 'story', 'authors', 0.75],
+  ['brand', 'purpose', 'represents', 0.7],
   ['brand', 'story', 'evokes'],
   // Architecture
-  ['organisation', 'process', 'performs'],
-  ['process', 'capability', 'realises'],
+  ['organisation', 'process', 'performs', 0.8],
+  ['process', 'capability', 'realises', 0.55],
   ['process', 'asset', 'requires'],
   ['capability', 'asset', 'requires'],
-  ['organisation', 'capability', 'has'],
+  ['organisation', 'capability', 'has', 0.75],
   ['product', 'capability', 'requires'],
-  ['process', 'product', 'creates'],
+  ['process', 'product', 'creates', 0.75],
   // Experience
   ['task', 'journey', 'is part of'],
-  ['task', 'channel', 'uses'],
-  ['journey', 'channel', 'traverses'],
-  ['product', 'task', 'serves'],
-  ['product', 'journey', 'features in'],
-  ['brand', 'task', 'supports'],
-  ['brand', 'journey', 'appears in'],
+  ['task', 'channel', 'uses', 0.7],
+  ['journey', 'channel', 'traverses', 0.7],
+  ['product', 'task', 'serves', 0.75],
+  ['product', 'journey', 'features in', 0.7],
+  ['brand', 'task', 'supports', 0.7],
+  ['brand', 'journey', 'appears in', 0.75],
   // Intersections
-  ['organisation', 'brand', 'builds'],
-  ['organisation', 'product', 'makes'],
-  ['product', 'brand', 'embodies'],
+  ['organisation', 'brand', 'builds', 0.75],
+  ['organisation', 'product', 'makes', 0.75],
+  ['product', 'brand', 'embodies', 0.8],
 ];
 
 /**
@@ -283,22 +286,38 @@ export const EDGY_DYNAMIC_RELATIONS: [string, string, string][] = [
  * Brand/Product astride the white centre, Task/Journey/Channel triangle.
  * Exported (with {@link dynToModel}) for the containment test.
  */
+/** Official pastel fills per facet (the `pictograms/Shape-*.svg` colors). */
+const PASTEL = {
+  identity: '#80ffb7',
+  architecture: '#a6c0ff',
+  experience: '#ff99bd',
+  organisation: '#80eaff',
+  brand: '#ffd580',
+  product: '#e599ff',
+} as const;
+
 export const EDGY_DYNAMIC_NODES: Record<
   string,
-  { kind: 'outcome' | 'object' | 'activity'; cx: number; cy: number; w?: number }
+  {
+    kind: 'outcome' | 'object' | 'activity';
+    cx: number;
+    cy: number;
+    w?: number;
+    fill: string;
+  }
 > = {
-  content: { kind: 'object', cx: 237.5, cy: 100 },
-  purpose: { kind: 'outcome', cx: 282.5, cy: 100 },
-  organisation: { kind: 'object', cx: 340, cy: 100, w: 175 },
-  process: { kind: 'activity', cx: 397.5, cy: 100 },
-  asset: { kind: 'object', cx: 442.5, cy: 100 },
-  story: { kind: 'activity', cx: 255, cy: 152.5 },
-  capability: { kind: 'outcome', cx: 425, cy: 152.5, w: 150 },
-  brand: { kind: 'object', cx: 280, cy: 195 },
-  product: { kind: 'object', cx: 400, cy: 195 },
-  task: { kind: 'outcome', cx: 310, cy: 257.5 },
-  journey: { kind: 'activity', cx: 370, cy: 257.5 },
-  channel: { kind: 'object', cx: 340, cy: 297.5 },
+  content: { kind: 'object', cx: 237.5, cy: 100, fill: PASTEL.identity },
+  purpose: { kind: 'outcome', cx: 282.5, cy: 100, fill: PASTEL.identity },
+  organisation: { kind: 'object', cx: 340, cy: 100, w: 175, fill: PASTEL.organisation },
+  process: { kind: 'activity', cx: 397.5, cy: 100, fill: PASTEL.architecture },
+  asset: { kind: 'object', cx: 442.5, cy: 100, fill: PASTEL.architecture },
+  story: { kind: 'activity', cx: 255, cy: 152.5, fill: PASTEL.identity },
+  capability: { kind: 'outcome', cx: 425, cy: 152.5, w: 150, fill: PASTEL.architecture },
+  brand: { kind: 'object', cx: 280, cy: 195, fill: PASTEL.brand },
+  product: { kind: 'object', cx: 400, cy: 195, fill: PASTEL.product },
+  task: { kind: 'outcome', cx: 310, cy: 257.5, fill: PASTEL.experience },
+  journey: { kind: 'activity', cx: 370, cy: 257.5, fill: PASTEL.experience },
+  channel: { kind: 'object', cx: 340, cy: 297.5, fill: PASTEL.experience },
 };
 
 /**
@@ -320,14 +339,19 @@ function dynamic(): SurfaceElementsJSON {
       xywh: `[0,0,${CROP.w * DYN_SCALE},${CROP.h * DYN_SCALE}]`,
     },
   };
-  for (const [key, { kind, cx, cy, w }] of Object.entries(EDGY_DYNAMIC_NODES)) {
+  for (const [key, { kind, cx, cy, w, fill }] of Object.entries(
+    EDGY_DYNAMIC_NODES
+  )) {
     const nw = w ?? NODE_SIZE[kind].w;
     const nh = NODE_SIZE[kind].h;
     const [mx, my] = dynToModel(cx, cy);
     const name = key.charAt(0).toUpperCase() + key.slice(1);
-    out[key] = enode(kind, mx - nw / 2, my - nh / 2, nw, nh, { text: name });
+    out[key] = enode(kind, mx - nw / 2, my - nh / 2, nw, nh, {
+      text: name,
+      fill,
+    });
   }
-  EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb], i) => {
+  EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb, t], i) => {
     out[`rel${i}`] = {
       type: 'connector',
       mode: ConnectorMode.Straight,
@@ -340,9 +364,11 @@ function dynamic(): SurfaceElementsJSON {
       target: { id: dst },
       // Native connector label: the verb travels with the link. The x/y are
       // re-centred on the path at the first layout, but the w/h ARE the label
-      // box — size it to the verb so the text lays out on one line.
+      // box — size it to the verb so the text lays out on one line. The
+      // distance slides the verb along the link like the reference diagram.
       text: surfaceText(verb),
       labelXYWH: [0, 0, verb.length * 9 + 24, 26],
+      labelOffset: { distance: t ?? 0.5 },
     };
   });
   return out;

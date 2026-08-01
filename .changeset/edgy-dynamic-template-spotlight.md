@@ -2,6 +2,7 @@
 '@labre/affine-gfx-edgy': minor
 '@labre/affine-block-surface': minor
 '@labre/affine-model': minor
+'@labre/std': patch
 ---
 
 feat(edgeless): EDGY dynamic template, blank EDGY board and dependency spotlight
@@ -16,5 +17,9 @@ feat(edgeless): EDGY dynamic template, blank EDGY board and dependency spotlight
   dependency highlight — hovering a node fades everything but the node, its
   connectors and their endpoints. Enabled for the EDGY facets diagram and the
   EDGY board; other frameworks (e.g. Wardley) can opt in with one line.
-- The facets element gains an optional backward-compatible `showPictos` flag
-  (defaults to `true`).
+- The facets element gains optional backward-compatible `showPictos`,
+  `cropToCircles` and `spotlightEnabled` flags; the board gains
+  `spotlightEnabled`. Both background toolbars expose a spotlight toggle.
+- Fix: canvas view events (click/dblclick) now route to the TOPMOST view
+  under the pointer (paint order), so elements laid on a background stay
+  editable — previously the background could swallow the double-click.
