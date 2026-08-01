@@ -23,3 +23,7 @@ feat(edgeless): EDGY dynamic template, blank EDGY board and dependency spotlight
 - Fix: canvas view events (click/dblclick) now route to the TOPMOST view
   under the pointer (paint order), so elements laid on a background stay
   editable — previously the background could swallow the double-click.
+- EDGY template gallery: Customer journey, Service blueprint and
+  Organisation chart connectors are now ATTACHED to their elements (they
+  follow moves, endpoints clip to edges); the blueprint's diagonal arrows
+  no longer render as orthogonal zigzags.

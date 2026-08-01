@@ -125,6 +125,29 @@ function line(x1: number, y1: number, x2: number, y2: number, opts: { arrow?: bo
   };
 }
 
+/**
+ * Connector ATTACHED to two template elements (by key): endpoints clip to the
+ * element edges and follow moves — unlike `line()`, whose free positions are
+ * only right until the user drags something.
+ */
+function attach(
+  src: string,
+  dst: string,
+  opts: { arrow?: boolean; mode?: ConnectorMode } = {}
+) {
+  return {
+    type: 'connector',
+    mode: opts.mode ?? ConnectorMode.Straight,
+    stroke: NODE_STROKE,
+    strokeWidth: 2,
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: opts.arrow ? PointStyle.Triangle : PointStyle.None,
+    source: { id: src },
+    target: { id: dst },
+  };
+}
+
 // ── Facets overview (six facets, sub-cards, facets/intersections) ─────
 function facetsOverview(): SurfaceElementsJSON {
   const out: SurfaceElementsJSON = {};
@@ -179,8 +202,8 @@ function journey(): SurfaceElementsJSON {
     use1: label(258, 504, 184, 20, 'uses', { fontSize: 13, color: '#5f6368' }),
     use2: label(518, 504, 184, 20, 'uses', { fontSize: 13, color: '#5f6368' }),
     use3: label(778, 504, 184, 20, 'uses', { fontSize: 13, color: '#5f6368' }),
-    l1: line(350, 248, 350, 392), l2: line(610, 248, 610, 392), l3: line(870, 248, 870, 392),
-    l4: line(350, 488, 350, 540), l5: line(610, 488, 610, 540), l6: line(870, 488, 870, 540),
+    l1: attach('s1', 'c1'), l2: attach('s2', 'c2'), l3: attach('s3', 'c3'),
+    l4: attach('c1', 't1'), l5: attach('c2', 't2'), l6: attach('c3', 't3'),
   };
 }
 
@@ -205,14 +228,14 @@ function blueprint(): SurfaceElementsJSON {
     csv: chev(280, 514, B, 'Customer service'), cfu: box(1010, 514, B, 'Customer follow-up'),
     pf: chev(600, 664, B, 'Process Form'), dec: chev(900, 664, B, 'Decision [Accept|Reject]'),
     crm: box(280, 814, B, 'CRM Application'), cms: box(600, 814, B, 'Case Management'), pay: box(900, 814, B, 'Payments System'),
-    a1: line(380, 134, 380, 214, { arrow: true }),
-    a2: line(480, 244, 600, 244, { arrow: true }),
-    a3: line(800, 244, 1010, 244, { arrow: true }),
-    a4: line(320, 274, 320, 364, { arrow: true }),
-    a5: line(320, 424, 320, 514, { arrow: true }),
-    a6: line(700, 724, 900, 694, { arrow: true }),
-    a7: line(380, 874, 600, 844, { arrow: true }),
-    a8: line(800, 844, 900, 844, { arrow: true }),
+    a1: attach('af', 'sf', { arrow: true }),
+    a2: attach('sf', 'fs', { arrow: true }),
+    a3: attach('fs', 'rd', { arrow: true }),
+    a4: attach('sf', 'fh', { arrow: true }),
+    a5: attach('fh', 'csv', { arrow: true }),
+    a6: attach('pf', 'dec', { arrow: true }),
+    a7: attach('crm', 'cms', { arrow: true }),
+    a8: attach('cms', 'pay', { arrow: true }),
   });
   return out;
 }
@@ -225,11 +248,14 @@ function orgChart(): SurfaceElementsJSON {
     org: u(420, 40, 180, 'Organisation'),
     a: u(120, 200, 200, 'Business Unit A'), b: u(410, 200, 200, 'Business Unit B'), c: u(700, 200, 200, 'Business Unit C'),
     a1: u(60, 360, 170, 'Group A-1'), a2: u(260, 360, 170, 'Group A-2'), c1: u(715, 360, 170, 'Group C-1'),
-    e1: line(510, 104, 510, 150), e2: line(220, 150, 800, 150),
-    e3: line(220, 150, 220, 200), e4: line(510, 150, 510, 200), e5: line(800, 150, 800, 200),
-    e6: line(220, 264, 220, 320), e7: line(145, 320, 345, 320),
-    e8: line(145, 320, 145, 360), e9: line(345, 320, 345, 360),
-    e10: line(800, 264, 800, 360),
+    // Attached orthogonal connectors: the router draws the org-chart elbows
+    // and the links follow when units are moved around.
+    e1: attach('org', 'a', { mode: ConnectorMode.Orthogonal }),
+    e2: attach('org', 'b', { mode: ConnectorMode.Orthogonal }),
+    e3: attach('org', 'c', { mode: ConnectorMode.Orthogonal }),
+    e4: attach('a', 'a1', { mode: ConnectorMode.Orthogonal }),
+    e5: attach('a', 'a2', { mode: ConnectorMode.Orthogonal }),
+    e6: attach('c', 'c1', { mode: ConnectorMode.Orthogonal }),
   };
 }
 
