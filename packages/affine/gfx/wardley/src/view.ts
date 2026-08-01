@@ -7,12 +7,12 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { ShortcutExtension } from '@labre/std';
+import { CommandExtension } from '@labre/std';
 
+import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_RULES } from './rules';
-import { wardleyShortcuts } from './shortcuts';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
 import { WardleyInteraction, WardleyView } from './element-view';
@@ -68,10 +68,13 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
       context.register(wardleySeniorTool);
-      // Edgeless-scoped chords (w+c, w+l, ...). Registering here inherits
-      // both the wardley flag gating and the edgeless-only availability;
-      // the installer is ShortcutKeymapExtension('edgeless') in root.
-      context.register(ShortcutExtension(wardleyShortcuts));
+      // The 13 Wardley commands, ONE registration for both faces: the
+      // enumerable registry the sub-menu renders from, and — through
+      // `toShortcutDescriptor` — the edgeless chords (w+c, w+l, ...).
+      // Registering here inherits both the wardley flag gating and the
+      // edgeless-only availability; the keymap installer is
+      // ShortcutKeymapExtension('edgeless') in root.
+      context.register(CommandExtension(wardleyCommands, wardleyCommandIcons));
     }
   }
 }

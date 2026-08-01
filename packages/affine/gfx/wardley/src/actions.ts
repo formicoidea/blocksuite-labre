@@ -10,10 +10,7 @@ import {
   TextFitMode,
   type WardleyBgVariant,
 } from '@labre/affine-model';
-import {
-  EditPropsStore,
-  TelemetryProvider,
-} from '@labre/affine-shared/services';
+import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 
@@ -52,26 +49,15 @@ import {
 import { WARDLEY_ROLE } from './roles';
 
 /**
- * Standalone creation/activation actions for the Wardley toolbox. They are
- * invoked from both the toolbar menu ({@link EdgelessWardleyMenu}) and the
- * wardley keyboard shortcuts, so they only depend on the {@link GfxController}.
+ * Standalone creation/activation actions for the Wardley toolbox — the
+ * BEHAVIOUR layer, shared by every surface. They only depend on the
+ * {@link GfxController}.
+ *
+ * They no longer emit telemetry: since PF3 the single emission point is the
+ * command registry's `runCommand` (`docs/adr/0008`), which is the only function
+ * every surface goes through. `WardleyActionSource` is gone with it — the
+ * segment/module discrimination it carried is now `CommandInvocation.surface`.
  */
-
-/** Where the action was triggered from — feeds the telemetry payload. */
-export interface WardleyActionSource {
-  segment: string;
-  module: string;
-}
-
-const TOOLBOX_SOURCE: WardleyActionSource = {
-  segment: 'wardley toolbox',
-  module: 'wardley menu',
-};
-
-export const WARDLEY_SHORTCUT_SOURCE: WardleyActionSource = {
-  segment: 'wardley toolbox',
-  module: 'keyboard shortcut',
-};
 
 /**
  * Per-variant default label overrides applied at creation (all remain editable
@@ -145,20 +131,6 @@ const NODE_PRESETS = {
  */
 export type WardleySingleCircleKind = keyof typeof NODE_PRESETS;
 
-function track(
-  gfx: GfxController,
-  source: WardleyActionSource,
-  event: 'FrameworkElementAdded' | 'FrameworkToolPicked',
-  element: string
-) {
-  gfx.std.getOptional(TelemetryProvider)?.track(event, {
-    framework: 'wardley',
-    element,
-    page: 'whiteboard editor',
-    ...source,
-  });
-}
-
 function finish(gfx: GfxController, id: string) {
   gfx.doc.captureSync();
   gfx.tool.setTool(DefaultTool);
@@ -224,8 +196,7 @@ function addLabel(
 /** Create a wardley map background of the given variant, viewport-centered. */
 export function createWardleyBackground(
   gfx: GfxController,
-  variant: WardleyBgVariant = 'classic',
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  variant: WardleyBgVariant = 'classic'
 ) {
   if (!gfx.surface) return;
 
@@ -264,7 +235,6 @@ export function createWardleyBackground(
       height
     ).serialize(),
   });
-  track(gfx, source, 'FrameworkElementAdded', `background:${variant}`);
   finish(gfx, id);
 }
 
@@ -275,8 +245,7 @@ export function createWardleyBackground(
  */
 export function createWardleyNode(
   gfx: GfxController,
-  kind: WardleySingleCircleKind,
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  kind: WardleySingleCircleKind
 ) {
   const surface = gfx.surface;
   if (!surface) return;
@@ -292,14 +261,12 @@ export function createWardleyNode(
     cy - LABEL_H / 2
   );
 
-  track(gfx, source, 'FrameworkElementAdded', `node:${kind}`);
   finish(gfx, group(gfx, [nodeId, labelId]));
 }
 
 /** Create an inertia bar (filled black rect). */
 export function createWardleyInertia(
-  gfx: GfxController,
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  gfx: GfxController
 ) {
   if (!gfx.surface) return;
 
@@ -319,7 +286,6 @@ export function createWardleyInertia(
     textFitMode: TextFitMode.Overflow,
     xywh: new Bound(centerX - w / 2, centerY - h / 2, w, h).serialize(),
   });
-  track(gfx, source, 'FrameworkElementAdded', 'node:inertia');
   finish(gfx, id);
 }
 
@@ -331,8 +297,7 @@ export function createWardleyInertia(
  * moves as one. Pure composition of native elements — no custom type / view.
  */
 export function createWardleyPipeline(
-  gfx: GfxController,
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  gfx: GfxController
 ) {
   if (!gfx.surface) return;
 
@@ -386,7 +351,6 @@ export function createWardleyPipeline(
 
   // Nested groups: (handle + label), then (body + that group).
   const innerId = group(gfx, [handleId, labelId]);
-  track(gfx, source, 'FrameworkElementAdded', 'node:pipeline');
   finish(gfx, group(gfx, [bodyId, innerId]));
 }
 
@@ -398,8 +362,7 @@ export function createWardleyPipeline(
  * everything is grouped into one object.
  */
 export function createWardleyMarket(
-  gfx: GfxController,
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  gfx: GfxController
 ) {
   const surface = gfx.surface;
   if (!surface) return;
@@ -451,7 +414,6 @@ export function createWardleyMarket(
 
   const labelId = addLabel(surface, MARKET_LABEL, cx + R + LABEL_GAP, cy - LABEL_H / 2);
 
-  track(gfx, source, 'FrameworkElementAdded', 'node:market');
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
 }
 
@@ -462,8 +424,7 @@ export function createWardleyMarket(
  */
 export function activateWardleyConnector(
   gfx: GfxController,
-  kind: 'link' | 'arrow',
-  source: WardleyActionSource = TOOLBOX_SOURCE
+  kind: 'link' | 'arrow'
 ) {
   const props =
     kind === 'arrow'
@@ -484,7 +445,6 @@ export function activateWardleyConnector(
           rearEndpointStyle: PointStyle.None,
         };
   gfx.std.get(EditPropsStore).recordLastProps('connector', props);
-  track(gfx, source, 'FrameworkToolPicked', `connector:${kind}`);
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     // The value-chain link IS the "depends on" edge of a Wardley map, so it

@@ -2,7 +2,9 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CommandExtension } from '@labre/std';
 
+import { contextMapCommandIcons, contextMapCommands } from './commands';
 import { contextMapEffects } from './effects';
 import { contextMapSeniorTool } from './toolbar/senior-tool';
 
@@ -25,6 +27,9 @@ export class DddContextMapViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(contextMapSeniorTool);
+      context.register(
+        CommandExtension(contextMapCommands, contextMapCommandIcons)
+      );
     }
   }
 }

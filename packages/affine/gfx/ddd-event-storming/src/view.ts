@@ -2,7 +2,12 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CommandExtension } from '@labre/std';
 
+import {
+  eventStormingCommandIcons,
+  eventStormingCommands,
+} from './commands';
 import { eventStormingEffects } from './effects';
 import { eventStormingSeniorTool } from './toolbar/senior-tool';
 
@@ -25,6 +30,9 @@ export class DddEventStormingViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(eventStormingSeniorTool);
+      context.register(
+        CommandExtension(eventStormingCommands, eventStormingCommandIcons)
+      );
     }
   }
 }

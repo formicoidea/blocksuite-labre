@@ -11,7 +11,7 @@ import {
   BlockFlavourIdentifier,
   BlockViewExtension,
   FlavourExtension,
-  ShortcutExtension,
+  CommandExtension,
   ShortcutKeymapExtension,
 } from '@labre/std';
 import { literal } from 'lit/static-html.js';
@@ -24,7 +24,7 @@ import { EdgelessLocker } from './edgeless/edgeless-root-spec';
 import { AltCloneExtension } from './edgeless/interact-extensions/clone-ext';
 import { effects } from './effects';
 import { fallbackKeymap } from './keyboard/keymap';
-import { coreShortcuts } from './keyboard/shortcuts';
+import { coreCommands } from './keyboard/commands';
 
 export class RootViewExtension extends ViewExtensionProvider {
   override name = 'affine-root-block';
@@ -39,9 +39,10 @@ export class RootViewExtension extends ViewExtensionProvider {
     context.register([
       FlavourExtension('affine:page'),
       fallbackKeymap,
-      // Enumerable, host-overridable shortcuts. Core undo/redo live here; the
+      // Enumerable, host-overridable commands. Core undo/redo live here; the
+      // registration also derives their shortcut descriptors, and the
       // installer binds the effective keymap (see `@labre/std` shortcut.ts).
-      ShortcutExtension(coreShortcuts),
+      CommandExtension(coreCommands),
       ShortcutKeymapExtension('global'),
       ToolbarModuleExtension({
         id: BlockFlavourIdentifier(NoteBlockSchema.model.flavour),

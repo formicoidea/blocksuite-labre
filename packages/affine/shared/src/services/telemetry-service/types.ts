@@ -1,16 +1,10 @@
-export type ElementCreationSource =
-  | 'shortcut'
-  | 'toolbar:general'
-  | 'toolbar:dnd'
-  | 'canvas:drop'
-  | 'canvas:draw'
-  | 'canvas:dbclick'
-  | 'canvas:paste'
-  | 'context-menu'
-  | 'ai'
-  | 'internal'
-  | 'conversation'
-  | 'manually save';
+/**
+ * Re-exported, unchanged, from `@labre/std`: `CommandInvocation.source` is
+ * typed on it and the command registry sits below this layer (ADR 0008).
+ */
+import type { ElementCreationSource } from '@labre/std';
+
+export type { ElementCreationSource };
 
 export interface TelemetryEvent {
   page?: string;

@@ -93,6 +93,7 @@ import {
   isBlockEnabled,
   type OptionalBlock,
 } from '../flags.js';
+import { CommandTelemetryViewExtension } from './command-telemetry.js';
 
 /**
  * View extensions.
@@ -107,6 +108,9 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
   const on = (block: OptionalBlock) => isBlockEnabled(flags, block);
   return [
     FoundationViewExtension,
+    // The single command-telemetry emitter. Unconditional: a disabled
+    // framework simply never invokes a command (docs/adr/0008).
+    CommandTelemetryViewExtension,
 
     // Gfx — each framework contributes an always-on `…Render…` extension
     // (element view + renderer + interaction + contextual toolbar) and a

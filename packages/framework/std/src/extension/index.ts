@@ -1,4 +1,5 @@
 export * from './block-view.js';
+export * from './command-registry.js';
 export * from './config.js';
 export * from './dnd/index.js';
 export * from './editor-life-cycle.js';

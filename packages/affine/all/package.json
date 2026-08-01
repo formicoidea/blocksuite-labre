@@ -296,6 +296,8 @@
     "./schemas": "./src/schemas.ts",
     "./flags": "./src/flags.ts",
     "./shortcuts": "./src/shortcuts.ts",
+    "./commands": "./src/commands.ts",
+    "./frameworks": "./src/frameworks.ts",
     "./model": "./src/model/index.ts",
     "./sync": "./src/sync/index.ts",
     "./extensions/store": "./src/extensions/store.ts",

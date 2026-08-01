@@ -4,6 +4,6 @@ export {
   type WardleyRole,
   type WardleyRoleId,
 } from './roles';
+export { wardleyCommandIcons, wardleyCommands } from './commands';
 export { WARDLEY_PROFILES } from './profiles';
 export { WARDLEY_RULES } from './rules';
-export { wardleyShortcuts } from './shortcuts';
