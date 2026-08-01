@@ -16,6 +16,11 @@ export type EdgyFacetsProps = BaseElementProps & {
   showLabels?: boolean;
   /** When false the six white zone pictograms are hidden. */
   showPictos?: boolean;
+  /**
+   * When true the rendering is cropped to the circles' bounding box (the REF
+   * margins only exist for the facet name labels — pointless when hidden).
+   */
+  cropToCircles?: boolean;
 
   // ── Editable labels (double-click on the canvas to edit) ──────────────
   identityLabel?: string;
@@ -74,6 +79,9 @@ export class EdgyFacetsElementModel extends GfxPrimitiveElementModel<EdgyFacetsP
 
   @field(true)
   accessor showPictos: boolean = true;
+
+  @field(false)
+  accessor cropToCircles: boolean = false;
 
   @field('Identity')
   accessor identityLabel: string = 'Identity';

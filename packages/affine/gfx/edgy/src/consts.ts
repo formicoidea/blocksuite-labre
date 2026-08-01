@@ -48,3 +48,31 @@ export function refScale(w: number, h: number) {
   const s = Math.min(w / REF_W, h / REF_H);
   return { s, ox: (w - REF_W * s) / 2, oy: (h - REF_H * s) / 2 };
 }
+
+/**
+ * Bounding box of the three circles in reference coords (small padding). The
+ * REF margins around it only exist for the facet name labels — when a diagram
+ * hides them (`cropToCircles`), the renderer fits THIS box into the element
+ * bounds instead, so the background hugs the Venn.
+ */
+export const CROP = (() => {
+  const pad = 8;
+  const ax = VENN.cx - 0.866 * VENN.r0; // Identity / Architecture centres
+  const abY = VENN.cy - 0.5 * VENN.r0;
+  const cY = VENN.cy + VENN.r0; // Experience centre
+  const minX = ax - VENN.R - pad;
+  const maxX = VENN.cx + 0.866 * VENN.r0 + VENN.R + pad;
+  const minY = abY - VENN.R - pad;
+  const maxY = cY + VENN.R + pad;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+})();
+
+/** `refScale` variant fitting the cropped circles box (see {@link CROP}). */
+export function cropScale(w: number, h: number) {
+  const s = Math.min(w / CROP.w, h / CROP.h);
+  return {
+    s,
+    ox: (w - CROP.w * s) / 2 - CROP.x * s,
+    oy: (h - CROP.h * s) / 2 - CROP.y * s,
+  };
+}

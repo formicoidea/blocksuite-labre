@@ -14,7 +14,7 @@ import {
   TextAlign,
 } from '@labre/affine-model';
 
-import { REF_H, REF_W } from '../consts';
+import { CROP, REF_H, REF_W } from '../consts';
 import {
   ACTIVITY_VERTICES,
   INNER_FONT_SIZE,
@@ -234,8 +234,12 @@ function orgChart(): SurfaceElementsJSON {
 }
 
 // ── EDGY dynamic (the relational metamodel, on the facets background) ──
-/** Background scale: REF × 4 leaves room for default-size nodes in each zone. */
-const DYN_SCALE = 4;
+/**
+ * Background scale (from REF coords to model coords): large enough that the
+ * default-size nodes breathe inside each zone. The background is cropped to
+ * the circles (`cropToCircles`), so its xywh covers CROP × DYN_SCALE.
+ */
+export const DYN_SCALE = 4.8;
 
 /**
  * The 24 canonical EDGY relations (source, target, verb) — exported for the
@@ -273,28 +277,38 @@ export const EDGY_DYNAMIC_RELATIONS: [string, string, string][] = [
 ];
 
 /**
- * The 12 elements, centred coordinates in the DYN_SCALE model space
- * (2720×1600), laid out like the reference "elements & relations" diagram:
- * aligned top row, Story/Capability flanks, Brand/Product astride the white
- * centre, Task/Journey/Channel triangle. Exported for the containment test.
+ * The 12 elements, centred coordinates in REFERENCE coords (the fixed space
+ * of consts.ts — the same space as `VENN`), laid out like the reference
+ * "elements & relations" diagram: aligned top row, Story/Capability flanks,
+ * Brand/Product astride the white centre, Task/Journey/Channel triangle.
+ * Exported (with {@link dynToModel}) for the containment test.
  */
 export const EDGY_DYNAMIC_NODES: Record<
   string,
   { kind: 'outcome' | 'object' | 'activity'; cx: number; cy: number; w?: number }
 > = {
-  content: { kind: 'object', cx: 950, cy: 400 },
-  purpose: { kind: 'outcome', cx: 1130, cy: 400 },
-  organisation: { kind: 'object', cx: 1360, cy: 400, w: 175 },
-  process: { kind: 'activity', cx: 1590, cy: 400 },
-  asset: { kind: 'object', cx: 1770, cy: 400 },
-  story: { kind: 'activity', cx: 1020, cy: 610 },
-  capability: { kind: 'outcome', cx: 1700, cy: 610, w: 150 },
-  brand: { kind: 'object', cx: 1120, cy: 780 },
-  product: { kind: 'object', cx: 1600, cy: 780 },
-  task: { kind: 'outcome', cx: 1240, cy: 1030 },
-  journey: { kind: 'activity', cx: 1480, cy: 1030 },
-  channel: { kind: 'object', cx: 1360, cy: 1190 },
+  content: { kind: 'object', cx: 237.5, cy: 100 },
+  purpose: { kind: 'outcome', cx: 282.5, cy: 100 },
+  organisation: { kind: 'object', cx: 340, cy: 100, w: 175 },
+  process: { kind: 'activity', cx: 397.5, cy: 100 },
+  asset: { kind: 'object', cx: 442.5, cy: 100 },
+  story: { kind: 'activity', cx: 255, cy: 152.5 },
+  capability: { kind: 'outcome', cx: 425, cy: 152.5, w: 150 },
+  brand: { kind: 'object', cx: 280, cy: 195 },
+  product: { kind: 'object', cx: 400, cy: 195 },
+  task: { kind: 'outcome', cx: 310, cy: 257.5 },
+  journey: { kind: 'activity', cx: 370, cy: 257.5 },
+  channel: { kind: 'object', cx: 340, cy: 297.5 },
 };
+
+/**
+ * Reference coords → template model coords: the background element sits at
+ * (0,0) and renders the cropped circles box, so a reference point maps to
+ * `(p - CROP.origin) × DYN_SCALE`.
+ */
+export function dynToModel(refX: number, refY: number): [number, number] {
+  return [(refX - CROP.x) * DYN_SCALE, (refY - CROP.y) * DYN_SCALE];
+}
 
 function dynamic(): SurfaceElementsJSON {
   const out: SurfaceElementsJSON = {
@@ -302,14 +316,16 @@ function dynamic(): SurfaceElementsJSON {
       type: 'edgy',
       showLabels: false,
       showPictos: false,
-      xywh: `[0,0,${REF_W * DYN_SCALE},${REF_H * DYN_SCALE}]`,
+      cropToCircles: true,
+      xywh: `[0,0,${CROP.w * DYN_SCALE},${CROP.h * DYN_SCALE}]`,
     },
   };
   for (const [key, { kind, cx, cy, w }] of Object.entries(EDGY_DYNAMIC_NODES)) {
     const nw = w ?? NODE_SIZE[kind].w;
     const nh = NODE_SIZE[kind].h;
+    const [mx, my] = dynToModel(cx, cy);
     const name = key.charAt(0).toUpperCase() + key.slice(1);
-    out[key] = enode(kind, cx - nw / 2, cy - nh / 2, nw, nh, { text: name });
+    out[key] = enode(kind, mx - nw / 2, my - nh / 2, nw, nh, { text: name });
   }
   EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb], i) => {
     out[`rel${i}`] = {

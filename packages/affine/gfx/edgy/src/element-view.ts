@@ -33,6 +33,8 @@ export class EdgyView extends GfxElementModelView<EdgyFacetsElementModel> {
   /** Double-click on a label → edit its text in place. */
   private _onDblClick(e: PointerEventState): void {
     if (this.model.isLocked()) return;
+    // No labels shown → nothing to edit (and the cropped mapping differs).
+    if (!this.model.showLabels) return;
 
     const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
     const [bx, by, w, h] = this.model.deserializedXYWH;

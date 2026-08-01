@@ -2,11 +2,13 @@ import { spotlightSet } from '@labre/affine-block-surface';
 import type { ConnectorElementModel } from '@labre/affine-model';
 import { describe, expect, it, vi } from 'vitest';
 
-import { REF_W, VENN } from '../consts';
+import { VENN } from '../consts';
 import { edgyBoard } from '../board-renderer';
 import { edgy } from '../element-renderer';
 import { NODE_SIZE } from '../node/consts';
 import {
+  DYN_SCALE,
+  dynToModel,
   EDGY_DYNAMIC_NODES,
   EDGY_DYNAMIC_RELATIONS,
   edgyDynamicTemplate,
@@ -82,6 +84,7 @@ describe('EDGY dynamic template', () => {
     const bg = byType('edgy')[0];
     expect(bg.showLabels).toBe(false);
     expect(bg.showPictos).toBe(false);
+    expect(bg.cropToCircles).toBe(true);
   });
 
   it('labels every connector with its canonical verb, attached to valid nodes', () => {
@@ -105,17 +108,15 @@ describe('EDGY dynamic template', () => {
   });
 
   it('places every node fully inside its Venn zone', () => {
-    // Derive the actual background geometry from the template data.
-    const bg = byType('edgy')[0];
-    const [, , w] = JSON.parse(bg.xywh as string) as number[];
-    const k = w / REF_W;
-    const R = VENN.R * k;
-    const cx = VENN.cx * k;
-    const cy = VENN.cy * k;
-    const r0 = VENN.r0 * k;
-    const A = { x: cx - 0.866 * r0, y: cy - 0.5 * r0 }; // Identity
-    const B = { x: cx + 0.866 * r0, y: cy - 0.5 * r0 }; // Architecture
-    const C = { x: cx, y: cy + r0 }; // Experience
+    const R = VENN.R * DYN_SCALE;
+    const toPoint = ([x, y]: [number, number]) => ({ x, y });
+    const A = toPoint(
+      dynToModel(VENN.cx - 0.866 * VENN.r0, VENN.cy - 0.5 * VENN.r0)
+    ); // Identity
+    const B = toPoint(
+      dynToModel(VENN.cx + 0.866 * VENN.r0, VENN.cy - 0.5 * VENN.r0)
+    ); // Architecture
+    const C = toPoint(dynToModel(VENN.cx, VENN.cy + VENN.r0)); // Experience
 
     // Which circles each element must be fully inside (and fully outside the
     // others): facet elements in their exclusive crescent, intersections in
@@ -138,11 +139,12 @@ describe('EDGY dynamic template', () => {
     for (const [key, node] of Object.entries(EDGY_DYNAMIC_NODES)) {
       const nw = node.w ?? NODE_SIZE[node.kind].w;
       const nh = NODE_SIZE[node.kind].h;
+      const [mx, my] = dynToModel(node.cx, node.cy);
       const corners = [
-        [node.cx - nw / 2, node.cy - nh / 2],
-        [node.cx + nw / 2, node.cy - nh / 2],
-        [node.cx - nw / 2, node.cy + nh / 2],
-        [node.cx + nw / 2, node.cy + nh / 2],
+        [mx - nw / 2, my - nh / 2],
+        [mx + nw / 2, my - nh / 2],
+        [mx - nw / 2, my + nh / 2],
+        [mx + nw / 2, my + nh / 2],
       ];
       for (const [circle, center] of [
         ['A', A],

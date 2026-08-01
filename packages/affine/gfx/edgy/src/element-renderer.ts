@@ -6,6 +6,7 @@ import type { EdgyFacetsElementModel } from '@labre/affine-model';
 
 import {
   COLORS,
+  cropScale,
   FONT_FAMILY,
   LABEL_FONT_SIZE,
   PICTO_STROKE,
@@ -40,8 +41,9 @@ export const edgy: ElementRenderer<EdgyFacetsElementModel> = (
     matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
   );
 
-  // Uniform fit of the reference design, centered (letterboxed).
-  const { s, ox, oy } = refScale(w, h);
+  // Uniform fit of the reference design, centered (letterboxed) — or of the
+  // circles' bounding box only, when the diagram is cropped.
+  const { s, ox, oy } = model.cropToCircles ? cropScale(w, h) : refScale(w, h);
   ctx.translate(ox, oy);
   ctx.scale(s, s);
 
