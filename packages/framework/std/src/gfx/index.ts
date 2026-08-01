@@ -70,6 +70,7 @@ export {
   field,
   getDerivedProps,
   getFieldPropsSet,
+  getLocalPropsSet,
   initializeObservers,
   initializeWatchers,
   local,

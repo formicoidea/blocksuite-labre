@@ -259,8 +259,10 @@ describe('element semantic role', () => {
     });
 
     // Exactly what paste / duplicate does: re-create an element from the
-    // serialized props. Only keys with a declared `@field` accessor reach the
-    // Y.Map, which is why `role` is declared on the base element model.
+    // serialized props. `role` is declared on the base element model, so it
+    // reaches the Y.Map through its `@field` accessor. (Undeclared keys are
+    // preserved too, by a different route — see
+    // `element-unknown-props.unit.spec.ts`.)
     const { id: _id, ...props } = model.getElementById(sourceId)!.serialize();
     const copy = model.getElementById(model.addElement(props))!;
 

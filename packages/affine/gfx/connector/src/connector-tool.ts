@@ -83,7 +83,6 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
       mode: this.activatedOption.mode,
       // `undefined` writes nothing: a neutral edge keeps no `role` key.
       role: this.activatedOption.role,
-      controllers: [],
       source: this._source,
       target: { position: this._startPoint },
     });
