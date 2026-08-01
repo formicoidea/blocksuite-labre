@@ -21,6 +21,7 @@ import {
 } from './utils/font.js';
 export * from './adapters/index.js';
 export * from './extensions';
+export * from './framework-background/index.js';
 export type { SurfaceContext } from './surface-block.js';
 export { SurfaceBlockComponent } from './surface-block.js';
 export {

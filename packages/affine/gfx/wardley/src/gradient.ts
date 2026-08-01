@@ -1,3 +1,5 @@
+import type { BackgroundWashDef } from '@labre/affine-block-surface';
+
 /**
  * Curve-driven gradient backgrounds (Slice C). Each analytic background is a
  * smooth mathematical curve (piecewise asymmetric Gaussian bells); the gradient
@@ -5,6 +7,11 @@
  * its own min and max — i.e. the gradient is strongest where the curve peaks and
  * fades to nothing at its minimum. Validated against the reference images at
  * `../wardley-mockups/gradient-backgrounds.html`.
+ *
+ * The curves are TABULATED ONCE, here, at module load: what the declaration
+ * ships — and what the primitive paints — is a table of `[offset, alpha]`
+ * stops, not a function. Nothing is evaluated at paint time, and the wash is
+ * data like the rest of the declaration (PF2.1).
  */
 
 const bell = (x: number, mu: number, s: number) =>
@@ -55,81 +62,86 @@ const GRADIENT_MAX_OPACITY = 0.45;
 /** Peak opacity for the grey evolution-gradient variant. */
 const GREY_MAX_OPACITY = 0.38;
 
-function rgba(hex: string, alpha: number) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 /**
- * Add stops to a horizontal gradient (offset 0..1 spanning the plot width) for
- * a function-driven opacity profile within [x0, x1] (zero outside).
+ * Tabulate one opacity profile as gradient stops spanning the plot width:
+ * 49 samples inside [x0, x1], bracketed by a zero stop wherever the profile
+ * does not reach the edge of the plot.
  */
-function addStops(
-  grad: CanvasGradient,
-  hex: string,
+function stopTable(
   opacityFn: (x: number) => number,
   x0: number,
   x1: number,
   maxOp: number = GRADIENT_MAX_OPACITY
-) {
+): Array<readonly [number, number]> {
   const eps = 0.001;
-  if (x0 > eps) grad.addColorStop(Math.max(0, x0 - eps), rgba(hex, 0));
+  const stops: Array<readonly [number, number]> = [];
+  if (x0 > eps) stops.push([Math.max(0, x0 - eps), 0]);
   const N = 48;
   for (let i = 0; i <= N; i++) {
     const x = x0 + ((x1 - x0) * i) / N;
-    grad.addColorStop(clamp01(x), rgba(hex, clamp01(opacityFn(x)) * maxOp));
+    stops.push([clamp01(x), clamp01(opacityFn(x)) * maxOp]);
   }
-  if (x1 < 1 - eps) grad.addColorStop(Math.min(1, x1 + eps), rgba(hex, 0));
+  if (x1 < 1 - eps) stops.push([Math.min(1, x1 + eps), 0]);
+  return stops;
 }
+
+// benefit: green where the curve is positive, red where negative.
+const BEN_MAX_POS = RB.hi;
+const BEN_MAX_NEG = -RB.lo;
 
 /**
- * Paint the curve-driven gradient over the plot rectangle [px0,px1]×[py0,py1]
- * in element-local coordinates. `classic` paints nothing.
+ * The washes the Wardley declaration ships, in painting order. Only those whose
+ * `variants` name the background's current `variant` are painted, and only
+ * while `showGradient` is on — so `classic` paints none of them and the frame
+ * stays plain white, exactly as before.
  */
-export function paintGradientBackground(
-  ctx: CanvasRenderingContext2D,
-  variant: 'opportunity' | 'benefit' | 'evolution-gradient',
-  px0: number,
-  px1: number,
-  py0: number,
-  py1: number
-) {
-  const w = px1 - px0;
-  const h = py1 - py0;
-
-  if (variant === 'evolution-gradient') {
-    const grey = ctx.createLinearGradient(px0, 0, px1, 0);
-    addStops(grey, GRADIENT_GREY, fGrey, 0, 1, GREY_MAX_OPACITY);
-    ctx.fillStyle = grey;
-    ctx.fillRect(px0, py0, w, h);
-    return;
-  }
-
-  if (variant === 'opportunity') {
-    const green = ctx.createLinearGradient(px0, 0, px1, 0);
-    addStops(green, GRADIENT_GREEN, x => norm(fDiff(x), RG.lo, RG.hi), DIFF_DOM[0], DIFF_DOM[1]);
-    ctx.fillStyle = green;
-    ctx.fillRect(px0, py0, w, h);
-
-    const red = ctx.createLinearGradient(px0, 0, px1, 0);
-    addStops(red, GRADIENT_RED, x => norm(fOper(x), RR.lo, RR.hi), OPER_DOM[0], OPER_DOM[1]);
-    ctx.fillStyle = red;
-    ctx.fillRect(px0, py0, w, h);
-    return;
-  }
-
-  // benefit: green where the curve is positive, red where negative.
-  const maxPos = RB.hi;
-  const maxNeg = -RB.lo;
-  const green = ctx.createLinearGradient(px0, 0, px1, 0);
-  addStops(green, GRADIENT_GREEN, x => Math.max(0, fBen(x)) / maxPos, 0, 1);
-  ctx.fillStyle = green;
-  ctx.fillRect(px0, py0, w, h);
-
-  const red = ctx.createLinearGradient(px0, 0, px1, 0);
-  addStops(red, GRADIENT_RED, x => Math.max(0, -fBen(x)) / maxNeg, 0, 1);
-  ctx.fillStyle = red;
-  ctx.fillRect(px0, py0, w, h);
-}
+export const WARDLEY_WASHES: readonly BackgroundWashDef[] = [
+  {
+    id: 'evolution-grey',
+    variants: ['evolution-gradient'],
+    visibleProp: 'showGradient',
+    direction: 'horizontal',
+    color: GRADIENT_GREY,
+    stops: stopTable(fGrey, 0, 1, GREY_MAX_OPACITY),
+  },
+  {
+    id: 'opportunity-differential',
+    variants: ['opportunity'],
+    visibleProp: 'showGradient',
+    direction: 'horizontal',
+    color: GRADIENT_GREEN,
+    stops: stopTable(
+      x => norm(fDiff(x), RG.lo, RG.hi),
+      DIFF_DOM[0],
+      DIFF_DOM[1]
+    ),
+  },
+  {
+    id: 'opportunity-operational',
+    variants: ['opportunity'],
+    visibleProp: 'showGradient',
+    direction: 'horizontal',
+    color: GRADIENT_RED,
+    stops: stopTable(
+      x => norm(fOper(x), RR.lo, RR.hi),
+      OPER_DOM[0],
+      OPER_DOM[1]
+    ),
+  },
+  {
+    id: 'benefit-positive',
+    variants: ['benefit'],
+    visibleProp: 'showGradient',
+    direction: 'horizontal',
+    color: GRADIENT_GREEN,
+    stops: stopTable(x => Math.max(0, fBen(x)) / BEN_MAX_POS, 0, 1),
+  },
+  {
+    id: 'benefit-investment',
+    variants: ['benefit'],
+    visibleProp: 'showGradient',
+    direction: 'horizontal',
+    color: GRADIENT_RED,
+    stops: stopTable(x => Math.max(0, -fBen(x)) / BEN_MAX_NEG, 0, 1),
+  },
+];

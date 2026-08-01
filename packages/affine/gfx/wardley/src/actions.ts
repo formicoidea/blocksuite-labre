@@ -1,4 +1,4 @@
-import { DefaultTool } from '@labre/affine-block-surface';
+import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
@@ -17,7 +17,7 @@ import {
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 
-import { REF_WIDTH } from './consts';
+import { WARDLEY_BACKGROUND } from './background';
 import {
   ECOSYSTEM_LABEL,
   ECOSYSTEM_SIZE,
@@ -215,19 +215,29 @@ export function createWardleyBackground(
 ) {
   if (!gfx.surface) return;
 
-  let width = REF_WIDTH;
+  // A second map matches the biggest one already on the board rather than
+  // shrinking beside it. The reference size and the locked 16:9 proportion are
+  // the declaration's (`geometry`), not this function's.
+  let atLeastWidth = 0;
+  let atLeastHeight = 0;
   for (const el of gfx.surface.getElementsByType('wardley')) {
     const [, , ew, eh] = el.deserializedXYWH;
-    width = Math.max(width, ew, (eh * 16) / 9);
+    atLeastWidth = Math.max(atLeastWidth, ew);
+    atLeastHeight = Math.max(atLeastHeight, eh);
   }
-  const height = (width * 9) / 16;
+  const { width, height } = backgroundSize(
+    WARDLEY_BACKGROUND,
+    atLeastWidth,
+    atLeastHeight
+  );
 
   const { centerX, centerY } = gfx.viewport;
   const id = gfx.surface.addElement({
-    type: 'wardley',
+    type: WARDLEY_BACKGROUND.type,
     // The map is a first-class role: validation rules position artefacts
-    // against `wardley:map`, never against the `wardley` element type.
-    role: WARDLEY_ROLE.map,
+    // against `wardley:map`, never against the `wardley` element type. The
+    // declaration owns it, so a templated map and a hand-drawn one agree.
+    role: WARDLEY_BACKGROUND.role,
     variant,
     ...BACKGROUND_VARIANT_DEFAULTS[variant],
     xywh: new Bound(

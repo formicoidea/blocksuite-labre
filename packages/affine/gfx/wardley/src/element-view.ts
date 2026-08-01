@@ -1,17 +1,15 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  backgroundLabelHits,
+  EdgelessCRUDIdentifier,
+  FrameworkBackgroundInteractionExtension,
+  hitTestBackgroundLabel,
+} from '@labre/affine-block-surface';
 import type { WardleyBackgroundElementModel } from '@labre/affine-model';
 import { rotatePoint } from '@labre/global/gfx';
 import type { PointerEventState } from '@labre/std';
-import {
-  GfxElementModelView,
-  GfxViewInteractionExtension,
-} from '@labre/std/gfx';
+import { GfxElementModelView } from '@labre/std/gfx';
 
-import {
-  getWardleyLabelHits,
-  hitTestWardleyLabel,
-  type WardleyLabelField,
-} from './label-layout';
+import { WARDLEY_BACKGROUND } from './background';
 
 export class WardleyView extends GfxElementModelView<WardleyBackgroundElementModel> {
   static override type: string = 'wardley';
@@ -48,17 +46,31 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       ly = uy - by;
     }
 
-    const hit = hitTestWardleyLabel(getWardleyLabelHits(this.model, w, h), lx, ly);
+    // Which labels exist, where they sit and which are editable all come from
+    // the declaration the renderer paints — one source, so a label can never be
+    // drawn in one place and clicked in another.
+    const hit = hitTestBackgroundLabel(
+      backgroundLabelHits(
+        WARDLEY_BACKGROUND,
+        this.model as unknown as Record<string, unknown>,
+        w,
+        h
+      ),
+      lx,
+      ly
+    );
     if (!hit) return;
 
-    this._openLabelEditor(hit.field, e);
+    this._openLabelEditor(hit.prop, e);
   }
 
-  private _openLabelEditor(field: WardleyLabelField, e: PointerEventState): void {
+  private _openLabelEditor(field: string, e: PointerEventState): void {
     this._closeLabelEditor();
 
     const input = document.createElement('input');
-    input.value = String(this.model[field] ?? '');
+    input.value = String(
+      (this.model as unknown as Record<string, unknown>)[field] ?? ''
+    );
     Object.assign(input.style, {
       position: 'fixed',
       left: `${e.raw.clientX}px`,
@@ -122,22 +134,10 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
 }
 
 /**
- * Resize gating: the resize handles are hidden unless `model.resizeEnabled` is
- * true. `beforeResize` is re-evaluated every time the allowed handles are
- * computed (manager.ts), so toggling the field from the toolbar updates the
- * handles reactively. Moving/selecting stays available throughout.
+ * Resize gating, from the primitive: the handles stay hidden until
+ * `resizeEnabled` is true — the runtime half of the declaration's
+ * `geometry.resizable`.
  */
-export const WardleyInteraction = GfxViewInteractionExtension<WardleyView>(
-  WardleyView.type,
-  {
-    handleResize({ model }) {
-      return {
-        beforeResize({ set }) {
-          if (!model.resizeEnabled) {
-            set({ allowedHandlers: [] });
-          }
-        },
-      };
-    },
-  }
+export const WardleyInteraction = FrameworkBackgroundInteractionExtension(
+  WardleyView.type
 );
