@@ -1,14 +1,17 @@
 /**
- * US-1.8 spike — compatibility proof for an optional semantic `role` field on
- * surface (gfx primitive) elements.
+ * Compatibility proof for props a running element class does not declare —
+ * e.g. an optional semantic `role` field added by a newer version of the
+ * library (US-1.8).
  *
  * `TestShapeElement` deliberately declares no `role` accessor, so it plays the
  * part of an OLDER client: a library version shipped before `role` existed,
  * opening and editing a document written by a NEWER client.
  *
- * These tests document CURRENT behaviour. If one of them fails after a change
- * to the element model plumbing, the compatibility conclusions recorded in
- * `docs/spikes/us-1-8-role-field-compat.md` no longer hold.
+ * The US-1.8 spike (`docs/spikes/us-1-8-role-field-compat.md`) found two bulk
+ * assignment sites that dropped such keys; they now forward them straight into
+ * the element's Y.Map (`docs/spikes/us-1-8-unknown-props-preservation.md`).
+ * Every path below must therefore PRESERVE the unknown key. If one of these
+ * tests fails, an unknown prop is being lost again somewhere.
  */
 import {
   createAutoIncrementIdGenerator,
@@ -152,8 +155,8 @@ describe('US-1.8 — unknown element prop, preserving paths', () => {
   });
 });
 
-describe('US-1.8 — unknown element prop, LOSING paths', () => {
-  test('LOSS: re-creating an element from its serialized props drops the unknown key', () => {
+describe('US-1.8 — unknown element prop, element creation from props', () => {
+  test('re-creating an element from its serialized props preserves the unknown key', () => {
     const { surfaceModel } = setupSurface();
     const { element } = addElementWithRole(surfaceModel);
 
@@ -161,21 +164,37 @@ describe('US-1.8 — unknown element prop, LOSING paths', () => {
     expect(serialized[ROLE_KEY]).toBe(ROLE_VALUE);
 
     // This is what duplicate / paste does: feed the serialized payload back
-    // into `addElement`. `_createElementFromProps` copies props by ASSIGNING
-    // them onto the model instance, so a key with no matching accessor lands
-    // on the plain JS object and never reaches the Y.Map.
+    // into `addElement`. `_createElementFromProps` now forwards a key with no
+    // matching accessor straight into the new element's Y.Map.
     const cloneId = surfaceModel.addElement(
       serialized as unknown as SerializedElement & { type: string }
     );
     const clone = surfaceModel.getElementById(cloneId)!;
 
     expect(clone.yMap.has('xywh')).toBe(true);
-    // the unknown key is silently dropped
-    expect(clone.yMap.has(ROLE_KEY)).toBe(false);
-    expect(clone.serialize()[ROLE_KEY]).toBeUndefined();
+    expect(clone.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(clone.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
   });
 
-  test('LOSS: cross-document copy/paste drops the unknown key', () => {
+  test('the serialize -> addElement round trip is identical apart from the id', () => {
+    const { surfaceModel } = setupSurface();
+    const { element } = addElementWithRole(surfaceModel);
+
+    surfaceModel.updateElement(element.id, { xywh: '[3,4,5,6]', rotate: 30 });
+
+    const serialized = element.serialize();
+    const cloneId = surfaceModel.addElement(
+      serialized as unknown as SerializedElement & { type: string }
+    );
+    const clone = surfaceModel.getElementById(cloneId)!;
+
+    const { id: _originalId, ...originalProps } = serialized;
+    const { id: _cloneId, ...cloneProps } = clone.serialize();
+
+    expect(cloneProps).toEqual(originalProps);
+  });
+
+  test('cross-document copy/paste preserves the unknown key', () => {
     const source = setupSurface('doc-a');
     const target = setupSurface('doc-b');
 
@@ -191,20 +210,117 @@ describe('US-1.8 — unknown element prop, LOSING paths', () => {
     );
     const pasted = target.surfaceModel.getElementById(pastedId)!;
 
-    expect(pasted.yMap.has(ROLE_KEY)).toBe(false);
+    expect(pasted.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
   });
 
-  test('LOSS: updateElement with an undeclared key does not persist it', () => {
+  test('"turn into linked doc" preserves the unknown key before deleting the source', () => {
+    // The destructive path: `createLinkedDocFromEdgelessElements` writes each
+    // element into the new doc with `surface.addElement(element.serialize())`,
+    // then the caller deletes the originals. If the copy lost the key there
+    // would be nothing left to recover it from.
+    const source = setupSurface('doc-source');
+    const linked = setupSurface('doc-linked');
+
+    const { id, element } = addElementWithRole(source.surfaceModel);
+
+    const movedId = linked.surfaceModel.addElement(
+      element.serialize() as unknown as SerializedElement & { type: string }
+    );
+    source.surfaceModel.deleteElement(id);
+
+    expect(source.surfaceModel.getElementById(id)).toBeNull();
+
+    const moved = linked.surfaceModel.getElementById(movedId)!;
+    expect(moved.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(moved.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+  });
+});
+
+describe('US-1.8 — unknown element prop, bulk update', () => {
+  test('updateElement with an undeclared key persists it', () => {
     const { surfaceModel } = setupSurface();
     const id = surfaceModel.addElement({ type: 'testShape' });
     const element = surfaceModel.getElementById(id)!;
 
     surfaceModel.updateElement(id, { [ROLE_KEY]: ROLE_VALUE });
 
-    // no accessor -> plain own property, invisible to every other peer
-    expect(element.yMap.has(ROLE_KEY)).toBe(false);
-    expect((element as unknown as Record<string, unknown>)[ROLE_KEY]).toBe(
-      ROLE_VALUE
+    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(element.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+  });
+
+  test('updateElement still routes a declared local prop away from the Y.Map', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    // `opacity` is an `@local()` accessor: the class knows the key, so it must
+    // keep going through the accessor and stay out of the document.
+    surfaceModel.updateElement(id, { opacity: 0.5 });
+
+    expect(element.opacity).toBe(0.5);
+    expect(element.yMap.has('opacity')).toBe(false);
+  });
+});
+
+describe('US-1.8 — unknown element prop, unsafe keys', () => {
+  // Object literals treat `__proto__:` as a prototype assignment, so the
+  // payload has to be built the way a real clipboard payload is: from JSON.
+  const pollutedPayload = () =>
+    JSON.parse(
+      JSON.stringify({
+        type: 'testShape',
+        [ROLE_KEY]: ROLE_VALUE,
+        ['__proto__']: { polluted: true },
+        constructor: { polluted: true },
+        prototype: { polluted: true },
+      })
+    ) as SerializedElement & { type: string };
+
+  test('addElement drops prototype-polluting keys and keeps the unknown one', () => {
+    const { surfaceModel } = setupSurface();
+
+    const id = surfaceModel.addElement(pollutedPayload());
+    const element = surfaceModel.getElementById(id)!;
+
+    expect(element.yMap.has('__proto__')).toBe(false);
+    expect(element.yMap.has('constructor')).toBe(false);
+    expect(element.yMap.has('prototype')).toBe(false);
+    expect(element.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+
+    const cleanId = surfaceModel.addElement({ type: 'testShape' });
+    expect(Object.getPrototypeOf(element)).toBe(
+      Object.getPrototypeOf(surfaceModel.getElementById(cleanId)!)
     );
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>).polluted
+    ).toBeUndefined();
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  test('updateElement drops prototype-polluting keys', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    surfaceModel.updateElement(id, pollutedPayload());
+
+    expect(element.yMap.has('__proto__')).toBe(false);
+    expect(element.yMap.has('constructor')).toBe(false);
+    expect(element.yMap.has('prototype')).toBe(false);
+    expect(
+      (Object.prototype as unknown as Record<string, unknown>).polluted
+    ).toBeUndefined();
+  });
+
+  test('updateElement cannot rewrite the element identity', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    surfaceModel.updateElement(id, { id: 'forged-id', type: 'forgedType' });
+
+    expect(element.id).toBe(id);
+    expect(element.yMap.get('id')).toBe(id);
+    expect(element.yMap.get('type')).toBe('testShape');
   });
 });

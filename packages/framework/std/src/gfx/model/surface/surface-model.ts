@@ -50,6 +50,28 @@ export type MiddlewareCtx = {
 
 export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
 
+/**
+ * Prop keys that are never copied onto an element, whatever the caller sends.
+ *
+ * - `id` / `type` are the element's identity. They are written explicitly when
+ *   the element is created and must not be rewritten through a bulk props
+ *   assignment (a caller doing `updateElement(id, otherElement.serialize())`
+ *   would otherwise stamp a stale identity into the document).
+ * - `__proto__` / `constructor` / `prototype` are the prototype-pollution
+ *   vector: assigning them mutates the class or `Object.prototype` instead of
+ *   the document. They are dropped rather than forwarded to the Y.Map.
+ *
+ * Everything else is either a declared accessor or an unknown key, and both
+ * are handled by {@link SurfaceBlockModel._assignElementProp}.
+ */
+const UNSAFE_ELEMENT_PROP_KEYS = new Set([
+  'id',
+  'type',
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+
 export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   protected _decoratorState = createDecoratorState();
 
@@ -168,12 +190,51 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
 
     Object.keys(rest).forEach(key => {
       if (props[key] !== undefined) {
-        // @ts-expect-error ignore
-        elementModel.model[key] = props[key];
+        this._assignElementProp(elementModel.model, key, props[key]);
       }
     });
 
     return elementModel;
+  }
+
+  /**
+   * Copies one serialized prop onto an element.
+   *
+   * A key the element class declares (`@field()`, `@local()`, or any plain
+   * accessor) goes through that accessor, exactly as before. A key the class
+   * does **not** recognise is written verbatim into the element's Y.Map
+   * instead of being assigned to the JavaScript instance, where it used to be
+   * silently dropped: the plain own property looked right in the running
+   * session and existed for nobody else, then vanished on reload.
+   *
+   * The practical case is a mixed-version fleet — an older client pasting,
+   * duplicating or "turn into linked doc"-ing an element annotated by a newer
+   * one. Preserving what we do not understand is the Yjs contract everywhere
+   * else in the element plumbing (every field write, stash/pop, undo/redo and
+   * the snapshot transformer already do it); this closes the two bulk-assign
+   * sites that did not.
+   *
+   * The value is already Y-converted at this point: both call sites run the
+   * whole props object through {@link _propsToY} first, which is key-agnostic.
+   *
+   * See `docs/spikes/us-1-8-unknown-props-preservation.md`.
+   */
+  private _assignElementProp(
+    element: GfxPrimitiveElementModel,
+    key: string,
+    value: unknown
+  ) {
+    if (UNSAFE_ELEMENT_PROP_KEYS.has(key)) {
+      return;
+    }
+
+    if (key in element) {
+      // @ts-expect-error ignore
+      element[key] = value;
+      return;
+    }
+
+    element.yMap.set(key, value);
   }
 
   private _createElementFromYMap(
@@ -689,8 +750,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         props as Record<string, unknown>
       ) as T;
       Object.entries(props).forEach(([key, value]) => {
-        // @ts-expect-error ignore
-        elementModel[key] = value;
+        this._assignElementProp(elementModel, key, value);
       });
     });
   }

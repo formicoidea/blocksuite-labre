@@ -74,7 +74,6 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
     const id = this.gfx.surface.addElement({
       type: CanvasElementType.CONNECTOR,
       mode: this.activatedOption.mode,
-      controllers: [],
       source: this._source,
       target: { position: this._startPoint },
     });
