@@ -29,6 +29,9 @@
     "@labre/store": "workspace:*",
     "lit": "^3.2.0"
   },
+  "devDependencies": {
+    "yjs": "^13.6.21"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./view": "./src/view.ts"

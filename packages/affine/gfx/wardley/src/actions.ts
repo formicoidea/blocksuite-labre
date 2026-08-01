@@ -218,6 +218,9 @@ export function createWardleyBackground(
   const { centerX, centerY } = gfx.viewport;
   const id = gfx.surface.addElement({
     type: 'wardley',
+    // The map is a first-class role: validation rules position artefacts
+    // against `wardley:map`, never against the `wardley` element type.
+    role: WARDLEY_ROLE.map,
     variant,
     ...BACKGROUND_VARIANT_DEFAULTS[variant],
     xywh: new Bound(

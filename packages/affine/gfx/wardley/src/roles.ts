@@ -17,7 +17,7 @@ import type { RoleDef, RoleDefs } from '@labre/std/gfx';
  */
 
 /** Every role this framework declares. */
-export type WardleyRole = WardleyNodeKind | 'dependency';
+export type WardleyRole = WardleyNodeKind | 'dependency' | 'map';
 
 export type WardleyRoleId = `wardley:${WardleyRole}`;
 
@@ -31,6 +31,7 @@ export const WARDLEY_ROLE = {
   ecosystem: 'wardley:ecosystem',
   method: 'wardley:method',
   dependency: 'wardley:dependency',
+  map: 'wardley:map',
 } as const satisfies Record<WardleyRole, WardleyRoleId>;
 
 const DEFS: readonly RoleDef[] = [
@@ -79,6 +80,14 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.dependency,
     kind: 'edge',
     labelKey: 'com.labre.wardley.role.dependency',
+  },
+  // The map itself: the axes frame the other roles are positioned against.
+  // A frame, not a component, so it specialises nothing — a rule written on
+  // `wardley:component` must never match the map it measures against.
+  {
+    id: WARDLEY_ROLE.map,
+    kind: 'node',
+    labelKey: 'com.labre.wardley.role.map',
   },
 ];
 

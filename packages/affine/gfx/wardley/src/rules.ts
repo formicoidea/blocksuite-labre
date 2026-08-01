@@ -15,9 +15,6 @@ import { WARDLEY_ROLE, WARDLEY_ROLES } from './roles';
  * `docs/adr/0009`).
  */
 
-/** The `type` of the Wardley map background element — "the map". */
-const WARDLEY_BACKGROUND_TYPE = 'wardley';
-
 /**
  * A component drawn outside the map is not positioned: on a Wardley map the
  * two axes ARE the meaning, so a node off the frame carries neither evolution
@@ -31,6 +28,10 @@ const WARDLEY_BACKGROUND_TYPE = 'wardley';
  * `warning`, never blocking: the sketch always wins (PRD principle 3). A user
  * parking nodes off-map while thinking is doing normal work, not making a
  * mistake.
+ *
+ * Both sides are ROLES — subject and frame alike. A map authored before
+ * `wardley:map` existed carries no role, so it frames nothing and raises
+ * nothing: an old document stays a sketch. There is no backfill.
  */
 const componentOutsideMap: ValidationRule = {
   id: 'wardley.component-outside-map',
@@ -42,7 +43,7 @@ const componentOutsideMap: ValidationRule = {
   messageKey: 'com.labre.wardley.validation.component-outside-map',
   suggestionKey: 'com.labre.wardley.validation.component-outside-map.suggestion',
   version: 1,
-  backgroundType: WARDLEY_BACKGROUND_TYPE,
+  backgroundRole: WARDLEY_ROLE.map,
 };
 
 export const WARDLEY_RULES: readonly ValidationRule[] = [componentOutsideMap];

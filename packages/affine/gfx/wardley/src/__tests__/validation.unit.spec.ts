@@ -31,8 +31,12 @@ function element(
   } as unknown as GfxPrimitiveElementModel;
 }
 
-/** The map itself: a 1600x900 background at the origin. */
-const background = () => element('bg', 'wardley', [0, 0, 1600, 900]);
+/** The map itself: a 1600x900 background at the origin, carrying its role. */
+const background = () =>
+  element('bg', 'wardley', [0, 0, 1600, 900], WARDLEY_ROLE.map);
+
+/** A map authored before `wardley:map` existed: same element type, no role. */
+const legacyBackground = () => element('bg', 'wardley', [0, 0, 1600, 900]);
 
 const inside = (id: string, role?: string) =>
   element(id, 'wardleyNode', [100, 100, 40, 40], role);
@@ -96,6 +100,21 @@ describe('wardley pilot rule: component outside the map', () => {
   it('says nothing when there is no map to be outside of', () => {
     // A Wardley node on a blank canvas is a sketch, not an error.
     expect(evaluate([outside('c1', WARDLEY_ROLE.component)])).toEqual([]);
+  });
+
+  it('matches the frame by ROLE, never by element type', () => {
+    // Same element type, no role: a map authored before `wardley:map` existed
+    // frames nothing, so it raises nothing. No backfill, no retro-violation —
+    // an old document stays a sketch.
+    expect(
+      evaluate([legacyBackground(), outside('c1', WARDLEY_ROLE.component)])
+    ).toEqual([]);
+  });
+
+  it('never mistakes the map for one of the artefacts it frames', () => {
+    // `wardley:map` specialises nothing, so the rule written on
+    // `wardley:component` cannot indict the frame it measures against.
+    expect(evaluate([background()])).toEqual([]);
   });
 });
 

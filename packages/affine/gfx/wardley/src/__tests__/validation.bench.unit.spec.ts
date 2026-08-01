@@ -2,6 +2,7 @@ import { evaluateRules, type ValidationRule } from '@labre/affine-block-surface'
 import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
 
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
@@ -28,21 +29,42 @@ const MAP_W = 1600;
 const MAP_H = 900;
 
 /**
- * Element stand-in with an allocating `elementBound` getter, like the real
- * accessor: the bench must not measure a cheaper element than production.
+ * PRODUCTION-SHAPED element stand-in. Every accessor the engine touches costs
+ * what it costs in production, or the budget is measured against a fiction:
+ *
+ * - `role` is a `@field()` accessor — `(yMap.doc ? yMap.get(k) : null) ??
+ *   _preserved.get(k) ?? fallback`, i.e. two Map lookups, paid even by a
+ *   neutral element;
+ * - `elementBound` is `Bound.deserialize(this.xywh)`, so a `JSON.parse` on top
+ *   of a `xywh` read — not a `new Bound(...tuple)`.
+ *
+ * Backed by a real `Y.Map` attached to a real `Y.Doc`, as on a live canvas.
  */
 function element(
+  doc: Y.Doc,
   id: string,
-  type: string,
   xywh: [number, number, number, number],
   role?: string
 ): GfxPrimitiveElementModel {
+  const yMap = new Y.Map<unknown>();
+  doc.getMap<Y.Map<unknown>>('elements').set(id, yMap);
+  yMap.set('xywh', `[${xywh.join(',')}]`);
+  if (role !== undefined) yMap.set('role', role);
+
+  const preserved = new Map<string, unknown>();
+  const read = (key: string) =>
+    (yMap.doc ? yMap.get(key) : null) ?? preserved.get(key) ?? undefined;
+
   return {
     id,
-    type,
-    role,
+    get role() {
+      return read('role') as string | undefined;
+    },
+    get xywh() {
+      return read('xywh') as string;
+    },
     get elementBound() {
-      return new Bound(...xywh);
+      return Bound.deserialize(read('xywh') as string);
     },
   } as unknown as GfxPrimitiveElementModel;
 }
@@ -54,8 +76,9 @@ function element(
  * must skip.
  */
 function referenceMap(size: number): GfxPrimitiveElementModel[] {
+  const doc = new Y.Doc();
   const elements: GfxPrimitiveElementModel[] = [
-    element('bg', 'wardley', [0, 0, MAP_W, MAP_H]),
+    element(doc, 'bg', [0, 0, MAP_W, MAP_H], WARDLEY_ROLE.map),
   ];
 
   const roles = [
@@ -72,9 +95,7 @@ function referenceMap(size: number): GfxPrimitiveElementModel[] {
     const offMap = i % 10 === 0;
     const x = offMap ? MAP_W + 200 + (i % 7) * 30 : 20 + ((i * 37) % (MAP_W - 60));
     const y = offMap ? MAP_H + 200 + (i % 5) * 30 : 20 + ((i * 53) % (MAP_H - 60));
-    elements.push(
-      element(`el-${i}`, role ? 'wardleyNode' : 'text', [x, y, 40, 24], role)
-    );
+    elements.push(element(doc, `el-${i}`, [x, y, 40, 24], role));
   }
   return elements;
 }

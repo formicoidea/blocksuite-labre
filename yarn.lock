@@ -2670,6 +2670,7 @@ __metadata:
     "@labre/std": "workspace:*"
     "@labre/store": "workspace:*"
     lit: "npm:^3.2.0"
+    yjs: "npm:^13.6.21"
   languageName: unknown
   linkType: soft
 

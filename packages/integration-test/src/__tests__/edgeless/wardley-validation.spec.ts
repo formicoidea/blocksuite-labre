@@ -23,6 +23,14 @@ describe('wardley validation on the canvas', () => {
   let validation!: ValidationManager;
 
   const addBackground = () =>
+    service.surface.addElement({
+      type: 'wardley',
+      role: 'wardley:map',
+      xywh: '[0,0,1600,900]',
+    });
+
+  /** A map authored before `wardley:map` existed: same type, no role. */
+  const addLegacyBackground = () =>
     service.surface.addElement({ type: 'wardley', xywh: '[0,0,1600,900]' });
 
   const addComponent = (xywh: string) =>
@@ -86,6 +94,17 @@ describe('wardley validation on the canvas', () => {
     await settle();
 
     expect(validation.violations$.value).toEqual([]);
+  });
+
+  test('a map authored without the role frames nothing, and is not backfilled', async () => {
+    addLegacyBackground();
+    addComponent('[3000,3000,40,40]');
+    await settle();
+
+    // No retro-violation on an older document: it stays a sketch.
+    expect(validation.violations$.value).toEqual([]);
+    const background = service.surface.getElementsByType('wardley')[0];
+    expect(background.role).toBeUndefined();
   });
 
   test('a neutral element is never evaluated, wherever it sits', async () => {

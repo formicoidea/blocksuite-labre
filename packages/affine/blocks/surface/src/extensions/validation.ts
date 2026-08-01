@@ -1,13 +1,14 @@
 import { createIdentifier } from '@labre/global/di';
 import type { Bound } from '@labre/global/gfx';
-import type { RoleDefs, RoleId } from '@labre/std/gfx';
-import {
+import type {
   GfxPrimitiveElementModel,
-  InteractivityExtension,
-  roleIsA,
+  RoleDefs,
+  RoleId,
+  SurfaceBlockModel,
 } from '@labre/std/gfx';
+import { InteractivityExtension, roleIsA } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
-import { signal } from '@preact/signals-core';
+import { effect, signal } from '@preact/signals-core';
 
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
@@ -78,10 +79,14 @@ export interface ValidationRule {
   /** Bumped when the rule's meaning changes, so a host can pin behaviour. */
   version: number;
   /**
-   * `element-in-background` only: the element `type` of the framework's
-   * background (`wardley`), i.e. the "map" the roles must sit on.
+   * `element-in-background` only: the ROLE of the framework's background
+   * (`wardley:map`), i.e. the frame the subject roles must sit on.
+   *
+   * A role, not an element type: the engine never looks at a shape type, on
+   * either side of a rule (see `role.ts`). A background authored before its
+   * role existed carries none, frames nothing and raises nothing.
    */
-  backgroundType?: string;
+  backgroundRole?: RoleId;
 }
 
 /**
@@ -103,12 +108,13 @@ export interface Violation {
  * "Is this element on the framework's background?"
  *
  * An element carrying `rule.appliesTo` (or a specialisation of it) whose bounds
- * are not fully contained by any background of `rule.backgroundType` is in
- * violation.
+ * are not fully contained by any element carrying `rule.backgroundRole` is in
+ * violation. BOTH sides are roles — the engine never reads a shape type.
  *
- * When the surface carries NO background of that type there is no map to be
+ * When the surface carries NO background with that role there is no map to be
  * outside of, so the rule yields nothing: a Wardley node dropped on a blank
- * canvas is a sketch, not an error.
+ * canvas is a sketch, not an error — and so is a map authored before the role
+ * existed.
  *
  * Cost: two linear passes, one `elementBound` per candidate. Backgrounds are
  * counted in units, so the per-element cost is constant in practice.
@@ -117,9 +123,15 @@ function evaluateElementInBackground(
   rule: ValidationRule,
   elements: readonly GfxPrimitiveElementModel[]
 ): Violation[] {
+  const backgroundRole = rule.backgroundRole;
+  if (backgroundRole === undefined) return [];
+
   const backgrounds: Bound[] = [];
   for (const el of elements) {
-    if (el.type === rule.backgroundType) backgrounds.push(el.elementBound);
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, backgroundRole, rule.roles)) {
+      backgrounds.push(el.elementBound);
+    }
   }
   if (backgrounds.length === 0) return [];
 
@@ -198,6 +210,14 @@ export function ValidationRuleExtension(
 const VALIDATION_DELAY_MS = 120;
 
 /**
+ * Element props that can change a verdict. Everything else — `opacity` and the
+ * other `@local()` fields, colours, labels — is ignored, so brushing a canvas
+ * (`SpotlightManager` writes `opacity` on every element it dims) neither
+ * re-evaluates the surface nor pushes the pending evaluation further away.
+ */
+const VERDICT_PROPS = ['xywh', 'rotate', 'role'];
+
+/**
  * Owns the evaluation and the reactive violation list. No-op until a framework
  * registers a rule.
  */
@@ -224,6 +244,8 @@ export class ValidationManager extends InteractivityExtension {
 
   private _subscriptions: { unsubscribe(): void }[] = [];
 
+  private _disposeSurfaceEffect: (() => void) | null = null;
+
   private get _overlay(): ValidationOverlay | null {
     return this.std.getOptional(
       OverlayIdentifier(ValidationOverlay.overlayName)
@@ -236,25 +258,44 @@ export class ValidationManager extends InteractivityExtension {
     // single length check, once.
     if (this._activeRules.length === 0) return;
 
-    const surface = this.gfx.surface;
-    if (!surface) return;
-
-    for (const change of [
-      surface.elementAdded,
-      surface.elementRemoved,
-      surface.elementUpdated,
-    ]) {
-      this._subscriptions.push(change.subscribe(() => this._schedule()));
-    }
-    this.evaluate();
+    // The surface is a SIGNAL, not a fact: it can legitimately be null at
+    // mount and arrive later, and it is replaced if the surface block is. A
+    // one-shot peek here would leave validation silently dead for the whole
+    // session — hence tracking it rather than reading it once.
+    this._disposeSurfaceEffect = effect(() => {
+      this._resubscribe(this.gfx.surface$.value);
+    });
   }
 
   override unmounted() {
     if (this._pending) clearTimeout(this._pending);
     this._pending = null;
+    this._disposeSurfaceEffect?.();
+    this._disposeSurfaceEffect = null;
+    this._unsubscribe();
+    super.unmounted();
+  }
+
+  private _unsubscribe() {
     for (const subscription of this._subscriptions) subscription.unsubscribe();
     this._subscriptions = [];
-    super.unmounted();
+  }
+
+  private _resubscribe(surface: SurfaceBlockModel | null) {
+    this._unsubscribe();
+    if (!surface) return;
+
+    for (const change of [surface.elementAdded, surface.elementRemoved]) {
+      this._subscriptions.push(change.subscribe(() => this._schedule()));
+    }
+    this._subscriptions.push(
+      surface.elementUpdated.subscribe(({ props }) => {
+        // A prop that cannot change a verdict must not even rearm the timer.
+        if (props && !VERDICT_PROPS.some(prop => prop in props)) return;
+        this._schedule();
+      })
+    );
+    this.evaluate();
   }
 
   private _schedule() {
@@ -272,16 +313,25 @@ export class ValidationManager extends InteractivityExtension {
     if (rules.length === 0 || !surface) return;
 
     const violations = evaluateRules(rules, surface.elementModels);
-    this.violations$.value = violations;
+    // Stay silent when nothing changed: `violations$` is the seam a host panel
+    // subscribes to, and a clean board must not wake it on every debounce tick.
+    if (violations.length === 0 && this.violations$.peek().length === 0) return;
 
-    const overlay = this._overlay;
-    if (overlay) overlay.setViolations(violations, surface.elementModels);
+    this.violations$.value = violations;
+    this._overlay?.setViolations(violations);
   }
 }
 
-/** Corner length of the bracket drawn around a faulty element, in model units. */
+/**
+ * Bracket geometry in SCREEN pixels. The overlay context is scaled by the
+ * viewport zoom, so each is divided by it at paint time — the house convention
+ * for annotation overlays (see `snap-overlay.ts`). Without that, the mark is a
+ * hairline at zoom 0.2, exactly when a user is zoomed out hunting for the node
+ * that drifted off the map.
+ */
 const MARK_CORNER = 10;
 const MARK_PADDING = 6;
+const MARK_LINE_WIDTH = 2;
 const MARK_COLOR = '#f5a623';
 
 /**
@@ -296,55 +346,65 @@ const MARK_COLOR = '#f5a623';
 export class ValidationOverlay extends Overlay {
   static override overlayName = 'validation';
 
-  private _bounds: Bound[] = [];
+  /**
+   * Ids of the indicted elements — NOT their bounds. Bounds are read at paint
+   * time so the mark tracks the element it accuses: evaluation is debounced,
+   * the renderer is not, so a frozen snapshot would leave the bracket behind
+   * at the drag's starting point until 120 ms after the user let go.
+   */
+  private _elementIds: string[] = [];
 
-  /** Bounds of the indicted elements, resolved once per evaluation. */
-  setViolations(
-    violations: readonly Violation[],
-    elements: readonly GfxPrimitiveElementModel[]
-  ) {
-    if (violations.length === 0 && this._bounds.length === 0) return;
-
+  setViolations(violations: readonly Violation[]) {
     const faulty = new Set<string>();
     for (const violation of violations) {
       for (const id of violation.elementIds) faulty.add(id);
     }
-    this._bounds = elements
-      .filter(el => faulty.has(el.id))
-      .map(el => el.elementBound);
+    this._elementIds = Array.from(faulty);
     this.refresh();
   }
 
   override clear() {
-    this._bounds = [];
+    this._elementIds = [];
     super.clear();
   }
 
   override render(ctx: CanvasRenderingContext2D, _rc: RoughCanvas): void {
-    if (this._bounds.length === 0) return;
+    if (this._elementIds.length === 0) return;
+    const surface = this.gfx.surface;
+    if (!surface) return;
+
+    // The context is scaled by the zoom: divide to keep the mark a constant
+    // size on screen at any zoom level.
+    const zoom = this.gfx.viewport.zoom;
+    const corner = MARK_CORNER / zoom;
+    const padding = MARK_PADDING / zoom;
 
     ctx.save();
     ctx.strokeStyle = MARK_COLOR;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = MARK_LINE_WIDTH / zoom;
     ctx.beginPath();
-    for (const bound of this._bounds) {
-      const x = bound.x - MARK_PADDING;
-      const y = bound.y - MARK_PADDING;
-      const maxX = bound.maxX + MARK_PADDING;
-      const maxY = bound.maxY + MARK_PADDING;
+    for (const id of this._elementIds) {
+      const element = surface.getElementById(id);
+      if (!element) continue;
+
+      const bound = element.elementBound;
+      const x = bound.x - padding;
+      const y = bound.y - padding;
+      const maxX = bound.maxX + padding;
+      const maxY = bound.maxY + padding;
       // Four corner brackets: reads as an annotation, not as a selection box.
-      ctx.moveTo(x + MARK_CORNER, y);
+      ctx.moveTo(x + corner, y);
       ctx.lineTo(x, y);
-      ctx.lineTo(x, y + MARK_CORNER);
-      ctx.moveTo(maxX - MARK_CORNER, y);
+      ctx.lineTo(x, y + corner);
+      ctx.moveTo(maxX - corner, y);
       ctx.lineTo(maxX, y);
-      ctx.lineTo(maxX, y + MARK_CORNER);
-      ctx.moveTo(x, maxY - MARK_CORNER);
+      ctx.lineTo(maxX, y + corner);
+      ctx.moveTo(x, maxY - corner);
       ctx.lineTo(x, maxY);
-      ctx.lineTo(x + MARK_CORNER, maxY);
-      ctx.moveTo(maxX, maxY - MARK_CORNER);
+      ctx.lineTo(x + corner, maxY);
+      ctx.moveTo(maxX, maxY - corner);
       ctx.lineTo(maxX, maxY);
-      ctx.lineTo(maxX - MARK_CORNER, maxY);
+      ctx.lineTo(maxX - corner, maxY);
     }
     ctx.stroke();
     ctx.restore();
