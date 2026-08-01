@@ -71,14 +71,6 @@ const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
 };
 
 /**
- * The grey a finding the user has decided to live with is drawn in. It is still
- * on the board — an exception changes a violation's state, it never hides it
- * (PF8.3) — but it has stopped asking for anything, so it stops using the
- * colour that means "look at me".
- */
-const EXEMPTED_MARK_COLOR = '#8e8d91';
-
-/**
  * The PERSISTENT half of the PF7 affordance, and the restitution behind it.
  *
  * `ValidationOverlay` flashes a bracket when a violation appears and fades it
@@ -176,12 +168,6 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       border-radius: 50%;
       background: ${unsafeCSS(VIOLATION_MARK_COLOR)};
       box-shadow: var(--affine-shadow-1);
-    }
-
-    /* Everything on this anchor is excused: still there, no longer amber. */
-    .violation-badge[data-exempted='true'] .violation-badge-dot {
-      background: ${unsafeCSS(EXEMPTED_MARK_COLOR)};
-      opacity: 0.7;
     }
 
     .violation-badge:hover .violation-badge-dot,
@@ -396,10 +382,15 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   private _closeIfAnchorGone() {
     if (this._openAnchorId === null) return;
     const surface = this.gfx.surface;
+    // "Still flagged" means still carrying a LIVE finding: an anchor whose
+    // findings have all been excused no longer draws a badge, so a bubble left
+    // open on it would float with nothing underneath it.
     const stillFlagged =
       surface !== null &&
       resolveViolationAnchors(this._violations, surface).some(
-        anchor => anchor.id === this._openAnchorId
+        anchor =>
+          anchor.id === this._openAnchorId &&
+          anchor.violations.some(v => v.exemption === undefined)
       );
     if (!stillFlagged) this._openAnchorId = null;
   }
@@ -772,32 +763,15 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     const visual = VIOLATION_BADGE_SIZE * zoom;
     const target = Math.max(visual, MIN_HIT_TARGET);
     const open = this._openAnchorId === anchor.id;
-    // Every finding here is excused: the badge stays — the board must never
-    // hide an arbitration, and revoking has to remain one click away — but it
-    // goes quiet. The moment one live finding joins it, it is amber again.
-    const exempted = anchor.violations.every(
-      violation => violation.exemption !== undefined
-    );
-    // The grey dot is a STATE, and a state carried by colour alone is a state
-    // assistive technology cannot report (WCAG 1.4.1). The accessible name says
-    // it in words.
-    const name = exempted
-      ? translateKey(
-          this.std,
-          'com.labre.validation.badge.label-exempted',
-          'Show validation details — exception in force'
-        )
-      : label;
 
     return html`<button
       class="violation-badge"
       type="button"
       data-anchor-id=${anchor.id}
       data-testid="violation-badge"
-      data-exempted=${exempted}
       aria-expanded=${open}
-      aria-label=${name}
-      title=${name}
+      aria-label=${label}
+      title=${label}
       style=${styleMap({
         left: `${x}px`,
         top: `${y}px`,
@@ -891,6 +865,16 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     this._scheduleHandover();
 
     return html`${anchors.map(anchor => {
+      // An anchor whose findings are ALL excused carries no marker: the user
+      // decided to live with them, and a permanent dot arguing with that
+      // decision is what the PO sent back. The way to take the arbitration back
+      // is the element's contextual toolbar (see `validation-toolbar.ts`) —
+      // selection, not a badge. A live finding on the same anchor still gets
+      // its amber badge, and its bubble still lists the excused ones with their
+      // state (PF8.3: nothing is hidden).
+      if (!anchor.violations.some(v => v.exemption === undefined)) {
+        return nothing;
+      }
       // Strictly one marker at a time: while the bracket is still drawn the
       // badge does not exist, and the bracket's own band takes the clicks.
       const fresh = timeline ? anchorEmphasis(anchor, timeline, now) > 0 : false;

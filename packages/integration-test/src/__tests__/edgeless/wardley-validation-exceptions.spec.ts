@@ -259,39 +259,16 @@ describe('validation exceptions', () => {
       clickElement(ignoreButton()!);
       await settle();
 
-      // Still reported by the engine — zero hidden violations.
+      // Still reported by the engine — zero hidden violations (PF8.3).
       expect(validation.violations$.value).toHaveLength(1);
-      // Out of the loud affordance: no bracket, and a badge that has gone grey.
+      // But the canvas goes quiet: no bracket, and no badge either. The grey
+      // one PF8 shipped here was sent back by the PO — an excused finding is a
+      // decision the user made, and a permanent dot arguing with it is noise.
+      // The way back is the element's contextual toolbar; see
+      // `wardley-revoke-exception.spec.ts`.
       expect(bracketHits()).toHaveLength(0);
-      expect(badges()).toHaveLength(1);
-      expect((badges()[0] as HTMLElement).dataset.exempted).toBe('true');
-      // ...and still listed, now with the way back.
-      expect(revokeButton()).not.toBeNull();
-      expect(ignoreButton()).toBeNull();
-    });
-
-    test('the excused state is announced, not only coloured', async () => {
-      addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
-      addComponent('[4000,3000,40,40]');
-      await settle();
-      await age();
-
-      const badgeOf = (id: string) =>
-        badges().find(el => (el as HTMLElement).dataset.anchorId === id)!;
-      clickElement(badgeOf(excused));
-      await settle();
-      clickElement(ignoreButton()!);
-      await settle();
-      await age();
-
-      const labels = badges().map(el => el.getAttribute('aria-label'));
-      // Two badges, two different accessible names: the grey dot is a state,
-      // and a state carried by colour alone cannot be reported (WCAG 1.4.1).
-      expect(new Set(labels).size).toBe(2);
-      expect(
-        badgeOf(excused).getAttribute('aria-label')
-      ).not.toBe(badges().find(el => el !== badgeOf(excused))!.getAttribute('aria-label'));
+      expect(badges()).toHaveLength(0);
+      expect(bubble()).toBeNull();
     });
 
     test('revoking restores the violation', async () => {
@@ -302,14 +279,15 @@ describe('validation exceptions', () => {
       clickElement(ignoreButton()!);
       await settle();
 
-      clickElement(revokeButton()!);
+      // Taken back from the element's contextual toolbar, which is what the
+      // entry's `run` calls.
+      validation.revokeExceptionsOn(model(id));
       await settle();
 
       expect(violationOf(id)?.exemption).toBeUndefined();
       expect(model(id).validationExceptions).toBeUndefined();
       await age();
-      expect((badges()[0] as HTMLElement).dataset.exempted).toBe('false');
-      expect(ignoreButton()).not.toBeNull();
+      expect(badges()).toHaveLength(1);
     });
 
     test('one click settles every member of a grouped component', async () => {
@@ -362,13 +340,14 @@ describe('validation exceptions', () => {
 
       expect(model(id).validationExceptions).toBeUndefined();
       expect(violationOf(id)?.exemption).toBeUndefined();
-      // The affordance followed the document. The bubble stayed open on its
-      // anchor throughout — and it now offers the way OUT again, where it used
-      // to offer a Revoke that could never do anything.
+      // The affordance followed the document: the marker the waiver took away
+      // is back, and it opens a bubble offering the way out again.
+      await age();
+      expect(badges()).toHaveLength(1);
+      clickElement(badges()[0]);
+      await settle();
       expect(ignoreButton()).not.toBeNull();
       expect(revokeButton()).toBeNull();
-      await age();
-      expect((badges()[0] as HTMLElement).dataset.exempted).toBe('false');
     });
 
     test('redoing puts the waiver back', async () => {
@@ -392,7 +371,7 @@ describe('validation exceptions', () => {
       await settle();
       service.std.store.captureSync();
 
-      clickElement(revokeButton()!);
+      validation.revokeExceptionsOn(model(id));
       await settle();
       expect(model(id).yMap.has('validationExceptions')).toBe(false);
 
@@ -427,10 +406,10 @@ describe('validation exceptions', () => {
       expect(model(other).validationExceptions).toBeUndefined();
 
       await age();
-      const exemptedFlags = badges().map(
-        el => (el as HTMLElement).dataset.exempted
-      );
-      expect(exemptedFlags.sort()).toEqual(['false', 'true']);
+      // One badge left, on the element nobody arbitrated about. The excused
+      // one draws nothing at all.
+      expect(badges()).toHaveLength(1);
+      expect((badges()[0] as HTMLElement).dataset.anchorId).toBe(other);
     });
 
     test('deleting the element takes its exception with it', async () => {
@@ -639,10 +618,12 @@ describe('validation exceptions', () => {
       await settle();
       expect(violationOf(second)?.exemption).toBe('map');
 
-      clickElement(revokeButton()!);
+      // The map-wide arbitration is answered for by the MAP, so it comes off
+      // from the background's own contextual toolbar.
+      const background = service.surface.getElementsByType('wardley')[0];
+      validation.revokeExceptionsOn(background);
       await settle();
 
-      const background = service.surface.getElementsByType('wardley')[0];
       expect(hasException(background, RULE_ID)).toBe(false);
       expect(violationOf(second)?.exemption).toBeUndefined();
     });
@@ -687,7 +668,7 @@ describe('validation exceptions', () => {
       await settle();
       expect(model(id).yMap.has('validationExceptions')).toBe(true);
 
-      clickElement(revokeButton()!);
+      validation.revokeExceptionsOn(model(id));
       await settle();
 
       // Asserted on the Y.Map, not through the getter: assigning `undefined`
@@ -814,22 +795,28 @@ describe('validation exceptions', () => {
         elementCount: 1,
       });
 
-      clickElement(revokeButton()!);
-      await settle();
-      expect(
-        tracked.filter(event => event.name === 'ValidationExceptionRevoked')
-      ).toHaveLength(1);
-
       // Granting the same exception twice is not two arbitrations: nothing is
       // written, so the widget has nothing to report.
-      clickElement(ignoreButton()!);
-      await settle();
       expect(validation.setException([violationOf(id)!], 'element', true)).toEqual(
         []
       );
       expect(
         tracked.filter(event => event.name === 'ValidationExceptionGranted')
-      ).toHaveLength(2);
+      ).toHaveLength(1);
+
+      // The REVOCATION is reported by the toolbar entry that now owns it — the
+      // manager writes, the entry reports — so it is asserted where that entry
+      // is tested (`validation-toolbar.unit.spec.ts`). What the manager owes is
+      // an honest account of what it wrote, and a no-op writing nothing.
+      expect(validation.revokeExceptionsOn(model(id))).toEqual([
+        {
+          ruleId: RULE_ID,
+          framework: 'wardley',
+          scope: 'element',
+          elementCount: 1,
+        },
+      ]);
+      expect(validation.revokeExceptionsOn(model(id))).toEqual([]);
     });
   });
 });

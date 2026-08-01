@@ -1,11 +1,22 @@
 import type { ToolbarContext } from '@labre/affine-shared/services';
+import {
+  TelemetryProvider,
+  TranslationProvider,
+} from '@labre/affine-shared/services';
 import type { GfxModel } from '@labre/std/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import { ValidationManager } from '../extensions/validation.js';
-import type { ValidationProfile } from '../extensions/validation.js';
-import { validationToolbarConfig } from '../extensions/validation-toolbar.js';
+import type {
+  AnchoredException,
+  RevokedException,
+  ValidationProfile,
+} from '../extensions/validation.js';
+import {
+  validationExceptionToolbarConfig,
+  validationToolbarConfig,
+} from '../extensions/validation-toolbar.js';
 
 /**
  * PF9 recette follow-up: the profile selector moved from a canvas chip — which
@@ -122,5 +133,261 @@ describe('the entry is generic', () => {
     // `z.` so a framework's `a.` … `d.` toggles keep the left of the toolbar:
     // the level of requirement is a setting of the instance, read last.
     expect(validationToolbarConfig.actions[0].id).toBe('z.validation');
+  });
+});
+
+/**
+ * The "Revoke exception" entry (PF8, PO acceptance of 01/08), which shares this
+ * file with the Validation dropdown above because it shares the toolbar with it.
+ *
+ * Its own logic is what is tested here — when it offers itself, what it asks
+ * the manager to do, and what it reports. Turning a `ToolbarModuleConfig` into
+ * a button is BlockSuite's toolbar machinery; what an element ANSWERS FOR is
+ * the manager's job, and it is tested against real groups in
+ * `packages/integration-test/.../wardley-revoke-exception.spec.ts`.
+ */
+
+const [revokeAction] = validationExceptionToolbarConfig.actions;
+
+/**
+ * Like {@link element}, but with `id` and `type` readable: the revoke entry
+ * hands the model to the manager AND the assertions below identify it.
+ */
+const namedElement = (id: string): GfxPrimitiveElementModel => {
+  const stub = Object.create(GfxPrimitiveElementModel.prototype);
+  // `id` and `type` are prototype GETTERS, so they are shadowed rather than
+  // assigned.
+  Object.defineProperties(stub, {
+    id: { get: () => id },
+    type: { get: () => 'wardleyNode' },
+  });
+  return stub as GfxPrimitiveElementModel;
+};
+
+type ExceptionManagerStub = {
+  revocableExceptionsOn: (
+    element: GfxPrimitiveElementModel
+  ) => AnchoredException[];
+  revokeExceptionsOn: (
+    element: GfxPrimitiveElementModel
+  ) => RevokedException[];
+};
+
+/**
+ * A toolbar context reduced to what the revoke entry touches: the selection,
+ * the DI lookups behind `translateKey` and the manager, `captureSync` and
+ * `track`.
+ */
+function exceptionContext(options: {
+  selection?: GfxPrimitiveElementModel[];
+  manager?: ExceptionManagerStub | null;
+  catalogue?: Record<string, string>;
+  track?: (name: string, props: Record<string, unknown>) => void;
+}): ToolbarContext {
+  const {
+    selection = [],
+    manager = null,
+    catalogue = {},
+    track = () => {},
+  } = options;
+
+  const std = {
+    getOptional: (identifier: unknown) => {
+      if (identifier === ValidationManager) return manager;
+      if (identifier === TranslationProvider) {
+        return { t: (key: string) => catalogue[key] };
+      }
+      if (identifier === TelemetryProvider) return { track };
+      return null;
+    },
+    store: { captureSync: () => {} },
+  };
+
+  return {
+    std,
+    getSurfaceModels: () => selection,
+    track,
+  } as unknown as ToolbarContext;
+}
+
+const anException = (
+  el: GfxPrimitiveElementModel,
+  ruleId = 'wardley.component-outside-map'
+): AnchoredException => ({ element: el, ruleId });
+
+const exceptionManagerWith = (
+  anchored: AnchoredException[],
+  revoked: RevokedException[] = []
+): ExceptionManagerStub => ({
+  revocableExceptionsOn: () => anchored,
+  revokeExceptionsOn: () => revoked,
+});
+
+const offersRevoke = (ctx: ToolbarContext) =>
+  typeof revokeAction.when === 'function' ? revokeAction.when(ctx) : false;
+
+describe('when the revoke entry offers itself', () => {
+  it('shows on an element that answers for an exception', () => {
+    const el = namedElement('n1');
+    expect(
+      offersRevoke(
+        exceptionContext({
+          selection: [el],
+          manager: exceptionManagerWith([anException(el)]),
+        })
+      )
+    ).toBe(true);
+  });
+
+  it('stays away from an element carrying nothing', () => {
+    expect(
+      offersRevoke(
+        exceptionContext({
+          selection: [namedElement('n1')],
+          manager: exceptionManagerWith([]),
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('stays away when nothing is selected', () => {
+    const el = namedElement('n1');
+    expect(
+      offersRevoke(
+        exceptionContext({
+          selection: [],
+          manager: exceptionManagerWith([anException(el)]),
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('stays away on a multiple selection', () => {
+    // "Revoke the exception" has no honest meaning across a mixed bag: the
+    // entry is one arbitration, on one thing.
+    const a = namedElement('n1');
+    const b = namedElement('n2');
+    expect(
+      offersRevoke(
+        exceptionContext({
+          selection: [a, b],
+          manager: exceptionManagerWith([anException(a)]),
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('stays away with no validation manager at all', () => {
+    expect(
+      offersRevoke(
+        exceptionContext({ selection: [namedElement('n1')], manager: null })
+      )
+    ).toBe(false);
+  });
+});
+
+describe('what the revoke entry says', () => {
+  it('falls back to English chrome with no catalogue', () => {
+    const el = namedElement('n1');
+    const ctx = exceptionContext({
+      selection: [el],
+      manager: exceptionManagerWith([anException(el)]),
+    });
+    const action = revokeAction.generate(ctx);
+
+    expect(action?.label).toBe('Revoke exception');
+    // Words, not a glyph: taking back a recorded decision is not something to
+    // guess at from an icon.
+    expect(action?.showLabel).toBe(true);
+    expect(action?.tooltip).toBe('Revoke exception');
+  });
+
+  it('resolves the label through the host catalogue', () => {
+    const el = namedElement('n1');
+    const ctx = exceptionContext({
+      selection: [el],
+      manager: exceptionManagerWith([anException(el)]),
+      catalogue: {
+        'com.labre.validation.action.revoke-exception': "Lever l'exception",
+      },
+    });
+
+    expect(revokeAction.generate(ctx)?.label).toBe("Lever l'exception");
+  });
+
+  it('sorts before the framework’s Validation dropdown', () => {
+    // Both entries land on the toolbar of a framework background — one from
+    // `custom:affine:surface:*`, one from `custom:affine:surface:wardley` — and
+    // the toolbar orders the merged list by id.
+    expect(revokeAction.id < validationToolbarConfig.actions[0].id).toBe(true);
+  });
+});
+
+describe('what the revoke entry does', () => {
+  it('asks the manager to revoke, on the selected element', () => {
+    const el = namedElement('n1');
+    const calls: GfxPrimitiveElementModel[] = [];
+    const manager = {
+      ...exceptionManagerWith([anException(el)]),
+      revokeExceptionsOn: (target: GfxPrimitiveElementModel) => {
+        calls.push(target);
+        return [] as RevokedException[];
+      },
+    };
+    const ctx = exceptionContext({ selection: [el], manager });
+
+    revokeAction.generate(ctx)?.run?.(ctx);
+
+    expect(calls).toEqual([el]);
+  });
+
+  it('reports one arbitration per rule and scope written', () => {
+    const el = namedElement('bg');
+    const tracked: { name: string; props: Record<string, unknown> }[] = [];
+    const manager = exceptionManagerWith(
+      [anException(el)],
+      [
+        {
+          ruleId: 'wardley.component-outside-map',
+          framework: 'wardley',
+          scope: 'map',
+          elementCount: 1,
+        },
+      ]
+    );
+    const ctx = exceptionContext({
+      selection: [el],
+      manager,
+      track: (name, props) => tracked.push({ name, props }),
+    });
+
+    revokeAction.generate(ctx)?.run?.(ctx);
+
+    expect(tracked).toEqual([
+      {
+        name: 'ValidationExceptionRevoked',
+        props: {
+          control: 'revoke exception',
+          ruleId: 'wardley.component-outside-map',
+          framework: 'wardley',
+          scope: 'map',
+          elementCount: 1,
+        },
+      },
+    ]);
+  });
+
+  it('reports nothing when the gesture wrote nothing', () => {
+    const el = namedElement('n1');
+    const tracked: unknown[] = [];
+    const ctx = exceptionContext({
+      selection: [el],
+      manager: exceptionManagerWith([anException(el)], []),
+      track: (...args) => tracked.push(args),
+    });
+
+    revokeAction.generate(ctx)?.run?.(ctx);
+
+    expect(tracked).toEqual([]);
   });
 });
