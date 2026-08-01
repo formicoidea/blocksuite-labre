@@ -1,15 +1,15 @@
-# ADR 0006 — `PivotPropertiesProvider`: the injectable `docId` → properties seam
+# ADR 0006 — `PivotPropertiesProvider`: the injectable `pivotDocId` → properties seam
 
 - Status: **proposed** (August 2026) — requires human approval.
 - Deciders: Mathieu Jolly
 - Milestone: "PF+MF" refoundation, Jalon 0 (contract seams)
-- Companion ADRs: [0005](0005-element-docid-seam.md) (where the `docId` comes
+- Companion ADRs: [0005](0005-element-docid-seam.md) (where the `pivotDocId` comes
   from), [0007](0007-universe-tag-defs-format.md) (what gets mirrored onto the
   record). The three form **one contract, frozen together**.
 
 ## Context
 
-ADR 0005 gives a surface element an optional `docId` pointing at a host-owned
+ADR 0005 gives a surface element an optional `pivotDocId` pointing at a host-owned
 **pivot record**. Something must turn that string into something a user can see
 on hover — without the library ever learning what a pivot record is, and without
 the host's data layer ever getting between the user and their gesture.
@@ -22,8 +22,12 @@ three flavours (`packages/affine/shared/src/services/`):
   `XExtension(service)` factory calling `di.override`. Consumers resolve with
   `std.getOptional(...)` and optional-chain
   (`packages/affine/blocks/latex/src/commands.ts:58`), or guard and return
-  (`telemetry-service/block-lifecycle-watcher.ts:131-133`). Same shape for
-  `NotificationProvider` (`notification-service.ts:53-76`).
+  (`telemetry-service/block-lifecycle-watcher.ts:131-133`). Same _seam_ shape
+  for `NotificationProvider` (`notification-service.ts:53-76`) — though
+  `NotificationExtension` registers with `di.addImpl`
+  (`notification-service.ts:62`) where `TelemetryExtension` uses `di.override`
+  (`telemetry-service.ts:75`). The distinction is not cosmetic: ADR 0007 § 3's
+  idempotency argument rests entirely on it.
 - **In-lib default that hosts may override** — `DocModeService`
   (`doc-mode-service.ts:66-69`), `DocDisplayMetaService`
   (`doc-display-meta-service.ts:63-87`).
@@ -144,16 +148,23 @@ export function PivotPropertiesExtension(
 }
 ```
 
+**Both** methods are called inside `try {} catch {}` by the library, and a
+throw is treated as `{ status: 'error' }` (for `properties$`) or swallowed (for
+`publishOccurrenceFacets`). The `MUST NOT throw` on `properties$` is a contract
+for hosts, not an assumption the library is entitled to make: it sits on the
+hover path, and an unguarded MUST NOT there is one bad host build away from
+crash-on-hover.
+
 `properties$` returning a signal **synchronously** is the load-bearing part of
 this ADR: it makes it structurally impossible for a call site to block. There is
 no `Promise`-returning method on the read path, so no call site can `await` one.
 
 ### 2. Two-speed hover, and the speeds never mix
 
-| Speed                    | Source                    | Timing                        | Content                                                                          |
-| ------------------------ | ------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
-| **1 — element facts**    | The element itself        | Synchronous, always, zero I/O | Label, element type, universe, role, type-3 tags (ADR 0007), whether it is bound |
-| **2 — pivot properties** | `PivotPropertiesProvider` | Asynchronous, optional        | `PivotSnapshot.title` + `properties[]`                                           |
+| Speed                    | Source                    | Timing                        | Content                                                                           |
+| ------------------------ | ------------------------- | ----------------------------- | --------------------------------------------------------------------------------- |
+| **1 — element facts**    | The element itself        | Synchronous, always, zero I/O | Label, element type, framework, role, type-3 tags (ADR 0007), whether it is bound |
+| **2 — pivot properties** | `PivotPropertiesProvider` | Asynchronous, optional        | `PivotSnapshot.title` + `properties[]`                                            |
 
 Rules:
 
@@ -161,11 +172,19 @@ Rules:
   It is never a placeholder for speed 2 and never shows a spinner.
 - Speed 2 is **appended below** speed 1. Speed-1 content must not move when
   speed 2 settles. No reserved empty space, no skeleton the size of a guess.
-- `loading` renders nothing for at least `PIVOT_HOVER_SKELETON_DELAY_MS = 200`;
-  a fast host is invisible.
-- `missing` / `error` render one discreet line. They never surface a host stack
-  trace and never block dismissal of the card.
+- `loading` renders **nothing at all** for the first
+  `PIVOT_HOVER_LOADING_DELAY_MS = 200`, so a fast host is invisible. Past that
+  threshold it renders **one single-line "Loading…" row appended below speed 1** —
+  fixed height, no reserved block, no shimmer, nothing sized to a guess about
+  the answer. (The constant was previously named `…_SKELETON_…`, for a skeleton
+  this same rule forbids.)
+- `missing` / `error` replace that row with one discreet line. They never
+  surface a host stack trace and never block dismissal of the card.
 - The hover card is dismissible at all times regardless of query state.
+
+Speed 1 reads `role` and `tags` straight off the element, so it is a pure
+function of data already in memory — no `getOptional`, no provider, no
+possibility of a slow path.
 
 ### 3. Degradation when the provider is absent
 
@@ -194,28 +213,135 @@ on a bound element (ADR 0007), it _announces_ it and forgets:
 ```ts
 export type OccurrenceFacetPatch = {
   /** The bound pivot record. */
-  docId: string;
-  /** Where the qualification was authored. */
+  pivotDocId: string;
+  /** Which occurrence this patch describes. The host's primary key, with pivotDocId. */
   elementId: string;
-  /** Universe id, e.g. 'wardley'. */
-  universe: string;
+  /** Framework identity — `FrameworkId` from ADR 0008. */
+  framework: FrameworkId;
   /** Role id, e.g. 'wardley:component'. `undefined` once the role is cleared. */
   role: string | undefined;
-  /** Type-3 tags: tag def id -> selected value ids. Empty = cleared. */
+  /**
+   * Type-3 tags: tag def id -> selected value ids. `{}` = cleared.
+   * A plain object on purpose: this is a transport DTO, not the persisted
+   * shape. On the element the same data is a nested `Y.Map<string[]>`
+   * (ADR 0007 § 4) so that concurrent qualification merges per tag; the patch
+   * is a flattened snapshot of it, produced with `.toJSON()`.
+   */
   tags: Record<string, string[]>;
+  /**
+   * `false` = this occurrence no longer exists (element deleted, or unbound).
+   * The host must drop every derived facet keyed by (pivotDocId, elementId).
+   * When `false`, `role` is `undefined` and `tags` is `{}`.
+   */
+  present: boolean;
 };
 ```
 
-- Returns `void`. The library cannot await it, cannot retry it, cannot observe
-  its failure. A host that throws inside it breaks only itself — call sites wrap
-  it in `try {} catch {}` and swallow.
-- Provenance is **fixed** at `derived-from-occurrence` and is not a parameter.
-  The host must not merge these into authored properties, and must not write
-  back into the element.
-- **Unidirectional.** There is no reverse channel. A change on the record never
-  mutates an element. If a record and its occurrences disagree, the occurrence
-  is the truth for the element and the record is the truth for the record; the
-  library reconciles nothing.
+Baseline properties, unchanged from the first draft: the method returns `void`
+(the library cannot await it, retry it, or observe its failure); provenance is
+**fixed** at `derived-from-occurrence` and is not a parameter; and the channel
+is **unidirectional** — a change on the record never mutates an element, and
+the library reconciles nothing.
+
+What follows are the four points the first draft left unspecified. They are the
+only part of this contract that crosses the boundary, and they are the hard
+part.
+
+#### 4.1 The trigger: local Yjs transactions, not the setter and not the command layer
+
+Publication is performed by **one** library-side `LifeCycleWatcher`,
+`PivotFacetPublisher`, and by nothing else. It subscribes to surface element
+add / update / remove and publishes **only when the change payload carries
+`local === true`** (`local: transaction.local`, `element-model.ts:562`).
+
+Two candidate designs are rejected, both for concrete reasons:
+
+- **Not the `@field()` setter** (`field.ts:59-88`). The setter runs only on a JS
+  assignment. Undo/redo and every remote peer's change arrive through
+  `model.yMap.observe(...)` in `syncElementFromY` (`element-model.ts:540-580`)
+  and never touch it. Publishing from the setter means: qualify a bound element,
+  press Ctrl+Z, and the element reverts while the record keeps the derived
+  facet — a silent, permanent desync on the very first undo.
+- **Not the command / action layer.** Same defect for the same reason: undo is
+  not a command, so the desync survives. (This was the shape an earlier
+  iteration of this ADR was directed toward; it is rejected here on the undo
+  case, and the arbitration is flagged for the approver.)
+
+Gating the observer on `local` is what makes the observer route correct rather
+than merely implementable:
+
+| Event                           | `local` | Publishes?                               |
+| ------------------------------- | ------- | ---------------------------------------- |
+| Author qualifies an element     | `true`  | Yes, on the authoring client only        |
+| Author presses Ctrl+Z / Ctrl+Y  | `true`  | Yes — this is what fixes the undo desync |
+| Remote peer receives the change | `false` | No                                       |
+
+Because `_onChange` is also invoked directly on the stash/pop path
+(`element-model.ts:321-329`, with `local: true`), one user gesture can produce
+several payloads for the same element. The publisher therefore **coalesces per
+`elementId` within one microtask** and publishes the element's _current full
+state_, never a delta.
+
+#### 4.2 Multi-client de-duplication
+
+Exactly one client publishes per change: the one whose Yjs transaction it is.
+There is no leader election, no lock and no acknowledgement — `local` already
+partitions the fleet into exactly one publisher and N−1 silent observers.
+
+Patches are **full-state and idempotent**: replaying the same patch twice, or
+publishing a state the host already holds, converges. This is what makes the
+`void`, unobservable return type survivable.
+
+The channel is therefore **best-effort and eventually consistent**, and the ADR
+says so rather than pretending otherwise: if the authoring client is offline
+from the host at that moment, the patch is lost, and the record stays stale
+until the next local change to that element. The safety net is that the
+**element is always the source of truth** — a host can rebuild every derived
+facet at any time by scanning occurrences with `collectPivotOccurrences`
+(ADR 0005 § 5). Derived facets are a cache of the boards, never a second
+original.
+
+#### 4.3 Occurrence deletion — no orphaned facets
+
+Deleting a bound, qualified element changes no tag, so a change-driven design
+would publish nothing and the record would keep facets attributed to an
+occurrence that no longer exists. "The library never deletes host data" would
+quietly become "the library leaks host data".
+
+The publisher therefore emits a **retraction** — `present: false`, `role:
+undefined`, `tags: {}` — on each of:
+
+- the element being removed from the surface;
+- its `pivotDocId` being cleared (unbind);
+- its `pivotDocId` being changed (retraction for the old record, followed by a
+  normal patch for the new one).
+
+The host drops every derived facet keyed by `(pivotDocId, elementId)`. Authored
+properties are untouched — a retraction is not a record deletion.
+
+Deleting the whole _document_ is out of the library's reach: no local
+transaction on the surface ever fires. That case is the host's, and the rebuild
+path in § 4.2 is its remedy.
+
+#### 4.4 N occurrences → 1 record
+
+ADR 0005 § 1 makes many-elements-to-one the whole point, and duplicate/paste
+trivially produces two elements carrying the same `pivotDocId` on the same
+board. The rule:
+
+- Derived facets are stored **per occurrence**, keyed by
+  `(pivotDocId, elementId)` — that is why `elementId` is in the patch and why
+  § 4.3 can retract precisely.
+- The record's derived view is the **union over live occurrences, each
+  attributed to its `elementId`**. Two occurrences whose tags disagree
+  **coexist as two attributed contributions**; neither overwrites the other.
+- The library **never merges them, never picks a winner, and never observes the
+  result**. Presenting a divergence — or flagging it as a finding — is the
+  wave-3 rules engine's job, and it is precisely the kind of fact that engine
+  exists to surface.
+
+This is the reason `elementId` is not an optional diagnostic field: without it
+the contract has no answer for its own headline case.
 
 ### 5. The library never renders the pivot record
 
@@ -258,7 +384,7 @@ already the documented route for element links
   to tune in the library because there is nothing to time out.
 - The provider is testable in isolation: a fake returning
   `signal({ status: 'ready', snapshot })` is three lines.
-- Two things now consume `docId` (ADR 0005 § 4): this provider, and the wave-3
+- Two things now _decide_ on `pivotDocId` (ADR 0005 § 4): this provider, and the wave-3
   rules engine. The rules engine reads the same `PivotProperty[]`, so facts and
   hover display cannot diverge.
 - The library gains a vocabulary (`PivotPropertyValue`) it must keep stable.

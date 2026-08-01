@@ -5,7 +5,7 @@
   `CLAUDE.md`).
 - Deciders: Mathieu Jolly
 - Milestone: "PF+MF" refoundation, Jalon 0 (contract seams)
-- Companion ADRs: [0005](0005-element-docid-seam.md) (the `docId` binding),
+- Companion ADRs: [0005](0005-element-docid-seam.md) (the `pivotDocId` binding),
   [0006](0006-pivot-properties-provider.md) (reading the bound record). The
   three form **one contract, frozen together**.
 
@@ -104,11 +104,27 @@ registration is an established shape here.
 
 ### 1. Identifier grammar
 
-```ts
-/** A universe is a framework namespace: 'wardley', 'edgy', 'bpmn', 'cynefin'… */
-export type UniverseId = string;
+**This ADR does not define framework identity. It consumes it.**
+[ADR 0008](0008-command-registry-foundation.md) (PR
+[#68](https://github.com/formicoidea/blocksuite-labre/pull/68)) owns
+`FRAMEWORK_IDS` / `FrameworkId`, an explicit sub-list of `OptionalBlock` using
+the **flag spelling** (`'cynefin-estuarine'`, `'ddd-core-domain'`…). An earlier
+draft of this ADR introduced its own `UniverseId = string`; since #68 documents
+that framework identity is already "spelled four times with no shared type, and
+has drifted", adding a fifth spelling was the wrong move and it is withdrawn.
 
-/** '<universe>:<local>' — e.g. 'wardley:component', 'wardley:nature'. */
+**Sequencing.** ADR 0008 lands `FrameworkId` first; this ADR depends on it. #68
+also flags that unifying the spellings renames the telemetry `framework`
+property values — a breaking change for already-collected PostHog data — which
+must be sequenced before either ADR is implemented.
+
+"Universe" survives only as the _narrative_ word for a framework's semantic
+vocabulary (and in this ADR's filename). The _type_ is `FrameworkId`, always.
+
+```ts
+import type { FrameworkId } from '@labre/std'; // ADR 0008
+
+/** '<framework>:<local>' — e.g. 'wardley:component', 'wardley:nature'. */
 export type QualifiedId = `${string}:${string}`;
 
 /** '<tagId>/<local>' — e.g. 'wardley:nature/data'. */
@@ -116,11 +132,20 @@ export type TagValueId = string;
 ```
 
 - Ids match `/^[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)?$/`.
-  Lower-kebab, case-sensitive, no unicode, no dots.
-- The `<universe>` segment of every id in a `UniverseTagDefs` MUST equal that
-  pack's `universe`. Cross-universe ids are rejected at seed time.
+  Lower-kebab, case-sensitive, no unicode, no dots. Hyphenated framework ids are
+  therefore legal: `cynefin-estuarine:domain` is a well-formed role id.
+- The `<framework>` segment of every id in a pack MUST equal that pack's
+  `framework`. Cross-framework ids are rejected at seed time.
 - **Ids are forever.** A def is never removed, only `deprecated`. Documents
   store ids, and a document must keep opening after any seeding change.
+
+**One `FrameworkId` may cover several element types.** `'cynefin-estuarine'` is
+a single flag and a single `FrameworkId`, but two element ctors — `cynefin` and
+`estuarine` (`element-model/index.ts:36-37`). The element-type → framework
+mapping used by `roleFromLegacyKind` (§ 5) is therefore **many-to-one**, and
+must be an explicit table rather than an identity function on the element type.
+Both `cynefin` and `estuarine` elements produce role ids namespaced
+`cynefin-estuarine:`.
 
 ### 2. The defs format (TypeScript, and JSON by construction)
 
@@ -142,7 +167,7 @@ export type TagValueDef = {
 };
 
 export type TagDef = {
-  /** '<universe>:<local>', e.g. 'wardley:nature'. */
+  /** '<framework>:<local>', e.g. 'wardley:nature'. */
   id: QualifiedId;
   label: string;
   description?: string;
@@ -151,7 +176,7 @@ export type TagDef = {
   /** A closed list, or 'open' for free-text values. */
   values: TagValueDef[] | 'open';
   /**
-   * Roles this tag qualifies. '*' = every role of this universe.
+   * Roles this tag qualifies. '*' = every role of this framework.
    * Inheritance applies: a tag on 'wardley:component' also applies to every
    * role that (transitively) extends it.
    */
@@ -167,13 +192,13 @@ export type TagDef = {
 };
 
 export type RoleDef = {
-  /** '<universe>:<local>', e.g. 'wardley:component'. */
+  /** '<framework>:<local>', e.g. 'wardley:component'. */
   id: QualifiedId;
   label: string;
   description?: string;
   /**
    * Role inheritance. A rule (or a tag's `appliesTo`) stated on the parent
-   * applies to every descendant. Same universe only. Cycles are rejected.
+   * applies to every descendant. Same framework only. Cycles are rejected.
    */
   extends?: QualifiedId;
   deprecated?: boolean;
@@ -188,7 +213,7 @@ export type UniverseTagDefs = {
    * Doubles as the DI variant — see § 3.
    */
   packId: string;
-  universe: UniverseId;
+  framework: FrameworkId;
   label: string;
   roles: RoleDef[];
   tags: TagDef[];
@@ -224,6 +249,23 @@ export function UniverseTagDefsExtension(
 }
 ```
 
+**All packs MUST be registered in the same DI scope.** `getAllRaw`
+(`packages/framework/global/src/di/provider.ts:85-101`) falls back to the parent
+scope **only when the current scope has no registration for the identifier at
+all**; it never merges across scopes. Seeding one pack from a `StoreExtension`
+and another from a `ViewExtension` — different containers, different scopes —
+silently hides the first behind the second. This is a host-side constraint the
+library cannot enforce, so it is stated here and belongs in the host
+integration checklist.
+
+**Order stability is load-bearing and non-obvious.** `getAll` returns a
+`Map<ServiceVariant, T>`, and `Map.set` on an **existing** key preserves the
+key's original insertion position. That is what makes "identical `packId`s
+replace" (below) and "cosmetic fields: last pack wins" (§ merge rules)
+mutually consistent: re-seeding a pack updates it **in place** rather than
+moving it to the end of the iteration order, so a re-registration cannot
+silently flip which pack wins a cosmetic field.
+
 **Why `override` and not `addImpl`.** `addImpl` throws
 `DuplicateServiceDefinitionError` when the same `[scope, identifier, variant]`
 is registered twice (`packages/framework/global/src/di/container.ts:179-182`).
@@ -236,8 +278,8 @@ never throws and never grows the registry.
 ```ts
 /** Merged, validated, read-only view over `provider.getAll(UniverseTagDefsProvider)`. */
 export interface UniverseRegistry {
-  universes(): UniverseId[];
-  roles(universe: UniverseId): RoleDef[];
+  frameworks(): FrameworkId[];
+  roles(framework: FrameworkId): RoleDef[];
   role(id: QualifiedId): RoleDef | undefined;
   /** Self first, then ancestors. Empty if the role is unknown. */
   roleChain(id: QualifiedId): RoleDef[];
@@ -252,7 +294,7 @@ export type UniverseDefIssue = {
   severity: 'warning' | 'error';
   code:
     | 'invalid-id'
-    | 'cross-universe-id'
+    | 'cross-framework-id'
     | 'duplicate-conflict'
     | 'unknown-parent'
     | 'inheritance-cycle'
@@ -292,7 +334,7 @@ export type UniverseDefIssue = {
 ### 4. What the element carries
 
 Two additive optional `@field()` accessors on `GfxPrimitiveElementModel`,
-alongside `docId` (ADR 0005 § 1):
+alongside `pivotDocId` (ADR 0005 § 1):
 
 ```ts
 // packages/framework/std/src/gfx/model/surface/element-model.ts
@@ -306,15 +348,16 @@ alongside `docId` (ADR 0005 § 1):
 accessor role: string | undefined = undefined;
 
 /**
- * Level 3 — contextual qualification. Tag def id -> selected value ids.
- * e.g. { 'wardley:nature': ['wardley:nature/data'] }.
- * Undefined and {} are equivalent (both mean "unqualified").
+ * Level 3 — contextual qualification. A NESTED Y.Map, tag def id -> selected
+ * value ids, e.g. { 'wardley:nature': ['wardley:nature/data'] }.
+ * An absent key and an empty map are equivalent (both mean "unqualified").
+ * See below for why this is a Y.Map and not a plain object.
  */
 @field()
-accessor tags: Record<string, string[]> | undefined = undefined;
+accessor tags: Y.Map<string[]> = new Y.Map();
 ```
 
-`BaseElementProps` gains `role?: string` and `tags?: Record<string, string[]>`.
+`BaseElementProps` gains `role?: string` and `tags?: Y.Map<string[]>`.
 
 **Persisted types are `string`, not `QualifiedId`.** The template-literal type
 is a _seed-time_ validation aid. Persisted values must accept any string,
@@ -324,13 +367,95 @@ the persisted type would push that case toward a load-time failure, which
 Compatibility below forbids. This is also why `OccurrenceFacetPatch.role` is
 `string | undefined` in ADR 0006.
 
-**Conflict granularity, stated honestly.** `tags` is a plain JS object stored as
-one `Y.Map` value, so concurrent edits converge last-write-wins over the _whole
-tag set_ of that element, not per tag. Precedent: `comments?: Record<string, boolean>`
-on `affine:database`. Accepted because qualification is a deliberate,
-low-frequency, single-author gesture on a single element; a nested `Y.Map` would
-buy per-tag merging at the cost of leaving the `@field()` mechanism entirely.
-Revisit if collaborative qualification becomes a real workflow.
+**Storage cost, restated where the fields are introduced.** ADR 0005 §
+Compatibility prices `@field()`'s unconditional `init()` write
+(`field.ts:39-48`) at one extra `Y.Map` key per element, even when the value is
+`undefined`. These two fields add two more. On the **base class** that is three
+new keys on _every_ primitive — every brush stroke, every connector, on every
+document — plus, for `tags`, an empty nested `Y.Map` per element. Declaring on
+the base class is nonetheless the right call: it is what makes duplicate/paste
+preserve the fields for every element type at once (#67 recommendation #1). The
+alternative — declaring per framework element class — reintroduces the loss for
+plain shapes, which are precisely the elements the promotion ladder targets.
+
+**Naming — session-architect arbitration, final call belongs to the approver.**
+Both names collide with existing vocabulary, and both are kept anyway:
+
+- **`role`** collides with `defineBlockSchema`'s
+  `metadata: { role: 'hub' | 'content' | 'root' }` (e.g. `database-model.ts:40`).
+  Kept, because the two never meet: `metadata.role` is a static schema
+  descriptor on _block_ flavours and is not a persisted per-element key, while
+  this `role` is product vocabulary carried by _surface elements_. Rejected
+  alternative: `semanticRole` (also `universeRole`). It is unambiguous, and if
+  the approver prefers it the change is free right now — after the first write
+  it is not (no migration runner, #67 § 4).
+- **`tags`** collides with the data-view tag vocabulary this same ADR cites
+  (`type-presets.ts:13-33`). Kept for the same reason — different layer, no
+  shared call site. Rejected alternative: `universeTags`.
+
+This is deliberately _not_ the same call as ADR 0005's `docId → pivotDocId`.
+There, the colliding name sat on the **same class** (`linkedDocId`) and in the
+**same call site** (`properties$(el.docId)`), so the ambiguity was live. Here it
+is cross-layer. Reviewers who disagree with that distinction should say so at
+approval: it is the only remaining free moment.
+
+#### Why `tags` is a nested `Y.Map` and not a plain object
+
+An earlier draft of this ADR stored `tags` as a plain JS object and justified
+whole-blob last-write-wins with the block-level precedent
+`comments?: Record<string, boolean>` on `affine:database`. **Both halves of that
+justification were wrong, and the decision they supported is reversed here.**
+
+1. **The `comments` precedent argued the opposite.** Block props do not store
+   pure objects opaquely: they pass through the reactive proxy into `native2Y`
+   (`packages/framework/store/src/reactive/native-y.ts:29-36`), which defaults
+   to `deep = true` and converts every `isPureObject` value into a nested
+   `Y.Map`, key by key. `comments` already merges **per key**, CRDT-style. It
+   was evidence against whole-blob LWW, cited in favour of it.
+2. **The stated cost of the alternative was false.** `@field()` supports a
+   nested `Y.Map` today: `MindmapElementModel` does exactly this —
+   `packages/affine/model/src/elements/mindmap/mindmap.ts:965`,
+   `@field() accessor children: Y.Map<NodeDetail> = new Y.Map();`. Per-tag
+   merging costs a nested `Y.Map` _inside_ `@field()`, not an exit from the
+   mechanism.
+
+The correction matters because the surface layer is **not** the block layer:
+`@field()` writes straight to the element's `Y.Map` (`field.ts:71-78`) with no
+`native2Y` in the path, so a plain object there really would be one opaque
+value. The genuine on-element precedents for opaque plain objects are
+`ConnectorElementModel.source` / `target` / `labelOffset` / `labelStyle`
+(`connector.ts:459,472,513,527`) — but each of those is a single atomic
+geometry or style value, not an accumulating multi-key set authored by
+different people at different times.
+
+**Decision: `Y.Map<string[]>`, keyed by tag def id.** Two users qualifying the
+same element on _different_ tags both keep their work. The `string[]` for a
+_single_ tag stays last-write-wins, which is correct: one tag's value set is one
+atomic choice.
+
+The deciding argument is asymmetry of harm under a frozen shape. There is **no
+migration runner in `packages/framework/store` and no version tag that does
+anything** (spike [#67](https://github.com/formicoidea/blocksuite-labre/pull/67)
+§ 4: _"none required, and none available"_), so this shape is chosen once. An
+under-powered merge loses user qualification silently — the exact harm class the
+red zone in `CLAUDE.md` exists to prevent, and the input to a rules engine that
+treats these as validation facts. An over-powered merge costs some complexity.
+Those are not comparable stakes.
+
+**The `Y.Map` round-trips.** Verified on both replay paths, and this is what
+bounds the added complexity:
+
+- `_propsToY` reconstructs any `Y.Map`-valued prop generically via
+  `SURFACE_YMAP_UNIQ_IDENTIFIER` (`surface-model.ts:416-425`) — it iterates
+  `Object.entries(props)` and is not mindmap-specific.
+- The snapshot transformer round-trips it: `_toJSON` emits
+  `{ [SURFACE_YMAP_UNIQ_IDENTIFIER]: true, json: value.toJSON() }` and
+  `_fromJSON` rebuilds it (`surface-transformer.ts:23-38,41-54`).
+- #67's recommendation #2 ("keep the value a flat string") constrains **nested
+  Y types inside the map**, not plain JSON values: `_toJSON` is one level of
+  Y-awareness deep. `Y.Map<string[]>` is exactly one level, with plain arrays as
+  values — inside the envelope, and shallower than mindmap's
+  `Y.Map<NodeDetail>`, which already ships.
 
 ### 5. Relationship to the existing `kind` fields — additive, no migration
 
@@ -353,11 +478,11 @@ transitions. (Rung numbers are _not_ the typology levels of the Context table:
 rung 4, "facets", is where typology level 3 is authored.) **Every transition is
 reversible, none is a conversion, none touches geometry.**
 
-| Transition         | Gesture                    | Written            | Reverse                                                                                                    |
-| ------------------ | -------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| shape → role       | Assign a role              | `role`             | Clear `role` (tags whose `appliesTo` no longer matches are kept, shown as inapplicable)                    |
-| role → component   | Bind to a pivot record     | `docId` (ADR 0005) | Clear `docId`. The record survives — the library never deletes host data                                   |
-| component → facets | Qualify (typology level 3) | `tags`             | Clear entries. The library publishes the emptied patch; the host removes the matching derived pivot facets |
+| Transition         | Gesture                    | Written                 | Reverse                                                                                                                                                 |
+| ------------------ | -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| shape → role       | Assign a role              | `role`                  | Clear `role` (tags whose `appliesTo` no longer matches are kept, shown as inapplicable)                                                                 |
+| role → component   | Bind to a pivot record     | `pivotDocId` (ADR 0005) | Clear `pivotDocId`. The record survives — the library never deletes host data                                                                           |
+| component → facets | Qualify (typology level 3) | `tags`                  | Delete the keys. The publisher emits a patch with `tags: {}`; the host drops the derived facets keyed by `(pivotDocId, elementId)` — ADR 0006 § 4.3/4.4 |
 
 Hard invariants for every transition:
 
@@ -365,10 +490,28 @@ Hard invariants for every transition:
   swapped. **Promotion is never a conversion.**
 - `xywh`, `rotate`, `index`, `seed`, and every style field are untouched.
 - No rung requires the previous one. An element may carry `tags` without a
-  `docId`; a `docId` without a `role`. The rungs are independent axes, ordered
+  `pivotDocId`; a `pivotDocId` without a `role`. The rungs are independent axes, ordered
   only by what is _useful_, never by what is _required_.
 - Each rung is one `Y.Map` write inside the store transaction the `@field()`
-  setter already opens — one undo step, no I/O, no provider call.
+  setter already opens — no I/O, no provider call.
+- **Each rung MUST call `store.captureSync()` immediately after the write.**
+
+`captureSync()` is not a nicety. `store.transact()` is **not** an undo boundary:
+the `Y.UndoManager` is constructed with only `trackedOrigins` and **no
+`captureTimeout`**
+(`packages/framework/store/src/extension/history/history-extension.ts:22-24`),
+so Yjs's 500 ms default applies and consecutive transactions merge into one undo
+stack item. The store's own docstring spells out the consequence
+(`packages/framework/store/src/model/store/store.ts:407-424`): `op1(); op2();
+captureSync(); op3();` gives one undo for `op3`, and the next reverts `op1` **and**
+`op2`.
+
+Without it, promoting within 500 ms of dragging the shape means a single Ctrl+Z
+reverts **both** — so from the user's seat the transition _did_ move geometry,
+breaking two of this section's own hard invariants at once. An earlier draft of
+this ADR claimed "one undo step" for a bare transaction; that was simply wrong.
+The existing precedent is `packages/affine/gfx/wardley/src/actions.ts:141`,
+whose `finish()` calls `gfx.doc.captureSync()` for exactly this reason.
 
 **Tension recorded.** This ladder is a _second, additive_ path. The existing
 framework toolbars still create typed element classes directly
@@ -376,28 +519,64 @@ framework toolbars still create typed element classes directly
 role into element class. Jalon 0 does not remove that path; the two coexist. If
 they are ever unified, the ladder is the target shape.
 
-### 7. Telemetry
+### 7. Telemetry — one new event, deliberately
 
-Reuse ADR 0003's framework taxonomy — **no new event names**.
-`FrameworkElementAdded` at promotion sites, with `element` carrying the rung:
-`'promote:role'`, `'promote:pivot'`, `'promote:tag'`.
+An earlier draft reused `FrameworkElementAdded` for promotions under a "no new
+event names" rule inherited from ADR 0003. **That was a taxonomy break and it is
+reversed.** ADR 0003 § 2 defines the creation event as "UI intent, emitted at
+insertion sites"; a promotion inserts nothing — § 6's own invariant is that no
+element is created, destroyed or swapped. Reusing it means drawing a shape and
+then promoting it emits `FrameworkElementAdded` **twice**, permanently
+inflating "elements added per framework" in PostHog.
 
-**Tension recorded.** `FrameworkElementEvent.framework`
-(`packages/affine/shared/src/services/telemetry-service/lifecycle.ts:42-49`) is
-a **closed union** of seven literals. App-seeded universes cannot be typed by a
-union in the library. It must be widened to
-`(typeof KNOWN_FRAMEWORKS)[number] | (string & {})` — a small, backward-
-compatible change to be made when this ADR is implemented, not before.
+"No new event names" is not free here: it is paid in retroactively unfixable
+data, the same cost #68 flags for the framework rename. A new event is cheaper
+than a corrupted funnel.
+
+```ts
+// telemetry-service/lifecycle.ts — added to FrameworkDiagramEvents
+export interface FrameworkPromotionEvent extends TelemetryEvent {
+  framework: FrameworkId;
+  /** Which rung was crossed. */
+  rung: 'role' | 'pivot' | 'tag';
+  /** Forward ('shape'->'role') or the reverse gesture. */
+  direction: 'promote' | 'demote';
+  /** Role id at the time of the gesture, when there is one. */
+  role?: string;
+}
+
+export type FrameworkDiagramEvents = {
+  FrameworkElementAdded: FrameworkElementEvent;
+  FrameworkToolPicked: FrameworkElementEvent;
+  FrameworkLegendCreated: FrameworkElementEvent;
+  FrameworkElementPromoted: FrameworkPromotionEvent; // new
+};
+```
+
+It stays inside ADR 0003's framework taxonomy — same `framework` segmentation,
+same emission discipline — and `direction` gives the reversibility invariant a
+measurable counterpart.
+
+**Dependency.** `FrameworkElementEvent.framework` is a **closed union of seven
+literals** (`telemetry-service/lifecycle.ts:42-49`) whose values have already
+drifted from the flag spellings (telemetry `'cynefin'` vs flag
+`'cynefin-estuarine'`). This ADR does **not** widen it with
+`| (string & {})` — that would entrench a fifth spelling. It takes
+`FrameworkId` from ADR 0008 (§ 1), which is the same unification #68 already
+plans, and inherits #68's warning that the value rename breaks
+already-collected PostHog data and must be sequenced first.
 
 ## Compatibility
 
-| Direction                      | Behaviour                                                                                                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Old document, new build        | No `role` / `tags` keys → both read `undefined` (`decorators/field.ts:52-58`). Level 1, exactly as today. Legacy `kind` still drives rendering; `roleFromLegacyKind` supplies a role at read time without writing. |
-| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. Dropped on duplicate & paste only — see ADR 0005 § Compatibility, same mechanism, same transitional window.                      |
-| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.    |
-| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                         |
-| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                     |
+| Direction                      | Behaviour                                                                                                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old document, new build        | No `role` key → reads `undefined`; no `tags` key → the accessor's `new Y.Map()` default applies, empty (`decorators/field.ts:52-58`). Level 1, exactly as today. Legacy `kind` still drives rendering; `roleFromLegacyKind` supplies a role at read time without writing. |
+| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. Dropped on the five element-creation-from-props paths — see ADR 0005 § Compatibility, same mechanism, same #67 analysis, same transitional window.                                      |
+| `tags` on an old build         | The nested `Y.Map` is preserved as an opaque Yjs type through load/save and through the snapshot transformer, which handles any `Y.Map`-valued prop generically (`surface-transformer.ts:23-38`). It is not special-cased for mindmap.                                    |
+| Concurrent qualification       | Per-tag merge: two users setting _different_ tag ids on the same element both keep their value. Same tag id → last-write-wins on that key's `string[]`.                                                                                                                   |
+| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.                                                           |
+| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                                                                                |
+| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                                                                            |
 
 ### The flag invariant, checked against the real code
 
@@ -416,13 +595,16 @@ only._ Where this stands today:
   `EdgyNodeRendererExtension` within `EdgyViewExtension`, itself gated at
   `packages/affine/all/src/extensions/view.ts:108-109`. With the flag off, such
   an element loads and saves but has no renderer.
-  **The fix already has a precedent in the repo**: DDD Core Domain splits the
-  two, registering `DddCoreDomainRenderViewExtension` unconditionally and gating
-  only `DddCoreDomainViewExtension`
-  (`packages/affine/all/src/extensions/view.ts:112-115`, comment: _"Core Domain
-  rendering is always on; the flag gates only the senior button."_).
+  **The fix is already an established pattern in the repo, in two places**:
+  `MindmapRenderViewExtension` is registered unconditionally while only
+  `MindmapToolViewExtension` is gated (`view.ts:100-101`, comment: _"Mindmap
+  rendering is always on; the flags gate only the senior buttons."_), and DDD
+  Core Domain does the same with `DddCoreDomainRenderViewExtension` vs
+  `DddCoreDomainViewExtension` (`view.ts:112-115`).
   **Follow-up, out of scope here:** generalize that split to every framework so
-  the invariant holds visually, not merely at the persistence layer.
+  the invariant holds visually, not merely at the persistence layer. Two
+  independent precedents make this a generalization, not a promotion of a
+  one-off.
 - **Does not hold for blocks**, by ADR 0002's own documented caveat
   (`flags.ts:16-19`: a stored document containing a disabled block fails schema
   validation on load). Unchanged by this ADR, and flagged for a future amendment
