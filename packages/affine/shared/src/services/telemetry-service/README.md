@@ -62,6 +62,22 @@ Business framework diagrams share one vocabulary; `framework` segments,
 Adding a framework = reuse these three events with a new `framework` value
 (add it to the `FrameworkElementEvent['framework']` union in `lifecycle.ts`).
 
+## Validation arbitrations (PF8)
+
+No rule is a wall: every violation can be waived, and every waiver is reported.
+A rule waived on every board is a rule that is wrong — these two events are the
+only place that says so.
+
+| Event                         | When                                   | Required props |
+| ----------------------------- | -------------------------------------- | -------------- |
+| `ValidationExceptionGranted`  | the user waives a rule from the bubble  | `ruleId`, `scope` (`element` \| `map`), `elementCount` |
+| `ValidationExceptionRevoked`  | the user restores a waived rule         | `ruleId`, `scope`, `elementCount` |
+
+`ruleId` is the framework-namespaced rule id (`wardley.component-outside-map`);
+`framework` segments as elsewhere. Neither event carries board content — a
+waiver says which rule was arbitrated on, never what was drawn. A gesture that
+changes nothing (the exception was already there) emits nothing.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,

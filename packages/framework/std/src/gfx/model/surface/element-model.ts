@@ -54,6 +54,23 @@ export type BaseElementProps = {
   lockedBySelf?: boolean;
 };
 
+/**
+ * One arbitration: "this element is excused from that rule".
+ *
+ * Document DATA, not session state — it records a decision the user made, so it
+ * outlives the tab, the framework flag and the client version that wrote it.
+ * Deliberately flat and rule-agnostic: the model stores it, the validation
+ * engine interprets it, and neither has to know what the other is up to.
+ */
+export type ValidationException = {
+  /** The rule being excused, e.g. `wardley.component-outside-map`. */
+  ruleId: string;
+  /** Who granted it, when the host knows. Absent rather than empty. */
+  author?: string;
+  /** Epoch ms, taken at the moment of the gesture. */
+  at: number;
+};
+
 export type SerializedElement = Record<string, unknown> & {
   type: string;
   xywh: SerializedXYWH;
@@ -391,6 +408,28 @@ export abstract class GfxPrimitiveElementModel<
    */
   @field()
   accessor role: string | undefined = undefined;
+
+  /**
+   * Validation rules this element is excused from (PF8, "no rule is a wall").
+   *
+   * Declared on the BASE class for the same reason as {@link role}: an element
+   * re-created from props (paste, duplicate, template insertion) only reaches
+   * the Y.Map through keys that have a declared accessor, so an exception
+   * declared per subclass would be silently dropped on copy — and an arbitration
+   * the user made explicitly is exactly the kind of thing that must survive a
+   * copy.
+   *
+   * `undefined` = no exception, and no key is written for it, so an element that
+   * never got one stays byte-identical to one created before the field existed:
+   * optional field, no schema version bump, no migration.
+   *
+   * Flat JSON on purpose — element serialization is one level deep, and a value
+   * a Yjs update can encode is the contract enforced by `_assignElementProp`.
+   * The engine that reads it lives in `@labre/affine-block-surface`; the base
+   * model only carries the data, and knows nothing about rules.
+   */
+  @field()
+  accessor validationExceptions: ValidationException[] | undefined = undefined;
 
   @field()
   accessor lockedBySelf: boolean | undefined = false;

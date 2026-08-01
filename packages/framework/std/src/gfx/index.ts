@@ -83,6 +83,7 @@ export {
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
   type SerializedElement,
+  type ValidationException,
 } from './model/surface/element-model.js';
 export {
   GfxLocalElementModel,
