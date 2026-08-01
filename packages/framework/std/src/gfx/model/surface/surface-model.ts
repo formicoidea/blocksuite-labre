@@ -12,7 +12,12 @@ import {
 } from '../base.js';
 import type { GfxGroupModel, GfxModel } from '../model.js';
 import { createDecoratorState } from './decorators/common.js';
-import { initializeObservers, initializeWatchers } from './decorators/index.js';
+import {
+  getFieldPropsSet,
+  getLocalPropsSet,
+  initializeObservers,
+  initializeWatchers,
+} from './decorators/index.js';
 import {
   GfxGroupLikeElementModel,
   type GfxPrimitiveElementModel,
@@ -71,6 +76,137 @@ const UNSAFE_ELEMENT_PROP_KEYS = new Set([
   'constructor',
   'prototype',
 ]);
+
+/**
+ * Whether the element class DECLARED this prop, i.e. whether the assignment
+ * `element[key] = value` is something the class asked for.
+ *
+ * Three sources, and no more:
+ *
+ * - the `@field()` set and the `@local()` set the decorators maintain per
+ *   prototype — the authoritative table for every decorated accessor;
+ * - a plain accessor **that has a setter**, found by walking the prototype
+ *   chain. The only such prop today is `xywh` on `GfxGroupLikeElementModel`,
+ *   whose value is derived from the children and whose setter is a deliberate
+ *   no-op; since `serialize()` always emits `xywh`, treating it as unknown
+ *   would persist a stale derived value into every duplicated group.
+ *
+ * Explicitly NOT `key in element`, which also matches methods (`serialize`,
+ * `isLocked`, …), getter-only derived props (`x`, `y`, `w`, `h`, `group`,
+ * `elementBound`, …) and internal instance fields (`_local`, `_preserved`).
+ * Assigning to any of those corrupts the model instead of describing it. The
+ * descriptor walk stops at the first prototype that owns the key, so a method
+ * (data descriptor, no setter) and a getter-only accessor both answer `false`.
+ */
+function isDeclaredElementProp(
+  element: GfxPrimitiveElementModel,
+  key: string
+): boolean {
+  if (getFieldPropsSet(element).has(key) || getLocalPropsSet(element).has(key)) {
+    return true;
+  }
+
+  for (
+    let proto: object | null = Object.getPrototypeOf(element);
+    proto !== null;
+    proto = Object.getPrototypeOf(proto)
+  ) {
+    const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+
+    if (descriptor) {
+      return typeof descriptor.set === 'function';
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Depth limit for the encodability check below. Element props are flat by
+ * contract; this only exists so a pathologically deep payload cannot turn the
+ * check itself into the stack overflow it is meant to prevent.
+ */
+const MAX_UNKNOWN_PROP_DEPTH = 32;
+
+/**
+ * Whether a value can be stored in an element's Y.Map without breaking the
+ * document.
+ *
+ * `Y.Map.set` accepts a value it cannot later encode: a cyclic plain object is
+ * stored happily, `serialize()` and `encodeStateVector` keep working, and only
+ * `encodeStateAsUpdate` — i.e. persistence and sync — blows the stack. Nothing
+ * in the app notices, and no user action can remove the key. So an unknown
+ * prop is admitted only if it is provably encodable: a Yjs type (which
+ * `_propsToY` may have built from a `Y.Text` / `Y.Map` wrapper payload), a
+ * binary blob, a primitive, or a plain object / array of those, acyclic and
+ * within the depth limit.
+ *
+ * Anything else (function, symbol, bigint, class instance, cycle) is rejected,
+ * and the key is dropped exactly as it was before unknown props were
+ * forwarded at all.
+ */
+function isEncodableElementValue(
+  value: unknown,
+  depth = 0,
+  seen: Set<object> = new Set()
+): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+
+  // Already a Yjs type: `_propsToY` builds these for the wrapper payloads, and
+  // Yjs owns their encoding.
+  if (value instanceof Y.AbstractType) {
+    return true;
+  }
+
+  if (value instanceof Uint8Array) {
+    return true;
+  }
+
+  const type = typeof value;
+
+  if (type === 'string' || type === 'number' || type === 'boolean') {
+    return true;
+  }
+
+  if (type !== 'object') {
+    // function, symbol, bigint
+    return false;
+  }
+
+  if (depth >= MAX_UNKNOWN_PROP_DEPTH) {
+    return false;
+  }
+
+  // Cycle detection is per path, so a value shared by two sibling branches
+  // (a DAG) is still accepted.
+  if (seen.has(value as object)) {
+    return false;
+  }
+  seen.add(value as object);
+
+  try {
+    if (Array.isArray(value)) {
+      return value.every(item =>
+        isEncodableElementValue(item, depth + 1, seen)
+      );
+    }
+
+    // Only plain objects. A class instance would be silently flattened by the
+    // Yjs encoder, which is never what the caller meant.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      return false;
+    }
+
+    return Object.values(value as Record<string, unknown>).every(item =>
+      isEncodableElementValue(item, depth + 1, seen)
+    );
+  } finally {
+    seen.delete(value as object);
+  }
+}
 
 export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   protected _decoratorState = createDecoratorState();
@@ -198,21 +334,39 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }
 
   /**
-   * Copies one serialized prop onto an element.
+   * Copies one serialized prop onto an element, routing it EXPLICITLY.
    *
-   * A key the element class declares (`@field()`, `@local()`, or any plain
-   * accessor) goes through that accessor, exactly as before. A key the class
-   * does **not** recognise is written verbatim into the element's Y.Map
-   * instead of being assigned to the JavaScript instance, where it used to be
-   * silently dropped: the plain own property looked right in the running
-   * session and existed for nobody else, then vanished on reload.
+   * Three outcomes, in order:
    *
-   * The practical case is a mixed-version fleet — an older client pasting,
-   * duplicating or "turn into linked doc"-ing an element annotated by a newer
-   * one. Preserving what we do not understand is the Yjs contract everywhere
-   * else in the element plumbing (every field write, stash/pop, undo/redo and
-   * the snapshot transformer already do it); this closes the two bulk-assign
-   * sites that did not.
+   * 1. an unsafe key ({@link UNSAFE_ELEMENT_PROP_KEYS}) is dropped;
+   * 2. a key the element class **declared** ({@link isDeclaredElementProp})
+   *    goes through its accessor, exactly as before;
+   * 3. anything else is an unknown key and is written verbatim into the
+   *    element's Y.Map, provided the value is encodable.
+   *
+   * Step 2 deliberately does **not** ask `key in element`. That question is far
+   * wider than "did the class declare this prop": it also matches every method
+   * (`serialize`, `isLocked`, `stash`…), every getter-only derived prop (`x`,
+   * `y`, `w`, `h`, `group`, `elementBound`…) and every internal instance field
+   * (`_local`, `_preserved`…). Routing those to the instance is what used to
+   * corrupt the model — a data key named `serialize` shadowed the method with a
+   * string, and a data key named `x` threw `TypeError: only a getter`, which
+   * `store.transact` swallows, silently losing every prop after it in the same
+   * bulk update. With the declared-prop sets, such a key is simply unknown data:
+   * it lands in the Y.Map, where it shadows nothing (methods and derived getters
+   * live on the prototype and are read from there).
+   *
+   * Step 3 refuses a value it could not encode. `Y.Map.set` accepts a cyclic
+   * object and only fails later, in `encodeStateAsUpdate` — i.e. it breaks
+   * persistence and sync for good, invisibly. Dropping the key restores the
+   * pre-existing behaviour for that one prop and keeps the document sound; the
+   * doc's "values stay flat JSON" claim is now enforced rather than assumed.
+   *
+   * An `undefined` value is never written on the unknown branch either, so
+   * spreading an absent option (`{ ...opts }` with `opts.foo === undefined`)
+   * cannot mint a phantom key that is invisible in `serialize()` yet real for
+   * every peer. Declared fields keep accepting `undefined`, which is how an
+   * optional field is cleared.
    *
    * The value is already Y-converted at this point: both call sites run the
    * whole props object through {@link _propsToY} first, which is key-agnostic.
@@ -228,9 +382,21 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       return;
     }
 
-    if (key in element) {
+    if (isDeclaredElementProp(element, key)) {
       // @ts-expect-error ignore
       element[key] = value;
+      return;
+    }
+
+    if (value === undefined) {
+      return;
+    }
+
+    if (!isEncodableElementValue(value)) {
+      console.warn(
+        `Dropping unknown element prop "${key}": the value cannot be encoded ` +
+          `into the document (expected a Yjs type, or flat JSON without cycles).`
+      );
       return;
     }
 

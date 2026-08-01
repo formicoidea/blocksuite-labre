@@ -8,9 +8,11 @@
  * `EdgelessCRUDIdentifier.addElement` (which also runs `applyLastProps`) —
  * which is the gap the US-1.8 spike flagged as untested.
  *
- * `role` stands for any prop written by a newer version of the library: no
- * element class declares it, so the running client must carry it through the
- * copy verbatim rather than silently dropping it.
+ * The probe key stands for any prop written by a newer version of the library.
+ * It is deliberately a key no element class will ever declare — naming it after
+ * a plausible future field (`role`, say) would silently move this spec onto the
+ * declared-accessor branch the day that field ships, and the coverage would
+ * disappear without a single test turning red.
  *
  * See `docs/spikes/us-1-8-unknown-props-preservation.md`.
  */
@@ -18,13 +20,14 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { type ShapeElementModel, ShapeType } from '@labre/affine/model';
 import type { BlockStdScope } from '@labre/std';
 import { beforeEach, describe, expect, test } from 'vitest';
+import * as Y from 'yjs';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
-const ROLE_KEY = 'role';
-const ROLE_VALUE = 'wardley:component';
+const UNKNOWN_KEY = 'x-labre-unknown-probe';
+const UNKNOWN_VALUE = 'wardley:component';
 
 const press = (key: string) =>
   document.dispatchEvent(
@@ -60,7 +63,7 @@ describe('edgeless clipboard preserves undeclared element props', () => {
     const shape = service.crud.getElementById(id) as ShapeElementModel;
 
     std.store.transact(() => {
-      shape.yMap.set(ROLE_KEY, ROLE_VALUE);
+      shape.yMap.set(UNKNOWN_KEY, UNKNOWN_VALUE);
     });
 
     return shape;
@@ -78,9 +81,41 @@ describe('edgeless clipboard preserves undeclared element props', () => {
     expect(shapes.length).toBe(2);
 
     const clone = shapes.find(el => el.id !== shape.id)!;
-    expect(clone.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(clone.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
     // the original is untouched
-    expect(shape.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(shape.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+  });
+
+  test('duplicating a group does not persist its derived xywh', async () => {
+    // `xywh` on a group-like element is derived from the children and backed
+    // by a plain no-op setter, not by an `@field()`. `serialize()` emits it
+    // anyway, so routing it as an unknown key would persist a stale derived
+    // value into every duplicated group. It must take the accessor branch.
+    const children = new Y.Map<boolean>();
+    for (let i = 0; i < 2; i++) {
+      const shapeId = service.crud.addElement('shape', {
+        shapeType: ShapeType.Rect,
+        xywh: `[${i * 100},0,100,100]`,
+      });
+      if (!shapeId) throw new Error('failed to add shape');
+      children.set(shapeId, true);
+    }
+    const groupId = service.crud.addElement('group', { children });
+    if (!groupId) throw new Error('failed to add group');
+    const group = service.surface.getElementById(groupId)!;
+
+    expect(group.yMap.has('xywh')).toBe(false);
+
+    service.gfx.selection.set({ elements: [groupId], editing: false });
+    press('d');
+    await wait(100);
+
+    const clone = service.surface
+      .getElementsByType('group')
+      .find(el => el.id !== groupId)!;
+
+    expect(clone).toBeDefined();
+    expect(clone.yMap.has('xywh')).toBe(false);
   });
 
   test('a duplicate of a plain shape gains no stray keys', async () => {

@@ -1,11 +1,13 @@
 /**
  * Compatibility proof for props a running element class does not declare —
- * e.g. an optional semantic `role` field added by a newer version of the
- * library (US-1.8).
+ * e.g. an optional semantic field added by a newer version of the library
+ * (US-1.8).
  *
- * `TestShapeElement` deliberately declares no `role` accessor, so it plays the
- * part of an OLDER client: a library version shipped before `role` existed,
- * opening and editing a document written by a NEWER client.
+ * The probe key is `x-labre-unknown-probe` on purpose: it must be a key NO
+ * element class will ever declare. Using a plausible field name (`role`, say)
+ * would make this whole spec pass through the declared-accessor branch the day
+ * that field ships, and the unknown-key coverage would evaporate in silence —
+ * exactly what happened when `@field() role` landed on the base element model.
  *
  * The US-1.8 spike (`docs/spikes/us-1-8-role-field-compat.md`) found two bulk
  * assignment sites that dropped such keys; they now forward them straight into
@@ -18,6 +20,7 @@ import {
   TestWorkspace,
 } from '@labre/store/test';
 import { describe, expect, test } from 'vitest';
+import * as Y from 'yjs';
 
 import { effects } from '../../effects.js';
 import type { SerializedElement } from '../../gfx/index.js';
@@ -32,8 +35,8 @@ effects();
 
 const extensions = [RootBlockSchemaExtension, SurfaceBlockSchemaExtension];
 
-const ROLE_KEY = 'role';
-const ROLE_VALUE = 'wardley:component';
+const UNKNOWN_KEY = 'x-labre-unknown-probe';
+const UNKNOWN_VALUE = 'wardley:component';
 
 function setupSurface(collectionId = 'test-collection') {
   const collection = new TestWorkspace({
@@ -57,15 +60,14 @@ function setupSurface(collectionId = 'test-collection') {
 
 /**
  * Simulates the document state produced by a NEWER client: the element's Y.Map
- * carries a `role` key that the running (older) element class knows nothing
- * about.
+ * carries a key that the running (older) element class knows nothing about.
  */
-function addElementWithRole(surfaceModel: SurfaceBlockModel) {
+function addElementWithUnknownProp(surfaceModel: SurfaceBlockModel) {
   const id = surfaceModel.addElement({ type: 'testShape' });
   const element = surfaceModel.getElementById(id)! as TestShapeElement;
 
   surfaceModel.store.transact(() => {
-    element.yMap.set(ROLE_KEY, ROLE_VALUE);
+    element.yMap.set(UNKNOWN_KEY, UNKNOWN_VALUE);
   });
 
   return { id, element };
@@ -74,16 +76,16 @@ function addElementWithRole(surfaceModel: SurfaceBlockModel) {
 describe('US-1.8 — unknown element prop, preserving paths', () => {
   test('an old client can read an unknown key it does not declare', () => {
     const { surfaceModel } = setupSurface();
-    const { element } = addElementWithRole(surfaceModel);
+    const { element } = addElementWithUnknownProp(surfaceModel);
 
     // no accessor exists for it, but the raw Y.Map keeps it
-    expect(ROLE_KEY in element).toBe(false);
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(UNKNOWN_KEY in element).toBe(false);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('writing a declared field (move/resize) does not clobber the unknown key', () => {
     const { surfaceModel } = setupSurface();
-    const { id, element } = addElementWithRole(surfaceModel);
+    const { id, element } = addElementWithUnknownProp(surfaceModel);
 
     // `updateElement` -> `@field` setter -> `yMap.set(prop, val)`: key by key,
     // never a whole-map rewrite.
@@ -91,24 +93,24 @@ describe('US-1.8 — unknown element prop, preserving paths', () => {
     surfaceModel.updateElement(id, { rotate: 45 });
     element.xywh = '[20,20,50,50]';
 
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('stash/pop (drag & resize interaction) does not clobber the unknown key', () => {
     const { surfaceModel } = setupSurface();
-    const { element } = addElementWithRole(surfaceModel);
+    const { element } = addElementWithUnknownProp(surfaceModel);
 
     element.stash('xywh');
     element.xywh = '[5,5,10,10]';
     element.pop('xywh');
 
     expect(element.xywh).toBe('[5,5,10,10]');
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('undo/redo of an old-client edit does not clobber the unknown key', () => {
     const { store, surfaceModel } = setupSurface();
-    const { id, element } = addElementWithRole(surfaceModel);
+    const { id, element } = addElementWithUnknownProp(surfaceModel);
 
     store.captureSync();
     store.resetHistory();
@@ -118,16 +120,16 @@ describe('US-1.8 — unknown element prop, preserving paths', () => {
 
     store.undo();
     expect(element.xywh).toBe('[0,0,10,10]');
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
 
     store.redo();
     expect(element.xywh).toBe('[10,10,200,200]');
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('undoing the deletion of the element restores the unknown key', () => {
     const { store, surfaceModel } = setupSurface();
-    const { id } = addElementWithRole(surfaceModel);
+    const { id } = addElementWithUnknownProp(surfaceModel);
 
     store.captureSync();
     store.resetHistory();
@@ -142,26 +144,26 @@ describe('US-1.8 — unknown element prop, preserving paths', () => {
     // back from the model — the previous `yMap` reference is stale.
     const restored = surfaceModel.getElementById(id);
     expect(restored).not.toBeNull();
-    expect(restored!.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(restored!.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('serialize() emits the unknown key (clipboard/snapshot write path)', () => {
     const { surfaceModel } = setupSurface();
-    const { element } = addElementWithRole(surfaceModel);
+    const { element } = addElementWithUnknownProp(surfaceModel);
 
     // `serialize()` is `yMap.toJSON()` — whole map, no field whitelist
     const serialized = element.serialize();
-    expect(serialized[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(serialized[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
   });
 });
 
 describe('US-1.8 — unknown element prop, element creation from props', () => {
   test('re-creating an element from its serialized props preserves the unknown key', () => {
     const { surfaceModel } = setupSurface();
-    const { element } = addElementWithRole(surfaceModel);
+    const { element } = addElementWithUnknownProp(surfaceModel);
 
     const serialized = element.serialize();
-    expect(serialized[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(serialized[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
 
     // This is what duplicate / paste does: feed the serialized payload back
     // into `addElement`. `_createElementFromProps` now forwards a key with no
@@ -172,13 +174,13 @@ describe('US-1.8 — unknown element prop, element creation from props', () => {
     const clone = surfaceModel.getElementById(cloneId)!;
 
     expect(clone.yMap.has('xywh')).toBe(true);
-    expect(clone.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
-    expect(clone.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(clone.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(clone.serialize()[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
   });
 
   test('the serialize -> addElement round trip is identical apart from the id', () => {
     const { surfaceModel } = setupSurface();
-    const { element } = addElementWithRole(surfaceModel);
+    const { element } = addElementWithUnknownProp(surfaceModel);
 
     surfaceModel.updateElement(element.id, { xywh: '[3,4,5,6]', rotate: 30 });
 
@@ -198,19 +200,19 @@ describe('US-1.8 — unknown element prop, element creation from props', () => {
     const source = setupSurface('doc-a');
     const target = setupSurface('doc-b');
 
-    const { element } = addElementWithRole(source.surfaceModel);
+    const { element } = addElementWithUnknownProp(source.surfaceModel);
     const clipboardPayload = JSON.parse(
       JSON.stringify(element.serialize())
     ) as SerializedElement;
 
-    expect(clipboardPayload[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(clipboardPayload[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
 
     const pastedId = target.surfaceModel.addElement(
       clipboardPayload as unknown as SerializedElement & { type: string }
     );
     const pasted = target.surfaceModel.getElementById(pastedId)!;
 
-    expect(pasted.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
+    expect(pasted.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
   });
 
   test('"turn into linked doc" preserves the unknown key before deleting the source', () => {
@@ -221,7 +223,7 @@ describe('US-1.8 — unknown element prop, element creation from props', () => {
     const source = setupSurface('doc-source');
     const linked = setupSurface('doc-linked');
 
-    const { id, element } = addElementWithRole(source.surfaceModel);
+    const { id, element } = addElementWithUnknownProp(source.surfaceModel);
 
     const movedId = linked.surfaceModel.addElement(
       element.serialize() as unknown as SerializedElement & { type: string }
@@ -231,8 +233,8 @@ describe('US-1.8 — unknown element prop, element creation from props', () => {
     expect(source.surfaceModel.getElementById(id)).toBeNull();
 
     const moved = linked.surfaceModel.getElementById(movedId)!;
-    expect(moved.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
-    expect(moved.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(moved.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(moved.serialize()[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
   });
 });
 
@@ -242,10 +244,10 @@ describe('US-1.8 — unknown element prop, bulk update', () => {
     const id = surfaceModel.addElement({ type: 'testShape' });
     const element = surfaceModel.getElementById(id)!;
 
-    surfaceModel.updateElement(id, { [ROLE_KEY]: ROLE_VALUE });
+    surfaceModel.updateElement(id, { [UNKNOWN_KEY]: UNKNOWN_VALUE });
 
-    expect(element.yMap.get(ROLE_KEY)).toBe(ROLE_VALUE);
-    expect(element.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(element.serialize()[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
   });
 
   test('updateElement still routes a declared local prop away from the Y.Map', () => {
@@ -259,6 +261,14 @@ describe('US-1.8 — unknown element prop, bulk update', () => {
 
     expect(element.opacity).toBe(0.5);
     expect(element.yMap.has('opacity')).toBe(false);
+
+    // `externalXYWH` stacks `@watch()` on top of `@local()`. Decorator `init`
+    // functions chain, so the local registry still sees it — assert it, because
+    // a break here would silently start writing a local prop to the document.
+    surfaceModel.updateElement(id, { externalXYWH: '[1,1,1,1]' });
+
+    expect(element.externalXYWH).toBe('[1,1,1,1]');
+    expect(element.yMap.has('externalXYWH')).toBe(false);
   });
 });
 
@@ -269,7 +279,7 @@ describe('US-1.8 — unknown element prop, unsafe keys', () => {
     JSON.parse(
       JSON.stringify({
         type: 'testShape',
-        [ROLE_KEY]: ROLE_VALUE,
+        [UNKNOWN_KEY]: UNKNOWN_VALUE,
         ['__proto__']: { polluted: true },
         constructor: { polluted: true },
         prototype: { polluted: true },
@@ -285,7 +295,7 @@ describe('US-1.8 — unknown element prop, unsafe keys', () => {
     expect(element.yMap.has('__proto__')).toBe(false);
     expect(element.yMap.has('constructor')).toBe(false);
     expect(element.yMap.has('prototype')).toBe(false);
-    expect(element.serialize()[ROLE_KEY]).toBe(ROLE_VALUE);
+    expect(element.serialize()[UNKNOWN_KEY]).toBe(UNKNOWN_VALUE);
 
     const cleanId = surfaceModel.addElement({ type: 'testShape' });
     expect(Object.getPrototypeOf(element)).toBe(
@@ -322,5 +332,213 @@ describe('US-1.8 — unknown element prop, unsafe keys', () => {
     expect(element.id).toBe(id);
     expect(element.yMap.get('id')).toBe(id);
     expect(element.yMap.get('type')).toBe('testShape');
+  });
+});
+
+/**
+ * The routing branch is the load-bearing part of this change, so it is tested
+ * against what `key in element` used to match and must no longer: methods,
+ * getter-only derived props, and internal instance fields.
+ */
+describe('US-1.8 — unknown element prop, routing does not touch the instance', () => {
+  test('a data key named like a method leaves the method intact', () => {
+    const { surfaceModel } = setupSurface();
+
+    const id = surfaceModel.addElement({
+      type: 'testShape',
+      serialize: 'pwned',
+    } as unknown as SerializedElement & { type: string });
+    const element = surfaceModel.getElementById(id)!;
+
+    // the method still resolves through the prototype and still runs
+    expect(typeof element.serialize).toBe('function');
+    expect(Object.hasOwn(element, 'serialize')).toBe(false);
+
+    // ...and the data lands in the document, where it shadows nothing
+    expect(element.yMap.get('serialize')).toBe('pwned');
+    expect(element.serialize()['serialize']).toBe('pwned');
+  });
+
+  test('a data key named like an internal field leaves the internals intact', () => {
+    const { surfaceModel } = setupSurface();
+
+    const id = surfaceModel.addElement({
+      type: 'testShape',
+      _local: 'junk',
+    } as unknown as SerializedElement & { type: string });
+    const element = surfaceModel.getElementById(id)!;
+
+    // reading a derived prop used to throw `this._local.set is not a function`
+    expect(element.deserializedXYWH).toEqual([0, 0, 10, 10]);
+    expect(element.yMap.get('_local')).toBe('junk');
+  });
+
+  test.each([
+    'x',
+    'y',
+    'w',
+    'h',
+    'group',
+    'groups',
+    'connectable',
+    'isConnected',
+    'elementBound',
+    'externalBound',
+    'responseBound',
+    'deserializedXYWH',
+  ])(
+    'a getter-only prop named %s is treated as data, not assigned',
+    getterOnly => {
+      const { surfaceModel } = setupSurface();
+
+      // addElement used to abort entirely: the TypeError from assigning to a
+      // getter-only accessor escaped and no element was created at all.
+      const id = surfaceModel.addElement({
+        type: 'testShape',
+        [getterOnly]: 3,
+        [UNKNOWN_KEY]: UNKNOWN_VALUE,
+      } as unknown as SerializedElement & { type: string });
+
+      const element = surfaceModel.getElementById(id);
+      expect(element).not.toBeNull();
+      expect(element!.yMap.get(getterOnly)).toBe(3);
+      // the prop after it in the same payload is not lost
+      expect(element!.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    }
+  );
+
+  test('updateElement no longer swallows the props after a getter-only key', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    // The TypeError raised by `element.x = 3` used to be swallowed by
+    // `store.transact`: `xywh` was written, `x` threw, and every prop after it
+    // — here the unknown probe — was silently dropped with no exception for
+    // the caller. That is the exact failure mode this change exists to remove.
+    surfaceModel.updateElement(id, {
+      xywh: '[7,7,7,7]',
+      x: 3,
+      [UNKNOWN_KEY]: UNKNOWN_VALUE,
+    });
+
+    expect(element.xywh).toBe('[7,7,7,7]');
+    expect(element.yMap.get('x')).toBe(3);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+  });
+});
+
+/**
+ * `Y.Map.set` accepts values it cannot encode. The document then looks fine —
+ * `serialize()` works, `encodeStateVector` works — while `encodeStateAsUpdate`,
+ * i.e. persistence and sync, throws for good. No user action can remove the
+ * key. So the unknown branch admits only provably encodable values.
+ */
+describe('US-1.8 — unknown element prop, value encodability', () => {
+  const encodes = (surfaceModel: SurfaceBlockModel) => {
+    // throws RangeError: Maximum call stack size exceeded on a cyclic value
+    Y.encodeStateAsUpdate(surfaceModel.store.doc.spaceDoc);
+    return true;
+  };
+
+  test('a cyclic value is dropped and the document stays encodable', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    const cyclic: Record<string, unknown> = { a: 1 };
+    cyclic.self = cyclic;
+
+    surfaceModel.updateElement(id, {
+      cyc: cyclic,
+      [UNKNOWN_KEY]: UNKNOWN_VALUE,
+    });
+
+    expect(element.yMap.has('cyc')).toBe(false);
+    // the rest of the payload still goes through
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('a cyclic value pasted through addElement is dropped too', () => {
+    const { surfaceModel } = setupSurface();
+
+    const cyclic: Record<string, unknown> = { a: 1 };
+    cyclic.self = cyclic;
+
+    const id = surfaceModel.addElement({
+      type: 'testShape',
+      cyc: cyclic,
+    } as unknown as SerializedElement & { type: string });
+
+    expect(surfaceModel.getElementById(id)!.yMap.has('cyc')).toBe(false);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('a function value is dropped cleanly', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    surfaceModel.updateElement(id, {
+      fn: () => 'nope',
+      [UNKNOWN_KEY]: UNKNOWN_VALUE,
+    });
+
+    expect(element.yMap.has('fn')).toBe(false);
+    expect(element.yMap.get(UNKNOWN_KEY)).toBe(UNKNOWN_VALUE);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('a class instance is dropped rather than silently flattened', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    class Exotic {
+      constructor(readonly a = 1) {}
+    }
+
+    surfaceModel.updateElement(id, { exotic: new Exotic() });
+
+    expect(element.yMap.has('exotic')).toBe(false);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('nested plain JSON is admitted', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    const nested = { a: [1, 'two', null, { b: true }] };
+    surfaceModel.updateElement(id, { nested });
+
+    expect(element.yMap.get('nested')).toEqual(nested);
+    expect(encodes(surfaceModel)).toBe(true);
+  });
+
+  test('an undefined value never mints a phantom key', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    // Spreading an absent option is an everyday idiom; it must not create a
+    // real Y.Map key that `serialize()` cannot even show.
+    surfaceModel.updateElement(id, { ghost: undefined });
+
+    expect(element.yMap.has('ghost')).toBe(false);
+  });
+
+  test('a declared field can still be cleared with undefined', () => {
+    const { surfaceModel } = setupSurface();
+    const id = surfaceModel.addElement({ type: 'testShape' });
+    const element = surfaceModel.getElementById(id)!;
+
+    surfaceModel.updateElement(id, { linkedDocId: 'doc-1' });
+    expect(element.linkedDocId).toBe('doc-1');
+
+    // the undefined guard applies to the unknown branch only
+    surfaceModel.updateElement(id, { linkedDocId: undefined });
+    expect(element.linkedDocId).toBeUndefined();
   });
 });

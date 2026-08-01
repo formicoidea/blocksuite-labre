@@ -3,6 +3,30 @@ import { getDecoratorState } from './common.js';
 import { convertProps } from './convert.js';
 import { getDerivedProps, updateDerivedProps } from './derive.js';
 
+const localPropsSetSymbol = Symbol('localProps');
+
+/**
+ * The set of prop names declared with `@local()` on an element class.
+ *
+ * Mirrors `getFieldPropsSet` (see `./field.js`) for the non-synced half of the
+ * accessor surface. Together the two sets are the only reliable answer to "does this
+ * element class declare an accessor for this key" — `key in element` is not:
+ * it also matches methods, getter-only derived props (`x`, `w`, `group`, …)
+ * and internal instance fields.
+ *
+ * The set is keyed on the most derived prototype and filled by the decorator's
+ * `init`, which runs for every accessor (base and derived) during the first
+ * construction of an element of that class.
+ */
+export function getLocalPropsSet(target: unknown): Set<string | symbol> {
+  const proto = Object.getPrototypeOf(target);
+  if (!Object.hasOwn(proto, localPropsSetSymbol)) {
+    proto[localPropsSetSymbol] = new Set();
+  }
+
+  return proto[localPropsSetSymbol] as Set<string | symbol>;
+}
+
 /**
  * A decorator to mark the property as a local property.
  *
@@ -18,6 +42,7 @@ export function local<V, T extends GfxPrimitiveElementModel>() {
 
     return {
       init(this: T, v: V) {
+        getLocalPropsSet(this).add(prop);
         this._local.set(prop, v);
 
         return v;
