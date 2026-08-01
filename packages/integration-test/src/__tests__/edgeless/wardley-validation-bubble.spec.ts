@@ -93,13 +93,36 @@ describe('the violation markers and their detail bubble', () => {
     return result.groupId as string;
   };
 
-  const addComponent = (xywh: string) =>
-    service.surface.addElement({
-      type: 'wardleyNode',
-      kind: 'component',
-      role: 'wardley:component',
-      xywh,
+  /**
+   * A change arrow occupying `xywh`, pointing BACK towards genesis — one W1
+   * finding, wherever it sits.
+   *
+   * Ported off the tracer bullet's "a component parked off the map" (PF13,
+   * 01/08/2026): that rule is gone, and the fixture replacing it has the same
+   * shape — one element, one finding, attributable to one map — behind a rule
+   * a Wardley practitioner actually asked for. Nothing this suite pinned down
+   * was dropped in the move; only what it draws changed.
+   */
+  const addBackwardsArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + w, y + h / 2] },
+      target: { position: [x, y + h / 2] },
     });
+  };
+
+  /** The same arrow, the right way round: nothing to report. */
+  const addForwardArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x, y + h / 2] },
+      target: { position: [x + w, y + h / 2] },
+    });
+  };
 
   const widget = () => root.widgetComponents[VIOLATION_DETAIL_WIDGET];
 
@@ -164,7 +187,7 @@ describe('the violation markers and their detail bubble', () => {
     describe('the two markers hand over, and never overlap', () => {
       test('a fresh violation shows the bracket and no badge', async () => {
         addBackground();
-        addComponent('[3000,3000,40,40]');
+        addBackwardsArrow('[3000,3000,40,40]');
         await settle();
 
         expect(validation.violations$.value).toHaveLength(1);
@@ -176,7 +199,7 @@ describe('the violation markers and their detail bubble', () => {
 
       test('the badge takes over once the bracket is gone', async () => {
         addBackground();
-        addComponent('[3000,3000,40,40]');
+        addBackwardsArrow('[3000,3000,40,40]');
         await settle();
         await age();
 
@@ -188,7 +211,7 @@ describe('the violation markers and their detail bubble', () => {
         'the handover happens on its own, without anything changing',
         async () => {
           addBackground();
-          addComponent('[3000,3000,40,40]');
+          addBackwardsArrow('[3000,3000,40,40]');
           await settle();
           expect(badges()).toHaveLength(0);
 
@@ -206,7 +229,7 @@ describe('the violation markers and their detail bubble', () => {
     describe('the markers are sized in model space', () => {
       test('the badge halves when the board is zoomed out by half', async () => {
         addBackground();
-        addComponent('[3000,3000,40,40]');
+        addBackwardsArrow('[3000,3000,40,40]');
         await settle();
         await age();
 
@@ -228,7 +251,7 @@ describe('the violation markers and their detail bubble', () => {
 
       test('the click target keeps a screen-pixel floor at any zoom', async () => {
         addBackground();
-        addComponent('[3000,3000,40,40]');
+        addBackwardsArrow('[3000,3000,40,40]');
         await settle();
         await age();
 
@@ -249,8 +272,8 @@ describe('the violation markers and their detail bubble', () => {
       test('two badges 60 units apart never overlap, at any zoom', async () => {
         addBackground();
         // Two ungrouped components, 60 model units apart: one badge each.
-        addComponent('[3000,3000,40,40]');
-        addComponent('[3100,3000,40,40]');
+        addBackwardsArrow('[3000,3000,40,40]');
+        addBackwardsArrow('[3100,3000,40,40]');
         await settle();
         await age();
         expect(badges()).toHaveLength(2);
@@ -279,7 +302,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('the badge is anchored clear of the anchor corner', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
 
@@ -303,7 +326,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('a clean board raises no marker at all', async () => {
       addBackground();
-      addComponent('[200,200,40,40]');
+      addForwardArrow('[200,200,40,40]');
       await settle();
 
       expect(badges()).toHaveLength(0);
@@ -313,7 +336,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('clicking the badge opens a bubble naming the rule', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
 
@@ -322,22 +345,22 @@ describe('the violation markers and their detail bubble', () => {
 
       const open = bubble();
       expect(open).not.toBeNull();
-      // No catalogue: the raw key is shown rather than wording the library
-      // invented for somebody else's rule.
+      // No catalogue: the FRAMEWORK's own wording is shown (PF13), because the
+      // rule ships one beside its key — the same `labelKey` + `fallback` pair a
+      // profile and a background label already carry. The framework owns the
+      // word; the library still never invents one.
       expect(open?.textContent).toContain(
-        'com.labre.wardley.validation.component-outside-map'
+        'This change arrow points against evolution.'
       );
       // The rule carries a remediation hint, so the bubble lists it too.
-      expect(open?.textContent).toContain(
-        'com.labre.wardley.validation.component-outside-map.suggestion'
-      );
+      expect(open?.textContent).toContain('Evolution runs left to right');
       // ...and the severity, as chrome, which the library may word itself.
       expect(open?.textContent?.toLowerCase()).toContain('warning');
     });
 
     test('clicking the bracket opens the same bubble', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       // Still in the flash: no badge yet, but the mark is already clickable.
       expect(badges()).toHaveLength(0);
@@ -346,14 +369,14 @@ describe('the violation markers and their detail bubble', () => {
       await settle();
 
       expect(bubble()?.textContent).toContain(
-        'com.labre.wardley.validation.component-outside-map'
+        'This change arrow points against evolution.'
       );
       expect(service.gfx.selection.selectedElements).toHaveLength(0);
     });
 
     test('clicking the badge does not select the element underneath', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
 
@@ -366,7 +389,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('clicking elsewhere closes the bubble', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
       clickElement(badges()[0]);
@@ -383,7 +406,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('escape closes the bubble, scoped to the editor host', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
       clickElement(badges()[0]);
@@ -414,7 +437,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('clicking the badge again closes the bubble', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
 
@@ -429,7 +452,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('the bubble flips above the badge rather than off the bottom', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       // Pan so the (still off-map) anchor sits near the bottom edge. Moving
@@ -460,15 +483,18 @@ describe('the violation markers and their detail bubble', () => {
 
     test('correcting the drawing takes marker and bubble away', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
       clickElement(badges()[0]);
       await settle();
       expect(bubble()).not.toBeNull();
 
-      // Back on the map.
-      service.surface.updateElement(id, { xywh: '[200,200,40,40]' });
+      // Turned round: now pointing towards commodity.
+      service.surface.updateElement(id, {
+        source: { position: [3000, 3020] },
+        target: { position: [3040, 3020] },
+      });
       await settle();
 
       expect(validation.violations$.value).toEqual([]);
@@ -478,7 +504,10 @@ describe('the violation markers and their detail bubble', () => {
 
       // ...and it stays closed: breaking the same element again must not
       // resurrect the bubble on its own.
-      service.surface.updateElement(id, { xywh: '[3000,3000,40,40]' });
+      service.surface.updateElement(id, {
+        source: { position: [3040, 3020] },
+        target: { position: [3000, 3020] },
+      });
       await settle();
       await age();
 
@@ -488,8 +517,8 @@ describe('the violation markers and their detail bubble', () => {
 
     test('two violating members of one group share one marker and one line', async () => {
       addBackground();
-      const a = addComponent('[3000,3000,40,40]');
-      const b = addComponent('[3100,3000,40,40]');
+      const a = addBackwardsArrow('[3000,3000,40,40]');
+      const b = addBackwardsArrow('[3100,3000,40,40]');
       groupOf([a, b]);
       await settle();
       await age();
@@ -508,7 +537,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('a group that is dissolved hands its badge back to the element', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       const labelId = service.surface.addElement({
         type: 'text',
         xywh: '[3050,3000,120,24]',
@@ -538,8 +567,8 @@ describe('the violation markers and their detail bubble', () => {
       mount([
         TranslationExtension({
           t: key =>
-            key === 'com.labre.wardley.validation.component-outside-map'
-              ? 'This component sits outside the map'
+            key === 'com.labre.wardley.validation.change-arrow-against-evolution'
+              ? 'Cette flèche remonte le sens de l’évolution'
               : undefined,
         }),
       ])
@@ -547,7 +576,7 @@ describe('the violation markers and their detail bubble', () => {
 
     test('the bubble shows the resolved label, and falls back per key', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
 
@@ -555,15 +584,16 @@ describe('the violation markers and their detail bubble', () => {
       await settle();
 
       const text = bubble()?.textContent ?? '';
-      expect(text).toContain('This component sits outside the map');
-      // The message key itself is gone from the bubble; the only occurrence
-      // left is the SUGGESTION key, which the catalogue does not know.
-      expect(
-        text.split('com.labre.wardley.validation.component-outside-map').length
-      ).toBe(2);
-      expect(text).toContain(
-        'com.labre.wardley.validation.component-outside-map.suggestion'
+      // The HOST's wording wins over the framework's own, key by key.
+      expect(text).toContain('Cette flèche remonte le sens de l’évolution');
+      expect(text).not.toContain(
+        'This change arrow points against evolution.'
       );
+      // The catalogue does not know the SUGGESTION key, so that line falls
+      // back to the framework's own wording — and never to a raw dotted key,
+      // because this rule ships one.
+      expect(text).toContain('Evolution runs left to right');
+      expect(text).not.toContain('com.labre.wardley.validation.');
     });
   });
 });

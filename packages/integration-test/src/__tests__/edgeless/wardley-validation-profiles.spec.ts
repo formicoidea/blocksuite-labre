@@ -32,7 +32,7 @@ import { setupEditor } from '../utils/setup.js';
  * duplicate, an export and a reload.
  */
 
-const RULE_ID = 'wardley.component-outside-map';
+const RULE_ID = 'wardley.change-arrow-against-evolution';
 const SKETCH = 'wardley.sketch';
 const STRICT = 'wardley.strict';
 
@@ -87,6 +87,27 @@ describe('validation profiles', () => {
   const addBackground = (xywh = '[0,0,1600,900]') =>
     service.surface.addElement({ type: 'wardley', role: 'wardley:map', xywh });
 
+  /**
+   * A change arrow occupying `xywh`, pointing BACK towards genesis — one W1
+   * finding, wherever it sits.
+   *
+   * Ported off the tracer bullet's "a component parked off the map" (PF13,
+   * 01/08/2026): that rule is gone, and the fixture replacing it has the same
+   * shape — one element, one finding, attributable to one map — behind a rule
+   * a Wardley practitioner actually asked for. Nothing this suite pinned down
+   * was dropped in the move; only what it draws changed.
+   */
+  const addBackwardsArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + w, y + h / 2] },
+      target: { position: [x, y + h / 2] },
+    });
+  };
+
+  /** A plain Wardley node: never a root instance, and never a W1 subject. */
   const addComponent = (xywh: string) =>
     service.surface.addElement({
       type: 'wardleyNode',
@@ -222,7 +243,7 @@ describe('validation profiles', () => {
   describe('a document that predates profiles', () => {
     test('opens on the permissive default, and stays silent', async () => {
       const map = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       expect(validation.profileOf(model(map))?.id).toBe(SKETCH);
@@ -235,7 +256,7 @@ describe('validation profiles', () => {
 
     test('writes nothing, ever, while it stays on the default', async () => {
       const map = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       // Selecting it and choosing, from the toolbar, the profile it is already
       // on: no key appears in the document.
@@ -335,7 +356,7 @@ describe('validation profiles', () => {
   describe('changing the level re-judges the board', () => {
     test('strict makes the finding visible on the canvas', async () => {
       const map = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       expect(validation.violations$.value[0].severity).toBe('audit');
 
@@ -348,7 +369,7 @@ describe('validation profiles', () => {
 
     test('and going back to the default silences it again', async () => {
       const map = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await pick(map, STRICT);
       expect(model(map).yMap.has('validationProfile')).toBe(true);
@@ -365,8 +386,8 @@ describe('validation profiles', () => {
     test('gives two maps on one canvas two different levels (PF9.1)', async () => {
       const sketchMap = addBackground();
       const strictMap = addBackground('[40000,0,1600,900]');
-      const nearSketch = addComponent('[3000,3000,40,40]');
-      const nearStrict = addComponent('[41800,300,40,40]');
+      const nearSketch = addBackwardsArrow('[3000,3000,40,40]');
+      const nearStrict = addBackwardsArrow('[41800,300,40,40]');
       await settle();
 
       await pick(strictMap, STRICT);
@@ -382,7 +403,7 @@ describe('validation profiles', () => {
 
     test('never touches an exception the user made (PF9.3)', async () => {
       const map = addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
+      const excused = addBackwardsArrow('[3000,3000,40,40]');
       grantException(model(excused), RULE_ID);
       await settle();
 
@@ -427,7 +448,7 @@ describe('validation profiles', () => {
 
     test('a snapshot round trip keeps it', async () => {
       const map = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await pick(map, STRICT);
 
       const { snapshot, surface } = await roundTrip();
@@ -442,7 +463,7 @@ describe('validation profiles', () => {
 
     test('a round trip on the default carries no key at all', async () => {
       addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       const { snapshot, surface } = await roundTrip();

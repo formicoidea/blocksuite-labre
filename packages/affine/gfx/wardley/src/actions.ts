@@ -155,14 +155,19 @@ function addEllipseNode(
   cy: number,
   d: number,
   fillColor: string,
-  strokeWidth = NODE_STROKE_WIDTH
+  strokeWidth = NODE_STROKE_WIDTH,
+  // The market's three inner dots are the GLYPH's own wiring, not artefacts the
+  // user placed — the same reason its triangle connectors carry no role. They
+  // sit inside the market circle by construction, so a role would make every
+  // market composite report an overlap with itself (W3).
+  neutral = false
 ) {
   return surface.addElement({
     type: 'wardleyNode',
     kind,
     // Semantic identity (PF1): posted next to `kind`, which stays untouched
     // and keeps driving the rendering.
-    role: WARDLEY_ROLE[kind],
+    role: neutral ? undefined : WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor,
@@ -185,6 +190,11 @@ function addLabel(
   return surface.addElement({
     type: 'text',
     text,
+    // Semantic identity (PF1, revised in PF13.4): a Wardley label is a free
+    // text element like any other, so its ROLE is the only thing that tells W3
+    // it must not land on top of a node. A free text the user typed elsewhere
+    // stays neutral and is never evaluated.
+    role: WARDLEY_ROLE.label,
     fontFamily: FontFamily.Inter,
     fontSize: LABEL_FONT_SIZE,
     color: NODE_STROKE,
@@ -275,6 +285,9 @@ export function createWardleyInertia(
   const id = gfx.surface.addElement({
     type: 'shape',
     shapeType: 'rect',
+    // The inertia bar has no element type of its own — it IS a plain filled
+    // rect — so the role is the whole of its semantics (PF13.5).
+    role: WARDLEY_ROLE.inertia,
     filled: true,
     fillColor: INERTIA_COLOR,
     strokeColor: INERTIA_COLOR,
@@ -389,7 +402,8 @@ export function createWardleyMarket(
       cy + vy,
       MARKET_DOT_SIZE,
       NODE_FILL,
-      MARKET_DOT_STROKE_WIDTH
+      MARKET_DOT_STROKE_WIDTH,
+      true
     )
   );
 
@@ -447,10 +461,13 @@ export function activateWardleyConnector(
   gfx.std.get(EditPropsStore).recordLastProps('connector', props);
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
-    // The value-chain link IS the "depends on" edge of a Wardley map, so it
-    // carries the typed edge role. The evolution arrow is a movement
-    // annotation, not a dependency: it stays neutral.
-    role: kind === 'link' ? WARDLEY_ROLE.dependency : undefined,
+    // The value-chain link IS the "depends on" edge of a Wardley map; the
+    // change arrow is a movement annotation and gets a role OF ITS OWN
+    // (PF13.4, reversing #71 — see `roles.ts`). Two roles, never one
+    // specialising the other: W1 is about where an arrow points and must never
+    // fall on a dependency.
+    role:
+      kind === 'link' ? WARDLEY_ROLE.dependency : WARDLEY_ROLE.changeArrow,
   });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

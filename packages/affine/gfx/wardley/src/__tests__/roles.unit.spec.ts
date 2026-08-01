@@ -110,8 +110,11 @@ describe('wardley creation sites post the role', () => {
     const node = added.find(p => p.type === 'wardleyNode')!;
     expect(node.kind).toBe('anchor');
     expect(node.role).toBe(WARDLEY_ROLE.anchor);
-    // The label is a generalist text element: it stays neutral.
-    expect(roleOf(added, 'text')).toBeUndefined();
+    // The label is a generalist text element, so its ROLE is the only thing
+    // that says it names an artefact — which is what W3 is written on (PF13.6,
+    // revising the "labels stay neutral" half of #71). A free text the user
+    // typed elsewhere still carries none.
+    expect(roleOf(added, 'text')).toBe(WARDLEY_ROLE.label);
   });
 
   it('stamps the pipeline body and its handle', () => {
@@ -124,36 +127,41 @@ describe('wardley creation sites post the role', () => {
     expect(roleOf(added, 'wardleyNode', 'handle')).toBe(WARDLEY_ROLE.handle);
   });
 
-  it('stamps the market circle and its inner components', () => {
+  it('stamps the market circle, and leaves its glyph wiring neutral', () => {
     const { gfx, added } = fakeGfx();
     createWardleyMarket(gfx);
 
     expect(roleOf(added, 'wardleyNode', 'market')).toBe(WARDLEY_ROLE.market);
-    expect(roleOf(added, 'wardleyNode', 'component')).toBe(
-      WARDLEY_ROLE.component
-    );
-    // The triangle wiring is part of the market glyph, not a user-drawn
-    // dependency: neutral.
+    // The three inner dots and the triangle between them are part of the
+    // market GLYPH, not artefacts the user placed: neutral, both of them. A
+    // role on the dots would make every market report an overlap with itself
+    // (W3), which is the same reason the triangle never had one.
+    expect(roleOf(added, 'wardleyNode', 'component')).toBeUndefined();
     expect(roleOf(added, 'connector')).toBeUndefined();
   });
 
-  it('leaves generalist artefacts neutral', () => {
+  it('stamps the inertia bar, which has no element type of its own', () => {
     const { gfx, added } = fakeGfx();
     createWardleyInertia(gfx);
 
     expect(added).toHaveLength(1);
+    // A plain filled rect on the canvas — the role is the whole of what makes
+    // it inertia, and what W2 is written on (PF13.5).
     expect(added[0].type).toBe('shape');
-    expect(added[0]).not.toHaveProperty('role');
+    expect(added[0].role).toBe(WARDLEY_ROLE.inertia);
   });
 
-  it('activates the link tool for a typed dependency edge, the arrow neutral', () => {
+  it('types both connector tools — dependency, and change arrow', () => {
     const link = fakeGfx();
     activateWardleyConnector(link.gfx, 'link');
     expect(link.lastToolOptions()?.role).toBe(WARDLEY_ROLE.dependency);
 
+    // Revision of #71 (PF13.4): the change arrow is no longer neutral. Two
+    // roles, neither specialising the other — W1 is about where an arrow
+    // points and must never fall on a dependency.
     const arrow = fakeGfx();
     activateWardleyConnector(arrow.gfx, 'arrow');
-    expect(arrow.lastToolOptions()?.role).toBeUndefined();
+    expect(arrow.lastToolOptions()?.role).toBe(WARDLEY_ROLE.changeArrow);
   });
 });
 
@@ -174,21 +182,40 @@ describe('built-in templates are typed like hand-drawn maps', () => {
     // Guard against the selector silently matching nothing.
     expect(nodes.length).toBeGreaterThan(10);
     for (const node of nodes) {
+      // …or NO role, for the market's inner dots: glyph wiring, exactly as the
+      // toolbox creates them.
+      if (node.role === undefined) continue;
       expect(node.role).toBe(
         WARDLEY_ROLE[node.kind as keyof typeof WARDLEY_ROLE]
       );
     }
   });
 
-  it('types template dependency links but not evolution arrows', () => {
+  it('types template labels, so a preset validates like a hand-drawn map', () => {
+    const labels = templateElements().filter(
+      el => el.type === 'text' && el.role !== undefined
+    );
+
+    expect(labels.length).toBeGreaterThan(10);
+    for (const label of labels) {
+      expect(label.role).toBe(WARDLEY_ROLE.label);
+    }
+  });
+
+  it('types template dependency links AND change arrows', () => {
     const connectors = templateElements().filter(
       el => el.type === 'connector'
     );
     const roles = new Set(connectors.map(c => c.role));
 
     expect(connectors.length).toBeGreaterThan(10);
-    // Only two possible answers: a dependency, or nothing at all.
-    expect([...roles].sort()).toEqual([WARDLEY_ROLE.dependency, undefined]);
+    // Three possible answers: a dependency, a change arrow, or — for the
+    // market glyph's own triangle — nothing at all.
+    expect([...roles].sort()).toEqual([
+      WARDLEY_ROLE.changeArrow,
+      WARDLEY_ROLE.dependency,
+      undefined,
+    ]);
   });
 });
 

@@ -15,13 +15,22 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * The tracer bullet, end to end: a real editor, real DI, the real Wardley rule
- * registered by its flag-gated view extension, and the reactive violation list
- * a host panel will subscribe to.
+ * The engine end to end: a real editor, real DI, the real Wardley rules
+ * registered by their flag-gated view extension, and the reactive violation
+ * list a host panel subscribes to.
  *
- * The unit suite covers the rule's logic; this covers the WIRING — that the
- * manager mounts, finds the surface, sees the registered rule and reacts to
+ * The unit suites cover the rules' logic; this covers the WIRING — that the
+ * manager mounts, finds the surface, sees the registered rules and reacts to
  * document changes.
+ *
+ * ## Ported off the pilot rule (PF13, 01/08/2026)
+ *
+ * Every test below used to drag a component off the map. That rule is gone —
+ * it existed only to have something for the machinery to carry — so the
+ * fixture is now a CHANGE ARROW pointing the wrong way (W1): the same shape of
+ * subject (one element, one finding, attributable to one map) behind a rule a
+ * Wardley practitioner actually asked for. Not one property of the pipework
+ * lost its test in the move.
  */
 describe('wardley validation on the canvas', () => {
   let service!: EdgelessRootBlockComponent['service'];
@@ -29,8 +38,8 @@ describe('wardley validation on the canvas', () => {
 
   /**
    * A map on the STRICT profile — since PF9 the default (`wardley.sketch`)
-   * demotes the pilot rule to `audit`, which raises a finding the engine
-   * reports and the canvas deliberately never draws.
+   * demotes every rule to `audit`, which raises findings the engine reports and
+   * the canvas deliberately never draws.
    */
   const addBackground = () =>
     service.surface.addElement({
@@ -44,13 +53,30 @@ describe('wardley validation on the canvas', () => {
   const addLegacyBackground = () =>
     service.surface.addElement({ type: 'wardley', xywh: '[0,0,1600,900]' });
 
-  const addComponent = (xywh: string) =>
-    service.surface.addElement({
-      type: 'wardleyNode',
-      kind: 'component',
-      role: 'wardley:component',
-      xywh,
+  /**
+   * A change arrow occupying `xywh`, pointing BACK towards genesis — one W1
+   * finding, wherever it sits.
+   */
+  const addBackwardsArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + w, y + h / 2] },
+      target: { position: [x, y + h / 2] },
     });
+  };
+
+  /** The same arrow, the right way round: nothing to report. */
+  const addForwardArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x, y + h / 2] },
+      target: { position: [x + w, y + h / 2] },
+    });
+  };
 
   /** Group the given elements, exactly as the Wardley toolbox does. */
   const groupOf = (ids: string[]) => {
@@ -78,8 +104,8 @@ describe('wardley validation on the canvas', () => {
     return cleanup;
   });
 
-  test('the wardley rule is registered and the engine is live', () => {
-    // Flag on (default) => the rule reached the container, so the manager
+  test('the wardley rules are registered and the engine is live', () => {
+    // Flag on (default) => the rules reached the container, so the manager
     // subscribed instead of short-circuiting.
     expect(validation.violations$.value).toEqual([]);
     expect(
@@ -87,36 +113,40 @@ describe('wardley validation on the canvas', () => {
     ).toBeTruthy();
   });
 
-  test('a component dropped outside the map raises a violation', async () => {
+  test('a change arrow pointing back towards genesis raises a violation', async () => {
     addBackground();
-    const id = addComponent('[3000,3000,40,40]');
+    const id = addBackwardsArrow('[300,300,40,40]');
     await settle();
 
     const violations = validation.violations$.value;
     expect(violations).toHaveLength(1);
     expect(violations[0]).toMatchObject({
-      ruleId: 'wardley.component-outside-map',
+      ruleId: 'wardley.change-arrow-against-evolution',
       elementIds: [id],
       severity: 'warning',
-      messageKey: 'com.labre.wardley.validation.component-outside-map',
+      messageKey:
+        'com.labre.wardley.validation.change-arrow-against-evolution',
     });
   });
 
-  test('a component on the map raises nothing', async () => {
+  test('a change arrow pointing towards commodity raises nothing', async () => {
     addBackground();
-    addComponent('[200,200,40,40]');
+    addForwardArrow('[300,300,40,40]');
     await settle();
 
     expect(validation.violations$.value).toEqual([]);
   });
 
-  test('the violation clears when the component is moved back on the map', async () => {
+  test('the violation clears when the arrow is turned round', async () => {
     addBackground();
-    const id = addComponent('[3000,3000,40,40]');
+    const id = addBackwardsArrow('[300,300,40,40]');
     await settle();
     expect(validation.violations$.value).toHaveLength(1);
 
-    service.surface.updateElement(id, { xywh: '[200,200,40,40]' });
+    service.surface.updateElement(id, {
+      source: { position: [300, 320] },
+      target: { position: [340, 320] },
+    });
     await settle();
 
     expect(validation.violations$.value).toEqual([]);
@@ -124,7 +154,7 @@ describe('wardley validation on the canvas', () => {
 
   test('a map authored without the role frames nothing, and is not backfilled', async () => {
     addLegacyBackground();
-    addComponent('[3000,3000,40,40]');
+    addBackwardsArrow('[300,300,40,40]');
     await settle();
 
     // No retro-violation on an older document: it stays a sketch.
@@ -134,18 +164,19 @@ describe('wardley validation on the canvas', () => {
   });
 
   /**
-   * PO acceptance: a Wardley component made from the toolbox is a GROUP of
-   * {node, label}. Marking the bare node collided with the group's selection
-   * rect and was unreadable, so the mark anchors on the enclosing group.
+   * PO acceptance: a Wardley artefact made from the toolbox is a GROUP —
+   * {node, label}, {arrow, label}. Marking the bare member collided with the
+   * group's selection rect and was unreadable, so the mark anchors on the
+   * enclosing group.
    *
    * Evaluation is untouched — the violation still names the element carrying
    * the role, because its position is what the rule is about. Only the drawing
    * moves.
    */
   describe('the mark anchors on the enclosing group', () => {
-    test('a grouped violating node is marked on its group', async () => {
+    test('a grouped violating element is marked on its group', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       const labelId = service.surface.addElement({
         type: 'text',
         xywh: '[3050,3000,120,24]',
@@ -154,21 +185,21 @@ describe('wardley validation on the canvas', () => {
       const groupId = groupOf([nodeId, labelId]);
       await settle();
 
-      // The violation itself is unchanged: the node, never the group.
+      // The violation itself is unchanged: the arrow, never the group.
       expect(validation.violations$.value[0].elementIds).toEqual([nodeId]);
 
-      // ...but the mark is drawn on the group, which spans node AND label.
+      // ...but the mark is drawn on the group, which spans arrow AND label.
       const group = service.surface.getElementById(groupId)!;
       expect(markBounds()).toHaveLength(1);
       expect(markBounds()[0].serialize()).toBe(group.elementBound.serialize());
-      // Wider than the bare node — that is the whole point of the change.
+      // Wider than the bare arrow — that is the whole point of the change.
       expect(markBounds()[0].w).toBeGreaterThan(40);
     });
 
     test('two violating members of one group share a single mark', async () => {
       addBackground();
-      const a = addComponent('[3000,3000,40,40]');
-      const b = addComponent('[3100,3000,40,40]');
+      const a = addBackwardsArrow('[3000,3000,40,40]');
+      const b = addBackwardsArrow('[3100,3000,40,40]');
       groupOf([a, b]);
       await settle();
 
@@ -177,9 +208,9 @@ describe('wardley validation on the canvas', () => {
       expect(markBounds()).toHaveLength(1);
     });
 
-    test('an ungrouped violating node is marked on itself', async () => {
+    test('an ungrouped violating element is marked on itself', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       const element = service.surface.getElementById(id)!;
@@ -191,7 +222,7 @@ describe('wardley validation on the canvas', () => {
 
     test('dissolving the group brings the mark back to the element', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       const labelId = service.surface.addElement({
         type: 'text',
         xywh: '[3050,3000,120,24]',
@@ -221,5 +252,110 @@ describe('wardley validation on the canvas', () => {
     await settle();
 
     expect(validation.violations$.value).toEqual([]);
+  });
+
+  /**
+   * The two families W1 does not exercise, on a real canvas.
+   *
+   * Their logic is unit tested against stand-ins; what only the editor can
+   * answer is that they read the same geometry the user sees — a routed
+   * `absolutePath` on a real connector, a `Bound.deserialize` on a real
+   * `xywh` — and that the machinery around them (exceptions, profiles) works
+   * on them BY CONSTRUCTION, without a line of family-specific plumbing.
+   */
+  describe('the other two families reach the canvas too', () => {
+    /** A dependency across the second phase transition of a 1600-wide map. */
+    const addLink = (from: [number, number], to: [number, number]) =>
+      service.surface.addElement({
+        type: 'connector',
+        role: 'wardley:dependency',
+        source: { position: from },
+        target: { position: to },
+      });
+
+    const addInertia = (cx: number, cy: number) =>
+      service.surface.addElement({
+        type: 'shape',
+        shapeType: 'rect',
+        role: 'wardley:inertia',
+        xywh: `[${cx - 4},${cy - 22},8,44]`,
+      });
+
+    const addNode = (xywh: string) =>
+      service.surface.addElement({
+        type: 'wardleyNode',
+        kind: 'component',
+        role: 'wardley:component',
+        xywh,
+      });
+
+    test('W2 flags an inertia bar that is on no dependency', async () => {
+      addBackground();
+      addLink([400, 450], [900, 450]);
+      const bar = addInertia(700, 200);
+      await settle();
+
+      const violations = validation.violations$.value;
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toMatchObject({
+        ruleId: 'wardley.inertia-off-transition',
+        elementIds: [bar],
+      });
+    });
+
+    test('W3 flags two overlapping nodes, naming the pair', async () => {
+      addBackground();
+      const a = addNode('[400,400,18,18]');
+      const b = addNode('[404,400,18,18]');
+      await settle();
+
+      const violations = validation.violations$.value;
+      expect(violations).toHaveLength(1);
+      expect(violations[0].ruleId).toBe('wardley.overlapping-artefacts');
+      expect(violations[0].elementIds.sort()).toEqual([a, b].sort());
+    });
+
+    test('an exception works on a W3 pair, with no plumbing of its own', async () => {
+      addBackground();
+      addNode('[400,400,18,18]');
+      addNode('[404,400,18,18]');
+      await settle();
+
+      // PF8 knows nothing about pairs: it excuses the elements a finding
+      // indicts, and a pair finding indicts two. Both get written, and the
+      // finding reads as excused — no family-specific code anywhere.
+      const written = validation.setException(
+        validation.violations$.value,
+        'element',
+        true
+      );
+      await settle();
+
+      expect(written).toHaveLength(2);
+      expect(validation.violations$.value[0].exemption).toBe('element');
+    });
+
+    test('the sketch profile silences all three, by construction', async () => {
+      // A map with NO profile key: the default, which every map ever drawn is
+      // on. PF9 knows nothing about the new families either — it re-judges
+      // whatever a rule raised, per background.
+      service.surface.addElement({
+        type: 'wardley',
+        role: 'wardley:map',
+        xywh: '[0,0,1600,900]',
+      });
+      addBackwardsArrow('[300,300,40,40]');
+      addLink([400, 450], [900, 450]);
+      addInertia(700, 200);
+      addNode('[400,400,18,18]');
+      addNode('[404,400,18,18]');
+      await settle();
+
+      const violations = validation.violations$.value;
+      // Reported to the engine seam — a host panel and a report see them…
+      expect(new Set(violations.map(v => v.ruleId)).size).toBe(3);
+      // …and every one of them is `audit`, so the canvas says nothing at all.
+      expect(violations.every(v => v.severity === 'audit')).toBe(true);
+    });
   });
 });

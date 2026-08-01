@@ -5,7 +5,7 @@ import type { ExtensionType } from '@labre/store';
 /**
  * The library holds no prose: every human-readable string it produces —
  * shortcut labels, role names, validation messages — is an i18n KEY
- * (`com.labre.wardley.validation.component-outside-map`). Historically those
+ * (`com.labre.wardley.validation.change-arrow-against-evolution`). Historically those
  * keys never had to be rendered here: `getShortcutManifest` hands them to the
  * host, which owns the catalogue and the settings panel.
  *

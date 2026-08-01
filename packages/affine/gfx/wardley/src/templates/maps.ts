@@ -54,10 +54,10 @@ const ex = (e: number) => PL.x + e * PL.w;
 const vy = (v: number) => PL.y + (1 - v) * PL.h;
 const D = NODE_SIZE; // 18
 
-// The map carries `wardley:map`: rules position artefacts against the ROLE,
-// so a templated map is a first-class frame like a hand-drawn one. Its nodes
-// stay neutral for now (see the PF1 changeset), hence a template inserts a
-// frame nothing is yet measured against.
+// The map carries `wardley:map`: rules position artefacts against the ROLE, so
+// a templated map is a first-class frame like a hand-drawn one — and since
+// PF13.4 every artefact these presets lay on it (nodes, labels, links, change
+// arrows, inertia bars) carries the same role the toolbox writes.
 const bg = (variant = 'classic') => ({
   type: WARDLEY_BACKGROUND.type,
   role: WARDLEY_BACKGROUND.role,
@@ -118,6 +118,10 @@ function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
   return {
     type: 'text',
     text: surfaceText(text),
+    // The NAME of an artefact, so it carries the label role W3 is written on.
+    // The free texts these presets also use for notes and legends stay neutral:
+    // they name nothing and nothing measures them.
+    role: WARDLEY_ROLE.label,
     color: o.color ?? NODE_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: o.size ?? LABEL_FONT_SIZE,
@@ -130,9 +134,10 @@ function link(a: string, b: string, o: { red?: boolean; arrow?: boolean } = {}) 
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
-    // An arrow is an evolution movement (an annotation), not a dependency —
-    // same split as the two Wardley connector tools.
-    role: o.arrow ? undefined : WARDLEY_ROLE.dependency,
+    // An arrow is a change (evolution) movement, not a dependency — same split
+    // as the two Wardley connector tools, and since PF13.4 both sides of that
+    // split carry a role.
+    role: o.arrow ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
     stroke: o.red ? WARDLEY_RED : LINK_GREY,
     strokeStyle: o.arrow ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
@@ -149,6 +154,7 @@ function inertia(e: number, v: number) {
   return {
     type: 'shape',
     shapeType: 'rect',
+    role: WARDLEY_ROLE.inertia,
     filled: true,
     fillColor: INERTIA_COLOR,
     strokeColor: INERTIA_COLOR,

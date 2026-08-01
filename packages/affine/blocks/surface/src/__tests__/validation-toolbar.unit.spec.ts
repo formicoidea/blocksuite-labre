@@ -212,7 +212,7 @@ function exceptionContext(options: {
 
 const anException = (
   el: GfxPrimitiveElementModel,
-  ruleId = 'wardley.component-outside-map'
+  ruleId = 'wardley.change-arrow-against-evolution'
 ): AnchoredException => ({ element: el, ruleId });
 
 const exceptionManagerWith = (
@@ -348,7 +348,7 @@ describe('what the revoke entry does', () => {
       [anException(el)],
       [
         {
-          ruleId: 'wardley.component-outside-map',
+          ruleId: 'wardley.change-arrow-against-evolution',
           framework: 'wardley',
           scope: 'map',
           elementCount: 1,
@@ -368,7 +368,7 @@ describe('what the revoke entry does', () => {
         name: 'ValidationExceptionRevoked',
         props: {
           control: 'revoke exception',
-          ruleId: 'wardley.component-outside-map',
+          ruleId: 'wardley.change-arrow-against-evolution',
           framework: 'wardley',
           scope: 'map',
           elementCount: 1,

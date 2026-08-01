@@ -13,20 +13,24 @@ import { WARDLEY_RULES } from '../rules';
 
 /**
  * The Wardley profiles as DATA (PF9.2): what the framework actually ships, and
- * what each level does to the pilot rule.
+ * what each level does to the REAL rules.
+ *
+ * Ported from the pilot rule's spec without losing a property: the same seven
+ * questions, asked of W1–W3 instead of `wardley.component-outside-map`.
  */
 
 function element(
   id: string,
   xywh: [number, number, number, number],
   role?: string,
+  absolutePath?: [number, number][],
   validationProfile?: string
 ): GfxPrimitiveElementModel {
   return {
     id,
-    type: 'wardley',
     role,
     validationProfile,
+    ...(absolutePath ? { absolutePath } : {}),
     get elementBound() {
       return new Bound(...xywh);
     },
@@ -34,13 +38,21 @@ function element(
 }
 
 const map = (profile?: string) =>
-  element('bg', [0, 0, 1600, 900], WARDLEY_ROLE.map, profile);
+  element('bg', [0, 0, 1600, 900], WARDLEY_ROLE.map, undefined, profile);
 
-const offMap = () =>
-  element('c1', [3000, 3000, 40, 40], WARDLEY_ROLE.component);
+/** A change arrow pointing back towards genesis: one W1 finding, every time. */
+const backwardsArrow = () =>
+  element('a1', [400, 399, 800, 2], WARDLEY_ROLE.changeArrow, [
+    [1200, 400],
+    [400, 400],
+  ]);
 
 const evaluate = (profile?: string) =>
-  evaluateRules([...WARDLEY_RULES], [map(profile), offMap()], WARDLEY_PROFILES);
+  evaluateRules(
+    [...WARDLEY_RULES],
+    [map(profile), backwardsArrow()],
+    WARDLEY_PROFILES
+  );
 
 describe('what Wardley ships', () => {
   it('exposes a permissive and a strict level', () => {
@@ -66,19 +78,21 @@ describe('what Wardley ships', () => {
     expect(WARDLEY_PROFILES.filter(profile => profile.isDefault)).toHaveLength(1);
   });
 
-  it('never names a rule the framework does not ship', () => {
+  it('names every rule the framework ships, and nothing else', () => {
     // Profiles are data and a typo in a rule id would silently do nothing at
-    // all — no error, no effect, just a level of requirement that lies.
+    // all — no error, no effect, just a level of requirement that lies. Since
+    // PF13 both profiles are also EXHAUSTIVE: every severity a user gets is
+    // readable in one place (PF9.4).
     const known = new Set(WARDLEY_RULES.map(rule => rule.id));
     for (const profile of WARDLEY_PROFILES) {
-      for (const ruleId of Object.keys(profile.rules)) {
-        expect(known).toContain(ruleId);
-      }
+      expect(new Set(Object.keys(profile.rules))).toEqual(known);
     }
   });
 
   it('never blocks, at any level', () => {
-    // Strict is a level of attention, not a wall (PRD principle 3).
+    // Strict is a level of attention, not a wall (PRD principle 3) — and, for
+    // now, a level nothing downstream could enforce anyway: no gesture is
+    // refused in this library. See the note in `profiles.ts`.
     for (const profile of WARDLEY_PROFILES) {
       for (const severity of Object.values(profile.rules)) {
         expect(severity).not.toBe('blocking-overridable');
@@ -88,7 +102,7 @@ describe('what Wardley ships', () => {
 });
 
 describe('the permissive default', () => {
-  it('demotes the pilot rule to audit', () => {
+  it('demotes every rule to audit', () => {
     const [violation] = evaluate();
 
     expect(violation.severity).toBe('audit');
@@ -102,7 +116,7 @@ describe('the permissive default', () => {
   it('still reports the finding to the engine seam', () => {
     // A host panel and a conformance report see it; only the canvas does not.
     expect(evaluate().map(violation => violation.ruleId)).toEqual([
-      'wardley.component-outside-map',
+      'wardley.change-arrow-against-evolution',
     ]);
   });
 
@@ -113,7 +127,7 @@ describe('the permissive default', () => {
 });
 
 describe('the strict profile', () => {
-  it('puts the pilot rule back on warning', () => {
+  it('puts the rules back on warning', () => {
     const [violation] = evaluate('wardley.strict');
 
     expect(violation.severity).toBe('warning');

@@ -73,7 +73,7 @@ only place that says so.
 | `ValidationExceptionGranted`  | the user waives a rule from the bubble  | `ruleId`, `scope` (`element` \| `map`), `elementCount` |
 | `ValidationExceptionRevoked`  | the user restores a waived rule         | `ruleId`, `scope`, `elementCount` |
 
-`ruleId` is the framework-namespaced rule id (`wardley.component-outside-map`);
+`ruleId` is the framework-namespaced rule id (`wardley.change-arrow-against-evolution`);
 `framework` segments as elsewhere. Neither event carries board content — a
 waiver says which rule was arbitrated on, never what was drawn. A gesture that
 changes nothing (the exception was already there) emits nothing.

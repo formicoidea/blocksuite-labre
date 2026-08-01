@@ -62,13 +62,13 @@ export type FrameworkDiagramEvents = {
  * gets waived constantly is a rule that is wrong, and this is the only place
  * that says so.
  *
- * `ruleId` is the framework-namespaced rule id (`wardley.component-outside-map`)
+ * `ruleId` is the framework-namespaced rule id (`wardley.change-arrow-against-evolution`)
  * and never carries user content — the event describes which RULE was arbitrated
  * on, never what the board contains.
  */
 export interface ValidationExceptionEvent extends TelemetryEvent {
   page?: 'whiteboard editor';
-  /** Namespaced rule id, e.g. `wardley.component-outside-map`. */
+  /** Namespaced rule id, e.g. `wardley.change-arrow-against-evolution`. */
   ruleId: string;
   /** Owning framework of the rule, when it is registered. */
   framework?: string;

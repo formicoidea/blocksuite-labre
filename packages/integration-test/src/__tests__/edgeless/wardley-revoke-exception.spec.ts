@@ -40,7 +40,7 @@ import { setupEditor } from '../utils/setup.js';
  * BlockSuite's toolbar machinery, which no spec in this repo drives.
  */
 
-const RULE_ID = 'wardley.component-outside-map';
+const RULE_ID = 'wardley.change-arrow-against-evolution';
 
 /**
  * Tell the editor it is in edgeless mode, so the element toolbar renders at
@@ -97,13 +97,25 @@ describe('revoking an exception from the element that answers for it', () => {
       validationProfile: 'wardley.strict',
     });
 
-  const addComponent = (xywh: string) =>
-    service.surface.addElement({
-      type: 'wardleyNode',
-      kind: 'component',
-      role: 'wardley:component',
-      xywh,
+  /**
+   * A change arrow occupying `xywh`, pointing BACK towards genesis — one W1
+   * finding, wherever it sits.
+   *
+   * Ported off the tracer bullet's "a component parked off the map" (PF13,
+   * 01/08/2026): that rule is gone, and the fixture replacing it has the same
+   * shape — one element, one finding, attributable to one map — behind a rule
+   * a Wardley practitioner actually asked for. Nothing this suite pinned down
+   * was dropped in the move; only what it draws changed.
+   */
+  const addBackwardsArrow = (xywh: string) => {
+    const [x, y, w, h] = JSON.parse(xywh) as number[];
+    return service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + w, y + h / 2] },
+      target: { position: [x, y + h / 2] },
     });
+  };
 
   const addLabel = (xywh: string, text: string) =>
     service.surface.addElement({ type: 'text', xywh, text: new Text(text) });
@@ -214,7 +226,7 @@ describe('revoking an exception from the element that answers for it', () => {
   describe('which element carries the entry', () => {
     test('a lone element answers for its own exception', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(id), RULE_ID);
       validation.evaluate();
@@ -227,7 +239,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('the enclosing group answers for its member, not the member', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       const labelId = addLabel('[3050,3000,120,24]', 'Payments');
       const groupId = groupOf([nodeId, labelId]);
       await settle();
@@ -246,7 +258,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('dissolving the group hands the entry back to the element', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       const labelId = addLabel('[3050,3000,120,24]', 'Payments');
       const groupId = groupOf([nodeId, labelId]);
       await settle();
@@ -265,7 +277,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('the background answers for the map-wide arbitration on it', async () => {
       const mapId = addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(mapId), RULE_ID);
       validation.evaluate();
@@ -280,7 +292,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('an element carrying no exception offers nothing', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       expect(violationOf(id)).toBeTruthy();
@@ -292,7 +304,7 @@ describe('revoking an exception from the element that answers for it', () => {
   describe('what revoking does', () => {
     test('restores the violation, live', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(id), RULE_ID);
       validation.evaluate();
@@ -315,8 +327,8 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('settles every member of a group in one gesture', async () => {
       addBackground();
-      const a = addComponent('[3000,3000,40,40]');
-      const b = addComponent('[3100,3000,40,40]');
+      const a = addBackwardsArrow('[3000,3000,40,40]');
+      const b = addBackwardsArrow('[3100,3000,40,40]');
       const groupId = groupOf([a, b]);
       await settle();
       grantException(model(a), RULE_ID);
@@ -339,7 +351,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('reports the map scope when it is the background that carried it', async () => {
       const mapId = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(mapId), RULE_ID);
       validation.evaluate();
@@ -356,7 +368,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('writes nothing when there is nothing to take back', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       expect(validation.revokeExceptionsOn(model(id))).toEqual([]);
@@ -366,7 +378,7 @@ describe('revoking an exception from the element that answers for it', () => {
   describe('the canvas goes quiet', () => {
     test('an excused finding draws no marker at all', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       await age();
       expect(badges()).toHaveLength(1);
@@ -387,8 +399,8 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('a live finding beside it keeps its amber badge', async () => {
       addBackground();
-      const excused = addComponent('[3000,3000,40,40]');
-      const other = addComponent('[4000,3000,40,40]');
+      const excused = addBackwardsArrow('[3000,3000,40,40]');
+      const other = addBackwardsArrow('[4000,3000,40,40]');
       await settle();
       grantException(model(excused), RULE_ID);
       validation.evaluate();
@@ -404,7 +416,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('revoking brings the marker back', async () => {
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(id), RULE_ID);
       validation.evaluate();
@@ -430,7 +442,7 @@ describe('revoking an exception from the element that answers for it', () => {
   describe('sharing the map’s toolbar with the Validation dropdown', () => {
     test('a map carrying an exception offers Validation AND Revoke', async () => {
       const mapId = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(mapId), RULE_ID);
       validation.evaluate();
@@ -447,7 +459,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('the map offers Validation alone until an exception exists', async () => {
       const mapId = addBackground();
-      addComponent('[3000,3000,40,40]');
+      addBackwardsArrow('[3000,3000,40,40]');
       await settle();
 
       await select(mapId);
@@ -459,7 +471,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('revoking from the map’s toolbar clears the map-wide arbitration', async () => {
       const mapId = addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(mapId), RULE_ID);
       validation.evaluate();
@@ -479,7 +491,7 @@ describe('revoking an exception from the element that answers for it', () => {
 
     test('a plain element offers Revoke and no Validation', async () => {
       addBackground();
-      const nodeId = addComponent('[3000,3000,40,40]');
+      const nodeId = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(nodeId), RULE_ID);
       validation.evaluate();
@@ -499,7 +511,7 @@ describe('revoking an exception from the element that answers for it', () => {
       await mount({ wardley: false });
 
       addBackground();
-      const id = addComponent('[3000,3000,40,40]');
+      const id = addBackwardsArrow('[3000,3000,40,40]');
       await settle();
       grantException(model(id), RULE_ID);
       await settle();
