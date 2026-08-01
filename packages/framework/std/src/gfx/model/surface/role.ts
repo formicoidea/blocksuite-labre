@@ -19,7 +19,14 @@
  * children via {@link roleIsA}.
  */
 
-/** Namespaced role identifier, `<framework>:<role>`. */
+/**
+ * Namespaced role identifier, `<framework>:<role>`.
+ *
+ * Deliberately a plain `string` for now: the framework half is spelled several
+ * different ways across the codebase and no canonical `FrameworkId` type
+ * exists yet. When one lands, this should become `` `${FrameworkId}:${string}` ``
+ * so the namespace is checked, not just the shape.
+ */
 export type RoleId = string;
 
 /** Whether a role describes a node (a surface element) or an edge (a connector). */
@@ -42,6 +49,13 @@ export interface RoleDef {
 export type RoleDefs = Readonly<Record<RoleId, RoleDef>>;
 
 /**
+ * Deepest specialisation chain {@link roleIsA} walks. Real vocabularies are
+ * one or two levels deep; the bound exists so a malformed `parent` cycle
+ * cannot hang the caller. Chains longer than this are NOT supported.
+ */
+const MAX_ROLE_DEPTH = 32;
+
+/**
  * Is `roleId` the `ancestorId` role, or a specialisation of it?
  *
  * ```ts
@@ -50,8 +64,8 @@ export type RoleDefs = Readonly<Record<RoleId, RoleDef>>;
  * ```
  *
  * A neutral element (`undefined`) is never any role. Roles absent from `defs`
- * only match themselves. A malformed `parent` cycle terminates instead of
- * hanging. Allocation-free: rules call this per element, per rule.
+ * only match themselves. Allocation-free: rules call this per element, per
+ * rule.
  */
 export function roleIsA(
   roleId: RoleId | undefined,
@@ -60,10 +74,20 @@ export function roleIsA(
 ): boolean {
   let current = roleId;
 
-  // A specialisation chain is a handful of links deep; the bound only exists
-  // so a malformed `parent` cycle cannot hang the caller.
-  for (let hops = 0; current !== undefined && hops < 32; hops++) {
+  for (let hops = 0; current !== undefined; hops++) {
     if (current === ancestorId) return true;
+
+    if (hops >= MAX_ROLE_DEPTH) {
+      // Either a `parent` cycle or a vocabulary deeper than we support —
+      // both are authoring bugs in the defs. Give up rather than hang, and
+      // say so instead of silently answering "no".
+      console.warn(
+        `roleIsA: gave up on the parent chain of "${roleId}" after ` +
+          `${MAX_ROLE_DEPTH} hops — cycle or over-deep vocabulary?`
+      );
+      return false;
+    }
+
     current = defs[current]?.parent;
   }
 
