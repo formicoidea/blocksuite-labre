@@ -37,10 +37,15 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind
-      core: 7,
+      // + shape.cycleTextFit + pivot.bind + map.audit
+      //
+      // `map.audit` is counted here because `getCommands()` is called with no
+      // flags and `ai-audit` defaults to enabled, like every switch. Its
+      // absence under `{ 'ai-audit': false }` is asserted in
+      // `audit-gating.unit.spec.ts`.
+      core: 8,
     });
-    expect(commands).toHaveLength(67);
+    expect(commands).toHaveLength(68);
   });
 
   /**

@@ -1,3 +1,4 @@
+export * from './audit';
 export * from './clipboard-config';
 export * from './crud-extension';
 export * from './dom-element-renderer';
