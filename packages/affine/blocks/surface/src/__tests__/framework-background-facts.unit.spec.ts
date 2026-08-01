@@ -1,11 +1,12 @@
 import { Bound } from '@labre/global/gfx';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
 import {
   backgroundAxisFact,
   backgroundAxisFacts,
   backgroundBoundaryCoords,
+  backgroundTransitionBands,
   backgroundZoneBoundaries,
 } from '../framework-background/facts.js';
 
@@ -105,5 +106,93 @@ describe('zone transitions as facts', () => {
       backgroundBoundaryCoords(def, new Bound(0, 0, 1600, 900)).x[0]
     );
     expect(moved.x[0]).toBeCloseTo(small.x[0] + 1000, 6);
+  });
+});
+
+describe('a transition as the BAND it really is', () => {
+  const banded: FrameworkBackgroundDef = { ...def, transitionBandWidth: 0.1 };
+  const plotWidth = (w: number) => w - 40 - 30;
+
+  it('centres the band on the transition and names the zones it separates', () => {
+    const [first, , third] = backgroundTransitionBands(
+      banded,
+      new Bound(0, 0, 1600, 900)
+    ).x;
+    const half = (0.1 * plotWidth(1600)) / 2;
+
+    expect(first.id).toBe('a|b');
+    expect(first.at).toBeCloseTo(40 + 0.175 * plotWidth(1600), 6);
+    expect(first.min).toBeCloseTo(first.at - half, 6);
+    expect(first.max).toBeCloseTo(first.at + half, 6);
+    // A name, not an index: it survives a zone being inserted between two
+    // others, and says which frontier a finding is about.
+    expect(third.id).toBe('c|d');
+  });
+
+  it('keeps the same width AS A RATIO however the map is resized', () => {
+    // The defect this replaces: a band declared in model units is four times as
+    // strict on a map four times as big, for a gesture that looks identical on
+    // screen. Measured as a fraction of the plot, the band does not move.
+    for (const w of [800, 1600, 3200]) {
+      const [band] = backgroundTransitionBands(
+        banded,
+        new Bound(0, 0, w, (w * 9) / 16)
+      ).x;
+
+      expect((band.max - band.min) / plotWidth(w)).toBeCloseTo(0.1, 9);
+    }
+  });
+
+  it('follows the instance, position included', () => {
+    const moved = backgroundTransitionBands(banded, new Bound(1000, 500, 800, 450));
+    const origin = backgroundTransitionBands(banded, new Bound(0, 0, 800, 450));
+
+    expect(moved.x[0].min).toBeCloseTo(origin.x[0].min + 1000, 6);
+  });
+
+  it('yields NOTHING when the frame declares no width', () => {
+    // A width nobody wrote down is not a width to invent: a rule asking for the
+    // band gets silence, and says so on its own terms.
+    expect(backgroundTransitionBands(def, new Bound(0, 0, 1600, 900))).toEqual({
+      x: [],
+      y: [],
+    });
+  });
+
+  it('drops the requirement rather than invert a band of no width', () => {
+    // A width of 0 (or a negative typo) makes `min > max` — a band nothing can
+    // be inside, which silently turns "must be at a transition" into "must be
+    // nowhere". Loudly dropped instead.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const bound = new Bound(0, 0, 1600, 900);
+
+    for (const width of [0, -0.2]) {
+      expect(
+        backgroundTransitionBands({ ...def, transitionBandWidth: width }, bound)
+      ).toEqual({ x: [], y: [] });
+    }
+    expect(warn).toHaveBeenCalled();
+    expect(warn.mock.calls.flat().join(' ')).toContain('transitionBandWidth');
+    warn.mockRestore();
+  });
+
+  it('narrows a band too wide for the gap, instead of overlapping', () => {
+    // Declared 0.3, against transitions 0.225 apart (0.175 → 0.4): bands would
+    // overlap, a point would sit at two frontiers at once and the middle of a
+    // phase would qualify as a boundary. Clamped to the gap, which is the
+    // widest they can be while still meeting at a single point.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const bound = new Bound(0, 0, 1600, 900);
+    const { x } = backgroundTransitionBands(
+      { ...def, type: 'too-wide', transitionBandWidth: 0.3 },
+      bound
+    );
+    const plot = 1600 - 40 - 30;
+
+    expect(x[0].max - x[0].min).toBeCloseTo(0.225 * plot, 6);
+    // Adjacent bands touch, and never cross.
+    expect(x[0].max).toBeLessThanOrEqual(x[1].min + 1e-9);
+    expect(warn.mock.calls.flat().join(' ')).toContain('Narrowed');
+    warn.mockRestore();
   });
 });

@@ -1,4 +1,5 @@
 import {
+  backgroundBoundaryCoords,
   evaluateRules,
   type ValidationRule,
   type Violation,
@@ -7,6 +8,7 @@ import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
+import { WARDLEY_BACKGROUND } from '../background';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
 import { MAP_BOUND, TRANSITIONS } from './corpus/fixtures';
@@ -197,6 +199,10 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
   const y = 450;
   const onTransition = TRANSITIONS[1];
 
+  const OFF_CARRIER = 'com.labre.wardley.validation.inertia-off-carrier';
+  const OFF_ZONE =
+    'com.labre.wardley.validation.inertia-off-equilibrium-zone';
+
   /** A link running horizontally across the second phase transition. */
   const link = () =>
     edge(
@@ -222,17 +228,126 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
   });
 
   it('flags a bar on the link but in the middle of a phase', () => {
-    // On its carrier, 150 units from the transition it should be marking.
+    // On its carrier, 150 units from the transition it should be marking —
+    // 9.8% of the plot, against a band reaching 5% either side of the divider.
     expect(idsOf(evaluate([background(), link(), bar(onTransition + 150, y)])))
       .toEqual([W2]);
   });
 
-  it('gives the same finding whichever half of the rule failed', () => {
-    // "Not on a dependency" and "not at a transition" are one statement about
-    // one symbol: one badge on one bar, never two.
+  /**
+   * The PO recette of 01/08/2026, reproduced.
+   *
+   * Two bars dropped squarely on the "Product" and "Commodity" dividers, on a
+   * map that carries dependencies elsewhere but none under them. Both were
+   * flagged — correctly — and both were told they were "not on a dependency at
+   * a phase transition", which is only half true and hides the half that
+   * matters: the transition condition was satisfied to the unit.
+   */
+  describe('the recette capture', () => {
+    const elsewhere = () =>
+      edge('d9', WARDLEY_ROLE.dependency, [100, 800], [400, 800]);
+
+    it('blames the CARRIER, and says so, for a bar exactly on the divider', () => {
+      const [violation] = evaluate([
+        background(),
+        elsewhere(),
+        bar(onTransition, y),
+      ]);
+
+      expect(violation.messageKey).toBe(OFF_CARRIER);
+      // And never the other sentence: the bar is ON the transition, to the unit.
+      expect(violation.messageKey).not.toBe(OFF_ZONE);
+      expect(violation.suggestionFallback).toContain('draw the bar across');
+    });
+
+    it('goes green the moment a dependency runs under the bar', () => {
+      expect(evaluate([background(), link(), bar(onTransition, y)])).toEqual([]);
+    });
+
+    it('blames the ZONE for a bar on a link far from any transition', () => {
+      const midPhase = onTransition + 200;
+      const far = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [midPhase - 100, y],
+        [midPhase + 100, y]
+      );
+      const [violation] = evaluate([background(), far, bar(midPhase, y)]);
+
+      expect(violation.messageKey).toBe(OFF_ZONE);
+      expect(violation.messageFallback).toContain('punctuated equilibrium');
+      expect(violation.suggestion).toBe(`${OFF_ZONE}.suggestion`);
+      // And WHICH frontier it missed — the nearest one, named off the
+      // declaration. "Outside the zone" is half an answer without it.
+      expect(violation.boundaryId).toBe('custom-built|product');
+    });
+
+    it('names the frontier the bar was actually aiming at', () => {
+      // The same phase, but past its middle: the nearest transition is now the
+      // Commodity one. The finding follows the bar, not the first band on the
+      // map.
+      const nearCommodity = TRANSITIONS[2] - 200;
+      const far = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [nearCommodity - 100, y],
+        [nearCommodity + 100, y]
+      );
+      const [violation] = evaluate([background(), far, bar(nearCommodity, y)]);
+
+      expect(violation.boundaryId).toBe('product|commodity');
+    });
+
+    it('says nothing about a frontier when the CARRIER is what failed', () => {
+      // A bar attached to nothing has no frontier to have missed: the finding
+      // is about the link it never got drawn on.
+      const [violation] = evaluate([
+        background(),
+        elsewhere(),
+        bar(onTransition, y),
+      ]);
+
+      expect(violation.boundaryId).toBeUndefined();
+    });
+  });
+
+  it('gives ONE finding whichever half failed, and names the actionable one', () => {
+    // Two requirements, one symbol, one badge — but the sentence is the one the
+    // user can act on. Both halves wrong: the carrier comes first, because
+    // where a bar sits means nothing until it is attached to something.
     const both = evaluate([background(), link(), bar(200, 150)]);
 
     expect(both).toHaveLength(1);
+    expect(both[0].messageKey).toBe(OFF_CARRIER);
+  });
+
+  it('judges a RESIZED map exactly as it judges the reference one', () => {
+    // The band is a ratio of the plot, so the same gesture gets the same
+    // verdict at any size. The defect it replaces was an absolute 40 units:
+    // 5.5% of the plot on an 800-wide map and 1.3% on a 3200-wide one.
+    for (const scale of [0.5, 1, 2]) {
+      const w = 1600 * scale;
+      const map = element('bg', [0, 0, w, (w * 9) / 16], WARDLEY_ROLE.map);
+      const [transition] = backgroundBoundaryCoords(
+        WARDLEY_BACKGROUND,
+        new Bound(0, 0, w, (w * 9) / 16)
+      ).x.slice(1);
+      const at = (fraction: number) =>
+        transition + fraction * (w - 40 - 30);
+      const cy = ((w * 9) / 16) * 0.5;
+      const carrier = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [transition - 0.2 * w, cy],
+        [transition + 0.2 * w, cy]
+      );
+
+      // Inside the band (4% of the plot off the line): green at every size.
+      expect(evaluate([map, carrier, bar(at(0.04), cy)])).toEqual([]);
+      // Outside it (8%): flagged at every size, and for the ZONE.
+      const [violation] = evaluate([map, carrier, bar(at(0.08), cy)]);
+      expect(violation?.messageKey).toBe(OFF_ZONE);
+    }
   });
 
   it('says nothing when the map carries no dependency yet', () => {

@@ -222,10 +222,34 @@ const w2MidPhase: CorpusCard = {
   name: 'W2 invalid — a bar on the link but in the middle of a phase',
   elements: (() => {
     const { link: l, point } = crossing('l1', 0.45, 1);
-    // On the link, 150 units away from the transition it should mark.
+    // On the link, 150 units away from the transition it should mark — 9.8% of
+    // a 1530-wide plot, against a band that reaches 5% either side of the
+    // divider. Outside, and not marginally so.
     return [map(), l, inertia('i1', point[0] + 150, point[1])];
   })(),
   expected: [W2],
+};
+
+/**
+ * The PO recette of 01/08/2026: bars dropped squarely on the "Product" and
+ * "Commodity" dividers, with no dependency under either. Being on the frontier
+ * is not enough — inertia is resistance to a MOVEMENT, and the movement is the
+ * link. The card pins the verdict; which of W2's two sentences each bar gets is
+ * pinned in `validation.unit.spec.ts`.
+ */
+const w2OnDividerNoCarrier: CorpusCard = {
+  name: 'W2 invalid — two bars on the dividers, on no dependency at all',
+  elements: (() => {
+    const { link: l } = crossing('l1', 0.85, 0);
+    return [
+      map(),
+      l,
+      inertia('i1', TRANSITIONS[1], at(0, 0.5)[1]),
+      inertia('i2', TRANSITIONS[2], at(0, 0.35)[1]),
+    ];
+  })(),
+  expected: [W2, W2],
+  expectedIds: [`${W2}:i1`, `${W2}:i2`],
 };
 
 // ── W3 · nodes and labels must stay readable ───────────────────────────
@@ -400,6 +424,7 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w2SecondTransition,
   w2FloatingBar,
   w2MidPhase,
+  w2OnDividerNoCarrier,
   w3Clean,
   w3Tight,
   w3NodeOnNode,

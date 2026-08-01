@@ -22,7 +22,8 @@ import { effect, signal } from '@preact/signals-core';
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
 import {
   backgroundAxisFact,
-  backgroundBoundaryCoords,
+  type BackgroundTransitionBand,
+  backgroundTransitionBands,
 } from '../framework-background/facts.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
@@ -97,6 +98,32 @@ export interface AgainstAxisDef {
   toleranceDeg: number;
 }
 
+/**
+ * What a finding SAYS: an i18n key, plus the framework's own wording for a host
+ * that ships no catalogue for it, for the message and for the remediation hint.
+ *
+ * Split out of {@link ValidationRule} because a rule can have more than one way
+ * of failing, and a family that knows WHICH one failed must be able to say so.
+ * A single message covering two distinct mistakes is a message that describes
+ * neither: "not on a dependency at a phase transition" leaves the user to guess
+ * which half they got wrong, on a symbol that is eight units wide.
+ */
+export interface RuleMessage {
+  /** i18n key of the message; resolved by the host. The engine holds no prose. */
+  messageKey: string;
+  /**
+   * The FRAMEWORK's own wording, used when the host ships no catalogue for the
+   * key — exactly the `labelKey` + `fallback` pair a {@link ValidationProfile}
+   * and a background label already carry. The framework owns the word; the
+   * library still never invents one.
+   */
+  messageFallback?: string;
+  /** i18n key of an optional remediation hint. */
+  suggestionKey?: string;
+  /** The framework's own wording for {@link suggestionKey}. */
+  suggestionFallback?: string;
+}
+
 /** `attachment` configuration. */
 export interface AttachmentDef {
   /**
@@ -111,13 +138,25 @@ export interface AttachmentDef {
   /** How far, in model units, the subject may sit from its carrier. */
   tolerance: number;
   /**
-   * Optional second requirement: the subject must also sit at one of the ZONE
-   * TRANSITIONS the frame declares, measured ACROSS this axis. Absent means
-   * anywhere along the carrier will do.
+   * Optional second requirement: the subject's centre must also sit inside one
+   * of the frame's declared TRANSITION BANDS, measured across this axis. Absent
+   * means anywhere along the carrier will do.
+   *
+   * How wide "at a transition" is comes from the FRAME
+   * ({@link FrameworkBackgroundDef.transitionBandWidth}), never from a number
+   * of model units here: the band is a ratio of the plot, so it holds when the
+   * map is resized. A rule asking for a boundary against a frame that declares
+   * no band warns once and drops the requirement rather than indicting every
+   * subject on the board.
    */
   boundaryAxis?: string;
-  /** How far, in model units, from a transition still counts as on it. */
-  boundaryTolerance?: number;
+  /**
+   * The words for the boundary half, when the rule wants to say something other
+   * than its own message. Absent means both halves report identically — which
+   * is the right shape for a rule whose two requirements are one sentence, and
+   * the wrong one for a rule the user has two different ways of fixing.
+   */
+  offBoundary?: RuleMessage;
 }
 
 /**
@@ -137,7 +176,7 @@ export type OverlapPair = readonly [RoleId, RoleId];
  * 5) — never a subclass, never a closure. It is comparable, serializable and
  * can be shipped by a host.
  */
-export interface ValidationRule {
+export interface ValidationRule extends RuleMessage {
   /** Stable id, namespaced by framework: `wardley.change-arrow-against-evolution`. */
   id: string;
   /** Owning framework, `wardley`. Rules never leave their framework. */
@@ -157,19 +196,6 @@ export interface ValidationRule {
   appliesTo?: RoleId;
   /** The framework's role vocabulary, for the inheritance walk. */
   roles: RoleDefs;
-  /** i18n key of the message; resolved by the host. The engine holds no prose. */
-  messageKey: string;
-  /**
-   * The FRAMEWORK's own wording, used when the host ships no catalogue for the
-   * key — exactly the `labelKey` + `fallback` pair a {@link ValidationProfile}
-   * and a background label already carry. The framework owns the word; the
-   * library still never invents one.
-   */
-  messageFallback?: string;
-  /** i18n key of an optional remediation hint. */
-  suggestionKey?: string;
-  /** The framework's own wording for {@link suggestionKey}. */
-  suggestionFallback?: string;
   /** Bumped when the rule's meaning changes, so a host can pin behaviour. */
   version: number;
   /**
@@ -446,6 +472,20 @@ export interface Violation {
    */
   backgroundId?: string;
   /**
+   * The named FRONTIER of that background the finding is about, when the family
+   * measured against one: `custom-built|product` for a transition band
+   * ({@link BackgroundTransitionBand}).
+   *
+   * "This bar is outside the equilibrium zone" is only half an answer — the
+   * other half is which zone it should have been in, and the band already knows
+   * its own name. Recorded at the moment the family picks the frontier, for the
+   * same reason {@link backgroundId} is: nothing downstream can reconstruct
+   * which of several transitions the user was aiming at.
+   *
+   * Absent for a family that measures against no such region.
+   */
+  boundaryId?: string;
+  /**
    * Set when a user exception covers this finding (PF8), and names the SCOPE
    * that covers it. Absent = live.
    *
@@ -571,23 +611,28 @@ function attributeBackground(
  * Build the finding of `rule` against `elementIds`. One place, so every family
  * carries the rule's keys, its fallbacks and its background attribution the
  * same way.
+ *
+ * `words` is how a family with several ways of failing says WHICH one did: the
+ * finding is still the rule's — same id, same severity, same arbitration — but
+ * the sentence the user reads is the one that fits their mistake.
  */
 function raise(
   rule: ValidationRule,
   elementIds: string[],
-  backgroundId?: string
+  backgroundId?: string,
+  words: RuleMessage = rule
 ): Violation {
   return {
     ruleId: rule.id,
     elementIds,
     severity: rule.severity,
-    messageKey: rule.messageKey,
-    ...(rule.messageFallback !== undefined
-      ? { messageFallback: rule.messageFallback }
+    messageKey: words.messageKey,
+    ...(words.messageFallback !== undefined
+      ? { messageFallback: words.messageFallback }
       : {}),
-    ...(rule.suggestionKey ? { suggestion: rule.suggestionKey } : {}),
-    ...(rule.suggestionFallback !== undefined
-      ? { suggestionFallback: rule.suggestionFallback }
+    ...(words.suggestionKey ? { suggestion: words.suggestionKey } : {}),
+    ...(words.suggestionFallback !== undefined
+      ? { suggestionFallback: words.suggestionFallback }
       : {}),
     ...(backgroundId !== undefined ? { backgroundId } : {}),
   };
@@ -918,12 +963,15 @@ function evaluateOrientationAgainstAxis(
  *
  * The subject must sit within `tolerance` of an element carrying the declared
  * CARRIER role (PF5.16) — the carrier being an edge, measured along its path —
- * and, when the rule asks for it, at one of the frame's declared zone
- * transitions ({@link backgroundBoundaryCoords}).
+ * and, when the rule asks for it, inside one of the frame's declared TRANSITION
+ * BANDS ({@link backgroundTransitionBands}).
  *
- * Both requirements are one finding, not two: "the inertia is not on a
- * dependency" and "it is not at a phase transition" are the same statement
- * about the same symbol, and splitting them would put two badges on one bar.
+ * One finding, and it says which half failed. The two requirements are still a
+ * single badge on a single symbol — two would be pedantry on a bar eight units
+ * wide — but they are two different mistakes with two different gestures to fix
+ * them, so the finding carries the words of the one that actually failed. When
+ * BOTH fail it reports the carrier: a symbol attached to nothing has to find
+ * something to be about before where it sits can mean anything.
  *
  * Silence when the board carries no carrier at all: a map with no dependency
  * yet is a map being drawn, not a map with a misplaced symbol.
@@ -962,12 +1010,27 @@ function evaluateAttachment(
 
   const backgrounds = backgroundsOf(rule, elements);
   const toleranceSquared = attachment.tolerance * attachment.tolerance;
-  // The transition test needs a frame to read the transitions off, so a rule
-  // asking for one on a board with no frame simply does not ask.
-  const axis =
-    attachment.boundaryAxis !== undefined && rule.background !== undefined
-      ? backgroundAxisFact(rule.background, attachment.boundaryAxis)
+  // The transition test needs a frame to read the bands off, so a rule asking
+  // for one on a board with no frame simply does not ask.
+  const def = rule.background;
+  let axis =
+    attachment.boundaryAxis !== undefined && def !== undefined
+      ? backgroundAxisFact(def, attachment.boundaryAxis)
       : undefined;
+  if (axis !== undefined && def?.transitionBandWidth === undefined) {
+    // A width the frame never declared is not a width the engine may invent:
+    // guessing one would indict every subject on the board over a number
+    // nobody wrote down.
+    warnOnce(
+      `attachment rule "${rule.id}" asks for the "${attachment.boundaryAxis}" ` +
+        `transitions, but its background declares no "transitionBandWidth" — ` +
+        `the boundary half of this rule is not evaluated.`
+    );
+    axis = undefined;
+  }
+  // Bands are a function of the frame's bounds, and a board carries units of
+  // frames against hundreds of subjects: read once per frame, not per bar.
+  const bandsOf = new Map<string, BackgroundTransitionBand[]>();
 
   const violations: Violation[] = [];
   for (const el of subjects) {
@@ -983,18 +1046,47 @@ function evaluateAttachment(
     }
 
     const frame = attributeBackground(bound, backgrounds);
-    let onBoundary = true;
-    if (carried && axis !== undefined && frame !== null && rule.background) {
-      const coords = backgroundBoundaryCoords(rule.background, frame.bound);
-      // A transition ACROSS a horizontal axis is a vertical line, i.e. an `x`.
-      const line = axis.orientation === 'horizontal' ? coords.x : coords.y;
+    let inBand = true;
+    // The frontier the subject missed: the nearest one, which is the one the
+    // user was aiming at and the only one a suggestion can point back to.
+    let missed: BackgroundTransitionBand | undefined;
+    if (carried && axis !== undefined && frame !== null && def) {
+      let bands = bandsOf.get(frame.id);
+      if (bands === undefined) {
+        const all = backgroundTransitionBands(def, frame.bound);
+        // A transition ACROSS a horizontal axis is a vertical band, i.e. an `x`.
+        bands = axis.orientation === 'horizontal' ? all.x : all.y;
+        bandsOf.set(frame.id, bands);
+      }
       const value = axis.orientation === 'horizontal' ? centre[0] : centre[1];
-      const slack = attachment.boundaryTolerance ?? attachment.tolerance;
-      onBoundary = line.some(at => Math.abs(value - at) <= slack);
+      inBand = false;
+      let nearest = Infinity;
+      for (const band of bands) {
+        if (value >= band.min && value <= band.max) {
+          inBand = true;
+          break;
+        }
+        const away = Math.abs(value - band.at);
+        if (away < nearest) {
+          nearest = away;
+          missed = band;
+        }
+      }
+      // A frame with no transition at all asks nothing of the subject.
+      if (bands.length === 0) inBand = true;
     }
 
-    if (carried && onBoundary) continue;
-    violations.push(raise(rule, [el.id], frame?.id));
+    if (carried && inBand) continue;
+    // Carrier first: the more actionable of the two, and the only one that
+    // makes the other one mean anything.
+    const violation = raise(
+      rule,
+      [el.id],
+      frame?.id,
+      carried ? attachment.offBoundary : rule
+    );
+    if (carried && missed !== undefined) violation.boundaryId = missed.id;
+    violations.push(violation);
   }
   return violations;
 }
