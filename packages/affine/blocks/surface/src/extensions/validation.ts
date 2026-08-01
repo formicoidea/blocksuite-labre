@@ -6,7 +6,11 @@ import type {
   RoleId,
   SurfaceBlockModel,
 } from '@labre/std/gfx';
-import { InteractivityExtension, roleIsA } from '@labre/std/gfx';
+import {
+  GfxGroupLikeElementModel,
+  InteractivityExtension,
+  roleIsA,
+} from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 import { effect, signal } from '@preact/signals-core';
 
@@ -323,6 +327,46 @@ export class ValidationManager extends InteractivityExtension {
 }
 
 /**
+ * Where a mark is DRAWN for a set of violating elements: the bounds of the
+ * outermost canvas group containing each, or the element's own bounds when it
+ * is not grouped. One mark per anchor — several violating members of the same
+ * group share a single bracket.
+ *
+ * A RENDERING decision, not a semantic one. The violation object keeps naming
+ * the elements actually at fault (`elementIds`); the group never appears in it,
+ * is never evaluated, and carries no role. This exists because a mark drawn on
+ * a lone member — a Wardley component is a group of {node, label} — collides
+ * with the group's own selection rect and becomes unreadable.
+ *
+ * Frames are deliberately skipped: they are group-compatible BLOCKS and appear
+ * in the group chain, but framing a whole frame would be a wild over-reach.
+ *
+ * Pure and stateless, so the mark follows a group that moves and falls back to
+ * the element the moment the group is dissolved, with nothing to invalidate.
+ */
+export function resolveMarkAnchors(
+  elementIds: readonly string[],
+  surface: SurfaceBlockModel
+): Bound[] {
+  const anchors = new Map<string, Bound>();
+
+  for (const id of elementIds) {
+    const element = surface.getElementById(id);
+    if (!element) continue;
+
+    // `getGroups` walks outward, so the last CANVAS group is the outermost one.
+    const canvasGroups = surface
+      .getGroups(id)
+      .filter(group => group instanceof GfxGroupLikeElementModel);
+    const anchor = canvasGroups[canvasGroups.length - 1] ?? element;
+
+    if (!anchors.has(anchor.id)) anchors.set(anchor.id, anchor.elementBound);
+  }
+
+  return Array.from(anchors.values());
+}
+
+/**
  * Bracket geometry in SCREEN pixels. The overlay context is scaled by the
  * viewport zoom, so each is divided by it at paint time — the house convention
  * for annotation overlays (see `snap-overlay.ts`). Without that, the mark is a
@@ -342,15 +386,21 @@ const MARK_COLOR = '#f5a623';
  *
  * Deliberately mute: no text, no icon, no panel. Naming the problem is wave 2's
  * job; wave 1 only has to make the element findable.
+ *
+ * The mark is anchored on the outermost enclosing canvas group rather than on
+ * the bare element — see {@link resolveMarkAnchors}. Evaluation is untouched by
+ * this: it stays on the element carrying the role, because its position is what
+ * the rule is about.
  */
 export class ValidationOverlay extends Overlay {
   static override overlayName = 'validation';
 
   /**
-   * Ids of the indicted elements — NOT their bounds. Bounds are read at paint
-   * time so the mark tracks the element it accuses: evaluation is debounced,
-   * the renderer is not, so a frozen snapshot would leave the bracket behind
-   * at the drag's starting point until 120 ms after the user let go.
+   * Ids of the indicted elements — NOT their bounds, and not their groups
+   * either. Both are resolved at paint time so the mark tracks what it accuses:
+   * evaluation is debounced, the renderer is not, so a frozen snapshot would
+   * leave the bracket behind at the drag's starting point until 120 ms after
+   * the user let go — and a dissolved group would keep framing nothing.
    */
   private _elementIds: string[] = [];
 
@@ -383,11 +433,7 @@ export class ValidationOverlay extends Overlay {
     ctx.strokeStyle = MARK_COLOR;
     ctx.lineWidth = MARK_LINE_WIDTH / zoom;
     ctx.beginPath();
-    for (const id of this._elementIds) {
-      const element = surface.getElementById(id);
-      if (!element) continue;
-
-      const bound = element.elementBound;
+    for (const bound of resolveMarkAnchors(this._elementIds, surface)) {
       const x = bound.x - padding;
       const y = bound.y - padding;
       const maxX = bound.maxX + padding;

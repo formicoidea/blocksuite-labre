@@ -1,9 +1,14 @@
 import {
   OverlayIdentifier,
+  resolveMarkAnchors,
   ValidationManager,
 } from '@labre/affine/blocks/surface';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { beforeEach, describe, expect, test } from 'vitest';
+
+import type { GroupElementModel } from '@labre/affine/model';
+import { createGroupCommand, ungroupCommand } from '@labre/affine/gfx/group';
+import { Text } from '@labre/store';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
@@ -40,6 +45,21 @@ describe('wardley validation on the canvas', () => {
       role: 'wardley:component',
       xywh,
     });
+
+  /** Group the given elements, exactly as the Wardley toolbox does. */
+  const groupOf = (ids: string[]) => {
+    const [, result] = service.std.command.exec(createGroupCommand, {
+      elements: ids,
+    });
+    return result.groupId as string;
+  };
+
+  /** Where the overlay would actually draw, given the current violations. */
+  const markBounds = () =>
+    resolveMarkAnchors(
+      validation.violations$.value.flatMap(v => v.elementIds),
+      service.surface
+    );
 
   /** Past the manager's re-evaluation debounce. */
   const settle = () => wait(250);
@@ -105,6 +125,87 @@ describe('wardley validation on the canvas', () => {
     expect(validation.violations$.value).toEqual([]);
     const background = service.surface.getElementsByType('wardley')[0];
     expect(background.role).toBeUndefined();
+  });
+
+  /**
+   * PO acceptance: a Wardley component made from the toolbox is a GROUP of
+   * {node, label}. Marking the bare node collided with the group's selection
+   * rect and was unreadable, so the mark anchors on the enclosing group.
+   *
+   * Evaluation is untouched — the violation still names the element carrying
+   * the role, because its position is what the rule is about. Only the drawing
+   * moves.
+   */
+  describe('the mark anchors on the enclosing group', () => {
+    test('a grouped violating node is marked on its group', async () => {
+      addBackground();
+      const nodeId = addComponent('[3000,3000,40,40]');
+      const labelId = service.surface.addElement({
+        type: 'text',
+        xywh: '[3050,3000,120,24]',
+        text: new Text('Payments'),
+      });
+      const groupId = groupOf([nodeId, labelId]);
+      await settle();
+
+      // The violation itself is unchanged: the node, never the group.
+      expect(validation.violations$.value[0].elementIds).toEqual([nodeId]);
+
+      // ...but the mark is drawn on the group, which spans node AND label.
+      const group = service.surface.getElementById(groupId)!;
+      expect(markBounds()).toHaveLength(1);
+      expect(markBounds()[0].serialize()).toBe(group.elementBound.serialize());
+      // Wider than the bare node — that is the whole point of the change.
+      expect(markBounds()[0].w).toBeGreaterThan(40);
+    });
+
+    test('two violating members of one group share a single mark', async () => {
+      addBackground();
+      const a = addComponent('[3000,3000,40,40]');
+      const b = addComponent('[3100,3000,40,40]');
+      groupOf([a, b]);
+      await settle();
+
+      // Two violations, one bracket.
+      expect(validation.violations$.value).toHaveLength(2);
+      expect(markBounds()).toHaveLength(1);
+    });
+
+    test('an ungrouped violating node is marked on itself', async () => {
+      addBackground();
+      const id = addComponent('[3000,3000,40,40]');
+      await settle();
+
+      const element = service.surface.getElementById(id)!;
+      expect(markBounds()).toHaveLength(1);
+      expect(markBounds()[0].serialize()).toBe(
+        element.elementBound.serialize()
+      );
+    });
+
+    test('dissolving the group brings the mark back to the element', async () => {
+      addBackground();
+      const nodeId = addComponent('[3000,3000,40,40]');
+      const labelId = service.surface.addElement({
+        type: 'text',
+        xywh: '[3050,3000,120,24]',
+        text: new Text('Payments'),
+      });
+      const groupId = groupOf([nodeId, labelId]);
+      await settle();
+      expect(markBounds()[0].w).toBeGreaterThan(40);
+
+      // Ungroup exactly as the group toolbar does. Anchors are resolved at
+      // paint time, so nothing has to be invalidated for the mark to fall
+      // back onto the element.
+      service.std.command.exec(ungroupCommand, {
+        group: service.surface.getElementById(groupId) as GroupElementModel,
+      });
+
+      const node = service.surface.getElementById(nodeId)!;
+      expect(markBounds()).toHaveLength(1);
+      expect(markBounds()[0].serialize()).toBe(node.elementBound.serialize());
+    });
   });
 
   test('a neutral element is never evaluated, wherever it sits', async () => {
