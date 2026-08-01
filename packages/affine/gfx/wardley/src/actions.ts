@@ -238,6 +238,9 @@ export function createWardleyBackground(
     // against `wardley:map`, never against the `wardley` element type. The
     // declaration owns it, so a templated map and a hand-drawn one agree.
     role: WARDLEY_BACKGROUND.role,
+    // A map is a frame you place things on, not a shape you nudge — the
+    // declaration decides, and the toolbar toggle takes over from there.
+    resizeEnabled: WARDLEY_BACKGROUND.geometry.resizable,
     variant,
     ...BACKGROUND_VARIANT_DEFAULTS[variant],
     xywh: new Bound(

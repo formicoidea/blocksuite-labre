@@ -55,6 +55,14 @@ export interface BackgroundLabelHit {
   id: string;
   /** The model prop the in-place editor must write back to. */
   prop: string;
+  /**
+   * The words currently DRAWN there.
+   *
+   * The editor must open on this, not on `model[prop]`: a label whose prop has
+   * never been written shows its vocabulary, and opening an empty box on it
+   * would silently offer to erase a name the user can see.
+   */
+  text: string;
   minX: number;
   minY: number;
   maxX: number;
@@ -70,7 +78,7 @@ const HIT_PAD = 6;
 
 /**
  * Every text of a declaration, in PAINTING ORDER: zone labels, then each axis'
- * title followed by its end labels, then the free annotations.
+ * title followed by its end labels.
  *
  * One walk, used by both the renderer and the hit tester, so a label can never
  * be drawn in one place and clicked in another.
@@ -93,7 +101,6 @@ export function backgroundTexts(
     }
     texts.push(...(axis.endLabels ?? []));
   }
-  texts.push(...(def.chrome?.annotations ?? []));
   return texts;
 }
 
@@ -128,6 +135,7 @@ export function backgroundLabelHits(
       hits.push({
         id: text.id,
         prop: text.prop,
+        text: words,
         minX: ax - size - HIT_PAD,
         maxX: ax + size * 0.4 + HIT_PAD,
         minY: ay - tw / 2 - HIT_PAD,
@@ -142,6 +150,7 @@ export function backgroundLabelHits(
     hits.push({
       id: text.id,
       prop: text.prop,
+      text: words,
       minX: minX - HIT_PAD,
       maxX: maxX + HIT_PAD,
       minY: ay - size - HIT_PAD,

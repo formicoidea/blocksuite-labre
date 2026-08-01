@@ -51,10 +51,19 @@ export interface BackgroundTextStyle {
   /** Font size in FIXED model units — it does not scale with the element. */
   size: number;
   color: BackgroundColor;
-  /** Defaults to {@link BackgroundChromeDef.fontFamily}. */
+  /**
+   * Defaults to {@link BackgroundChromeDef.fontFamily}. Named consumer:
+   * Estuarine draws its `e` / `t` axis letters in `Georgia, serif` while the
+   * rest of the map is Inter.
+   */
   family?: string;
-  /** Omitted from the font string when absent, i.e. the browser default. */
+  /**
+   * Omitted from the font string when absent, i.e. the browser default. Named
+   * consumers: the BPMN pool draws its participant name at `600`, Estuarine its
+   * curve legends at `600`, Cynefin its domain headings at `700`.
+   */
   weight?: number;
+  /** Named consumer: Estuarine's `e` / `t` letters are `italic 700`. */
   italic?: boolean;
 }
 
@@ -101,32 +110,28 @@ export interface BackgroundTextDef extends BackgroundLabelSource {
 }
 
 /** One graduation on an axis. */
-export interface BackgroundTickDef extends BackgroundLabelSource {
+export interface BackgroundTickDef {
   /** Position along the axis, as a ratio of the plot span it runs on. */
   at: Ratio;
 }
 
 /**
- * The graduations of an axis.
+ * The graduations of an axis: divider lines spanning the plot.
  *
  * Deliberately NOT gated by the owning axis: on a Wardley map the evolution
  * dividers are wanted with the axis line hidden and vice versa, so ticks carry
  * their own {@link visibleProp}. Drawing an axis and graduating it are two
  * decisions.
+ *
+ * A graduation is a line and nothing else. Short stubs on the axis line, and
+ * per-tick labels, had no framework asking for them — a tick that wants a name
+ * is a {@link BackgroundZoneDef} with a label, which is what Wardley's
+ * evolution phases actually are.
  */
 export interface BackgroundTicksDef {
   ticks: readonly BackgroundTickDef[];
-  /** `grid` spans the whole plot; `mark` is a short stub on the axis line. */
-  style: 'grid' | 'mark';
-  /** Length of a `mark`, in model units. Ignored by `grid`. */
-  length?: number;
   stroke: BackgroundStroke;
   visibleProp?: string;
-  /** Absent means unlabelled graduations. */
-  labelStyle?: BackgroundTextStyle;
-  labelOffset?: { dx?: number; dy?: number };
-  labelAlign?: 'left' | 'center' | 'right';
-  labelVisibleProp?: string;
 }
 
 /**
@@ -144,6 +149,10 @@ export interface BackgroundAxisDef {
    * axis at `1` runs along the bottom, a vertical axis at `0` up the left edge.
    */
   at: Ratio;
+  /**
+   * Named consumer for `both`: Estuarine's energy axis is double-headed (its
+   * `e` runs positive and negative around zero).
+   */
   arrow?: 'none' | 'forward' | 'backward' | 'both';
   /** Arrowhead length in model units. */
   arrowSize?: number;
@@ -186,18 +195,13 @@ export interface BackgroundWashDef {
   /** Only painted when {@link FrameworkBackgroundDef.variantProp} is one of these. */
   variants?: readonly string[];
   visibleProp?: string;
-  direction: 'horizontal' | 'vertical';
   color: BackgroundColor;
-  /** `[offset 0..1, alpha 0..1]`, in ascending offset order. */
+  /**
+   * `[offset 0..1, alpha 0..1]`, in ascending offset order, along the plot
+   * WIDTH. A wash runs left to right because that is the only direction any
+   * framework has asked for; a vertical one is a field to add the day one does.
+   */
   stops: readonly (readonly [number, number])[];
-}
-
-/** A regular grid over the plot. Steps are ratios, so the grid scales. */
-export interface BackgroundGridDef {
-  stepX?: Ratio;
-  stepY?: Ratio;
-  stroke: BackgroundStroke;
-  visibleProp?: string;
 }
 
 export interface BackgroundSurfaceDef {
@@ -205,29 +209,7 @@ export interface BackgroundSurfaceDef {
   border?: { color: BackgroundColor; width: number; radius?: number };
 }
 
-/** One row of a drawn legend: a swatch and what it means. */
-export interface BackgroundLegendRow extends BackgroundLabelSource {
-  id: string;
-  swatch?: BackgroundColor;
-}
-
-/** A legend box drawn on the plot. */
-export interface BackgroundLegendDef {
-  anchor: BackgroundAnchor;
-  width: number;
-  rowHeight: number;
-  padding: number;
-  surface?: BackgroundSurfaceDef;
-  title?: BackgroundLabelSource;
-  titleStyle?: BackgroundTextStyle;
-  rowStyle: BackgroundTextStyle;
-  rows: readonly BackgroundLegendRow[];
-  /** Swatch square side, in model units. */
-  swatchSize?: number;
-  visibleProp?: string;
-}
-
-/** Everything that dresses the frame: fills, grid, legend, colour code. */
+/** Everything that dresses the frame: the card, the fills, the colour code. */
 export interface BackgroundChromeDef {
   /** Font family every text inherits unless it names its own. */
   fontFamily?: string;
@@ -238,12 +220,8 @@ export interface BackgroundChromeDef {
   surface?: BackgroundSurfaceDef;
   /** Washes over the plot, painted in declaration order, under the zones. */
   washes?: readonly BackgroundWashDef[];
-  grid?: BackgroundGridDef;
-  legend?: BackgroundLegendDef;
   /** The colour code: names a palette entry `@name` can resolve to. */
   palette?: Readonly<Record<string, BackgroundColor>>;
-  /** Free-standing texts, tied to neither an axis nor a zone. */
-  annotations?: readonly BackgroundTextDef[];
 }
 
 export interface BackgroundGeometry {
@@ -253,13 +231,18 @@ export interface BackgroundGeometry {
   /**
    * When true the reference proportion `height / width` is preserved as the
    * background is sized up to match its neighbours. `false` leaves the two
-   * dimensions independent.
+   * dimensions independent — named consumer: the BPMN pool, a 560 × 200 lane
+   * that is stretched in one direction all the time.
    *
    * A starting proportion, not a constraint on the user's hand: once
    * {@link resizable} lets the handles out, dragging them is free either way.
    */
   lockAspectRatio: boolean;
-  /** Whether a fresh background offers its resize handles (`resizeEnabled`). */
+  /**
+   * Whether the background offers its resize handles. Seeded onto
+   * `resizeEnabled` at creation and used as the fallback for an element that
+   * carries no such prop — see `backgroundResizeAllowed`.
+   */
   resizable: boolean;
   /** Fixed inset, in model units, between the element box and the plot. */
   margin: BackgroundInset;
@@ -312,14 +295,56 @@ export function backgroundPoint(
   ];
 }
 
-/** Resolve `@name` against the palette; anything else is a literal colour. */
+/**
+ * The colour a broken declaration paints in.
+ *
+ * Loud magenta on purpose: a background is DATA, and the cost of getting it
+ * wrong must be seen on the canvas in one glance rather than debugged from a
+ * `rgba(NaN,NaN,NaN,0.4)` that silently paints nothing.
+ */
+export const BROKEN_BACKGROUND_COLOR = '#ff00ff';
+
+/** Warn once per distinct problem: a renderer runs on every frame. */
+const warned = new Set<string>();
+
+export function warnBrokenBackgroundColor(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[framework-background] ${reason}`);
+}
+
+/**
+ * Resolve `@name` against the palette; anything else is a literal colour.
+ *
+ * A name the palette does not carry is a typo in the declaration, not a
+ * request for transparency: it warns and returns {@link BROKEN_BACKGROUND_COLOR}.
+ */
 export function backgroundColor(
   color: BackgroundColor | undefined,
   palette: Readonly<Record<string, BackgroundColor>> | undefined
 ): string {
   if (!color) return 'transparent';
-  if (color.startsWith('@')) return palette?.[color.slice(1)] ?? 'transparent';
-  return color;
+  if (!color.startsWith('@')) return color;
+
+  const resolved = palette?.[color.slice(1)];
+  if (resolved !== undefined) return resolved;
+  warnBrokenBackgroundColor(`no palette entry for "${color}"`);
+  return BROKEN_BACKGROUND_COLOR;
+}
+
+/**
+ * Whether the resize handles are offered for this element.
+ *
+ * The element's own `resizeEnabled` decides — it is what the toolbar toggle
+ * writes. The declaration's {@link BackgroundGeometry.resizable} is the
+ * fallback for an element that carries no such prop, which is what makes it
+ * live data rather than documentation.
+ */
+export function backgroundResizeAllowed(
+  def: FrameworkBackgroundDef,
+  model: { resizeEnabled?: boolean }
+): boolean {
+  return model.resizeEnabled ?? def.geometry.resizable;
 }
 
 /**

@@ -67,6 +67,30 @@ const LEGACY_ELEMENT = {
 /** Keys the framework owns on every surface element, whatever its type. */
 const FRAMEWORK_KEYS = ['id', 'index', 'seed'];
 
+/** The ten editable label texts, which now default to `undefined`. */
+const LABEL_PROPS = [
+  'xAxisTitle',
+  'yAxisTitle',
+  'evolutionStart',
+  'evolutionEnd',
+  'visibilityHigh',
+  'visibilityLow',
+  'phase0',
+  'phase1',
+  'phase2',
+  'phase3',
+];
+
+/** The renderer the canvas itself would look up, from the real assembly points. */
+function rendererFor(type: string) {
+  const manager = new ViewExtensionManager(getInternalViewExtensions({}));
+  const container = new Container();
+  manager.get('edgeless').forEach(ext => ext.setup(container));
+  return container
+    .provider()
+    .getOptional(ElementRendererIdentifier(type)) as ElementRenderer | null;
+}
+
 function createEditor() {
   const manager = new StoreExtensionManager(getInternalStoreExtensions({}));
   const collection = new TestWorkspace({ id: 'pf2-legacy-wardley' });
@@ -137,6 +161,46 @@ describe('a Wardley map written before the primitive', () => {
     expect(backgroundOf(reloaded!).yMap.toJSON()).toEqual(before);
   });
 
+  test('is not what a map created TODAY writes — and reads the same', () => {
+    const { collection } = createEditor();
+    const store = collection.createDoc('doc:fresh').getStore({ id: 'doc:fresh' });
+    let surfaceId = '';
+    store.load(() => {
+      const rootId = store.addBlock('affine:page', { title: new Text('PF2') });
+      surfaceId = store.addBlock('affine:surface', {}, rootId);
+    });
+    const surface = store.getBlock(surfaceId)?.model as SurfaceBlockModel;
+    // Exactly what the toolbox writes: no label text at all.
+    surface.addElement({ type: 'wardley', xywh: '[0,0,1600,900]' });
+
+    const persisted = backgroundOf(store).yMap.toJSON();
+    // The ten label props default to `undefined` now, so they are written
+    // NOWHERE — which is what makes the declaration's i18n keys reachable.
+    for (const label of LABEL_PROPS) {
+      expect([label, label in persisted]).toEqual([label, false]);
+    }
+    // And the getters still answer, because the declaration carries the words.
+    const rec = stub();
+    const render = rendererFor('wardley');
+    (render as unknown as (m: unknown, c: unknown, x: unknown) => void)(
+      backgroundOf(store),
+      rec.ctx,
+      identityMatrix()
+    );
+    expect(rec.texts).toEqual([
+      ['Genesis', 46, 884],
+      ['Custom-Built', 313.75, 884],
+      ['Product (+Rental)', 658, 884],
+      ['Commodity (+Utility)', 1117, 884],
+      ['Evolution', 1554, 884],
+      ['Uncharted', 54, 50],
+      ['Industrialized', 1564, 50],
+      ['Value Chain', 31, 446],
+      ['Visible', 31, 86],
+      ['Invisible', 31, 818],
+    ]);
+  });
+
   test('keeps the model behaviour a background has always had', () => {
     const { collection } = createEditor();
     const store = authorLegacyDocument(collection, 'doc:legacy-model');
@@ -159,14 +223,7 @@ describe('a Wardley map written before the primitive', () => {
     });
 
     // The very lookup `CanvasRenderer` performs to paint an element.
-    const manager = new ViewExtensionManager(getInternalViewExtensions({}));
-    const container = new Container();
-    manager.get('edgeless').forEach(ext => ext.setup(container));
-    const render = container
-      .provider()
-      .getOptional(
-        ElementRendererIdentifier('wardley')
-      ) as ElementRenderer | null;
+    const render = rendererFor('wardley');
     expect(render).toBeDefined();
 
     const rec = stub();

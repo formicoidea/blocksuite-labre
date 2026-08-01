@@ -72,36 +72,47 @@ export class WardleyBackgroundElementModel extends FrameworkBackgroundElementMod
   @field(false)
   accessor resizeEnabled: boolean = false;
 
-  // ── Editable label texts (defaults mirror the original hard-coded ones) ─
-  @field('Evolution')
-  accessor xAxisTitle: string = 'Evolution';
+  // ── Editable label texts ──────────────────────────────────────────────
+  //
+  // Deliberately DEFAULTED TO `undefined`, and therefore written nowhere: an
+  // `undefined` default stays absent from the Y.Map until something assigns it
+  // (see `field.ts`), which is what keeps an optional field shippable without a
+  // migration.
+  //
+  // Absent means "the user has never renamed this one", and only then can the
+  // `WARDLEY_BACKGROUND` declaration fall through to its i18n key — with a hard
+  // default here, the key would be unreachable and the map would be English
+  // forever. Any value the user types is written and wins from then on, and a
+  // map authored before this change carries all ten and is untouched.
+  @field()
+  accessor xAxisTitle: string | undefined = undefined;
 
-  @field('Value Chain')
-  accessor yAxisTitle: string = 'Value Chain';
+  @field()
+  accessor yAxisTitle: string | undefined = undefined;
 
-  @field('Uncharted')
-  accessor evolutionStart: string = 'Uncharted';
+  @field()
+  accessor evolutionStart: string | undefined = undefined;
 
-  @field('Industrialized')
-  accessor evolutionEnd: string = 'Industrialized';
+  @field()
+  accessor evolutionEnd: string | undefined = undefined;
 
-  @field('Visible')
-  accessor visibilityHigh: string = 'Visible';
+  @field()
+  accessor visibilityHigh: string | undefined = undefined;
 
-  @field('Invisible')
-  accessor visibilityLow: string = 'Invisible';
+  @field()
+  accessor visibilityLow: string | undefined = undefined;
 
-  @field('Genesis')
-  accessor phase0: string = 'Genesis';
+  @field()
+  accessor phase0: string | undefined = undefined;
 
-  @field('Custom-Built')
-  accessor phase1: string = 'Custom-Built';
+  @field()
+  accessor phase1: string | undefined = undefined;
 
-  @field('Product (+Rental)')
-  accessor phase2: string = 'Product (+Rental)';
+  @field()
+  accessor phase2: string | undefined = undefined;
 
-  @field('Commodity (+Utility)')
-  accessor phase3: string = 'Commodity (+Utility)';
+  @field()
+  accessor phase3: string | undefined = undefined;
 
   // ── Per-part visibility toggles ───────────────────────────────────────
   @field(true)

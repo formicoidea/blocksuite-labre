@@ -23,6 +23,7 @@ import {
   NODE_STROKE,
   WARDLEY_RED,
 } from '../node/consts';
+import { WARDLEY_BACKGROUND } from '../background';
 import { WARDLEY_ROLE } from '../roles';
 
 /**
@@ -35,8 +36,19 @@ import { WARDLEY_ROLE } from '../roles';
  * arrow is the red dashed connector. Legends are produced by the editor's
  * auto-legend action rather than baked into the template.
  */
-const W = 1600;
-const H = 900;
+const W = WARDLEY_BACKGROUND.geometry.width;
+const H = WARDLEY_BACKGROUND.geometry.height;
+
+/**
+ * The plot these templates lay their nodes out in.
+ *
+ * PRE-EXISTING DRIFT, deliberately left alone: the declaration's plot is
+ * `x 40 → 1570, y 30 → 862` (`geometry.margin`), this one is inset further.
+ * Aligning them would move every node of every template, which is a visual
+ * change to canned content and not this slice's business. Templates are
+ * therefore laid out against a plot that is slightly smaller than the drawn
+ * one — harmless (everything lands inside the map) but not the same number.
+ */
 const PL = { x: 70, y: 56, w: 1470, h: 786 };
 const ex = (e: number) => PL.x + e * PL.w;
 const vy = (v: number) => PL.y + (1 - v) * PL.h;
@@ -47,8 +59,9 @@ const D = NODE_SIZE; // 18
 // stay neutral for now (see the PF1 changeset), hence a template inserts a
 // frame nothing is yet measured against.
 const bg = (variant = 'classic') => ({
-  type: 'wardley',
-  role: WARDLEY_ROLE.map,
+  type: WARDLEY_BACKGROUND.type,
+  role: WARDLEY_BACKGROUND.role,
+  resizeEnabled: WARDLEY_BACKGROUND.geometry.resizable,
   variant,
   xywh: `[0,0,${W},${H}]`,
 });

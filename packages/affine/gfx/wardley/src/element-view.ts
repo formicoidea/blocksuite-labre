@@ -5,11 +5,16 @@ import {
   hitTestBackgroundLabel,
 } from '@labre/affine-block-surface';
 import type { WardleyBackgroundElementModel } from '@labre/affine-model';
+import { TranslationProvider } from '@labre/affine-shared/services';
 import { rotatePoint } from '@labre/global/gfx';
 import type { PointerEventState } from '@labre/std';
 import { GfxElementModelView } from '@labre/std/gfx';
 
-import { WARDLEY_BACKGROUND } from './background';
+import {
+  isWardleyLabelProp,
+  WARDLEY_BACKGROUND,
+  type WardleyLabelProp,
+} from './background';
 
 export class WardleyView extends GfxElementModelView<WardleyBackgroundElementModel> {
   static override type: string = 'wardley';
@@ -46,31 +51,42 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       ly = uy - by;
     }
 
-    // Which labels exist, where they sit and which are editable all come from
-    // the declaration the renderer paints — one source, so a label can never be
-    // drawn in one place and clicked in another.
+    // Which labels exist, where they sit, what they SAY and which are editable
+    // all come from the declaration the renderer paints — one source, resolved
+    // through the same catalogue, so a label can never be drawn in one place
+    // and clicked in another, nor read one thing and open on another.
     const hit = hitTestBackgroundLabel(
       backgroundLabelHits(
         WARDLEY_BACKGROUND,
         this.model as unknown as Record<string, unknown>,
         w,
-        h
+        h,
+        this.gfx.std.getOptional(TranslationProvider)
       ),
       lx,
       ly
     );
     if (!hit) return;
+    // The declaration names the prop; this decides whether it may be written.
+    if (!isWardleyLabelProp(hit.prop)) return;
 
-    this._openLabelEditor(hit.prop, e);
+    this._openLabelEditor(hit.prop, hit.text, e);
   }
 
-  private _openLabelEditor(field: string, e: PointerEventState): void {
+  /**
+   * @param current the words currently DRAWN — which is the vocabulary, not
+   * `model[field]`, for a label the user has never renamed. Opening on the raw
+   * prop would show an empty box for a label that plainly reads "Evolution".
+   */
+  private _openLabelEditor(
+    field: WardleyLabelProp,
+    current: string,
+    e: PointerEventState
+  ): void {
     this._closeLabelEditor();
 
     const input = document.createElement('input');
-    input.value = String(
-      (this.model as unknown as Record<string, unknown>)[field] ?? ''
-    );
+    input.value = current;
     Object.assign(input.style, {
       position: 'fixed',
       left: `${e.raw.clientX}px`,
@@ -138,6 +154,5 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
  * `resizeEnabled` is true — the runtime half of the declaration's
  * `geometry.resizable`.
  */
-export const WardleyInteraction = FrameworkBackgroundInteractionExtension(
-  WardleyView.type
-);
+export const WardleyInteraction =
+  FrameworkBackgroundInteractionExtension(WARDLEY_BACKGROUND);

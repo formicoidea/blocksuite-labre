@@ -4,6 +4,7 @@ import type { FrameworkBackgroundDef } from '../framework-background/index.js';
 import {
   backgroundColor,
   backgroundLabelHits,
+  backgroundResizeAllowed,
   backgroundSize,
   createFrameworkBackgroundRenderer,
 } from '../framework-background/index.js';
@@ -24,6 +25,7 @@ function stub() {
   const fills: string[] = [];
   const strokes: string[] = [];
   const gradients: number[] = [];
+  const gradientStops: Array<[number, string]> = [];
   let mx = 0;
   let my = 0;
 
@@ -68,11 +70,24 @@ function stub() {
     ),
     createLinearGradient: vi.fn(() => {
       gradients.push(1);
-      return { addColorStop: vi.fn() };
+      return {
+        addColorStop: (offset: number, css: string) =>
+          gradientStops.push([offset, css]),
+      };
     }),
   };
 
-  return { ctx, segments, rects, texts, dashes, fills, strokes, gradients };
+  return {
+    ctx,
+    segments,
+    rects,
+    texts,
+    dashes,
+    fills,
+    strokes,
+    gradients,
+    gradientStops,
+  };
 }
 
 const matrix = () => {
@@ -142,8 +157,8 @@ describe('a declaration that says nothing but its size', () => {
 
 /**
  * A synthetic framework exercising the whole vocabulary at once: a locked
- * geometry, a graduated axis, named zones, a grid, a legend and a colour code —
- * none of it Wardley, none of it code.
+ * geometry, a graduated axis, a double-headed axis, named zones and a colour
+ * code — none of it Wardley, none of it code.
  */
 const FULL: FrameworkBackgroundDef = {
   type: 'demo',
@@ -158,26 +173,6 @@ const FULL: FrameworkBackgroundDef = {
     fontFamily: 'Demo, sans-serif',
     palette: { ink: '#111111', wash: '#eeeeee', accent: '#ff0000' },
     surface: { fill: '@wash', border: { color: '@ink', width: 2, radius: 4 } },
-    grid: { stepX: 0.5, stepY: 0.5, stroke: { color: '@ink', width: 1 } },
-    legend: {
-      anchor: { x: 0, y: 0 },
-      width: 100,
-      rowHeight: 20,
-      padding: 5,
-      rowStyle: { size: 10, color: '@ink' },
-      rows: [
-        { id: 'r1', labelKey: 'demo.row', fallback: 'Row', swatch: '@accent' },
-      ],
-    },
-    annotations: [
-      {
-        id: 'note',
-        labelKey: 'demo.note',
-        fallback: 'note',
-        anchor: { x: 0.5, y: 0.5 },
-        style: { size: 8, color: '@ink' },
-      },
-    ],
   },
   zones: [
     {
@@ -222,15 +217,8 @@ const FULL: FrameworkBackgroundDef = {
         align: 'right',
       },
       ticks: {
-        ticks: [
-          { at: 0.25, labelKey: 'demo.q1', fallback: 'Q1' },
-          { at: 0.75, labelKey: 'demo.q3', fallback: 'Q3' },
-        ],
-        style: 'mark',
-        length: 8,
+        ticks: [{ at: 0.25 }, { at: 0.75 }],
         stroke: { color: '@ink', width: 1, dash: [2, 2] },
-        labelStyle: { size: 9, color: '@ink' },
-        labelOffset: { dy: 14 },
       },
     },
     {
@@ -254,7 +242,37 @@ describe('the declaration vocabulary', () => {
     expect(rec.strokes).toContain('#ff0000');
     expect(backgroundColor('@ink', { ink: '#111111' })).toBe('#111111');
     expect(backgroundColor('#abcdef', undefined)).toBe('#abcdef');
-    expect(backgroundColor('@missing', {})).toBe('transparent');
+  });
+
+  it('paints a broken colour loudly instead of failing quietly', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // A palette entry that does not exist is a typo in the declaration, not a
+    // request for transparency.
+    expect(backgroundColor('@nope', {})).toBe('#ff00ff');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('no palette entry for "@nope"')
+    );
+
+    warn.mockClear();
+    // A wash colour that cannot carry an alpha used to reach `parseInt` and
+    // emit `rgba(NaN,NaN,NaN,…)`, which paints nothing and explains nothing.
+    const broken: FrameworkBackgroundDef = {
+      ...BARE,
+      chrome: {
+        washes: [
+          { id: 'w', color: 'rebeccapurple', stops: [[0, 0.5], [1, 0]] },
+        ],
+      },
+    };
+    const stops = paint(broken).gradientStops;
+    expect(stops[0][1]).toBe('rgba(255,0,255,0.5)');
+    expect(stops.some(([, css]) => css.includes('NaN'))).toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('cannot take an alpha')
+    );
+
+    warn.mockRestore();
   });
 
   it('draws the declared axes, arrowheads included', () => {
@@ -265,13 +283,33 @@ describe('the declaration vocabulary', () => {
     expect(segments).toContainEqual([20, 175, 20, 25]);
   });
 
-  it('draws graduations as short marks with their own labels', () => {
-    const { segments, texts, dashes } = paint(FULL);
-    // Ticks at 25 % and 75 % of the 360-wide plot, 8 long, centred on the axis.
-    expect(segments).toContainEqual([110, 176, 110, 184]);
-    expect(segments).toContainEqual([290, 176, 290, 184]);
+  it('draws graduations as divider lines across the plot', () => {
+    const { segments, dashes } = paint(FULL);
+    // Ticks at 25 % and 75 % of the 360-wide plot, spanning y 20 → 180.
+    expect(segments).toContainEqual([110, 20, 110, 180]);
+    expect(segments).toContainEqual([290, 20, 290, 180]);
     expect(dashes).toContainEqual([2, 2]);
-    expect(texts).toContainEqual({ text: 'Q1', x: 110, y: 194, font: '9px Demo, sans-serif' });
+  });
+
+  it('graduates an axis whose line is hidden, and vice versa', () => {
+    // Two decisions, two gates — the whole reason ticks carry their own.
+    const gated: FrameworkBackgroundDef = {
+      ...FULL,
+      axes: [
+        {
+          ...FULL.axes![0],
+          visibleProp: 'showAxis',
+          ticks: { ...FULL.axes![0].ticks!, visibleProp: 'showTicks' },
+        },
+      ],
+    };
+    const noAxis = paint(gated, { showAxis: false, showTicks: true });
+    expect(noAxis.segments).toContainEqual([110, 20, 110, 180]);
+    expect(noAxis.segments).not.toContainEqual([20, 180, 375, 180]);
+
+    const noTicks = paint(gated, { showAxis: true, showTicks: false });
+    expect(noTicks.segments).not.toContainEqual([110, 20, 110, 180]);
+    expect(noTicks.segments).toContainEqual([20, 180, 375, 180]);
   });
 
   it('tints only the zones that declare a fill, and names them all', () => {
@@ -283,35 +321,23 @@ describe('the declaration vocabulary', () => {
     expect(texts.map(t => t.text)).toContain('Droite');
   });
 
-  it('draws the grid at the declared step', () => {
-    const { segments } = paint(FULL);
-    expect(segments).toContainEqual([200, 20, 200, 180]);
-    expect(segments).toContainEqual([20, 100, 380, 100]);
-  });
-
-  it('draws the legend box, its swatch and its row', () => {
-    const { rects, texts } = paint(FULL);
-    // Anchored at the plot origin (20, 20), 5 of padding, swatch centred in a
-    // 20-high row: (25, 29).
-    expect(rects).toContainEqual({ x: 25, y: 29, w: 12, h: 12, fill: '#ff0000' });
-    expect(texts.map(t => t.text)).toContain('Row');
-  });
-
   it('shows the raw key when nothing resolves it and nothing defaults it', () => {
     // The house rule (see `translateKey`): a dangling key is a bug the host
     // must see, never an excuse to invent somebody else's wording.
     const dangling: FrameworkBackgroundDef = {
       ...BARE,
-      chrome: {
-        annotations: [
-          {
+      zones: [
+        {
+          id: 'z',
+          rect: { x: 0, y: 0, w: 1, h: 1 },
+          label: {
             id: 'mute',
             labelKey: 'demo.unknown',
             anchor: { x: 0.5, y: 0.5 },
             style: { size: 10, color: '#000000' },
           },
-        ],
-      },
+        },
+      ],
     };
     expect(paint(dangling).texts.map(t => t.text)).toEqual(['demo.unknown']);
   });
@@ -328,6 +354,19 @@ describe('the declaration vocabulary', () => {
   });
 });
 
+describe('geometry.resizable decides whether the handles come out', () => {
+  it('is the answer for an element that carries no prop of its own', () => {
+    // FULL declares `resizable: false`, BARE declares `true`.
+    expect(backgroundResizeAllowed(FULL, {})).toBe(false);
+    expect(backgroundResizeAllowed(BARE, {})).toBe(true);
+  });
+
+  it('yields to the element, which is what the toolbar toggle writes', () => {
+    expect(backgroundResizeAllowed(FULL, { resizeEnabled: true })).toBe(true);
+    expect(backgroundResizeAllowed(BARE, { resizeEnabled: false })).toBe(false);
+  });
+});
+
 describe('i18n', () => {
   /** A host with a catalogue bound on the house seam (`TranslationProvider`). */
   const host = (dictionary: Record<string, string>) => ({
@@ -340,12 +379,11 @@ describe('i18n', () => {
       {},
       400,
       200,
-      host({ 'demo.left': 'Gauche', 'demo.time': 'temps', 'demo.q1': 'T1' })
+      host({ 'demo.left': 'Gauche', 'demo.time': 'temps' })
     );
     const said = texts.map(t => t.text);
     expect(said).toContain('Gauche');
     expect(said).toContain('temps');
-    expect(said).toContain('T1');
   });
 
   it('falls back to the declared wording for a key the host does not know', () => {
@@ -371,5 +409,24 @@ describe('i18n', () => {
     expect(backgroundLabelHits(FULL, {}, 400, 200).map(h => h.prop)).toEqual([
       'rightName',
     ]);
+  });
+
+  it('reports the words a label CURRENTLY shows, not its raw prop', () => {
+    const catalogue = { t: (k: string) => ({ 'demo.right': 'Droite' })[k] };
+
+    // Never renamed: the editor must open on the vocabulary the user can see,
+    // not on the empty prop behind it.
+    const [fresh] = backgroundLabelHits(FULL, {}, 400, 200, catalogue);
+    expect(fresh.text).toBe('Droite');
+
+    // Renamed: the user's own words.
+    const [renamed] = backgroundLabelHits(
+      FULL,
+      { rightName: 'Mine' },
+      400,
+      200,
+      catalogue
+    );
+    expect(renamed.text).toBe('Mine');
   });
 });

@@ -5,7 +5,7 @@ import {
 } from '@labre/affine-block-surface';
 import { describe, expect, it } from 'vitest';
 
-import { WARDLEY_BACKGROUND } from '../background';
+import { WARDLEY_BACKGROUND, WARDLEY_LABEL_PROPS } from '../background';
 import { wardley } from '../element-renderer';
 import { recordingCtx, stubMatrix } from './canvas-stub';
 
@@ -117,7 +117,6 @@ describe('the Wardley declaration', () => {
   it('declares the evolution graduations, gated independently of the axis', () => {
     const evolution = (WARDLEY_BACKGROUND.axes ?? [])[0];
     expect(evolution.ticks?.ticks.map(t => t.at)).toEqual([0.175, 0.4, 0.7]);
-    expect(evolution.ticks?.style).toBe('grid');
     expect(evolution.ticks?.stroke.dash).toEqual([5, 5]);
     // Dividers come and go with their own toggle, never with the axis line.
     expect(evolution.ticks?.visibleProp).toBe('showColumnDividers');
@@ -271,6 +270,61 @@ describe('the Wardley background paints what it always painted', () => {
   });
 });
 
+describe('a map nobody has renamed', () => {
+  /** The ten label props absent — a map created after PF2, never edited. */
+  const virgin = () => {
+    const model = map();
+    for (const prop of WARDLEY_LABEL_PROPS) delete model[prop];
+    return model;
+  };
+
+  it('reads exactly as before, with no catalogue registered', () => {
+    // THE i18n non-regression: the label props no longer carry a default, so
+    // every word below now comes from the declaration's `fallback` via the
+    // vocabulary path. Same words, same places, same fonts as the literals in
+    // "writes every label where it has always been written".
+    expect(render(virgin()).texts).toEqual(render(map()).texts);
+  });
+
+  it('speaks the host language once a catalogue is registered', () => {
+    const host = {
+      std: {
+        getOptional: () => ({
+          t: (key: string) =>
+            ({
+              'com.labre.wardley.background.axis.evolution': 'Évolution',
+              'com.labre.wardley.background.phase.genesis': 'Genèse',
+            })[key],
+        }),
+      },
+    };
+    const rec = recordingCtx();
+    (
+      wardley as unknown as (m: unknown, c: unknown, x: unknown, r: unknown) => void
+    )(virgin(), rec.ctx, stubMatrix(), host);
+
+    const said = rec.texts.map(t => t.text);
+    expect(said).toContain('Évolution');
+    expect(said).toContain('Genèse');
+    // Keys the catalogue does not carry keep the shipped default.
+    expect(said).toContain('Value Chain');
+  });
+
+  it("still lets the user's own wording win", () => {
+    const renamed = { ...virgin(), phase0: 'Amorçage' };
+    const said = render(renamed).texts.map(t => t.text);
+    expect(said).toContain('Amorçage');
+    expect(said).not.toContain('Genesis');
+  });
+
+  it('opens its in-place editor on the words on screen, not on an empty prop', () => {
+    const hit = backgroundLabelHits(WARDLEY_BACKGROUND, virgin(), W, H).find(
+      h => h.prop === 'xAxisTitle'
+    );
+    expect(hit?.text).toBe('Evolution');
+  });
+});
+
 describe('the editable labels stay clickable where they are drawn', () => {
   const hits = (over: Record<string, unknown> = {}) =>
     backgroundLabelHits(WARDLEY_BACKGROUND, map(over), W, H);
@@ -295,6 +349,7 @@ describe('the editable labels stay clickable where they are drawn', () => {
     expect(hits()[0]).toEqual({
       id: 'phase0',
       prop: 'phase0',
+      text: 'Genesis',
       minX: 40,
       maxX: 46 + 7 * 18 * 0.6 + 6,
       minY: 884 - 18 - 6,
@@ -308,6 +363,7 @@ describe('the editable labels stay clickable where they are drawn', () => {
     expect(yTitle).toEqual({
       id: 'yAxisTitle',
       prop: 'yAxisTitle',
+      text: 'Value Chain',
       minX: 31 - 18 - 6,
       maxX: 31 + 18 * 0.4 + 6,
       minY: 446 - (11 * 18 * 0.6) / 2 - 6,

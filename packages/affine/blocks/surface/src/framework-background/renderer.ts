@@ -15,7 +15,9 @@ import {
   backgroundColor,
   backgroundPlot,
   backgroundPoint,
+  BROKEN_BACKGROUND_COLOR,
   DEFAULT_BACKGROUND_SURFACE,
+  warnBrokenBackgroundColor,
 } from './def.js';
 import type { BackgroundModelLike } from './labels.js';
 import {
@@ -37,13 +39,10 @@ import {
  *
  * 1. the card — the element rectangle;
  * 2. the washes, over the plot;
- * 3. the grid;
- * 4. the zone tints;
- * 5. the graduations of every axis;
- * 6. the axis lines and their arrowheads;
- * 7. the legend box;
- * 8. every text — zone names, then per axis its title and its end labels,
- *    then the free annotations.
+ * 3. the zone tints;
+ * 4. the graduations of every axis;
+ * 5. the axis lines and their arrowheads;
+ * 6. every text — zone names, then per axis its title and its end labels.
  *
  * A declaration that says nothing but its size therefore paints a plain white
  * rectangle: no axis, no zone, no decoration.
@@ -74,7 +73,24 @@ function roundRectPath(
   ctx.closePath();
 }
 
+const HEX6 = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * A wash stop, as `rgba(...)`.
+ *
+ * Only `#rrggbb` can carry an alpha this way. Anything else — a named CSS
+ * colour, a short hex, a palette entry that did not resolve — used to reach
+ * `parseInt` and produce `rgba(NaN,NaN,NaN,0.4)`, which paints nothing at all
+ * and says nothing about why. It now warns and paints
+ * {@link BROKEN_BACKGROUND_COLOR}.
+ */
 function rgba(hex: string, alpha: number) {
+  if (!HEX6.test(hex)) {
+    warnBrokenBackgroundColor(
+      `wash colour "${hex}" is not a #rrggbb literal, so it cannot take an alpha`
+    );
+    hex = BROKEN_BACKGROUND_COLOR;
+  }
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -196,10 +212,7 @@ export function createFrameworkBackgroundRenderer<
         if (wash.variants && !wash.variants.includes(String(variant))) continue;
         if (!visible(wash.visibleProp)) continue;
 
-        const gradient =
-          wash.direction === 'horizontal'
-            ? ctx.createLinearGradient(x0, 0, x1, 0)
-            : ctx.createLinearGradient(0, y0, 0, y1);
+        const gradient = ctx.createLinearGradient(x0, 0, x1, 0);
         const hex = color(wash.color);
         for (const [offset, alpha] of wash.stops) {
           gradient.addColorStop(offset, rgba(hex, alpha));
@@ -209,30 +222,7 @@ export function createFrameworkBackgroundRenderer<
       }
     }
 
-    // ── 3. Grid ─────────────────────────────────────────────────────────
-    const grid = def.chrome?.grid;
-    if (grid && visible(grid.visibleProp)) {
-      ctx.strokeStyle = color(grid.stroke.color);
-      ctx.lineWidth = grid.stroke.width;
-      ctx.setLineDash(grid.stroke.dash ? [...grid.stroke.dash] : []);
-      if (grid.stepX) {
-        const n = Math.round(1 / grid.stepX);
-        for (let i = 1; i < n; i++) {
-          const gx = x0 + (i / n) * pw;
-          line(gx, y0, gx, y1);
-        }
-      }
-      if (grid.stepY) {
-        const n = Math.round(1 / grid.stepY);
-        for (let i = 1; i < n; i++) {
-          const gy = y0 + (i / n) * ph;
-          line(x0, gy, x1, gy);
-        }
-      }
-      ctx.setLineDash([]);
-    }
-
-    // ── 4. Zone tints ───────────────────────────────────────────────────
+    // ── 3. Zone tints ───────────────────────────────────────────────────
     for (const zone of def.zones ?? []) {
       if (!zone.fill) continue;
       if (!visible(zone.fillVisibleProp)) continue;
@@ -245,123 +235,37 @@ export function createFrameworkBackgroundRenderer<
       );
     }
 
-    // ── 5. Graduations ──────────────────────────────────────────────────
+    // ── 4. Graduations ──────────────────────────────────────────────────
     for (const axis of def.axes ?? []) {
       const graduations = axis.ticks;
       if (!graduations || !visible(graduations.visibleProp)) continue;
 
-      const horizontal = axis.orientation === 'horizontal';
       ctx.strokeStyle = color(graduations.stroke.color);
       ctx.lineWidth = graduations.stroke.width;
       ctx.setLineDash(
         graduations.stroke.dash ? [...graduations.stroke.dash] : []
       );
-      const length = graduations.length ?? 6;
-      const seat = horizontal ? y0 + axis.at * ph : x0 + axis.at * pw;
       for (const tick of graduations.ticks) {
-        if (horizontal) {
+        if (axis.orientation === 'horizontal') {
           const tx = x0 + tick.at * pw;
-          if (graduations.style === 'grid') line(tx, y0, tx, y1);
-          else line(tx, seat - length / 2, tx, seat + length / 2);
+          line(tx, y0, tx, y1);
         } else {
           // A vertical axis is graduated from the BOTTOM up: `at: 0` is the
           // origin of the value it measures, not the top of the screen.
           const ty = y1 - tick.at * ph;
-          if (graduations.style === 'grid') line(x0, ty, x1, ty);
-          else line(seat - length / 2, ty, seat + length / 2, ty);
+          line(x0, ty, x1, ty);
         }
       }
       ctx.setLineDash([]);
-
-      const labelStyle = graduations.labelStyle;
-      if (labelStyle && visible(graduations.labelVisibleProp)) {
-        const dx = graduations.labelOffset?.dx ?? 0;
-        const dy = graduations.labelOffset?.dy ?? 0;
-        for (const tick of graduations.ticks) {
-          const words = backgroundLabelText(tick, props, translation);
-          const tx = horizontal ? x0 + tick.at * pw : seat;
-          const ty = horizontal ? seat : y1 - tick.at * ph;
-          drawText(
-            words,
-            tx + dx,
-            ty + dy,
-            labelStyle,
-            graduations.labelAlign ?? 'center',
-            false
-          );
-        }
-      }
     }
 
-    // ── 6. Axis lines and arrowheads ────────────────────────────────────
+    // ── 5. Axis lines and arrowheads ────────────────────────────────────
     for (const axis of def.axes ?? []) {
       if (!visible(axis.visibleProp)) continue;
       drawAxis(ctx, axis, plot, color, line);
     }
 
-    // ── 7. Legend ───────────────────────────────────────────────────────
-    const legend = def.chrome?.legend;
-    if (legend && visible(legend.visibleProp)) {
-      const [lx, ly] = backgroundPoint(legend.anchor, plot);
-      const rowCount = legend.rows.length + (legend.title ? 1 : 0);
-      const boxH = legend.padding * 2 + rowCount * legend.rowHeight;
-      const legendSurface = legend.surface ?? DEFAULT_BACKGROUND_SURFACE;
-      const legendBorder = legendSurface.border;
-      const li = legendBorder ? legendBorder.width / 2 : 0;
-      roundRectPath(
-        ctx,
-        lx + li,
-        ly + li,
-        legend.width - li * 2,
-        boxH - li * 2,
-        legendBorder?.radius ?? 0
-      );
-      if (legendSurface.fill) {
-        ctx.fillStyle = color(legendSurface.fill);
-        ctx.fill();
-      }
-      if (legendBorder) {
-        ctx.strokeStyle = color(legendBorder.color);
-        ctx.lineWidth = legendBorder.width;
-        ctx.stroke();
-      }
-
-      const swatch = legend.swatchSize ?? 12;
-      let ry = ly + legend.padding;
-      if (legend.title) {
-        drawText(
-          backgroundLabelText(legend.title, props, translation),
-          lx + legend.padding,
-          ry + legend.rowHeight * 0.7,
-          legend.titleStyle ?? legend.rowStyle,
-          'left',
-          false
-        );
-        ry += legend.rowHeight;
-      }
-      for (const row of legend.rows) {
-        if (row.swatch) {
-          ctx.fillStyle = color(row.swatch);
-          ctx.fillRect(
-            lx + legend.padding,
-            ry + (legend.rowHeight - swatch) / 2,
-            swatch,
-            swatch
-          );
-        }
-        drawText(
-          backgroundLabelText(row, props, translation),
-          lx + legend.padding + (row.swatch ? swatch + 8 : 0),
-          ry + legend.rowHeight * 0.7,
-          legend.rowStyle,
-          'left',
-          false
-        );
-        ry += legend.rowHeight;
-      }
-    }
-
-    // ── 8. Every text, in declaration order ─────────────────────────────
+    // ── 6. Every text, in declaration order ─────────────────────────────
     for (const text of texts) {
       if (!visible(text.visibleProp)) continue;
       const [tx, ty] = backgroundPoint(text.anchor, plot);

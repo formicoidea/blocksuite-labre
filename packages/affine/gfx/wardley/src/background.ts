@@ -35,10 +35,18 @@ import { WARDLEY_ROLE } from './roles';
  * ## i18n
  *
  * Every label declares BOTH a `labelKey` (the vocabulary, for a host that ships
- * a locale) and a `prop` (the user's own text, which always wins). Wardley's
- * labels have always been editable on the canvas, so in practice the prop is
- * set and the key is what a host would localise the DEFAULT wording with. A
- * framework whose labels are fixed declares the key alone.
+ * a locale) and a `prop` (the user's own text, which always wins).
+ *
+ * For the key to be REACHABLE the prop has to be able to be absent, so the ten
+ * label fields on `WardleyBackgroundElementModel` default to `undefined`: an
+ * `undefined` default is written nowhere (see `field.ts`), so a map the user
+ * has never renamed carries no label key at all and falls through to the
+ * vocabulary. The moment the user edits a label in place, the prop is written
+ * and wins forever after — which is exactly the old behaviour, arrived at from
+ * the other side.
+ *
+ * A map authored before this change carries all ten props with their English
+ * values and is completely unaffected.
  */
 
 /** The colour code: every colour below is named, never repeated as a hex. */
@@ -202,7 +210,6 @@ const WARDLEY_AXES: FrameworkBackgroundDef['axes'] = [
     ],
     ticks: {
       ticks: [{ at: 0.175 }, { at: 0.4 }, { at: 0.7 }],
-      style: 'grid',
       stroke: { color: '@divider', width: LINE.divider, dash: [5, 5] },
       visibleProp: 'showColumnDividers',
     },
@@ -276,3 +283,31 @@ export const WARDLEY_BACKGROUND: FrameworkBackgroundDef = {
   zones: EVOLUTION_ZONES,
   axes: WARDLEY_AXES,
 };
+
+/**
+ * The props the in-place label editor is allowed to write.
+ *
+ * A closed list, not `string`: the hit test reports whatever `prop` a
+ * declaration names, and since #73 an element preserves keys it does not
+ * declare — so a typo in the declaration would happily persist a junk key onto
+ * every map it was double-clicked on. This is the gate between "the
+ * declaration says so" and "the document gets it".
+ */
+export const WARDLEY_LABEL_PROPS = [
+  'xAxisTitle',
+  'yAxisTitle',
+  'evolutionStart',
+  'evolutionEnd',
+  'visibilityHigh',
+  'visibilityLow',
+  'phase0',
+  'phase1',
+  'phase2',
+  'phase3',
+] as const;
+
+export type WardleyLabelProp = (typeof WARDLEY_LABEL_PROPS)[number];
+
+export function isWardleyLabelProp(prop: string): prop is WardleyLabelProp {
+  return (WARDLEY_LABEL_PROPS as readonly string[]).includes(prop);
+}
