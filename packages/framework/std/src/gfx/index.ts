@@ -88,6 +88,13 @@ export {
   prop,
 } from './model/surface/local-element-model.js';
 export {
+  type RoleDef,
+  type RoleDefs,
+  type RoleId,
+  roleIsA,
+  type RoleKind,
+} from './model/surface/role.js';
+export {
   SURFACE_TEXT_UNIQ_IDENTIFIER,
   SURFACE_YMAP_UNIQ_IDENTIFIER,
   SurfaceBlockModel,

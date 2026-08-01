@@ -36,6 +36,16 @@ export function field<V, T extends GfxPrimitiveElementModel>(fallback?: V) {
           return;
         }
 
+        // An `undefined` default is written nowhere: an optional field stays
+        // ABSENT from the Y.Map until something actually assigns it (the getter
+        // falls back to `fallback` anyway). This keeps an element that does not
+        // use the field byte-identical to one created before the field existed
+        // — the property that lets optional fields ship without a schema
+        // version bump nor a migration.
+        if (v === undefined) {
+          return v;
+        }
+
         if (this.yMap) {
           if (this.yMap.doc) {
             this.surface.store.transact(() => {

@@ -39,6 +39,13 @@ enum ConnectorToolMode {
 
 export type ConnectorToolOptions = {
   mode: ConnectorMode;
+  /**
+   * Semantic role (`<framework>:<role>`) stamped on the connectors drawn while
+   * this activation lasts — a framework toolbox activates the tool for a typed
+   * edge (e.g. `wardley:dependency`). Left out for the plain connector tool:
+   * the edge then stays neutral and no `role` key is written.
+   */
+  role?: string;
 };
 
 export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
@@ -74,6 +81,8 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
     const id = this.gfx.surface.addElement({
       type: CanvasElementType.CONNECTOR,
       mode: this.activatedOption.mode,
+      // `undefined` writes nothing: a neutral edge keeps no `role` key.
+      role: this.activatedOption.role,
       source: this._source,
       target: { position: this._startPoint },
     });

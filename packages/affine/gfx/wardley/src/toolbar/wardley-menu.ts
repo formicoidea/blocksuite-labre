@@ -10,7 +10,7 @@ import {
   createWardleyMarket,
   createWardleyNode,
   createWardleyPipeline,
-  type WardleyNodeKind,
+  type WardleySingleCircleKind,
 } from '../actions';
 import {
   wardleyAnchorIcon,
@@ -63,7 +63,7 @@ export class EdgelessWardleyMenu extends EdgelessToolbarToolMixin(LitElement) {
     createWardleyBackground(this.gfx, variant);
   }
 
-  private _createNode(kind: WardleyNodeKind) {
+  private _createNode(kind: WardleySingleCircleKind) {
     createWardleyNode(this.gfx, kind);
   }
 

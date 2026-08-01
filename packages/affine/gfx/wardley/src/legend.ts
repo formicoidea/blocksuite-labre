@@ -171,6 +171,14 @@ export function createWardleyLegend(
     });
 
   // ── glyph builders (real, editable elements), centred on (cx, cy) ─────
+  //
+  // DELIBERATELY ROLE-LESS. These are real `wardleyNode` elements, but a
+  // legend documents the map — it is not part of it. Giving its glyphs
+  // `wardley:component` & co. would make every legend entry count as an
+  // artefact and skew any rule written against roles (a legend would add a
+  // phantom component, anchor, market…). Neutral is the semantics we want;
+  // `kind` still drives their rendering. Frozen by a test in
+  // `__tests__/roles.unit.spec.ts`.
   const ellipse = (
     kind: 'component' | 'anchor' | 'ecosystem' | 'method',
     d: number,
