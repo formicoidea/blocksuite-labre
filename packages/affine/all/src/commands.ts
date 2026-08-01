@@ -1,4 +1,4 @@
-import { coreCommands } from '@labre/affine-block-root';
+import { coreCommands, pivotCommands } from '@labre/affine-block-root';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
@@ -8,7 +8,7 @@ import { edgyCommands } from '@labre/affine-gfx-edgy';
 import { shapeCommands } from '@labre/affine-gfx-shape';
 import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
-  type CommandDescriptor,
+  type AnyCommandDescriptor,
   type CommandManifestEntry,
   type CommandSurface,
   type FrameworkId,
@@ -35,7 +35,7 @@ import { type BlockFlags, isBlockEnabled } from './flags.js';
  */
 interface FrameworkCommandGroup {
   owner: FrameworkId;
-  commands: CommandDescriptor[];
+  commands: AnyCommandDescriptor[];
 }
 
 const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
@@ -53,10 +53,10 @@ const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
  * every framework group whose flag is enabled.
  */
 export function buildCommandRegistry(
-  core: CommandDescriptor[],
+  core: AnyCommandDescriptor[],
   groups: FrameworkCommandGroup[],
   flags?: BlockFlags
-): CommandDescriptor[] {
+): AnyCommandDescriptor[] {
   const all = [...core];
   for (const { owner, commands } of groups) {
     if (isBlockEnabled(flags, owner)) all.push(...commands);
@@ -68,9 +68,9 @@ export function buildCommandRegistry(
  * Every command a given flag set exposes. Shapes are core canvas, so their
  * commands are always-on like root's.
  */
-export function getCommands(flags?: BlockFlags): CommandDescriptor[] {
+export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
-    [...coreCommands, ...shapeCommands],
+    [...coreCommands, ...pivotCommands, ...shapeCommands],
     FRAMEWORK_COMMAND_GROUPS,
     flags
   );

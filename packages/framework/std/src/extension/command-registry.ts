@@ -161,6 +161,24 @@ export interface CommandDescriptor<P = void> {
 }
 
 /**
+ * A command with its parameter contract erased — what the REGISTRY holds.
+ *
+ * The registry is heterogeneous by design: nullary commands (`undo`,
+ * `wardley.addComponent`) sit in the same list as parameterised ones
+ * (`pivot.bind`, whose record id cannot come from the library). The default
+ * `CommandDescriptor` — i.e. `CommandDescriptor<void>` — cannot express that:
+ * under `strictFunctionTypes`, `run`'s parameter is contravariant and `params`
+ * covariant, so a `CommandDescriptor<P>` is assignable to neither direction of
+ * `CommandDescriptor<void>`.
+ *
+ * Erasure costs nothing at runtime: {@link runCommand} forwards `params`
+ * opaquely, and a parameterised command re-validates with its own zod schema
+ * inside `run` — which an agent-invocable command has to do regardless of what
+ * the static type promises.
+ */
+export type AnyCommandDescriptor = CommandDescriptor<any>;
+
+/**
  * The serializable catalogue projection — no functions, no `TemplateResult`.
  * This is what crosses the host seam for the sidepanel, the palette and the
  * agent (ADR 0006: the seam stays typed and render-free).
@@ -222,7 +240,7 @@ export interface FrameworkDescriptor {
 
 /** Multi-instance: one registered {@link CommandDescriptor} per impl. */
 export const CommandDescriptorIdentifier =
-  createIdentifier<CommandDescriptor>('CommandDescriptor');
+  createIdentifier<AnyCommandDescriptor>('CommandDescriptor');
 
 /** Multi-instance: one `iconKey → template` table per contributing package. */
 export const CommandIconsIdentifier =
@@ -235,7 +253,7 @@ export const CommandIconsIdentifier =
  */
 export type CommandTelemetryReporter = (report: {
   std: BlockStdScope;
-  command: CommandDescriptor;
+  command: AnyCommandDescriptor;
   invocation: CommandInvocation;
 }) => void;
 
@@ -268,7 +286,7 @@ const hasCanvasSelection = (std: BlockStdScope) =>
  */
 export function isCommandAvailable(
   std: BlockStdScope,
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): boolean {
   switch (command.availability ?? 'always') {
     case 'always':
@@ -289,7 +307,7 @@ export function isCommandAvailable(
  */
 export function runCommand(
   std: BlockStdScope,
-  command: CommandDescriptor,
+  command: AnyCommandDescriptor,
   invocation: CommandInvocation,
   params?: unknown
 ): void {
@@ -309,7 +327,7 @@ export function runCommand(
  * verbatim, which is what keeps hosts' persisted v0.29 override tables valid.
  */
 export function toShortcutDescriptor(
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): ShortcutDescriptor {
   return {
     id: command.id,
@@ -331,7 +349,7 @@ export function toShortcutDescriptor(
 
 /** The serializable projection. Functions and templates stop here. */
 export function toCommandManifestEntry(
-  command: CommandDescriptor
+  command: AnyCommandDescriptor
 ): CommandManifestEntry {
   return {
     id: command.id,
@@ -361,7 +379,7 @@ let _commandId = 1;
  * makes a disabled framework vanish from both at once.
  */
 export function CommandExtension(
-  commands: CommandDescriptor[],
+  commands: AnyCommandDescriptor[],
   icons?: Record<string, TemplateResult>
 ): ExtensionType {
   return {
@@ -381,7 +399,9 @@ export function CommandExtension(
 }
 
 /** Every command registered in this editor assembly. */
-export function getRegisteredCommands(std: BlockStdScope): CommandDescriptor[] {
+export function getRegisteredCommands(
+  std: BlockStdScope
+): AnyCommandDescriptor[] {
   return [...std.provider.getAll(CommandDescriptorIdentifier).values()];
 }
 
@@ -394,7 +414,7 @@ export function getCommandsForSurface(
   std: BlockStdScope,
   owner: CommandOwner,
   surface: CommandSurface
-): CommandDescriptor[] {
+): AnyCommandDescriptor[] {
   return getRegisteredCommands(std)
     .filter(c => c.owner === owner && c.surfaces.includes(surface))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));

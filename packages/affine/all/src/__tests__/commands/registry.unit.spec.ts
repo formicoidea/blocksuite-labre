@@ -37,10 +37,10 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit
-      core: 6,
+      // + shape.cycleTextFit + pivot.bind
+      core: 7,
     });
-    expect(commands).toHaveLength(66);
+    expect(commands).toHaveLength(67);
   });
 
   test('ids are unique', () => {
