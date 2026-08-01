@@ -5,6 +5,7 @@ import {
   ConnectorElementModel,
   CoreDomainChartElementModel,
   CynefinElementModel,
+  EdgyBoardElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
@@ -30,6 +31,7 @@ export const elementsCtorMap = {
   wardley: WardleyBackgroundElementModel,
   wardleyNode: WardleyNodeElementModel,
   edgy: EdgyFacetsElementModel,
+  edgyBoard: EdgyBoardElementModel,
   edgyNode: EdgyNodeElementModel,
   cynefin: CynefinElementModel,
   estuarine: EstuarineElementModel,
@@ -45,6 +47,7 @@ export {
   ConnectorElementModel,
   CoreDomainChartElementModel,
   CynefinElementModel,
+  EdgyBoardElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
@@ -69,6 +72,7 @@ export enum CanvasElementType {
   WARDLEY = 'wardley',
   WARDLEYNODE = 'wardleyNode',
   EDGY = 'edgy',
+  EDGYBOARD = 'edgyBoard',
   EDGYNODE = 'edgyNode',
   CYNEFIN = 'cynefin',
   ESTUARINE = 'estuarine',
@@ -88,6 +92,7 @@ export type ElementModelMap = {
   ['wardley']: WardleyBackgroundElementModel;
   ['wardleyNode']: WardleyNodeElementModel;
   ['edgy']: EdgyFacetsElementModel;
+  ['edgyBoard']: EdgyBoardElementModel;
   ['edgyNode']: EdgyNodeElementModel;
   ['cynefin']: CynefinElementModel;
   ['estuarine']: EstuarineElementModel;

@@ -2,6 +2,7 @@ import { Bound } from '@labre/global/gfx';
 import last from 'lodash-es/last';
 
 import type { PointerEventState } from '../../event';
+import { compare } from '../../utils/layer.js';
 import type { GfxController } from '../controller.js';
 import type { GfxElementModelView, SupportedEvent } from '../view/view.js';
 
@@ -87,7 +88,11 @@ export class GfxViewEventManager {
         }
 
         return pre;
-      }, [] as GfxElementModelView[]);
+      }, [] as GfxElementModelView[])
+      // Sort by paint order (same convention as `getElementByPoint`) so the
+      // stack's last entry — the click/dblclick target — is the TOPMOST view,
+      // not whichever the grid returned last (e.g. a background under a node).
+      .sort((a, b) => compare(a.model, b.model));
 
     const currentStackedViews = new Set(this._hoveredElementsStack);
     const visited = new Set<GfxElementModelView>();

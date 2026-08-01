@@ -10,6 +10,7 @@ import {
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
+  SpotlightManager,
 } from './extensions';
 import { ExportManagerExtension } from './extensions/export-manager/export-manager';
 import { DefaultTool } from './tool/default-tool';
@@ -36,6 +37,8 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
         BlockViewExtension('affine:surface', literal`affine-surface`)
       );
       context.register(EditPropsMiddlewareBuilder);
+      // No-op until a framework registers a SpotlightHostExtension.
+      context.register(SpotlightManager);
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

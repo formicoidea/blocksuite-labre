@@ -6,6 +6,8 @@ import type { EdgyFacetsElementModel } from '@labre/affine-model';
 
 import {
   COLORS,
+  cropLabeledScale,
+  cropScale,
   FONT_FAMILY,
   LABEL_FONT_SIZE,
   PICTO_STROKE,
@@ -40,8 +42,14 @@ export const edgy: ElementRenderer<EdgyFacetsElementModel> = (
     matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
   );
 
-  // Uniform fit of the reference design, centered (letterboxed).
-  const { s, ox, oy } = refScale(w, h);
+  // Uniform fit of the reference design, centered (letterboxed) — or, when
+  // the diagram is cropped, of the circles' bounding box (plus the facet
+  // label allowance if the labels are shown).
+  const { s, ox, oy } = model.cropToCircles
+    ? model.showLabels
+      ? cropLabeledScale(w, h)
+      : cropScale(w, h)
+    : refScale(w, h);
   ctx.translate(ox, oy);
   ctx.scale(s, s);
 
@@ -179,14 +187,16 @@ export const edgy: ElementRenderer<EdgyFacetsElementModel> = (
     ctx.stroke();
   };
 
-  // Single-facet zone pictos.
-  lens(A.x - 30, A.y - 22);
-  house(B.x + 30, B.y - 22);
-  heart(C.x, C.y + 36);
-  // Intersection pictos at the validated sweet spots.
-  network(VENN.cx, 114);
-  sun(VENN.cx - 58, 206);
-  cube(VENN.cx + 58, 206);
+  if (model.showPictos) {
+    // Single-facet zone pictos.
+    lens(A.x - 30, A.y - 22);
+    house(B.x + 30, B.y - 22);
+    heart(C.x, C.y + 36);
+    // Intersection pictos at the validated sweet spots.
+    network(VENN.cx, 114);
+    sun(VENN.cx - 58, 206);
+    cube(VENN.cx + 58, 206);
+  }
 
   // ── Labels (outside the circles) ────────────────────────────────────
   if (model.showLabels) {

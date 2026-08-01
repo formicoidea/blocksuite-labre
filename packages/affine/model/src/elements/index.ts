@@ -7,6 +7,7 @@ import type { BrushElementModel } from './brush/index.js';
 import type { ConnectorElementModel } from './connector/index.js';
 import type { CoreDomainChartElementModel } from './core-domain/index.js';
 import type {
+  EdgyBoardElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
 } from './edgy/index.js';
@@ -49,6 +50,7 @@ export type SurfaceElementModelMap = {
   wardley: WardleyBackgroundElementModel;
   wardleyNode: WardleyNodeElementModel;
   edgy: EdgyFacetsElementModel;
+  edgyBoard: EdgyBoardElementModel;
   edgyNode: EdgyNodeElementModel;
   cynefin: CynefinElementModel;
   estuarine: EstuarineElementModel;

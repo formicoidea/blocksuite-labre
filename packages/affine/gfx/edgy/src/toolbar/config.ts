@@ -1,5 +1,8 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import { EdgyFacetsElementModel } from '@labre/affine-model';
+import {
+  EdgyBoardElementModel,
+  EdgyFacetsElementModel,
+} from '@labre/affine-model';
 import {
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -37,36 +40,57 @@ const LabelsIcon = html`<svg
   <circle cx="8" cy="12" r="1.4" />
 </svg>`;
 
-type EdgyToggleProp = 'resizeEnabled' | 'showLabels';
+/** Spot with rays — enable / disable the hover spotlight. */
+const SpotlightIcon = html`<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+>
+  <circle cx="12" cy="12" r="3.4" />
+  <path
+    d="M12 4v2.5M12 17.5V20M4 12h2.5M17.5 12H20M6.3 6.3l1.8 1.8M15.9 15.9l1.7 1.7M17.7 6.3l-1.8 1.8M8.1 15.9l-1.7 1.7"
+  />
+</svg>`;
 
 /**
- * Build a toolbar toggle that flips a boolean flag on every selected facets
- * diagram: `active` reflects the current state, `run` flips it (with an undo
- * checkpoint).
+ * Build a toolbar toggle that flips a boolean flag on every selected element
+ * of the given class: `active` reflects the current state, `run` flips it
+ * (with an undo checkpoint).
  */
-function booleanToggle(
+function booleanToggle<
+  T extends typeof EdgyFacetsElementModel | typeof EdgyBoardElementModel,
+>(
+  Model: T,
   id: string,
   tooltip: string,
   icon: TemplateResult,
-  prop: EdgyToggleProp
+  prop: 'resizeEnabled' | 'showLabels' | 'spotlightEnabled'
 ) {
+  const models = (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(Model) as unknown as Record<string, boolean>[];
   return {
     id,
     tooltip,
     icon,
     active(ctx: ToolbarContext) {
-      const models = ctx.getSurfaceModelsByType(EdgyFacetsElementModel);
-      return models.length > 0 && models.every(model => model[prop]);
+      const all = models(ctx);
+      return all.length > 0 && all.every(model => model[prop]);
     },
     run(ctx: ToolbarContext) {
-      const models = ctx.getSurfaceModelsByType(EdgyFacetsElementModel);
-      if (!models.length) return;
+      const all = models(ctx);
+      if (!all.length) return;
 
-      const enable = !models.every(model => model[prop]);
+      const enable = !all.every(model => model[prop]);
       ctx.std.store.captureSync();
       const crud = ctx.std.get(EdgelessCRUDIdentifier);
-      for (const model of models) {
-        crud.updateElement(model.id, { [prop]: enable });
+      for (const model of all) {
+        crud.updateElement((model as unknown as { id: string }).id, {
+          [prop]: enable,
+        });
       }
     },
   };
@@ -75,16 +99,25 @@ function booleanToggle(
 export const edgyToolbarConfig = {
   actions: [
     booleanToggle(
+      EdgyFacetsElementModel,
       'a.toggle-resize',
       'Enable / lock resizing',
       ResizeIcon,
       'resizeEnabled'
     ),
     booleanToggle(
+      EdgyFacetsElementModel,
       'b.toggle-labels',
       'Show / hide facet labels',
       LabelsIcon,
       'showLabels'
+    ),
+    booleanToggle(
+      EdgyFacetsElementModel,
+      'c.toggle-spotlight',
+      'Enable / disable hover spotlight',
+      SpotlightIcon,
+      'spotlightEnabled'
     ),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyFacetsElementModel).length > 0,
@@ -93,4 +126,29 @@ export const edgyToolbarConfig = {
 export const edgyToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:edgy'),
   config: edgyToolbarConfig,
+});
+
+export const edgyBoardToolbarConfig = {
+  actions: [
+    booleanToggle(
+      EdgyBoardElementModel,
+      'a.toggle-resize',
+      'Enable / lock resizing',
+      ResizeIcon,
+      'resizeEnabled'
+    ),
+    booleanToggle(
+      EdgyBoardElementModel,
+      'b.toggle-spotlight',
+      'Enable / disable hover spotlight',
+      SpotlightIcon,
+      'spotlightEnabled'
+    ),
+  ],
+  when: ctx => ctx.getSurfaceModelsByType(EdgyBoardElementModel).length > 0,
+} as const satisfies ToolbarModuleConfig;
+
+export const edgyBoardToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('affine:surface:edgyBoard'),
+  config: edgyBoardToolbarConfig,
 });

@@ -7,7 +7,7 @@ import {
   GfxViewInteractionExtension,
 } from '@labre/std/gfx';
 
-import { refScale } from './consts';
+import { cropLabeledScale, refScale } from './consts';
 import {
   type EdgyLabelField,
   getEdgyLabelHits,
@@ -33,6 +33,8 @@ export class EdgyView extends GfxElementModelView<EdgyFacetsElementModel> {
   /** Double-click on a label → edit its text in place. */
   private _onDblClick(e: PointerEventState): void {
     if (this.model.isLocked()) return;
+    // No labels shown → nothing to edit (and the cropped mapping differs).
+    if (!this.model.showLabels) return;
 
     const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
     const [bx, by, w, h] = this.model.deserializedXYWH;
@@ -49,8 +51,11 @@ export class EdgyView extends GfxElementModelView<EdgyFacetsElementModel> {
       ly = uy - by;
     }
 
-    // Map element-local coords into the fixed reference space the labels live in.
-    const { s, ox, oy } = refScale(w, h);
+    // Map element-local coords into the fixed reference space the labels live
+    // in — with the SAME fit the renderer used (cropped or letterboxed).
+    const { s, ox, oy } = this.model.cropToCircles
+      ? cropLabeledScale(w, h)
+      : refScale(w, h);
     const rx = (lx - ox) / s;
     const ry = (ly - oy) / s;
 

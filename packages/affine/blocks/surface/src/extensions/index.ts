@@ -6,4 +6,5 @@ export * from './element-renderer';
 export * from './export-manager';
 export * from './legacy-slot-extension';
 export * from './query';
+export * from './spotlight';
 export * from './surface-middleware';

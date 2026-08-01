@@ -14,6 +14,15 @@ export type EdgyFacetsProps = BaseElementProps & {
   resizeEnabled?: boolean;
   /** When false the three facet name labels are hidden. */
   showLabels?: boolean;
+  /** When false the six white zone pictograms are hidden. */
+  showPictos?: boolean;
+  /**
+   * When true the rendering is cropped to the circles' bounding box (the REF
+   * margins only exist for the facet name labels — pointless when hidden).
+   */
+  cropToCircles?: boolean;
+  /** When false the diagram stops granting the hover spotlight. */
+  spotlightEnabled?: boolean;
 
   // ── Editable labels (double-click on the canvas to edit) ──────────────
   identityLabel?: string;
@@ -69,6 +78,15 @@ export class EdgyFacetsElementModel extends GfxPrimitiveElementModel<EdgyFacetsP
 
   @field(true)
   accessor showLabels: boolean = true;
+
+  @field(true)
+  accessor showPictos: boolean = true;
+
+  @field(false)
+  accessor cropToCircles: boolean = false;
+
+  @field(true)
+  accessor spotlightEnabled: boolean = true;
 
   @field('Identity')
   accessor identityLabel: string = 'Identity';
