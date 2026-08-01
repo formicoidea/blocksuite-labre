@@ -11,7 +11,9 @@ Two connector robustness fixes from the ADR 0010 recon (PR #86):
   connector (source and target on the same element). Previously an early
   `continue` left `target` bound to the old element id after a block
   conversion.
-- `mapConnectorIds` (duplicate path) now falls back to the original endpoint
-  id when that endpoint was not part of the cloned set, matching the
-  clipboard's behaviour. Previously the endpoint id became `undefined`,
-  detaching the connector from an element that still exists.
+- Turning a partial selection into a linked doc no longer breaks a connector
+  whose other end stays behind. That endpoint now becomes an **absolute
+  position** — the same conversion the clipboard already applies through
+  `serializeConnector` — instead of keeping an element id that means nothing
+  in the new document. The connector arrives visible, selectable and at the
+  place it occupied in the source document.

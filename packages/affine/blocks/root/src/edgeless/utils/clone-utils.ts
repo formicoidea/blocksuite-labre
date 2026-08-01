@@ -139,10 +139,10 @@ export function mapConnectorIds(
   ids: Map<string, string>
 ) {
   if (props.source.id) {
-    props.source.id = ids.get(props.source.id) ?? props.source.id;
+    props.source.id = ids.get(props.source.id);
   }
   if (props.target.id) {
-    props.target.id = ids.get(props.target.id) ?? props.target.id;
+    props.target.id = ids.get(props.target.id);
   }
   return props;
 }
@@ -217,12 +217,22 @@ export function mapMindmapIds(
   return props;
 }
 
+/**
+ * @param element the element to serialize
+ * @param ids old element id to new element id map
+ * @param elements the set of elements being cloned, used to detect connector
+ *   endpoints that are left behind
+ */
 export function getElementProps(
   element: GfxPrimitiveElementModel,
-  ids: Map<string, string>
+  ids: Map<string, string>,
+  elements: GfxModel[]
 ) {
   if (element instanceof ConnectorElementModel) {
-    const props = element.serialize();
+    // An endpoint whose element is not part of the cloned set is turned into an
+    // absolute position instead of keeping an id that resolves to nothing in
+    // the target document.
+    const props = serializeConnector(element, elements);
     return mapConnectorIds(props, ids);
   }
   if (element instanceof GroupElementModel) {
