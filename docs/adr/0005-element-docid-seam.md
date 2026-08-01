@@ -115,12 +115,12 @@ in `docs/element-link-integration.md` and change the behaviour of the shipped
 An earlier draft proposed the bare `docId`. It is withdrawn. `docId` is already
 this repo's word for "the id of a document" in a _different_ sense —
 `DocDisplayMetaExtension.icon(docId)` / `.title(docId)`
-(`doc-display-meta-service.ts:48-58`) and ADR 0006's own
-`properties$(docId: string)`. With `linkedDocId` sitting on the same class, a
-bare `docId` reads as the general case of which `linkedDocId` is a
-specialization — exactly backwards. `pivotDocId` makes `properties$(el.pivotDocId)`
-self-documenting, and reads consistently against `PivotOccurrence` /
-`isPivotBound` / `collectPivotOccurrences`.
+(`doc-display-meta-service.ts:48-58`) — and the draft also used it as ADR 0006's
+provider parameter, so both meanings met in one expression. With `linkedDocId`
+sitting on the same class, a bare `docId` reads as the general case of which
+`linkedDocId` is a specialization — exactly backwards. `pivotDocId` makes
+`properties$(el.pivotDocId, …)` self-documenting, and reads consistently against
+`PivotOccurrence` / `isPivotBound` / `collectPivotOccurrences`.
 
 The cost asymmetry decides it: before the first write the change is one
 `git grep`; after it, there is **no migration runner in
@@ -129,11 +129,15 @@ The cost asymmetry decides it: before the first write the change is one
 one branch of a naming decision is free and the other is unfixable, ambiguity
 loses by default.
 
-`PivotOccurrence` and `OccurrenceFacetPatch` (ADR 0006) use `pivotDocId` as
-well — one spelling per concept. The single exception is
-`PivotPropertiesService.properties$(docId)`, which keeps the bare parameter name
-because that provider is generic over documents and does not presuppose a pivot
-binding.
+`PivotOccurrence`, `OccurrenceMaterialityPatch` and
+`PivotPropertiesService.properties$(pivotDocId, …)` (ADR 0006) all use
+`pivotDocId` — **one spelling per concept, no exceptions**. An earlier draft
+kept the bare `docId` as the provider's parameter name on the grounds that the
+provider is "generic over documents"; that was a distinction without a
+difference, since the only thing ever passed there is an element's binding.
+
+**The PO confirmed this arbitration on 2026-08-01**, on the homogeneity
+argument with `linkedDocId`. It is no longer an open question.
 
 ### 2. No version increment, no migration, no upgrade hook
 
@@ -187,8 +191,8 @@ Library-internal readers, which decide nothing and render nothing — an
 exhaustive list, extendable only by amending this ADR:
 
 - `collectPivotOccurrences` and `isPivotBound` (§ 5), pure functions;
-- `PivotFacetPublisher` (ADR 0006 § 4), which copies the id into an
-  `OccurrenceFacetPatch` and forgets it.
+- `PivotMaterialityPublisher` (ADR 0006 § 4), which copies the id into an
+  `OccurrenceMaterialityPatch` and forgets it.
 
 The prohibition that matters is unchanged and absolute: **no renderer, no
 hit-test, no layout, no exporter** may read `pivotDocId`. An earlier draft
@@ -246,7 +250,7 @@ Jalon 0.
 | Concurrent edits        | One `Y.Map` key, scalar value → Yjs last-write-wins at key granularity. Two users binding the same element to different records converge on one; no corruption.                                                                                                             |
 | Flags off               | `pivotDocId` lives on the base class in `@labre/std`, outside the flag registry. Documents carrying it open with every framework flag disabled.                                                                                                                             |
 | Deleted pivot record    | The `pivotDocId` string survives on the element. Resolution yields `{ status: 'missing' }` (ADR 0006); nothing is cleaned up automatically — the library never deletes host data.                                                                                           |
-| Deleted _element_       | The occurrence disappears from `collectPivotOccurrences` immediately. So that the record does not keep facets attributed to an occurrence that no longer exists, deletion publishes a retraction — ADR 0006 § 4.3.                                                          |
+| Deleted _element_       | The occurrence disappears from `collectPivotOccurrences` immediately. So that the record does not keep materialities attributed to an occurrence that no longer exists, deletion publishes a retraction — ADR 0006 § 4.3.                                                   |
 | Undo / redo of a bind   | Reverts the `Y.Map` key like any other field, and re-publishes, because the publisher is driven by local Yjs transactions rather than by the command layer — ADR 0006 § 4.1.                                                                                                |
 
 **One cost, stated honestly — the other has since been removed.**

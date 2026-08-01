@@ -9,22 +9,50 @@
   [0006](0006-pivot-properties-provider.md) (reading the bound record). The
   three form **one contract, frozen together**.
 
-> **Terminology warning.** "Facet" is overloaded in this repo.
-> `EdgyFacetsElementModel` (`packages/affine/model/src/elements/edgy/facets.ts`,
-> element type `'edgy'`) is a _drawing_ — the EDGY Identity/Architecture/
-> Experience Venn diagram. It has nothing to do with the **pivot facets** of
-> ADR 0006. This ADR always says "pivot facet" for the latter and "EDGY facets
-> diagram" for the former.
+## Vocabulary: **materiality**, not "facet"
+
+PO decision, 2026-08-01. The qualifications reflected from a board occurrence
+onto its pivot record are **materialities** (fr. _matérialités_). Across
+ADRs 0005–0007 the type is `OccurrenceMaterialityPatch`, the publisher is
+`PivotMaterialityPublisher`, the provider method is
+`publishOccurrenceMaterialities`, and the promotion ladder ends in
+**materialities**. The provenance value `'derived-from-occurrence'` is
+unchanged.
+
+**Why the rename.** "Facet" was already taken in this repo, by a _drawing_:
+`EdgyFacetsElementModel` (`packages/affine/model/src/elements/edgy/facets.ts`,
+element type `'edgy'`) is the EDGY Identity / Architecture / Experience Venn
+diagram, with `identityLabel` / `architectureLabel` / `experienceLabel` fields
+and a `spotlightEnabled` toggle. It has nothing to do with pivot-record
+qualification. An earlier draft of this ADR opened with a terminology warning
+asking readers to hold both meanings at once; renaming the newer concept is
+strictly better than asking every future reader to disambiguate. `*Facet*` in
+this codebase now unambiguously means the EDGY diagram.
+
+> **Vocabulary correspondence — read this before comparing with the PRD.**
+> The Notion PRD and the app-side metamodel still say **« facette »** for what
+> the library calls **materiality**. They are the same concept: a qualification
+> derived from an occurrence, attached to a pivot record with provenance
+> `derived-from-occurrence`. This mapping holds until the PRD is updated:
+>
+> | Library (ADRs 0005–0007)     | PRD / app-side metamodel        |
+> | ---------------------------- | ------------------------------- |
+> | materiality                  | facette                         |
+> | `OccurrenceMaterialityPatch` | patch de facette                |
+> | derived materiality          | facette dérivée de l'occurrence |
+>
+> The EDGY facets **diagram** has no PRD counterpart under either name — it is
+> a drawing, not a qualification.
 
 ## Context
 
 ### The three-level precision typology
 
-| Level | Name                              | Where it lives                               | Rules                                                                            |
-| ----- | --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------- |
-| **1** | Free surface                      | A plain `shape` / `text` element             | None. A rectangle is a rectangle.                                                |
-| **2** | _Nature première_ — semantic role | On the element, e.g. `wardley:component`     | Posed when the artefact is chosen; a role may inherit from another role          |
-| **3** | Contextual qualification          | On the element, e.g. `wardley:nature = data` | The "typed attributes" family; mirrored onto the pivot record as a derived facet |
+| Level | Name                              | Where it lives                               | Rules                                                                                  |
+| ----- | --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **1** | Free surface                      | A plain `shape` / `text` element             | None. A rectangle is a rectangle.                                                      |
+| **2** | _Nature première_ — semantic role | On the element, e.g. `wardley:component`     | Posed when the artefact is chosen; a role may inherit from another role                |
+| **3** | Contextual qualification          | On the element, e.g. `wardley:nature = data` | The "typed attributes" family; mirrored onto the pivot record as a derived materiality |
 
 Level 3 is authored **on the element** — a synchronous, local fact — and is
 reflected onto the pivot record one-way, with provenance
@@ -434,7 +462,7 @@ is a _seed-time_ validation aid. Persisted values must accept any string,
 because a document may legitimately carry an id whose def has been removed,
 renamed or never seeded in this deployment — and it must still open. Narrowing
 the persisted type would push that case toward a load-time failure, which
-Compatibility below forbids. This is also why `OccurrenceFacetPatch.role` is
+Compatibility below forbids. This is also why `OccurrenceMaterialityPatch.role` is
 `string | undefined` in ADR 0006.
 
 **Storage cost: zero for unqualified elements, by construction.** An earlier
@@ -599,16 +627,16 @@ a source and a derivative.
 
 ### 6. The promotion ladder
 
-Four rungs — **shape → role → component → facets** — and therefore three
+Four rungs — **shape → role → component → materialities** — and therefore three
 transitions. (Rung numbers are _not_ the typology levels of the Context table:
-rung 4, "facets", is where typology level 3 is authored.) **Every transition is
+rung 4, "materialities", is where typology level 3 is authored.) **Every transition is
 reversible, none is a conversion, none touches geometry.**
 
-| Transition         | Gesture                    | Written                 | Reverse                                                                                                                                                 |
-| ------------------ | -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| shape → role       | Assign a role              | `role`                  | Clear `role` (tags whose `appliesTo` no longer matches are kept, shown as inapplicable)                                                                 |
-| role → component   | Bind to a pivot record     | `pivotDocId` (ADR 0005) | Clear `pivotDocId`. The record survives — the library never deletes host data                                                                           |
-| component → facets | Qualify (typology level 3) | `tags`                  | Delete the keys. The publisher emits a patch with `tags: {}`; the host drops the derived facets keyed by `(pivotDocId, elementId)` — ADR 0006 § 4.3/4.4 |
+| Transition                | Gesture                    | Written                 | Reverse                                                                                                                                                        |
+| ------------------------- | -------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| shape → role              | Assign a role              | `role`                  | Clear `role` (tags whose `appliesTo` no longer matches are kept, shown as inapplicable)                                                                        |
+| role → component          | Bind to a pivot record     | `pivotDocId` (ADR 0005) | Clear `pivotDocId`. The record survives — the library never deletes host data                                                                                  |
+| component → materialities | Qualify (typology level 3) | `tags`                  | Delete the keys. The publisher emits a patch with `tags: {}`; the host drops the derived materialities keyed by `(pivotDocId, elementId)` — ADR 0006 § 4.3/4.4 |
 
 Hard invariants for every transition:
 
@@ -754,8 +782,11 @@ only._ Where this stands today:
   reviewers must catch is a mutation of one alone, or a backfill of `role` over
   existing documents — not the co-write at the creation site, which is
   prescribed.
-- "Facet" now means two unrelated things in this codebase. Naming a new symbol
-  `*Facet*` requires disambiguating against `EdgyFacetsElementModel`.
+- `*Facet*` in this codebase means the EDGY diagram and nothing else — the
+  ambiguity an earlier draft had to warn about is designed out rather than
+  documented around. The cost is a vocabulary gap with the PRD, bridged by the
+  correspondence table at the top of this ADR until the PRD adopts
+  "matérialité".
 - Rejected: storing defs in the document. It would make a board unopenable
   against a changed pack and would duplicate host-owned configuration into
   user data.
