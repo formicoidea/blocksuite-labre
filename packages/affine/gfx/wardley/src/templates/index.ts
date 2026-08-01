@@ -13,9 +13,11 @@ import {
   StrokeStyle,
   TextAlign,
   type WardleyBgVariant,
+  type WardleyNodeKind,
 } from '@labre/affine-model';
 
 import { REF_WIDTH } from '../consts';
+import { WARDLEY_ROLE } from '../roles';
 import { wardleyMaps } from './maps';
 import {
   ECOSYSTEM_SIZE,
@@ -66,7 +68,7 @@ const bg = (variant: WardleyBgVariant, w = REF_WIDTH) => {
 
 /** A wardley node ellipse positioned by top-left. */
 function node(
-  kind: string,
+  kind: WardleyNodeKind,
   x: number,
   y: number,
   d = NODE_SIZE,
@@ -76,6 +78,9 @@ function node(
   return {
     type: 'wardleyNode',
     kind,
+    // A template must produce the same typed artefacts as the toolbox, so a
+    // map started from a preset validates like a hand-drawn one.
+    role: WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor: fill,
@@ -107,6 +112,8 @@ function connect(
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
+    // `red` is the evolution arrow — a movement annotation, not a dependency.
+    role: opts.red ? undefined : WARDLEY_ROLE.dependency,
     stroke: opts.red ? WARDLEY_RED : LINK_GREY,
     strokeStyle: opts.red ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
@@ -137,6 +144,7 @@ function pipeline(): SurfaceElementsJSON {
     body: {
       type: 'wardleyNode',
       kind: 'pipeline',
+      role: WARDLEY_ROLE.pipeline,
       shapeType: 'rect',
       filled: true,
       fillColor: PIPELINE_FILL,
@@ -150,6 +158,7 @@ function pipeline(): SurfaceElementsJSON {
     handle: {
       type: 'wardleyNode',
       kind: 'handle',
+      role: WARDLEY_ROLE.handle,
       shapeType: 'rect',
       filled: true,
       fillColor: NODE_FILL,
@@ -176,6 +185,8 @@ function market(): SurfaceElementsJSON {
   ];
   const dotAt = (vx: number, vy: number) =>
     node('component', c + vx - MARKET_DOT_SIZE / 2, c + vy - MARKET_DOT_SIZE / 2, MARKET_DOT_SIZE, NODE_FILL, MARKET_DOT_STROKE_WIDTH);
+  // Neutral on purpose: the triangle is the market glyph's own wiring, not a
+  // dependency the user drew (same rule as `createWardleyMarket`).
   const tri = (a: string, b: string) => ({
     type: 'connector',
     mode: ConnectorMode.Straight,
@@ -200,7 +211,7 @@ function market(): SurfaceElementsJSON {
 }
 
 const single = (el: Record<string, unknown>): SurfaceElementsJSON => ({ a: el });
-const nodeWithLabel = (kind: string, d: number, fill: string, name: string): SurfaceElementsJSON => ({
+const nodeWithLabel = (kind: WardleyNodeKind, d: number, fill: string, name: string): SurfaceElementsJSON => ({
   n: node(kind, 0, 0, d, fill),
   l: label(d + 8, d / 2 - 13, name),
 });

@@ -122,7 +122,14 @@ const NODE_PRESETS = {
   method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
 } as const;
 
-export type WardleyNodeKind = keyof typeof NODE_PRESETS;
+/**
+ * The subset of {@link WardleyNodeKind} that the single-circle presets above
+ * cover. Renamed away from `WardleyNodeKind` on purpose: the model declares a
+ * type of that name with SEVEN values, and two homonyms of different
+ * cardinality — one of them now the source of the semantic vocabulary — is a
+ * trap. `WARDLEY_ROLE[kind]` below only compiles while this stays a subset.
+ */
+export type WardleySingleCircleKind = keyof typeof NODE_PRESETS;
 
 function track(
   gfx: GfxController,
@@ -157,7 +164,7 @@ function group(gfx: GfxController, ids: string[]) {
 /** Add a native ellipse wardley node centred on (cx, cy). */
 function addEllipseNode(
   surface: Surface,
-  kind: WardleyNodeKind | 'market',
+  kind: WardleySingleCircleKind | 'market',
   cx: number,
   cy: number,
   d: number,
@@ -241,7 +248,7 @@ export function createWardleyBackground(
  */
 export function createWardleyNode(
   gfx: GfxController,
-  kind: WardleyNodeKind,
+  kind: WardleySingleCircleKind,
   source: WardleyActionSource = TOOLBOX_SOURCE
 ) {
   const surface = gfx.surface;

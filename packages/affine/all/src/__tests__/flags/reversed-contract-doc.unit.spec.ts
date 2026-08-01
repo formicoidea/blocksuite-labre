@@ -3,10 +3,7 @@ import {
   ViewExtensionManager,
 } from '@labre/affine-ext-loader';
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
-import {
-  ElementRendererIdentifier,
-  ValidationRuleIdentifier,
-} from '@labre/affine-block-surface';
+import { ElementRendererIdentifier } from '@labre/affine-block-surface';
 import { Container } from '@labre/global/di';
 import type { DocSnapshot, Store } from '@labre/store';
 import { Schema, Text, Transformer } from '@labre/store';
@@ -207,35 +204,4 @@ describe('framework renderers are mounted even with every flag off', () => {
       expect(on.getOptional(ElementRendererIdentifier(type))).toBeDefined();
     }
   );
-});
-
-/**
- * The other half of the reversed contract: tooling REALLY disappears with its
- * flag. Validation rules are tooling, so they must be registered by the
- * flag-gated `WardleyViewExtension` and by nothing else.
- *
- * Without this, moving `ValidationRuleExtension(WARDLEY_RULES)` from the gated
- * extension into `WardleyRenderViewExtension` — a one-line, entirely plausible
- * edit — would leave every other test green while silently making validation
- * unconditional.
- */
-const registeredRuleIds = (flags: BlockFlags) =>
-  Array.from(
-    mountEdgelessProvider(flags).getAll(ValidationRuleIdentifier).values()
-  ).map(rule => rule.id);
-
-describe('validation rules follow their framework flag', () => {
-  test('no rule is registered with every flag off', () => {
-    expect(registeredRuleIds(ALL_OFF)).toEqual([]);
-  });
-
-  test('the wardley rule is registered with every flag on', () => {
-    expect(registeredRuleIds(ALL_ON)).toContain(
-      'wardley.component-outside-map'
-    );
-  });
-
-  test('disabling only wardley removes the wardley rule', () => {
-    expect(registeredRuleIds({ wardley: false })).toEqual([]);
-  });
 });

@@ -91,6 +91,9 @@ const DEFS: readonly RoleDef[] = [
   },
 ];
 
-export const WARDLEY_ROLES: RoleDefs = Object.fromEntries(
-  DEFS.map(def => [def.id, def])
+// Null prototype: this is a lookup table keyed by ids that may one day come
+// from host-supplied packs, so `defs['toString']` must not resolve.
+export const WARDLEY_ROLES: RoleDefs = Object.assign(
+  Object.create(null),
+  Object.fromEntries(DEFS.map(def => [def.id, def]))
 );
