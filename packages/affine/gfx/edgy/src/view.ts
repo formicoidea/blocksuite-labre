@@ -4,7 +4,9 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
+import { CommandExtension } from '@labre/std';
 
+import { edgyCommandIcons, edgyCommands } from './commands';
 import { effects } from './effects';
 import { edgyTemplateCategory } from './templates';
 import { EdgyBoardRendererExtension } from './board-renderer';
@@ -69,6 +71,9 @@ export class EdgyViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(edgySeniorTool);
+      // The seven EDGY commands: the sub-menu renders them, Settings ›
+      // Shortcuts finally lists them, and a host override on an id binds.
+      context.register(CommandExtension(edgyCommands, edgyCommandIcons));
     }
   }
 }

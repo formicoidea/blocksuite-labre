@@ -2,7 +2,9 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CommandExtension } from '@labre/std';
 
+import { coreDomainCommandIcons, coreDomainCommands } from './commands';
 import { CoreDomainRendererExtension } from './core-domain/element-renderer';
 import { CoreDomainInteraction, CoreDomainView } from './core-domain/element-view';
 import { coreDomainToolbarExtension } from './core-domain/toolbar-config';
@@ -49,6 +51,9 @@ export class DddCoreDomainViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(coreDomainSeniorTool);
+      context.register(
+        CommandExtension(coreDomainCommands, coreDomainCommandIcons)
+      );
     }
   }
 }

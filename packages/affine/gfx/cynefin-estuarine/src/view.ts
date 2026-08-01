@@ -3,7 +3,12 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
+import { CommandExtension } from '@labre/std';
 
+import {
+  cynefinEstuarineCommandIcons,
+  cynefinEstuarineCommands,
+} from './commands';
 import { CynefinRendererExtension } from './cynefin/element-renderer';
 import { CynefinInteraction, CynefinView } from './cynefin/element-view';
 import { cynefinToolbarExtension } from './cynefin/toolbar/config';
@@ -61,6 +66,12 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(cynefinEstuarineSeniorTool);
+      context.register(
+        CommandExtension(
+          cynefinEstuarineCommands,
+          cynefinEstuarineCommandIcons
+        )
+      );
     }
   }
 }

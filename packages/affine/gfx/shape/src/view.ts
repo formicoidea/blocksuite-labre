@@ -2,10 +2,10 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
-import { ShortcutExtension } from '@labre/std';
+import { CommandExtension } from '@labre/std';
 
+import { shapeCommands } from './commands';
 import { effects } from './effects';
-import { shapeShortcuts } from './shortcuts';
 import {
   HighlighterElementRendererExtension,
   ShapeElementRendererExtension,
@@ -37,7 +37,7 @@ export class ShapeViewExtension extends ViewExtensionProvider {
       context.register(shapeToolbarExtension);
       context.register(ShapeViewInteraction);
       // Edgeless-scoped, enumerable/rebindable (installer: root view.ts).
-      context.register(ShortcutExtension(shapeShortcuts));
+      context.register(CommandExtension(shapeCommands));
     }
   }
 }

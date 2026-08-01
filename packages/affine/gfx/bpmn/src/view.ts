@@ -3,7 +3,9 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
+import { CommandExtension } from '@labre/std';
 
+import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
 import { bpmnTemplateCategory } from './templates';
 import { BpmnPoolRendererExtension } from './element-renderer';
@@ -53,6 +55,7 @@ export class BpmnViewExtension extends ViewExtensionProvider {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
       context.register(bpmnSeniorTool);
+      context.register(CommandExtension(bpmnCommands, bpmnCommandIcons));
     }
   }
 }

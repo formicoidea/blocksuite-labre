@@ -1,3 +1,4 @@
+import { DefaultTool } from '@labre/affine-block-surface';
 import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
   ConnectorMode,
@@ -9,7 +10,7 @@ import {
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import type { GfxController } from '@labre/std/gfx';
+import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import * as Y from 'yjs';
 
 import {
@@ -39,6 +40,27 @@ import {
 type Surface = NonNullable<GfxController['surface']>;
 
 const NO_STROKE = '#00000000';
+
+/**
+ * Build one DDD artefact at the viewport centre and select it, leaving the
+ * palette open so several can be added in a row. This is the old
+ * `DddMenuBase.finish` — moved here when PF3 turned the three menus into pure
+ * renderers over the command registry, since the placement is what the command
+ * bodies need and the menu no longer has any.
+ */
+export function placeDddElement(
+  std: BlockStdScope,
+  build: (surface: Surface, cx: number, cy: number) => string
+): void {
+  const gfx = std.get(GfxControllerIdentifier);
+  const surface = gfx.surface;
+  if (!surface) return;
+  const { centerX, centerY } = gfx.viewport;
+  const id = build(surface, centerX, centerY);
+  gfx.doc.captureSync();
+  gfx.tool.setTool(DefaultTool);
+  gfx.selection.set({ elements: [id], editing: false });
+}
 
 /** Group several element ids; returns the group id (or the first id on failure). */
 export function groupIds(std: BlockStdScope, ids: string[]): string {

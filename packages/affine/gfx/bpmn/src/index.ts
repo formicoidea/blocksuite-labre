@@ -1,1 +1,1 @@
-export {};
+export { bpmnCommandIcons, bpmnCommands } from './commands';

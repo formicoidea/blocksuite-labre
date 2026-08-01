@@ -1,35 +1,23 @@
-import { coreShortcuts } from '@labre/affine-block-root';
-import { shapeShortcuts } from '@labre/affine-gfx-shape';
-import { wardleyShortcuts } from '@labre/affine-gfx-wardley';
 import type { ShortcutDescriptor } from '@labre/std';
+import { toShortcutDescriptor } from '@labre/std';
 
-import { type BlockFlags, isBlockEnabled, type OptionalBlock } from './flags.js';
+import { getCommands } from './commands.js';
+import type { BlockFlags } from './flags.js';
 
 /**
  * Manifest view of a shortcut: the metadata a host "Shortcuts" settings panel
  * needs, without the runtime `handler`.
+ *
+ * Since PF3 it is a projection of a projection: {@link CommandDescriptor} →
+ * {@link ShortcutDescriptor} → here. It KEEPS representing shortcuts and
+ * nothing else — no `iconKey`, no `category`; catalogue metadata travels on
+ * `CommandManifestEntry` (`docs/adr/0008` § Icons).
+ *
+ * Breaking shape change for hosts: `when?: string` is gone (no descriptor in
+ * the repo ever set it), `defaultKeys` is always present, and `owner` narrows
+ * from `string` to `CommandOwner`.
  */
 export type ShortcutManifestEntry = Omit<ShortcutDescriptor, 'handler'>;
-
-interface FrameworkShortcutGroup {
-  owner: OptionalBlock;
-  shortcuts: ShortcutDescriptor[];
-}
-
-/**
- * Per-framework shortcut contributions. A framework that adds shortcuts lists
- * them here (manifest) AND registers `ShortcutExtension(...)` in its view
- * (runtime binding); both are gated by its flag.
- *
- * Bundled distribution note: these groups are STRIPPED from
- * `@formicoidea/labre-core` by `scripts/build-bundles.mjs` (`shortcuts: true`
- * on the framework's entry) — each framework bundle exports its own
- * descriptors (e.g. `wardleyShortcuts`) and the host appends them to
- * `getShortcutManifest()` for the frameworks it enables.
- */
-const FRAMEWORK_SHORTCUT_GROUPS: FrameworkShortcutGroup[] = [
-  { owner: 'wardley', shortcuts: wardleyShortcuts },
-];
 
 const toEntry = (d: ShortcutDescriptor): ShortcutManifestEntry => ({
   id: d.id,
@@ -37,40 +25,17 @@ const toEntry = (d: ShortcutDescriptor): ShortcutManifestEntry => ({
   defaultKeys: d.defaultKeys,
   scope: d.scope,
   owner: d.owner,
-  when: d.when,
 });
 
 /**
- * Pure aggregator (exported for testing): core shortcuts plus the shortcuts of
- * every framework group whose flag is enabled.
- */
-export function buildShortcutManifest(
-  core: ShortcutDescriptor[],
-  groups: FrameworkShortcutGroup[],
-  flags?: BlockFlags
-): ShortcutManifestEntry[] {
-  const entries = core.map(toEntry);
-  for (const { owner, shortcuts } of groups) {
-    if (isBlockEnabled(flags, owner)) {
-      entries.push(...shortcuts.map(toEntry));
-    }
-  }
-  return entries;
-}
-
-/**
- * The enumerable shortcut manifest for a given flag set: core shortcuts plus
- * the shortcuts contributed by the currently-enabled frameworks. Enumerable
- * without an editor instance (for a settings panel). Mirrors the flag gating of
- * `getInternalViewExtensions`.
+ * The enumerable shortcut manifest for a given flag set. TOTAL over the command
+ * registry: every command yields a row, keyless ones included, so Settings ›
+ * Shortcuts can bind precisely the commands a user most wants to bind. The
+ * panel therefore grows from ~10 rows to the full command count — that is the
+ * intent, and `owner` grouping is what keeps it usable.
  */
 export function getShortcutManifest(
   flags?: BlockFlags
 ): ShortcutManifestEntry[] {
-  return buildShortcutManifest(
-    // Shapes are core canvas: their shortcuts are always-on, like root's.
-    [...coreShortcuts, ...shapeShortcuts],
-    FRAMEWORK_SHORTCUT_GROUPS,
-    flags
-  );
+  return getCommands(flags).map(toShortcutDescriptor).map(toEntry);
 }

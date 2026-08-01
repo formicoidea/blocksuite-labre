@@ -20,6 +20,7 @@
  * src (one-line re-export shims + the assembly files) becomes `core/src`, with
  * the 4 frameworks trimmed from `extensions/view.ts` + `flags.ts`.
  */
+import esbuild from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -32,102 +33,62 @@ const UMBRELLA_DIR = path.join(PKGS_DIR, 'affine', 'all');
  * Business frameworks: each is a senior-button gfx module shipped as its OWN
  * bundle. `extensions` lists the view extension(s) the bundle exposes, each with
  * the flag that gates it; omit `flag` for an always-on extension (e.g. element
- * rendering that must paint even when the senior button is hidden). Adding a new
- * senior-button package = one entry here.
+ * rendering that must paint even when the senior button is hidden).
+ *
+ * DERIVED, not hand-maintained (`docs/adr/0008` § Packaging): the single list
+ * is `FRAMEWORK_DESCRIPTORS` in `packages/affine/all/src/frameworks.ts`, a
+ * data-only module (object literals, type-only imports) that this script reads
+ * through a type-strip transform. Adding a framework is one descriptor — no
+ * edit here. The bundles that are NOT frameworks (templates-only packages with
+ * no senior button and no commands) come from `AUXILIARY_BUNDLES` in the same
+ * module.
  */
+const FRAMEWORKS_TS = path.join(UMBRELLA_DIR, 'src', 'frameworks.ts');
+
+/** Import a data-only `.ts` module without a bundler and without ts-node. */
+async function importDataModule(fileAbs) {
+  const source = fs.readFileSync(fileAbs, 'utf8');
+  const { code } = await esbuild.transform(source, {
+    loader: 'ts',
+    format: 'esm',
+  });
+  if (/^\s*import\s+(?!type\b)/m.test(code)) {
+    throw new Error(
+      `${path.relative(ROOT, fileAbs)} must stay data-only (no runtime imports) ` +
+        `so the bundle script can read it — see docs/adr/0008 § Packaging`
+    );
+  }
+  return import(
+    `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
+  );
+}
+
+const { FRAMEWORK_DESCRIPTORS, AUXILIARY_BUNDLES } =
+  await importDataModule(FRAMEWORKS_TS);
+
 const FRAMEWORKS = [
-  {
-    out: 'framework-wardley',
-    pkg: '@labre/affine-gfx-wardley',
-    dir: 'affine/gfx/wardley',
-    telemetry: 'wardley',
-    info: 'wardleyFramework',
-    extensions: [
-      // always-on: placed Wardley maps must paint even with the button off
-      { ext: 'WardleyRenderViewExtension' },
-      { ext: 'WardleyViewExtension', flag: 'wardley' },
-    ],
-    // The framework contributes shortcut-manifest entries: stripped from
-    // core's shortcuts.ts; the host composes with the bundle's own export.
-    shortcuts: true,
-  },
-  {
-    out: 'framework-edgy',
-    pkg: '@labre/affine-gfx-edgy',
-    dir: 'affine/gfx/edgy',
-    telemetry: 'edgy',
-    info: 'edgyFramework',
-    extensions: [
-      // always-on: placed EDGY boards must paint even with the button off
-      { ext: 'EdgyRenderViewExtension' },
-      { ext: 'EdgyViewExtension', flag: 'edgy' },
-    ],
-  },
-  {
-    out: 'framework-bpmn',
-    pkg: '@labre/affine-gfx-bpmn',
-    dir: 'affine/gfx/bpmn',
-    telemetry: 'bpmn',
-    info: 'bpmnFramework',
-    extensions: [
-      // always-on: placed BPMN pools must paint even with the button off
-      { ext: 'BpmnRenderViewExtension' },
-      { ext: 'BpmnViewExtension', flag: 'bpmn' },
-    ],
-  },
-  {
-    out: 'framework-cynefin',
-    pkg: '@labre/affine-gfx-cynefin-estuarine',
-    dir: 'affine/gfx/cynefin-estuarine',
-    telemetry: 'cynefin',
-    info: 'cynefinFramework',
-    extensions: [
-      // always-on: placed Cynefin / Estuarine frames must paint even with the
-      // button off
-      { ext: 'CynefinEstuarineRenderViewExtension' },
-      { ext: 'CynefinEstuarineViewExtension', flag: 'cynefin-estuarine' },
-    ],
-  },
-  {
-    out: 'framework-ddd-event-storming',
-    pkg: '@labre/affine-gfx-ddd-event-storming',
-    dir: 'affine/gfx/ddd-event-storming',
-    telemetry: 'ddd-event-storming',
-    info: 'dddEventStormingFramework',
-    extensions: [
-      { ext: 'DddEventStormingViewExtension', flag: 'ddd-event-storming' },
-    ],
-  },
-  {
-    out: 'framework-ddd-core-domain',
-    pkg: '@labre/affine-gfx-ddd-core-domain',
-    dir: 'affine/gfx/ddd-core-domain',
-    telemetry: 'ddd-core-domain',
-    info: 'dddCoreDomainFramework',
-    extensions: [
-      // always-on: placed Core Domain charts must paint even with the button off
-      { ext: 'DddCoreDomainRenderViewExtension' },
-      { ext: 'DddCoreDomainViewExtension', flag: 'ddd-core-domain' },
-    ],
-  },
-  {
-    out: 'framework-ddd-context-map',
-    pkg: '@labre/affine-gfx-ddd-context-map',
-    dir: 'affine/gfx/ddd-context-map',
-    telemetry: 'ddd-context-map',
-    info: 'dddContextMapFramework',
-    extensions: [
-      { ext: 'DddContextMapViewExtension', flag: 'ddd-context-map' },
-    ],
-  },
-  {
-    out: 'framework-ddd-aggregate',
-    pkg: '@labre/affine-gfx-ddd-aggregate',
-    dir: 'affine/gfx/ddd-aggregate',
-    telemetry: 'ddd-aggregate',
-    info: 'dddAggregateFramework',
-    extensions: [{ ext: 'DddTemplatesViewExtension', flag: 'ddd-templates' }],
-  },
+  ...FRAMEWORK_DESCRIPTORS.map(d => ({
+    out: d.bundle,
+    pkg: d.pkg,
+    dir: d.dir,
+    /** Historical PostHog value; emitted as `telemetryKey` in descriptor.ts. */
+    telemetryKey: d.telemetryKey,
+    /** Code-side identity: the flag key AND the `CommandDescriptor.owner`. */
+    id: d.id,
+    info: d.info,
+    extensions: d.extensions.map(e => ({ ext: e.viewExtension, flag: e.flag })),
+    shortcuts: d.shortcuts ?? false,
+  })),
+  ...AUXILIARY_BUNDLES.map(b => ({
+    out: b.bundle,
+    pkg: b.pkg,
+    dir: b.dir,
+    telemetryKey: b.label,
+    id: b.label,
+    info: b.info,
+    extensions: b.extensions.map(e => ({ ext: e.viewExtension, flag: e.flag })),
+    shortcuts: false,
+  })),
 ];
 
 /**
@@ -395,25 +356,26 @@ function buildCore() {
         `${e.flag} flag`
       );
     }
-    // A framework's shortcut-manifest contribution ships with ITS bundle,
-    // not with core: strip the import and the group entry from the copied
-    // shortcuts.ts (the host composes core's manifest with each enabled
-    // framework bundle's exported shortcut descriptors).
+    // A framework's command contribution ships with ITS bundle, not with
+    // core: strip the import and the group entry from the copied commands.ts
+    // (the host composes core's registry with each enabled framework bundle's
+    // exported commands). The shortcut manifest derives from the registry, so
+    // stripping here strips both.
     if (fw.shortcuts) {
-      const shortcutsTs = path.join(CORE_SRC, 'shortcuts.ts');
+      const commandsTs = path.join(CORE_SRC, 'commands.ts');
       dropStatement(
-        shortcutsTs,
+        commandsTs,
         new RegExp(
           `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}['"];?\\r?\\n`
         ),
         1,
-        `${fw.out} shortcuts import`
+        `${fw.out} commands import`
       );
       dropLines(
-        shortcutsTs,
-        new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.telemetry)}',`),
+        commandsTs,
+        new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.id)}',`),
         1,
-        `${fw.out} shortcut group`
+        `${fw.out} command group`
       );
     }
   }
@@ -507,8 +469,13 @@ function buildFramework(fw, reverseMap) {
   rewriteBundleImports(src, fw.pkg, reverseMap, fw.out);
 
   // descriptor.ts — host wiring. A single flag-gated extension keeps the
-  // original { flag, telemetry, viewExtension } shape; multi-extension
-  // frameworks (an always-on renderer + a flag-gated button) use a list.
+  // original { flag, …, viewExtension } shape; multi-extension frameworks (an
+  // always-on renderer + a flag-gated button) use a list.
+  //
+  // `telemetry` is renamed `telemetryKey` and now carries the HISTORICAL
+  // PostHog value in every case (docs/adr/0008 § Telemetry): it used to echo
+  // the flag key, so the three DDD bundles were emitting a value the library
+  // never sent. A host reading the old field must move to `telemetryKey`.
   //
   // `flag` is emitted in BOTH shapes — it still means exactly what it always
   // meant (the flag that gates this framework), so a host reading it for a
@@ -527,12 +494,12 @@ function buildFramework(fw, reverseMap) {
   const body = single
     ? `export const ${fw.info} = {\n` +
       `  flag: '${fw.extensions[0].flag}',\n` +
-      `  telemetry: '${fw.telemetry}',\n` +
+      `  telemetryKey: '${fw.telemetryKey}',\n` +
       `  viewExtension: ${fw.extensions[0].ext},\n` +
       `} as const;\n`
     : `export const ${fw.info} = {\n` +
       (flagged.length === 1 ? `  flag: '${flagged[0].flag}',\n` : '') +
-      `  telemetry: '${fw.telemetry}',\n` +
+      `  telemetryKey: '${fw.telemetryKey}',\n` +
       `  extensions: [\n` +
       fw.extensions
         .map(
@@ -544,7 +511,7 @@ function buildFramework(fw, reverseMap) {
   fs.writeFileSync(
     path.join(src, 'descriptor.ts'),
     `import { ${names} } from './view.js';\n\n` +
-      `/** Host wiring for the ${fw.telemetry} framework. */\n` +
+      `/** Host wiring for the ${fw.id} framework. */\n` +
       body
   );
 
@@ -553,7 +520,7 @@ function buildFramework(fw, reverseMap) {
     JSON.stringify(
       {
         name: bundleNameOf(fw.pkg),
-        description: `Labre ${fw.telemetry} framework for ${CORE}.`,
+        description: `Labre ${fw.id} framework for ${CORE}.`,
         version: VERSION,
         type: 'module',
         sideEffects: false,

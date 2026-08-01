@@ -1,7 +1,6 @@
 export * from './shared/consts.js';
 export * from './shared/prefabs.js';
 export * from './shared/utils.js';
-export { DddMenuBase } from './toolbar/menu-base.js';
 export * from './toolbar/icons.js';
 export { DddSeniorButtonBase } from './toolbar/senior-buttons.js';
 export {
