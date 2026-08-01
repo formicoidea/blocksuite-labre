@@ -179,6 +179,24 @@ export interface CommandDescriptor<P = void> {
 export type AnyCommandDescriptor = CommandDescriptor<any>;
 
 /**
+ * Value kinds a command parameter may take across the host seam. Closed and
+ * deliberately small: the seam describes what an agent must SEND, not the
+ * host's type system. Anything richer stays behind `CommandDescriptor.params`,
+ * which never crosses.
+ */
+export type CommandParamKind = 'string' | 'number' | 'boolean' | 'string[]';
+
+/** One parameter, described serializably. See {@link describeCommandParams}. */
+export interface CommandParam {
+  key: string;
+  kind: CommandParamKind;
+  /** `false` when the key may be omitted entirely. */
+  required: boolean;
+  /** `null` is an accepted value carrying a meaning of its own. */
+  nullable?: boolean;
+}
+
+/**
  * The serializable catalogue projection — no functions, no `TemplateResult`.
  * This is what crosses the host seam for the sidepanel, the palette and the
  * agent (ADR 0006: the seam stays typed and render-free).
@@ -198,6 +216,11 @@ export interface CommandManifestEntry {
   scope: ShortcutScope;
   defaultKeys: { mac: string[]; other: string[] };
   availability: Availability;
+  /**
+   * What an invoker must send. Absent = nullary, which is what almost every
+   * command is. Derived from `CommandDescriptor.params`, never authored twice.
+   */
+  params?: CommandParam[];
   telemetry?: { framework: FrameworkId; element: string };
 }
 
@@ -347,6 +370,95 @@ export function toShortcutDescriptor(
   };
 }
 
+/**
+ * The shape of a zod definition, read through `_def` rather than `instanceof`.
+ *
+ * `instanceof z.ZodOptional` would need a VALUE import of zod in `@labre/std`,
+ * which today imports it as a type only — a runtime dependency added to the
+ * core bundle for an introspection that runs once per command at assembly time.
+ * `_def.typeName` is zod-internal but stable across zod 3, and the whole reader
+ * is defensive: anything it does not recognise yields no contract at all rather
+ * than a wrong one.
+ */
+type ZodDefLike = {
+  typeName?: string;
+  innerType?: unknown;
+  type?: unknown;
+  shape?: () => Record<string, unknown>;
+};
+
+const zodDef = (schema: unknown): ZodDefLike =>
+  (schema as { _def?: ZodDefLike } | undefined)?._def ?? {};
+
+const ZOD_KIND: Record<string, CommandParamKind> = {
+  ZodString: 'string',
+  ZodNumber: 'number',
+  ZodBoolean: 'boolean',
+  ZodEnum: 'string',
+};
+
+/** Unwraps at most a few modifier layers; a deeper nesting is not describable. */
+function describeParam(key: string, schema: unknown): CommandParam | undefined {
+  let current = schema;
+  let required = true;
+  let nullable = false;
+
+  for (let depth = 0; depth < 4; depth++) {
+    const def = zodDef(current);
+    if (def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault') {
+      required = false;
+      current = def.innerType;
+      continue;
+    }
+    if (def.typeName === 'ZodNullable') {
+      nullable = true;
+      current = def.innerType;
+      continue;
+    }
+    break;
+  }
+
+  const def = zodDef(current);
+  const kind =
+    def.typeName === 'ZodArray'
+      ? zodDef(def.type).typeName === 'ZodString'
+        ? ('string[]' as const)
+        : undefined
+      : ZOD_KIND[def.typeName ?? ''];
+
+  if (!kind) return undefined;
+  return nullable ? { key, kind, required, nullable } : { key, kind, required };
+}
+
+/**
+ * Project a command's zod parameter contract onto the serializable seam, so the
+ * `'agent'` surface is usable end to end: without it an agent reading the
+ * manifest has no way to learn that `pivot.bind` needs a `pivotDocId`, and an
+ * argument-less call is a silent no-op.
+ *
+ * All or nothing on purpose. A partially described object would be worse than
+ * none: an agent would send what it was told and have its call rejected by the
+ * schema for a key the manifest never mentioned. So one undescribable property
+ * withdraws the whole contract, and the command reads as "parameters exist, but
+ * this seam cannot state them" — which is the honest answer.
+ */
+export function describeCommandParams(
+  schema: unknown
+): CommandParam[] | undefined {
+  const def = zodDef(schema);
+  if (def.typeName !== 'ZodObject' || typeof def.shape !== 'function') {
+    return undefined;
+  }
+
+  const params: CommandParam[] = [];
+  for (const [key, property] of Object.entries(def.shape())) {
+    const param = describeParam(key, property);
+    if (!param) return undefined;
+    params.push(param);
+  }
+  return params.length ? params : undefined;
+}
+
 /** The serializable projection. Functions and templates stop here. */
 export function toCommandManifestEntry(
   command: AnyCommandDescriptor
@@ -366,6 +478,7 @@ export function toCommandManifestEntry(
     scope: command.scope,
     defaultKeys: command.defaultKeys,
     availability: command.availability ?? 'always',
+    params: describeCommandParams(command.params),
     telemetry: command.telemetry,
   };
 }

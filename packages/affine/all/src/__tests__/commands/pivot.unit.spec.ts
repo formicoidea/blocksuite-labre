@@ -23,6 +23,7 @@ import {
   type PivotPropertiesService,
 } from '@labre/affine-shared/services';
 import {
+  CommandTelemetryIdentifier,
   isCommandAvailable,
   runCommand,
   SurfaceSelection,
@@ -37,6 +38,7 @@ import { computed } from '@preact/signals-core';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { getCommandManifest, getCommands } from '../../commands.js';
+import { commandTelemetryReporter } from '../../extensions/command-telemetry.js';
 import { getInternalStoreExtensions } from '../../extensions/store.js';
 
 const RECORD = 'pivot-payments';
@@ -113,6 +115,12 @@ function setup() {
     get: (identifier: unknown) =>
       identifier === GfxControllerIdentifier ? gfx : undefined,
     getOptional: (identifier: unknown) => {
+      // The REAL reporter, so `runCommand`'s bottleneck is live: the moment a
+      // future edit gives `pivot.bind` a `telemetry` field while its body still
+      // emits, every "exactly one event" assertion below reads 2.
+      if (identifier === CommandTelemetryIdentifier) {
+        return commandTelemetryReporter;
+      }
       if (identifier === TelemetryProvider) {
         return {
           track: (event: string, payload: Record<string, unknown>) =>
@@ -183,6 +191,26 @@ describe('the command is in the registry, on the right surfaces', () => {
     for (const value of Object.values(entry)) {
       expect(typeof value).not.toBe('function');
     }
+    // The zod schema is a graph of functions; the assertion above only reads
+    // the top level, so it would pass either by the projection being clean or
+    // by there being nothing to project. Serializing settles it.
+    expect(JSON.parse(JSON.stringify(entry))).toEqual(entry);
+  });
+
+  test('the agent learns what to send', () => {
+    const entry = getCommandManifest().find(e => e.id === 'pivot.bind')!;
+
+    // Without this, an agent reading the manifest has no way to know the
+    // command takes a record id, and an argument-less call is a silent no-op.
+    expect(entry.params).toEqual([
+      { key: 'pivotDocId', kind: 'string', required: true, nullable: true },
+      { key: 'elementIds', kind: 'string[]', required: false },
+    ]);
+  });
+
+  test('a nullary command advertises no parameters', () => {
+    const undoEntry = getCommandManifest().find(e => e.id === 'undo')!;
+    expect(undoEntry.params).toBeUndefined();
   });
 
   test('availability follows the selection, and `when` narrows it further', () => {
@@ -199,6 +227,83 @@ describe('the command is in the registry, on the right surfaces', () => {
     // A keystroke aimed at a canvas text editor belongs to that editor.
     setEditing(true);
     expect(isCommandAvailable(std, bindCommand)).toBe(false);
+  });
+});
+
+describe('a read-only document is never written to', () => {
+  let ctx!: ReturnType<typeof setup>;
+
+  beforeEach(() => {
+    ctx = setup();
+  });
+
+  test('the command is not offered', () => {
+    const shape = ctx.addShape();
+    ctx.select(shape);
+    expect(bindCommand.when?.(ctx.std)).toBe(true);
+
+    ctx.store.readonly = true;
+
+    // `availability: 'selection'` cannot express this — the union holds ONE
+    // value per command and does not compose — so `when` carries the state
+    // precondition. A surface that consults it stops here.
+    expect(bindCommand.when?.(ctx.std)).toBe(false);
+  });
+
+  test('binding writes nothing, throws nothing, and emits nothing', () => {
+    const shape = ctx.addShape();
+    ctx.select(shape);
+    ctx.store.readonly = true;
+
+    // Before the guard this threw `Cannot update element in readonly mode` out
+    // of `runCommand`, into the palette or the agent that called it.
+    expect(() => bind(ctx.std, { pivotDocId: RECORD })).not.toThrow();
+    expect(shape.pivotDocId).toBeUndefined();
+    expect(ctx.events).toEqual([]);
+  });
+
+  test('UNBINDING does not delete the key — the destructive half', () => {
+    const shape = ctx.addShape({ pivotDocId: RECORD });
+    ctx.select(shape);
+    ctx.store.readonly = true;
+
+    bind(ctx.std, { pivotDocId: null });
+
+    // This is the one that actually succeeded: `clearField` goes through
+    // `Store.transact`, which carries no read-only guard of its own, so a
+    // document the user cannot edit lost a persisted value — and reported the
+    // promotion while doing it.
+    expect(shape.pivotDocId).toBe(RECORD);
+    expect(shape.yMap.has('pivotDocId')).toBe(true);
+    expect(ctx.events).toEqual([]);
+  });
+
+  test('the guard is in `run`, not only in `when`', () => {
+    const shape = ctx.addShape({ pivotDocId: RECORD });
+    ctx.store.readonly = true;
+
+    // `runCommand` consults neither `when` nor `availability`, so a caller that
+    // skips both — which the palette and the agent do — must still be stopped.
+    runCommand(ctx.std, bindCommand, fromPalette, {
+      pivotDocId: null,
+      elementIds: [shape.id],
+    });
+
+    expect(shape.pivotDocId).toBe(RECORD);
+    expect(ctx.events).toEqual([]);
+  });
+
+  test('lifting read-only lets the same gesture through', () => {
+    const shape = ctx.addShape({ pivotDocId: RECORD });
+    ctx.select(shape);
+    ctx.store.readonly = true;
+    bind(ctx.std, { pivotDocId: null });
+
+    ctx.store.readonly = false;
+    bind(ctx.std, { pivotDocId: null });
+
+    expect(shape.pivotDocId).toBeUndefined();
+    expect(ctx.events).toHaveLength(1);
   });
 });
 
@@ -402,6 +507,20 @@ describe('telemetry — one event per gesture, and it is not a creation', () => 
     expect(ctx.events).toHaveLength(1);
     expect(ctx.events[0].payload).toMatchObject({ elementCount: 2 });
     expect(ctx.events[0].payload.role).toBeUndefined();
+  });
+
+  test('the bottleneck stays silent — no command emits twice', () => {
+    const ctx = setup();
+    const shape = ctx.addShape({ role: 'wardley:component' });
+    ctx.select(shape);
+
+    // `runCommand` calls the REAL reporter here (see `setup`). A command that
+    // emits from its body must therefore NOT declare `telemetry`, or the
+    // gesture reports twice — once as a promotion, once as a creation. The
+    // exception ADR 0008 records comes with this guard attached.
+    expect(bindCommand.telemetry).toBeUndefined();
+    bind(ctx.std, { pivotDocId: RECORD });
+    expect(ctx.events).toHaveLength(1);
   });
 
   test('a gesture that changes nothing emits nothing', () => {

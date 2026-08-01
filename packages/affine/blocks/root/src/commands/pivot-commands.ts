@@ -32,7 +32,15 @@ export const bindPivotParams = z.object({
   pivotDocId: z.string().min(1).nullable(),
   /**
    * Explicit targets, for a host or an agent acting on something other than the
-   * live selection. Omitted, the command binds the current canvas selection.
+   * live selection. **Omitted** — the key absent — the command acts on the
+   * current canvas selection.
+   *
+   * An EMPTY array is not the same thing: it means "these zero elements", so
+   * the command does nothing and does not fall back to the selection. That is
+   * the safe reading — an agent that computed a target list and came up empty
+   * must not have the gesture redirected onto whatever the user happened to
+   * have selected — but it is silent, so callers filtering a list should check
+   * it before invoking.
    */
   elementIds: z.array(z.string()).optional(),
 });
@@ -59,6 +67,20 @@ function pivotTargets(
       model instanceof GfxPrimitiveElementModel
   );
 }
+
+/**
+ * Whether this document may be written to at all.
+ *
+ * Checked in `run` and not only in `when`, because `when` is consulted by the
+ * SURFACES and `runCommand` consults neither it nor `availability` — the
+ * palette and the agent reach `run` directly. Without this guard, unbinding
+ * succeeds in a read-only document: `clearField` goes through `Store.transact`,
+ * which (unlike `addBlock` / `updateBlock` / `deleteBlock`) carries no
+ * read-only guard, so the key is deleted and the promotion event is emitted for
+ * a document the user cannot edit. Binding merely throws out of `runCommand`,
+ * which is bad in a different way.
+ */
+const isBindable = (std: BlockStdScope) => !std.store.readonly;
 
 /** `'wardley:component'` → `'wardley'`, when that names a real framework. */
 function frameworkOfRole(role: string | undefined): FrameworkId | undefined {
@@ -91,9 +113,17 @@ const bindPivot: CommandDescriptor<BindPivotParams> = {
     // what `toShortcutDescriptor` being total buys.
     defaultKeys: { mac: [], other: [] },
     availability: 'selection',
-    // Narrows `'selection'`, never contradicts it: a selection of nothing but
-    // canvas blocks has no bindable target.
-    when: std => pivotTargets(std).length > 0,
+    // Narrows `'selection'`, never contradicts it: a read-only document, and a
+    // selection of nothing but canvas blocks, both have no bindable target.
+    //
+    // Read-only rides on `when` rather than on `availability` because the union
+    // does not COMPOSE: it is one value per command (`command-registry.ts`
+    // `isCommandAvailable`), so declaring `'editable'` would buy the read-only
+    // gate by dropping the selection gate a host panel needs far more often.
+    // `'selection'` stays the serializable answer — it is the precondition a
+    // catalogue must show — and the state precondition is enforced below.
+    // The missing composition is recorded as an amendment trigger in ADR 0008.
+    when: std => isBindable(std) && pivotTargets(std).length > 0,
     params: bindPivotParams,
     run: (std, invocation, params) => {
       const parsed = bindPivotParams.safeParse(params);
@@ -102,6 +132,9 @@ const bindPivot: CommandDescriptor<BindPivotParams> = {
         return;
       }
       const { pivotDocId, elementIds } = parsed.data;
+
+      // The load-bearing half of the read-only gate: see `isBindable`.
+      if (!isBindable(std)) return;
 
       const targets = pivotTargets(std, elementIds);
       if (!targets.length) return;

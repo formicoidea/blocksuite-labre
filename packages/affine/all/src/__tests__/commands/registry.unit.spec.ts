@@ -43,6 +43,25 @@ describe('command registry invariants', () => {
     expect(commands).toHaveLength(67);
   });
 
+  /**
+   * ADR 0008 puts emission in `runCommand` "and nowhere else". One command is
+   * excepted — `pivot.bind`, whose event depends on its params and on which
+   * elements actually changed, neither of which the bottleneck receives (see
+   * the ADR's Resolved question 5). The exception is enumerated here rather
+   * than left as a comment in a function body, because the failure mode it
+   * opens is silent: a command that emits from its body AND declares
+   * `telemetry` reports the same gesture twice, forever.
+   */
+  const SELF_EMITTING_COMMANDS = ['pivot.bind'];
+
+  test('a self-emitting command never also declares telemetry', () => {
+    for (const id of SELF_EMITTING_COMMANDS) {
+      const command = commands.find(c => c.id === id);
+      expect(command, `unknown command ${id}`).toBeTruthy();
+      expect(command!.telemetry, id).toBeUndefined();
+    }
+  });
+
   test('ids are unique', () => {
     const ids = commands.map(c => c.id);
     expect(new Set(ids).size).toBe(ids.length);

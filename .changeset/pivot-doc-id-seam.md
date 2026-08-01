@@ -81,9 +81,26 @@ pivotDocId?)` walks the surface and returns the occurrences; there is no index,
 no reverse map, no cache and nothing written back. Cross-document aggregation is
 the host's, built from per-document calls.
 
-Also in `@labre/std`: `AnyCommandDescriptor`, the command registry's element
-type with its parameter contract erased. The registry is heterogeneous now that
-a command takes parameters, and `CommandDescriptor<void>` could not express
-that. Registry-facing signatures (`CommandExtension`, `runCommand`,
-`getRegisteredCommands`, the two projections…) use the alias; existing
-`CommandDescriptor[]` declarations are unaffected.
+The command is gated on `store.readonly` in both its `when` predicate and its
+body. The predicate is what a surface consults; the body guard is what actually
+protects the document, because `runCommand` consults neither `when` nor
+`availability` and the palette and the agent reach `run` directly. Binding in a
+read-only document used to throw out of `runCommand`, and unbinding used to
+**succeed** — `clearField` goes through `Store.transact`, which carries no
+read-only guard of its own.
+
+Also in `@labre/std`, two additions to the command registry:
+
+- `AnyCommandDescriptor`, the registry's element type with its parameter
+  contract erased. The registry is heterogeneous now that a command takes
+  parameters, and `CommandDescriptor<void>` could not express that.
+  Registry-facing signatures (`CommandExtension`, `runCommand`,
+  `getRegisteredCommands`, the two projections…) use the alias; existing
+  `CommandDescriptor[]` declarations are unaffected.
+- `CommandManifestEntry.params?: CommandParam[]` — a minimal serializable
+  description (`key`, `kind`, `required`, `nullable`) derived from the
+  descriptor's zod schema, so the `'agent'` surface is usable end to end. The
+  schema itself never crosses the seam. Derivation is all-or-nothing: a
+  parameter the reader cannot describe withdraws the whole contract rather than
+  advertising a partial one. Nullary commands are unaffected — they project no
+  `params` key at all.
