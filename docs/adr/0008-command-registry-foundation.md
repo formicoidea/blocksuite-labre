@@ -270,13 +270,30 @@ _under what state_ through `availability`, independently:
 // offered in the sidepanel and invocable by the agent — but only with a selection
 ```
 
-**`'revision'` is a legitimate state precondition, but premature.** Also
-proposed; a document mode (read-only / revision / editable) does not exist in
-the library yet — only the binary `store.readonly` that `'editable'` covers.
+**Document modes are legitimate state preconditions, but only one exists.**
 Adding a member for a concept with no implementation would be inventing a
-contract. So: **the union is closed but extensible by decision.** Extending it
-requires an amendment to this ADR, and `'editable'` generalising into
-`'revision'` when a document mode lands is the first known candidate.
+contract, so: **the union is closed but extensible by decision.** Extending it
+requires an amendment to this ADR.
+
+The named waiting list is the set of **document / canvas modes** — states the
+document as a whole can be in, which condition what commands may be offered
+while that state holds. Two are known, with opposite statuses (owner decision,
+2026-08-01):
+
+| Mode        | Implemented today?                                                                                                                                                                                           | In the union?                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `read-only` | **Yes** — the binary `store.readonly` ships and is already read by `blocks/frame/src/edgeless-toolbar/quick-tool.ts:13`, `gfx/link/src/undo-tool.ts:17`, `blocks/code/src/code-toolbar/config.ts:92,236,271` | **Yes**, as `'editable'` — the union expresses the permissive side, so `'editable'` ≡ ¬`read-only` |
+| `revision`  | **No** — no such document mode exists                                                                                                                                                                        | **No.** Waiting list; admitted by decision when the mode exists                                    |
+
+`revision` is therefore the **only** named candidate, and it does not enter the
+union now: it is admitted by an amendment to this ADR at the moment the mode
+actually exists, not before.
+
+An "AI mode" was considered as a second candidate and **rejected as a
+duplicate**: an AI operating in the document is not a document mode, it is the
+`'agent'` surface already decided above — consumer 5 invoking a command, listed
+in `surfaces` like any other caller. There is one AI concept in this design and
+it lives on the surface axis.
 
 For the record, the two clusters deliberately **not** admitted, and their
 assigned fallback (displayed available, `run` no-ops or is a no-op-safe
@@ -780,5 +797,6 @@ resolution so the reasoning is not lost:
 
 Nothing is left open. What remains deliberately outside the decision is listed
 under _Out of scope_ above; the one extension point is the `Availability`
-union, closed but amendable by a future ADR (first known candidate:
-`'editable'` generalising to `'revision'` when a document mode exists).
+union — closed today, with one named waiting-list candidate (`revision`, a
+document mode that does not exist yet), admitted by an amendment when that
+mode exists.
