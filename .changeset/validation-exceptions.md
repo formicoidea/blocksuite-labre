@@ -26,11 +26,15 @@ that reports it.
 - **One map, once you have said it twice.** After the same rule has been waived
   somewhere else on the board, the bubble offers "Ignore this rule on the whole
   map". Accepting writes the exception on the framework's own background
-  element — and on THAT one only. Every violation now records the background it
-  was measured against, so a board carrying three maps holds three independent
-  arbitrations: waiving a rule on one says nothing about the map beside it, and
-  deleting a map takes exactly its own arbitration with it. Map scope is just as
-  visible and just as revocable as a local one.
+  element — and on THAT one only. A violation of `element-in-background` now
+  records the background it is attributed to: since no background contained the
+  element (that is what the violation says), it is the NEAREST one, by
+  edge-to-edge gap, with exact ties broken by the smaller id so the answer never
+  depends on the order the surface was walked in. A board carrying three maps
+  therefore holds three independent arbitrations: waiving a rule on one says
+  nothing about the map beside it, and deleting a map takes exactly its own
+  arbitration with it. Map scope is just as visible and just as revocable as a
+  local one.
 - **Arbitrations survive the framework cycle.** Switching a framework off stops
   evaluation and cleans nothing; switching it back on brings the violations
   back, minus the ones an exception covers. Nothing is ever garbage-collected
@@ -58,6 +62,11 @@ the KEY rather than assigning `undefined`, which the `@field()` setter would
 have written into the Y.Map — so an element whose exceptions were all revoked
 is byte-identical again too, in the document and not merely through the getter.
 `GfxPrimitiveElementModel.clearField` is the counterpart `@field()` was missing.
+It removes DECLARED, non-structural fields only: an undeclared key (an
+annotation preserved verbatim for a newer client) and the fields nothing can
+cope without (`index`, `seed`, `xywh`) are refused with a warning, so a new
+delete path into the document cannot undo what the unknown-props deny-list
+protects.
 
 A conformant board pays nothing: exceptions are only looked up for a rule that
 actually raised something. On the 500-element reference map, where half the

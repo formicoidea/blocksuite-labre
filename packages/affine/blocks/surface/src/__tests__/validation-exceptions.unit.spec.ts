@@ -187,6 +187,38 @@ describe('a finding names the background it was measured against', () => {
     expect(byId.get('near-a')?.backgroundId).toBe('frame');
     expect(byId.get('near-b')?.backgroundId).toBe('frame-b');
   });
+
+  it('measures the gap to the EDGE, so a big map does not lose its own element', () => {
+    // 20 units off the right edge of the big map, 60 off the small one. By
+    // centre distance the small map wins by a mile (the big map's centre is 900
+    // units away) and the element is attributed to a map it is nowhere near.
+    const big = element('big', [0, 0, 1600, 900], 'test:frame');
+    const small = element('small', [1700, 300, 100, 100], 'test:frame');
+    const stray = element('stray', [1620, 400, 40, 24], 'test:node');
+
+    expect(evaluate([big, small, stray])[0].backgroundId).toBe('big');
+  });
+
+  it('is not fooled by the order the two maps are declared in', () => {
+    const big = element('big', [0, 0, 1600, 900], 'test:frame');
+    const small = element('small', [1700, 300, 100, 100], 'test:frame');
+    const stray = element('stray', [1620, 400, 40, 24], 'test:node');
+
+    expect(evaluate([small, big, stray])[0].backgroundId).toBe('big');
+  });
+
+  it('breaks an exact tie by id, never by iteration order', () => {
+    // Two maps, symmetric about the element: the gap is identical, so geometry
+    // has nothing left to say. `backgroundId` decides where a PERSISTED
+    // decision is written, so the answer cannot come from the order a Map
+    // rebuilt from a Y.Map happens to be walked in.
+    const left = element('aaa', [0, 0, 100, 100], 'test:frame');
+    const right = element('bbb', [300, 0, 100, 100], 'test:frame');
+    const middle = element('mid', [180, 0, 40, 100], 'test:node');
+
+    expect(evaluate([left, right, middle])[0].backgroundId).toBe('aaa');
+    expect(evaluate([right, left, middle])[0].backgroundId).toBe('aaa');
+  });
 });
 
 describe('the map scope is ONE map, not the document (PF8.4)', () => {

@@ -110,14 +110,19 @@ export interface Violation {
   /** i18n key of a remediation hint, when the rule carries one. */
   suggestion?: string;
   /**
-   * The background this finding was measured AGAINST — for
-   * `element-in-background`, the map the element most plausibly belongs to.
+   * The background this finding is attributed to — for `element-in-background`,
+   * the NEAREST one, none of them having contained the element (that is what
+   * being in violation means here).
    *
-   * Recorded by the family at the moment it picks the frame, because nothing
+   * Recorded by the family at the moment it picks it, because nothing
    * downstream can reconstruct it: a board carries several maps, and "which one
    * did the user mean" is a question only the evaluation is in a position to
    * answer. It is what makes the `map` exemption scope mean ONE map instead of
    * every map on the document — see {@link ExemptionScope}.
+   *
+   * A heuristic, and an honest one: nearest by edge-to-edge gap
+   * ({@link gapSquared}), ties broken by the smaller id so that it never
+   * depends on the order the surface happened to be walked in.
    *
    * Absent for a family that measures against no background.
    */
@@ -191,11 +196,11 @@ function evaluateElementInBackground(
 
     const bound = el.elementBound;
     // One pass, and it answers two questions at once: is this element on ANY
-    // map (in which case there is nothing to report), and if not, which map was
-    // it drawn nearest to. The second answer is the finding's `backgroundId`,
-    // and it has to be taken here — a board carries several maps, and by the
-    // time the violation reaches the UI there is no way left to tell which one
-    // the user was working on.
+    // map (in which case there is nothing to report), and if not, which map is
+    // it nearest to. The second answer is the finding's `backgroundId`, and it
+    // has to be taken here — a board carries several maps, and by the time the
+    // violation reaches the UI there is no way left to tell which one the user
+    // was working on.
     let nearest: { id: string; bound: Bound } | null = null;
     let nearestDistance = Infinity;
     let framed = false;
@@ -204,8 +209,18 @@ function evaluateElementInBackground(
         framed = true;
         break;
       }
-      const distance = centreDistanceSquared(background.bound, bound);
-      if (distance < nearestDistance) {
+      const distance = gapSquared(background.bound, bound);
+      // Strictly nearer wins; an exact tie is broken by the smaller id, never
+      // by which background the surface happened to be walked in first.
+      // `backgroundId` decides where a PERSISTED decision gets written and read
+      // back, so it cannot depend on the iteration order of a Map rebuilt from
+      // a Y.Map on every load and every merge.
+      if (
+        distance < nearestDistance ||
+        (distance === nearestDistance &&
+          nearest !== null &&
+          background.id < nearest.id)
+      ) {
         nearestDistance = distance;
         nearest = background;
       }
@@ -225,17 +240,23 @@ function evaluateElementInBackground(
 }
 
 /**
- * Squared distance between two bounds' centres. Squared because it is only ever
- * compared against another one — the square root would buy nothing and cost a
- * call per background per violating element.
+ * Squared width of the GAP between two bounds — zero when they touch or
+ * overlap, otherwise the distance from edge to edge. Squared because it is only
+ * ever compared against another one, so the square root would buy nothing and
+ * cost a call per background per violating element.
  *
- * "Nearest centre" is how the engine decides which map a stray element belongs
- * to. It is a heuristic and it is the honest one: a component parked just off
- * the right edge of a map belongs to that map, not to the one across the board.
+ * Edges, not centres. "Nearest centre" reads plausibly and is wrong as soon as
+ * the maps differ in size: a component 20 units off the right edge of a large
+ * map is 900 units from its centre, so a small map 60 units further away wins —
+ * and the element gets attributed to a map it is nowhere near. Comparing gaps
+ * gives the answer the eye gives, whatever the two maps measure.
+ *
+ * A background that CONTAINS the element never reaches this: containment exits
+ * the loop first, and a framed element raises nothing at all.
  */
-function centreDistanceSquared(a: Bound, b: Bound): number {
-  const dx = a.x + a.w / 2 - (b.x + b.w / 2);
-  const dy = a.y + a.h / 2 - (b.y + b.h / 2);
+function gapSquared(background: Bound, bound: Bound): number {
+  const dx = Math.max(background.x - bound.maxX, bound.x - background.maxX, 0);
+  const dy = Math.max(background.y - bound.maxY, bound.y - background.maxY, 0);
   return dx * dx + dy * dy;
 }
 

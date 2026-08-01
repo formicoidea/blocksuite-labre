@@ -55,6 +55,26 @@ export type BaseElementProps = {
 };
 
 /**
+ * Declared `@field()`s that {@link GfxPrimitiveElementModel.clearField} refuses
+ * to remove, because they have no meaningful ABSENT state: every one of them is
+ * read unconditionally, with no fallback, by code that has no way to cope.
+ *
+ * - `index` — the fractional z-order key. Gone, the element's stacking is
+ *   `undefined` and the layer manager sorts it nowhere, silently.
+ * - `xywh` — gone, `elementBound` collapses to `{0,0,0,0}` and the renderer
+ *   throws `"undefined" is not valid JSON` on every frame.
+ * - `seed` — the roughness seed; gone, the hand-drawn renderers produce a
+ *   different shape on every repaint.
+ *
+ * An optional field is exactly one whose accessor declares a usable default (or
+ * `undefined`), and those stay clearable. This list is the short answer to
+ * "which declared fields are not optional"; it is a deny-list on purpose, so a
+ * new optional field needs no ceremony and a new structural one is a deliberate
+ * addition here.
+ */
+const UNCLEARABLE_ELEMENT_FIELDS = new Set<string>(['index', 'seed', 'xywh']);
+
+/**
  * One arbitration: "this element is excused from that rule".
  *
  * Document DATA, not session state — it records a decision the user made, so it
@@ -364,7 +384,7 @@ export abstract class GfxPrimitiveElementModel<
   }
 
   /**
-   * Remove an optional `@field()` from the document entirely.
+   * Remove an OPTIONAL `@field()` from the document entirely.
    *
    * The missing half of `@field()`. Its setter is unconditional — assigning
    * `undefined` still calls `yMap.set(prop, undefined)` — so "clearing" an
@@ -378,8 +398,40 @@ export abstract class GfxPrimitiveElementModel<
    * Emits a `delete` action rather than an `update`, so a consumer filtering on
    * `props` will see an EMPTY payload and must inspect `oldValues` — the same
    * shape an undo of the original write produces.
+   *
+   * ## What it refuses, and why that is load-bearing
+   *
+   * This is a direct write path into the element's Y.Map, on the class that
+   * carries the document format, exported by `@labre/std` and therefore
+   * callable by a host. `_assignElementProp` learned the same lesson in the
+   * unknown-props change (see `docs/spikes/us-1-8-unknown-props-preservation.md`,
+   * whose deny-list is explicitly security rather than hygiene); an unguarded
+   * delete re-opens the door from the other side. So:
+   *
+   * - a key the element class does not DECLARE as a `@field()` is refused. It
+   *   is either an unknown key preserved verbatim for a newer client — deleting
+   *   it is exactly the data loss that change exists to prevent — or not
+   *   document data at all;
+   * - a STRUCTURAL field is refused even though it is declared
+   *   ({@link UNCLEARABLE_ELEMENT_FIELDS}).
+   *
+   * Refusal is a no-op plus a `console.warn`, the same way an unencodable value
+   * is dropped rather than thrown: a misuse must not take the board down, and
+   * must not silently corrupt it either.
    */
   clearField(prop: string) {
+    if (UNCLEARABLE_ELEMENT_FIELDS.has(prop)) {
+      console.warn(
+        `Refusing to clear the structural element field "${prop}": it has no meaningful absent state.`
+      );
+      return;
+    }
+    if (!getFieldPropsSet(this).has(prop)) {
+      console.warn(
+        `Refusing to clear "${prop}": not a declared @field() on this element. Unknown keys are preserved deliberately.`
+      );
+      return;
+    }
     if (!this.yMap.has(prop)) return;
 
     if (this.yMap.doc) {
