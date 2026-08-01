@@ -1,3 +1,4 @@
+export * from './audit-service';
 export * from './auto-clear-selection-service';
 export * from './block-meta-service';
 export * from './citation-service';

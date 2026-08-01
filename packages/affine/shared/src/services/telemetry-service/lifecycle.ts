@@ -146,3 +146,52 @@ export type ValidationEvents = {
   ValidationExceptionRevoked: ValidationExceptionEvent;
   ValidationProfileChanged: ValidationProfileEvent;
 };
+
+/**
+ * An AI audit run (PF14.1) — level 3, executed app-side by the Labre Assistant
+ * through the `AuditProvider` seam.
+ *
+ * Three events rather than one, because the three questions are different: how
+ * often is an audit asked for (started), does it ever finish (completed), and
+ * how often does it not (interrupted). A single event with a status field would
+ * answer the first and lose the other two the moment a run never resolves.
+ *
+ * Ids and counts only — criterion ids and how many findings came back. The
+ * board's content, the criteria's prompts and the findings' wording never leave
+ * the editor through this bus.
+ */
+export interface MapAuditEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the criteria, when the run carries only one. */
+  framework?: string;
+  /** How many criteria the run was given. */
+  criterionCount: number;
+  /** How many framework frames the facts described. */
+  frameCount: number;
+}
+
+export interface MapAuditCompletedEvent extends MapAuditEvent {
+  /** How many findings came back, after the library's normalisation. */
+  findingCount: number;
+  /** Wall-clock duration of the run, in milliseconds. */
+  durationMs: number;
+}
+
+export interface MapAuditInterruptedEvent extends MapAuditEvent {
+  /**
+   * Why it did not complete.
+   *
+   * `unavailable` is a first-class member and not an error: it means no
+   * assistant is wired in this assembly, and knowing how often a user reaches
+   * for an audit that cannot run is precisely the number that decides whether
+   * the affordance should be there at all.
+   */
+  reason: 'aborted' | 'error' | 'unavailable';
+  durationMs: number;
+}
+
+export type AuditEvents = {
+  MapAuditStarted: MapAuditEvent;
+  MapAuditCompleted: MapAuditCompletedEvent;
+  MapAuditInterrupted: MapAuditInterruptedEvent;
+};

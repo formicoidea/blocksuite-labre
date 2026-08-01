@@ -111,6 +111,30 @@ only signal that says whether the default is right.
 `previousProfileId` carries the one it replaces. Ids only, never board content.
 A gesture that changes nothing (already on that profile) emits nothing.
 
+## AI audit runs (PF14.1)
+
+Level 3 — the criteria a framework declares as data, evaluated app-side by the
+Labre Assistant through the `AuditProvider` seam. The library owns the seam, not
+the model, so what it can report is when a run was asked for and how it ended.
+
+| Event                  | When                                     | Required props                                    |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `MapAuditStarted`      | `map.audit` reaches the provider          | `criterionCount`, `frameCount`                     |
+| `MapAuditCompleted`    | the provider settled every criterion      | + `findingCount`, `durationMs`                     |
+| `MapAuditInterrupted`  | aborted, failed, or no assistant is wired | + `reason` (`aborted` / `error` / `unavailable`), `durationMs` |
+
+Three events rather than one with a status: "how often is an audit asked for"
+and "how often does it finish" are different questions, and a single event would
+lose the second one for every run that never resolves. `unavailable` is a
+first-class reason, not an error — it counts the users reaching for an audit
+this build cannot run, which is what decides whether the affordance belongs
+there at all.
+
+Counts and ids only. Criterion prompts, finding wording and board content never
+cross this bus. A run that is refused before it starts (`unavailable`) emits
+`MapAuditStarted` **and** `MapAuditInterrupted`, so the two series always
+balance.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,
