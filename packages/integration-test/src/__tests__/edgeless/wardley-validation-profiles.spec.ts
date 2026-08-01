@@ -10,8 +10,6 @@ import type { BlockFlags } from '@labre/affine/flags';
 import { AffineSchemas } from '@labre/affine/schemas';
 import { replaceIdMiddleware } from '@labre/affine/shared/adapters';
 import {
-  DocModeExtension,
-  type DocModeProvider,
   TelemetryExtension,
   type TelemetryEventMap,
 } from '@labre/affine/shared/services';
@@ -77,28 +75,6 @@ type TrackedEvent = {
   name: keyof TelemetryEventMap;
   props: Record<string, unknown>;
 };
-
-/**
- * Tell the editor it is in edgeless mode.
- *
- * `setupEditor('edgeless')` mounts the edgeless root, but the default
- * `DocModeService.getEditorMode()` answers `null`, which `ToolbarContext` reads
- * as `page` — so the element toolbar takes its `isPageMode` early return and
- * never renders a thing for a surface selection. This suite is about what that
- * toolbar offers, so it has to be on screen. Nothing else in the editor
- * changes, and no other suite is affected.
- */
-const edgelessMode = DocModeExtension({
-  getEditorMode: () => 'edgeless',
-  setEditorMode: () => {},
-  getPrimaryMode: () => 'edgeless',
-  setPrimaryMode: () => {},
-  togglePrimaryMode: () => 'edgeless',
-  onPrimaryModeChange: () =>
-    ({ unsubscribe: () => {} }) as ReturnType<
-      DocModeProvider['onPrimaryModeChange']
-    >,
-});
 
 describe('validation profiles', () => {
   let service!: EdgelessRootBlockComponent['service'];
@@ -216,7 +192,6 @@ describe('validation profiles', () => {
     const cleanup = await setupEditor(
       'edgeless',
       [
-        edgelessMode,
         TelemetryExtension({
           track: (name, props) =>
             tracked.push({
