@@ -83,6 +83,14 @@ But the Wardley link tool overrides it
 direction is persisted and strictly invisible. The same is true of the shipped
 map templates (`packages/affine/gfx/wardley/src/templates/maps.ts:129-144`).
 
+Worth spelling out, because it is the one step of this demonstration that goes
+through a middleware: `activateWardleyConnector` only calls
+`EditPropsStore.recordLastProps`, and `_createConnector` calls
+`surface.addElement`, not `crud.addElement` — it is `EditPropsMiddlewareBuilder`
+(`beforeAdd`) that applies the recorded props. The chain holds: a link drawn by
+hand does come out headless, despite the model default
+`rearEndpointStyle = 'Arrow'` (`connector.ts:500-501`).
+
 Worse, on a Wardley map an arrowhead is already taken: the evolution annotation
 is the red dashed connector with `rearEndpointStyle: PointStyle.Triangle` and
 **no role** (`actions.ts:430-438`, `maps.ts:135,140`). In this framework's visual
@@ -118,24 +126,60 @@ auto-complete's `Direction.Top/Right/Bottom/Left` feeds only anchor placement
 dragging the LEFT arrow of a node still yields `source = that node`. Even a user
 who reasoned about direction from the gesture would reason wrong.
 
-### 4. Authored data already obeys one convention, unanimously
+### 4. The convention is already written — in a comment, and in twelve edges out of thirteen
 
-Nothing enforces it, yet every hand-written fixture in the repo orients the same
-way — the depender first:
+**The best witness is the vocabulary itself.** `roles.ts:78`, one line above the
+role declaration:
 
-- Wardley templates (`templates/maps.ts:270-278`): `link('business','cupOfTea')`,
-  `link('cupOfTea','cup')`, `link('hotWater','water')`, `link('kettle','power')`.
-  With `comp(evolution, visibility)` the source's visibility is strictly greater
-  than the target's in every single link — `cupOfTea` 0.74 → `cup` 0.70,
-  `hotWater` 0.47 → `water` 0.34, `kettle` 0.38 → `power` 0.10.
+```ts
+// The value-chain link: "A depends on B".
+```
+
+The convention was stated the day the role was born. What it never got was a
+direction fixed in the data model, a rendering, or a check.
+
+**Wardley map templates — twelve typed edges, twelve compliant.** With
+`vy = PL.y + (1 - v) * PL.h` (a larger `v` is higher on the map), every typed
+edge of `templates/maps.ts` has `source.v > target.v` strictly: Tea Shop's eight
+(0.93 → 0.74, 0.74 → 0.70 / 0.60 / 0.47, 0.47 → 0.34 / 0.38, 0.38 → 0.10) and
+Kodak's four (0.92 → 0.80 → 0.62 → 0.40, and 0.80 → 0.40).
+
+**The thirteenth is a counter-example, and it is the useful one.**
+`templates/index.ts:250` ships a "Link" sample as
+`connect({ position: [0,0] }, { position: [160,0] })`, and `connect` (`:113-131`)
+stamps `role: WARDLEY_ROLE.dependency`. That is a shipped `wardley:dependency`
+that is **horizontal and bound to nothing** — neither `source.id` nor
+`target.id`. It is a decorative stroke in a palette, typed by accident of the
+helper's default. It is dealt with in "Compatibility" below, and it forces a case
+into the rule family that the "two maps" case did not: an edge with an unbound
+endpoint.
+
+It also exposes a divergence between the two template kits: `maps.ts:135` tests
+`o.arrow ? undefined : dependency` while `templates/index.ts:122` tests
+`opts.red ? undefined : dependency`. Two different predicates for "is this a
+dependency?" in one framework, in neighbouring files — so `maps.ts`'s
+`link('capture','storage',{ red: true })` (Kodak, red and solid) IS typed, and
+`index.ts`'s red `connect` is not. Today that is a style inconsistency. The
+moment W4 reads these edges it becomes a **semantic** inconsistency: what a rule
+governs would depend on which authoring helper the template borrowed.
+
+**Two neighbouring corpora orient the same way**, neither of them governed by
+this ADR:
+
 - Mindmap (`packages/affine/model/src/elements/mindmap/mindmap.ts:551-574`):
-  `source = parent`, `target = child` (in-memory `LocalConnectorElementModel`
-  only, never persisted).
-- EDGY (`packages/affine/gfx/edgy/src/templates/index.ts:277-306`): oriented
-  triplets `[subject, object, verb]` — `['process','asset','requires']`,
-  `['product','capability','requires']`. `source` is the party that needs.
-
-The convention exists. It has simply never been written down, shown, or checked.
+  `source = parent`, `target = child` — in-memory `LocalConnectorElementModel`,
+  never persisted, no role.
+- EDGY (`packages/affine/gfx/edgy/src/templates/index.ts:277-306`): 24 oriented
+  triplets `[subject, object, verb]`, rendered as neutral connectors (no
+  `roles.ts` in `gfx/edgy` at all). Only two carry `requires`
+  (`['process','asset','requires']`, `['product','capability','requires']`);
+  six others put the **provider or the owner** in the subject slot —
+  `['product','task','serves']`, `['brand','task','supports']`,
+  `['organisation','product','makes']`, `['process','product','creates']`,
+  `['organisation','capability','has']`, `['task','journey','is part of']`.
+  What this corpus demonstrates unanimously is therefore **`source` = subject of
+  the verb**, not `source` = consumer. That distinction is what Decision § 2
+  splits into two tiers.
 
 ### 5. What Wardley prescribes
 
@@ -160,16 +204,34 @@ A full sweep of the mutation sites found no inversion anywhere:
   writes back into the same slot it grabbed (`connector[connection] = …`), and
   passes the OTHER endpoint's id as `excludedIds` to
   `renderConnector` (`connector-manager.ts:1226-1229`), so dropping the source
-  dot onto the current target is refused. The two ends can never be crossed by
-  dragging.
+  dot onto the current target is refused. **No single gesture can cross the two
+  ends** — which is not the same as saying they cannot be crossed: dropping
+  `source` in the void, moving `target` onto the old source, then `source` onto
+  the old target inverts the edge in three gestures, silently and at unchanged
+  geometry. Under W4 that produces a violation appearing with nothing having
+  moved on screen. M2 is exactly what makes that sequence legible.
 - **Resize / mirror** (`connector.ts:353-386`) always writes `path[0]` to
   `source` and `path[last]` to `target`; there is no element-level flip command
   at all (`flipX`/`flipY` in `edgeless-selected-rect.ts:660-666` only choose a
   cursor).
 - **Paste** (`edgeless/clipboard/canvas.ts:70-88`) and **duplicate**
-  (`utils/clone-utils.ts:69-86`, `:137-148`) remap `source→source`,
+  (`utils/clone-utils.ts:137-148`, `mapConnectorIds`) remap `source→source`,
   `target→target`. `role` rides along for free, being a declared base `@field()`.
+- **Block conversions**, the two sites a sweep most easily misses:
+  `reassociateConnectorsCommand`
+  (`blocks/surface/src/commands/reassociate-connectors.ts`, reached from five
+  conversions) and `moveConnectors`
+  (`root/src/edgeless/utils/connector.ts:22-31`). Neither inverts — both
+  re-point ids in place — but they are the two functions someone will edit one
+  day without knowing a direction now depends on them.
 - **Undo/redo** is plain Yjs; nothing rewrites endpoints.
+
+Two adjacent defects were found and are tracked outside this ADR (a side task is
+open): `reassociate-connectors.ts:33` only re-points `source` on a self-loop, and
+`clone-utils.ts:137-148` lacks the `?? id` fallback the clipboard has, so an
+endpoint that was not cloned yields `source.id === undefined`. The reachable path
+to the second is "turn into linked doc", not `serializeConnector`
+(`clone-utils.ts:69-86`). Neither changes a direction; both can drop a binding.
 
 Exactly one affordance is direction-flavoured and it is a liar:
 `packages/affine/gfx/connector/src/toolbar/config.ts:266-290`, `b.flip-direction`,
@@ -204,28 +266,52 @@ arrow, the market-glyph wiring (`actions.ts:400-413`), the EDGY decorations —
 `source`/`target` remain what they are today: the two ends of a path, carrying no
 claim. No existing behaviour changes for them.
 
-### 2. The convention, stated once and for all
+### 2. The convention, in two tiers
 
-> **`source` is the consumer. `target` is what it needs.**
-> An edge with role `wardley:dependency` reads **"`source` depends on `target`"**.
+**Tier 1 — the generic invariant, binding on every framework.**
 
-Corollaries, in the words each layer uses:
+> An edge role names a **relation with a verb**. **`source` is the subject of
+> that verb; `target` is its object.** Reading an edge is reading one sentence:
+> `source` _verb_ `target`.
+
+That is the only claim the library makes. It is what the whole authored corpus
+supports without exception — EDGY's 24 triplets `[subject, object, verb]`,
+mindmap's parent→child, every Wardley link (§ 4) — and it is decidable by looking
+at the role's own declaration rather than at a framework's habits.
+
+**Tier 2 — what the verb of `wardley:dependency` happens to be.**
+
+> Its verb is **"depends on"** — `roles.ts:78` says so already. Therefore, for
+> this role and this role only: **`source` is the consumer, `target` is what it
+> needs.**
+
+Corollaries:
 
 - Wardley: the source is the higher, more visible component; the target is the
-  lower, more evolved-or-not component it rests on. **Needs descend from source
-  to target; value flows back up from target to source.**
-- Generic: for any future `kind: 'edge'` role, `source` is the dependent /
-  subject / initiator and `target` is the dependency / object / recipient. This
-  matches EDGY's triplets, mindmap's parent→child, and the shipped Wardley
-  templates without changing a single byte of any of them.
+  lower one it rests on. **Needs descend from source to target; value flows back
+  up from target to source.** This is the reading W4 evaluates, and it is
+  unchanged from the previous draft of this ADR.
+- Any future `kind: 'edge'` role inherits tier 1 and supplies its own verb. A
+  BPMN sequence flow ("is followed by"), an EDGY `serves` or `has`, a Cynefin
+  transition — each is oriented, none of them is a dependency, and none of them
+  is required to put the needing party in the source slot. Tier 1 tells an
+  implementer where to write the two ends; the role's verb tells a rule what the
+  sentence means.
 - Rendering: when direction is shown, the mark sits on the **Rear/target** end —
   the same end the product default already arrows
-  (`consts/connector.ts:18-20`). The arrow points at the thing depended upon.
+  (`consts/connector.ts:18-20`). The mark points at the object of the verb.
 
-This direction, and not its opposite, because it is the one every authored
-fixture in the repo already uses (§ 4) and the one the three creation paths
-already produce for the natural gesture ("start on the thing that has the need").
+This direction and not its opposite, because it is the one the code comment
+already states, the one every authored fixture uses, and the one the three
+creation paths already produce for the natural gesture ("start on the subject").
 Choosing the reverse would invert every template on the same day.
+
+Why two tiers rather than one: an earlier draft stated the dependency reading as
+the general law. The EDGY corpus contradicts it — six of its triplets put the
+provider or the owner in the subject slot (§ 4). Promoting one framework's verb
+into the library's invariant would have forced more than half of a future EDGY
+vocabulary to declare itself an exception, or produced a generic rule reading
+"product depends on task".
 
 ### 3. Yet the direction of an edge drawn TODAY does not qualify
 
@@ -236,34 +322,56 @@ must not be built on it.
 Three mechanisms turn the by-product into a statement. **W4 does not ship before
 they do; they ship in one slice.**
 
-| #   | mechanism                                                                                                                                                                                                                                                                                                                                                                                                                    | size    |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| M1  | **Say it.** The Wardley link tool announces its gesture — tooltip and toolbar hint, "drag from the component that has the need to what it needs". One i18n key, one tooltip, `actions.ts` + the wardley menu.                                                                                                                                                                                                                | 0.5 d   |
-| M2  | **Show it.** A typed edge reveals its orientation on hover and on selection: a chevron at the Rear end plus the role's own label (`com.labre.wardley.role.dependency`, already declared). At rest the map keeps the canonical arrowless look, so the head never collides with the evolution arrow's meaning (§ 2). Branch in the connector element renderer on "the role is an edge role", using `roleIsA` / `RoleDef.kind`. | 1.5 d   |
-| M3  | **Let them fix it.** A **Reverse dependency** command on a selected typed edge: swaps `source` ↔ `target`, swaps `frontEndpointStyle` ↔ `rearEndpointStyle`, mirrors `curveControlPoint` (`connector.ts:432`), in ONE undo step. Declared in the command registry (ADR 0008) so it also reaches the palette and a shortcut. And `b.flip-direction` is hidden for role-carrying edges — on a typed edge it is a lie (§ 6).  | 1.0 d   |
-|     | telemetry for the new command + tests                                                                                                                                                                                                                                                                                                                                                                                        | 0.25 d  |
-|     | **total before W4 can be written**                                                                                                                                                                                                                                                                                                                                                                                           | ~3.25 d |
-|     | W4 itself: new rule family, rule entry, unit + integration                                                                                                                                                                                                                                                                                                                                                                   | ~2 d    |
+| #   | mechanism                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | size  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| M1  | **Say it.** The Wardley link tool announces its gesture — tooltip and toolbar hint, "drag from the component that has the need to what it needs". One i18n key, one tooltip, `actions.ts` + the wardley menu.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 0.5 d |
+| M2  | **Show it.** A typed edge reveals its orientation on hover and on selection: a chevron at the Rear end plus the role's own label (`com.labre.wardley.role.dependency`, already declared). At rest the map keeps the canonical arrowless look, so the head never collides with the evolution arrow's meaning (§ 2). **Seam: an `Overlay` plus a widget, NOT the element renderer** — an `ElementRenderer` is `(model, ctx, matrix, renderer, rc)` (`element-renderer/index.ts:38-39`) and knows neither hover nor selection. The precedent is one directory away and one week old: `ValidationOverlay` (`validation.ts:1363`) and `violation-detail-widget.ts`, the only file of `blocks/surface` that handles a hover. | 1.5 d |
+| M3  | **Let them fix it.** A **Reverse dependency** command on a selected typed edge: swaps `source` ↔ `target` and swaps `frontEndpointStyle` ↔ `rearEndpointStyle`, in ONE undo step. `curveControlPoint` is deliberately left alone — it is an ABSOLUTE pass-through point at t = 0.5 and the tangent formulas are symmetric under a `P0` ↔ `P3` exchange (`connector-manager.ts:1653-1690`), so swapping the ends leaves the same curve; "mirroring" it would visibly move the curve, i.e. it would be a bug. Declared in the command registry (ADR 0008) so it also reaches the palette and a shortcut. And `b.flip-direction` is hidden for role-carrying edges — on a typed edge it is a lie (§ 6).                | 1.0 d |
+|     | telemetry, unit tests, **an integration spec** (M2 paints on the canvas, so the `CLAUDE.md` template requires one) and a changeset                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 1.0 d |
+|     | **total before W4 can be written**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | ~4 d  |
+|     | W4 itself: new rule family, rule entry, unit + integration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | ~2 d  |
 
-### 4. No normalisation of the direction from the geometry — ever
+Two dependencies the figures do not cover, both to be settled before the slice
+starts:
 
-Rejected, and worth spelling out because it is the tempting shortcut: at
-`dragEnd`, orient the edge so that the higher endpoint becomes the source.
+- **M1 is half outside this repo.** The library holds an i18n _key_ and never
+  prose; the sentence a user reads is resolved by the host (`labreapp`). The
+  0.5 d buys the key, the tooltip and the wiring — not the copy.
+- **M3 leans on ADR 0008**, whose command registry is itself `proposed` and
+  unapproved. If 0008 is not accepted first, Reverse dependency ships as a plain
+  contextual-toolbar entry and loses the palette and the shortcut: same cost,
+  smaller reach.
 
-It is wrong twice.
+### 4. The direction never comes from the geometry
 
-- **It makes W4 vacuous at birth.** Every fresh edge is compliant by
-  construction; the rule can only ever fire after a later move. A rule whose
-  truth is a function of when it was evaluated is not a rule.
-- **It invents intent from an accident.** The layout at the instant of the drag
-  becomes the permanent meaning of the relation. A user who wires the chain
-  before arranging it gets a dependency graph decided by a transient position,
-  and the subsequent, correct rearrangement is what the rule then complains
-  about.
+Two distinct shortcuts hide under one phrase, and they fail for two different
+reasons. They are separated here so that neither argument is later quoted for
+the other.
 
-The honest behaviour is the opposite: leave the gesture's direction alone and let
+**(a) Deriving the orientation at evaluation time** — no orientation is stored;
+W4 asks the y coordinates who depends on whom. This one is _vacuous_: the rule
+compares the layout against itself and can never fire (§ 5 of the Context).
+Rejected on that ground alone.
+
+**(b) Normalising once at `dragEnd` and persisting it** — the higher endpoint
+becomes the source, and the stored direction is then a plain persisted state.
+This variant is NOT vacuous: evaluation is a pure function of the document, and
+the rule acquires a real meaning, "you have since moved a node against the order
+you drew". It is rejected on the other ground: **it invents intent from an
+accident.** The layout at one instant becomes the permanent meaning of the
+relation. An architect who wires the chain before arranging it gets a dependency
+graph decided by a transient position, and the subsequent, correct rearrangement
+is precisely what the rule then complains about.
+
+Assumed, in fairness: the retained option also lets an accident fix the direction
+— which end the finger landed on first. The difference is not that one is
+accidental and the other deliberate; it is that the retained accident is
+_announced, visible and reversible_ once M1–M3 land, while a normalisation is
+none of the three and is done to the user rather than by them.
+
+The honest behaviour is therefore to leave the gesture's direction alone and let
 W4 fire immediately when it contradicts the layout. **The violation _is_ the
-affordance** — it appears the moment the edge is drawn upside-down, and its
+affordance** — it appears the moment an edge is drawn upside-down, and its
 suggestion offers M3's reverse command. The user resolves it by moving the node
 or by reversing the edge, and either way the resolution is theirs.
 
@@ -286,12 +394,15 @@ role. See "Rejected alternatives".
 - **Inverting it.** M3's **Reverse dependency**, on the contextual toolbar of the
   selected edge, one undo step. It is the only supported inversion.
   `b.flip-direction` disappears for typed edges.
-- **Re-dragging an endpoint.** Unchanged and safe: a source handle can only
-  rewrite `source`, a target handle only `target`, and the overlay refuses to
-  bind an end to the element already held by the other end
+- **Re-dragging an endpoint.** Unchanged and safe _gesture by gesture_: a source
+  handle can only rewrite `source`, a target handle only `target`, and the
+  overlay refuses to bind an end to the element already held by the other end
   (`connector-handle.ts:152-174`). Re-targeting the provider changes _what_ the
-  consumer depends on; it never changes _who_ depends on whom. Re-targeting is
-  therefore never an implicit inversion, and needs no confirmation.
+  consumer depends on; it never changes _who_ depends on whom, so no single
+  re-target is an implicit inversion and none needs a confirmation. A
+  three-gesture detour (detach the source, move the target onto the old source,
+  reattach) does invert the edge, at unchanged geometry and with no trace — the
+  reason M2 exists, and the reason M3 is the _supported_ way to do it.
 - **Moving a node.** Never touches the direction. It may, from now on, produce or
   clear a W4 violation — which is the intended feedback loop.
 - **Copy, paste, duplicate, undo.** Direction rides along verbatim (§ 6). A
@@ -303,9 +414,29 @@ role. See "Rejected alternatives".
 Wardley link tool landed in `7a3458ad3` (#71, 2026-08-01); the packages are not
 published (`CLAUDE.md`: "publication pending"), no host consumes them, and
 nothing in the library has ever read a connector's direction (§ 7). The
-`wardley:dependency` edges that exist are (a) the shipped templates, which are
-oriented correctly by construction (§ 4), and (b) whatever was drawn in the
-playground since yesterday.
+`wardley:dependency` edges that exist are (a) the twelve map-template edges,
+oriented correctly by construction, (b) the "Link" sample template, which is not
+(§ 4), and (c) whatever was drawn in the playground since yesterday.
+
+**The "Link" sample template is corrected in the M1–M3 slice, not grandfathered.**
+It ships a `wardley:dependency` that is horizontal and bound to nothing
+(`templates/index.ts:250`): a decorative stroke in a palette, typed only because
+`connect` defaults to the role. A sample of a _stroke style_ makes no claim about
+anything, so **the role is dropped there** — exactly as the market-glyph wiring
+already does (`actions.ts:400-413`). One line, in the slice that makes the role
+mean something.
+
+The same slice **aligns the two kits' neutrality predicate**. `maps.ts:135` tests
+`o.arrow`, `templates/index.ts:122` tests `opts.red` (§ 4): today a style
+inconsistency, tomorrow a semantic one, since what W4 governs would depend on
+which authoring helper a template borrowed. Both become one explicit flag
+(`evolution: true` — the dashed red arrow is the annotation), rather than
+inferring a relation's type from its colour. Kodak's red _solid_ links stay typed
+dependencies, which is what they are and what their coordinates already respect.
+
+Neither correction is load-bearing for the decision: the rule family must skip an
+edge with an unbound endpoint regardless (see Consequences), because a user can
+produce one at any time by releasing the link tool over empty canvas.
 
 **Therefore: no migration, no confirmation bit, no legacy mode.** The convention
 of § 2 applies to every typed edge, past and future. This is the big-bang option
@@ -338,7 +469,13 @@ code, since M2 and M3 are the review.
   `elementIds: string[]`, commented "One for wave 1's family"
   (`validation.ts:311-314`). The comment is what needs updating, not the type.
   The family also picks the `backgroundId` itself (`validation.ts:319-336`), and
-  must skip a pair whose endpoints sit on two different maps.
+  must skip two cases rather than one: a pair whose endpoints sit on two
+  different maps, **and an edge at least one of whose ends is not bound to an
+  element at all** (`Connection.position` without `id`). The second is not
+  marginal — it is the "Link" sample template (§ 4) and it is what releasing the
+  link tool over empty canvas produces (`connector-tool.ts:81-88` starts on
+  `target: { position }` and `dragEnd` requires no attachment). M2 inherits the
+  same guard: no chevron, no "depends on" label, on a stroke that links nothing.
 - **The rule engine stops being node-only.** Until now roles were read on nodes
   and the `kind: 'edge'` half of the vocabulary was declarative decoration. W4
   is the first consumer of an edge role, and the first rule whose subject is a
@@ -358,11 +495,20 @@ code, since M2 and M3 are the review.
   drawing becomes the input to the model rather than a picture of it. That is a
   much larger claim than W4 and it is the real reason this ADR is worth a human
   signature.
-- **A new framework must now choose.** Any future `kind: 'edge'` role (BPMN
-  sequence flow, EDGY relations, Cynefin transitions) inherits the § 2
-  convention: source = subject/initiator. A framework whose natural reading is
-  the opposite must say so explicitly in its role declaration rather than quietly
-  invert — and that would be a new ADR, not a local decision.
+- **A new framework declares a verb, not an allegiance.** Any future
+  `kind: 'edge'` role (BPMN sequence flow, EDGY relations, Cynefin transitions)
+  inherits tier 1 only — `source` is the subject of the role's verb — and states
+  its own verb. Nothing obliges it to be a dependency, and a rule may only read
+  "consumer / provider" out of an edge whose verb says so.
+- **EDGY, concretely.** If `gfx/edgy` ever grows a `roles.ts`, its 24 relations
+  become typed edges under tier 1 with no data change whatsoever: `source` is
+  already the subject in all 24 (`['product','task','serves']` as much as
+  `['process','asset','requires']`). Under the single-tier wording of the earlier
+  draft, six of them would have had to declare themselves exceptions, and a
+  generic rule could have read "product depends on task". The two-tier statement
+  is what makes EDGY a free ride instead of a migration. Note it would also need
+  the verb to move from the template fixture into the role vocabulary — today the
+  verb only exists as connector label text.
 - **Cost of being wrong.** If the convention is later reversed, every persisted
   typed edge must be swapped — a one-line transform over the surface map, cheap
   now, expensive after the first tenant corpus. This is precisely why the
@@ -380,8 +526,9 @@ code, since M2 and M3 are the review.
   one-day window, which every consumer would then have to branch on forever, and
   which would need its own UI to ever become `true`. That UI is M2 + M3 — so the
   field buys nothing the mechanisms do not already provide.
-- **Derive the direction from the geometry.** Kills W4 (§ 4), and makes a
-  dependency flip meaning when a node is dragged past another — the map would
+- **Derive the direction from the geometry at evaluation time.** Vacuous — the
+  rule would compare the layout against itself (§ 4a). It would also make a
+  dependency flip meaning when a node is dragged past another: the map would
   silently rewrite what the architect said.
 - **Two roles, `wardley:depends-on` and `wardley:depended-on-by`.** Doubles the
   vocabulary, still leaves the question of which end is which, and makes
@@ -390,21 +537,26 @@ code, since M2 and M3 are the review.
   (`actions.ts:445`), and it breaks the canonical Wardley look while colliding
   with the evolution arrow's established meaning (§ 2). Rejected in favour of the
   hover/selection reveal.
-- **Normalising at role stamping.** Covered in § 4 — the tempting one, and the
-  one that quietly replaces the user's statement with a snapshot of their layout.
+- **Normalising once at `dragEnd` and persisting it.** Covered in § 4b — not
+  vacuous, and rejected all the same: it replaces the user's statement with a
+  snapshot of their layout, without asking.
 
 ## Test coverage this implies
 
-- Unit: the convention as an assertion over the shipped templates — for every
-  `wardley:dependency` link in `templates/maps.ts`, the source's visibility is
-  strictly greater than the target's. It pins § 2 against the only corpus that
-  exists, and it fails loudly the day someone authors a template backwards.
-- Unit: Reverse dependency is an involution (apply twice = identity, including
-  endpoint styles and the curve control point) and produces exactly one undo
-  step.
+- Unit: the convention as an assertion over the shipped templates — walk BOTH
+  kits, and for every `wardley:dependency` whose two ends are bound, assert the
+  source's visibility is strictly greater than the target's. It pins § 2 against
+  the only corpus that exists and fails loudly the day someone authors a template
+  backwards. The same walk asserts that no shipped typed edge has an unbound end
+  — which is what keeps the "Link" sample de-typed once it has been corrected.
+- Unit: Reverse dependency is an involution (apply twice = identity, endpoint
+  styles included) and produces exactly one undo step. Separately: reversing a
+  curved connector leaves its rendered path unchanged — the assertion that stops
+  someone from "fixing" `curveControlPoint` later.
 - Unit: the `relative-order-along-axis` family — a compliant pair, an inverted
-  pair, a pair straddling two maps (no violation, no background), a pair whose
-  edge carries no role (never evaluated).
+  pair, a pair straddling two maps (no violation, no background), an edge with an
+  unbound end (never evaluated), a pair whose edge carries no role (never
+  evaluated).
 - Integration: draw a link upward with the Wardley tool, assert the violation
   appears; reverse it, assert it clears. That round trip is the whole ADR in one
   spec.
