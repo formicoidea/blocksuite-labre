@@ -9,7 +9,12 @@ import {
 } from '@labre/affine/blocks/surface';
 import { createGroupCommand, ungroupCommand } from '@labre/affine/gfx/group';
 import type { GroupElementModel } from '@labre/affine/model';
+import {
+  DocModeExtension,
+  type DocModeProvider,
+} from '@labre/affine/shared/services';
 import type { GfxPrimitiveElementModel } from '@labre/affine/std/gfx';
+import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import { Text } from '@labre/store';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
@@ -36,6 +41,41 @@ import { setupEditor } from '../utils/setup.js';
  */
 
 const RULE_ID = 'wardley.component-outside-map';
+
+/**
+ * Tell the editor it is in edgeless mode, so the element toolbar renders at
+ * all — `DocModeService.getEditorMode()` otherwise answers `null`, which
+ * `ToolbarContext` reads as `page` and takes its early return on. Same reason
+ * and same shape as `wardley-validation-profiles.spec.ts`.
+ */
+const edgelessMode = DocModeExtension({
+  getEditorMode: () => 'edgeless',
+  setEditorMode: () => {},
+  getPrimaryMode: () => 'edgeless',
+  setPrimaryMode: () => {},
+  togglePrimaryMode: () => 'edgeless',
+  onPrimaryModeChange: () =>
+    ({ unsubscribe: () => {} }) as ReturnType<
+      DocModeProvider['onPrimaryModeChange']
+    >,
+});
+
+/** Native-shaped click: composed, so it crosses a shadow boundary. */
+function clickElement(element: Element) {
+  const rect = element.getBoundingClientRect();
+  const init = {
+    bubbles: true,
+    composed: true,
+    cancelable: true,
+    clientX: rect.x + rect.width / 2,
+    clientY: rect.y + rect.height / 2,
+    pointerId: 1,
+    isPrimary: true,
+  };
+  element.dispatchEvent(new PointerEvent('pointerdown', init));
+  element.dispatchEvent(new PointerEvent('pointerup', init));
+  element.dispatchEvent(new MouseEvent('click', init));
+}
 
 describe('revoking an exception from the element that answers for it', () => {
   let service!: EdgelessRootBlockComponent['service'];
@@ -117,10 +157,38 @@ describe('revoking an exception from the element that answers for it', () => {
   const revocableOn = (id: string) =>
     validation.revocableExceptionsOn(model(id));
 
+  /**
+   * The element toolbar the selection raises. Its actions render into the
+   * `editor-toolbar` element's LIGHT DOM.
+   */
+  const toolbar = () =>
+    (
+      root.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar ?? null;
+  const toolbarQuery = (selector: string) =>
+    toolbar()?.querySelector(selector) ?? null;
+
+  /**
+   * The revoke entry, by the testid the toolbar derives from an action id —
+   * `renderActionItem` keeps the last dot-separated segment.
+   */
+  const revokeEntry = () =>
+    toolbarQuery('[data-testid="validation-revoke-exception"]');
+  /** PF9's Validation dropdown, registered by the framework on its own slot. */
+  const validationEntry = () =>
+    toolbarQuery('[data-testid="validation-toolbar-entry"]');
+
+  const select = async (id: string) => {
+    service.gfx.selection.set({ elements: [id], editing: false });
+    await settle();
+  };
+
   const mount = async (flags?: Record<string, boolean>) => {
     const cleanup = await setupEditor(
       'edgeless',
-      [],
+      [edgelessMode],
       flags ? { flags } : undefined
     );
     unmount = cleanup;
@@ -348,6 +416,80 @@ describe('revoking an exception from the element that answers for it', () => {
       await age();
 
       expect(badges()).toHaveLength(1);
+    });
+  });
+
+  /**
+   * The two validation entries come from two DIFFERENT toolbar slots — this one
+   * from `custom:affine:surface:*` (the surface block, for any element), PF9's
+   * Validation dropdown from `custom:affine:surface:wardley` (the framework's
+   * flag-gated view extension, for its own background). `renderToolbar`
+   * concatenates the actions of every matching slot, so a selected map must
+   * offer both.
+   */
+  describe('sharing the map’s toolbar with the Validation dropdown', () => {
+    test('a map carrying an exception offers Validation AND Revoke', async () => {
+      const mapId = addBackground();
+      addComponent('[3000,3000,40,40]');
+      await settle();
+      grantException(model(mapId), RULE_ID);
+      validation.evaluate();
+
+      await select(mapId);
+
+      // Wildcard slot and framework slot, merged onto one element.
+      expect(validationEntry()).not.toBeNull();
+      expect(revokeEntry()).not.toBeNull();
+      expect(revokeEntry()?.getAttribute('aria-label')).toBe(
+        'Revoke exception'
+      );
+    });
+
+    test('the map offers Validation alone until an exception exists', async () => {
+      const mapId = addBackground();
+      addComponent('[3000,3000,40,40]');
+      await settle();
+
+      await select(mapId);
+
+      // The framework's own entry does not depend on an arbitration; mine does.
+      expect(validationEntry()).not.toBeNull();
+      expect(revokeEntry()).toBeNull();
+    });
+
+    test('revoking from the map’s toolbar clears the map-wide arbitration', async () => {
+      const mapId = addBackground();
+      const nodeId = addComponent('[3000,3000,40,40]');
+      await settle();
+      grantException(model(mapId), RULE_ID);
+      validation.evaluate();
+      expect(violationOf(nodeId)?.exemption).toBe('map');
+
+      await select(mapId);
+      clickElement(revokeEntry()!);
+      await settle();
+
+      expect(hasException(model(mapId), RULE_ID)).toBe(false);
+      expect(violationOf(nodeId)?.exemption).toBeUndefined();
+      // Gone from the toolbar with the arbitration it took back; Validation
+      // stays, because it never depended on one.
+      expect(revokeEntry()).toBeNull();
+      expect(validationEntry()).not.toBeNull();
+    });
+
+    test('a plain element offers Revoke and no Validation', async () => {
+      addBackground();
+      const nodeId = addComponent('[3000,3000,40,40]');
+      await settle();
+      grantException(model(nodeId), RULE_ID);
+      validation.evaluate();
+
+      await select(nodeId);
+
+      // The wildcard slot reaches every element; the framework's slot is its
+      // background's alone.
+      expect(revokeEntry()).not.toBeNull();
+      expect(validationEntry()).toBeNull();
     });
   });
 
