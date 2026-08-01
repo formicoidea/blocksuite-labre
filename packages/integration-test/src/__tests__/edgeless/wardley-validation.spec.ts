@@ -6,8 +6,9 @@ import {
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import type { GroupElementModel } from '@labre/affine/model';
+import { FontFamily, type GroupElementModel } from '@labre/affine/model';
 import { createGroupCommand, ungroupCommand } from '@labre/affine/gfx/group';
+import { getFontString, getTextWidth } from '@labre/affine/gfx/text';
 import { Text } from '@labre/store';
 
 import { wait } from '../utils/common.js';
@@ -301,6 +302,91 @@ describe('wardley validation on the canvas', () => {
         ruleId: 'wardley.inertia-off-transition',
         elementIds: [bar],
       });
+    });
+
+    /**
+     * A Wardley label, exactly as the toolbox makes one: a 120-unit box
+     * whatever the name in it measures.
+     */
+    const addLabel = (text: string, x: number, y: number) =>
+      service.surface.addElement({
+        type: 'text',
+        role: 'wardley:label',
+        // A plain string, exactly as the Wardley toolbox writes one: the model
+        // turns it into the `Y.Text` the renderer reads.
+        text,
+        fontFamily: FontFamily.Inter,
+        fontSize: 18,
+        textAlign: 'left',
+        xywh: `[${x},${y},120,26]`,
+      });
+
+    /**
+     * The PO's acceptance capture, end to end, and the one thing a unit test
+     * cannot check: that the ink the RULE measures is the ink the RENDERER
+     * draws.
+     *
+     * The engine measures no text — a canvas in the evaluation path would make
+     * the verdict depend on which fonts a host has loaded — so it approximates:
+     * characters × fontSize × a declared ratio. This is where that
+     * approximation meets the real font, on a real canvas, with the real
+     * renderer's own measurement to compare against.
+     */
+    test('the ink the rule measures is the ink the renderer draws', async () => {
+      const font = getFontString({
+        fontStyle: 'normal',
+        fontWeight: '400',
+        fontSize: 18,
+        fontFamily: FontFamily.Inter,
+      });
+      for (const name of [
+        'ERP',
+        'Customer',
+        'Payment gateway',
+        'Data centre',
+        'CRM',
+      ]) {
+        const drawn = getTextWidth(name, font);
+        // The engine's own formula: characters × fontSize × TEXT_ADVANCE_RATIO.
+        const declared = name.length * 18 * 0.5;
+        console.info(
+          `[W3] "${name}" at Inter 18: drawn ${drawn.toFixed(1)} units, ` +
+            `declared ${declared.toFixed(1)} ` +
+            `(${(((declared - drawn) / drawn) * 100).toFixed(0)} %)`
+        );
+
+        // The declared band, pinned on the real font: a third narrow at worst,
+        // a few units wide at worst. The narrow end is an all-caps acronym —
+        // capitals are the widest letters there are — and the wide end is what
+        // `minPenetration` is there to absorb. Deliberately loose: the drawn
+        // figure moves by a few percent depending on whether the web font has
+        // finished loading, so this pins the ORDER of the approximation, and a
+        // change to `TEXT_ADVANCE_RATIO` big enough to change what W3 says
+        // cannot pass it.
+        expect(declared).toBeGreaterThan(drawn * 0.6);
+        expect(declared).toBeLessThan(drawn * 1.15);
+      }
+
+      addBackground();
+      addLabel('ERP', 400, 400);
+      // A dependency running down the blank right-hand half of that box —
+      // through the element, nowhere near the letters.
+      addLink([480, 300], [480, 500]);
+      await settle();
+
+      expect(validation.violations$.value).toEqual([]);
+    });
+
+    test('...and a link drawn through the word itself is still flagged', async () => {
+      addBackground();
+      const label = addLabel('ERP', 400, 400);
+      const link = addLink([410, 300], [410, 500]);
+      await settle();
+
+      const violations = validation.violations$.value;
+      expect(violations).toHaveLength(1);
+      expect(violations[0].ruleId).toBe('wardley.overlapping-artefacts');
+      expect(violations[0].elementIds.sort()).toEqual([label, link].sort());
     });
 
     test('W3 flags two overlapping nodes, naming the pair', async () => {

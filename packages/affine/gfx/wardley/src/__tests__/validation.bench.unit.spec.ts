@@ -74,7 +74,8 @@ function element(
   xywh: [number, number, number, number],
   role?: string,
   validationProfile?: string,
-  absolutePath?: [number, number][]
+  absolutePath?: [number, number][],
+  text?: string
 ): GfxPrimitiveElementModel {
   const yMap = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('elements').set(id, yMap);
@@ -82,6 +83,14 @@ function element(
   if (role !== undefined) yMap.set('role', role);
   if (validationProfile !== undefined) {
     yMap.set('validationProfile', validationProfile);
+  }
+  // A real label is a text element, and a `text` role is measured by the INK of
+  // its words: `no-overlap` reads the Y.Text of every label on every pass, so
+  // the budget has to be measured against a real attached one.
+  if (text !== undefined) {
+    yMap.set('text', new Y.Text(text));
+    yMap.set('fontSize', 18);
+    yMap.set('textAlign', 'left');
   }
 
   const preserved = new Map<string, unknown>();
@@ -104,6 +113,15 @@ function element(
     },
     get xywh() {
       return read('xywh') as string;
+    },
+    get text() {
+      return read('text');
+    },
+    get fontSize() {
+      return read('fontSize') as number | undefined;
+    },
+    get textAlign() {
+      return read('textAlign') as string | undefined;
     },
     get elementBound() {
       return Bound.deserialize(read('xywh') as string);
@@ -144,7 +162,17 @@ function referenceMap(
       case 1:
         // The label of the node before it, at the toolbox's own offset — so a
         // handful of them land on a neighbour, as on a real crowded map.
-        elements.push(element(doc, id, [x + 17, y - 4, 120, 26], WARDLEY_ROLE.label));
+        elements.push(
+          element(
+            doc,
+            id,
+            [x + 17, y - 4, 120, 26],
+            WARDLEY_ROLE.label,
+            undefined,
+            undefined,
+            'Customer'
+          )
+        );
         break;
       case 2: {
         const to: [number, number] = [x + 240, y + 60];

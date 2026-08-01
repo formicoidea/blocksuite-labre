@@ -1,6 +1,5 @@
 import { createIdentifier } from '@labre/global/di';
-import type { Bound } from '@labre/global/gfx';
-import { lineIntersects } from '@labre/global/gfx';
+import { Bound, lineIntersects } from '@labre/global/gfx';
 import type {
   RoleDefs,
   RoleId,
@@ -126,9 +125,10 @@ export interface AttachmentDef {
  *
  * Which GEOMETRY each side is measured with is not declared here: it follows
  * the role's own `kind` in {@link ValidationRule.roles}. An `edge` role is
- * measured along its PATH, a `node` role by its bounds — because the bounding
- * box of a diagonal link covers half the map and would indict every label
- * anywhere near it.
+ * measured along its PATH, because the bounding box of a diagonal link covers
+ * half the map and would indict every label anywhere near it; a `text` role by
+ * the ink of its text, because a text box is created at a width that says
+ * nothing about what it reads; a `node` role by its bounds.
  */
 export type OverlapPair = readonly [RoleId, RoleId];
 
@@ -202,6 +202,21 @@ export interface ValidationRule {
   attachment?: AttachmentDef;
   /** `no-overlap` only: the combinations that must not collide. */
   overlap?: readonly OverlapPair[];
+  /**
+   * `no-overlap` only: how DEEP a collision has to be, in model units, before
+   * it is worth reporting. Absent or `0` means any shared area at all.
+   *
+   * Penetration depth, not shared area: how far the two geometries reach INTO
+   * each other — `min(overlapX, overlapY)` for two boxes, and for a path the
+   * greatest distance any point of it gets under the edge of the box it
+   * crosses. A link clipping the corner of a name and a link drawn through the
+   * middle of it share the same "they overlap"; only the second one is
+   * something the eye trips over.
+   *
+   * Two paths crossing have no depth to measure — a line has no width — so a
+   * declared crossing is reported whatever this says.
+   */
+  minPenetration?: number;
 }
 
 /**
@@ -936,9 +951,10 @@ function evaluateAttachment(
   const attachment = rule.attachment;
   if (subjectRole === undefined || attachment === undefined) return [];
 
-  // A carrier is something with a PATH. Declaring a node role here produces a
+  // A carrier is something with a PATH. Declaring anything else here produces a
   // rule that can never fire; say so once instead of shrugging.
-  if (rule.roles[attachment.carrierRole]?.kind === 'node') {
+  const carrierKind = rule.roles[attachment.carrierRole]?.kind;
+  if (carrierKind !== undefined && carrierKind !== 'edge') {
     warnOnce(
       `attachment rule "${rule.id}" names a node role ` +
         `("${attachment.carrierRole}") as its carrier — "posed on" is a ` +
@@ -1002,6 +1018,7 @@ function evaluateAttachment(
 /** One participant of a `no-overlap` pass, with its geometry read once. */
 interface OverlapSubject {
   id: string;
+  /** Bounds, narrowed to the ink for a `text` role — see {@link textInkBound}. */
   bound: Bound;
   /** Non-null for an `edge` role: the polyline it is measured along. */
   path: Point[] | null;
@@ -1051,16 +1068,160 @@ function boundsOverlap(a: Bound, b: Bound): boolean {
  * is the right way round for a readability rule that is only ever a warning.
  * A test pins the behaviour so a change to it cannot be silent.
  */
-function subjectsCollide(a: OverlapSubject, b: OverlapSubject): boolean {
+function subjectsCollide(
+  a: OverlapSubject,
+  b: OverlapSubject,
+  minPenetration: number
+): boolean {
   // Bounding boxes first: on a dense map almost every pair dies here, and this
   // is the test the O(n²) sweep is really made of.
   if (!boundsOverlap(a.bound, b.bound)) return false;
-  if (a.path === null && b.path === null) return true;
+  if (a.path === null && b.path === null) {
+    return (
+      minPenetration <= 0 || boundsPenetration(a.bound, b.bound) > minPenetration
+    );
+  }
+  // Two paths: zero-width lines, so there is no depth to measure and a declared
+  // crossing is reported as it always was.
   if (a.path !== null && b.path !== null) return pathsCross(a.path, b.path);
 
   const path = (a.path ?? b.path) as Point[];
   const bound = a.path === null ? a.bound : b.bound;
-  return pathHitsBound(path, bound);
+  if (!pathHitsBound(path, bound)) return false;
+  return (
+    minPenetration <= 0 || pathPenetration(path, bound) > minPenetration
+  );
+}
+
+/**
+ * How far two overlapping boxes reach INTO each other: the smaller of the two
+ * axis overlaps, which is the distance one of them would have to move to come
+ * free. Corner-grazing gives a small number on both axes; a name written across
+ * a node gives the height of the letters.
+ */
+function boundsPenetration(a: Bound, b: Bound): number {
+  return Math.min(
+    Math.min(a.maxX - b.minX, b.maxX - a.minX),
+    Math.min(a.maxY - b.minY, b.maxY - a.minY)
+  );
+}
+
+/**
+ * The deepest any point of `path` gets under an edge of `bound` — 0 when the
+ * path only touches it, negative when it misses entirely.
+ *
+ * "Depth" is the distance to the NEAREST edge, so a link crossing a label
+ * lengthwise through the middle scores half the line height, and one clipping a
+ * corner scores almost nothing. Exact, not sampled: that distance is the
+ * minimum of four linear functions of the position along the segment, hence
+ * concave, so its maximum is attained either at an end of the segment or where
+ * two of the four swap places — at most eight candidates, all of them tested.
+ *
+ * Only ever reached by a pair that already collides, i.e. off the hot path of
+ * the sweep.
+ */
+function pathPenetration(path: readonly Point[], bound: Bound): number {
+  const edges = (p: Point) => [
+    p[0] - bound.minX,
+    bound.maxX - p[0],
+    p[1] - bound.minY,
+    bound.maxY - p[1],
+  ];
+  const depthAt = (from: number[], to: number[], t: number) => {
+    let depth = Infinity;
+    for (let k = 0; k < 4; k++) {
+      depth = Math.min(depth, from[k] + t * (to[k] - from[k]));
+    }
+    return depth;
+  };
+
+  let deepest = -Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const from = edges(path[i - 1]);
+    const to = edges(path[i]);
+    deepest = Math.max(deepest, depthAt(from, to, 0), depthAt(from, to, 1));
+    for (let m = 0; m < 4; m++) {
+      for (let n = m + 1; n < 4; n++) {
+        const slope = to[m] - from[m] - (to[n] - from[n]);
+        if (slope === 0) continue;
+        const t = (from[n] - from[m]) / slope;
+        if (t <= 0 || t >= 1) continue;
+        deepest = Math.max(deepest, depthAt(from, to, t));
+      }
+    }
+  }
+  return deepest;
+}
+
+/**
+ * Average advance width of one character, as a fraction of the font size.
+ *
+ * The engine measures no text: a canvas in the evaluation path would cost a
+ * `measureText` per label per pass, and would make the verdict depend on which
+ * fonts a host happens to have loaded — the same map would validate differently
+ * in a headless report and in a browser. So the width is DECLARED: `characters
+ * × fontSize × this`, the mean advance of a humanist sans (Inter's lowercase
+ * averages ~0.52 em, its capitals ~0.64, its spaces ~0.25).
+ *
+ * ## The precision, measured rather than claimed
+ *
+ * Against the real renderer at Inter 18 — the numbers a test in
+ * `integration-test/.../wardley-validation.spec.ts` prints and pins:
+ *
+ * | name | drawn | declared |
+ * | --- | --- | --- |
+ * | `CRM` | 41.0 | 27.0 (−34 %) |
+ * | `Customer` | 83.2 | 72.0 (−13 %) |
+ * | `Payment gateway` | 152.0 | 135.0 (−11 %) |
+ * | `Data centre` | 93.0 – 99.5 | 99.0 (+6 % … −1 %) |
+ *
+ * A third narrow at worst — an all-caps acronym, since capitals are the widest
+ * letters there are — and a few units WIDE at worst, on a name of narrow
+ * lowercase letters. (The drawn figure itself moves by a few percent with the
+ * web font's loading state, which is the other half of why the engine does not
+ * try to measure exactly.)
+ *
+ * Chosen on the low side of the mean because the residual error of a
+ * READABILITY rule belongs on the side of silence — and what is left of it on
+ * the wide side is a handful of units, the scale
+ * {@link ValidationRule.minPenetration} is calibrated on.
+ */
+const TEXT_ADVANCE_RATIO = 0.5;
+
+/**
+ * The box the TEXT of an element actually occupies, inside the box the element
+ * was created with.
+ *
+ * A text element is created at a width that says nothing about its content — a
+ * Wardley label is 120 to 200 units wide whether it reads "ERP" or "Customer
+ * relationship management" — so its box carries empty margin on the side its
+ * `textAlign` runs away from. Measuring that box makes the rule report things
+ * the user cannot see, which is exactly the report they stop believing.
+ *
+ * Narrowed on the horizontal only, and never widened: the height stored on the
+ * element IS the rendered block (the editor writes `lineHeight × lines` back on
+ * every edit), and the renderer lays the lines out from the TOP of the box.
+ * An element exposing no text is left exactly as it was, so a fixture or a
+ * host element that carries none is measured by its box as before; one whose
+ * text reads EMPTY occupies nothing, which is exactly what it draws.
+ */
+function textInkBound(el: unknown, bound: Bound): Bound {
+  const text = el as { text?: unknown; fontSize?: unknown; textAlign?: unknown };
+  if (typeof text.fontSize !== 'number' || text.text == null) return bound;
+
+  let longest = 0;
+  for (const line of String(text.text).split('\n')) {
+    longest = Math.max(longest, line.length);
+  }
+
+  const w = Math.min(bound.w, longest * text.fontSize * TEXT_ADVANCE_RATIO);
+  const x =
+    text.textAlign === 'center'
+      ? bound.x + (bound.w - w) / 2
+      : text.textAlign === 'right'
+        ? bound.maxX - w
+        : bound.x;
+  return new Bound(x, bound.y, w, bound.h);
 }
 
 function pathHitsBound(path: readonly Point[], bound: Bound): boolean {
@@ -1133,11 +1294,14 @@ function evaluateNoOverlap(
       return isA;
     });
     if (!matched) continue;
+    const kind = rule.roles[el.role]?.kind;
     subjects.push({
       id: el.id,
-      bound: el.elementBound,
-      // An `edge` role is measured along its path; everything else by bounds.
-      path: rule.roles[el.role]?.kind === 'edge' ? elementPath(el) : null,
+      // A `text` role is measured by the ink of its text, not by the box it was
+      // created at; everything else by its bounds.
+      bound: kind === 'text' ? textInkBound(el, el.elementBound) : el.elementBound,
+      // An `edge` role is measured along its path.
+      path: kind === 'edge' ? elementPath(el) : null,
       slots: filled,
     });
   }
@@ -1149,9 +1313,10 @@ function evaluateNoOverlap(
       ([i, j]) => (a.slots[i] && b.slots[j]) || (a.slots[j] && b.slots[i])
     );
 
+  const minPenetration = rule.minPenetration ?? 0;
   const found: Violation[] = [];
   const test = (a: OverlapSubject, b: OverlapSubject) => {
-    if (!declared(a, b) || !subjectsCollide(a, b)) return;
+    if (!declared(a, b) || !subjectsCollide(a, b, minPenetration)) return;
     // Sorted, so the same collision reads the same way every time — and the
     // frame is read off the SAME half whichever end the pair was reached from,
     // or a full pass and an incremental one could attribute one collision to

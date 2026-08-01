@@ -303,8 +303,31 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
 describe('W3 · overlapping nodes and labels', () => {
   const node = (id: string, x: number, y: number, role?: string) =>
     element(id, [x, y, 18, 18], role ?? WARDLEY_ROLE.component);
-  const label = (id: string, x: number, y: number) =>
-    element(id, [x, y, 120, 26], WARDLEY_ROLE.label);
+
+  /**
+   * A real label: the CREATION BOX the toolbox gives it (120 × 26, whatever it
+   * says) plus the words actually written in it. The engine reads the words —
+   * measuring the box is what the PO's acceptance caught.
+   */
+  const label = (
+    id: string,
+    x: number,
+    y: number,
+    { text = 'Customer', w = 120, align = 'left' } = {}
+  ) =>
+    ({
+      id,
+      role: WARDLEY_ROLE.label,
+      text,
+      fontSize: 18,
+      textAlign: align,
+      get elementBound() {
+        return new Bound(x, y, w, 26);
+      },
+    }) as unknown as GfxPrimitiveElementModel;
+
+  /** Where the ink of one of those labels ends, in model units. */
+  const inkWidth = (text: string) => text.length * 18 * 0.5;
 
   it('flags two nodes on top of each other, naming BOTH', () => {
     const violations = evaluate([
@@ -347,6 +370,112 @@ describe('W3 · overlapping nodes and labels', () => {
     ]);
   });
 
+  /**
+   * The two false positives the PO's acceptance brought back (01/08/2026), and
+   * the mistakes they must not take down with them.
+   *
+   * Both had the same cause: a label is created 120 to 200 units wide whatever
+   * it says, so the rule was measuring a box the user cannot see. Both are
+   * reproduced here as the acceptance saw them — a WIDE box with a SHORT name
+   * in it — so a change that brings the box geometry back fails loudly.
+   */
+  describe('measures the words, not the box they were created in', () => {
+    it('says nothing about a link crossing the empty half of a label box', () => {
+      // "ERP" left-aligned in a 120-wide box: 27 units of ink, 93 of margin.
+      const short = label('l1', 400, 394, { text: 'ERP' });
+      // A dependency running down the blank part of that box.
+      const link = edge('d1', WARDLEY_ROLE.dependency, [480, 300], [480, 500]);
+
+      expect(inkWidth('ERP')).toBeLessThan(80);
+      expect(evaluate([background(), link, short])).toEqual([]);
+    });
+
+    it('says nothing about two labels whose words do not touch', () => {
+      // Boxes overlap by 60 units; the words are 33 units apart.
+      const a = label('l1', 400, 394, { text: 'ERP' });
+      const b = label('l2', 460, 394, { text: 'Cloud' });
+
+      expect(evaluate([background(), a, b])).toEqual([]);
+    });
+
+    it('still flags a link drawn through the word itself', () => {
+      const short = label('l1', 400, 394, { text: 'ERP' });
+      const link = edge('d1', WARDLEY_ROLE.dependency, [410, 300], [410, 500]);
+
+      expect(idsOf(evaluate([background(), link, short]))).toEqual([W3]);
+    });
+
+    it('still flags two names written on top of each other', () => {
+      const a = label('l1', 400, 394);
+      const b = label('l2', 430, 394);
+
+      const violations = evaluate([background(), a, b]);
+      expect(idsOf(violations)).toEqual([W3]);
+      expect(violations[0].elementIds).toEqual(['l1', 'l2']);
+    });
+
+    it('reads the ink where the alignment puts it', () => {
+      // Same box, same word: only `textAlign` says which end of the box the
+      // 72 units of ink sit at, and the rule has to agree with the renderer.
+      const right = label('l1', 400, 394, { align: 'right' });
+      const overLeftEnd = edge('d1', WARDLEY_ROLE.dependency, [410, 300], [410, 500]);
+      const overRightEnd = edge('d2', WARDLEY_ROLE.dependency, [500, 300], [500, 500]);
+
+      expect(evaluate([background(), overLeftEnd, right])).toEqual([]);
+      expect(idsOf(evaluate([background(), overRightEnd, right]))).toEqual([W3]);
+    });
+
+    it('measures an element that exposes no text by its box, as before', () => {
+      // A host element, or a fixture, that carries no text at all: there is
+      // nothing to measure, so nothing is narrowed and nothing changes.
+      const boxOnly = element('l1', [400, 394, 120, 26], WARDLEY_ROLE.label);
+      const link = edge('d1', WARDLEY_ROLE.dependency, [480, 300], [480, 500]);
+
+      expect(idsOf(evaluate([background(), boxOnly, link]))).toEqual([W3]);
+    });
+  });
+
+  /**
+   * `minPenetration: 4` — the second half of the calibration. Not every touch
+   * is a collision: what counts is how far into each other the two go.
+   */
+  describe('ignores a collision shallower than the declared threshold', () => {
+    it('lets a link graze the edge of a name in silence', () => {
+      const name = label('l1', 400, 394);
+      // The label runs from y 394 to y 420. A link one unit under its top edge
+      // touches the box and strikes out nothing.
+      const grazing = edge('d1', WARDLEY_ROLE.dependency, [300, 395], [700, 395]);
+      const through = edge('d2', WARDLEY_ROLE.dependency, [300, 401], [700, 401]);
+
+      expect(evaluate([background(), grazing, name])).toEqual([]);
+      // Seven units in — past the threshold, into the letters.
+      expect(idsOf(evaluate([background(), through, name]))).toEqual([W3]);
+    });
+
+    it('lets two names share a hair of ink in silence', () => {
+      const a = label('l1', 400, 394, { text: 'ERP' });
+      // Three units of shared ink: the tail of one letter and the shoulder of
+      // the next, on a map 1600 units wide.
+      expect(
+        evaluate([background(), a, label('l2', 424, 394, { text: 'Cloud' })])
+      ).toEqual([]);
+      // Six, and the two words are genuinely one blur.
+      expect(
+        idsOf(evaluate([background(), a, label('l2', 421, 394, { text: 'Cloud' })]))
+      ).toEqual([W3]);
+    });
+
+    it('measures the DEPTH of a crossing, not the length of it', () => {
+      // A link running the whole length of a name but only one unit under its
+      // bottom edge crosses far more of it than a link that clips one corner —
+      // and is still not what makes a name unreadable.
+      const name = label('l1', 400, 394);
+      const under = edge('d1', WARDLEY_ROLE.dependency, [300, 419], [700, 419]);
+
+      expect(evaluate([background(), under, name])).toEqual([]);
+    });
+  });
+
   it('measures a link along its PATH, never by its bounding box', () => {
     // The box of this diagonal covers the whole quadrant; the line itself runs
     // nowhere near the label. Measuring boxes would indict every label on the
@@ -378,9 +507,16 @@ describe('W3 · overlapping nodes and labels', () => {
     expect(
       evaluate([background(), node('n1', 400, 400), node('n2', 418, 400)])
     ).toEqual([]);
-    // ...and one unit of real overlap is still an overlap.
+    // ...nor about one unit of real overlap. Since the PO's acceptance the
+    // rule declares `minPenetration: 4`: a shared hair between two 18-unit
+    // artefacts is a hand on a trackpad, not something anybody misreads.
     expect(
-      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 417, 400)]))
+      evaluate([background(), node('n1', 400, 400), node('n2', 417, 400)])
+    ).toEqual([]);
+    // Past the threshold it is an overlap again, and the family's own epsilon
+    // is what it always was.
+    expect(
+      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 413, 400)]))
     ).toEqual([W3]);
   });
 
