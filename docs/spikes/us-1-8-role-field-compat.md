@@ -28,7 +28,7 @@ Everything below concerns **gfx primitive elements only** — the ones stored as
 entries of that `elements` Y.Map. A surface also owns real _block_ children
 (`affine:frame`, `affine:image`, `affine:bookmark`, `affine:attachment`,
 `affine:embed-*`, `affine:edgeless-text` — see
-`packages/affine/blocks/surface/src/surface-model.ts:23-31`). Those are ordinary
+`packages/affine/blocks/surface/src/surface-model.ts:24-31`). Those are ordinary
 blocks with a zod-validated prop schema and an entirely different
 serialization path; **carrying `role` on them is out of scope for this spike and
 would need its own analysis.** If the product intent is "any object on the
