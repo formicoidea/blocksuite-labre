@@ -249,13 +249,27 @@ Jalon 0.
 | Deleted _element_       | The occurrence disappears from `collectPivotOccurrences` immediately. So that the record does not keep facets attributed to an occurrence that no longer exists, deletion publishes a retraction — ADR 0006 § 4.3.                                                          |
 | Undo / redo of a bind   | Reverts the `Y.Map` key like any other field, and re-publishes, because the publisher is driven by local Yjs transactions rather than by the command layer — ADR 0006 § 4.1.                                                                                                |
 
-**Two costs, stated honestly.**
+**One cost, stated honestly — the other has since been removed.**
 
-1. `@field()`'s `init()` writes the key into the `Y.Map` at element creation
-   even when the value is `undefined` (`field.ts:39-48`), so every newly created
-   surface element gains one key. Same cost already paid by `externalLink` and
-   `linkedDocId`; accepted for symmetry rather than introducing a second
-   storage mechanism.
+1. ~~Storage: one wasted `Y.Map` key per element.~~ **No longer true.** The
+   first draft priced `@field()`'s `init()` at one key per element even when the
+   value is `undefined`, and accepted it for symmetry with `externalLink` /
+   `linkedDocId`. PR [#71](https://github.com/formicoidea/blocksuite-labre/pull/71)
+   has since changed `init()` to return early on an `undefined` default
+   (`decorators/field.ts`), so an optional field stays **absent** from the
+   `Y.Map` until something actually assigns it. An element that never binds is
+   byte-identical to one created before the field existed — which is precisely
+   what lets the field ship with no version bump and no migration (§ 2). This
+   ADR **depends on that behaviour**: `pivotDocId` MUST keep an `undefined`
+   default and MUST NOT be given a non-`undefined` one, or the cost returns on
+   every brush stroke.
+
+   Note the corollary #71's review established: a key written and then cleared
+   leaves a tombstone (`yMap.has('pivotDocId') === true`, value `undefined`).
+   Absent and present-but-`undefined` are indistinguishable to the getter
+   (`field.ts:52-58`), so this is inert — but it means "unbind" does not restore
+   byte-identity, only semantic neutrality.
+
 2. **Undeclared keys are dropped by element-creation-from-props, not by load.**
    This ADR does not re-derive the analysis: it is the subject of spike
    [#67](https://github.com/formicoidea/blocksuite-labre/pull/67), whose

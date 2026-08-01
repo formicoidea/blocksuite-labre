@@ -123,6 +123,7 @@ vocabulary (and in this ADR's filename). The _type_ is `FrameworkId`, always.
 
 ```ts
 import type { FrameworkId } from '@labre/std'; // ADR 0008
+import type { RoleId, RoleDefs } from '@labre/std/gfx'; // shipped in PR #71
 
 /** '<framework>:<local>' — e.g. 'wardley:component', 'wardley:nature'. */
 export type QualifiedId = `${string}:${string}`;
@@ -141,11 +142,10 @@ export type TagValueId = string;
 
 **One `FrameworkId` may cover several element types.** `'cynefin-estuarine'` is
 a single flag and a single `FrameworkId`, but two element ctors — `cynefin` and
-`estuarine` (`element-model/index.ts:36-37`). The element-type → framework
-mapping used by `roleFromLegacyKind` (§ 5) is therefore **many-to-one**, and
-must be an explicit table rather than an identity function on the element type.
-Both `cynefin` and `estuarine` elements produce role ids namespaced
-`cynefin-estuarine:`.
+`estuarine` (`element-model/index.ts:36-37`). Any element-type → framework
+mapping is therefore **many-to-one** and must be an explicit table rather than
+an identity function on the element type. Both `cynefin` and `estuarine`
+elements produce role ids namespaced `cynefin-estuarine:`.
 
 ### 2. The defs format (TypeScript, and JSON by construction)
 
@@ -176,11 +176,12 @@ export type TagDef = {
   /** A closed list, or 'open' for free-text values. */
   values: TagValueDef[] | 'open';
   /**
-   * Roles this tag qualifies. '*' = every role of this framework.
-   * Inheritance applies: a tag on 'wardley:component' also applies to every
-   * role that (transitively) extends it.
+   * Role ids this tag qualifies. '*' = every role of this framework.
+   * Specialisation applies: a tag on 'wardley:component' also applies to every
+   * role whose `parent` chain reaches it — resolved with `roleIsA` (§ 2bis),
+   * against the framework's own RoleDefs.
    */
-  appliesTo: QualifiedId[] | '*';
+  appliesTo: RoleId[] | '*';
   /**
    * Advisory only. A missing "required" tag is reported by the rules engine
    * (wave 3); it NEVER blocks a gesture, a save, or a document load.
@@ -191,34 +192,92 @@ export type TagDef = {
   deprecated?: boolean;
 };
 
-export type RoleDef = {
-  /** '<framework>:<local>', e.g. 'wardley:component'. */
-  id: QualifiedId;
-  label: string;
-  description?: string;
-  /**
-   * Role inheritance. A rule (or a tag's `appliesTo`) stated on the parent
-   * applies to every descendant. Same framework only. Cycles are rejected.
-   */
-  extends?: QualifiedId;
-  deprecated?: boolean;
-};
-
 export type UniverseTagDefs = {
   /** Bumped only on a breaking change to THIS format. Currently 1. */
   formatVersion: 1;
   /**
-   * Unique id of this *pack*, not of the universe: several packs may extend
-   * the same universe (a base Wardley pack + a client's private extension).
+   * Unique id of this *pack*, not of the framework: several packs may extend
+   * the same framework (a base Wardley pack + a client's private extension).
    * Doubles as the DI variant — see § 3.
    */
   packId: string;
   framework: FrameworkId;
   label: string;
-  roles: RoleDef[];
   tags: TagDef[];
 };
 ```
+
+**`roles` is deliberately absent from this type.** Roles are not app-seeded and
+are not part of the DI mechanism — see § 2bis.
+
+### 2bis. Roles: `RoleDef` comes from the code, not from this ADR
+
+An earlier draft of this ADR declared its own `RoleDef` (with `label`,
+`extends`, `deprecated`) inside `UniverseTagDefs.roles`, resolved through the
+same DI registry as tags. **PR [#71](https://github.com/formicoidea/blocksuite-labre/pull/71)
+has since shipped a `RoleDef` for the same concept at the same layer, and it is
+the one that stands.** This ADR aligns rather than competing: the symbol lives
+in `packages/framework/std/src/gfx/model/surface/role.ts`, exported from
+`@labre/std/gfx`.
+
+```ts
+// packages/framework/std/src/gfx/model/surface/role.ts — SHIPPED in #71
+/** Namespaced role identifier, `<framework>:<role>`. */
+export type RoleId = string;
+
+/** Whether a role describes a node (a surface element) or an edge (a connector). */
+export type RoleKind = 'node' | 'edge';
+
+export interface RoleDef {
+  id: RoleId;
+  /** The role this one specialises, if any. */
+  parent?: RoleId;
+  kind: RoleKind;
+  /** i18n key of the human label; resolved by the host app. */
+  labelKey?: string;
+}
+
+/** A framework's role vocabulary, indexed by role id. */
+export type RoleDefs = Readonly<Record<RoleId, RoleDef>>;
+
+export function roleIsA(
+  roleId: RoleId | undefined,
+  ancestorId: RoleId,
+  defs: RoleDefs
+): boolean;
+```
+
+Three of #71's choices are adopted as improvements on the draft, not merely
+tolerated:
+
+- **`parent`, not `extends`.** `extends` is a reserved word and reads as TS
+  class inheritance, which is exactly what the vocabulary is not.
+- **`labelKey`, not `label`.** An i18n key resolved by the host beats a string
+  the library would have to pretend is already localized.
+- **`kind: 'node' | 'edge'`** is real information the draft simply lacked. It is
+  what lets a role vocabulary cover the Wardley `dependency` connector
+  alongside its nodes.
+
+**Roles are lib-side data modules, not a DI-seeded registry.** A framework
+declares its vocabulary in a plain module — `WARDLEY_ROLES` in
+`packages/affine/gfx/wardley/src/roles.ts`, a `Record<RoleId, RoleDef>` built
+from a literal array — with no identifier, no `getAll`, no `packId`. The
+specialisation walk is `roleIsA(roleId, ancestorId, defs)`, a bounded ancestor
+walk (32 hops, so a malformed `parent` cycle terminates instead of hanging),
+allocation-free because rules call it per element per rule.
+
+**The DI mechanism of § 3 therefore applies to TAG defs only.** Tags are
+app-seeded (a client's private taxonomy must be addable without a release);
+roles ship with the framework module that renders them. Consequently
+`UniverseRegistry` (§ 3) exposes tags only, and `roleChain` is dropped in favour
+of `roleIsA` — the predicate the rules engine actually needs.
+
+**Open question for the approver, not a prescription.** `RoleId = string` is
+looser than the draft's `QualifiedId` template literal, and `RoleDef` has no
+`deprecated`. Both are deliberate omissions in #71 and neither blocks anything:
+`deprecated` matters when an app can seed roles, which it cannot; and the
+persisted value must stay a plain `string` anyway (§ 4). Recorded here so the
+approver can ask for them rather than discovering they are missing.
 
 ### 3. Seeding: cumulative, idempotent, and never fatal
 
@@ -276,15 +335,19 @@ identical `packId`s replace**, and a host that re-registers on every render
 never throws and never grows the registry.
 
 ```ts
-/** Merged, validated, read-only view over `provider.getAll(UniverseTagDefsProvider)`. */
+/**
+ * Merged, validated, read-only view over
+ * `provider.getAll(UniverseTagDefsProvider)`. TAGS ONLY — roles are lib-side
+ * data modules (§ 2bis) and never pass through this registry.
+ */
 export interface UniverseRegistry {
   frameworks(): FrameworkId[];
-  roles(framework: FrameworkId): RoleDef[];
-  role(id: QualifiedId): RoleDef | undefined;
-  /** Self first, then ancestors. Empty if the role is unknown. */
-  roleChain(id: QualifiedId): RoleDef[];
-  /** Tags applying to a role, inheritance resolved, ordered. */
-  tagsForRole(id: QualifiedId): TagDef[];
+  /**
+   * Tags applying to a role, ordered. Role specialisation is resolved with
+   * `roleIsA` against the framework's own `RoleDefs`, which the caller
+   * supplies — the registry holds no role vocabulary of its own.
+   */
+  tagsForRole(roleId: RoleId, defs: RoleDefs): TagDef[];
   tag(id: QualifiedId): TagDef | undefined;
   /** Seed-time problems, for a host diagnostics panel. Never thrown. */
   issues(): UniverseDefIssue[];
@@ -296,8 +359,6 @@ export type UniverseDefIssue = {
     | 'invalid-id'
     | 'cross-framework-id'
     | 'duplicate-conflict'
-    | 'unknown-parent'
-    | 'inheritance-cycle'
     | 'unsupported-format-version';
   id?: string;
   message: string;
@@ -350,14 +411,23 @@ accessor role: string | undefined = undefined;
 /**
  * Level 3 — contextual qualification. A NESTED Y.Map, tag def id -> selected
  * value ids, e.g. { 'wardley:nature': ['wardley:nature/data'] }.
- * An absent key and an empty map are equivalent (both mean "unqualified").
- * See below for why this is a Y.Map and not a plain object.
+ * Absent, and an empty map, are equivalent (both mean "unqualified").
+ * The default is `undefined`, NOT `new Y.Map()`: the qualification writer
+ * creates the map on first use, so an element that is never qualified costs
+ * nothing (see Storage cost below). See further below for why this is a Y.Map
+ * and not a plain object.
  */
 @field()
-accessor tags: Y.Map<string[]> = new Y.Map();
+accessor tags: Y.Map<string[]> | undefined = undefined;
 ```
 
 `BaseElementProps` gains `role?: string` and `tags?: Y.Map<string[]>`.
+
+The `role` declaration above is **already shipped** by PR
+[#71](https://github.com/formicoidea/blocksuite-labre/pull/71) on
+`GfxPrimitiveElementModel` — flat string, `undefined` default, declared on the
+base class so that paste/duplicate preserve it for every element type. This ADR
+records the contract; it does not ask for that field to be written again.
 
 **Persisted types are `string`, not `QualifiedId`.** The template-literal type
 is a _seed-time_ validation aid. Persisted values must accept any string,
@@ -367,16 +437,23 @@ the persisted type would push that case toward a load-time failure, which
 Compatibility below forbids. This is also why `OccurrenceFacetPatch.role` is
 `string | undefined` in ADR 0006.
 
-**Storage cost, restated where the fields are introduced.** ADR 0005 §
-Compatibility prices `@field()`'s unconditional `init()` write
-(`field.ts:39-48`) at one extra `Y.Map` key per element, even when the value is
-`undefined`. These two fields add two more. On the **base class** that is three
-new keys on _every_ primitive — every brush stroke, every connector, on every
-document — plus, for `tags`, an empty nested `Y.Map` per element. Declaring on
-the base class is nonetheless the right call: it is what makes duplicate/paste
-preserve the fields for every element type at once (#67 recommendation #1). The
-alternative — declaring per framework element class — reintroduces the loss for
-plain shapes, which are precisely the elements the promotion ladder targets.
+**Storage cost: zero for unqualified elements, by construction.** An earlier
+draft priced these fields at three wasted `Y.Map` keys on _every_ primitive —
+every brush stroke, every connector — plus an empty nested `Y.Map`. That is no
+longer the case: PR
+[#71](https://github.com/formicoidea/blocksuite-labre/pull/71) changed
+`@field()`'s `init()` to return early on an `undefined` default
+(`decorators/field.ts`), so an optional field stays **absent** from the `Y.Map`
+until something assigns it.
+
+This ADR **depends on that behaviour**, which is why `tags` defaults to
+`undefined` rather than to an empty `Y.Map`. A non-`undefined` default on the
+base class would reinstate the whole cost on every element in every document.
+Declaring on the base class remains right — it is what makes duplicate/paste
+preserve the fields for every element type at once (#67 recommendation #1),
+where declaring per framework element class would reintroduce the loss for
+plain shapes, precisely the elements the promotion ladder targets. The cost of
+that choice is now nil for elements that do not use the fields.
 
 **Naming — session-architect arbitration, final call belongs to the approver.**
 Both names collide with existing vocabulary, and both are kept anyway:
@@ -457,19 +534,68 @@ bounds the added complexity:
   values — inside the envelope, and shallower than mindmap's
   `Y.Map<NodeDetail>`, which already ships.
 
-### 5. Relationship to the existing `kind` fields — additive, no migration
+### 5. Relationship to the existing `kind` fields — additive, no backfill
 
 - Existing `kind` fields stay exactly as they are and remain **authoritative for
   rendering and behaviour** (`connectable`, glyphs).
 - `role` is **authoritative for rules and qualification**.
-- The library ships a pure, side-effect-free projection —
-  `roleFromLegacyKind(elementType, kind): QualifiedId | undefined`, mapping
-  `('wardleyNode', 'component') → 'wardley:component'`,
-  `('edgyNode', 'outcome') → 'edgy:outcome'`, etc. It is a **read-time**
-  fallback used when `role` is unset. **It writes nothing.** There is no
-  migration, no backfill, no document rewrite.
-- New universes seeded by the app use `role` only; they have no `kind`.
+- New frameworks use `role` only; they have no `kind`.
 - Unifying `kind` into `role` is explicitly **out of scope** for Jalon 0.
+
+#### Co-writing `role` and `kind` at the creation site is PRESCRIBED
+
+An earlier draft of this ADR told reviewers to "treat any code writing `role`
+from `kind` as a bug", and specified a read-time projection
+`roleFromLegacyKind(elementType, kind)` that "writes nothing". **That clause was
+wrong and is withdrawn.** PRD Principe 8 requires the type-2 role to be posed
+**at the moment the artefact is selected**, and the toolbox selection _is_ that
+semantic gesture — not a legacy artefact to be projected away. Writing both
+fields from that one selection, as
+`packages/affine/gfx/wardley/src/actions.ts:172` does, is the prescribed
+behaviour:
+
+```ts
+return surface.addElement({
+  type: 'wardleyNode',
+  kind,
+  // Semantic identity (PF1): posted next to `kind`, which stays untouched
+  // and keeps driving the rendering.
+  role: WARDLEY_ROLE[kind],
+  // …
+});
+```
+
+What this ADR forbids is narrower, and is what the original clause was reaching
+for:
+
+1. **No post-hoc derivation or backfill.** Nothing may walk existing documents
+   computing `role` from `kind`. A document authored before the field existed
+   reads as neutral and stays neutral until a user gesture says otherwise. No
+   migration, no open-time conversion, no document rewrite.
+2. **No read-time fallback either.** `roleFromLegacyKind` is dropped entirely.
+   Absent `role` means **neutral**, full stop — not "infer one". A silent
+   inference would falsify "the role is the only semantic identity" and put
+   rules back in the business of reading shape types.
+
+#### The invariant that replaces it: one site writes both, or neither
+
+The real risk is not the write — it is that an element now carries **two sources
+of truth about what it is**, with no `@derive`, no `@watch`, and nothing else
+holding them together. Today no path mutates `kind` after creation: the only
+`updateElement` calls in `gfx/wardley` touch a label (`element-view.ts:97`) and
+background booleans (`toolbar/config.ts:178`), so no desynchronisation is
+reachable. The first "change this node's type" feature makes it reachable,
+silently — and `role` is the one that governs rules.
+
+**Invariant, binding on every framework module:** _any site that writes one of
+`kind` / `role` writes the other, in the same `updateElement` call, from the
+same user selection._ Mutating one without the other is the bug to catch in
+review. A future "change type" command satisfies this by posting both; it must
+**not** grow a watcher to keep them in sync, since a watcher is derivation by
+another name.
+
+`kind` and `role` are two projections of one selection, written together — not
+a source and a derivative.
 
 ### 6. The promotion ladder
 
@@ -568,15 +694,15 @@ already-collected PostHog data and must be sequenced first.
 
 ## Compatibility
 
-| Direction                      | Behaviour                                                                                                                                                                                                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Old document, new build        | No `role` key → reads `undefined`; no `tags` key → the accessor's `new Y.Map()` default applies, empty (`decorators/field.ts:52-58`). Level 1, exactly as today. Legacy `kind` still drives rendering; `roleFromLegacyKind` supplies a role at read time without writing. |
-| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. Dropped on the five element-creation-from-props paths — see ADR 0005 § Compatibility, same mechanism, same #67 analysis, same transitional window.                                      |
-| `tags` on an old build         | The nested `Y.Map` is preserved as an opaque Yjs type through load/save and through the snapshot transformer, which handles any `Y.Map`-valued prop generically (`surface-transformer.ts:23-38`). It is not special-cased for mindmap.                                    |
-| Concurrent qualification       | Per-tag merge: two users setting _different_ tag ids on the same element both keep their value. Same tag id → last-write-wins on that key's `string[]`.                                                                                                                   |
-| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.                                                           |
-| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                                                                                |
-| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                                                                            |
+| Direction                      | Behaviour                                                                                                                                                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old document, new build        | Neither key is present → both read `undefined` (`decorators/field.ts:52-58`). Level 1 / neutral, exactly as today. Legacy `kind` still drives rendering, and **no role is inferred from it** (§ 5).                                    |
+| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. Dropped on the five element-creation-from-props paths — see ADR 0005 § Compatibility, same mechanism, same #67 analysis, same transitional window.   |
+| `tags` on an old build         | The nested `Y.Map` is preserved as an opaque Yjs type through load/save and through the snapshot transformer, which handles any `Y.Map`-valued prop generically (`surface-transformer.ts:23-38`). It is not special-cased for mindmap. |
+| Concurrent qualification       | Per-tag merge: two users setting _different_ tag ids on the same element both keep their value. Same tag id → last-write-wins on that key's `string[]`.                                                                                |
+| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.                        |
+| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                                             |
+| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                                         |
 
 ### The flag invariant, checked against the real code
 
@@ -620,12 +746,14 @@ only._ Where this stands today:
 - Roles and tags are inert data to the framework. No renderer, hit-test or
   layout path reads them, so a bad pack can produce a confusing menu but cannot
   move, hide or corrupt a single shape.
-- Level 3 becomes the raw material for the wave-3 rules engine: `roleChain` +
+- Level 3 becomes the raw material for the wave-3 rules engine: `roleIsA` +
   `tagsForRole` give inherited rule scoping for free.
 - The repo now has two vocabularies for "what this element is" — legacy `kind`
-  and `role` — for as long as Jalon 0's additive posture holds. Reviewers should
-  treat any code writing `role` from `kind` (rather than projecting at read
-  time) as a bug.
+  and `role` — for as long as Jalon 0's additive posture holds. The review rule
+  is § 5's invariant: **a site that writes one writes the other**. What
+  reviewers must catch is a mutation of one alone, or a backfill of `role` over
+  existing documents — not the co-write at the creation site, which is
+  prescribed.
 - "Facet" now means two unrelated things in this codebase. Naming a new symbol
   `*Facet*` requires disambiguating against `EdgyFacetsElementModel`.
 - Rejected: storing defs in the document. It would make a board unopenable
