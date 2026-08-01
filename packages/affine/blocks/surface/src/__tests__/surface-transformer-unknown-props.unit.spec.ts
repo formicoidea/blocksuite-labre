@@ -66,7 +66,6 @@ function makeSurfaceModelStub() {
  * is not assignable to `Y.Map<unknown>`. The value type is irrelevant here —
  * this helper only integrates the map, it never reads through it.
  */
-// oxlint-disable-next-line @typescript-eslint/no-explicit-any
 function attach<T extends Y.Map<any>>(yMap: T): T {
   const doc = new Y.Doc();
   doc.getMap('probe').set('value', yMap);

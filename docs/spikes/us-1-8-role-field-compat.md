@@ -269,24 +269,26 @@ this.store.transact(() => {
 });
 ```
 
-Site 2 does not _destroy_ an existing `role` — it writes key by key and leaves
-untouched keys alone (that is why every edit path above is safe). What it loses
-is an _incoming_ `role` that the running client does not declare: the caller
-believes it wrote the field, and nothing did. It is a write-drop, not an
-overwrite.
+**Neither site has an explicit allow-list** — both assign every key of the
+incoming props object. But the assignment only reaches the Y.Map if the class
+declares that key as an `@field()` accessor. For an undeclared key,
+`elementModel[key] = …` creates an ordinary own property on the JavaScript
+object; the setter at `field.ts:71-78` never runs, and the value is never
+written to Yjs. The `@field()` accessor set is therefore a _de facto_
+allow-list, applied silently.
 
-There is no explicit allow-list here — every key of the incoming props object is
-assigned. **But the assignment only reaches the Y.Map if the class declares that
-key as an `@field()` accessor.** For an undeclared key, `elementModel.model[key] = …`
-creates an ordinary own property on the JavaScript object; `field.ts:71-78`
-never runs, and the value is never written to Yjs. The `@field()` accessor set is
-therefore a _de facto_ allow-list, applied silently.
+The two sites differ in what that costs. Site 2 does not _destroy_ an existing
+`role` — it writes key by key and leaves untouched keys alone, which is exactly
+why every edit path listed above is safe. What it loses is an _incoming_ `role`
+that the running client does not declare: the caller believes it wrote the
+field, and nothing did. It is a write-drop, not an overwrite. Site 1 is the
+one that produces a new element missing a role its source had.
 
 The behaviour is deceptive in the worst way: the pasted element looks correct in
 the running session (the plain JS property is readable in memory) and loses the
 role on the next reload, or immediately for every other peer.
 
-The affected user actions:
+The affected user actions are:
 
 | Action                                 | Site | Severity               | Entry point                                                                           |
 | -------------------------------------- | ---- | ---------------------- | ------------------------------------------------------------------------------------- |
