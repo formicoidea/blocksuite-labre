@@ -14,8 +14,10 @@ import {
 import type { ExtensionType } from '@labre/store';
 import { effect, signal } from '@preact/signals-core';
 
+import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
+import { ViolationTimeline } from './violation-timeline.js';
 
 /**
  * Minimal validation engine (PF5, wave 1).
@@ -327,10 +329,8 @@ export class ValidationManager extends InteractivityExtension {
 }
 
 /**
- * Where a mark is DRAWN for a set of violating elements: the bounds of the
- * outermost canvas group containing each, or the element's own bounds when it
- * is not grouped. One mark per anchor — several violating members of the same
- * group share a single bracket.
+ * Where a mark is DRAWN for one violating element: the outermost canvas group
+ * containing it, or the element itself when it is not grouped.
  *
  * A RENDERING decision, not a semantic one. The violation object keeps naming
  * the elements actually at fault (`elementIds`); the group never appears in it,
@@ -340,6 +340,21 @@ export class ValidationManager extends InteractivityExtension {
  *
  * Frames are deliberately skipped: they are group-compatible BLOCKS and appear
  * in the group chain, but framing a whole frame would be a wild over-reach.
+ */
+function anchorOf(elementId: string, surface: SurfaceBlockModel) {
+  const element = surface.getElementById(elementId);
+  if (!element) return null;
+
+  // `getGroups` walks outward, so the last CANVAS group is the outermost one.
+  const canvasGroups = surface
+    .getGroups(elementId)
+    .filter(group => group instanceof GfxGroupLikeElementModel);
+  return canvasGroups[canvasGroups.length - 1] ?? element;
+}
+
+/**
+ * The bounds to mark for a set of violating elements — one per anchor, so
+ * several violating members of the same group share a single bracket.
  *
  * Pure and stateless, so the mark follows a group that moves and falls back to
  * the element the moment the group is dissolved, with nothing to invalidate.
@@ -351,19 +366,89 @@ export function resolveMarkAnchors(
   const anchors = new Map<string, Bound>();
 
   for (const id of elementIds) {
-    const element = surface.getElementById(id);
-    if (!element) continue;
-
-    // `getGroups` walks outward, so the last CANVAS group is the outermost one.
-    const canvasGroups = surface
-      .getGroups(id)
-      .filter(group => group instanceof GfxGroupLikeElementModel);
-    const anchor = canvasGroups[canvasGroups.length - 1] ?? element;
-
+    const anchor = anchorOf(id, surface);
+    if (!anchor) continue;
     if (!anchors.has(anchor.id)) anchors.set(anchor.id, anchor.elementBound);
   }
 
   return Array.from(anchors.values());
+}
+
+/**
+ * One anchor and everything reported against it: where to draw, and what the
+ * detail bubble has to list when the badge on it is clicked.
+ */
+export interface ViolationAnchor {
+  /** The element the mark is drawn on — the outermost group, or the element. */
+  id: string;
+  bound: Bound;
+  violations: Violation[];
+}
+
+/**
+ * {@link resolveMarkAnchors} with the violations kept alongside each anchor.
+ *
+ * Same grouping, same order, same "resolve at paint time" contract — this is
+ * the shape the badge and the bubble need, because a badge speaks for every
+ * violation sharing its anchor (a Wardley component group whose node breaks two
+ * rules gets ONE badge listing both).
+ */
+export function resolveViolationAnchors(
+  violations: readonly Violation[],
+  surface: SurfaceBlockModel
+): ViolationAnchor[] {
+  const anchors = new Map<string, ViolationAnchor>();
+
+  for (const violation of violations) {
+    for (const id of violation.elementIds) {
+      const anchor = anchorOf(id, surface);
+      if (!anchor) continue;
+
+      let entry = anchors.get(anchor.id);
+      if (!entry) {
+        entry = { id: anchor.id, bound: anchor.elementBound, violations: [] };
+        anchors.set(anchor.id, entry);
+      }
+      // A single violation naming two members of one group resolves to that
+      // group twice and must be recorded once. Two SEPARATE violations of the
+      // same rule stay separate here — collapsing what is DISPLAYED is the
+      // bubble's call, not this function's.
+      if (!entry.violations.includes(violation)) {
+        entry.violations.push(violation);
+      }
+    }
+  }
+
+  return Array.from(anchors.values());
+}
+
+/**
+ * Violations the drawing user is meant to SEE. `audit` is collected for
+ * reporting and stays invisible on the canvas — that is what the severity
+ * means (see {@link ViolationSeverity}), and the UI is the only place that can
+ * honour it: the engine reports everything, unfiltered, to the host panel.
+ */
+export function userFacingViolations(
+  violations: readonly Violation[]
+): Violation[] {
+  return violations.filter(violation => violation.severity !== 'audit');
+}
+
+/**
+ * One violation per RULE, first occurrence wins.
+ *
+ * What a detail bubble renders is rule-level — a label, a severity, a hint —
+ * so two components of the same group both drawn off the map, which are two
+ * violations, would produce the same sentence twice. The engine is right to
+ * report both (it names the elements); a list that repeats itself is just
+ * noise. Which member moved is on the canvas, not in a list.
+ */
+export function distinctByRule(violations: readonly Violation[]): Violation[] {
+  const byRule = new Map<string, Violation>();
+  for (const violation of violations) {
+    if (!byRule.has(violation.ruleId)) byRule.set(violation.ruleId, violation);
+  }
+  return Array.from(byRule.values());
 }
 
 /**
@@ -374,18 +459,28 @@ export function resolveMarkAnchors(
  * that drifted off the map.
  */
 const MARK_CORNER = 10;
-const MARK_PADDING = 6;
 const MARK_LINE_WIDTH = 2;
-const MARK_COLOR = '#f5a623';
 
 /**
- * PF7, minimal affordance: a discreet amber bracket around each element in
- * violation. An overlay rather than a renderer change — it touches no element
- * model, writes nothing to the document, creates no undo entry, and disappears
- * with the rule that produced it.
+ * Gap between the anchor's bounds and the mark, in screen pixels. Exported
+ * because the badge sits ON the bracket's top-right corner and has to use the
+ * same gap, in DOM, to land there.
+ */
+export const VIOLATION_MARK_PADDING = 6;
+
+/** The one amber the affordance is drawn in, canvas and DOM alike. */
+export const VIOLATION_MARK_COLOR = '#f5a623';
+
+/**
+ * The EPHEMERAL half of the PF7 affordance: amber corner brackets that flash on
+ * the anchor of a violation the moment it appears, hold for a few seconds, then
+ * fade out (see {@link ViolationTimeline}). What stays behind afterwards is the
+ * badge — `affine-violation-detail-widget`, a DOM sibling of this overlay.
  *
- * Deliberately mute: no text, no icon, no panel. Naming the problem is wave 2's
- * job; wave 1 only has to make the element findable.
+ * An overlay rather than a renderer change: it touches no element model, writes
+ * nothing to the document, creates no undo entry, and disappears with the rule
+ * that produced it. The fade is overlay state too — nothing about "when did I
+ * first see this" ever reaches the document.
  *
  * The mark is anchored on the outermost enclosing canvas group rather than on
  * the bare element — see {@link resolveMarkAnchors}. Evaluation is untouched by
@@ -396,30 +491,99 @@ export class ValidationOverlay extends Overlay {
   static override overlayName = 'validation';
 
   /**
-   * Ids of the indicted elements — NOT their bounds, and not their groups
-   * either. Both are resolved at paint time so the mark tracks what it accuses:
+   * The violations themselves — NOT their bounds, and not their groups either.
+   * Both are resolved at paint time so the mark tracks what it accuses:
    * evaluation is debounced, the renderer is not, so a frozen snapshot would
    * leave the bracket behind at the drag's starting point until 120 ms after
    * the user let go — and a dissolved group would keep framing nothing.
    */
-  private _elementIds: string[] = [];
+  private _violations: readonly Violation[] = [];
+
+  private readonly _timeline = new ViolationTimeline();
+
+  /** Armed only while something is still fading. */
+  private _frame: number | null = null;
+
+  /**
+   * Whether the renderer this overlay paints into is gone.
+   *
+   * It matters because the two ends of the affordance are on different
+   * lifecycles: the overlay dies with the surface COMPONENT (the renderer
+   * disposes it), while {@link ValidationManager} lives on the gfx scope and
+   * keeps its subscriptions on the surface MODEL, which outlives the component.
+   * So an evaluation can perfectly well land here after teardown — switch to
+   * page mode, edit the doc — and without this flag it would arm an animation
+   * loop repainting a dead renderer sixty times a second for three seconds.
+   *
+   * Not permanent: the overlay is a DI singleton and is handed a new renderer
+   * if the surface comes back.
+   */
+  private _detached = false;
+
+  private readonly _onFrame = () => {
+    this._frame = null;
+    this._schedule();
+  };
+
+  /**
+   * Repaint, and keep repainting for as long as a mark is inside its window.
+   *
+   * This is the only clock the affordance runs, and it stops on its own: a
+   * board with no violation, or whose violations have all settled, requests no
+   * animation frame at all.
+   */
+  private _schedule() {
+    if (this._detached) return;
+    this.refresh();
+    if (this._frame !== null) return;
+    if (!this._timeline.isAnimating(performance.now())) return;
+    this._frame = requestAnimationFrame(this._onFrame);
+  }
+
+  private _cancelFrame() {
+    if (this._frame === null) return;
+    cancelAnimationFrame(this._frame);
+    this._frame = null;
+  }
+
+  private _forget() {
+    this._cancelFrame();
+    this._violations = [];
+    this._timeline.clear();
+  }
 
   setViolations(violations: readonly Violation[]) {
-    const faulty = new Set<string>();
-    for (const violation of violations) {
-      for (const id of violation.elementIds) faulty.add(id);
-    }
-    this._elementIds = Array.from(faulty);
-    this.refresh();
+    if (this._detached) return;
+    this._violations = userFacingViolations(violations);
+    this._timeline.sync(this._violations, performance.now());
+    this._schedule();
+  }
+
+  override setRenderer(renderer: CanvasRenderer | null) {
+    this._detached = renderer === null;
+    super.setRenderer(renderer);
   }
 
   override clear() {
-    this._elementIds = [];
+    this._forget();
     super.clear();
   }
 
+  override dispose() {
+    this._detached = true;
+    this._forget();
+    super.dispose();
+  }
+
   override render(ctx: CanvasRenderingContext2D, _rc: RoughCanvas): void {
-    if (this._elementIds.length === 0) return;
+    if (this._violations.length === 0) return;
+    const now = performance.now();
+    // Everything has settled and the badges have it: the cheapest possible
+    // exit, before a single group chain is walked. The canvas repaints on
+    // every pan, zoom and edit — this overlay must cost nothing between the
+    // rare moments it has something to say.
+    if (!this._timeline.isAnimating(now)) return;
+
     const surface = this.gfx.surface;
     if (!surface) return;
 
@@ -427,17 +591,29 @@ export class ValidationOverlay extends Overlay {
     // size on screen at any zoom level.
     const zoom = this.gfx.viewport.zoom;
     const corner = MARK_CORNER / zoom;
-    const padding = MARK_PADDING / zoom;
+    const padding = VIOLATION_MARK_PADDING / zoom;
 
     ctx.save();
-    ctx.strokeStyle = MARK_COLOR;
+    ctx.strokeStyle = VIOLATION_MARK_COLOR;
     ctx.lineWidth = MARK_LINE_WIDTH / zoom;
-    ctx.beginPath();
-    for (const bound of resolveMarkAnchors(this._elementIds, surface)) {
+
+    for (const anchor of resolveViolationAnchors(this._violations, surface)) {
+      // One anchor can carry several violations of different ages: the loudest
+      // wins, so a fresh finding is not muted by an old one sharing its group.
+      let emphasis = 0;
+      for (const violation of anchor.violations) {
+        emphasis = Math.max(emphasis, this._timeline.emphasis(violation, now));
+      }
+      if (emphasis <= 0) continue;
+
+      const { bound } = anchor;
       const x = bound.x - padding;
       const y = bound.y - padding;
       const maxX = bound.maxX + padding;
       const maxY = bound.maxY + padding;
+
+      ctx.globalAlpha = emphasis;
+      ctx.beginPath();
       // Four corner brackets: reads as an annotation, not as a selection box.
       ctx.moveTo(x + corner, y);
       ctx.lineTo(x, y);
@@ -451,8 +627,9 @@ export class ValidationOverlay extends Overlay {
       ctx.moveTo(maxX, maxY - corner);
       ctx.lineTo(maxX, maxY);
       ctx.lineTo(maxX - corner, maxY);
+      ctx.stroke();
     }
-    ctx.stroke();
+
     ctx.restore();
   }
 }
