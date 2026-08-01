@@ -42,7 +42,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/wardley',
     telemetry: 'wardley',
     info: 'wardleyFramework',
-    extensions: [{ ext: 'WardleyViewExtension', flag: 'wardley' }],
+    extensions: [
+      // always-on: placed Wardley maps must paint even with the button off
+      { ext: 'WardleyRenderViewExtension' },
+      { ext: 'WardleyViewExtension', flag: 'wardley' },
+    ],
     // The framework contributes shortcut-manifest entries: stripped from
     // core's shortcuts.ts; the host composes with the bundle's own export.
     shortcuts: true,
@@ -53,7 +57,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/edgy',
     telemetry: 'edgy',
     info: 'edgyFramework',
-    extensions: [{ ext: 'EdgyViewExtension', flag: 'edgy' }],
+    extensions: [
+      // always-on: placed EDGY boards must paint even with the button off
+      { ext: 'EdgyRenderViewExtension' },
+      { ext: 'EdgyViewExtension', flag: 'edgy' },
+    ],
   },
   {
     out: 'framework-bpmn',
@@ -61,7 +69,11 @@ const FRAMEWORKS = [
     dir: 'affine/gfx/bpmn',
     telemetry: 'bpmn',
     info: 'bpmnFramework',
-    extensions: [{ ext: 'BpmnViewExtension', flag: 'bpmn' }],
+    extensions: [
+      // always-on: placed BPMN pools must paint even with the button off
+      { ext: 'BpmnRenderViewExtension' },
+      { ext: 'BpmnViewExtension', flag: 'bpmn' },
+    ],
   },
   {
     out: 'framework-cynefin',
@@ -70,6 +82,9 @@ const FRAMEWORKS = [
     telemetry: 'cynefin',
     info: 'cynefinFramework',
     extensions: [
+      // always-on: placed Cynefin / Estuarine frames must paint even with the
+      // button off
+      { ext: 'CynefinEstuarineRenderViewExtension' },
       { ext: 'CynefinEstuarineViewExtension', flag: 'cynefin-estuarine' },
     ],
   },

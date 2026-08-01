@@ -31,51 +31,51 @@ import { LinkStoreExtension } from '@labre/affine-inline-link/store';
 import { InlinePresetStoreExtension } from '@labre/affine-inline-preset/store';
 import { ReferenceStoreExtension } from '@labre/affine-inline-reference/store';
 
-import {
-  type BlockFlags,
-  isBlockEnabled,
-  type OptionalBlock,
-} from '../flags.js';
+import type { BlockFlags } from '../flags.js';
 
 /**
- * Store extensions, honoring block flags.
- * Omitted flags default to enabled. See {@link BlockFlags}.
+ * Store extensions.
+ *
+ * Registered UNCONDITIONALLY: the store side (models, adapters, transformers)
+ * is what makes a document readable and round-trippable, and a flag must never
+ * gate that (see {@link BlockFlags} and `docs/adr/0009`). The `flags` parameter
+ * is kept for source compatibility with callers written against the previous
+ * contract, and is deliberately ignored.
  */
-export function getInternalStoreExtensions(flags?: BlockFlags) {
-  const on = (block: OptionalBlock) => isBlockEnabled(flags, block);
+export function getInternalStoreExtensions(_flags?: BlockFlags) {
   return [
     FoundationStoreExtension,
 
-    ...(on('attachment') ? [AttachmentStoreExtension] : []),
-    ...(on('bookmark') ? [BookmarkStoreExtension] : []),
-    ...(on('callout') ? [CalloutStoreExtension] : []),
-    ...(on('code') ? [CodeStoreExtension] : []),
-    ...(on('data-view') ? [DataViewStoreExtension] : []),
-    ...(on('database') ? [DatabaseStoreExtension] : []),
-    ...(on('divider') ? [DividerStoreExtension] : []),
-    ...(on('edgeless-text') ? [EdgelessTextStoreExtension] : []),
-    ...(on('embed') ? [EmbedStoreExtension] : []),
-    ...(on('embed-doc') ? [EmbedDocStoreExtension] : []),
-    ...(on('frame') ? [FrameStoreExtension] : []),
-    ...(on('image') ? [ImageStoreExtension] : []),
-    ...(on('latex') ? [LatexStoreExtension] : []),
-    ...(on('list') ? [ListStoreExtension] : []),
+    AttachmentStoreExtension,
+    BookmarkStoreExtension,
+    CalloutStoreExtension,
+    CodeStoreExtension,
+    DataViewStoreExtension,
+    DatabaseStoreExtension,
+    DividerStoreExtension,
+    EdgelessTextStoreExtension,
+    EmbedStoreExtension,
+    EmbedDocStoreExtension,
+    FrameStoreExtension,
+    ImageStoreExtension,
+    LatexStoreExtension,
+    ListStoreExtension,
     NoteStoreExtension,
     ParagraphStoreExtension,
-    ...(on('surface-ref') ? [SurfaceRefStoreExtension] : []),
-    ...(on('table') ? [TableStoreExtension] : []),
+    SurfaceRefStoreExtension,
+    TableStoreExtension,
     SurfaceStoreExtension,
     RootStoreExtension,
 
     FootnoteStoreExtension,
     LinkStoreExtension,
     ReferenceStoreExtension,
-    ...(on('latex') ? [InlineLatexStoreExtension] : []),
+    InlineLatexStoreExtension,
     InlinePresetStoreExtension,
 
-    ...(on('brush') ? [BrushStoreExtension] : []),
+    BrushStoreExtension,
     ShapeStoreExtension,
-    ...(on('mindmap') ? [MindmapStoreExtension] : []),
+    MindmapStoreExtension,
     ConnectorStoreExtension,
     GroupStoreExtension,
     TextStoreExtension,

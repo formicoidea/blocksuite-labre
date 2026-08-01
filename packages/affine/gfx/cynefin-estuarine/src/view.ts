@@ -17,14 +17,19 @@ import {
 } from './templates';
 import { cynefinEstuarineSeniorTool } from './toolbar/senior-tool';
 
-export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
-  override name = 'affine-cynefin-estuarine-gfx';
+/**
+ * Cynefin / Estuarine rendering — ALWAYS registered, independent of any flag.
+ * Disabling `cynefin-estuarine` hides only the creation tooling (see
+ * {@link CynefinEstuarineViewExtension}); frames already drawn must still
+ * paint, stay selectable, stay editable and keep their contextual toolbar. See
+ * `docs/adr/0009`.
+ */
+export class CynefinEstuarineRenderViewExtension extends ViewExtensionProvider {
+  override name = 'affine-cynefin-estuarine-render-gfx';
 
   override effect(): void {
     super.effect();
     effects();
-    extendTemplateCategory(cynefinTemplateCategory);
-    extendTemplateCategory(estuarineTemplateCategory);
   }
 
   override setup(context: ViewExtensionContext) {
@@ -36,9 +41,29 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(CynefinInteraction);
       context.register(EstuarineInteraction);
-      context.register(cynefinEstuarineSeniorTool);
       context.register(cynefinToolbarExtension);
       context.register(estuarineToolbarExtension);
+    }
+  }
+}
+
+/**
+ * Cynefin / Estuarine creation tooling — flag-gated (`cynefin-estuarine`): the
+ * senior toolbar button and both templates categories.
+ */
+export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
+  override name = 'affine-cynefin-estuarine-gfx';
+
+  override effect(): void {
+    super.effect();
+    extendTemplateCategory(cynefinTemplateCategory);
+    extendTemplateCategory(estuarineTemplateCategory);
+  }
+
+  override setup(context: ViewExtensionContext) {
+    super.setup(context);
+    if (this.isEdgeless(context.scope)) {
+      context.register(cynefinEstuarineSeniorTool);
     }
   }
 }
