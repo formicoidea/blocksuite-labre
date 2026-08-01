@@ -8,3 +8,6 @@ export * from './legacy-slot-extension';
 export * from './query';
 export * from './spotlight';
 export * from './surface-middleware';
+export * from './validation';
+export * from './violation-detail-widget';
+export * from './violation-timeline';

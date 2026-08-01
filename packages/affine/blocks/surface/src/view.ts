@@ -11,6 +11,9 @@ import {
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
   SpotlightManager,
+  ValidationManager,
+  ValidationOverlay,
+  violationDetailWidget,
 } from './extensions';
 import { ExportManagerExtension } from './extensions/export-manager/export-manager';
 import { DefaultTool } from './tool/default-tool';
@@ -39,6 +42,14 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       context.register(EditPropsMiddlewareBuilder);
       // No-op until a framework registers a SpotlightHostExtension.
       context.register(SpotlightManager);
+      // No-op until a framework registers a ValidationRuleExtension — which
+      // only its FLAG-GATED view extension does, so a disabled framework
+      // costs no evaluation at all.
+      context.register(ValidationManager);
+      context.register(ValidationOverlay);
+      // The persistent badge and its detail bubble. Renders nothing until the
+      // manager reports a violation, which it cannot do without a rule.
+      context.register(violationDetailWidget);
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

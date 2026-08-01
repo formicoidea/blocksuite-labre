@@ -4,4 +4,5 @@ export {
   type WardleyRole,
   type WardleyRoleId,
 } from './roles';
+export { WARDLEY_RULES } from './rules';
 export { wardleyShortcuts } from './shortcuts';
