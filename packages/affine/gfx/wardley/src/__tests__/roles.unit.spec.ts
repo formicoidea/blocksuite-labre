@@ -1,3 +1,4 @@
+import { WardleyNodeElementModel } from '@labre/affine-model';
 import { roleIsA } from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -8,7 +9,9 @@ import {
   createWardleyNode,
   createWardleyPipeline,
 } from '../actions';
+import { createWardleyLegend } from '../legend';
 import { WARDLEY_ROLE, WARDLEY_ROLES } from '../roles';
+import { wardleyTemplateCategory as wardleyTemplates } from '../templates';
 
 type Added = Record<string, unknown>;
 
@@ -151,5 +154,78 @@ describe('wardley creation sites post the role', () => {
     const arrow = fakeGfx();
     activateWardleyConnector(arrow.gfx, 'arrow');
     expect(arrow.lastToolOptions()?.role).toBeUndefined();
+  });
+});
+
+describe('built-in templates are typed like hand-drawn maps', () => {
+  /** Every surface element of every Wardley template, flattened. */
+  type Snapshot = {
+    blocks: { children: { props: { elements: Record<string, never> } }[] };
+  };
+
+  const templateElements = () =>
+    (wardleyTemplates.templates as { content: unknown }[]).flatMap(t =>
+      Object.values((t.content as Snapshot).blocks.children[0].props.elements)
+    ) as Record<string, unknown>[];
+
+  it('gives every template wardleyNode the role matching its kind', () => {
+    const nodes = templateElements().filter(el => el.type === 'wardleyNode');
+
+    // Guard against the selector silently matching nothing.
+    expect(nodes.length).toBeGreaterThan(10);
+    for (const node of nodes) {
+      expect(node.role).toBe(
+        WARDLEY_ROLE[node.kind as keyof typeof WARDLEY_ROLE]
+      );
+    }
+  });
+
+  it('types template dependency links but not evolution arrows', () => {
+    const connectors = templateElements().filter(
+      el => el.type === 'connector'
+    );
+    const roles = new Set(connectors.map(c => c.role));
+
+    expect(connectors.length).toBeGreaterThan(10);
+    // Only two possible answers: a dependency, or nothing at all.
+    expect([...roles].sort()).toEqual([WARDLEY_ROLE.dependency, undefined]);
+  });
+});
+
+describe('legend glyphs stay neutral', () => {
+  it('creates real wardleyNode elements without any role', () => {
+    const added: Added[] = [];
+    // `instanceof` is what the legend uses to detect what to describe.
+    // `kind` as an own data property, shadowing the `@field` accessor (which
+    // would need a real surface).
+    const present = (['component', 'market'] as const).map(kind =>
+      Object.create(WardleyNodeElementModel.prototype, {
+        kind: { value: kind },
+      })
+    );
+
+    const gfx = {
+      surface: { addElement: (props: Added) => (added.push(props), 'x') },
+      getElementsByBound: () => present,
+      selection: { set: vi.fn() },
+    };
+    const std = {
+      get: () => gfx,
+      store: { captureSync: vi.fn() },
+      command: { exec: () => [{}, { groupId: 'g' }] },
+    };
+    const bg = { deserializedXYWH: [0, 0, 1600, 900], xywh: '[0,0,1600,900]' };
+
+    createWardleyLegend(std as never, bg as never);
+
+    const nodes = added.filter(el => el.type === 'wardleyNode');
+    // The legend really does build wardley nodes…
+    expect(nodes.length).toBeGreaterThan(0);
+    // …and NONE of them is a map artefact: a legend documents the map, it is
+    // not part of it. Typing these would add phantom components/markets to
+    // every rule written against roles.
+    for (const el of added) {
+      expect(el).not.toHaveProperty('role');
+    }
   });
 });

@@ -32,9 +32,22 @@ field default is no longer written into the Y.Map at creation, so a newly
 created element that does not use an optional field is byte-identical to one
 authored before that field existed.
 
-Known gaps, deliberately left for the milestone that consumes roles: connectors
-drawn through quick-connect (the element-toolbar arrow) or auto-complete, and
-the built-in Wardley map templates, still produce neutral edges/nodes.
+The built-in Wardley templates (map presets and toolbox presets alike) are
+typed too, so a map started from a preset validates exactly like a hand-drawn
+one. Legend glyphs stay deliberately neutral: a legend documents the map, it is
+not part of it, and typing its glyphs would add phantom artefacts to any rule.
+
+Known gaps, left for the milestone that consumes roles — both need a
+framework-level "default edge role" that does not exist yet:
+
+- **Quick-connect** (the draw-connector arrow on the element toolbar) produces
+  a neutral edge: it activates the connector tool without a role.
+- **Auto-complete** is asymmetric, which is the more misleading of the two: the
+  auto-completed NODE is a serialize/re-create copy of its source, so it does
+  inherit `wardley:component`, while the connector that joins them is created
+  directly and stays neutral. The result is two correctly typed components with
+  an untyped edge between them — a shape a dependency rule would read as "no
+  dependency declared" rather than as a missing annotation.
 
 RELEASE ORDER CONSTRAINT — read before shipping anything that depends on roles.
 

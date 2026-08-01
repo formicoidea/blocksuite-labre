@@ -59,6 +59,9 @@ function dot(e: number, v: number, sw: number, stroke = NODE_STROKE, fill = NODE
   return {
     type: 'wardleyNode',
     kind: 'component',
+    // Templates carry the same semantic roles as the toolbox, so a map started
+    // from a preset validates exactly like a hand-drawn one.
+    role: WARDLEY_ROLE.component,
     shapeType: 'ellipse',
     filled: true,
     fillColor: fill,
@@ -78,6 +81,7 @@ function stake(e: number, v: number) {
   return {
     type: 'wardleyNode',
     kind: 'anchor',
+    role: WARDLEY_ROLE.anchor,
     shapeType: 'ellipse',
     filled: true,
     fillColor: NODE_FILL,
@@ -113,6 +117,9 @@ function link(a: string, b: string, o: { red?: boolean; arrow?: boolean } = {}) 
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
+    // An arrow is an evolution movement (an annotation), not a dependency —
+    // same split as the two Wardley connector tools.
+    role: o.arrow ? undefined : WARDLEY_ROLE.dependency,
     stroke: o.red ? WARDLEY_RED : LINK_GREY,
     strokeStyle: o.arrow ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
