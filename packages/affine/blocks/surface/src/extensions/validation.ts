@@ -1,7 +1,6 @@
 import { createIdentifier } from '@labre/global/di';
 import type { Bound } from '@labre/global/gfx';
 import type {
-  GfxPrimitiveElementModel,
   RoleDefs,
   RoleId,
   SurfaceBlockModel,
@@ -9,6 +8,7 @@ import type {
 } from '@labre/std/gfx';
 import {
   GfxGroupLikeElementModel,
+  GfxPrimitiveElementModel,
   InteractivityExtension,
   roleIsA,
 } from '@labre/std/gfx';
@@ -616,6 +616,67 @@ export function revokeException(
   element.clearField('validationExceptions');
 }
 
+/** One stored exception, and the element it is actually written on. */
+export interface AnchoredException {
+  /** The element carrying the exception — a group member, or the element. */
+  element: GfxPrimitiveElementModel;
+  ruleId: string;
+}
+
+/**
+ * The exceptions `element` ANSWERS FOR, i.e. the ones a menu on it should be
+ * able to revoke.
+ *
+ * Same rule the canvas mark follows ({@link anchorOf}): an exception is
+ * answered for by the outermost canvas group containing the element that
+ * carries it, or by that element when it is not grouped. So the entry lives on
+ * the whole Wardley component rather than on the bare node inside it, moves
+ * down to the element the moment the group is dissolved, and appears on a
+ * framework background for the map-wide arbitration it carries.
+ *
+ * Reads STORED exceptions, not current violations: an exception outlives the
+ * violation that prompted it (move the component back onto the map and the
+ * finding goes, the arbitration stays), and it is the arbitration the user is
+ * asking to take back.
+ */
+export function exceptionsAnchoredOn(
+  element: GfxPrimitiveElementModel,
+  surface: SurfaceBlockModel
+): AnchoredException[] {
+  const candidates: GfxPrimitiveElementModel[] = [element];
+  if (element instanceof GfxGroupLikeElementModel) {
+    for (const descendant of element.descendantElements) {
+      if (descendant instanceof GfxPrimitiveElementModel) {
+        candidates.push(descendant);
+      }
+    }
+  }
+
+  const anchored: AnchoredException[] = [];
+  for (const candidate of candidates) {
+    const exceptions = elementExceptions(candidate);
+    if (exceptions.length === 0) continue;
+    // Anything whose anchor is somebody else belongs to somebody else's menu —
+    // that is what keeps the entry on the outermost group and off its members.
+    if (anchorOf(candidate.id, surface)?.id !== element.id) continue;
+    for (const exception of exceptions) {
+      if (exception?.ruleId) {
+        anchored.push({ element: candidate, ruleId: exception.ruleId });
+      }
+    }
+  }
+  return anchored;
+}
+
+/** One rule's arbitration taken back, as reported to telemetry. */
+export interface RevokedException {
+  ruleId: string;
+  framework: string;
+  scope: ExemptionScope;
+  /** How many elements the single gesture wrote to. */
+  elementCount: number;
+}
+
 /** A framework registers its rules here; nothing else registers rules. */
 export const ValidationRuleIdentifier =
   createIdentifier<ValidationRule>('ValidationRule');
@@ -1039,6 +1100,67 @@ export class ValidationManager extends InteractivityExtension {
 
     this.evaluate();
     return targets;
+  }
+
+  /**
+   * The exceptions on `element` that can still be taken back — those it answers
+   * for ({@link exceptionsAnchoredOn}) whose rule is actually REGISTERED.
+   *
+   * The rule filter is what makes the menu entry disappear with the framework:
+   * flag off, no rule reaches the container, so there is nothing to arbitrate
+   * on and nothing to offer. The exceptions themselves are untouched — they are
+   * document data and outlive the tooling (PF8.6).
+   */
+  revocableExceptionsOn(
+    element: GfxPrimitiveElementModel
+  ): AnchoredException[] {
+    const surface = this.gfx.surface;
+    if (!surface) return [];
+    return exceptionsAnchoredOn(element, surface).filter(
+      ({ ruleId }) => this.ruleOf(ruleId) !== undefined
+    );
+  }
+
+  /**
+   * Take back every exception `element` answers for, in one gesture.
+   *
+   * @returns one entry per (rule, scope) actually written, so the caller can
+   * report the arbitration and tell a real one from a no-op.
+   */
+  revokeExceptionsOn(element: GfxPrimitiveElementModel): RevokedException[] {
+    const anchored = this.revocableExceptionsOn(element);
+    if (anchored.length === 0) return [];
+
+    const reported = new Map<string, RevokedException>();
+    for (const { element: target, ruleId } of anchored) {
+      const rule = this.ruleOf(ruleId);
+      if (!rule) continue;
+      revokeException(target, ruleId);
+
+      // An exception written on the framework's own background IS the map-wide
+      // one — the same test `applyExceptions` uses to read it back.
+      const scope: ExemptionScope =
+        rule.backgroundRole !== undefined &&
+        target.role !== undefined &&
+        roleIsA(target.role, rule.backgroundRole, rule.roles)
+          ? 'map'
+          : 'element';
+
+      const key = `${ruleId}|${scope}`;
+      const entry = reported.get(key);
+      if (entry) entry.elementCount += 1;
+      else {
+        reported.set(key, {
+          ruleId,
+          framework: rule.framework,
+          scope,
+          elementCount: 1,
+        });
+      }
+    }
+
+    this.evaluate();
+    return Array.from(reported.values());
   }
 }
 

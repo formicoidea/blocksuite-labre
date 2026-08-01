@@ -12,6 +12,7 @@ import {
   EditPropsMiddlewareBuilder,
   SpotlightManager,
   ValidationManager,
+  validationExceptionToolbarExtension,
   ValidationOverlay,
   violationDetailWidget,
 } from './extensions';
@@ -50,6 +51,11 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // The persistent badge and its detail bubble. Renders nothing until the
       // manager reports a violation, which it cannot do without a rule.
       context.register(violationDetailWidget);
+      // "Revoke exception" on the contextual toolbar of whichever element
+      // answers for it. Shows nothing until an element carries an exception a
+      // REGISTERED rule can be arbitrated on, so a board with no framework
+      // enabled never sees it.
+      context.register(validationExceptionToolbarExtension);
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)
