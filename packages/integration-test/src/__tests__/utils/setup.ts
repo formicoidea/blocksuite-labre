@@ -8,6 +8,7 @@ import type { DocMode } from '@labre/affine/model';
 import { AffineSchemas } from '@labre/affine/schemas';
 import {
   CommunityCanvasTextFonts,
+  DocModeExtension,
   FeatureFlagService,
   FontConfigExtension,
 } from '@labre/affine/shared/services';
@@ -21,6 +22,7 @@ import {
   createAutoIncrementIdGenerator,
   TestWorkspace,
 } from '@labre/store/test';
+import { Subscription } from 'rxjs';
 
 import { effects } from '../../effects.js';
 import { TestAffineEditorContainer } from '../../index.js';
@@ -86,14 +88,28 @@ async function createEditor(
   const editor = new TestAffineEditorContainer();
   editor.doc = doc;
   editor.mode = mode;
+  // The stock `DocModeService.getEditorMode()` answers `null`, which
+  // `ToolbarContext` reads as `page` — so element toolbars never rendered for
+  // a surface selection in any integration test. Answer with whatever the
+  // container actually mounted (live: some specs flip `editor.mode` mid-test).
+  const docMode = DocModeExtension({
+    getEditorMode: () => editor.mode,
+    setEditorMode: newMode => editor.switchEditor(newMode),
+    getPrimaryMode: () => editor.mode,
+    setPrimaryMode: () => {},
+    togglePrimaryMode: () => editor.mode,
+    onPrimaryModeChange: () => new Subscription(),
+  });
   editor.pageSpecs = [
     ...views.get('page'),
     FontConfigExtension(CommunityCanvasTextFonts),
+    docMode,
     ...extensions,
   ];
   editor.edgelessSpecs = [
     ...views.get('edgeless'),
     FontConfigExtension(CommunityCanvasTextFonts),
+    docMode,
     ...extensions,
   ];
   app.append(editor);
