@@ -34,3 +34,11 @@ could act on.
 - `AttachmentDef.boundaryTolerance` is replaced by the frame's declared band.
   A rule asking for a boundary against a background that declares none warns
   once and drops the requirement rather than indicting every subject.
+- `backgroundTransitionBands()` guards the declared width: `<= 0` warns and
+  drops the requirement (no silently inverted band), and a width wider than the
+  gap between two transitions warns and is narrowed to that gap (no silently
+  overlapping bands).
+- **`Violation.boundaryId`** names the frontier a finding is about
+  (`custom-built|product`) — the nearest band the subject missed, so "outside
+  the equilibrium zone" also says which zone. Absent when the carrier is what
+  failed.

@@ -22,6 +22,7 @@ import { effect, signal } from '@preact/signals-core';
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
 import {
   backgroundAxisFact,
+  type BackgroundTransitionBand,
   backgroundTransitionBands,
 } from '../framework-background/facts.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
@@ -470,6 +471,20 @@ export interface Violation {
    * Absent for a family that measures against no background.
    */
   backgroundId?: string;
+  /**
+   * The named FRONTIER of that background the finding is about, when the family
+   * measured against one: `custom-built|product` for a transition band
+   * ({@link BackgroundTransitionBand}).
+   *
+   * "This bar is outside the equilibrium zone" is only half an answer — the
+   * other half is which zone it should have been in, and the band already knows
+   * its own name. Recorded at the moment the family picks the frontier, for the
+   * same reason {@link backgroundId} is: nothing downstream can reconstruct
+   * which of several transitions the user was aiming at.
+   *
+   * Absent for a family that measures against no such region.
+   */
+  boundaryId?: string;
   /**
    * Set when a user exception covers this finding (PF8), and names the SCOPE
    * that covers it. Absent = live.
@@ -1015,7 +1030,7 @@ function evaluateAttachment(
   }
   // Bands are a function of the frame's bounds, and a board carries units of
   // frames against hundreds of subjects: read once per frame, not per bar.
-  const bandsOf = new Map<string, number[][]>();
+  const bandsOf = new Map<string, BackgroundTransitionBand[]>();
 
   const violations: Violation[] = [];
   for (const el of subjects) {
@@ -1032,25 +1047,46 @@ function evaluateAttachment(
 
     const frame = attributeBackground(bound, backgrounds);
     let inBand = true;
+    // The frontier the subject missed: the nearest one, which is the one the
+    // user was aiming at and the only one a suggestion can point back to.
+    let missed: BackgroundTransitionBand | undefined;
     if (carried && axis !== undefined && frame !== null && def) {
       let bands = bandsOf.get(frame.id);
       if (bands === undefined) {
         const all = backgroundTransitionBands(def, frame.bound);
         // A transition ACROSS a horizontal axis is a vertical band, i.e. an `x`.
-        const along = axis.orientation === 'horizontal' ? all.x : all.y;
-        bands = along.map(band => [band.min, band.max]);
+        bands = axis.orientation === 'horizontal' ? all.x : all.y;
         bandsOf.set(frame.id, bands);
       }
       const value = axis.orientation === 'horizontal' ? centre[0] : centre[1];
-      inBand = bands.some(([min, max]) => value >= min && value <= max);
+      inBand = false;
+      let nearest = Infinity;
+      for (const band of bands) {
+        if (value >= band.min && value <= band.max) {
+          inBand = true;
+          break;
+        }
+        const away = Math.abs(value - band.at);
+        if (away < nearest) {
+          nearest = away;
+          missed = band;
+        }
+      }
+      // A frame with no transition at all asks nothing of the subject.
+      if (bands.length === 0) inBand = true;
     }
 
     if (carried && inBand) continue;
     // Carrier first: the more actionable of the two, and the only one that
     // makes the other one mean anything.
-    violations.push(
-      raise(rule, [el.id], frame?.id, carried ? attachment.offBoundary : rule)
+    const violation = raise(
+      rule,
+      [el.id],
+      frame?.id,
+      carried ? attachment.offBoundary : rule
     );
+    if (carried && missed !== undefined) violation.boundaryId = missed.id;
+    violations.push(violation);
   }
   return violations;
 }

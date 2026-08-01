@@ -229,7 +229,7 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
 
   it('flags a bar on the link but in the middle of a phase', () => {
     // On its carrier, 150 units from the transition it should be marking —
-    // 9.8% of the plot, well outside the declared 10%-wide band.
+    // 9.8% of the plot, against a band reaching 5% either side of the divider.
     expect(idsOf(evaluate([background(), link(), bar(onTransition + 150, y)])))
       .toEqual([W2]);
   });
@@ -265,7 +265,7 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
     });
 
     it('blames the ZONE for a bar on a link far from any transition', () => {
-      const midPhase = onTransition + 250;
+      const midPhase = onTransition + 200;
       const far = edge(
         'd1',
         WARDLEY_ROLE.dependency,
@@ -277,6 +277,37 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
       expect(violation.messageKey).toBe(OFF_ZONE);
       expect(violation.messageFallback).toContain('punctuated equilibrium');
       expect(violation.suggestion).toBe(`${OFF_ZONE}.suggestion`);
+      // And WHICH frontier it missed — the nearest one, named off the
+      // declaration. "Outside the zone" is half an answer without it.
+      expect(violation.boundaryId).toBe('custom-built|product');
+    });
+
+    it('names the frontier the bar was actually aiming at', () => {
+      // The same phase, but past its middle: the nearest transition is now the
+      // Commodity one. The finding follows the bar, not the first band on the
+      // map.
+      const nearCommodity = TRANSITIONS[2] - 200;
+      const far = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [nearCommodity - 100, y],
+        [nearCommodity + 100, y]
+      );
+      const [violation] = evaluate([background(), far, bar(nearCommodity, y)]);
+
+      expect(violation.boundaryId).toBe('product|commodity');
+    });
+
+    it('says nothing about a frontier when the CARRIER is what failed', () => {
+      // A bar attached to nothing has no frontier to have missed: the finding
+      // is about the link it never got drawn on.
+      const [violation] = evaluate([
+        background(),
+        elsewhere(),
+        bar(onTransition, y),
+      ]);
+
+      expect(violation.boundaryId).toBeUndefined();
     });
   });
 

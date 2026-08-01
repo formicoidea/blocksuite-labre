@@ -157,6 +157,19 @@ export interface BackgroundTransitionBand {
   max: number;
 }
 
+/**
+ * Complain once per distinct problem. These accessors run on every evaluation,
+ * so a bare `console.warn` about a malformed declaration would fill the console
+ * at 8 Hz while somebody drags.
+ */
+const warned = new Set<string>();
+
+function warnOnce(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[framework-background] ${reason}`);
+}
+
 /** The ids of the zones meeting at `edge`, along one plot axis. */
 function zonesMeetingAt(
   def: FrameworkBackgroundDef,
@@ -186,33 +199,86 @@ function zonesMeetingAt(
  * user who drops a symbol on the drawn line has no way of knowing which.
  *
  * Empty on a background that declares no width: silence, not a guessed one.
+ *
+ * ## Two shapes a band may not silently take
+ *
+ * A declaration is data, and data gets typos. Both are caught here rather than
+ * downstream, because the failure modes are invisible on the canvas:
+ *
+ * - a width of `0` or less would make an INVERTED band (`min > max`) that
+ *   nothing can be inside — a rule requiring one would indict every subject on
+ *   the board, over a number nobody meant. The requirement is dropped instead;
+ * - a width wider than the gap between two transitions would make OVERLAPPING
+ *   bands, so a point could be "at" two frontiers at once and the middle of a
+ *   phase would qualify as a boundary. The width is narrowed to that gap.
+ *
+ * Both warn once in the console: a declaration that quietly means something
+ * other than what it says is worse than one that fails loudly.
  */
 export function backgroundTransitionBands(
   def: FrameworkBackgroundDef,
   bound: Bound
 ): { x: BackgroundTransitionBand[]; y: BackgroundTransitionBand[] } {
-  const width = def.transitionBandWidth;
-  if (width === undefined) return { x: [], y: [] };
+  const declared = def.transitionBandWidth;
+  if (declared === undefined) return { x: [], y: [] };
+  if (!(declared > 0)) {
+    warnOnce(
+      `"${def.type}" declares a transitionBandWidth of ${declared} — a band ` +
+        `with no width is a band nothing can be inside, so the requirement is ` +
+        `dropped rather than refusing every subject on the board.`
+    );
+    return { x: [], y: [] };
+  }
 
   const plot = backgroundPlot(def, bound.w, bound.h);
   const ratios = backgroundZoneBoundaries(def);
-  const band = (
+  const bands = (
     axis: 'x' | 'y',
-    at: Ratio,
+    along: readonly Ratio[],
     origin: number,
     span: number
-  ): BackgroundTransitionBand => {
-    const centre = origin + at * span;
-    const half = (width * span) / 2;
-    return {
-      id: zonesMeetingAt(def, axis, at),
-      at: centre,
-      min: centre - half,
-      max: centre + half,
-    };
+  ): BackgroundTransitionBand[] => {
+    const width = fittedWidth(def, declared, along);
+    return along.map(at => {
+      const centre = origin + at * span;
+      const half = (width * span) / 2;
+      return {
+        id: zonesMeetingAt(def, axis, at),
+        at: centre,
+        min: centre - half,
+        max: centre + half,
+      };
+    });
   };
   return {
-    x: ratios.x.map(at => band('x', at, bound.x + plot.x0, plot.width)),
-    y: ratios.y.map(at => band('y', at, bound.y + plot.y0, plot.height)),
+    x: bands('x', ratios.x, bound.x + plot.x0, plot.width),
+    y: bands('y', ratios.y, bound.y + plot.y0, plot.height),
   };
+}
+
+/**
+ * The declared width, narrowed so that two adjacent bands cannot overlap.
+ *
+ * Clamped to the smallest gap between two transitions, which is the widest a
+ * band can be while every point still belongs to at most one frontier (the two
+ * neighbours then meet at a single point). Nothing to clamp when the axis
+ * carries fewer than two transitions.
+ */
+function fittedWidth(
+  def: FrameworkBackgroundDef,
+  declared: number,
+  along: readonly Ratio[]
+): number {
+  let gap = Infinity;
+  for (let i = 1; i < along.length; i++) {
+    gap = Math.min(gap, along[i] - along[i - 1]);
+  }
+  if (declared <= gap) return declared;
+
+  warnOnce(
+    `"${def.type}" declares a transitionBandWidth of ${declared}, wider than ` +
+      `the ${gap} between two of its transitions — the bands would overlap and ` +
+      `a point would sit at two frontiers at once. Narrowed to ${gap}.`
+  );
+  return gap;
 }

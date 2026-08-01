@@ -223,7 +223,8 @@ const w2MidPhase: CorpusCard = {
   elements: (() => {
     const { link: l, point } = crossing('l1', 0.45, 1);
     // On the link, 150 units away from the transition it should mark — 9.8% of
-    // a 1530-wide plot, outside the 10%-wide punctuated equilibrium zone.
+    // a 1530-wide plot, against a band that reaches 5% either side of the
+    // divider. Outside, and not marginally so.
     return [map(), l, inertia('i1', point[0] + 150, point[1])];
   })(),
   expected: [W2],
