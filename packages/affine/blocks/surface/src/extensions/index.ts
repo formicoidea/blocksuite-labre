@@ -9,5 +9,6 @@ export * from './query';
 export * from './spotlight';
 export * from './surface-middleware';
 export * from './validation';
+export * from './validation-toolbar';
 export * from './violation-detail-widget';
 export * from './violation-timeline';
