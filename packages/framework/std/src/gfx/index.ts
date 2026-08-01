@@ -103,6 +103,15 @@ export {
   type RoleKind,
 } from './model/surface/role.js';
 export {
+  ELEMENT_TAGS_FIELD,
+  type ElementTags,
+  elementTagValues,
+  hasElementTagValue,
+  readElementTags,
+  setElementTag,
+  tagsPropToY,
+} from './model/surface/tags.js';
+export {
   SURFACE_TEXT_UNIQ_IDENTIFIER,
   SURFACE_YMAP_UNIQ_IDENTIFIER,
   SurfaceBlockModel,

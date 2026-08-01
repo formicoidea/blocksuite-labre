@@ -1,4 +1,8 @@
-import { coreCommands, pivotCommands } from '@labre/affine-block-root';
+import {
+  coreCommands,
+  pivotCommands,
+  tagCommands,
+} from '@labre/affine-block-root';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
@@ -70,7 +74,7 @@ export function buildCommandRegistry(
  */
 export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
-    [...coreCommands, ...pivotCommands, ...shapeCommands],
+    [...coreCommands, ...pivotCommands, ...tagCommands, ...shapeCommands],
     FRAMEWORK_COMMAND_GROUPS,
     flags
   );

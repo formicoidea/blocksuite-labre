@@ -299,8 +299,19 @@ export type OccurrenceMaterialityPatch = {
   pivotDocId: string;
   /** Which occurrence this patch describes. The host's primary key, with pivotDocId. */
   elementId: string;
-  /** Framework identity — `FrameworkId` from ADR 0008. */
-  framework: FrameworkId;
+  /**
+   * Framework identity — `FrameworkId` from ADR 0008.
+   *
+   * **Amended 2026-08-02 (MF3 implementation, PR #92): OPTIONAL.** ADR 0007 § 6
+   * states that no rung of the ladder requires the previous one, so a plain
+   * rectangle bound to a pivot record — no role at all — is a legal state that
+   * belongs to no framework. A required field would oblige the library to
+   * invent an identity, which is precisely what taking `FrameworkId` from
+   * ADR 0008 exists to stop. Same amendment, same argument and same date as
+   * ADR 0007 § 7's on the twin telemetry field. Absent rather than
+   * `'unknown'`, per the repo convention.
+   */
+  framework?: FrameworkId;
   /** Role id, e.g. 'wardley:component'. `undefined` once the role is cleared. */
   role: string | undefined;
   /**
@@ -364,6 +375,20 @@ Because `_onChange` is also invoked directly on the stash/pop path
 several payloads for the same element. The publisher therefore **coalesces per
 `elementId` within one microtask** and publishes the element's _current full
 state_, never a delta.
+
+> **Amended 2026-08-02 (MF3 implementation, PR #92).** Two properties the
+> original text left implicit, both load-bearing in practice:
+>
+> - **Elements already on the surface at mount are NOT published.** They are not
+>   a local change, and republishing a whole board on every editor open would
+>   flood the host with patches it already holds. Resynchronisation is the
+>   rebuild path of § 4.2 (`collectPivotOccurrences`), deliberately, because it
+>   is the one that cannot drift.
+> - **De-duplication is on the patch, not only on the microtask.** The publisher
+>   keeps the last fingerprint per `(pivotDocId, elementId)` and drops a patch
+>   identical to it. Coalescing alone does not stop a drag from re-announcing an
+>   unchanged qualification once per frame; patches being full-state and
+>   idempotent is what makes dropping the repeat safe.
 
 #### 4.2 Multi-client de-duplication
 

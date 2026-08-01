@@ -451,6 +451,35 @@ accessor tags: Y.Map<string[]> | undefined = undefined;
 
 `BaseElementProps` gains `role?: string` and `tags?: Y.Map<string[]>`.
 
+> **Amended 2026-08-02 (MF3 implementation, PR #92).** The nested `Y.Map` is
+> confirmed feasible and shipped, but two mechanisms had to be extended for it,
+> both because it is the first nested Y type declared on the BASE class:
+>
+> 1. **`_propsToY` normalizes `tags` for every element type.** Per-class
+>    `propsToY` hooks (`MindmapElementModel.propsToY` and friends) are what
+>    rebuild a nested map from the plain JSON that `serialize()` — i.e.
+>    `yMap.toJSON()` — hands to paste, duplicate and alt-drag clone. A
+>    base-class field has no such hook, so `SurfaceBlockModel._propsToY` calls
+>    `tagsPropToY` before the class hook. Without it every copy stored its
+>    qualification as one opaque plain object: indistinguishable from a correct
+>    copy until two people edited it and one of them lost a tag.
+> 2. **A mutation INSIDE the map has to become an element change.** > `syncElementFromY` observes the element's own `Y.Map` only, so setting one
+>    tag in place — the whole point of the shape — emitted nothing. The field
+>    carries an `@observe` bridge that republishes it as an
+>    `elementUpdated` with the transaction's own `local` flag, the `Y.Map`
+>    counterpart of the `watchText` bridge the same file already ships for
+>    nested `Y.Text`. `syncElementFromY` additionally re-attaches an `@observe`d
+>    nested type when the KEY is rewritten: remote peers and undo/redo never
+>    reach the accessor's setter, the only other caller of `startObserve`, so
+>    the observer was left on a dead type and a set-undo-redo-set sequence lost
+>    its last write.
+>
+> **Trap worth recording:** a `Y.Map` that has not been integrated into a
+> document holds its content in `_prelimContent`, so `size`, `get` and
+> `entries` all read empty and log _"Add Yjs type to a document before reading
+> data"_. Code that builds a map before attaching it — `tagsPropToY`, and any
+> test fixture — must not consult `size` to decide whether it has content.
+
 The `role` declaration above is **already shipped** by PR
 [#71](https://github.com/formicoidea/blocksuite-labre/pull/71) on
 `GfxPrimitiveElementModel` — flat string, `undefined` default, declared on the

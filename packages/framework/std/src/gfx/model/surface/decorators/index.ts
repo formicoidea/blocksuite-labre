@@ -2,5 +2,10 @@ export { convert, convertProps } from './convert.js';
 export { derive, getDerivedProps, updateDerivedProps } from './derive.js';
 export { field, getFieldPropsSet } from './field.js';
 export { getLocalPropsSet, local } from './local.js';
-export { initializeObservers, observe } from './observer.js';
+export {
+  hasObserveMeta,
+  initializeObservers,
+  observe,
+  startObserve,
+} from './observer.js';
 export { initializeWatchers, watch } from './watch.js';

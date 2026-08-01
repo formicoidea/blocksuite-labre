@@ -42,7 +42,10 @@ import {
   field,
   getDerivedProps,
   getFieldPropsSet,
+  hasObserveMeta,
   local,
+  observe,
+  startObserve,
   updateDerivedProps,
   watch,
 } from './decorators/index.js';
@@ -54,6 +57,10 @@ export type BaseElementProps = {
   lockedBySelf?: boolean;
   /** See {@link GfxPrimitiveElementModel.pivotDocId}. */
   pivotDocId?: string;
+  /** See {@link GfxPrimitiveElementModel.role}. */
+  role?: string;
+  /** See {@link GfxPrimitiveElementModel.tags}. */
+  tags?: Y.Map<string[]>;
 };
 
 /**
@@ -92,6 +99,40 @@ export type ValidationException = {
   /** Epoch ms, taken at the moment of the gesture. */
   at: number;
 };
+
+/**
+ * Republish a nested-`Y.Map` field change as an element-level change.
+ *
+ * `syncElementFromY` observes the element's OWN `Y.Map` only, so mutating a
+ * value INSIDE {@link GfxPrimitiveElementModel.tags} — which is the whole point
+ * of storing it as a nested map, since that is what makes two people qualifying
+ * one element on two different tags both keep their work — emits nothing. This
+ * is the `Y.Map` counterpart of the `watchText` bridge the same file already
+ * ships for nested `Y.Text`, and it is what puts a per-tag write on the same
+ * footing as every other field: one `elementUpdated`, carrying the transaction's
+ * own `local` flag, for the renderer, the rules engine and
+ * `PivotMaterialityPublisher` alike.
+ *
+ * `transaction === null` is the observer ATTACHING, not a change (see
+ * `startObserve`); republishing there would fire on every mount and on every
+ * re-attach.
+ */
+function observeTags(
+  _: unknown,
+  instance: GfxPrimitiveElementModel,
+  transaction: Y.Transaction | null
+) {
+  if (transaction === null) return;
+
+  instance['_onChange']({
+    props: { tags: instance.tags },
+    // Deliberately empty, exactly like `watchText`: Yjs gives the delta of the
+    // NESTED map, and inventing a previous value for the whole field would be
+    // a guess. Consumers that need the old set read it from their own state.
+    oldValues: {},
+    local: transaction.local,
+  });
+}
 
 export type SerializedElement = Record<string, unknown> & {
   type: string;
@@ -537,6 +578,56 @@ export abstract class GfxPrimitiveElementModel<
   accessor role: string | undefined = undefined;
 
   /**
+   * Level 3 — **contextual qualification** (ADR 0007 § 4). Tag def id → the
+   * value ids selected for it, e.g. `{ 'wardley:nature': ['wardley:nature/data'] }`.
+   *
+   * Both halves of a key are namespaced by framework on purpose: two universes
+   * WILL collide on a word like `activity` — `edgy:activity` is already an EDGY
+   * base element while `activity` is one of Wardley's four natures — and
+   * namespacing is what makes that collision harmless rather than decorative.
+   *
+   * Absent and empty are equivalent (both mean "unqualified"), and the default
+   * is `undefined`, **never** `new Y.Map()`: `@field()`'s `init` writes nothing
+   * for an `undefined` default, so an element that is never qualified — every
+   * brush stroke, every connector — stays byte-identical to one created before
+   * the field existed. A non-`undefined` default on this base class would
+   * reinstate that cost on every element of every document. The qualification
+   * writer (`setElementTag`, `./tags.js`) creates the map on first use and
+   * removes the key again when the last tag goes.
+   *
+   * ## Why a NESTED `Y.Map` and not a plain object
+   *
+   * `@field()` writes straight into the element's `Y.Map` with no `native2Y` in
+   * the path, so a plain object here really would be ONE opaque value: two
+   * people qualifying the same element on two DIFFERENT tags would silently
+   * lose one of the two. A nested map merges per tag, which is what the shape
+   * has to do — there is no migration runner for surface elements, so it is
+   * chosen once. The `string[]` of a SINGLE tag stays last-write-wins, and that
+   * is correct: one tag's value set is one atomic choice.
+   *
+   * Exactly one level of Y-awareness, with plain arrays as values — shallower
+   * than `MindmapElementModel.children` (`Y.Map<NodeDetail>`), which already
+   * ships, and inside what `surface-transformer`'s `SURFACE_YMAP_UNIQ_IDENTIFIER`
+   * envelope round-trips generically.
+   *
+   * Declared on the BASE class for the same reason as {@link role} and
+   * {@link pivotDocId}: an element re-created from props (paste, duplicate,
+   * alt-drag clone, template insertion) only reaches the `Y.Map` through keys
+   * that have a declared accessor, and a qualification the user authored is
+   * exactly the kind of thing that must survive a copy. `SurfaceBlockModel`'s
+   * `_propsToY` rebuilds the map from the plain JSON `serialize()` produces, so
+   * a copy is a copy of the values and never a second reference to one map.
+   *
+   * Opaque to the framework: no renderer, no hit-test, no layout and no
+   * exporter reads it, and it participates in no `@derive` / `@convert` chain.
+   * Values whose def has vanished still load and are displayed as raw ids —
+   * defs are runtime configuration and are NEVER persisted.
+   */
+  @observe(observeTags)
+  @field()
+  accessor tags: Y.Map<string[]> | undefined = undefined;
+
+  /**
    * Validation rules this element is excused from (PF8, "no rule is a wall").
    *
    * Declared on the BASE class for the same reason as {@link role}: an element
@@ -767,11 +858,30 @@ export function syncElementFromY(
           disposables[key] = watchText(key, value, callback);
         }
 
+        // A nested Y type declared with `@observe` gets a FRESH instance every
+        // time the key itself is rewritten — by a remote peer, or by undo/redo,
+        // neither of which goes through the accessor's setter (the only other
+        // caller of `startObserve`). Without this the observer is left on a
+        // detached type and every later in-place mutation goes unseen: set a
+        // tag, undo, redo, set another one, and the second write is invisible
+        // to the publisher. Guarded on identity so re-setting the same instance
+        // does not needlessly re-run the observer's initialising call.
+        if (
+          model['_preserved'].get(key) !== value &&
+          hasObserveMeta(key, model)
+        ) {
+          startObserve(key, model);
+        }
+
         model['_preserved'].set(key, value);
         props[key] = value;
         oldValues[key] = oldValue;
       } else {
+        // `_preserved` is pruned FIRST: `startObserve` re-reads the accessor,
+        // which falls back to `_preserved`, so the other order would re-attach
+        // the observer to the very map that has just been deleted.
         model['_preserved'].delete(key);
+        if (hasObserveMeta(key, model)) startObserve(key, model);
         oldValues[key] = oldValue;
       }
     });
