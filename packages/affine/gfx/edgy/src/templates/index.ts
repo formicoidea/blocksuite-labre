@@ -280,7 +280,7 @@ export const EDGY_DYNAMIC_RELATIONS: [string, string, string, number?][] = [
   ['content', 'story', 'conveys', 0.75],
   ['story', 'purpose', 'contextualises', 0.8],
   ['organisation', 'purpose', 'pursues', 0.8],
-  ['organisation', 'story', 'authors', 0.75],
+  ['organisation', 'story', 'authors', 0.6],
   ['brand', 'purpose', 'represents', 0.8],
   ['brand', 'story', 'evokes', 0.65],
   // Architecture
@@ -288,20 +288,20 @@ export const EDGY_DYNAMIC_RELATIONS: [string, string, string, number?][] = [
   ['process', 'capability', 'realises', 0.75],
   ['process', 'asset', 'requires'],
   ['capability', 'asset', 'requires', 0.75],
-  ['organisation', 'capability', 'has', 0.75],
-  ['product', 'capability', 'requires', 0.7],
-  ['process', 'product', 'creates', 0.7],
+  ['organisation', 'capability', 'has', 0.6],
+  ['product', 'capability', 'requires', 0.75],
+  ['process', 'product', 'creates', 0.65],
   // Experience
   ['task', 'journey', 'is part of', 0.6],
   ['task', 'channel', 'uses', 0.6],
   ['journey', 'channel', 'traverses', 0.6],
-  ['product', 'task', 'serves', 0.8],
+  ['product', 'task', 'serves', 0.9],
   ['product', 'journey', 'features in', 0.8],
   ['brand', 'task', 'supports', 0.8],
-  ['brand', 'journey', 'appears in', 0.8],
+  ['brand', 'journey', 'appears in', 0.9],
   // Intersections
   ['organisation', 'brand', 'builds', 0.85],
-  ['organisation', 'product', 'makes', 0.7],
+  ['organisation', 'product', 'makes', 0.65],
   ['product', 'brand', 'embodies', 0.8],
 ];
 
