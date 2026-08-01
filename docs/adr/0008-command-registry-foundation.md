@@ -202,17 +202,90 @@ it. We replace the _declaration_ surface above it, not the engine below it.
 
 Consumers 1, 4 and 5 run inside the editor and can call functions. Consumers 2
 and 3 are host-side panels that must render **without an editor mounted** — the
-manifest's defining property today. So the registry is one declaration
-projected into two shapes:
+manifest's defining property today. So there is one declaration and **three
+projections**, all derived, none authored:
 
-- `CommandDescriptor` — the in-library authoring shape. Holds `run`, the
-  availability predicate and the icon template. Never crosses the host seam.
-- `CommandManifestEntry` — the **serializable** projection that does, replacing
-  today's `ShortcutManifestEntry`. No functions, no `TemplateResult`: an
-  `iconKey` the host maps to its own asset, and availability reduced to a
-  declarative `AvailabilityHint` (or omitted, which means "always offerable").
-  This honours [ADR 0006](0006-pivot-properties-provider.md)'s rule that the
-  host seam stays typed and render-free.
+- `CommandDescriptor` — the in-library authoring shape and the single source.
+  Holds `run`, the availability predicate and the icon template. Never crosses
+  the host seam.
+- `ShortcutDescriptor` → `ShortcutManifestEntry` — the existing chain, for the
+  keymap and for Settings › Shortcuts. **Keeps representing shortcuts and
+  nothing else** (owner decision, see Icons below): it gains no `iconKey`, no
+  `category`, no catalogue metadata.
+- `CommandManifestEntry` — the **serializable** catalogue projection, for
+  consumers 2, 4 and 5. No functions, no `TemplateResult`: an `iconKey`, and
+  availability reduced to the closed `Availability` union. This honours
+  [ADR 0006](0006-pivot-properties-provider.md)'s rule that the host seam stays
+  typed and render-free.
+
+### Availability is a closed union — audit and decision
+
+The open question was whether `when: (std) => boolean` reduces to something a
+host panel can evaluate with no editor. Answered by inventorying every
+availability predicate in the repo: **119 sites** (95 toolbar, 18 slash-menu,
+5 code-toolbar, plus 2 static `enable` booleans).
+
+The decisive finding is one of **scope**. 52 of those predicates are genuinely
+irreducible — cardinality-branching (`edgeless/configs/toolbar/more.ts:301`
+returns a different answer for 0 / 1 / >1 elements), command chains executed
+inside the predicate (`blocks/root/src/configs/toolbar.ts:68,135,152,178`),
+DOM ancestor tests and hover payloads (`inlines/link/src/link-node/configs/toolbar.ts:295`),
+runtime component state (`blocks/surface-ref/src/configs/toolbar.ts:20`),
+provider lookups keyed on model data (`blocks/embed/src/configs/toolbar.ts:206`).
+**Every one of them belongs to the element toolbar or the slash menu** —
+surfaces (c) and (d), which this ADR already places out of scope. None of them
+is a framework artefact command, and none would migrate into the registry.
+
+Within the actual in-scope population — the ~55 framework artefacts plus
+`coreShortcuts` and `shapeShortcuts` — the predicates are almost trivial:
+
+| Case                                                        | Population                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| no precondition at all (menu buttons carry no `when` today) | ~48 of ~55 artefacts                                                                                                                                                                                                                           |
+| non-empty selection and not text-editing                    | `duplicate`, `applyLastStyle` (`blocks/root/src/keyboard/shortcuts.ts:73-77,107-111`), `shape.cycleTextFit` (`gfx/shape/src/shortcuts.ts:19-25`)                                                                                               |
+| selection of a specific framework model type                | the wardley background toggles, if ever promoted from element toolbar to command (`gfx/wardley/src/toolbar/config.ts:167`)                                                                                                                     |
+| document not read-only                                      | the only real state precondition in the repo: `enable: !block.store.readonly` (`blocks/frame/src/edgeless-toolbar/quick-tool.ts:13`, `gfx/link/src/undo-tool.ts:17`) and `!doc.readonly` (`blocks/code/src/code-toolbar/config.ts:92,236,271`) |
+
+So the union closes, with **one member added beyond the proposed three** —
+`'editable'`, which is not speculative: read-only documents ship today and no
+creation command should be offered in one.
+
+```ts
+/** Serializable precondition. Closed; extended only by an ADR amendment. */
+export type Availability =
+  | 'always' // default when omitted
+  | 'selection' // any non-empty selection, not text-editing
+  | 'selection:framework' // selection contains the owner's element types
+  | 'editable'; // document is not read-only
+```
+
+**Availability and surface are orthogonal, and compose.** (Owner proposal of
+2026-08-01, requalified.) `'ai'` was proposed as an availability value; it is
+not one — the AI is consumer 5, an axis that already exists as
+`CommandSurface`. A command declares _who may invoke it_ through `surfaces` and
+_under what state_ through `availability`, independently:
+
+```ts
+{ surfaces: ['catalogue', 'agent'], availability: 'selection' }
+// offered in the sidepanel and invocable by the agent — but only with a selection
+```
+
+**`'revision'` is a legitimate state precondition, but premature.** Also
+proposed; a document mode (read-only / revision / editable) does not exist in
+the library yet — only the binary `store.readonly` that `'editable'` covers.
+Adding a member for a concept with no implementation would be inventing a
+contract. So: **the union is closed but extensible by decision.** Extending it
+requires an amendment to this ADR, and `'editable'` generalising into
+`'revision'` when a document mode lands is the first known candidate.
+
+For the record, the two clusters deliberately **not** admitted, and their
+assigned fallback (displayed available, `run` no-ops or is a no-op-safe
+toggle): feature-flag gating (4 sites, e.g.
+`gfx/connector/src/toolbar/config.ts:223` — flags are the host's business via
+`BlockFlags`, not a per-command precondition) and injected-provider presence
+(7 sites, e.g. `blocks/root/src/edgeless/configs/toolbar/more.ts:383` gating on
+`QuickSearchProvider`). Both are editor-toolbar concerns; if a command ever
+needs one, that is the amendment trigger.
 
 ### Target schema
 
@@ -267,10 +340,11 @@ export interface CommandDescriptor<P = void> {
   descriptionKey?: string;
   /** Sub-category inside the owner's catalogue, e.g. `'backgrounds'`, `'nodes'`. */
   category?: string;
-  /** Stable asset key, NOT markup — the host resolves it to its own icon. */
+  /**
+   * Stable asset key, NOT markup. Resolved to a template by the library's own
+   * icon registry (see Icons); a host may substitute its set, but need not.
+   */
   iconKey?: string;
-  /** In-library rendering only; never projected into the manifest. */
-  icon?: () => TemplateResult;
   /** Extra search terms for the palette (cf. `SlashMenuItem.searchAlias`). */
   keywords?: string[];
 
@@ -285,9 +359,13 @@ export interface CommandDescriptor<P = void> {
    */
   defaultKeys: { mac: string[]; other: string[] };
 
-  /** In-library availability. Projected to a declarative hint for the host. */
+  /** Serializable precondition; defaults to `'always'`. Crosses the seam. */
+  availability?: Availability;
+  /**
+   * Escape hatch for an in-library refinement of `availability` (never
+   * contradicting it, only narrowing). Not projected into the manifest.
+   */
   when?: (std: BlockStdScope) => boolean;
-  availability?: AvailabilityHint; // e.g. { requires: 'selection' }
 
   /** THE new capability: invocable without a keyboard event. */
   run: (
@@ -298,11 +376,19 @@ export interface CommandDescriptor<P = void> {
   /** Agent-facing parameter contract (zod is already a std dependency). */
   params?: z.ZodType<P>;
 
-  /** Central emit; the invocation supplies segment/module/control. */
+  /**
+   * Central emit at `run()`; the invocation supplies segment/module/control.
+   * `framework` is the code-side id — the emitter maps it through
+   * `FrameworkDescriptor.telemetryKey` so the wire value stays historical.
+   */
   telemetry?: { framework: FrameworkId; element: string };
 }
 
-/** The per-framework identity consumers 2-5 need, and nothing owns today. */
+/**
+ * The per-framework identity consumers 2-5 need, and nothing owns today. Also
+ * THE source for packaging: `scripts/build-bundles.mjs` derives from this
+ * list instead of its hand-maintained `FRAMEWORKS` array (see Packaging).
+ */
 export interface FrameworkDescriptor {
   id: FrameworkId;
   labelKey: string; // replaces the raw English `SeniorTool.name`
@@ -310,8 +396,84 @@ export interface FrameworkDescriptor {
   order?: number;
   /** First keystroke of this framework's chords — allocated, not chosen ad hoc. */
   chordPrefix?: string;
+  /**
+   * Historical PostHog value for `FrameworkElementEvent.framework`, kept as-is
+   * so the identity rename stays code-side and analytics never break.
+   * e.g. id `'ddd-event-storming'` → telemetryKey `'event-storming'`.
+   */
+  telemetryKey: string;
+  /** Packaging: the bundle entry is derived from these. */
+  pkg: string; // '@labre/affine-gfx-wardley'
+  dir: string; // 'affine/gfx/wardley'
+  extensions: { flag?: FrameworkId; viewExtension: string }[];
 }
 ```
+
+### Icons: one source of truth, and it is the library
+
+The icons stay **in the package**, where the SVGs already live
+(`gfx/*/src/toolbar/icons.ts`, `gfx/ddd-shared/src/toolbar/icons.ts`). The
+render-free rule is honoured by splitting the lookup out of the data:
+
+- The serializable projections carry `iconKey` and nothing else. No
+  `TemplateResult` ever crosses the host seam.
+- The library exposes a **separate accessor, outside any manifest** — an icon
+  registry `iconKey → TemplateResult`, assembled from the existing per-package
+  icon modules. In-editor consumers (1, 4) call it directly.
+- A host **may** substitute its own set by mapping the keys itself. The default
+  is the library's; the host inherits working icons by doing nothing.
+
+Corollary, stated because it is the rule that keeps this clean: **the shortcut
+manifest is an interface that represents shortcuts — nothing else lives
+there.** `ShortcutManifestEntry` gains no `iconKey` and no `category`. Icons
+never transit through it. Catalogue metadata travels on
+`CommandManifestEntry`, which is a different projection for different
+consumers.
+
+### Telemetry emits at the bottleneck
+
+Emission happens in **the one function that is not duplicated** — the
+registry's single `run()` — and nowhere else. Today every surface re-implements
+its own emit (`gfx/wardley/src/actions.ts:126-138`, the `_track` methods in
+`bpmn-menu.ts:169-180` and `edgy-menu.ts:245-256`, `DddMenuBase.track`), which
+is how cynefin-estuarine ended up emitting nothing at all and how the same
+artefact can be counted differently depending on which menu created it.
+Centralising removes the per-surface duplicates outright.
+
+The surface dimension is not lost, because it is an argument:
+`CommandInvocation.surface` (already specified above) tells the single emitter
+which of the five consumers invoked the command, feeding `segment` / `module` /
+`control`.
+
+Analytics continuity is bought with `FrameworkDescriptor.telemetryKey`: the
+historical values (`'cynefin'`, `'event-storming'`, `'core-domain'`,
+`'context-map'`) keep being emitted, while `FrameworkId` unifies identity
+**code-side only**. Zero breakage for existing PostHog dashboards, and the
+drift stops being a drift because one type now maps to the other explicitly.
+
+### Packaging derives from the same descriptors
+
+`scripts/build-bundles.mjs` currently hand-maintains a `FRAMEWORKS` array
+duplicating what `FrameworkDescriptor` will hold. It is deleted:
+`FRAMEWORK_DESCRIPTORS` becomes the single list, and the bundle script derives
+each entry from it.
+
+Mechanism, chosen as the simplest that works: the descriptors live in a
+**data-only module** (`packages/affine/all/src/frameworks.ts`) — plain object
+literals, type imports only, no lit and no runtime imports — so both the
+library and the build script can read it without a bundler. The script's
+existing anchor-drift guard (it already throws when the source it patches has
+moved) then guards the derivation instead of a hand-copied list.
+
+Coordination with **PR #70**: that PR changed the generated bundle descriptor's
+shape — `viewExtension` is removed and replaced by `extensions`, deliberately
+un-aliased, because the reversed flag contract splits each framework into an
+always-registered renderer and a flag-gated tooling extension. The target
+format here is therefore the post-#70 one, which is why
+`FrameworkDescriptor.extensions` is a list of `{ flag?, viewExtension }` rather
+than the older flat `{ flag, telemetry, viewExtension }`. `telemetry` becomes
+`telemetryKey` per the decision above. This ADR's implementation lands after
+#70 and adopts its shape; it does not reopen it.
 
 ### Reserving the prefix letter
 
@@ -436,29 +598,32 @@ c.surfaces.includes('senior-menu'))`. Their Lit shell, styling and popper
   moving them to `labelKey` is a user-visible change for a host that ships no
   translation for the new keys — the host must extend its catalogue in the same
   release.
-- Telemetry moves from hand-written `track(...)` calls in each menu to the
-  descriptor's `telemetry` field, emitted centrally on `run`. ADR 0003's _event
-  names_ and payload shape are unchanged, and cynefin-estuarine starts emitting
-  at all. But unifying framework identity on `FrameworkId` **renames the
-  `framework` property values** (`'cynefin'` → `'cynefin-estuarine'`,
-  `'event-storming'` → `'ddd-event-storming'`, and likewise for core-domain and
-  context-map). That is a breaking change for already-collected PostHog data:
-  either the host maps the old values at ingest, or dashboards must union both
-  spellings across the cutover. This rename is the one change that lands
-  **before** the switchover, on its own — see Rollout.
+- Telemetry moves from hand-written `track(...)` calls in each menu to a single
+  emit at the registry's `run()`, the one non-duplicated function. ADR 0003's
+  event names and payload shape are unchanged, the per-surface duplicate
+  emitters disappear, and cynefin-estuarine starts emitting at all. **No
+  analytics breakage**: `FrameworkDescriptor.telemetryKey` keeps emitting the
+  historical `framework` values while `FrameworkId` unifies identity code-side
+  only. Existing PostHog dashboards keep working untouched.
 - Adding a framework artefact becomes one descriptor instead of an entry in a
   Lit template plus (optionally) a second one in `shortcuts.ts` — and it is
   then automatically present in all five surfaces.
 - The 14-slot cap becomes a test failure rather than a design review.
-- **`ShortcutManifestEntry` changes shape** — a host-visible breaking change.
+- **`ShortcutManifestEntry` changes shape, but stays about shortcuts** —
+  a host-visible breaking change, kept minimal by the icons decision.
   `when: string` disappears (no descriptor in the repo sets it, so the blast
   radius is a type error, not a behaviour change), `defaultKeys` becomes
-  always-present, and the entry gains `owner: CommandOwner`, `kind`, `category`
-  and `iconKey`. Hosts recompile; nothing silently changes at runtime.
+  always-present, and `owner` narrows from `string` to `CommandOwner`. It does
+  **not** gain `category` or `iconKey` — those live on `CommandManifestEntry`.
+  Hosts recompile; nothing silently changes at runtime.
 - **Settings › Shortcuts gains rows it never had**: every keyless command is
   now listed and bindable, so the panel grows from ~10 entries to roughly the
-  full artefact count. That is the intent, but the panel needs the `owner` /
-  `category` grouping to stay usable at that size.
+  full artefact count. That is the intent, but the panel needs `owner`
+  grouping (which it has) to stay usable at that size.
+- **`scripts/build-bundles.mjs` loses its hand-maintained `FRAMEWORKS` array**
+  and derives from `FRAMEWORK_DESCRIPTORS`. Adding a framework becomes one
+  descriptor instead of an entry in the script plus a flag plus a senior-tool
+  id plus a telemetry union member.
 - **Flag gating now has two sides, and both must be honoured.**
   [ADR 0009](0009-reversed-flag-contract.md) splits each framework into an
   always-registered render extension and a flag-gated tooling extension, and
@@ -472,10 +637,12 @@ c.surfaces.includes('senior-menu'))`. Their Lit shell, styling and popper
   schema changes: the registry is view-layer only, with no document-format
   impact.
 
-## Rollout — one switchover, two sequenced follow-ons
+## Rollout — one switchover, one sequenced follow-on
 
 > Owner arbitration, 2026-08-01: a big bang is acceptable and preferred when it
 > saves time and debt. The plan below was re-derived under that criterion.
+> Amended the same day: resolving open question 3 in favour of `telemetryKey`
+> removed the last change that had to land before the switchover.
 
 ### Re-evaluating the incremental plan
 
@@ -490,7 +657,7 @@ duplication this ADR exists to remove**:
 | 2 / 3 split (wardley commands, then wardley menu) | staging                   | **Merged.** Between them, wardley declares its artefacts twice — as descriptors _and_ as the hard-coded Lit list. A duplication window we would be creating on purpose.                               |
 | 4. One PR per framework (×7)                      | staging                   | **Merged.** The transformation is mechanical and identical seven times; sequencing it costs 7 review cycles and keeps the registry half-populated, which blocks consumers 2/4/5 from shipping at all. |
 | 0. Reserved keys                                  | prerequisite              | **Merged** into the switchover — it is one `const` plus a mirror test, and the switchover is what needs it.                                                                                           |
-| 0. Telemetry `framework` rename                   | crosses a system boundary | **Kept, sequenced first** — see below.                                                                                                                                                                |
+| 0. Telemetry `framework` rename                   | crosses a system boundary | **Dissolved.** `telemetryKey` keeps the historical values, so there is no analytics cutover to sequence and no rename to land first.                                                                  |
 | 5. Fold surface (e) in                            | distinct refactor         | **Kept, sequenced after** — see below.                                                                                                                                                                |
 | 6. New consumers                                  | product dependency order  | **Kept** — the sidepanel, palette and agent bridge are unbuilt features, not migration steps.                                                                                                         |
 
@@ -525,23 +692,23 @@ incrementalism — both argue _against_ it:
 ### What switches atomically
 
 One release, one PR: `CommandDescriptor` / `CommandManifestEntry` /
-`CommandInvocation` / `FrameworkId` / `FrameworkDescriptor` /
-`toShortcutDescriptor` in `@labre/std`; the `CommandRegistry` aggregator
-replacing `FRAMEWORK_SHORTCUT_GROUPS`; `RESERVED_EDGELESS_KEYS` and its mirror
-test; all 7 frameworks' artefacts as descriptors, with their senior menus
-rewritten as renderers over the registry and their hard-coded button lists and
-`_track` helpers deleted; `WardleyActionSource` collapsed into
-`CommandInvocation`; `chordPrefix` allocated against the reservation list.
+`Availability` / `CommandInvocation` / `FrameworkId` / `FrameworkDescriptor` /
+`toShortcutDescriptor` in `@labre/std`; `FRAMEWORK_DESCRIPTORS` as the
+data-only module, with `scripts/build-bundles.mjs` deriving from it and its
+`FRAMEWORKS` array deleted; the `CommandRegistry` aggregator replacing
+`FRAMEWORK_SHORTCUT_GROUPS`; the icon registry behind `iconKey`;
+`RESERVED_EDGELESS_KEYS` and its mirror test; all 7 frameworks' artefacts as
+descriptors, with their senior menus rewritten as renderers over the registry
+and their hard-coded button lists and `_track` helpers deleted;
+`WardleyActionSource` collapsed into `CommandInvocation`; `chordPrefix`
+allocated against the reservation list.
+
+Ordering against PR #70: this lands **after** it, adopting its `extensions`
+bundle-descriptor shape rather than reopening it.
 
 ### What stays sequenced, and by which invariant
 
-1. **The telemetry `framework` rename lands first, on its own.** Not prudence:
-   the invariant is analytics continuity, and it is owned by a system outside
-   this repo. PostHog dashboards must be cut over in lockstep, which no test in
-   this repository can assert. Landing it separately gives that cutover its own
-   revert boundary. (If open question 3 resolves toward a `telemetryKey` field
-   instead, this step disappears entirely and folds into the switchover.)
-2. **Folding surface (e) in lands after.** The invariant it would close is
+1. **Folding surface (e) in lands after.** The invariant it would close is
    already closed by `RESERVED_EDGELESS_KEYS`, so this is an improvement, not a
    prerequisite. It is also a genuinely different refactor: several of those
    bindings are stateful cycles rather than commands (`c` cycles connector
@@ -549,7 +716,7 @@ rewritten as renderers over the registry and their hard-coded button lists and
    so expressing them as descriptors changes their semantics and deserves its
    own review. When it lands, `RESERVED_EDGELESS_KEYS` is deleted and conflict
    detection covers the whole edgeless keyboard.
-3. **New consumers ship as they are built.** Sidepanel catalogue, palette and
+2. **New consumers ship as they are built.** Sidepanel catalogue, palette and
    agent bridge read the registry directly. This is feature sequencing, not
    migration.
 
@@ -557,13 +724,14 @@ rewritten as renderers over the registry and their hard-coded button lists and
 
 Worth stating explicitly, because a big bang is the moment to delete
 transitional adapters and this one must survive. It is not a compatibility
-layer with an expiry date: it is one of the **two permanent projections** out
-of the single source — `CommandDescriptor` → `ShortcutDescriptor` for the
-in-editor keymap, and `CommandDescriptor` → `CommandManifestEntry` for the host
-seam. It runs on every editor assembly, forever. Keeping the derivation (rather
-than letting frameworks author `ShortcutDescriptor`s directly) is what keeps
-the resolution engine, the override format and the conflict reporter untouched
-while there is still exactly one declaration.
+layer with an expiry date: it is one of the **three permanent projections** out
+of the single source — `→ ShortcutDescriptor` for the in-editor keymap (and
+from it `ShortcutManifestEntry` for Settings › Shortcuts), and
+`→ CommandManifestEntry` for the catalogue seam. It runs on every editor
+assembly, forever. Keeping the derivation (rather than letting frameworks
+author `ShortcutDescriptor`s directly) is what keeps the resolution engine, the
+override format and the conflict reporter untouched while there is still
+exactly one declaration.
 
 ### Out of scope
 
@@ -581,30 +749,36 @@ while there is still exactly one declaration.
   only needs to accept an injected comparator.
 - **Per-user pinning** of the 14 senior slots.
 
-## Open questions
+## Resolved questions
 
-To settle before this ADR goes `accepted`:
+The four open questions this ADR carried were arbitrated by the owner on
+2026-08-01 and are now decisions in the body above. Recorded here with their
+resolution so the reasoning is not lost:
 
-1. **How declarative can `availability` be?** The two-tier split hinges on
-   reducing `when: (std) => boolean` to a hint a host panel can evaluate with
-   no editor. A small closed union (`'selection'`, `'selection:framework'`,
-   `'always'`) probably covers the real cases, but it has not been checked
-   against every existing `when` in `ToolbarAction` configs. If it cannot be
-   closed, consumers 2 and 3 fall back to showing the command as always
-   available and letting `run` no-op — acceptable, but it should be a decision,
-   not a discovery.
-2. **Who owns `iconKey` → asset resolution?** The library has the SVGs today.
-   Shipping the manifest render-free means the host needs either its own icon
-   set or a separate, explicitly non-manifest accessor for the library's. ADR
-   0006 forbids markup across the seam; it does not say where the pixels come
-   from.
-3. **Does the telemetry `framework` rename happen here or in its own change?**
-   The Rollout assumes its own change, landing first. If PostHog history
-   matters more than tidiness, the
-   alternative is keeping the current values as a `telemetryKey` field on
-   `FrameworkDescriptor` — one more spelling, but zero analytics breakage.
-4. **`FrameworkDescriptor` vs the bundle descriptor.** `scripts/build-bundles.mjs`
-   already generates a per-framework `{ flag, telemetry, viewExtension }`
-   object. Whether `FrameworkDescriptor` subsumes it, or the generator emits
-   it, decides whether the bundle script keeps a hand-maintained `FRAMEWORKS`
-   list at all.
+1. **How declarative can `availability` be?** → **Closed union of four.**
+   Settled by audit rather than assumption: all 119 availability predicates in
+   the repo were inventoried, and the 52 irreducible ones turned out to belong
+   without exception to surfaces (c) and (d), which are out of scope. The
+   in-scope population needs `'always' | 'selection' | 'selection:framework'`
+   plus `'editable'`. See _Availability is a closed union_.
+2. **Who owns `iconKey` → asset resolution?** → **The library.** Icons stay in
+   the package; the manifest carries only `iconKey`; a separate lib-side
+   registry resolves keys to templates; the host may substitute but inherits a
+   working default. Corollary: the shortcut manifest represents shortcuts and
+   nothing else — icons never transit through it. See _Icons_.
+3. **Telemetry rename here or separately?** → **Neither: `telemetryKey`.**
+   Emission moves to the single `run()` bottleneck, surface discrimination
+   rides on `CommandInvocation.surface`, and historical PostHog values keep
+   being emitted, so identity unification stays code-side with zero analytics
+   breakage. This dissolved the one step that had to precede the switchover.
+   See _Telemetry emits at the bottleneck_.
+4. **`FrameworkDescriptor` vs the bundle descriptor?** → **`FrameworkDescriptor`
+   is the source.** The hand-maintained `FRAMEWORKS` array in
+   `scripts/build-bundles.mjs` is deleted and derived from a data-only
+   descriptor module, in the `extensions` shape PR #70 introduced. See
+   _Packaging_.
+
+Nothing is left open. What remains deliberately outside the decision is listed
+under _Out of scope_ above; the one extension point is the `Availability`
+union, closed but amendable by a future ADR (first known candidate:
+`'editable'` generalising to `'revision'` when a document mode exists).
