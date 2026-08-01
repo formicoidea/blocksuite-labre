@@ -91,7 +91,7 @@ export function createLinkedDocFromEdgelessElements(
           newId = linkedDoc.addBlock(model.flavour, blockProps, surfaceId);
         }
       } else {
-        const props = getElementProps(model, ids);
+        const props = getElementProps(model, ids, sortedElements);
         newId = surface.addElement(props);
       }
       ids.set(model.id, newId);

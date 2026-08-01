@@ -30,7 +30,6 @@ export const reassociateConnectorsCommand: Command<{
           id: newId,
         },
       });
-      continue;
     }
     if (target.id === oldId) {
       surface.updateElement(id, {
