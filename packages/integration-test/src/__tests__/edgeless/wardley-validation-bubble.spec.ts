@@ -271,7 +271,7 @@ describe('the violation markers and their detail bubble', () => {
 
       test('two badges 60 units apart never overlap, at any zoom', async () => {
         addBackground();
-        // Two ungrouped components, 60 model units apart: one badge each.
+        // Two ungrouped change arrows, 100 model units apart: one badge each.
         addBackwardsArrow('[3000,3000,40,40]');
         addBackwardsArrow('[3100,3000,40,40]');
         await settle();

@@ -262,6 +262,42 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
       idsOf(evaluate([background(), arrow, elsewhere, bar(onTransition, y)]))
     ).toEqual([W2]);
   });
+
+  it('follows a CURVED dependency, not the chord under it', () => {
+    // A curved connector stores its whole shape in two points carrying
+    // tangents, so reading the bare coordinates gives the chord. A bar sitting
+    // exactly on the drawn curve, 150 units above that chord, must be accepted:
+    // a rule confidently wrong about what the user can plainly see is worse
+    // than one that says nothing.
+    const apexY = 300;
+    const chordY = 450;
+    // Symmetric cubic from (x-400, 450) to (x+400, 450) bulging to y = 300 at
+    // its midpoint — control points 200 above give exactly that apex.
+    const curved = {
+      id: 'd1',
+      role: WARDLEY_ROLE.dependency,
+      absolutePath: [
+        Object.assign([onTransition - 400, chordY], {
+          absOut: [onTransition - 400, chordY - 200],
+        }),
+        Object.assign([onTransition + 400, chordY], {
+          absIn: [onTransition + 400, chordY - 200],
+        }),
+      ],
+      get elementBound() {
+        return new Bound(onTransition - 400, apexY, 800, chordY - apexY);
+      },
+    } as unknown as GfxPrimitiveElementModel;
+
+    // On the curve's apex, on the transition: silence.
+    expect(evaluate([background(), curved, bar(onTransition, apexY)])).toEqual(
+      []
+    );
+    // On the CHORD, 150 units below the drawn line: flagged.
+    expect(
+      idsOf(evaluate([background(), curved, bar(onTransition, chordY)]))
+    ).toEqual([W2]);
+  });
 });
 
 describe('W3 · overlapping nodes and labels', () => {
@@ -333,6 +369,42 @@ describe('W3 · overlapping nodes and labels', () => {
     expect(
       evaluate([background(), node('n1', 400, 400), node('n2', 440, 400)])
     ).toEqual([]);
+  });
+
+  it('says nothing about two boxes that share an EDGE', () => {
+    // Exactly abutting: zero shared area, perfectly readable — and precisely
+    // what alignment and snap produce all day. `Bound.isOverlapWithBound`
+    // answers `true` here, which is why the family does not use it.
+    expect(
+      evaluate([background(), node('n1', 400, 400), node('n2', 418, 400)])
+    ).toEqual([]);
+    // ...and one unit of real overlap is still an overlap.
+    expect(
+      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 417, 400)]))
+    ).toEqual([W3]);
+  });
+
+  it('measures a rotated node by its bounding box — a known limit', () => {
+    // `elementBound` is the AXIS-ALIGNED box of a rotated element, so a 120×26
+    // label at 45° presents as roughly 103×103 and can collide with something
+    // its ink never touches. Pinned rather than fixed: a false POSITIVE on a
+    // warning-level readability rule is the right way round, and an oriented
+    // box costs a separating-axis test in the inner loop of the only
+    // super-linear family. See `subjectsCollide`.
+    const rotated = {
+      id: 'l1',
+      role: WARDLEY_ROLE.label,
+      get elementBound() {
+        // What the model returns for a 120×26 label rotated 45° about its
+        // centre: the enclosing axis-aligned square.
+        return new Bound(400, 400, 103, 103);
+      },
+    } as unknown as GfxPrimitiveElementModel;
+
+    // A node in the corner of that square: outside the ink, inside the box.
+    expect(
+      idsOf(evaluate([background(), rotated, node('n1', 404, 404)]))
+    ).toEqual([W3]);
   });
 
   it('covers a specialisation through the role hierarchy', () => {

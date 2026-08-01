@@ -325,6 +325,133 @@ describe('a drag on a dense map re-judges only what moved', () => {
     );
     expect(incremental).toBeLessThan(full);
   });
+
+  /**
+   * The case a three-element drag hides: a LASSO.
+   *
+   * Selecting a third of a map and moving it is an entirely ordinary gesture,
+   * and the dirty path costs `dirtyParticipants × p` against the sweep's
+   * `p²/2`. Unbounded, it crossed over around 10–30 % of the participants and
+   * reached **8× the sweep — 18 ms, outside the frame** — for the one gesture
+   * where the sweep it replaced cost 2.2 ms and was comfortably inside it.
+   *
+   * The family now compares the two costs before choosing. This measures the
+   * shape of the curve, not one point on it, because "it is fast for a drag of
+   * three" was exactly the claim that hid the problem.
+   */
+  it('stays inside the frame at EVERY dirty-set size', () => {
+    const participants = map.filter(
+      el =>
+        el.role !== undefined &&
+        el.role !== WARDLEY_ROLE.map &&
+        el.role !== WARDLEY_ROLE.inertia &&
+        el.role !== WARDLEY_ROLE.changeArrow
+    );
+    const full = medianMs(() =>
+      evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES)
+    );
+
+    for (const fraction of [0.02, 0.1, 0.3, 0.6, 1]) {
+      const size = Math.max(1, Math.round(participants.length * fraction));
+      const lasso = new Set(participants.slice(0, size).map(el => el.id));
+      const ms = medianMs(() =>
+        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
+          dirty: lasso,
+          previous,
+        })
+      );
+
+      console.info(
+        `[bench] lasso drag, |dirty|=${size} of ${participants.length} participants: ` +
+          `${ms.toFixed(3)} ms (full ${full.toFixed(3)} ms, budget ${FRAME_BUDGET_MS} ms)`
+      );
+      expect(ms).toBeLessThan(FRAME_BUDGET_MS);
+      // Never several times the price of the thing it is avoiding. Generous
+      // against CI noise; the point is that the ratio is bounded at all.
+      expect(ms).toBeLessThan(full * 2 + 1);
+    }
+  });
+});
+
+/**
+ * ## The budget's horizon — read this before adding a second pair-wise family
+ *
+ * `no-overlap` is the only super-linear term in the engine: everything else is
+ * a constant per element. Measured on this generator, with the three rules of
+ * THIS slice and nothing else — recorded so the next slice inherits a FIGURE
+ * rather than a conclusion:
+ *
+ * ```
+ *   500 elements :   1.1 ms     (the reference map, and the claim in the PR)
+ *  1000 elements :   3.4 ms     (still inside, with most of the frame spare)
+ *  2000 elements :  11.2 ms     (inside, but the whole budget is now this)
+ *  4000 elements :  44.3 ms     (2.8× outside)
+ * ```
+ *
+ * Four times the elements is sixteen times the work: the wall is at roughly
+ * **2500 elements today**, and it moves DOWN as rules are added — each extra
+ * pair-wise rule is another full sweep.
+ *
+ * So the honest trigger for a spatial index is **the second pair-wise rule, or
+ * the first board past ~2000 elements — whichever comes first.** Not "when we
+ * have fourteen frameworks": one more `no-overlap` rule halves the headroom on
+ * its own, and one dense board reaches the wall without any help.
+ *
+ * "No spatial index, measured first" was the right call for this slice and is
+ * the wrong call for the next one that crosses either line. The case below is
+ * asserted so that whoever crosses it meets a failing test, not a paragraph.
+ */
+describe('the budget horizon, recorded for the next slice', () => {
+  it('grows QUADRATICALLY, and says where that puts the wall', () => {
+    // Both sizes measured here, in the same test, on the same machine: an
+    // absolute millisecond count at 1000 elements is a statement about the CI
+    // runner's mood, while the RATIO between two sizes is a statement about the
+    // engine. Doubling the elements must cost about four times, never eight —
+    // that would mean a lost hoist or a third nested loop.
+    const small = medianMs(
+      () => evaluateRules(WARDLEY_RULES, referenceMap(500, 'wardley.strict'), WARDLEY_PROFILES),
+      7,
+      2
+    );
+    const big = medianMs(
+      () => evaluateRules(WARDLEY_RULES, referenceMap(1000, 'wardley.strict'), WARDLEY_PROFILES),
+      7,
+      2
+    );
+    const ratio = big / small;
+    // Where this puts the 16 ms wall, extrapolated from the measured curve.
+    const wall = Math.round(1000 * Math.sqrt(FRAME_BUDGET_MS / big));
+
+    console.info(
+      `[bench] SCALE 500 → 1000 elements: ${small.toFixed(3)} → ${big.toFixed(3)} ms ` +
+        `(×${ratio.toFixed(2)}, quadratic ≈ ×4) — the ${FRAME_BUDGET_MS} ms wall ` +
+        `is around ${wall} elements TODAY, and moves down with every rule added. ` +
+        `See the note above this suite before adding a second pair-wise family.`
+    );
+
+    // Quadratic, not worse. Generous against a noisy runner in both
+    // directions; the SHAPE is the claim, and the only part of this that is a
+    // statement about the engine rather than about the machine — `wall` moves
+    // by a factor of four between an idle runner and a loaded one, so it is
+    // logged and never asserted.
+    expect(ratio).toBeLessThan(8);
+  });
+
+  it('has exactly ONE pair-wise rule — the second one is the trigger', () => {
+    // The enforceable half of the note above. Every `no-overlap` rule is
+    // another full sweep of the participants against themselves, so the second
+    // one halves the headroom on its own — which is why "when we have fourteen
+    // frameworks" was never the honest trigger.
+    //
+    // When this fails: read the note, measure again, and either build the
+    // spatial index or write down why the numbers still say not to. What must
+    // not happen is a second sweep landing because the first one was cheap.
+    const pairwise = WARDLEY_RULES.filter(rule => rule.family === 'no-overlap');
+
+    expect(pairwise.map(rule => rule.id)).toEqual([
+      'wardley.overlapping-artefacts',
+    ]);
+  });
 });
 
 describe('a rule switched off costs nothing', () => {

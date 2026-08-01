@@ -151,6 +151,23 @@ describe('wardley creation sites post the role', () => {
     expect(added[0].role).toBe(WARDLEY_ROLE.inertia);
   });
 
+  it('leaves generalist artefacts neutral, at the creation site', () => {
+    // The other half of proportionality, asserted where the decision is MADE
+    // rather than only where it is evaluated: a creation site that started
+    // stamping a role on the market's glyph wiring, or on a legend glyph,
+    // would put phantom artefacts under every rule written on roles.
+    const { gfx, added } = fakeGfx();
+    createWardleyMarket(gfx);
+
+    const neutral = added.filter(el => el.role === undefined);
+    // The three inner dots and the three triangle connectors: the market
+    // glyph's own wiring, and nothing else on the board.
+    expect(neutral).toHaveLength(6);
+    for (const el of neutral) {
+      expect(['wardleyNode', 'connector']).toContain(el.type);
+    }
+  });
+
   it('types both connector tools — dependency, and change arrow', () => {
     const link = fakeGfx();
     activateWardleyConnector(link.gfx, 'link');
@@ -178,12 +195,16 @@ describe('built-in templates are typed like hand-drawn maps', () => {
 
   it('gives every template wardleyNode the role matching its kind', () => {
     const nodes = templateElements().filter(el => el.type === 'wardleyNode');
+    const neutral = nodes.filter(node => node.role === undefined);
 
     // Guard against the selector silently matching nothing.
     expect(nodes.length).toBeGreaterThan(10);
+    // The ONLY neutral nodes a template may contain are the market glyph's
+    // three inner dots — one market template, one market composite. Pinned as
+    // a COUNT rather than skipped: "every node that has a role has the right
+    // one" would pass a template that quietly lost one.
+    expect(neutral).toHaveLength(3);
     for (const node of nodes) {
-      // …or NO role, for the market's inner dots: glyph wiring, exactly as the
-      // toolbox creates them.
       if (node.role === undefined) continue;
       expect(node.role).toBe(
         WARDLEY_ROLE[node.kind as keyof typeof WARDLEY_ROLE]
@@ -191,15 +212,21 @@ describe('built-in templates are typed like hand-drawn maps', () => {
     }
   });
 
-  it('types template labels, so a preset validates like a hand-drawn map', () => {
-    const labels = templateElements().filter(
-      el => el.type === 'text' && el.role !== undefined
-    );
+  it('types every ARTEFACT NAME, and leaves annotations neutral', () => {
+    const texts = templateElements().filter(el => el.type === 'text');
+    const named = texts.filter(el => el.role === WARDLEY_ROLE.label);
+    const neutral = texts.filter(el => el.role === undefined);
 
-    expect(labels.length).toBeGreaterThan(10);
-    for (const label of labels) {
-      expect(label.role).toBe(WARDLEY_ROLE.label);
-    }
+    expect(texts.length).toBeGreaterThan(20);
+    // Two closed sets, and nothing outside them: a text is either the name of
+    // an artefact (W3 is written on it) or a note, a legend or a map title,
+    // which name nothing and are measured by nobody.
+    expect(named.length + neutral.length).toBe(texts.length);
+    expect(named.length).toBeGreaterThan(10);
+    // The annotation texts of the canonical maps — titles, the numbered
+    // callouts, the note panel. Pinned so that neutralising a NAME to silence
+    // a finding cannot pass unnoticed.
+    expect(neutral.length).toBeGreaterThan(0);
   });
 
   it('types template dependency links AND change arrows', () => {

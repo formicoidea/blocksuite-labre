@@ -99,7 +99,14 @@ export interface AgainstAxisDef {
 
 /** `attachment` configuration. */
 export interface AttachmentDef {
-  /** The role of the element the subject must be posed ON — an edge, usually. */
+  /**
+   * The role of the element the subject must be posed ON.
+   *
+   * It has to be an **edge** role: "posed on" is measured as a distance to a
+   * PATH, and a node has none. A rule naming a node role here matches nothing
+   * and warns once rather than failing silently — a rule that never fires and
+   * never says why is the worst thing declarative data can do.
+   */
   carrierRole: RoleId;
   /** How far, in model units, the subject may sit from its carrier. */
   tolerance: number;
@@ -468,6 +475,19 @@ export interface Violation {
  */
 export type ExemptionScope = 'element' | 'map';
 
+/**
+ * Complain once per distinct problem. A family runs on every evaluation, so a
+ * bare `console.warn` about a malformed rule would fill the console at 8 Hz
+ * while somebody drags.
+ */
+const warned = new Set<string>();
+
+function warnOnce(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[validation] ${reason}`);
+}
+
 /** One instance of a framework background, as the families read it. */
 interface BackgroundInstance {
   id: string;
@@ -652,6 +672,41 @@ function gapSquared(background: Bound, bound: Bound): number {
 type Point = [number, number];
 
 /**
+ * How many points a CURVED segment is sampled into. A Wardley map is ~1600
+ * units wide and the tightest tolerance any rule declares is 24, so 32 chords
+ * put the sampling error two orders of magnitude below the thing being
+ * measured. Paid only by an element that actually carries tangents.
+ */
+const CURVE_SAMPLES = 32;
+
+/** A point on the cubic Bézier `p0 → p1` with control points `c0`, `c1`. */
+function cubicAt(
+  p0: Point,
+  c0: Point,
+  c1: Point,
+  p1: Point,
+  t: number
+): Point {
+  const u = 1 - t;
+  const a = u * u * u;
+  const b = 3 * u * u * t;
+  const c = 3 * u * t * t;
+  const d = t * t * t;
+  return [
+    a * p0[0] + b * c0[0] + c * c1[0] + d * p1[0],
+    a * p0[1] + b * c0[1] + c * c1[1] + d * p1[1],
+  ];
+}
+
+/** Anything but a rounding difference away from `p`. */
+function departsFrom(candidate: unknown, p: Point): candidate is Point {
+  return (
+    isPoint(candidate) &&
+    (Math.abs(candidate[0] - p[0]) > 1e-6 || Math.abs(candidate[1] - p[1]) > 1e-6)
+  );
+}
+
+/**
  * The POLYLINE a directional element exposes, in absolute model coordinates —
  * `null` for anything that is not one.
  *
@@ -666,6 +721,21 @@ type Point = [number, number];
  *
  * An edge attached at both ends and never laid out has neither, and gets no
  * verdict at all — silence, not a guess.
+ *
+ * ## Curved edges
+ *
+ * A routed path is not always a polyline. A curved connector stores its whole
+ * shape in TWO points carrying tangents (`absOut` on the first, `absIn` on the
+ * second) — so reading the bare coordinates gives the CHORD, and a bar sitting
+ * exactly on the drawn curve reads as 150 units off it. Wardley draws straight
+ * connectors, but the connector toolbar lets the mode be changed, and a rule
+ * that is confidently wrong about what the user can plainly see is worse than
+ * one that says nothing.
+ *
+ * Detected by geometry, not by mode: a point whose tangent departs from itself
+ * is a curve, whatever the element type calls it. The segment is then sampled
+ * ({@link CURVE_SAMPLES}) so every downstream test — distance, intersection —
+ * measures the drawn shape.
  */
 function elementPath(el: unknown): Point[] | null {
   const edge = el as {
@@ -674,14 +744,33 @@ function elementPath(el: unknown): Point[] | null {
     target?: { position?: unknown };
   };
 
-  const path = edge.absolutePath;
-  if (Array.isArray(path) && path.length >= 2) {
-    const points: Point[] = [];
-    for (const raw of path) {
-      const x = (raw as Record<number, unknown>)?.[0];
-      const y = (raw as Record<number, unknown>)?.[1];
+  const raw = edge.absolutePath;
+  if (Array.isArray(raw) && raw.length >= 2) {
+    const anchors: Point[] = [];
+    for (const point of raw) {
+      const x = (point as Record<number, unknown>)?.[0];
+      const y = (point as Record<number, unknown>)?.[1];
       if (typeof x !== 'number' || typeof y !== 'number') return null;
-      points.push([x, y]);
+      anchors.push([x, y]);
+    }
+
+    const points: Point[] = [anchors[0]];
+    for (let i = 1; i < anchors.length; i++) {
+      const from = anchors[i - 1];
+      const to = anchors[i];
+      const out = (raw[i - 1] as { absOut?: unknown })?.absOut;
+      const into = (raw[i] as { absIn?: unknown })?.absIn;
+      // Straight unless a tangent says otherwise — the common case, and the
+      // one that must not pay for the other.
+      if (!departsFrom(out, from) && !departsFrom(into, to)) {
+        points.push(to);
+        continue;
+      }
+      const c0 = isPoint(out) ? out : from;
+      const c1 = isPoint(into) ? into : to;
+      for (let s = 1; s <= CURVE_SAMPLES; s++) {
+        points.push(cubicAt(from, c0, c1, to, s / CURVE_SAMPLES));
+      }
     }
     return points;
   }
@@ -829,6 +918,17 @@ function evaluateAttachment(
   const attachment = rule.attachment;
   if (subjectRole === undefined || attachment === undefined) return [];
 
+  // A carrier is something with a PATH. Declaring a node role here produces a
+  // rule that can never fire; say so once instead of shrugging.
+  if (rule.roles[attachment.carrierRole]?.kind === 'node') {
+    warnOnce(
+      `attachment rule "${rule.id}" names a node role ` +
+        `("${attachment.carrierRole}") as its carrier — "posed on" is a ` +
+        `distance to a path, so this rule can never fire.`
+    );
+    return [];
+  }
+
   const carriers: Point[][] = [];
   const subjects: GfxPrimitiveElementModel[] = [];
   for (const el of elements) {
@@ -891,11 +991,52 @@ interface OverlapSubject {
   slots: boolean[];
 }
 
-/** Do these two subjects actually collide, given each one's geometry? */
+/**
+ * How much shared extent counts as an overlap rather than a shared edge.
+ *
+ * Two boxes that TOUCH — a label ending exactly where a node begins — share no
+ * area and are perfectly readable, which is precisely what alignment and snap
+ * produce all day. The house `Bound.isOverlapWithBound` answers `true` for them
+ * (it compares against `+EPSILON`, so equality passes), so this asks for real
+ * shared extent instead. Small enough that a pixel of genuine overlap still
+ * counts, large enough that float noise on a snapped edge does not.
+ */
+const OVERLAP_EPSILON = 1e-6;
+
+/** Do these two bounds share AREA, as opposed to an edge? */
+function boundsOverlap(a: Bound, b: Bound): boolean {
+  return (
+    b.maxX - a.minX > OVERLAP_EPSILON &&
+    a.maxX - b.minX > OVERLAP_EPSILON &&
+    b.maxY - a.minY > OVERLAP_EPSILON &&
+    a.maxY - b.minY > OVERLAP_EPSILON
+  );
+}
+
+/**
+ * Do these two subjects actually collide, given each one's geometry?
+ *
+ * ## Known limit: a ROTATED node is measured by its bounding box
+ *
+ * `elementBound` is the axis-aligned box of a rotated element, so a 120×26
+ * label at 45° presents as roughly 103×103 — the same inflation this family
+ * refuses to accept for an edge, where the fix was to measure along the path.
+ * A rotated NODE has no equivalent cheap answer: it needs an oriented box and a
+ * separating-axis test on both sides of every pair, in the inner loop of the
+ * only super-linear family here.
+ *
+ * Deliberately not built, and deliberately written down. Rotating a Wardley
+ * node is not a gesture the framework has; the day a framework rotates its
+ * artefacts is the day this is worth the inner loop, and {@link OverlapSubject}
+ * is where the oriented box would go. Until then the failure mode is a
+ * false POSITIVE on a rotated pair — a warning too many, never a miss — which
+ * is the right way round for a readability rule that is only ever a warning.
+ * A test pins the behaviour so a change to it cannot be silent.
+ */
 function subjectsCollide(a: OverlapSubject, b: OverlapSubject): boolean {
   // Bounding boxes first: on a dense map almost every pair dies here, and this
   // is the test the O(n²) sweep is really made of.
-  if (!a.bound.isOverlapWithBound(b.bound)) return false;
+  if (!boundsOverlap(a.bound, b.bound)) return false;
   if (a.path === null && b.path === null) return true;
   if (a.path !== null && b.path !== null) return pathsCross(a.path, b.path);
 
@@ -1007,48 +1148,79 @@ function evaluateNoOverlap(
     );
   };
 
-  // A frame that MOVED re-attributes every finding measured against it — and a
-  // frame is not a participant, so no pair-wise re-test would ever reach those
-  // findings. The cheapest correct answer is to judge the whole surface.
-  const frameMoved =
-    incremental !== undefined &&
-    backgrounds.some(background => incremental.dirty.has(background.id));
-
-  if (incremental === undefined || frameMoved) {
+  const sweep = () => {
     for (let i = 0; i < subjects.length; i++) {
       for (let j = i + 1; j < subjects.length; j++) test(subjects[i], subjects[j]);
     }
     return found;
-  }
+  };
+  if (incremental === undefined) return sweep();
+
+  const { dirty } = incremental;
+
+  /**
+   * Anything that IS or WAS a frame sends the whole surface back through the
+   * sweep.
+   *
+   * A frame is not a participant, so no pair-wise re-test ever reaches the
+   * findings attributed to it — and moving, resizing or DELETING one changes
+   * every one of those attributions, which is what decides the map-wide
+   * arbitration and the profile in force. Deletion is the case that made this
+   * necessary and the one a "is a current background dirty" test cannot see:
+   * once the map is gone `backgrounds` is empty, nothing looks dirty, and the
+   * findings measured against it would vanish from a live board.
+   */
+  const frameTouched =
+    backgrounds.some(background => dirty.has(background.id)) ||
+    incremental.previous.some(
+      violation =>
+        violation.backgroundId !== undefined &&
+        dirty.has(violation.backgroundId)
+    );
+  if (frameTouched) return sweep();
+
+  /**
+   * ...and so does a change big enough that the shortcut is no longer one.
+   *
+   * The dirty path costs `dirtyParticipants × p`; the sweep costs `p²/2`. Past
+   * the crossover the "optimisation" is several times the price of the thing it
+   * replaces — measured at 8× and OUT of the 16 ms budget for a lasso drag over
+   * a third of a 500-element map, against 2.2 ms for the sweep it was avoiding.
+   * One comparison buys back the worst case entirely.
+   */
+  let dirtyParticipants = 0;
+  const isDirty = subjects.map(subject => {
+    const changed = dirty.has(subject.id);
+    if (changed) dirtyParticipants++;
+    return changed;
+  });
+  if (dirtyParticipants * 2 >= subjects.length) return sweep();
 
   // Only the couples involving something that changed. Everything else keeps
   // the verdict it already had.
-  const { dirty } = incremental;
-  const seen = new Set<string>();
   for (let i = 0; i < subjects.length; i++) {
-    if (!dirty.has(subjects[i].id)) continue;
+    if (!isDirty[i]) continue;
     for (let j = 0; j < subjects.length; j++) {
-      if (i === j) continue;
-      const a = subjects[i];
-      const b = subjects[j];
+      if (j === i) continue;
       // A dirty–dirty couple is reachable from both ends and must be tested
-      // once, or the same collision would be reported twice.
-      const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      test(a, b);
+      // once. The earlier index already tested it against everything, so only
+      // look forward — no per-couple key, and nothing allocated in the loop
+      // that is the whole cost of this path.
+      if (j < i && isDirty[j]) continue;
+      test(subjects[i], subjects[j]);
     }
   }
 
   const alive = new Set(subjects.map(subject => subject.id));
+  // The `backgroundId` is deliberately NOT filtered on here: a pair-wise
+  // finding depends on its frame only for ATTRIBUTION, and any change to that
+  // frame already took the whole surface through the sweep above. Dropping
+  // findings on it as well is how a live overlap disappeared when its map was
+  // deleted.
   const carried = incremental.previous.filter(
     violation =>
       violation.ruleId === rule.id &&
-      violation.elementIds.every(id => !dirty.has(id) && alive.has(id)) &&
-      // A finding measured against a frame that MOVED has to be re-judged too:
-      // its attribution, and with it the map-wide arbitration and the profile
-      // that applies, are read off that frame.
-      (violation.backgroundId === undefined || !dirty.has(violation.backgroundId))
+      violation.elementIds.every(id => !dirty.has(id) && alive.has(id))
   );
   return [...carried, ...found];
 }

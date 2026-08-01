@@ -23,7 +23,9 @@ element to be posed on a carrier and optionally at a zone transition, and
 of declared roles, with each side's geometry following its role's own kind, so
 an edge is measured along its path and not by the bounding box of its diagonal.
 `no-overlap` supports an incremental pass — a drag re-tests only the couples
-involving something that moved, and reaches the same verdict as a full one.
+involving something that moved, reaches the same verdict as a full one, and is
+bounded by it: past the crossover, or when a frame is touched at all, it simply
+sweeps.
 
 **Three Wardley rules.** A change arrow may not point against evolution; an
 inertia bar belongs on a dependency, at a phase transition; nodes and labels

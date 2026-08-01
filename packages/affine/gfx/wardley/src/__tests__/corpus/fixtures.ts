@@ -50,6 +50,15 @@ export interface CorpusCard {
   elements: CorpusElement[];
   /** Rule ids, one entry per expected finding. Sorted by the spec. */
   expected: string[];
+  /**
+   * `rule:elementIds` for each expected finding, when the card is big enough
+   * that the rule id alone would not say WHICH mistake was caught.
+   *
+   * A two-element card only has one thing it can be reporting; a card with
+   * twenty has several, and "three overlaps" is satisfied just as well by the
+   * three wrong ones. Present on the cards where that distinction exists.
+   */
+  expectedIds?: string[];
 }
 
 const W1 = 'wardley.change-arrow-against-evolution';
@@ -322,6 +331,67 @@ const legacyMap: CorpusCard = {
   expected: [],
 };
 
+/**
+ * A whole map that is wrong in SEVERAL ways at once — the case the micro-cards
+ * cannot reach.
+ *
+ * Each fixture above isolates one rule on a handful of elements, which proves
+ * the rule fires and nothing about what happens when a real map is in play: an
+ * over-eager rule shows up as a companion finding on a busy card, not on a card
+ * with two nodes on it. This one carries every role, twenty-odd elements, and
+ * names EXACTLY the five findings it deserves — so anything extra fails just as
+ * loudly as anything missing.
+ */
+const crowdedMap: CorpusCard = (() => {
+  const { link: crossingLink, point } = crossing('d-cross', 0.55, 1);
+  return {
+    name: 'a whole map wrong in several ways at once',
+    elements: [
+      map(),
+
+      // ── conformant half: none of this may raise anything ──────────────
+      node('ok1', 0.15, 0.8),
+      label('okL1', 0.17, 0.8),
+      node('ok2', 0.45, 0.62),
+      label('okL2', 0.47, 0.62),
+      node('ok3', 0.8, 0.25),
+      label('okL3', 0.82, 0.25),
+      link('okD1', [0.16, 0.78], [0.44, 0.64]),
+      link('okD2', [0.46, 0.6], [0.79, 0.27]),
+      arrow('okA1', [0.16, 0.85], [0.5, 0.85]),
+      node('anchor1', 0.3, 0.95, WARDLEY_ROLE.anchor),
+      crossingLink,
+      inertia('okBar', point[0], point[1]),
+
+      // ── W1 ×1: an arrow heading back towards genesis ───────────────────
+      arrow('badArrow', [0.85, 0.1], [0.3, 0.1]),
+
+      // ── W2 ×1: a bar on the crossing link, mid-phase ───────────────────
+      inertia('badBar', point[0] + 200, point[1]),
+
+      // ── W3 ×3: node/node, label/node, label/link ───────────────────────
+      // Each in its own corner of the map, so the card names three findings
+      // because three things are wrong — not because one mistake was reported
+      // from three angles.
+      node('pileA', 0.15, 0.35),
+      node('pileB', 0.1525, 0.35),
+      node('solo', 0.35, 0.25),
+      label('overNode', 0.35, 0.25),
+      label('overLink', 0.3, 0.7),
+    ],
+    expected: [W1, W2, W3, W3, W3],
+    // Named element by element: on a card this size, "three overlaps" would be
+    // satisfied just as well by three WRONG ones.
+    expectedIds: [
+      `${W1}:badArrow`,
+      `${W2}:badBar`,
+      `${W3}:okD1+overLink`,
+      `${W3}:overNode+solo`,
+      `${W3}:pileA+pileB`,
+    ],
+  };
+})();
+
 export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w1Forward,
   w1Diagonal,
@@ -335,6 +405,7 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w3NodeOnNode,
   w3LabelOnNode,
   w3LabelOnLink,
+  crowdedMap,
   neutralBoard,
   legacyMap,
 ];
