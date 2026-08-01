@@ -1,26 +1,30 @@
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EdgelessCRUDExtension } from '../extensions/crud-extension.js';
 import { ValidationManager, type Violation } from '../extensions/validation.js';
 
 /**
- * `store.transact` carries no readonly guard (unlike the store's block CRUD),
- * so every surface-element write path has to refuse on its own. This suite
- * pins the two write layers that gestures reach:
+ * Surface-element writes go through `store.transact`, and each write layer has
+ * to refuse on its own. This suite pins the two the toolbars and commands
+ * reach:
  *
- * - {@link EdgelessCRUDExtension} — the crud bottleneck commands and toolbars
- *   go through (apply-last-style, group, duplicate, …);
+ * - {@link EdgelessCRUDExtension} — the crud bottleneck (apply-last-style,
+ *   group, duplicate, …). `SurfaceBlockModel` underneath it already THROWS on
+ *   readonly; the guard's job is to turn that exception into the quiet,
+ *   logged refusal the store's own block CRUD performs (`updateBlock` /
+ *   `deleteBlock` / `moveBlocks` all `console.error` and return). Hence the
+ *   `console.error` assertions below: a silent return would be the only
+ *   refusal in the repo with no signal at all.
  * - {@link ValidationManager} — exceptions and profiles, which write through
- *   `@field()` accessors and bypass crud entirely.
+ *   `@field()` accessors and bypass crud entirely. There the return VALUE is
+ *   the contract: every caller gates its `track` on a non-empty / `true`
+ *   result (`violation-detail-widget._setException`, `validation-toolbar`
+ *   `pickProfile` and revoke action), so no write ⇒ no telemetry.
  *
  * The stubs deliberately provide NOTHING beyond `std.store.readonly`: any
  * guarded method that gets past its guard reaches for `std.get` / `this.gfx`
  * and throws, so a regression fails loudly rather than silently passing.
- *
- * "No telemetry" rides on the same returns: every caller gates its `track` on
- * a non-empty / `true` result (`violation-detail-widget._setException`,
- * `validation-toolbar` `pickProfile` and revoke action).
  */
 
 const readonlyStd = {
@@ -32,21 +36,37 @@ const readonlyStd = {
 
 describe('EdgelessCRUDExtension refuses to write a readonly document', () => {
   const crud = new EdgelessCRUDExtension(readonlyStd);
+  let logged: string[];
 
-  it('updateElement is a no-op', () => {
+  beforeEach(() => {
+    logged = [];
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      logged.push(args.join(' '));
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('updateElement is a no-op, and says so', () => {
     expect(crud.updateElement('el', { fillColor: 'red' })).toBeUndefined();
+    expect(logged).toEqual(['cannot update an element in readonly mode']);
   });
 
-  it('addElement adds nothing', () => {
+  it('addElement adds nothing, and says so', () => {
     expect(crud.addElement('shape', {})).toBeUndefined();
+    expect(logged).toEqual(['cannot add an element in readonly mode']);
   });
 
-  it('deleteElements deletes nothing', () => {
+  it('deleteElements deletes nothing, and says so', () => {
     expect(crud.deleteElements([{ id: 'el' } as never])).toBeUndefined();
+    expect(logged).toEqual(['cannot delete elements in readonly mode']);
   });
 
-  it('removeElement removes nothing', () => {
+  it('removeElement removes nothing, and says so', () => {
     expect(crud.removeElement('el')).toBeUndefined();
+    expect(logged).toEqual(['cannot remove an element in readonly mode']);
   });
 
   it('the guard is what stops the write, not a lucky missing surface', () => {

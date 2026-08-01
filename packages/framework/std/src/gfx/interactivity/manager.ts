@@ -89,6 +89,17 @@ export class InteractivityManager extends GfxExtension {
     return this.gfx.keyboard;
   }
 
+  /**
+   * Move, resize, rotate and clone all commit through `@field()` accessors,
+   * i.e. raw `store.transact` calls that never pass by a crud layer and are
+   * therefore invisible to any guard placed there. Callers are expected to
+   * refuse first (`DefaultTool.dragStart`, `edgeless-selected-rect`); this is
+   * the backstop for the ones that forget.
+   */
+  private get _readonly() {
+    return this.std.store.readonly;
+  }
+
   private _safeExecute(fn: () => void, errorMessage: string) {
     try {
       fn();
@@ -331,6 +342,8 @@ export class InteractivityManager extends GfxExtension {
    * Note: Call this when mouse is already down.
    */
   handleElementMove(options: DragInitializationOption) {
+    if (this._readonly) return;
+
     let cancelledByExt = false;
 
     const context: DragExtensionInitializeContext = {
@@ -514,6 +527,8 @@ export class InteractivityManager extends GfxExtension {
       onRotateEnd?: () => void;
     }
   ) {
+    if (this._readonly) return;
+
     const { rotatable, viewConfigMap, initialRotate } =
       this._getViewRotateConfig(options.elements);
 
@@ -902,6 +917,8 @@ export class InteractivityManager extends GfxExtension {
       }) => void;
     }
   ) {
+    if (this._readonly) return;
+
     const { viewConfigMap, allowedHandlers } = this._getViewResizeConfig(
       options.elements
     );
@@ -1093,6 +1110,8 @@ export class InteractivityManager extends GfxExtension {
   }
 
   requestElementClone(options: RequestElementsCloneContext) {
+    if (this._readonly) return Promise.resolve(undefined);
+
     const extensions = this.interactExtensions;
 
     for (let ext of extensions.values()) {

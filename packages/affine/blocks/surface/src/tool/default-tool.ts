@@ -315,6 +315,20 @@ export class DefaultTool extends BaseTool {
 
     this.movementDragging = true;
 
+    // A readonly board still navigates: rubber-band selection stays available
+    // here, and panning is a separate tool (`PanTool`, bound to space and `h`).
+    // What is refused is moving CONTENT: `_determineDragType` would call
+    // `handleElementSelection` — a write-less side effect, but one `click`
+    // already refuses on readonly — and then `handleElementMove` writes `xywh`
+    // through the `@field()` accessor, i.e. a raw `store.transact` that never
+    // passes by `EdgelessCRUDExtension`. Alt-drag cloning rides the same
+    // branch and is refused with it.
+    if (this.doc.readonly) {
+      this._toBeMoved = [];
+      this.initializeDragState(DefaultModeDragType.Selecting, e);
+      return;
+    }
+
     // Determine the drag type based on the current state and event
     let dragType = this._determineDragType(e);
 

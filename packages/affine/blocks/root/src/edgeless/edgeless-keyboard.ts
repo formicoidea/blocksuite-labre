@@ -71,6 +71,21 @@ import {
 import { deleteElements } from './utils/crud.js';
 import { isCanvasElement } from './utils/query.js';
 
+/**
+ * The only tools that never touch the document: selection, panning and the
+ * presentation navigator (`empty` is the no-op placeholder). Everything else —
+ * brush, highlighter, connector, shape, polygon, text, note, frame, template,
+ * eraser — creates or erases on its first gesture, so a readonly board refuses
+ * to activate it. Whitelist rather than blacklist: a new tool is a writer
+ * until someone proves otherwise.
+ */
+const READONLY_SAFE_TOOLS = new Set([
+  'default',
+  'pan',
+  'frameNavigator',
+  'empty',
+]);
+
 export class EdgelessPageKeyboardManager extends PageKeyboardManager {
   get gfx() {
     return this.std.get(GfxControllerIdentifier);
@@ -146,6 +161,10 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         },
         f: () => {
           if (this.rootComponent.service.locked) return;
+          // `createFrameOnSelected` reaches `store.addBlock`, which throws on
+          // readonly; `_setEdgelessTool` below is guarded too, but the branch
+          // taken depends on the selection, so refuse the whole gesture here.
+          if (this.rootComponent.store.readonly) return;
           if (
             this.rootComponent.service.selection.selectedElements.length !==
               0 &&
@@ -684,6 +703,18 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
     toolType: ToolType<T>,
     ...options: [options?: ToolOptions<T>, ignoreActiveState?: boolean]
   ) {
+    // Creation tools call `gfx.surface.addElement` / `store.addBlock` directly
+    // on their first drag — outside `EdgelessCRUDExtension`, so the crud guard
+    // never sees them and the underlying model throws instead. Refusing the
+    // ACTIVATION is the only place that covers all of them at once, and it is
+    // also the honest UX: a readonly board should not arm a brush.
+    if (
+      this.rootComponent.store.readonly &&
+      !READONLY_SAFE_TOOLS.has(toolType.toolName)
+    ) {
+      return;
+    }
+
     const ignoreActiveState =
       typeof options === 'boolean'
         ? options[0]
