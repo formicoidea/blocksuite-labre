@@ -341,12 +341,14 @@ export const RESERVED_EDGELESS_KEYS = [
 declared next to the bindings it mirrors, asserted against them by a unit test,
 and checked against every `FrameworkDescriptor.chordPrefix`. That turns "`e` is
 the eraser" from tribal knowledge into a failing test. Folding those bindings
-into real descriptors is the better end state (step 5), but the reservation
-list is what unblocks a second framework getting chords now.
+into real descriptors is the better end state (sequenced after the switchover,
+see Rollout), but the reservation list is what closes the conflict-detection
+hole in the meantime.
 
 ### Mapping to `ShortcutDescriptor`
 
-One adapter, in `@labre/std`, keeps the existing keymap path intact. It is
+One projection, in `@labre/std`, keeps the existing keymap path intact — a
+permanent derivation, not a migration shim (see Rollout). It is
 **total** — every command yields a descriptor, keyless ones included:
 
 ```ts
@@ -442,8 +444,8 @@ c.surfaces.includes('senior-menu'))`. Their Lit shell, styling and popper
   `'event-storming'` → `'ddd-event-storming'`, and likewise for core-domain and
   context-map). That is a breaking change for already-collected PostHog data:
   either the host maps the old values at ingest, or dashboards must union both
-  spellings across the cutover. Sequencing this rename is a prerequisite of
-  step 1, not a side effect of it.
+  spellings across the cutover. This rename is the one change that lands
+  **before** the switchover, on its own — see Rollout.
 - Adding a framework artefact becomes one descriptor instead of an entry in a
   Lit template plus (optionally) a second one in `shortcuts.ts` — and it is
   then automatically present in all five surfaces.
@@ -470,42 +472,98 @@ c.surfaces.includes('senior-menu'))`. Their Lit shell, styling and popper
   schema changes: the registry is view-layer only, with no document-format
   impact.
 
-## Migration plan (incremental, no big-bang)
+## Rollout — one switchover, two sequenced follow-ons
 
-0. **Reserve the keys.** Add `RESERVED_EDGELESS_KEYS` next to
-   `edgeless-keyboard.ts` with the test asserting it mirrors the real
-   `bindHotKey` map, and the telemetry `framework` rename (see Consequences).
-   Independently mergeable, unblocks any second framework wanting chords.
-1. **Types only.** Add `CommandDescriptor`, `CommandManifestEntry`,
-   `CommandSurface`, `CommandKind`, `CommandInvocation`, `FrameworkId`,
-   `FrameworkDescriptor` and `toShortcutDescriptor` to `@labre/std`; add a
-   `CommandRegistry` aggregator beside `getShortcutManifest`, flag-gated the
-   same way. Nothing consumes it yet. Unit tests for the invariants.
-2. **Wardley as the reference.** Rewrite `gfx/wardley/src/shortcuts.ts` as
-   `commands.ts`: the 7 existing chords keep their ids and keys, and the 6
-   menu-only artefacts (the `opportunity`, `benefit` and `evolution-gradient`
-   backgrounds, market, ecosystem, anchor) join them with
-   `surfaces: ['senior-menu', 'catalogue', 'palette', 'agent']` and empty
-   `defaultKeys`. `ShortcutExtension(wardleyShortcuts)` in the flag-gated
-   `WardleyViewExtension` becomes
-   `ShortcutExtension(wardleyCommands.map(toShortcutDescriptor))`.
-   Effective keymap for existing ids must be byte-identical — assert it.
-   `WardleyActionSource` collapses into `CommandInvocation`.
-3. **Wardley menu becomes a consumer.** `wardley-menu.ts` renders from the
-   registry. Delete the hard-coded button list; i18n keys land in the host
-   catalogue. Integration spec: the 13 buttons still render, in order.
-4. **Roll out per framework** — edgy, bpmn, cynefin-estuarine, the three DDD
-   modules — one PR each, same shape. Each gains Settings › Shortcuts presence
-   for free (they have none today); `chordPrefix` is allocated against
-   `RESERVED_EDGELESS_KEYS` (`e` is taken by the eraser, so EDGY needs another
-   letter or none).
-5. **Fold surface (e) in.** Convert `edgeless-keyboard.ts`'s single-letter
-   bindings into `owner: 'core'` commands, at which point
-   `RESERVED_EDGELESS_KEYS` is deleted and `resolveKeymap`'s conflict detection
-   covers the whole edgeless keyboard for the first time.
-6. **New consumers.** Sidepanel catalogue, palette and the agent bridge read
-   the registry directly; `getShortcutManifest` becomes a projection helper
-   kept for host compatibility.
+> Owner arbitration, 2026-08-01: a big bang is acceptable and preferred when it
+> saves time and debt. The plan below was re-derived under that criterion.
+
+### Re-evaluating the incremental plan
+
+The earlier six-step plan was sequenced by prudence, not by necessity. Judged
+against the new criterion, most of the sequencing existed only to avoid a large
+PR — and it bought that smallness by **deliberately reintroducing the exact
+duplication this ADR exists to remove**:
+
+| Former step                                       | Why it was separate       | Verdict                                                                                                                                                                                               |
+| ------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Types only, "nothing consumes it yet"          | staging                   | **Dropped.** Ships dead code in a release. Types land with their first consumer.                                                                                                                      |
+| 2 / 3 split (wardley commands, then wardley menu) | staging                   | **Merged.** Between them, wardley declares its artefacts twice — as descriptors _and_ as the hard-coded Lit list. A duplication window we would be creating on purpose.                               |
+| 4. One PR per framework (×7)                      | staging                   | **Merged.** The transformation is mechanical and identical seven times; sequencing it costs 7 review cycles and keeps the registry half-populated, which blocks consumers 2/4/5 from shipping at all. |
+| 0. Reserved keys                                  | prerequisite              | **Merged** into the switchover — it is one `const` plus a mirror test, and the switchover is what needs it.                                                                                           |
+| 0. Telemetry `framework` rename                   | crosses a system boundary | **Kept, sequenced first** — see below.                                                                                                                                                                |
+| 5. Fold surface (e) in                            | distinct refactor         | **Kept, sequenced after** — see below.                                                                                                                                                                |
+| 6. New consumers                                  | product dependency order  | **Kept** — the sidepanel, palette and agent bridge are unbuilt features, not migration steps.                                                                                                         |
+
+Rough sizing. The switchover is ~55 command descriptors across 7 gfx packages
+(wardley 13, edgy 7, bpmn 6, cynefin-estuarine ~6, the three DDD menus ~22),
+plus `@labre/std`, `affine/all` and root. What the big bang **saves**: ~10
+coordination PRs; a compatibility branch in `buildShortcutManifest` to merge
+legacy `ShortcutDescriptor[]` groups with registry-derived ones, written and
+then deleted; and one release in which wardley carries two declarations of the
+same 13 artefacts. What it **costs**: a single PR whose regression surface is
+the edgeless keymap, needing one focused recette pass instead of seven small
+ones.
+
+### The non-negotiables, and why atomicity serves them better
+
+Two invariants are not negotiable at any speed. Neither argues for
+incrementalism — both argue _against_ it:
+
+- **Persisted v0.29 override tables stay valid.** Ids are preserved by
+  construction (`toShortcutDescriptor` copies `id` verbatim). The risk is not
+  renaming an id, it is having _two code paths_ producing descriptors while a
+  user's override table spans both. The incremental plan creates exactly that
+  window, for as many releases as the rollout takes; an atomic switchover never
+  has one. Guarded by a golden test: for every id in today's manifest, the
+  effective keymap per scope must be byte-identical before and after.
+- **No hole in conflict detection.** `resolveKeymap` can only report on the
+  descriptors it sees. Converting frameworks one at a time means partial
+  coverage for the whole rollout; converting them together means the complete
+  set is visible from the first release. `RESERVED_EDGELESS_KEYS` closes the
+  remaining hole (surface (e)) in the same PR.
+
+### What switches atomically
+
+One release, one PR: `CommandDescriptor` / `CommandManifestEntry` /
+`CommandInvocation` / `FrameworkId` / `FrameworkDescriptor` /
+`toShortcutDescriptor` in `@labre/std`; the `CommandRegistry` aggregator
+replacing `FRAMEWORK_SHORTCUT_GROUPS`; `RESERVED_EDGELESS_KEYS` and its mirror
+test; all 7 frameworks' artefacts as descriptors, with their senior menus
+rewritten as renderers over the registry and their hard-coded button lists and
+`_track` helpers deleted; `WardleyActionSource` collapsed into
+`CommandInvocation`; `chordPrefix` allocated against the reservation list.
+
+### What stays sequenced, and by which invariant
+
+1. **The telemetry `framework` rename lands first, on its own.** Not prudence:
+   the invariant is analytics continuity, and it is owned by a system outside
+   this repo. PostHog dashboards must be cut over in lockstep, which no test in
+   this repository can assert. Landing it separately gives that cutover its own
+   revert boundary. (If open question 3 resolves toward a `telemetryKey` field
+   instead, this step disappears entirely and folds into the switchover.)
+2. **Folding surface (e) in lands after.** The invariant it would close is
+   already closed by `RESERVED_EDGELESS_KEYS`, so this is an improvement, not a
+   prerequisite. It is also a genuinely different refactor: several of those
+   bindings are stateful cycles rather than commands (`c` cycles connector
+   mode, `Shift-s` cycles shape type, `k` and `-` are conditional on selection),
+   so expressing them as descriptors changes their semantics and deserves its
+   own review. When it lands, `RESERVED_EDGELESS_KEYS` is deleted and conflict
+   detection covers the whole edgeless keyboard.
+3. **New consumers ship as they are built.** Sidepanel catalogue, palette and
+   agent bridge read the registry directly. This is feature sequencing, not
+   migration.
+
+### `toShortcutDescriptor` is architecture, not a migration shim
+
+Worth stating explicitly, because a big bang is the moment to delete
+transitional adapters and this one must survive. It is not a compatibility
+layer with an expiry date: it is one of the **two permanent projections** out
+of the single source — `CommandDescriptor` → `ShortcutDescriptor` for the
+in-editor keymap, and `CommandDescriptor` → `CommandManifestEntry` for the host
+seam. It runs on every editor assembly, forever. Keeping the derivation (rather
+than letting frameworks author `ShortcutDescriptor`s directly) is what keeps
+the resolution engine, the override format and the conflict reporter untouched
+while there is still exactly one declaration.
 
 ### Out of scope
 
@@ -541,7 +599,8 @@ To settle before this ADR goes `accepted`:
    0006 forbids markup across the seam; it does not say where the pixels come
    from.
 3. **Does the telemetry `framework` rename happen here or in its own change?**
-   Step 0 assumes here. If PostHog history matters more than tidiness, the
+   The Rollout assumes its own change, landing first. If PostHog history
+   matters more than tidiness, the
    alternative is keeping the current values as a `telemetryKey` field on
    `FrameworkDescriptor` — one more spelling, but zero analytics breakage.
 4. **`FrameworkDescriptor` vs the bundle descriptor.** `scripts/build-bundles.mjs`
