@@ -1,13 +1,15 @@
 import {
+  validationToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
+import { ToolbarModuleExtension } from '@labre/affine-shared/services';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { CommandExtension } from '@labre/std';
+import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
@@ -67,6 +69,20 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+      // The Validation dropdown on a selected map's contextual toolbar. A
+      // SECOND module on the same element, through the `custom:` flavour slot
+      // (the pattern `gfx/mindmap` uses on `custom:affine:surface:shape`):
+      // `wardleyToolbarExtension` is registered always-on because a stored map
+      // must keep its axes and labels, while choosing how hard to check it is
+      // tooling and belongs here. The config itself names no framework — it
+      // reads roles and profiles — so a second framework registers the very
+      // same object on its own flavour.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier('custom:affine:surface:wardley'),
+          config: validationToolbarConfig,
+        })
+      );
       context.register(wardleySeniorTool);
       // The 13 Wardley commands, ONE registration for both faces: the
       // enumerable registry the sub-menu renders from, and — through

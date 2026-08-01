@@ -5,10 +5,13 @@ import {
   ValidationManager,
   VIOLATION_DETAIL_WIDGET,
 } from '@labre/affine/blocks/surface';
+import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import type { BlockFlags } from '@labre/affine/flags';
 import { AffineSchemas } from '@labre/affine/schemas';
 import { replaceIdMiddleware } from '@labre/affine/shared/adapters';
 import {
+  DocModeExtension,
+  type DocModeProvider,
   TelemetryExtension,
   type TelemetryEventMap,
 } from '@labre/affine/shared/services';
@@ -75,6 +78,28 @@ type TrackedEvent = {
   props: Record<string, unknown>;
 };
 
+/**
+ * Tell the editor it is in edgeless mode.
+ *
+ * `setupEditor('edgeless')` mounts the edgeless root, but the default
+ * `DocModeService.getEditorMode()` answers `null`, which `ToolbarContext` reads
+ * as `page` — so the element toolbar takes its `isPageMode` early return and
+ * never renders a thing for a surface selection. This suite is about what that
+ * toolbar offers, so it has to be on screen. Nothing else in the editor
+ * changes, and no other suite is affected.
+ */
+const edgelessMode = DocModeExtension({
+  getEditorMode: () => 'edgeless',
+  setEditorMode: () => {},
+  getPrimaryMode: () => 'edgeless',
+  setPrimaryMode: () => {},
+  togglePrimaryMode: () => 'edgeless',
+  onPrimaryModeChange: () =>
+    ({ unsubscribe: () => {} }) as ReturnType<
+      DocModeProvider['onPrimaryModeChange']
+    >,
+});
+
 describe('validation profiles', () => {
   let service!: EdgelessRootBlockComponent['service'];
   let root!: EdgelessRootBlockComponent;
@@ -96,22 +121,42 @@ describe('validation profiles', () => {
 
   const widget = () => root.widgetComponents[VIOLATION_DETAIL_WIDGET];
   const widgetRoot = () => widget()?.shadowRoot ?? null;
-  const query = (selector: string) =>
-    widgetRoot()?.querySelector(selector) ?? null;
-
-  const chip = () => query('[data-testid="validation-profile-chip"]');
-  const menu = () => query('[data-testid="validation-profile-menu"]');
-  const options = () =>
-    Array.from(
-      widgetRoot()?.querySelectorAll('[data-testid="validation-profile-option"]') ??
-        []
-    );
-  const option = (id: string) =>
-    options().find(el => (el as HTMLElement).dataset.profileId === id) ?? null;
   const badges = () =>
     Array.from(
       widgetRoot()?.querySelectorAll('[data-testid="violation-badge"]') ?? []
     );
+
+  /**
+   * The element toolbar the selection raises. Its contents are rendered into
+   * the `editor-toolbar` element's LIGHT DOM, and a dropdown's items are
+   * slotted, so they are queryable whether or not the popper is open.
+   */
+  const toolbar = () =>
+    (
+      root.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar ?? null;
+  const toolbarQuery = (selector: string) =>
+    toolbar()?.querySelector(selector) ?? null;
+
+  /** The dropdown host, in the toolbar's own DOM. */
+  const validationEntry = () =>
+    toolbarQuery('[data-testid="validation-toolbar-entry"]');
+  /** Its trigger, which `editor-menu-button` renders into its shadow root. */
+  const validationButton = () =>
+    validationEntry()?.shadowRoot?.querySelector(
+      '[data-testid="validation-toolbar-button"]'
+    ) ?? null;
+  const profileSection = () =>
+    toolbarQuery('[data-testid="validation-profile-section"]');
+  const options = () =>
+    Array.from(
+      toolbar()?.querySelectorAll('[data-testid="validation-profile-option"]') ??
+        []
+    );
+  const option = (id: string) =>
+    options().find(el => (el as HTMLElement).dataset.profileId === id) ?? null;
 
   const model = (id: string) => service.surface.getElementById(id)!;
 
@@ -127,12 +172,10 @@ describe('validation profiles', () => {
     await settle();
   };
 
-  /** Select the map and pick `profileId` from the chip, as a user would. */
+  /** Select the map and pick `profileId` from its toolbar, as a user would. */
   const pick = async (mapId: string, profileId: string) => {
     await select(mapId);
-    expect(chip()).not.toBeNull();
-    clickElement(chip()!);
-    await settle();
+    expect(validationButton()).not.toBeNull();
     expect(option(profileId)).not.toBeNull();
     clickElement(option(profileId)!);
     await settle();
@@ -173,6 +216,7 @@ describe('validation profiles', () => {
     const cleanup = await setupEditor(
       'edgeless',
       [
+        edgelessMode,
         TelemetryExtension({
           track: (name, props) =>
             tracked.push({
@@ -218,7 +262,7 @@ describe('validation profiles', () => {
       const map = addBackground();
       addComponent('[3000,3000,40,40]');
       await settle();
-      // Selecting it, opening the chip, and choosing the profile it is already
+      // Selecting it and choosing, from the toolbar, the profile it is already
       // on: no key appears in the document.
       await pick(map, SKETCH);
 
@@ -227,39 +271,40 @@ describe('validation profiles', () => {
     });
   });
 
-  describe('the chip is where the choice lives', () => {
+  describe('the choice lives in the map’s contextual toolbar', () => {
     test('appears on a selected map, naming the level in force', async () => {
       const map = addBackground();
       await select(map);
 
-      expect(chip()).not.toBeNull();
-      expect((chip() as HTMLElement).dataset.profileId).toBe(SKETCH);
+      // The trigger names the current level, so it is readable without
+      // opening anything.
+      expect(validationButton()).not.toBeNull();
+      expect(validationButton()!.textContent).toContain('Sketch');
     });
 
     test('is reachable on a CLEAN board, with no violation anywhere', async () => {
-      // The whole reason it is not on the violation bubble: on the permissive
-      // default nothing is ever drawn, so a bubble-only selector would make
-      // the strict profile unreachable — a one-way door.
+      // On the permissive default nothing is ever drawn on the canvas, so the
+      // selector cannot depend on a violation existing: it would make the
+      // strict profile reachable only through a finding the permissive profile
+      // has already silenced — a one-way door.
       const map = addBackground();
       await settle();
       expect(validation.violations$.value).toEqual([]);
 
       await select(map);
-      expect(chip()).not.toBeNull();
+      expect(validationButton()).not.toBeNull();
     });
 
     test('offers every profile the framework ships, marking the current one', async () => {
       const map = addBackground();
       await select(map);
-      clickElement(chip()!);
-      await settle();
 
-      expect(menu()).not.toBeNull();
+      expect(profileSection()).not.toBeNull();
       expect(
         options().map(el => (el as HTMLElement).dataset.profileId)
       ).toEqual([SKETCH, STRICT]);
-      expect(option(SKETCH)!.getAttribute('aria-checked')).toBe('true');
-      expect(option(STRICT)!.getAttribute('aria-checked')).toBe('false');
+      expect(option(SKETCH)!.getAttribute('aria-pressed')).toBe('true');
+      expect(option(STRICT)!.getAttribute('aria-pressed')).toBe('false');
     });
 
     test('never appears on something that is not a root instance', async () => {
@@ -267,9 +312,10 @@ describe('validation profiles', () => {
       const node = addComponent('[100,100,40,40]');
       await select(node);
 
-      // The chip is derived from the registered rules' `backgroundRole`: a
-      // component is not a frame, so there is nothing to choose.
-      expect(chip()).toBeNull();
+      // Derived from the registered rules' `backgroundRole` — no framework, no
+      // type and no role is named in the toolbar config: a component is not a
+      // frame, so there is nothing to choose.
+      expect(validationEntry()).toBeNull();
     });
 
     test('never appears on a map authored before its role existed', async () => {
@@ -279,24 +325,21 @@ describe('validation profiles', () => {
       });
       await select(legacy);
 
-      expect(chip()).toBeNull();
+      expect(validationEntry()).toBeNull();
     });
 
-    test('goes away with its instance, even when the selection does not', async () => {
-      const map = addBackground();
-      await select(map);
-      expect(chip()).not.toBeNull();
-
-      service.surface.deleteElement(map);
+    test('never appears on a multi-selection', async () => {
+      const first = addBackground();
+      const second = addBackground('[40000,0,1600,900]');
+      service.gfx.selection.set({
+        elements: [first, second],
+        editing: false,
+      });
       await settle();
 
-      // Nothing prunes the selection when an element leaves the surface — an
-      // undo, or a peer's deletion, gets there with no local gesture at all. So
-      // the chip resolves its instance LATE: held as a model it would be drawn
-      // over nothing, and a click would write into a Y.Map the document no
-      // longer reaches, silently losing the write.
-      expect(service.gfx.selection.selectedIds).toContain(map);
-      expect(chip()).toBeNull();
+      // A profile is one decision about one instance; two maps on two levels
+      // have no honest "current" value to show.
+      expect(validationEntry()).toBeNull();
     });
 
     test('is gone when the framework is flagged off', async () => {
@@ -305,10 +348,12 @@ describe('validation profiles', () => {
       const map = addBackground();
       await select(map);
 
-      // A level of requirement is tooling: no rule registered, nothing to
-      // choose between.
+      // A level of requirement is TOOLING: the flag-gated view extension never
+      // registers the module, so there is no entry at all — and the map keeps
+      // its own toolbar, which is registered always-on (docs/adr/0009).
       expect(validation.profilesFor(model(map))).toEqual([]);
-      expect(chip()).toBeNull();
+      expect(validationEntry()).toBeNull();
+      expect(toolbar()).not.toBeNull();
     });
   });
 
