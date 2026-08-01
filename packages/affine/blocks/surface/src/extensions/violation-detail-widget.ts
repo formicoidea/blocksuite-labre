@@ -1,7 +1,10 @@
 import type { RootBlockModel } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
-import type { SurfaceBlockModel } from '@labre/std/gfx';
+import type {
+  GfxPrimitiveElementModel,
+  SurfaceBlockModel,
+} from '@labre/std/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
@@ -17,6 +20,7 @@ import {
   touchesVerdict,
   userFacingViolations,
   ValidationManager,
+  type ValidationProfile,
   VIOLATION_BADGE_SIZE,
   type Violation,
   type ViolationAnchor,
@@ -58,6 +62,13 @@ const MIN_HIT_TARGET = 44;
  * The band is the mark, not the thing the mark points at.
  */
 const BRACKET_HIT_BAND = 22;
+
+/**
+ * Height of the profile chip, in screen pixels. The chip is pinned by its
+ * BOTTOM edge (`translateY(-100%)`), so this is what it takes to keep it inside
+ * the viewport when its instance's top edge is above it.
+ */
+const CHIP_HEIGHT = 22;
 
 /**
  * Chrome wording, and only chrome: an English default so a catalogue-less
@@ -132,9 +143,22 @@ const EXEMPTED_MARK_COLOR = '#8e8d91';
  * only once the same call has been made elsewhere on the board (PF8.4), and
  * writes the exception on the framework's own background element.
  *
+ * ## Profiles (PF9)
+ *
+ * The same widget also carries the profile chip: select a framework's root
+ * instance — a Wardley map — and a small chip above its top-left corner names
+ * the level of requirement it is checked against, and offers the others.
+ *
+ * It lives here, and not on the violation bubble, because the bubble only
+ * exists where a rule already bit: on the permissive default the pilot rule is
+ * `audit`, so a clean board shows no bubble at all and the strict profile would
+ * be unreachable — a one-way door. Selection is the one gesture that is always
+ * available.
+ *
  * ## What it knows
  *
- * Nothing about rules. It consumes normalised {@link Violation} objects off
+ * Nothing about rules, and nothing about profiles beyond their `labelKey`. It
+ * consumes normalised {@link Violation} objects off
  * `ValidationManager.violations$` and resolves their `messageKey` through the
  * host's catalogue ({@link translateKey}), falling back to the raw key. No rule
  * logic, no hard-coded rule wording — the library must not put words in a
@@ -298,6 +322,72 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
+
+    /* The profile chip (PF9). Screen pixels, not model units: it is a WORD,
+       and it exists only while its instance is selected — never numerous, so
+       none of the reasoning that keeps the violation markers in model space
+       applies to it. */
+    .validation-profile-chip {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-sizing: border-box;
+      max-width: 220px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--affine-border-color);
+      background: var(--affine-background-overlay-panel-color, #fff);
+      box-shadow: var(--affine-shadow-1);
+      color: var(--affine-text-secondary-color);
+      font-family: var(--affine-font-family);
+      font-size: 11px;
+      line-height: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      pointer-events: auto;
+      transform: translateY(-100%);
+    }
+
+    .validation-profile-chip:hover {
+      color: var(--affine-text-primary-color);
+      background: var(--affine-hover-color);
+    }
+
+    .validation-profile-chip:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: 2px;
+    }
+
+    .validation-profile-option {
+      display: block;
+      width: 100%;
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--affine-text-primary-color);
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .validation-profile-option:hover {
+      background: var(--affine-hover-color);
+    }
+
+    .validation-profile-option[aria-checked='true'] {
+      background: var(--affine-hover-color);
+      font-weight: 600;
+    }
+
+    .validation-profile-option:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+    }
   `;
 
   /**
@@ -310,9 +400,29 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   @state()
   private accessor _violations: readonly Violation[] = [];
 
-  private _elementSubscription: { unsubscribe(): void } | null = null;
+  /**
+   * ID of the selected framework background whose profile can be changed
+   * (PF9), or `null`.
+   *
+   * An ID and not the model, deliberately — the same rule the markers follow
+   * (see {@link resolveViolationAnchors}). Selection is NOT pruned when an
+   * element leaves the surface: an undo, or a peer deleting the map, removes
+   * the element without the selection ever being told, and a cached model would
+   * outlive it. The chip would then be drawn over nothing, and a click on it
+   * would write into a Y.Map no longer reachable from the document — a write
+   * that silently vanishes. Resolved late, the chip simply disappears with its
+   * instance.
+   */
+  @state()
+  private accessor _profileTargetId: string | null = null;
 
-  /** The surface {@link _elementSubscription} is attached to, if any. */
+  /** Whether the profile chip's menu is open. Session state, like the bubble. */
+  @state()
+  private accessor _profileOpen = false;
+
+  private _elementSubscriptions: { unsubscribe(): void }[] = [];
+
+  /** The surface {@link _elementSubscriptions} are attached to, if any. */
   private _watchedSurface: SurfaceBlockModel | null = null;
 
   /** Fires once, when the oldest bracket finishes fading and a badge is due. */
@@ -367,11 +477,13 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
    * holds and must not tear the subscription down and rebuild it each time.
    */
   private _watchElements() {
-    const surface = this._violations.length > 0 ? this.gfx.surface : null;
+    // Also while a profile chip is up: the chip is pinned to an instance the
+    // user has just selected, which is exactly the one they are about to drag.
+    const wanted = this._violations.length > 0 || this._profileTargetId !== null;
+    const surface = wanted ? this.gfx.surface : null;
     if (surface === this._watchedSurface) return;
 
-    this._elementSubscription?.unsubscribe();
-    this._elementSubscription = null;
+    this._unwatchElements();
     this._watchedSurface = surface;
     if (!surface) return;
 
@@ -379,10 +491,23 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // worth a repaint. `SpotlightManager` writes `opacity` on every element it
     // dims, and that must not redraw a badge that has not moved.
     // `requestUpdate` is batched by lit into one render per frame anyway.
-    this._elementSubscription = surface.elementUpdated.subscribe(payload => {
-      if (!touchesVerdict(payload)) return;
-      this.requestUpdate();
-    });
+    this._elementSubscriptions.push(
+      surface.elementUpdated.subscribe(payload => {
+        if (!touchesVerdict(payload)) return;
+        this.requestUpdate();
+      }),
+      // Selection is not pruned when an element leaves the surface, so this is
+      // the only thing that tells the chip its instance is gone — an undo, or a
+      // peer's deletion, with no local gesture at all.
+      surface.elementRemoved.subscribe(() => this.requestUpdate())
+    );
+  }
+
+  private _unwatchElements() {
+    for (const subscription of this._elementSubscriptions) {
+      subscription.unsubscribe();
+    }
+    this._elementSubscriptions = [];
   }
 
   /**
@@ -404,12 +529,64 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     if (!stillFlagged) this._openAnchorId = null;
   }
 
+  /**
+   * Work out whether the current selection can be put on another profile
+   * (PF9), and remember it.
+   *
+   * Exactly one element, and one the engine recognises as a framework's root
+   * instance — {@link ValidationManager.profilesFor} answers that off the
+   * REGISTERED rules, so the chip is gated by the framework's flag for free and
+   * a neutral shape never gets one. Two profiles minimum: a picker with a
+   * single entry is chrome that decides nothing.
+   */
+  private _readProfileTarget() {
+    const ids = this.gfx.selection.selectedIds;
+    const surface = this.gfx.surface;
+    const element =
+      surface && ids.length === 1 ? surface.getElementById(ids[0]) : null;
+    const next =
+      element && this._profilesOf(element).length > 1 ? element.id : null;
+
+    if (next !== this._profileTargetId) {
+      this._profileTargetId = next;
+      // A chip that moves to another instance must not leave its menu open on
+      // the old one.
+      this._profileOpen = false;
+    }
+    // OUTSIDE the identity guard, and idempotent by design: on reconnect the
+    // target is unchanged but the subscription was thrown away with the
+    // disposable group, and a chip that stops following its map is exactly the
+    // failure `_wire` exists to prevent.
+    this._watchElements();
+  }
+
+  /** Profiles selectable on `element`, empty when validation is not mounted. */
+  private _profilesOf(
+    element: GfxPrimitiveElementModel
+  ): readonly ValidationProfile[] {
+    return this.std.getOptional(ValidationManager)?.profilesFor(element) ?? [];
+  }
+
+  /**
+   * The instance the chip is drawn on, resolved from the surface on every read.
+   *
+   * `null` the moment the element leaves the document, whatever the selection
+   * still says — see {@link _profileTargetId}.
+   */
+  private get _profileTarget(): GfxPrimitiveElementModel | null {
+    const id = this._profileTargetId;
+    if (id === null) return null;
+    const element = this.gfx.surface?.getElementById(id) ?? null;
+    return element && this._profilesOf(element).length > 1 ? element : null;
+  }
+
   private readonly _onDocumentPointerDown = (event: PointerEvent) => {
-    if (this._openAnchorId === null) return;
-    // Anything inside this widget — the badge itself, the bubble — keeps it
-    // open; a click anywhere else, canvas included, closes it.
+    if (this._openAnchorId === null && !this._profileOpen) return;
+    // Anything inside this widget — the badge itself, the bubble, the chip —
+    // keeps it open; a click anywhere else, canvas included, closes it.
     if (event.composedPath().includes(this)) return;
     this._openAnchorId = null;
+    this._profileOpen = false;
   };
 
   /**
@@ -422,9 +599,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
    * leave full screen) whatever this widget is doing.
    */
   private readonly _onHostKeydown = (event: KeyboardEvent) => {
-    if (this._openAnchorId === null || event.key !== 'Escape') return;
+    if (event.key !== 'Escape') return;
+    if (this._openAnchorId === null && !this._profileOpen) return;
     event.stopPropagation();
     this._openAnchorId = null;
+    this._profileOpen = false;
   };
 
   /**
@@ -483,13 +662,22 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
 
     _disposables.add(
       gfx.viewport.viewportUpdated.subscribe(() => {
-        // Badges follow the viewport; the bubble does not. Closing it on
-        // pan/zoom is the honest simple answer — it can never end up pointing
-        // at a badge that has moved, scrolled off screen or changed size.
+        // Badges and the profile chip follow the viewport; the panels they open
+        // do not. Closing them on pan/zoom is the honest simple answer — they
+        // can never end up pointing at a marker that has moved, scrolled off
+        // screen or changed size.
         this._openAnchorId = null;
-        if (this._violations.length > 0) this.requestUpdate();
+        this._profileOpen = false;
+        if (this._violations.length > 0 || this._profileTargetId !== null) {
+          this.requestUpdate();
+        }
       })
     );
+
+    _disposables.add(
+      gfx.selection.slots.updated.subscribe(() => this._readProfileTarget())
+    );
+    this._readProfileTarget();
 
     // Click-away stays on `document` — it only OBSERVES, never swallows, so a
     // click anywhere in the page can close the bubble without the library
@@ -505,8 +693,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
         true
       );
       host.removeEventListener('keydown', this._onHostKeydown, true);
-      this._elementSubscription?.unsubscribe();
-      this._elementSubscription = null;
+      this._unwatchElements();
       this._watchedSurface = null;
       if (this._handoverTimer) {
         clearTimeout(this._handoverTimer);
@@ -704,6 +891,141 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     </div>`;
   }
 
+  /**
+   * Put the selected instance on `profile`, and report it.
+   *
+   * The instance is resolved HERE, not captured when the menu was rendered: an
+   * undo between the two would otherwise write into an element that has left
+   * the document, and the write would silently vanish.
+   *
+   * The write, the default-clearing and the immediate re-evaluation all belong
+   * to {@link ValidationManager.setProfile}; the widget's whole job here is the
+   * gesture and the event. A choice that changes nothing is not a decision and
+   * is not reported.
+   */
+  private readonly _pickProfile =
+    (profile: ValidationProfile) => (event: Event) => {
+      event.stopPropagation();
+      this._profileOpen = false;
+
+      const element = this._profileTarget;
+      const validation = this.std.getOptional(ValidationManager);
+      if (!element || !validation) return;
+      const previous = validation.profileOf(element);
+      if (!validation.setProfile(element, profile.id)) return;
+
+      this.std.getOptional(TelemetryProvider)?.track('ValidationProfileChanged', {
+        page: 'whiteboard editor',
+        segment: 'whiteboard',
+        module: 'validation profile chip',
+        control: 'profile',
+        framework: profile.framework,
+        profileId: profile.id,
+        ...(previous !== undefined ? { previousProfileId: previous.id } : {}),
+      });
+    };
+
+  private readonly _toggleProfile = (event: Event) => {
+    event.stopPropagation();
+    this._profileOpen = !this._profileOpen;
+  };
+
+  private _profileLabel(profile: ValidationProfile): string {
+    return translateKey(this.std, profile.labelKey, profile.fallback);
+  }
+
+  /**
+   * The profile chip, pinned just above the instance's top-left corner — the
+   * opposite corner from the violation badge, so the two affordances of the
+   * same feature never fight for the same pixels, and clear of the selection
+   * rect's north-west resize handle.
+   */
+  private _renderProfileChip(element: GfxPrimitiveElementModel) {
+    const validation = this.std.getOptional(ValidationManager);
+    const profiles = validation?.profilesFor(element) ?? [];
+    if (!validation || profiles.length < 2) return nothing;
+
+    const active = validation.profileOf(element);
+    const menu = this._profileOpen;
+    const bound = element.elementBound;
+    const { viewport } = this.gfx;
+    const [rawX, rawY] = viewport.toViewCoord(bound.x, bound.y);
+    // Kept on screen whatever the pan and the zoom: a map is 1600 units wide,
+    // so its top-left corner is off the viewport most of the time somebody is
+    // actually working on it — and a chip you cannot reach is not a selector.
+    const x = Math.min(Math.max(rawX, 0), Math.max(0, viewport.width - 60));
+    const y = Math.min(
+      Math.max(rawY, CHIP_HEIGHT),
+      Math.max(CHIP_HEIGHT, viewport.height)
+    );
+    const label = translateKey(
+      this.std,
+      'com.labre.validation.profile.label',
+      'Validation profile'
+    );
+
+    return html`<button
+        class="validation-profile-chip"
+        type="button"
+        data-testid="validation-profile-chip"
+        data-profile-id=${active?.id ?? ''}
+        aria-haspopup="menu"
+        aria-expanded=${this._profileOpen}
+        aria-label=${label}
+        title=${label}
+        style=${styleMap({ left: `${x}px`, top: `${y}px` })}
+        @pointerdown=${this._swallow}
+        @pointerup=${this._swallow}
+        @click=${this._toggleProfile}
+      >
+        ${active ? this._profileLabel(active) : label}
+      </button>
+      ${menu ? this._renderProfileMenu(profiles, active, x, y) : nothing}`;
+  }
+
+  private _renderProfileMenu(
+    profiles: readonly ValidationProfile[],
+    active: ValidationProfile | undefined,
+    x: number,
+    y: number
+  ) {
+    return html`<div
+      class="violation-bubble"
+      role="menu"
+      data-testid="validation-profile-menu"
+      aria-label=${translateKey(
+        this.std,
+        'com.labre.validation.profile.label',
+        'Validation profile'
+      )}
+      style=${styleMap({
+        left: `${x}px`,
+        top: `${y + BUBBLE_GAP}px`,
+        width: 'auto',
+        minWidth: '160px',
+      })}
+      @pointerdown=${this._swallow}
+      @pointerup=${this._swallow}
+      @click=${this._swallow}
+    >
+      ${profiles.map(
+        profile => html`<button
+          class="validation-profile-option"
+          type="button"
+          role="menuitemradio"
+          data-testid="validation-profile-option"
+          data-profile-id=${profile.id}
+          aria-checked=${profile.id === active?.id}
+          @pointerdown=${this._swallow}
+          @pointerup=${this._swallow}
+          @click=${this._pickProfile(profile)}
+        >
+          ${this._profileLabel(profile)}
+        </button>`
+      )}
+    </div>`;
+  }
+
   private _renderBubble(violations: readonly Violation[], x: number, y: number) {
     const entries = distinctByRule(violations);
     const { viewport } = this.gfx;
@@ -870,9 +1192,18 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   }
 
   override render() {
-    if (this._violations.length === 0) return nothing;
+    const target = this._profileTarget;
+    if (this._violations.length === 0 && target === null) return nothing;
     const surface = this.gfx.surface;
     if (!surface) return nothing;
+
+    // The chip is independent of any finding: it is how a user reaches the
+    // profile on a board that is CLEAN — which, on the permissive default, is
+    // the normal state of a Wardley map. Hanging it off the violation bubble
+    // would make the strict profile reachable only from a violation the
+    // permissive profile has already silenced, i.e. a one-way door.
+    const chip = target === null ? nothing : this._renderProfileChip(target);
+    if (this._violations.length === 0) return chip;
 
     // Anchors are resolved at render time, exactly like the canvas overlay
     // resolves them at paint time: the marker follows a group that moves and
@@ -890,7 +1221,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // still pending.
     this._scheduleHandover();
 
-    return html`${anchors.map(anchor => {
+    return html`${chip}
+    ${anchors.map(anchor => {
       // Strictly one marker at a time: while the bracket is still drawn the
       // badge does not exist, and the bracket's own band takes the clicks.
       const fresh = timeline ? anchorEmphasis(anchor, timeline, now) > 0 : false;

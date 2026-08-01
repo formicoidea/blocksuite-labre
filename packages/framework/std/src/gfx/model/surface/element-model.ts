@@ -514,6 +514,39 @@ export abstract class GfxPrimitiveElementModel<
   @field()
   accessor validationExceptions: ValidationException[] | undefined = undefined;
 
+  /**
+   * Id of the validation PROFILE this element's framework is checked against
+   * (PF9) — a set of enabled rules and their severities, declared as data by
+   * the framework.
+   *
+   * Carried by the framework's BACKGROUND element, i.e. the root instance, and
+   * not by the document: two maps on one canvas are two independent pieces of
+   * work, and a sketch has to be able to sit next to a deliverable without
+   * either of them dictating the other's requirements (PF9.1). The engine reads
+   * it off the background a finding was measured against, which it already
+   * names (`Violation.backgroundId`).
+   *
+   * Declared on the BASE class for the same reason as {@link role} and
+   * {@link validationExceptions}: an element re-created from props (paste,
+   * duplicate, template insertion) only reaches the Y.Map through keys that
+   * have a declared accessor, so a profile declared per subclass would be
+   * silently dropped on copy — and duplicating a strict map must give a strict
+   * map.
+   *
+   * `undefined` = "no explicit choice", which resolves to the framework's
+   * DEFAULT profile — the most permissive reasonable one, because the sketch
+   * wins. No key is written for it, so a document authored before this field
+   * existed stays byte-identical: optional field, no schema version bump, no
+   * migration. Choosing the default back again removes the key rather than
+   * writing it.
+   *
+   * Flat string on purpose — element serialization is one level deep. The
+   * engine that interprets it lives in `@labre/affine-block-surface`; the base
+   * model only carries the id, and knows nothing about profiles.
+   */
+  @field()
+  accessor validationProfile: string | undefined = undefined;
+
   @field()
   accessor lockedBySelf: boolean | undefined = false;
 

@@ -1,9 +1,14 @@
-import { evaluateRules, type ValidationRule } from '@labre/affine-block-surface';
+import {
+  evaluateRules,
+  type ValidationProfile,
+  type ValidationRule,
+} from '@labre/affine-block-surface';
 import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 
+import { WARDLEY_PROFILES } from '../profiles';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
 
@@ -39,6 +44,9 @@ const MAP_H = 900;
  *   reads it for every element it indicts (PF8). Left as a plain `undefined`
  *   property it would cost nothing and the exception lookup would be measured
  *   against a fiction;
+ * - `validationProfile` is that same accessor again, read once per
+ *   role-carrying element on every evaluation (PF9). It is the one read the
+ *   profile pass adds to the budget, so it has to cost what it costs;
  * - `elementBound` is `Bound.deserialize(this.xywh)`, so a `JSON.parse` on top
  *   of a `xywh` read — not a `new Bound(...tuple)`.
  *
@@ -48,12 +56,16 @@ function element(
   doc: Y.Doc,
   id: string,
   xywh: [number, number, number, number],
-  role?: string
+  role?: string,
+  validationProfile?: string
 ): GfxPrimitiveElementModel {
   const yMap = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('elements').set(id, yMap);
   yMap.set('xywh', `[${xywh.join(',')}]`);
   if (role !== undefined) yMap.set('role', role);
+  if (validationProfile !== undefined) {
+    yMap.set('validationProfile', validationProfile);
+  }
 
   const preserved = new Map<string, unknown>();
   const read = (key: string) =>
@@ -66,6 +78,9 @@ function element(
     },
     get validationExceptions() {
       return read('validationExceptions') as unknown[] | undefined;
+    },
+    get validationProfile() {
+      return read('validationProfile') as string | undefined;
     },
     get xywh() {
       return read('xywh') as string;
@@ -82,10 +97,13 @@ function element(
  * and a fifth of the elements neutral (labels, inertia bars) which the engine
  * must skip.
  */
-function referenceMap(size: number): GfxPrimitiveElementModel[] {
+function referenceMap(
+  size: number,
+  profile?: string
+): GfxPrimitiveElementModel[] {
   const doc = new Y.Doc();
   const elements: GfxPrimitiveElementModel[] = [
-    element(doc, 'bg', [0, 0, MAP_W, MAP_H], WARDLEY_ROLE.map),
+    element(doc, 'bg', [0, 0, MAP_W, MAP_H], WARDLEY_ROLE.map, profile),
   ];
 
   const roles = [
@@ -152,5 +170,54 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
     );
     expect(evaluateRules(noRules, map)).toEqual([]);
     expect(ms).toBeLessThan(0.05);
+  });
+
+  it(`stays inside the frame with profiles in force`, () => {
+    // PF9 adds one `validationProfile` read per role-carrying element and one
+    // profile lookup per finding. The budget is unchanged, and so is the answer
+    // for a map on the strict profile.
+    const strict = referenceMap(MAP_SIZE, 'wardley.strict');
+    const ms = medianMs(() =>
+      evaluateRules(WARDLEY_RULES, strict, WARDLEY_PROFILES)
+    );
+
+    console.info(
+      `[bench] strict profile, ${MAP_SIZE} elements + background: ${ms.toFixed(3)} ms (budget ${FRAME_BUDGET_MS} ms)`
+    );
+    expect(evaluateRules(WARDLEY_RULES, strict, WARDLEY_PROFILES).length)
+      .toBeGreaterThan(20);
+    expect(ms).toBeLessThan(FRAME_BUDGET_MS);
+  });
+});
+
+describe('a rule switched off costs nothing', () => {
+  /**
+   * `'off'` is not a filter over findings, it is a rule that never runs. The
+   * short-circuit fires when nothing on the board can raise the rule — which
+   * means the DEFAULT has to be off too, since a background naming no profile
+   * falls back to it.
+   */
+  const OFF_PROFILE: ValidationProfile = {
+    id: 'wardley.off',
+    framework: 'wardley',
+    labelKey: 'com.labre.wardley.profile.off',
+    isDefault: true,
+    rules: Object.fromEntries(WARDLEY_RULES.map(rule => [rule.id, 'off'])),
+  };
+
+  const map = referenceMap(MAP_SIZE);
+
+  it('never walks the surface', () => {
+    const ms = medianMs(() =>
+      evaluateRules(WARDLEY_RULES, map, [OFF_PROFILE])
+    );
+
+    console.info(
+      `[bench] every rule off, same ${MAP_SIZE}-element map: ${ms.toFixed(4)} ms`
+    );
+    expect(evaluateRules(WARDLEY_RULES, map, [OFF_PROFILE])).toEqual([]);
+    // Not quite the flag-off floor: the one pass that reads which profiles are
+    // in play still happens, because it is what proves the rule can be skipped.
+    expect(ms).toBeLessThan(0.5);
   });
 });

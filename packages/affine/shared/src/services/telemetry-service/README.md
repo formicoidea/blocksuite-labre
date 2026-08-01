@@ -78,6 +78,20 @@ only place that says so.
 waiver says which rule was arbitrated on, never what was drawn. A gesture that
 changes nothing (the exception was already there) emits nothing.
 
+## Validation profiles (PF9)
+
+A framework exposes several levels of requirement and the user picks one per
+instance. Which one they pick, and how often they leave the default, is the
+only signal that says whether the default is right.
+
+| Event                      | When                                        | Required props |
+| -------------------------- | ------------------------------------------- | -------------- |
+| `ValidationProfileChanged` | the user puts an instance on another profile | `framework`, `profileId` |
+
+`profileId` is the framework-namespaced profile id (`wardley.strict`), and
+`previousProfileId` carries the one it replaces. Ids only, never board content.
+A gesture that changes nothing (already on that profile) emits nothing.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,
