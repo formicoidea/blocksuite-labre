@@ -92,6 +92,16 @@ shipped content and not this slice's business.
 `wardley:map` is still stamped at creation and `wardley.component-outside-map`
 still frames against it, unchanged.
 
+Two things the next slice owes. The per-variant creation defaults
+(`BACKGROUND_VARIANT_DEFAULTS`, duplicated in the templates) still write English
+prose into the document for the two value-chain variants, so a map created as
+`opportunity` or `benefit` lands with "Opportunity" / "Benefit" / "Investment"
+already persisted as if the user had typed them: only `classic` and
+`evolution-gradient` are fully localisable today. The fix is to make the variant
+part of the declaration — one axis and end-label set per variant, each naming
+its own key — rather than a bag of prop overrides applied at creation, which
+changes what a variant IS and does not belong here. Both copies carry a TODO.
+
 Only Wardley is migrated. Cynefin, Estuarine and the BPMN pool keep their own
 renderers for now: the declaration expresses the BPMN pool as it stands, but
 Cynefin and Estuarine are built on hand-traced bezier and arc paths, which the

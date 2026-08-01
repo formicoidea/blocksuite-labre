@@ -77,6 +77,20 @@ export const WARDLEY_SHORTCUT_SOURCE: WardleyActionSource = {
  * Per-variant default label overrides applied at creation (all remain editable
  * afterwards via the inline editor / toggles). The gradient itself is driven by
  * `variant` in the renderer.
+ *
+ * TODO(PF2 follow-up): these write ENGLISH PROSE into the document. Since PF2
+ * the ten label props default to `undefined` precisely so the declaration's
+ * i18n keys are reachable — but a map created as `opportunity` or `benefit`
+ * lands with "Opportunity" / "Benefit" / "Investment" already persisted as if
+ * the user had typed them, so those three are un-localisable for the life of
+ * the document. Only `classic` and `evolution-gradient` are fully localisable
+ * today.
+ *
+ * The fix is to make the variant part of the declaration — one axis/end-label
+ * set per variant, each naming its own `labelKey` — rather than a bag of prop
+ * overrides applied at creation. Out of scope here (it changes what a variant
+ * IS); duplicated verbatim in `templates/index.ts`, and both copies go away
+ * together.
  */
 const BACKGROUND_VARIANT_DEFAULTS: Record<
   WardleyBgVariant,

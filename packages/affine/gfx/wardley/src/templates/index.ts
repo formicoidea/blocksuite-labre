@@ -45,6 +45,12 @@ import {
   WARDLEY_RED,
 } from '../node/consts';
 
+/**
+ * Verbatim copy of `BACKGROUND_VARIANT_DEFAULTS` in `../actions.ts` — see the
+ * TODO there: both copies write English prose into the document for the two
+ * value-chain variants, and both go away together when the variant becomes
+ * part of the declaration.
+ */
 const VARIANT_DEFAULTS: Record<WardleyBgVariant, Record<string, unknown>> = {
   classic: {},
   opportunity: {

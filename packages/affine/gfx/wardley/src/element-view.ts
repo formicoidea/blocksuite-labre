@@ -119,6 +119,11 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       if (this._labelEditor !== input) return;
       const value = input.value;
       this._closeLabelEditor();
+      // Opening an editor is not renaming. Writing back an untouched value
+      // would persist the resolved VOCABULARY as the user's own text, freezing
+      // the label in whatever language it was read in and putting it beyond
+      // any catalogue for good — and it would push an empty entry onto undo.
+      if (value === current) return;
       this.gfx.std.store.captureSync();
       this.gfx.std
         .get(EdgelessCRUDIdentifier)
