@@ -38,6 +38,13 @@ const flavours = (flags?: BlockFlags) =>
  * content. The content side of the three assembly points must be completely
  * flag-insensitive.
  */
+describe('optional blocks registry', () => {
+  test('OPTIONAL_BLOCKS has no duplicate entries', () => {
+    // A duplicate survived unnoticed from #38 to #70 because nothing checked.
+    expect(new Set(OPTIONAL_BLOCKS).size).toBe(OPTIONAL_BLOCKS.length);
+  });
+});
+
 describe('reversed flag contract — content side is never gated', () => {
   test('schemas are identical whatever the flags say', () => {
     expect(getAffineSchemas()).toEqual(AffineSchemas);
