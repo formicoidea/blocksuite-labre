@@ -195,6 +195,12 @@ export abstract class GfxPrimitiveElementModel<
     this._stashed = stashedStore as Map<keyof Props, unknown>;
     this._onChange = onChange;
 
+    // DO NOT turn these two into field initializers. `@field()` deliberately
+    // does NOT write an `undefined` default into the Y.Map (see
+    // `./decorators/field.ts`), and both accessors are declared without an
+    // initializer — so these assignments, which go through the SETTER, are the
+    // only reason `index` and `seed` reach the document at all. Losing `index`
+    // would silently corrupt z-order on every new element.
     this.index = 'a0';
     this.seed = randomSeed();
   }
@@ -371,6 +377,20 @@ export abstract class GfxPrimitiveElementModel<
 
   @field()
   accessor linkedDocId: string | undefined = undefined;
+
+  /**
+   * Semantic role of the element, `<framework>:<role>` (see `./role.ts`).
+   * `undefined` = neutral: generalist elements carry no role, and no key is
+   * written for them at creation.
+   *
+   * Declared on the BASE class on purpose, even though only framework modules
+   * set it: an element re-created from props (paste, duplicate, template
+   * insertion) only reaches the Y.Map through keys that have a declared
+   * accessor, so a role declared per subclass would be silently dropped on
+   * copy. Flat string on purpose — element serialization is one level deep.
+   */
+  @field()
+  accessor role: string | undefined = undefined;
 
   @field()
   accessor lockedBySelf: boolean | undefined = false;

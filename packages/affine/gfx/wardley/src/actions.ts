@@ -49,6 +49,7 @@ import {
   PIPELINE_WIDTH,
   WARDLEY_RED,
 } from './node/consts';
+import { WARDLEY_ROLE } from './roles';
 
 /**
  * Standalone creation/activation actions for the Wardley toolbox. They are
@@ -121,7 +122,14 @@ const NODE_PRESETS = {
   method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
 } as const;
 
-export type WardleyNodeKind = keyof typeof NODE_PRESETS;
+/**
+ * The subset of {@link WardleyNodeKind} that the single-circle presets above
+ * cover. Renamed away from `WardleyNodeKind` on purpose: the model declares a
+ * type of that name with SEVEN values, and two homonyms of different
+ * cardinality — one of them now the source of the semantic vocabulary — is a
+ * trap. `WARDLEY_ROLE[kind]` below only compiles while this stays a subset.
+ */
+export type WardleySingleCircleKind = keyof typeof NODE_PRESETS;
 
 function track(
   gfx: GfxController,
@@ -156,7 +164,7 @@ function group(gfx: GfxController, ids: string[]) {
 /** Add a native ellipse wardley node centred on (cx, cy). */
 function addEllipseNode(
   surface: Surface,
-  kind: WardleyNodeKind | 'market',
+  kind: WardleySingleCircleKind | 'market',
   cx: number,
   cy: number,
   d: number,
@@ -166,6 +174,9 @@ function addEllipseNode(
   return surface.addElement({
     type: 'wardleyNode',
     kind,
+    // Semantic identity (PF1): posted next to `kind`, which stays untouched
+    // and keeps driving the rendering.
+    role: WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor,
@@ -234,7 +245,7 @@ export function createWardleyBackground(
  */
 export function createWardleyNode(
   gfx: GfxController,
-  kind: WardleyNodeKind,
+  kind: WardleySingleCircleKind,
   source: WardleyActionSource = TOOLBOX_SOURCE
 ) {
   const surface = gfx.surface;
@@ -305,6 +316,7 @@ export function createWardleyPipeline(
   const bodyId = gfx.surface.addElement({
     type: 'wardleyNode',
     kind: 'pipeline',
+    role: WARDLEY_ROLE.pipeline,
     shapeType: 'rect',
     filled: true,
     fillColor: PIPELINE_FILL,
@@ -321,6 +333,7 @@ export function createWardleyPipeline(
   const handleId = gfx.surface.addElement({
     type: 'wardleyNode',
     kind: 'handle',
+    role: WARDLEY_ROLE.handle,
     shapeType: 'rect',
     filled: true,
     fillColor: NODE_FILL,
@@ -442,7 +455,13 @@ export function activateWardleyConnector(
         };
   gfx.std.get(EditPropsStore).recordLastProps('connector', props);
   track(gfx, source, 'FrameworkToolPicked', `connector:${kind}`);
-  gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
+  gfx.tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Straight,
+    // The value-chain link IS the "depends on" edge of a Wardley map, so it
+    // carries the typed edge role. The evolution arrow is a movement
+    // annotation, not a dependency: it stays neutral.
+    role: kind === 'link' ? WARDLEY_ROLE.dependency : undefined,
+  });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.
 }
