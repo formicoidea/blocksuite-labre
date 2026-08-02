@@ -36,7 +36,12 @@ const at = (fx: number, fy: number): [number, number] => [
   MAP_BOUND.y + fy * MAP_BOUND.h,
 ];
 
-/** One element of a card. `path` is what makes an edge directional. */
+/**
+ * One element of a card. `path` is what makes an edge directional; `text` and
+ * `fontSize` are what make a label a label — a text element is measured by the
+ * ink of its words, and a card built out of bare boxes would be judging a
+ * geometry no map has.
+ */
 export interface CorpusElement {
   id: string;
   role?: string;
@@ -50,6 +55,9 @@ export interface CorpusElement {
    */
   source?: string;
   target?: string;
+  text?: string;
+  fontSize?: number;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 /** One card: a whole map, and the rule ids it must raise. Nothing else. */
@@ -91,9 +99,26 @@ const node = (
   return { id, role, xywh: [x - 9, y - 9, 18, 18] };
 };
 
-const label = (id: string, fx: number, fy: number): CorpusElement => {
+/**
+ * A label, with the CREATION BOX the toolbox gives it — 120 units wide
+ * whatever it says — and the words actually in it. The gap between the two is
+ * the thing the PO's acceptance caught, so a card must carry both.
+ */
+const label = (
+  id: string,
+  fx: number,
+  fy: number,
+  text = 'Customer'
+): CorpusElement => {
   const [x, y] = at(fx, fy);
-  return { id, role: WARDLEY_ROLE.label, xywh: [x, y - 13, 120, 26] };
+  return {
+    id,
+    role: WARDLEY_ROLE.label,
+    xywh: [x, y - 13, 120, 26],
+    text,
+    fontSize: 18,
+    textAlign: 'left',
+  };
 };
 
 /** An edge from one map fraction to another, with a real routed path. */
@@ -325,6 +350,49 @@ const w3Tight: CorpusCard = {
   expected: [],
 };
 
+/**
+ * The PO's first acceptance capture (01/08/2026), as a card.
+ *
+ * A dependency running down the blank right-hand half of a label box. The rule
+ * used to report it, because it measured the box the label was created at
+ * rather than the three letters written in it.
+ */
+const w3LinkInTheMargin: CorpusCard = (() => {
+  const [x, y] = at(0.4, 0.5);
+  return {
+    name: 'W3 valid — a link crossing the empty margin of a label box',
+    elements: [
+      map(),
+      // 27 units of ink in a 120-unit box.
+      label('l1', 0.4, 0.5, 'ERP'),
+      {
+        id: 'd1',
+        role: WARDLEY_ROLE.dependency,
+        xywh: [x + 79, y - 100, 2, 200] as [number, number, number, number],
+        path: [
+          [x + 80, y - 100],
+          [x + 80, y + 100],
+        ] as [number, number][],
+      },
+    ],
+    expected: [],
+  };
+})();
+
+/**
+ * The PO's second capture: two labels whose BOXES overlap by half their width
+ * and whose words are thirty units apart.
+ */
+const w3NamesApart: CorpusCard = {
+  name: 'W3 valid — two labels whose words never meet',
+  elements: [
+    map(),
+    label('l1', 0.3, 0.5, 'ERP'),
+    { ...label('l2', 0.3, 0.5, 'Cloud'), xywh: [at(0.3, 0.5)[0] + 60, at(0.3, 0.5)[1] - 13, 120, 26] },
+  ],
+  expected: [],
+};
+
 const w3NodeOnNode: CorpusCard = {
   name: 'W3 invalid — two nodes on top of each other',
   elements: [map(), node('n1', 0.4, 0.5), node('n2', 0.4025, 0.5)],
@@ -357,7 +425,9 @@ const w3LabelOnLink: CorpusCard = {
           [x + 200, y],
         ] as [number, number][],
       },
-      { id: 'l1', role: WARDLEY_ROLE.label, xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number] },
+      // The words, not just the box: this is the only invalid label/link card,
+      // so it is the one that has to go through the ink geometry.
+      { ...label('l1', 0.5, 0.5), xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number] },
     ];
   })(),
   expected: [W3],
@@ -476,6 +546,20 @@ const w4ChangeArrow: CorpusCard = (() => {
     expected: [],
   };
 })();
+
+/**
+ * The invalid twin of {@link w3NamesApart}: same two names, close enough that
+ * the WORDS overlap and not just the boxes.
+ */
+const w3NamesOnTopOfEachOther: CorpusCard = {
+  name: 'W3 invalid — two names written over each other',
+  elements: [
+    map(),
+    label('l1', 0.35, 0.6),
+    { ...label('l2', 0.35, 0.6), xywh: [at(0.35, 0.6)[0] + 30, at(0.35, 0.6)[1] - 13, 120, 26] },
+  ],
+  expected: [W3],
+};
 
 /**
  * Cards that say nothing at all, whatever is on them — the proportionality
@@ -603,9 +687,12 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w2OnDividerNoCarrier,
   w3Clean,
   w3Tight,
+  w3LinkInTheMargin,
+  w3NamesApart,
   w3NodeOnNode,
   w3LabelOnNode,
   w3LabelOnLink,
+  w3NamesOnTopOfEachOther,
   w4Descending,
   w4Level,
   w4Inverted,
@@ -643,6 +730,13 @@ export function cardElements(
         // when the edge is bound, nothing at all when it is not.
         ...(el.source ? { source: { id: el.source } } : {}),
         ...(el.target ? { target: { id: el.target } } : {}),
+        ...(el.text !== undefined
+          ? {
+              text: el.text,
+              fontSize: el.fontSize,
+              textAlign: el.textAlign,
+            }
+          : {}),
         get elementBound() {
           return new Bound(...el.xywh);
         },

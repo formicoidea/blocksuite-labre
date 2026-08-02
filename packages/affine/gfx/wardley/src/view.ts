@@ -1,9 +1,13 @@
 import {
+  tagsToolbarConfig,
   validationToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
-import { ToolbarModuleExtension } from '@labre/affine-shared/services';
+import {
+  ToolbarModuleExtension,
+  UniverseTagDefsExtension,
+} from '@labre/affine-shared/services';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -13,9 +17,10 @@ import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { wardleyCommandIcons, wardleyCommands } from './commands';
-import { WARDLEY_ROLES } from './roles';
 import { effects } from './effects';
+import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
+import { WARDLEY_ROLES } from './roles';
 import { WARDLEY_RULES } from './rules';
 import { wardleyTemplateCategory } from './templates';
 import { WardleyElementRendererExtension } from './element-renderer';
@@ -92,6 +97,33 @@ export class WardleyViewExtension extends ViewExtensionProvider {
           config: validationToolbarConfig,
         })
       );
+      // The four natures — Wardley's type-3 qualification (MF3, ADR 0007).
+      // Seeded on the SAME mechanism a host uses for its own taxonomy: the
+      // library ships one real pack, and a client's private extension is a
+      // second pack with another `packId` that merges with this one, with no
+      // library release. All packs must land in this one DI scope — `getAll`
+      // never merges across scopes.
+      context.register(UniverseTagDefsExtension(WARDLEY_TAG_DEFS));
+      // The qualification dropdown on the selected component's toolbar. A
+      // THIRD module on the same element, through a free `custom:` flavour
+      // slot. Generic in shape — it names no framework and builds its sections
+      // from the seeded packs — but parameterized by this framework's role
+      // vocabulary, because ADR 0007 § 2bis deliberately keeps roles out of DI
+      // and there is therefore no way to look up "which vocabulary governs this
+      // element". Registered on the NODE and on the GROUP: one click on a
+      // Wardley component selects the group that holds the circle and its
+      // label, and the role lives on the circle.
+      for (const flavour of [
+        'custom:affine:surface:wardleyNode',
+        'custom:affine:surface:group',
+      ]) {
+        context.register(
+          ToolbarModuleExtension({
+            id: BlockFlavourIdentifier(flavour),
+            config: tagsToolbarConfig(WARDLEY_ROLES),
+          })
+        );
+      }
       context.register(wardleySeniorTool);
       // The 13 Wardley commands, ONE registration for both faces: the
       // enumerable registry the sub-menu renders from, and — through

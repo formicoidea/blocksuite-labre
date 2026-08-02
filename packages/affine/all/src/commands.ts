@@ -1,4 +1,8 @@
-import { coreCommands, pivotCommands } from '@labre/affine-block-root';
+import {
+  coreCommands,
+  pivotCommands,
+  tagCommands,
+} from '@labre/affine-block-root';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
@@ -78,6 +82,7 @@ export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
     [
       ...coreCommands,
       ...pivotCommands,
+      ...tagCommands,
       ...shapeCommands,
       ...edgeDirectionCommands,
     ],

@@ -37,23 +37,30 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind + edge.invert-direction
-      core: 8,
+      // + shape.cycleTextFit + pivot.bind + tag.set + edge.invert-direction
+      //
+      // Both sides of this merge added ONE core command and both wrote `8`, so
+      // git kept the number without a conflict while the registry held nine.
+      // The count is the whole point of this test: it is the line that notices
+      // a command appearing or vanishing, so it is the line a merge is most
+      // likely to get quietly wrong.
+      core: 9,
     });
-    expect(commands).toHaveLength(68);
+    expect(commands).toHaveLength(69);
   });
 
   /**
-   * ADR 0008 puts emission in `runCommand` "and nowhere else". One command is
-   * excepted — `pivot.bind`, whose event depends on its params and on which
-   * elements actually changed, neither of which the bottleneck receives (see
-   * the ADR's Resolved question 5). The exception is enumerated here rather
-   * than left as a comment in a function body, because the failure mode it
-   * opens is silent: a command that emits from its body AND declares
+   * ADR 0008 puts emission in `runCommand` "and nowhere else". Two commands
+   * are excepted — the PROMOTION rungs, whose event depends on their params
+   * and on which elements actually changed, neither of which the bottleneck
+   * receives (see the ADR's Resolved question 5). They are enumerated here
+   * rather than left as a comment in a function body, because the failure mode
+   * they open is silent: a command that emits from its body AND declares
    * `telemetry` reports the same gesture twice, forever.
    */
   const SELF_EMITTING_COMMANDS = [
     'pivot.bind',
+    'tag.set',
     // Same shape, same reason (`docs/adr/0010` M3): an inversion is neither a
     // creation nor a static `{ framework, element }` pair — its role and its
     // element count are facts of the invocation.

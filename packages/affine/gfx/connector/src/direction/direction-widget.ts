@@ -99,6 +99,10 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
        * comes from render(), which knows how wide the viewport is.
        */
       width: max-content;
+      /* So the viewport-derived max-width caps the BOX, padding and border
+         included — the number render() computes is a screen budget, not a
+         content budget. */
+      box-sizing: border-box;
       padding: 6px 12px;
       border-radius: 8px;
       border: 1px solid var(--affine-border-color);
