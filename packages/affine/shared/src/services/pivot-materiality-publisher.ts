@@ -175,18 +175,29 @@ export class PivotMaterialityPublisher extends LifeCycleWatcher {
     this._subscriptions.push(
       surface.elementAdded.subscribe(({ id, local }) => {
         if (local) this._schedule(surface, id);
+        else this._track(surface, id);
       })
     );
     this._subscriptions.push(
       surface.elementUpdated.subscribe(payload => {
-        if (!payload.local) return;
         if (!touchesMateriality(payload)) return;
-        this._schedule(surface, payload.id);
+        if (payload.local) this._schedule(surface, payload.id);
+        else this._track(surface, payload.id);
       })
     );
     this._subscriptions.push(
       surface.elementRemoved.subscribe(({ id, local }) => {
-        if (!local) return;
+        if (!local) {
+          // Someone else's deletion is someone else's retraction to emit. Drop
+          // the bookkeeping so a later occurrence reusing this id — an undo on
+          // the peer, a paste — is not silenced by a stale fingerprint.
+          const previous = this._lastBinding.get(id);
+          if (previous !== undefined) {
+            this._published.delete(materialityKey(previous, id));
+          }
+          this._lastBinding.delete(id);
+          return;
+        }
         // The element is already gone from the surface, so the flush below
         // cannot read it — which is exactly right: an absent element retracts.
         this._schedule(surface, id);
@@ -197,10 +208,40 @@ export class PivotMaterialityPublisher extends LifeCycleWatcher {
     // are not a local change, and republishing a whole board on every editor
     // open would flood the host with patches it already holds. The rebuild path
     // (`collectPivotOccurrences`) is the deliberate way to resynchronise.
-    for (const element of surface.elementModels) {
-      if (isPivotBound(element)) {
-        this._lastBinding.set(element.id, element.pivotDocId);
-      }
+    for (const element of surface.elementModels) this._track(surface, element.id);
+  }
+
+  /**
+   * Record what record an element is bound to, **without publishing anything**.
+   *
+   * ## Who owns a retraction in a collaborative session
+   *
+   * The client whose LOCAL transaction removes the occurrence — deletion,
+   * unbind, or re-bind. That is the same rule as every other emission here
+   * (`local` partitions the fleet into one publisher and N−1 observers), and it
+   * is the only rule that can work: the peer that ORIGINALLY bound the element
+   * sees the deletion as a remote change, so if retraction belonged to the
+   * binder, nobody would emit it at all.
+   *
+   * Owning the retraction requires knowing which record to retract from, and by
+   * the time the deletion is seen the element is gone. Hence this: **tracking
+   * the binding is bookkeeping, not publication.** Every client keeps the map
+   * for everything it can see, whoever wrote it, so that whichever client
+   * eventually performs the removal can name the record. Without it, retraction
+   * only ever worked when one client both created and deleted the occurrence —
+   * the rare case in an open collaborative session, and the host would keep a
+   * materiality attributed to an occurrence that no longer exists.
+   *
+   * A remote peer that CHANGES a binding updates this map silently: it is
+   * publishing its own retraction and its own patch, and a second one from here
+   * would be a duplicate, not a safety net.
+   */
+  private _track(surface: SurfaceBlockModel, id: string) {
+    const element = surface.getElementById(id);
+    if (element && isPivotBound(element)) {
+      this._lastBinding.set(id, element.pivotDocId);
+    } else {
+      this._lastBinding.delete(id);
     }
   }
 

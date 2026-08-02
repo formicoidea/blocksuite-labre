@@ -302,7 +302,7 @@ export type OccurrenceMaterialityPatch = {
   /**
    * Framework identity — `FrameworkId` from ADR 0008.
    *
-   * **Amended 2026-08-02 (MF3 implementation, PR #92): OPTIONAL.** ADR 0007 § 6
+   * **Amended 2026-08-02 (MF3 implementation, PR #95): OPTIONAL.** ADR 0007 § 6
    * states that no rung of the ladder requires the previous one, so a plain
    * rectangle bound to a pivot record — no role at all — is a legal state that
    * belongs to no framework. A required field would oblige the library to
@@ -376,7 +376,7 @@ several payloads for the same element. The publisher therefore **coalesces per
 `elementId` within one microtask** and publishes the element's _current full
 state_, never a delta.
 
-> **Amended 2026-08-02 (MF3 implementation, PR #92).** Two properties the
+> **Amended 2026-08-02 (MF3 implementation, PR #95).** Two properties the
 > original text left implicit, both load-bearing in practice:
 >
 > - **Elements already on the surface at mount are NOT published.** They are not
@@ -426,6 +426,31 @@ undefined`, `tags: {}` — on each of:
 
 The host drops every derived materiality keyed by `(pivotDocId, elementId)`. Authored
 properties are untouched — a retraction is not a record deletion.
+
+> **Amended 2026-08-02 (MF3 adversarial review of PR #95): who OWNS a retraction
+> in a collaborative session.**
+>
+> The rule is the same one that governs every other emission here — the client
+> whose LOCAL transaction removes the occurrence — and it is the only rule that
+> can work. The peer that originally bound the element sees the deletion as a
+> _remote_ change, so if retraction belonged to the binder, nobody would emit it
+> at all.
+>
+> That rule has a prerequisite the original text left implicit: owning the
+> retraction means knowing WHICH record to retract from, and by the time the
+> deletion is observed the element is already gone. So the publisher keeps a
+> binding table for **every** element it can see, whoever wrote it, updated on
+> remote adds and updates as well as local ones. **Tracking a binding is
+> bookkeeping; publishing is what `local` gates.**
+>
+> Without that distinction, retraction only ever fired when one client both
+> created and deleted the occurrence, or when the element predated the editor
+> session — the rare case in an open collaborative session. A remote peer
+> creating and binding an element that this client then deletes emitted nothing
+> anywhere, and the host kept a materiality attributed to an occurrence that no
+> longer exists: precisely the leak this section exists to prevent. The rebuild
+> path of § 4.2 remains the safety net, but it is meant to be the net, not the
+> mechanism.
 
 Deleting the whole _document_ is out of the library's reach: no local
 transaction on the surface ever fires. That case is the host's, and the rebuild

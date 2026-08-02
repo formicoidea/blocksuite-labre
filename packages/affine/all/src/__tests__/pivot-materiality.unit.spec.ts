@@ -397,6 +397,90 @@ describe('a remote peer', () => {
     // the one that announces it.
     expect(ctx.patches).toEqual([]);
   });
+
+  test('an element a PEER created and bound still retracts when we delete it', async () => {
+    const ctx = setup();
+    // A first element only so the surface's Y structures exist locally.
+    ctx.addShape();
+    await settle();
+
+    const doc = ctx.surface.elementModels[0].yMap.doc!;
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
+    const remoteElements = (
+      (remote.getMap('blocks').get(ctx.surface.id) as Y.Map<unknown>).get(
+        'prop:elements'
+      ) as Y.Map<unknown>
+    ).get('value') as Y.Map<Y.Map<unknown>>;
+
+    // The peer creates a bound, qualified occurrence — entirely its business.
+    const REMOTE_ID = 'peer-element';
+    remote.transact(() => {
+      const element = new Y.Map<unknown>();
+      element.set('type', 'shape');
+      element.set('id', REMOTE_ID);
+      element.set('index', 'a0');
+      element.set('seed', 1);
+      element.set('xywh', '[0,0,10,10]');
+      element.set('shapeType', 'rect');
+      element.set('pivotDocId', RECORD);
+      const tags = new Y.Map<string[]>();
+      tags.set(NATURE, [DATA]);
+      element.set('tags', tags);
+      remoteElements.set(REMOTE_ID, element);
+    });
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote));
+    await settle();
+
+    // Nothing published: it is not our change.
+    expect(ctx.patches).toEqual([]);
+    expect(ctx.surface.getElementById(REMOTE_ID)).toBeTruthy();
+
+    // …but WE delete it. And now the retraction is ours to emit: the peer that
+    // bound it sees this deletion as remote, so if retraction belonged to the
+    // binder, nobody would emit it at all and the host would keep a materiality
+    // attributed to an occurrence that no longer exists.
+    ctx.surface.deleteElement(REMOTE_ID);
+    await settle();
+
+    expect(ctx.patches).toEqual([
+      {
+        pivotDocId: RECORD,
+        elementId: REMOTE_ID,
+        framework: undefined,
+        role: undefined,
+        tags: {},
+        present: false,
+      },
+    ]);
+  });
+
+  test("a peer's own deletion is the peer's retraction, not ours", async () => {
+    const ctx = setup();
+    const shape = ctx.addShape({ pivotDocId: RECORD });
+    setElementTag(shape, NATURE, [DATA]);
+    await settle();
+    ctx.patches.length = 0;
+
+    const doc = shape.yMap.doc!;
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    const remoteElements = (
+      (remote.getMap('blocks').get(ctx.surface.id) as Y.Map<unknown>).get(
+        'prop:elements'
+      ) as Y.Map<unknown>
+    ).get('value') as Y.Map<Y.Map<unknown>>;
+    remote.transact(() => remoteElements.delete(shape.id));
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote));
+    await settle();
+
+    // Exactly one client publishes per change, and it is the one whose
+    // transaction it is. Two retractions for one deletion would be a duplicate,
+    // not a safety net.
+    expect(ctx.surface.getElementById(shape.id)).toBeFalsy();
+    expect(ctx.patches).toEqual([]);
+  });
 });
 
 describe('degradation', () => {

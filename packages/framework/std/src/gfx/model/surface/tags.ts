@@ -53,19 +53,62 @@ const sameValues = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, i) => value === b[i]);
 
 /**
+ * The **degraded shape**: `tags` stored as a plain object rather than a
+ * `Y.Map`.
+ *
+ * This is not a hypothetical. A client that predates this field does not
+ * DECLARE it, so on the five element-creation-from-props paths (paste,
+ * duplicate, alt-drag clone, turn-into-linked-doc, `updateElement` with an
+ * undeclared key) `_assignElementProp` routes it down the unknown-key branch —
+ * and that branch's encodability guard accepts the serialized form of the
+ * nested map perfectly, because it IS flat JSON: an object of arrays of
+ * strings. So the value is written verbatim, as a plain object.
+ *
+ * The unknown-key branch is doing exactly its job — preserving a key it does
+ * not understand. It is THIS side that has to meet it halfway, and in this
+ * release rather than a later one: the whole point of shipping the declaration
+ * before anything writes the field is that the fleet floor tolerates the key,
+ * and tolerance that cannot read the only other shape in existence is not
+ * tolerance.
+ *
+ * Reading normalizes it (below); the first write CONVERTS it
+ * ({@link setElementTag}), so the degraded shape is transitional per element
+ * and never persists past a qualification gesture.
+ */
+function isDegradedTags(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !(value instanceof Y.AbstractType) &&
+    !Array.isArray(value) &&
+    !(value instanceof Uint8Array)
+  );
+}
+
+/**
+ * The element's tags as `[tagId, rawValues]` pairs, whichever shape they are
+ * stored in. One place normalizes the two vintages so no reader has to know
+ * that there are two.
+ */
+function tagEntries(element: GfxPrimitiveElementModel): [string, unknown][] {
+  const stored: unknown = element.tags;
+  if (stored instanceof Y.Map) return [...stored.entries()];
+  if (isDegradedTags(stored)) return Object.entries(stored);
+  return [];
+}
+
+/**
  * Every tag on the element, as plain JSON. `{}` when unqualified — absent and
  * empty are the same fact, and no caller should have to distinguish them.
  *
  * Defensive by construction: the map is a document value, so a client of any
- * vintage may have written something else into it. A malformed entry is skipped,
+ * vintage may have written something else into it. Both shapes a real client
+ * can produce are read ({@link isDegradedTags}); a malformed entry is skipped,
  * never thrown on. A board that cannot be read is worse than a tag that is not.
  */
 export function readElementTags(element: GfxPrimitiveElementModel): ElementTags {
-  const map = element.tags;
-  if (!(map instanceof Y.Map)) return {};
-
   const tags: ElementTags = {};
-  for (const [tagId, values] of map.entries()) {
+  for (const [tagId, values] of tagEntries(element)) {
     if (typeof tagId !== 'string' || tagId.length === 0) continue;
     const cleaned = cleanValues(values);
     if (cleaned.length) tags[tagId] = cleaned;
@@ -78,8 +121,10 @@ export function elementTagValues(
   element: GfxPrimitiveElementModel,
   tagId: string
 ): string[] {
-  const map = element.tags;
-  return map instanceof Y.Map ? cleanValues(map.get(tagId)) : [];
+  const stored: unknown = element.tags;
+  if (stored instanceof Y.Map) return cleanValues(stored.get(tagId));
+  if (isDegradedTags(stored)) return cleanValues(stored[tagId]);
+  return [];
 }
 
 /** Whether the element carries `valueId` under `tagId`. */
@@ -102,17 +147,31 @@ export function hasElementTagValue(
  * promotion look like it moved geometry, which is exactly what the ladder's
  * invariants forbid.
  *
- * ## The three cases, and why the middle one is the point
+ * ## The cases, and why the first one is the point
  *
- * - **No map yet** — one is created and assigned through `updateElement`, which
- *   is what attaches it to the document and starts the nested observer.
- * - **A map already** — the entry is set IN PLACE. Replacing the whole map
+ * - **A `Y.Map` already** — the entry is set IN PLACE. Replacing the whole map
  *   instead would restore whole-blob last-write-wins and silently drop a
  *   concurrent edit on a different tag, which is the single reason the field is
- *   a nested map at all.
- * - **The last tag removed** — the key is removed with `clearField` rather than
- *   left holding an empty map: an element qualified and then un-qualified goes
- *   back to costing nothing, exactly like one that never was.
+ *   a nested map at all. Removing the last entry removes the key with
+ *   `clearField` rather than leaving an empty map behind: an element qualified
+ *   and then un-qualified goes back to costing nothing, like one that never was.
+ * - **Nothing yet** — a map is created and assigned through `updateElement`,
+ *   which is what attaches it to the document and starts the nested observer.
+ * - **The degraded shape** ({@link isDegradedTags}) — the map is created from
+ *   what is ALREADY there, plus the change. This is the one case where
+ *   replacing wholesale is right, because a plain object was never mergeable in
+ *   the first place; what would be wrong, and was, is replacing it with a map
+ *   holding only the new tag. A colleague's qualification, written by a client
+ *   that predates this field, would leave without a word.
+ *
+ * ## Read-only
+ *
+ * A read-only store is a no-op with a warning, not a throw and not a write.
+ * This is exported from `@labre/std/gfx`, so a host can call it directly, and
+ * the three write paths below reach the document three different ways: an
+ * in-place `store.transact` and `clearField` carry no read-only guard of their
+ * own (they would silently succeed), while `updateElement` throws. Three
+ * behaviours for one refusal is not a contract; one guard here is.
  */
 export function setElementTag(
   element: GfxPrimitiveElementModel,
@@ -121,29 +180,48 @@ export function setElementTag(
 ): boolean {
   if (typeof tagId !== 'string' || tagId.length === 0) return false;
 
-  const next = cleanValues(values);
-  const current = element.tags;
-  const existing = current instanceof Y.Map ? cleanValues(current.get(tagId)) : [];
-  if (sameValues(existing, next)) return false;
+  if (element.surface.store.readonly) {
+    console.warn(
+      `Refusing to qualify element "${element.id}" with "${tagId}": the document is read-only.`
+    );
+    return false;
+  }
 
-  if (next.length === 0) {
-    if (!(current instanceof Y.Map)) return false;
-    element.surface.store.transact(() => {
-      current.delete(tagId);
-    });
-    if (current.size === 0) element.clearField(ELEMENT_TAGS_FIELD);
+  const next = cleanValues(values);
+  const stored: unknown = element.tags;
+  if (sameValues(elementTagValues(element, tagId), next)) return false;
+
+  // The native shape: merge per tag, which is the whole design.
+  if (stored instanceof Y.Map) {
+    if (next.length === 0) {
+      element.surface.store.transact(() => {
+        stored.delete(tagId);
+      });
+      if (stored.size === 0) element.clearField(ELEMENT_TAGS_FIELD);
+    } else {
+      element.surface.store.transact(() => {
+        stored.set(tagId, next);
+      });
+    }
     return true;
   }
 
-  if (current instanceof Y.Map) {
-    element.surface.store.transact(() => {
-      current.set(tagId, next);
-    });
+  // Absent, or the degraded shape. `readElementTags` normalizes both, so the
+  // conversion preserves whatever a pre-declaration client left behind.
+  const merged = readElementTags(element);
+  if (next.length === 0) delete merged[tagId];
+  else merged[tagId] = next;
+
+  const entries = Object.entries(merged);
+  if (entries.length === 0) {
+    // A degraded value emptied by this call: remove the key rather than write
+    // an empty map. (Absent-and-empty returned above, at `sameValues`.)
+    element.clearField(ELEMENT_TAGS_FIELD);
     return true;
   }
 
   const created = new Y.Map<string[]>();
-  created.set(tagId, next);
+  for (const [id, cleaned] of entries) created.set(id, cleaned);
   element.surface.updateElement(element.id, { tags: created });
   return true;
 }

@@ -66,10 +66,18 @@ element, reflected onto the record, and read by the rules engine.
 **Release ordering, adopted from #67 recommendation #4 and unchanged from
 #89.** This release DECLARES the field; nothing in the product writes it until
 the host wires a qualification surface. Ship the declaration release before any
-release that writes `tags`, so the fleet floor tolerates the key. An older
-client keeps the value through load / edit / save (`syncElementFromY` mirrors
-every entry into `_preserved`), but drops it on the five
-element-creation-from-props paths — the transitional window ADR 0005 documents.
+release that writes `tags`, so the fleet floor tolerates the key.
+
+An older client keeps the value through load / edit / save (`syncElementFromY`
+mirrors every entry into `_preserved`), and — unlike `pivotDocId` — it keeps it
+on the five element-creation-from-props paths too, **as a plain object**: an
+undeclared key goes down the unknown-key branch, whose encodability guard
+accepts the serialized nested map because it is flat JSON. Nothing is lost; the
+shape is simply not the specified one. This release therefore also READS that
+degraded shape and CONVERTS it, preserving its content, on the first write —
+without which the declaring release would answer `{}` for a qualified element
+and then overwrite a colleague's tag, which would empty the release-ordering
+rule of its meaning.
 
 Two supporting changes in `@labre/std`, both consequences of the field being a
 nested Y type on the base class:

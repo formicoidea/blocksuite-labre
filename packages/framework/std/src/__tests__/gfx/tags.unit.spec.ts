@@ -26,6 +26,7 @@ import * as Y from 'yjs';
 import { effects } from '../../effects.js';
 import {
   elementTagValues,
+  type GfxPrimitiveElementModel,
   hasElementTagValue,
   readElementTags,
   setElementTag,
@@ -255,6 +256,183 @@ describe('tags survive element re-creation from props', () => {
     const id = surface.addElement({ type: 'testShape', tags: {} as never });
 
     expect(surface.getElementById(id)!.yMap.has('tags')).toBe(false);
+  });
+});
+
+/**
+ * The shape a client that predates the field leaves behind.
+ *
+ * Not a hypothesis: an undeclared key goes down `_assignElementProp`'s
+ * unknown-key branch, whose encodability guard accepts the serialized nested map
+ * because it IS flat JSON. So the qualification is preserved — as a plain
+ * object. Writing it here directly into the Y.Map is exactly what that branch
+ * does.
+ */
+function writeDegradedTags(
+  element: GfxPrimitiveElementModel,
+  tags: Record<string, string[]>
+) {
+  element.surface.store.transact(() => {
+    element.yMap.set('tags', tags);
+  });
+}
+
+describe('the degraded shape a pre-declaration client writes', () => {
+  let surface!: SurfaceBlockModel;
+
+  beforeEach(() => {
+    surface = setupSurface('tags-degraded').surface;
+  });
+
+  test('is READ, not reported as an unqualified element', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    writeDegradedTags(el, { [NATURE]: [DATA] });
+
+    // Before this was handled, the element looked pristine: no Nature section,
+    // no patch to the host, no fact for the rules engine.
+    expect(el.tags).not.toBeInstanceOf(Y.Map);
+    expect(readElementTags(el)).toEqual({ [NATURE]: [DATA] });
+    expect(elementTagValues(el, NATURE)).toEqual([DATA]);
+    expect(hasElementTagValue(el, NATURE, DATA)).toBe(true);
+  });
+
+  test('is CONVERTED by the first write, and the colleague keeps their tag', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    writeDegradedTags(el, { [NATURE]: [DATA] });
+
+    expect(setElementTag(el, CRITICALITY, ['wardley:criticality/high'])).toBe(
+      true
+    );
+
+    // The bug this replaces: a fresh Y.Map holding ONLY the tag just posted
+    // replaced the plain object, and the qualification written by the other
+    // client left without a word.
+    expect(el.tags).toBeInstanceOf(Y.Map);
+    expect(readElementTags(el)).toEqual({
+      [NATURE]: [DATA],
+      [CRITICALITY]: ['wardley:criticality/high'],
+    });
+  });
+
+  test('converts on a write that REPLACES one of its own values', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    writeDegradedTags(el, { [NATURE]: [DATA], [CRITICALITY]: ['x:y/z'] });
+
+    setElementTag(el, NATURE, [PRACTICE]);
+
+    expect(el.tags).toBeInstanceOf(Y.Map);
+    expect(readElementTags(el)).toEqual({
+      [NATURE]: [PRACTICE],
+      [CRITICALITY]: ['x:y/z'],
+    });
+  });
+
+  test('removing its last tag removes the key rather than converting', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    writeDegradedTags(el, { [NATURE]: [DATA] });
+
+    expect(setElementTag(el, NATURE, [])).toBe(true);
+
+    expect(el.yMap.has('tags')).toBe(false);
+    expect(readElementTags(el)).toEqual({});
+  });
+
+  test('a no-op write on it stays a no-op — no gratuitous conversion', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    writeDegradedTags(el, { [NATURE]: [DATA] });
+
+    // Conversion is a side effect of qualifying, not a migration pass. Nothing
+    // walks documents rewriting them.
+    expect(setElementTag(el, NATURE, [DATA])).toBe(false);
+    expect(el.tags).not.toBeInstanceOf(Y.Map);
+  });
+
+  test('it does not warn once per element per mount', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+
+    writeDegradedTags(el, { [NATURE]: [DATA] });
+
+    // A plain object under this key is a document value of another vintage, not
+    // the `@observe`-on-a-non-Y-type misconfiguration the warning exists for,
+    // and there is nothing the user could do about it anyway.
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('a read-only document is never written to', () => {
+  let surface!: SurfaceBlockModel;
+
+  beforeEach(() => {
+    surface = setupSurface('tags-readonly').surface;
+  });
+
+  /**
+   * `setElementTag` is exported from `@labre/std/gfx`, so a host reaches it
+   * without going through `tag.set`'s own guard. The three write paths below
+   * used to behave three different ways under read-only: the in-place mutation
+   * and `clearField` both went through `Store.transact`, which carries no guard
+   * and so SUCCEEDED, while `updateElement` threw.
+   */
+  test('all three write paths refuse, identically, and none throws', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const created = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    const mutated = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    setElementTag(mutated, NATURE, [DATA]);
+    setElementTag(mutated, CRITICALITY, ['x:y/z']);
+    const removed = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    setElementTag(removed, NATURE, [DATA]);
+
+    surface.store.readonly = true;
+
+    // 1. create the map — used to THROW out of `updateElement`.
+    expect(setElementTag(created, NATURE, [DATA])).toBe(false);
+    // 2. mutate an existing map in place — used to WRITE.
+    expect(setElementTag(mutated, NATURE, [PRACTICE])).toBe(false);
+    // 3. remove the last tag, i.e. `clearField` — used to WRITE.
+    expect(setElementTag(removed, NATURE, [])).toBe(false);
+
+    expect(created.yMap.has('tags')).toBe(false);
+    expect(readElementTags(mutated)).toEqual({
+      [NATURE]: [DATA],
+      [CRITICALITY]: ['x:y/z'],
+    });
+    expect(readElementTags(removed)).toEqual({ [NATURE]: [DATA] });
+    // A refusal, not a silent one: three calls, three warnings.
+    expect(warn).toHaveBeenCalledTimes(3);
+    warn.mockRestore();
+  });
+
+  test('lifting read-only lets the same gesture through', () => {
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+    surface.store.readonly = true;
+    setElementTag(el, NATURE, [DATA]);
+    surface.store.readonly = false;
+
+    expect(setElementTag(el, NATURE, [DATA])).toBe(true);
+    expect(readElementTags(el)).toEqual({ [NATURE]: [DATA] });
   });
 });
 

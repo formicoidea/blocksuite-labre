@@ -94,20 +94,31 @@ export function startObserve(
     observerDisposable[prop] = () => {
       value.unobserve(fn);
     };
-  } else if (value != null) {
+  } else if (value != null && typeof value !== 'object') {
     console.warn(
       `Failed to observe "${prop.toString()}" of ${
         receiver.type
       } element, make sure it's a Y type.`
     );
   }
-  // An ABSENT optional Y-type field is not a misuse and is not warned about.
-  // `GfxPrimitiveElementModel.tags` defaults to `undefined` and stays absent
-  // until something qualifies the element, so every unqualified element — i.e.
-  // almost all of them — would otherwise log once per mount. The observer is
-  // re-attached the moment the key appears: `@field()`'s setter calls
-  // `startObserve`, and `syncElementFromY` calls it for the paths that never
-  // reach the setter (a remote peer, undo, redo).
+  // Two shapes are deliberately NOT warned about, because neither is the
+  // misconfiguration this warning exists to catch (`@observe` on a field that
+  // is not a Y type):
+  //
+  // - **Absent.** `GfxPrimitiveElementModel.tags` defaults to `undefined` and
+  //   stays absent until something qualifies the element, so every unqualified
+  //   element — i.e. almost all of them — would log once per mount.
+  // - **A plain object.** That is the DEGRADED shape a client predating the
+  //   field writes through the unknown-key branch (see `../tags.ts`). It is a
+  //   document value of another vintage, not a programmer error, and nothing
+  //   the user can act on; reading it is handled, and the first write converts
+  //   it. Warning once per affected element per mount would be pure noise on a
+  //   board the user did nothing wrong to produce.
+  //
+  // Either way the observer is re-attached the moment a real Y type lands on
+  // the key: `@field()`'s setter calls `startObserve`, and `syncElementFromY`
+  // calls it for the paths that never reach the setter (a remote peer, undo,
+  // redo).
 }
 
 /** Whether an `@observe`d nested Y type is declared for this prop. */
