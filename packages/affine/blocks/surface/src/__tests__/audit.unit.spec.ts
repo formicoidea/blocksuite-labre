@@ -795,6 +795,28 @@ describe('a hostile provider cannot move the deterministic verdict', () => {
     expect(verdict()).toEqual([]);
   });
 
+  test('the axis vectors are FROZEN, so the direct collector call is safe too', async () => {
+    // `requestAudit` clones, which closes the seam. But `collectAuditFacts` is
+    // exported: a host calling it directly still receives the module constant
+    // by reference. The freeze closes the class at the SOURCE — the defence a
+    // caller cannot forget by not having read the boundary.
+    const elements = boardWithArrow();
+    const facts = collectAuditFacts(
+      stubStd({ elements, rules: [AXIS_RULE], manager: stubManager() })
+    );
+    const forward = facts.frames[0].axes[0].forward as unknown as number[];
+
+    expect(Object.isFrozen(forward)).toBe(true);
+    // Every ES module is strict, so a write throws rather than corrupting the
+    // engine three frames later.
+    expect(() => {
+      forward[0] = -1;
+    }).toThrow(TypeError);
+
+    // And the verdict is what it was.
+    expect(evaluateRules([AXIS_RULE], elements)).toEqual([]);
+  });
+
   test('the facts the provider sees are a copy, not the engine’s own data', async () => {
     // Identity, not value — the property `toEqual` and a JSON round-trip are
     // both structurally blind to.
@@ -884,6 +906,10 @@ describe('two audits at once: the newest wins', () => {
 
     // The stale answer is dropped whole, and says so.
     expect(firstResult.status).toBe('superseded');
+    // ...on BOTH channels. A host panel awaiting `runMapAudit` and rendering
+    // `result.findings` without testing `result.status` first would otherwise
+    // display exactly the stale answer this guard exists to suppress.
+    expect(firstResult.findings).toEqual([]);
     expect(manager.auditFindings$.value[0].elementIds).toEqual(['FRESH']);
   });
 

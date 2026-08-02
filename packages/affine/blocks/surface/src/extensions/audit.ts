@@ -450,13 +450,21 @@ export async function runMapAudit(
   // describes the board the user is looking at, so this one is dropped whole —
   // not published, and not counted as a completion either, because a
   // `findingCount` for findings nobody will see is a metric that lies.
+  //
+  // The findings are dropped from the RETURN VALUE too, not just from the
+  // signal. `runMapAudit` is exported and awaited directly by a host panel; one
+  // that renders `result.findings` without first testing `result.status` would
+  // otherwise display precisely the stale answer this guard exists to suppress
+  // — and "the caller should have checked" is a poor defence for a field that
+  // is easier to read than the status beside it. Superseded means superseded on
+  // both channels.
   if (auditGenerations.get(std) !== generation) {
     telemetry?.track('MapAuditInterrupted', {
       ...base,
       reason: 'superseded',
       durationMs,
     });
-    return { ...result, status: 'superseded' };
+    return { ...result, status: 'superseded', findings: [] };
   }
 
   // Published even for a partial run: an audit interrupted halfway has still

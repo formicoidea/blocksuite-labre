@@ -119,7 +119,7 @@ the model, so what it can report is when a run was asked for and how it ended.
 
 | Event                  | When                                     | Required props                                    |
 | ---------------------- | ---------------------------------------- | ------------------------------------------------- |
-| `MapAuditStarted`      | `map.audit` reaches the provider          | `criterionCount`, `frameCount`                     |
+| `MapAuditStarted`      | `map.audit` is invoked — **before the provider is looked up at all** | `criterionCount`, `frameCount`   |
 | `MapAuditCompleted`    | the provider settled every criterion      | + `findingCount`, `durationMs`                     |
 | `MapAuditInterrupted`  | aborted, failed, unanswerable, or superseded | + `reason` (`aborted` / `error` / `unavailable` / `superseded`), `durationMs` |
 
@@ -133,10 +133,15 @@ there at all. `superseded` counts runs whose answer was dropped because the user
 asked again while they were still in flight, and a rising count is the signal
 that audits are slow enough to be asked for twice.
 
+`MapAuditStarted` is emitted on **intent**, not on reaching a provider: it fires
+before the provider is even looked up, which is exactly what makes the
+`unavailable` count meaningful — a build with no assistant wired emits
+`MapAuditStarted` **and** `MapAuditInterrupted`, and the two series balance for
+every run without exception. Every started run ends in exactly one of
+`Completed` or `Interrupted`.
+
 Counts and ids only. Criterion prompts, finding wording and board content never
-cross this bus. A run that is refused before it starts (`unavailable`) emits
-`MapAuditStarted` **and** `MapAuditInterrupted`, so the two series always
-balance.
+cross this bus.
 
 ## Legacy events
 

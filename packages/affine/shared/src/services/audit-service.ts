@@ -70,7 +70,14 @@ export interface AuditCriterion {
 /** A role, as the assistant sees it. Vocabulary only, no geometry. */
 export interface AuditRoleFact {
   id: string;
-  kind: 'node' | 'edge';
+  /**
+   * Mirrors `RoleKind` structurally rather than importing it: this package sits
+   * below `@labre/std/gfx` in the seam, and the DTO must stay a plain shape a
+   * host can implement. Kept in sync by the collector, which fails to compile
+   * if `RoleKind` gains a member this union does not have — which is exactly
+   * how `'text'` arrived here (MF3).
+   */
+  kind: 'node' | 'edge' | 'text';
   /** Data hierarchy: `wardley:market` specialises `wardley:component`. */
   parent?: string;
   /** Optional, mirroring `RoleDef.labelKey`: a role may ship without one. */
@@ -239,9 +246,13 @@ export interface AuditFinding {
  *   build cannot deliver, and it is worthless if a provider can opt out of it
  *   by answering politely.
  * - `superseded` — a NEWER run for the same editor started while this one was
- *   in flight. Never returned by {@link requestAudit}: superseding is the
- *   library's arbitration between two of its own calls, not something a
- *   provider can declare (one that returns it is read as `complete`).
+ *   in flight. Its `findings` are **always empty**: the answer described a
+ *   board the user has already moved past, so it is dropped from the return
+ *   value as well as from the signal, and a host that awaits without checking
+ *   the status cannot render it. Never returned by {@link requestAudit}:
+ *   superseding is the library's arbitration between two of its own calls, not
+ *   something a provider can declare (one that returns it is read as
+ *   `complete`).
  */
 export type AuditStatus =
   | 'complete'
