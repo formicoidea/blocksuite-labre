@@ -9,6 +9,7 @@ export * from './legacy-slot-extension';
 export * from './query';
 export * from './spotlight';
 export * from './surface-middleware';
+export * from './tags-toolbar';
 export * from './validation';
 export * from './validation-toolbar';
 export * from './violation-detail-widget';

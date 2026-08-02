@@ -37,27 +37,27 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind + map.audit
+      // + shape.cycleTextFit + pivot.bind + tag.set + map.audit
       //
       // `map.audit` is counted here because `getCommands()` is called with no
       // flags and `ai-audit` defaults to enabled, like every switch. Its
       // absence under `{ 'ai-audit': false }` is asserted in
       // `audit-gating.unit.spec.ts`.
-      core: 8,
+      core: 9,
     });
-    expect(commands).toHaveLength(68);
+    expect(commands).toHaveLength(69);
   });
 
   /**
-   * ADR 0008 puts emission in `runCommand` "and nowhere else". One command is
-   * excepted — `pivot.bind`, whose event depends on its params and on which
-   * elements actually changed, neither of which the bottleneck receives (see
-   * the ADR's Resolved question 5). The exception is enumerated here rather
-   * than left as a comment in a function body, because the failure mode it
-   * opens is silent: a command that emits from its body AND declares
+   * ADR 0008 puts emission in `runCommand` "and nowhere else". Two commands
+   * are excepted — the PROMOTION rungs, whose event depends on their params
+   * and on which elements actually changed, neither of which the bottleneck
+   * receives (see the ADR's Resolved question 5). They are enumerated here
+   * rather than left as a comment in a function body, because the failure mode
+   * they open is silent: a command that emits from its body AND declares
    * `telemetry` reports the same gesture twice, forever.
    */
-  const SELF_EMITTING_COMMANDS = ['pivot.bind'];
+  const SELF_EMITTING_COMMANDS = ['pivot.bind', 'tag.set'];
 
   test('a self-emitting command never also declares telemetry', () => {
     for (const id of SELF_EMITTING_COMMANDS) {

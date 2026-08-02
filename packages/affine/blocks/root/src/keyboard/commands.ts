@@ -39,6 +39,9 @@ import { duplicate } from '../edgeless/utils/clipboard-utils.js';
  * the `redo-windows` alias, which has to keep working.
  */
 function lastStyleTargets(std: BlockStdScope) {
+  // Readonly: nothing to repaint, so `when` fails and the keystroke falls
+  // through (on Windows Mod+Y is also the redo alias, itself readonly-gated).
+  if (std.store.readonly) return [];
   const gfx = std.get(GfxControllerIdentifier);
   const lastStyle = std.get(EditPropsStore).lastUsedStyle$.value;
   if (!Object.keys(lastStyle).length) return [];

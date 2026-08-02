@@ -152,6 +152,38 @@ const inertiaOffTransition: ValidationRule = {
  *
  * Link/link is deliberately ABSENT: dependencies cross all the time on a real
  * value chain, and that is the map working, not the map broken.
+ *
+ * ## Calibration (PO acceptance, 01/08/2026)
+ *
+ * Shipped, the rule was noisy in two ways the corpus could not see, because its
+ * fixtures were boxes rather than words:
+ *
+ * 1. a link crossing the EMPTY MARGIN of a label raised label/link. A label is
+ *    created 120–200 units wide whatever it says, so a short name left-aligned
+ *    in one leaves most of its box blank. Fixed where the mistake was: the
+ *    label role is `kind: 'text'`, so the engine measures the ink and not the
+ *    box (`textInkBound`).
+ * 2. two labels whose WORDS are nowhere near each other raised label/label,
+ *    for the same reason and with the same fix.
+ *
+ * `minPenetration` is what remains: not every touch is a collision. **4 model
+ * units** — under a quarter of the 18-unit node, a sixth of the 26-unit label
+ * line, and about the width of a dependency's own stroke. A link grazing the
+ * top of a name and two names whose last and first letter share a hair are
+ * silent; a link through the middle of a name scores half its line height (13)
+ * and a name written across a node scores the height of the letters, so both
+ * are still reported with room to spare.
+ *
+ * It also absorbs the declared imprecision of the width approximation, which is
+ * on the same scale — measured against the real renderer over 28 names, the
+ * engine's per-character table reads between 11 % narrow and dead on, never
+ * wide — and points the same way, towards silence.
+ *
+ * IN RESERVE, if label/link is still noisy after this (PO, 01/08/2026): an
+ * ANGLE criterion — only a link crossing a name roughly PERPENDICULARLY strikes
+ * it out, one running along it at a shallow angle mostly runs beside it. It
+ * would be declared here as data, exactly like the threshold, and evaluated by
+ * the family. Not built: nobody has yet seen the noise it would remove.
  */
 const overlappingArtefacts: ValidationRule = {
   id: 'wardley.overlapping-artefacts',
@@ -165,7 +197,10 @@ const overlappingArtefacts: ValidationRule = {
   messageFallback: 'These two overlap and make the map harder to read.',
   suggestionKey: 'com.labre.wardley.validation.overlapping-artefacts.suggestion',
   suggestionFallback: 'Move one of them aside.',
-  version: 1,
+  // 2: measured on the ink of a label rather than on its creation box, and
+  // calibrated with a penetration threshold — the same mistakes, fewer of the
+  // things that were never mistakes.
+  version: 2,
   // Not a frame the rule measures against — an overlap is an overlap wherever
   // it happens — but the map a finding is ATTRIBUTED to, so the arbitration
   // "ignore this rule on the whole map" has one map to be written on.
@@ -176,6 +211,8 @@ const overlappingArtefacts: ValidationRule = {
     [WARDLEY_ROLE.label, WARDLEY_ROLE.component],
     [WARDLEY_ROLE.label, WARDLEY_ROLE.dependency],
   ],
+  // How deep a collision has to be before it is one. See the header.
+  minPenetration: 4,
 };
 
 export const WARDLEY_RULES: readonly ValidationRule[] = [

@@ -1,4 +1,8 @@
-import { coreCommands, pivotCommands } from '@labre/affine-block-root';
+import {
+  coreCommands,
+  pivotCommands,
+  tagCommands,
+} from '@labre/affine-block-root';
 import { auditCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
@@ -84,6 +88,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
     [
       ...coreCommands,
       ...pivotCommands,
+      ...tagCommands,
       ...shapeCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],

@@ -1,7 +1,6 @@
 import type { AuditFinding } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
-import type { Bound } from '@labre/global/gfx';
-import { lineIntersects } from '@labre/global/gfx';
+import { Bound, lineIntersects } from '@labre/global/gfx';
 import type {
   RoleDefs,
   RoleId,
@@ -166,9 +165,10 @@ export interface AttachmentDef {
  *
  * Which GEOMETRY each side is measured with is not declared here: it follows
  * the role's own `kind` in {@link ValidationRule.roles}. An `edge` role is
- * measured along its PATH, a `node` role by its bounds — because the bounding
- * box of a diagonal link covers half the map and would indict every label
- * anywhere near it.
+ * measured along its PATH, because the bounding box of a diagonal link covers
+ * half the map and would indict every label anywhere near it; a `text` role by
+ * the ink of its text, because a text box is created at a width that says
+ * nothing about what it reads; a `node` role by its bounds.
  */
 export type OverlapPair = readonly [RoleId, RoleId];
 
@@ -229,6 +229,21 @@ export interface ValidationRule extends RuleMessage {
   attachment?: AttachmentDef;
   /** `no-overlap` only: the combinations that must not collide. */
   overlap?: readonly OverlapPair[];
+  /**
+   * `no-overlap` only: how DEEP a collision has to be, in model units, before
+   * it is worth reporting. Absent or `0` means any shared area at all.
+   *
+   * Penetration depth, not shared area: how far the two geometries reach INTO
+   * each other — `min(overlapX, overlapY)` for two boxes, and for a path the
+   * greatest distance any point of it gets under the edge of the box it
+   * crosses. A link clipping the corner of a name and a link drawn through the
+   * middle of it share the same "they overlap"; only the second one is
+   * something the eye trips over.
+   *
+   * Two paths crossing have no depth to measure — a line has no width — so a
+   * declared crossing is reported whatever this says.
+   */
+  minPenetration?: number;
 }
 
 /**
@@ -985,13 +1000,15 @@ function evaluateAttachment(
   const attachment = rule.attachment;
   if (subjectRole === undefined || attachment === undefined) return [];
 
-  // A carrier is something with a PATH. Declaring a node role here produces a
+  // A carrier is something with a PATH. Declaring anything else here produces a
   // rule that can never fire; say so once instead of shrugging.
-  if (rule.roles[attachment.carrierRole]?.kind === 'node') {
+  const carrierKind = rule.roles[attachment.carrierRole]?.kind;
+  if (carrierKind !== undefined && carrierKind !== 'edge') {
     warnOnce(
-      `attachment rule "${rule.id}" names a node role ` +
-        `("${attachment.carrierRole}") as its carrier — "posed on" is a ` +
-        `distance to a path, so this rule can never fire.`
+      `attachment rule "${rule.id}" names a "${carrierKind}" role ` +
+        `("${attachment.carrierRole}") as its carrier — only an "edge" role ` +
+        `has a path, and "posed on" is a distance to one, so this rule can ` +
+        `never fire.`
     );
     return [];
   }
@@ -1095,6 +1112,7 @@ function evaluateAttachment(
 /** One participant of a `no-overlap` pass, with its geometry read once. */
 interface OverlapSubject {
   id: string;
+  /** Bounds, narrowed to the ink for a `text` role — see {@link textInkBound}. */
   bound: Bound;
   /** Non-null for an `edge` role: the polyline it is measured along. */
   path: Point[] | null;
@@ -1143,17 +1161,249 @@ function boundsOverlap(a: Bound, b: Bound): boolean {
  * false POSITIVE on a rotated pair — a warning too many, never a miss — which
  * is the right way round for a readability rule that is only ever a warning.
  * A test pins the behaviour so a change to it cannot be silent.
+ *
+ * A rotated `text` role holds the same line, and has to be MADE to: narrowing
+ * a rotated box to the band an unrotated renderer would draw in is how a miss
+ * gets built (at 180° the words are at the other end of it). So
+ * {@link textInkBound} hands a rotated element its whole box back.
  */
-function subjectsCollide(a: OverlapSubject, b: OverlapSubject): boolean {
+function subjectsCollide(
+  a: OverlapSubject,
+  b: OverlapSubject,
+  minPenetration: number
+): boolean {
   // Bounding boxes first: on a dense map almost every pair dies here, and this
   // is the test the O(n²) sweep is really made of.
   if (!boundsOverlap(a.bound, b.bound)) return false;
-  if (a.path === null && b.path === null) return true;
+  if (a.path === null && b.path === null) {
+    return (
+      minPenetration <= 0 || boundsPenetration(a.bound, b.bound) > minPenetration
+    );
+  }
+  // Two paths: zero-width lines, so there is no depth to measure and a declared
+  // crossing is reported as it always was.
   if (a.path !== null && b.path !== null) return pathsCross(a.path, b.path);
 
   const path = (a.path ?? b.path) as Point[];
   const bound = a.path === null ? a.bound : b.bound;
-  return pathHitsBound(path, bound);
+  if (!pathHitsBound(path, bound)) return false;
+  return (
+    minPenetration <= 0 || pathPenetration(path, bound) > minPenetration
+  );
+}
+
+/**
+ * How far two overlapping boxes reach INTO each other: the smaller of the two
+ * axis overlaps, which is the distance one of them would have to move to come
+ * free. Corner-grazing gives a small number on both axes; a name written across
+ * a node gives the height of the letters.
+ */
+function boundsPenetration(a: Bound, b: Bound): number {
+  return Math.min(
+    Math.min(a.maxX - b.minX, b.maxX - a.minX),
+    Math.min(a.maxY - b.minY, b.maxY - a.minY)
+  );
+}
+
+/**
+ * The deepest any point of `path` gets under an edge of `bound` — 0 when the
+ * path only touches it, negative when it misses entirely.
+ *
+ * "Depth" is the distance to the NEAREST edge, so a link crossing a label
+ * lengthwise through the middle scores half the line height, and one clipping a
+ * corner scores almost nothing. Exact, not sampled: that distance is the
+ * minimum of four linear functions of the position along the segment, hence
+ * concave, so its maximum is attained either at an end of the segment or where
+ * two of the four swap places — at most eight candidates, all of them tested.
+ *
+ * Only ever reached by a pair that already collides, i.e. off the hot path of
+ * the sweep.
+ */
+function pathPenetration(path: readonly Point[], bound: Bound): number {
+  const edges = (p: Point) => [
+    p[0] - bound.minX,
+    bound.maxX - p[0],
+    p[1] - bound.minY,
+    bound.maxY - p[1],
+  ];
+  const depthAt = (from: number[], to: number[], t: number) => {
+    let depth = Infinity;
+    for (let k = 0; k < 4; k++) {
+      depth = Math.min(depth, from[k] + t * (to[k] - from[k]));
+    }
+    return depth;
+  };
+
+  let deepest = -Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const from = edges(path[i - 1]);
+    const to = edges(path[i]);
+    deepest = Math.max(deepest, depthAt(from, to, 0), depthAt(from, to, 1));
+    for (let m = 0; m < 4; m++) {
+      for (let n = m + 1; n < 4; n++) {
+        const slope = to[m] - from[m] - (to[n] - from[n]);
+        if (slope === 0) continue;
+        const t = (from[n] - from[m]) / slope;
+        if (t <= 0 || t >= 1) continue;
+        deepest = Math.max(deepest, depthAt(from, to, t));
+      }
+    }
+  }
+  return deepest;
+}
+
+/**
+ * Advance width of one character, as a fraction of the font size, by CLASS.
+ *
+ * The engine measures no text: a canvas in the evaluation path would cost a
+ * `measureText` per label per pass, and would make the verdict depend on which
+ * fonts a host happens to have loaded — the same map would validate differently
+ * in a headless report and in a browser. So the width is DECLARED, and read off
+ * this table.
+ *
+ * ## Why a table and not one mean advance
+ *
+ * A single ratio was the first answer and it was wrong in the direction that
+ * matters. Letters differ by a factor of FOUR — `i` is 0.24 em and `W` is 0.9 —
+ * so an average tuned on `Customer` reads `utility` half as wide again as it is
+ * drawn, and a link 15 units past the last letter of a lowercase name lands
+ * inside the ghost. That is the very false positive this geometry exists to
+ * remove, and it survived the first version for every narrow-lettered name.
+ *
+ * Five classes, still constant per character, still no canvas, still the same
+ * answer on every host:
+ *
+ * | class | em | characters |
+ * | --- | --- | --- |
+ * | thin | 0.26 | `i l I j` and the punctuation, brackets and the SPACE |
+ * | narrow | 0.35 | `f t r " *` |
+ * | wide | 0.85 | `m w M W @ %` |
+ * | capital | 0.62 | `A`–`Z`, the rest of them |
+ * | full-width | 1.00 | anything from U+2E80 up: CJK, kana, hangul |
+ * | nothing | 0.00 | combining marks, zero-width joiners, variation selectors |
+ * | default | 0.53 | everything else, lowercase and digits |
+ *
+ * ## The precision, measured rather than claimed
+ *
+ * Against the real renderer at Inter 18, over the 28-name bench in
+ * `integration-test/.../wardley-validation.spec.ts` — which prints every line
+ * and fails outside ±15 % on ANY of them:
+ *
+ * | name | drawn | declared |
+ * | --- | --- | --- |
+ * | `utility` | 46.4 | 45.7 (−1 %) |
+ * | `little` | 36.6 | 36.2 (−1 %) |
+ * | `ERP` | 33.7 | 33.5 (−1 %) |
+ * | `Customer` | 83.2 | 77.2 (−7 %) |
+ * | `Payment gateway` | 152.0 | 144.9 (−5 %) |
+ * | `Cloud` | 49.7 | 44.5 (**−11 %**, the worst of the 28) |
+ * | `WWWWWWWWWW` | 170.8 | 153.0 (−10 %) |
+ * | `付款` | 36.0 | 36.0 (0 %) |
+ *
+ * **Never wide, on any of the 28** — which is the property that matters: an
+ * over-estimate is a ghost past the last letter, and a link crossing it is
+ * precisely the false positive this geometry exists to remove. What is left is
+ * a few units of silence at the end of a name, on the scale
+ * {@link ValidationRule.minPenetration} is calibrated on.
+ *
+ * (The drawn figure itself moves by a few percent with the web font's loading
+ * state — the other half of why the engine does not try to measure exactly.)
+ */
+const TEXT_ADVANCE = /* @__PURE__ */ (() => {
+  const table: Record<string, number> = Object.create(null);
+  for (const char of " .,:;!|'`()[]{}/\\-ilIj") table[char] = 0.26;
+  for (const char of 'ftr"*') table[char] = 0.35;
+  for (const char of 'mwMW@%') table[char] = 0.85;
+  return table;
+})();
+
+/** Width of one character, in em. See {@link TEXT_ADVANCE}. */
+function charAdvance(char: string): number {
+  const declared = TEXT_ADVANCE[char];
+  if (declared !== undefined) return declared;
+  const code = char.codePointAt(0) ?? 0;
+  // Code points that draw nothing OF THEIR OWN, and so advance nothing: a
+  // combining mark sits on the letter before it, a zero-width space or joiner
+  // is not there at all, and a variation selector only says how to draw its
+  // neighbour. Billed at full price they turn "élément" pasted from a Mac
+  // (decomposed: nine code points, seven glyphs) into a fifth of a name's worth
+  // of white paper — a false positive, which is the one thing this must not
+  // manufacture. Before the full-width test, since U+FE0F is above it.
+  if (
+    (code >= 0x0300 && code <= 0x036f) ||
+    (code >= 0x200b && code <= 0x200d) ||
+    code === 0xfe0f
+  ) {
+    return 0;
+  }
+  // Full-width scripts, where one character IS one em.
+  if (code >= 0x2e80) return 1;
+  // The rest of the capitals: wider than lowercase, narrower than `M`.
+  if (code >= 65 && code <= 90) return 0.62;
+  return 0.53;
+}
+
+/** Width of one line of text, in model units. */
+function lineWidth(line: string, fontSize: number): number {
+  let em = 0;
+  for (const char of line) em += charAdvance(char);
+  return em * fontSize;
+}
+
+/**
+ * The box the TEXT of an element actually occupies, inside the box the element
+ * was created with.
+ *
+ * A text element is created at a width that says nothing about its content — a
+ * Wardley label is 120 to 200 units wide whether it reads "ERP" or "Customer
+ * relationship management" — so its box carries empty margin on the side its
+ * `textAlign` runs away from. Measuring that box makes the rule report things
+ * the user cannot see, which is exactly the report they stop believing.
+ *
+ * Narrowed on the horizontal only, and never widened: the height stored on the
+ * element IS the rendered block (the editor writes `lineHeight × lines` back on
+ * every edit), and the renderer lays the lines out from the TOP of the box.
+ * An element exposing no text is left exactly as it was, so a fixture or a
+ * host element that carries none is measured by its box as before; one whose
+ * text reads EMPTY gets a width of zero, and {@link evaluateNoOverlap} drops it
+ * from the pass entirely — it draws nothing, so it collides with nothing.
+ *
+ * ## A ROTATED text is measured by its whole box
+ *
+ * `elementBound` is the axis-aligned box of a rotated element, and this cuts a
+ * band out of it where an UNROTATED renderer would put the ink. At 180° the
+ * words are at the other end of the box, so the band would be white paper and
+ * the letters outside it: a MISS, not a warning too many. A rotated text
+ * therefore keeps its whole box — over-reporting, which is the failure mode the
+ * family already accepts for a rotated node, and the one a readability warning
+ * can afford.
+ */
+function textInkBound(el: unknown, bound: Bound): Bound {
+  const text = el as {
+    text?: unknown;
+    fontSize?: unknown;
+    textAlign?: unknown;
+    rotate?: unknown;
+  };
+  if (typeof text.fontSize !== 'number' || text.text == null) return bound;
+  if (typeof text.rotate === 'number' && text.rotate !== 0) return bound;
+
+  let longest = 0;
+  // NFC first: the same name typed here and pasted from a Mac can arrive as the
+  // same glyphs in a different number of code points, and a width that depends
+  // on which one would be a rule that answers differently on identical text.
+  for (const line of String(text.text).normalize('NFC').split('\n')) {
+    longest = Math.max(longest, lineWidth(line, text.fontSize));
+  }
+
+  const w = Math.min(bound.w, longest);
+  const x =
+    text.textAlign === 'center'
+      ? bound.x + (bound.w - w) / 2
+      : text.textAlign === 'right'
+        ? bound.maxX - w
+        : bound.x;
+  return new Bound(x, bound.y, w, bound.h);
 }
 
 function pathHitsBound(path: readonly Point[], bound: Bound): boolean {
@@ -1226,11 +1476,21 @@ function evaluateNoOverlap(
       return isA;
     });
     if (!matched) continue;
+    const kind = rule.roles[el.role]?.kind;
+    // A `text` role is measured by the ink of its text, not by the box it was
+    // created at; everything else by its bounds.
+    const bound =
+      kind === 'text' ? textInkBound(el, el.elementBound) : el.elementBound;
+    // A text emptied of its words draws NOTHING, and a zero-width box is still
+    // a vertical line that a wider box can be said to contain. Out of the pass:
+    // it cannot make anything unreadable. Only a TEXT — a perfectly vertical
+    // connector has a flat box too, and is measured along its path.
+    if (kind === 'text' && bound.w === 0) continue;
     subjects.push({
       id: el.id,
-      bound: el.elementBound,
-      // An `edge` role is measured along its path; everything else by bounds.
-      path: rule.roles[el.role]?.kind === 'edge' ? elementPath(el) : null,
+      bound,
+      // An `edge` role is measured along its path.
+      path: kind === 'edge' ? elementPath(el) : null,
       slots: filled,
     });
   }
@@ -1242,9 +1502,10 @@ function evaluateNoOverlap(
       ([i, j]) => (a.slots[i] && b.slots[j]) || (a.slots[j] && b.slots[i])
     );
 
+  const minPenetration = rule.minPenetration ?? 0;
   const found: Violation[] = [];
   const test = (a: OverlapSubject, b: OverlapSubject) => {
-    if (!declared(a, b) || !subjectsCollide(a, b)) return;
+    if (!declared(a, b) || !subjectsCollide(a, b, minPenetration)) return;
     // Sorted, so the same collision reads the same way every time — and the
     // frame is read off the SAME half whichever end the pair was reached from,
     // or a full pass and an incremental one could attribute one collision to
@@ -2004,6 +2265,10 @@ export class ValidationManager extends InteractivityExtension {
    * @returns whether the document actually changed.
    */
   setProfile(element: GfxPrimitiveElementModel, profileId: string): boolean {
+    // The write below goes through a `@field()` accessor, i.e. `store.transact`,
+    // which has no readonly guard of its own. A readonly board arbitrates
+    // nothing — and `false` keeps the caller's telemetry silent too.
+    if (this.std.store.readonly) return false;
     const available = this.profilesFor(element);
     const target = available.find(profile => profile.id === profileId);
     // Never write a profile nobody registered, nor one belonging to a framework
@@ -2080,6 +2345,10 @@ export class ValidationManager extends InteractivityExtension {
     granted: boolean,
     author?: string
   ): GfxPrimitiveElementModel[] {
+    // Same transact hole as `setProfile`; an empty return is what keeps the
+    // bubble from emitting Granted/Revoked telemetry for a write that never
+    // happened.
+    if (this.std.store.readonly) return [];
     const ruleId = violations[0]?.ruleId;
     const surface = this.gfx.surface;
     if (ruleId === undefined || !surface) return [];
@@ -2130,6 +2399,9 @@ export class ValidationManager extends InteractivityExtension {
    * report the arbitration and tell a real one from a no-op.
    */
   revokeExceptionsOn(element: GfxPrimitiveElementModel): RevokedException[] {
+    // Same transact hole as `setProfile`, same telemetry contract: no entry
+    // returned, nothing reported.
+    if (this.std.store.readonly) return [];
     const anchored = this.revocableExceptionsOn(element);
     if (anchored.length === 0) return [];
 

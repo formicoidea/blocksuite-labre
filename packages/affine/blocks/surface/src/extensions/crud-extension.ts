@@ -36,7 +36,27 @@ export class EdgelessCRUDExtension extends Extension {
     return this._gfx.surface as SurfaceBlockModel | null;
   }
 
+  /**
+   * `SurfaceBlockModel` already REFUSES element writes on a readonly document —
+   * it throws (`Cannot add / remove / update element in readonly mode`). This
+   * guard does not plug a hole: it turns those throws into a quiet refusal at
+   * the layer callers actually use, which is what the store's block CRUD does
+   * (`updateBlock` / `deleteBlock` / `moveBlocks` all `console.error` and
+   * return). Hence the log — a silent `return` would be the only refusal in the
+   * repo with no signal at all.
+   *
+   * Callers that consume the return value all test it (`clipboard/canvas.ts`,
+   * `group-api.ts`, `shape-draggable.ts` guard on `if (!id) return`), so
+   * `addElement` returning `undefined` introduces no new dereference.
+   */
+  private _refuseOnReadonly(action: string) {
+    if (!this.std.store.readonly) return false;
+    console.error(`cannot ${action} in readonly mode`);
+    return true;
+  }
+
   deleteElements = (elements: GfxModel[]) => {
+    if (this._refuseOnReadonly('delete elements')) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -90,6 +110,7 @@ export class EdgelessCRUDExtension extends Extension {
   };
 
   addElement = <T extends Record<string, unknown>>(type: string, props: T) => {
+    if (this._refuseOnReadonly('add an element')) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -112,6 +133,7 @@ export class EdgelessCRUDExtension extends Extension {
   };
 
   updateElement = (id: string, props: Record<string, unknown>) => {
+    if (this._refuseOnReadonly('update an element')) return;
     const surface = this._surface;
     if (!surface) {
       console.error('surface is not initialized');
@@ -159,6 +181,7 @@ export class EdgelessCRUDExtension extends Extension {
   }
 
   removeElement(id: string | GfxModel) {
+    if (this._refuseOnReadonly('remove an element')) return;
     id = typeof id === 'string' ? id : id.id;
 
     const el = this.getElementById(id);
