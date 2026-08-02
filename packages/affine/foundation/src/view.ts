@@ -27,6 +27,7 @@ import {
   LinkPreviewCacheExtension,
   LinkPreviewService,
   PageViewportServiceExtension,
+  PivotMaterialityPublisher,
   TelemetryExtension,
   type TelemetryService,
   ThemeService,
@@ -86,7 +87,16 @@ export class FoundationViewExtension extends ViewExtensionProvider<FoundationVie
     ]);
     context.register(clipboardConfigs);
     if (this.isEdgeless(context.scope)) {
-      context.register([InteractivityManager, ToolController]);
+      context.register([
+        InteractivityManager,
+        ToolController,
+        // Inert without a host `PivotPropertiesProvider` that implements the
+        // write-back; see ADR 0006 § 4. NOT flag-gated: reflecting a bound
+        // element's qualification onto its record is a property of the
+        // document, not a piece of framework tooling, and it must keep working
+        // for a board whose framework flag is off.
+        PivotMaterialityPublisher,
+      ]);
     }
     const fontConfig = options?.fontConfig;
     if (fontConfig) {

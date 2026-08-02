@@ -451,6 +451,35 @@ accessor tags: Y.Map<string[]> | undefined = undefined;
 
 `BaseElementProps` gains `role?: string` and `tags?: Y.Map<string[]>`.
 
+> **Amended 2026-08-02 (MF3 implementation, PR #95).** The nested `Y.Map` is
+> confirmed feasible and shipped, but two mechanisms had to be extended for it,
+> both because it is the first nested Y type declared on the BASE class:
+>
+> 1. **`_propsToY` normalizes `tags` for every element type.** Per-class
+>    `propsToY` hooks (`MindmapElementModel.propsToY` and friends) are what
+>    rebuild a nested map from the plain JSON that `serialize()` — i.e.
+>    `yMap.toJSON()` — hands to paste, duplicate and alt-drag clone. A
+>    base-class field has no such hook, so `SurfaceBlockModel._propsToY` calls
+>    `tagsPropToY` before the class hook. Without it every copy stored its
+>    qualification as one opaque plain object: indistinguishable from a correct
+>    copy until two people edited it and one of them lost a tag.
+> 2. **A mutation INSIDE the map has to become an element change.** > `syncElementFromY` observes the element's own `Y.Map` only, so setting one
+>    tag in place — the whole point of the shape — emitted nothing. The field
+>    carries an `@observe` bridge that republishes it as an
+>    `elementUpdated` with the transaction's own `local` flag, the `Y.Map`
+>    counterpart of the `watchText` bridge the same file already ships for
+>    nested `Y.Text`. `syncElementFromY` additionally re-attaches an `@observe`d
+>    nested type when the KEY is rewritten: remote peers and undo/redo never
+>    reach the accessor's setter, the only other caller of `startObserve`, so
+>    the observer was left on a dead type and a set-undo-redo-set sequence lost
+>    its last write.
+>
+> **Trap worth recording:** a `Y.Map` that has not been integrated into a
+> document holds its content in `_prelimContent`, so `size`, `get` and
+> `entries` all read empty and log _"Add Yjs type to a document before reading
+> data"_. Code that builds a map before attaching it — `tagsPropToY`, and any
+> test fixture — must not consult `size` to decide whether it has content.
+
 The `role` declaration above is **already shipped** by PR
 [#71](https://github.com/formicoidea/blocksuite-labre/pull/71) on
 `GfxPrimitiveElementModel` — flat string, `undefined` default, declared on the
@@ -757,15 +786,53 @@ already-collected PostHog data and must be sequenced first.
 
 ## Compatibility
 
-| Direction                      | Behaviour                                                                                                                                                                                                                              |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Old document, new build        | Neither key is present → both read `undefined` (`decorators/field.ts:52-58`). Level 1 / neutral, exactly as today. Legacy `kind` still drives rendering, and **no role is inferred from it** (§ 5).                                    |
-| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. Dropped on the five element-creation-from-props paths — see ADR 0005 § Compatibility, same mechanism, same #67 analysis, same transitional window.   |
-| `tags` on an old build         | The nested `Y.Map` is preserved as an opaque Yjs type through load/save and through the snapshot transformer, which handles any `Y.Map`-valued prop generically (`surface-transformer.ts:23-38`). It is not special-cased for mindmap. |
-| Concurrent qualification       | Per-tag merge: two users setting _different_ tag ids on the same element both keep their value. Same tag id → last-write-wins on that key's `string[]`.                                                                                |
-| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.                        |
-| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                                             |
-| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                                         |
+| Direction                      | Behaviour                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old document, new build        | Neither key is present → both read `undefined` (`decorators/field.ts:52-58`). Level 1 / neutral, exactly as today. Legacy `kind` still drives rendering, and **no role is inferred from it** (§ 5).                                                                                                                                                |
+| New document, old build        | Keys present, undeclared, never read, never deleted. Load / edit / save lossless. **Preserved** on the five element-creation-from-props paths too, since #73 made the unknown-key branch write any encodable value verbatim — but see the amendment below for the shape that arrives.                                                              |
+| `tags` on an old build         | Preserved, in **two different shapes** — see the amendment below the table. Load / edit / save keeps the nested `Y.Map` as an opaque Yjs type, and the snapshot transformer round-trips it generically. The five creation-from-props paths preserve it too, but **as a plain object**, because an undeclared key goes down the unknown-key branch. |
+| Concurrent qualification       | Per-tag merge: two users setting _different_ tag ids on the same element both keep their value. Same tag id → last-write-wins on that key's `string[]`.                                                                                                                                                                                            |
+| Surface element schema version | There is none. Surface elements carry no version and have no upgrade hook (unlike block schemas, where `externalSourceId` forced `affine:database` `version: 3 → 4`). Nothing to increment, nothing to migrate.                                                                                                                                    |
+| Def pack removed / renamed     | Documents keep their ids. Unknown ids render as raw ids marked unknown. **Never** a load failure, never a silent deletion.                                                                                                                                                                                                                         |
+| `formatVersion` unknown        | The whole pack is dropped with an `unsupported-format-version` issue. Documents still open; the tooling is simply unavailable.                                                                                                                                                                                                                     |
+
+> **Amended 2026-08-02 (MF3 adversarial review of PR #95): the degraded shape
+> is real, and reading it is this release's job.**
+>
+> This table's "New document, old build" row said the key is _dropped_ on the
+> five element-creation-from-props paths, by analogy with ADR 0005's
+> `pivotDocId`. For `tags` that analogy fails, and in the more dangerous
+> direction: `_assignElementProp`'s unknown-key branch admits any value it can
+> prove encodable, and the serialized form of the nested map — an object of
+> arrays of strings — is exactly flat JSON. So a client predating this field
+> **preserves the qualification, as a plain object**. Nothing is lost; the shape
+> is simply not the one this ADR specifies.
+>
+> That makes the shape a fact a newer client MUST cope with, and it is why the
+> release-ordering rule of this ADR (declare before writing, so the fleet floor
+> tolerates the key) only means anything if the declaring release also **reads**
+> the shape the floor produces. Left unhandled, the failure was not a missing
+> tag but a destroyed one: `readElementTags` answered `{}` — the element looked
+> unqualified, with no Nature section, no patch and no fact for the engine — and
+> the next `setElementTag` replaced the plain object with a fresh `Y.Map`
+> holding only the tag just posted, taking a colleague's qualification with it.
+>
+> The contract, therefore:
+>
+> - **Reading normalizes both shapes.** `readElementTags` / `elementTagValues`
+>   accept a plain object as readily as a `Y.Map`.
+> - **The first write converts, preserving content.** `setElementTag` seeds the
+>   new `Y.Map` from the existing entries before applying the change. This is
+>   the one case where replacing the whole value is right — a plain object was
+>   never mergeable to begin with — so the degraded shape is transitional per
+>   element and never survives a qualification gesture.
+> - **Nothing is warned about.** A plain object under this key is a document
+>   value of another vintage, not a programmer error, so `startObserve` stays
+>   silent for it (it would otherwise log once per affected element per mount,
+>   about something the user cannot act on).
+>
+> The persisted shape this ADR specifies is unchanged. What changed is the
+> honesty of the compatibility claim.
 
 ### The flag invariant, checked against the real code
 
