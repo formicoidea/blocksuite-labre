@@ -355,9 +355,25 @@ const w3LabelOnLink: CorpusCard = {
           [x + 200, y],
         ] as [number, number][],
       },
-      { id: 'l1', role: WARDLEY_ROLE.label, xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number] },
+      // The words, not just the box: this is the only invalid label/link card,
+      // so it is the one that has to go through the ink geometry.
+      { ...label('l1', 0.5, 0.5), xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number] },
     ];
   })(),
+  expected: [W3],
+};
+
+/**
+ * The invalid twin of {@link w3NamesApart}: same two names, close enough that
+ * the WORDS overlap and not just the boxes.
+ */
+const w3NamesOnTopOfEachOther: CorpusCard = {
+  name: 'W3 invalid — two names written over each other',
+  elements: [
+    map(),
+    label('l1', 0.35, 0.6),
+    { ...label('l2', 0.35, 0.6), xywh: [at(0.35, 0.6)[0] + 30, at(0.35, 0.6)[1] - 13, 120, 26] },
+  ],
   expected: [W3],
 };
 
@@ -475,6 +491,7 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w3NodeOnNode,
   w3LabelOnNode,
   w3LabelOnLink,
+  w3NamesOnTopOfEachOther,
   crowdedMap,
   neutralBoard,
   legacyMap,

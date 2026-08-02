@@ -146,8 +146,9 @@ const inertiaOffTransition: ValidationRule = {
  * are still reported with room to spare.
  *
  * It also absorbs the declared imprecision of the width approximation, which is
- * on the same scale — a few units on a short name — and points the same way,
- * towards silence.
+ * on the same scale — measured against the real renderer over 28 names, the
+ * engine's per-character table reads between 11 % narrow and dead on, never
+ * wide — and points the same way, towards silence.
  *
  * IN RESERVE, if label/link is still noisy after this (PO, 01/08/2026): an
  * ANGLE criterion — only a link crossing a name roughly PERPENDICULARLY strikes

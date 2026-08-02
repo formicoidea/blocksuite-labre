@@ -956,9 +956,10 @@ function evaluateAttachment(
   const carrierKind = rule.roles[attachment.carrierRole]?.kind;
   if (carrierKind !== undefined && carrierKind !== 'edge') {
     warnOnce(
-      `attachment rule "${rule.id}" names a node role ` +
-        `("${attachment.carrierRole}") as its carrier — "posed on" is a ` +
-        `distance to a path, so this rule can never fire.`
+      `attachment rule "${rule.id}" names a "${carrierKind}" role ` +
+        `("${attachment.carrierRole}") as its carrier — only an "edge" role ` +
+        `has a path, and "posed on" is a distance to one, so this rule can ` +
+        `never fire.`
     );
     return [];
   }
@@ -1067,6 +1068,11 @@ function boundsOverlap(a: Bound, b: Bound): boolean {
  * false POSITIVE on a rotated pair — a warning too many, never a miss — which
  * is the right way round for a readability rule that is only ever a warning.
  * A test pins the behaviour so a change to it cannot be silent.
+ *
+ * A rotated `text` role holds the same line, and has to be MADE to: narrowing
+ * a rotated box to the band an unrotated renderer would draw in is how a miss
+ * gets built (at 180° the words are at the other end of it). So
+ * {@link textInkBound} hands a rotated element its whole box back.
  */
 function subjectsCollide(
   a: OverlapSubject,
@@ -1154,39 +1160,87 @@ function pathPenetration(path: readonly Point[], bound: Bound): number {
 }
 
 /**
- * Average advance width of one character, as a fraction of the font size.
+ * Advance width of one character, as a fraction of the font size, by CLASS.
  *
  * The engine measures no text: a canvas in the evaluation path would cost a
  * `measureText` per label per pass, and would make the verdict depend on which
  * fonts a host happens to have loaded — the same map would validate differently
- * in a headless report and in a browser. So the width is DECLARED: `characters
- * × fontSize × this`, the mean advance of a humanist sans (Inter's lowercase
- * averages ~0.52 em, its capitals ~0.64, its spaces ~0.25).
+ * in a headless report and in a browser. So the width is DECLARED, and read off
+ * this table.
+ *
+ * ## Why a table and not one mean advance
+ *
+ * A single ratio was the first answer and it was wrong in the direction that
+ * matters. Letters differ by a factor of FOUR — `i` is 0.24 em and `W` is 0.9 —
+ * so an average tuned on `Customer` reads `utility` half as wide again as it is
+ * drawn, and a link 15 units past the last letter of a lowercase name lands
+ * inside the ghost. That is the very false positive this geometry exists to
+ * remove, and it survived the first version for every narrow-lettered name.
+ *
+ * Five classes, still constant per character, still no canvas, still the same
+ * answer on every host:
+ *
+ * | class | em | characters |
+ * | --- | --- | --- |
+ * | thin | 0.26 | `i l I j` and the punctuation, brackets and the SPACE |
+ * | narrow | 0.35 | `f t r " *` |
+ * | wide | 0.85 | `m w M W @ %` |
+ * | capital | 0.62 | `A`–`Z`, the rest of them |
+ * | full-width | 1.00 | anything from U+2E80 up: CJK, kana, hangul |
+ * | default | 0.53 | everything else, lowercase and digits |
  *
  * ## The precision, measured rather than claimed
  *
- * Against the real renderer at Inter 18 — the numbers a test in
- * `integration-test/.../wardley-validation.spec.ts` prints and pins:
+ * Against the real renderer at Inter 18, over the 28-name bench in
+ * `integration-test/.../wardley-validation.spec.ts` — which prints every line
+ * and fails outside ±15 % on ANY of them:
  *
  * | name | drawn | declared |
  * | --- | --- | --- |
- * | `CRM` | 41.0 | 27.0 (−34 %) |
- * | `Customer` | 83.2 | 72.0 (−13 %) |
- * | `Payment gateway` | 152.0 | 135.0 (−11 %) |
- * | `Data centre` | 93.0 – 99.5 | 99.0 (+6 % … −1 %) |
+ * | `utility` | 46.4 | 45.7 (−1 %) |
+ * | `little` | 36.6 | 36.2 (−1 %) |
+ * | `ERP` | 33.7 | 33.5 (−1 %) |
+ * | `Customer` | 83.2 | 77.2 (−7 %) |
+ * | `Payment gateway` | 152.0 | 144.9 (−5 %) |
+ * | `Cloud` | 49.7 | 44.5 (**−11 %**, the worst of the 28) |
+ * | `WWWWWWWWWW` | 170.8 | 153.0 (−10 %) |
+ * | `付款` | 36.0 | 36.0 (0 %) |
  *
- * A third narrow at worst — an all-caps acronym, since capitals are the widest
- * letters there are — and a few units WIDE at worst, on a name of narrow
- * lowercase letters. (The drawn figure itself moves by a few percent with the
- * web font's loading state, which is the other half of why the engine does not
- * try to measure exactly.)
- *
- * Chosen on the low side of the mean because the residual error of a
- * READABILITY rule belongs on the side of silence — and what is left of it on
- * the wide side is a handful of units, the scale
+ * **Never wide, on any of the 28** — which is the property that matters: an
+ * over-estimate is a ghost past the last letter, and a link crossing it is
+ * precisely the false positive this geometry exists to remove. What is left is
+ * a few units of silence at the end of a name, on the scale
  * {@link ValidationRule.minPenetration} is calibrated on.
+ *
+ * (The drawn figure itself moves by a few percent with the web font's loading
+ * state — the other half of why the engine does not try to measure exactly.)
  */
-const TEXT_ADVANCE_RATIO = 0.5;
+const TEXT_ADVANCE = /* @__PURE__ */ (() => {
+  const table: Record<string, number> = Object.create(null);
+  for (const char of " .,:;!|'`()[]{}/\\-ilIj") table[char] = 0.26;
+  for (const char of 'ftr"*') table[char] = 0.35;
+  for (const char of 'mwMW@%') table[char] = 0.85;
+  return table;
+})();
+
+/** Width of one character, in em. See {@link TEXT_ADVANCE}. */
+function charAdvance(char: string): number {
+  const declared = TEXT_ADVANCE[char];
+  if (declared !== undefined) return declared;
+  const code = char.charCodeAt(0);
+  // Full-width scripts, where one character IS one em.
+  if (code >= 0x2e80) return 1;
+  // The rest of the capitals: wider than lowercase, narrower than `M`.
+  if (code >= 65 && code <= 90) return 0.62;
+  return 0.53;
+}
+
+/** Width of one line of text, in model units. */
+function lineWidth(line: string, fontSize: number): number {
+  let em = 0;
+  for (const char of line) em += charAdvance(char);
+  return em * fontSize;
+}
 
 /**
  * The box the TEXT of an element actually occupies, inside the box the element
@@ -1203,18 +1257,35 @@ const TEXT_ADVANCE_RATIO = 0.5;
  * every edit), and the renderer lays the lines out from the TOP of the box.
  * An element exposing no text is left exactly as it was, so a fixture or a
  * host element that carries none is measured by its box as before; one whose
- * text reads EMPTY occupies nothing, which is exactly what it draws.
+ * text reads EMPTY gets a width of zero, and {@link evaluateNoOverlap} drops it
+ * from the pass entirely — it draws nothing, so it collides with nothing.
+ *
+ * ## A ROTATED text is measured by its whole box
+ *
+ * `elementBound` is the axis-aligned box of a rotated element, and this cuts a
+ * band out of it where an UNROTATED renderer would put the ink. At 180° the
+ * words are at the other end of the box, so the band would be white paper and
+ * the letters outside it: a MISS, not a warning too many. A rotated text
+ * therefore keeps its whole box — over-reporting, which is the failure mode the
+ * family already accepts for a rotated node, and the one a readability warning
+ * can afford.
  */
 function textInkBound(el: unknown, bound: Bound): Bound {
-  const text = el as { text?: unknown; fontSize?: unknown; textAlign?: unknown };
+  const text = el as {
+    text?: unknown;
+    fontSize?: unknown;
+    textAlign?: unknown;
+    rotate?: unknown;
+  };
   if (typeof text.fontSize !== 'number' || text.text == null) return bound;
+  if (typeof text.rotate === 'number' && text.rotate !== 0) return bound;
 
   let longest = 0;
   for (const line of String(text.text).split('\n')) {
-    longest = Math.max(longest, line.length);
+    longest = Math.max(longest, lineWidth(line, text.fontSize));
   }
 
-  const w = Math.min(bound.w, longest * text.fontSize * TEXT_ADVANCE_RATIO);
+  const w = Math.min(bound.w, longest);
   const x =
     text.textAlign === 'center'
       ? bound.x + (bound.w - w) / 2
@@ -1295,11 +1366,18 @@ function evaluateNoOverlap(
     });
     if (!matched) continue;
     const kind = rule.roles[el.role]?.kind;
+    // A `text` role is measured by the ink of its text, not by the box it was
+    // created at; everything else by its bounds.
+    const bound =
+      kind === 'text' ? textInkBound(el, el.elementBound) : el.elementBound;
+    // A text emptied of its words draws NOTHING, and a zero-width box is still
+    // a vertical line that a wider box can be said to contain. Out of the pass:
+    // it cannot make anything unreadable. Only a TEXT — a perfectly vertical
+    // connector has a flat box too, and is measured along its path.
+    if (kind === 'text' && bound.w === 0) continue;
     subjects.push({
       id: el.id,
-      // A `text` role is measured by the ink of its text, not by the box it was
-      // created at; everything else by its bounds.
-      bound: kind === 'text' ? textInkBound(el, el.elementBound) : el.elementBound,
+      bound,
       // An `edge` role is measured along its path.
       path: kind === 'edge' ? elementPath(el) : null,
       slots: filled,

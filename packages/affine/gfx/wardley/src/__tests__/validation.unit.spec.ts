@@ -326,8 +326,12 @@ describe('W3 · overlapping nodes and labels', () => {
       },
     }) as unknown as GfxPrimitiveElementModel;
 
-  /** Where the ink of one of those labels ends, in model units. */
-  const inkWidth = (text: string) => text.length * 18 * 0.5;
+  /**
+   * The ink of the names used below, at font 18, as the engine sizes them —
+   * letter by letter, not by an average. Spelled out so a test that depends on
+   * a few units of margin says where those units come from.
+   */
+  const INK = { ERP: 33.5, Customer: 77.2, Cloud: 44.5 };
 
   it('flags two nodes on top of each other, naming BOTH', () => {
     const violations = evaluate([
@@ -381,21 +385,33 @@ describe('W3 · overlapping nodes and labels', () => {
    */
   describe('measures the words, not the box they were created in', () => {
     it('says nothing about a link crossing the empty half of a label box', () => {
-      // "ERP" left-aligned in a 120-wide box: 27 units of ink, 93 of margin.
+      // "ERP" left-aligned in a 120-wide box: ~33 units of ink, ~87 of margin.
       const short = label('l1', 400, 394, { text: 'ERP' });
       // A dependency running down the blank part of that box.
       const link = edge('d1', WARDLEY_ROLE.dependency, [480, 300], [480, 500]);
 
-      expect(inkWidth('ERP')).toBeLessThan(80);
+      expect(INK.ERP).toBeLessThan(80);
       expect(evaluate([background(), link, short])).toEqual([]);
     });
 
     it('says nothing about two labels whose words do not touch', () => {
-      // Boxes overlap by 60 units; the words are 33 units apart.
+      // Boxes overlap by 60 units; the words are ~27 units apart.
       const a = label('l1', 400, 394, { text: 'ERP' });
       const b = label('l2', 460, 394, { text: 'Cloud' });
 
       expect(evaluate([background(), a, b])).toEqual([]);
+    });
+
+    it('sizes a name letter by letter, not by an average', () => {
+      // Seven narrow letters. An average advance reads `utility` half as wide
+      // again as it is drawn and puts a ghost 20 units past the last one — the
+      // PO's first capture, with another word in the box.
+      const narrow = label('l1', 400, 394, { text: 'utility', w: 200 });
+      const past = edge('d1', WARDLEY_ROLE.dependency, [455, 300], [455, 500]);
+      const inside = edge('d2', WARDLEY_ROLE.dependency, [420, 300], [420, 500]);
+
+      expect(evaluate([background(), past, narrow])).toEqual([]);
+      expect(idsOf(evaluate([background(), inside, narrow]))).toEqual([W3]);
     });
 
     it('still flags a link drawn through the word itself', () => {
@@ -453,15 +469,16 @@ describe('W3 · overlapping nodes and labels', () => {
     });
 
     it('lets two names share a hair of ink in silence', () => {
+      // "ERP" ends at 433.5.
       const a = label('l1', 400, 394, { text: 'ERP' });
       // Three units of shared ink: the tail of one letter and the shoulder of
       // the next, on a map 1600 units wide.
       expect(
-        evaluate([background(), a, label('l2', 424, 394, { text: 'Cloud' })])
+        evaluate([background(), a, label('l2', 430, 394, { text: 'Cloud' })])
       ).toEqual([]);
       // Six, and the two words are genuinely one blur.
       expect(
-        idsOf(evaluate([background(), a, label('l2', 421, 394, { text: 'Cloud' })]))
+        idsOf(evaluate([background(), a, label('l2', 427, 394, { text: 'Cloud' })]))
       ).toEqual([W3]);
     });
 

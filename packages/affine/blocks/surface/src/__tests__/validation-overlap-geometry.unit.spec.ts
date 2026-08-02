@@ -112,6 +112,78 @@ describe('a `text` role is measured by its ink', () => {
     ).toEqual(['d1+t1']);
   });
 
+  it('sizes a name letter by letter, not by an average', () => {
+    // `utility` is seven NARROW letters: drawn 41 units at font 18, where an
+    // average advance reads 63 and puts a ghost 22 units past the last one.
+    // A link on that white paper is the PO's first capture with another word.
+    const narrow = element(
+      't1',
+      [400, 100, 200, 20],
+      'test:text',
+      { text: 'utility', fontSize: 18, textAlign: 'left' }
+    );
+    expect(raised(RULE, [narrow, link('d1', 455)])).toEqual([]);
+    // ...and the letters themselves are still letters.
+    expect(raised(RULE, [narrow, link('d1', 420)])).toEqual(['d1+t1']);
+
+    // The other end of the same table: `W` is three times an `i`, so a word of
+    // them must not read like a word of anything else.
+    const wide = element(
+      't2',
+      [400, 100, 200, 20],
+      'test:text',
+      { text: 'WWWW', fontSize: 18, textAlign: 'left' }
+    );
+    expect(raised(RULE, [wide, link('d1', 455)])).toEqual(['d1+t2']);
+  });
+
+  it('hands a ROTATED text its whole box back', () => {
+    // The band this cuts is where an UNROTATED renderer draws. At 180° the
+    // words are at the other end of the box, so narrowing would be a MISS —
+    // and this family's rotated failure mode is a warning too many, never a
+    // miss. Both ends of the box therefore report.
+    const flipped = element(
+      't1',
+      [400, 100, 200, 20],
+      'test:text',
+      { text: 'abc', fontSize: 18, textAlign: 'left', rotate: 180 }
+    );
+
+    expect(raised(RULE, [flipped, link('d1', 585)])).toEqual(['d1+t1']);
+    expect(raised(RULE, [flipped, link('d1', 410)])).toEqual(['d1+t1']);
+  });
+
+  it('drops a text emptied of its words from the pass', () => {
+    // No ink at all: a zero-width box is still a vertical LINE, and a wider box
+    // contains it — so an emptied label would go on being reported for exactly
+    // as long as it went on existing.
+    const emptied = element(
+      't1',
+      [400, 100, 120, 20],
+      'test:text',
+      { text: '', fontSize: 18, textAlign: 'left' }
+    );
+
+    expect(raised(RULE, [emptied, node('n1', 380, 120)])).toEqual([]);
+    expect(raised(RULE, [emptied, link('d1', 410)])).toEqual([]);
+  });
+
+  it('keeps a perfectly straight edge, whose box is flat too', () => {
+    // A vertical connector has a zero-WIDTH box and is measured along its path.
+    // Dropping flat boxes wholesale would take every straight dependency on the
+    // map out of the pass along with the emptied labels.
+    const flat = element('d1', [150, 0, 0, 400], 'test:edge', {
+      absolutePath: [
+        [150, 0],
+        [150, 400],
+      ],
+    });
+
+    expect(raised(RULE, [text('t1', 100, 'abcdefghij'), flat])).toEqual([
+      'd1+t1',
+    ]);
+  });
+
   it('never widens a box, and leaves an element with no text alone', () => {
     // A word longer than its box is clipped by the box, not spilled out of it.
     const long = text('t1', 0, 'a'.repeat(200));

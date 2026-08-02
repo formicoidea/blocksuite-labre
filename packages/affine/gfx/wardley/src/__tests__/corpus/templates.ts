@@ -47,6 +47,10 @@ type RawElement = {
   xywh?: string;
   source?: { id?: string; position?: [number, number] };
   target?: { id?: string; position?: [number, number] };
+  /** A stored surface text: `{ '$…text$': true, delta: [{ insert }] }`. */
+  text?: { delta: { insert: string }[] };
+  fontSize?: number;
+  textAlign?: string;
 };
 
 /**
@@ -119,6 +123,17 @@ function cardOf(name: string, raw: Record<string, RawElement>): TemplateCard {
     elements.push({
       id,
       role: el.role,
+      // A stored text is a delta, and a `text` role is measured by the ink of
+      // its WORDS: reading only the box would judge the shipped templates on a
+      // geometry no map has — the very thing this corpus caught in its own
+      // fixtures.
+      ...(el.text
+        ? {
+            text: el.text.delta.map(op => op.insert).join(''),
+            fontSize: el.fontSize,
+            textAlign: el.textAlign,
+          }
+        : {}),
       get elementBound() {
         return Bound.deserialize(xywh);
       },

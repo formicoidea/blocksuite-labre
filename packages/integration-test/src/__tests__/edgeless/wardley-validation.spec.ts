@@ -16,6 +16,64 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
+ * The bench the width approximation is judged on: 28 names, chosen to include
+ * the ones that BREAK an average — words of nothing but thin letters, words of
+ * nothing but wide ones, acronyms, spaces, accents and full-width scripts —
+ * and not only the plausible ones that happen to be near the mean.
+ */
+const BENCH_NAMES = [
+  'ERP',
+  'CRM',
+  'MDM',
+  'iOS',
+  'Customer',
+  'Cloud',
+  'Compute',
+  'Power',
+  'Platform',
+  'Genesis',
+  'Product',
+  'Commodity',
+  'Facturation',
+  'Référentiel client',
+  'Custom-built',
+  'Payment gateway',
+  'API gateway',
+  'Data centre',
+  'Data lake',
+  'utility',
+  'visibility',
+  'flexibility',
+  'liability',
+  'little',
+  'lifeline',
+  'a b c d e f',
+  'WWWWWWWWWW',
+  '付款',
+];
+
+/**
+ * The engine's own width formula, spelled out here rather than exported: this
+ * test exists to catch the day the two stop agreeing, and importing the table
+ * would make it agree with itself. Mirrors `TEXT_ADVANCE` / `charAdvance` in
+ * `blocks/surface/src/extensions/validation.ts`.
+ */
+function declaredWidth(text: string, fontSize: number): number {
+  const advance = (char: string) => {
+    if (" .,:;!|'`()[]{}/\\-ilIj".includes(char)) return 0.26;
+    if ('ftr"*'.includes(char)) return 0.35;
+    if ('mwMW@%'.includes(char)) return 0.85;
+    const code = char.charCodeAt(0);
+    if (code >= 0x2e80) return 1;
+    if (code >= 65 && code <= 90) return 0.62;
+    return 0.53;
+  };
+  let em = 0;
+  for (const char of text) em += advance(char);
+  return em * fontSize;
+}
+
+/**
  * The engine end to end: a real editor, real DI, the real Wardley rules
  * registered by their flag-gated view extension, and the reactive violation
  * list a host panel subscribes to.
@@ -339,33 +397,41 @@ describe('wardley validation on the canvas', () => {
         fontSize: 18,
         fontFamily: FontFamily.Inter,
       });
-      for (const name of [
-        'ERP',
-        'Customer',
-        'Payment gateway',
-        'Data centre',
-        'CRM',
-      ]) {
+      const worst = { over: 0, under: 0, overName: '', underName: '' };
+      for (const name of BENCH_NAMES) {
         const drawn = getTextWidth(name, font);
-        // The engine's own formula: characters × fontSize × TEXT_ADVANCE_RATIO.
-        const declared = name.length * 18 * 0.5;
+        const declared = declaredWidth(name, 18);
+        const error = (declared - drawn) / drawn;
         console.info(
-          `[W3] "${name}" at Inter 18: drawn ${drawn.toFixed(1)} units, ` +
-            `declared ${declared.toFixed(1)} ` +
-            `(${(((declared - drawn) / drawn) * 100).toFixed(0)} %)`
+          `[W3] "${name}": drawn ${drawn.toFixed(1)} u, ` +
+            `declared ${declared.toFixed(1)} u ` +
+            `(${(error * 100).toFixed(0)} %)`
         );
+        if (error > worst.over) {
+          worst.over = error;
+          worst.overName = name;
+        }
+        if (error < worst.under) {
+          worst.under = error;
+          worst.underName = name;
+        }
 
-        // The declared band, pinned on the real font: a third narrow at worst,
-        // a few units wide at worst. The narrow end is an all-caps acronym —
-        // capitals are the widest letters there are — and the wide end is what
-        // `minPenetration` is there to absorb. Deliberately loose: the drawn
-        // figure moves by a few percent depending on whether the web font has
-        // finished loading, so this pins the ORDER of the approximation, and a
-        // change to `TEXT_ADVANCE_RATIO` big enough to change what W3 says
-        // cannot pass it.
-        expect(declared).toBeGreaterThan(drawn * 0.6);
-        expect(declared).toBeLessThan(drawn * 1.15);
+        // ±15 % on EVERY name of the bench, not on the average of it: an
+        // average is exactly what the first version of this geometry was, and
+        // a bench of five names all made of wide letters is exactly how it got
+        // through. The wide end is what turns into a false positive, so it is
+        // the one that matters — and 15 % of a short name is a few units, the
+        // scale `minPenetration` is calibrated on.
+        expect(declared, `${name} reads too wide`).toBeLessThan(drawn * 1.15);
+        expect(declared, `${name} reads too narrow`).toBeGreaterThan(
+          drawn * 0.85
+        );
       }
+      console.info(
+        `[W3] worst over-estimate ${(worst.over * 100).toFixed(1)} % ` +
+          `("${worst.overName}"), worst under ${(worst.under * 100).toFixed(1)} % ` +
+          `("${worst.underName}") over ${BENCH_NAMES.length} names`
+      );
 
       addBackground();
       addLabel('ERP', 400, 400);
