@@ -31,6 +31,21 @@ import {
 export const MAP_QUALITY_WIDGET = 'affine-map-quality-widget';
 
 /**
+ * Substitute `{name}` placeholders in a translated string.
+ *
+ * The whole of the library's interpolation needs, and deliberately not an i18n
+ * runtime: what matters is that a sentence carrying a number reaches a
+ * translator as ONE sentence, so a locale can put the count wherever its grammar
+ * wants it. A placeholder the caller did not supply is left alone rather than
+ * blanked — a visible `{done}` is a bug report, an empty gap is a mystery.
+ */
+function fill(text: string, values: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in values ? String(values[key]) : match
+  );
+}
+
+/**
  * The panel is TEXT and controls, so it is sized in screen pixels — the same
  * reasoning that keeps the violation bubble in screen units while the markers
  * that open it scale with the board.
@@ -238,6 +253,9 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
 
   private _elementSubscriptions: { unsubscribe(): void }[] = [];
 
+  /** The instance whose panel has already been given the focus, if any. */
+  private _focused: string | null = null;
+
   get gfx() {
     return this.std.get(GfxControllerIdentifier);
   }
@@ -377,13 +395,49 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
+   * Move the focus into the panel when it opens, once.
+   *
+   * Without it the panel is unreachable from the keyboard and silent to a screen
+   * reader — which matters most on the path the toolbar does not cover: opened
+   * from the command palette, the focus is still in the host's own UI, so
+   * `aria-modal` announces nothing and the Escape handler (on the editor host,
+   * which is the right scope) never sees the key.
+   *
+   * The panel itself takes the focus, not the first checkbox: it carries the
+   * dialog's label, so a screen reader reads "Map quality" before it reads the
+   * first expectation. `preventScroll` because the host is a zero-sized box at
+   * the viewport origin and the browser would otherwise scroll the editor to
+   * "reveal" it.
+   *
+   * No focus TRAP. Trapping is what `aria-modal` on a real modal earns; this
+   * panel deliberately leaves the canvas usable behind it (the whole reason it
+   * follows the instance on pan instead of closing), and stealing Tab from a
+   * host that is still perfectly interactive would be the library taking
+   * something that is not its to take.
+   */
+  override updated() {
+    if (this._openFor === null || this._openFor === this._focused) {
+      if (this._openFor === null) this._focused = null;
+      return;
+    }
+    const panel = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="map-quality-panel"]'
+    );
+    if (!panel) return;
+    this._focused = this._openFor;
+    panel.focus({ preventScroll: true });
+  }
+
+  /**
    * Tick or untick, and report it.
    *
    * `captureSync` opens an undo checkpoint first, like every other write the
-   * validation surfaces make, so one click is one undo. The read-only guard is
-   * here and not only on the `disabled` attribute: a disabled input is a UI
-   * promise, and `clearField` goes through `Store.transact`, which carries no
-   * read-only guard of its own.
+   * validation surfaces make, so one click is one undo.
+   *
+   * The read-only test here is the CHEAP half — it keeps `captureSync` and the
+   * telemetry from firing for a write that will not happen. The one that
+   * actually protects the document is inside `setNudgeChecked`, at the seam,
+   * where every caller meets it (see the note there).
    */
   private _toggleNudge(
     element: GfxPrimitiveElementModel,
@@ -412,19 +466,31 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     if (!validation) return;
 
     const rules = validation.checkupRulesFor(element);
-    void validation.runCheckup(element).then(run => {
-      // A superseded run reports nothing: the click that superseded it will.
-      if (!run) return;
-      this.std.getOptional(TelemetryProvider)?.track('MapQualityCheckupRun', {
-        page: 'whiteboard editor',
-        segment: 'whiteboard',
-        module: 'map quality panel',
-        control: 'run check-up',
-        ruleCount: run.total,
-        remarkCount: run.results.length,
-        ...(rules[0] !== undefined ? { framework: rules[0].framework } : {}),
+    validation
+      .runCheckup(element)
+      .then(run => {
+        // A superseded run reports nothing: the click that superseded it will.
+        if (!run) return;
+        this.std.getOptional(TelemetryProvider)?.track('MapQualityCheckupRun', {
+          page: 'whiteboard editor',
+          segment: 'whiteboard',
+          module: 'map quality panel',
+          control: 'run check-up',
+          ruleCount: run.total,
+          remarkCount: run.results.length,
+          ...(run.error ? { error: true } : {}),
+          ...(rules[0] !== undefined ? { framework: rules[0].framework } : {}),
+        });
+      })
+      // `runCheckup` already turns a throwing RULE into a finished run carrying
+      // `error`. This catches the rest — the driver itself failing — for the one
+      // reason that matters: an unhandled rejection would leave the last
+      // published run stuck below `total`, so the button stays disabled and
+      // there is no way left to ask again, on this map or any other.
+      .catch((error: unknown) => {
+        console.error('[map-quality] check-up failed', error);
+        this.requestUpdate();
       });
-    });
   }
 
   private _renderNudges(element: GfxPrimitiveElementModel) {
@@ -499,7 +565,15 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     const rules = this._validation?.checkupRulesFor(element) ?? [];
     if (rules.length === 0) return nothing;
 
-    const run = this._checkup;
+    // THIS map's check-up, and only this one. A run is measured on one instance
+    // and says so (`CheckupRun.backgroundId`); a board carries several maps, and
+    // rendering somebody else's run under this map's title would be the panel
+    // asserting things about the map the user is actually looking at. The engine
+    // already narrowed the remarks — this narrows the RUN, so a map nobody has
+    // checked shows no timestamp rather than the neighbour's.
+    const current = this._checkup;
+    const run =
+      current !== null && current.backgroundId === element.id ? current : null;
     const running = run !== null && run.done < run.total;
 
     return html`<div>
@@ -520,11 +594,18 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
         @click=${() => this._runCheckup(element)}
       >
         ${running
-          ? translateKey(
-              this.std,
-              'com.labre.validation.map-quality.running',
-              'Checking…'
-            ) + ` ${run.done}/${run.total}`
+          ? // ONE translatable sentence, with the numbers as placeholders. The
+            // concatenation it replaces ("Checking…" + " 1/2") was untranslatable
+            // as a phrase: a locale that puts the count first, or writes it
+            // differently, had no way to say so.
+            fill(
+              translateKey(
+                this.std,
+                'com.labre.validation.map-quality.running',
+                'Checking… {done}/{total}'
+              ),
+              { done: run.done, total: run.total }
+            )
           : translateKey(
               this.std,
               'com.labre.validation.map-quality.run',
@@ -547,7 +628,16 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
                 )}:
                 ${new Date(run.at).toLocaleTimeString()}
               </div>
-              ${run.results.length === 0 && !running
+              ${run.error
+                ? html`<div data-testid="map-quality-error">
+                    ${translateKey(
+                      this.std,
+                      'com.labre.validation.map-quality.error',
+                      'The check-up could not finish. Try again.'
+                    )}
+                  </div>`
+                : nothing}
+              ${run.results.length === 0 && !running && !run.error
                 ? html`<div data-testid="map-quality-clean">
                     ${translateKey(
                       this.std,
@@ -595,10 +685,12 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     return html`<div
       class="map-quality-panel"
       role="dialog"
+      aria-modal="true"
       aria-label=${title}
       data-testid="map-quality-panel"
       data-element-id=${element.id}
       data-flip-y=${flipY}
+      tabindex="-1"
       style=${styleMap({
         left: flipX
           ? `${anchorX - PANEL_GAP - PANEL_WIDTH}px`

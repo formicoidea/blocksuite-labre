@@ -196,6 +196,52 @@ function medianMs(run: () => unknown, runs = 21, warmup = 5): number {
   return samples[Math.floor(samples.length / 2)];
 }
 
+/**
+ * Two medians measured on INTERLEAVED samples, for a comparison between two
+ * variants of the same work.
+ *
+ * Measuring one and then the other is what a naive A/B bench does, and on a
+ * shared runner it compares the machine's mood at two different moments as much
+ * as it compares the code: back-to-back medians of the same evaluation drift by
+ * half again on this suite. Alternating the samples puts both variants through
+ * the same thermal state, the same GC pauses and the same neighbouring test
+ * files, so what is left in the ratio is the difference between them.
+ */
+function medianPairMs(
+  a: () => unknown,
+  b: () => unknown,
+  runs = 21,
+  warmup = 5
+): [number, number] {
+  for (let i = 0; i < warmup; i++) {
+    a();
+    b();
+  }
+
+  const samplesA: number[] = [];
+  const samplesB: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    // Order swapped every iteration, so neither variant systematically pays for
+    // warming the cache the other one then reads.
+    const [first, second] = i % 2 === 0 ? [a, b] : [b, a];
+    const [into1, into2] = i % 2 === 0 ? [samplesA, samplesB] : [samplesB, samplesA];
+
+    let start = performance.now();
+    first();
+    into1.push(performance.now() - start);
+
+    start = performance.now();
+    second();
+    into2.push(performance.now() - start);
+  }
+
+  const median = (samples: number[]) => {
+    samples.sort((x, y) => x - y);
+    return samples[Math.floor(samples.length / 2)];
+  };
+  return [median(samplesA), median(samplesB)];
+}
+
 describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
   const map = referenceMap(MAP_SIZE);
 
@@ -248,17 +294,23 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
 
     expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
 
-    const without = medianMs(() => evaluateRules(WARDLEY_RULES, map));
-    const with_ = medianMs(() => evaluateRules(both, map));
+    // INTERLEAVED, or this compares two moments in the runner's life rather
+    // than two rule sets: measured one after the other, the same evaluation
+    // drifts by half again here, which is several times the effect being
+    // looked for.
+    const [without, with_] = medianPairMs(
+      () => evaluateRules(WARDLEY_RULES, map),
+      () => evaluateRules(both, map)
+    );
 
     console.info(
       `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
         `with ${WARDLEY_CHECKUP_RULES.length} on-demand rules also registered: ` +
-        `${with_.toFixed(3)} ms (must be the same number)`
+        `${with_.toFixed(3)} ms (interleaved; must be the same number)`
     );
-    // A generous bound against a noisy runner: the point is that adding
-    // check-up rules cannot move the drawing budget at all, and anything past
-    // a few percent would mean they are being walked.
+    // What the extra rules may cost is two property reads per evaluation, which
+    // is unmeasurable. The bound is generous against a noisy runner in both
+    // directions; anything past it would mean they are actually being walked.
     expect(with_).toBeLessThan(without * 1.25 + 0.05);
   });
 

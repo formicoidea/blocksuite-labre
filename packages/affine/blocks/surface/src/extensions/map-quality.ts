@@ -119,6 +119,21 @@ export function isNudgeChecked(
  * and not just in this tab. Exactly what `revokeException` does with the last
  * exception (PF8).
  *
+ * ## Read-only is enforced HERE, not only in the panel
+ *
+ * The house convention for these writes: the seam guards itself
+ * (`setProfile`, `setException`, `revokeExceptionsOn` all do). A `disabled`
+ * checkbox is a UI promise and covers exactly one caller; an agent, a host or a
+ * future surface reaching this function directly would have no net at all. And
+ * the failure is not a no-op: `clearField` goes through `Store.transact`, which
+ * — unlike `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only
+ * guard of its own, so unticking would genuinely delete the key from a document
+ * the user cannot edit.
+ *
+ * The store is reached through the element's own surface. An element not yet
+ * attached to one carries no document to protect and is written normally, which
+ * is what a unit fixture is.
+ *
  * @returns whether the document actually changed.
  */
 export function setNudgeChecked(
@@ -126,6 +141,8 @@ export function setNudgeChecked(
   nudgeId: string,
   checked: boolean
 ): boolean {
+  if (element.surface?.store?.readonly) return false;
+
   const current = checkedNudges(element);
   if (current.includes(nudgeId) === checked) return false;
 

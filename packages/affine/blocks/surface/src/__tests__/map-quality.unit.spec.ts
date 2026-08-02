@@ -400,6 +400,30 @@ describe('the checklist state (PF7.10)', () => {
     ).toEqual(['q1']);
   });
 
+  it('refuses to write into a read-only document, at the SEAM', () => {
+    // Not "the panel disables the box" — this function, so an agent or a host
+    // calling it directly meets the same guard. `clearField` goes through
+    // `Store.transact`, which carries no read-only guard of its own, so an
+    // untick would genuinely delete the key from a document nobody may edit.
+    const store = { readonly: true };
+    const bg = element('bg', [0, 0, 10, 10], {
+      role: 'test:frame',
+      surface: { store },
+    });
+
+    expect(setNudgeChecked(bg, 'q1', true)).toBe(false);
+    expect(bg.qualityChecklist).toBeUndefined();
+
+    store.readonly = false;
+    expect(setNudgeChecked(bg, 'q1', true)).toBe(true);
+    expect(checkedNudges(bg)).toEqual(['q1']);
+
+    // ...and the untick is guarded too, which is the destructive direction.
+    store.readonly = true;
+    expect(setNudgeChecked(bg, 'q1', false)).toBe(false);
+    expect(checkedNudges(bg)).toEqual(['q1']);
+  });
+
   it('keeps ids no framework declares any more', () => {
     // The flag takes the CHECKLIST away, never the decisions recorded on it:
     // that is the whole reason this is document data and not tooling state.

@@ -175,8 +175,19 @@ export interface MapQualityCheckupEvent extends TelemetryEvent {
   framework?: string;
   /** How many on-demand rules the run walked. */
   ruleCount: number;
-  /** How many remarks came back. */
+  /**
+   * How many remarks came back — for the ONE instance the run was about. A
+   * check-up walks the whole surface and reports on one map, so this is never a
+   * count over the board.
+   */
   remarkCount: number;
+  /**
+   * Set when a rule threw and the run stopped early. Absent rather than `false`,
+   * per the repo convention — and worth knowing about on its own: a check-up
+   * that fails is invisible everywhere else, because it produces no remark to
+   * notice the absence of.
+   */
+  error?: true;
 }
 
 export type ValidationEvents = {

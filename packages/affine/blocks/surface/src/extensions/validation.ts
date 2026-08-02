@@ -1966,6 +1966,23 @@ export function evaluateCheckup(
  * somebody last looked at it.
  */
 export interface CheckupRun {
+  /**
+   * The INSTANCE this run is about — the map the user asked about, and the only
+   * one its remarks are allowed to be measured on.
+   *
+   * A check-up walks the whole surface, because that is where the elements are;
+   * a board carries several maps, and without this the panel on one map would
+   * confidently list the components of the one next to it, and a map nobody has
+   * ever checked would show somebody else's timestamp. That is precisely the
+   * "tally over the whole surface" {@link evaluateMajorityFact} refuses to
+   * compute, reintroduced one layer up.
+   *
+   * The filter is applied in {@link ValidationManager.runCheckup}, on
+   * {@link Violation.backgroundId} — recorded by every family that measures
+   * against a frame — so `results` is already about this instance and nothing
+   * downstream has to remember to narrow it.
+   */
+  backgroundId: string;
   /** Epoch ms, taken at the moment of the gesture. */
   at: number;
   /** The remarks so far — complete once {@link done} reaches {@link total}. */
@@ -1974,6 +1991,15 @@ export interface CheckupRun {
   done: number;
   /** Rules this run has to walk. `done < total` means it is still going. */
   total: number;
+  /**
+   * Set when a rule threw and the run stopped early.
+   *
+   * The run is still reported FINISHED (`done === total`), because the one thing
+   * a failure must not do is leave the panel believing a check-up is in flight:
+   * that reads as "Checking…" for ever and disables the only button that could
+   * try again. A visible failure the user can retry beats a silent lock.
+   */
+  error?: true;
 }
 
 /**
@@ -1983,8 +2009,15 @@ export interface CheckupRun {
  * at worst instead of a locked tab. A rule is the unit of interruption — the
  * smallest slice that has a meaning — so a single rule slower than this still
  * runs to completion and the next one waits for the following task.
+ *
+ * The rules shipped today cost well under a millisecond between them, so the
+ * yield never fires in the delivered configuration — which would leave the
+ * generation counter and the supersession path as code nothing reaches. It is
+ * therefore a DEFAULT rather than a constant: {@link ValidationManager.checkupSliceMs}
+ * is settable, and lowering it makes every rule a slice, which is how a test
+ * exercises the yield and the race with the real rules instead of a stub.
  */
-const CHECKUP_SLICE_MS = 16;
+export const CHECKUP_SLICE_MS = 16;
 
 /**
  * Grant `ruleId` an exception on `element`, unless it already has one.
@@ -2261,6 +2294,17 @@ export class ValidationManager extends InteractivityExtension {
   private _checkupGeneration = 0;
 
   /**
+   * How long {@link runCheckup} may hold the thread between two rules.
+   *
+   * Settable rather than fixed so the interruption and the supersession are
+   * TESTABLE with the rules a framework actually ships: at the shipped default
+   * the Wardley check-up costs half a millisecond and never yields, which would
+   * leave the whole race path unreached by anything. Dropped to zero, every rule
+   * becomes a slice.
+   */
+  checkupSliceMs = CHECKUP_SLICE_MS;
+
+  /**
    * Element ids added, removed or updated since the last verdict — the dirty
    * set of PF5.13. Filled by the subscriptions, drained by every evaluation.
    */
@@ -2378,11 +2422,19 @@ export class ValidationManager extends InteractivityExtension {
     this._unsubscribe();
     if (!surface) return;
 
-    for (const change of [surface.elementAdded, surface.elementRemoved]) {
-      this._subscriptions.push(
-        change.subscribe(({ id }) => this._schedule(id))
-      );
-    }
+    this._subscriptions.push(
+      surface.elementAdded.subscribe(({ id }) => this._schedule(id))
+    );
+    this._subscriptions.push(
+      surface.elementRemoved.subscribe(({ id }) => {
+        // A check-up measured on a map that no longer exists is an answer about
+        // nothing. The panel is closed by then (the widget watches the same
+        // signal), but the result would otherwise sit in memory waiting to be
+        // shown against whatever the user opens next.
+        this._forgetCheckupOf(id);
+        this._schedule(id);
+      })
+    );
     this._subscriptions.push(
       surface.elementUpdated.subscribe(payload => {
         // A prop that cannot change a verdict must not even rearm the timer.
@@ -2554,8 +2606,18 @@ export class ValidationManager extends InteractivityExtension {
     );
   }
 
-  /** Open the Map quality panel on `element`; the widget draws it. */
+  /**
+   * Open the Map quality panel on `element`; the widget draws it.
+   *
+   * Opening on a DIFFERENT instance forgets the last check-up. The panel already
+   * refuses to render a run belonging to another map ({@link CheckupRun.backgroundId}),
+   * so this is not what makes the display correct — it is what stops a result
+   * measured on a map the user has moved on from (or deleted) sitting in memory
+   * waiting to be shown again. Reopening on the SAME map keeps its stamp, which
+   * is the one case where "last check-up: 01:51" is worth reading.
+   */
   openMapQuality(element: GfxPrimitiveElementModel): void {
+    this._forgetCheckupOf(element.id, true);
     this.mapQualityFor$.value = element.id;
   }
 
@@ -2564,7 +2626,34 @@ export class ValidationManager extends InteractivityExtension {
   }
 
   /**
-   * Run the check-up on `element`'s framework(s) (PF5.14).
+   * Drop the current check-up when it is about `backgroundId` — or, with
+   * `unless`, when it is about anything else.
+   *
+   * The two callers are the two ways a run stops being about something the user
+   * can look at: the instance it measured was deleted, and the panel moved to a
+   * different instance.
+   */
+  private _forgetCheckupOf(backgroundId: string, unless = false): void {
+    const run = this.checkup$.peek();
+    if (run === null) return;
+    if ((run.backgroundId === backgroundId) !== unless) {
+      this.checkup$.value = null;
+    }
+  }
+
+  /**
+   * Run the check-up on `element` (PF5.14).
+   *
+   * ## It is about ONE instance
+   *
+   * The walk covers the whole surface — that is where the elements are — but the
+   * ANSWER is narrowed to the map that was asked about, on
+   * {@link Violation.backgroundId}, which every family measuring against a frame
+   * already records. A board carrying two Wardley maps holds two independent
+   * answers, and handing the panel a tally over both would be exactly the
+   * whole-surface count {@link evaluateMajorityFact} goes out of its way not to
+   * compute. Narrowed HERE and not at the rendering: a run that reaches a host,
+   * a report or the agent has to already be about one map.
    *
    * ## Why this is async, for two rules that take a microsecond
    *
@@ -2573,13 +2662,21 @@ export class ValidationManager extends InteractivityExtension {
    * and no budget over its head, and the honest way to offer that is to be
    * interruptible: the driver evaluates ONE RULE at a time — the smallest slice
    * that has a meaning — and yields the thread whenever the slice has held it
-   * for a frame. The panel sees `done` climb towards `total`, so progress is the
-   * same value the results arrive in and there is no second signal to keep in
-   * step.
+   * for {@link checkupSliceMs}. The panel sees `done` climb towards `total`, so
+   * progress is the same value the results arrive in and there is no second
+   * signal to keep in step.
    *
    * A run started while another is still yielding SUPERSEDES it: the older one
    * notices its generation is stale on its next slice and drops what it had.
    * Clicking twice therefore gives the second answer, never a race between two.
+   *
+   * ## A rule that throws
+   *
+   * ...ends the run, visibly. The failure must not leave the panel believing a
+   * check-up is in flight — that reads as "Checking…" for ever and disables the
+   * one button that could try again, on every map, until the editor is
+   * remounted. So the run is finished with {@link CheckupRun.error} and whatever
+   * it had managed to collect.
    *
    * @returns the finished run, or `null` if it was superseded or there was
    * nothing to run.
@@ -2589,6 +2686,7 @@ export class ValidationManager extends InteractivityExtension {
   ): Promise<CheckupRun | null> {
     const rules = this.checkupRulesFor(element);
     const generation = ++this._checkupGeneration;
+    const backgroundId = element.id;
     if (rules.length === 0) {
       this.checkup$.value = null;
       return null;
@@ -2596,33 +2694,55 @@ export class ValidationManager extends InteractivityExtension {
 
     const at = Date.now();
     const results: Violation[] = [];
+    const total = rules.length;
     let sliceStart = performance.now();
-    this.checkup$.value = { at, results: [], done: 0, total: rules.length };
+    this.checkup$.value = { backgroundId, at, results: [], done: 0, total };
 
-    for (let i = 0; i < rules.length; i++) {
+    for (let i = 0; i < total; i++) {
       // The surface is re-read on every slice: the user can keep drawing while
       // this runs, and a rule must be judged against the board as it is now,
       // not against a snapshot taken before the last yield.
       const surface = this.gfx.surface;
       if (!surface || generation !== this._checkupGeneration) return null;
 
-      results.push(
-        ...evaluateCheckup(
+      try {
+        for (const remark of evaluateCheckup(
           [rules[i]],
           surface.elementModels,
           this._activeProfiles
-        )
-      );
+        )) {
+          // This map's remarks, and only this map's. A family that measures
+          // against no frame records no `backgroundId` and is dropped: it has
+          // said nothing about the instance the user is looking at.
+          if (remark.backgroundId === backgroundId) results.push(remark);
+        }
+      } catch (error) {
+        console.error(`[validation] check-up rule "${rules[i].id}" threw`, error);
+        const failed: CheckupRun = {
+          backgroundId,
+          at,
+          results: [...results],
+          // Finished, deliberately: see the note above. A locked button is a
+          // worse failure than a reported one.
+          done: total,
+          total,
+          error: true,
+        };
+        this.checkup$.value = failed;
+        return failed;
+      }
+
       this.checkup$.value = {
+        backgroundId,
         at,
         results: [...results],
         done: i + 1,
-        total: rules.length,
+        total,
       };
 
       if (
-        i + 1 < rules.length &&
-        performance.now() - sliceStart > CHECKUP_SLICE_MS
+        i + 1 < total &&
+        performance.now() - sliceStart > this.checkupSliceMs
       ) {
         // Back of the queue, so paint and input go first. `setTimeout(0)` and
         // not a microtask: a microtask would yield the call stack and nothing

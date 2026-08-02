@@ -303,9 +303,14 @@ const hasCanvasSelection = (std: BlockStdScope) =>
  * deliberately separate so the manifest value stays the whole truth a host can
  * see.
  *
- * `'selection:framework'` currently evaluates as `'selection'`; narrowing to
- * the owner's element types is left to `when` until a command needs it (no
- * in-scope command declares it today — see ADR 0008 § Availability).
+ * `'selection:framework'` evaluates as `'selection'`; narrowing to the owner's
+ * element types is left to `when`. `validation.mapQuality` is the first command
+ * to declare it, and it is also why the narrowing has not moved here: what makes
+ * an element a framework's ROOT INSTANCE is a question for the validation
+ * engine (which rule declares a `backgroundRole` this element's role satisfies),
+ * and `@labre/std` neither knows nor should learn it. The serializable value
+ * stays the whole truth a host catalogue can see; the in-editor refinement stays
+ * in `when`. See ADR 0008 § Availability.
  */
 export function isCommandAvailable(
   std: BlockStdScope,

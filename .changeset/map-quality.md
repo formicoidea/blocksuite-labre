@@ -14,6 +14,14 @@ slice gives it a home: a **Map quality** panel on the framework's own instance,
 with the things the tool cannot judge on one side and the things it can — but
 that are not urgent — on the other.
 
+- **A check-up is about ONE map.** It walks the whole surface — that is where
+  the elements are — but the answer is narrowed to the instance the user asked
+  about, on the `backgroundId` every family measuring against a frame already
+  records. A board carrying two Wardley maps holds two independent answers, and
+  a panel showing the neighbour's would be the whole-surface tally the majority
+  family goes out of its way not to compute. Narrowed in the engine, not at the
+  rendering, so a run reaching a host or the agent is already about one map; the
+  run names its instance, and the panel refuses one that is not its own.
 - **A second evaluation moment.** A rule now carries `moment: 'realtime'`
   (the default, and what every rule written so far means) or `'on-demand'`. An
   on-demand rule is not filtered out of the drawing path, it never enters it:
@@ -24,7 +32,10 @@ that are not urgent — on the other.
   somebody has to remember. A run carries one timestamp, taken when the user
   asked, and yields the thread between rules once it has held it for a frame,
   reporting `done / total` as it goes. A run started while another is still
-  yielding supersedes it.
+  yielding supersedes it. A rule that throws ends the run _visibly_ — reported
+  finished, carrying `error` — because the one thing a failure must not do is
+  leave the panel believing a check-up is in flight, which reads as "Checking…"
+  for ever and disables the only button that could try again.
 - **Nudges: expectations the tool cannot check, and does not pretend to.** A
   framework declares them as data — `{ id, framework, labelKey, fallback }` —
   and nothing ever evaluates them. They are offered as a checklist, and ticking
@@ -83,9 +94,16 @@ the KEY through `clearField` rather than leaving an empty array behind, so an
 emptied checklist is byte-identical again too — in the document, and not merely
 through the getter. Ids of nudges no framework declares any more are kept rather
 than pruned: the tooling comes and goes with a flag, the decisions recorded on it
-do not.
+do not. `setNudgeChecked` enforces read-only itself, at the seam, like
+`setProfile` and `setException` do: a disabled checkbox covers exactly one
+caller, and `clearField` goes through `Store.transact`, which — unlike
+`addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
+own, so unticking would genuinely delete the key from a document nobody may edit.
 
 **Cost.** Measured, not asserted: registering the two Wardley check-up rules
 beside the three real-time ones leaves both the verdict and the timing of the
-drawing path unchanged on the 500-element reference map. That is the whole
-point of the second moment.
+drawing path unchanged on the 500-element reference map. The two timings are
+measured on INTERLEAVED samples, because taken one after the other they compare
+two moments in the runner's life as much as two rule sets — the same evaluation
+drifts by half again between back-to-back medians, which is several times the
+effect being looked for. That is the whole point of the second moment.
