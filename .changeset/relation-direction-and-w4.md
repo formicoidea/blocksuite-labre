@@ -70,9 +70,13 @@ before it.
   must claim nothing. Both template kits now decide what a stroke MEANS with
   one flag (`evolution`) instead of two different colour tests — a style
   inconsistency until W4 read these edges, a semantic one afterwards. Kodak's
-  red *solid* links stay typed dependencies, which is what they are.
+  red _solid_ links stay typed dependencies, which is what they are.
 - **Telemetry.** `EdgeDirectionInverted` (ids only, never board content): how
   often a direction has to be corrected is the measurement of whether the
   drawing gesture announces itself well enough.
+- The inversion acts on the typed edges of the selection, so a lasso holding a
+  Wardley link and a plain connector reverses the first and leaves the second
+  alone — rather than showing no direction entry at all. A typed edge with a
+  free end offers none: there is no relation there to reverse.
 - `VERDICT_PROPS` gains `source` and `target`, so re-pointing or reversing an
   edge re-judges the board instead of waiting for an unrelated drag.

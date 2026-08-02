@@ -8,7 +8,12 @@ import type {
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { z } from 'zod';
 
-import { asTypedEdge, roleVocabularies, type TypedEdge } from './typed-edge.js';
+import {
+  asTypedEdge,
+  edgeIsBound,
+  roleVocabularies,
+  type TypedEdge,
+} from './typed-edge.js';
 
 /**
  * **M3 of `docs/adr/0010` — "let them fix it".**
@@ -60,6 +65,12 @@ const isInvertible = (std: BlockStdScope) => !std.store.readonly;
  * carry no claim, so there is no relation to invert and the two ends are
  * already interchangeable labels. Reversing one would be a gesture with no
  * meaning attached.
+ *
+ * BOUND typed edges, at that. An edge with a free end relates nothing, so
+ * swapping its ends moves no relation and shows nothing on screen — the line
+ * does not budge, and the reveal (M2) and W4 both look straight past it. An
+ * entry that offers to reverse it is an entry that does nothing when clicked,
+ * which is worse than an absent one.
  */
 export function invertibleEdges(
   std: BlockStdScope,
@@ -76,7 +87,9 @@ export function invertibleEdges(
   const edges: TypedEdge[] = [];
   for (const model of models) {
     const edge = asTypedEdge(vocabularies, model);
-    if (edge && !edge.model.isLocked()) edges.push(edge);
+    if (edge && edgeIsBound(edge.model) && !edge.model.isLocked()) {
+      edges.push(edge);
+    }
   }
   return edges;
 }
@@ -146,7 +159,16 @@ const invertEdgeDirection: CommandDescriptor<InvertEdgeDirectionParams> = {
   when: std => isInvertible(std) && invertibleEdges(std).length > 0,
   params: invertEdgeDirectionParams,
   run: (std, invocation, params) => {
-    const parsed = invertEdgeDirectionParams.safeParse(params);
+    // `params ?? {}`, and the `??` is load-bearing: every in-library call site
+    // invokes this command with NO arguments — the contextual toolbar, the
+    // palette and `toShortcutDescriptor`'s handler all call
+    // `runCommand(std, command, invocation)` — and `safeParse(undefined)` fails
+    // on the OBJECT itself, not on a field. Parsing the argument as it arrives
+    // made the command a silent no-op everywhere except a caller that passed
+    // `elementIds` explicitly, which was exactly the one shape the first tests
+    // exercised. The schema's own optionality is what makes `{}` valid, so this
+    // reads "no arguments" rather than "invalid arguments".
+    const parsed = invertEdgeDirectionParams.safeParse(params ?? {});
     if (!parsed.success) {
       console.error('edge.invert-direction: invalid params', parsed.error.issues);
       return;

@@ -179,9 +179,16 @@ export class EdgeDirectionManager extends InteractivityExtension {
       this.event.on('pointermove', context => {
         this._hover(context.event.x, context.event.y);
       }),
-      this.event.on('pointerleave', () => this._setHovered(null)),
       // Dragging is not reading: the mark would follow the pointer around and
       // say nothing about the edge underneath it.
+      //
+      // No `pointerleave` handler, deliberately: nothing in this editor
+      // DISPATCHES that event to interactivity extensions (`DefaultTool` emits
+      // `pointerdown` and `pointermove`), so subscribing to it would be a line
+      // that reads like a guarantee and delivers nothing. Leaving the canvas
+      // with the pointer keeps the last hover until the next move or the next
+      // selection change, which is what the board already does with every other
+      // hover affordance.
       this.event.on('dragstart', () => this._setHovered(null))
     );
 

@@ -64,7 +64,11 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import { isConnectorWithLabel } from '../connector-manager';
 import { INVERT_EDGE_DIRECTION } from '../direction/invert-direction';
-import { asTypedEdge, roleVocabularies } from '../direction/typed-edge';
+import {
+  asTypedEdge,
+  edgeIsBound,
+  roleVocabularies,
+} from '../direction/typed-edge';
 import { mountConnectorLabelEditor } from '../text';
 
 const FRONT_ENDPOINT_STYLE_LIST = [
@@ -288,6 +292,12 @@ export const connectorToolbarConfig = {
            * this a typed edge" is registered by the always-on render extension,
            * so a Wardley link stays protected on a board whose Wardley tooling
            * is switched off.
+           *
+           * `some`, so a MIXED selection hides it too: one swap applied to
+           * every selected connector would still lie about the typed one, and
+           * `b.invert-direction` appears in its place and acts on that half.
+           * A typed edge with a free end also keeps it hidden — the entry is
+           * hidden by what the element IS, never by what it happens to bind.
            */
           when: ctx =>
             !ctx
@@ -351,12 +361,25 @@ export const connectorToolbarConfig = {
           id: 'b.invert-direction',
           icon: FlipDirectionIcon(),
           tooltip: 'Reverse direction',
-          when: ctx => {
-            const models = ctx.getSurfaceModelsByType(ConnectorElementModel);
-            if (models.length === 0) return false;
-            const vocabularies = roleVocabularies(ctx.std);
-            return models.every(model => asTypedEdge(vocabularies, model));
-          },
+          /**
+           * Shown as soon as the selection holds ONE reversible typed edge, and
+           * it then acts on the typed edges of that selection and on nothing
+           * else — `invertibleEdges` is the same filter on both sides.
+           *
+           * `some`, not `every`, on purpose: a selection mixing a Wardley link
+           * with a plain arrow used to show NEITHER this entry (not every model
+           * is typed) nor `b.flip-direction` (some model is), so lassoing two
+           * connectors silently took the direction affordance away. A partial
+           * gesture that says what it did beats a menu that vanishes.
+           */
+          when: ctx =>
+            ctx
+              .getSurfaceModelsByType(ConnectorElementModel)
+              .some(
+                model =>
+                  asTypedEdge(roleVocabularies(ctx.std), model) !== null &&
+                  edgeIsBound(model)
+              ),
           run(ctx) {
             const command = getRegisteredCommands(ctx.std).find(
               candidate => candidate.id === INVERT_EDGE_DIRECTION

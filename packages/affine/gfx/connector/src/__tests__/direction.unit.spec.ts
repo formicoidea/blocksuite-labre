@@ -3,7 +3,10 @@ import { PointStyle } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
 import { midpointOf, targetAnchorOf } from '../direction/direction-reveal';
-import { invertEdge } from '../direction/invert-direction';
+import {
+  invertEdge,
+  invertEdgeDirectionParams,
+} from '../direction/invert-direction';
 
 /**
  * M2 and M3 of `docs/adr/0010`, at the level where they are pure: where the
@@ -38,6 +41,37 @@ function fakeEdge(props: Record<string, unknown>) {
     writes: () => writes,
   };
 }
+
+describe('the parameter contract of the inversion', () => {
+  /**
+   * "No arguments" is the shape EVERY in-library call site produces — the
+   * contextual toolbar, the palette and the keymap handler all reach
+   * `runCommand(std, command, invocation)` with nothing after it. The command
+   * parses `params ?? {}` for exactly this reason; the assertions below are the
+   * two halves of that sentence, so a future edit cannot make the no-argument
+   * call fall into the error branch again and turn the whole affordance into a
+   * silent no-op.
+   */
+  it('rejects `undefined` on its own, and accepts the empty object', () => {
+    // What `runCommand` forwards when a caller passes nothing…
+    const noArguments: unknown = undefined;
+    expect(invertEdgeDirectionParams.safeParse(noArguments).success).toBe(false);
+    // …and what `run` parses instead, which is the whole of the fix.
+    expect(invertEdgeDirectionParams.safeParse(noArguments ?? {}).success).toBe(
+      true
+    );
+    expect(invertEdgeDirectionParams.safeParse({}).success).toBe(true);
+  });
+
+  it('accepts an explicit target list, and refuses a malformed one', () => {
+    expect(
+      invertEdgeDirectionParams.safeParse({ elementIds: ['a', 'b'] }).success
+    ).toBe(true);
+    expect(
+      invertEdgeDirectionParams.safeParse({ elementIds: 'a' }).success
+    ).toBe(false);
+  });
+});
 
 describe('inverting a typed edge (M3)', () => {
   it('swaps the two ends and the two endpoint styles', () => {

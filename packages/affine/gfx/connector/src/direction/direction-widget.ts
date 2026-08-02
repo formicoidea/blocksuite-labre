@@ -20,6 +20,15 @@ export const EDGE_DIRECTION_WIDGET = 'affine-edge-direction-widget';
 const LABEL_GAP = 10;
 
 /**
+ * Screen pixels between the bottom of the viewport and the armed-tool hint —
+ * clear of the edgeless toolbar, which is the one thing that lives down there.
+ */
+const HINT_BOTTOM_GAP = 96;
+
+/** How wide the hint may get before the sentence wraps. */
+const HINT_MAX_WIDTH = 420;
+
+/**
  * The PROSE half of `docs/adr/0010`'s M1 and M2 — the canvas overlay's DOM
  * sibling, on the pattern `violation-detail-widget` established one directory
  * away.
@@ -67,12 +76,29 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
       pointer-events: none;
     }
 
+    /*
+     * Positioned in SCREEN pixels from the widget host, which sits at the
+     * viewport's origin: left and top are handed in by render() off
+     * gfx.viewport, exactly like the validation badge's are.
+     *
+     * It cannot be positioned against the host itself. That host is a
+     * zero-sized absolutely positioned box (the house pattern for a widget that
+     * must not intercept the canvas), so bottom: 96px put the banner 96 px
+     * ABOVE the viewport's top edge, and left: 50% of a zero width put it on
+     * the left border — off screen twice over.
+     */
     .edge-direction-hint {
       position: absolute;
-      left: 50%;
-      bottom: 96px;
       transform: translateX(-50%);
-      max-width: min(420px, 80vw);
+      /*
+       * width, not max-width alone. An absolutely positioned box shrinks to fit
+       * its CONTAINING BLOCK, and this one's containing block is the zero-sized
+       * widget host — so the banner collapsed to its longest word (95 px) and
+       * grew five lines tall, which is how it ended up below the bottom edge it
+       * was supposed to sit above. max-content sizes it to the sentence; the cap
+       * comes from render(), which knows how wide the viewport is.
+       */
+      width: max-content;
       padding: 6px 12px;
       border-radius: 8px;
       border: 1px solid var(--affine-border-color);
@@ -125,8 +151,13 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
     );
     this._disposables.add(
       this.gfx.viewport.viewportUpdated.subscribe(() => {
-        // The label is pinned to a model point, so a pan or a zoom moves it.
-        if (this._revealed.length > 0) this.requestUpdate();
+        // The verb label is pinned to a model point, so a pan or a zoom moves
+        // it — and the hint is pinned to the viewport's own size, so a RESIZE
+        // moves that one. Both are on screen only while something is revealed
+        // or a tool is armed, so a quiet board re-renders nothing.
+        if (this._revealed.length > 0 || this._hint !== null) {
+          this.requestUpdate();
+        }
       })
     );
     const surface = this.gfx.surface;
@@ -183,15 +214,37 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
     </div>`;
   }
 
+  /**
+   * The armed tool's hint, centred near the bottom of the EDITOR VIEWPORT —
+   * above the toolbar, where the user's eyes already are while they aim.
+   *
+   * The viewport rect is the only frame available to a widget host that is a
+   * zero-sized box at its origin, and it is the one the other canvas
+   * affordances measure against (`violation-detail-widget` flips its bubble
+   * against `viewport.width` / `viewport.height` the same way).
+   */
+  private _renderHint(hint: { key: string; fallback?: string }) {
+    const { viewport } = this.gfx;
+    return html`<div
+      class="edge-direction-hint"
+      data-testid="edge-direction-hint"
+      style=${styleMap({
+        left: `${viewport.width / 2}px`,
+        top: `${Math.max(0, viewport.height - HINT_BOTTOM_GAP)}px`,
+        // The cap a percentage cannot express here: the containing block is the
+        // zero-sized host, so the only honest width bound is the viewport's.
+        maxWidth: `${Math.max(120, Math.min(HINT_MAX_WIDTH, viewport.width - 32))}px`,
+      })}
+    >
+      ${translateKey(this.std, hint.key, hint.fallback)}
+    </div>`;
+  }
+
   override render() {
     if (this._revealed.length === 0 && this._hint === null) return nothing;
 
     return html`${this._revealed.map(id => this._renderVerb(id))}
-    ${this._hint
-      ? html`<div class="edge-direction-hint" data-testid="edge-direction-hint">
-          ${translateKey(this.std, this._hint.key, this._hint.fallback)}
-        </div>`
-      : nothing}`;
+    ${this._hint ? this._renderHint(this._hint) : nothing}`;
   }
 }
 
