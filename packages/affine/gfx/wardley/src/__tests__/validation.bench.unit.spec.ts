@@ -43,6 +43,17 @@ import { WARDLEY_RULES } from '../rules';
 /** One 60 fps frame. */
 const FRAME_BUDGET_MS = 16;
 
+/**
+ * Wall-clock allowance for a measurement, as opposed to the budget being
+ * measured.
+ *
+ * A bench takes dozens of samples of something that is allowed to cost a frame,
+ * so it is inherently near vitest's 1 s default — and on a loaded runner it goes
+ * past it. That failure says nothing about the engine and hides the assertions
+ * that would: generous here, strict in the `expect`s.
+ */
+const BENCH_TIMEOUT_MS = 30_000;
+
 /** Wardley elements on the reference map, background excluded. */
 const MAP_SIZE = 500;
 
@@ -288,6 +299,13 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
    * filtered out of the results afterwards), and the TIME must be
    * indistinguishable (they are skipped before an element is touched, not
    * walked and discarded).
+   *
+   * Given an explicit timeout because it is the most expensive case in the file:
+   * interleaving means BOTH variants are sampled on every iteration, so it does
+   * roughly twice the work of a plain `medianMs` and lands near the 1 s default
+   * on a loaded runner. A bench that fails for want of wall-clock time reports
+   * nothing about the engine — the assertions below are what must fail, if
+   * anything does.
    */
   it('pays nothing for the on-demand rules registered beside them', () => {
     const both = [...WARDLEY_RULES, ...WARDLEY_CHECKUP_RULES];
@@ -312,7 +330,7 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
     // is unmeasurable. The bound is generous against a noisy runner in both
     // directions; anything past it would mean they are actually being walked.
     expect(with_).toBeLessThan(without * 1.25 + 0.05);
-  });
+  }, BENCH_TIMEOUT_MS);
 
   it('runs those same rules only when asked, and finds something', () => {
     // The other side of the coin: they are not inert data, they are rules that
@@ -422,7 +440,7 @@ describe('a drag on a dense map re-judges only what moved', () => {
       `[bench] full ${full.toFixed(3)} ms vs dirty ${incremental.toFixed(3)} ms`
     );
     expect(incremental).toBeLessThan(full);
-  });
+  }, BENCH_TIMEOUT_MS);
 
   /**
    * The case a three-element drag hides: a LASSO.
@@ -468,7 +486,11 @@ describe('a drag on a dense map re-judges only what moved', () => {
       // against CI noise; the point is that the ratio is bounded at all.
       expect(ms).toBeLessThan(full * 2 + 1);
     }
-  });
+    // Six medianMs measurements in one test — the most expensive case in the
+    // file, and the one that has been timing out under load since before this
+    // slice. The BUDGET assertions above are untouched; only the wall-clock
+    // allowance for taking the samples is.
+  }, BENCH_TIMEOUT_MS);
 });
 
 /**
@@ -544,7 +566,7 @@ describe('the budget horizon, recorded for the next slice', () => {
     // by a factor of four between an idle runner and a loaded one, so it is
     // logged and never asserted.
     expect(ratio).toBeLessThan(8);
-  });
+  }, BENCH_TIMEOUT_MS);
 
   it('has exactly ONE pair-wise rule — the second one is the trigger', () => {
     // The enforceable half of the note above. Every `no-overlap` rule is

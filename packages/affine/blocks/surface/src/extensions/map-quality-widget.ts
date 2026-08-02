@@ -400,8 +400,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * Without it the panel is unreachable from the keyboard and silent to a screen
    * reader — which matters most on the path the toolbar does not cover: opened
    * from the command palette, the focus is still in the host's own UI, so
-   * `aria-modal` announces nothing and the Escape handler (on the editor host,
-   * which is the right scope) never sees the key.
+   * nothing is announced and the Escape handler (on the editor host, which is
+   * the right scope) never sees the key.
    *
    * The panel itself takes the focus, not the first checkbox: it carries the
    * dialog's label, so a screen reader reads "Map quality" before it reads the
@@ -409,11 +409,16 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * the viewport origin and the browser would otherwise scroll the editor to
    * "reveal" it.
    *
-   * No focus TRAP. Trapping is what `aria-modal` on a real modal earns; this
-   * panel deliberately leaves the canvas usable behind it (the whole reason it
-   * follows the instance on pan instead of closing), and stealing Tab from a
-   * host that is still perfectly interactive would be the library taking
-   * something that is not its to take.
+   * ## Deliberately NOT `aria-modal`, and no focus trap
+   *
+   * `aria-modal="true"` is a promise that everything behind the dialog is inert,
+   * and this panel promises the opposite: the canvas stays usable behind it,
+   * which is the whole reason it follows the instance on pan instead of closing.
+   * Claiming modality without trapping focus is a label that lies to a screen
+   * reader, and trapping Tab from a host that is still perfectly interactive
+   * would be the library taking something that is not its to take. So:
+   * `role="dialog"` for the announcement, `tabindex="-1"` and this focus move
+   * for the reachability, and nothing that claims exclusivity.
    */
   override updated() {
     if (this._openFor === null || this._openFor === this._focused) {
@@ -685,7 +690,6 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     return html`<div
       class="map-quality-panel"
       role="dialog"
-      aria-modal="true"
       aria-label=${title}
       data-testid="map-quality-panel"
       data-element-id=${element.id}

@@ -1,9 +1,12 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
   checkedNudges,
+  CHECKUP_SLICE_MS,
+  evaluateCheckup,
   MAP_QUALITY_WIDGET,
   setNudgeChecked,
   ValidationManager,
+  type ValidationRule,
 } from '@labre/affine/blocks/surface';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import type { BlockFlags } from '@labre/affine/flags';
@@ -37,6 +40,19 @@ const NUDGE = 'wardley.q1-title';
 const TONE_RULE = 'wardley.tone-off-convention';
 /** The Wardley "change" tone — reserved, and therefore wrong on a component. */
 const RED = '#d6455d';
+
+/**
+ * A slice budget every rule is guaranteed to exceed, so the yield and the race
+ * are exercised with the REAL Wardley rules instead of a stub that would only
+ * prove the stub.
+ *
+ * NEGATIVE and not zero. The test is `elapsed > checkupSliceMs`, and `elapsed`
+ * between two `performance.now()` calls a microsecond apart is legitimately
+ * `0` — the clock is coarse, and deliberately so in some browsers. At zero the
+ * yield then depends on whether the clock happened to tick, which is exactly the
+ * kind of flakiness a CI runner finds and a laptop does not.
+ */
+const ALWAYS_YIELD = -1;
 
 function clickElement(element: Element) {
   const rect = element.getBoundingClientRect();
@@ -578,6 +594,46 @@ describe('map quality', () => {
       expect(validation.checkup$.value).toBeNull();
     });
 
+    test('a family that names no map has said nothing about this one', async () => {
+      // The hardening the review asked to pin: a finding with no
+      // `backgroundId` cannot be attributed to the instance the panel is about,
+      // so it is dropped rather than shown under its title. `no-overlap`
+      // WITHOUT a `backgroundRole` is the real shape of that — the engine's own
+      // documented case of a family that records no frame.
+      const map = addBackground();
+      const a = addComponent('[300,300,40,40]', RED);
+      const b = addComponent('[310,310,40,40]', RED);
+      await open(map);
+
+      const rules = validation.checkupRulesFor(model(map));
+      const anchorless: ValidationRule = {
+        ...rules[0],
+        id: 'wardley.anchorless-probe',
+        family: 'no-overlap',
+        // No `backgroundRole`, so no finding carries a `backgroundId`.
+        backgroundRole: undefined,
+        appliesTo: undefined,
+        overlap: [['wardley:component', 'wardley:component']],
+      };
+      const original = validation.checkupRulesFor.bind(validation);
+      validation.checkupRulesFor = () => [anchorless];
+
+      clickElement(runButton()!);
+      await settle();
+      validation.checkupRulesFor = original;
+
+      // The rule genuinely fires — the two components overlap — and every
+      // finding it produces names no map, so none of them is this map's.
+      expect(
+        evaluateCheckup(
+          [anchorless],
+          [model(map), model(a), model(b)]
+        ).length
+      ).toBeGreaterThan(0);
+      expect(validation.checkup$.value!.results).toEqual([]);
+      expect(remarks()).toHaveLength(0);
+    });
+
     test('deleting a DIFFERENT map leaves this one’s check-up alone', async () => {
       const { a, b } = twoMaps();
       addComponent('[200,200,18,18]', RED);
@@ -636,8 +692,8 @@ describe('map quality', () => {
 
       // At the shipped default the two Wardley rules cost half a millisecond
       // between them and the yield never fires, which would leave the whole race
-      // path unreached. Zero makes every rule a slice, with the REAL rules.
-      validation.checkupSliceMs = 0;
+      // path unreached. See {@link ALWAYS_YIELD}.
+      validation.checkupSliceMs = ALWAYS_YIELD;
 
       const first = validation.runCheckup(model(map));
       const second = validation.runCheckup(model(map));
@@ -651,13 +707,13 @@ describe('map quality', () => {
       expect(validation.checkup$.value).toBe(secondRun);
       expect(secondRun!.results.map(r => r.ruleId)).toEqual([TONE_RULE]);
 
-      validation.checkupSliceMs = 16;
+      validation.checkupSliceMs = CHECKUP_SLICE_MS;
     });
 
     test('publishes progress as it goes', async () => {
       const map = addBackground();
       await select(map);
-      validation.checkupSliceMs = 0;
+      validation.checkupSliceMs = ALWAYS_YIELD;
 
       const seen: string[] = [];
       const stop = validation.checkup$.subscribe(run => {
@@ -665,7 +721,7 @@ describe('map quality', () => {
       });
       await validation.runCheckup(model(map));
       stop();
-      validation.checkupSliceMs = 16;
+      validation.checkupSliceMs = CHECKUP_SLICE_MS;
 
       // `done` climbs through every intermediate value: the panel reads the
       // progression off the same object the results arrive in.
@@ -709,23 +765,29 @@ describe('map quality', () => {
   });
 
   describe('the panel is announced (review, minor 5)', () => {
-    test('is a labelled modal dialog that takes the focus', async () => {
+    test('is a labelled dialog that takes the focus — and claims no modality', async () => {
       const map = addBackground();
       await open(map);
 
       const dialog = panel() as HTMLElement;
-      expect(dialog.getAttribute('aria-modal')).toBe('true');
+      expect(dialog.getAttribute('role')).toBe('dialog');
       expect(dialog.getAttribute('aria-label')).toBe('Map quality');
       // Opened from the palette the focus would otherwise still be in the host's
       // own UI, so nothing is announced and Escape never reaches the editor host.
       expect(widgetRoot()?.activeElement).toBe(dialog);
+
+      // Deliberately NOT `aria-modal`: it promises everything behind is inert,
+      // and this panel promises the opposite — the canvas stays usable, which is
+      // the whole reason it follows the instance on pan instead of closing.
+      // Claiming modality without trapping focus is a label that lies.
+      expect(dialog.hasAttribute('aria-modal')).toBe(false);
     });
 
     test('says how far the check-up has got in ONE translatable sentence', async () => {
       const map = addBackground();
       await open(map);
       // Every rule becomes a slice, so the run is observable mid-flight.
-      validation.checkupSliceMs = 0;
+      validation.checkupSliceMs = ALWAYS_YIELD;
 
       // Caught at the exact instant the first rule lands: the signal emits
       // synchronously and lit's update is a microtask, while the run's own yield
@@ -750,7 +812,7 @@ describe('map quality', () => {
       expect(runButton()!.disabled).toBe(true);
 
       await run;
-      validation.checkupSliceMs = 16;
+      validation.checkupSliceMs = CHECKUP_SLICE_MS;
       await settle();
       // ...and back to the plain label, with no leftover numbers.
       expect(runButton()!.textContent?.trim()).toBe('Run check-up');

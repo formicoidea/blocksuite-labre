@@ -26,7 +26,11 @@ that are not urgent — on the other.
   (the default, and what every rule written so far means) or `'on-demand'`. An
   on-demand rule is not filtered out of the drawing path, it never enters it:
   the moment is tested before the rule reaches a profile lookup, let alone an
-  element. Its results land on `ValidationManager.checkup$`, a signal of its
+  element — and in the frame bookkeeping the manager does around the evaluation,
+  which is a full surface walk per rule once per tick and would otherwise have
+  handed the drawing budget back exactly what the second moment took away
+  (+58 %, and invisible to a bench that times the evaluation alone). Its results
+  land on `ValidationManager.checkup$`, a signal of its
   own — so they never reach the timeline, the bracket or the badge, and "outside
   the canvas affordance" is a property of the wiring rather than a filter
   somebody has to remember. A run carries one timestamp, taken when the user

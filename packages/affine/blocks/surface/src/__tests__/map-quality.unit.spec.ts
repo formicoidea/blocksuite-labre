@@ -9,6 +9,7 @@ import {
   setNudgeChecked,
 } from '../extensions/map-quality.js';
 import {
+  backgroundElementIds,
   evaluateCheckup,
   evaluateRules,
   onDemandRules,
@@ -156,6 +157,68 @@ describe('the on-demand moment (PF5.14)', () => {
       'test.tone-off-convention',
       'test.majority-nature',
     ]);
+  });
+
+  /**
+   * The gesture path is `evaluateRules` AND the frame bookkeeping the manager
+   * does around it, and only the first of the two was filtered by moment. The
+   * second is a full surface walk per rule, once per tick, so leaving the
+   * on-demand rules in it handed the drawing budget back exactly what the second
+   * moment had just taken away — and a bench timing `evaluateRules` alone cannot
+   * see it.
+   *
+   * Counted rather than timed: a walk either happens or it does not, and a
+   * counter says so on any machine, at any load.
+   */
+  describe('the frame bookkeeping is filtered by moment too', () => {
+    /** Elements whose `role` read is counted — one tick over the surface. */
+    const counting = () => {
+      const reads = { count: 0 };
+      const make = (id: string, role: string, box: [number, number, number, number]) => {
+        const stub = {
+          id,
+          type: 'test',
+          get role() {
+            reads.count += 1;
+            return role;
+          },
+          get elementBound() {
+            return new Bound(...box);
+          },
+        };
+        return stub as unknown as GfxPrimitiveElementModel;
+      };
+      return {
+        reads,
+        elements: [
+          make('frame', 'test:frame', [0, 0, 1000, 1000]),
+          make('n1', 'test:node', [100, 100, 20, 20]),
+          make('n2', 'test:node', [200, 200, 20, 20]),
+        ],
+      };
+    };
+
+    it('walks the surface for the real-time rules and no others', () => {
+      const only = counting();
+      backgroundElementIds([REALTIME], only.elements);
+
+      const both = counting();
+      backgroundElementIds([REALTIME, TONE, MAJORITY], both.elements);
+
+      // Three rules registered, one walk: the two on-demand ones cost exactly
+      // nothing on the tick.
+      expect(both.reads.count).toBe(only.reads.count);
+    });
+
+    it('and an on-demand rule’s frames are not in the real-time memory', () => {
+      // `_backgrounds` exists to decide whether an incremental REAL-TIME pass
+      // must fall back to a full sweep. A rule that never takes part in that
+      // pass has nothing to invalidate in it.
+      const { elements } = counting();
+
+      expect([...backgroundElementIds([REALTIME], elements)]).toEqual(['frame']);
+      expect([...backgroundElementIds([TONE, MAJORITY], elements)]).toEqual([]);
+    });
   });
 });
 

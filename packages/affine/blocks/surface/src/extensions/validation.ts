@@ -663,18 +663,35 @@ function backgroundsOf(
 }
 
 /**
- * Every element on the surface acting as a framework background for SOME rule.
+ * Every element on the surface acting as a framework background for a REAL-TIME
+ * rule.
  *
  * Recorded by the manager after each evaluation, and read on the next one — the
  * one fact about a deleted background that nothing else can reconstruct. See
  * {@link ValidationManager._backgrounds}.
+ *
+ * ## Why the moment is filtered here too
+ *
+ * This runs on the gesture path, once per evaluation, and it is a FULL surface
+ * walk per rule. `evaluateRules` already refuses to walk an on-demand rule, so
+ * leaving it in here would have handed the drawing budget back exactly what the
+ * second moment took away from it — measured at +58 % on the manager's tick with
+ * the two Wardley check-up rules registered, and invisible to a bench that times
+ * `evaluateRules` alone.
+ *
+ * It is also the right answer and not merely the cheap one: `_backgrounds`
+ * exists to decide whether an incremental REAL-TIME pass must fall back to a
+ * full sweep. An on-demand rule never takes part in that pass, so the frames it
+ * measures against have nothing to invalidate — and a framework whose only rules
+ * are on-demand has no incremental pass to protect in the first place.
  */
-function backgroundElementIds(
+export function backgroundElementIds(
   rules: readonly ValidationRule[],
   elements: readonly GfxPrimitiveElementModel[]
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const rule of rules) {
+    if (!isRealtime(rule)) continue;
     for (const background of backgroundsOf(rule, elements)) ids.add(background.id);
   }
   return ids;
