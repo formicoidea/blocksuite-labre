@@ -10,6 +10,7 @@ import {
   AuditProvider,
   TelemetryProvider,
   type AuditCriterion,
+  type AuditFacts,
   type AuditFinding,
   type AuditResult,
   type AuditService,
@@ -114,13 +115,20 @@ function element(
   id: string,
   xywh: [number, number, number, number],
   role?: string,
-  validationProfile?: string
+  validationProfile?: string,
+  absolutePath?: [number, number][]
 ): GfxPrimitiveElementModel {
   const el = Object.create(GfxPrimitiveElementModel.prototype) as Record<
     string,
     unknown
   >;
   const serialized = `[${xywh.join(',')}]`;
+  if (absolutePath) {
+    Object.defineProperty(el, 'absolutePath', {
+      value: absolutePath,
+      enumerable: true,
+    });
+  }
   Object.defineProperties(el, {
     id: { value: id, enumerable: true },
     role: { value: role, enumerable: true },
@@ -617,6 +625,17 @@ describe('read-only (the `pivot.bind` pattern, and its deliberate difference)', 
    * for an audit, it is THE case.
    *
    * The invariant a guard would protect is asserted directly instead.
+   *
+   * ## This test is a CANARY, not a proof
+   *
+   * Nothing on the `map.audit` path touches `std.store` today, so the trap
+   * below cannot fire and the test passes for a reason weaker than it looks: it
+   * demonstrates absence of a write only in the sense that it would DETECT one.
+   * That is exactly its job — it is a regression sentinel armed for the day
+   * somebody adds a write (accepting a finding as a `validationExceptions`
+   * entry is the obvious candidate), at which point it fails and the guard
+   * decision gets reopened. Read as a proof it would be overclaiming; read as a
+   * tripwire it is worth keeping.
    */
   test('runs to completion on a read-only document', async () => {
     const manager = stubManager();
@@ -700,6 +719,191 @@ describe('the deterministic engine never depends on the AI', () => {
     // audit could enter through — the structural half of the invariant. The
     // numeric half is the bench below.
     expect(evaluateRules).toHaveLength(2);
+  });
+});
+
+/**
+ * The attack the recette found, replayed end to end (PF14.1, BLOQUANT).
+ *
+ * `backgroundAxisFacts` returns `forward` straight from a module constant, and
+ * `as const` is compile-time only — so before the fix, every
+ * `frames[].axes[].forward` handed to a provider WAS the array
+ * `evaluateOrientationAgainstAxis` multiplies against. A provider writing into
+ * its own input flipped the axis convention for the whole process, and a
+ * correct change arrow started reporting as a violation on the canvas.
+ *
+ * The assertion is the one the reviewer ran: the DETERMINISTIC verdict, before
+ * and after an audit, with a hostile provider in between.
+ */
+describe('a hostile provider cannot move the deterministic verdict', () => {
+  const AXIS_RULE: ValidationRule = {
+    id: 'test.runs-with-axis',
+    framework: 'test',
+    family: 'orientation-against-axis',
+    severity: 'warning',
+    appliesTo: ROLE.edge,
+    roles: ROLES,
+    messageKey: 'com.labre.test.runs-with-axis',
+    version: 1,
+    backgroundRole: ROLE.frame,
+    background: BACKGROUND,
+    against: { axis: 'evolution', toleranceDeg: 5 },
+  };
+
+  /** A frame, and an arrow running WITH the evolution axis — i.e. correct. */
+  function boardWithArrow() {
+    return [
+      element('map', [0, 0, 1000, 500], ROLE.frame),
+      element('arrow', [200, 240, 300, 2], ROLE.edge, undefined, [
+        [200, 240],
+        [500, 240],
+      ]),
+    ];
+  }
+
+  test('the axis convention survives a provider that writes into the facts', async () => {
+    const elements = boardWithArrow();
+    const verdict = () =>
+      evaluateRules([AXIS_RULE], elements).map(v => v.ruleId);
+
+    // The arrow is correct, and the engine says so.
+    expect(verdict()).toEqual([]);
+
+    const std = stubStd({
+      elements,
+      rules: [AXIS_RULE],
+      manager: stubManager(),
+      service: {
+        runAudit: async request => {
+          // "Normalising" the vector in place — the plausible, well-meaning
+          // version of the attack, which is what makes it worth guarding.
+          for (const frame of request.facts.frames) {
+            for (const axis of frame.axes) {
+              const forward = axis.forward as unknown as [number, number];
+              forward[0] = -forward[0];
+              forward[1] = -forward[1];
+            }
+          }
+          return { status: 'complete', findings: [] };
+        },
+      },
+    });
+
+    await runMapAudit(std);
+
+    // Same board, same rule, same arrow: the verdict cannot have moved.
+    expect(verdict()).toEqual([]);
+  });
+
+  test('the facts the provider sees are a copy, not the engine’s own data', async () => {
+    // Identity, not value — the property `toEqual` and a JSON round-trip are
+    // both structurally blind to.
+    const elements = boardWithArrow();
+    const mine = collectAuditFacts(
+      stubStd({ elements, rules: [AXIS_RULE], manager: stubManager() })
+    );
+    let handed: AuditFacts | undefined;
+
+    await runMapAudit(
+      stubStd({
+        elements,
+        rules: [AXIS_RULE],
+        manager: stubManager(),
+        service: {
+          runAudit: async request => {
+            handed = request.facts;
+            return { status: 'complete', findings: [] };
+          },
+        },
+      })
+    );
+
+    expect(handed?.frames[0].axes[0].forward).toEqual(
+      mine.frames[0].axes[0].forward
+    );
+    expect(handed?.frames[0].axes[0].forward).not.toBe(
+      mine.frames[0].axes[0].forward
+    );
+  });
+});
+
+describe('two audits at once: the newest wins', () => {
+  /**
+   * An audit is a network call and takes seconds, so overlap is what happens
+   * when a user asks again because the first one is slow. Publication used to
+   * follow order of RESOLUTION, so the stale answer overwrote the fresh one.
+   */
+  const deferred = () => {
+    let release!: (r: AuditResult) => void;
+    const promise = new Promise<AuditResult>(resolve => {
+      release = resolve;
+    });
+    return { promise, release };
+  };
+
+  /**
+   * ONE editor scope — the generation is keyed on it — answering differently
+   * per call: the first invocation hangs, the second answers at once.
+   */
+  function overlapping() {
+    const slow = deferred();
+    const events: { name: string; props: Record<string, unknown> }[] = [];
+    let call = 0;
+    const std = stubStd({
+      manager: stubManager(),
+      telemetry: {
+        track: (name: string, props: unknown) =>
+          events.push({ name, props: props as Record<string, unknown> }),
+      },
+      service: {
+        runAudit: async () =>
+          ++call === 1
+            ? slow.promise
+            : { status: 'complete' as const, findings: [finding({ elementIds: ['FRESH'] })] },
+      },
+    });
+    return { std, slow, events };
+  }
+
+  test('a slow FIRST run does not overwrite a fast second one', async () => {
+    const { std, slow } = overlapping();
+    const manager = std.getOptional(ValidationManager) as unknown as {
+      auditFindings$: { value: readonly AuditFinding[] };
+    };
+
+    const first = runMapAudit(std); // hangs
+    await runMapAudit(std); // issued second, resolves first
+
+    expect(manager.auditFindings$.value[0].elementIds).toEqual(['FRESH']);
+
+    slow.release({
+      status: 'complete',
+      findings: [finding({ elementIds: ['STALE'] })],
+    });
+    const firstResult = await first;
+
+    // The stale answer is dropped whole, and says so.
+    expect(firstResult.status).toBe('superseded');
+    expect(manager.auditFindings$.value[0].elementIds).toEqual(['FRESH']);
+  });
+
+  test('a superseded run is not counted as a completion', async () => {
+    // A `findingCount` for findings nobody will see is a metric that lies.
+    const { std, slow, events } = overlapping();
+
+    const first = runMapAudit(std);
+    await runMapAudit(std);
+    slow.release({ status: 'complete', findings: [finding()] });
+    await first;
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        name: 'MapAuditInterrupted',
+        props: expect.objectContaining({ reason: 'superseded' }),
+      })
+    );
+    // Exactly one completion — the fresh run's.
+    expect(events.filter(e => e.name === 'MapAuditCompleted')).toHaveLength(1);
   });
 });
 

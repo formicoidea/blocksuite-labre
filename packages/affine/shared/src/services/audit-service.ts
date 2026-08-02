@@ -192,6 +192,20 @@ export interface AuditFinding {
    * opinion, and an opinion is not a rule to be waived.
    */
   ruleId: string;
+  /**
+   * The elements the finding is about — **not validated against the surface**.
+   *
+   * The library checks that these are strings and nothing more. An id naming an
+   * element that no longer exists, or one from another document, is published
+   * as-is: validating would cost a lookup per id, and a missing id is not
+   * *wrong* so much as *stale* — the board moves on while an audit is in
+   * flight, which is the normal case for a call that takes seconds.
+   *
+   * **A host panel must therefore tolerate absent ids**: resolve them
+   * defensively and render what it can, rather than assuming every id is a live
+   * element. This is the one place the "render it with the code you already
+   * have" claim needs a caveat.
+   */
   elementIds: string[];
   /** Always `'audit'`. Forced by {@link normalizeFinding}, never trusted. */
   severity: 'audit';
@@ -216,10 +230,25 @@ export interface AuditFinding {
  *   abort are KEPT: an audit interrupted halfway has still said something true.
  * - `error` — the provider threw or rejected. A host's broken build must not
  *   become a crash on a keystroke.
- * - `unavailable` — no provider is registered in this assembly. Not an error:
- *   it is the standalone playground, and the whole of levels 1 and 2 works.
+ * - `unavailable` — nothing could answer. Either no provider is registered in
+ *   this assembly (the standalone playground, where the whole of levels 1 and 2
+ *   still works), or a registered one **declared itself unavailable** — an
+ *   assistant behind an app-side feature flag, an exhausted quota, no model
+ *   configured. The second case is passed through rather than folded into
+ *   `complete`: `unavailable` is the count of users reaching for an audit this
+ *   build cannot deliver, and it is worthless if a provider can opt out of it
+ *   by answering politely.
+ * - `superseded` — a NEWER run for the same editor started while this one was
+ *   in flight. Never returned by {@link requestAudit}: superseding is the
+ *   library's arbitration between two of its own calls, not something a
+ *   provider can declare (one that returns it is read as `complete`).
  */
-export type AuditStatus = 'complete' | 'aborted' | 'error' | 'unavailable';
+export type AuditStatus =
+  | 'complete'
+  | 'aborted'
+  | 'error'
+  | 'unavailable'
+  | 'superseded';
 
 export interface AuditResult {
   status: AuditStatus;
@@ -358,6 +387,26 @@ function normalizeFinding(
  *   the provider had already returned.
  * - **`onProgress` throws** → swallowed. A broken progress bar must not kill
  *   the run that feeds it.
+ *
+ * ## The request is ISOLATED before it crosses (the outbound half)
+ *
+ * `normalizeFinding` exists because a provider is not believed on the way back.
+ * This is the same statement on the way out, and it was missing: the facts a
+ * collector assembles are not all fresh objects. `backgroundAxisFacts` returns
+ * `forward` straight from a module constant (`FORWARD` in
+ * `framework-background/facts.ts`) — `as const` is compile-time only and
+ * nothing is frozen — so every `frames[].axes[].forward` handed over WAS the
+ * very array the engine multiplies against in `evaluateOrientationAgainstAxis`.
+ * A provider writing into the facts it is given (normalising a vector in place,
+ * say) flipped the axis convention for the whole process, and correct arrows
+ * started reporting as violations on the canvas. That is precisely what this
+ * file's header declares impossible.
+ *
+ * `structuredClone` at the boundary fixes the whole class rather than that one
+ * field: no future fact can leak identity either, and the cost is a constraint
+ * the seam already claims (ADR 0006 § 5 — the request must be serializable, and
+ * a test round-trips it). Value-comparing tests were structurally blind to it;
+ * an identity assertion (`.toBe`) now guards it.
  */
 export async function requestAudit(
   std: BlockStdScope,
@@ -383,9 +432,29 @@ export async function requestAudit(
       }
     : undefined;
 
+  // The outbound half of "a provider is not believed" — see the note above.
+  // A throw here means the facts stopped being serializable, which is a library
+  // bug and not a host one; it is reported loudly and degraded rather than
+  // allowed to become a crash in front of a user.
+  let isolated: AuditRequest;
+  try {
+    isolated = structuredClone(request);
+  } catch (error) {
+    console.error(
+      'audit facts are not structured-cloneable — the request cannot be ' +
+        'isolated, so it is not sent (ADR 0006 § 5)',
+      error
+    );
+    return {
+      status: 'error',
+      findings: [],
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+
   let raw: AuditResult;
   try {
-    raw = await provider.runAudit(request, {
+    raw = await provider.runAudit(isolated, {
       ...(onProgress ? { onProgress } : {}),
       ...(signal ? { signal } : {}),
     });
@@ -407,9 +476,20 @@ export async function requestAudit(
   // A provider that resolved normally while the caller was aborting is still an
   // abort: the caller asked to stop, and honouring that is not the provider's
   // decision to make.
+  //
+  // `unavailable` passes through with `aborted` and `error`. A registered
+  // provider CAN be unable to answer — assistant behind an app-side feature
+  // flag, quota exhausted, no model configured — and folding that into
+  // `complete` would both inflate the completion series and empty the one
+  // number that says how often users reach for an audit this build cannot
+  // deliver. `superseded` is deliberately absent: it is the library's own
+  // arbitration between two of its calls, so a provider claiming it is read as
+  // `complete` and the arbitration stays where it belongs.
   const status: AuditStatus = signal?.aborted
     ? 'aborted'
-    : raw?.status === 'aborted' || raw?.status === 'error'
+    : raw?.status === 'aborted' ||
+        raw?.status === 'error' ||
+        raw?.status === 'unavailable'
       ? raw.status
       : 'complete';
 

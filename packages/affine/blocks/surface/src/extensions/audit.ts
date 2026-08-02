@@ -385,6 +385,29 @@ function selectedFrames(std: BlockStdScope): GfxPrimitiveElementModel[] {
 }
 
 /**
+ * The generation of the latest audit asked for, per editor.
+ *
+ * An audit is a network call to a model and takes SECONDS, so two runs
+ * overlapping is not an exotic case — it is what happens when a user asks
+ * again because the first one is slow. Without a guard, `setAuditFindings` is
+ * unconditional and the two runs publish in order of RESOLUTION rather than
+ * order of request: the slow, stale answer overwrites the fresh one, and a
+ * `MapAuditCompleted` reports a `findingCount` for findings that were thrown
+ * away.
+ *
+ * Same shape as `ValidationManager`'s `_checkupGeneration`: take a number
+ * before, compare after, publish only if still the latest. It lives here rather
+ * than on the manager because it is the COMMAND's arbitration between two of
+ * its own invocations, and `validation.ts` is not the audit's file — a `WeakMap`
+ * keyed on the editor scope is exactly as correct and touches nothing.
+ *
+ * Newest wins, rather than "refuse the second": the second request is the one
+ * the user just made, and telling them to wait for an answer they have already
+ * decided is late would be the wrong half to keep.
+ */
+const auditGenerations = new WeakMap<object, number>();
+
+/**
  * The audit run itself, split out of the descriptor so a caller that already
  * has an `AbortSignal` (a host panel with a Cancel button, a test) can drive it
  * directly and await the result. `run` cannot: `CommandDescriptor.run` returns
@@ -408,6 +431,8 @@ export async function runMapAudit(
     frameCount: facts.frames.length,
   };
   const startedAt = performance.now();
+  const generation = (auditGenerations.get(std) ?? 0) + 1;
+  auditGenerations.set(std, generation);
 
   telemetry?.track('MapAuditStarted', base);
 
@@ -420,6 +445,19 @@ export async function runMapAudit(
     }
   );
   const durationMs = performance.now() - startedAt;
+
+  // Somebody asked again while this was in flight. Their answer is the one that
+  // describes the board the user is looking at, so this one is dropped whole —
+  // not published, and not counted as a completion either, because a
+  // `findingCount` for findings nobody will see is a metric that lies.
+  if (auditGenerations.get(std) !== generation) {
+    telemetry?.track('MapAuditInterrupted', {
+      ...base,
+      reason: 'superseded',
+      durationMs,
+    });
+    return { ...result, status: 'superseded' };
+  }
 
   // Published even for a partial run: an audit interrupted halfway has still
   // said something true, and throwing it away would punish the user for
@@ -506,5 +544,18 @@ const mapAudit: AnyCommandDescriptor = {
  * instead: `map.audit` on a read-only store runs to completion, publishes its
  * findings, and leaves the document byte-identical. Recorded loudly because
  * "no read-only check" reads like an omission and is a decision.
+ *
+ * ## ponytail: the day a finding can be ACCEPTED, the guard comes back
+ *
+ * The invariant holds only while findings stay READ-ONLY. `validationExceptions`
+ * is a persisted field, so a future slice letting a user accept an audit finding
+ * as an exception — the obvious next gesture — would put a write on this path,
+ * and that write would need exactly the `pivot.bind` guard: checked inside
+ * `run`, because `runCommand` consults neither `when` nor `availability`.
+ *
+ * The trigger is precise: **the first code under `map.audit` that touches
+ * `std.store` or an element field.** Until then a guard would be false, not
+ * merely redundant — it would remove the capability exactly where it is most
+ * useful.
  */
 export const auditCommands: AnyCommandDescriptor[] = [mapAudit];

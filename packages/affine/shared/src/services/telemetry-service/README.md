@@ -121,14 +121,17 @@ the model, so what it can report is when a run was asked for and how it ended.
 | ---------------------- | ---------------------------------------- | ------------------------------------------------- |
 | `MapAuditStarted`      | `map.audit` reaches the provider          | `criterionCount`, `frameCount`                     |
 | `MapAuditCompleted`    | the provider settled every criterion      | + `findingCount`, `durationMs`                     |
-| `MapAuditInterrupted`  | aborted, failed, or no assistant is wired | + `reason` (`aborted` / `error` / `unavailable`), `durationMs` |
+| `MapAuditInterrupted`  | aborted, failed, unanswerable, or superseded | + `reason` (`aborted` / `error` / `unavailable` / `superseded`), `durationMs` |
 
 Three events rather than one with a status: "how often is an audit asked for"
 and "how often does it finish" are different questions, and a single event would
 lose the second one for every run that never resolves. `unavailable` is a
 first-class reason, not an error — it counts the users reaching for an audit
-this build cannot run, which is what decides whether the affordance belongs
-there at all.
+this build cannot run (no provider, or one declaring itself unable: feature
+flag, quota, no model), which is what decides whether the affordance belongs
+there at all. `superseded` counts runs whose answer was dropped because the user
+asked again while they were still in flight, and a rising count is the signal
+that audits are slow enough to be asked for twice.
 
 Counts and ids only. Criterion prompts, finding wording and board content never
 cross this bus. A run that is refused before it starts (`unavailable`) emits

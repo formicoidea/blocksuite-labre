@@ -55,12 +55,35 @@ behaving identically.
 Nothing here is persisted — criteria are code, findings are session state — so
 switching `ai-audit` off cannot lose data even in principle.
 
+**The request is isolated on the way out.** `requestAudit` hands the provider a
+`structuredClone` of the request, not the caller's objects. This is the outbound
+half of "a provider is not believed", symmetric with the finding normalisation:
+some facts are not fresh objects — an axis `forward` vector came straight from a
+module constant the engine multiplies against — so a provider writing into its
+own input could flip an axis convention and turn correct arrows into violations
+on the canvas. The clone closes the whole class, at a cost the seam already
+claims (the request must be serializable).
+
+**Two audits at once: the newest wins.** An audit is a network call and takes
+seconds, so a user asking again while the first is in flight is ordinary. Runs
+carry a generation; a run superseded by a newer one publishes nothing and
+reports `MapAuditInterrupted` with `reason: 'superseded'` rather than a
+completion whose `findingCount` describes findings nobody will see.
+
 **Degradation is the default path.** No noop provider is registered. With none
 injected (the standalone playground, every unit suite), `map.audit` is still
 enumerable but refuses cleanly with `status: 'unavailable'` — not a throw, not a
-console error — and levels 1 and 2 are untouched. A provider that throws becomes
-`status: 'error'`; an abort, whatever shape it arrives in, becomes
-`status: 'aborted'` and **keeps the findings already produced**.
+console error — and levels 1 and 2 are untouched. A registered provider may also
+_declare_ itself unavailable (assistant behind an app-side feature flag, quota
+exhausted, no model configured); that is passed through rather than folded into
+`complete`. A provider that throws becomes `status: 'error'`; an abort, whatever
+shape it arrives in, becomes `status: 'aborted'` and **keeps the findings already
+produced**.
+
+**Host panels must tolerate stale element ids.** `AuditFinding.elementIds` is
+checked for type and not validated against the surface: the board moves on while
+an audit is in flight, so an id naming a departed element is stale rather than
+wrong, and a lookup per id would be paid on every finding to say so.
 
 **`map.audit` carries no read-only guard, deliberately.** Unlike `pivot.bind`,
 it writes nothing: reviewing a map you have been given and cannot change is not

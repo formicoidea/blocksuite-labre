@@ -181,12 +181,20 @@ export interface MapAuditInterruptedEvent extends MapAuditEvent {
   /**
    * Why it did not complete.
    *
-   * `unavailable` is a first-class member and not an error: it means no
-   * assistant is wired in this assembly, and knowing how often a user reaches
-   * for an audit that cannot run is precisely the number that decides whether
-   * the affordance should be there at all.
+   * `unavailable` is a first-class member and not an error: no assistant is
+   * wired in this assembly, or the one that is declared itself unable to answer
+   * (feature flag, quota, no model configured). Knowing how often a user
+   * reaches for an audit that cannot run is precisely the number that decides
+   * whether the affordance should be there at all.
+   *
+   * `superseded` means a newer run for the same editor started while this one
+   * was in flight, so its answer was dropped rather than published. It is
+   * reported here rather than as a completion because a `findingCount` for
+   * findings nobody will see is a metric that lies — and a rising `superseded`
+   * count is itself the signal that audits are slow enough that users ask
+   * twice.
    */
-  reason: 'aborted' | 'error' | 'unavailable';
+  reason: 'aborted' | 'error' | 'unavailable' | 'superseded';
   durationMs: number;
 }
 

@@ -410,3 +410,120 @@ describe('the request that crosses the seam is render-free', () => {
     expect(JSON.parse(JSON.stringify(received))).toEqual(received);
   });
 });
+
+describe('the request is ISOLATED, not merely serializable', () => {
+  /**
+   * The outbound half of "a provider is not believed" — and the half that was
+   * missing (recette PF14.1, BLOQUANT).
+   *
+   * Value-comparing assertions are structurally blind to this: `toEqual` on
+   * `{ forward: [1, 0] }` passes whether the array is a copy or the very one
+   * the engine multiplies against. So these assert IDENTITY.
+   */
+  test('the provider never receives the object the caller holds', async () => {
+    const req = request([A1]);
+    let received: AuditRequest | undefined;
+    const std = stubStd(
+      provider(async r => {
+        received = r;
+        return complete([]);
+      })
+    );
+
+    await requestAudit(std, req);
+
+    expect(received).not.toBe(req);
+    expect(received?.facts).not.toBe(req.facts);
+    expect(received?.facts.roles).not.toBe(req.facts.roles);
+    expect(received?.criteria).not.toBe(req.criteria);
+    // ...and it is still the same DATA.
+    expect(received).toEqual(req);
+  });
+
+  test('a provider that writes into its input cannot reach the caller', async () => {
+    // The reviewer's scenario, at this layer: a provider that "normalises" a
+    // vector in place. Before the fix, that array WAS the module constant the
+    // engine reads, so a correct arrow started reporting as a violation.
+    const shared: [number, number] = [1, 0];
+    const req: AuditRequest = {
+      criteria: [A1],
+      facts: {
+        ...FACTS,
+        frames: [
+          {
+            elementId: 'map',
+            framework: 'wardley',
+            type: 'wardley',
+            axes: [{ id: 'evolution', orientation: 'horizontal', forward: shared }],
+            zones: [],
+          },
+        ],
+      },
+    };
+
+    const std = stubStd(
+      provider(async r => {
+        const forward = r.facts.frames[0].axes[0]
+          .forward as unknown as [number, number];
+        forward[0] = -1;
+        forward[1] = 99;
+        (r.facts.frames[0] as { framework: string }).framework = 'hijacked';
+        return complete([]);
+      })
+    );
+
+    await requestAudit(std, req);
+
+    // The vector the engine reads is untouched, whatever the provider did.
+    expect(shared).toEqual([1, 0]);
+    expect(req.facts.frames[0].axes[0].forward).toEqual([1, 0]);
+    expect(req.facts.frames[0].framework).toBe('wardley');
+  });
+
+  test('facts that cannot be isolated are not sent at all', async () => {
+    // A function in the facts is a library bug (ADR 0006 § 5 forbids it), and
+    // this is where it stops: reported, degraded, never handed over.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const runAudit = vi.fn(async () => complete([]));
+    const poisoned = {
+      criteria: [A1],
+      facts: { ...FACTS, roles: [{ id: 'x', kind: 'node', leak: () => 1 }] },
+    } as unknown as AuditRequest;
+
+    const result = await requestAudit(stubStd(provider(runAudit)), poisoned);
+
+    expect(result.status).toBe('error');
+    expect(runAudit).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
+
+describe('a provider may declare itself unable to answer', () => {
+  test('unavailable is passed through, not read as complete', async () => {
+    // A registered provider CAN be unable: assistant behind an app-side feature
+    // flag, quota exhausted, no model configured. Folding it into `complete`
+    // both inflated the completion series and emptied the one number that
+    // counts users reaching for an audit this build cannot deliver.
+    const std = stubStd(
+      provider(async () => ({ status: 'unavailable' as const, findings: [] }))
+    );
+
+    const result = await requestAudit(std, request([A1]));
+
+    expect(result.status).toBe('unavailable');
+  });
+
+  test('but it cannot declare itself SUPERSEDED — that is the library’s call', async () => {
+    const std = stubStd(
+      provider(async () => ({
+        status: 'superseded' as const,
+        findings: [raw()],
+      }))
+    );
+
+    const result = await requestAudit(std, request([A1]));
+
+    expect(result.status).toBe('complete');
+  });
+});
