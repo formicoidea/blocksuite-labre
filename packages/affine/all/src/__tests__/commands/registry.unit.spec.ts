@@ -37,10 +37,10 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind + tag.set
-      core: 8,
+      // + shape.cycleTextFit + pivot.bind + tag.set + element.read
+      core: 9,
     });
-    expect(commands).toHaveLength(68);
+    expect(commands).toHaveLength(69);
   });
 
   /**

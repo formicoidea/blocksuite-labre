@@ -11,4 +11,5 @@ export {
   WARDLEY_TAG_DEFS,
 } from './natures';
 export { WARDLEY_PROFILES } from './profiles';
+export { WARDLEY_NAMING_CONVENTIONS, WARDLEY_READING } from './reading';
 export { WARDLEY_RULES } from './rules';

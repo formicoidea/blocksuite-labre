@@ -10,6 +10,9 @@ import {
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
+  ReadingManager,
+  readingProposalWidget,
+  readingToolbarExtension,
   SpotlightManager,
   ValidationManager,
   validationExceptionToolbarExtension,
@@ -51,6 +54,13 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // The persistent badge and its detail bubble. Renders nothing until the
       // manager reports a violation, which it cannot do without a rule.
       context.register(violationDetailWidget);
+      // The reversed reading (MF3). Both are inert until a framework registers
+      // a ReadingProfile — which only its FLAG-GATED view extension does — and
+      // the panel opens on the `element.read` command and on nothing else: it
+      // never proposes itself, and it never writes.
+      context.register(ReadingManager);
+      context.register(readingProposalWidget);
+      context.register(readingToolbarExtension);
       // "Revoke exception" on the contextual toolbar of whichever element
       // answers for it. Shows nothing until an element carries an exception a
       // REGISTERED rule can be arbitrated on, so a board with no framework

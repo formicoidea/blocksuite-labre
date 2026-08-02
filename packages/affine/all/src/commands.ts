@@ -1,6 +1,7 @@
 import {
   coreCommands,
   pivotCommands,
+  readingCommands,
   tagCommands,
 } from '@labre/affine-block-root';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
@@ -74,7 +75,13 @@ export function buildCommandRegistry(
  */
 export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
-    [...coreCommands, ...pivotCommands, ...tagCommands, ...shapeCommands],
+    [
+      ...coreCommands,
+      ...pivotCommands,
+      ...tagCommands,
+      ...readingCommands,
+      ...shapeCommands,
+    ],
     FRAMEWORK_COMMAND_GROUPS,
     flags
   );
