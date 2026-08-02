@@ -94,7 +94,7 @@ export function startObserve(
     observerDisposable[prop] = () => {
       value.unobserve(fn);
     };
-  } else if (value != null && typeof value !== 'object') {
+  } else if (value != null && !isPlainObject(value)) {
     console.warn(
       `Failed to observe "${prop.toString()}" of ${
         receiver.type
@@ -108,17 +108,34 @@ export function startObserve(
   // - **Absent.** `GfxPrimitiveElementModel.tags` defaults to `undefined` and
   //   stays absent until something qualifies the element, so every unqualified
   //   element — i.e. almost all of them — would log once per mount.
-  // - **A plain object.** That is the DEGRADED shape a client predating the
+  // - **A PLAIN object.** That is the DEGRADED shape a client predating the
   //   field writes through the unknown-key branch (see `../tags.ts`). It is a
   //   document value of another vintage, not a programmer error, and nothing
   //   the user can act on; reading it is handled, and the first write converts
   //   it. Warning once per affected element per mount would be pure noise on a
   //   board the user did nothing wrong to produce.
   //
+  // The silence is kept exactly as narrow as the reason for it: an array, a
+  // `Map`, a class instance — anything that is not a bare JSON object — still
+  // warns, so an `@observe` put by mistake on a non-Y field is still caught.
+  //
   // Either way the observer is re-attached the moment a real Y type lands on
   // the key: `@field()`'s setter calls `startObserve`, and `syncElementFromY`
   // calls it for the paths that never reach the setter (a remote peer, undo,
   // redo).
+}
+
+/**
+ * A bare JSON object — `{}` or `Object.create(null)` — and nothing else.
+ *
+ * The test is the prototype rather than `typeof`, because `typeof x ===
+ * 'object'` is true of arrays, `Map`s, `Date`s and every class instance, none
+ * of which any client writes into a document field.
+ */
+function isPlainObject(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 /** Whether an `@observe`d nested Y type is declared for this prop. */

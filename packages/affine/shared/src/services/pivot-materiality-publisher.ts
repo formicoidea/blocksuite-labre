@@ -235,9 +235,30 @@ export class PivotMaterialityPublisher extends LifeCycleWatcher {
    * A remote peer that CHANGES a binding updates this map silently: it is
    * publishing its own retraction and its own patch, and a second one from here
    * would be a duplicate, not a safety net.
+   *
+   * ## …and it invalidates what WE last published
+   *
+   * `_published` remembers the last patch this client sent, so an unchanged
+   * state is not re-announced. A remote change makes that memory a lie: the
+   * peer published its own patch, so the host now holds the peer's state, not
+   * ours. Left stale, the sequence `we publish data` → `peer switches to
+   * practice` → `we go back to data` compares equal to our own last
+   * fingerprint and DROPS the patch — the element says `data`, the host keeps
+   * `practice`, until some third, different value comes along.
+   *
+   * Milder than the retraction gap above (this is host-side cache staleness,
+   * not document data, and it heals on the next real change), but free to
+   * close: every remote touch drops our fingerprint for that occurrence, so
+   * the next local patch is always sent.
    */
   private _track(surface: SurfaceBlockModel, id: string) {
     const element = surface.getElementById(id);
+
+    const previous = this._lastBinding.get(id);
+    if (previous !== undefined) {
+      this._published.delete(materialityKey(previous, id));
+    }
+
     if (element && isPivotBound(element)) {
       this._lastBinding.set(id, element.pivotDocId);
     } else {

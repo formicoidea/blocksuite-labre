@@ -456,6 +456,50 @@ describe('a remote peer', () => {
     ]);
   });
 
+  test('a remote change invalidates what WE last published', async () => {
+    const ctx = setup();
+    const shape = ctx.addShape({ pivotDocId: RECORD });
+
+    // 1. We publish `data`. The host holds `data`, and so does our fingerprint.
+    setElementTag(shape, NATURE, [DATA]);
+    await settle();
+    expect(ctx.patches.at(-1)?.tags).toEqual({ [NATURE]: [DATA] });
+    ctx.patches.length = 0;
+
+    // 2. The peer switches it to `practice` and publishes that itself. The host
+    //    now holds `practice`; our fingerprint still says `data`.
+    const doc = shape.yMap.doc!;
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    const remoteElements = (
+      (remote.getMap('blocks').get(ctx.surface.id) as Y.Map<unknown>).get(
+        'prop:elements'
+      ) as Y.Map<unknown>
+    ).get('value') as Y.Map<Y.Map<unknown>>;
+    remote.transact(() => {
+      (remoteElements.get(shape.id)!.get('tags') as Y.Map<string[]>).set(
+        NATURE,
+        [PRACTICE]
+      );
+    });
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote));
+    await settle();
+    expect(ctx.patches).toEqual([]);
+
+    // 3. We go back to `data`.
+    setElementTag(shape, NATURE, [DATA]);
+    await settle();
+
+    // Without dropping our fingerprint on the remote touch, this compares equal
+    // to what WE last sent and the patch is suppressed — the element says
+    // `data`, the host keeps `practice`, until some third, different value
+    // comes along. Milder than a lost retraction (host-side cache staleness,
+    // not document data, and it heals on the next real change) but free to
+    // close.
+    expect(ctx.patches).toHaveLength(1);
+    expect(ctx.patches[0].tags).toEqual({ [NATURE]: [DATA] });
+  });
+
   test("a peer's own deletion is the peer's retraction, not ours", async () => {
     const ctx = setup();
     const shape = ctx.addShape({ pivotDocId: RECORD });

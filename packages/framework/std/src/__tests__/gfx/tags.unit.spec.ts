@@ -371,6 +371,25 @@ describe('the degraded shape a pre-declaration client writes', () => {
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
+
+  test('but the silence stays as narrow as its reason', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = surface.getElementById(
+      surface.addElement({ type: 'testShape' })
+    )!;
+
+    // An ARRAY is not a shape any client writes here. Excusing it too would
+    // mean an `@observe` put by mistake on a non-Y field never says so again —
+    // and the point of silencing the plain object was that it is a legitimate
+    // document value, not that the check is noisy.
+    surface.store.transact(() => {
+      el.yMap.set('tags', [DATA] as unknown as Record<string, string[]>);
+    });
+
+    expect(warn).toHaveBeenCalled();
+    expect(readElementTags(el)).toEqual({});
+    warn.mockRestore();
+  });
 });
 
 describe('a read-only document is never written to', () => {
