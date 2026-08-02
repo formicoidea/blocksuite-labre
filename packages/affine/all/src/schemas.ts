@@ -29,7 +29,7 @@ import {
 import type { BlockSchema } from '@labre/store';
 import type { z } from 'zod';
 
-import type { BlockFlags } from './flags.js';
+import type { LabreFlags } from './flags.js';
 
 type AffineBlockSchema = z.infer<typeof BlockSchema>;
 
@@ -37,11 +37,11 @@ type AffineBlockSchema = z.infer<typeof BlockSchema>;
  * First party block models built for affine.
  *
  * Schemas are registered UNCONDITIONALLY: a flag gates tooling, never the
- * ability to read a document (see {@link BlockFlags} and `docs/adr/0009`). The
+ * ability to read a document (see {@link LabreFlags} and `docs/adr/0009`). The
  * `flags` parameter is kept for source compatibility with callers written
  * against the previous contract, and is deliberately ignored.
  */
-export function getAffineSchemas(_flags?: BlockFlags): AffineBlockSchema[] {
+export function getAffineSchemas(_flags?: LabreFlags): AffineBlockSchema[] {
   return [
     CodeBlockSchema,
     ParagraphBlockSchema,
