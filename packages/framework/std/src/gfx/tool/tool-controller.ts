@@ -82,6 +82,25 @@ type AreaBound = IBound & {
   endY: number;
 };
 
+/**
+ * The only tools a readonly document will activate: selection, panning, the
+ * presentation navigator and the no-op placeholder. Everything else — brush,
+ * highlighter, connector, shape, polygon, text, note, frame, template, eraser —
+ * creates or erases on its first gesture, calling `surface.addElement` /
+ * `store.addBlock` directly, which used to raise uncaught `BlockSuiteError`s on
+ * ordinary keystrokes.
+ *
+ * A whitelist rather than a blacklist, and enforced at {@link
+ * ToolController.setTool}: a new tool is a writer until someone proves
+ * otherwise, and no new entry point can bypass the check by construction.
+ */
+export const READONLY_SAFE_TOOLS = new Set([
+  'default',
+  'pan',
+  'frameNavigator',
+  'empty',
+]);
+
 export class ToolController extends GfxExtension {
   static override key = 'ToolController';
 
@@ -577,6 +596,15 @@ export class ToolController extends GfxExtension {
     options?: ToolOptions<T>
   ): void => {
     const toolNameStr = toolType.toolName;
+
+    // THE bottleneck for tool activation: keyboard managers, the toolbar and
+    // its mixins, senior buttons and framework modules all land here. A guard
+    // placed higher up is an inventory that goes stale — `s` (shape) is bound
+    // by `shape-draggable.ts` through the toolbar mixin and never sees the
+    // keyboard manager at all.
+    if (this.std.store.readonly && !READONLY_SAFE_TOOLS.has(toolNameStr)) {
+      return;
+    }
 
     const beforeUpdateCtx = this._createBuiltInHookCtx('beforeToolUpdate', {
       toolName: toolNameStr,

@@ -13,7 +13,7 @@ import type { GfxController } from '@labre/std/gfx';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type * as Y from 'yjs';
 
-import { drag, wait } from '../utils/common.js';
+import { click, drag, wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -165,7 +165,41 @@ describe('a readonly document refuses surface writes', () => {
 
   // ------------------------------------------------------------- keyboard
 
+  /**
+   * Every creation tool a keystroke can arm, with the tool name it arms.
+   * `s` is the important one: it is NOT bound by
+   * `EdgelessPageKeyboardManager`. `shape-draggable.ts` binds it globally onto
+   * the toolbar mixin, which exposes `ToolController.setTool` directly — which
+   * is why the guard sits on the controller and not on any keyboard manager.
+   *
+   * `Shift-p` (highlighter) is absent on purpose: with a synthetic
+   * `KeyboardEvent` the keymap's no-shift fallback re-runs the plain `p`
+   * handler and arms the brush instead, so the control below could not hold.
+   * A harness limitation, not a gap in the guard — `HighlighterTool` goes
+   * through the same `setTool` bottleneck as every other tool here.
+   */
+  const CREATION_SHORTCUTS = [
+    ['p', {}, 'brush'],
+    ['c', {}, 'connector'],
+    ['t', {}, 'text'],
+    ['n', {}, 'affine:note'],
+    ['f', {}, 'frame'],
+    ['e', {}, 'eraser'],
+    ['s', {}, 'shape'],
+  ] as const;
+
   test('creation-tool shortcuts arm nothing and raise nothing on window', async () => {
+    // Control first, on a writable board — and it doubles as the proof that
+    // every key below is really wired in this harness. Without it, a shortcut
+    // that simply never fires would make the readonly assertions vacuous.
+    for (const [key, modifiers, toolName] of CREATION_SHORTCUTS) {
+      press(key, modifiers);
+      await wait();
+      expect(gfx.tool.currentToolName$.peek()).toBe(toolName);
+      press('v');
+      await wait();
+    }
+
     const errors: string[] = [];
     const onError = (e: ErrorEvent) => errors.push(String(e.message));
     const onRejection = (e: PromiseRejectionEvent) =>
@@ -177,15 +211,7 @@ describe('a readonly document refuses surface writes', () => {
     std.store.readonly = true;
     await wait();
 
-    for (const [key, modifiers] of [
-      ['p', {}], // brush
-      ['p', { shift: true }], // highlighter
-      ['c', {}], // connector
-      ['t', {}], // text
-      ['n', {}], // note
-      ['f', {}], // frame
-      ['e', {}], // eraser
-    ] as const) {
+    for (const [key, modifiers] of CREATION_SHORTCUTS) {
       press(key, modifiers);
       await wait();
       // Each of these tools writes on its FIRST drag, straight through
@@ -375,6 +401,34 @@ describe('a readonly document refuses surface writes', () => {
 
     expect(gfx.getElementById(rect.id)).not.toBeNull();
     expect(rect.index).toBe(index);
+  });
+
+  test('a drag attempted DURING readonly leaves nothing broken behind', async () => {
+    // The case the plain on → off cycle below misses: the refusal must not
+    // leave the tool holding half-initialized drag state. A short-circuit in
+    // `DefaultTool.dragStart` did exactly that — once readonly was lifted the
+    // board no longer selected on click, and no longer moved on drag.
+    const rect = addShape(ShapeType.Rect, '[0,0,100,100]');
+    await wait();
+
+    std.store.readonly = true;
+    await wait();
+    dragOnCanvas([50, 50], [50, 170]);
+    await wait();
+    expect(storedXYWH(rect.id)).toBe('[0,0,100,100]');
+
+    std.store.readonly = false;
+    await wait();
+
+    // The FIRST click must select — the reported symptom was that it took two.
+    click(window.editor.host!, hostPoint(50, 50));
+    await wait();
+    expect(gfx.selection.selectedIds).toContain(rect.id);
+
+    // …and the same gesture that was refused a moment ago must now move it.
+    dragOnCanvas([50, 50], [50, 170]);
+    await wait();
+    expect(storedXYWH(rect.id)).toBe('[0,120,100,100]');
   });
 
   test('readonly on → off gives the whole document back', async () => {

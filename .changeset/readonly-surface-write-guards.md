@@ -18,17 +18,22 @@ What actually changes on a readonly board:
 - **The mouse no longer moves anything.** `DefaultTool.dragStart` went straight
   to `handleElementMove`, which writes `xywh` through a `@field()` accessor —
   raw `store.transact`, no crud, no exception. A drag on a readonly board wrote
-  into the Yjs document exactly as on an editable one. Panning and rubber-band
-  selection stay available; moving content, alt-drag cloning and resizing do
-  not. `InteractivityManager.handleElementMove` / `handleElementResize` /
-  `handleElementRotate` / `requestElementClone` carry the same guard as a
-  backstop.
+  into the Yjs document exactly as on an editable one. The refusal sits in
+  `InteractivityManager.handleElementMove` / `handleElementResize` /
+  `handleElementRotate` / `requestElementClone` — the layer that actually
+  writes, so no gesture entry point can go round it. Panning, rubber-band
+  selection and plain selection stay available; moving content, alt-drag
+  cloning and resizing do not.
 - **`edgeless-selected-rect` drops its 8 resize handles.** The gate existed but
   only ran on selection change, so a board switched to readonly while something
   was selected kept its handles — and dragging one wrote.
-- **Creation-tool shortcuts refuse to arm** (`p`, `Shift-p`, `c`, `t`, `n`,
-  `f`, `e`). They call `surface.addElement` / `store.addBlock` directly and
-  raised uncaught `BlockSuiteError`s on `window`. Selection, pan and the
+- **Creation tools refuse to arm** (`p`, `Shift-p`, `c`, `t`, `n`, `f`, `e`,
+  `s`). They call `surface.addElement` / `store.addBlock` directly and raised
+  uncaught `BlockSuiteError`s on ordinary keystrokes. The whitelist lives on
+  `ToolController.setTool`, the single bottleneck every entry point goes
+  through — keyboard managers, the toolbar and its mixins, senior buttons —
+  because `s` is bound by `shape-draggable.ts` straight onto the mixin and
+  never reaches the edgeless keyboard manager. Selection, pan and the
   presentation navigator still switch.
 - **`createGroupFromSelectedCommand` / `ungroupCommand`** refuse **before**
   their `removeChild` calls, which used to run even though the follow-up
