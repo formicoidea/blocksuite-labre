@@ -137,6 +137,50 @@ describe('a `text` role is measured by its ink', () => {
     expect(raised(RULE, [wide, link('d1', 455)])).toEqual(['d1+t2']);
   });
 
+  it('bills the glyphs, not the code points', () => {
+    // "élément" pasted from a Mac arrives DECOMPOSED: nine code points for
+    // seven letters, the three extra ones being accents that sit on the letter
+    // before them and advance nothing. Billed at full price they buy a fifth of
+    // a name's worth of white paper — and a link on it is a false positive,
+    // which is the one thing this geometry must not manufacture.
+    const nfc = 'élément'.normalize('NFC');
+    const nfd = 'élément'.normalize('NFD');
+    expect(nfd.length).toBeGreaterThan(nfc.length);
+
+    const decomposed = element('t1', [400, 100, 300, 20], 'test:text', {
+      text: nfd,
+      fontSize: 18,
+      textAlign: 'left',
+    });
+    // Same id on purpose — they are never on the same surface, and a finding
+    // names its elements, so a different id would make the two verdicts differ
+    // for a reason that is not the width.
+    const composed = element('t1', [400, 100, 300, 20], 'test:text', {
+      text: nfc,
+      fontSize: 18,
+      textAlign: 'left',
+    });
+
+    // The same name reads the same width whichever way it was encoded, inside
+    // the letters as well as past them...
+    for (const at of [430, 470, 480, 490]) {
+      expect(raised(RULE, [decomposed, link('d1', at)])).toEqual(
+        raised(RULE, [composed, link('d1', at)])
+      );
+    }
+    // ...and 12 units past the last letter is white paper on both.
+    expect(raised(RULE, [decomposed, link('d1', 480)])).toEqual([]);
+
+    // Joiners and variation selectors, same reasoning: one family is one glyph
+    // and change, not seven characters' worth of a box.
+    const emoji = element('t1', [400, 100, 300, 20], 'test:text', {
+      text: '👨‍👩‍👧',
+      fontSize: 18,
+      textAlign: 'left',
+    });
+    expect(raised(RULE, [emoji, link('d1', 470)])).toEqual([]);
+  });
+
   it('hands a ROTATED text its whole box back', () => {
     // The band this cuts is where an UNROTATED renderer draws. At 180° the
     // words are at the other end of the box, so narrowing would be a MISS —

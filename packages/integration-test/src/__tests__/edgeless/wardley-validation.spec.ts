@@ -63,13 +63,20 @@ function declaredWidth(text: string, fontSize: number): number {
     if (" .,:;!|'`()[]{}/\\-ilIj".includes(char)) return 0.26;
     if ('ftr"*'.includes(char)) return 0.35;
     if ('mwMW@%'.includes(char)) return 0.85;
-    const code = char.charCodeAt(0);
+    const code = char.codePointAt(0) ?? 0;
+    if (
+      (code >= 0x0300 && code <= 0x036f) ||
+      (code >= 0x200b && code <= 0x200d) ||
+      code === 0xfe0f
+    ) {
+      return 0;
+    }
     if (code >= 0x2e80) return 1;
     if (code >= 65 && code <= 90) return 0.62;
     return 0.53;
   };
   let em = 0;
-  for (const char of text) em += advance(char);
+  for (const char of text.normalize('NFC')) em += advance(char);
   return em * fontSize;
 }
 
@@ -391,6 +398,15 @@ describe('wardley validation on the canvas', () => {
      * renderer's own measurement to compare against.
      */
     test('the ink the rule measures is the ink the renderer draws', async () => {
+      // Wait for the font this bench is about. `getTextWidth` measures what the
+      // canvas has AT THAT INSTANT, and the FALLBACK face is a different set of
+      // metrics: the same name reads 41.2 or 46.4 depending on nothing the test
+      // controls, which is how a ±15 % guard turns into a coin toss. Three
+      // lines, and the guard measures the face it names.
+      await document.fonts.load('400 18px Inter');
+      await document.fonts.ready;
+      expect(document.fonts.check('400 18px Inter')).toBe(true);
+
       const font = getFontString({
         fontStyle: 'normal',
         fontWeight: '400',

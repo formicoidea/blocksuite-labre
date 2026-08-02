@@ -1187,6 +1187,7 @@ function pathPenetration(path: readonly Point[], bound: Bound): number {
  * | wide | 0.85 | `m w M W @ %` |
  * | capital | 0.62 | `A`–`Z`, the rest of them |
  * | full-width | 1.00 | anything from U+2E80 up: CJK, kana, hangul |
+ * | nothing | 0.00 | combining marks, zero-width joiners, variation selectors |
  * | default | 0.53 | everything else, lowercase and digits |
  *
  * ## The precision, measured rather than claimed
@@ -1227,7 +1228,21 @@ const TEXT_ADVANCE = /* @__PURE__ */ (() => {
 function charAdvance(char: string): number {
   const declared = TEXT_ADVANCE[char];
   if (declared !== undefined) return declared;
-  const code = char.charCodeAt(0);
+  const code = char.codePointAt(0) ?? 0;
+  // Code points that draw nothing OF THEIR OWN, and so advance nothing: a
+  // combining mark sits on the letter before it, a zero-width space or joiner
+  // is not there at all, and a variation selector only says how to draw its
+  // neighbour. Billed at full price they turn "élément" pasted from a Mac
+  // (decomposed: nine code points, seven glyphs) into a fifth of a name's worth
+  // of white paper — a false positive, which is the one thing this must not
+  // manufacture. Before the full-width test, since U+FE0F is above it.
+  if (
+    (code >= 0x0300 && code <= 0x036f) ||
+    (code >= 0x200b && code <= 0x200d) ||
+    code === 0xfe0f
+  ) {
+    return 0;
+  }
   // Full-width scripts, where one character IS one em.
   if (code >= 0x2e80) return 1;
   // The rest of the capitals: wider than lowercase, narrower than `M`.
@@ -1281,7 +1296,10 @@ function textInkBound(el: unknown, bound: Bound): Bound {
   if (typeof text.rotate === 'number' && text.rotate !== 0) return bound;
 
   let longest = 0;
-  for (const line of String(text.text).split('\n')) {
+  // NFC first: the same name typed here and pasted from a Mac can arrive as the
+  // same glyphs in a different number of code points, and a width that depends
+  // on which one would be a rule that answers differently on identical text.
+  for (const line of String(text.text).normalize('NFC').split('\n')) {
     longest = Math.max(longest, lineWidth(line, text.fontSize));
   }
 

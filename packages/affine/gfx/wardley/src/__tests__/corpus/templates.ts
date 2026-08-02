@@ -124,9 +124,14 @@ function cardOf(name: string, raw: Record<string, RawElement>): TemplateCard {
       id,
       role: el.role,
       // A stored text is a delta, and a `text` role is measured by the ink of
-      // its WORDS: reading only the box would judge the shipped templates on a
-      // geometry no map has — the very thing this corpus caught in its own
-      // fixtures.
+      // its WORDS — so this reader has to hand the words over, or it would be
+      // reading the templates through a geometry the product does not use.
+      //
+      // A FIDELITY fix, not coverage: a preset's labels sit well clear of
+      // everything, so the conformance verdict below does not depend on their
+      // width at all (multiply the engine's advance table by ten and the
+      // hand-written cards go red while all fifteen templates stay green). What
+      // stresses the ink is the fixtures, not the presets.
       ...(el.text
         ? {
             text: el.text.delta.map(op => op.insert).join(''),

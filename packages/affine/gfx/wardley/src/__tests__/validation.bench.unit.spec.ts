@@ -375,24 +375,38 @@ describe('a drag on a dense map re-judges only what moved', () => {
         el.role !== WARDLEY_ROLE.inertia &&
         el.role !== WARDLEY_ROLE.changeArrow
     );
+    const fullPass = () =>
+      medianMs(() => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES));
+
+    /**
+     * The baseline is bracketed rather than taken once at the top.
+     *
+     * This suite runs beside 96 other files and the machine's load moves under
+     * it, so a ratio between a figure measured at the start and one measured
+     * half a second later measures the load and not the code — that is the
+     * flake this replaces. One measurement on each side of the loop is enough
+     * to be contemporaneous with all five points; measuring it INSIDE the loop
+     * would be more contemporaneous still and would put 130 full passes under a
+     * wall-clock assertion, which is a different way of being wrong.
+     */
+    const before = fullPass();
+    const points: { size: number; ms: number }[] = [];
     for (const fraction of [0.02, 0.1, 0.3, 0.6, 1]) {
       const size = Math.max(1, Math.round(participants.length * fraction));
       const lasso = new Set(participants.slice(0, size).map(el => el.id));
-      const ms = medianMs(() =>
-        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
-          dirty: lasso,
-          previous,
-        })
-      );
-      // The baseline is re-measured NEXT TO each point rather than once at the
-      // top: this suite runs beside 96 other files, the machine's load moves
-      // under it, and a ratio between a figure taken at the start and one taken
-      // half a second later measures the load and not the code. Five more full
-      // passes, and the comparison becomes contemporaneous.
-      const full = medianMs(() =>
-        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES)
-      );
+      points.push({
+        size,
+        ms: medianMs(() =>
+          evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
+            dirty: lasso,
+            previous,
+          })
+        ),
+      });
+    }
+    const full = Math.max(before, fullPass());
 
+    for (const { size, ms } of points) {
       console.info(
         `[bench] lasso drag, |dirty|=${size} of ${participants.length} participants: ` +
           `${ms.toFixed(3)} ms (full ${full.toFixed(3)} ms, budget ${FRAME_BUDGET_MS} ms)`
