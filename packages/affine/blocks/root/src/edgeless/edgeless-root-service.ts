@@ -168,6 +168,15 @@ export class EdgelessRootService
   }
 
   removeElement(id: string | GfxModel) {
+    // Word-for-word duplicate of `EdgelessCRUDExtension.removeElement`, so it
+    // carries the same guard — see the comment there. Today it is only
+    // reachable through the element toolbar (already inert on readonly), but a
+    // guard-less parallel API is exactly the door the next caller walks
+    // through.
+    if (this.doc.readonly) {
+      console.error('cannot remove element in readonly mode');
+      return;
+    }
     id = typeof id === 'string' ? id : id.id;
 
     const el = this.crud.getElementById(id);
@@ -189,6 +198,12 @@ export class EdgelessRootService
   }
 
   reorderElement(element: GfxModel, direction: ReorderingDirection) {
+    // `element.index = …` is a raw transaction on both branches below.
+    if (this.doc.readonly) {
+      console.error('cannot reorder element in readonly mode');
+      return;
+    }
+
     const index = this.layer.getReorderedIndex(element, direction);
 
     // block should be updated in transaction

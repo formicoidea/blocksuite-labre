@@ -132,25 +132,30 @@ const toneOffConvention: ValidationRule = {
  * map is mostly activities, saying so is useful. Imposing it never is — the
  * remark suggests, and the phase labels stay the user's to write.
  *
- * ## Shipped inert, on purpose
+ * ## Shipped inert — and, since MF3, inert for a different reason
  *
- * The "nature" of a component is the type-3 classification (user-need, market,
- * ecosystem, solution, function → practice / data / activity / knowledge). **It
- * does not exist yet**: no model field carries it and no gesture writes it. The
- * `majority-fact` family is built for exactly this — a surface where NOT ONE
- * subject carries the fact yields nothing, silently, so this rule ships today,
- * costs a walk of the components on a check-up somebody asked for, and starts
- * producing its remark by itself the day the nature lands.
+ * The "nature" of a component is the type-3 classification (activity, data,
+ * practice, knowledge). When this rule was written it did not exist at all, and
+ * `majority-fact` was built for exactly that: a surface where NOT ONE subject
+ * carries the fact yields nothing, silently, so the rule could ship, cost a walk
+ * on a check-up somebody asked for, and wake up by itself.
  *
- * That is deliberately not a feature flag, a `TODO` or a commented-out block.
- * The condition is DATA — "is the fact there" — and it is asserted by a test
- * (`quality.unit.spec.ts`) that documents both halves: silent while the nature is
- * absent, correct the moment a majority carries it. Wiring it up later is a
- * `nature` field on the model and nothing in this file.
+ * MF3 (#95) has since landed it — see `./natures.ts` — but **not in the shape
+ * this family reads**. An element carries its qualification in `tags`, a nested
+ * `Y.Map<string[]>` keyed by tag def id, with values like
+ * `wardley:nature/activity`; `majority-fact` reads a FLAT prop, which is its
+ * declared and documented contract. So Q6 is still silent, and it is now silent
+ * because the fact is somewhere this family does not look.
  *
- * The prop name is fixed here rather than derived so that whoever adds the field
- * has one string to match; if the model calls it something else, this is the one
- * line to change.
+ * Teaching `majority-fact` to read a tag is a behaviour change to a generic
+ * engine family, and it belongs in its own slice with its own review rather than
+ * inside a merge. Until then the gap is recorded where it cannot rot: two
+ * assertions in `quality.unit.spec.ts` pin BOTH ends — the tag id that now
+ * exists, and the flat prop that still does not — so whoever wires them meets a
+ * test that already describes the crossing.
+ *
+ * The prop name stays fixed here rather than derived: it is the one string to
+ * change, and the one place to look.
  */
 const activityNomenclature: ValidationRule = {
   id: 'wardley.phase-nomenclature',

@@ -70,14 +70,17 @@ that are not urgent — on the other.
   finding. A colour the engine cannot honestly read — a theme variable with no
   tone in its name, a gradient, `transparent`, the stored fill of an unfilled
   shape — yields silence rather than a guess.
-- **Wardley Q6 — shipped inert, on purpose.** "Most of what you have mapped is
-  an activity; the phase names for activities would read better" needs the
-  type-3 **nature**, and nothing writes it yet. The new `majority-fact` family
-  is built for exactly that: a surface where not one subject carries the fact
-  raises nothing, silently, per map. So the rule ships today, costs a walk on a
-  check-up somebody asked for, and starts working by itself the day the field
-  lands — no flag, no `TODO`, and a test that documents both halves of the
-  condition.
+- **Wardley Q6 — shipped inert.** "Most of what you have mapped is an activity;
+  the phase names for activities would read better" needs the type-3 **nature**.
+  The new `majority-fact` family is built for a fact that may not be there yet:
+  a surface where not one subject carries it raises nothing, silently, per map.
+  MF3 has since landed the nature — as a tag def pack, with the qualification in
+  the element's `tags` (a nested `Y.Map<string[]>`), not as the flat prop this
+  family reads. So Q6 still says nothing, now because the fact sits somewhere
+  `majority-fact` does not look. Teaching a generic engine family to read a tag
+  is its own slice; until then the gap is pinned by two assertions that state
+  both ends — the tag id that exists and the flat prop that does not — so it
+  cannot rot into "later means never".
 
 Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
 carry the framework, the nudge id and the counts — never board content. A nudge

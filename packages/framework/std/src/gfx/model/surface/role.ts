@@ -29,8 +29,19 @@
  */
 export type RoleId = string;
 
-/** Whether a role describes a node (a surface element) or an edge (a connector). */
-export type RoleKind = 'node' | 'edge';
+/**
+ * What SHAPE of thing a role describes — and therefore what geometry a rule
+ * measures it with.
+ *
+ * - `node` — a surface element, measured by its bounds.
+ * - `edge` — a connector, measured along its path: the bounding box of a
+ *   diagonal link covers half the map.
+ * - `text` — a free text element, measured by the INK its text actually
+ *   occupies. A text box is created at a width that has nothing to do with its
+ *   content (a Wardley label is 120–200 units wide whatever it says), so its
+ *   box is not a statement about what the eye can see.
+ */
+export type RoleKind = 'node' | 'edge' | 'text';
 
 export interface RoleDef {
   /** Namespaced id, `<framework>:<role>`. */

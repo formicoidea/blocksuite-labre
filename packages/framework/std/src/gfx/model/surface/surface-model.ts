@@ -24,6 +24,7 @@ import {
   syncElementFromY,
 } from './element-model.js';
 import type { GfxLocalElementModel } from './local-element-model.js';
+import { tagsPropToY } from './tags.js';
 
 /**
  * Used for text field
@@ -698,6 +699,10 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         }
       }
     });
+
+    // `tags` is declared on the BASE class, so no per-class `propsToY` hook
+    // covers it. Run before the class hook, which may legitimately not exist.
+    tagsPropToY(props);
 
     // @ts-expect-error ignore
     return ctor.propsToY ? ctor.propsToY(props) : props;

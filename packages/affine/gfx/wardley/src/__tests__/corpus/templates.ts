@@ -47,6 +47,10 @@ type RawElement = {
   xywh?: string;
   source?: { id?: string; position?: [number, number] };
   target?: { id?: string; position?: [number, number] };
+  /** A stored surface text: `{ '$…text$': true, delta: [{ insert }] }`. */
+  text?: { delta: { insert: string }[] };
+  fontSize?: number;
+  textAlign?: string;
 };
 
 /**
@@ -119,6 +123,22 @@ function cardOf(name: string, raw: Record<string, RawElement>): TemplateCard {
     elements.push({
       id,
       role: el.role,
+      // A stored text is a delta, and a `text` role is measured by the ink of
+      // its WORDS — so this reader has to hand the words over, or it would be
+      // reading the templates through a geometry the product does not use.
+      //
+      // A FIDELITY fix, not coverage: a preset's labels sit well clear of
+      // everything, so the conformance verdict below does not depend on their
+      // width at all (multiply the engine's advance table by ten and the
+      // hand-written cards go red while all fifteen templates stay green). What
+      // stresses the ink is the fixtures, not the presets.
+      ...(el.text
+        ? {
+            text: el.text.delta.map(op => op.insert).join(''),
+            fontSize: el.fontSize,
+            textAlign: el.textAlign,
+          }
+        : {}),
       get elementBound() {
         return Bound.deserialize(xywh);
       },

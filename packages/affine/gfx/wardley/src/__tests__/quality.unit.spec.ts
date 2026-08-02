@@ -15,6 +15,7 @@ import {
   NODE_STROKE,
   WARDLEY_RED,
 } from '../node/consts';
+import { WARDLEY_NATURE } from '../natures';
 import { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from '../quality';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
@@ -193,13 +194,31 @@ describe('Q5 — the tone convention', () => {
 
 describe('Q6 — the phase nomenclature, and the condition it waits on', () => {
   /**
-   * The type-3 **nature** (user-need, market, ecosystem, solution, function →
-   * practice / data / activity / knowledge) does not exist: no model field
-   * carries it, no gesture writes it. The rule ships anyway, inert, and this
-   * test is the record of both halves — so the day somebody adds the field,
-   * a failing expectation tells them the rule is already wired.
+   * ## The nature has LANDED, in another shape — Q6 is not wired to it yet
+   *
+   * Q6 was written when the type-3 nature did not exist at all, and its gate was
+   * "no subject carries the fact". MF3 (#95) has since shipped it: the four
+   * natures are a tag def pack ({@link WARDLEY_NATURE}), and an element carries
+   * its qualification in `tags` — a nested `Y.Map<string[]>` keyed by tag def id
+   * — not in a flat `nature` prop.
+   *
+   * `majority-fact` reads a flat prop, by design and by documentation. So Q6 is
+   * still inert, and it is now inert for a DIFFERENT reason: not "the fact does
+   * not exist" but "the fact exists in a shape this family does not read". That
+   * is a real gap and it is deliberately not closed inside a merge commit —
+   * teaching the family to read a tag is a behaviour change that belongs in its
+   * own slice, with its own review.
+   *
+   * These tests are the record of exactly that state, so it cannot rot into
+   * "later means never":
+   *
+   * - the family still behaves correctly on the contract it declares (a flat
+   *   prop), which is what the last three cases pin;
+   * - the two below pin the CROSSING — the tag id that now exists, and the flat
+   *   prop that still does not — so whoever wires them meets a test that already
+   *   describes both ends.
    */
-  it('says nothing today, because nothing carries a nature', () => {
+  it('says nothing today, because nothing carries the fact it reads', () => {
     const board = [map(), component('a'), component('b'), component('c')];
     const remarks = checkup(board).filter(
       r => r.ruleId === 'wardley.phase-nomenclature'
@@ -208,9 +227,18 @@ describe('Q6 — the phase nomenclature, and the condition it waits on', () => {
     expect(remarks).toEqual([]);
   });
 
-  it('documents the condition: no `nature` prop exists on an element yet', () => {
-    // The gate itself, stated as a fact about the model rather than as a
-    // comment. When this fails, the nature has landed and Q6 has woken up.
+  it('records the gap: the nature exists as a TAG, Q6 reads a flat prop', () => {
+    // The fact now exists — MF3 shipped the four natures as a tag def pack...
+    expect(WARDLEY_NATURE.activity).toBe('wardley:nature/activity');
+
+    // ...and Q6 asks for a flat `nature` prop, which no element carries. Both
+    // halves stated as facts rather than as a comment, so the day somebody
+    // teaches `majority-fact` to read a tag, this is the test that tells them
+    // the rule is already written and waiting.
+    const rule = WARDLEY_CHECKUP_RULES.find(
+      r => r.id === 'wardley.phase-nomenclature'
+    )!;
+    expect(rule.majority).toEqual({ fact: 'nature', value: 'activity' });
     expect('nature' in component('a')).toBe(false);
   });
 

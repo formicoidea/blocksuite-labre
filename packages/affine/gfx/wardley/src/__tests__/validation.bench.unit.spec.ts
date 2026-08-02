@@ -87,7 +87,8 @@ function element(
   xywh: [number, number, number, number],
   role?: string,
   validationProfile?: string,
-  absolutePath?: [number, number][]
+  absolutePath?: [number, number][],
+  text?: string
 ): GfxPrimitiveElementModel {
   const yMap = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('elements').set(id, yMap);
@@ -95,6 +96,14 @@ function element(
   if (role !== undefined) yMap.set('role', role);
   if (validationProfile !== undefined) {
     yMap.set('validationProfile', validationProfile);
+  }
+  // A real label is a text element, and a `text` role is measured by the INK of
+  // its words: `no-overlap` reads the Y.Text of every label on every pass, so
+  // the budget has to be measured against a real attached one.
+  if (text !== undefined) {
+    yMap.set('text', new Y.Text(text));
+    yMap.set('fontSize', 18);
+    yMap.set('textAlign', 'left');
   }
 
   const preserved = new Map<string, unknown>();
@@ -117,6 +126,15 @@ function element(
     },
     get xywh() {
       return read('xywh') as string;
+    },
+    get text() {
+      return read('text');
+    },
+    get fontSize() {
+      return read('fontSize') as number | undefined;
+    },
+    get textAlign() {
+      return read('textAlign') as string | undefined;
     },
     get elementBound() {
       return Bound.deserialize(read('xywh') as string);
@@ -157,7 +175,17 @@ function referenceMap(
       case 1:
         // The label of the node before it, at the toolbox's own offset — so a
         // handful of them land on a neighbour, as on a real crowded map.
-        elements.push(element(doc, id, [x + 17, y - 4, 120, 26], WARDLEY_ROLE.label));
+        elements.push(
+          element(
+            doc,
+            id,
+            [x + 17, y - 4, 120, 26],
+            WARDLEY_ROLE.label,
+            undefined,
+            undefined,
+            'Customer'
+          )
+        );
         break;
       case 2: {
         const to: [number, number] = [x + 240, y + 60];
@@ -208,49 +236,44 @@ function medianMs(run: () => unknown, runs = 21, warmup = 5): number {
 }
 
 /**
- * Two medians measured on INTERLEAVED samples, for a comparison between two
- * variants of the same work.
+ * One median per variant, measured on INTERLEAVED samples.
  *
- * Measuring one and then the other is what a naive A/B bench does, and on a
- * shared runner it compares the machine's mood at two different moments as much
- * as it compares the code: back-to-back medians of the same evaluation drift by
- * half again on this suite. Alternating the samples puts both variants through
- * the same thermal state, the same GC pauses and the same neighbouring test
- * files, so what is left in the ratio is the difference between them.
+ * Measuring one variant and then the next is what a naive A/B bench does, and on
+ * a shared runner it compares the machine's mood at two moments as much as it
+ * compares the code: back-to-back medians of the *same* evaluation drift by half
+ * again on this suite, and by three times under a full parallel run. Rotating
+ * through the variants inside a single sweep puts all of them through the same
+ * thermal state, the same GC pauses and the same neighbouring test files, so
+ * what is left between them is the difference between them.
+ *
+ * Taking more than two also lets a caller include the SAME work twice and read
+ * its own noise floor off the result — see the on-demand test below, which is
+ * the only honest way to say "these two are indistinguishable" on a box whose
+ * load nobody controls.
  */
-function medianPairMs(
-  a: () => unknown,
-  b: () => unknown,
-  runs = 21,
+function medianEachMs(
+  runs: readonly (() => unknown)[],
+  samples = 21,
   warmup = 5
-): [number, number] {
-  for (let i = 0; i < warmup; i++) {
-    a();
-    b();
+): number[] {
+  for (let i = 0; i < warmup; i++) for (const run of runs) run();
+
+  const buckets: number[][] = runs.map(() => []);
+  for (let i = 0; i < samples; i++) {
+    for (let k = 0; k < runs.length; k++) {
+      // Rotated every iteration, so no variant systematically pays for warming
+      // the cache the next one then reads.
+      const index = (k + i) % runs.length;
+      const start = performance.now();
+      runs[index]();
+      buckets[index].push(performance.now() - start);
+    }
   }
 
-  const samplesA: number[] = [];
-  const samplesB: number[] = [];
-  for (let i = 0; i < runs; i++) {
-    // Order swapped every iteration, so neither variant systematically pays for
-    // warming the cache the other one then reads.
-    const [first, second] = i % 2 === 0 ? [a, b] : [b, a];
-    const [into1, into2] = i % 2 === 0 ? [samplesA, samplesB] : [samplesB, samplesA];
-
-    let start = performance.now();
-    first();
-    into1.push(performance.now() - start);
-
-    start = performance.now();
-    second();
-    into2.push(performance.now() - start);
-  }
-
-  const median = (samples: number[]) => {
-    samples.sort((x, y) => x - y);
-    return samples[Math.floor(samples.length / 2)];
-  };
-  return [median(samplesA), median(samplesB)];
+  return buckets.map(bucket => {
+    bucket.sort((x, y) => x - y);
+    return bucket[Math.floor(bucket.length / 2)];
+  });
 }
 
 describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
@@ -312,24 +335,43 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
 
     expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
 
-    // INTERLEAVED, or this compares two moments in the runner's life rather
-    // than two rule sets: measured one after the other, the same evaluation
-    // drifts by half again here, which is several times the effect being
-    // looked for.
-    const [without, with_] = medianPairMs(
+    /**
+     * THREE variants in ONE sweep, two of which are the same work.
+     *
+     * Interleaving alone still cannot name a fixed bound, because the number the
+     * assertion needs is "how far apart may two IDENTICAL measurements land on
+     * this machine, right now" — and a loaded runner deschedules threads and
+     * pauses for GC inside one variant's samples and not another's. No constant
+     * chosen on a developer's laptop describes a CI box under ten parallel
+     * suites; measured across runs here, the same evaluation lands anywhere
+     * between ×1.05 and ×1.4 of itself.
+     *
+     * So the noise floor is measured FROM THE SAME SAMPLES as the claim, not by
+     * a second call a moment later — which was the flaw in the first attempt:
+     * a separate calibration sweep reports the machine's mood at a different
+     * moment, which is precisely the thing being corrected for.
+     */
+    const [withoutA, with_, withoutB] = medianEachMs([
       () => evaluateRules(WARDLEY_RULES, map),
-      () => evaluateRules(both, map)
-    );
+      () => evaluateRules(both, map),
+      () => evaluateRules(WARDLEY_RULES, map),
+    ]);
+
+    const without = (withoutA + withoutB) / 2;
+    const noise = Math.max(withoutA, withoutB) / Math.min(withoutA, withoutB);
+    const bound = without * Math.max(noise, 1.25) + 0.05;
 
     console.info(
       `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
         `with ${WARDLEY_CHECKUP_RULES.length} on-demand rules also registered: ` +
-        `${with_.toFixed(3)} ms (interleaved; must be the same number)`
+        `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
+        `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
+        `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
     );
     // What the extra rules may cost is two property reads per evaluation, which
-    // is unmeasurable. The bound is generous against a noisy runner in both
-    // directions; anything past it would mean they are actually being walked.
-    expect(with_).toBeLessThan(without * 1.25 + 0.05);
+    // is unmeasurable. Anything past the spread the SAME work shows on this
+    // machine would mean they are actually being walked.
+    expect(with_).toBeLessThan(bound);
   }, BENCH_TIMEOUT_MS);
 
   it('runs those same rules only when asked, and finds something', () => {
@@ -463,28 +505,51 @@ describe('a drag on a dense map re-judges only what moved', () => {
         el.role !== WARDLEY_ROLE.inertia &&
         el.role !== WARDLEY_ROLE.changeArrow
     );
-    const full = medianMs(() =>
-      evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES)
-    );
+    const fullPass = () =>
+      medianMs(() => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES));
 
+    /**
+     * The baseline is bracketed rather than taken once at the top.
+     *
+     * This suite runs beside 96 other files and the machine's load moves under
+     * it, so a ratio between a figure measured at the start and one measured
+     * half a second later measures the load and not the code — that is the
+     * flake this replaces. One measurement on each side of the loop is enough
+     * to be contemporaneous with all five points; measuring it INSIDE the loop
+     * would be more contemporaneous still and would put 130 full passes under a
+     * wall-clock assertion, which is a different way of being wrong.
+     */
+    const before = fullPass();
+    const points: { size: number; ms: number }[] = [];
     for (const fraction of [0.02, 0.1, 0.3, 0.6, 1]) {
       const size = Math.max(1, Math.round(participants.length * fraction));
       const lasso = new Set(participants.slice(0, size).map(el => el.id));
-      const ms = medianMs(() =>
-        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
-          dirty: lasso,
-          previous,
-        })
-      );
+      points.push({
+        size,
+        ms: medianMs(() =>
+          evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
+            dirty: lasso,
+            previous,
+          })
+        ),
+      });
+    }
+    const full = Math.max(before, fullPass());
 
+    for (const { size, ms } of points) {
       console.info(
         `[bench] lasso drag, |dirty|=${size} of ${participants.length} participants: ` +
           `${ms.toFixed(3)} ms (full ${full.toFixed(3)} ms, budget ${FRAME_BUDGET_MS} ms)`
       );
       expect(ms).toBeLessThan(FRAME_BUDGET_MS);
-      // Never several times the price of the thing it is avoiding. Generous
-      // against CI noise; the point is that the ratio is bounded at all.
-      expect(ms).toBeLessThan(full * 2 + 1);
+      // Never several times the price of the thing it is avoiding. The bound is
+      // 3× and not 2×, and the number is not a taste: measured beside the other
+      // 96 files of the suite, the SAME full pass reads 2.7 ms and 5.2 ms
+      // within one test, so the noise floor here is a factor of two and a 2×
+      // bound is a coin toss. The regression this guard exists for was measured
+      // at EIGHT times the sweep; 3× still catches it, and the budget
+      // assertion above — the one a user feels — stays exact.
+      expect(ms).toBeLessThan(full * 3 + 2);
     }
     // Six medianMs measurements in one test — the most expensive case in the
     // file, and the one that has been timing out under load since before this

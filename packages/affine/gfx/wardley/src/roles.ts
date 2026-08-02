@@ -141,9 +141,13 @@ const DEFS: readonly RoleDef[] = [
   // The name written next to an artefact. A role of its own rather than a
   // property of the node it labels: on this canvas a label IS a separate free
   // text element, grouped with its node, and W3 is about where it lands.
+  //
+  // `text`, not `node`: a label is created 120 to 200 units wide whatever it
+  // reads, so its BOX is not a statement about anything the eye can see. The
+  // kind is what tells a rule to measure the words instead.
   {
     id: WARDLEY_ROLE.label,
-    kind: 'node',
+    kind: 'text',
     labelKey: 'com.labre.wardley.role.label',
   },
 ];

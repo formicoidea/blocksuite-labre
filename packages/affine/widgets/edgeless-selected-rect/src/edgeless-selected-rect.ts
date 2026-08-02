@@ -555,7 +555,14 @@ export class EdgelessSelectedRectWidget extends WidgetComponent<RootBlockModel> 
     );
 
     _disposables.add(
-      this._slots.readonlyUpdated.subscribe(() => this.requestUpdate())
+      // `_updateHandles` already refuses on readonly, but it only ran on
+      // selection change: a board switched to readonly while something was
+      // selected kept its 8 resize handles — and dragging one of them wrote
+      // `xywh`. Recompute on the flip, in both directions.
+      this._slots.readonlyUpdated.subscribe(() => {
+        this._updateHandles();
+        this.requestUpdate();
+      })
     );
 
     _disposables.add(

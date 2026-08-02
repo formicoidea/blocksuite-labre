@@ -108,8 +108,20 @@ export type OccurrenceMaterialityPatch = {
    * the record's other occurrences keep theirs (ADR 0006 § 4.3/4.4).
    */
   elementId: string;
-  /** Framework identity. */
-  framework: FrameworkId;
+  /**
+   * Owning framework, when the occurrence has one — derived from the namespace
+   * of its `role` (`'wardley:component'` → `'wardley'`).
+   *
+   * OPTIONAL, which is a deviation from ADR 0006 § 4's `framework: FrameworkId`,
+   * for exactly the reason ADR 0007 § 7 was already amended on the twin
+   * telemetry field: ADR 0007 § 6 states that no rung of the ladder requires
+   * the previous one, so a plain rectangle bound to a pivot record — no role at
+   * all — is a legal state that belongs to no framework. A required field would
+   * oblige the library to invent an identity, which is the one thing taking
+   * `FrameworkId` from ADR 0008 exists to stop. Absent rather than `'unknown'`,
+   * per the repo convention.
+   */
+  framework?: FrameworkId;
   /** Role id, e.g. `'wardley:component'`. `undefined` once the role is cleared. */
   role: string | undefined;
   /**
