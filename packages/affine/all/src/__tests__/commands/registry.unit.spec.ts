@@ -37,10 +37,10 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind
-      core: 7,
+      // + shape.cycleTextFit + pivot.bind + edge.invert-direction
+      core: 8,
     });
-    expect(commands).toHaveLength(67);
+    expect(commands).toHaveLength(68);
   });
 
   /**
@@ -52,7 +52,13 @@ describe('command registry invariants', () => {
    * opens is silent: a command that emits from its body AND declares
    * `telemetry` reports the same gesture twice, forever.
    */
-  const SELF_EMITTING_COMMANDS = ['pivot.bind'];
+  const SELF_EMITTING_COMMANDS = [
+    'pivot.bind',
+    // Same shape, same reason (`docs/adr/0010` M3): an inversion is neither a
+    // creation nor a static `{ framework, element }` pair — its role and its
+    // element count are facts of the invocation.
+    'edge.invert-direction',
+  ];
 
   test('a self-emitting command never also declares telemetry', () => {
     for (const id of SELF_EMITTING_COMMANDS) {

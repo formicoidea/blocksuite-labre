@@ -81,6 +81,22 @@ role, and therefore belonging to no framework. Ids only: the event says which
 rung was crossed, never what the board contains, and never the `pivotDocId`
 itself.
 
+## The direction of a typed edge (ADR 0010)
+
+For a connector carrying an edge role, the persisted `source → target` pair IS
+the relation's orientation. Reversing it is a correction of a statement, not a
+style change, so it reports as its own event.
+
+| Event                   | When                                          | Required props |
+| ----------------------- | --------------------------------------------- | -------------- |
+| `EdgeDirectionInverted` | the user reverses a typed edge (M3)            | `elementCount` |
+
+`role` and `framework` are optional and carry ids only — never the two element
+ids and never board content. A gesture that reverses nothing emits nothing.
+How often this fires is the measurement of whether the DRAWING gesture
+announces itself well enough (M1): links reversed constantly mean the hint is
+wrong.
+
 ## Validation arbitrations (PF8)
 
 No rule is a wall: every violation can be waived, and every waiver is reported.

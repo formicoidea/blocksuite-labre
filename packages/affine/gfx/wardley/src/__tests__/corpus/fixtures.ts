@@ -42,6 +42,14 @@ export interface CorpusElement {
   role?: string;
   xywh: [number, number, number, number];
   path?: [number, number][];
+  /**
+   * The elements an edge BINDS, when it binds any. Since `docs/adr/0010` this
+   * pair is the relation's orientation and not a routing detail: W4 reads it,
+   * and an edge that leaves it out is one that relates nothing and is never
+   * evaluated — which is itself a card below.
+   */
+  source?: string;
+  target?: string;
 }
 
 /** One card: a whole map, and the rule ids it must raise. Nothing else. */
@@ -64,6 +72,7 @@ export interface CorpusCard {
 const W1 = 'wardley.change-arrow-against-evolution';
 const W2 = 'wardley.inertia-off-transition';
 const W3 = 'wardley.overlapping-artefacts';
+const W4 = 'wardley.provider-above-consumer';
 
 /** The map background itself, on the strict profile so nothing is silenced. */
 const map = (): CorpusElement => ({
@@ -114,6 +123,43 @@ const link = (id: string, from: [number, number], to: [number, number]) =>
 
 const arrow = (id: string, from: [number, number], to: [number, number]) =>
   edge(id, WARDLEY_ROLE.changeArrow, from, to);
+
+/** The centre of an element, from its box. */
+const centreOf = (el: CorpusElement): [number, number] => [
+  el.xywh[0] + el.xywh[2] / 2,
+  el.xywh[1] + el.xywh[3] / 2,
+];
+
+/**
+ * A dependency BOUND to two nodes: `consumer` needs `provider`.
+ *
+ * The direction is the whole subject of W4, so it is spelled out at the call
+ * site rather than inferred from the geometry — which is exactly the shortcut
+ * `docs/adr/0010` § 4 rejects. The routed path is the segment between the two
+ * centres, which is what a straight, centre-anchored Wardley link draws.
+ */
+const needs = (
+  id: string,
+  consumer: CorpusElement,
+  provider: CorpusElement,
+  role: string = WARDLEY_ROLE.dependency
+): CorpusElement => {
+  const a = centreOf(consumer);
+  const b = centreOf(provider);
+  return {
+    id,
+    role,
+    xywh: [
+      Math.min(a[0], b[0]),
+      Math.min(a[1], b[1]),
+      Math.abs(b[0] - a[0]) || 1,
+      Math.abs(b[1] - a[1]) || 1,
+    ],
+    path: [a, b],
+    source: consumer.id,
+    target: provider.id,
+  };
+};
 
 /** An inertia bar centred on an absolute model point. */
 const inertia = (id: string, x: number, y: number): CorpusElement => ({
@@ -317,6 +363,120 @@ const w3LabelOnLink: CorpusCard = {
   expected: [W3],
 };
 
+// ── W4 · a provider may not sit above its consumer ─────────────────────
+
+const w4Descending: CorpusCard = (() => {
+  const consumer = node('n1', 0.3, 0.25);
+  const provider = node('n2', 0.5, 0.7);
+  return {
+    name: 'W4 valid — the consumer above what it needs',
+    elements: [map(), consumer, provider, needs('d1', consumer, provider)],
+    expected: [],
+  };
+})();
+
+const w4Level: CorpusCard = (() => {
+  // 10 units apart on a 900-high map: inside the declared 2% slack. A chain
+  // gets lined up before it gets spread out, and that is not a mistake.
+  const consumer: CorpusElement = { ...node('n1', 0.3, 0.5) };
+  const provider: CorpusElement = {
+    ...node('n2', 0.5, 0.5),
+    xywh: [at(0.5, 0.5)[0] - 9, at(0.5, 0.5)[1] - 9 + 10, 18, 18],
+  };
+  return {
+    name: 'W4 valid — two components drawn level, inside the tolerance',
+    elements: [map(), consumer, provider, needs('d1', consumer, provider)],
+    expected: [],
+  };
+})();
+
+const w4Inverted: CorpusCard = (() => {
+  // The consumer is BELOW what it needs: the value chain says the opposite of
+  // what the map means.
+  const consumer = node('n1', 0.3, 0.7);
+  const provider = node('n2', 0.5, 0.25);
+  return {
+    name: 'W4 invalid — the provider sits above its consumer',
+    elements: [map(), consumer, provider, needs('d1', consumer, provider)],
+    expected: [W4],
+    expectedIds: [`${W4}:d1+n1+n2`],
+  };
+})();
+
+const w4Cycle: CorpusCard = (() => {
+  // A ↔ B: two edges, judged as two edges. One of them necessarily runs against
+  // the order, and it is the one reported — no graph closure, no cycle
+  // detection, and no verdict on the pair as a whole.
+  const high = node('n1', 0.35, 0.7);
+  const low = node('n2', 0.6, 0.3);
+  return {
+    name: 'W4 invalid — a cycle A↔B, whose downhill half is reported',
+    elements: [map(), high, low, needs('d1', low, high), needs('d2', high, low)],
+    expected: [W4],
+    expectedIds: [`${W4}:d2+n1+n2`],
+  };
+})();
+
+const w4UnboundEnd: CorpusCard = (() => {
+  const consumer = node('n1', 0.3, 0.7);
+  const provider = node('n2', 0.5, 0.25);
+  const floating = needs('d1', consumer, provider);
+  // The link tool released over empty canvas, and the palette's own "Link"
+  // swatch: an edge bound to nothing relates nothing, whatever its geometry
+  // says. Same guard the hover reveal applies.
+  delete floating.target;
+  return {
+    name: 'W4 valid — an edge with a free end is never evaluated',
+    elements: [map(), consumer, provider, floating],
+    expected: [],
+  };
+})();
+
+const w4AcrossTwoMaps: CorpusCard = (() => {
+  const consumer = node('n1', 0.3, 0.7);
+  // On the SECOND map, 2000 units to the right. "Higher than" is a question
+  // inside one frame of reference, and two maps have two.
+  const provider: CorpusElement = {
+    id: 'n2',
+    role: WARDLEY_ROLE.component,
+    xywh: [2000 + 400, 200, 18, 18],
+  };
+  const secondMap: CorpusElement = {
+    id: 'map2',
+    role: WARDLEY_ROLE.map,
+    xywh: [2000, 0, 1600, 900],
+  };
+  return {
+    name: 'W4 valid — a pair straddling two maps is not compared',
+    elements: [
+      map(),
+      secondMap,
+      consumer,
+      provider,
+      needs('d1', consumer, provider),
+    ],
+    expected: [],
+  };
+})();
+
+const w4ChangeArrow: CorpusCard = (() => {
+  // The same inverted geometry, under a CHANGE ARROW. It is oriented too, and
+  // its verb is not "depends on" — W4 is written on one role and reads no
+  // other. It runs forward along evolution, so W1 stays quiet as well.
+  const from = node('n1', 0.3, 0.7);
+  const to = node('n2', 0.6, 0.25);
+  return {
+    name: 'W4 valid — a change arrow says nothing about who depends on whom',
+    elements: [
+      map(),
+      from,
+      to,
+      needs('a1', from, to, WARDLEY_ROLE.changeArrow),
+    ],
+    expected: [],
+  };
+})();
+
 /**
  * Cards that say nothing at all, whatever is on them — the proportionality
  * half of the recipe. A rule that fires here is a rule that has escaped its
@@ -368,6 +528,14 @@ const legacyMap: CorpusCard = {
  */
 const crowdedMap: CorpusCard = (() => {
   const { link: crossingLink, point } = crossing('d-cross', 0.55, 1);
+  // A BOUND chain, in its own corner: two links drawn the right way round and
+  // one drawn upside-down. The unbound links elsewhere on this card are the
+  // control — W4 must walk past them without a word.
+  // `fy` is a fraction of the map BOX, so a smaller one is higher on screen and
+  // more visible.
+  const top = node('chainTop', 0.62, 0.2);
+  const middle = node('chainMid', 0.68, 0.55);
+  const bottom = node('chainLow', 0.74, 0.9);
   return {
     name: 'a whole map wrong in several ways at once',
     elements: [
@@ -402,8 +570,15 @@ const crowdedMap: CorpusCard = (() => {
       node('solo', 0.35, 0.25),
       label('overNode', 0.35, 0.25),
       label('overLink', 0.3, 0.7),
+
+      // ── W4 ×1: one link of a bound chain drawn upside-down ─────────────
+      top,
+      middle,
+      bottom,
+      needs('chainOk', top, middle),
+      needs('chainBad', bottom, middle),
     ],
-    expected: [W1, W2, W3, W3, W3],
+    expected: [W1, W2, W3, W3, W3, W4],
     // Named element by element: on a card this size, "three overlaps" would be
     // satisfied just as well by three WRONG ones.
     expectedIds: [
@@ -412,6 +587,7 @@ const crowdedMap: CorpusCard = (() => {
       `${W3}:okD1+overLink`,
       `${W3}:overNode+solo`,
       `${W3}:pileA+pileB`,
+      `${W4}:chainBad+chainLow+chainMid`,
     ],
   };
 })();
@@ -430,6 +606,13 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w3NodeOnNode,
   w3LabelOnNode,
   w3LabelOnLink,
+  w4Descending,
+  w4Level,
+  w4Inverted,
+  w4Cycle,
+  w4UnboundEnd,
+  w4AcrossTwoMaps,
+  w4ChangeArrow,
   crowdedMap,
   neutralBoard,
   legacyMap,
@@ -456,6 +639,10 @@ export function cardElements(
           ? { validationProfile: profile }
           : {}),
         ...(el.path ? { absolutePath: el.path } : {}),
+        // The two ends, shaped exactly like a connector's `Connection`: an id
+        // when the edge is bound, nothing at all when it is not.
+        ...(el.source ? { source: { id: el.source } } : {}),
+        ...(el.target ? { target: { id: el.target } } : {}),
         get elementBound() {
           return new Bound(...el.xywh);
         },

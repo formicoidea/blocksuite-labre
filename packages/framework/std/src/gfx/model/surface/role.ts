@@ -19,6 +19,9 @@
  * children via {@link roleIsA}.
  */
 
+import { createIdentifier } from '@labre/global/di';
+import type { ExtensionType } from '@labre/store';
+
 /**
  * Namespaced role identifier, `<framework>:<role>`.
  *
@@ -32,6 +35,42 @@ export type RoleId = string;
 /** Whether a role describes a node (a surface element) or an edge (a connector). */
 export type RoleKind = 'node' | 'edge';
 
+/**
+ * What an EDGE role says about its own orientation — tier 1 of `docs/adr/0010`,
+ * written down where the vocabulary is rather than in the head of whoever
+ * drew the link:
+ *
+ * > An edge role names a **relation with a verb**. `source` is the subject of
+ * > that verb, `target` is its object. Reading an edge is reading one sentence:
+ * > `source` _verb_ `target`.
+ *
+ * Declared here so the three mechanisms of that ADR can be generic: the tool
+ * hint that ANNOUNCES the gesture (M1), the hover/selection reveal that SHOWS
+ * the orientation (M2) and the inversion command that lets the user FIX it
+ * (M3) all read this and never a framework's name. A `node` role has no
+ * business declaring one; an edge role that declares none simply reveals its
+ * label and no sentence.
+ *
+ * Keys plus the framework's own wording, exactly like a rule's message and a
+ * background's labels: the library never invents prose, a host with a
+ * catalogue always wins, and a catalogue-less playground still reads.
+ */
+export interface EdgeDirectionDef {
+  /** i18n key of the verb — `'depends on'`. Resolved by the host. */
+  verbKey: string;
+  /** The framework's own wording for {@link verbKey}. */
+  verbFallback?: string;
+  /**
+   * i18n key of the sentence that tells a user which way to DRAW the edge —
+   * "drag from the component that has the need to what it needs" (M1).
+   * Absent means the tool announces nothing, which is what every edge did
+   * before this ADR.
+   */
+  gestureHintKey?: string;
+  /** The framework's own wording for {@link gestureHintKey}. */
+  gestureHintFallback?: string;
+}
+
 export interface RoleDef {
   /** Namespaced id, `<framework>:<role>`. */
   id: RoleId;
@@ -43,6 +82,13 @@ export interface RoleDef {
   kind: RoleKind;
   /** i18n key of the human label; resolved by the host app. */
   labelKey?: string;
+  /**
+   * The framework's own wording for {@link labelKey}, for a host that ships no
+   * catalogue. Same seam and same rule as everywhere else in this library.
+   */
+  labelFallback?: string;
+  /** `edge` roles only: the verb the relation is read with. See {@link EdgeDirectionDef}. */
+  direction?: EdgeDirectionDef;
 }
 
 /** A framework's role vocabulary, indexed by role id. */
@@ -92,4 +138,73 @@ export function roleIsA(
   }
 
   return false;
+}
+
+/**
+ * A framework publishes its role vocabulary here, and nothing else publishes
+ * one. Multi-instance: one registered {@link RoleDefs} per framework.
+ *
+ * Registered from the framework's ALWAYS-ON render extension, never from its
+ * flag-gated one (`docs/adr/0009`). A role is not tooling: it is written in the
+ * document, and what reads it back — the direction reveal, the inversion
+ * command, the toolbar entry that must NOT lie about a typed edge — has to keep
+ * working on a map drawn while the flag was on and opened while it is off.
+ * Validation rules are the tooling half and stay where they are.
+ */
+export const RoleVocabularyIdentifier =
+  createIdentifier<RoleDefs>('RoleVocabulary');
+
+let _vocabularyId = 1;
+
+/**
+ * Register a framework's role vocabulary.
+ *
+ * ```ts
+ * context.register(RoleVocabularyExtension(WARDLEY_ROLES));
+ * ```
+ */
+export function RoleVocabularyExtension(defs: RoleDefs): ExtensionType {
+  return {
+    setup: di => {
+      di.addImpl(RoleVocabularyIdentifier(`RoleVocabulary-${_vocabularyId++}`), () => defs);
+    },
+  };
+}
+
+/**
+ * The declaration of `roleId` among the registered vocabularies, or
+ * `undefined` — for a neutral element, for a role whose framework registered
+ * nothing, and for a role that no longer exists.
+ *
+ * Takes the vocabularies rather than a `BlockStdScope` on purpose: this file is
+ * the vocabulary side of PF1 and has no business importing the editor scope.
+ * Callers hand in
+ * `[...std.provider.getAll(RoleVocabularyIdentifier).values()]`.
+ */
+export function findRoleDef(
+  vocabularies: readonly RoleDefs[],
+  roleId: RoleId | undefined
+): RoleDef | undefined {
+  if (roleId === undefined) return undefined;
+  for (const defs of vocabularies) {
+    const def = defs[roleId];
+    if (def !== undefined) return def;
+  }
+  return undefined;
+}
+
+/**
+ * Is this element's role a TYPED EDGE, i.e. a declared role of `kind: 'edge'`?
+ *
+ * The one predicate `docs/adr/0010` turns on: for such an element the persisted
+ * `source → target` pair IS the relation's orientation and part of the
+ * document's meaning. Everything else — a generalist connector, a decoration,
+ * an element whose framework is not loaded — answers `false` and keeps the two
+ * ends it always had, carrying no claim.
+ */
+export function isTypedEdgeRole(
+  vocabularies: readonly RoleDefs[],
+  roleId: RoleId | undefined
+): boolean {
+  return findRoleDef(vocabularies, roleId)?.kind === 'edge';
 }

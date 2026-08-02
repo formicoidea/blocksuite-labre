@@ -74,7 +74,15 @@ function element(
   xywh: [number, number, number, number],
   role?: string,
   validationProfile?: string,
-  absolutePath?: [number, number][]
+  absolutePath?: [number, number][],
+  /**
+   * The two ends of a typed edge. Plain properties, like the routed path: on a
+   * real connector `source`/`target` are `@field()` accessors, but W4 reads
+   * each of them once per edge — never per element and never in a loop — so the
+   * two Y.Map lookups they would add are below the noise of the pass they sit
+   * in, and modelling them here would only make the fixture longer.
+   */
+  ends?: { source: string; target: string }
 ): GfxPrimitiveElementModel {
   const yMap = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('elements').set(id, yMap);
@@ -93,6 +101,9 @@ function element(
     // A routed path is `@local()` on the real connector — a plain property, as
     // here — so this one is honest by being cheap.
     ...(absolutePath ? { absolutePath } : {}),
+    ...(ends
+      ? { source: { id: ends.source }, target: { id: ends.target } }
+      : {}),
     get role() {
       return read('role') as string | undefined;
     },
@@ -148,11 +159,23 @@ function referenceMap(
         break;
       case 2: {
         const to: [number, number] = [x + 240, y + 60];
+        // BOUND to the component of this row and the next one — which is what
+        // makes W4 evaluate it at all, and what makes this map measure the
+        // family rather than its early exit. The generator's positions are
+        // pseudo-random, so roughly half the pairs come out against the value
+        // chain: a real violating population, like the arrows below.
+        const source = `el-${i - 2}`;
+        const target = i + 4 < size ? `el-${i + 4}` : `el-${i - 8}`;
         elements.push(
-          element(doc, id, [x, y, 240, 60], WARDLEY_ROLE.dependency, undefined, [
-            [x, y],
-            to,
-          ])
+          element(
+            doc,
+            id,
+            [x, y, 240, 60],
+            WARDLEY_ROLE.dependency,
+            undefined,
+            [[x, y], to],
+            { source, target }
+          )
         );
         break;
       }
@@ -192,6 +215,42 @@ function medianMs(run: () => unknown, runs = 21, warmup = 5): number {
   }
   samples.sort((a, b) => a - b);
   return samples[Math.floor(samples.length / 2)];
+}
+
+/**
+ * Two medians, measured ALTERNATELY — for a comparison between two ways of
+ * doing the same work.
+ *
+ * `medianMs` twice in a row is a comparison between two moments as much as
+ * between two implementations: a runner that gets busy between them shifts one
+ * side and not the other. That was tolerable while the saving was most of the
+ * evaluation; with a fourth rule paying a fixed cost on BOTH sides, the margin
+ * is now a fraction of the total, and the drift is bigger than the thing being
+ * measured. Interleaving makes any load the two sides share cancel out.
+ */
+function pairedMedianMs(
+  a: () => unknown,
+  b: () => unknown,
+  runs = 21,
+  warmup = 5
+): [number, number] {
+  for (let i = 0; i < warmup; i++) {
+    a();
+    b();
+  }
+  const aSamples: number[] = [];
+  const bSamples: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    let start = performance.now();
+    a();
+    aSamples.push(performance.now() - start);
+    start = performance.now();
+    b();
+    bSamples.push(performance.now() - start);
+  }
+  const median = (samples: number[]) =>
+    samples.sort((x, y) => x - y)[Math.floor(samples.length / 2)];
+  return [median(aSamples), median(bSamples)];
 }
 
 describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
@@ -313,11 +372,13 @@ describe('a drag on a dense map re-judges only what moved', () => {
   });
 
   it('is cheaper than the full pass it replaces', () => {
-    const full = medianMs(() =>
-      evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES)
-    );
-    const incremental = medianMs(() =>
-      evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, { dirty, previous })
+    // Interleaved: the saving is the pair-wise family's, while the three
+    // element-local rules and W4 cost the same on both sides, so the margin is
+    // a fraction of the total and a drifting runner would decide the verdict.
+    const [full, incremental] = pairedMedianMs(
+      () => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES),
+      () =>
+        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, { dirty, previous })
     );
 
     console.info(
@@ -339,7 +400,11 @@ describe('a drag on a dense map re-judges only what moved', () => {
    * shape of the curve, not one point on it, because "it is fast for a drag of
    * three" was exactly the claim that hid the problem.
    */
-  it('stays inside the frame at EVERY dirty-set size', () => {
+  // Five dirty-set sizes, each measured over 21 runs plus a warm-up, against
+  // an engine that now carries a fourth rule: past the package's 1 s default on
+  // a loaded machine. The BUDGET each evaluation is held to is unchanged — it
+  // is the number of evaluations this one test performs that needs the room.
+  it('stays inside the frame at EVERY dirty-set size', { timeout: 10_000 }, () => {
     const participants = map.filter(
       el =>
         el.role !== undefined &&
@@ -396,6 +461,12 @@ describe('a drag on a dense map re-judges only what moved', () => {
  * one machine: 1650 to 2100, median ~1930). It moves DOWN as rules are added:
  * each extra pair-wise rule is another full sweep.
  *
+ * W4 (`docs/adr/0010`) joined the pack without moving that wall, and the suite
+ * above says why: it is priced by the RELATIONS somebody drew, so it adds a
+ * linear term (~0.3 ms on the reference map, a fifth of the full evaluation)
+ * and no second sweep. A rule about a pair of elements is not automatically a
+ * quadratic rule — a rule about every pair is.
+ *
  * So the honest trigger for a spatial index is **the second pair-wise rule, or
  * the first board past ~2000 elements — whichever comes first.** Not "when we
  * have fourteen frameworks": one more `no-overlap` rule halves the headroom on
@@ -419,12 +490,11 @@ describe('the budget horizon, recorded for the next slice', () => {
     // is, and the extrapolated wall ~60 % more pessimistic than it is.
     const smallMap = referenceMap(500, 'wardley.strict');
     const bigMap = referenceMap(1000, 'wardley.strict');
-    const small = medianMs(
+    // Interleaved, for the reason `pairedMedianMs` documents: the RATIO is the
+    // only claim about the engine here, and measuring the two sizes one after
+    // the other lets a runner that gets busy in between decide it.
+    const [small, big] = pairedMedianMs(
       () => evaluateRules(WARDLEY_RULES, smallMap, WARDLEY_PROFILES),
-      7,
-      2
-    );
-    const big = medianMs(
       () => evaluateRules(WARDLEY_RULES, bigMap, WARDLEY_PROFILES),
       7,
       2
@@ -462,6 +532,107 @@ describe('the budget horizon, recorded for the next slice', () => {
     expect(pairwise.map(rule => rule.id)).toEqual([
       'wardley.overlapping-artefacts',
     ]);
+  });
+});
+
+/**
+ * W4's own shape, measured apart from the pair-wise family it shares a budget
+ * with.
+ *
+ * The claim `docs/adr/0010` makes is that a relative-order rule is priced by the
+ * RELATIONS somebody drew, not by the couples of nodes that could have had one:
+ * one indexing pass, then one pass over the edges. No transitive closure, no
+ * sweep. A quadratic W4 would be a different rule wearing the same name — it
+ * would also halve the headroom of the whole engine, which is the number the
+ * suite above is written to protect.
+ *
+ * So this measures the family ALONE at two sizes and asserts the growth is
+ * linear, not quadratic. The absolute milliseconds are logged and never
+ * asserted: they are a statement about the machine, the RATIO is the statement
+ * about the engine.
+ */
+describe('W4 is priced by the relations, not by the pairs', () => {
+  const w4 = WARDLEY_RULES.filter(
+    rule => rule.family === 'relative-order-along-axis'
+  );
+
+  it('has a violating population to measure', () => {
+    const found = evaluateRules(w4, referenceMap(MAP_SIZE));
+    // Both halves matter: findings prove the family runs to the end, and the
+    // count proves the reference map is not accidentally conformant.
+    expect(found.length).toBeGreaterThan(10);
+    expect(found.every(v => v.elementIds.length === 3)).toBe(true);
+  });
+
+  /**
+   * The shape, asserted by COUNTING rather than by timing.
+   *
+   * A chain of 200 nodes, every link drawn upside-down, is 199 relations. A
+   * family that walked the pairs — or that closed the graph to find out what
+   * transitively depends on what — would have 19 900 comparisons to make and,
+   * on this fixture, that many things to say. 199 findings is the whole claim,
+   * and unlike a millisecond count it cannot be argued with by a busy machine.
+   */
+  it('is priced by the RELATIONS: a 200-node chain is 199 findings', () => {
+    const doc = new Y.Doc();
+    const size = 200;
+    const elements: GfxPrimitiveElementModel[] = [
+      element(doc, 'bg', [0, 0, MAP_W, MAP_H], WARDLEY_ROLE.map),
+    ];
+    // Nodes alternate between the bottom and the top of the value chain, and
+    // every link is drawn from the LOWER one to the higher one — 199 relations,
+    // every one of them against the order, each pair far enough apart that the
+    // declared slack cannot excuse it.
+    const low = 700;
+    const high = 200;
+    const yOf = (i: number) => (i % 2 === 0 ? low : high);
+    for (let i = 0; i < size; i++) {
+      elements.push(
+        element(doc, `n-${i}`, [20 + i * 7, yOf(i), 18, 18], WARDLEY_ROLE.component)
+      );
+      if (i === 0) continue;
+      // The consumer is the one sitting lower: exactly what W4 refuses.
+      const consumer = yOf(i) === low ? `n-${i}` : `n-${i - 1}`;
+      const provider = yOf(i) === low ? `n-${i - 1}` : `n-${i}`;
+      elements.push(
+        element(
+          doc,
+          `d-${i}`,
+          [20 + i * 7, high, 18, 8],
+          WARDLEY_ROLE.dependency,
+          undefined,
+          undefined,
+          { source: consumer, target: provider }
+        )
+      );
+    }
+
+    const found = evaluateRules(w4, elements);
+    expect(found).toHaveLength(size - 1);
+    // ...and every one of them names exactly one relation and its two ends.
+    expect(new Set(found.map(v => v.elementIds.length))).toEqual(new Set([3]));
+  });
+
+  it('stays a small fraction of the frame at twice the reference map', () => {
+    const small = referenceMap(MAP_SIZE, 'wardley.strict');
+    const big = referenceMap(MAP_SIZE * 2, 'wardley.strict');
+    const oneWay = medianMs(() => evaluateRules(w4, small, WARDLEY_PROFILES), 7, 2);
+    const twice = medianMs(() => evaluateRules(w4, big, WARDLEY_PROFILES), 7, 2);
+
+    console.info(
+      `[bench] W4 alone, ${MAP_SIZE} → ${MAP_SIZE * 2} elements ` +
+        `(${Math.round(MAP_SIZE / 6)} → ${Math.round((MAP_SIZE * 2) / 6)} bound edges): ` +
+        `${oneWay.toFixed(3)} → ${twice.toFixed(3)} ms (×${(twice / oneWay).toFixed(2)}) ` +
+        `— budget ${FRAME_BUDGET_MS} ms`
+    );
+
+    // The RATIO is logged, never asserted: both figures are well under a
+    // millisecond on an idle machine, which is exactly where a median stops
+    // being a statement about the engine and becomes one about the runner's
+    // mood. The shape is asserted above, by counting. What is worth pinning
+    // here is the absolute: the family must not eat the frame on a board twice
+    // the size of the reference map.
+    expect(twice).toBeLessThan(FRAME_BUDGET_MS / 2);
   });
 });
 

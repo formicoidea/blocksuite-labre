@@ -107,6 +107,12 @@ function cardOf(name: string, raw: Record<string, RawElement>): TemplateCard {
         id,
         role: el.role,
         absolutePath: [from, to],
+        // The two ENDS, carried verbatim. Since `docs/adr/0010` the pair is not
+        // routing information: it is the relation's orientation, and W4 reads
+        // it. A reader that dropped it would let a template ship a value chain
+        // drawn upside-down and report nothing.
+        source: el.source,
+        target: el.target,
         get elementBound() {
           return bound.clone();
         },

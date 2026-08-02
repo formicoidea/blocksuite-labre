@@ -78,12 +78,16 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   optionally at one of the frame's zone transitions.
  * - `no-overlap` — declared pairs of roles must not collide. The first family
  *   that is not element-local: it evaluates PAIRS.
+ * - `relative-order-along-axis` — the two elements a TYPED EDGE links must sit
+ *   in the order that edge states, along one axis of the frame. The first
+ *   family whose subject is a RELATION rather than an element or a proximity.
  */
 export type RuleFamily =
   | 'element-in-background'
   | 'orientation-against-axis'
   | 'attachment'
-  | 'no-overlap';
+  | 'no-overlap'
+  | 'relative-order-along-axis';
 
 /** `orientation-against-axis` configuration. */
 export interface AgainstAxisDef {
@@ -172,6 +176,51 @@ export interface AttachmentDef {
 export type OverlapPair = readonly [RoleId, RoleId];
 
 /**
+ * `relative-order-along-axis` configuration — the family of `docs/adr/0010`'s
+ * W4, "a provider component may not be positioned higher than its consumer".
+ *
+ * The rule reads a RELATION: given a typed edge, it compares the two elements
+ * that edge links along one axis of the frame, in the order the edge states.
+ * That order comes from the persisted `source → target` pair and from nowhere
+ * else — deriving it from the geometry would make the rule compare the layout
+ * against itself, so it could never fire (ADR 0010 § 4a).
+ */
+export interface RelativeOrderDef {
+  /**
+   * The EDGE role whose orientation is read. An element matching it (or
+   * specialising it) with both ends bound is one subject of the rule; every
+   * other edge on the board is none of its business — a Wardley change arrow is
+   * oriented too, and says nothing about who depends on whom.
+   */
+  edgeRole: RoleId;
+  /** Id of the axis in the rule's {@link ValidationRule.background}. */
+  axis: string;
+  /**
+   * Which end the edge states should be FURTHER ALONG the axis' forward sense
+   * (the direction of increasing value: up for a vertical axis, right for a
+   * horizontal one).
+   *
+   * `'source-ahead'` for `wardley:dependency`: the source is the consumer, so
+   * it sits higher on the visibility axis and the target is what it rests on.
+   * Needs descend from source to target; value flows back up.
+   */
+  expect: 'source-ahead' | 'target-ahead';
+  /**
+   * Slack before the verdict falls, as a RATIO of the frame's extent along that
+   * axis — never a number of model units.
+   *
+   * Same lesson the transition band learned on the PO recette of 01/08/2026: an
+   * absolute tolerance is four times as strict on a map four times as big, and
+   * nothing on screen explains why. Two components drawn level are not a
+   * mistake — an architect lines up a chain before spreading it out — so the
+   * rule only speaks when one is genuinely below the other.
+   *
+   * Absent means zero: any inversion at all, however small, is reported.
+   */
+  toleranceRatio?: number;
+}
+
+/**
  * A rule is declarative, versioned data owned by its framework (PRD principle
  * 5) — never a subclass, never a closure. It is comparable, serializable and
  * can be shipped by a host.
@@ -228,6 +277,8 @@ export interface ValidationRule extends RuleMessage {
   attachment?: AttachmentDef;
   /** `no-overlap` only: the combinations that must not collide. */
   overlap?: readonly OverlapPair[];
+  /** `relative-order-along-axis` only. */
+  relativeOrder?: RelativeOrderDef;
 }
 
 /**
@@ -440,9 +491,18 @@ export interface Violation {
   ruleId: string;
   /**
    * The elements the rule indicts — one for an element-local family, TWO for
-   * `no-overlap`, which is about a pair and not about either half of it. Sorted
-   * by id, so the same collision always reports the same way whichever order
-   * the surface happened to be walked in.
+   * `no-overlap` (which is about a pair and not about either half of it), and
+   * THREE for `relative-order-along-axis`: the two elements the relation links
+   * plus the edge that states it.
+   *
+   * The edge is in there deliberately. The finding has two honest resolutions —
+   * move a node, or reverse the relation — and the second one is only reachable
+   * from the edge, which carries the inversion command (`docs/adr/0010` M3). A
+   * finding that named the nodes alone would show the user two brackets and no
+   * way to the gesture that fixes half the cases.
+   *
+   * Always sorted by id, so the same situation reports the same way whichever
+   * order the surface happened to be walked in.
    */
   elementIds: string[];
   severity: ViolationSeverity;
@@ -1336,6 +1396,132 @@ function evaluateNoOverlap(
 }
 
 /**
+ * The two ids a typed edge BINDS, or `null`.
+ *
+ * Duck-typed exactly like {@link elementPath}, and for the same reason: the
+ * engine knows roles and geometry, and must not import a connector model. An
+ * end holding a bare `position` and no `id` is bound to nothing.
+ *
+ * `null` is the ADR's own guard, and it is not marginal — releasing the link
+ * tool over empty canvas produces such an edge at any time, and a palette
+ * sample of a stroke style is one by construction. An edge that relates nothing
+ * is never evaluated.
+ */
+function boundEnds(el: unknown): [string, string] | null {
+  const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
+  const source = edge.source?.id;
+  const target = edge.target?.id;
+  if (typeof source !== 'string' || typeof target !== 'string') return null;
+  // A self-loop states nothing about an order: it is one element, compared with
+  // itself, and no move can ever resolve it.
+  if (source === target) return null;
+  return [source, target];
+}
+
+/**
+ * "Are these two in the order their relation states?" — W4 (`docs/adr/0010`).
+ *
+ * The first family whose subject is a RELATION. For every element carrying the
+ * declared edge role, the two elements it binds are projected onto one axis of
+ * the frame and compared in the order the edge states: for
+ * `wardley:dependency`, the source is the consumer and must sit higher on the
+ * visibility axis than what it needs.
+ *
+ * The order comes from the persisted `source → target` pair, never from the
+ * geometry — that is the whole point, and the reason this rule can fire at all.
+ * Every other input is declaration: which axis, which way it runs, how much
+ * slack, all read off the frame the framework already declares.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **no frame on the board** — nothing declares an axis, so there is no order
+ *   to be in. A chain drawn on blank canvas is a sketch;
+ * - **an edge with a free end** — it relates nothing (see {@link boundEnds});
+ * - **an end whose element is gone** — a dangling id says nothing about a
+ *   layout;
+ * - **a pair straddling TWO frames** — "higher than" is a question inside one
+ *   frame of reference, and two maps have two;
+ * - **an edge carrying no role, or another role** — proportionality (PRD
+ *   principle 8). A change arrow is oriented too and is not a dependency.
+ *
+ * ## Cost
+ *
+ * Linear in the EDGES: one pass to index the elements by id, one pass over the
+ * edges, and two constant-time frame attributions per edge. There is no graph
+ * closure and no pair-wise sweep — the rule is about a relation somebody drew,
+ * never about every couple of nodes that could have had one. A cycle A→B→A is
+ * two edges and is judged as two edges: at least one of them is against the
+ * order, and that one is reported.
+ */
+function evaluateRelativeOrder(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const order = rule.relativeOrder;
+  const def = rule.background;
+  if (order === undefined || def === undefined) return [];
+
+  const axis = backgroundAxisFact(def, order.axis);
+  if (axis === undefined) {
+    warnOnce(
+      `relative-order rule "${rule.id}" measures along "${order.axis}", which ` +
+        `its background does not declare — the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const backgrounds = backgroundsOf(rule, elements);
+  // No frame, no frame of reference: a chain on blank canvas is a sketch.
+  if (backgrounds.length === 0) return [];
+
+  const byId = new Map<string, GfxPrimitiveElementModel>();
+  const edges: GfxPrimitiveElementModel[] = [];
+  for (const el of elements) {
+    byId.set(el.id, el);
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, order.edgeRole, rule.roles)) edges.push(el);
+  }
+  if (edges.length === 0) return [];
+
+  const horizontal = axis.orientation === 'horizontal';
+  // How far along the axis' FORWARD sense a bound sits. One number, so the
+  // comparison below reads the same whichever way the axis runs.
+  const along = (bound: Bound): number => {
+    const centre = centreOf(bound);
+    return centre[0] * axis.forward[0] + centre[1] * axis.forward[1];
+  };
+
+  const violations: Violation[] = [];
+  for (const edge of edges) {
+    const ends = boundEnds(edge);
+    if (ends === null) continue;
+    const [sourceId, targetId] = ends;
+    const source = byId.get(sourceId);
+    const target = byId.get(targetId);
+    if (source === undefined || target === undefined) continue;
+
+    const sourceBound = source.elementBound;
+    const targetBound = target.elementBound;
+    const frame = attributeBackground(sourceBound, backgrounds);
+    // Two maps, two frames of reference: the question does not arise.
+    if (frame === null) continue;
+    if (attributeBackground(targetBound, backgrounds)?.id !== frame.id) continue;
+
+    const ahead = along(sourceBound) - along(targetBound);
+    const expected = order.expect === 'source-ahead' ? ahead : -ahead;
+    const span = horizontal ? frame.bound.w : frame.bound.h;
+    const tolerance = (order.toleranceRatio ?? 0) * span;
+    if (expected >= -tolerance) continue;
+
+    violations.push(
+      raise(rule, [edge.id, sourceId, targetId].sort(), frame.id)
+    );
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -1364,6 +1550,7 @@ const RULE_FAMILIES: Record<
   'orientation-against-axis': evaluateOrientationAgainstAxis,
   attachment: evaluateAttachment,
   'no-overlap': evaluateNoOverlap,
+  'relative-order-along-axis': evaluateRelativeOrder,
 };
 
 /** The exceptions an element carries, always an array, never a copy to keep. */
@@ -1641,6 +1828,13 @@ export const VERDICT_PROPS = [
   'xywh',
   'rotate',
   'role',
+  // The two ends of a typed edge ARE the relation's orientation since
+  // `docs/adr/0010`, so re-pointing one — or reversing the edge, which writes
+  // both — changes a verdict exactly as much as moving a node does. Without
+  // these, an inversion would leave the finding on screen until the next
+  // unrelated drag woke the engine.
+  'source',
+  'target',
   // A user exception changes a verdict as much as a move does: without this,
   // granting one on a peer's tab would leave the mark up until the next drag.
   'validationExceptions',

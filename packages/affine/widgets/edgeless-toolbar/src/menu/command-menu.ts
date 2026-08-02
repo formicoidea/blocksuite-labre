@@ -66,6 +66,40 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
     });
   }
 
+  /**
+   * What the button says on hover: its label, plus — when the command declares
+   * one — the sentence that tells the user what its GESTURE means.
+   *
+   * That second line is M1 of `docs/adr/0010`: a link tool whose drag decides
+   * the orientation of a persisted relation has to SAY so, or the direction it
+   * writes is a by-product rather than a statement. The library still puts no
+   * words in a framework's mouth — both halves are the framework's own keys and
+   * fallbacks, resolved through the host's catalogue.
+   */
+  private _tooltip(command: CommandDescriptor) {
+    const label = translateKey(
+      this.edgeless.std,
+      command.labelKey,
+      command.labelFallback
+    );
+    const { descriptionKey, descriptionFallback } = command;
+    if (!descriptionKey && !descriptionFallback) return label;
+
+    const hint = descriptionKey
+      ? translateKey(this.edgeless.std, descriptionKey, descriptionFallback)
+      : descriptionFallback;
+    // A key with no catalogue entry and no fallback resolves to itself — show
+    // the label alone rather than a raw i18n key under it.
+    if (!hint || hint === descriptionKey) return label;
+
+    // Inline, not a class: the template is rendered inside the icon button's
+    // own shadow root, where this component's stylesheet does not reach.
+    return html`${label}<span
+        style="display:block;max-width:220px;margin-top:2px;opacity:0.75;font-size:11px;line-height:1.35;white-space:normal"
+        >${hint}</span
+      >`;
+  }
+
   override render() {
     const std = this.edgeless.std;
     return html`
@@ -74,11 +108,7 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
           <div class="button-group-container">
             ${this.commands.map(
               command => html`<edgeless-tool-icon-button
-                .tooltip=${translateKey(
-                  std,
-                  command.labelKey,
-                  command.labelFallback
-                )}
+                .tooltip=${this._tooltip(command)}
                 @click=${() => this._invoke(command)}
               >
                 ${getCommandIcon(std, command.iconKey)}
