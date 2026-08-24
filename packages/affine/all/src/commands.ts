@@ -5,6 +5,7 @@ import {
 } from '@labre/affine-block-root';
 import { auditCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
+import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainCommands } from '@labre/affine-gfx-ddd-core-domain';
@@ -75,7 +76,11 @@ export function buildCommandRegistry(
 
 /**
  * Every command a given flag set exposes. Shapes are core canvas, so their
- * commands are always-on like root's.
+ * commands are always-on like root's — and so is `edge.invert-direction`
+ * (`docs/adr/0010` M3): it acts on whatever carries an edge ROLE, which is
+ * document content, so it must stay reachable on a board whose framework
+ * tooling is switched off. It is registered from the always-on connector view
+ * extension for exactly the same reason.
  *
  * `auditCommands` is `'core'`-owned but NOT always-on: it rides the `ai-audit`
  * capability switch, which is a second axis (see `OPTIONAL_CAPABILITIES`). The
@@ -90,6 +95,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...pivotCommands,
       ...tagCommands,
       ...shapeCommands,
+      ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],
     FRAMEWORK_COMMAND_GROUPS,

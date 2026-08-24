@@ -38,26 +38,42 @@ describe('command registry invariants', () => {
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + map.audit
+      // + edge.invert-direction
       //
       // `map.audit` is counted here because `getCommands()` is called with no
       // flags and `ai-audit` defaults to enabled, like every switch. Its
       // absence under `{ 'ai-audit': false }` is asserted in
       // `audit-gating.unit.spec.ts`.
-      core: 9,
+      //
+      // These two numbers are where a merge goes wrong SILENTLY: every branch
+      // that adds one core command writes the count it saw, so two of them
+      // agree on a number that is short by one and git keeps it without a
+      // conflict. They are the whole point of this test — the line that
+      // notices a command appearing or vanishing — so re-derive them at every
+      // merge instead of trusting the diff.
+      core: 10,
     });
-    expect(commands).toHaveLength(69);
+    expect(commands).toHaveLength(70);
   });
 
   /**
-   * ADR 0008 puts emission in `runCommand` "and nowhere else". Two commands
-   * are excepted — the PROMOTION rungs, whose event depends on their params
-   * and on which elements actually changed, neither of which the bottleneck
-   * receives (see the ADR's Resolved question 5). They are enumerated here
+   * ADR 0008 puts emission in `runCommand` "and nowhere else". Three commands
+   * are excepted — the two PROMOTION rungs and the direction inversion, whose
+   * events depend on their params and on which elements actually changed,
+   * neither of which the bottleneck receives (see the ADR's Resolved question
+   * 5). They are enumerated here
    * rather than left as a comment in a function body, because the failure mode
    * they open is silent: a command that emits from its body AND declares
    * `telemetry` reports the same gesture twice, forever.
    */
-  const SELF_EMITTING_COMMANDS = ['pivot.bind', 'tag.set'];
+  const SELF_EMITTING_COMMANDS = [
+    'pivot.bind',
+    'tag.set',
+    // Same shape, same reason (`docs/adr/0010` M3): an inversion is neither a
+    // creation nor a static `{ framework, element }` pair — its role and its
+    // element count are facts of the invocation.
+    'edge.invert-direction',
+  ];
 
   test('a self-emitting command never also declares telemetry', () => {
     for (const id of SELF_EMITTING_COMMANDS) {

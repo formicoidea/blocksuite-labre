@@ -96,11 +96,16 @@ export {
   type PivotOccurrence,
 } from './model/surface/pivot.js';
 export {
+  type EdgeDirectionDef,
+  findRoleDef,
+  isTypedEdgeRole,
   type RoleDef,
   type RoleDefs,
   type RoleId,
   roleIsA,
   type RoleKind,
+  RoleVocabularyExtension,
+  RoleVocabularyIdentifier,
 } from './model/surface/role.js';
 export {
   ELEMENT_TAGS_FIELD,
