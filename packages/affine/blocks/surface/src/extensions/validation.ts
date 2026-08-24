@@ -3506,6 +3506,22 @@ function anchorOf(elementId: string, surface: SurfaceBlockModel) {
 }
 
 /**
+ * What SHAPE the anchor is, and therefore where its persistent badge belongs.
+ *
+ * The same split {@link RoleKind} makes for MEASURING, made here for MARKING,
+ * and for the same reason: the bounding box of a diagonal link covers half the
+ * map, so its top-right corner is a point on the white paper with nothing under
+ * it. The PO's capture of 02/08 is exactly that — an amber dot floating a
+ * hundred units away from the trait it accuses.
+ *
+ * - `node` — marked on the top-right corner of its bounds, as before.
+ * - `edge` — marked on the MIDDLE of the link: the midpoint of the drawn path
+ *   when the element exposes one, and otherwise the intersection of the
+ *   bounding rectangle's diagonals, which is its centre.
+ */
+export type ViolationAnchorKind = 'node' | 'edge';
+
+/**
  * One anchor and everything reported against it: where to draw, and what the
  * detail bubble has to list when the badge on it is clicked.
  */
@@ -3513,7 +3529,104 @@ export interface ViolationAnchor {
   /** The element the mark is drawn on — the outermost group, or the element. */
   id: string;
   bound: Bound;
+  /** What the mark is pinned to. See {@link ViolationAnchorKind}. */
+  kind: ViolationAnchorKind;
+  /**
+   * Where the persistent badge is pinned, in MODEL space — the one point both
+   * the badge and the bubble it opens are laid out from.
+   *
+   * Computed here rather than by the widget so it is one pure function of the
+   * document, testable with asserted coordinates and identical for every
+   * surface that ever draws a mark.
+   */
+  markAt: [number, number];
   violations: Violation[];
+}
+
+/**
+ * The MIDDLE of a drawn path, by arc length — not the middle point of the
+ * array, which on an elbowed connector is wherever the router happened to put a
+ * bend.
+ */
+function pathMidpoint(path: readonly Point[]): Point | null {
+  if (path.length === 0) return null;
+  if (path.length === 1) return [path[0][0], path[0][1]];
+
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    total += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+  }
+  // A degenerate path (every point on top of the last) has no middle to find;
+  // any of its points is the answer.
+  if (total === 0) return [path[0][0], path[0][1]];
+
+  let walked = 0;
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1];
+    const to = path[i];
+    const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    if (walked + length >= total / 2) {
+      const t = length === 0 ? 0 : (total / 2 - walked) / length;
+      return [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+    }
+    walked += length;
+  }
+  return [path[path.length - 1][0], path[path.length - 1][1]];
+}
+
+/**
+ * Whether the mark on this element belongs on the MIDDLE of a link rather than
+ * on a corner of a box.
+ *
+ * Two independent answers, either of which is enough, because they are the two
+ * ways an edge can be one:
+ *
+ * 1. its ROLE says so — a declared role of `kind: 'edge'`, which is the
+ *    semantic answer and the one a framework owns;
+ * 2. its GEOMETRY says so — the element exposes a path ({@link elementPath}),
+ *    which covers a generalist connector carrying no role at all, and an
+ *    element whose framework is not loaded.
+ *
+ * Vocabularies are optional: a caller that has none (the canvas overlay, which
+ * only ever reads `bound`) still gets the geometric answer.
+ */
+function anchorKindOf(
+  element: unknown,
+  vocabularies: readonly RoleDefs[]
+): ViolationAnchorKind {
+  // A GROUP is never an edge, whatever it contains: the mark frames the group's
+  // box, and the middle of that box is not on any of its members.
+  if (element instanceof GfxGroupLikeElementModel) return 'node';
+
+  const role = (element as { role?: RoleId }).role;
+  for (const defs of vocabularies) {
+    const def = role === undefined ? undefined : defs[role];
+    if (def?.kind === 'edge') return 'edge';
+  }
+  return elementPath(element) !== null ? 'edge' : 'node';
+}
+
+/**
+ * Where the badge for `element` is pinned, in model space.
+ *
+ * Exported so a test can assert the coordinate rather than the rendering, and
+ * so the widget converts ONE point instead of reproducing the offsets.
+ */
+function markPointOf(
+  element: unknown,
+  kind: ViolationAnchorKind,
+  bound: Bound
+): [number, number] {
+  if (kind === 'edge') {
+    const middle = pathMidpoint(elementPath(element) ?? []);
+    // The intersection of the rectangle's diagonals — its centre — for an edge
+    // the layout has not routed yet.
+    return middle ?? [bound.x + bound.w / 2, bound.y + bound.h / 2];
+  }
+  // Outside the corner by the mark's gap plus half a badge, so it does not land
+  // under the selected-rect north-east resize handle.
+  const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
+  return [bound.maxX + offset, bound.y - offset];
 }
 
 /**
@@ -3524,10 +3637,16 @@ export interface ViolationAnchor {
  * Pure and stateless, and called at paint time by both halves of the
  * affordance, so the mark follows a group that moves and falls back onto the
  * element the moment the group is dissolved, with nothing to invalidate.
+ *
+ * @param vocabularies the registered role vocabularies, for the SEMANTIC half
+ * of "is this an edge" ({@link anchorKindOf}). Optional: a caller that only
+ * reads `bound` — the canvas overlay draws the same bracket either way — needs
+ * none, and still gets the geometric answer.
  */
 export function resolveViolationAnchors(
   violations: readonly Violation[],
-  surface: SurfaceBlockModel
+  surface: SurfaceBlockModel,
+  vocabularies: readonly RoleDefs[] = []
 ): ViolationAnchor[] {
   const anchors = new Map<string, ViolationAnchor>();
 
@@ -3538,7 +3657,15 @@ export function resolveViolationAnchors(
 
       let entry = anchors.get(anchor.id);
       if (!entry) {
-        entry = { id: anchor.id, bound: anchor.elementBound, violations: [] };
+        const bound = anchor.elementBound;
+        const kind = anchorKindOf(anchor, vocabularies);
+        entry = {
+          id: anchor.id,
+          bound,
+          kind,
+          markAt: markPointOf(anchor, kind, bound),
+          violations: [],
+        };
         anchors.set(anchor.id, entry);
       }
       // A single violation naming two members of one group resolves to that
