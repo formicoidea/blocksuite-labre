@@ -1,8 +1,11 @@
 import type { RootBlockModel } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
-import type { SurfaceBlockModel } from '@labre/std/gfx';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+import type { RoleDefs, SurfaceBlockModel } from '@labre/std/gfx';
+import {
+  GfxControllerIdentifier,
+  RoleVocabularyIdentifier,
+} from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
@@ -75,8 +78,14 @@ const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
  *
  * `ValidationOverlay` flashes a bracket when a violation appears and fades it
  * out a few seconds later. What survives that fade is this: a small amber
- * badge pinned to the anchor's top-right corner for as long as the violation
- * holds, and — on click — a bubble naming what is wrong.
+ * badge pinned to the anchor for as long as the violation holds, and — on
+ * click — a bubble naming what is wrong.
+ *
+ * WHERE on the anchor follows what the anchor IS: the top-right corner of a
+ * box, the MIDDLE of a link. A diagonal connector's bounding box is a rectangle
+ * whose corners are on empty paper, and a badge there accuses the white space
+ * next to the trait rather than the trait (PO, 02/08). The choice is made once,
+ * in `validation.ts`, by the anchor's `kind`.
  *
  * ## Why DOM and not the canvas overlay
  *
@@ -146,6 +155,21 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       pointer-events: none;
     }
 
+    /* ...except while a bubble is open, when it is the frontmost thing on the
+       board (PO, 02/08: the bubble opened UNDER the element toolbar and could
+       not be read).
+
+       The whole HOST is raised rather than the bubble alone, because a z-index
+       of its own makes the host a stacking context and the bubble can never
+       climb out of it. What comes up with it is a handful of amber dots, for
+       exactly as long as the user is reading one of them — and they are already
+       drawn over the canvas. The bubble is a transient, click-away read, so it
+       outranks the toolbars the way a popover does, plus one so it also clears
+       an element toolbar sitting at the popover level itself. */
+    :host([data-bubble-open]) {
+      z-index: calc(var(--affine-z-index-popover, 1000) + 1);
+    }
+
     /* Transparent hit box with a screen-pixel floor; the amber dot inside it
        is the model-sized visual. */
     .violation-badge {
@@ -197,6 +221,10 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       width: ${unsafeCSS(BUBBLE_WIDTH)}px;
       max-height: ${unsafeCSS(BUBBLE_MAX_HEIGHT)}px;
       overflow-y: auto;
+      /* The wheel stops here: what is under the bubble never scrolls because
+         it was reached through the bubble. Belt to the braces of the wheel
+         guard, which stops the CANVAS from taking the gesture at all. */
+      overscroll-behavior: contain;
       padding: 12px;
       border-radius: 8px;
       border: 1px solid var(--affine-border-color);
@@ -308,6 +336,16 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     return this.std.get(GfxControllerIdentifier);
   }
 
+  /**
+   * Every role vocabulary registered in this assembly, for the semantic half of
+   * "is this anchor an edge" — a link is marked in its MIDDLE, a box on its
+   * corner. Read on demand rather than cached: a framework's vocabulary arrives
+   * with its always-on render extension, and the registry is a map lookup.
+   */
+  private get _vocabularies(): readonly RoleDefs[] {
+    return [...this.std.provider.getAll(RoleVocabularyIdentifier).values()];
+  }
+
   private get _timeline() {
     return this.std.getOptional(ValidationManager)?.timeline ?? null;
   }
@@ -387,7 +425,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // open on it would float with nothing underneath it.
     const stillFlagged =
       surface !== null &&
-      resolveViolationAnchors(this._violations, surface).some(
+      resolveViolationAnchors(this._violations, surface, this._vocabularies).some(
         anchor =>
           anchor.id === this._openAnchorId &&
           anchor.violations.some(v => v.exemption === undefined)
@@ -416,6 +454,40 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     if (this._openAnchorId === null || event.key !== 'Escape') return;
     event.stopPropagation();
     this._openAnchorId = null;
+  };
+
+  /**
+   * While a bubble is open, the CANVAS does not take the wheel (PO, 02/08).
+   *
+   * The bug it fixes has two halves and one cause. `EdgelessRootBlock` handles
+   * `wheel` off the event dispatcher, which listens on the editor host, and its
+   * handler `preventDefault()`s unconditionally before panning. So a wheel over
+   * an overflowing bubble (a) never scrolled the bubble, because the default
+   * action was cancelled on its way past, and (b) panned the board, which closed
+   * the bubble on `viewportUpdated` — the finding became unreadable at exactly
+   * the length it most needed reading.
+   *
+   * The fix is one CAPTURE-phase listener on the editor host that stops the
+   * event before it can reach any bubble-phase handler on that host — the
+   * dispatcher's included. What it deliberately does NOT do:
+   *
+   * - no `preventDefault()`. The default action is precisely what has to
+   *   survive: it is what scrolls the bubble. Cancelling it globally is the bug,
+   *   not the fix.
+   * - nothing on `document`. Outside the editor host the page keeps its wheel,
+   *   like it keeps its Escape ({@link _onHostKeydown}) — a library does not
+   *   freeze somebody else's page because one of its bubbles is open.
+   * - nothing while the bubble is closed. The listener is registered for the
+   *   widget's lifetime and returns on the first line, so a board with no
+   *   finding open behaves exactly as it did.
+   *
+   * The board is frozen wherever the pointer is, not only over the bubble, and
+   * that is the PO's call: the gesture belongs to the thing being read until it
+   * is dismissed, and dismissing it is one click anywhere.
+   */
+  private readonly _onHostWheel = (event: WheelEvent) => {
+    if (this._openAnchorId === null) return;
+    event.stopPropagation();
   };
 
   /**
@@ -488,6 +560,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
     const host = this.std.host;
     host.addEventListener('keydown', this._onHostKeydown, true);
+    host.addEventListener('wheel', this._onHostWheel, true);
 
     _disposables.add(() => {
       document.removeEventListener(
@@ -496,6 +569,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
         true
       );
       host.removeEventListener('keydown', this._onHostKeydown, true);
+      host.removeEventListener('wheel', this._onHostWheel, true);
       this._elementSubscription?.unsubscribe();
       this._elementSubscription = null;
       this._watchedSurface = null;
@@ -515,6 +589,17 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
 
   override firstUpdated() {
     this._wire();
+  }
+
+  /**
+   * Mirror "a bubble is open" onto the host as an attribute, so the stylesheet
+   * can raise the whole host over the toolbars for the duration (see the
+   * `:host([data-bubble-open])` rule). An attribute rather than an inline
+   * `z-index` because the value belongs with the other stacking decisions, in
+   * one place, next to the reason it exists.
+   */
+  override updated() {
+    this.toggleAttribute('data-bubble-open', this._openAnchorId !== null);
   }
 
   /**
@@ -744,20 +829,16 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   /**
    * Badge centre, in screen pixels.
    *
-   * Computed in MODEL space and converted once, so the offset scales with the
-   * mark instead of drifting away from it as the board is zoomed.
-   *
-   * Pushed a further half-badge diagonally outward rather than centred on the
-   * bracket's corner: dead on the corner it sits under the north-east resize
-   * handle of `edgeless-selected-rect` — which is exactly where it lands
-   * whenever the offending element is selected, i.e. right after the user
-   * dropped it there.
+   * WHERE that is, per anchor kind, is `resolveViolationAnchors`' answer
+   * ({@link ViolationAnchor.markAt}) — a corner for a box, the middle of the
+   * trait for a link. Here it is one conversion of one model point, so the
+   * offsets scale with the mark instead of drifting away from it as the board
+   * is zoomed, and there is no second copy of the geometry to keep in step.
    */
   private _badgeAt(anchor: ViolationAnchor): [number, number] {
-    const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
     const [x, y] = this.gfx.viewport.toViewCoord(
-      anchor.bound.maxX + offset,
-      anchor.bound.y - offset
+      anchor.markAt[0],
+      anchor.markAt[1]
     );
     return [x, y];
   }
@@ -856,7 +937,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // Anchors are resolved at render time, exactly like the canvas overlay
     // resolves them at paint time: the marker follows a group that moves and
     // falls back onto the element the moment the group is dissolved.
-    const anchors = resolveViolationAnchors(this._violations, surface);
+    const anchors = resolveViolationAnchors(
+      this._violations,
+      surface,
+      this._vocabularies
+    );
     const timeline = this._timeline;
     const now = performance.now();
     const label = translateKey(

@@ -220,6 +220,8 @@ describe('which of the two markers owns an anchor', () => {
   const anchorOf = (violations: Violation[]) => ({
     id: 'group-1',
     bound: { x: 0, y: 0 } as never,
+    kind: 'node' as const,
+    markAt: [0, 0] as [number, number],
     violations,
   });
 

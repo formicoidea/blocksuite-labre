@@ -113,6 +113,18 @@ describe('the violation markers and their detail bubble', () => {
     });
   };
 
+  /** A component, drawn the way the Wardley toolbox draws one. */
+  const addComponent = (xywh: string) =>
+    service.surface.addElement({
+      type: 'wardleyNode',
+      kind: 'component',
+      role: 'wardley:component',
+      fillColor: '#ffffff',
+      strokeColor: '#1f2328',
+      filled: true,
+      xywh,
+    });
+
   /** The same arrow, the right way round: nothing to report. */
   const addForwardArrow = (xywh: string) => {
     const [x, y, w, h] = JSON.parse(xywh) as number[];
@@ -300,9 +312,52 @@ describe('the violation markers and their detail bubble', () => {
       });
     });
 
-    test('the badge is anchored clear of the anchor corner', async () => {
+    test('a component is badged clear of its top-right corner', async () => {
       addBackground();
-      const id = addBackwardsArrow('[3000,3000,40,40]');
+      // Two components deep into each other: W3, and the one fixture whose
+      // anchors are plain BOXES.
+      const first = addComponent('[200,200,40,40]');
+      addComponent('[220,200,40,40]');
+      await settle();
+      await age();
+
+      const anchor = resolveViolationAnchors(
+        validation.violations$.value,
+        service.surface
+      ).find(candidate => candidate.id === first)!;
+      expect(anchor.kind).toBe('node');
+
+      // Outside the corner by the mark's gap plus half a badge, so it does not
+      // land under the selected-rect north-east resize handle.
+      const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
+      expect(anchor.markAt).toEqual([
+        anchor.bound.maxX + offset,
+        anchor.bound.y - offset,
+      ]);
+
+      const [x, y] = service.viewport.toViewCoord(...anchor.markAt);
+      const badge = badges().find(
+        candidate => (candidate as HTMLElement).dataset.anchorId === first
+      ) as HTMLElement;
+      expect(parseFloat(badge.style.left)).toBeCloseTo(x, 0);
+      expect(parseFloat(badge.style.top)).toBeCloseTo(y, 0);
+    });
+
+    /**
+     * The PO's second capture, 02/08: an amber dot at the top-right corner of a
+     * diagonal link's bounding box — white paper, a long way from the trait it
+     * was accusing. A link is marked where the link IS.
+     */
+    test('a link is badged in the middle of its trait', async () => {
+      addBackground();
+      // Deliberately diagonal, so the corner and the middle are nowhere near
+      // each other and the assertion cannot pass by accident.
+      const id = service.surface.addElement({
+        type: 'connector',
+        role: 'wardley:change-arrow',
+        source: { position: [3400, 3400] },
+        target: { position: [3000, 3000] },
+      });
       await settle();
       await age();
 
@@ -311,17 +366,24 @@ describe('the violation markers and their detail bubble', () => {
         service.surface
       );
       expect(anchor.id).toBe(id);
+      expect(anchor.kind).toBe('edge');
+      // The middle of the trait — which for this link is also where the
+      // rectangle's diagonals cross.
+      expect(anchor.markAt[0]).toBeCloseTo(3200, 0);
+      expect(anchor.markAt[1]).toBeCloseTo(3200, 0);
 
-      // Outside the corner by the mark's gap plus half a badge, so it does not
-      // land under the selected-rect north-east resize handle.
-      const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
-      const [x, y] = service.viewport.toViewCoord(
-        anchor.bound.maxX + offset,
-        anchor.bound.y - offset
-      );
+      const [x, y] = service.viewport.toViewCoord(...anchor.markAt);
       const style = (badges()[0] as HTMLElement).style;
       expect(parseFloat(style.left)).toBeCloseTo(x, 0);
       expect(parseFloat(style.top)).toBeCloseTo(y, 0);
+
+      // ...and emphatically not on the corner it used to sit on.
+      const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
+      const [cornerX] = service.viewport.toViewCoord(
+        anchor.bound.maxX + offset,
+        anchor.bound.y - offset
+      );
+      expect(parseFloat(style.left)).toBeLessThan(cornerX - 100);
     });
 
     test('a clean board raises no marker at all', async () => {
@@ -448,6 +510,109 @@ describe('the violation markers and their detail bubble', () => {
       clickElement(badges()[0]);
       await settle();
       expect(bubble()).toBeNull();
+    });
+
+    /**
+     * PO recette, 02/08. Two halves of one report, both about a bubble the user
+     * could not finish reading:
+     *
+     * - it opened UNDERNEATH the element toolbar;
+     * - the wheel over it panned the BOARD, which closed it — and never
+     *   scrolled it, because the edgeless wheel handler cancels the default
+     *   action before panning.
+     */
+    describe('an open bubble owns the front of the board, and the wheel', () => {
+      /** A bubble open on a violation, with the dispatcher live. */
+      const openBubble = async () => {
+        addBackground();
+        addBackwardsArrow('[3000,3000,40,40]');
+        await settle();
+        await age();
+        // The edgeless wheel handler hangs off the dispatcher, which ignores
+        // everything while it believes the editor is unfocused.
+        service.std.event.active = true;
+        clickElement(badges()[0]);
+        await settle();
+        expect(bubble()).not.toBeNull();
+      };
+
+      const wheel = (target: EventTarget) => {
+        const event = new WheelEvent('wheel', {
+          deltaY: 240,
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        });
+        target.dispatchEvent(event);
+        return event;
+      };
+
+      const viewportState = () => {
+        const { centerX, centerY, zoom } = service.viewport;
+        return { centerX, centerY, zoom };
+      };
+
+      test('it is raised over the toolbars while it is open, and only then', async () => {
+        await openBubble();
+
+        const host = widget() as HTMLElement;
+        // A z-index of its own makes the host a stacking context, so the bubble
+        // can never climb out of it: the HOST is what has to come up.
+        const raised = parseInt(getComputedStyle(host).zIndex, 10);
+        expect(raised).toBeGreaterThan(100);
+
+        clickElement(document.body);
+        await settle();
+        // Back down to the badge's own level, well below the toolbars.
+        expect(getComputedStyle(host).zIndex).toBe('2');
+      });
+
+      test('the wheel over the bubble leaves the board exactly where it was', async () => {
+        await openBubble();
+        const before = viewportState();
+
+        const event = wheel(bubble()!);
+        await settle();
+
+        // The board did not move, so the bubble was not closed by its own
+        // `viewportUpdated` subscription...
+        expect(viewportState()).toEqual(before);
+        expect(bubble()).not.toBeNull();
+        // ...and the default action survived, which is what scrolls the bubble.
+        // (A synthetic wheel never scrolls anything itself: what is asserted
+        // here is that nothing cancelled the scroll on its way past.)
+        expect(event.defaultPrevented).toBe(false);
+      });
+
+      test('the wheel anywhere on the board is held while it is open', async () => {
+        await openBubble();
+        const before = viewportState();
+
+        // The PO's call: the gesture belongs to the thing being read until it
+        // is dismissed, wherever the pointer happens to be.
+        wheel(service.std.host);
+        await settle();
+
+        expect(viewportState()).toEqual(before);
+        expect(bubble()).not.toBeNull();
+      });
+
+      test('dismissing it hands the wheel back to the canvas', async () => {
+        await openBubble();
+        const before = viewportState();
+
+        clickElement(document.body);
+        await settle();
+        expect(bubble()).toBeNull();
+
+        wheel(service.std.host);
+        await settle();
+
+        // The board scrolls again: the guard is scoped to "a bubble is open",
+        // not to the widget existing.
+        expect(viewportState()).not.toEqual(before);
+        await resetViewport();
+      });
     });
 
     test('the bubble flips above the badge rather than off the bottom', async () => {
