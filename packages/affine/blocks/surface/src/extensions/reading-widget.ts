@@ -20,15 +20,62 @@ import {
   type ReadingProfile,
   type ReadingRelation,
   readRecord,
+  readValueFlows,
   type RecordReading,
 } from './reading.js';
 
 export const READING_PROPOSAL_WIDGET = 'affine-reading-proposal-widget';
 
-/** Screen pixels. The panel is TEXT, so it does not scale with the board. */
-const PANEL_WIDTH = 300;
-const PANEL_GAP = 12;
+/**
+ * Screen pixels. The panel is TEXT, so it does not scale with the board.
+ *
+ * A comfortable measure rather than the 300px of a floating bubble: this is a
+ * paragraph of prose about a component, read in one go, and it is anchored to
+ * the editor rather than squeezed beside an element.
+ */
+const PANEL_WIDTH = 480;
+/** Never narrower than this, however cramped the editor gets. */
+const PANEL_MIN_WIDTH = 240;
+/**
+ * Clearance kept above the editor's bottom edge, so the panel sits just OVER
+ * the bottom toolbar strip instead of burying its buttons.
+ *
+ * `edgeless-toolbar` is 64px tall over a 16px bottom padding; the remainder is
+ * the gap. What opens UPWARDS out of that strip — the senior sub-menu — is what
+ * {@link READING_PANEL_Z_INDEX} exists to stay on top of.
+ */
+const PANEL_BOTTOM_GAP = 96;
+/** Breathing room at the sides and at the top of a small editor. */
+const PANEL_MARGIN = 16;
 const PANEL_MAX_HEIGHT = 420;
+const PANEL_MIN_HEIGHT = 160;
+
+/**
+ * **Above every toolbar, the contextual one included.**
+ *
+ * The ceiling inside `.widgets-container` is `--affine-z-index-popover`, which
+ * the theme sets to `1000`: `editor-toolbar` — the contextual toolbar the PO
+ * found this panel hiding behind — takes it verbatim, and so does the zoom bar.
+ * The bottom `edgeless-toolbar` is only `z-index: 1`, and its senior sub-menus
+ * are appended INSIDE its own subtree, so they are capped at that 1 with it.
+ * Ten above the variable clears the lot with headroom to spare.
+ *
+ * The fallback matters as much as the value: it is the host's theme stylesheet
+ * that defines the variable, never this library.
+ *
+ * It is set on the HOST rather than on the panel. Every widget host is a
+ * sibling in `.widgets-container`, and `affine-toolbar-widget` declares no
+ * stacking context of its own, so `editor-toolbar`'s 1000 competes at that
+ * level — which makes it the only level where this contest can be won. The
+ * previous `z-index: 2` was chosen to sit "well below the toolbars", and this
+ * is the deliberate reversal of that choice for this one panel.
+ *
+ * What still paints above it, correctly and by design: `popMenu` context menus
+ * (1001) and the toolbar drag preview (9999), both mounted on `editor-host`
+ * outside the contained widgets layer. A dropdown opened FROM this panel would
+ * go through `popMenu` and land on top of it, which is what one wants.
+ */
+const READING_PANEL_Z_INDEX = 'calc(var(--affine-z-index-popover, 1000) + 10)';
 
 /** The two commands the confirmations drive. Spelled once. */
 const TAG_SET_ID = 'tag.set';
@@ -67,24 +114,56 @@ const PIVOT_BIND_ID = 'pivot.bind';
  * is refused, nothing is blocked and nothing is written to the DOCUMENT — the
  * board is always right about itself.
  *
+ * ## Where it sits
+ *
+ * **Anchored to the EDITOR, low and centred, over every toolbar** — the PO's
+ * recette of 02/08/2026. It shipped as a bubble floating beside the element and
+ * came back with two faults: it rendered BEHIND the contextual toolbar, and a
+ * paragraph of prose is not a thing to read out of the corner of a shape. So it
+ * is now a bottom-centre panel at a comfortable measure, in a layer above every
+ * toolbar including the senior menu and its sub-menu — see
+ * {@link READING_PANEL_Z_INDEX} for why that layer is where it is, and the
+ * styles for why the host stays zero-sized while the panel carries the box.
+ *
  * Modelled on `violation-detail-widget.ts` down to the mechanics that are easy
- * to get wrong: a zero-sized host at the viewport origin so the canvas stays
- * clickable, the pointer pair swallowed on the panel itself, Escape listened
- * for on the EDITOR HOST rather than on `document`, and click-away that
- * observes without swallowing.
+ * to get wrong: a zero-sized host so the canvas stays clickable, the pointer
+ * pair swallowed on the panel itself, Escape listened for on the EDITOR HOST
+ * rather than on `document`, and click-away that observes without swallowing.
  */
 export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
+    /*
+      A ZERO-SIZED host, pinned to the bottom centre of the editor.
+
+      Zero-sized is not a style choice, it is the only safe one:
+      \`.widgets-container > * { pointer-events: auto }\` is an OUTER-tree rule
+      on a shadowless block component, so it beats \`:host { pointer-events:
+      none }\` outright. A host with a real box would swallow canvas clicks
+      across the whole bottom of the board. The panel below carries the box.
+
+      \`left: 50%\` centres against \`.widgets-container\`, which is the editor
+      viewport at 100% × 100% — the very reference \`edgeless-toolbar\` centres
+      on, so the two are co-centred by construction rather than by arithmetic.
+    */
     :host {
       position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 2;
+      left: 50%;
+      bottom: 0;
+      z-index: ${unsafeCSS(READING_PANEL_Z_INDEX)};
       pointer-events: none;
     }
 
+    /*
+      Anchored to the editor, not to the element: \`left: 0\` is the host's
+      zero-width box — the editor's horizontal centre — and the translate puts
+      the panel's own centre on it. \`bottom\` lifts it clear of the toolbar
+      strip so the buttons underneath stay usable.
+    */
     .reading-panel {
       position: absolute;
+      left: 0;
+      bottom: ${unsafeCSS(PANEL_BOTTOM_GAP)}px;
+      transform: translateX(-50%);
       box-sizing: border-box;
       width: ${unsafeCSS(PANEL_WIDTH)}px;
       max-height: ${unsafeCSS(PANEL_MAX_HEIGHT)}px;
@@ -227,10 +306,14 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
 
     _disposables.add(
       gfx.viewport.viewportUpdated.subscribe(() => {
-        // The panel is anchored to an element that has just moved under it.
-        // Closing is the honest simple answer, and it is the precedent the
-        // validation bubble already set.
-        this._manager?.close();
+        // The panel used to CLOSE here, because it hung off an element that a
+        // pan or a zoom moved out from under it. Anchored to the editor it no
+        // longer does: panning to look at what the reading is talking about
+        // while the reading is on screen is the obvious thing to want, and
+        // dismissing it mid-gesture was the old anchor's problem, not the
+        // user's. A re-render is still owed — `viewportUpdated` fires on a
+        // RESIZE too, and the panel's box is clamped to the editor's.
+        if (this._manager?.open$.value) this._revision++;
       })
     );
 
@@ -464,6 +547,52 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     );
   }
 
+  /**
+   * **Value flow** — the same typed edges as the relations above, said the way
+   * a value chain is read: from the bottom up.
+   *
+   * One sentence per typed edge, and no section at all when the element has
+   * none: an empty "Value flow" heading states nothing a user wants, and the
+   * relations field already says in its own words that no link touches this
+   * component.
+   *
+   * The sentence is assembled from two halves rather than interpolated, because
+   * `translateKey` returns a plain string and a host catalogue that returned
+   * markup would then be injected into the panel. The fallback reads
+   * "Value flows up from X to Y"; a host that translates
+   * `com.labre.reading.value-flow` gets the same two slots in its own order via
+   * the `.to` suffix key.
+   */
+  private _renderValueFlow(reading: ElementReading) {
+    const flows = readValueFlows(reading);
+    if (flows.length === 0) return nothing;
+
+    const from = translateKey(
+      this.std,
+      'com.labre.reading.value-flow',
+      'Value flows up from'
+    );
+    const to = translateKey(this.std, 'com.labre.reading.value-flow.to', 'to');
+
+    return this._field(
+      'reading-value-flow',
+      translateKey(
+        this.std,
+        'com.labre.reading.field.value-flow',
+        'Value flow'
+      ),
+      html`${flows.map(
+        flow => html`<div
+          class="reading-value"
+          data-testid="reading-value-flow-line"
+          data-edge-id=${flow.edgeId}
+        >
+          ${from} ${flow.from} ${to} ${flow.to}
+        </div>`
+      )}`
+    );
+  }
+
   private _renderPhase(reading: ElementReading) {
     const { phase } = reading;
     return this._field(
@@ -683,13 +812,29 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       if (manager) manager.drift$.value = null;
     };
 
-  /** Panel origin in screen pixels: the element's top-right corner. */
-  private _panelAt(elementId: string): [number, number] | null {
-    const element = this.gfx.surface?.getElementById(elementId);
-    if (!element) return null;
-    const bound = element.elementBound;
-    const [x, y] = this.gfx.viewport.toViewCoord(bound.maxX, bound.y);
-    return [x, y];
+  /**
+   * The panel's box, clamped to the editor it is anchored to.
+   *
+   * The CSS already places it; this only stops a comfortable measure from
+   * becoming an overflowing one on a narrow or short editor. Both dimensions
+   * keep a floor, because a panel squeezed to nothing is not a smaller panel,
+   * it is an unreadable one.
+   */
+  private _panelBox(): { width: number; maxHeight: number } {
+    const { viewport } = this.gfx;
+    return {
+      width: Math.max(
+        PANEL_MIN_WIDTH,
+        Math.min(PANEL_WIDTH, viewport.width - PANEL_MARGIN * 2)
+      ),
+      maxHeight: Math.max(
+        PANEL_MIN_HEIGHT,
+        Math.min(
+          PANEL_MAX_HEIGHT,
+          viewport.height - PANEL_BOTTOM_GAP - PANEL_MARGIN
+        )
+      ),
+    };
   }
 
   override render() {
@@ -704,10 +849,6 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     const profile = manager.profileOf(elementId);
     if (!reading || !profile) return nothing;
 
-    const at = this._panelAt(elementId);
-    if (!at) return nothing;
-    const [x, y] = at;
-
     const element = this.gfx.surface?.getElementById(elementId);
     // The record's side of the reading, guarded and synchronous. `undefined`
     // on every degraded path: no binding, no provider, no configured fields.
@@ -717,9 +858,7 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     // would refuse it anyway, silently, which is worse.
     const writable = !this.std.store.readonly;
 
-    const { viewport } = this.gfx;
-    const flipX = x + PANEL_GAP + PANEL_WIDTH > viewport.width;
-    const flipY = y + PANEL_GAP + PANEL_MAX_HEIGHT > viewport.height;
+    const { width, maxHeight } = this._panelBox();
 
     return html`<div
       class="reading-panel"
@@ -732,9 +871,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
         'Proposed record'
       )}
       style=${styleMap({
-        left: flipX ? `${x - PANEL_GAP - PANEL_WIDTH}px` : `${x + PANEL_GAP}px`,
-        top: flipY ? `${y - PANEL_GAP}px` : `${y + PANEL_GAP}px`,
-        ...(flipY ? { transform: 'translateY(-100%)' } : {}),
+        width: `${width}px`,
+        maxHeight: `${maxHeight}px`,
       })}
       @pointerdown=${this._swallow}
       @pointerup=${this._swallow}
@@ -749,7 +887,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       </div>
       ${this._renderNodeType(reading, profile)}
       ${this._renderNature(reading, profile, record, writable)}
-      ${this._renderRelations(reading)} ${this._renderPhase(reading)}
+      ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
+      ${this._renderPhase(reading)}
       ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
       ${writable ? this._renderDrift(reading) : nothing}
     </div>`;
