@@ -16,10 +16,12 @@
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
 import {
   compareReading,
+  PivotRecordPickerProvider,
   ReadingManager,
   ReadingProfileIdentifier,
   readRecord,
 } from '@labre/affine-block-surface';
+import { Container } from '@labre/global/di';
 import { pivotCommands, tagCommands } from '@labre/affine-block-root';
 import { StoreExtensionManager } from '@labre/affine-ext-loader';
 import {
@@ -514,5 +516,34 @@ describe('the drift trigger', () => {
     ctx.surface.updateElement(component.id, { xywh: '[900,400,18,18]' });
     await settleDrift();
     expect(ctx.reading.drift$.value).toBeNull();
+  });
+});
+
+/**
+ * The PO recette of 02/08/2026, point 3: "Link to a record" was invisible in
+ * the playground. That was not a bug — the library registers NO picker, so the
+ * affordance is hidden by design, and the playground had simply never
+ * registered one either. The fix belongs to the playground, and this is the
+ * assertion that keeps it there.
+ */
+describe('the picker seam, as the LIBRARY ships it', () => {
+  test('nothing in the library’s own extensions provides a picker', () => {
+    const container = new Container();
+    const manager = new StoreExtensionManager(getInternalStoreExtensions({}));
+    for (const extension of manager.get('store')) {
+      extension.setup(container);
+    }
+
+    // No default, no noop, no stub: absence is a MEANINGFUL state here (ADR
+    // 0005 § 3 — the library does not know what a pivot record is), and the
+    // panel reads it to decide whether to offer the action at all.
+    //
+    // The recette mock-up lives in `packages/playground`, a private package no
+    // published one depends on, and this is what says it must stay there: the
+    // day a picker appears in this list, the library has started shipping an
+    // opinion about somebody else's documents.
+    expect(
+      container.provider().getOptional(PivotRecordPickerProvider)
+    ).toBeUndefined();
   });
 });

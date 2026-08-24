@@ -227,6 +227,15 @@ export interface ReadingNodeType {
  */
 export interface ElementReading {
   elementId: string;
+  /**
+   * What the subject is CALLED — its own text, or the text of the sibling
+   * carrying the label role. `''` when nothing on the board names it.
+   *
+   * The panel must never print an id at a human, and the value-flow sentences
+   * need both ends by name, so the subject's own name belongs in the reading
+   * rather than being re-derived by every renderer.
+   */
+  name: string;
   nodeType: ReadingNodeType;
   /**
    * The type-3 values the element CARRIES. `undefined` when it carries none —
@@ -621,6 +630,7 @@ export function readElement(
 
   return {
     elementId: element.id,
+    name: readName(element, profile),
     nodeType: {
       roleId,
       ...(labelKey !== undefined ? { labelKey } : {}),
@@ -634,6 +644,52 @@ export function readElement(
     phase: readPhase(element, elements, profile),
     naming: readNaming(element, profile, carried, options.lang),
   };
+}
+
+/**
+ * One sentence of value flow: who it comes FROM, who it goes TO.
+ *
+ * Names, never ids — the two ends are meant to be read out loud.
+ */
+export interface ReadingValueFlow {
+  /** The typed edge the flow was read from. */
+  edgeId: string;
+  /** The supplier end — what is depended ON, drawn lower on the map. */
+  from: string;
+  /** The consumer end — what depends on it, drawn higher on the map. */
+  to: string;
+}
+
+/**
+ * **The value flow** — the same typed edges as {@link ElementReading.relations},
+ * said the way a value chain is read: from the bottom up.
+ *
+ * A Wardley map is an anchor at the top and everything the anchor needs
+ * underneath it, so the VALUE travels the other way round from the dependency
+ * arrow: a supplier hands its value up to the consumer that needs it. ADR 0010
+ * § 2 fixes which end is which — on a `wardley:dependency` the `source` is the
+ * consumer and the `target` is the supplier — so the flow is entirely a
+ * restatement of what {@link readRelations} already resolved:
+ *
+ * - the other end is a SUPPLIER (an edge leaving the subject) → value comes up
+ *   from it to the subject;
+ * - the other end is a CONSUMER (an edge arriving at the subject) → value goes
+ *   up from the subject to it.
+ *
+ * Derived, not stored: no second traversal of the board, no second convention
+ * to keep in step with ADR 0010, and an element with no typed edge yields an
+ * empty list — which the panel renders as no section at all.
+ */
+export function readValueFlows(
+  reading: ElementReading
+): ReadingValueFlow[] {
+  const subject = reading.name || reading.elementId;
+  return reading.relations.map(relation => {
+    const other = relation.otherName || relation.otherId;
+    return relation.side === 'supplier'
+      ? { edgeId: relation.edgeId, from: other, to: subject }
+      : { edgeId: relation.edgeId, from: subject, to: other };
+  });
 }
 
 /** The profile governing an element, or `null` — the first match wins. */
