@@ -13,6 +13,7 @@ import {
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
+import { html } from 'lit';
 
 import { ReadingManager, readingProfileFor } from './reading.js';
 
@@ -59,6 +60,33 @@ import { ReadingManager, readingProfileFor } from './reading.js';
 
 const READ_LABEL_KEY = 'com.labre.reading.toolbar.label';
 const READ_LABEL_FALLBACK = 'Read this component';
+
+/**
+ * An eye: what the tool SEES of this element.
+ *
+ * Words were the right call for this entry and still are — it renders as
+ * "Read this component" whenever the row has the width for it. The icon is
+ * what the row falls back to when it does not: the toolbar drops the label and
+ * keeps it as the tooltip rather than pushing the whole entry into the "⋮"
+ * (PO arbitration of 02/08/2026, point 2). An entry with no icon has no such
+ * fallback, which is the only reason this glyph exists.
+ *
+ * Drawn inline like its neighbours: this package does not depend on
+ * `@blocksuite/icons` and one glyph is not worth a new dependency.
+ */
+const ReadIcon = html`<svg
+  width="20"
+  height="20"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+  <circle cx="12" cy="12" r="3" />
+</svg>`;
 
 /** The command this module drives. Spelled once. */
 const ELEMENT_READ_ID = 'element.read';
@@ -130,7 +158,11 @@ export const readingToolbarConfig = {
         return {
           label,
           // Words, not a glyph: "what does the tool make of this?" is not a
-          // question anyone should have to guess from an icon.
+          // question anyone should have to guess from an icon. The icon is the
+          // fallback the toolbar uses when the row runs out of width, never the
+          // default — declaring both is what buys this entry a step of grace
+          // before it would be pushed into the "⋮".
+          icon: ReadIcon,
           showLabel: true,
           tooltip: label,
           run: (runCtx: ToolbarContext) => {
