@@ -10,7 +10,6 @@ import { ConnectorTool } from './connector-tool';
 import {
   edgeDirectionCommands,
   EdgeDirectionManager,
-  EdgeDirectionOverlay,
   edgeDirectionWidget,
 } from './direction';
 import { effects } from './effects';
@@ -48,8 +47,11 @@ export class ConnectorViewExtension extends ViewExtensionProvider {
       // and `b.flip-direction`, which lies about such an edge, is hidden
       // whatever the flag says. All three are no-ops until some framework
       // registers a role vocabulary.
+      //
+      // No canvas overlay any more: since the PO acceptance of 02/08/2026 the
+      // reveal is ONE mark, the sentence laid along the link with a point at
+      // its target end, and that mark is DOM.
       context.register(EdgeDirectionManager);
-      context.register(EdgeDirectionOverlay);
       context.register(edgeDirectionWidget);
       context.register(CommandExtension(edgeDirectionCommands));
     }

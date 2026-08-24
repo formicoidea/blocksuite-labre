@@ -1,5 +1,3 @@
-import type { CanvasRenderer } from '@labre/affine-block-surface';
-import { Overlay, OverlayIdentifier } from '@labre/affine-block-surface';
 import type { ConnectorElementModel } from '@labre/affine-model';
 import type { IVec } from '@labre/global/gfx';
 import type { EdgeDirectionDef, RoleDefs } from '@labre/std/gfx';
@@ -16,19 +14,38 @@ import {
 /**
  * **M2 of `docs/adr/0010` — "show it".**
  *
- * A typed edge reveals its orientation on hover and on selection: a chevron at
- * the TARGET end, plus — in the DOM sibling of this overlay — the role's own
- * verb. At rest the board keeps the canonical arrowless look, because on a
- * Wardley map a permanent head already means something else (evolution
- * movement), and two meanings on one glyph make both unreadable.
+ * A typed edge reveals its orientation on hover and on selection: ONE mark,
+ * the whole sentence laid ALONG the link — `Kettle depends on Electricity` —
+ * in a box whose far end is a point aimed at the target. At rest the board
+ * keeps the canonical arrowless look, because on a Wardley map a permanent
+ * head already means something else (evolution movement), and two meanings on
+ * one glyph make both unreadable.
  *
- * ## Why an overlay and a manager, and not the element renderer
+ * ## The chevron is gone (PO acceptance of 02/08/2026, point 5)
+ *
+ * The first cut of M2 drew two marks: a canvas chevron at the target end, and
+ * a horizontal DOM tooltip holding the bare verb. Two things were wrong with
+ * it, and they had one cause between them.
+ *
+ * - The label was placed on `path[floor(length / 2)]`, the middle VERTEX. A
+ *   straight link has exactly two points, so the "middle" vertex IS the target
+ *   end — the tooltip landed on the tip of the link and covered the chevron it
+ *   was meant to complement.
+ * - Even placed correctly, a horizontal box across a diagonal link reads as a
+ *   sticker dropped on the map rather than as a statement about that link.
+ *
+ * The fix is one mark instead of two: the sentence, rotated onto the line,
+ * ending in the point that used to be a separate chevron. So this file no
+ * longer owns a canvas overlay at all — {@link labelAnchorOf} says where the
+ * label goes and which way it turns, and the DOM widget draws it. Nothing can
+ * overlap something that no longer exists.
+ *
+ * ## Why a manager, and not the element renderer
  *
  * An `ElementRenderer` is `(model, ctx, matrix, renderer, rc)`: it knows the
  * element and knows nothing about hover or selection, which are the two things
- * this affordance is made of. So the shape is the one the validation affordance
- * already uses one directory away — a manager owning the state, a canvas
- * overlay for the mark, a DOM widget for the prose.
+ * this affordance is made of. So the state lives in an `InteractivityExtension`
+ * that owns two signals, and the widget reads them.
  *
  * Nothing here touches an element model: no CRDT write, no undo entry, not even
  * a `@local()` field. The reveal is session state and leaves with the pointer.
@@ -37,28 +54,9 @@ import {
 /**
  * The one colour the reveal is drawn in — the house primary, i.e. the colour of
  * an affordance rather than of ink. Deliberately NOT the framework's palette:
- * the chevron is the tool talking about the drawing, not part of the drawing.
+ * the label is the tool talking about the drawing, not part of the drawing.
  */
 export const EDGE_DIRECTION_COLOR = '#1e96eb';
-
-/** Chevron arm length, in MODEL units: the mark zooms with the board. */
-const CHEVRON = 12;
-const CHEVRON_ANGLE = (28 * Math.PI) / 180;
-const CHEVRON_WIDTH = 2;
-
-/**
- * The last two DISTINCT points of a path — where it arrives from, and the tip.
- * `null` for a path with no length, which has no direction to show.
- */
-function incoming(path: readonly IVec[]): [IVec, IVec] | null {
-  const end = path[path.length - 1];
-  if (!end) return null;
-  for (let i = path.length - 2; i >= 0; i--) {
-    const point = path[i];
-    if (point[0] !== end[0] || point[1] !== end[1]) return [point, end];
-  }
-  return null;
-}
 
 const pathOf = (model: ConnectorElementModel): IVec[] | null => {
   const path = model.absolutePath as IVec[] | undefined;
@@ -66,34 +64,101 @@ const pathOf = (model: ConnectorElementModel): IVec[] | null => {
 };
 
 /**
- * Where a typed edge's mark goes and which way it points: the tip of the path
- * at the TARGET end, and the unit vector arriving there.
+ * Where the sentence sits on a typed edge, and how it is turned.
  *
- * The Rear end and no other — the same end the product default already arrows
- * (`consts/connector.ts`), and the object of the role's verb.
+ * All of it in MODEL space: the widget projects `at` through the viewport and
+ * scales the box by the zoom, so the label is glued to its link the way a
+ * street name is glued to its street.
  */
-export function targetAnchorOf(
-  model: ConnectorElementModel
-): { at: IVec; heading: IVec } | null {
-  const path = pathOf(model);
-  if (!path) return null;
-  const ends = incoming(path);
-  if (!ends) return null;
-
-  const [from, at] = ends;
-  const dx = at[0] - from[0];
-  const dy = at[1] - from[1];
-  const length = Math.hypot(dx, dy);
-  if (length === 0) return null;
-  return { at, heading: [dx / length, dy / length] };
+export interface EdgeLabelAnchor {
+  /** The model point the label CENTRES on — the middle of the drawn path. */
+  at: IVec;
+  /**
+   * Rotation in radians, always within `[-π/2, π/2]`: the angle of the median
+   * segment, turned by 180° when that angle would stand the text on its head.
+   */
+  angle: number;
+  /**
+   * Whether that 180° turn happened. It is the whole reason the caller needs
+   * this flag: the point of the box must face the TARGET, so on a link running
+   * right-to-left — where the turn put the box's right end at the SOURCE — the
+   * point moves to the box's left end. The sentence itself never reverses; a
+   * mirrored `A depends on B` would be a lie, not a rotation.
+   */
+  flipped: boolean;
 }
 
-/** The middle of a path, where the DOM label hangs. */
-export function midpointOf(model: ConnectorElementModel): IVec | null {
+/**
+ * The middle of the drawn path by ARC LENGTH, and the segment it falls in.
+ *
+ * Arc length rather than "the middle vertex": on a two-point path the middle
+ * vertex is the target endpoint, which is exactly where the label must not go,
+ * and on an elbowed path the vertex nearest the middle can sit far from it.
+ *
+ * When the middle lands exactly on a corner — two equal arms — the arm the path
+ * ARRIVES BY wins (`>=`). Both angles are true there and neither is better; what
+ * matters is that the same path always answers the same way, so the label
+ * cannot flicker between two rotations across repaints.
+ */
+function median(
+  path: readonly IVec[]
+): { at: IVec; from: IVec; to: IVec } | null {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    total += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+  }
+  // A path of zero length is a link drawn on a single point: no middle, no
+  // angle, nothing to say.
+  if (total === 0) return null;
+
+  const half = total / 2;
+  let walked = 0;
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1];
+    const to = path[i];
+    const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    if (length === 0) continue;
+    if (walked + length >= half) {
+      const t = (half - walked) / length;
+      return {
+        at: [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t],
+        from,
+        to,
+      };
+    }
+    walked += length;
+  }
+  return null;
+}
+
+/**
+ * Where a typed edge's sentence goes and how it is turned — the whole geometry
+ * of M2 since the chevron was folded into the label.
+ *
+ * `null` for an edge with no direction to show: no routed path yet, or a path
+ * whose points all coincide. Silence, not a guess.
+ */
+export function labelAnchorOf(
+  model: ConnectorElementModel
+): EdgeLabelAnchor | null {
   const path = pathOf(model);
   if (!path) return null;
-  const middle = path[Math.floor(path.length / 2)];
-  return middle ? [middle[0], middle[1]] : null;
+  const middle = median(path);
+  if (!middle) return null;
+
+  const { at, from, to } = middle;
+  // Canvas y grows downward and so does CSS's rotation sense, so this angle is
+  // handed to `rotate()` unchanged.
+  let angle = Math.atan2(to[1] - from[1], to[0] - from[0]);
+  let flipped = false;
+  if (angle > Math.PI / 2) {
+    angle -= Math.PI;
+    flipped = true;
+  } else if (angle < -Math.PI / 2) {
+    angle += Math.PI;
+    flipped = true;
+  }
+  return { at, angle, flipped };
 }
 
 /** The `direction` declaration of a role id, when that role is an edge. */
@@ -141,21 +206,13 @@ export class EdgeDirectionManager extends InteractivityExtension {
     return this._vocabularies;
   }
 
-  private get _overlay(): EdgeDirectionOverlay | null {
-    return (
-      (this.std.getOptional(
-        OverlayIdentifier(EdgeDirectionOverlay.overlayName)
-      ) as EdgeDirectionOverlay | null) ?? null
-    );
-  }
-
   /**
    * The revealed edges, resolved NOW rather than remembered.
    *
-   * The same reasoning as the validation overlay's: the canvas repaints far
+   * The same reasoning as the validation overlay's: the widget re-renders far
    * more often than this state changes, and an edge can lose a binding or a
-   * role between two frames. A frozen snapshot would keep drawing a chevron on
-   * a relation that no longer exists.
+   * role between two frames. A frozen snapshot would keep labelling a relation
+   * that no longer exists.
    */
   revealedEdges(): TypedEdge[] {
     const surface = this.gfx.surface;
@@ -164,7 +221,7 @@ export class EdgeDirectionManager extends InteractivityExtension {
     for (const id of this.revealed$.peek()) {
       const edge = asTypedEdge(this._roles, surface.getElementById(id));
       // The ADR's guard: an edge bound to nothing relates nothing, so it says
-      // nothing — no chevron, no verb.
+      // nothing at all.
       if (edge && edgeIsBound(edge.model)) edges.push(edge);
     }
     return edges;
@@ -266,7 +323,7 @@ export class EdgeDirectionManager extends InteractivityExtension {
     this.armedHint$.value = next;
   }
 
-  /** Recompute hover ∪ selection, and repaint only when it actually changed. */
+  /** Recompute hover ∪ selection, and publish only when it actually changed. */
   private _sync() {
     const ids: string[] = [];
     if (this._hovered) ids.push(this._hovered);
@@ -282,70 +339,5 @@ export class EdgeDirectionManager extends InteractivityExtension {
       return;
     }
     this.revealed$.value = ids;
-    this._overlay?.refresh();
-  }
-}
-
-/**
- * The canvas half of M2: a chevron at the target end of every revealed edge.
- *
- * Model units, like the validation marks and for the same reason — an
- * affordance that grows relative to the board as you zoom out ends up being all
- * you can see.
- */
-export class EdgeDirectionOverlay extends Overlay {
-  static override overlayName = 'edge-direction';
-
-  private _detached = false;
-
-  private get _manager(): EdgeDirectionManager | null {
-    return this.gfx.std.getOptional(EdgeDirectionManager) ?? null;
-  }
-
-  override setRenderer(renderer: CanvasRenderer | null) {
-    this._detached = renderer === null;
-    super.setRenderer(renderer);
-  }
-
-  override dispose() {
-    this._detached = true;
-    super.dispose();
-  }
-
-  override render(ctx: CanvasRenderingContext2D): void {
-    if (this._detached) return;
-    const edges = this._manager?.revealedEdges() ?? [];
-    // The overlay repaints on every pan, zoom and edit: it must cost nothing
-    // between the moments it has something to say.
-    if (edges.length === 0) return;
-
-    ctx.save();
-    ctx.strokeStyle = EDGE_DIRECTION_COLOR;
-    ctx.lineWidth = CHEVRON_WIDTH;
-    ctx.lineCap = 'round';
-
-    const cos = Math.cos(CHEVRON_ANGLE);
-    const sin = Math.sin(CHEVRON_ANGLE);
-    for (const { model } of edges) {
-      const anchor = targetAnchorOf(model);
-      if (!anchor) continue;
-      const [hx, hy] = anchor.heading;
-      const [x, y] = anchor.at;
-      // Two strokes back from the tip, symmetric about the incoming direction.
-      // A chevron reads as "this way"; a FILLED head would read as ink, and on
-      // a Wardley map that ink already means evolution movement.
-      const arms: [number, number][] = [
-        [-hx * cos + hy * sin, -hy * cos - hx * sin],
-        [-hx * cos - hy * sin, -hy * cos + hx * sin],
-      ];
-      ctx.beginPath();
-      for (const [ax, ay] of arms) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + ax * CHEVRON, y + ay * CHEVRON);
-      }
-      ctx.stroke();
-    }
-
-    ctx.restore();
   }
 }
