@@ -46,7 +46,7 @@ import groupBy from 'lodash-es/groupBy';
 import throttle from 'lodash-es/throttle';
 import toPairs from 'lodash-es/toPairs';
 
-import { autoUpdatePosition, renderToolbar, sideMap } from './utils';
+import { autoUpdatePosition, sideMap, ToolbarFitter } from './utils';
 
 export const AFFINE_TOOLBAR_WIDGET = 'affine-toolbar-widget';
 
@@ -246,6 +246,12 @@ export class AffineToolbarWidget extends WidgetComponent {
   }
 
   toolbar = new EditorToolbar();
+
+  /**
+   * Keeps the row on one line: it renders the toolbar, measures it and hands
+   * the least important entries to the "⋮" menu when the room runs out.
+   */
+  fitter = new ToolbarFitter(this.toolbar);
 
   get toolbarRegistry() {
     return this.std.get(ToolbarRegistryIdentifier);
@@ -637,6 +643,7 @@ export class AffineToolbarWidget extends WidgetComponent {
 
         // Hides toolbar
         if (Flag.None === value || flags.check(Flag.Hiding, value)) {
+          this.fitter.reset();
           if ('inline' in toolbar.dataset) delete toolbar.dataset.inline;
           if (toolbar.dataset.open) delete toolbar.dataset.open;
           // Closes dropdown menus
@@ -654,9 +661,17 @@ export class AffineToolbarWidget extends WidgetComponent {
         // 3. `Flag.Block`: blocks in note
         // 4. `Flag.Hovering`: inline links in note/database/table
         // 5. `Flag.Surface`: elements in edgeless
-        renderToolbar(toolbar, context, flavour);
+        this.fitter.render(context, flavour);
       })
     );
+
+    // The row never wraps, so it has to be told when its room changes. Two
+    // things can change it: the cap `size()` writes on every reposition, and
+    // anything that resizes the toolbar itself (a narrower editor, a zoom, a
+    // font that loaded late) — the observer catches what the cap misses.
+    const resizeObserver = new ResizeObserver(() => this.fitter.resize());
+    resizeObserver.observe(toolbar);
+    disposables.add(() => resizeObserver.disconnect());
 
     let abortController = new AbortController();
 
@@ -690,7 +705,9 @@ export class AffineToolbarWidget extends WidgetComponent {
           referenceElement,
           flavour,
           placement,
-          sideOptions
+          sideOptions,
+          undefined,
+          () => this.fitter.resize()
         );
 
         signal.addEventListener('abort', cleanup, { once: true });

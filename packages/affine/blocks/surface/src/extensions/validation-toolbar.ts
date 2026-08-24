@@ -440,6 +440,14 @@ export const validationExceptionToolbarConfig = {
       // Ordered after a framework's own per-instance toggles, before the
       // built-in surface actions and before `z.validation`.
       id: 'c.validation-revoke-exception',
+      // Sorting early is right — it is a decision about this element, read
+      // before the generic canvas actions — but on a narrow row the default
+      // "later entries give way first" would then keep this ahead of the core
+      // actions, which is backwards: it is the rarest entry of the toolbar and
+      // the wordiest, with no icon to fall back to. So it says so, and it is
+      // the first thing to move into the "⋮" — where it keeps its full label
+      // and its behaviour.
+      priority: -1,
       // No exception answered for by this element — including every board with
       // no framework enabled — means no entry at all.
       when: (ctx: ToolbarContext) => revocableOn(ctx).length > 0,

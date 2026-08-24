@@ -7,14 +7,13 @@ export class EditorToolbar extends WithDisposable(LitElement) {
   static override styles = css`
     ${panelBaseStyle(':host')}
     :host {
-      min-height: 36px;
+      /* ONE line, always: the toolbar's height never depends on the selection,
+         so it never moves under the cursor. When the row runs out of room the
+         widget spends its entries — icon only first, then into the "⋮" menu —
+         rather than growing a second row (PO arbitration of 02/08/2026). */
+      height: 36px;
       box-sizing: content-box;
-      /* ponytail: wrap to a second row instead of overflowing on mobile. The
-         width is capped to availableWidth by floating-ui's size middleware;
-         wrapping (not scrolling) keeps the "More" dropdown clickable — it is a
-         descendant of this toolbar, so an overflow container would clip it. */
-      flex-wrap: wrap;
-      row-gap: 4px;
+      flex-wrap: nowrap;
     }
 
     :host([data-without-bg]) {
@@ -25,9 +24,11 @@ export class EditorToolbar extends WithDisposable(LitElement) {
 
     ::slotted(*) {
       display: flex;
-      /* fixed row height (not 100%) so each item stays one row tall when the
-         toolbar wraps to multiple rows */
-      height: 36px;
+      height: 100%;
+      /* Entries keep their natural width: squashing them into the row would
+         hide the overflow the widget has to measure, and a button squeezed to
+         half a word is worse than the same button in the "⋮" menu. */
+      flex-shrink: 0;
       justify-content: center;
       align-items: center;
       gap: 8px;
