@@ -103,3 +103,67 @@ export function isBlockEnabled(
 ): boolean {
   return flags?.[block] !== false;
 }
+
+/**
+ * Editor CAPABILITIES — a second switch axis, deliberately not a member of
+ * {@link OPTIONAL_BLOCKS}.
+ *
+ * ## Why a separate list (PF14.1 decision)
+ *
+ * `OPTIONAL_BLOCKS` answers one question: "does this BLOCK or FRAMEWORK exist
+ * for this user". Every entry names a thing a document can contain, which is
+ * what makes the contract above meaningful — "the schema is registered
+ * unconditionally, so the content is safe" is a sentence about content.
+ *
+ * `ai-audit` names no block, no element and no schema. It is a capability of
+ * the editor: whether this build can ask an assistant for an opinion. Filing it
+ * under `OPTIONAL_BLOCKS` would have cost nothing at the keyboard and a lot
+ * afterwards — `FrameworkId` is asserted `satisfies readonly OptionalBlock[]`,
+ * `scripts/build-bundles.mjs` reads the list as the set of things a bundle can
+ * carry, and the flags README would have had to explain why one of its entries
+ * has no schema to protect. A list whose members do not answer the same
+ * question is a list that has to be filtered at every use.
+ *
+ * ## Same contract, in full
+ *
+ * Everything the flag contract promises holds here, and holds trivially:
+ * missing key = enabled; switching it off removes TOOLING only; and there is no
+ * data to lose, because the audit seam persists nothing at all — criteria are
+ * code, findings are session state in `ValidationManager.auditFindings$`, and
+ * neither ever reaches a `Y.Doc`. Off, the command is not registered: it
+ * disappears from the registry, both manifests and the keymap together. Back
+ * on, it is there again, with the document untouched in between.
+ *
+ * Hosts pass ONE object ({@link LabreFlags}): the two key spaces are disjoint,
+ * so nothing about the wiring changes.
+ */
+export const OPTIONAL_CAPABILITIES = [
+  /**
+   * The AI audit seam (PF14.1): the `map.audit` command on the `'agent'`
+   * surface. Independent of whether an `AuditProvider` is actually registered —
+   * this says whether the editor OFFERS the capability, the provider says
+   * whether anything can answer. Both are needed for an audit to run, and the
+   * degraded paths differ: switched off, the command does not exist; wired off,
+   * it exists and refuses cleanly.
+   */
+  'ai-audit',
+] as const;
+
+export type OptionalCapability = (typeof OPTIONAL_CAPABILITIES)[number];
+
+/** Map of capability -> enabled. Missing keys default to enabled. */
+export type CapabilityFlags = Partial<Record<OptionalCapability, boolean>>;
+
+/**
+ * The one object a host passes. Two disjoint key spaces, one bag — a host that
+ * only ever spoke `BlockFlags` keeps compiling and keeps behaving identically.
+ */
+export type LabreFlags = BlockFlags & CapabilityFlags;
+
+/** Whether `capability` is enabled. Same defaulting rule as a block flag. */
+export function isCapabilityEnabled(
+  flags: CapabilityFlags | undefined,
+  capability: OptionalCapability
+): boolean {
+  return flags?.[capability] !== false;
+}

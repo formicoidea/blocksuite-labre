@@ -52,13 +52,15 @@ function element(): GfxModel {
 }
 
 /**
- * A toolbar context over a stubbed manager. `profilesFor` is the ONE question
- * the config asks about an element — never its type, never its framework, never
- * its role — so stubbing it is stubbing the whole boundary.
+ * A toolbar context over a stubbed manager. `profilesFor` and `hasMapQuality`
+ * are the ONLY two questions the config asks about an element — never its type,
+ * never its framework, never its role — so stubbing them is stubbing the whole
+ * boundary.
  */
 function context(
   models: GfxModel[],
-  profiles: readonly ValidationProfile[] | null
+  profiles: readonly ValidationProfile[] | null,
+  mapQuality = false
 ): ToolbarContext {
   const manager =
     profiles === null
@@ -66,6 +68,8 @@ function context(
       : {
           profilesFor: () => profiles,
           profileOf: () => profiles.find(p => p.isDefault) ?? profiles[0],
+          hasMapQuality: () => mapQuality,
+          openMapQuality: () => {},
         };
 
   return {
@@ -133,6 +137,58 @@ describe('the entry is generic', () => {
     // `z.` so a framework's `a.` … `d.` toggles keep the left of the toolbar:
     // the level of requirement is a setting of the instance, read last.
     expect(validationToolbarConfig.actions[0].id).toBe('z.validation');
+  });
+});
+
+/**
+ * PF7.11: Map quality is a SECOND SECTION of the same dropdown, not a second
+ * button. The two sections appear on their own merits, which is what lets a
+ * framework ship a checklist and no second profile — or the other way round —
+ * without either of them dragging the other onto the toolbar.
+ */
+describe('the Map quality section', () => {
+  it('stands the dropdown up on its own, with a single profile', () => {
+    // One profile is not a choice, so the profile section stays away — and the
+    // dropdown appears anyway, because map quality has something to say.
+    expect(stands(context([element()], [SKETCH], true))).toBe(true);
+  });
+
+  it('stands the dropdown up with no profile registered at all', () => {
+    expect(stands(context([element()], [], true))).toBe(true);
+  });
+
+  it('does not stand up on an instance with neither', () => {
+    expect(stands(context([element()], [SKETCH], false))).toBe(false);
+  });
+
+  it('does not stand up on a multi-selection', () => {
+    // A checklist is one decision about one instance, exactly like a profile.
+    expect(
+      stands(context([element(), element()], [SKETCH, STRICT], true))
+    ).toBe(false);
+  });
+
+  it('does not stand up with no validation manager at all', () => {
+    expect(stands(context([element()], null, true))).toBe(false);
+  });
+
+  it('asks the engine, never the element, whether there is a panel', () => {
+    // The stub answers `hasMapQuality` for ANY element of any type carrying any
+    // role, and the section appears. Nothing in the config names a framework —
+    // which is the whole of PF7.11's "generic" acceptance criterion.
+    const seen: unknown[] = [];
+    const ctx = context([element()], [], true);
+    const manager = ctx.std.getOptional(ValidationManager) as {
+      hasMapQuality: (el: unknown) => boolean;
+    };
+    const spy = manager.hasMapQuality.bind(manager);
+    manager.hasMapQuality = (el: unknown) => {
+      seen.push(el);
+      return spy(el);
+    };
+
+    expect(stands(ctx)).toBe(true);
+    expect(seen).toHaveLength(1);
   });
 });
 

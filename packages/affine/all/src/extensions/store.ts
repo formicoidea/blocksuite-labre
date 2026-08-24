@@ -31,18 +31,18 @@ import { LinkStoreExtension } from '@labre/affine-inline-link/store';
 import { InlinePresetStoreExtension } from '@labre/affine-inline-preset/store';
 import { ReferenceStoreExtension } from '@labre/affine-inline-reference/store';
 
-import type { BlockFlags } from '../flags.js';
+import type { LabreFlags } from '../flags.js';
 
 /**
  * Store extensions.
  *
  * Registered UNCONDITIONALLY: the store side (models, adapters, transformers)
  * is what makes a document readable and round-trippable, and a flag must never
- * gate that (see {@link BlockFlags} and `docs/adr/0009`). The `flags` parameter
+ * gate that (see {@link LabreFlags} and `docs/adr/0009`). The `flags` parameter
  * is kept for source compatibility with callers written against the previous
  * contract, and is deliberately ignored.
  */
-export function getInternalStoreExtensions(_flags?: BlockFlags) {
+export function getInternalStoreExtensions(_flags?: LabreFlags) {
   return [
     FoundationStoreExtension,
 

@@ -30,6 +30,7 @@ import { MAP_BOUND, TRANSITIONS } from './corpus/fixtures';
 const W1 = 'wardley.change-arrow-against-evolution';
 const W2 = 'wardley.inertia-off-transition';
 const W3 = 'wardley.overlapping-artefacts';
+const W4 = 'wardley.provider-above-consumer';
 
 /**
  * Element stand-in: the engine only ever reads `id`, `role`, `elementBound`
@@ -90,8 +91,10 @@ const idsOf = (violations: readonly Violation[]) =>
   violations.map(violation => violation.ruleId).sort();
 
 describe('what the framework ships', () => {
-  it('ships exactly the three rules of this slice, and no pilot', () => {
-    expect(WARDLEY_RULES.map(rule => rule.id)).toEqual([W1, W2, W3]);
+  it('ships exactly the four rules of the pack, and no pilot', () => {
+    // W4 joined the pack with `docs/adr/0010` — and only once M1, M2 and M3
+    // had made the direction it reads a statement the user can see and undo.
+    expect(WARDLEY_RULES.map(rule => rule.id)).toEqual([W1, W2, W3, W4]);
     // The tracer bullet's rule is gone: it existed to prove the machinery, not
     // because anybody drawing a map wanted it (PO decision, 01/08/2026).
     expect(WARDLEY_RULES.map(rule => rule.id)).not.toContain(
@@ -418,8 +421,35 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
 describe('W3 · overlapping nodes and labels', () => {
   const node = (id: string, x: number, y: number, role?: string) =>
     element(id, [x, y, 18, 18], role ?? WARDLEY_ROLE.component);
-  const label = (id: string, x: number, y: number) =>
-    element(id, [x, y, 120, 26], WARDLEY_ROLE.label);
+
+  /**
+   * A real label: the CREATION BOX the toolbox gives it (120 × 26, whatever it
+   * says) plus the words actually written in it. The engine reads the words —
+   * measuring the box is what the PO's acceptance caught.
+   */
+  const label = (
+    id: string,
+    x: number,
+    y: number,
+    { text = 'Customer', w = 120, align = 'left' } = {}
+  ) =>
+    ({
+      id,
+      role: WARDLEY_ROLE.label,
+      text,
+      fontSize: 18,
+      textAlign: align,
+      get elementBound() {
+        return new Bound(x, y, w, 26);
+      },
+    }) as unknown as GfxPrimitiveElementModel;
+
+  /**
+   * The ink of the names used below, at font 18, as the engine sizes them —
+   * letter by letter, not by an average. Spelled out so a test that depends on
+   * a few units of margin says where those units come from.
+   */
+  const INK = { ERP: 33.5, Customer: 77.2, Cloud: 44.5 };
 
   it('flags two nodes on top of each other, naming BOTH', () => {
     const violations = evaluate([
@@ -462,6 +492,125 @@ describe('W3 · overlapping nodes and labels', () => {
     ]);
   });
 
+  /**
+   * The two false positives the PO's acceptance brought back (01/08/2026), and
+   * the mistakes they must not take down with them.
+   *
+   * Both had the same cause: a label is created 120 to 200 units wide whatever
+   * it says, so the rule was measuring a box the user cannot see. Both are
+   * reproduced here as the acceptance saw them — a WIDE box with a SHORT name
+   * in it — so a change that brings the box geometry back fails loudly.
+   */
+  describe('measures the words, not the box they were created in', () => {
+    it('says nothing about a link crossing the empty half of a label box', () => {
+      // "ERP" left-aligned in a 120-wide box: ~33 units of ink, ~87 of margin.
+      const short = label('l1', 400, 394, { text: 'ERP' });
+      // A dependency running down the blank part of that box.
+      const link = edge('d1', WARDLEY_ROLE.dependency, [480, 300], [480, 500]);
+
+      expect(INK.ERP).toBeLessThan(80);
+      expect(evaluate([background(), link, short])).toEqual([]);
+    });
+
+    it('says nothing about two labels whose words do not touch', () => {
+      // Boxes overlap by 60 units; the words are ~27 units apart.
+      const a = label('l1', 400, 394, { text: 'ERP' });
+      const b = label('l2', 460, 394, { text: 'Cloud' });
+
+      expect(evaluate([background(), a, b])).toEqual([]);
+    });
+
+    it('sizes a name letter by letter, not by an average', () => {
+      // Seven narrow letters. An average advance reads `utility` half as wide
+      // again as it is drawn and puts a ghost 20 units past the last one — the
+      // PO's first capture, with another word in the box.
+      const narrow = label('l1', 400, 394, { text: 'utility', w: 200 });
+      const past = edge('d1', WARDLEY_ROLE.dependency, [455, 300], [455, 500]);
+      const inside = edge('d2', WARDLEY_ROLE.dependency, [420, 300], [420, 500]);
+
+      expect(evaluate([background(), past, narrow])).toEqual([]);
+      expect(idsOf(evaluate([background(), inside, narrow]))).toEqual([W3]);
+    });
+
+    it('still flags a link drawn through the word itself', () => {
+      const short = label('l1', 400, 394, { text: 'ERP' });
+      const link = edge('d1', WARDLEY_ROLE.dependency, [410, 300], [410, 500]);
+
+      expect(idsOf(evaluate([background(), link, short]))).toEqual([W3]);
+    });
+
+    it('still flags two names written on top of each other', () => {
+      const a = label('l1', 400, 394);
+      const b = label('l2', 430, 394);
+
+      const violations = evaluate([background(), a, b]);
+      expect(idsOf(violations)).toEqual([W3]);
+      expect(violations[0].elementIds).toEqual(['l1', 'l2']);
+    });
+
+    it('reads the ink where the alignment puts it', () => {
+      // Same box, same word: only `textAlign` says which end of the box the
+      // 72 units of ink sit at, and the rule has to agree with the renderer.
+      const right = label('l1', 400, 394, { align: 'right' });
+      const overLeftEnd = edge('d1', WARDLEY_ROLE.dependency, [410, 300], [410, 500]);
+      const overRightEnd = edge('d2', WARDLEY_ROLE.dependency, [500, 300], [500, 500]);
+
+      expect(evaluate([background(), overLeftEnd, right])).toEqual([]);
+      expect(idsOf(evaluate([background(), overRightEnd, right]))).toEqual([W3]);
+    });
+
+    it('measures an element that exposes no text by its box, as before', () => {
+      // A host element, or a fixture, that carries no text at all: there is
+      // nothing to measure, so nothing is narrowed and nothing changes.
+      const boxOnly = element('l1', [400, 394, 120, 26], WARDLEY_ROLE.label);
+      const link = edge('d1', WARDLEY_ROLE.dependency, [480, 300], [480, 500]);
+
+      expect(idsOf(evaluate([background(), boxOnly, link]))).toEqual([W3]);
+    });
+  });
+
+  /**
+   * `minPenetration: 4` — the second half of the calibration. Not every touch
+   * is a collision: what counts is how far into each other the two go.
+   */
+  describe('ignores a collision shallower than the declared threshold', () => {
+    it('lets a link graze the edge of a name in silence', () => {
+      const name = label('l1', 400, 394);
+      // The label runs from y 394 to y 420. A link one unit under its top edge
+      // touches the box and strikes out nothing.
+      const grazing = edge('d1', WARDLEY_ROLE.dependency, [300, 395], [700, 395]);
+      const through = edge('d2', WARDLEY_ROLE.dependency, [300, 401], [700, 401]);
+
+      expect(evaluate([background(), grazing, name])).toEqual([]);
+      // Seven units in — past the threshold, into the letters.
+      expect(idsOf(evaluate([background(), through, name]))).toEqual([W3]);
+    });
+
+    it('lets two names share a hair of ink in silence', () => {
+      // "ERP" ends at 433.5.
+      const a = label('l1', 400, 394, { text: 'ERP' });
+      // Three units of shared ink: the tail of one letter and the shoulder of
+      // the next, on a map 1600 units wide.
+      expect(
+        evaluate([background(), a, label('l2', 430, 394, { text: 'Cloud' })])
+      ).toEqual([]);
+      // Six, and the two words are genuinely one blur.
+      expect(
+        idsOf(evaluate([background(), a, label('l2', 427, 394, { text: 'Cloud' })]))
+      ).toEqual([W3]);
+    });
+
+    it('measures the DEPTH of a crossing, not the length of it', () => {
+      // A link running the whole length of a name but only one unit under its
+      // bottom edge crosses far more of it than a link that clips one corner —
+      // and is still not what makes a name unreadable.
+      const name = label('l1', 400, 394);
+      const under = edge('d1', WARDLEY_ROLE.dependency, [300, 419], [700, 419]);
+
+      expect(evaluate([background(), under, name])).toEqual([]);
+    });
+  });
+
   it('measures a link along its PATH, never by its bounding box', () => {
     // The box of this diagonal covers the whole quadrant; the line itself runs
     // nowhere near the label. Measuring boxes would indict every label on the
@@ -493,9 +642,16 @@ describe('W3 · overlapping nodes and labels', () => {
     expect(
       evaluate([background(), node('n1', 400, 400), node('n2', 418, 400)])
     ).toEqual([]);
-    // ...and one unit of real overlap is still an overlap.
+    // ...nor about one unit of real overlap. Since the PO's acceptance the
+    // rule declares `minPenetration: 4`: a shared hair between two 18-unit
+    // artefacts is a hand on a trackpad, not something anybody misreads.
     expect(
-      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 417, 400)]))
+      evaluate([background(), node('n1', 400, 400), node('n2', 417, 400)])
+    ).toEqual([]);
+    // Past the threshold it is an overlap again, and the family's own epsilon
+    // is what it always was.
+    expect(
+      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 413, 400)]))
     ).toEqual([W3]);
   });
 
@@ -572,6 +728,214 @@ describe('W3 · overlapping nodes and labels', () => {
     ]);
 
     expect(violation.backgroundId).toBe('bg');
+  });
+});
+
+describe('W4 · a provider above its consumer', () => {
+  /** A component node centred on an absolute model point. */
+  const at = (id: string, x: number, y: number) =>
+    element(id, [x - 9, y - 9, 18, 18], WARDLEY_ROLE.component);
+
+  /**
+   * A dependency BOUND to two nodes: `consumer` needs `provider`. The
+   * orientation is stated at the call site — it is the persisted `source →
+   * target` pair, and reading it off the geometry instead is the shortcut ADR
+   * 0010 § 4 rejects.
+   */
+  const needs = (
+    id: string,
+    consumer: GfxPrimitiveElementModel,
+    provider: GfxPrimitiveElementModel,
+    role: string | undefined = WARDLEY_ROLE.dependency
+  ) => {
+    const a = consumer.elementBound.center as [number, number];
+    const b = provider.elementBound.center as [number, number];
+    return {
+      ...edge(id, role, a, b),
+      source: { id: consumer.id },
+      target: { id: provider.id },
+    } as unknown as GfxPrimitiveElementModel;
+  };
+
+  it('flags a dependency whose provider sits higher than its consumer', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+    const violations = evaluate([
+      background(),
+      consumer,
+      provider,
+      needs('d1', consumer, provider),
+    ]);
+
+    expect(violations).toHaveLength(1);
+    // The relation, and both ends of it: the finding is about an ORDER, and
+    // neither node alone is at fault. The edge is named because reversing it is
+    // one of the two honest ways out, and that gesture lives on the edge.
+    expect(violations[0].elementIds).toEqual(['d1', 'n1', 'n2']);
+  });
+
+  it('says nothing when the consumer is above what it needs', () => {
+    const consumer = at('n1', 400, 200);
+    const provider = at('n2', 800, 700);
+
+    expect(
+      evaluate([background(), consumer, provider, needs('d1', consumer, provider)])
+    ).toEqual([]);
+  });
+
+  it('produces a well-formed violation object, with no prose', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+    const [violation] = evaluate([
+      background(),
+      consumer,
+      provider,
+      needs('d1', consumer, provider),
+    ]);
+
+    expect(violation).toStrictEqual<Violation>({
+      ruleId: W4,
+      elementIds: ['d1', 'n1', 'n2'],
+      severity: 'warning',
+      messageKey: 'com.labre.wardley.validation.provider-above-consumer',
+      messageFallback: 'This component sits above the one that depends on it.',
+      suggestion:
+        'com.labre.wardley.validation.provider-above-consumer.suggestion',
+      suggestionFallback:
+        'Needs run downwards on a Wardley map: move the provider below its consumer — or, if the link was drawn the wrong way round, reverse it.',
+      backgroundId: 'bg',
+    });
+  });
+
+  it('tolerates two components drawn level, and speaks past the slack', () => {
+    // The declared slack is 2% of a 900-high map, i.e. 18 units.
+    const consumer = at('n1', 400, 500);
+    const inside = at('n2', 800, 510);
+    expect(
+      evaluate([background(), consumer, inside, needs('d1', consumer, inside)])
+    ).toEqual([]);
+
+    const outside = at('n2', 800, 460);
+    expect(
+      idsOf(evaluate([background(), consumer, outside, needs('d1', consumer, outside)]))
+    ).toEqual([W4]);
+  });
+
+  it('reads the DIRECTION, not the layout — the same pair, reversed', () => {
+    // The whole point of the ADR in one assertion: two nodes, one geometry, two
+    // opposite verdicts depending only on which end the edge calls its source.
+    const high = at('n1', 400, 200);
+    const low = at('n2', 800, 700);
+
+    expect(idsOf(evaluate([background(), high, low, needs('d1', high, low)]))).toEqual(
+      []
+    );
+    expect(idsOf(evaluate([background(), high, low, needs('d1', low, high)]))).toEqual(
+      [W4]
+    );
+  });
+
+  it('never evaluates an edge with a free end', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+    // Released over empty canvas: a position, no id. It relates nothing.
+    const floating = {
+      ...needs('d1', consumer, provider),
+      target: { position: [800, 200] },
+    } as unknown as GfxPrimitiveElementModel;
+
+    expect(evaluate([background(), consumer, provider, floating])).toEqual([]);
+  });
+
+  it('never evaluates an edge whose end no longer exists', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+    // The provider was deleted between two evaluations: a dangling id says
+    // nothing about a layout.
+    expect(evaluate([background(), consumer, needs('d1', consumer, provider)])).toEqual(
+      []
+    );
+  });
+
+  it('never compares a pair that straddles two maps', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 2400, 200);
+    const secondMap = element('bg2', [2000, 0, 1600, 900], WARDLEY_ROLE.map);
+
+    expect(
+      idsOf(
+        evaluate([
+          background(),
+          secondMap,
+          consumer,
+          provider,
+          needs('d1', consumer, provider),
+        ])
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing when there is no map to be ordered against', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+
+    expect(evaluate([consumer, provider, needs('d1', consumer, provider)])).toEqual(
+      []
+    );
+  });
+
+  it('never falls on an edge carrying another role, or none', () => {
+    const consumer = at('n1', 400, 700);
+    const provider = at('n2', 800, 200);
+    // A change arrow is oriented too, and its verb is not "depends on". A
+    // neutral connector claims nothing at all.
+    expect(
+      idsOf(
+        evaluate([
+          background(),
+          consumer,
+          provider,
+          needs('a1', consumer, provider, WARDLEY_ROLE.changeArrow),
+        ])
+      )
+      // W1 has its own say about where that arrow points; W4 has none.
+    ).not.toContain(W4);
+    // A neutral connector, bound to both nodes and drawn the "wrong" way: no
+    // role, so nothing about it is ever evaluated (PRD principle 8).
+    const neutral = {
+      ...edge('c1', undefined, [400, 700], [800, 200]),
+      source: { id: 'n1' },
+      target: { id: 'n2' },
+    } as unknown as GfxPrimitiveElementModel;
+    expect(idsOf(evaluate([background(), consumer, provider, neutral]))).toEqual(
+      []
+    );
+  });
+
+  it('says nothing about an edge that links an element to itself', () => {
+    const alone = at('n1', 400, 700);
+
+    expect(evaluate([background(), alone, needs('d1', alone, alone)])).toEqual([]);
+  });
+
+  it('costs one finding per RELATION, never per pair of nodes', () => {
+    // Three nodes in a correct chain plus one link drawn upside-down: the rule
+    // reports the relation somebody drew, and says nothing about the two nodes
+    // that merely happen to be one above the other.
+    const top = at('n1', 400, 200);
+    const middle = at('n2', 600, 500);
+    const bottom = at('n3', 800, 800);
+    const violations = evaluate([
+      background(),
+      top,
+      middle,
+      bottom,
+      needs('ok1', top, middle),
+      needs('ok2', middle, bottom),
+      needs('bad', bottom, middle),
+    ]);
+
+    expect(violations.map(v => v.elementIds.join('+'))).toEqual(['bad+n2+n3']);
   });
 });
 

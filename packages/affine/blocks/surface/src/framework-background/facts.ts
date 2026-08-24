@@ -60,6 +60,33 @@ const FORWARD = {
   vertical: [0, -1],
 } as const satisfies Record<string, readonly [number, number]>;
 
+/**
+ * Frozen at module load, and not as a formality.
+ *
+ * `as const` is a COMPILE-TIME claim: it stops `FORWARD.horizontal[0] = -1`
+ * from type-checking and does nothing whatsoever at runtime. These vectors are
+ * handed out by reference — {@link backgroundAxisFacts} returns the constant
+ * itself, not a copy — and they are what
+ * `evaluateOrientationAgainstAxis` multiplies a subject's direction against. A
+ * single write into one of them flips the axis convention for the whole
+ * process: correct arrows start reporting as violations, on every map, for the
+ * rest of the session.
+ *
+ * `AuditProvider` made that reachable — the audit seam hands the facts to a
+ * host-supplied assistant (PF14.1). `requestAudit` clones the whole request, so
+ * that path is closed at the boundary; this closes the class at the SOURCE, for
+ * every other caller of {@link collectAuditFacts} and of these accessors,
+ * present and future. Two defences, and the cheap one is the one that cannot be
+ * forgotten by a caller who has not read the boundary.
+ *
+ * Cost: three `Object.freeze` calls, once, at module load. Effect: a mutation
+ * throws in strict mode (every ES module) instead of silently corrupting the
+ * engine three frames later.
+ */
+Object.freeze(FORWARD.horizontal);
+Object.freeze(FORWARD.vertical);
+Object.freeze(FORWARD);
+
 /** The declared axes, as facts. Empty for a background that declares none. */
 export function backgroundAxisFacts(
   def: FrameworkBackgroundDef

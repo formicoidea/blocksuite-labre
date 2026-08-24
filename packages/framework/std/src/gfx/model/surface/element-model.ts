@@ -682,6 +682,43 @@ export abstract class GfxPrimitiveElementModel<
   @field()
   accessor validationProfile: string | undefined = undefined;
 
+  /**
+   * The map-quality NUDGES the user has ticked off on this instance (PF7.10) —
+   * ids of declarative reminders their framework ships, never rules the engine
+   * evaluates.
+   *
+   * A nudge is an expectation the tool cannot judge ("the map has a title that
+   * frames the study"): the content can exist without being good, so nothing
+   * here is ever computed. Ticking one is the same gesture as granting an
+   * exception — the user says "I have taken care of this" and the tool records
+   * it rather than pretending to check it.
+   *
+   * Carried by the framework's BACKGROUND element, i.e. the root instance, for
+   * the same reason {@link validationProfile} is: two maps on one canvas are two
+   * independent pieces of work, and a checklist ticked on one says nothing about
+   * the other.
+   *
+   * Declared on the BASE class for the same reason as {@link role} and
+   * {@link validationExceptions}: an element re-created from props (paste,
+   * duplicate, template insertion) only reaches the Y.Map through keys that have
+   * a declared accessor, so a checklist declared per subclass would be silently
+   * dropped on copy.
+   *
+   * `undefined` = nothing ticked, and no key is written for it, so a document
+   * authored before this field existed stays byte-identical: optional field, no
+   * schema version bump, no migration. Unticking the last one goes through
+   * {@link clearField}, which removes the key rather than leaving a tombstone.
+   *
+   * Flat JSON — an array of strings — on purpose: element serialization is one
+   * level deep, and a value a Yjs update can encode is the contract enforced by
+   * `_assignElementProp`. The library that interprets the ids lives in
+   * `@labre/affine-block-surface`; the base model only carries them, and knows
+   * nothing about nudges. Ids of nudges no framework declares any more are kept,
+   * not pruned: the tooling comes and goes with a flag, the decision does not.
+   */
+  @field()
+  accessor qualityChecklist: string[] | undefined = undefined;
+
   @field()
   accessor lockedBySelf: boolean | undefined = false;
 

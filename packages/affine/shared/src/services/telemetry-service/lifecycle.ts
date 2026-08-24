@@ -94,11 +94,36 @@ export interface FrameworkPromotionEvent extends TelemetryEvent {
   elementCount: number;
 }
 
+/**
+ * The persisted direction of a TYPED EDGE was reversed (`docs/adr/0010` M3):
+ * `source` and `target` swapped, in one undo step, by the only supported
+ * inversion.
+ *
+ * Worth its own event for the same reason an exception is worth one: this is
+ * the correction gesture of a decision the user could not previously see, so
+ * how often it is used is the measurement of whether the DRAWING gesture (M1)
+ * announces itself well enough. A framework whose links are reversed constantly
+ * is a framework whose hint is wrong.
+ *
+ * Ids only — the role and the framework its namespace names — never board
+ * content, and never the two element ids.
+ */
+export interface EdgeDirectionEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Role id of the inverted edges, when they all carry the same one. */
+  role?: string;
+  /** Its namespace, when that names a framework: `wardley:dependency` → `wardley`. */
+  framework?: string;
+  /** How many edges the single gesture reversed. */
+  elementCount: number;
+}
+
 export type FrameworkDiagramEvents = {
   FrameworkElementAdded: FrameworkElementEvent;
   FrameworkToolPicked: FrameworkElementEvent;
   FrameworkLegendCreated: FrameworkElementEvent;
   FrameworkElementPromoted: FrameworkPromotionEvent;
+  EdgeDirectionInverted: EdgeDirectionEvent;
 };
 
 /**
@@ -141,8 +166,116 @@ export interface ValidationProfileEvent extends TelemetryEvent {
   previousProfileId?: string;
 }
 
+/**
+ * A map-quality NUDGE ticked or unticked (PF7.10). Worth knowing about for the
+ * same reason an exception is, and for one more: a nudge everybody ticks
+ * immediately is a reminder nobody needed, and one nobody ever ticks is an
+ * expectation the tool has failed to make actionable. Neither is visible any
+ * other way, because nothing here is ever computed.
+ *
+ * Ids only — the framework's own namespaced nudge ids — never board content.
+ */
+export interface MapQualityNudgeEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the nudge, e.g. `wardley`. */
+  framework: string;
+  /** Namespaced nudge id, e.g. `wardley.q1-title`. */
+  nudgeId: string;
+  /** `true` = ticked ("I have taken care of this"), `false` = taken back. */
+  checked: boolean;
+}
+
+/**
+ * A quality CHECK-UP asked for (PF5.14). The on-demand moment exists so these
+ * controls never touch the drawing budget, which also means nothing else
+ * records that they run: how often a user asks, and how much a run finds, are
+ * only knowable here.
+ *
+ * Counts only, never a rule id and never board content: which remarks a
+ * particular map produced is the map's business.
+ */
+export interface MapQualityCheckupEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the rules walked, when the run had any. */
+  framework?: string;
+  /** How many on-demand rules the run walked. */
+  ruleCount: number;
+  /**
+   * How many remarks came back — for the ONE instance the run was about. A
+   * check-up walks the whole surface and reports on one map, so this is never a
+   * count over the board.
+   */
+  remarkCount: number;
+  /**
+   * Set when a rule threw and the run stopped early. Absent rather than `false`,
+   * per the repo convention — and worth knowing about on its own: a check-up
+   * that fails is invisible everywhere else, because it produces no remark to
+   * notice the absence of.
+   */
+  error?: true;
+}
+
 export type ValidationEvents = {
   ValidationExceptionGranted: ValidationExceptionEvent;
   ValidationExceptionRevoked: ValidationExceptionEvent;
   ValidationProfileChanged: ValidationProfileEvent;
+  MapQualityNudgeToggled: MapQualityNudgeEvent;
+  MapQualityCheckupRun: MapQualityCheckupEvent;
+};
+
+/**
+ * An AI audit run (PF14.1) — level 3, executed app-side by the Labre Assistant
+ * through the `AuditProvider` seam.
+ *
+ * Three events rather than one, because the three questions are different: how
+ * often is an audit asked for (started), does it ever finish (completed), and
+ * how often does it not (interrupted). A single event with a status field would
+ * answer the first and lose the other two the moment a run never resolves.
+ *
+ * Ids and counts only — criterion ids and how many findings came back. The
+ * board's content, the criteria's prompts and the findings' wording never leave
+ * the editor through this bus.
+ */
+export interface MapAuditEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the criteria, when the run carries only one. */
+  framework?: string;
+  /** How many criteria the run was given. */
+  criterionCount: number;
+  /** How many framework frames the facts described. */
+  frameCount: number;
+}
+
+export interface MapAuditCompletedEvent extends MapAuditEvent {
+  /** How many findings came back, after the library's normalisation. */
+  findingCount: number;
+  /** Wall-clock duration of the run, in milliseconds. */
+  durationMs: number;
+}
+
+export interface MapAuditInterruptedEvent extends MapAuditEvent {
+  /**
+   * Why it did not complete.
+   *
+   * `unavailable` is a first-class member and not an error: no assistant is
+   * wired in this assembly, or the one that is declared itself unable to answer
+   * (feature flag, quota, no model configured). Knowing how often a user
+   * reaches for an audit that cannot run is precisely the number that decides
+   * whether the affordance should be there at all.
+   *
+   * `superseded` means a newer run for the same editor started while this one
+   * was in flight, so its answer was dropped rather than published. It is
+   * reported here rather than as a completion because a `findingCount` for
+   * findings nobody will see is a metric that lies — and a rising `superseded`
+   * count is itself the signal that audits are slow enough that users ask
+   * twice.
+   */
+  reason: 'aborted' | 'error' | 'unavailable' | 'superseded';
+  durationMs: number;
+}
+
+export type AuditEvents = {
+  MapAuditStarted: MapAuditEvent;
+  MapAuditCompleted: MapAuditCompletedEvent;
+  MapAuditInterrupted: MapAuditInterruptedEvent;
 };

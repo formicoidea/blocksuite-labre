@@ -108,11 +108,30 @@ const DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: 'com.labre.wardley.role.method',
   },
-  // The value-chain link: "A depends on B".
+  /**
+   * The value-chain link: "A depends on B".
+   *
+   * The comment above was the whole of the convention until `docs/adr/0010`
+   * made it DATA. Tier 1 of that ADR is generic — `source` is the subject of
+   * the role's verb, `target` its object — and tier 2 is this `direction`
+   * block: the verb of THIS role is "depends on", so its source is the
+   * consumer and its target is what the consumer needs. Needs descend from
+   * source to target; value flows back up. W4 evaluates exactly that reading,
+   * and the tool hint below is what makes it a statement the user made rather
+   * than a by-product of which end their finger landed on first.
+   */
   {
     id: WARDLEY_ROLE.dependency,
     kind: 'edge',
     labelKey: 'com.labre.wardley.role.dependency',
+    labelFallback: 'Dependency',
+    direction: {
+      verbKey: 'com.labre.wardley.role.dependency.verb',
+      verbFallback: 'depends on',
+      gestureHintKey: 'com.labre.wardley.role.dependency.gesture',
+      gestureHintFallback:
+        'Drag from the component that has the need to what it needs.',
+    },
   },
   // The map itself: the axes frame the other roles are positioned against.
   // A frame, not a component, so it specialises nothing — a rule written on
@@ -129,6 +148,18 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.changeArrow,
     kind: 'edge',
     labelKey: 'com.labre.wardley.role.change-arrow',
+    labelFallback: 'Evolution arrow',
+    // Tier 1 applies to every edge role, so this one states its own verb — and
+    // it is NOT "depends on". An arrow says where a component is going: source
+    // is where it stands today, target where it is heading. W4 reads the
+    // dependency's verb and never this one.
+    direction: {
+      verbKey: 'com.labre.wardley.role.change-arrow.verb',
+      verbFallback: 'is evolving towards',
+      gestureHintKey: 'com.labre.wardley.role.change-arrow.gesture',
+      gestureHintFallback:
+        'Drag from where the component stands today to where it is heading.',
+    },
   },
   // The inertia bar: resistance to a movement, drawn ACROSS a dependency. A
   // plain filled rect on the canvas, which is exactly why it needs a role —
@@ -141,9 +172,13 @@ const DEFS: readonly RoleDef[] = [
   // The name written next to an artefact. A role of its own rather than a
   // property of the node it labels: on this canvas a label IS a separate free
   // text element, grouped with its node, and W3 is about where it lands.
+  //
+  // `text`, not `node`: a label is created 120 to 200 units wide whatever it
+  // reads, so its BOX is not a statement about anything the eye can see. The
+  // kind is what tells a rule to measure the words instead.
   {
     id: WARDLEY_ROLE.label,
-    kind: 'node',
+    kind: 'text',
     labelKey: 'com.labre.wardley.role.label',
   },
 ];

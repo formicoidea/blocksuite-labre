@@ -46,6 +46,12 @@ export const createGroupFromSelectedCommand: Command<
   if (!surface) {
     return;
   }
+  // Guarded BEFORE the `removeChild` calls below: they write through raw
+  // transactions, and `crud.addElement` would refuse afterwards — leaving the
+  // selection orphaned from its parent group on a readonly board.
+  if (std.store.readonly) {
+    return;
+  }
 
   if (
     selection.selectedElements.length === 0 ||
@@ -98,6 +104,10 @@ export const ungroupCommand: Command<{ group: GroupElementModel }, {}> = (
   const elements = group.childElements;
 
   if (group instanceof MindmapElementModel) {
+    return;
+  }
+  // `removeChild` and the index rewrites below are raw transactions.
+  if (std.store.readonly) {
     return;
   }
 

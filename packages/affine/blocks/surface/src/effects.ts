@@ -1,4 +1,8 @@
 import {
+  MAP_QUALITY_WIDGET,
+  MapQualityWidget,
+} from './extensions/map-quality-widget.js';
+import {
   READING_PROPOSAL_WIDGET,
   ReadingProposalWidget,
 } from './extensions/reading-widget.js';
@@ -13,5 +17,6 @@ export function effects() {
   customElements.define('affine-surface-void', SurfaceBlockVoidComponent);
   customElements.define('affine-surface', SurfaceBlockComponent);
   customElements.define(VIOLATION_DETAIL_WIDGET, ViolationDetailWidget);
+  customElements.define(MAP_QUALITY_WIDGET, MapQualityWidget);
   customElements.define(READING_PROPOSAL_WIDGET, ReadingProposalWidget);
 }

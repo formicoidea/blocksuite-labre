@@ -15,7 +15,10 @@ import { ListViewExtension } from '@labre/affine-block-list/view';
 import { NoteViewExtension } from '@labre/affine-block-note/view';
 import { ParagraphViewExtension } from '@labre/affine-block-paragraph/view';
 import { RootViewExtension } from '@labre/affine-block-root/view';
-import { SurfaceViewExtension } from '@labre/affine-block-surface/view';
+import {
+  AuditViewExtension,
+  SurfaceViewExtension,
+} from '@labre/affine-block-surface/view';
 import { SurfaceRefViewExtension } from '@labre/affine-block-surface-ref/view';
 import { TableViewExtension } from '@labre/affine-block-table/view';
 import { FoundationViewExtension } from '@labre/affine-foundation/view';
@@ -89,8 +92,9 @@ import { ToolbarViewExtension } from '@labre/affine-widget-toolbar/view';
 import { ViewportOverlayViewExtension } from '@labre/affine-widget-viewport-overlay/view';
 
 import {
-  type BlockFlags,
   isBlockEnabled,
+  isCapabilityEnabled,
+  type LabreFlags,
   type OptionalBlock,
 } from '../flags.js';
 import { CommandTelemetryViewExtension } from './command-telemetry.js';
@@ -104,7 +108,7 @@ import { CommandTelemetryViewExtension } from './command-telemetry.js';
  * already drawn disappearing from the canvas. Omitted flags default to
  * enabled. See {@link BlockFlags} and `docs/adr/0009`.
  */
-export function getInternalViewExtensions(flags?: BlockFlags) {
+export function getInternalViewExtensions(flags?: LabreFlags) {
   const on = (block: OptionalBlock) => isBlockEnabled(flags, block);
   return [
     FoundationViewExtension,
@@ -165,6 +169,11 @@ export function getInternalViewExtensions(flags?: BlockFlags) {
     ...(on('surface-ref') ? [SurfaceRefViewExtension] : []),
     ...(on('table') ? [TableViewExtension] : []),
     SurfaceViewExtension,
+    // The AI audit seam (PF14.1). A CAPABILITY, not a block: `ai-audit` gates
+    // the `map.audit` command and nothing else, and nothing it touches is
+    // persisted, so switching it off cannot lose anything. See
+    // `OPTIONAL_CAPABILITIES` for why it is not an `OPTIONAL_BLOCKS` entry.
+    ...(isCapabilityEnabled(flags, 'ai-audit') ? [AuditViewExtension] : []),
     RootViewExtension,
 
     // Inline

@@ -11,6 +11,11 @@ import {
   createWardleyPipeline,
 } from './actions';
 import {
+  WARDLEY_ROLE,
+  WARDLEY_ROLES,
+  type WardleyRoleId,
+} from './roles';
+import {
   wardleyAnchorIcon,
   wardleyArrowIcon,
   wardleyBackgroundIcon,
@@ -47,6 +52,16 @@ interface Spec {
   id: string;
   /** English default, verbatim from the button it replaces. */
   label: string;
+  /**
+   * The role this tool STAMPS on what it draws, when it draws a typed edge.
+   *
+   * Present only on the two connector tools, and it is what makes M1 of
+   * `docs/adr/0010` free of duplicated prose: the sentence a user reads under
+   * the button ("drag from the component that has the need to what it needs")
+   * is the one the ROLE declares, so the tooltip, the hover reveal and the tool
+   * hint can never disagree about which way a link is meant to be drawn.
+   */
+  edgeRole?: WardleyRoleId;
   /** Historical label key, for the seven commands that already shipped. */
   labelKey?: string;
   /** Second keystroke of the `w` chord; absent = keyless by intent. */
@@ -167,6 +182,7 @@ const SPECS: Spec[] = [
     category: 'connectors',
     kind: 'tool',
     element: 'connector:link',
+    edgeRole: WARDLEY_ROLE.dependency,
     run: gfx => activateWardleyConnector(gfx, 'link'),
   },
   {
@@ -178,6 +194,7 @@ const SPECS: Spec[] = [
     category: 'connectors',
     kind: 'tool',
     element: 'connector:arrow',
+    edgeRole: WARDLEY_ROLE.changeArrow,
     run: gfx => activateWardleyConnector(gfx, 'arrow'),
   },
   {
@@ -193,6 +210,23 @@ const SPECS: Spec[] = [
   },
 ];
 
+/**
+ * The sentence a tool shows under its label — the role's own gesture hint
+ * (M1 of `docs/adr/0010`), or nothing at all for a tool that draws no typed
+ * edge. Read off the vocabulary rather than written here twice.
+ */
+function gestureOf(spec: Spec) {
+  const direction =
+    spec.edgeRole === undefined
+      ? undefined
+      : WARDLEY_ROLES[spec.edgeRole]?.direction;
+  if (!direction?.gestureHintKey) return {};
+  return {
+    descriptionKey: direction.gestureHintKey,
+    descriptionFallback: direction.gestureHintFallback,
+  };
+}
+
 export const wardleyCommands: CommandDescriptor[] = SPECS.map(
   (spec, order) => ({
     id: `wardley.${spec.id}`,
@@ -200,6 +234,7 @@ export const wardleyCommands: CommandDescriptor[] = SPECS.map(
     kind: spec.kind,
     labelKey: spec.labelKey ?? `com.labre.commands.wardley.${spec.id}`,
     labelFallback: spec.label,
+    ...gestureOf(spec),
     category: spec.category,
     iconKey: spec.iconKey,
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
