@@ -15,6 +15,8 @@ import {
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
+  mapQualityCommands,
+  mapQualityWidget,
   SpotlightManager,
   ValidationManager,
   validationExceptionToolbarExtension,
@@ -61,6 +63,12 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // REGISTERED rule can be arbitrated on, so a board with no framework
       // enabled never sees it.
       context.register(validationExceptionToolbarExtension);
+      // The Map quality panel (PF7.11) and the one command that opens it.
+      // Both are generic: they render and offer nothing until a framework
+      // registers a nudge or an on-demand rule, which only its FLAG-GATED view
+      // extension does.
+      context.register(mapQualityWidget);
+      context.register(CommandExtension(mapQualityCommands));
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

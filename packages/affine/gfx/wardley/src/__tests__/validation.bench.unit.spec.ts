@@ -1,4 +1,5 @@
 import {
+  evaluateCheckup,
   evaluateRules,
   type ValidationProfile,
   type ValidationRule,
@@ -10,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 
 import { WARDLEY_PROFILES } from '../profiles';
+import { WARDLEY_CHECKUP_RULES } from '../quality';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
 
@@ -40,6 +42,17 @@ import { WARDLEY_RULES } from '../rules';
 
 /** One 60 fps frame. */
 const FRAME_BUDGET_MS = 16;
+
+/**
+ * Wall-clock allowance for a measurement, as opposed to the budget being
+ * measured.
+ *
+ * A bench takes dozens of samples of something that is allowed to cost a frame,
+ * so it is inherently near vitest's 1 s default — and on a loaded runner it goes
+ * past it. That failure says nothing about the engine and hides the assertions
+ * that would: generous here, strict in the `expect`s.
+ */
+const BENCH_TIMEOUT_MS = 30_000;
 
 /** Wardley elements on the reference map, background excluded. */
 const MAP_SIZE = 500;
@@ -247,6 +260,47 @@ function medianMs(run: () => unknown, runs = 21, warmup = 5): number {
 }
 
 /**
+ * One median per variant, measured on INTERLEAVED samples.
+ *
+ * Measuring one variant and then the next is what a naive A/B bench does, and on
+ * a shared runner it compares the machine's mood at two moments as much as it
+ * compares the code: back-to-back medians of the *same* evaluation drift by half
+ * again on this suite, and by three times under a full parallel run. Rotating
+ * through the variants inside a single sweep puts all of them through the same
+ * thermal state, the same GC pauses and the same neighbouring test files, so
+ * what is left between them is the difference between them.
+ *
+ * Taking more than two also lets a caller include the SAME work twice and read
+ * its own noise floor off the result — see the on-demand test below, which is
+ * the only honest way to say "these two are indistinguishable" on a box whose
+ * load nobody controls.
+ */
+function medianEachMs(
+  runs: readonly (() => unknown)[],
+  samples = 21,
+  warmup = 5
+): number[] {
+  for (let i = 0; i < warmup; i++) for (const run of runs) run();
+
+  const buckets: number[][] = runs.map(() => []);
+  for (let i = 0; i < samples; i++) {
+    for (let k = 0; k < runs.length; k++) {
+      // Rotated every iteration, so no variant systematically pays for warming
+      // the cache the next one then reads.
+      const index = (k + i) % runs.length;
+      const start = performance.now();
+      runs[index]();
+      buckets[index].push(performance.now() - start);
+    }
+  }
+
+  return buckets.map(bucket => {
+    bucket.sort((x, y) => x - y);
+    return bucket[Math.floor(bucket.length / 2)];
+  });
+}
+
+/**
  * Two medians, measured ALTERNATELY — for a comparison between two ways of
  * doing the same work.
  *
@@ -317,6 +371,82 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
     );
     expect(evaluateRules(noRules, map)).toEqual([]);
     expect(ms).toBeLessThan(0.05);
+  });
+
+  /**
+   * PF5.14's acceptance criterion, measured rather than asserted in prose: an
+   * on-demand rule must cost the drawing path ZERO.
+   *
+   * Both halves are checked, because either one alone is easy to fake: the
+   * ANSWER must be identical (the rules are never evaluated, not merely
+   * filtered out of the results afterwards), and the TIME must be
+   * indistinguishable (they are skipped before an element is touched, not
+   * walked and discarded).
+   *
+   * Given an explicit timeout because it is the most expensive case in the file:
+   * interleaving means BOTH variants are sampled on every iteration, so it does
+   * roughly twice the work of a plain `medianMs` and lands near the 1 s default
+   * on a loaded runner. A bench that fails for want of wall-clock time reports
+   * nothing about the engine — the assertions below are what must fail, if
+   * anything does.
+   */
+  it('pays nothing for the on-demand rules registered beside them', () => {
+    const both = [...WARDLEY_RULES, ...WARDLEY_CHECKUP_RULES];
+
+    expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
+
+    /**
+     * THREE variants in ONE sweep, two of which are the same work.
+     *
+     * Interleaving alone still cannot name a fixed bound, because the number the
+     * assertion needs is "how far apart may two IDENTICAL measurements land on
+     * this machine, right now" — and a loaded runner deschedules threads and
+     * pauses for GC inside one variant's samples and not another's. No constant
+     * chosen on a developer's laptop describes a CI box under ten parallel
+     * suites; measured across runs here, the same evaluation lands anywhere
+     * between ×1.05 and ×1.4 of itself.
+     *
+     * So the noise floor is measured FROM THE SAME SAMPLES as the claim, not by
+     * a second call a moment later — which was the flaw in the first attempt:
+     * a separate calibration sweep reports the machine's mood at a different
+     * moment, which is precisely the thing being corrected for.
+     */
+    const [withoutA, with_, withoutB] = medianEachMs([
+      () => evaluateRules(WARDLEY_RULES, map),
+      () => evaluateRules(both, map),
+      () => evaluateRules(WARDLEY_RULES, map),
+    ]);
+
+    const without = (withoutA + withoutB) / 2;
+    const noise = Math.max(withoutA, withoutB) / Math.min(withoutA, withoutB);
+    const bound = without * Math.max(noise, 1.25) + 0.05;
+
+    console.info(
+      `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
+        `with ${WARDLEY_CHECKUP_RULES.length} on-demand rules also registered: ` +
+        `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
+        `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
+        `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
+    );
+    // What the extra rules may cost is two property reads per evaluation, which
+    // is unmeasurable. Anything past the spread the SAME work shows on this
+    // machine would mean they are actually being walked.
+    expect(with_).toBeLessThan(bound);
+  }, BENCH_TIMEOUT_MS);
+
+  it('runs those same rules only when asked, and finds something', () => {
+    // The other side of the coin: they are not inert data, they are rules that
+    // work — they simply work at the other moment.
+    const checked = referenceMap(MAP_SIZE);
+    const remarks = evaluateCheckup(WARDLEY_CHECKUP_RULES, checked);
+
+    console.info(
+      `[bench] check-up over ${MAP_SIZE} elements: ${remarks.length} remarks`
+    );
+    // The generator draws every node in the toolbox's own greys, so Q5 is
+    // clean; Q6 is gated on a `nature` nothing writes yet. A check-up that
+    // found something here would mean one of the two had started guessing.
+    expect(remarks).toEqual([]);
   });
 
   it(`stays inside the frame with profiles in force`, () => {
@@ -414,7 +544,7 @@ describe('a drag on a dense map re-judges only what moved', () => {
       `[bench] full ${full.toFixed(3)} ms vs dirty ${incremental.toFixed(3)} ms`
     );
     expect(incremental).toBeLessThan(full);
-  });
+  }, BENCH_TIMEOUT_MS);
 
   /**
    * The case a three-element drag hides: a LASSO.
@@ -433,7 +563,7 @@ describe('a drag on a dense map re-judges only what moved', () => {
   // an engine that now carries a fourth rule: past the package's 1 s default on
   // a loaded machine. The BUDGET each evaluation is held to is unchanged — it
   // is the number of evaluations this one test performs that needs the room.
-  it('stays inside the frame at EVERY dirty-set size', { timeout: 10_000 }, () => {
+  it('stays inside the frame at EVERY dirty-set size', { timeout: BENCH_TIMEOUT_MS }, () => {
     const participants = map.filter(
       el =>
         el.role !== undefined &&
@@ -487,6 +617,10 @@ describe('a drag on a dense map re-judges only what moved', () => {
       // assertion above — the one a user feels — stays exact.
       expect(ms).toBeLessThan(full * 3 + 2);
     }
+    // Six medianMs measurements in one test — the most expensive case in the
+    // file, and the one that has been timing out under load since before this
+    // slice. The BUDGET assertions above are untouched; only the wall-clock
+    // allowance for taking the samples is.
   });
 });
 
@@ -568,7 +702,7 @@ describe('the budget horizon, recorded for the next slice', () => {
     // by a factor of four between an idle runner and a loaded one, so it is
     // logged and never asserted.
     expect(ratio).toBeLessThan(8);
-  });
+  }, BENCH_TIMEOUT_MS);
 
   it('has exactly ONE pair-wise rule — the second one is the trigger', () => {
     // The enforceable half of the note above. Every `no-overlap` rule is

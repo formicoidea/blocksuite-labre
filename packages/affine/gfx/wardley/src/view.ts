@@ -1,6 +1,7 @@
 import {
   tagsToolbarConfig,
   validationToolbarConfig,
+  QualityNudgeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -22,6 +23,7 @@ import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
+import { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from './quality';
 import { WARDLEY_ROLES } from './roles';
 import { WARDLEY_RULES } from './rules';
 import { wardleyTemplateCategory } from './templates';
@@ -85,10 +87,21 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+      // Map quality (PF13.8 / PF13.9): the four nudges the tool cannot judge,
+      // and the two on-demand rules it can. The check-up rules go through the
+      // SAME registration as the real-time ones — `moment: 'on-demand'` is what
+      // keeps them out of the drawing path, not a separate registry — while
+      // staying out of `WARDLEY_RULES`, which is what the 16 ms bench measures.
+      context.register(ValidationRuleExtension(WARDLEY_CHECKUP_RULES));
+      context.register(QualityNudgeExtension(WARDLEY_NUDGES));
       // A1–A3, the level-3 criteria (PF14.1). Registered HERE, beside the rules
       // and for the same reason: a criterion is tooling, so Wardley switched
       // off contributes none and `map.audit` finds nothing to ask about — while
       // `ai-audit` independently decides whether the command exists at all.
+      //
+      // Levels 2 and 3 sit one line apart and stay independent: the check-up
+      // above is deterministic and runs in-process, the criteria below are
+      // handed to a host's model. Neither reads the other's results.
       context.register(AuditCriterionExtension(WARDLEY_AUDIT_CRITERIA));
       // The Validation dropdown on a selected map's contextual toolbar. A
       // SECOND module on the same element, through the `custom:` flavour slot

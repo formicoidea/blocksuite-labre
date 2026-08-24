@@ -28,6 +28,7 @@ import {
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
+import { type QualityNudge, QualityNudgeIdentifier } from './map-quality.js';
 import { ViolationTimeline } from './violation-timeline.js';
 
 /**
@@ -78,6 +79,10 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   optionally at one of the frame's zone transitions.
  * - `no-overlap` — declared pairs of roles must not collide. The first family
  *   that is not element-local: it evaluates PAIRS.
+ * - `tone-convention` — the subject must be drawn in one of the tones the
+ *   frame's own palette declares for it. On-demand only, in practice.
+ * - `majority-fact` — a remark about the MAP, raised when a declared fact holds
+ *   for a majority of the subjects. Silent while nothing carries the fact.
  * - `relative-order-along-axis` — the two elements a TYPED EDGE links must sit
  *   in the order that edge states, along one axis of the frame. The first
  *   family whose subject is a RELATION rather than an element or a proximity.
@@ -87,7 +92,28 @@ export type RuleFamily =
   | 'orientation-against-axis'
   | 'attachment'
   | 'no-overlap'
-  | 'relative-order-along-axis';
+  | 'relative-order-along-axis'
+  | 'tone-convention'
+  | 'majority-fact';
+
+/**
+ * WHEN a rule is evaluated (PF5.14).
+ *
+ * - `realtime` — the default, and what every rule was before this existed:
+ *   evaluated on the debounced path while the user draws, inside the 16 ms
+ *   budget.
+ * - `on-demand` — evaluated ONLY when the user asks for a check-up, and never
+ *   during a gesture. {@link evaluateRules} skips these before touching a
+ *   single element, so a framework can ship a control that would not fit the
+ *   frame — or that is simply not urgent — without spending a microsecond of
+ *   the drawing budget on it.
+ *
+ * The split is a property of the RULE, not of the caller: a rule that must not
+ * interrupt says so once, in its own declaration, and no evaluation path has to
+ * remember. That is what makes "zero real-time cost" provable at the bench
+ * rather than promised in a comment.
+ */
+export type ValidationMoment = 'realtime' | 'on-demand';
 
 /** `orientation-against-axis` configuration. */
 export interface AgainstAxisDef {
@@ -177,6 +203,71 @@ export interface AttachmentDef {
 export type OverlapPair = readonly [RoleId, RoleId];
 
 /**
+ * `tone-convention` configuration (PF13.8 / Q5).
+ *
+ * A framework's colour code is a CONVENTION, not a decoration: on a Wardley map
+ * the landscape is drawn in greys, red is reserved for what is changing and
+ * green for benefits. A component someone coloured red for emphasis is saying
+ * something the author did not mean.
+ *
+ * ## Why palette ENTRIES and not colours
+ *
+ * The sanctioned colours are named against the frame's own declared palette
+ * ({@link BackgroundChromeDef.palette}) — the same `@name` indirection every
+ * background label and wash already uses. A rule therefore never restates a hex
+ * the background already owns, and a host restyling the frame restyles the
+ * convention with it, in one place.
+ *
+ * ## Why TONES and not exact colours
+ *
+ * The convention is about tones, so the comparison is too: an element is judged
+ * on the tone family its colour falls into ({@link toneOf}), never on matching
+ * a palette entry byte for byte. Otherwise every legitimate shade of grey the
+ * shape toolbar can produce would be a finding, which is a rule nobody would
+ * keep switched on for five minutes.
+ *
+ * A colour the engine cannot classify — a CSS variable it has no theme to
+ * resolve, a gradient, `transparent` — yields SILENCE. Guessing would mean
+ * indicting a user over a colour nobody in this process can actually see.
+ */
+export interface ToneConventionDef {
+  /**
+   * Names of the entries, in the rule's {@link ValidationRule.background}
+   * palette, whose tones the subject may be drawn in. A rule naming entries
+   * that resolve to no classifiable tone at all warns once and evaluates
+   * nothing, rather than indicting every element on the board.
+   */
+  palette: readonly string[];
+}
+
+/**
+ * `majority-fact` configuration (PF13.8 / Q6).
+ *
+ * "Most of what you have mapped is an activity — the phase names for activities
+ * would read better." A remark about the MAP, raised from a count over its
+ * elements, and deliberately never imposed.
+ *
+ * ## The gate, and why it is silence rather than a warning
+ *
+ * The fact is read off a declared element prop that may not exist yet — Wardley's
+ * `nature` is the type-3 classification, and nothing writes it today. A family
+ * that guessed would produce a remark about a majority it computed over an empty
+ * population, i.e. a sentence with no evidence behind it. So a surface where NO
+ * subject carries the fact raises nothing at all, silently: the rule is shipped,
+ * inert, and starts working by itself the day the fact lands. Nothing to
+ * remember, nothing to switch on.
+ */
+export interface MajorityDef {
+  /**
+   * The element prop carrying the fact, read duck-typed: the engine must not
+   * import a framework's model to count something declared by data.
+   */
+  fact: string;
+  /** The value that must hold for a majority of the subjects. */
+  value: string;
+}
+
+/**
  * `relative-order-along-axis` configuration — the family of `docs/adr/0010`'s
  * W4, "a provider component may not be positioned higher than its consumer".
  *
@@ -233,6 +324,15 @@ export interface ValidationRule extends RuleMessage {
   framework: string;
   family: RuleFamily;
   severity: ViolationSeverity;
+  /**
+   * When this rule runs. Absent = `'realtime'`, which is what every rule
+   * written before PF5.14 means and what the vast majority of rules want.
+   *
+   * `'on-demand'` takes the rule OUT of {@link evaluateRules} entirely — not
+   * out of the canvas affordance, out of the evaluation — and into
+   * {@link evaluateCheckup}, which only a user gesture calls.
+   */
+  moment?: ValidationMoment;
   /**
    * The role this rule is written on. An element matches when its own role IS
    * that role or SPECIALISES it ({@link roleIsA}), so a rule on
@@ -295,6 +395,10 @@ export interface ValidationRule extends RuleMessage {
    * declared crossing is reported whatever this says.
    */
   minPenetration?: number;
+  /** `tone-convention` only. */
+  tone?: ToneConventionDef;
+  /** `majority-fact` only. */
+  majority?: MajorityDef;
 }
 
 /**
@@ -635,18 +739,35 @@ function backgroundsOf(
 }
 
 /**
- * Every element on the surface acting as a framework background for SOME rule.
+ * Every element on the surface acting as a framework background for a REAL-TIME
+ * rule.
  *
  * Recorded by the manager after each evaluation, and read on the next one — the
  * one fact about a deleted background that nothing else can reconstruct. See
  * {@link ValidationManager._backgrounds}.
+ *
+ * ## Why the moment is filtered here too
+ *
+ * This runs on the gesture path, once per evaluation, and it is a FULL surface
+ * walk per rule. `evaluateRules` already refuses to walk an on-demand rule, so
+ * leaving it in here would have handed the drawing budget back exactly what the
+ * second moment took away from it — measured at +58 % on the manager's tick with
+ * the two Wardley check-up rules registered, and invisible to a bench that times
+ * `evaluateRules` alone.
+ *
+ * It is also the right answer and not merely the cheap one: `_backgrounds`
+ * exists to decide whether an incremental REAL-TIME pass must fall back to a
+ * full sweep. An on-demand rule never takes part in that pass, so the frames it
+ * measures against have nothing to invalidate — and a framework whose only rules
+ * are on-demand has no incremental pass to protect in the first place.
  */
-function backgroundElementIds(
+export function backgroundElementIds(
   rules: readonly ValidationRule[],
   elements: readonly GfxPrimitiveElementModel[]
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const rule of rules) {
+    if (!isRealtime(rule)) continue;
     for (const background of backgroundsOf(rule, elements)) ids.add(background.id);
   }
   return ids;
@@ -1658,6 +1779,320 @@ function evaluateNoOverlap(
 }
 
 /**
+ * The tone families a colour can fall into — the granularity a colour CONVENTION
+ * is actually written at ("the landscape is grey, red is what changes"), and
+ * deliberately not finer. A framework's palette entry and a user's colour are
+ * both reduced to one of these before they are compared.
+ */
+export type ColourTone =
+  | 'grey'
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'teal'
+  | 'blue'
+  | 'purple'
+  | 'magenta';
+
+/**
+ * Hue windows, in degrees, in ascending order. The last one wraps back onto
+ * red, which is why the table is read as "first upper bound above the hue".
+ */
+const TONE_HUES: readonly (readonly [number, ColourTone])[] = [
+  [15, 'red'],
+  [45, 'orange'],
+  [70, 'yellow'],
+  [160, 'green'],
+  [200, 'teal'],
+  [260, 'blue'],
+  [300, 'purple'],
+  [345, 'magenta'],
+  [360, 'red'],
+];
+
+/**
+ * Tone words, longest first so a substring can never win over the name that
+ * contains it. This is how a THEME TOKEN is classified — `--affine-palette-shape-red`
+ * carries its own answer in its name, and reading it is the only way to classify
+ * a variable the engine has no stylesheet to resolve.
+ */
+const TONE_WORDS: readonly (readonly [string, ColourTone])[] = [
+  ['magenta', 'magenta'],
+  ['purple', 'purple'],
+  ['orange', 'orange'],
+  ['yellow', 'yellow'],
+  ['green', 'green'],
+  ['white', 'grey'],
+  ['black', 'grey'],
+  ['blue', 'blue'],
+  ['teal', 'teal'],
+  ['grey', 'grey'],
+  ['gray', 'grey'],
+  ['red', 'red'],
+];
+
+/** Below this saturation a colour reads as a grey whatever its hue says. */
+const GREY_SATURATION = 0.15;
+
+/** Below this alpha nothing is on screen, so there is nothing to judge. */
+const INVISIBLE_ALPHA = 0.08;
+
+/** `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` → `[r, g, b, a]` in 0..1. */
+function parseHex(value: string): [number, number, number, number] | null {
+  const hex = value.slice(1);
+  const short = hex.length === 3 || hex.length === 4;
+  if (!short && hex.length !== 6 && hex.length !== 8) return null;
+
+  const size = short ? 1 : 2;
+  const channels: number[] = [];
+  for (let i = 0; i < hex.length; i += size) {
+    const chunk = hex.slice(i, i + size);
+    const parsed = Number.parseInt(short ? chunk + chunk : chunk, 16);
+    if (Number.isNaN(parsed)) return null;
+    channels.push(parsed / 255);
+  }
+  return [channels[0], channels[1], channels[2], channels[3] ?? 1];
+}
+
+/**
+ * Which tone family a colour belongs to, or `undefined` when the engine cannot
+ * honestly say.
+ *
+ * Two readings, in order: the NUMBER when the colour is a hex the process can
+ * actually see, and the NAME when it is a theme token it cannot. Anything else —
+ * `transparent`, a gradient, an `rgb()` triple, a variable with no tone in its
+ * name — is unclassifiable, and unclassifiable means silence: a convention rule
+ * that guessed would indict a user over a colour nobody here can see.
+ */
+export function toneOf(value: string | undefined): ColourTone | undefined {
+  if (!value) return undefined;
+  const raw = value.trim().toLowerCase();
+  if (raw === '' || raw === 'transparent') return undefined;
+
+  if (raw.startsWith('#')) {
+    const rgba = parseHex(raw);
+    if (rgba === null) return undefined;
+    const [r, g, b, a] = rgba;
+    if (a < INVISIBLE_ALPHA) return undefined;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const lightness = (max + min) / 2;
+    const span = max - min;
+    // Saturation of the HSL model, and the two ends of the lightness scale
+    // where hue stops meaning anything at all.
+    const saturation =
+      span === 0 ? 0 : span / (1 - Math.abs(2 * lightness - 1));
+    if (saturation < GREY_SATURATION || lightness < 0.06 || lightness > 0.96) {
+      return 'grey';
+    }
+
+    let hue: number;
+    if (max === r) hue = ((g - b) / span) % 6;
+    else if (max === g) hue = (b - r) / span + 2;
+    else hue = (r - g) / span + 4;
+    hue = (hue * 60 + 360) % 360;
+
+    for (const [limit, tone] of TONE_HUES) if (hue < limit) return tone;
+    return 'red';
+  }
+
+  for (const [word, tone] of TONE_WORDS) if (raw.includes(word)) return tone;
+  return undefined;
+}
+
+/**
+ * The colour-bearing props the engine reads, duck-typed.
+ *
+ * Duck-typed for the same reason {@link elementPath} is: the engine must not
+ * import a shape model, a text model or a connector model to answer a question
+ * that is about pixels. An element that carries none of these has no colour to
+ * be judged on and is skipped on the cheapest possible test.
+ */
+const COLOUR_PROPS = ['fillColor', 'strokeColor', 'color'] as const;
+
+/**
+ * Every string a `Color` value can present. A theme PAIR (`{ light, dark }`)
+ * yields both members: they are one decision seen under two themes, and the
+ * caller treats them as alternatives rather than as two separate colours.
+ */
+function colourStrings(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (value === null || typeof value !== 'object') return [];
+  const out: string[] = [];
+  for (const key of ['normal', 'light', 'dark']) {
+    const member = (value as Record<string, unknown>)[key];
+    if (typeof member === 'string') out.push(member);
+  }
+  return out;
+}
+
+/**
+ * Whether this element is drawn in a tone the convention does not sanction.
+ *
+ * Per PROP, not per string: a `{ light, dark }` pair is ONE colour, so it
+ * offends only when neither of its two members lands on a sanctioned tone. A
+ * prop whose colour cannot be classified is skipped, and an element whose props
+ * are all unclassifiable is never indicted.
+ *
+ * An unfilled shape's `fillColor` is deliberately ignored: it is stored, it is
+ * not painted, and a rule about what the map LOOKS like has no business reading
+ * a colour that is not on screen.
+ */
+function departsFromTones(
+  el: GfxPrimitiveElementModel,
+  allowed: ReadonlySet<ColourTone>
+): boolean {
+  const record = el as unknown as Record<string, unknown>;
+  const filled = record['filled'];
+
+  for (const prop of COLOUR_PROPS) {
+    if (prop === 'fillColor' && filled === false) continue;
+
+    let classified = false;
+    let sanctioned = false;
+    for (const raw of colourStrings(record[prop])) {
+      const tone = toneOf(raw);
+      if (tone === undefined) continue;
+      classified = true;
+      if (allowed.has(tone)) {
+        sanctioned = true;
+        break;
+      }
+    }
+    if (classified && !sanctioned) return true;
+  }
+  return false;
+}
+
+/**
+ * "Is this drawn in one of the tones the frame sanctions for it?" (PF13.8 / Q5)
+ *
+ * The sanctioned tones come from the FRAME's own palette, resolved through the
+ * `@name` indirection every background label already uses — so the rule restates
+ * no colour the background owns, and a host restyling the frame restyles the
+ * convention with it. See {@link ToneConventionDef}.
+ *
+ * A rule whose named entries resolve to nothing classifiable warns once and
+ * evaluates nothing: a convention with no reference colour is not a convention,
+ * and indicting the whole board over a broken declaration is the one outcome
+ * worse than silence.
+ */
+function evaluateToneConvention(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const tone = rule.tone;
+  const def = rule.background;
+  if (subjectRole === undefined || tone === undefined || def === undefined) {
+    return [];
+  }
+
+  const palette = def.chrome?.palette;
+  const allowed = new Set<ColourTone>();
+  for (const name of tone.palette) {
+    // Straight at the entry rather than through `backgroundColor('@name')`,
+    // which answers a broken magenta for a name the palette does not carry —
+    // and a magenta the rule never asked for would silently become a sanctioned
+    // tone.
+    const entry = palette?.[name];
+    const classified = entry === undefined ? undefined : toneOf(entry);
+    if (classified !== undefined) allowed.add(classified);
+  }
+  if (allowed.size === 0) {
+    warnOnce(
+      `tone-convention rule "${rule.id}" names no palette entry that resolves ` +
+        `to a classifiable tone — it is not evaluated.`
+    );
+    return [];
+  }
+
+  const backgrounds = backgroundsOf(rule, elements);
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+    if (!departsFromTones(el, allowed)) continue;
+
+    violations.push(
+      raise(rule, [el.id], attributeBackground(el.elementBound, backgrounds)?.id)
+    );
+  }
+  return violations;
+}
+
+/**
+ * "Is most of what is on this map of one declared nature?" (PF13.8 / Q6)
+ *
+ * A remark about the MAP, so the finding names the BACKGROUND and nothing else:
+ * no single element is at fault, and drawing a badge on one of two hundred
+ * components would be an accusation aimed at a bystander.
+ *
+ * Counted PER MAP. A board carrying a map of activities beside a map of
+ * practices holds two different answers, and a tally over the whole surface
+ * would give both of them the wrong one.
+ *
+ * ## The gate
+ *
+ * A surface where NOT ONE subject carries the fact yields nothing, silently —
+ * see {@link MajorityDef}. That is the state the Wardley `nature` is in today,
+ * and the rule ships inert rather than waiting in a branch somewhere for
+ * somebody to remember it.
+ */
+function evaluateMajorityFact(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const majority = rule.majority;
+  if (subjectRole === undefined || majority === undefined) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  // No frame on the board: no map for the remark to be about.
+  if (backgrounds.length === 0) return [];
+
+  const tally = new Map<
+    string,
+    { subjects: number; known: number; matching: number }
+  >();
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+
+    const frame = attributeBackground(el.elementBound, backgrounds);
+    if (frame === null) continue;
+    let counts = tally.get(frame.id);
+    if (counts === undefined) {
+      counts = { subjects: 0, known: 0, matching: 0 };
+      tally.set(frame.id, counts);
+    }
+    counts.subjects += 1;
+
+    const fact = (el as unknown as Record<string, unknown>)[majority.fact];
+    // Whatever a peer wrote, and whatever a framework has not written yet.
+    if (typeof fact !== 'string' || fact === '') continue;
+    counts.known += 1;
+    if (fact === majority.value) counts.matching += 1;
+  }
+
+  const violations: Violation[] = [];
+  // Sorted, so a board with two qualifying maps always reports them the same
+  // way whichever order the surface happened to be walked in.
+  for (const id of [...tally.keys()].sort()) {
+    const counts = tally.get(id)!;
+    // THE GATE: nothing here carries the fact, so there is no majority to be in.
+    if (counts.known === 0) continue;
+    // A strict majority of the SUBJECTS, not of the ones that happen to be
+    // classified: half a map left unclassified is not a mandate.
+    if (counts.matching * 2 <= counts.subjects) continue;
+    violations.push(raise(rule, [id], id));
+  }
+  return violations;
+}
+
+/**
  * The two ids a typed edge BINDS, or `null`.
  *
  * Duck-typed exactly like {@link elementPath}, and for the same reason: the
@@ -1812,8 +2247,15 @@ const RULE_FAMILIES: Record<
   'orientation-against-axis': evaluateOrientationAgainstAxis,
   attachment: evaluateAttachment,
   'no-overlap': evaluateNoOverlap,
+  'tone-convention': evaluateToneConvention,
+  'majority-fact': evaluateMajorityFact,
   'relative-order-along-axis': evaluateRelativeOrder,
 };
+
+/** A rule the drawing path evaluates. `moment` absent means `'realtime'`. */
+function isRealtime(rule: ValidationRule): boolean {
+  return (rule.moment ?? 'realtime') === 'realtime';
+}
 
 /** The exceptions an element carries, always an array, never a copy to keep. */
 export function elementExceptions(
@@ -1895,6 +2337,27 @@ export function evaluateRules(
   profiles: readonly ValidationProfile[] = [],
   incremental?: IncrementalContext
 ): Violation[] {
+  return runRules(rules, elements, profiles, 'realtime', incremental);
+}
+
+/**
+ * Run every rule of one MOMENT over every element. The body both
+ * {@link evaluateRules} and {@link evaluateCheckup} are made of — one pipeline,
+ * so a profile, an exception and a background attribution mean exactly the same
+ * thing whichever moment a rule is declared at.
+ *
+ * The moment is tested INSIDE the loop rather than by filtering the array: one
+ * property read per rule, no allocation, and the "an on-demand rule costs the
+ * drawing path nothing" claim is true of every evaluation and not just of the
+ * ones that bothered to filter.
+ */
+function runRules(
+  rules: readonly ValidationRule[],
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[],
+  moment: ValidationMoment,
+  incremental?: IncrementalContext
+): Violation[] {
   if (rules.length === 0) return [];
 
   // No profile registered => not a single extra read on the whole surface.
@@ -1903,6 +2366,10 @@ export function evaluateRules(
 
   const violations: Violation[] = [];
   for (const rule of rules) {
+    // The other moment's rules are not this pass's business — checked FIRST,
+    // so an on-demand rule never reaches a profile lookup, let alone an
+    // element (PF5.14).
+    if ((isRealtime(rule) ? 'realtime' : 'on-demand') !== moment) continue;
     // `'off'` everywhere means never walked: the cheapest exit there is, taken
     // before a single element is touched.
     if (index && chosen && isRuleSilent(rule, chosen, index)) continue;
@@ -1921,6 +2388,102 @@ export function evaluateRules(
   }
   return violations;
 }
+
+/** The registered rules a check-up runs — and nothing else ever evaluates. */
+export function onDemandRules(
+  rules: readonly ValidationRule[]
+): readonly ValidationRule[] {
+  return rules.filter(rule => !isRealtime(rule));
+}
+
+/**
+ * Run the ON-DEMAND rules over the surface (PF5.14). The exact mirror of
+ * {@link evaluateRules}, for the moment the drawing path never touches.
+ *
+ * Synchronous and total: this is what a test, a host and a report call. The
+ * manager drives the same pipeline one rule at a time so a long check-up can
+ * yield the thread — see {@link ValidationManager.runCheckup} — and both reach
+ * the same answer, because both are {@link runRules}.
+ *
+ * The findings are ordinary {@link Violation} objects and go through the same
+ * profile and exception passes as any other. What makes them REMARKS rather
+ * than verdicts is where they land: they never reach `violations$`, so they
+ * never reach the timeline, the bracket or the badge. A framework declares them
+ * `audit` on top of that, which is the severity for "collected, invisible to the
+ * drawing user" — belt and braces, and the braces are structural.
+ */
+export function evaluateCheckup(
+  rules: readonly ValidationRule[],
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
+): Violation[] {
+  return runRules(rules, elements, profiles, 'on-demand');
+}
+
+/**
+ * One check-up, as the panel reads it: what it found, when it was asked for,
+ * and how far it has got.
+ *
+ * ONE timestamp for the whole run, taken when the user asked — a single click is
+ * a single question, whatever number of rules it happens to walk. The same rule
+ * `setException` follows for an arbitration.
+ *
+ * Session state, never persisted: a document says what it contains, not when
+ * somebody last looked at it.
+ */
+export interface CheckupRun {
+  /**
+   * The INSTANCE this run is about — the map the user asked about, and the only
+   * one its remarks are allowed to be measured on.
+   *
+   * A check-up walks the whole surface, because that is where the elements are;
+   * a board carries several maps, and without this the panel on one map would
+   * confidently list the components of the one next to it, and a map nobody has
+   * ever checked would show somebody else's timestamp. That is precisely the
+   * "tally over the whole surface" {@link evaluateMajorityFact} refuses to
+   * compute, reintroduced one layer up.
+   *
+   * The filter is applied in {@link ValidationManager.runCheckup}, on
+   * {@link Violation.backgroundId} — recorded by every family that measures
+   * against a frame — so `results` is already about this instance and nothing
+   * downstream has to remember to narrow it.
+   */
+  backgroundId: string;
+  /** Epoch ms, taken at the moment of the gesture. */
+  at: number;
+  /** The remarks so far — complete once {@link done} reaches {@link total}. */
+  results: readonly Violation[];
+  /** Rules evaluated so far. */
+  done: number;
+  /** Rules this run has to walk. `done < total` means it is still going. */
+  total: number;
+  /**
+   * Set when a rule threw and the run stopped early.
+   *
+   * The run is still reported FINISHED (`done === total`), because the one thing
+   * a failure must not do is leave the panel believing a check-up is in flight:
+   * that reads as "Checking…" for ever and disables the only button that could
+   * try again. A visible failure the user can retry beats a silent lock.
+   */
+  error?: true;
+}
+
+/**
+ * How long a check-up may hold the thread before yielding it back.
+ *
+ * One frame, so a check-up that turns out to be expensive costs a dropped frame
+ * at worst instead of a locked tab. A rule is the unit of interruption — the
+ * smallest slice that has a meaning — so a single rule slower than this still
+ * runs to completion and the next one waits for the following task.
+ *
+ * The rules shipped today cost well under a millisecond between them, so the
+ * yield never fires in the delivered configuration — which would leave the
+ * generation counter and the supersession path as code nothing reaches. It is
+ * therefore a DEFAULT rather than a constant: {@link ValidationManager.checkupSliceMs}
+ * is settable, and lowering it makes every rule a slice, which is how a test
+ * exercises the yield and the race with the real rules instead of a stub.
+ */
+export const CHECKUP_SLICE_MS = 16;
 
 /**
  * Grant `ruleId` an exception on `element`, unless it already has one.
@@ -2137,6 +2700,9 @@ export function touchesVerdict(payload: {
   );
 }
 
+/** Shared answer for "this element is nobody's frame", allocated once. */
+const EMPTY_FRAMEWORKS: ReadonlySet<string> = new Set<string>();
+
 /**
  * Owns the evaluation and the reactive violation list. No-op until a framework
  * registers a rule.
@@ -2203,7 +2769,51 @@ export class ValidationManager extends InteractivityExtension {
    */
   readonly timeline = new ViolationTimeline();
 
+  /**
+   * The last check-up (PF5.14), or `null` while none has been asked for.
+   *
+   * A SEPARATE signal from {@link violations$}, and that separation is the whole
+   * design: a remark never reaches the timeline, the bracket or the badge,
+   * because it never reaches the list those three read. "Outside the canvas
+   * affordance" is therefore a property of the wiring, not a filter somebody has
+   * to remember to apply.
+   *
+   * Reset to `null` on unmount and never persisted: a document says what it
+   * contains, not when somebody last checked it.
+   */
+  readonly checkup$ = signal<CheckupRun | null>(null);
+
+  /**
+   * The element whose Map quality panel is OPEN, or `null` — the seam between
+   * the toolbar entry that asks for it (`validation-toolbar.ts`, PF7.11) and the
+   * widget that draws it.
+   *
+   * A signal rather than a DOM call because the two live in different trees: the
+   * entry is a lit template inside `editor-menu-button`'s shadow root, and the
+   * panel is a widget on the root block. Session state, like every other "what
+   * is open" in this file.
+   */
+  readonly mapQualityFor$ = signal<string | null>(null);
+
   private _pending: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Bumped by every {@link runCheckup}, so a run that yielded the thread can
+   * tell it has been superseded and drop its partial results on the floor
+   * instead of overwriting a newer answer.
+   */
+  private _checkupGeneration = 0;
+
+  /**
+   * How long {@link runCheckup} may hold the thread between two rules.
+   *
+   * Settable rather than fixed so the interruption and the supersession are
+   * TESTABLE with the rules a framework actually ships: at the shipped default
+   * the Wardley check-up costs half a millisecond and never yields, which would
+   * leave the whole race path unreached by anything. Dropped to zero, every rule
+   * becomes a slice.
+   */
+  checkupSliceMs = CHECKUP_SLICE_MS;
 
   /**
    * Element ids added, removed or updated since the last verdict — the dirty
@@ -2242,6 +2852,19 @@ export class ValidationManager extends InteractivityExtension {
       this.std.provider.getAll(ValidationRuleIdentifier).values()
     );
     return this._rules;
+  }
+
+  private _nudges: readonly QualityNudge[] | null = null;
+
+  /**
+   * Registered nudges, resolved once. Empty when no framework ships one, or
+   * when every framework is flagged off.
+   */
+  private get _activeNudges(): readonly QualityNudge[] {
+    this._nudges ??= Array.from(
+      this.std.provider.getAll(QualityNudgeIdentifier).values()
+    );
+    return this._nudges;
   }
 
   private _profiles: readonly ValidationProfile[] | null = null;
@@ -2292,6 +2915,12 @@ export class ValidationManager extends InteractivityExtension {
     this._evaluated = false;
     this._backgrounds = new Set();
     this.timeline.clear();
+    // Supersede any check-up still yielding between two rules, and forget the
+    // last one: both are session state, and a stale answer outliving the
+    // surface it was measured on is a panel that lies.
+    this._checkupGeneration += 1;
+    this.checkup$.value = null;
+    this.mapQualityFor$.value = null;
     // Session state, and the session is over. An audit describes a board at a
     // moment; carrying one across a remount would show it against a different
     // surface (PF14.1).
@@ -2308,11 +2937,19 @@ export class ValidationManager extends InteractivityExtension {
     this._unsubscribe();
     if (!surface) return;
 
-    for (const change of [surface.elementAdded, surface.elementRemoved]) {
-      this._subscriptions.push(
-        change.subscribe(({ id }) => this._schedule(id))
-      );
-    }
+    this._subscriptions.push(
+      surface.elementAdded.subscribe(({ id }) => this._schedule(id))
+    );
+    this._subscriptions.push(
+      surface.elementRemoved.subscribe(({ id }) => {
+        // A check-up measured on a map that no longer exists is an answer about
+        // nothing. The panel is closed by then (the widget watches the same
+        // signal), but the result would otherwise sit in memory waiting to be
+        // shown against whatever the user opens next.
+        this._forgetCheckupOf(id);
+        this._schedule(id);
+      })
+    );
     this._subscriptions.push(
       surface.elementUpdated.subscribe(payload => {
         // A prop that cannot change a verdict must not even rearm the timer.
@@ -2406,8 +3043,31 @@ export class ValidationManager extends InteractivityExtension {
   profilesFor(
     element: GfxPrimitiveElementModel
   ): readonly ValidationProfile[] {
+    const frameworks = this.frameworksOf(element);
+    if (frameworks.size === 0) return [];
+
+    return this._activeProfiles.filter(profile =>
+      frameworks.has(profile.framework)
+    );
+  }
+
+  /**
+   * The frameworks `element` is a ROOT INSTANCE of, i.e. those with a registered
+   * rule measuring against a background carrying this element's role.
+   *
+   * The one test that decides whether an element is a framework's frame, and the
+   * only one: it is derived from the registered rules rather than from a second
+   * registry, so it is gated for free — flag off, no rule, no framework — and
+   * every per-instance surface (the profile picker, the nudge checklist, the
+   * check-up) agrees about what a root instance is without any of them saying so
+   * twice.
+   *
+   * Empty for a neutral element, and for a background authored before its role
+   * existed.
+   */
+  frameworksOf(element: GfxPrimitiveElementModel): ReadonlySet<string> {
     const role = element.role;
-    if (role === undefined) return [];
+    if (role === undefined) return EMPTY_FRAMEWORKS;
 
     const frameworks = new Set<string>();
     for (const rule of this._activeRules) {
@@ -2416,11 +3076,200 @@ export class ValidationManager extends InteractivityExtension {
         frameworks.add(rule.framework);
       }
     }
+    return frameworks;
+  }
+
+  /**
+   * The nudges offered on `element` (PF7.10), in declared order.
+   *
+   * Same derivation as {@link profilesFor} and gated the same way: a framework
+   * that registers no nudge — or whose flag is off — offers none, and the ids
+   * already ticked on the element stay written, unread, until it comes back.
+   */
+  nudgesFor(element: GfxPrimitiveElementModel): readonly QualityNudge[] {
+    const frameworks = this.frameworksOf(element);
     if (frameworks.size === 0) return [];
 
-    return this._activeProfiles.filter(profile =>
-      frameworks.has(profile.framework)
+    return this._activeNudges
+      .filter(nudge => frameworks.has(nudge.framework))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }
+
+  /** The on-demand rules a check-up on `element` would walk (PF5.14). */
+  checkupRulesFor(
+    element: GfxPrimitiveElementModel
+  ): readonly ValidationRule[] {
+    const frameworks = this.frameworksOf(element);
+    if (frameworks.size === 0) return [];
+    return onDemandRules(this._activeRules).filter(rule =>
+      frameworks.has(rule.framework)
     );
+  }
+
+  /**
+   * Whether `element` has a Map quality panel to open at all: a framework of
+   * its own declaring a nudge or an on-demand rule.
+   *
+   * Generic by construction (PF7.11) — nothing here names a framework. A second
+   * framework shipping either gets the entry, the panel and the check-up with
+   * no code written anywhere.
+   */
+  hasMapQuality(element: GfxPrimitiveElementModel): boolean {
+    return (
+      this.nudgesFor(element).length > 0 ||
+      this.checkupRulesFor(element).length > 0
+    );
+  }
+
+  /**
+   * Open the Map quality panel on `element`; the widget draws it.
+   *
+   * Opening on a DIFFERENT instance forgets the last check-up. The panel already
+   * refuses to render a run belonging to another map ({@link CheckupRun.backgroundId}),
+   * so this is not what makes the display correct — it is what stops a result
+   * measured on a map the user has moved on from (or deleted) sitting in memory
+   * waiting to be shown again. Reopening on the SAME map keeps its stamp, which
+   * is the one case where "last check-up: 01:51" is worth reading.
+   */
+  openMapQuality(element: GfxPrimitiveElementModel): void {
+    this._forgetCheckupOf(element.id, true);
+    this.mapQualityFor$.value = element.id;
+  }
+
+  closeMapQuality(): void {
+    this.mapQualityFor$.value = null;
+  }
+
+  /**
+   * Drop the current check-up when it is about `backgroundId` — or, with
+   * `unless`, when it is about anything else.
+   *
+   * The two callers are the two ways a run stops being about something the user
+   * can look at: the instance it measured was deleted, and the panel moved to a
+   * different instance.
+   */
+  private _forgetCheckupOf(backgroundId: string, unless = false): void {
+    const run = this.checkup$.peek();
+    if (run === null) return;
+    if ((run.backgroundId === backgroundId) !== unless) {
+      this.checkup$.value = null;
+    }
+  }
+
+  /**
+   * Run the check-up on `element` (PF5.14).
+   *
+   * ## It is about ONE instance
+   *
+   * The walk covers the whole surface — that is where the elements are — but the
+   * ANSWER is narrowed to the map that was asked about, on
+   * {@link Violation.backgroundId}, which every family measuring against a frame
+   * already records. A board carrying two Wardley maps holds two independent
+   * answers, and handing the panel a tally over both would be exactly the
+   * whole-surface count {@link evaluateMajorityFact} goes out of its way not to
+   * compute. Narrowed HERE and not at the rendering: a run that reaches a host,
+   * a report or the agent has to already be about one map.
+   *
+   * ## Why this is async, for two rules that take a microsecond
+   *
+   * Because the moment exists precisely so that a framework may ship a control
+   * that does NOT fit a frame. A check-up walks the surface with no dirty set
+   * and no budget over its head, and the honest way to offer that is to be
+   * interruptible: the driver evaluates ONE RULE at a time — the smallest slice
+   * that has a meaning — and yields the thread whenever the slice has held it
+   * for {@link checkupSliceMs}. The panel sees `done` climb towards `total`, so
+   * progress is the same value the results arrive in and there is no second
+   * signal to keep in step.
+   *
+   * A run started while another is still yielding SUPERSEDES it: the older one
+   * notices its generation is stale on its next slice and drops what it had.
+   * Clicking twice therefore gives the second answer, never a race between two.
+   *
+   * ## A rule that throws
+   *
+   * ...ends the run, visibly. The failure must not leave the panel believing a
+   * check-up is in flight — that reads as "Checking…" for ever and disables the
+   * one button that could try again, on every map, until the editor is
+   * remounted. So the run is finished with {@link CheckupRun.error} and whatever
+   * it had managed to collect.
+   *
+   * @returns the finished run, or `null` if it was superseded or there was
+   * nothing to run.
+   */
+  async runCheckup(
+    element: GfxPrimitiveElementModel
+  ): Promise<CheckupRun | null> {
+    const rules = this.checkupRulesFor(element);
+    const generation = ++this._checkupGeneration;
+    const backgroundId = element.id;
+    if (rules.length === 0) {
+      this.checkup$.value = null;
+      return null;
+    }
+
+    const at = Date.now();
+    const results: Violation[] = [];
+    const total = rules.length;
+    let sliceStart = performance.now();
+    this.checkup$.value = { backgroundId, at, results: [], done: 0, total };
+
+    for (let i = 0; i < total; i++) {
+      // The surface is re-read on every slice: the user can keep drawing while
+      // this runs, and a rule must be judged against the board as it is now,
+      // not against a snapshot taken before the last yield.
+      const surface = this.gfx.surface;
+      if (!surface || generation !== this._checkupGeneration) return null;
+
+      try {
+        for (const remark of evaluateCheckup(
+          [rules[i]],
+          surface.elementModels,
+          this._activeProfiles
+        )) {
+          // This map's remarks, and only this map's. A family that measures
+          // against no frame records no `backgroundId` and is dropped: it has
+          // said nothing about the instance the user is looking at.
+          if (remark.backgroundId === backgroundId) results.push(remark);
+        }
+      } catch (error) {
+        console.error(`[validation] check-up rule "${rules[i].id}" threw`, error);
+        const failed: CheckupRun = {
+          backgroundId,
+          at,
+          results: [...results],
+          // Finished, deliberately: see the note above. A locked button is a
+          // worse failure than a reported one.
+          done: total,
+          total,
+          error: true,
+        };
+        this.checkup$.value = failed;
+        return failed;
+      }
+
+      this.checkup$.value = {
+        backgroundId,
+        at,
+        results: [...results],
+        done: i + 1,
+        total,
+      };
+
+      if (
+        i + 1 < total &&
+        performance.now() - sliceStart > this.checkupSliceMs
+      ) {
+        // Back of the queue, so paint and input go first. `setTimeout(0)` and
+        // not a microtask: a microtask would yield the call stack and nothing
+        // else, which is exactly the freeze this exists to avoid.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        sliceStart = performance.now();
+      }
+    }
+
+    return generation === this._checkupGeneration
+      ? this.checkup$.peek()
+      : null;
   }
 
   /**

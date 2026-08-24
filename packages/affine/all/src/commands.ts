@@ -3,7 +3,10 @@ import {
   pivotCommands,
   tagCommands,
 } from '@labre/affine-block-root';
-import { auditCommands } from '@labre/affine-block-surface';
+import {
+  auditCommands,
+  mapQualityCommands,
+} from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
@@ -76,17 +79,24 @@ export function buildCommandRegistry(
 
 /**
  * Every command a given flag set exposes. Shapes are core canvas, so their
- * commands are always-on like root's — and so is `edge.invert-direction`
- * (`docs/adr/0010` M3): it acts on whatever carries an edge ROLE, which is
- * document content, so it must stay reachable on a board whose framework
- * tooling is switched off. It is registered from the always-on connector view
- * extension for exactly the same reason.
+ * commands are always-on like root's — and so are Map quality (PF7.11), which
+ * belongs to the SURFACE rather than to any framework (it appears for whichever
+ * framework declared a nudge or an on-demand rule, and its own `when` asks the
+ * engine that question), and `edge.invert-direction` (`docs/adr/0010` M3),
+ * which acts on whatever carries an edge ROLE — document content — so it must
+ * stay reachable on a board whose framework tooling is switched off; it is
+ * registered from the always-on connector view extension for the same reason.
  *
  * `auditCommands` is `'core'`-owned but NOT always-on: it rides the `ai-audit`
  * capability switch, which is a second axis (see `OPTIONAL_CAPABILITIES`). The
  * read side is filtered here, the registration side by `AuditViewExtension` in
  * `getInternalViewExtensions` — the same two-sided gate a framework flag gets,
  * and the same test asserts the two agree.
+ *
+ * The two sit side by side deliberately: Map quality is the DETERMINISTIC
+ * second moment (levels 1–2 of the validation taxonomy) and the audit is level
+ * 3, which is why one is unconditional and the other rides a switch. Neither
+ * depends on the other, and the engine depends on neither.
  */
 export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
@@ -95,6 +105,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...pivotCommands,
       ...tagCommands,
       ...shapeCommands,
+      ...mapQualityCommands,
       ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],
