@@ -325,7 +325,7 @@ they do; they ship in one slice.**
 | #   | mechanism                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | size  |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | M1  | **Say it.** The Wardley link tool announces its gesture — tooltip and toolbar hint, "drag from the component that has the need to what it needs". One i18n key, one tooltip, `actions.ts` + the wardley menu.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 0.5 d |
-| M2  | **Show it.** A typed edge reveals its orientation on hover and on selection: a chevron at the Rear end plus the role's own label (`com.labre.wardley.role.dependency`, already declared). At rest the map keeps the canonical arrowless look, so the head never collides with the evolution arrow's meaning (§ 2). **Seam: an `Overlay` plus a widget, NOT the element renderer** — an `ElementRenderer` is `(model, ctx, matrix, renderer, rc)` (`element-renderer/index.ts:38-39`) and knows neither hover nor selection. The precedent is one directory away and one week old: `ValidationOverlay` (`validation.ts:1363`) and `violation-detail-widget.ts`, the only file of `blocks/surface` that handles a hover. | 1.5 d |
+| M2  | **Show it.** _(Amended 02/08/2026 — see the UX contract: the chevron and the label are ONE mark now, the sentence laid along the link, and the overlay named below is deleted.)_ A typed edge reveals its orientation on hover and on selection: a chevron at the Rear end plus the role's own label (`com.labre.wardley.role.dependency`, already declared). At rest the map keeps the canonical arrowless look, so the head never collides with the evolution arrow's meaning (§ 2). **Seam: an `Overlay` plus a widget, NOT the element renderer** — an `ElementRenderer` is `(model, ctx, matrix, renderer, rc)` (`element-renderer/index.ts:38-39`) and knows neither hover nor selection. The precedent is one directory away and one week old: `ValidationOverlay` (`validation.ts:1363`) and `violation-detail-widget.ts`, the only file of `blocks/surface` that handles a hover. | 1.5 d |
 | M3  | **Let them fix it.** A **Reverse dependency** command on a selected typed edge: swaps `source` ↔ `target` and swaps `frontEndpointStyle` ↔ `rearEndpointStyle`, in ONE undo step. `curveControlPoint` is deliberately left alone — it is an ABSOLUTE pass-through point at t = 0.5 and the tangent formulas are symmetric under a `P0` ↔ `P3` exchange (`connector-manager.ts:1653-1690`), so swapping the ends leaves the same curve; "mirroring" it would visibly move the curve, i.e. it would be a bug. Declared in the command registry (ADR 0008) so it also reaches the palette and a shortcut. And `b.flip-direction` is hidden for role-carrying edges — on a typed edge it is a lie (§ 6).                | 1.0 d |
 |     | telemetry, unit tests, **an integration spec** (M2 paints on the canvas, so the `CLAUDE.md` template requires one) and a changeset                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 1.0 d |
 |     | **total before W4 can be written**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | ~4 d  |
@@ -387,10 +387,32 @@ role. See "Rejected alternatives".
   what the gesture already does mechanically — no code changes which end becomes
   the source.
 - **Seeing it.** At rest, a dependency link is a plain grey line (canonical
-  Wardley, unchanged). On hover or selection, a chevron appears at the target end
-  with the role label; the reading is "this end depends on that end". A
+  Wardley, unchanged). On hover or selection, the link says what it means. A
   permanently-arrowed link is deliberately NOT adopted: on a Wardley map a head
   means evolution movement.
+
+  > **Amended 02/08/2026 — PO acceptance, point 5.** This bullet first read "a
+  > chevron appears at the target end with the role label". Shipped, the two
+  > marks covered each other: the label was placed on the middle VERTEX of the
+  > path, which on a two-point link is its target endpoint, so the tooltip
+  > landed on top of the chevron — and a horizontal box across a diagonal link
+  > reads as a sticker on the map rather than a statement about that link.
+  >
+  > It is **one** mark now: the whole sentence, `{consumer} {verb} {provider}`,
+  > centred on the middle of the drawn path by arc length, rotated onto the
+  > median segment (turned 180° when that would stand the text on its head, the
+  > sentence itself never reversing), in a box that ends in a POINT on the side
+  > facing the target — `Kettle | depends on > Electricity`. The chevron is
+  > folded into that point and `EdgeDirectionOverlay` is deleted; M2 draws no
+  > canvas layer at all. Everything else about M2 holds: hover ∪ selection,
+  > model units, silence on an unbound edge, the verb from the role vocabulary.
+  >
+  > The two NAMES are read from the document — an element's own text, or the
+  > text of the sibling in its group carrying a role of `kind: 'text'` — never
+  > invented and never translated. This makes M2 the second consumer of that
+  > composition after `extensions/reading.ts`, and it is read by KIND, so no
+  > framework's label role is named in the connector package.
+
 - **Inverting it.** M3's **Reverse dependency**, on the contextual toolbar of the
   selected edge, one undo step. It is the only supported inversion.
   `b.flip-direction` disappears for typed edges.
@@ -475,7 +497,7 @@ code, since M2 and M3 are the review.
   marginal — it is the "Link" sample template (§ 4) and it is what releasing the
   link tool over empty canvas produces (`connector-tool.ts:81-88` starts on
   `target: { position }` and `dragEnd` requires no attachment). M2 inherits the
-  same guard: no chevron, no "depends on" label, on a stroke that links nothing.
+  same guard: no label at all on a stroke that links nothing.
 - **The rule engine stops being node-only.** Until now roles were read on nodes
   and the `kind: 'edge'` half of the vocabulary was declarative decoration. W4
   is the first consumer of an edge role, and the first rule whose subject is a

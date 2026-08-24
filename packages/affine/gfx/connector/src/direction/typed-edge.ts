@@ -67,3 +67,89 @@ export function asTypedEdge(
 export function edgeIsBound(model: ConnectorElementModel): boolean {
   return Boolean(model.source?.id) && Boolean(model.target?.id);
 }
+
+/** The two ends of the relation, named. `''` for an end that has no name. */
+export interface EdgeEndpointNames {
+  /** The subject of the role's verb. */
+  source: string;
+  /** Its object. */
+  target: string;
+}
+
+/** The text an element carries itself, `''` when it carries none. */
+function ownText(element: unknown): string {
+  const text: unknown = (element as { text?: unknown } | null)?.text;
+  if (typeof text === 'string') return text.trim();
+  if (text && typeof (text as { toString?: unknown }).toString === 'function') {
+    return String(text).trim();
+  }
+  return '';
+}
+
+/**
+ * The members of the group holding `element`, or `null`.
+ *
+ * `group` is a getter that WALKS the surface, so on a detached element it
+ * throws. Reading a name must never throw: a label that crashes the widget is
+ * worse than a sentence with a blank in it, and the caller's fallback (no
+ * name) is the same silence every other unreadable end produces. Same guard,
+ * same reason as `extensions/reading.ts`.
+ */
+function groupMembers(element: unknown): unknown[] {
+  let group: unknown;
+  try {
+    group = (element as { group?: unknown }).group;
+  } catch {
+    return [];
+  }
+  const children = (group as { childElements?: unknown } | null)?.childElements;
+  return Array.isArray(children) ? children : [];
+}
+
+/**
+ * What the two ends of a typed edge are CALLED, so the reveal can say
+ * `Kettle depends on Electricity` rather than just `depends on`.
+ *
+ * Its own text first, then — because a framework artefact on this canvas is a
+ * composite, a circle with a free text beside it — the text of the sibling in
+ * its group carrying a role of `kind: 'text'`. That is the same composition
+ * `extensions/reading.ts` resolves from the other direction, and it is read
+ * GENERICALLY: `kind` and nothing else, so no framework's label role is named
+ * here and a framework that draws its names inside the node works too.
+ *
+ * An end with no name resolves to `''` and the caller drops it from the
+ * sentence, which then reads as the bare verb — never as a blank where a name
+ * was promised.
+ */
+export function endpointNamesOf(
+  vocabularies: readonly RoleDefs[],
+  model: ConnectorElementModel
+): EdgeEndpointNames {
+  const surface = (
+    model as unknown as {
+      surface?: { getElementById(id: string): unknown } | null;
+    }
+  ).surface;
+
+  const nameOf = (id: string | undefined): string => {
+    if (!id || !surface) return '';
+    const element = surface.getElementById(id);
+    if (!element) return '';
+    const own = ownText(element);
+    if (own) return own;
+
+    for (const child of groupMembers(element)) {
+      if (!child || child === element) continue;
+      const role = findRoleDef(vocabularies, (child as { role?: string }).role);
+      if (role?.kind !== 'text') continue;
+      const text = ownText(child);
+      if (text) return text;
+    }
+    return '';
+  };
+
+  return {
+    source: nameOf(model.source?.id),
+    target: nameOf(model.target?.id),
+  };
+}
