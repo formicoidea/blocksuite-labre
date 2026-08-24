@@ -79,13 +79,13 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   optionally at one of the frame's zone transitions.
  * - `no-overlap` — declared pairs of roles must not collide. The first family
  *   that is not element-local: it evaluates PAIRS.
- * - `relative-order-along-axis` — the two elements a TYPED EDGE links must sit
- *   in the order that edge states, along one axis of the frame. The first
- *   family whose subject is a RELATION rather than an element or a proximity.
  * - `tone-convention` — the subject must be drawn in one of the tones the
  *   frame's own palette declares for it. On-demand only, in practice.
  * - `majority-fact` — a remark about the MAP, raised when a declared fact holds
  *   for a majority of the subjects. Silent while nothing carries the fact.
+ * - `relative-order-along-axis` — the two elements a TYPED EDGE links must sit
+ *   in the order that edge states, along one axis of the frame. The first
+ *   family whose subject is a RELATION rather than an element or a proximity.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -265,6 +265,9 @@ export interface MajorityDef {
   fact: string;
   /** The value that must hold for a majority of the subjects. */
   value: string;
+}
+
+/**
  * `relative-order-along-axis` configuration — the family of `docs/adr/0010`'s
  * W4, "a provider component may not be positioned higher than its consumer".
  *
@@ -2002,76 +2005,6 @@ function evaluateToneConvention(
     warnOnce(
       `tone-convention rule "${rule.id}" names no palette entry that resolves ` +
         `to a classifiable tone — it is not evaluated.`
- * The two ids a typed edge BINDS, or `null`.
- *
- * Duck-typed exactly like {@link elementPath}, and for the same reason: the
- * engine knows roles and geometry, and must not import a connector model. An
- * end holding a bare `position` and no `id` is bound to nothing.
- *
- * `null` is the ADR's own guard, and it is not marginal — releasing the link
- * tool over empty canvas produces such an edge at any time, and a palette
- * sample of a stroke style is one by construction. An edge that relates nothing
- * is never evaluated.
- */
-function boundEnds(el: unknown): [string, string] | null {
-  const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
-  const source = edge.source?.id;
-  const target = edge.target?.id;
-  if (typeof source !== 'string' || typeof target !== 'string') return null;
-  // A self-loop states nothing about an order: it is one element, compared with
-  // itself, and no move can ever resolve it.
-  if (source === target) return null;
-  return [source, target];
-}
-
-/**
- * "Are these two in the order their relation states?" — W4 (`docs/adr/0010`).
- *
- * The first family whose subject is a RELATION. For every element carrying the
- * declared edge role, the two elements it binds are projected onto one axis of
- * the frame and compared in the order the edge states: for
- * `wardley:dependency`, the source is the consumer and must sit higher on the
- * visibility axis than what it needs.
- *
- * The order comes from the persisted `source → target` pair, never from the
- * geometry — that is the whole point, and the reason this rule can fire at all.
- * Every other input is declaration: which axis, which way it runs, how much
- * slack, all read off the frame the framework already declares.
- *
- * ## What it stays silent about, and why each one matters
- *
- * - **no frame on the board** — nothing declares an axis, so there is no order
- *   to be in. A chain drawn on blank canvas is a sketch;
- * - **an edge with a free end** — it relates nothing (see {@link boundEnds});
- * - **an end whose element is gone** — a dangling id says nothing about a
- *   layout;
- * - **a pair straddling TWO frames** — "higher than" is a question inside one
- *   frame of reference, and two maps have two;
- * - **an edge carrying no role, or another role** — proportionality (PRD
- *   principle 8). A change arrow is oriented too and is not a dependency.
- *
- * ## Cost
- *
- * Linear in the EDGES: one pass to index the elements by id, one pass over the
- * edges, and two constant-time frame attributions per edge. There is no graph
- * closure and no pair-wise sweep — the rule is about a relation somebody drew,
- * never about every couple of nodes that could have had one. A cycle A→B→A is
- * two edges and is judged as two edges: at least one of them is against the
- * order, and that one is reported.
- */
-function evaluateRelativeOrder(
-  rule: ValidationRule,
-  elements: readonly GfxPrimitiveElementModel[]
-): Violation[] {
-  const order = rule.relativeOrder;
-  const def = rule.background;
-  if (order === undefined || def === undefined) return [];
-
-  const axis = backgroundAxisFact(def, order.axis);
-  if (axis === undefined) {
-    warnOnce(
-      `relative-order rule "${rule.id}" measures along "${order.axis}", which ` +
-        `its background does not declare — the rule is not evaluated.`
     );
     return [];
   }
@@ -2155,6 +2088,86 @@ function evaluateMajorityFact(
     // classified: half a map left unclassified is not a mandate.
     if (counts.matching * 2 <= counts.subjects) continue;
     violations.push(raise(rule, [id], id));
+  }
+  return violations;
+}
+
+/**
+ * The two ids a typed edge BINDS, or `null`.
+ *
+ * Duck-typed exactly like {@link elementPath}, and for the same reason: the
+ * engine knows roles and geometry, and must not import a connector model. An
+ * end holding a bare `position` and no `id` is bound to nothing.
+ *
+ * `null` is the ADR's own guard, and it is not marginal — releasing the link
+ * tool over empty canvas produces such an edge at any time, and a palette
+ * sample of a stroke style is one by construction. An edge that relates nothing
+ * is never evaluated.
+ */
+function boundEnds(el: unknown): [string, string] | null {
+  const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
+  const source = edge.source?.id;
+  const target = edge.target?.id;
+  if (typeof source !== 'string' || typeof target !== 'string') return null;
+  // A self-loop states nothing about an order: it is one element, compared with
+  // itself, and no move can ever resolve it.
+  if (source === target) return null;
+  return [source, target];
+}
+
+/**
+ * "Are these two in the order their relation states?" — W4 (`docs/adr/0010`).
+ *
+ * The first family whose subject is a RELATION. For every element carrying the
+ * declared edge role, the two elements it binds are projected onto one axis of
+ * the frame and compared in the order the edge states: for
+ * `wardley:dependency`, the source is the consumer and must sit higher on the
+ * visibility axis than what it needs.
+ *
+ * The order comes from the persisted `source → target` pair, never from the
+ * geometry — that is the whole point, and the reason this rule can fire at all.
+ * Every other input is declaration: which axis, which way it runs, how much
+ * slack, all read off the frame the framework already declares.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **no frame on the board** — nothing declares an axis, so there is no order
+ *   to be in. A chain drawn on blank canvas is a sketch;
+ * - **an edge with a free end** — it relates nothing (see {@link boundEnds});
+ * - **an end whose element is gone** — a dangling id says nothing about a
+ *   layout;
+ * - **a pair straddling TWO frames** — "higher than" is a question inside one
+ *   frame of reference, and two maps have two;
+ * - **an edge carrying no role, or another role** — proportionality (PRD
+ *   principle 8). A change arrow is oriented too and is not a dependency.
+ *
+ * ## Cost
+ *
+ * Linear in the EDGES: one pass to index the elements by id, one pass over the
+ * edges, and two constant-time frame attributions per edge. There is no graph
+ * closure and no pair-wise sweep — the rule is about a relation somebody drew,
+ * never about every couple of nodes that could have had one. A cycle A→B→A is
+ * two edges and is judged as two edges: at least one of them is against the
+ * order, and that one is reported.
+ */
+function evaluateRelativeOrder(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const order = rule.relativeOrder;
+  const def = rule.background;
+  if (order === undefined || def === undefined) return [];
+
+  const axis = backgroundAxisFact(def, order.axis);
+  if (axis === undefined) {
+    warnOnce(
+      `relative-order rule "${rule.id}" measures along "${order.axis}", which ` +
+        `its background does not declare — the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const backgrounds = backgroundsOf(rule, elements);
   // No frame, no frame of reference: a chain on blank canvas is a sketch.
   if (backgrounds.length === 0) return [];
 

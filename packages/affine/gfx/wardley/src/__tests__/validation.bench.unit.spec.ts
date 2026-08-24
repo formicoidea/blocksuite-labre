@@ -298,6 +298,9 @@ function medianEachMs(
     bucket.sort((x, y) => x - y);
     return bucket[Math.floor(bucket.length / 2)];
   });
+}
+
+/**
  * Two medians, measured ALTERNATELY — for a comparison between two ways of
  * doing the same work.
  *
@@ -560,7 +563,7 @@ describe('a drag on a dense map re-judges only what moved', () => {
   // an engine that now carries a fourth rule: past the package's 1 s default on
   // a loaded machine. The BUDGET each evaluation is held to is unchanged — it
   // is the number of evaluations this one test performs that needs the room.
-  it('stays inside the frame at EVERY dirty-set size', { timeout: 10_000 }, () => {
+  it('stays inside the frame at EVERY dirty-set size', { timeout: BENCH_TIMEOUT_MS }, () => {
     const participants = map.filter(
       el =>
         el.role !== undefined &&
@@ -618,7 +621,7 @@ describe('a drag on a dense map re-judges only what moved', () => {
     // file, and the one that has been timing out under load since before this
     // slice. The BUDGET assertions above are untouched; only the wall-clock
     // allowance for taking the samples is.
-  }, BENCH_TIMEOUT_MS);
+  });
 });
 
 /**
