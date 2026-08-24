@@ -1,3 +1,4 @@
+import type { AuditFinding } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
 import { Bound, lineIntersects } from '@labre/global/gfx';
 import type {
@@ -2150,6 +2151,44 @@ export class ValidationManager extends InteractivityExtension {
   readonly violations$ = signal<readonly Violation[]>([]);
 
   /**
+   * Level 3 — what an AI audit reported, and ONLY that (PF14.1).
+   *
+   * A second signal rather than a marked subset of {@link violations$}, and the
+   * reason is the invariant the whole audit seam exists to protect: **the
+   * deterministic engine never depends on the AI**. Nothing in `evaluate()`
+   * reads this signal, writes it or is slowed by it; nothing here is ever
+   * recomputed, carried over by an incremental pass, or judged by a profile.
+   * The 16 ms budget is measured on a function that cannot see this field.
+   *
+   * Merging the two lists and discriminating by severity would have been
+   * cheaper to type and much more expensive to reason about: every consumer of
+   * `violations$` — the overlay, the timeline, the bubble, the exception
+   * toolbar, `userFacingViolations`, the incremental carry-over — would have
+   * had to learn to skip entries it must never touch, and forgetting one of
+   * them in some future slice would put a model's opinion behind a canvas
+   * bracket. Two signals make that a type error instead of a review.
+   *
+   * The findings ARE violation objects (`AuditFinding` is assignable to
+   * {@link Violation}, pinned by a test), so a host panel renders them with the
+   * code it already has. They are session state, never persisted: an audit is
+   * an opinion at a moment, and the document says what it contains, not what a
+   * model thought of it on Tuesday.
+   */
+  readonly auditFindings$ = signal<readonly AuditFinding[]>([]);
+
+  /**
+   * Publish an audit's results. The ONLY writer of {@link auditFindings$}, and
+   * deliberately dumb: it stores, it does not evaluate, re-judge or merge.
+   *
+   * Replaces rather than appends — a run's findings are a whole answer about
+   * the board as it was, so accumulating two runs would show a user a
+   * contradiction and call it a list.
+   */
+  setAuditFindings(findings: readonly AuditFinding[]): void {
+    this.auditFindings$.value = findings;
+  }
+
+  /**
    * Which violations are still FRESH, i.e. still owed the loud bracket.
    *
    * It lives here rather than inside the overlay because the affordance has two
@@ -2253,6 +2292,10 @@ export class ValidationManager extends InteractivityExtension {
     this._evaluated = false;
     this._backgrounds = new Set();
     this.timeline.clear();
+    // Session state, and the session is over. An audit describes a board at a
+    // moment; carrying one across a remount would show it against a different
+    // surface (PF14.1).
+    this.auditFindings$.value = [];
     super.unmounted();
   }
 

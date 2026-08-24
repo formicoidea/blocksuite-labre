@@ -37,23 +37,31 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 10,
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
-      // + shape.cycleTextFit + pivot.bind + tag.set + edge.invert-direction
+      // + shape.cycleTextFit + pivot.bind + tag.set + map.audit
+      // + edge.invert-direction
       //
-      // Both sides of this merge added ONE core command and both wrote `8`, so
-      // git kept the number without a conflict while the registry held nine.
-      // The count is the whole point of this test: it is the line that notices
-      // a command appearing or vanishing, so it is the line a merge is most
-      // likely to get quietly wrong.
-      core: 9,
+      // `map.audit` is counted here because `getCommands()` is called with no
+      // flags and `ai-audit` defaults to enabled, like every switch. Its
+      // absence under `{ 'ai-audit': false }` is asserted in
+      // `audit-gating.unit.spec.ts`.
+      //
+      // These two numbers are where a merge goes wrong SILENTLY: every branch
+      // that adds one core command writes the count it saw, so two of them
+      // agree on a number that is short by one and git keeps it without a
+      // conflict. They are the whole point of this test — the line that
+      // notices a command appearing or vanishing — so re-derive them at every
+      // merge instead of trusting the diff.
+      core: 10,
     });
-    expect(commands).toHaveLength(69);
+    expect(commands).toHaveLength(70);
   });
 
   /**
-   * ADR 0008 puts emission in `runCommand` "and nowhere else". Two commands
-   * are excepted — the PROMOTION rungs, whose event depends on their params
-   * and on which elements actually changed, neither of which the bottleneck
-   * receives (see the ADR's Resolved question 5). They are enumerated here
+   * ADR 0008 puts emission in `runCommand` "and nowhere else". Three commands
+   * are excepted — the two PROMOTION rungs and the direction inversion, whose
+   * events depend on their params and on which elements actually changed,
+   * neither of which the bottleneck receives (see the ADR's Resolved question
+   * 5). They are enumerated here
    * rather than left as a comment in a function body, because the failure mode
    * they open is silent: a command that emits from its body AND declares
    * `telemetry` reports the same gesture twice, forever.

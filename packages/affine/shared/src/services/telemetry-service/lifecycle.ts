@@ -171,3 +171,60 @@ export type ValidationEvents = {
   ValidationExceptionRevoked: ValidationExceptionEvent;
   ValidationProfileChanged: ValidationProfileEvent;
 };
+
+/**
+ * An AI audit run (PF14.1) — level 3, executed app-side by the Labre Assistant
+ * through the `AuditProvider` seam.
+ *
+ * Three events rather than one, because the three questions are different: how
+ * often is an audit asked for (started), does it ever finish (completed), and
+ * how often does it not (interrupted). A single event with a status field would
+ * answer the first and lose the other two the moment a run never resolves.
+ *
+ * Ids and counts only — criterion ids and how many findings came back. The
+ * board's content, the criteria's prompts and the findings' wording never leave
+ * the editor through this bus.
+ */
+export interface MapAuditEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the criteria, when the run carries only one. */
+  framework?: string;
+  /** How many criteria the run was given. */
+  criterionCount: number;
+  /** How many framework frames the facts described. */
+  frameCount: number;
+}
+
+export interface MapAuditCompletedEvent extends MapAuditEvent {
+  /** How many findings came back, after the library's normalisation. */
+  findingCount: number;
+  /** Wall-clock duration of the run, in milliseconds. */
+  durationMs: number;
+}
+
+export interface MapAuditInterruptedEvent extends MapAuditEvent {
+  /**
+   * Why it did not complete.
+   *
+   * `unavailable` is a first-class member and not an error: no assistant is
+   * wired in this assembly, or the one that is declared itself unable to answer
+   * (feature flag, quota, no model configured). Knowing how often a user
+   * reaches for an audit that cannot run is precisely the number that decides
+   * whether the affordance should be there at all.
+   *
+   * `superseded` means a newer run for the same editor started while this one
+   * was in flight, so its answer was dropped rather than published. It is
+   * reported here rather than as a completion because a `findingCount` for
+   * findings nobody will see is a metric that lies — and a rising `superseded`
+   * count is itself the signal that audits are slow enough that users ask
+   * twice.
+   */
+  reason: 'aborted' | 'error' | 'unavailable' | 'superseded';
+  durationMs: number;
+}
+
+export type AuditEvents = {
+  MapAuditStarted: MapAuditEvent;
+  MapAuditCompleted: MapAuditCompletedEvent;
+  MapAuditInterrupted: MapAuditInterruptedEvent;
+};

@@ -3,6 +3,7 @@ import {
   pivotCommands,
   tagCommands,
 } from '@labre/affine-block-root';
+import { auditCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
@@ -20,7 +21,11 @@ import {
   toCommandManifestEntry,
 } from '@labre/std';
 
-import { type BlockFlags, isBlockEnabled } from './flags.js';
+import {
+  isBlockEnabled,
+  isCapabilityEnabled,
+  type LabreFlags,
+} from './flags.js';
 
 /**
  * The command registry, enumerated WITHOUT an editor instance — the property
@@ -60,7 +65,7 @@ const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
 export function buildCommandRegistry(
   core: AnyCommandDescriptor[],
   groups: FrameworkCommandGroup[],
-  flags?: BlockFlags
+  flags?: LabreFlags
 ): AnyCommandDescriptor[] {
   const all = [...core];
   for (const { owner, commands } of groups) {
@@ -76,8 +81,14 @@ export function buildCommandRegistry(
  * document content, so it must stay reachable on a board whose framework
  * tooling is switched off. It is registered from the always-on connector view
  * extension for exactly the same reason.
+ *
+ * `auditCommands` is `'core'`-owned but NOT always-on: it rides the `ai-audit`
+ * capability switch, which is a second axis (see `OPTIONAL_CAPABILITIES`). The
+ * read side is filtered here, the registration side by `AuditViewExtension` in
+ * `getInternalViewExtensions` — the same two-sided gate a framework flag gets,
+ * and the same test asserts the two agree.
  */
-export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
+export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
     [
       ...coreCommands,
@@ -85,6 +96,7 @@ export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
       ...tagCommands,
       ...shapeCommands,
       ...edgeDirectionCommands,
+      ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],
     FRAMEWORK_COMMAND_GROUPS,
     flags
@@ -97,7 +109,7 @@ export function getCommands(flags?: BlockFlags): AnyCommandDescriptor[] {
  * `iconKey` resolved lib-side, and availability as a closed union.
  */
 export function getCommandManifest(
-  flags?: BlockFlags
+  flags?: LabreFlags
 ): CommandManifestEntry[] {
   return getCommands(flags).map(toCommandManifestEntry);
 }
@@ -105,7 +117,7 @@ export function getCommandManifest(
 /** The manifest entries one surface offers, ordered. */
 export function getCommandManifestForSurface(
   surface: CommandSurface,
-  flags?: BlockFlags
+  flags?: LabreFlags
 ): CommandManifestEntry[] {
   return getCommandManifest(flags)
     .filter(entry => entry.surfaces.includes(surface))

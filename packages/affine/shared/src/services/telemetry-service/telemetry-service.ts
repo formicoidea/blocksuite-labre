@@ -5,6 +5,7 @@ import type { CitationEvents } from './citation.js';
 import type { CodeBlockEvents } from './code-block.js';
 import type { OutDatabaseAllEvents } from './database.js';
 import type {
+  AuditEvents,
   BlockLifecycleEvents,
   FrameworkDiagramEvents,
   ValidationEvents,
@@ -38,7 +39,8 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
   CitationEvents &
   BlockLifecycleEvents &
   FrameworkDiagramEvents &
-  ValidationEvents & {
+  ValidationEvents &
+  AuditEvents & {
     DocCreated: DocCreatedEvent;
     Link: TelemetryEvent;
     LinkedDocCreated: LinkedDocCreatedEvent;
