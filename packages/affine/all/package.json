@@ -298,6 +298,7 @@
     "./shortcuts": "./src/shortcuts.ts",
     "./commands": "./src/commands.ts",
     "./frameworks": "./src/frameworks.ts",
+    "./translations": "./src/translations.ts",
     "./model": "./src/model/index.ts",
     "./sync": "./src/sync/index.ts",
     "./extensions/store": "./src/extensions/store.ts",

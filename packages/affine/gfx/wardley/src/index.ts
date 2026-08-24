@@ -5,6 +5,7 @@ export {
   type WardleyRoleId,
 } from './roles';
 export { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
+export { WARDLEY_BACKGROUND } from './background';
 export { wardleyCommandIcons, wardleyCommands } from './commands';
 export {
   WARDLEY_NATURE,
