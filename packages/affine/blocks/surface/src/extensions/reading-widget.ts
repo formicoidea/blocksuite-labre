@@ -327,8 +327,17 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
-   * The nature the element CARRIES — and, when it carries none and the record
-   * does, the record's, offered for confirmation. Never a derived one.
+   * The nature the element CARRIES — and, when the record carries a different
+   * one, the record's, offered for confirmation. Never a derived one, and never
+   * a word the framework does not describe.
+   *
+   * `record.nature` has already been resolved against the tag def
+   * (`resolveRecordNature`), so what this button writes is always a value id the
+   * vocabulary knows. What could NOT be resolved is named in a sentence with no
+   * button beside it: the honest thing to say about `"Activity"` when the def
+   * describes `wardley:nature/activity` is that the record says something this
+   * framework does not recognise — not to offer a click that would put the
+   * host's word into the document.
    */
   private _renderNature(
     reading: ElementReading,
@@ -358,10 +367,27 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
           )}
         </div>`;
 
+    const unknown = record?.unknownNature ?? [];
+
     return this._field(
       'reading-nature',
       translateKey(this.std, 'com.labre.reading.field.nature', 'Nature'),
       html`${value}
+      ${unknown.length
+        ? html`<div class="reading-note" data-testid="reading-nature-unknown">
+            ${translateKey(
+              this.std,
+              'com.labre.reading.nature.unknown-record-value',
+              'The record says'
+            )}
+            “${unknown.join('”, “')}”,
+            ${translateKey(
+              this.std,
+              'com.labre.reading.nature.unknown-record-value.suffix',
+              'a value this framework does not describe.'
+            )}
+          </div>`
+        : nothing}
       ${differs && writable
         ? html`<div class="reading-actions">
             <button
@@ -590,13 +616,13 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
   private _run(id: string, params: Record<string, unknown>) {
     const command = getRegisteredCommands(this.std).find(c => c.id === id);
     if (!command) return;
-    // `'palette'` until the `'contextual-toolbar'` surface joins the union with
-    // the typed-edge slice (ADR 0010 M3): the invocation shape is the seam's,
-    // not this panel's, and inventing a member here would fork it.
+    // The panel hangs off the selected element and is opened from its toolbar,
+    // so that is the surface a confirmation is reported against — never the
+    // palette it was not opened from.
     runCommand(
       this.std,
       command,
-      { surface: 'palette', source: 'toolbar:general' },
+      { surface: 'contextual-toolbar', source: 'toolbar:general' },
       params
     );
   }
@@ -613,8 +639,14 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     const picker = this.std.getOptional(PivotRecordPickerProvider);
     if (!picker) return;
 
-    picker
-      .pick(this.std, elementId)
+    // `Promise.resolve().then(...)` rather than calling `pick` directly: the
+    // contract says a picker MUST NOT throw, and this `.catch` is the only line
+    // of defence behind that sentence. A picker that throws SYNCHRONOUSLY
+    // escapes a `.catch` on its return value entirely — it never returns one —
+    // and surfaces as an unhandled error out of a lit event handler. Wrapping
+    // the CALL folds both failures onto the same behaviour as a cancel.
+    Promise.resolve()
+      .then(() => picker.pick(this.std, elementId))
       .then(pivotDocId => {
         // A cancelled picker writes nothing — the whole point of the rung.
         if (!pivotDocId) return;

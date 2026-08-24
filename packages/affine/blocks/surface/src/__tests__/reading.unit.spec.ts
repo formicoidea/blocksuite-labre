@@ -4,12 +4,15 @@ import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
+import type { TagDef } from '@labre/affine-shared/services';
+
 import {
   compareReading,
   type ElementReading,
   readElement,
   readingProfileFor,
   type ReadingProfile,
+  resolveRecordNature,
 } from '../extensions/reading.js';
 
 /**
@@ -68,6 +71,7 @@ const BACKGROUND: FrameworkBackgroundDef = {
 const NATURE_TAG = 'test:nature';
 const DOING = `${NATURE_TAG}/doing`;
 const THING = `${NATURE_TAG}/thing`;
+const SCOPED = `${NATURE_TAG}/scoped`;
 
 const PROFILE: ReadingProfile = {
   id: 'test',
@@ -89,6 +93,16 @@ const PROFILE: ReadingProfile = {
         pattern: String.raw`^(?!.*\b\p{L}+ing\b).+$`,
         hintKey: 'k.thing',
         hintFallback: 'Name it as a thing.',
+      },
+      // A scoped convention, to exercise the language gate. Same value as
+      // DOING, declared for a language nothing in this suite serves unless it
+      // asks for it.
+      {
+        valueId: SCOPED,
+        lang: 'fr',
+        pattern: String.raw`^\p{L}+(tion|ment)\b`,
+        hintKey: 'k.scoped',
+        hintFallback: 'Nommez-la comme une action.',
       },
     ],
   },
@@ -155,8 +169,9 @@ const map = () => element({ id: 'map', role: 'test:map', bound: [0, 0, 1000, 500
 
 const read = (
   subject: GfxPrimitiveElementModel,
-  rest: GfxPrimitiveElementModel[] = []
-) => readElement(subject, [subject, ...rest], PROFILE);
+  rest: GfxPrimitiveElementModel[] = [],
+  lang?: string
+) => readElement(subject, [subject, ...rest], PROFILE, { lang });
 
 describe('which elements have a reading at all', () => {
   it('reads the subject role, and its specialisations', () => {
@@ -413,6 +428,36 @@ describe('the naming convention', () => {
     expect(reading.naming).toBeUndefined();
   });
 
+  it('judges a WRAPPED name on what it says, not on where it broke', () => {
+    // A canvas label is free text and wraps. Without `s` on the compiled
+    // pattern, `.` stops at the newline and every anchored convention fails on
+    // a two-line name — which reads as "the convention dislikes long names".
+    expect(read(named('Customer\nregister', THING))!.naming?.conforms).toBe(
+      true
+    );
+    expect(read(named('Registering\ncustomers', THING))!.naming?.conforms).toBe(
+      false
+    );
+  });
+
+  it('is silent out of its declared language scope', () => {
+    // A motif is a motif of ONE language. The scoped convention below is
+    // French, and a host serving English (or saying nothing at all) gets no
+    // naming line rather than a confident wrong one.
+    const french = named('Facturation', SCOPED);
+    expect(read(french)!.naming).toBeUndefined();
+    expect(read(french, [], 'en')!.naming).toBeUndefined();
+    expect(read(french, [], 'fr')!.naming).toMatchObject({ conforms: true });
+  });
+
+  it('applies a convention that declares no language', () => {
+    // Agnostic by omission: the two unscoped conventions above still answer
+    // whatever the host is serving.
+    expect(read(named('Brewing tea', DOING), [], 'fr')!.naming?.conforms).toBe(
+      true
+    );
+  });
+
   it('says nothing when no convention describes the nature', () => {
     const reading = read(
       element({
@@ -423,6 +468,63 @@ describe('the naming convention', () => {
       })
     )!;
     expect(reading.naming).toBeUndefined();
+  });
+});
+
+describe('resolving what the RECORD says against the framework’s vocabulary', () => {
+  const def: TagDef = {
+    id: NATURE_TAG,
+    label: 'Nature',
+    cardinality: 'single',
+    appliesTo: ['test:component'],
+    values: [
+      { id: DOING, label: 'Doing' },
+      { id: THING, label: 'Thing' },
+    ],
+  };
+
+  it('accepts the value id', () => {
+    expect(resolveRecordNature(def, [THING])).toEqual({
+      resolved: [THING],
+      unknown: [],
+    });
+  });
+
+  it('accepts the id and the LABEL, case-insensitively', () => {
+    // The ordinary host record: a multi-select whose options are the words a
+    // human picked. `"Doing"` is not a value id, and writing it into the
+    // document would put a value no def describes there.
+    expect(resolveRecordNature(def, ['Doing']).resolved).toEqual([DOING]);
+    expect(resolveRecordNature(def, ['doing']).resolved).toEqual([DOING]);
+    expect(resolveRecordNature(def, [THING.toUpperCase()]).resolved).toEqual([
+      THING,
+    ]);
+  });
+
+  it('never guesses: an unknown word stays unknown', () => {
+    expect(resolveRecordNature(def, ['Do', 'Things', 'Doing'])).toEqual({
+      resolved: [DOING],
+      unknown: ['Do', 'Things'],
+    });
+  });
+
+  it('resolves nothing at all when no def describes the tag', () => {
+    // The framework's pack is not seeded in this deployment. We cannot know the
+    // vocabulary, so proposing to write one of its words would be inventing it.
+    expect(resolveRecordNature(undefined, ['Doing'])).toEqual({
+      resolved: [],
+      unknown: ['Doing'],
+    });
+  });
+
+  it('is permissive on an OPEN vocabulary, because the def says so', () => {
+    expect(
+      resolveRecordNature({ ...def, values: 'open' }, ['whatever'])
+    ).toEqual({ resolved: ['whatever'], unknown: [] });
+  });
+
+  it('de-duplicates two spellings of one value', () => {
+    expect(resolveRecordNature(def, ['Doing', DOING]).resolved).toEqual([DOING]);
   });
 });
 
@@ -468,6 +570,20 @@ describe('comparing a reading with a record', () => {
       phase: 'early',
     });
     expect(fields).toEqual([{ field: 'phase', read: 'Late', record: 'early' }]);
+  });
+
+  it('never reports a word the framework does not describe', () => {
+    // The false-drift trap: an element correctly qualified `thing` against a
+    // record whose property holds the host's own word for it. `readRecord` has
+    // already parked what it could not resolve in `unknownNature`, and this
+    // comparison must never reach for it — a difference of alphabet is not a
+    // difference of opinion.
+    expect(
+      compareReading(reading(), {
+        pivotDocId: 'r',
+        unknownNature: ['Thing'],
+      })
+    ).toEqual([]);
   });
 
   it('never reports a phase the board cannot read', () => {

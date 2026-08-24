@@ -6,7 +6,14 @@ import {
 } from '@labre/affine/blocks/surface';
 import type { ExtensionType } from '@labre/store';
 import type { BlockFlags } from '@labre/affine/flags';
+import {
+  PivotPropertiesExtension,
+  type PivotProperty,
+  TranslationExtension,
+} from '@labre/affine/shared/services';
+import { readElementTags } from '@labre/affine/std/gfx';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
+import { computed } from '@preact/signals-core';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
@@ -246,6 +253,151 @@ describe('the reversed reading of a Wardley component', () => {
     expect(service.surface.getElementById(component)!.pivotDocId).toBe(
       'pivot-payments'
     );
+  });
+
+  /**
+   * A pivot record whose `nature` property is an ordinary host multi-select:
+   * the options are the words a human typed, not the framework's value ids.
+   */
+  const recordSaying = (nature: string[]): ExtensionType =>
+    PivotPropertiesExtension(
+      {
+        properties$: (docId: string) =>
+          computed(() => ({
+            status: 'ready' as const,
+            snapshot: {
+              docId,
+              title: 'Payments',
+              properties: [
+                {
+                  key: 'nature',
+                  label: 'Nature',
+                  value: { kind: 'tags' as const, value: nature },
+                },
+              ] as PivotProperty[],
+            },
+          })),
+      },
+      { hoverFields: ['nature', 'phase'] }
+    );
+
+  test('confirming the record’s nature writes the framework’s id', async () => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [recordSaying(['Activity'])]);
+
+    addMap();
+    const component = addComponent();
+    service.surface.updateElement(component, { pivotDocId: 'pivot-payments' });
+    await select(component);
+    manager().open(component);
+    await settle();
+
+    const confirm = field('reading-confirm-nature') as HTMLElement | null;
+    expect(confirm).not.toBeNull();
+    // The button says the human word, because that is the label of the value…
+    expect(confirm!.textContent).toContain('Activity');
+
+    clickElement(confirm!);
+    await settle();
+
+    // …and what it WRITES is the value id the tag def describes. Writing
+    // "Activity" would put a value nothing describes into the document: the
+    // naming line would vanish, the qualification dropdown would show a raw id,
+    // and every rule indexed on the nature would stop matching.
+    expect(readElementTags(service.surface.getElementById(component)!)).toEqual({
+      'wardley:nature': ['wardley:nature/activity'],
+    });
+  });
+
+  test('a word the framework does not describe is named, not offered', async () => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [recordSaying(['Bogus'])]);
+
+    addMap();
+    const component = addComponent();
+    service.surface.updateElement(component, { pivotDocId: 'pivot-payments' });
+    await select(component);
+    manager().open(component);
+    await settle();
+
+    // A sentence, and no button beside it: the honest thing to say about a word
+    // this framework has no value for.
+    expect(field('reading-nature-unknown')?.textContent).toContain('Bogus');
+    expect(field('reading-confirm-nature')).toBeNull();
+    // …and no drift either, ever: a difference of alphabet is not a difference
+    // of opinion.
+    service.surface.updateElement(component, { xywh: '[300,441,18,18]' });
+    await wait(400);
+    await settle();
+    expect(field('reading-drift')).toBeNull();
+  });
+
+  test('a picker that throws SYNCHRONOUSLY reads as a cancel', async () => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [
+      PivotRecordPickerExtension({
+        pick: () => {
+          throw new Error('the host picker exploded');
+        },
+      }),
+    ]);
+
+    addMap();
+    const component = addComponent();
+    await select(component);
+    manager().open(component);
+    await settle();
+
+    clickElement(field('reading-link-record') as HTMLElement);
+    await settle();
+
+    // The contract says a picker MUST NOT throw; the only line of defence
+    // behind that sentence has to cover the synchronous case too, or the throw
+    // escapes a lit event handler as an unhandled error.
+    expect(panel()).not.toBeNull();
+    expect(service.surface.getElementById(component)!.pivotDocId).toBeUndefined();
+  });
+
+  /** An activity named the English way, open in a host serving `language`. */
+  const openNamedActivity = async (language: string) => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [
+      TranslationExtension({ t: () => undefined, language }),
+    ]);
+
+    addMap();
+    const component = addComponent();
+    const label = addLabel();
+    service.surface.updateElement(component, {
+      tags: { 'wardley:nature': ['wardley:nature/activity'] },
+    });
+    groupOf(component, label);
+    await select(component);
+    manager().open(component);
+    await settle();
+  };
+
+  test('the naming suggestion is silent on a board served in French', async () => {
+    await openNamedActivity('fr');
+
+    // The Wardley motif is the English gerund and says so (`lang: 'en'`). On a
+    // board named in French it is out of scope, and an out-of-scope suggestion
+    // is worse than none — it is confident.
+    expect(field('reading-naming')).toBeNull();
+  });
+
+  test('…and speaks when the host serves English, `en-GB` included', async () => {
+    await openNamedActivity('en-GB');
+
+    // In scope — and the PRIMARY subtag is what counts: no framework has a
+    // naming motif that holds in `en-GB` and not in `en-US`.
+    const naming = field('reading-naming') as HTMLElement | null;
+    expect(naming).not.toBeNull();
+    expect(naming!.querySelector('[data-conforms="true"]')).not.toBeNull();
   });
 
   test('Escape puts the panel away', async () => {

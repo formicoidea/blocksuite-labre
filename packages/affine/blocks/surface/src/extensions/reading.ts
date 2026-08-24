@@ -1,6 +1,9 @@
 import {
+  getUniverseRegistry,
+  hostLanguage,
   type PivotSnapshot,
   queryPivotProperties,
+  type TagDef,
 } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
 import type { Bound } from '@labre/global/gfx';
@@ -66,11 +69,35 @@ export interface ReadingNamingConvention {
   /** The nature value id this convention describes, e.g. `wardley:nature/data`. */
   valueId: string;
   /**
-   * `RegExp` SOURCE (not a literal), matched case-insensitively against the
-   * element's name. A source string rather than a `RegExp` object so a profile
-   * stays plain, serialisable data like every other declaration in this repo.
+   * `RegExp` SOURCE (not a literal), compiled with `i`, `u` and `s` and matched
+   * against the element's name. A source string rather than a `RegExp` object so
+   * a profile stays plain, serialisable data like every other declaration in
+   * this repo.
+   *
+   * `s` (dotAll) is on because a canvas label is free text and wraps: without
+   * it, `.` stops at the newline and an anchored pattern fails on every
+   * two-line name whatever it says. A pattern that wants line semantics writes
+   * them itself.
    */
   pattern: string;
+  /**
+   * The LANGUAGE this motif is a motif of, as a BCP-47 primary subtag
+   * (`'en'`). A convention that declares one is applied only when the host says
+   * it is serving that language ({@link hostLanguage}); it is **silent**
+   * otherwise — including when the host says nothing at all.
+   *
+   * This is the field that stops an English gerund from judging a board named
+   * in French. "Facturation" on an activity is neither followed nor broken, it
+   * is out of scope, and a suggestion out of scope is worse than no suggestion:
+   * it is wrong in both directions at once (a French activity gets told to use
+   * a verb, a French datum called "Planning" gets told it reads as an action).
+   *
+   * Omitted, the convention is language-agnostic and always applies — for a
+   * motif that genuinely is (a prefix, a code, a forbidden character). A
+   * framework extends its coverage by shipping one more convention per language
+   * for the same `valueId`; the first one in scope wins.
+   */
+  lang?: string;
   /** i18n key of the suggestion shown when the name does not match. */
   hintKey: string;
   /** English default, for a host that ships no catalogue. */
@@ -243,7 +270,10 @@ function compile(pattern: string): RegExp | null {
 
   let compiled: RegExp | null = null;
   try {
-    compiled = new RegExp(pattern, 'iu');
+    // `s` so `.` crosses the newline of a wrapped canvas label: without it an
+    // anchored pattern (`^…$`) fails on every two-line name whatever it says,
+    // which reads to the user as "the convention dislikes long names".
+    compiled = new RegExp(pattern, 'ius');
   } catch (error) {
     warnOnce(
       `naming convention /${pattern}/ does not compile (${String(error)}) — ` +
@@ -349,6 +379,16 @@ const centreOf = (bound: Bound): [number, number] => [
  *
  * The centre, not the whole bound: a node overhanging the edge of the map is
  * still on it to every reader.
+ *
+ * ## Two frames under one component
+ *
+ * The first match in DOCUMENT order wins — not the smallest, not the topmost.
+ * Deterministic, and deliberately not clever: z-order is a paint concern and
+ * "the smallest frame containing it" is a rule nobody declared. Two overlapping
+ * maps of different sizes are a board that has not decided what it is, and a
+ * reading that quietly picked one of them by area would be harder to argue with
+ * than one that picked the first. The day a framework needs nesting, this is the
+ * one function to change.
  */
 function frameOf(
   element: GfxPrimitiveElementModel,
@@ -506,16 +546,26 @@ function readRelations(
   return relations;
 }
 
-/** The naming line, when there is a single nature and a convention for it. */
+/**
+ * The naming line, when there is a single nature, a convention for it, and that
+ * convention is IN SCOPE for the language the host is serving.
+ *
+ * The scope check is the difference between a suggestion and a nuisance: a
+ * motif is a motif of one language, and the first one whose `lang` matches
+ * wins. A convention that declares no language is agnostic and always applies.
+ */
 function readNaming(
   element: GfxPrimitiveElementModel,
   profile: ReadingProfile,
-  valueIds: readonly string[]
+  valueIds: readonly string[],
+  lang: string | undefined
 ): ReadingNaming | undefined {
   const nature = profile.nature;
   if (!nature || valueIds.length !== 1) return undefined;
 
-  const convention = nature.conventions.find(c => c.valueId === valueIds[0]);
+  const convention = nature.conventions.find(
+    c => c.valueId === valueIds[0] && (c.lang === undefined || c.lang === lang)
+  );
   if (!convention) return undefined;
 
   const name = readName(element, profile);
@@ -534,9 +584,22 @@ function readNaming(
   };
 }
 
+/** What the reading needs to know that is not in the document. */
+export interface ReadingOptions {
+  /**
+   * The language the host is serving, as a primary subtag — from
+   * {@link hostLanguage}. It gates the naming conventions that declare a
+   * `lang`, and nothing else: no reading of the document depends on it.
+   *
+   * A parameter rather than a lookup, so {@link readElement} stays pure and one
+   * caller (the manager) owns the single `std` read.
+   */
+  lang?: string;
+}
+
 /**
- * Read one element. Pure: same elements and same profile, same answer, and no
- * write anywhere on any path through this function.
+ * Read one element. Pure: same elements, same profile, same options, same
+ * answer, and no write anywhere on any path through this function.
  *
  * `null` when the element does not carry the profile's subject role — the
  * caller has nothing to show, which is what keeps the panel off every neutral
@@ -545,7 +608,8 @@ function readNaming(
 export function readElement(
   element: GfxPrimitiveElementModel,
   elements: readonly GfxPrimitiveElementModel[],
-  profile: ReadingProfile
+  profile: ReadingProfile,
+  options: ReadingOptions = {}
 ): ElementReading | null {
   const roleId = element.role;
   if (roleId === undefined) return null;
@@ -568,7 +632,7 @@ export function readElement(
         : undefined,
     relations: readRelations(element, elements, profile),
     phase: readPhase(element, elements, profile),
-    naming: readNaming(element, profile, carried),
+    naming: readNaming(element, profile, carried, options.lang),
   };
 }
 
@@ -593,10 +657,99 @@ export function readingProfileFor(
  */
 export interface RecordReading {
   pivotDocId: string;
-  /** The record's nature value ids, when it carries the property. */
+  /**
+   * The record's nature, as VALUE IDS the framework's tag def describes —
+   * resolved here, at the moment of reading, never at the moment of writing.
+   * See {@link resolveRecordNature}.
+   */
   nature?: string[];
+  /**
+   * What the record carries under the same property that no def describes.
+   * Shown to the user as a sentence, offered for confirmation never, and
+   * compared never.
+   */
+  unknownNature?: string[];
   /** The record's phase, as the host spells it. */
   phase?: string;
+}
+
+/**
+ * The record's nature, split into what the FRAMEWORK describes and what it does
+ * not.
+ *
+ * The whole point of the split, and it is the one thing this module must not get
+ * wrong: a pivot record is the host's document, and its "nature" property holds
+ * whatever words the host's own vocabulary uses — `"Activity"`, `"activité"`,
+ * an internal code. A value id, on the element, is a namespaced id a tag def
+ * describes (`wardley:nature/activity`). They are not the same alphabet.
+ *
+ * `tag.set` deliberately does not police its values (a document must load
+ * whatever it carries), so the guard has to stand at the point of PROPOSAL: an
+ * unresolvable word is never offered for confirmation and never compared,
+ * because both outcomes corrupt something — writing it puts a value no def
+ * describes into the document (the naming line vanishes, the qualification
+ * dropdown shows a raw id, rules stop matching), and comparing it reports a
+ * permanent, false disagreement on an element that is correctly qualified.
+ */
+export interface ResolvedRecordNature {
+  /** Value ids a def describes. The only ones ever proposed or compared. */
+  resolved: string[];
+  /** Words no def describes. Reported to the user, written nowhere. */
+  unknown: string[];
+}
+
+/**
+ * Resolve the record's words against the tag def's own values.
+ *
+ * Three ways a word is accepted, in order: the value id itself, the id
+ * case-insensitively, then the value's LABEL case-insensitively — because a
+ * host storing the words a human picked from a multi-select is the ordinary
+ * case, not the exotic one. Anything else is `unknown`: this is a resolver, not
+ * a guesser, and there is no fuzzy match anywhere in it.
+ *
+ * Two deliberate edge cases:
+ *
+ * - **no def** (the framework's pack is not seeded in this deployment) — every
+ *   word is unknown. We cannot know the vocabulary, so proposing to write one of
+ *   its words would be inventing it;
+ * - **`values: 'open'`** — the def says any string is a value of this tag, so
+ *   everything resolves. That is the def's own claim, not ours.
+ */
+export function resolveRecordNature(
+  def: TagDef | undefined,
+  values: readonly string[]
+): ResolvedRecordNature {
+  const resolved: string[] = [];
+  const unknown: string[] = [];
+  const seen = new Set<string>();
+
+  if (!def) return { resolved, unknown: [...values] };
+  if (def.values === 'open') return { resolved: [...values], unknown };
+
+  const byId = new Map<string, string>();
+  const byLabel = new Map<string, string>();
+  for (const value of def.values) {
+    byId.set(value.id.toLowerCase(), value.id);
+    const label = (value.label || '').toLowerCase();
+    // First declaration wins: a label repeated across two values is an
+    // authoring bug in the pack, and picking the later one silently would make
+    // the resolution depend on declaration order.
+    if (label && !byLabel.has(label)) byLabel.set(label, value.id);
+  }
+
+  for (const raw of values) {
+    const key = raw.toLowerCase();
+    const id = byId.get(key) ?? byLabel.get(key);
+    if (id === undefined) {
+      if (!unknown.includes(raw)) unknown.push(raw);
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    resolved.push(id);
+  }
+
+  return { resolved, unknown };
 }
 
 /** One field on which the drawing and the record disagree. */
@@ -655,14 +808,23 @@ export function readRecord(
   const current = state.value;
   if (current.status !== 'ready') return undefined;
 
-  const nature = keys.nature
-    ? propertyStrings(current.snapshot, keys.nature)
-    : [];
+  const raw = keys.nature ? propertyStrings(current.snapshot, keys.nature) : [];
   const phase = keys.phase ? propertyStrings(current.snapshot, keys.phase) : [];
+
+  // The record speaks the HOST's alphabet; the element speaks the framework's.
+  // Translating happens here, once, so that every consumer downstream — the
+  // proposal, the confirmation and the drift comparison — works on value ids a
+  // def describes and on nothing else.
+  const tagId = profile.nature?.tagId;
+  const { resolved, unknown } =
+    tagId !== undefined && raw.length
+      ? resolveRecordNature(getUniverseRegistry(std).tag(tagId), raw)
+      : { resolved: [], unknown: [] };
 
   return {
     pivotDocId: element.pivotDocId,
-    ...(nature.length ? { nature } : {}),
+    ...(resolved.length ? { nature: resolved } : {}),
+    ...(unknown.length ? { unknownNature: unknown } : {}),
     ...(phase.length ? { phase: phase[0] } : {}),
   };
 }
@@ -674,6 +836,13 @@ export function readRecord(
  * has not been filled in, and calling that "drift" would turn an empty property
  * into a permanent complaint. A field the BOARD cannot read is not one either —
  * a component dragged off the map has no phase to be in conflict with.
+ *
+ * Neither is a word the framework does not describe ({@link RecordReading.unknownNature}):
+ * comparing `wardley:nature/activity` against the host's `"Activity"` would
+ * report a permanent, false disagreement on an element that is correctly
+ * qualified — and would offer the user two ways out, both of which corrupt one
+ * side. `readRecord` has already resolved what CAN be compared; what could not
+ * is not a difference of opinion, it is a difference of alphabet.
  *
  * The phase comparison accepts either the zone id or the zone's own wording,
  * because a host is free to store "Product" where the declaration says
@@ -894,7 +1063,9 @@ export class ReadingManager extends LifeCycleWatcher {
     const profile = readingProfileFor(element, this.profiles);
     if (!profile) return null;
 
-    return readElement(element, surface.elementModels, profile);
+    return readElement(element, surface.elementModels, profile, {
+      lang: hostLanguage(this.std),
+    });
   }
 
   /** The profile governing an element, for the panel's confirmation actions. */
@@ -974,7 +1145,9 @@ export class ReadingManager extends LifeCycleWatcher {
     const profile = readingProfileFor(element, this.profiles);
     if (!profile) return;
 
-    const reading = readElement(element, surface.elementModels, profile);
+    const reading = readElement(element, surface.elementModels, profile, {
+      lang: hostLanguage(this.std),
+    });
     if (!reading) return;
 
     const record = readRecord(this.std, element, profile);

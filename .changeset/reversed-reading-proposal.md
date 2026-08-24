@@ -2,6 +2,7 @@
 '@labre/affine-block-surface': minor
 '@labre/affine-block-root': minor
 '@labre/affine-gfx-wardley': minor
+'@labre/affine-shared': minor
 '@labre/affine': minor
 ---
 
@@ -51,9 +52,29 @@ as legitimate as reading one you can.
   never a violation, and it is silent on an unnamed element or on a nature no
   convention describes.
 
+  **The motif is English, and the data says so.** A convention declares its
+  `lang`, and the engine applies it only when the host says it is serving that
+  language — so a board named in French gets silence rather than a confident
+  wrong answer in both directions ("Facturation" told to use a verb, "Planning"
+  told it reads as an action). A host that declares no language gets silence
+  too. Extending the coverage is adding one convention per language for the same
+  value, not changing code. This is what `TranslationService.language` (new,
+  optional) exists for, and it is the only thing the library reads it for: the
+  library still holds no catalogue and still negotiates no locale.
+
 **Confirming is the only write, and it reuses the existing rungs.** The panel
 proposes a nature only when the LINKED RECORD carries one the element does not,
-and confirming runs the existing `tag.set`; linking to a record runs the existing
+**and only after resolving the record's word against the framework's own tag
+def** — by value id, by id case-insensitively, then by label, with no fuzzy
+match anywhere. A pivot record is the host's document and its "nature" property
+holds the host's words (`"Activity"`), while an element carries namespaced value
+ids (`wardley:nature/activity`): they are not the same alphabet. What cannot be
+resolved is named in a sentence and offered no button — writing it would put a
+value no def describes into the document (the naming line vanishes, the
+qualification dropdown shows a raw id, rules stop matching), and comparing it
+would report a permanent false drift on an element that is correctly qualified.
+`tag.set` deliberately does not police its values, so the guard stands at the
+point of proposal. Confirming runs the existing `tag.set`; linking to a record runs the existing
 `pivot.bind` with an id the HOST supplies through a new
 `PivotRecordPickerProvider` — with no picker registered the action does not
 exist (hidden, not disabled), like every other seam whose absence is meaningful.
@@ -68,8 +89,11 @@ It is debounced (200 ms), asynchronous and **local-gated** — a colleague's dra
 is their drift to notice — so it is never on the 16 ms path of the gesture that
 caused it, by construction rather than by measurement. The comparison is bounded
 to the two record properties a framework names (`recordKeys`), read through the
-guarded `queryPivotProperties`: no provider, no configured fields, or a property
-the record does not carry, and the trigger says nothing at all.
+guarded `queryPivotProperties`, and — on the nature — to values the framework's
+own def describes: no provider, no configured fields, a property the record does
+not carry, or a word in the host's alphabet, and the trigger says nothing at
+all. A host whose record spells things differently gets no comparison and no
+drift, and that is now true of the VALUES as well as of the keys.
 
 **Everything a framework contributes is data.** `ReadingProfile` — roles,
 subject role, nature tag and its conventions, edge role, background declaration
@@ -81,7 +105,15 @@ trigger vanish while every element still loads, paints and stays selectable
 resolves every word through the host's catalogue with the framework's own
 English fallback.
 
+`element.read` declares `surfaces: ['palette', 'contextual-toolbar', 'agent']`,
+and the toolbar entry and the panel's confirmations report
+`contextual-toolbar` as their invocation surface — a reading triggered by
+clicking a component is not a palette invocation, and the telemetry says so.
+
 Hosts shipping a translation catalogue gain the `com.labre.reading.*` keys (the
 panel's chrome and the toolbar entry), `com.labre.command.element.read[.description]`,
 and Wardley's `com.labre.wardley.reading.naming.*`. All of them carry English
-fallbacks, so a host with no catalogue reads correctly.
+fallbacks, so a host with no catalogue reads correctly. A host that also
+implements the new optional `TranslationService.language` gets the naming
+suggestions; one that does not keeps every other reading and simply never sees
+that line.

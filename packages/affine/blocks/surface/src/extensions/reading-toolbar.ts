@@ -106,10 +106,10 @@ function openReading(ctx: ToolbarContext, target: GfxPrimitiveElementModel) {
   runCommand(
     ctx.std,
     command,
-    // `'palette'` until `'contextual-toolbar'` joins the `CommandSurface` union
-    // with the typed-edge direction slice (ADR 0010 M3) — the invocation shape
-    // belongs to the seam, and inventing a member here would fork it.
-    { surface: 'palette', source: 'toolbar:general' },
+    // The surface the gesture really came from, as `connector/src/toolbar/
+    // config.ts` reports its own inversion: a reading triggered from the
+    // element's toolbar must not be counted as a palette invocation.
+    { surface: 'contextual-toolbar', source: 'toolbar:general' },
     { elementId: target.id }
   );
 }

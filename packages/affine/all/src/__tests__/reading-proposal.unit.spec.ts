@@ -27,8 +27,14 @@ import {
   PivotPropertiesProvider,
   type PivotPropertiesService,
   type PivotSnapshot,
+  UniverseTagDefsProvider,
 } from '@labre/affine-shared/services';
-import { WARDLEY_NATURE, WARDLEY_NATURE_TAG_ID, WARDLEY_READING } from '@labre/affine-gfx-wardley';
+import {
+  WARDLEY_NATURE,
+  WARDLEY_NATURE_TAG_ID,
+  WARDLEY_READING,
+  WARDLEY_TAG_DEFS,
+} from '@labre/affine-gfx-wardley';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { Text } from '@labre/store';
@@ -48,9 +54,12 @@ const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 function setup({
   withProvider = true,
+  withTagDefs = true,
   properties = [] as PivotSnapshot['properties'],
 }: {
   withProvider?: boolean;
+  /** The framework's tag pack, as its flag-gated view extension seeds it. */
+  withTagDefs?: boolean;
   properties?: PivotSnapshot['properties'];
 } = {}) {
   const manager = new StoreExtensionManager(getInternalStoreExtensions({}));
@@ -84,10 +93,17 @@ function setup({
   const std = {
     store,
     provider: {
-      getAll: (identifier: unknown) =>
-        identifier === ReadingProfileIdentifier
-          ? new Map([['wardley', WARDLEY_READING]])
-          : new Map(),
+      getAll: (identifier: unknown) => {
+        if (identifier === ReadingProfileIdentifier) {
+          return new Map([['wardley', WARDLEY_READING]]);
+        }
+        // The real pack, seeded the way the framework seeds it: what the record
+        // says is resolved against THESE values and nothing else.
+        if (identifier === UniverseTagDefsProvider && withTagDefs) {
+          return new Map([[WARDLEY_TAG_DEFS.packId, WARDLEY_TAG_DEFS]]);
+        }
+        return new Map();
+      },
     },
     get: (identifier: unknown) =>
       identifier === GfxControllerIdentifier ? gfx : undefined,
@@ -213,7 +229,10 @@ describe('opening a proposal', () => {
 describe('confirming', () => {
   const setTag = tagCommands.find(c => c.id === 'tag.set')!;
   const bindPivot = pivotCommands.find(c => c.id === 'pivot.bind')!;
-  const invocation = { surface: 'palette', source: 'toolbar:general' } as const;
+  const invocation = {
+    surface: 'contextual-toolbar',
+    source: 'toolbar:general',
+  } as const;
 
   test('a nature goes through `tag.set`, once, and writes it', () => {
     const ctx = setup();
@@ -280,6 +299,106 @@ describe('confirming', () => {
 
     expect(component.yMap.has('tags')).toBe(false);
     expect(component.pivotDocId).toBeUndefined();
+  });
+});
+
+/**
+ * The record speaks the HOST's alphabet.
+ *
+ * The scenario is the ordinary one, not an exotic one: a pivot record whose
+ * `nature` property is a multi-select holding the words a human picked
+ * (`"Activity"`), against an element whose tag values are namespaced ids
+ * (`wardley:nature/activity`). Before the resolution these tests pin down, the
+ * panel offered a button that wrote `"Activity"` into the document — a value no
+ * def describes — and reported a permanent, false drift on an element that was
+ * correctly qualified.
+ */
+describe('what the record says, in the host’s own words', () => {
+  const natureProperty = (values: string[]) => [
+    {
+      key: 'nature',
+      label: 'Nature',
+      value: { kind: 'tags' as const, value: values },
+    },
+  ];
+
+  test('a host LABEL resolves to the value id the framework describes', () => {
+    const ctx = setup({ properties: natureProperty(['Activity']) });
+    const component = ctx.addComponent(0.55, 0.5, { pivotDocId: RECORD });
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    // What the panel proposes, and therefore what a confirmation would write:
+    // the ID, never the word.
+    expect(record.nature).toEqual([WARDLEY_NATURE.activity]);
+    expect(record.unknownNature).toBeUndefined();
+  });
+
+  test('confirming it writes the framework’s id, not the host’s word', () => {
+    const ctx = setup({ properties: natureProperty(['Activity']) });
+    const component = ctx.addComponent(0.55, 0.5, { pivotDocId: RECORD });
+    const setTag = tagCommands.find(c => c.id === 'tag.set')!;
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    setTag.run(
+      ctx.std,
+      { surface: 'contextual-toolbar', source: 'toolbar:general' },
+      {
+        tag: WARDLEY_NATURE_TAG_ID,
+        values: record.nature,
+        elementIds: [component.id],
+      }
+    );
+
+    expect(
+      (component.tags as Y.Map<string[]>).get(WARDLEY_NATURE_TAG_ID)
+    ).toEqual([WARDLEY_NATURE.activity]);
+  });
+
+  test('a correctly qualified element does not drift against that word', async () => {
+    const ctx = setup({ properties: natureProperty(['Activity']) });
+    ctx.addMap();
+    const component = ctx.addComponent(0.55, 0.5, {
+      pivotDocId: RECORD,
+      tags: { [WARDLEY_NATURE_TAG_ID]: [WARDLEY_NATURE.activity] },
+    });
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    const reading = ctx.reading.reading(component.id)!;
+    expect(compareReading(reading, record)).toEqual([]);
+
+    ctx.surface.updateElement(component.id, { xywh: '[860,440,18,18]' });
+    await settleDrift();
+    expect(ctx.reading.drift$.value).toBeNull();
+  });
+
+  test('a word no def describes is named, never proposed, never compared', async () => {
+    const ctx = setup({ properties: natureProperty(['Bogus']) });
+    ctx.addMap();
+    const component = ctx.addComponent(0.55, 0.5, { pivotDocId: RECORD });
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    // Nothing to confirm — the panel renders the sentence and no button.
+    expect(record.nature).toBeUndefined();
+    expect(record.unknownNature).toEqual(['Bogus']);
+    expect(compareReading(ctx.reading.reading(component.id)!, record)).toEqual(
+      []
+    );
+
+    ctx.surface.updateElement(component.id, { xywh: '[860,440,18,18]' });
+    await settleDrift();
+    expect(ctx.reading.drift$.value).toBeNull();
+  });
+
+  test('with no pack seeded, every word is unresolvable — and silent', () => {
+    const ctx = setup({
+      withTagDefs: false,
+      properties: natureProperty(['Activity']),
+    });
+    const component = ctx.addComponent(0.55, 0.5, { pivotDocId: RECORD });
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    expect(record.nature).toBeUndefined();
+    expect(record.unknownNature).toEqual(['Activity']);
   });
 });
 

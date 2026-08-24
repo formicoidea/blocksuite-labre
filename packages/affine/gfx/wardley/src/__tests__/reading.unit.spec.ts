@@ -73,10 +73,20 @@ const node = (
     ...props,
   });
 
+/**
+ * The naming conventions declare `lang: 'en'`, so the language the host serves
+ * is part of every reading that reaches them. English unless a test says
+ * otherwise — that is the scope this pack ships for.
+ */
 const read = (
   subject: GfxPrimitiveElementModel,
-  rest: GfxPrimitiveElementModel[]
-) => readElement(subject, [subject, ...rest], WARDLEY_READING);
+  rest: GfxPrimitiveElementModel[],
+  /** `null` is a host that says nothing — distinct from the default. */
+  lang: string | null = 'en'
+) =>
+  readElement(subject, [subject, ...rest], WARDLEY_READING, {
+    lang: lang ?? undefined,
+  });
 
 describe('what a Wardley map is read as', () => {
   it('reads a component, and a market through its specialisation', () => {
@@ -216,6 +226,28 @@ describe('the naming convention, as data', () => {
     expect(naming.conforms).toBe(false);
     expect(naming.hintKey).toBe('com.labre.wardley.reading.naming.activity');
     expect(naming.hintFallback).toContain('verb');
+  });
+
+  it('declares its language, and is silent outside it', () => {
+    // The gerund is a fact about English. On a board named in French the same
+    // motif is wrong in both directions — "Facturation" told to use a verb,
+    // "Planning" told it reads as an action — so the pack scopes itself and the
+    // engine keeps quiet, including when the host says nothing at all.
+    expect(WARDLEY_NAMING_CONVENTIONS.every(c => c.lang === 'en')).toBe(true);
+
+    const french = named('Facturation', WARDLEY_NATURE.activity);
+    expect(read(french, [map()], 'fr')!.naming).toBeUndefined();
+    expect(read(french, [map()], null)!.naming).toBeUndefined();
+    // …and in scope it answers, which is what makes the silence a scope and not
+    // a bug.
+    expect(read(french, [map()], 'en')!.naming?.conforms).toBe(false);
+  });
+
+  it('judges a wrapped name on what it says', () => {
+    // A Wardley label is a free text element and wraps.
+    expect(conforms('Customer\nregister', WARDLEY_NATURE.data)).toBe(true);
+    expect(conforms('Brewing\ntea', WARDLEY_NATURE.activity)).toBe(true);
+    expect(conforms('Registering\ncustomers', WARDLEY_NATURE.data)).toBe(false);
   });
 
   it('ships one motif, applied positively once and negatively three times', () => {

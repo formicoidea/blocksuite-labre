@@ -88,12 +88,11 @@ const readElementCommand: CommandDescriptor<ReadElementParams> = {
   labelKey: 'com.labre.command.element.read',
   labelFallback: 'Read this component',
   descriptionKey: 'com.labre.command.element.read.description',
-  // `'contextual-toolbar'` is deliberately absent: that surface joins the union
-  // with the typed-edge direction slice (#97 / ADR 0010 M3). The click
-  // affordance ships anyway — the element's toolbar entry drives the manager
-  // through this same command id — and the surface is one word to add the day
-  // the union carries it.
-  surfaces: ['palette', 'agent'],
+  // The three surfaces the reading is reachable from. `'contextual-toolbar'`
+  // is where it is actually used — one click on the component — and declaring
+  // it is what keeps the telemetry honest about where a gesture came from
+  // (ADR 0008: the invocation names the surface, and the surface must exist).
+  surfaces: ['palette', 'contextual-toolbar', 'agent'],
   scope: 'edgeless',
   defaultKeys: { mac: [], other: [] },
   availability: 'selection',

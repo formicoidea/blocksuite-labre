@@ -25,6 +25,34 @@ export interface TranslationService {
    * so the caller can fall back rather than render an empty bubble.
    */
   t(key: string): string | undefined;
+
+  /**
+   * The language the catalogue is currently serving, as a BCP-47 tag
+   * (`'fr'`, `'en-GB'`). Optional, and NOT locale negotiation — the library
+   * still holds no catalogue and still chooses nothing.
+   *
+   * It exists for the one kind of statement the library cannot make without
+   * knowing the language: a suggestion ABOUT WORDS. A naming convention is a
+   * motif in one language (see `ReadingNamingConvention.lang`), and applying an
+   * English motif to a board named in French produces a confident wrong answer
+   * in both directions. The host that owns the catalogue is the only thing here
+   * that knows which language the user is working in; a host that does not say
+   * gets silence rather than a guess.
+   */
+  language?: string;
+}
+
+/**
+ * The primary subtag of the host's language, lower-cased — `'fr'` for
+ * `'fr-CA'` — or `undefined` when no host said.
+ *
+ * Primary subtag only: a naming motif is a property of a LANGUAGE, and no
+ * framework has a convention that holds in `en-GB` and not in `en-US`.
+ */
+export function hostLanguage(std: BlockStdScope): string | undefined {
+  const tag = std.getOptional(TranslationProvider)?.language;
+  if (typeof tag !== 'string' || tag.length === 0) return undefined;
+  return tag.split('-')[0].toLowerCase();
 }
 
 export const TranslationProvider = createIdentifier<TranslationService>(

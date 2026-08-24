@@ -48,6 +48,23 @@ import { WARDLEY_ROLE, WARDLEY_ROLES } from './roles';
  * gerund is a single, checkable shape a user can predict from the sentence they
  * are shown.
  *
+ * ## The motif is ENGLISH, and it says so
+ *
+ * `\p{L}+ing` is a fact about English, so every entry below declares
+ * `lang: 'en'` and the engine keeps quiet unless the host says it is serving
+ * English. That is not a detail: on a board named in French the same motif is
+ * wrong in BOTH directions — "Facturation" on an activity would be told to use
+ * a verb, and "Planning", "Sourcing" or "Reporting" on data would be told they
+ * read as actions. An out-of-scope suggestion is worse than none, because it is
+ * confident.
+ *
+ * Extending the coverage is adding entries, not changing code: one more
+ * convention per `valueId` with its own `lang` and its own motif (French, say,
+ * would key on the `-tion`/`-ment` nominalisations against an infinitive), and
+ * the first one in scope wins. A host that declares no language gets silence,
+ * which is the honest answer to "I do not know what language these words are
+ * in".
+ *
  * It is a SUGGESTION and never a verdict: it produces no violation, blocks no
  * gesture, and the panel prints the wording below rather than a red mark. A
  * component named "Tea" whose nature is `activity` is very often correct — the
@@ -66,9 +83,16 @@ const naming = (
   fallback: string
 ): ReadingNamingConvention => ({
   valueId,
+  // The gerund is a fact about English: out of that scope the engine says
+  // nothing rather than something confident and wrong.
+  lang: 'en',
   // The negative form is the same motif under a lookahead, so the two can never
   // drift apart: change what "reads as an action" means and both sides move.
-  pattern: expectsAction ? ACTION_MOTIF : `^(?!.*${ACTION_MOTIF}).+$`,
+  // `[\s\S]` rather than `.` because a canvas label wraps, and a name on two
+  // lines must be judged on what it says, not on where it broke.
+  pattern: expectsAction
+    ? ACTION_MOTIF
+    : `^(?![\\s\\S]*${ACTION_MOTIF})[\\s\\S]+$`,
   hintKey: key,
   hintFallback: fallback,
 });
