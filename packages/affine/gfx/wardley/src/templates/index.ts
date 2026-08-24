@@ -114,23 +114,39 @@ function label(x: number, y: number, str: string, align: 'left' | 'center' = 'le
   };
 }
 
+/**
+ * A Wardley connector for the palette samples.
+ *
+ * `evolution` is the ONE predicate that decides what the stroke means, here and
+ * in `maps.ts` alike — `docs/adr/0010` § Compatibility. The two kits used to
+ * test different things (`opts.red` here, `o.arrow` there), which was a style
+ * inconsistency until W4 started reading these edges and became a SEMANTIC one:
+ * what a rule governs must not depend on which authoring helper a template
+ * borrowed. Colour is a consequence of the meaning, never its source.
+ *
+ * `typed: false` drops the role altogether — for a sample that makes no claim
+ * about anything (see the "Link" swatch below).
+ */
 function connect(
   source: Record<string, unknown>,
   target: Record<string, unknown>,
-  opts: { red?: boolean } = {}
+  opts: { evolution?: boolean; typed?: boolean } = {}
 ) {
+  const role = opts.evolution
+    ? WARDLEY_ROLE.changeArrow
+    : WARDLEY_ROLE.dependency;
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
-    // `red` is the change arrow, which since PF13.4 carries a role of its own —
-    // a template must produce the same typed artefacts as the toolbox, or a map
+    // A template must produce the same typed artefacts as the toolbox, or a map
     // started from a preset would validate differently from a hand-drawn one.
-    role: opts.red ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
-    stroke: opts.red ? WARDLEY_RED : LINK_GREY,
-    strokeStyle: opts.red ? StrokeStyle.Dash : StrokeStyle.Solid,
+    // `undefined` writes nothing: a neutral stroke keeps no `role` key.
+    role: opts.typed === false ? undefined : role,
+    stroke: opts.evolution ? WARDLEY_RED : LINK_GREY,
+    strokeStyle: opts.evolution ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
     frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: opts.red ? PointStyle.Triangle : PointStyle.None,
+    rearEndpointStyle: opts.evolution ? PointStyle.Triangle : PointStyle.None,
     source,
     target,
   };
@@ -254,7 +270,12 @@ export const wardleyTemplateCategory: TemplateCategory = {
     tpl('Pipeline', `<svg ${ATTRS} fill="none"><rect x="34" y="40" width="66" height="14" fill="#fff" stroke="#1f2328"/><rect x="60" y="33" width="14" height="14" fill="#fff" stroke="#1f2328"/></svg>`, pipeline()),
     tpl('Market', `<svg ${ATTRS} fill="none"><circle cx="67" cy="40" r="16" fill="#fff" stroke="#1f2328"/><circle cx="67" cy="30" r="3.5" fill="#fff" stroke="#1f2328" stroke-width="1.5"/><circle cx="75" cy="46" r="3.5" fill="#fff" stroke="#1f2328" stroke-width="1.5"/><circle cx="59" cy="46" r="3.5" fill="#fff" stroke="#1f2328" stroke-width="1.5"/><path d="M67 30 L75 46 L59 46 Z" stroke="#1f2328" stroke-width="0.8" fill="none"/></svg>`, market()),
     tpl('Inertia', `<svg ${ATTRS} fill="none"><rect x="63" y="22" width="8" height="36" fill="#1f2328"/></svg>`, single(inertia())),
-    tpl('Link', `<svg ${ATTRS} fill="none"><path d="M24 40 H110" stroke="#666" stroke-width="2.4"/></svg>`, single(connect({ position: [0, 0] }, { position: [160, 0] }))),
-    tpl('Evolution arrow', `<svg ${ATTRS} fill="none"><path d="M24 40 H100" stroke="#d6455d" stroke-width="2.4" stroke-dasharray="6 4"/><path d="M98 33 L112 40 L98 47 Z" fill="#d6455d"/></svg>`, single(connect({ position: [0, 0] }, { position: [160, 0] }, { red: true }))),
+    // NEUTRAL on purpose (`docs/adr/0010` § Compatibility). This is a horizontal
+    // stroke bound to nothing — a sample of a STYLE, in a palette. It was typed
+    // `wardley:dependency` only because the helper defaults to that role, and a
+    // sample of a stroke makes no claim about who depends on whom. Same call the
+    // market glyph's own wiring already makes.
+    tpl('Link', `<svg ${ATTRS} fill="none"><path d="M24 40 H110" stroke="#666" stroke-width="2.4"/></svg>`, single(connect({ position: [0, 0] }, { position: [160, 0] }, { typed: false }))),
+    tpl('Evolution arrow', `<svg ${ATTRS} fill="none"><path d="M24 40 H100" stroke="#d6455d" stroke-width="2.4" stroke-dasharray="6 4"/><path d="M98 33 L112 40 L98 47 Z" fill="#d6455d"/></svg>`, single(connect({ position: [0, 0] }, { position: [160, 0] }, { evolution: true, typed: false }))),
   ],
 };

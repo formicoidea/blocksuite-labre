@@ -67,11 +67,20 @@ export type Availability =
  * Which surfaces a command opts into. Absent from the array = absent from the
  * surface. Settings › Shortcuts is NOT a member: EVERY command is bindable, so
  * opting out of it is not expressible on purpose.
+ *
+ * `'contextual-toolbar'` joined the union with `docs/adr/0010`'s M3, the first
+ * command whose natural home is the toolbar of a selected element. The entry
+ * itself is still declared by the element's own `ToolbarModuleConfig` — a
+ * toolbar is a designed row, not an enumeration — but it INVOKES the registered
+ * command, so the behaviour, the availability rule and the single telemetry
+ * emission stay in one place, and `CommandInvocation.surface` reports where the
+ * user actually clicked instead of borrowing another surface's name.
  */
 export type CommandSurface =
   | 'senior-menu' // the senior button sub-menu — max 14 slots per owner
   | 'catalogue' // the "more artefacts" sidepanel
   | 'palette' // the search / command palette
+  | 'contextual-toolbar' // the toolbar of a SELECTED element
   | 'agent'; // invocable by Labre's AI
 
 export type CommandKind =
@@ -113,6 +122,17 @@ export interface CommandDescriptor<P = void> {
    */
   labelFallback?: string;
   descriptionKey?: string;
+  /**
+   * English default for {@link descriptionKey}, same seam and same rule as
+   * {@link labelFallback}: a host with a catalogue always wins, a host without
+   * one still reads a sentence instead of a raw key.
+   *
+   * It exists because a description is now SHOWN in-library — the senior
+   * sub-menu puts it under the label, which is where a tool announces what its
+   * gesture means (`docs/adr/0010` M1). Before that, `descriptionKey` crossed
+   * the manifest seam and was never rendered by this repository.
+   */
+  descriptionFallback?: string;
   /** Sub-category inside the owner's catalogue, e.g. `'backgrounds'`. */
   category?: string;
   /**
@@ -208,6 +228,7 @@ export interface CommandManifestEntry {
   labelKey: string;
   labelFallback?: string;
   descriptionKey?: string;
+  descriptionFallback?: string;
   category?: string;
   iconKey?: string;
   keywords?: string[];
@@ -475,6 +496,7 @@ export function toCommandManifestEntry(
     labelKey: command.labelKey,
     labelFallback: command.labelFallback,
     descriptionKey: command.descriptionKey,
+    descriptionFallback: command.descriptionFallback,
     category: command.category,
     iconKey: command.iconKey,
     keywords: command.keywords,

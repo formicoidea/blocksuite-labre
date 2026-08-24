@@ -8,6 +8,7 @@ import {
   mapQualityCommands,
 } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
+import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainCommands } from '@labre/affine-gfx-ddd-core-domain';
@@ -78,11 +79,13 @@ export function buildCommandRegistry(
 
 /**
  * Every command a given flag set exposes. Shapes are core canvas, so their
- * commands are always-on like root's — and so is Map quality (PF7.11), which
- * belongs to the SURFACE rather than to any framework: it appears for whichever
+ * commands are always-on like root's — and so are Map quality (PF7.11), which
+ * belongs to the SURFACE rather than to any framework (it appears for whichever
  * framework declared a nudge or an on-demand rule, and its own `when` asks the
- * engine that question. Listing it here would be wrong only if it were a
- * framework's, and it is not.
+ * engine that question), and `edge.invert-direction` (`docs/adr/0010` M3),
+ * which acts on whatever carries an edge ROLE — document content — so it must
+ * stay reachable on a board whose framework tooling is switched off; it is
+ * registered from the always-on connector view extension for the same reason.
  *
  * `auditCommands` is `'core'`-owned but NOT always-on: it rides the `ai-audit`
  * capability switch, which is a second axis (see `OPTIONAL_CAPABILITIES`). The
@@ -103,6 +106,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...tagCommands,
       ...shapeCommands,
       ...mapQualityCommands,
+      ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],
     FRAMEWORK_COMMAND_GROUPS,

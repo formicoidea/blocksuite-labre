@@ -54,11 +54,21 @@ import {
   StartPointIcon,
   StartPointTriangleIcon,
 } from '@blocksuite/icons/lit';
-import { BlockFlavourIdentifier } from '@labre/std';
+import {
+  BlockFlavourIdentifier,
+  getRegisteredCommands,
+  runCommand,
+} from '@labre/std';
 import { html } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { isConnectorWithLabel } from '../connector-manager';
+import { INVERT_EDGE_DIRECTION } from '../direction/invert-direction';
+import {
+  asTypedEdge,
+  edgeIsBound,
+  roleVocabularies,
+} from '../direction/typed-edge';
 import { mountConnectorLabelEditor } from '../text';
 
 const FRONT_ENDPOINT_STYLE_LIST = [
@@ -267,6 +277,34 @@ export const connectorToolbarConfig = {
           id: 'b.flip-direction',
           icon: FlipDirectionIcon(),
           tooltip: 'Flip direction',
+          /**
+           * Hidden for a TYPED EDGE (`docs/adr/0010` M3).
+           *
+           * This entry swaps the two endpoint STYLES and does not touch
+           * `source`/`target`. On a generalist connector that is honest — it is
+           * an arrowhead menu. On an edge whose persisted direction is the
+           * relation's orientation it would move the only visible sign of that
+           * relation while leaving the relation intact: the picture and the
+           * data would then disagree. Such an edge gets `d.invert-direction`
+           * instead, which moves both.
+           *
+           * Not gated on any framework flag: the vocabulary that answers "is
+           * this a typed edge" is registered by the always-on render extension,
+           * so a Wardley link stays protected on a board whose Wardley tooling
+           * is switched off.
+           *
+           * `some`, so a MIXED selection hides it too: one swap applied to
+           * every selected connector would still lie about the typed one, and
+           * `b.invert-direction` appears in its place and acts on that half.
+           * A typed edge with a free end also keeps it hidden — the entry is
+           * hidden by what the element IS, never by what it happens to bind.
+           */
+          when: ctx =>
+            !ctx
+              .getSurfaceModelsByType(ConnectorElementModel)
+              .some(model =>
+                asTypedEdge(roleVocabularies(ctx.std), model)
+              ),
           run(ctx) {
             const models = ctx.getSurfaceModelsByType(ConnectorElementModel);
             if (!models.length) return;
@@ -306,6 +344,50 @@ export const connectorToolbarConfig = {
               items: REAR_ENDPOINT_STYLE_LIST,
               currentValue: pointStyle,
               onPick,
+            });
+          },
+        },
+        {
+          /**
+           * **Reverse direction** — M3 of `docs/adr/0010`, and the only
+           * supported inversion of a typed edge.
+           *
+           * It sits where `b.flip-direction` would have been, appears only when
+           * every selected connector is a typed edge, and runs the registered
+           * command rather than a private copy of it — so the contextual
+           * toolbar, the palette, Settings › Shortcuts and the agent all reach
+           * the same behaviour and the same single telemetry emission.
+           */
+          id: 'b.invert-direction',
+          icon: FlipDirectionIcon(),
+          tooltip: 'Reverse direction',
+          /**
+           * Shown as soon as the selection holds ONE reversible typed edge, and
+           * it then acts on the typed edges of that selection and on nothing
+           * else — `invertibleEdges` is the same filter on both sides.
+           *
+           * `some`, not `every`, on purpose: a selection mixing a Wardley link
+           * with a plain arrow used to show NEITHER this entry (not every model
+           * is typed) nor `b.flip-direction` (some model is), so lassoing two
+           * connectors silently took the direction affordance away. A partial
+           * gesture that says what it did beats a menu that vanishes.
+           */
+          when: ctx =>
+            ctx
+              .getSurfaceModelsByType(ConnectorElementModel)
+              .some(
+                model =>
+                  asTypedEdge(roleVocabularies(ctx.std), model) !== null &&
+                  edgeIsBound(model)
+              ),
+          run(ctx) {
+            const command = getRegisteredCommands(ctx.std).find(
+              candidate => candidate.id === INVERT_EDGE_DIRECTION
+            );
+            if (!command) return;
+            runCommand(ctx.std, command, {
+              surface: 'contextual-toolbar',
+              source: 'toolbar:general',
             });
           },
         },

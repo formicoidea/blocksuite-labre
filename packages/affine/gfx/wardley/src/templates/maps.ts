@@ -167,19 +167,42 @@ function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
   };
 }
 
-function link(a: string, b: string, o: { red?: boolean; arrow?: boolean } = {}) {
+/**
+ * A link between two nodes of a shipped map.
+ *
+ * `evolution` is the ONE predicate that decides what the stroke MEANS — the
+ * same flag `templates/index.ts` reads, aligned by `docs/adr/0010`
+ * § Compatibility. It used to be `arrow` here and `red` there, so a red SOLID
+ * Kodak link was a typed dependency while a red sample in the palette was not:
+ * two answers to "is this a dependency?" in one framework, in neighbouring
+ * files. Harmless as a style inconsistency, semantic the moment W4 reads these
+ * edges.
+ *
+ * `red` stays, and stays orthogonal: it colours a DEPENDENCY red (Kodak's
+ * future chain) without changing what it is. Colour is never what decides a
+ * relation's type.
+ *
+ * The direction is meaning, not decoration: `a` is the consumer, `b` is what it
+ * needs, and every one of the twelve links these presets ship respects it
+ * (a corpus test walks them and fails loudly the day one does not).
+ */
+function link(
+  a: string,
+  b: string,
+  o: { red?: boolean; evolution?: boolean } = {}
+) {
   return {
     type: 'connector',
     mode: ConnectorMode.Straight,
-    // An arrow is a change (evolution) movement, not a dependency — same split
-    // as the two Wardley connector tools, and since PF13.4 both sides of that
-    // split carry a role.
-    role: o.arrow ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
-    stroke: o.red ? WARDLEY_RED : LINK_GREY,
-    strokeStyle: o.arrow ? StrokeStyle.Dash : StrokeStyle.Solid,
+    // An evolution arrow is a movement annotation, not a dependency — same
+    // split as the two Wardley connector tools, and since PF13.4 both sides of
+    // that split carry a role.
+    role: o.evolution ? WARDLEY_ROLE.changeArrow : WARDLEY_ROLE.dependency,
+    stroke: o.red || o.evolution ? WARDLEY_RED : LINK_GREY,
+    strokeStyle: o.evolution ? StrokeStyle.Dash : StrokeStyle.Solid,
     strokeWidth: LINK_STROKE_WIDTH,
     frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: o.arrow ? PointStyle.Triangle : PointStyle.None,
+    rearEndpointStyle: o.evolution ? PointStyle.Triangle : PointStyle.None,
     source: { id: a },
     target: { id: b },
   };
@@ -321,8 +344,8 @@ function teaShop(): SurfaceElementsJSON {
     l6: link('hotWater', 'water'),
     l7: link('hotWater', 'kettle'),
     l8: link('kettle', 'power'),
-    a1: link('kettle', 'electric', { red: true, arrow: true }),
-    a2: link('power', 'powerFut', { red: true, arrow: true }),
+    a1: link('kettle', 'electric', { evolution: true }),
+    a2: link('power', 'powerFut', { evolution: true }),
   };
 }
 
@@ -366,8 +389,8 @@ function kodak(): SurfaceElementsJSON {
     l2: link('capture', 'film'),
     l3: link('film', 'roll'),
     r1: link('capture', 'storage', { red: true }),
-    a1: link('film', 'digital', { red: true, arrow: true }),
-    a2: link('roll', 'storage', { red: true, arrow: true }),
+    a1: link('film', 'digital', { evolution: true }),
+    a2: link('roll', 'storage', { evolution: true }),
   };
 }
 

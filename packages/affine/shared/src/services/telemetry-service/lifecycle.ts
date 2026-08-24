@@ -94,11 +94,36 @@ export interface FrameworkPromotionEvent extends TelemetryEvent {
   elementCount: number;
 }
 
+/**
+ * The persisted direction of a TYPED EDGE was reversed (`docs/adr/0010` M3):
+ * `source` and `target` swapped, in one undo step, by the only supported
+ * inversion.
+ *
+ * Worth its own event for the same reason an exception is worth one: this is
+ * the correction gesture of a decision the user could not previously see, so
+ * how often it is used is the measurement of whether the DRAWING gesture (M1)
+ * announces itself well enough. A framework whose links are reversed constantly
+ * is a framework whose hint is wrong.
+ *
+ * Ids only — the role and the framework its namespace names — never board
+ * content, and never the two element ids.
+ */
+export interface EdgeDirectionEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Role id of the inverted edges, when they all carry the same one. */
+  role?: string;
+  /** Its namespace, when that names a framework: `wardley:dependency` → `wardley`. */
+  framework?: string;
+  /** How many edges the single gesture reversed. */
+  elementCount: number;
+}
+
 export type FrameworkDiagramEvents = {
   FrameworkElementAdded: FrameworkElementEvent;
   FrameworkToolPicked: FrameworkElementEvent;
   FrameworkLegendCreated: FrameworkElementEvent;
   FrameworkElementPromoted: FrameworkPromotionEvent;
+  EdgeDirectionInverted: EdgeDirectionEvent;
 };
 
 /**

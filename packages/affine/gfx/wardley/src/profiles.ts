@@ -42,6 +42,11 @@ const sketch: ValidationProfile = {
     'wardley.change-arrow-against-evolution': 'audit',
     'wardley.inertia-off-transition': 'audit',
     'wardley.overlapping-artefacts': 'audit',
+    // W4 too, and it is the one where the demotion matters most: a value chain
+    // is drawn before it is arranged, so half the links are momentarily
+    // upside-down while somebody thinks. The finding still reaches a host panel
+    // and a conformance report; the canvas says nothing.
+    'wardley.provider-above-consumer': 'audit',
   },
 };
 
@@ -76,6 +81,10 @@ const strict: ValidationProfile = {
     'wardley.change-arrow-against-evolution': 'warning',
     'wardley.inertia-off-transition': 'warning',
     'wardley.overlapping-artefacts': 'warning',
+    // W4 is a `warning` for the same reason W1 and W2 are, plus one of its own:
+    // its two honest resolutions are a MOVE and a REVERSAL, and both are the
+    // user's call. A rule that refused the gesture would be picking one.
+    'wardley.provider-above-consumer': 'warning',
   },
 };
 

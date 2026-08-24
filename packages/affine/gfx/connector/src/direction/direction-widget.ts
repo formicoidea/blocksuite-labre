@@ -1,0 +1,259 @@
+import type { RootBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
+import { WidgetComponent, WidgetViewExtension } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { effect } from '@preact/signals-core';
+import { css, html, nothing, unsafeCSS } from 'lit';
+import { state } from 'lit/decorators.js';
+import { styleMap } from 'lit/directives/style-map.js';
+import { literal, unsafeStatic } from 'lit/static-html.js';
+
+import {
+  EDGE_DIRECTION_COLOR,
+  EdgeDirectionManager,
+  midpointOf,
+} from './direction-reveal.js';
+
+export const EDGE_DIRECTION_WIDGET = 'affine-edge-direction-widget';
+
+/** Screen pixels between the label and the line it describes. */
+const LABEL_GAP = 10;
+
+/**
+ * Screen pixels between the bottom of the viewport and the armed-tool hint —
+ * clear of the edgeless toolbar, which is the one thing that lives down there.
+ */
+const HINT_BOTTOM_GAP = 96;
+
+/** How wide the hint may get before the sentence wraps. */
+const HINT_MAX_WIDTH = 420;
+
+/**
+ * The PROSE half of `docs/adr/0010`'s M1 and M2 — the canvas overlay's DOM
+ * sibling, on the pattern `violation-detail-widget` established one directory
+ * away.
+ *
+ * Two things, both of them sentences and therefore both of them here rather
+ * than on the canvas (a tooltip rendered at a quarter size is not a smaller
+ * tooltip, it is an unreadable one):
+ *
+ * - **M2** — while a typed edge is hovered or selected, the role's own VERB
+ *   next to it: the chevron says which end, the verb says what the sentence is.
+ *   "this end _depends on_ that end", in the framework's words and never in the
+ *   library's.
+ * - **M1** — while a tool that draws a typed edge is armed, the sentence that
+ *   tells the user which way to drag. That is what turns the direction their
+ *   gesture writes into a statement they made.
+ *
+ * It knows no framework: both strings are keys declared by a ROLE
+ * (`EdgeDirectionDef`) and resolved through the host's catalogue.
+ */
+export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
+  static override styles = css`
+    :host {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .edge-direction-verb {
+      position: absolute;
+      box-sizing: border-box;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid ${unsafeCSS(EDGE_DIRECTION_COLOR)};
+      background: var(--affine-background-overlay-panel-color, #fff);
+      color: var(--affine-text-primary-color);
+      font-family: var(--affine-font-family);
+      font-size: 12px;
+      line-height: 1.3;
+      white-space: nowrap;
+      transform: translate(-50%, -50%);
+      /* Strictly an annotation: it must never take a click away from the edge
+         it is describing. */
+      pointer-events: none;
+    }
+
+    /*
+     * Positioned in SCREEN pixels from the widget host, which sits at the
+     * viewport's origin: left and top are handed in by render() off
+     * gfx.viewport, exactly like the validation badge's are.
+     *
+     * It cannot be positioned against the host itself. That host is a
+     * zero-sized absolutely positioned box (the house pattern for a widget that
+     * must not intercept the canvas), so bottom: 96px put the banner 96 px
+     * ABOVE the viewport's top edge, and left: 50% of a zero width put it on
+     * the left border — off screen twice over.
+     */
+    .edge-direction-hint {
+      position: absolute;
+      transform: translateX(-50%);
+      /*
+       * width, not max-width alone. An absolutely positioned box shrinks to fit
+       * its CONTAINING BLOCK, and this one's containing block is the zero-sized
+       * widget host — so the banner collapsed to its longest word (95 px) and
+       * grew five lines tall, which is how it ended up below the bottom edge it
+       * was supposed to sit above. max-content sizes it to the sentence; the cap
+       * comes from render(), which knows how wide the viewport is.
+       */
+      width: max-content;
+      /* So the viewport-derived max-width caps the BOX, padding and border
+         included — the number render() computes is a screen budget, not a
+         content budget. */
+      box-sizing: border-box;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--affine-border-color);
+      background: var(--affine-background-overlay-panel-color, #fff);
+      box-shadow: var(--affine-shadow-1);
+      color: var(--affine-text-secondary-color);
+      font-family: var(--affine-font-family);
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+      pointer-events: none;
+    }
+  `;
+
+  @state()
+  private accessor _revealed: readonly string[] = [];
+
+  @state()
+  private accessor _hint: { key: string; fallback?: string } | null = null;
+
+  get gfx() {
+    return this.std.get(GfxControllerIdentifier);
+  }
+
+  private get _manager(): EdgeDirectionManager | null {
+    return this.std.getOptional(EdgeDirectionManager) ?? null;
+  }
+
+  /**
+   * Idempotent wiring, called from both `firstUpdated` and a later
+   * `connectedCallback`: `WithDisposable` throws its group away on disconnect
+   * while lit runs `firstUpdated` once, so wiring done only there never comes
+   * back if the widget is detached and re-attached.
+   */
+  private _wire() {
+    const manager = this._manager;
+    if (!manager) return;
+
+    this._disposables.add(
+      effect(() => {
+        const next = manager.revealed$.value;
+        if (next.length === 0 && this._revealed.length === 0) return;
+        this._revealed = next;
+      })
+    );
+    this._disposables.add(
+      effect(() => {
+        this._hint = manager.armedHint$.value;
+      })
+    );
+    this._disposables.add(
+      this.gfx.viewport.viewportUpdated.subscribe(() => {
+        // The verb label is pinned to a model point, so a pan or a zoom moves
+        // it — and the hint is pinned to the viewport's own size, so a RESIZE
+        // moves that one. Both are on screen only while something is revealed
+        // or a tool is armed, so a quiet board re-renders nothing.
+        if (this._revealed.length > 0 || this._hint !== null) {
+          this.requestUpdate();
+        }
+      })
+    );
+    const surface = this.gfx.surface;
+    if (surface) {
+      const subscription = surface.elementUpdated.subscribe(() => {
+        // An endpoint re-drag reroutes the path under the label. Cheap: lit
+        // batches this into one render per frame, and it only runs while
+        // something is actually revealed.
+        if (this._revealed.length > 0) this.requestUpdate();
+      });
+      this._disposables.add(() => subscription.unsubscribe());
+    }
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    if (this.hasUpdated) this._wire();
+  }
+
+  override firstUpdated() {
+    this._wire();
+  }
+
+  private _renderVerb(edgeId: string) {
+    const manager = this._manager;
+    const edge = manager
+      ?.revealedEdges()
+      .find(candidate => candidate.model.id === edgeId);
+    // No verb declared: the chevron already says which end, and the library has
+    // no wording of its own to add.
+    if (!edge?.direction) return nothing;
+
+    const middle = midpointOf(edge.model);
+    if (!middle) return nothing;
+
+    const [x, y] = this.gfx.viewport.toViewCoord(middle[0], middle[1]);
+    const verb = translateKey(
+      this.std,
+      edge.direction.verbKey,
+      edge.direction.verbFallback
+    );
+    const label = edge.role.labelKey
+      ? translateKey(this.std, edge.role.labelKey, edge.role.labelFallback)
+      : verb;
+
+    return html`<div
+      class="edge-direction-verb"
+      data-testid="edge-direction-verb"
+      data-edge-id=${edgeId}
+      title=${label}
+      style=${styleMap({ left: `${x}px`, top: `${y - LABEL_GAP}px` })}
+    >
+      ${verb}
+    </div>`;
+  }
+
+  /**
+   * The armed tool's hint, centred near the bottom of the EDITOR VIEWPORT —
+   * above the toolbar, where the user's eyes already are while they aim.
+   *
+   * The viewport rect is the only frame available to a widget host that is a
+   * zero-sized box at its origin, and it is the one the other canvas
+   * affordances measure against (`violation-detail-widget` flips its bubble
+   * against `viewport.width` / `viewport.height` the same way).
+   */
+  private _renderHint(hint: { key: string; fallback?: string }) {
+    const { viewport } = this.gfx;
+    return html`<div
+      class="edge-direction-hint"
+      data-testid="edge-direction-hint"
+      style=${styleMap({
+        left: `${viewport.width / 2}px`,
+        top: `${Math.max(0, viewport.height - HINT_BOTTOM_GAP)}px`,
+        // The cap a percentage cannot express here: the containing block is the
+        // zero-sized host, so the only honest width bound is the viewport's.
+        maxWidth: `${Math.max(120, Math.min(HINT_MAX_WIDTH, viewport.width - 32))}px`,
+      })}
+    >
+      ${translateKey(this.std, hint.key, hint.fallback)}
+    </div>`;
+  }
+
+  override render() {
+    if (this._revealed.length === 0 && this._hint === null) return nothing;
+
+    return html`${this._revealed.map(id => this._renderVerb(id))}
+    ${this._hint ? this._renderHint(this._hint) : nothing}`;
+  }
+}
+
+export const edgeDirectionWidget = WidgetViewExtension(
+  'affine:page',
+  EDGE_DIRECTION_WIDGET,
+  literal`${unsafeStatic(EDGE_DIRECTION_WIDGET)}`
+);

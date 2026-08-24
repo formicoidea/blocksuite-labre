@@ -1,4 +1,8 @@
 import { EdgelessConnectorHandle } from './components/connector-handle';
+import {
+  EDGE_DIRECTION_WIDGET,
+  EdgeDirectionWidget,
+} from './direction/direction-widget';
 import { EdgelessConnectorLabelEditor } from './text/edgeless-connector-label-editor';
 import { EdgelessConnectorMenu } from './toolbar/connector-menu';
 import { EdgelessConnectorToolButton } from './toolbar/connector-tool-button';
@@ -14,6 +18,7 @@ export function effects() {
     EdgelessConnectorLabelEditor
   );
   customElements.define('edgeless-connector-handle', EdgelessConnectorHandle);
+  customElements.define(EDGE_DIRECTION_WIDGET, EdgeDirectionWidget);
 }
 
 declare global {
@@ -22,5 +27,6 @@ declare global {
     'edgeless-connector-menu': EdgelessConnectorMenu;
     'edgeless-connector-label-editor': EdgelessConnectorLabelEditor;
     'edgeless-connector-handle': EdgelessConnectorHandle;
+    'affine-edge-direction-widget': EdgeDirectionWidget;
   }
 }

@@ -16,6 +16,7 @@ import {
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
 import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
+import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
@@ -49,6 +50,13 @@ export class WardleyRenderViewExtension extends ViewExtensionProvider {
     context.register(WardleyElementRendererExtension);
     context.register(WardleyNodeView);
     context.register(WardleyNodeRendererExtension);
+    // The role VOCABULARY, always on. A role is written in the document, not in
+    // the tooling: the direction reveal of a typed edge, the inversion command
+    // and the toolbar entry that must not lie about one all read this, and they
+    // have to keep working on a map drawn while the flag was on and opened
+    // while it is off (`docs/adr/0009`, `docs/adr/0010`). The rules that
+    // JUDGE those roles stay in the flag-gated extension below.
+    context.register(RoleVocabularyExtension(WARDLEY_ROLES));
     if (this.isEdgeless(context.scope)) {
       context.register(WardleyInteraction);
       context.register(wardleyToolbarExtension);
