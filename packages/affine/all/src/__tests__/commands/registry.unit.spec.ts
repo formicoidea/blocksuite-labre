@@ -38,7 +38,7 @@ describe('command registry invariants', () => {
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
-      // + map.audit + edge.invert-direction
+      // + map.audit + edge.invert-direction + element.read
       //
       // `map.audit` is counted here because `getCommands()` is called with no
       // flags and `ai-audit` defaults to enabled, like every switch. Its
@@ -51,9 +51,9 @@ describe('command registry invariants', () => {
       // conflict. They are the whole point of this test — the line that
       // notices a command appearing or vanishing — so re-derive them at every
       // merge instead of trusting the diff.
-      core: 11,
+      core: 12,
     });
-    expect(commands).toHaveLength(71);
+    expect(commands).toHaveLength(72);
   });
 
   /**

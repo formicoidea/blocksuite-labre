@@ -1,4 +1,5 @@
 import {
+  ReadingProfileExtension,
   tagsToolbarConfig,
   validationToolbarConfig,
   QualityNudgeExtension,
@@ -24,6 +25,7 @@ import { effects } from './effects';
 import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from './quality';
+import { WARDLEY_READING } from './reading';
 import { WARDLEY_ROLES } from './roles';
 import { WARDLEY_RULES } from './rules';
 import { wardleyTemplateCategory } from './templates';
@@ -144,6 +146,14 @@ export class WardleyViewExtension extends ViewExtensionProvider {
           })
         );
       }
+      // The reversed reading (MF3): what the map says about a component, on
+      // demand. One declaration — the roles, the nature tag, the dependency
+      // edge and the map's own zones, all of them already stated elsewhere in
+      // this framework — is the whole of what makes the generic engine able to
+      // read a Wardley map. The CLICK that triggers it is registered once by
+      // the surface and gated by the presence of this profile, so it goes with
+      // the flag without either side naming the other.
+      context.register(ReadingProfileExtension(WARDLEY_READING));
       context.register(wardleySeniorTool);
       // The 13 Wardley commands, ONE registration for both faces: the
       // enumerable registry the sub-menu renders from, and — through

@@ -1,6 +1,7 @@
 import {
   coreCommands,
   pivotCommands,
+  readingCommands,
   tagCommands,
 } from '@labre/affine-block-root';
 import {
@@ -104,6 +105,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...coreCommands,
       ...pivotCommands,
       ...tagCommands,
+      ...readingCommands,
       ...shapeCommands,
       ...mapQualityCommands,
       ...edgeDirectionCommands,

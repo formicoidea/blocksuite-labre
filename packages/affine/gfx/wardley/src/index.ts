@@ -13,4 +13,5 @@ export {
 } from './natures';
 export { WARDLEY_PROFILES } from './profiles';
 export { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from './quality';
+export { WARDLEY_NAMING_CONVENTIONS, WARDLEY_READING } from './reading';
 export { WARDLEY_RULES } from './rules';
