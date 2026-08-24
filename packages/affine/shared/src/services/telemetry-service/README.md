@@ -111,6 +111,38 @@ only signal that says whether the default is right.
 `previousProfileId` carries the one it replaces. Ids only, never board content.
 A gesture that changes nothing (already on that profile) emits nothing.
 
+## AI audit runs (PF14.1)
+
+Level 3 — the criteria a framework declares as data, evaluated app-side by the
+Labre Assistant through the `AuditProvider` seam. The library owns the seam, not
+the model, so what it can report is when a run was asked for and how it ended.
+
+| Event                  | When                                     | Required props                                    |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------- |
+| `MapAuditStarted`      | `map.audit` is invoked — **before the provider is looked up at all** | `criterionCount`, `frameCount`   |
+| `MapAuditCompleted`    | the provider settled every criterion      | + `findingCount`, `durationMs`                     |
+| `MapAuditInterrupted`  | aborted, failed, unanswerable, or superseded | + `reason` (`aborted` / `error` / `unavailable` / `superseded`), `durationMs` |
+
+Three events rather than one with a status: "how often is an audit asked for"
+and "how often does it finish" are different questions, and a single event would
+lose the second one for every run that never resolves. `unavailable` is a
+first-class reason, not an error — it counts the users reaching for an audit
+this build cannot run (no provider, or one declaring itself unable: feature
+flag, quota, no model), which is what decides whether the affordance belongs
+there at all. `superseded` counts runs whose answer was dropped because the user
+asked again while they were still in flight, and a rising count is the signal
+that audits are slow enough to be asked for twice.
+
+`MapAuditStarted` is emitted on **intent**, not on reaching a provider: it fires
+before the provider is even looked up, which is exactly what makes the
+`unavailable` count meaningful — a build with no assistant wired emits
+`MapAuditStarted` **and** `MapAuditInterrupted`, and the two series balance for
+every run without exception. Every started run ends in exactly one of
+`Completed` or `Interrupted`.
+
+Counts and ids only. Criterion prompts, finding wording and board content never
+cross this bus.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,

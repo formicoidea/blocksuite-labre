@@ -11,6 +11,7 @@ import { literal } from 'lit/static-html.js';
 
 import { effects } from './effects';
 import {
+  auditCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
@@ -73,5 +74,29 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
         BlockViewExtension('affine:surface', literal`affine-surface-void`)
       );
     }
+  }
+}
+
+/**
+ * The AI audit seam — gated by the `ai-audit` capability switch (PF14.1).
+ *
+ * Its own extension, registered from `getInternalViewExtensions` only when the
+ * switch is on, because that is what makes the gate REAL: off, `map.audit` is
+ * never registered, so it is absent from the command registry, from both
+ * manifests and from the keymap at once — the same two-sided gating a framework
+ * flag gets, asserted by the same test.
+ *
+ * Nothing here is registered by {@link SurfaceViewExtension}: the audit is not
+ * part of a surface's job, and folding it in would make the switch a filter
+ * over something already wired instead of a decision not to wire it.
+ */
+export class AuditViewExtension extends ViewExtensionProvider {
+  override name = 'affine-audit-seam';
+
+  override setup(context: ViewExtensionContext) {
+    super.setup(context);
+    // Edgeless only: an audit is about a map, and a map is a canvas artefact.
+    if (!this.isEdgeless(context.scope)) return;
+    context.register(CommandExtension(auditCommands));
   }
 }

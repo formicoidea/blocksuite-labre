@@ -6,6 +6,7 @@ import {
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
 import {
+  AuditCriterionExtension,
   ToolbarModuleExtension,
   UniverseTagDefsExtension,
 } from '@labre/affine-shared/services';
@@ -16,6 +17,7 @@ import {
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
 import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 
+import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_TAG_DEFS } from './natures';
@@ -84,6 +86,15 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // staying out of `WARDLEY_RULES`, which is what the 16 ms bench measures.
       context.register(ValidationRuleExtension(WARDLEY_CHECKUP_RULES));
       context.register(QualityNudgeExtension(WARDLEY_NUDGES));
+      // A1–A3, the level-3 criteria (PF14.1). Registered HERE, beside the rules
+      // and for the same reason: a criterion is tooling, so Wardley switched
+      // off contributes none and `map.audit` finds nothing to ask about — while
+      // `ai-audit` independently decides whether the command exists at all.
+      //
+      // Levels 2 and 3 sit one line apart and stay independent: the check-up
+      // above is deterministic and runs in-process, the criteria below are
+      // handed to a host's model. Neither reads the other's results.
+      context.register(AuditCriterionExtension(WARDLEY_AUDIT_CRITERIA));
       // The Validation dropdown on a selected map's contextual toolbar. A
       // SECOND module on the same element, through the `custom:` flavour slot
       // (the pattern `gfx/mindmap` uses on `custom:affine:surface:shape`):

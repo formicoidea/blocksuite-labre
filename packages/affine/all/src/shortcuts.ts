@@ -2,7 +2,7 @@ import type { ShortcutDescriptor } from '@labre/std';
 import { toShortcutDescriptor } from '@labre/std';
 
 import { getCommands } from './commands.js';
-import type { BlockFlags } from './flags.js';
+import type { LabreFlags } from './flags.js';
 
 /**
  * Manifest view of a shortcut: the metadata a host "Shortcuts" settings panel
@@ -35,7 +35,7 @@ const toEntry = (d: ShortcutDescriptor): ShortcutManifestEntry => ({
  * intent, and `owner` grouping is what keeps it usable.
  */
 export function getShortcutManifest(
-  flags?: BlockFlags
+  flags?: LabreFlags
 ): ShortcutManifestEntry[] {
   return getCommands(flags).map(toShortcutDescriptor).map(toEntry);
 }
