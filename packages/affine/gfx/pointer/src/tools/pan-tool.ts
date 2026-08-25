@@ -100,8 +100,11 @@ export class PanTool extends BaseTool<PanToolOption> {
       const dispose = on(document, 'pointerup', evt => {
         if (evt.button === MouseButton.MIDDLE) {
           restoreToPrevious();
-          dispose();
         }
+        // Whatever button ended the gesture, this listener has done its job:
+        // release it, or a right-click after a middle-click would leave it
+        // hanging on `document` and restore a stale tool later on.
+        dispose();
       });
 
       return false;
