@@ -12,7 +12,7 @@ import { unified } from 'unified';
 
 import { LifeCycleWatcher } from '../extension/index.js';
 import { ClipboardAdapterConfigIdentifier } from './clipboard-adapter.js';
-import { onlyContainImgElement } from './utils.js';
+import { escapeHTML, onlyContainImgElement } from './utils.js';
 
 export class Clipboard extends LifeCycleWatcher {
   static override key = 'clipboard';
@@ -309,12 +309,24 @@ export class Clipboard extends LifeCycleWatcher {
 
     const hasInnerHTML = Boolean(innerHTML.length);
     const isEmpty = Object.keys(clipboardItems).length === 0;
+    // Whatever is left in `items` is a BlockSuite payload (a block snapshot, a
+    // surface slice, a database slice). It only travels through the
+    // `text/html` flavour, so it has to be written even when the adapters
+    // produced plain text and no HTML — otherwise pasting into another
+    // document silently degrades to the plain-text fallback and every block /
+    // element property is lost.
+    const hasSnapshotPayload = Object.values(items).some(value =>
+      typeof value === 'string' ? value.length > 0 : Boolean(value)
+    );
 
     // If there are no items, fall back to snapshot.
-    if (hasInnerHTML || isEmpty) {
+    if (hasInnerHTML || isEmpty || hasSnapshotPayload) {
       const type = 'text/html';
       const snapshot = lz.compressToEncodedURIComponent(JSON.stringify(items));
-      const html = `<div data-blocksuite-snapshot='${snapshot}'>${innerHTML}</div>`;
+      // Keep the plain text readable for external targets that prefer the
+      // `text/html` flavour; internal pastes only read the attribute.
+      const body = hasInnerHTML ? innerHTML : escapeHTML(text);
+      const html = `<div data-blocksuite-snapshot="${snapshot}">${body}</div>`;
       clipboardItems[type] = new Blob([html], { type });
     }
 
