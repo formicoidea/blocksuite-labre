@@ -10,7 +10,12 @@ import type { MenuItemGroup } from '@labre/affine-components/toolbar';
 import { CommentProviderIdentifier } from '@labre/affine-shared/services';
 import { isInsidePageEditor } from '@labre/affine-shared/utils';
 import { noop, sleep } from '@labre/global/utils';
-import { CommentIcon, NumberedListIcon } from '@blocksuite/icons/lit';
+import {
+  CollapseIcon,
+  CommentIcon,
+  NumberedListIcon,
+  ToggleRightIcon,
+} from '@blocksuite/icons/lit';
 import { BlockSelection } from '@labre/std';
 import { html } from 'lit';
 import { ifDefined } from 'lit/directives/if-defined.js';
@@ -18,6 +23,11 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 import { CodeBlockConfigExtension } from '../code-block-config.js';
 import type { CodeBlockToolbarContext } from './context.js';
 import { duplicateCodeBlock } from './utils.js';
+
+// Upstream keeps these two in `@blocksuite/affine-components/icons`; we build
+// them here so the code block owns its own toolbar glyphs.
+const CollapseCodeIcon = CollapseIcon({ width: '20', height: '20' });
+const ExpandCodeIcon = ToggleRightIcon({ width: '20', height: '20' });
 
 export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
   {
@@ -82,6 +92,38 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
                 ${item.icon}
               </editor-icon-button>
             `,
+          };
+        },
+      },
+      {
+        type: 'collapse',
+        when: ({ doc }) => !doc.readonly,
+        generate: ({ blockComponent }) => {
+          return {
+            action: () => {
+              blockComponent.setCollapsed(!blockComponent.collapsed$.value);
+            },
+            render: item => {
+              const collapsed = blockComponent.collapsed$.value;
+              const icon = collapsed ? ExpandCodeIcon : CollapseCodeIcon;
+              const label = collapsed ? 'Expand code' : 'Collapse code';
+              return html`
+                <editor-icon-button
+                  class="code-toolbar-button collapse"
+                  aria-label=${label}
+                  .tooltip=${label}
+                  .tooltipOffset=${4}
+                  .iconSize=${'16px'}
+                  .iconContainerPadding=${4}
+                  @click=${(e: MouseEvent) => {
+                    e.stopPropagation();
+                    item.action();
+                  }}
+                >
+                  ${icon}
+                </editor-icon-button>
+              `;
+            },
           };
         },
       },
