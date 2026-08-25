@@ -13,5 +13,10 @@ cast, and Orthogonal destructured the empty result of
 `_computeStartEndPoint` into undefined points.
 
 Degraded behavior: the unresolvable endpoint falls back to its stored
-position when there is one; otherwise the connector keeps its last bound and
-paints an empty path instead of crashing.
+position when there is one; otherwise the connector keeps its last bound —
+a deliberate change from the former `[0,0,1,1]` collapse, so the ghost stays
+where the user last saw it — and RENDERING paints an empty path instead of
+crashing. The scope is the render path only: hit-testing over the empty
+path (`includesPoint`, `getNearestPoint`) can still throw from
+`getBezierParameters`, which does not handle a zero-length path — tracked
+as follow-up work, same root cause.
