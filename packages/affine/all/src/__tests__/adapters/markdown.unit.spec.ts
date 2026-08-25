@@ -2744,14 +2744,24 @@ describe('markdown to snapshot', () => {
 
     test.each([
       ['#00afde', 'blue'],
+      ['rgb(0 175 222 / 100%)', 'blue'],
       ['#c83030', 'red'],
+      ['red', 'red'],
+      ['hsl(0, 100%, 50%)', 'red'],
       ['#db7123', 'orange'],
       ['#ac7400', 'yellow'],
       ['#9bda91', 'green'],
       ['#0e4841', 'teal'],
       ['#7c3aed', 'purple'],
       ['#7a7a7a', 'grey'],
-    ])('imports the html color %s as the %s highlight', async (color, name) => {
+      // Default body text and background colors are left alone, so pasted text
+      // keeps following the reader's theme instead of being pinned to one.
+      ['rgb(26, 26, 26)', null],
+      ['#333', null],
+      ['#fff', null],
+      // A translucent colour was picked against the source background.
+      ['rgba(0, 175, 222, 0.5)', null],
+    ])('maps the html color %s conservatively', async (color, mapped) => {
       const mdAdapter = new MarkdownAdapter(createJob(), provider);
       const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
         file: `<span style="color: ${color};">Hello</span>`,
@@ -2759,12 +2769,14 @@ describe('markdown to snapshot', () => {
       expect(textOf(rawBlockSnapshot)).toEqual({
         '$blocksuite:internal:text$': true,
         delta: [
-          {
-            insert: 'Hello',
-            attributes: {
-              color: `var(--affine-v2-text-highlight-fg-${name})`,
-            },
-          },
+          mapped
+            ? {
+                insert: 'Hello',
+                attributes: {
+                  color: `var(--affine-v2-text-highlight-fg-${mapped})`,
+                },
+              }
+            : { insert: 'Hello' },
         ],
       });
     });
