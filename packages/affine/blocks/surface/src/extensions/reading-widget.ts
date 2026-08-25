@@ -37,6 +37,22 @@ const TAG_SET_ID = 'tag.set';
 const PIVOT_BIND_ID = 'pivot.bind';
 
 /**
+ * How the panel names each side of a parent-child relation, keyed under
+ * `com.labre.reading.relations.`. Chrome, and only chrome.
+ *
+ * Exported because it is DATA: the translation-key manifest walks it rather
+ * than restating the two wordings, which a source scan could not check — the
+ * key is built as a template literal and the fallback reaches `translateKey`
+ * through a local helper.
+ */
+export const RELATION_SIDE_FALLBACK = {
+  consumers: 'Consumers (above)',
+  suppliers: 'Suppliers (below)',
+} as const;
+
+type RelationSide = keyof typeof RELATION_SIDE_FALLBACK;
+
+/**
  * **The proposal panel** — what the tool reads of one component, offered for
  * confirmation (MF3).
  *
@@ -376,13 +392,13 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
     const consumers = reading.relations.filter(r => r.side === 'consumer');
     const suppliers = reading.relations.filter(r => r.side === 'supplier');
 
-    const line = (relations: ReadingRelation[], key: string, fallback: string) =>
+    const line = (relations: ReadingRelation[], key: RelationSide) =>
       relations.length
         ? html`<div class="reading-value" data-testid=${`reading-${key}`}>
             ${translateKey(
               this.std,
               `com.labre.reading.relations.${key}`,
-              fallback
+              RELATION_SIDE_FALLBACK[key]
             )}:
             ${relations
               .map(relation => relation.otherName || relation.otherId)
@@ -408,8 +424,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
             )}
           </div>`
         : nothing}
-      ${line(consumers, 'consumers', 'Consumers (above)')}
-      ${line(suppliers, 'suppliers', 'Suppliers (below)')}
+      ${line(consumers, 'consumers')}
+      ${line(suppliers, 'suppliers')}
       ${contradictions.length
         ? html`<div class="reading-note" data-testid="reading-contradiction">
             ${translateKey(

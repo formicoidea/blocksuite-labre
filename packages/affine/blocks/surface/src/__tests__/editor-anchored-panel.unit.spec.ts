@@ -31,13 +31,14 @@ function boxFor(options: {
   bar: [number, number, number, number] | null;
 }): AnchoredPanelBox {
   const [originX, originY] = options.origin;
+  // Bound to a const so the narrowing survives into the closure below —
+  // `options.bar` is a mutable property and TS re-widens it there.
+  const bar = options.bar;
   const stub = {
     gfx: { viewport: options.editor },
     getBoundingClientRect: () => new DOMRect(originX, originY, 0, 0),
     anchorBar: () =>
-      options.bar
-        ? { getBoundingClientRect: () => new DOMRect(...options.bar) }
-        : null,
+      bar ? { getBoundingClientRect: () => new DOMRect(...bar) } : null,
   };
   return (
     EditorAnchoredPanel.prototype as unknown as {

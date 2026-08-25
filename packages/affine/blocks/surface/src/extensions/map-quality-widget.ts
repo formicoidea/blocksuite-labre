@@ -69,8 +69,12 @@ const CHECKBOX_GUTTER = 22;
  * puts no words in a framework's mouth. The rule's own message still comes from
  * the framework, and the host catalogue still wins over both — these are keyed
  * like everything else.
+ *
+ * Exported because it is DATA: the translation-key manifest walks it under the
+ * `com.labre.validation.family.` prefix instead of restating seven wordings a
+ * source scan could never check (the key is a template literal).
  */
-const FAMILY_FALLBACK: Record<RuleFamily, string> = {
+export const FAMILY_FALLBACK: Record<RuleFamily, string> = {
   'element-in-background': 'placement',
   'orientation-against-axis': 'orientation',
   attachment: 'attachment',

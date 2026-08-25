@@ -1,6 +1,14 @@
 ---
 '@labre/affine': minor
-'@labre/affine-gfx-wardley': patch
+'@labre/std': minor
+'@labre/affine-gfx-wardley': minor
+'@labre/affine-gfx-edgy': minor
+'@labre/affine-gfx-cynefin-estuarine': minor
+'@labre/affine-gfx-bpmn': minor
+'@labre/affine-gfx-ddd-event-storming': minor
+'@labre/affine-gfx-ddd-core-domain': minor
+'@labre/affine-gfx-ddd-context-map': minor
+'@labre/affine-block-surface': patch
 '@labre/affine-shared': patch
 ---
 
@@ -22,14 +30,27 @@ which keys it can ask for.
   declarations the editor registers — a key added to a rule or a command
   appears by construction. The widget chrome literals, which live in lit
   templates, are restated once; a unit test scans the library source and
-  fails when a used key is missing from the manifest or a restated fallback
-  drifts from what the widget renders.
-- `@labre/affine-gfx-wardley` now exports `WARDLEY_BACKGROUND` (its labels
-  were already public data through `WARDLEY_READING`; the manifest walks it
-  under its own name).
+  fails when a used key is missing from the manifest, when a manifest entry
+  is used by nobody, or when a restated fallback drifts from what the widget
+  renders.
+- **The manifest is COMPOSED, not centralised.** Each framework package
+  exports its own contribution (`wardleyTranslationEntries`,
+  `edgyTranslationEntries`, …) and the core manifest assembles the chrome's
+  entries with the frameworks' — the same shape the command registry already
+  has, and for the same reason: `@formicoidea/labre-core` is the editor minus
+  the frameworks, so a manifest that named them from the core side would be
+  complete in the monorepo and 113 keys of 197 short in the distribution hosts
+  actually consume. `scripts/build-bundles.mjs` strips the groups from core's
+  copy exactly as it strips the command groups, and a bundled host composes
+  with `mergeTranslationEntries` (`@labre/std`, new).
+- The chrome wordings that sit behind template-literal keys (violation
+  severities, exemption scopes, rule families, relation sides) are now
+  EXPORTED tables the manifest walks rather than wordings restated a second
+  time — which is what lets the drift check reach them.
 - The translation service grew the README the seam deserved
   (`packages/affine/shared/src/services/translation-service/README.md`):
-  host wiring, fallback contract, and how to bootstrap a catalogue from the
-  manifest. The service moved from `translation-service.ts` to
-  `translation-service/index.ts` to house it — the barrel export is
-  unchanged, no import moves.
+  host wiring, fallback contract, how to bootstrap a catalogue from the
+  manifest, how to compose it in the bundled distribution, and why the 22
+  entries with no fallback must not be seeded into `en`. The service moved
+  from `translation-service.ts` to `translation-service/index.ts` to house it
+  — the barrel export is unchanged, no import moves.

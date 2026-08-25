@@ -66,11 +66,23 @@ const BRACKET_HIT_BAND = 22;
  * Chrome wording, and only chrome: an English default so a catalogue-less
  * playground reads correctly. A RULE's wording never gets a default — see
  * {@link translateKey}.
+ *
+ * Exported because it is DATA, and the translation-key manifest walks it under
+ * the `com.labre.validation.severity.` prefix rather than restating the three
+ * wordings a second time. The keys behind a template literal are the ones a
+ * source scan cannot check; making the table the single declaration is what
+ * removes the question. Same for {@link EXEMPTION_FALLBACK}.
  */
-const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
+export const SEVERITY_FALLBACK: Record<ViolationSeverity, string> = {
   'blocking-overridable': 'Blocking',
   warning: 'Warning',
   audit: 'Audit',
+};
+
+/** What the badge says of an excused violation, per scope of the exception. */
+export const EXEMPTION_FALLBACK: Record<ExemptionScope, string> = {
+  element: 'Exception',
+  map: 'Exception (whole map)',
 };
 
 /**
@@ -733,7 +745,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
             >${translateKey(
               this.std,
               `com.labre.validation.state.exempted.${exemption}`,
-              exemption === 'map' ? 'Exception (whole map)' : 'Exception'
+              EXEMPTION_FALLBACK[exemption]
             )}</span
           >`
         : nothing}
