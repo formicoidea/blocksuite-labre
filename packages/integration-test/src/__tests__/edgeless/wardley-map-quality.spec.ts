@@ -2,12 +2,15 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
   checkedNudges,
   CHECKUP_SLICE_MS,
+  EditorAnchoredPanel,
   evaluateCheckup,
   MAP_QUALITY_WIDGET,
+  READING_PROPOSAL_WIDGET,
   setNudgeChecked,
   ValidationManager,
   type ValidationRule,
 } from '@labre/affine/blocks/surface';
+import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import type { BlockFlags } from '@labre/affine/flags';
 import { AffineSchemas } from '@labre/affine/schemas';
@@ -1025,6 +1028,147 @@ describe('map quality', () => {
       await settle();
 
       expect(panel()).not.toBeNull();
+    });
+  });
+
+  /**
+   * PO recette of 02/08/2026, second pass, point 2: Map quality leaves the
+   * popover and adopts the reading panel's pattern — anchored to the editor,
+   * above the senior button bar, at its width, in the layer above every toolbar
+   * (ADR 0011). The entry that opens it did not move.
+   */
+  describe('the panel is anchored to the editor (ADR 0011)', () => {
+    /** `auto` is not a number, and a panel must beat it too. Treat it as 0. */
+    const zOf = (element: Element) => {
+      const value = getComputedStyle(element).zIndex;
+      return value === 'auto' ? 0 : Number.parseInt(value, 10);
+    };
+
+    const bottomToolbar = () =>
+      root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
+        | HTMLElement
+        | undefined;
+
+    /** The senior button bar itself — the visible box, not the widget's slab. */
+    const seniorBar = () =>
+      bottomToolbar()?.shadowRoot?.querySelector<HTMLElement>(
+        '.edgeless-toolbar-container'
+      ) ?? null;
+
+    const resizeEditorTo = async (width: string) => {
+      (window.editor.parentElement as HTMLElement).style.width = width;
+      await settle();
+      await settle();
+    };
+
+    test('it is the SAME component as the reading panel, not a copy of it', async () => {
+      const map = addBackground();
+      await open(map);
+
+      // The decision names one shared pattern; this is what "shared" means in a
+      // language with prototypes. Two panels that merely looked alike would
+      // pass every measurement below and fail here.
+      const quality = widget() as unknown as object;
+      const reading = root.widgetComponents[
+        READING_PROPOSAL_WIDGET
+      ] as unknown as object;
+      expect(quality).toBeInstanceOf(EditorAnchoredPanel);
+      expect(reading).toBeInstanceOf(EditorAnchoredPanel);
+    });
+
+    test('it takes the senior bar’s width, at both window sizes', async () => {
+      const map = addBackground();
+      await open(map);
+
+      const measure = () => ({
+        box: panel()!.getBoundingClientRect(),
+        bar: seniorBar()!.getBoundingClientRect(),
+      });
+
+      await resizeEditorTo('1400px');
+      const wide = measure();
+      expect(wide.box.left).toBeCloseTo(wide.bar.left, 0);
+      expect(wide.box.right).toBeCloseTo(wide.bar.right, 0);
+
+      // The 320px popover it replaced would have survived the first assertion
+      // and failed this one.
+      await resizeEditorTo('620px');
+      const narrow = measure();
+      expect(narrow.box.left).toBeCloseTo(narrow.bar.left, 0);
+      expect(narrow.box.width).toBeCloseTo(narrow.bar.width, 0);
+      expect(narrow.box.width).toBeLessThan(wide.box.width);
+    });
+
+    test('it sits just above the bar, and inside the editor', async () => {
+      const map = addBackground();
+      await open(map);
+
+      const box = panel()!.getBoundingClientRect();
+      const bar = seniorBar()!.getBoundingClientRect();
+      const editor = root.getBoundingClientRect();
+
+      expect(box.bottom).toBeLessThanOrEqual(bar.top);
+      expect(bar.top - box.bottom).toBeLessThan(24);
+      expect(box.left).toBeGreaterThanOrEqual(editor.left);
+      expect(box.right).toBeLessThanOrEqual(editor.right);
+      expect(box.top).toBeGreaterThanOrEqual(editor.top);
+    });
+
+    test('it renders above the contextual toolbar and the bottom one', async () => {
+      const map = addBackground();
+      await open(map);
+
+      // The HOST is where the contest is decided: every widget host is a
+      // sibling in `.widgets-container`, and `affine-toolbar-widget` declares
+      // no stacking context of its own. The panel used to take `z-index: 2`,
+      // chosen to sit "well below the toolbars" — the popover's bargain, and
+      // the one this pattern reverses.
+      const host = widget() as unknown as HTMLElement;
+      expect(host.parentElement?.classList.contains('widgets-container')).toBe(
+        true
+      );
+
+      const contextual = toolbar();
+      expect(contextual).not.toBeNull();
+      expect(zOf(host)).toBeGreaterThan(zOf(contextual!));
+      expect(zOf(host)).toBeGreaterThan(zOf(bottomToolbar()!));
+    });
+
+    test('it stays put when the map it is about moves', async () => {
+      const map = addBackground();
+      await open(map);
+      const before = panel()!.getBoundingClientRect();
+
+      // The old popover hung off the instance's top-right corner and flipped
+      // sides to stay on screen. Anchored to the editor, a surface somebody is
+      // halfway through ticking does not move under them.
+      service.surface.updateElement(map, { xywh: '[900,600,1600,900]' });
+      await settle();
+
+      const after = panel()!.getBoundingClientRect();
+      expect(after.left).toBeCloseTo(before.left, 0);
+      expect(after.bottom).toBeCloseTo(before.bottom, 0);
+    });
+
+    test('a click on the canvas still puts it away, and so does Escape', async () => {
+      const map = addBackground();
+      await open(map);
+      expect(panel()).not.toBeNull();
+
+      // Click-away: the new layer sits above the toolbars, and must not have
+      // taken the dismissal contract with it.
+      document.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, composed: true })
+      );
+      await settle();
+      expect(panel()).toBeNull();
+
+      await open(map);
+      service.std.host.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      );
+      await settle();
+      expect(panel()).toBeNull();
     });
   });
 });
