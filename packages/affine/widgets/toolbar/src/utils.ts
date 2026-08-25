@@ -177,37 +177,14 @@ export function autoUpdatePosition(
     }
   };
 
-  // **One position in flight at a time.** `update` is async — it awaits the
-  // toolbar's render, then an async `computePosition` — while `autoUpdate`
-  // fires it again on every frame of a gesture. Left unserialized, several
-  // computations overlap and resolve in whatever order the microtasks land:
-  // the ordered trace of the PO's recette of 25/08/2026 shows a position from
-  // a frame-old reference written AFTER a fresher one — one stale landing, on
-  // screen, is one visible jump backwards. (The two-anchor teleport of that
-  // recette was the `flip` defect above, not this: this guard is against the
-  // out-of-order landings observed alongside it.) One in flight, one queued,
-  // keep the last: writes land in the order they were computed, and the
-  // newest state always gets applied.
-  let running = false;
-  let queued = false;
-  const run = () => {
-    if (running) {
-      queued = true;
-      return;
-    }
-    running = true;
-    update()
-      .catch(console.error)
-      .finally(() => {
-        running = false;
-        if (queued && !signal.aborted) {
-          queued = false;
-          run();
-        }
-      });
-  };
-
-  return autoUpdate(referenceElement, toolbar, run, options);
+  return autoUpdate(
+    referenceElement,
+    toolbar,
+    () => {
+      update().catch(console.error);
+    },
+    options
+  );
 }
 
 export function combine(actions: ToolbarActions, context: ToolbarContext) {

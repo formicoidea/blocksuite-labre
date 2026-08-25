@@ -21,11 +21,9 @@ right one: the teleport, exactly.
 "above or below" — `crossAxis: false, flipAlignment: false` — and horizontal
 placement belongs to `shift` alone, which slides instead of teleporting. The
 middleware order and the cap semantics (`size` before `shift`: the room at the
-ANCHORED position) are untouched. Two hardenings ride along, both taken from
-the same measurement trace: position updates are serialized — one computation
-in flight, latest state queued — so overlapping async computations can no
-longer land out of order with stale positions; and a computation that resolves
-after its loop aborted no longer writes at all.
+ANCHORED position) are untouched. One hardening rides along, taken from the
+same measurement trace: a computation that resolves after its loop aborted no
+longer writes at all.
 
 New guard in the collapse-stability suite: "the background row never hesitates
 between two anchors" — red before the fix, green with it, and mutation-tested
