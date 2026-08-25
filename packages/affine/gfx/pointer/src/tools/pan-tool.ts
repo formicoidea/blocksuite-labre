@@ -9,6 +9,9 @@ interface RestorablePresentToolOptions {
   restoredAfterPan?: boolean;
 }
 
+/** The presentation tool, named here because it is not importable from gfx. */
+const PRESENT_TOOL_NAME = 'frameNavigator';
+
 export type PanToolOption = {
   panning: boolean;
 };
@@ -57,17 +60,28 @@ export class PanTool extends BaseTool<PanToolOption> {
         return;
       }
 
+      const { toolType, options: originalToolOptions } =
+        this.controller.currentToolOption$.peek();
+
+      // Already panning — the pan tool is the user's own choice, not a
+      // temporary borrow. There is nothing to switch to and nothing to
+      // restore, so stay out of the way and let the gesture through.
+      if (toolType?.toolName === PanTool.toolName) {
+        return;
+      }
+
       evt.raw.preventDefault();
 
-      const currentTool = this.controller.currentToolOption$.peek();
+      // Snapshot the selection NOW. Activating the pan tool below goes through
+      // `ToolController.setTool`, which clears the selection, so reading it
+      // back when the wheel is released would only ever restore an empty one.
+      const selectionToRestore = this.gfx.selection.surfaceSelections.slice();
+
       const restoreToPrevious = () => {
-        const { toolType, options: originalToolOptions } = currentTool;
-        const selectionToRestore = this.gfx.selection.surfaceSelections;
         if (!toolType) return;
 
         let finalOptions: ToolOptions<BaseTool<any>> | undefined =
           originalToolOptions;
-        const PRESENT_TOOL_NAME = 'frameNavigator';
 
         if (toolType.toolName === PRESENT_TOOL_NAME) {
           // When restoring PresentTool (frameNavigator) after a temporary pan (e.g., via middle mouse button),
@@ -82,11 +96,12 @@ export class PanTool extends BaseTool<PanToolOption> {
           } as RestorablePresentToolOptions;
         }
         this.controller.setTool(toolType, finalOptions);
+        // AFTER the switch, never before: `setTool` clears the selection.
         this.gfx.selection.set(selectionToRestore);
       };
 
       // If in presentation mode, disable black background after middle mouse drag
-      if (currentTool.toolType?.toolName === 'frameNavigator') {
+      if (toolType?.toolName === PRESENT_TOOL_NAME) {
         const slots = this.std.get(EdgelessLegacySlotIdentifier);
         slots.navigatorSettingUpdated.next({
           blackBackground: false,

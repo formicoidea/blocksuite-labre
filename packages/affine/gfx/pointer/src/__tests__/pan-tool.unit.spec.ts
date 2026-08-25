@@ -122,4 +122,55 @@ describe('pan tool — middle button gesture', () => {
     releaseButton(MouseButton.MIDDLE);
     expect(setTool).toHaveBeenCalledTimes(2);
   });
+
+  test('the selection is the one held when the wheel went down', () => {
+    const held = [{ elements: ['a'] }];
+    const { pressMiddle, currentSelection } = setup(undefined, held);
+
+    pressMiddle();
+    // Activating the pan tool cleared the selection — which is exactly why the
+    // snapshot has to be taken at pointer-down and not read back here.
+    expect(currentSelection()).toEqual([]);
+
+    releaseButton(MouseButton.MIDDLE);
+    expect(currentSelection()).toEqual(held);
+  });
+
+  test('the selection snapshot survives a mutation of the live array', () => {
+    const live = [{ elements: ['a'] }];
+    const { pressMiddle, currentSelection } = setup(undefined, live);
+
+    pressMiddle();
+    live.length = 0; // the real selection manager mutates in place
+
+    releaseButton(MouseButton.MIDDLE);
+    expect(currentSelection()).toEqual([{ elements: ['a'] }]);
+  });
+
+  test('the tool switch happens on the same frame as the press', () => {
+    const { pressMiddle, setTool } = setup();
+
+    // Not on a later animation frame: a pan that starts one frame late drops
+    // the first pointer moves of the gesture.
+    pressMiddle();
+    expect(setTool).toHaveBeenCalledTimes(1);
+    expect(setTool.mock.calls[0]?.[0]).toBe(PanTool);
+    expect(setTool.mock.calls[0]?.[1]).toEqual({ panning: true });
+  });
+
+  test('a middle click while the pan tool is already active is left alone', () => {
+    const { pressMiddle, preventDefault, setTool, currentSelection } = setup({
+      toolType: PanTool,
+      options: { panning: true },
+    });
+
+    expect(pressMiddle()).toBeUndefined(); // the hook does not claim the event
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(setTool).not.toHaveBeenCalled();
+
+    // And no listener was hung: a release restores nothing.
+    releaseButton(MouseButton.MIDDLE);
+    expect(setTool).not.toHaveBeenCalled();
+    expect(currentSelection()).toEqual([{ elements: ['a'] }]);
+  });
 });
