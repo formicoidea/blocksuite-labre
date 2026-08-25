@@ -278,6 +278,34 @@ describe('the contextual toolbar, while the viewport moves', () => {
   });
 
   /**
+   * The same guard, on the toolbar the PO's recette of 25/08/2026 (third
+   * video) is about: the MAP BACKGROUND's own row.
+   *
+   * The background is the one selection whose reference is far bigger than the
+   * viewport — under zoom its ideal anchor leaves the screen and the
+   * positioner's `shift` clamp is what keeps the row visible. That clamped
+   * position must be as steady as the unclamped one: the video shows the row
+   * teleporting between the clamped anchor and a second, unrelated one, frame
+   * after frame, while its composition never changes.
+   */
+  test('the background row never hesitates between two anchors', async () => {
+    const map = addMap();
+    addComponent();
+    await select(map);
+
+    const samples = await zoomFrames(24);
+
+    // Composition steady — the fitter is not the suspect here.
+    expect([...new Set(samples.map(s => s.composition))]).toHaveLength(1);
+
+    const seen = samples.map(s => s.anchor);
+    const revisited = seen.filter(
+      (value, index) => seen.indexOf(value) !== index && seen[index - 1] !== value
+    );
+    expect(revisited).toEqual([]);
+  });
+
+  /**
    * **The word never comes back** (PO recette of 25/08/2026).
    *
    * The freeze of the second pass covers the REPLANNING — the path that starts
