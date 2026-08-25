@@ -44,4 +44,20 @@ describe('ConnectorPathGenerator.updatePath with an absent endpoint element', ()
     expect(connector.xywh).toBe('[10,20,100,50]');
     expect(connector.updatingPath).toBe(false);
   });
+
+  it.each([
+    ['Straight', ConnectorMode.Straight],
+    ['Orthogonal', ConnectorMode.Orthogonal],
+    ['Curve', ConnectorMode.Curve],
+  ])('%s: a stale path is still cleared', (_label, mode) => {
+    // The redundant-write skip must only skip when the path is ALREADY
+    // empty: a connector degrading from a live path must drop it, or the
+    // renderer keeps painting a line whose endpoints no longer exist.
+    const connector = makeConnector(mode);
+    connector.path = [{}, {}] as unknown as typeof connector.path;
+
+    ConnectorPathGenerator.updatePath(connector, null);
+
+    expect(connector.path).toEqual([]);
+  });
 });

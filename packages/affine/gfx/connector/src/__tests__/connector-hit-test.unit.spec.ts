@@ -40,6 +40,17 @@ describe('degraded connector (empty path) hit-testing', () => {
   });
 
   it.each(MODES)(
+    '%s: includesPoint misses near the world origin too',
+    (_l, mode) => {
+      // Without the model-level guard, the zero-length-path fallback in
+      // getBezierParameters degenerates the curve to [0,0] — and a degraded
+      // Curve connector becomes hoverable within a stroke-width of the WORLD
+      // ORIGIN, wherever its bound is. The guard must miss there as well.
+      expect(proto.includesPoint.call(degraded(mode), 2, 3)).toBe(false);
+    }
+  );
+
+  it.each(MODES)(
     '%s: getNearestPoint falls back to the element origin',
     (_l, mode) => {
       expect(proto.getNearestPoint.call(degraded(mode), [0, 0])).toEqual([
