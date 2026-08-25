@@ -16,6 +16,8 @@ import {
   revokeException,
   touchesVerdict,
   type ValidationRule,
+  VERDICT_PROPS,
+  verdictPropsOf,
   type Violation,
 } from '../extensions/validation.js';
 
@@ -401,6 +403,74 @@ describe('what wakes a re-evaluation', () => {
     // A missed re-evaluation is a board that lies; a spurious one is a
     // debounce tick.
     expect(touchesVerdict({})).toBe(true);
+  });
+
+  /**
+   * A framework can make one more prop verdict-bearing (PO, 25/08/2026).
+   *
+   * Hiding the part of a background that DRAWS a frontier changes every verdict
+   * measured against that frontier, so the toggle has to wake the engine — and
+   * the engine has to learn about it from the declarations it was handed, never
+   * from a prop name written into this file.
+   */
+  describe('the props a framework adds', () => {
+    const stroke = { color: '#000', width: 1 };
+
+    /** A rule framed against a background whose graduations are gated. */
+    const GATED: ValidationRule = {
+      ...RULE_A,
+      id: 'test.on-transition',
+      background: {
+        type: 'test',
+        geometry: {
+          width: 100,
+          height: 100,
+          lockAspectRatio: false,
+          resizable: true,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        },
+        axes: [
+          {
+            id: 'evolution',
+            orientation: 'horizontal',
+            at: 1,
+            stroke,
+            ticks: {
+              ticks: [{ at: 0.5 }],
+              stroke,
+              visibleProp: 'showColumns',
+            },
+          },
+        ],
+      },
+    };
+
+    it('adds the visibility props of the registered backgrounds', () => {
+      const props = verdictPropsOf([RULE_A, GATED]);
+
+      expect(props.has('showColumns')).toBe(true);
+      // …on top of, never instead of, the ones that hold for every framework.
+      for (const constant of VERDICT_PROPS) expect(props.has(constant)).toBe(true);
+    });
+
+    it('adds nothing for a framework that declares no toggle', () => {
+      expect(verdictPropsOf([RULE_A])).toEqual(new Set(VERDICT_PROPS));
+      expect(verdictPropsOf([])).toEqual(new Set(VERDICT_PROPS));
+    });
+
+    it('wakes the engine on that prop, and on that prop only', () => {
+      const watched = verdictPropsOf([GATED]);
+
+      expect(touchesVerdict({ props: { showColumns: false } }, watched)).toBe(
+        true
+      );
+      // A toggle nobody's rule measures against is still just a colour.
+      expect(touchesVerdict({ props: { showCornerLabels: false } }, watched)).toBe(
+        false
+      );
+      // And with the framework absent, the same write changes no verdict.
+      expect(touchesVerdict({ props: { showColumns: false } })).toBe(false);
+    });
   });
 });
 

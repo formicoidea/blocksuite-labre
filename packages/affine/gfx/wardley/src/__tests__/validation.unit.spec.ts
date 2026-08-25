@@ -33,20 +33,23 @@ const W3 = 'wardley.overlapping-artefacts';
 const W4 = 'wardley.provider-above-consumer';
 
 /**
- * Element stand-in: the engine only ever reads `id`, `role`, `elementBound`
- * and — for a directional element — its path. `elementBound` is a GETTER that
- * allocates, exactly like the real accessor.
+ * Element stand-in: the engine only ever reads `id`, `role`, `elementBound`,
+ * — for a directional element — its path, and — for a background — whichever
+ * props its declaration names. `elementBound` is a GETTER that allocates,
+ * exactly like the real accessor.
  */
 function element(
   id: string,
   xywh: [number, number, number, number],
   role?: string,
-  absolutePath?: [number, number][]
+  absolutePath?: [number, number][],
+  props?: Record<string, unknown>
 ): GfxPrimitiveElementModel {
   return {
     id,
     role,
     ...(absolutePath ? { absolutePath } : {}),
+    ...props,
     get elementBound() {
       return new Bound(...xywh);
     },
@@ -336,6 +339,96 @@ describe('W2 · an inertia bar astride a phase transition', () => {
     // A bar on a blank board is a sketch, not a misplaced symbol: with no frame
     // there is no frontier for it to be astride of.
     expect(evaluate([bar(700, 150)])).toEqual([]);
+  });
+
+  /**
+   * PO, 25/08/2026: W2 is only ACTIVE while the dashed columns are displayed.
+   *
+   * The dividers are a per-part toggle of the map (`showColumnDividers`, the
+   * "Columns (dividers)" button of the Wardley toolbar). Switch them off and
+   * the user is looking at a plain card: telling them a bar is not astride a
+   * line that is not on the canvas is a finding whose gesture aims at nothing.
+   *
+   * Scoped, never weakened — every case below is one the rule still reports the
+   * moment the columns come back.
+   */
+  describe('only while the dashed columns are shown (PO, 25/08)', () => {
+    const mapWith = (showColumnDividers: boolean) =>
+      element(
+        'bg',
+        [MAP_BOUND.x, MAP_BOUND.y, MAP_BOUND.w, MAP_BOUND.h],
+        WARDLEY_ROLE.map,
+        undefined,
+        { showColumnDividers }
+      );
+
+    const midPhase = (TRANSITIONS[1] + TRANSITIONS[2]) / 2;
+
+    it('says nothing about a bar ANYWHERE once the columns are hidden', () => {
+      for (const cx of [200, midPhase, TRANSITIONS[1] + 150, 1500]) {
+        expect(evaluate([mapWith(false), bar(cx, y)])).toEqual([]);
+      }
+      // Including with a dependency under it, which the rule stopped asking
+      // about on 02/08 and must not start asking about again here.
+      expect(evaluate([mapWith(false), link(), bar(midPhase, y)])).toEqual([]);
+    });
+
+    it('judges exactly as before while the columns are shown', () => {
+      // The toggle in its normal position — which is the default of every map
+      // ever drawn — changes nothing at all.
+      expect(idsOf(evaluate([mapWith(true), bar(midPhase, y)]))).toEqual([W2]);
+      expect(evaluate([mapWith(true), bar(onTransition, y)])).toEqual([]);
+    });
+
+    it('leaves the other three rules untouched with the columns hidden', () => {
+      // W2 is the only rule measured against the dividers. Hiding them must not
+      // turn the map into a place where nothing is checked — that would be a
+      // toggle nobody would dare use.
+      const hidden = mapWith(false);
+      const arrow = edge(
+        'a1',
+        WARDLEY_ROLE.changeArrow,
+        [1200, 400],
+        [400, 400]
+      );
+      const overlapping = [
+        element('n1', [400, 400, 18, 18], WARDLEY_ROLE.component),
+        element('n2', [404, 400, 18, 18], WARDLEY_ROLE.component),
+      ];
+
+      expect(
+        idsOf(evaluate([hidden, arrow, ...overlapping, bar(midPhase, y)]))
+      ).toEqual([W1, W3]);
+    });
+
+    it('is the DIVIDERS that decide, not the other five toggles', () => {
+      // Every other part of the map can be hidden and W2 still speaks: the rule
+      // is about the frontier, and only the frontier's own toggle scopes it.
+      const noLabels = element(
+        'bg',
+        [MAP_BOUND.x, MAP_BOUND.y, MAP_BOUND.w, MAP_BOUND.h],
+        WARDLEY_ROLE.map,
+        undefined,
+        {
+          showColumnDividers: true,
+          showXAxis: false,
+          showYAxis: false,
+          showColumnLabels: false,
+          showCornerLabels: false,
+          showVisibilityLabels: false,
+        }
+      );
+
+      expect(idsOf(evaluate([noLabels, bar(midPhase, y)]))).toEqual([W2]);
+    });
+
+    it('keeps judging a map that carries no toggle at all', () => {
+      // A stand-in, a host-built element, a document whose props were never
+      // materialised: a prop the instance does not carry is not the user hiding
+      // anything, so the rule stays exactly as it was. This is what every other
+      // case in this file relies on.
+      expect(idsOf(evaluate([background(), bar(midPhase, y)]))).toEqual([W2]);
+    });
   });
 });
 
