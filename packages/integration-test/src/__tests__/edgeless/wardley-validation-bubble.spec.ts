@@ -10,6 +10,7 @@ import {
 import { createGroupCommand, ungroupCommand } from '@labre/affine/gfx/group';
 import type { GroupElementModel } from '@labre/affine/model';
 import { TranslationExtension } from '@labre/affine/shared/services';
+import { toOverlayCoord } from '@labre/affine/shared/utils';
 import type { ExtensionType } from '@labre/store';
 import { Text } from '@labre/store';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -335,7 +336,10 @@ describe('the violation markers and their detail bubble', () => {
         anchor.bound.y - offset,
       ]);
 
-      const [x, y] = service.viewport.toViewCoord(...anchor.markAt);
+      // The badge is DOM inside the widgets container, which is painted in the
+      // same space the canvas is — `toViewCoord` answers in screen pixels and
+      // is off by the host's scale, squared.
+      const [x, y] = toOverlayCoord(service.viewport, ...anchor.markAt);
       const badge = badges().find(
         candidate => (candidate as HTMLElement).dataset.anchorId === first
       ) as HTMLElement;
@@ -372,14 +376,15 @@ describe('the violation markers and their detail bubble', () => {
       expect(anchor.markAt[0]).toBeCloseTo(3200, 0);
       expect(anchor.markAt[1]).toBeCloseTo(3200, 0);
 
-      const [x, y] = service.viewport.toViewCoord(...anchor.markAt);
+      const [x, y] = toOverlayCoord(service.viewport, ...anchor.markAt);
       const style = (badges()[0] as HTMLElement).style;
       expect(parseFloat(style.left)).toBeCloseTo(x, 0);
       expect(parseFloat(style.top)).toBeCloseTo(y, 0);
 
       // ...and emphatically not on the corner it used to sit on.
       const offset = VIOLATION_MARK_PADDING + VIOLATION_BADGE_SIZE / 2;
-      const [cornerX] = service.viewport.toViewCoord(
+      const [cornerX] = toOverlayCoord(
+        service.viewport,
         anchor.bound.maxX + offset,
         anchor.bound.y - offset
       );

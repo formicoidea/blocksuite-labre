@@ -1,5 +1,10 @@
 import type { RootBlockModel } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
+import {
+  overlayScale,
+  overlayViewportSize,
+  toOverlayCoord,
+} from '@labre/affine-shared/utils';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
 import type { RoleDefs, SurfaceBlockModel } from '@labre/std/gfx';
 import {
@@ -117,8 +122,8 @@ export const EXEMPTION_FALLBACK: Record<ExemptionScope, string> = {
  *
  * ## Sizing
  *
- * Both markers are sized in MODEL units and multiplied by the zoom on the way
- * to the screen, so they shrink with the board instead of swelling over it —
+ * Both markers are sized in MODEL units and multiplied by the board's own
+ * scale on the way to the screen, so they shrink with it instead of swelling —
  * see the note on the mark constants in `validation.ts`. The exception is the
  * hit area: a transparent box with a screen-pixel floor around the model-sized
  * visual, so a badge three pixels wide stays reachable. That split is the
@@ -806,9 +811,14 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // flipped bubble is pinned by its BOTTOM edge with a transform — exact
     // whatever the content turns out to measure, where an estimate would leave
     // a tall bubble hanging off the screen again.
-    const flipX = x + BUBBLE_GAP + BUBBLE_WIDTH > viewport.width;
-    const flipY = y + BUBBLE_GAP + this._estimateBubbleHeight(entries) >
-      viewport.height;
+    //
+    // The edges are read in the same space the bubble is placed in — the
+    // widgets container, which the host may have scaled — rather than in the
+    // screen pixels `viewport.width` answers.
+    const [viewWidth, viewHeight] = overlayViewportSize(viewport);
+    const flipX = x + BUBBLE_GAP + BUBBLE_WIDTH > viewWidth;
+    const flipY =
+      y + BUBBLE_GAP + this._estimateBubbleHeight(entries) > viewHeight;
 
     return html`<div
       class="violation-bubble"
@@ -839,26 +849,29 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
-   * Badge centre, in screen pixels.
+   * Badge centre, in the CSS pixels of the widgets container.
    *
    * WHERE that is, per anchor kind, is `resolveViolationAnchors`' answer
    * ({@link ViolationAnchor.markAt}) — a corner for a box, the middle of the
    * trait for a link. Here it is one conversion of one model point, so the
    * offsets scale with the mark instead of drifting away from it as the board
    * is zoomed, and there is no second copy of the geometry to keep in step.
+   *
+   * Not `toViewCoord`: that answers in screen pixels, and the badge is drawn
+   * inside the container an embedding host may have scaled, so it states its
+   * placement the way the element it accuses does.
    */
   private _badgeAt(anchor: ViolationAnchor): [number, number] {
-    const [x, y] = this.gfx.viewport.toViewCoord(
+    return toOverlayCoord(
+      this.gfx.viewport,
       anchor.markAt[0],
       anchor.markAt[1]
     );
-    return [x, y];
   }
 
   private _renderBadge(anchor: ViolationAnchor, label: string) {
-    const { zoom } = this.gfx.viewport;
     const [x, y] = this._badgeAt(anchor);
-    const visual = VIOLATION_BADGE_SIZE * zoom;
+    const visual = VIOLATION_BADGE_SIZE * overlayScale(this.gfx.viewport);
     const target = Math.max(visual, MIN_HIT_TARGET);
     const open = this._openAnchorId === anchor.id;
 
@@ -900,11 +913,13 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   private _renderBracketHit(anchor: ViolationAnchor, label: string) {
     const { viewport } = this.gfx;
     const { bound } = anchor;
-    const [left, top] = viewport.toViewCoord(
+    const [left, top] = toOverlayCoord(
+      viewport,
       bound.x - VIOLATION_MARK_PADDING,
       bound.y - VIOLATION_MARK_PADDING
     );
-    const [right, bottom] = viewport.toViewCoord(
+    const [right, bottom] = toOverlayCoord(
+      viewport,
       bound.maxX + VIOLATION_MARK_PADDING,
       bound.maxY + VIOLATION_MARK_PADDING
     );
