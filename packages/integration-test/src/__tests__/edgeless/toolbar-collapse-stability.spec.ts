@@ -1,5 +1,8 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { ValidationManager } from '@labre/affine/blocks/surface';
+import { TOOLBAR_ROOM_HYSTERESIS } from '@labre/affine/shared/services';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
+import type { GfxPrimitiveElementModel } from '@labre/affine/std/gfx';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -85,6 +88,20 @@ describe('the contextual toolbar, while the viewport moves', () => {
 
   /** Where the row is anchored, as the positioner last wrote it. */
   const anchor = () => toolbar()?.style.transform ?? '';
+
+  /**
+   * How far the row is sticking out of the room it was given, in pixels.
+   *
+   * The cap `size()` writes is a `max-width`, so a row that has not given up
+   * enough does not push its neighbours aside or wrap — it OVERFLOWS, and the
+   * entries past the cap are the ones under the cursor's own scrollbar-less
+   * edge. Zero is the invariant; anything else is the row spilling.
+   */
+  const spill = () => {
+    const bar = toolbar();
+    if (!bar) return 0;
+    return bar.scrollWidth - bar.clientWidth;
+  };
 
   /** How many lines the row occupies — the invariant of the first pass. */
   const lines = () => new Set(entries().map(child => child.offsetTop)).size;
@@ -358,6 +375,215 @@ describe('the contextual toolbar, while the viewport moves', () => {
       expect(modeOf(READING)).toBe('menu');
       expect(composition()).not.toContain(':label');
       expect(lines()).toBe(1);
+    });
+  });
+
+  /**
+   * **The same glitch, on the background's row** (PO recette of 25/08/2026,
+   * second point).
+   *
+   * The second pass froze the plan across re-renders, and the PO confirmed it
+   * on a selected COMPONENT: the word stopped coming back. On the row of the
+   * map's BACKGROUND — the one carrying the display toggles, the "Validation"
+   * dropdown and its level of requirement — the toolbar kept flapping, and his
+   * question was the right one: was the answer ever generalised?
+   *
+   * It was not, and the reason is what the two rows are made of. A component's
+   * row is entries the WIDGET draws: an id, a word, an icon. List them and you
+   * have described the row completely — two renders with the same list are two
+   * renders of the same widths, which is exactly what the second pass relies
+   * on. The background's row is mostly entries the widget does NOT draw: a
+   * framework groups its toggles behind one entry, and the level of requirement
+   * is a dropdown that NAMES the profile in force on its own trigger. For that
+   * row the list of entries says nothing at all about what the row costs:
+   *
+   * - `Sketch` and `Strict` are the same entry, ten pixels apart;
+   * - a map given a gradient variant grows a sixth toggle inside the same
+   *   grouped entry — one whole button, same list.
+   *
+   * So the row could change by thirty pixels while its plan, and the
+   * measurements the plan was arithmetic on, went on describing the row it used
+   * to be. The tests below are that gap, from both sides: a row that says
+   * something new is re-measured where it stands, and a row that says the same
+   * thing twice is still free.
+   */
+  describe('and one of its own entries starts saying something else', () => {
+    const backgroundOf = (id: string) =>
+      service.surface.getElementById(id) as unknown as GfxPrimitiveElementModel;
+
+    /**
+     * A gradient variant, which is what makes the "show / hide the gradient"
+     * toggle relevant — and therefore present, inside the grouped entry the
+     * framework declares. The production path: the same write the variant
+     * picker makes.
+     */
+    const setVariant = (id: string, variant: string) =>
+      service.surface.updateElement(id, { variant });
+
+    /** The level of requirement, switched the way the dropdown switches it. */
+    const setProfile = (id: string, profileId: string) =>
+      service.std
+        .getOptional(ValidationManager)
+        ?.setProfile(backgroundOf(id), profileId);
+
+    /** Pans until the row has `extra` pixels of room and no more. */
+    const roomJustAbove = async (extra: number) => {
+      const width = toolbar()!.offsetWidth;
+      for (let i = 0; i < 8 && capOf() > width + extra + 4; i++) {
+        await roomFor(width + extra);
+      }
+    };
+
+    test('a row that says something new is measured again, where it stands', async () => {
+      const map = addMap();
+      await select(map);
+
+      // A room that fits this row with ten pixels to spare — and does not fit
+      // the row it is about to become.
+      await roomJustAbove(10);
+
+      expect(spill()).toBeLessThanOrEqual(1);
+      expect(composition()).toContain('b.lock');
+
+      // One more toggle inside the grouped entry: same entries, wider row.
+      setVariant(map, 'opportunity');
+      await settle();
+
+      // The row was re-measured and spent a step. Before, nothing was measured
+      // at all — the entries had not changed, so the row was declared the row
+      // already on screen and kept a plan made for a row thirty pixels
+      // narrower. It simply overflowed.
+      expect(spill()).toBeLessThanOrEqual(1);
+      expect(lines()).toBe(1);
+      expect(composition()).toContain('b.5-gradient');
+      expect(composition()).not.toContain('b.lock');
+    });
+
+    test('and it is measured without ever being shown whole', async () => {
+      const map = addMap();
+      await select(map);
+      await roomJustAbove(10);
+
+      const renders = countRenders();
+      const samples: number[] = [];
+
+      setVariant(map, 'opportunity');
+      // The tick the rebuild lands in, then the frames it is measured and
+      // corrected in. A row that had to be drawn undegraded to be measured
+      // would be caught spilling in one of them.
+      samples.push(spill());
+      for (let i = 0; i < 6; i++) {
+        await frames(1);
+        samples.push(spill());
+      }
+      await settle();
+      samples.push(spill());
+
+      expect(Math.max(...samples)).toBeLessThanOrEqual(1);
+      // One correction, plus the round of verification the fitter allows
+      // itself. Not a row rebuilt from nothing.
+      expect(renders.stop()).toBeLessThanOrEqual(3);
+    });
+
+    test('the row never spills, through a zoom that keeps writing to it', async () => {
+      const map = addMap();
+      await select(map);
+      await roomJustAbove(10);
+
+      // The room the plan on screen was made for. A gesture FREEZES the plan
+      // (first pass), so the row is allowed to end up outside its room by as
+      // much as the room has shrunk under it since — and by not one pixel
+      // more, because every other pixel would be the row itself having grown.
+      const roomAtPlan = capOf();
+
+      // The PO's gesture: a zoom, with the map being written to under it — a
+      // variant picked, a collaborator, a validation pass. Sampled twice per
+      // frame, because a row that spills for one frame spills.
+      const samples: { spill: number; owed: number; lines: number }[] = [];
+      for (let i = 0; i < 24; i++) {
+        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        if (i % 4 === 0)
+          setVariant(map, i % 8 === 0 ? 'classic' : 'opportunity');
+        const sample = () =>
+          samples.push({
+            spill: spill(),
+            owed: Math.max(0, roomAtPlan - capOf()),
+            lines: lines(),
+          });
+        sample();
+        await frames(1);
+        sample();
+      }
+      await settle();
+
+      // Never wider than the row it is, only ever than the room it has — to
+      // within the hysteresis, which is the width below which this toolbar
+      // considers two measurements to be the same measurement anyway.
+      expect(
+        samples.filter(s => s.spill > s.owed + TOOLBAR_ROOM_HYSTERESIS)
+      ).toEqual([]);
+      expect([...new Set(samples.map(s => s.lines))]).toEqual([1]);
+      // And once the gesture lands, the row is inside its room outright.
+      expect(spill()).toBeLessThanOrEqual(1);
+      expect(lines()).toBe(1);
+    });
+
+    test('the level of requirement, switched mid-zoom, changes the row once', async () => {
+      const map = addMap();
+      await select(map);
+      await roomJustAbove(10);
+
+      const seen: string[] = [];
+      for (let i = 0; i < 24; i++) {
+        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        // `Sketch` becomes `Strict` on the dropdown's own trigger: a real
+        // change, and the only one of the gesture.
+        if (i === 8) setProfile(map, 'wardley.strict');
+        seen.push(composition());
+        await frames(1);
+        seen.push(composition());
+      }
+      await settle();
+
+      // At most one composition after the one it started with — and never a
+      // composition coming back after another was shown, which is the row
+      // oscillating.
+      expect(new Set(seen).size).toBeLessThanOrEqual(2);
+      const revisited = seen.filter(
+        (value, index) =>
+          seen.indexOf(value) !== index && seen[index - 1] !== value
+      );
+      expect(revisited).toEqual([]);
+    });
+
+    test('and saying the same thing twice is still free', async () => {
+      const map = addMap();
+      const component = addComponent();
+      await select(map);
+      await roomJustAbove(10);
+
+      const before = composition();
+      const renders = countRenders();
+
+      // The second pass' own gesture, on this row: a write to an element the
+      // toolbar is not about, landing on every fourth frame of a zoom. Each of
+      // them rebuilds the row from the registry, and each of them resolves the
+      // dropdown's template afresh — a new object every time, saying exactly
+      // the same thing. Nothing may come of it.
+      const seen: string[] = [];
+      for (let i = 0; i < 24; i++) {
+        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        if (i % 4 === 0)
+          service.surface.updateElement(component, {
+            xywh: `[${871 + i},441,18,18]`,
+          });
+        seen.push(composition());
+        await frames(1);
+        seen.push(composition());
+      }
+
+      expect([...new Set(seen)]).toEqual([before]);
+      expect(renders.stop()).toBe(0);
     });
   });
 
