@@ -1,5 +1,6 @@
 import type { SurfaceBlockModel, Viewport } from '@labre/std/gfx';
 import type { BlockStdScope } from '@labre/std';
+import { signal } from '@preact/signals-core';
 import { Subject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 
@@ -39,8 +40,14 @@ function rendererFor(viewport: { viewScale: number }) {
     localElementUpdated: new Subject(),
   } as unknown as SurfaceBlockModel;
 
+  // The renderer resolves the gfx controller to watch the drag signal, which
+  // tells it when a stacking canvas may stop growing with the dragged element.
+  const fakeStd = {
+    get: () => ({ tool: { dragging$: signal(false) } }),
+  } as unknown as BlockStdScope;
+
   return new CanvasRenderer({
-    std: {} as unknown as BlockStdScope,
+    std: fakeStd,
     viewport: fakeViewport,
     layerManager: { layers: [], getCanvasLayers: () => [] } as never,
     gridManager: {} as never,
