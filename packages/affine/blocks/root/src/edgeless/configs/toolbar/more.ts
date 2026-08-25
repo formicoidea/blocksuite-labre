@@ -22,6 +22,7 @@ import {
   FrameBlockModel,
   ImageBlockModel,
   isExternalEmbedModel,
+  MindmapElementModel,
   NoteBlockModel,
   ParagraphBlockModel,
 } from '@labre/affine-model';
@@ -513,7 +514,20 @@ function reorderElements(
 ) {
   if (!models.length) return;
 
-  for (const model of models) {
+  // A mindmap node has no index of its own: the whole mindmap moves as one, so
+  // reorder the container instead — and only once, however many of its nodes
+  // are in the selection.
+  const normalizedModels = Array.from(
+    new Map(
+      models.map(model => {
+        const reorderTarget =
+          model.group instanceof MindmapElementModel ? model.group : model;
+        return [reorderTarget.id, reorderTarget];
+      })
+    ).values()
+  );
+
+  for (const model of normalizedModels) {
     const index = ctx.gfx.layer.getReorderedIndex(model, type);
 
     // block should be updated in transaction
