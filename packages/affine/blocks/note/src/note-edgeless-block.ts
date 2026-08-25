@@ -466,6 +466,26 @@ export const EdgelessNoteInteraction =
                     return;
                   }
 
+                  // A click landing on the note title belongs to the title:
+                  // routing it through the children container below would
+                  // clamp it into the first paragraph instead.
+                  const titleRect = view
+                    .querySelector('edgeless-page-block-title')
+                    ?.getBoundingClientRect();
+
+                  if (
+                    titleRect &&
+                    new Bound(
+                      titleRect.x,
+                      titleRect.y,
+                      titleRect.width,
+                      titleRect.height
+                    ).isPointInBound([e.clientX, e.clientY])
+                  ) {
+                    handleNativeRangeAtPoint(e.clientX, e.clientY);
+                    return;
+                  }
+
                   if (model.children.length === 0) {
                     const blockId = std.store.addBlock(
                       'affine:paragraph',
