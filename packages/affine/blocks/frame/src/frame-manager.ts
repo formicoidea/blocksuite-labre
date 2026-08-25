@@ -1,6 +1,7 @@
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
 import { Overlay } from '@labre/affine-block-surface';
 import type { FrameBlockModel } from '@labre/affine-model';
+import { FrameworkBackgroundElementModel } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
@@ -332,6 +333,11 @@ export class EdgelessFrameManager extends GfxExtension {
    * content. Mirrors the existing frame-inside-frame guard for canvas elements.
    */
   private _enclosesFrame(element: GfxModel, frame: FrameBlockModel) {
+    // A framework background is never frame content, whatever its geometry:
+    // the geometric test below has a hole (a frame TALLER than the map
+    // satisfies center-in-frame adoption without being fully enclosed), and
+    // since PF2 the model says outright what the geometry only hinted at.
+    if (element instanceof FrameworkBackgroundElementModel) return true;
     return element.elementBound.contains(frame.elementBound);
   }
 

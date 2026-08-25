@@ -210,6 +210,29 @@ describe('frame', () => {
     expect(service.layer.compare(frame, bg)).toBeGreaterThan(0);
   });
 
+  test('a frame taller than the background is not swallowed either', async () => {
+    const surface = service.surface;
+
+    // The adversarial probe of the geometric rule: this frame contains the
+    // background's center — so adoption matches — but the background does NOT
+    // fully enclose it. A purely geometric "encloses the frame" guard lets
+    // this one through; the semantic rule (a framework background is never
+    // frame content) must not.
+    const bgId = surface.addElement({
+      type: 'wardley',
+      xywh: '[0,0,1600,900]',
+    });
+    const frame = service.frame.createFrameOnBound(
+      new Bound(700, -200, 200, 1300)
+    );
+    await wait();
+
+    const bg = surface.getElementById(bgId)!;
+
+    expect(bg.group).toBeNull();
+    expect(frame.childElements).toHaveLength(0);
+  });
+
   test('undo of a deleted frame child restores its z-order untouched', async () => {
     const surface = service.surface;
 
