@@ -58,3 +58,45 @@ export function toOverlayCoord(
 export function overlayScale(viewport: { zoom: number; viewScale: number }) {
   return viewport.zoom / viewport.viewScale;
 }
+
+/**
+ * How wide and tall the visible viewport is *in the same units as*
+ * {@link toOverlayCoord}, so an overlay can tell whether it is about to run off
+ * the edge.
+ *
+ * `Viewport.width` / `Viewport.height` are the bounding client rect, i.e. real
+ * screen pixels. Comparing an overlay coordinate against them mixes two spaces
+ * and the flip or the clamp fires at the wrong moment under a scaled host.
+ */
+export function overlayViewportSize(viewport: {
+  width: number;
+  height: number;
+  viewScale: number;
+}): [number, number] {
+  const { width, height, viewScale } = viewport;
+  return [width / viewScale, height / viewScale];
+}
+
+/**
+ * Where a model point lands in *client* coordinates — what
+ * `document.caretRangeFromPoint`, `elementFromPoint` and a `PointerEvent`'s
+ * `clientX`/`clientY` speak.
+ *
+ * `Viewport.toViewCoord` answers relative to the viewport element's own top
+ * left corner, so handing its result to a client-coordinate API drops the
+ * viewport's offset in the window: the caret lands elsewhere as soon as the
+ * editor is not flush against the window origin — a sidebar, a header, or the
+ * editor embedded in a panel. Inverse of `Viewport.toViewCoordFromClientCoord`.
+ */
+export function toClientCoord(
+  viewport: {
+    left: number;
+    top: number;
+    toViewCoord: (modelX: number, modelY: number) => number[];
+  },
+  modelX: number,
+  modelY: number
+): [number, number] {
+  const [x, y] = viewport.toViewCoord(modelX, modelY);
+  return [x + viewport.left, y + viewport.top];
+}

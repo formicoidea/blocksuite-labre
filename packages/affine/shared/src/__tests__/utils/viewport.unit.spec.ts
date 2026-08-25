@@ -1,7 +1,12 @@
 import { GfxBlockComponent } from '@labre/std';
 import { describe, expect, test } from 'vitest';
 
-import { overlayScale, toOverlayCoord } from '../../utils/dom/viewport.js';
+import {
+  overlayScale,
+  overlayViewportSize,
+  toClientCoord,
+  toOverlayCoord,
+} from '../../utils/dom/viewport.js';
 
 /**
  * Overlays drawn over the canvas — the selection rectangle, the resize handles,
@@ -95,5 +100,63 @@ describe('overlayScale', () => {
       const viewport = { viewportX: 0, viewportY: 0, zoom: 1.5, viewScale };
       expect(overlayScale(viewport)).toBeCloseTo(blockCssScale(viewport));
     }
+  });
+});
+
+describe('overlayViewportSize', () => {
+  test('is the viewport itself, in the units toOverlayCoord answers in', () => {
+    for (const viewScale of [1, 0.5, 4]) {
+      const viewport = {
+        viewportX: 100,
+        viewportY: 50,
+        zoom: 2,
+        viewScale,
+        width: 800,
+        height: 600,
+      };
+
+      // The far corner of what is on screen, converted the way any other
+      // overlay point is, has to be the size the helper reports.
+      const farCorner = toOverlayCoord(
+        viewport,
+        viewport.viewportX + viewport.width / viewport.zoom,
+        viewport.viewportY + viewport.height / viewport.zoom
+      );
+
+      expect(overlayViewportSize(viewport)).toEqual(farCorner);
+    }
+  });
+
+  test('is the plain viewport size when the host applies no scale', () => {
+    expect(
+      overlayViewportSize({ width: 800, height: 600, viewScale: 1 })
+    ).toEqual([800, 600]);
+  });
+});
+
+describe('toClientCoord', () => {
+  const viewport = {
+    left: 240,
+    top: 64,
+    toViewCoord: (modelX: number, modelY: number) => [modelX * 2, modelY * 2],
+  };
+
+  test('adds the offset of the viewport in the window', () => {
+    expect(toClientCoord(viewport, 10, 5)).toEqual([260, 74]);
+  });
+
+  test('is what the viewport reads back as its own view coordinates', () => {
+    // `Viewport.toViewCoordFromClientCoord` is the inverse: subtract the same
+    // offset and the point is where `toViewCoord` put it.
+    const [clientX, clientY] = toClientCoord(viewport, 10, 5);
+    expect([clientX - viewport.left, clientY - viewport.top]).toEqual(
+      viewport.toViewCoord(10, 5)
+    );
+  });
+
+  test('changes nothing for a viewport flush against the window origin', () => {
+    expect(toClientCoord({ ...viewport, left: 0, top: 0 }, 10, 5)).toEqual(
+      viewport.toViewCoord(10, 5)
+    );
   });
 });
