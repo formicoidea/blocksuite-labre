@@ -1,9 +1,8 @@
 export {
   EDGE_DIRECTION_COLOR,
   EdgeDirectionManager,
-  EdgeDirectionOverlay,
-  midpointOf,
-  targetAnchorOf,
+  type EdgeLabelAnchor,
+  labelAnchorOf,
 } from './direction-reveal.js';
 export {
   EDGE_DIRECTION_WIDGET,
@@ -21,6 +20,8 @@ export {
 export {
   asTypedEdge,
   edgeIsBound,
+  type EdgeVerb,
+  edgeVerbOf,
   roleVocabularies,
   type TypedEdge,
 } from './typed-edge.js';

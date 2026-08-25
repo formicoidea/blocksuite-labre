@@ -12,6 +12,7 @@ import {
   readElement,
   readingProfileFor,
   type ReadingProfile,
+  readValueFlows,
   resolveRecordNature,
 } from '../extensions/reading.js';
 
@@ -336,6 +337,118 @@ describe('the parent-child relations', () => {
     expect(read(me, [other, edge])!.relations[0].otherName).toBe(
       'Customer register'
     );
+  });
+});
+
+describe('the value flow', () => {
+  const subject = () =>
+    element({
+      id: 'me',
+      role: 'test:component',
+      bound: [100, 200, 20, 20],
+      text: 'Brewing tea',
+    });
+
+  const edge = (source: string, target: string) =>
+    element({ id: `${source}->${target}`, role: 'test:dependency', source, target });
+
+  it('runs UP from a supplier to the subject', () => {
+    // The dependency arrow points down (`me` needs `Kettle`); the VALUE travels
+    // the other way, which is the whole point of saying it in a second sentence.
+    const me = subject();
+    const supplier = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+      text: 'Kettle',
+    });
+
+    expect(readValueFlows(read(me, [supplier, edge('me', 'db')])!)).toEqual([
+      { edgeId: 'me->db', from: 'Kettle', to: 'Brewing tea' },
+    ]);
+  });
+
+  it('runs UP from the subject to a consumer', () => {
+    const me = subject();
+    const consumer = element({
+      id: 'ui',
+      role: 'test:component',
+      bound: [100, 50, 20, 20],
+      text: 'Cup of tea',
+    });
+
+    expect(readValueFlows(read(me, [consumer, edge('ui', 'me')])!)).toEqual([
+      { edgeId: 'ui->me', from: 'Brewing tea', to: 'Cup of tea' },
+    ]);
+  });
+
+  it('says one sentence per typed edge, both sides at once', () => {
+    const me = subject();
+    const supplier = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+      text: 'Kettle',
+    });
+    const consumer = element({
+      id: 'ui',
+      role: 'test:component',
+      bound: [100, 50, 20, 20],
+      text: 'Cup of tea',
+    });
+
+    const flows = readValueFlows(
+      read(me, [supplier, consumer, edge('me', 'db'), edge('ui', 'me')])!
+    );
+    expect(flows).toHaveLength(2);
+    expect(flows.map(flow => `${flow.from}>${flow.to}`)).toEqual([
+      'Kettle>Brewing tea',
+      'Brewing tea>Cup of tea',
+    ]);
+  });
+
+  it('is EMPTY with no typed relation — the panel then shows no section', () => {
+    expect(readValueFlows(read(subject())!)).toEqual([]);
+  });
+
+  it('falls back to the id only when nothing on the board names an end', () => {
+    const me = element({ id: 'me', role: 'test:component', bound: [100, 200, 20, 20] });
+    const supplier = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+    });
+
+    expect(readValueFlows(read(me, [supplier, edge('me', 'db')])!)).toEqual([
+      { edgeId: 'me->db', from: 'db', to: 'me' },
+    ]);
+  });
+
+  it('reads the name off the label sibling, like every other field', () => {
+    // A framework artefact is a composite: the role is on the circle and the
+    // name on a free text beside it. The flow sentence must say the name.
+    const node = element({ id: 'me', role: 'test:component', bound: [100, 200, 20, 20] });
+    const label = element({
+      id: 'me-label',
+      role: 'test:label',
+      bound: [130, 200, 80, 20],
+      text: 'Brewing tea',
+    });
+    grouped(node, label);
+    const supplier = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+      text: 'Kettle',
+    });
+
+    const reading = readElement(
+      node,
+      [node, label, supplier, edge('me', 'db')],
+      PROFILE
+    )!;
+    expect(reading.name).toBe('Brewing tea');
+    expect(readValueFlows(reading)[0].to).toBe('Brewing tea');
   });
 });
 

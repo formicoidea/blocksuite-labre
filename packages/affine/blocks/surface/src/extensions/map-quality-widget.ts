@@ -1,10 +1,8 @@
-import type { RootBlockModel } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import {
   type AnyCommandDescriptor,
   type BlockStdScope,
   type CommandDescriptor,
-  WidgetComponent,
   WidgetViewExtension,
 } from '@labre/std';
 import {
@@ -14,9 +12,12 @@ import {
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import {
+  EditorAnchoredPanel,
+  editorAnchoredPanelStyles,
+} from './editor-anchored-panel.js';
 import {
   checkedNudges,
   type QualityNudge,
@@ -24,6 +25,9 @@ import {
 } from './map-quality.js';
 import {
   type CheckupRun,
+  liveViolations,
+  type RuleFamily,
+  userFacingViolations,
   ValidationManager,
   type Violation,
 } from './validation.js';
@@ -46,13 +50,35 @@ function fill(text: string, values: Record<string, string | number>): string {
 }
 
 /**
- * The panel is TEXT and controls, so it is sized in screen pixels — the same
- * reasoning that keeps the violation bubble in screen units while the markers
- * that open it scale with the board.
+ * Width of the column the checkboxes live in, in screen pixels.
+ *
+ * Every body row of the panel reserves it — the ones with a box put the box in
+ * it, the ones without leave it empty — so one vertical line runs down the left
+ * edge of every sentence in the panel. The alternative the PO offered (boxes
+ * aligned right) would have put the control furthest from the words it governs.
  */
-const PANEL_WIDTH = 320;
-const PANEL_GAP = 12;
-const PANEL_MAX_HEIGHT = 420;
+const CHECKBOX_GUTTER = 22;
+
+/**
+ * What the library calls each rule FAMILY, so a check-up can say what it looked
+ * at — "Check-up (tones, nomenclature)" — instead of announcing a verdict about
+ * nothing in particular.
+ *
+ * Chrome, and only chrome: a family is the LIBRARY's own vocabulary (it is
+ * declared in `validation.ts` and no framework may add one), so wording it here
+ * puts no words in a framework's mouth. The rule's own message still comes from
+ * the framework, and the host catalogue still wins over both — these are keyed
+ * like everything else.
+ */
+const FAMILY_FALLBACK: Record<RuleFamily, string> = {
+  'element-in-background': 'placement',
+  'orientation-against-axis': 'orientation',
+  attachment: 'attachment',
+  'no-overlap': 'overlaps',
+  'relative-order-along-axis': 'order',
+  'tone-convention': 'tones',
+  'majority-fact': 'nomenclature',
+};
 
 /**
  * The **Map quality** panel (PF7.11): the checklist of nudges a framework
@@ -78,11 +104,19 @@ const PANEL_MAX_HEIGHT = 420;
  * and the panel lives on the root block — two trees with no DOM path between
  * them.
  *
- * DOM rather than the canvas overlay for the reason `ViolationDetailWidget`
- * gives at length: it takes clicks. Same host geometry (an absolutely
- * positioned, zero-sized box at the viewport origin, so only its positioned
- * children are hit), same pointer-pair swallowing, same click-away and Escape
- * handling.
+ * ## Where it sits
+ *
+ * **Anchored to the EDITOR, above the senior button bar and at its width** —
+ * the same place, the same layer and the same shared class as the reversed
+ * reading's panel (ADR 0011, PO decision of 02/08/2026). It shipped as a
+ * popover hanging off the map's top-right corner, at 320px, flipping sides and
+ * ends to stay on screen; every line of that arithmetic is gone, and with it
+ * the two faults the PO named — a floating box that loses the z-order contest
+ * with the toolbars, and a measure that lines up with nothing.
+ *
+ * Only the PRESENTATION moved. The entry in the background's contextual menu is
+ * still the trigger, the panel is still about one root instance and still says
+ * so in `data-element-id`, and nothing about what it renders changed.
  *
  * ## Read-only
  *
@@ -98,38 +132,38 @@ const PANEL_MAX_HEIGHT = 420;
  * — the same contract as an exception (PF8), and the reason the checklist and
  * the computed remarks are two clearly separated blocks rather than one list
  * that would blur what was measured with what was asserted.
+ *
+ * ## Saying which of the three it is (PO, 02/08)
+ *
+ * The review found a map wearing amber badges whose check-up reported "Nothing
+ * to report", with a missing title and no legend. Every one of those statements
+ * was true, and together they read as a contradiction, because the panel never
+ * said WHO was speaking. Three different things live on this surface and the
+ * wording now names all three, without moving a single boundary between them:
+ *
+ * - the CHECKLIST is introduced as "To be checked by you" — the tool does not
+ *   judge it and now says so before the first box, not only in a comment here;
+ * - the CHECK-UP names the families it walked — "Check-up (tones,
+ *   nomenclature):" — so "Nothing to report" is a verdict about something
+ *   rather than about everything;
+ * - the REAL-TIME findings, which no check-up ever runs, get a read-only count
+ *   for this map, so the badges on the canvas are accounted for in the panel
+ *   that was appearing to deny them.
+ *
+ * No semantics changed: the same rules run at the same moments and write the
+ * same things. Only the panel stopped leaving the reader to work out which is
+ * which.
  */
-export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
-  static override styles = css`
-    /* Above edgeless-selected-rect (z-index 1) and level with the violation
-       badge, well below the toolbars. */
-    :host {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-
+export class MapQualityWidget extends EditorAnchoredPanel {
+  static override styles = [
+    editorAnchoredPanelStyles,
+    css`
+    /* The box, the layer and the anchoring come from the shared pattern; this
+       is the panel's own stacking of sections inside it. */
     .map-quality-panel {
-      position: absolute;
-      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      width: ${unsafeCSS(PANEL_WIDTH)}px;
-      max-height: ${unsafeCSS(PANEL_MAX_HEIGHT)}px;
-      overflow-y: auto;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--affine-border-color);
-      background: var(--affine-background-overlay-panel-color, #fff);
-      box-shadow: var(--affine-shadow-2);
-      color: var(--affine-text-primary-color);
-      font-family: var(--affine-font-family);
-      font-size: 14px;
-      line-height: 1.4;
-      pointer-events: auto;
     }
 
     .map-quality-head {
@@ -164,12 +198,25 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
       letter-spacing: 0.04em;
     }
 
+    /* One column for the control, one for the words — and the same two columns
+       on every body row, whether or not it has a control to put in the first
+       one (PO, 02/08: the check-up lines hung a checkbox-width to the left of
+       the checklist and read as a hole). */
+    .map-quality-nudge,
+    .map-quality-indent {
+      display: grid;
+      grid-template-columns: ${unsafeCSS(CHECKBOX_GUTTER)}px 1fr;
+      align-items: start;
+    }
+
     .map-quality-nudge {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
       padding: 4px 0;
       cursor: pointer;
+    }
+
+    /* The gutter is empty here: the second column is where the text goes. */
+    .map-quality-indent > * {
+      grid-column: 2;
     }
 
     .map-quality-nudge input[disabled] {
@@ -178,7 +225,7 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
 
     .map-quality-nudge input {
       margin: 2px 0 0;
-      flex: none;
+      justify-self: start;
     }
 
     .map-quality-nudge[data-checked='true'] .map-quality-nudge-label {
@@ -191,6 +238,7 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
 
     .map-quality-run {
       align-self: flex-start;
+      justify-self: start;
       padding: 4px 10px;
       border-radius: 4px;
       border: 1px solid var(--affine-border-color);
@@ -222,6 +270,18 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
       font-size: 12px;
     }
 
+    /* What the check-up looked at, and what is flagged in real time — context,
+       not verdicts, so they read as secondary to the remarks they frame. */
+    .map-quality-scope,
+    .map-quality-realtime {
+      color: var(--affine-text-secondary-color);
+      font-size: 12px;
+    }
+
+    .map-quality-realtime {
+      margin-top: 4px;
+    }
+
     .map-quality-remark + .map-quality-remark {
       margin-top: 8px;
       padding-top: 8px;
@@ -234,7 +294,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
       font-size: 13px;
       overflow-wrap: anywhere;
     }
-  `;
+    `,
+  ];
 
   /** The instance whose panel is open, mirrored off the manager's signal. */
   @state()
@@ -242,6 +303,19 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
 
   @state()
   private accessor _checkup: CheckupRun | null = null;
+
+  /**
+   * The live real-time findings, mirrored off the manager's signal for the
+   * context line ({@link _renderRealtime}).
+   *
+   * Mirrored rather than read inside `render`: a lit template does not track a
+   * preact signal, so a count read there would be whatever it was the last time
+   * something else forced a render — a number that is silently wrong is worse
+   * than no number, and this one exists precisely to be trusted against the
+   * badges on the canvas.
+   */
+  @state()
+  private accessor _violations: readonly Violation[] = [];
 
   /**
    * Bumped to force a re-render when the document changes underneath — a peer
@@ -256,12 +330,16 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
   /** The instance whose panel has already been given the focus, if any. */
   private _focused: string | null = null;
 
-  get gfx() {
-    return this.std.get(GfxControllerIdentifier);
-  }
-
   private get _validation() {
     return this.std.getOptional(ValidationManager);
+  }
+
+  protected override get panelOpen(): boolean {
+    return this._openFor !== null;
+  }
+
+  protected override closePanel(): void {
+    this._close();
   }
 
   /** The open instance, if it still exists and still has a panel to show. */
@@ -272,31 +350,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     return this._validation?.hasMapQuality(element) ? element : null;
   }
 
-  private readonly _swallow = (event: Event) => {
-    event.stopPropagation();
-  };
-
   private readonly _close = () => {
     this._validation?.closeMapQuality();
-  };
-
-  private readonly _onDocumentPointerDown = (event: PointerEvent) => {
-    if (this._openFor === null) return;
-    // Anything inside this widget keeps it open. The toolbar entry that opened
-    // it is in another tree, and its own click already landed.
-    if (event.composedPath().includes(this)) return;
-    this._close();
-  };
-
-  /**
-   * Escape is listened for on the EDITOR HOST, not on `document`, so a host
-   * application keeps its own global Escape while this panel handles its own —
-   * the rule `ViolationDetailWidget` established.
-   */
-  private readonly _onHostKeydown = (event: KeyboardEvent) => {
-    if (this._openFor === null || event.key !== 'Escape') return;
-    event.stopPropagation();
-    this._close();
   };
 
   /**
@@ -339,7 +394,7 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * while lit runs `firstUpdated` exactly once.
    */
   private _wire() {
-    const { _disposables, gfx } = this;
+    const { _disposables } = this;
 
     const validation = this._validation;
     if (validation) {
@@ -354,30 +409,31 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
           this._checkup = validation.checkup$.value;
         })
       );
+      _disposables.add(
+        effect(() => {
+          const next = liveViolations(
+            userFacingViolations(validation.violations$.value)
+          );
+          // A clean board hands out a fresh empty array on every evaluation;
+          // assigning it would re-render the panel for nothing, and does so
+          // once from inside the widget's own first update.
+          if (next.length === 0 && this._violations.length === 0) return;
+          this._violations = next;
+        })
+      );
     }
 
-    _disposables.add(
-      gfx.viewport.viewportUpdated.subscribe(() => {
-        // The panel FOLLOWS the instance instead of closing on pan and zoom,
-        // unlike the violation bubble: that one is a transient read of one
-        // finding, this one is a surface somebody is halfway through ticking,
-        // and losing their place because they scrolled would be the tool
-        // throwing work away.
-        if (this._openFor !== null) this.requestUpdate();
-      })
-    );
-
-    document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
-    const host = this.std.host;
-    host.addEventListener('keydown', this._onHostKeydown, true);
+    // Click-away, Escape, and the re-measure of the bar the panel is aligned
+    // on — the shared pattern, and the same call the reading panel makes.
+    //
+    // The panel no longer follows the instance on a pan or a zoom, because it
+    // no longer hangs off it: it is anchored to the EDITOR, so a gesture that
+    // moves the map leaves the surface somebody is halfway through ticking
+    // exactly where they left it — which was the point of not closing on pan in
+    // the first place, now obtained by construction.
+    this.wireAnchoredPanel();
 
     _disposables.add(() => {
-      document.removeEventListener(
-        'pointerdown',
-        this._onDocumentPointerDown,
-        true
-      );
-      host.removeEventListener('keydown', this._onHostKeydown, true);
       for (const subscription of this._elementSubscriptions) {
         subscription.unsubscribe();
       }
@@ -409,18 +465,12 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * the viewport origin and the browser would otherwise scroll the editor to
    * "reveal" it.
    *
-   * ## Deliberately NOT `aria-modal`, and no focus trap
-   *
-   * `aria-modal="true"` is a promise that everything behind the dialog is inert,
-   * and this panel promises the opposite: the canvas stays usable behind it,
-   * which is the whole reason it follows the instance on pan instead of closing.
-   * Claiming modality without trapping focus is a label that lies to a screen
-   * reader, and trapping Tab from a host that is still perfectly interactive
-   * would be the library taking something that is not its to take. So:
-   * `role="dialog"` for the announcement, `tabindex="-1"` and this focus move
-   * for the reachability, and nothing that claims exclusivity.
+   * The dialog semantics themselves — `role`, `tabindex`, and the deliberate
+   * absence of `aria-modal` — come from {@link EditorAnchoredPanel}, which is
+   * also where the reasoning for that absence now lives.
    */
   override updated() {
+    super.updated();
     if (this._openFor === null || this._openFor === this._focused) {
       if (this._openFor === null) this._focused = null;
       return;
@@ -507,11 +557,18 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
 
     return html`<div>
       <div class="map-quality-group-label" id="map-quality-checklist-label">
-        ${translateKey(
-          this.std,
-          'com.labre.validation.map-quality.checklist',
-          'Checklist'
-        )}
+        ${
+          // Who is doing the checking, said in the label itself (PO, 02/08).
+          // "Checklist" left the reader to guess whether the tool had already
+          // been through it — and the whole contract of a nudge is that it has
+          // not, and cannot. Ticking is assuming; the label now says so before
+          // the first box rather than in a comment in this file.
+          translateKey(
+            this.std,
+            'com.labre.validation.map-quality.checklist.yours',
+            'To be checked by you:'
+          )
+        }
       </div>
       <div role="group" aria-labelledby="map-quality-checklist-label">
         ${nudges.map(nudge => {
@@ -528,8 +585,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
               .checked=${on}
               ?disabled=${readonly}
               aria-label=${label}
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @change=${(event: Event) =>
                 this._toggleNudge(
                   element,
@@ -540,6 +597,67 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
             <span class="map-quality-nudge-label">${label}</span>
           </label>`;
         })}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * The families a check-up on this map walks, worded and joined — "tones,
+   * nomenclature".
+   *
+   * Distinct and in declared order: two rules of the same family are one thing
+   * being checked, and the list is read, not counted.
+   */
+  private _checkupScope(rules: readonly { family: RuleFamily }[]): string {
+    const families: string[] = [];
+    for (const rule of rules) {
+      const label = translateKey(
+        this.std,
+        `com.labre.validation.family.${rule.family}`,
+        FAMILY_FALLBACK[rule.family] ?? rule.family
+      );
+      if (!families.includes(label)) families.push(label);
+    }
+    return families.join(
+      translateKey(this.std, 'com.labre.validation.list-separator', ', ')
+    );
+  }
+
+  /**
+   * "N real-time warnings active on this map" — the missing half of the PO's
+   * 02/08 report, where a check-up said "Nothing to report" over a map wearing
+   * amber badges.
+   *
+   * Both statements were true and neither was legible on its own: the badges
+   * come from REAL-TIME rules, which a check-up never runs, and the check-up
+   * only ever spoke about its own two. So the panel says both, in the order a
+   * reader needs them, and neither one changes what the other means.
+   *
+   * Strictly READ-ONLY, and strictly this map's: the count comes off
+   * `violations$` — the same list the badges are drawn from — narrowed on
+   * `backgroundId`, exactly as `runCheckup` narrows a check-up. Audit findings
+   * are excluded because they are invisible by design, and excused ones because
+   * an exception is a decision already taken, not something still asking.
+   *
+   * Nothing is rendered when the count is zero: a line saying "0" is noise on
+   * the clean board, which is most boards.
+   */
+  private _renderRealtime(element: GfxPrimitiveElementModel) {
+    const count = this._violations.filter(
+      violation => violation.backgroundId === element.id
+    ).length;
+    if (count === 0) return nothing;
+
+    return html`<div class="map-quality-indent">
+      <div class="map-quality-realtime" data-testid="map-quality-realtime">
+        ${fill(
+          translateKey(
+            this.std,
+            'com.labre.validation.map-quality.realtime',
+            'Real-time warnings currently on this map: {count}.'
+          ),
+          { count }
+        )}
       </div>
     </div>`;
   }
@@ -589,13 +707,14 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
           'Check-up'
         )}
       </div>
-      <button
-        class="map-quality-run"
+      <div class="map-quality-indent">
+        <button
+          class="map-quality-run"
         type="button"
         data-testid="map-quality-run"
         ?disabled=${running}
-        @pointerdown=${this._swallow}
-        @pointerup=${this._swallow}
+        @pointerdown=${this.swallow}
+        @pointerup=${this.swallow}
         @click=${() => this._runCheckup(element)}
       >
         ${running
@@ -633,6 +752,20 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
                 )}:
                 ${new Date(run.at).toLocaleTimeString()}
               </div>
+              <!-- WHAT was checked, on the result itself. A verdict that does
+                   not say what it looked at reads as a verdict on everything,
+                   which is how "Nothing to report" ended up contradicting the
+                   badges on the same map. -->
+              <div class="map-quality-scope" data-testid="map-quality-scope">
+                ${fill(
+                  translateKey(
+                    this.std,
+                    'com.labre.validation.map-quality.scope',
+                    'Check-up ({families}):'
+                  ),
+                  { families: this._checkupScope(rules) }
+                )}
+              </div>
               ${run.error
                 ? html`<div data-testid="map-quality-error">
                     ${translateKey(
@@ -651,6 +784,7 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
                     )}
                   </div>`
                 : run.results.map(remark => this._renderRemark(remark))}`}
+      </div>
       </div>
     </div>`;
   }
@@ -673,59 +807,45 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     // nothing.
     void this._revision;
 
-    const { viewport } = this.gfx;
-    const bound = element.elementBound;
-    const [anchorX, anchorY] = viewport.toViewCoord(bound.maxX, bound.y);
-    const flipX = anchorX + PANEL_GAP + PANEL_WIDTH > viewport.width;
-    // Pinned by its BOTTOM edge when it would overflow, which is exact whatever
-    // the content measures — the violation bubble's trick, and for the same
-    // reason: the height is not known before layout.
-    const flipY = anchorY + PANEL_GAP + PANEL_MAX_HEIGHT > viewport.height;
     const title = translateKey(
       this.std,
       'com.labre.validation.map-quality.section',
       'Map quality'
     );
 
-    return html`<div
-      class="map-quality-panel"
-      role="dialog"
-      aria-label=${title}
-      data-testid="map-quality-panel"
-      data-element-id=${element.id}
-      data-flip-y=${flipY}
-      tabindex="-1"
-      style=${styleMap({
-        left: flipX
-          ? `${anchorX - PANEL_GAP - PANEL_WIDTH}px`
-          : `${anchorX + PANEL_GAP}px`,
-        top: flipY ? `${viewport.height - PANEL_GAP}px` : `${anchorY}px`,
-        ...(flipY ? { transform: 'translateY(-100%)' } : {}),
-      })}
-      @pointerdown=${this._swallow}
-      @pointerup=${this._swallow}
-      @click=${this._swallow}
-    >
-      <div class="map-quality-head">
-        <span>${title}</span>
-        <button
-          class="map-quality-close"
-          type="button"
-          data-testid="map-quality-close"
-          aria-label=${translateKey(
-            this.std,
-            'com.labre.validation.map-quality.close',
-            'Close'
-          )}
-          @pointerdown=${this._swallow}
-          @pointerup=${this._swallow}
-          @click=${this._close}
-        >
-          ×
-        </button>
-      </div>
-      ${this._renderNudges(element)} ${this._renderCheckup(element)}
-    </div>`;
+    return this.renderAnchoredPanel(
+      {
+        testid: 'map-quality-panel',
+        variant: 'map-quality-panel',
+        elementId: element.id,
+        label: title,
+      },
+      html`<div class="map-quality-head">
+          <span>${title}</span>
+          <button
+            class="map-quality-close"
+            type="button"
+            data-testid="map-quality-close"
+            aria-label=${translateKey(
+              this.std,
+              'com.labre.validation.map-quality.close',
+              'Close'
+            )}
+            @pointerdown=${this.swallow}
+            @pointerup=${this.swallow}
+            @click=${this._close}
+          >
+            ×
+          </button>
+        </div>
+        ${this._renderNudges(element)} ${this._renderCheckup(element)}
+        ${
+          // Last, and outside the check-up block on purpose: it is context about
+          // the MAP, not a result of the button above it, and it has to be there
+          // for a framework that declares nudges and no on-demand rule at all.
+          this._renderRealtime(element)
+        }`
+    );
   }
 }
 

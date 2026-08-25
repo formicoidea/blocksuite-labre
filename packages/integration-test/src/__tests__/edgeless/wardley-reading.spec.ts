@@ -12,6 +12,7 @@ import {
   TranslationExtension,
 } from '@labre/affine/shared/services';
 import { readElementTags } from '@labre/affine/std/gfx';
+import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import { computed } from '@preact/signals-core';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -398,6 +399,252 @@ describe('the reversed reading of a Wardley component', () => {
     const naming = field('reading-naming') as HTMLElement | null;
     expect(naming).not.toBeNull();
     expect(naming!.querySelector('[data-conforms="true"]')).not.toBeNull();
+  });
+
+  /**
+   * The PO recette of 02/08/2026, point 1 and its second pass: the panel came
+   * back rendering BEHIND the contextual toolbar, and then at a 480px measure
+   * that lined up with nothing. It is now anchored to the EDITOR — above the
+   * senior button bar, at the bar's own width, in a layer above every toolbar
+   * (ADR 0011) — rather than floating beside the element it is about.
+   */
+  describe('where the panel sits', () => {
+    /** `auto` is not a number, and a panel must beat it too. Treat it as 0. */
+    const zOf = (element: Element) => {
+      const value = getComputedStyle(element).zIndex;
+      return value === 'auto' ? 0 : Number.parseInt(value, 10);
+    };
+
+    const openOnAComponent = async (xywh?: string) => {
+      addMap();
+      const component = addComponent(xywh);
+      await select(component);
+      manager().open(component);
+      await settle();
+      return component;
+    };
+
+    /** The senior button bar itself — the visible box, not the widget's slab. */
+    const seniorBar = () =>
+      (
+        root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
+          | HTMLElement
+          | undefined
+      )?.shadowRoot?.querySelector<HTMLElement>('.edgeless-toolbar-container') ??
+      null;
+
+    /** Resize the editor and let the toolbar settle at its new tool count. */
+    const resizeEditorTo = async (width: string) => {
+      const app = window.editor.parentElement as HTMLElement;
+      app.style.width = width;
+      await settle();
+      await settle();
+    };
+
+    test('it renders above the contextual toolbar and the bottom one', async () => {
+      await openOnAComponent();
+      expect(panel()).not.toBeNull();
+
+      // The HOST is where the contest is decided: every widget host is a
+      // sibling in `.widgets-container`, and `affine-toolbar-widget` declares
+      // no stacking context of its own, so `editor-toolbar`'s z-index competes
+      // at that level.
+      const host = widget() as unknown as HTMLElement;
+      const reading = zOf(host);
+
+      const contextual = toolbar();
+      expect(contextual).not.toBeNull();
+      expect(reading).toBeGreaterThan(zOf(contextual!));
+
+      const bottom = root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
+        | HTMLElement
+        | undefined;
+      expect(bottom).not.toBeUndefined();
+      expect(reading).toBeGreaterThan(zOf(bottom!));
+    });
+
+    test('…and nothing between it and the widgets layer caps that', async () => {
+      await openOnAComponent();
+
+      // `.widgets-container` has `contain: layout`, so a host nested inside
+      // another widget would be capped at THAT widget's z-index however large
+      // its own. Being a direct child is the whole of the guarantee.
+      const host = widget() as unknown as HTMLElement;
+      expect(host.parentElement?.classList.contains('widgets-container')).toBe(
+        true
+      );
+    });
+
+    test('it takes the senior bar’s width, and sits just above it', async () => {
+      await openOnAComponent();
+
+      const box = panel()!.getBoundingClientRect();
+      const editor = root.getBoundingClientRect();
+      const bar = seniorBar()!.getBoundingClientRect();
+
+      // Inside the viewport, on all four sides.
+      expect(box.left).toBeGreaterThanOrEqual(editor.left);
+      expect(box.right).toBeLessThanOrEqual(editor.right);
+      expect(box.top).toBeGreaterThanOrEqual(editor.top);
+      expect(box.bottom).toBeLessThanOrEqual(editor.bottom);
+
+      // The PO's two red rules: the panel's edges ARE the bar's edges.
+      expect(box.left).toBeCloseTo(bar.left, 0);
+      expect(box.right).toBeCloseTo(bar.right, 0);
+      expect(box.width).toBeCloseTo(bar.width, 0);
+
+      // Above it, and clear of it: the buttons underneath stay usable.
+      expect(box.bottom).toBeLessThanOrEqual(bar.top);
+      expect(bar.top - box.bottom).toBeLessThan(24);
+    });
+
+    test('…at both window sizes, because the bar is measured and not guessed', async () => {
+      await openOnAComponent();
+
+      const measure = () => {
+        const box = panel()!.getBoundingClientRect();
+        const bar = seniorBar()!.getBoundingClientRect();
+        return { box, bar };
+      };
+
+      // Wide: the toolbar sits at its 900px cap, so the bar is at its widest.
+      await resizeEditorTo('1400px');
+      const wide = measure();
+      expect(wide.box.width).toBeCloseTo(wide.bar.width, 0);
+      expect(wide.box.left).toBeCloseTo(wide.bar.left, 0);
+
+      // Narrow enough that the bar is squeezed by `max-width: calc(100% -
+      // 128px)` and changes width under the panel. A fixed 480px would survive
+      // the first assertion and fail this one — which is the whole point.
+      await resizeEditorTo('620px');
+      const narrow = measure();
+      expect(narrow.box.width).toBeCloseTo(narrow.bar.width, 0);
+      expect(narrow.box.left).toBeCloseTo(narrow.bar.left, 0);
+      expect(narrow.box.width).toBeLessThan(wide.box.width);
+    });
+
+    test('it does not follow the element it is about', async () => {
+      const component = await openOnAComponent('[871,441,18,18]');
+      const before = panel()!.getBoundingClientRect();
+
+      // The old bubble hung off the element's top-right corner. This one is
+      // anchored to the editor, so moving the subject right across the map
+      // leaves the panel exactly where it was.
+      service.surface.updateElement(component, { xywh: '[100,100,18,18]' });
+      await settle();
+
+      const after = panel()!.getBoundingClientRect();
+      expect(after.left).toBeCloseTo(before.left, 0);
+      expect(after.bottom).toBeCloseTo(before.bottom, 0);
+    });
+  });
+
+  /**
+   * The PO recette of 02/08/2026, point 2: the same typed edges as the
+   * relations, said the way a value chain is read — from the bottom up.
+   */
+  describe('the value flow section', () => {
+    const addDependency = (consumer: string, provider: string) =>
+      service.surface.addElement({
+        type: 'connector',
+        role: 'wardley:dependency',
+        source: { id: consumer },
+        target: { id: provider },
+      });
+
+    /** A named component: the circle carries the role, the text the name. */
+    const named = (name: string, xywh: string, labelXywh: string) => {
+      const node = service.surface.addElement({
+        type: 'wardleyNode',
+        kind: 'component',
+        role: 'wardley:component',
+        xywh,
+      });
+      const label = service.surface.addElement({
+        type: 'text',
+        text: name,
+        role: 'wardley:label',
+        xywh: labelXywh,
+      });
+      groupOf(node, label);
+      return node;
+    };
+
+    const lines = () =>
+      Array.from(
+        widget()?.shadowRoot?.querySelectorAll(
+          '[data-testid="reading-value-flow-line"]'
+        ) ?? []
+      ).map(line => line.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+
+    test('the value runs UP, from the supplier to the consumer', async () => {
+      addMap();
+      const tea = named('Brewing tea', '[871,441,18,18]', '[900,441,120,26]');
+      const kettle = named('Kettle', '[871,700,18,18]', '[900,700,120,26]');
+      const cup = named('Cup of tea', '[871,150,18,18]', '[900,150,120,26]');
+      // ADR 0010: `source` is the consumer, `target` is what it needs.
+      addDependency(tea, kettle);
+      addDependency(cup, tea);
+
+      await select(tea);
+      manager().open(tea);
+      await settle();
+
+      expect(field('reading-value-flow')).not.toBeNull();
+      // One sentence per typed edge, both sides at once — and the direction is
+      // the OPPOSITE of the dependency arrow, which is the entire point.
+      expect(lines()).toEqual([
+        'Value flows up from Kettle to Brewing tea',
+        'Value flows up from Brewing tea to Cup of tea',
+      ]);
+    });
+
+    test('with no typed link there is no section at all', async () => {
+      addMap();
+      const alone = named('Brewing tea', '[871,441,18,18]', '[900,441,120,26]');
+      await select(alone);
+      manager().open(alone);
+      await settle();
+
+      // An empty "Value flow" heading states nothing anyone wants; the
+      // relations field already says in words that no link touches this
+      // component.
+      expect(field('reading-relations')).not.toBeNull();
+      expect(field('reading-value-flow')).toBeNull();
+    });
+
+    test('the host’s catalogue owns the words', async () => {
+      unmount?.();
+      unmount = null;
+      await mount(undefined, [
+        TranslationExtension({
+          t: key =>
+            key === 'com.labre.reading.value-flow'
+              ? 'La valeur remonte de'
+              : key === 'com.labre.reading.value-flow.to'
+                ? 'vers'
+                : key === 'com.labre.reading.field.value-flow'
+                  ? 'Flux de valeur'
+                  : undefined,
+        }),
+      ]);
+
+      addMap();
+      const tea = named('Brewing tea', '[871,441,18,18]', '[900,441,120,26]');
+      const kettle = named('Kettle', '[871,700,18,18]', '[900,700,120,26]');
+      addDependency(tea, kettle);
+
+      await select(tea);
+      manager().open(tea);
+      await settle();
+
+      // Two slots, so a catalogue can put the halves where its own grammar
+      // wants them; the English fallback is only what a silent host gets.
+      expect(field('reading-value-flow')?.textContent).toContain(
+        'Flux de valeur'
+      );
+      expect(lines()).toEqual(['La valeur remonte de Kettle vers Brewing tea']);
+    });
   });
 
   test('Escape puts the panel away', async () => {

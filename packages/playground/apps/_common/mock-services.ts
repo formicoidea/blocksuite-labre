@@ -1,3 +1,4 @@
+import type { PivotRecordPicker } from '@labre/affine/blocks/surface';
 import { toast } from '@labre/affine/components/toast';
 import {
   ColorScheme,
@@ -15,6 +16,7 @@ import {
   type ParseDocUrlService,
   type ThemeExtension,
 } from '@labre/affine/shared/services';
+import type { BlockStdScope } from '@labre/affine/std';
 import type { BaseSelection, Workspace } from '@labre/affine/store';
 import type { TestAffineEditorContainer } from '@labre/integration-test';
 import { Signal, signal } from '@preact/signals-core';
@@ -172,6 +174,55 @@ export function mockGenerateDocUrlService(collection: Workspace) {
     },
   };
   return generateDocUrlService;
+}
+
+/**
+ * **A recette mock-up, not a product.** The playground's stand-in for the pivot
+ * record picker the SaaS host provides.
+ *
+ * The library deliberately ships NO picker: `PivotRecordPickerProvider` has no
+ * default implementation, so with nothing registered the reading panel's "Link
+ * to a record" action is hidden rather than disabled (see
+ * `reading.ts`). That is correct in production — the library does not know what
+ * a pivot record is — but it left the playground with no way to exercise
+ * `pivot.bind` at all, which is what this fills.
+ *
+ * It is a `window.prompt` over the collection's own documents: crude on
+ * purpose, so nobody mistakes it for the real picker. The real host opens its
+ * record browser; this one lists what the playground happens to have and takes
+ * a number. Do not grow it — if a recette needs more, the answer is to run the
+ * SaaS host, not to build a second picker here.
+ */
+export function mockPivotRecordPicker(): PivotRecordPicker {
+  return {
+    // The contract says a picker MUST NOT throw and resolves to `null` on a
+    // cancel. `prompt` returns `null` on cancel, which lands on the same
+    // behaviour for free; anything unparseable is treated as a cancel too.
+    pick: async (std: BlockStdScope) => {
+      const docs = [...std.store.workspace.docs.values()];
+      if (docs.length === 0) return null;
+
+      const menu = docs
+        .map((doc, index) => `${index + 1}. ${doc.meta?.title || 'Untitled'}`)
+        .join('\n');
+      const answer = window.prompt(
+        `[playground mock-up] Link this element to which record?\n\n${menu}\n\nNumber, or a raw doc id:`,
+        '1'
+      );
+      if (answer === null) return null;
+
+      const trimmed = answer.trim();
+      if (trimmed === '') return null;
+
+      const index = Number(trimmed);
+      if (Number.isInteger(index) && index >= 1 && index <= docs.length) {
+        return docs[index - 1].id;
+      }
+      // A raw id, so a record that is NOT one of the playground's docs can be
+      // typed in — the host's records are not the editor's documents.
+      return trimmed;
+    },
+  };
 }
 
 export function mockEditorSetting() {

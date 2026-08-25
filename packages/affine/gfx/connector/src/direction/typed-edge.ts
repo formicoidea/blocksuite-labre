@@ -67,3 +67,35 @@ export function asTypedEdge(
 export function edgeIsBound(model: ConnectorElementModel): boolean {
   return Boolean(model.source?.id) && Boolean(model.target?.id);
 }
+
+/** A word to say, and the fallback to use when the host has no catalogue. */
+export interface EdgeVerb {
+  key: string;
+  fallback?: string;
+}
+
+/**
+ * The ONE word a revealed edge is labelled with — the role's verb.
+ *
+ * Only the verb, since the PO recette of 02/08/2026: the label used to carry
+ * the whole sentence, `Kettle depends on Electricity`, and a sentence laid on a
+ * short link is longer than the link, so it covered the two components it was
+ * naming. The names are already on the canvas at both ends of the line; what
+ * the drawing does not say is what the line MEANS, and that is the verb.
+ *
+ * The role's LABEL when it declares no verb, because the label is the only mark
+ * left and an unlabelled arrow says which way without ever saying what. `null`
+ * when the role declares neither, which is the one case where the library
+ * genuinely has nothing to add.
+ */
+export function edgeVerbOf(edge: TypedEdge): EdgeVerb | null {
+  const verb = edge.direction
+    ? { key: edge.direction.verbKey, fallback: edge.direction.verbFallback }
+    : edge.role.labelKey !== undefined
+      ? { key: edge.role.labelKey, fallback: edge.role.labelFallback }
+      : null;
+  if (verb === null) return null;
+  return verb.fallback === undefined
+    ? { key: verb.key }
+    : { key: verb.key, fallback: verb.fallback };
+}

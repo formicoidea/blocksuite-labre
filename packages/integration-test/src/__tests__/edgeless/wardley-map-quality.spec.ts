@@ -2,12 +2,15 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
   checkedNudges,
   CHECKUP_SLICE_MS,
+  EditorAnchoredPanel,
   evaluateCheckup,
   MAP_QUALITY_WIDGET,
+  READING_PROPOSAL_WIDGET,
   setNudgeChecked,
   ValidationManager,
   type ValidationRule,
 } from '@labre/affine/blocks/surface';
+import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import type { BlockFlags } from '@labre/affine/flags';
 import { AffineSchemas } from '@labre/affine/schemas';
@@ -102,6 +105,28 @@ describe('map quality', () => {
   const addBackground = (xywh = '[0,0,1600,900]') =>
     service.surface.addElement({ type: 'wardley', role: 'wardley:map', xywh });
 
+  /**
+   * The same map on the STRICT profile — the only way to get a REAL-TIME
+   * warning onto the canvas, since the default profile demotes the pilot rule
+   * to `audit`, which is invisible by design.
+   */
+  const addStrictBackground = (xywh = '[0,0,1600,900]') =>
+    service.surface.addElement({
+      type: 'wardley',
+      role: 'wardley:map',
+      validationProfile: 'wardley.strict',
+      xywh,
+    });
+
+  /** A change arrow pointing BACK towards genesis: one real-time warning. */
+  const addBackwardsArrow = (x: number, y: number) =>
+    service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      source: { position: [x + 40, y] },
+      target: { position: [x, y] },
+    });
+
   /** A node drawn exactly the way the Wardley toolbox draws one. */
   const addComponent = (xywh: string, fillColor = '#ffffff') =>
     service.surface.addElement({
@@ -139,6 +164,14 @@ describe('map quality', () => {
     Array.from(
       widgetRoot()?.querySelectorAll('[data-testid="map-quality-remark"]') ?? []
     );
+  const textOf = (testid: string) =>
+    widgetRoot()
+      ?.querySelector(`[data-testid="${testid}"]`)
+      ?.textContent?.replace(/\s+/g, ' ')
+      .trim() ?? null;
+  const scopeLine = () => textOf('map-quality-scope');
+  const realtimeLine = () => textOf('map-quality-realtime');
+  const cleanLine = () => textOf('map-quality-clean');
 
   const toolbar = () =>
     (
@@ -820,6 +853,160 @@ describe('map quality', () => {
     });
   });
 
+  /**
+   * PO recette, 02/08: a map wearing amber badges, with no title and no legend,
+   * whose check-up answered "Nothing to report".
+   *
+   * Nothing about WHAT runs changed — the real-time rules are still real time,
+   * the nudges are still unjudged, the check-up still walks its own two rules.
+   * What changed is that the panel now says which of the three is speaking on
+   * every line, so the three true statements stop reading as a contradiction.
+   */
+  describe('the panel says which of the three is speaking (PO, 02/08)', () => {
+    test('the checklist is introduced as the USER’s to check', async () => {
+      const map = addBackground();
+      await open(map);
+
+      // "Checklist" left the reader to guess whether the tool had been through
+      // it. The contract is that it has not, and cannot.
+      expect(panel()?.textContent).toContain('To be checked by you');
+      expect(panel()?.textContent).not.toContain('Checklist');
+    });
+
+    test('a clean check-up names what it checked, and the map’s live warnings', async () => {
+      const map = addStrictBackground();
+      // One real-time warning, and nothing an on-demand rule would remark on.
+      addBackwardsArrow(400, 400);
+      await open(map);
+      await settle();
+
+      clickElement(runButton()!);
+      await settle();
+
+      // The verdict is about the two families it walked, not about the map.
+      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
+      expect(cleanLine()).toBe('Nothing to report.');
+      // ...and the badges on the canvas are accounted for, right there, instead
+      // of appearing to be denied by the line above.
+      expect(realtimeLine()).toBe(
+        'Real-time warnings currently on this map: 1.'
+      );
+    });
+
+    test('the live count is this map’s, and read-only', async () => {
+      const here = addStrictBackground();
+      const elsewhere = addStrictBackground('[40000,0,1600,900]');
+      addBackwardsArrow(400, 400);
+      // Two more warnings, on the OTHER map: a board carries several maps and
+      // this line is about one of them.
+      addBackwardsArrow(40400, 400);
+      addBackwardsArrow(40400, 600);
+      await open(here);
+      await settle();
+
+      expect(realtimeLine()).toBe(
+        'Real-time warnings currently on this map: 1.'
+      );
+
+      validation.closeMapQuality();
+      await settle();
+      await open(elsewhere);
+      await settle();
+
+      expect(realtimeLine()).toBe(
+        'Real-time warnings currently on this map: 2.'
+      );
+      // Reading is all it does: opening a panel writes nothing on either map.
+      expect(model(here).yMap.has('qualityChecklist')).toBe(false);
+      expect(model(elsewhere).yMap.has('qualityChecklist')).toBe(false);
+    });
+
+    test('a map with nothing flagged in real time says nothing about it', async () => {
+      const map = addBackground();
+      await open(map);
+      await settle();
+
+      // A line reading "0" is noise on the clean board, which is most boards.
+      expect(realtimeLine()).toBeNull();
+    });
+
+    test('a check-up WITH remarks still says what it looked at', async () => {
+      const map = addBackground();
+      addComponent('[200,200,18,18]', RED);
+      await open(map);
+      clickElement(runButton()!);
+      await settle();
+
+      expect(remarks()).toHaveLength(1);
+      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
+      // The verdict line belongs to the empty answer only.
+      expect(cleanLine()).toBeNull();
+    });
+
+    test('says nothing about a check-up nobody has run', async () => {
+      const map = addBackground();
+      await open(map);
+      await settle();
+
+      // The scope line is part of the RESULT: before a run there is no result
+      // to qualify, and the button already says what it is.
+      expect(scopeLine()).toBeNull();
+      expect(cleanLine()).toBeNull();
+    });
+
+    test('reads the same in a read-only document', async () => {
+      const map = addStrictBackground();
+      addBackwardsArrow(400, 400);
+      addComponent('[200,200,18,18]', RED);
+      await open(map);
+      await settle();
+      service.std.store.readonly = true;
+      await settle();
+
+      // The check-up writes nothing, so it stays available to a reviewer...
+      expect(runButton()!.disabled).toBe(false);
+      clickElement(runButton()!);
+      await settle();
+
+      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
+      expect(remarks()).toHaveLength(1);
+      expect(realtimeLine()).toBe(
+        'Real-time warnings currently on this map: 1.'
+      );
+      // ...and the only thing that would write is the one thing barred.
+      expect(
+        nudgeRows().map(
+          row => (row.querySelector('input') as HTMLInputElement).disabled
+        )
+      ).toEqual([true, true, true, true]);
+
+      service.std.store.readonly = false;
+    });
+
+    test('every line of the panel starts on the same vertical', async () => {
+      const map = addBackground();
+      addComponent('[200,200,18,18]', RED);
+      await open(map);
+      clickElement(runButton()!);
+      await settle();
+
+      // The gutter the checkboxes live in is reserved on every body row, so a
+      // row without a box no longer hangs a checkbox-width to the left of the
+      // ones with one (PO: "trou visuel").
+      const left = (element: Element | null) =>
+        Math.round(element!.getBoundingClientRect().left);
+      const nudgeLabel = nudgeRows()[0].querySelector(
+        '.map-quality-nudge-label'
+      );
+
+      expect(left(runButton())).toBe(left(nudgeLabel));
+      expect(left(remarks()[0])).toBe(left(nudgeLabel));
+      expect(
+        left(widgetRoot()!.querySelector('[data-testid="map-quality-scope"]'))
+      ).toBe(left(nudgeLabel));
+    });
+  });
+
   describe('the command registry surface (PF3)', () => {
     test('opens the same panel as the toolbar entry', async () => {
       const map = addBackground();
@@ -841,6 +1028,147 @@ describe('map quality', () => {
       await settle();
 
       expect(panel()).not.toBeNull();
+    });
+  });
+
+  /**
+   * PO recette of 02/08/2026, second pass, point 2: Map quality leaves the
+   * popover and adopts the reading panel's pattern — anchored to the editor,
+   * above the senior button bar, at its width, in the layer above every toolbar
+   * (ADR 0011). The entry that opens it did not move.
+   */
+  describe('the panel is anchored to the editor (ADR 0011)', () => {
+    /** `auto` is not a number, and a panel must beat it too. Treat it as 0. */
+    const zOf = (element: Element) => {
+      const value = getComputedStyle(element).zIndex;
+      return value === 'auto' ? 0 : Number.parseInt(value, 10);
+    };
+
+    const bottomToolbar = () =>
+      root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
+        | HTMLElement
+        | undefined;
+
+    /** The senior button bar itself — the visible box, not the widget's slab. */
+    const seniorBar = () =>
+      bottomToolbar()?.shadowRoot?.querySelector<HTMLElement>(
+        '.edgeless-toolbar-container'
+      ) ?? null;
+
+    const resizeEditorTo = async (width: string) => {
+      (window.editor.parentElement as HTMLElement).style.width = width;
+      await settle();
+      await settle();
+    };
+
+    test('it is the SAME component as the reading panel, not a copy of it', async () => {
+      const map = addBackground();
+      await open(map);
+
+      // The decision names one shared pattern; this is what "shared" means in a
+      // language with prototypes. Two panels that merely looked alike would
+      // pass every measurement below and fail here.
+      const quality = widget() as unknown as object;
+      const reading = root.widgetComponents[
+        READING_PROPOSAL_WIDGET
+      ] as unknown as object;
+      expect(quality).toBeInstanceOf(EditorAnchoredPanel);
+      expect(reading).toBeInstanceOf(EditorAnchoredPanel);
+    });
+
+    test('it takes the senior bar’s width, at both window sizes', async () => {
+      const map = addBackground();
+      await open(map);
+
+      const measure = () => ({
+        box: panel()!.getBoundingClientRect(),
+        bar: seniorBar()!.getBoundingClientRect(),
+      });
+
+      await resizeEditorTo('1400px');
+      const wide = measure();
+      expect(wide.box.left).toBeCloseTo(wide.bar.left, 0);
+      expect(wide.box.right).toBeCloseTo(wide.bar.right, 0);
+
+      // The 320px popover it replaced would have survived the first assertion
+      // and failed this one.
+      await resizeEditorTo('620px');
+      const narrow = measure();
+      expect(narrow.box.left).toBeCloseTo(narrow.bar.left, 0);
+      expect(narrow.box.width).toBeCloseTo(narrow.bar.width, 0);
+      expect(narrow.box.width).toBeLessThan(wide.box.width);
+    });
+
+    test('it sits just above the bar, and inside the editor', async () => {
+      const map = addBackground();
+      await open(map);
+
+      const box = panel()!.getBoundingClientRect();
+      const bar = seniorBar()!.getBoundingClientRect();
+      const editor = root.getBoundingClientRect();
+
+      expect(box.bottom).toBeLessThanOrEqual(bar.top);
+      expect(bar.top - box.bottom).toBeLessThan(24);
+      expect(box.left).toBeGreaterThanOrEqual(editor.left);
+      expect(box.right).toBeLessThanOrEqual(editor.right);
+      expect(box.top).toBeGreaterThanOrEqual(editor.top);
+    });
+
+    test('it renders above the contextual toolbar and the bottom one', async () => {
+      const map = addBackground();
+      await open(map);
+
+      // The HOST is where the contest is decided: every widget host is a
+      // sibling in `.widgets-container`, and `affine-toolbar-widget` declares
+      // no stacking context of its own. The panel used to take `z-index: 2`,
+      // chosen to sit "well below the toolbars" — the popover's bargain, and
+      // the one this pattern reverses.
+      const host = widget() as unknown as HTMLElement;
+      expect(host.parentElement?.classList.contains('widgets-container')).toBe(
+        true
+      );
+
+      const contextual = toolbar();
+      expect(contextual).not.toBeNull();
+      expect(zOf(host)).toBeGreaterThan(zOf(contextual!));
+      expect(zOf(host)).toBeGreaterThan(zOf(bottomToolbar()!));
+    });
+
+    test('it stays put when the map it is about moves', async () => {
+      const map = addBackground();
+      await open(map);
+      const before = panel()!.getBoundingClientRect();
+
+      // The old popover hung off the instance's top-right corner and flipped
+      // sides to stay on screen. Anchored to the editor, a surface somebody is
+      // halfway through ticking does not move under them.
+      service.surface.updateElement(map, { xywh: '[900,600,1600,900]' });
+      await settle();
+
+      const after = panel()!.getBoundingClientRect();
+      expect(after.left).toBeCloseTo(before.left, 0);
+      expect(after.bottom).toBeCloseTo(before.bottom, 0);
+    });
+
+    test('a click on the canvas still puts it away, and so does Escape', async () => {
+      const map = addBackground();
+      await open(map);
+      expect(panel()).not.toBeNull();
+
+      // Click-away: the new layer sits above the toolbars, and must not have
+      // taken the dismissal contract with it.
+      document.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, composed: true })
+      );
+      await settle();
+      expect(panel()).toBeNull();
+
+      await open(map);
+      service.std.host.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      );
+      await settle();
+      expect(panel()).toBeNull();
     });
   });
 });

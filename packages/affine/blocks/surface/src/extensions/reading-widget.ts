@@ -1,18 +1,24 @@
-import type { RootBlockModel } from '@labre/affine-model';
 import {
   buildOccurrencePatch,
   getUniverseRegistry,
   publishOccurrenceMaterialities,
   translateKey,
 } from '@labre/affine-shared/services';
-import { getRegisteredCommands, runCommand, WidgetComponent, WidgetViewExtension } from '@labre/std';
-import { GfxControllerIdentifier, isPivotBound } from '@labre/std/gfx';
+import {
+  getRegisteredCommands,
+  runCommand,
+  WidgetViewExtension,
+} from '@labre/std';
+import { isPivotBound } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
-import { css, html, nothing, type TemplateResult, unsafeCSS } from 'lit';
+import { css, html, nothing, type TemplateResult } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import {
+  EditorAnchoredPanel,
+  editorAnchoredPanelStyles,
+} from './editor-anchored-panel.js';
 import {
   type ElementReading,
   PivotRecordPickerProvider,
@@ -20,15 +26,11 @@ import {
   type ReadingProfile,
   type ReadingRelation,
   readRecord,
+  readValueFlows,
   type RecordReading,
 } from './reading.js';
 
 export const READING_PROPOSAL_WIDGET = 'affine-reading-proposal-widget';
-
-/** Screen pixels. The panel is TEXT, so it does not scale with the board. */
-const PANEL_WIDTH = 300;
-const PANEL_GAP = 12;
-const PANEL_MAX_HEIGHT = 420;
 
 /** The two commands the confirmations drive. Spelled once. */
 const TAG_SET_ID = 'tag.set';
@@ -67,40 +69,28 @@ const PIVOT_BIND_ID = 'pivot.bind';
  * is refused, nothing is blocked and nothing is written to the DOCUMENT — the
  * board is always right about itself.
  *
- * Modelled on `violation-detail-widget.ts` down to the mechanics that are easy
- * to get wrong: a zero-sized host at the viewport origin so the canvas stays
- * clickable, the pointer pair swallowed on the panel itself, Escape listened
- * for on the EDITOR HOST rather than on `document`, and click-away that
- * observes without swallowing.
+ * ## Where it sits
+ *
+ * **Anchored to the EDITOR, above the senior button bar and at its width** —
+ * the PO's recette of 02/08/2026 and its second pass, now the shared contract
+ * of ADR 0011. It shipped as a bubble floating beside the element and came back
+ * with two faults: it rendered BEHIND the contextual toolbar, and a paragraph
+ * of prose is not a thing to read out of the corner of a shape. The first pass
+ * made it a bottom-centre panel at a fixed 480px; the second replaced that
+ * arbitrary measure with the toolbar's own, so the two boxes share their left
+ * and right edges. All of that geometry — and the layer above every toolbar
+ * that goes with it — lives in {@link EditorAnchoredPanel}; what is left here
+ * is the reading itself.
+ *
+ * The mechanics that are easy to get wrong are the base class's too: a
+ * zero-sized host so the canvas stays clickable, the pointer pair swallowed on
+ * the panel itself, Escape listened for on the EDITOR HOST rather than on
+ * `document`, and click-away that observes without swallowing.
  */
-export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
-  static override styles = css`
-    :host {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .reading-panel {
-      position: absolute;
-      box-sizing: border-box;
-      width: ${unsafeCSS(PANEL_WIDTH)}px;
-      max-height: ${unsafeCSS(PANEL_MAX_HEIGHT)}px;
-      overflow-y: auto;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--affine-border-color);
-      background: var(--affine-background-overlay-panel-color, #fff);
-      box-shadow: var(--affine-shadow-2);
-      color: var(--affine-text-primary-color);
-      font-family: var(--affine-font-family);
-      font-size: 14px;
-      line-height: 1.4;
-      pointer-events: auto;
-    }
-
+export class ReadingProposalWidget extends EditorAnchoredPanel {
+  static override styles = [
+    editorAnchoredPanelStyles,
+    css`
     .reading-title {
       font-weight: 600;
       margin-bottom: 8px;
@@ -162,7 +152,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       outline: 2px solid var(--affine-primary-color);
       outline-offset: 1px;
     }
-  `;
+    `,
+  ];
 
   /** Bumped to force a re-render; the reading itself is never stored. */
   @state()
@@ -170,36 +161,17 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
 
   private _elementSubscription: { unsubscribe(): void } | null = null;
 
-  get gfx() {
-    return this.std.get(GfxControllerIdentifier);
-  }
-
   private get _manager(): ReadingManager | null {
     return this.std.getOptional(ReadingManager) ?? null;
   }
 
-  private readonly _swallow = (event: Event) => {
-    event.stopPropagation();
-  };
+  protected override get panelOpen(): boolean {
+    return Boolean(this._manager?.open$.value);
+  }
 
-  private readonly _onDocumentPointerDown = (event: PointerEvent) => {
-    const manager = this._manager;
-    if (!manager?.open$.value) return;
-    if (event.composedPath().includes(this)) return;
-    manager.close();
-  };
-
-  /**
-   * Escape on the EDITOR HOST, not on `document`: with a panel open Escape
-   * dismisses the panel rather than clearing the canvas selection behind it,
-   * and a library has no business making that call for the whole page.
-   */
-  private readonly _onHostKeydown = (event: KeyboardEvent) => {
-    const manager = this._manager;
-    if (!manager?.open$.value || event.key !== 'Escape') return;
-    event.stopPropagation();
-    manager.close();
-  };
+  protected override closePanel(): void {
+    this._manager?.close();
+  }
 
   private _wire() {
     const { _disposables, gfx } = this;
@@ -225,14 +197,13 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       );
     }
 
-    _disposables.add(
-      gfx.viewport.viewportUpdated.subscribe(() => {
-        // The panel is anchored to an element that has just moved under it.
-        // Closing is the honest simple answer, and it is the precedent the
-        // validation bubble already set.
-        this._manager?.close();
-      })
-    );
+    // Click-away, Escape, and the re-measure of the bar the panel is aligned
+    // on — one call, and the same one Map quality makes (ADR 0011). The panel
+    // used to CLOSE on a viewport change, because it hung off an element that a
+    // pan or a zoom moved out from under it; anchored to the editor it merely
+    // re-measures, and panning to look at what the reading is talking about
+    // while the reading is on screen keeps working.
+    this.wireAnchoredPanel();
 
     // The surface is a signal, not a fact: it can arrive after the widget and
     // be replaced under it. Anything on the board can change what is read — a
@@ -250,17 +221,7 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       })
     );
 
-    document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
-    const host = this.std.host;
-    host.addEventListener('keydown', this._onHostKeydown, true);
-
     _disposables.add(() => {
-      document.removeEventListener(
-        'pointerdown',
-        this._onDocumentPointerDown,
-        true
-      );
-      host.removeEventListener('keydown', this._onHostKeydown, true);
       this._elementSubscription?.unsubscribe();
       this._elementSubscription = null;
     });
@@ -394,8 +355,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
               class="reading-action"
               type="button"
               data-testid="reading-confirm-nature"
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @click=${this._confirmNature(reading.elementId, tagId, proposed)}
             >
               ${translateKey(
@@ -461,6 +422,52 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
               .join(', ')}
           </div>`
         : nothing}`
+    );
+  }
+
+  /**
+   * **Value flow** — the same typed edges as the relations above, said the way
+   * a value chain is read: from the bottom up.
+   *
+   * One sentence per typed edge, and no section at all when the element has
+   * none: an empty "Value flow" heading states nothing a user wants, and the
+   * relations field already says in its own words that no link touches this
+   * component.
+   *
+   * The sentence is assembled from two halves rather than interpolated, because
+   * `translateKey` returns a plain string and a host catalogue that returned
+   * markup would then be injected into the panel. The fallback reads
+   * "Value flows up from X to Y"; a host that translates
+   * `com.labre.reading.value-flow` gets the same two slots in its own order via
+   * the `.to` suffix key.
+   */
+  private _renderValueFlow(reading: ElementReading) {
+    const flows = readValueFlows(reading);
+    if (flows.length === 0) return nothing;
+
+    const from = translateKey(
+      this.std,
+      'com.labre.reading.value-flow',
+      'Value flows up from'
+    );
+    const to = translateKey(this.std, 'com.labre.reading.value-flow.to', 'to');
+
+    return this._field(
+      'reading-value-flow',
+      translateKey(
+        this.std,
+        'com.labre.reading.field.value-flow',
+        'Value flow'
+      ),
+      html`${flows.map(
+        flow => html`<div
+          class="reading-value"
+          data-testid="reading-value-flow-line"
+          data-edge-id=${flow.edgeId}
+        >
+          ${from} ${flow.from} ${to} ${flow.to}
+        </div>`
+      )}`
     );
   }
 
@@ -560,8 +567,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
               class="reading-action"
               type="button"
               data-testid="reading-link-record"
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @click=${this._linkRecord(reading.elementId)}
             >
               ${translateKey(
@@ -598,8 +605,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
             class="reading-action"
             type="button"
             data-testid="reading-update-record"
-            @pointerdown=${this._swallow}
-            @pointerup=${this._swallow}
+            @pointerdown=${this.swallow}
+            @pointerup=${this.swallow}
             @click=${this._updateRecord(drift.elementId, drift.pivotDocId)}
           >
             ${translateKey(
@@ -683,15 +690,6 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       if (manager) manager.drift$.value = null;
     };
 
-  /** Panel origin in screen pixels: the element's top-right corner. */
-  private _panelAt(elementId: string): [number, number] | null {
-    const element = this.gfx.surface?.getElementById(elementId);
-    if (!element) return null;
-    const bound = element.elementBound;
-    const [x, y] = this.gfx.viewport.toViewCoord(bound.maxX, bound.y);
-    return [x, y];
-  }
-
   override render() {
     // Read the revision so lit re-renders when a signal moved.
     void this._revision;
@@ -704,10 +702,6 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     const profile = manager.profileOf(elementId);
     if (!reading || !profile) return nothing;
 
-    const at = this._panelAt(elementId);
-    if (!at) return nothing;
-    const [x, y] = at;
-
     const element = this.gfx.surface?.getElementById(elementId);
     // The record's side of the reading, guarded and synchronous. `undefined`
     // on every degraded path: no binding, no provider, no configured fields.
@@ -717,42 +711,31 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     // would refuse it anyway, silently, which is worse.
     const writable = !this.std.store.readonly;
 
-    const { viewport } = this.gfx;
-    const flipX = x + PANEL_GAP + PANEL_WIDTH > viewport.width;
-    const flipY = y + PANEL_GAP + PANEL_MAX_HEIGHT > viewport.height;
-
-    return html`<div
-      class="reading-panel"
-      role="dialog"
-      data-testid="reading-panel"
-      data-element-id=${elementId}
-      aria-label=${translateKey(
-        this.std,
-        'com.labre.reading.panel.label',
-        'Proposed record'
-      )}
-      style=${styleMap({
-        left: flipX ? `${x - PANEL_GAP - PANEL_WIDTH}px` : `${x + PANEL_GAP}px`,
-        top: flipY ? `${y - PANEL_GAP}px` : `${y + PANEL_GAP}px`,
-        ...(flipY ? { transform: 'translateY(-100%)' } : {}),
-      })}
-      @pointerdown=${this._swallow}
-      @pointerup=${this._swallow}
-      @click=${this._swallow}
-    >
-      <div class="reading-title">
-        ${translateKey(
+    return this.renderAnchoredPanel(
+      {
+        testid: 'reading-panel',
+        variant: 'reading-panel',
+        elementId,
+        label: translateKey(
           this.std,
-          'com.labre.reading.panel.title',
-          'What this map says about this component'
-        )}
-      </div>
-      ${this._renderNodeType(reading, profile)}
-      ${this._renderNature(reading, profile, record, writable)}
-      ${this._renderRelations(reading)} ${this._renderPhase(reading)}
-      ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
-      ${writable ? this._renderDrift(reading) : nothing}
-    </div>`;
+          'com.labre.reading.panel.label',
+          'Proposed record'
+        ),
+      },
+      html`<div class="reading-title">
+          ${translateKey(
+            this.std,
+            'com.labre.reading.panel.title',
+            'What this map says about this component'
+          )}
+        </div>
+        ${this._renderNodeType(reading, profile)}
+        ${this._renderNature(reading, profile, record, writable)}
+        ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
+        ${this._renderPhase(reading)}
+        ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
+        ${writable ? this._renderDrift(reading) : nothing}`
+    );
   }
 }
 

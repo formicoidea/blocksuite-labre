@@ -2,11 +2,12 @@ import type { ConnectorElementModel } from '@labre/affine-model';
 import { PointStyle } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
-import { midpointOf, targetAnchorOf } from '../direction/direction-reveal';
+import { labelAnchorOf } from '../direction/direction-reveal';
 import {
   invertEdge,
   invertEdgeDirectionParams,
 } from '../direction/invert-direction';
+import { edgeVerbOf, type TypedEdge } from '../direction/typed-edge';
 
 /**
  * M2 and M3 of `docs/adr/0010`, at the level where they are pure: where the
@@ -142,66 +143,153 @@ describe('inverting a typed edge (M3)', () => {
   });
 });
 
-describe('where the reveal puts its mark (M2)', () => {
+/**
+ * The PO's acceptance of 02/08/2026, point 5: the label is laid ALONG the link,
+ * and one end of its box is a point aimed at the provider. What that costs
+ * geometrically is a midpoint, an angle and a side, and all three are pure — so
+ * all three are stated here rather than eyeballed on a canvas.
+ */
+describe('where the reveal lays its label (M2)', () => {
   const edgeWith = (path: [number, number][]) =>
     ({ absolutePath: path }) as unknown as ConnectorElementModel;
 
-  it('anchors on the TARGET end, pointing the way the path arrives', () => {
-    const anchor = targetAnchorOf(
+  /** Radians, to within floating-point noise. */
+  const degrees = (radians: number | undefined) =>
+    radians === undefined ? undefined : Math.round((radians * 180) / Math.PI);
+
+  it('centres the label on the MIDDLE of the link, never on its tip', () => {
+    // The bug the PO photographed: the label was put on `path[length / 2]`,
+    // which on a two-point path is the target endpoint — so the box sat on the
+    // tip of the link, on top of the chevron it was meant to complement.
+    const anchor = labelAnchorOf(
       edgeWith([
         [0, 0],
         [100, 0],
       ])
     );
 
-    expect(anchor?.at).toEqual([100, 0]);
-    expect(anchor?.heading).toEqual([1, 0]);
+    expect(anchor?.at).toEqual([50, 0]);
+    expect(degrees(anchor?.angle)).toBe(0);
+    expect(anchor?.flipped).toBe(false);
   });
 
-  it('reads the LAST segment of an elbowed path, not its chord', () => {
-    const anchor = targetAnchorOf(
+  it('turns onto a DIAGONAL link, at the angle of the segment it sits on', () => {
+    const anchor = labelAnchorOf(
+      edgeWith([
+        [0, 0],
+        [100, 100],
+      ])
+    );
+
+    expect(anchor?.at).toEqual([50, 50]);
+    // Model y grows downward and so does CSS's rotation sense: a link running
+    // down-and-right is a label turned +45°.
+    expect(degrees(anchor?.angle)).toBe(45);
+    expect(anchor?.flipped).toBe(false);
+
+    const upward = labelAnchorOf(
+      edgeWith([
+        [0, 100],
+        [100, 0],
+      ])
+    );
+    expect(degrees(upward?.angle)).toBe(-45);
+    expect(upward?.flipped).toBe(false);
+  });
+
+  it('turns a right-to-left link by 180° so the words stay upright', () => {
+    // Raw, this segment is at -135°: text on its head. Turned, it reads at
+    // +45° — the SAME line, walked the other way.
+    const anchor = labelAnchorOf(
+      edgeWith([
+        [100, 100],
+        [0, 0],
+      ])
+    );
+
+    expect(anchor?.at).toEqual([50, 50]);
+    expect(degrees(anchor?.angle)).toBe(45);
+    expect(anchor?.flipped).toBe(true);
+  });
+
+  it('keeps the readable half-turn on both sides of vertical', () => {
+    // Every angle the widget can be handed is one a reader can hold their head
+    // still for. Straight down and straight up are the boundary and are left
+    // alone; anything past them is turned back.
+    for (const [path, expected, flipped] of [
+      [[[0, 0], [0, 100]], 90, false],
+      [[[0, 100], [0, 0]], -90, false],
+      [[[100, 0], [0, 0]], 0, true],
+      [[[100, 0], [0, 100]], -45, true],
+    ] as [[number, number][], number, boolean][]) {
+      const anchor = labelAnchorOf(edgeWith(path));
+      expect(degrees(anchor?.angle)).toBe(expected);
+      expect(anchor?.flipped).toBe(flipped);
+      expect(Math.abs(anchor!.angle)).toBeLessThanOrEqual(Math.PI / 2 + 1e-9);
+    }
+  });
+
+  it('walks an elbowed path by ARC LENGTH, and sits on its median segment', () => {
+    // Arms of 40 and 100: half of 140 falls 30 into the second one. The middle
+    // VERTEX would have been the corner, and the angle the chord's — neither of
+    // which is where this link is at its middle.
+    const anchor = labelAnchorOf(
+      edgeWith([
+        [0, 0],
+        [40, 0],
+        [40, 100],
+      ])
+    );
+
+    expect(anchor?.at).toEqual([40, 30]);
+    expect(degrees(anchor?.angle)).toBe(90);
+
+    // Two EQUAL arms put the middle exactly on the corner, where two angles are
+    // both true. The arm the path arrives by wins — an arbitrary tie-break, but
+    // a stated one, so the label cannot flicker between them on a repaint.
+    const onTheCorner = labelAnchorOf(
       edgeWith([
         [0, 0],
         [100, 0],
         [100, 100],
       ])
     );
-
-    expect(anchor?.at).toEqual([100, 100]);
-    expect(anchor?.heading).toEqual([0, 1]);
+    expect(onTheCorner?.at).toEqual([100, 0]);
+    expect(degrees(onTheCorner?.angle)).toBe(0);
   });
 
-  it('skips a repeated final point rather than dividing by zero', () => {
-    const anchor = targetAnchorOf(
+  it('steps over a repeated point rather than dividing by zero', () => {
+    const anchor = labelAnchorOf(
       edgeWith([
         [0, 0],
-        [50, 0],
-        [50, 0],
+        [0, 0],
+        [100, 0],
       ])
     );
 
     expect(anchor?.at).toEqual([50, 0]);
-    expect(anchor?.heading).toEqual([1, 0]);
+    expect(degrees(anchor?.angle)).toBe(0);
   });
 
   it('says nothing about an edge with no direction to show', () => {
     // No path at all (attached at both ends and never laid out), and a path
-    // whose ends coincide: silence, not a guess.
-    expect(targetAnchorOf({} as unknown as ConnectorElementModel)).toBeNull();
+    // whose points all coincide: silence, not a guess.
+    expect(labelAnchorOf({} as unknown as ConnectorElementModel)).toBeNull();
     expect(
-      targetAnchorOf(
+      labelAnchorOf(
         edgeWith([
           [10, 10],
           [10, 10],
         ])
       )
     ).toBeNull();
-    expect(midpointOf({} as unknown as ConnectorElementModel)).toBeNull();
   });
 
-  it('moves to the other end once the edge is reversed', () => {
-    // The two mechanisms, composed: reversing the relation moves the only
-    // visible sign of it, so the picture and the data cannot disagree.
+  it('flips the POINT when the edge is reversed (M2 × M3)', () => {
+    // The two mechanisms, composed. Reversing the relation does not move the
+    // label — it is the same line and the same middle — it turns the box over,
+    // so the point that named the provider now names the other end. The
+    // picture and the data cannot disagree.
     const { model } = fakeEdge({
       source: { position: [0, 0] },
       target: { position: [100, 0] },
@@ -210,7 +298,7 @@ describe('where the reveal puts its mark (M2)', () => {
         [100, 0],
       ],
     });
-    expect(targetAnchorOf(model)?.at).toEqual([100, 0]);
+    expect(labelAnchorOf(model)?.flipped).toBe(false);
 
     invertEdge(model);
     // The routed path is recomputed by the connector manager on a live canvas;
@@ -221,7 +309,67 @@ describe('where the reveal puts its mark (M2)', () => {
       [0, 0],
     ];
 
-    expect(targetAnchorOf(model)?.at).toEqual([0, 0]);
-    expect(targetAnchorOf(model)?.heading).toEqual([-1, 0]);
+    const after = labelAnchorOf(model);
+    expect(after?.at).toEqual([50, 0]);
+    // Still horizontal, still readable — and the point has moved to the other
+    // end of the box, which is the whole of the visible change.
+    expect(degrees(after?.angle)).toBe(0);
+    expect(after?.flipped).toBe(true);
+  });
+});
+
+/**
+ * What the label SAYS, second pass of the PO recette of 02/08/2026 (point 5).
+ *
+ * The first cut said the whole sentence, `Kettle depends on Electricity`. On a
+ * short link that box is longer than the link, so it covered the two components
+ * it was naming — and their names are already drawn at both ends of the line.
+ * The label is the VERB alone now, and the verb comes from one place only: the
+ * `direction` a ROLE declares (`RoleDef.direction.verbKey`).
+ */
+describe('what the reveal says about a typed edge', () => {
+  const edgeOf = (role: Record<string, unknown>) =>
+    ({
+      model: {} as ConnectorElementModel,
+      role,
+      ...(role.direction ? { direction: role.direction } : {}),
+    }) as unknown as TypedEdge;
+
+  it('says the role verb, and NOT the names of the two ends', () => {
+    const verb = edgeVerbOf(
+      edgeOf({
+        id: 'demo:dependency',
+        kind: 'edge',
+        labelKey: 'demo.dependency.label',
+        labelFallback: 'Dependency',
+        direction: {
+          verbKey: 'demo.dependency.verb',
+          verbFallback: 'depends on',
+        },
+      })
+    );
+
+    // One key, and it is the VERB's — never the role's own label, which names
+    // the kind of link rather than what it claims.
+    expect(verb).toEqual({
+      key: 'demo.dependency.verb',
+      fallback: 'depends on',
+    });
+  });
+
+  it('falls back to the role LABEL when no verb is declared', () => {
+    // An unlabelled arrow says which way without ever saying what, so the role's
+    // own name is better than silence.
+    expect(
+      edgeVerbOf(
+        edgeOf({ id: 'demo:link', kind: 'edge', labelKey: 'demo.link.label' })
+      )
+    ).toEqual({ key: 'demo.link.label' });
+  });
+
+  it('says nothing at all when the role declares neither', () => {
+    // The one case where the library genuinely has nothing to add — and the
+    // widget draws no box rather than an empty one.
+    expect(edgeVerbOf(edgeOf({ id: 'demo:bare', kind: 'edge' }))).toBeNull();
   });
 });

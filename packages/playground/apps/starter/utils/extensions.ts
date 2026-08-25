@@ -1,3 +1,4 @@
+import { PivotRecordPickerExtension } from '@labre/affine/blocks/surface';
 import { RefNodeSlotsProvider } from '@labre/affine/inlines/reference';
 import {
   CommunityCanvasTextFonts,
@@ -16,6 +17,7 @@ import {
   mockDocModeService,
   mockEditorSetting,
   mockParseDocUrlService,
+  mockPivotRecordPicker,
 } from '../../_common/mock-services';
 
 const viewManager = getTestViewManager();
@@ -31,6 +33,12 @@ export function getTestCommonExtensions(
       setting$: mockEditorSetting(),
     }),
     ParseDocUrlExtension(mockParseDocUrlService(editor.doc.workspace)),
+    // A RECETTE MOCK-UP, and only ever that. The library registers no pivot
+    // record picker — it cannot know what a record is — so without one the
+    // reading panel's "Link to a record" action is hidden by design and the
+    // playground had no way to exercise `pivot.bind`. This is the SaaS host's
+    // record browser stood in for by a `prompt`; see `mockPivotRecordPicker`.
+    PivotRecordPickerExtension(mockPivotRecordPicker()),
     {
       setup: di => {
         di.override(DocModeProvider, mockDocModeService(editor));
