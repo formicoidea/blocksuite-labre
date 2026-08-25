@@ -216,7 +216,8 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
             return html`
               <editor-menu-action
                 @click=${() => {
-                  blockComponent.setWrap(!wrapped);
+                  const currentWrap = blockComponent.model.props.wrap;
+                  blockComponent.setWrap(!currentWrap);
                 }}
                 aria-label=${label}
               >
