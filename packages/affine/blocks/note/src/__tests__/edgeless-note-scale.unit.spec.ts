@@ -42,7 +42,7 @@ function fakeNote({
     isPageBlock: () => false,
   });
   own('gfx', {
-    viewport: { translateX: 0, translateY: 0, zoom },
+    viewport: { translateX: 0, translateY: 0, zoom, viewScale: 1 },
     tool: { currentToolName$: { value: 'default' } },
   });
   own('std', { getOptional: () => undefined });
