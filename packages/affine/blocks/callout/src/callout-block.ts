@@ -14,6 +14,8 @@ import { flip, offset } from '@floating-ui/dom';
 import { css, html } from 'lit';
 import { query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
+
+import { getCalloutEmojiMarginTop } from './emoji-margin.js';
 export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockModel> {
   static override styles = css`
     :host {
@@ -37,7 +39,7 @@ export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockM
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 10px;
+      /* margin-top is set per render: it depends on the first child's type. */
       margin-bottom: 10px;
       flex-shrink: 0;
     }
@@ -144,6 +146,7 @@ export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockM
           class="affine-callout-emoji-container"
           style=${styleMap({
             display: emoji.length === 0 ? 'none' : undefined,
+            marginTop: getCalloutEmojiMarginTop(this.model),
           })}
         >
           <span class="affine-callout-emoji">${emoji}</span>
