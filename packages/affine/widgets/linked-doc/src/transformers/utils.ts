@@ -58,6 +58,40 @@ export class Zip {
   }
 }
 
+const strictUtf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
+/**
+ * Repair an entry name that was decoded as Latin-1.
+ *
+ * fflate follows the zip spec: unless an entry sets the UTF-8 flag (general
+ * purpose bit 11) its name is decoded as Latin-1. Common archivers — the macOS
+ * `zip` tool among them — write UTF-8 bytes without ever setting that flag, so
+ * a CJK name comes back as mojibake, one character per raw byte.
+ *
+ * Such a name only ever holds code points in the 0x00-0xff range, so it can be
+ * turned back into the original bytes and decoded again, strictly, as UTF-8.
+ * Anything that is not valid UTF-8 — a name that really was Latin-1, or one
+ * fflate already decoded correctly — is left untouched.
+ */
+function fixFileNameEncoding(fileName: string): string {
+  const bytes = new Uint8Array(fileName.length);
+  let hasNonAscii = false;
+  for (let i = 0; i < fileName.length; i++) {
+    const code = fileName.charCodeAt(i);
+    // A code point above 0xff cannot come out of a Latin-1 decode: the name was
+    // already decoded from its declared UTF-8 bytes, nothing to repair.
+    if (code > 0xff) return fileName;
+    if (code > 0x7f) hasNonAscii = true;
+    bytes[i] = code;
+  }
+  if (!hasNonAscii) return fileName;
+  try {
+    return strictUtf8Decoder.decode(bytes);
+  } catch {
+    return fileName;
+  }
+}
+
 export class Unzip {
   private unzipped?: ReturnType<typeof fflate.unzipSync>;
 
@@ -69,16 +103,18 @@ export class Unzip {
     const keys = Object.keys(this.unzipped ?? {});
     let index = 0;
     while (keys.length) {
-      const path = keys.shift()!;
-      if (path.includes('__MACOSX') || path.includes('DS_Store')) {
+      const rawPath = keys.shift()!;
+      if (rawPath.includes('__MACOSX') || rawPath.includes('DS_Store')) {
         continue;
       }
+      const data = this.unzipped![rawPath];
+      const path = fixFileNameEncoding(rawPath);
       const lastSplitIndex = path.lastIndexOf('/');
       const fileName = path.substring(lastSplitIndex + 1);
       const fileExt =
         fileName.lastIndexOf('.') === -1 ? '' : fileName.split('.').at(-1);
       const mime = extMimeMap.get(fileExt ?? '');
-      const content = new File([this.unzipped![path]], fileName, {
+      const content = new File([data], fileName, {
         type: mime ?? '',
       }) as Blob;
       yield { path, content, index };
