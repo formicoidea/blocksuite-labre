@@ -78,6 +78,16 @@ export type EventHandlerRunner = {
   blockId?: string;
 };
 
+/**
+ * Events the dispatcher synthesizes itself: `click`, `doubleClick` and
+ * `tripleClick` are all derived from a single native `pointerup`. Stopping
+ * propagation of that shared native event when a synthetic handler consumes
+ * the click would also silence unrelated pointer listeners bound higher up
+ * (document-level drag/pan/auto-complete teardown), so it is skipped for them.
+ * Consuming a synthetic event still stops the dispatcher's own runner chain.
+ */
+const syntheticEventNames = new Set(['click', 'doubleClick', 'tripleClick']);
+
 export class UIEventDispatcher extends LifeCycleWatcher {
   private static _activeDispatcher: UIEventDispatcher | null = null;
 
@@ -429,7 +439,10 @@ export class UIEventDispatcher extends LifeCycleWatcher {
       const { fn } = runner;
       const result = fn(context);
       if (result) {
-        context.get('defaultState').event.stopPropagation();
+        // Only stop propagation for non-synthetic events
+        if (!syntheticEventNames.has(name)) {
+          context.get('defaultState').event.stopPropagation();
+        }
         return;
       }
     }
