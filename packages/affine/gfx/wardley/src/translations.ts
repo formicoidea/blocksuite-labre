@@ -25,8 +25,8 @@ import { WARDLEY_RULES } from './rules.js';
  * installs `@formicoidea/labre-framework-wardley` composes this export into the
  * catalogue it builds — the same sentence that already holds for
  * `wardleyCommands`. A manifest that named Wardley from the core side would be
- * complete in the monorepo and silently 61 % short in the distribution hosts
- * actually consume.
+ * complete in the monorepo and silently 61 % short (107 keys of 175) in the
+ * distribution hosts actually consume.
  */
 export const wardleyTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(

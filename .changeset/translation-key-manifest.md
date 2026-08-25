@@ -39,14 +39,14 @@ which keys it can ask for.
   entries with the frameworks' — the same shape the command registry already
   has, and for the same reason: `@formicoidea/labre-core` is the editor minus
   the frameworks, so a manifest that named them from the core side would be
-  complete in the monorepo and 113 keys of 197 short in the distribution hosts
+  complete in the monorepo and 107 keys of 175 short in the distribution hosts
   actually consume. `scripts/build-bundles.mjs` strips the groups from core's
   copy exactly as it strips the command groups, and a bundled host composes
   with `mergeTranslationEntries` (`@labre/std`, new).
 - The chrome wordings that sit behind template-literal keys (violation
-  severities, exemption scopes, rule families, relation sides) are now
-  EXPORTED tables the manifest walks rather than wordings restated a second
-  time — which is what lets the drift check reach them.
+  severities, exemption scopes, relation sides) are now EXPORTED tables the
+  manifest walks rather than wordings restated a second time — which is what
+  lets the drift check reach them.
 - The translation service grew the README the seam deserved
   (`packages/affine/shared/src/services/translation-service/README.md`):
   host wiring, fallback contract, how to bootstrap a catalogue from the
