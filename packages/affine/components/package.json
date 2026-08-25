@@ -15,6 +15,7 @@
   "license": "MPL-2.0",
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
+    "@emoji-mart/data": "^1.2.1",
     "@floating-ui/dom": "^1.6.13",
     "@labre/affine-model": "workspace:*",
     "@labre/affine-shared": "workspace:*",
@@ -51,6 +52,7 @@
     "./portal": "./src/portal/index.ts",
     "./hover": "./src/hover/index.ts",
     "./icon-button": "./src/icon-button/index.ts",
+    "./icon-picker": "./src/icon-picker/index.ts",
     "./toolbar": "./src/toolbar/index.ts",
     "./toast": "./src/toast/index.ts",
     "./smooth-corner": "./src/smooth-corner/index.ts",

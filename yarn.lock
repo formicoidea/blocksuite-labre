@@ -2011,6 +2011,7 @@ __metadata:
   resolution: "@labre/affine-components@workspace:packages/affine/components"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
+    "@emoji-mart/data": "npm:^1.2.1"
     "@floating-ui/dom": "npm:^1.6.13"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
