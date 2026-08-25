@@ -7,6 +7,8 @@ import {
   backgroundAxisFacts,
   backgroundBoundaryCoords,
   backgroundTransitionBands,
+  backgroundTransitionsShown,
+  backgroundTransitionVisibleProps,
   backgroundZoneBoundaries,
 } from '../framework-background/facts.js';
 
@@ -194,5 +196,113 @@ describe('a transition as the BAND it really is', () => {
     expect(x[0].max).toBeLessThanOrEqual(x[1].min + 1e-9);
     expect(warn.mock.calls.flat().join(' ')).toContain('Narrowed');
     warn.mockRestore();
+  });
+});
+
+/**
+ * A frontier the user cannot SEE (PO, 25/08/2026).
+ *
+ * A framework whose dividers are a per-part toggle says so beside the line that
+ * draws them — `axes[].ticks.visibleProp` — and these facts resolve it against
+ * ONE instance. What hangs off it is proportionality: a rule that judges an
+ * alignment against a dashed line has nothing to say while the dashed line is
+ * switched off.
+ */
+describe('the transitions an instance actually shows', () => {
+  const stroke = { color: '#000', width: 1 };
+
+  /** The same frame, with its columns drawn as gated graduations. */
+  const gated: FrameworkBackgroundDef = {
+    ...def,
+    transitionBandWidth: 0.1,
+    axes: [
+      {
+        id: 'evolution',
+        orientation: 'horizontal',
+        at: 1,
+        stroke,
+        ticks: {
+          ticks: [{ at: 0.175 }, { at: 0.4 }, { at: 0.7 }],
+          stroke: { ...stroke, dash: [5, 5] },
+          visibleProp: 'showColumns',
+        },
+      },
+      { id: 'value-chain', orientation: 'vertical', at: 0, stroke },
+    ],
+  };
+  const bound = new Bound(0, 0, 1600, 900);
+
+  it('names the prop that shows an axis its graduations, as a fact', () => {
+    // The declaration already carries it, beside the stroke that paints the
+    // line: a rule reads the same field the renderer does, so the two can never
+    // disagree about whether the frontier is on the canvas.
+    expect(backgroundAxisFact(gated, 'evolution')?.transitionsVisibleProp).toBe(
+      'showColumns'
+    );
+    // An axis with no graduations gates nothing.
+    expect(
+      backgroundAxisFact(gated, 'value-chain')?.transitionsVisibleProp
+    ).toBeUndefined();
+  });
+
+  it('lists every prop that can make a frontier appear or disappear', () => {
+    expect(backgroundTransitionVisibleProps(gated)).toEqual(['showColumns']);
+    // A framework that offers no toggle contributes none — the list is data
+    // read off declarations, not a name the engine knows.
+    expect(backgroundTransitionVisibleProps(def)).toEqual([]);
+  });
+
+  it('drops the bands of an instance whose graduations are hidden', () => {
+    expect(backgroundTransitionBands(gated, bound, { showColumns: true }).x)
+      .toHaveLength(3);
+    // Hidden: the same silence as a frame that declares no transition at all.
+    expect(backgroundTransitionBands(gated, bound, { showColumns: false })).toEqual(
+      { x: [], y: [] }
+    );
+  });
+
+  it('gates only the plot axis the graduations run across', () => {
+    // Vertical columns are `x` positions. A rule measuring along the value
+    // chain is not touched by the evolution columns being switched off — and
+    // there is nothing to touch here, since this frame has no `y` transition.
+    const hidden = backgroundTransitionBands(gated, bound, {
+      showColumns: false,
+    });
+    expect(hidden.x).toEqual([]);
+    expect(hidden.y).toEqual([]);
+  });
+
+  it('asks the DECLARATION when no instance is given', () => {
+    // The question "where are this framework's frontiers" is not the question
+    // "which of them is this map drawing": a caller describing the meaning of a
+    // map — the reading pass — wants all of them, and got all of them before
+    // this argument existed.
+    expect(backgroundTransitionBands(gated, bound).x).toHaveLength(3);
+  });
+
+  it('treats a prop the instance does not carry as nothing hidden', () => {
+    // Painting asks "do I draw this" and an absent prop means nothing to draw;
+    // a rule asks "has the user hidden the line I am judging against", and an
+    // absent prop is not the user hiding anything. A model that has never heard
+    // of the toggle keeps the rule it has always had.
+    expect(backgroundTransitionsShown(gated, 'x', {})).toBe(true);
+    expect(backgroundTransitionsShown(gated, 'x', { showColumns: undefined })).toBe(
+      true
+    );
+    expect(backgroundTransitionBands(gated, bound, { other: 1 }).x).toHaveLength(3);
+  });
+
+  it('leaves a framework that declares no toggle exactly as it was', () => {
+    // The whole backwards-compatibility claim in one line: a background whose
+    // graduations are ungated (or which declares none at all) shows its
+    // frontiers whatever any instance says.
+    const banded: FrameworkBackgroundDef = { ...def, transitionBandWidth: 0.1 };
+
+    expect(backgroundTransitionsShown(banded, 'x', { showColumns: false })).toBe(
+      true
+    );
+    expect(
+      backgroundTransitionBands(banded, bound, { showColumns: false }).x
+    ).toHaveLength(3);
   });
 });

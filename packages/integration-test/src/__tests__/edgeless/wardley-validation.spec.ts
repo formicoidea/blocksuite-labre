@@ -371,6 +371,85 @@ describe('wardley validation on the canvas', () => {
       });
     });
 
+    /**
+     * PO, 25/08/2026: W2 is only ACTIVE while the dashed columns are shown.
+     *
+     * The unit suite pins the verdict; only the editor can answer the half that
+     * matters to the user — that flipping the toolbar toggle makes the marks
+     * come and go on the spot, without touching anything else on the map. That
+     * needs the real `elementUpdated` payload to reach the manager, which it
+     * only does because the prop is now one the engine watches
+     * (`verdictPropsOf`).
+     */
+    describe('the dividers toggle scopes W2, live (PO, 25/08)', () => {
+      /** Where W2 has something to say: mid-phase, clear of every band. */
+      const OFF_TRANSITION_X = 880;
+
+      const mapId = () => service.surface.getElementsByType('wardley')[0].id;
+
+      const w2 = () =>
+        validation.violations$.value.filter(
+          v => v.ruleId === 'wardley.inertia-off-transition'
+        );
+
+      test('hiding the columns clears the findings, showing them brings them back', async () => {
+        addBackground();
+        const bar = addInertia(OFF_TRANSITION_X, 200);
+        await settle();
+        expect(w2().map(v => v.elementIds)).toEqual([[bar]]);
+
+        service.surface.updateElement(mapId(), { showColumnDividers: false });
+        await settle();
+        // Gone on the spot: no unrelated gesture was needed to wake the engine.
+        expect(w2()).toEqual([]);
+        expect(validation.violations$.value).toEqual([]);
+
+        service.surface.updateElement(mapId(), { showColumnDividers: true });
+        await settle();
+        // ...and back on the same bar, in the same place. Scoped, not weakened.
+        expect(w2().map(v => v.elementIds)).toEqual([[bar]]);
+      });
+
+      test('a bar dropped on a map with no columns is never flagged', async () => {
+        addBackground();
+        service.surface.updateElement(mapId(), { showColumnDividers: false });
+        await settle();
+
+        addInertia(OFF_TRANSITION_X, 200);
+        await settle();
+
+        expect(validation.violations$.value).toEqual([]);
+      });
+
+      test('the other rules keep working with the columns hidden', async () => {
+        addBackground();
+        service.surface.updateElement(mapId(), { showColumnDividers: false });
+        addBackwardsArrow('[300,300,40,40]');
+        addInertia(OFF_TRANSITION_X, 200);
+        await settle();
+
+        // Only the rule measured against the dividers goes quiet: a toggle that
+        // switched off the whole check-up is a toggle nobody would dare use.
+        expect(validation.violations$.value.map(v => v.ruleId)).toEqual([
+          'wardley.change-arrow-against-evolution',
+        ]);
+      });
+
+      test('hiding another part of the map leaves W2 alone', async () => {
+        addBackground();
+        addInertia(OFF_TRANSITION_X, 200);
+        await settle();
+        expect(w2()).toHaveLength(1);
+
+        // The phase LABELS are not the dividers. W2 is about the frontier, and
+        // only the frontier's own toggle scopes it.
+        service.surface.updateElement(mapId(), { showColumnLabels: false });
+        await settle();
+
+        expect(w2()).toHaveLength(1);
+      });
+    });
+
     test('W2 says nothing about a bar astride a divider, alone (PO, 02/08)', async () => {
       addBackground();
       // The divider at x = 652, and no dependency anywhere near the bar: since

@@ -24,7 +24,9 @@ import {
   backgroundAxisFact,
   type BackgroundTransitionBand,
   backgroundTransitionBands,
+  backgroundTransitionVisibleProps,
 } from '../framework-background/facts.js';
+import type { BackgroundModelLike } from '../framework-background/labels.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
@@ -737,6 +739,16 @@ function warnOnce(reason: string): void {
 interface BackgroundInstance {
   id: string;
   bound: Bound;
+  /**
+   * The instance's own props, for the declaration's visibility gates.
+   *
+   * The element model itself, not a copy: a background carries a dozen props
+   * and a board carries units of backgrounds, so cherry-picking them per
+   * evaluation would be a walk the engine cannot name the end of. Read-only by
+   * discipline — nothing in this file writes through it — and typed as the bag
+   * of props the primitive already sees it as.
+   */
+  props: BackgroundModelLike;
 }
 
 /**
@@ -757,7 +769,11 @@ function backgroundsOf(
   for (const el of elements) {
     if (el.role === undefined) continue;
     if (roleIsA(el.role, backgroundRole, rule.roles)) {
-      backgrounds.push({ id: el.id, bound: el.elementBound });
+      backgrounds.push({
+        id: el.id,
+        bound: el.elementBound,
+        props: el as unknown as BackgroundModelLike,
+      });
     }
   }
   return backgrounds;
@@ -1205,6 +1221,21 @@ function evaluateOrientationAgainstAxis(
  * A rule that names a carrier stays silent while the board carries none: a map
  * with no dependency yet is a map being drawn, not a map with a misplaced
  * symbol.
+ *
+ * ## The boundary half asks nothing while the boundary is hidden
+ *
+ * The frontiers are read off the INSTANCE, not off the declaration alone
+ * ({@link backgroundTransitionBands}): a framework that lets the user switch its
+ * graduations off names the prop that shows them, and a frame with them off
+ * yields no band, so every subject on it passes.
+ *
+ * Proportionality, and the PO's own wording (25/08/2026): a user who has hidden
+ * the dashed columns is looking at a plain card, and telling them a bar is not
+ * astride a line they cannot see is a finding they cannot act on — the gesture
+ * it asks for would aim at nothing. Judge the drawing that is on the canvas,
+ * not the one the declaration could have painted. The rule is not weakened, it
+ * is scoped: turn the columns back on and every verdict comes back, on the same
+ * bars, in the same places.
  */
 function evaluateAttachment(
   rule: ValidationRule,
@@ -1289,7 +1320,10 @@ function evaluateAttachment(
     if (carried && axis !== undefined && frame !== null && def) {
       let bands = bandsOf.get(frame.id);
       if (bands === undefined) {
-        const all = backgroundTransitionBands(def, frame.bound);
+        // `frame.props` is what makes the bands the ones the user can SEE: a
+        // frame whose graduations are switched off yields none, and the
+        // "no transition at all" branch below turns that into silence.
+        const all = backgroundTransitionBands(def, frame.bound, frame.props);
         // A transition ACROSS a horizontal axis is a vertical band, i.e. an `x`.
         bands = axis.orientation === 'horizontal' ? all.x : all.y;
         bandsOf.set(frame.id, bands);
@@ -1316,7 +1350,10 @@ function evaluateAttachment(
           missed = band;
         }
       }
-      // A frame with no transition at all asks nothing of the subject.
+      // A frame with no transition at all asks nothing of the subject — and
+      // since the bands are read through the instance, "none" covers both a
+      // frame that declares no frontier and one whose frontiers the user has
+      // hidden.
       if (bands.length === 0) inBand = true;
     }
 
@@ -2691,10 +2728,14 @@ export function ValidationProfileExtension(
 const VALIDATION_DELAY_MS = 120;
 
 /**
- * Element props that can change a verdict. Everything else — `opacity` and the
- * other `@local()` fields, colours, labels — is ignored, so brushing a canvas
- * (`SpotlightManager` writes `opacity` on every element it dims) neither
- * re-evaluates the surface nor pushes the pending evaluation further away.
+ * Element props that can change a verdict, WHATEVER the registered rules are.
+ * Everything else — `opacity` and the other `@local()` fields, colours,
+ * labels — is ignored, so brushing a canvas (`SpotlightManager` writes
+ * `opacity` on every element it dims) neither re-evaluates the surface nor
+ * pushes the pending evaluation further away.
+ *
+ * A framework can add to this list without the engine learning its name: see
+ * {@link verdictPropsOf}.
  */
 export const VERDICT_PROPS = [
   'xywh',
@@ -2719,6 +2760,35 @@ export const VERDICT_PROPS = [
 ];
 
 /**
+ * {@link VERDICT_PROPS} plus what the REGISTERED rules make verdict-bearing.
+ *
+ * A framework background can carry visibility toggles, and one of them may be
+ * the toggle that shows the frontiers a rule measures against — hide the
+ * dashed columns of a Wardley map and the findings about them stop being
+ * findings ({@link backgroundTransitionBands}). Without this the toggle would be
+ * as inert as a colour: the marks would stay on screen until some unrelated
+ * drag happened to wake the engine, which is a board that lies about a document
+ * that has already changed.
+ *
+ * Derived from the DECLARATIONS the engine was handed, never from a name it
+ * knows: `backgroundTransitionVisibleProps` reads the prop each framework
+ * writes beside the line it gates. A framework whose background declares no
+ * toggle contributes nothing and the set is the constant.
+ */
+export function verdictPropsOf(
+  rules: readonly ValidationRule[]
+): ReadonlySet<string> {
+  const props = new Set<string>(VERDICT_PROPS);
+  for (const rule of rules) {
+    if (rule.background === undefined) continue;
+    for (const prop of backgroundTransitionVisibleProps(rule.background)) {
+      props.add(prop);
+    }
+  }
+  return props;
+}
+
+/**
  * Whether an `elementUpdated` payload can have changed a verdict.
  *
  * It has to read `oldValues` as well as `props`, because a Y.Map **delete**
@@ -2734,17 +2804,20 @@ export const VERDICT_PROPS = [
  * cost of a spurious re-evaluation is a debounce tick, the cost of a missed one
  * is a board that lies.
  */
-export function touchesVerdict(payload: {
-  props?: Record<string, unknown>;
-  oldValues?: Record<string, unknown>;
-}): boolean {
+export function touchesVerdict(
+  payload: {
+    props?: Record<string, unknown>;
+    oldValues?: Record<string, unknown>;
+  },
+  watched: ReadonlySet<string> | readonly string[] = VERDICT_PROPS
+): boolean {
   const { props, oldValues } = payload;
   if (!props && !oldValues) return true;
-  return VERDICT_PROPS.some(
-    prop =>
-      (props !== undefined && prop in props) ||
-      (oldValues !== undefined && prop in oldValues)
-  );
+  for (const prop of watched) {
+    if (props !== undefined && prop in props) return true;
+    if (oldValues !== undefined && prop in oldValues) return true;
+  }
+  return false;
 }
 
 /** Shared answer for "this element is nobody's frame", allocated once. */
@@ -2901,6 +2974,17 @@ export class ValidationManager extends InteractivityExtension {
     return this._rules;
   }
 
+  private _verdictProps: ReadonlySet<string> | null = null;
+
+  /**
+   * The props worth re-evaluating for, given what is registered. Resolved once,
+   * beside the rules it is derived from — see {@link verdictPropsOf}.
+   */
+  private get _watchedProps(): ReadonlySet<string> {
+    this._verdictProps ??= verdictPropsOf(this._activeRules);
+    return this._verdictProps;
+  }
+
   private _nudges: readonly QualityNudge[] | null = null;
 
   /**
@@ -3000,7 +3084,7 @@ export class ValidationManager extends InteractivityExtension {
     this._subscriptions.push(
       surface.elementUpdated.subscribe(payload => {
         // A prop that cannot change a verdict must not even rearm the timer.
-        if (!touchesVerdict(payload)) return;
+        if (!touchesVerdict(payload, this._watchedProps)) return;
         this._schedule(payload.id);
       })
     );
