@@ -1463,6 +1463,17 @@ export class ConnectorPathGenerator extends PathGenerator {
     });
 
     const points = path ?? instance._generateConnectorPath(connector) ?? [];
+
+    // Degraded state: no resolvable endpoints (an endpoint references a
+    // missing element and has no fallback position). Keep the last bound and
+    // paint nothing rather than derive a bbox from an empty point set.
+    if (points.length === 0) {
+      connector.updatingPath = true;
+      connector.path = [];
+      connector.updatingPath = false;
+      return;
+    }
+
     const bound =
       connector.mode === ConnectorMode.Curve
         ? getBezierCurveBoundingBox(getBezierParameters(points))
@@ -1545,6 +1556,10 @@ export class ConnectorPathGenerator extends PathGenerator {
       const end = this._getConnectorEndElement(connector, 'target');
 
       const [startPoint, endPoint] = this._computeStartEndPoint(connector);
+      // _computeStartEndPoint returns [] when an endpoint cannot be resolved
+      // (e.g. its element is gone and no position is stored) — bail out
+      // instead of feeding undefined points to the orthogonal router.
+      if (!startPoint || !endPoint) return [];
 
       const startBound = start
         ? Bound.from(getBoundWithRotation(rBound(start)))
@@ -1573,15 +1588,12 @@ export class ConnectorPathGenerator extends PathGenerator {
     let endPoint: PointLocation | null = null;
 
     if (source.id || target.id) {
-      if (!source.position && !target.position) {
-        const start = this._getConnectorEndElement(
-          connector,
-          'source'
-        ) as Connectable;
-        const end = this._getConnectorEndElement(
-          connector,
-          'target'
-        ) as Connectable;
+      const start = this._getConnectorEndElement(connector, 'source');
+      const end = this._getConnectorEndElement(connector, 'target');
+      // An endpoint id may reference an element that no longer exists.
+      // Only take the anchor-to-anchor shortcut when both resolve; otherwise
+      // degrade through _getConnectionPoint (stored position or empty path).
+      if (start && end && !source.position && !target.position) {
         const sb = Bound.deserialize(start.xywh);
         const eb = Bound.deserialize(end.xywh);
         startPoint = getNearestConnectableAnchor(start, eb.center);
@@ -1693,15 +1705,18 @@ export class ConnectorPathGenerator extends PathGenerator {
     connector: ConnectorElementModel | LocalConnectorElementModel
   ) {
     const { source, target } = connector;
-    if (source.id && !source.position && target.id && !target.position) {
-      const start = this._getConnectorEndElement(
-        connector,
-        'source'
-      ) as Connectable;
-      const end = this._getConnectorEndElement(
-        connector,
-        'target'
-      ) as Connectable;
+    const start = this._getConnectorEndElement(connector, 'source');
+    const end = this._getConnectorEndElement(connector, 'target');
+    // Same degraded state as in _generateCurveConnectorPath: an endpoint id
+    // whose element is gone falls through to _getConnectionPoint.
+    if (
+      source.id &&
+      !source.position &&
+      target.id &&
+      !target.position &&
+      start &&
+      end
+    ) {
       const sb = Bound.deserialize(start.xywh);
       const eb = Bound.deserialize(end.xywh);
       const startPoint = getNearestConnectableAnchor(start, eb.center);
