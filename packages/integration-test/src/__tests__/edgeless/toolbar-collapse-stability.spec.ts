@@ -247,15 +247,15 @@ describe('the contextual toolbar, while the viewport moves', () => {
   });
 
   /**
-   * The other half of the diagnosis, kept as a guard.
+   * The other half of the diagnosis, kept as a guard — and vindicated.
    *
-   * The positioner was NOT the oscillator: the transform it writes moves once
-   * per frame, steadily, in the direction of the zoom — it did so before the
-   * plan was frozen and it does so after. What the eye read as the row
-   * hesitating between anchor points was the row's own WIDTH changing under a
-   * stable anchor: `top-start` pins the left edge, so every composition the
-   * fitter tried moved the other three. Freeze the plan and the movement is the
-   * zoom's alone. This test fails the day the anchoring itself starts to argue.
+   * On a COMPONENT's row the positioner was steady: what the eye read as
+   * hesitation was the row's own width changing under a stable `top-start`
+   * anchor, and freezing the plan cured it. The anchoring itself only started
+   * to argue on the one selection this test does not use — the map BACKGROUND,
+   * whose reference dwarfs the screen (PO recette of 25/08/2026, third video;
+   * `flip`'s alignment arbitration, fixed in the positioner). This test keeps
+   * the component's half of the claim; the background's is the test below.
    */
   test('the anchor never goes back to a place it just left', async () => {
     addMap();
