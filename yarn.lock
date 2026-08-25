@@ -15,34 +15,45 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@atlaskit/pragmatic-drag-and-drop-auto-scroll@npm:^2.1.0":
-  version: 2.1.1
-  resolution: "@atlaskit/pragmatic-drag-and-drop-auto-scroll@npm:2.1.1"
+"@atlaskit/pragmatic-drag-and-drop-auto-scroll@npm:^3.0.0":
+  version: 3.1.0
+  resolution: "@atlaskit/pragmatic-drag-and-drop-auto-scroll@npm:3.1.0"
   dependencies:
-    "@atlaskit/pragmatic-drag-and-drop": "npm:^1.7.0"
+    "@atlaskit/pragmatic-drag-and-drop": "npm:^3.0.0"
     "@babel/runtime": "npm:^7.0.0"
-  checksum: 10/312ea8de1842895b54e2c10e2e19f88ba53a6cf31a60840805783aa04d163d7905223112f0187c7eccd0eca7d85107c6312869fd57ba43ee7214ed2d58d2471a
+  checksum: 10/ac4eb0c37eb94caa720d7fc61af21e73ec7d3b811153fa4e3b1848eccb7cd7b430567d2e2001eb35743f4e500c8b08fb5629841d7973f9ac4dc11eaeaa6a3ece
   languageName: node
   linkType: hard
 
-"@atlaskit/pragmatic-drag-and-drop-hitbox@npm:^1.0.3":
-  version: 1.1.0
-  resolution: "@atlaskit/pragmatic-drag-and-drop-hitbox@npm:1.1.0"
+"@atlaskit/pragmatic-drag-and-drop-hitbox@npm:^2.0.0":
+  version: 2.1.0
+  resolution: "@atlaskit/pragmatic-drag-and-drop-hitbox@npm:2.1.0"
   dependencies:
-    "@atlaskit/pragmatic-drag-and-drop": "npm:^1.6.0"
+    "@atlaskit/pragmatic-drag-and-drop": "npm:^3.0.0"
     "@babel/runtime": "npm:^7.0.0"
-  checksum: 10/47669b2d19eba8a3a7de787fa0d6ab8b171b7e7465249afe3ab28f5e522abacc2acf5e07e3661ce781ad9171ca08a2e0ce269413d18dfe0c5f3f858995d2b783
+  checksum: 10/ef9a5b2d428cfe77e8672a34e833d7a805a19f01fa234c1614184913e1485ba925280193339e3259e19bdb0431e5aa6cb28770917fdddb96762799e4e0bdc706
   languageName: node
   linkType: hard
 
-"@atlaskit/pragmatic-drag-and-drop@npm:^1.4.0, @atlaskit/pragmatic-drag-and-drop@npm:^1.6.0, @atlaskit/pragmatic-drag-and-drop@npm:^1.7.0":
-  version: 1.7.2
-  resolution: "@atlaskit/pragmatic-drag-and-drop@npm:1.7.2"
+"@atlaskit/pragmatic-drag-and-drop@npm:^2.0.0":
+  version: 2.0.2
+  resolution: "@atlaskit/pragmatic-drag-and-drop@npm:2.0.2"
   dependencies:
     "@babel/runtime": "npm:^7.0.0"
     bind-event-listener: "npm:^3.0.0"
     raf-schd: "npm:^4.0.3"
-  checksum: 10/d5b0dda963b3a36e71a8bdd2d8844901324d50ab1c0ca3bbe5688b9597163b636aa82a715599dfc060493a885f2c7e3b370159ef288f3f398ff7a81fdf65cf77
+  checksum: 10/486663d9c35fa26bb6e57602a398a98ae607e81df07b40691718304e3a05a21dabad144220f954d925aa1e9c903954ba5c0edad860118a0d7ed3195b3430cda2
+  languageName: node
+  linkType: hard
+
+"@atlaskit/pragmatic-drag-and-drop@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@atlaskit/pragmatic-drag-and-drop@npm:3.0.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.0.0"
+    bind-event-listener: "npm:^3.0.0"
+    raf-schd: "npm:^4.0.3"
+  checksum: 10/80facb8470a66987d19e63f8cb98f8921617b59a39e561d0faeb1f90390c689770f138e023d862eeca47bc4da70ec97c0aa627a6c3472f44a6ccdd8cc852c928
   languageName: node
   linkType: hard
 
@@ -2233,7 +2244,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-block-table@workspace:packages/affine/blocks/table"
   dependencies:
-    "@atlaskit/pragmatic-drag-and-drop": "npm:^1.4.0"
+    "@atlaskit/pragmatic-drag-and-drop": "npm:^2.0.0"
     "@blocksuite/icons": "npm:^2.2.12"
     "@emotion/css": "npm:^11.13.5"
     "@floating-ui/dom": "npm:^1.6.13"
@@ -3817,9 +3828,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/std@workspace:packages/framework/std"
   dependencies:
-    "@atlaskit/pragmatic-drag-and-drop": "npm:^1.4.0"
-    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "npm:^2.1.0"
-    "@atlaskit/pragmatic-drag-and-drop-hitbox": "npm:^1.0.3"
+    "@atlaskit/pragmatic-drag-and-drop": "npm:^2.0.0"
+    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "npm:^3.0.0"
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "npm:^2.0.0"
     "@labre/global": "workspace:*"
     "@labre/store": "workspace:*"
     "@lit/context": "npm:^1.1.2"
