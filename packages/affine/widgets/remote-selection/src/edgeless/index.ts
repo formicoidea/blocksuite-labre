@@ -3,6 +3,7 @@ import type { RootBlockModel } from '@labre/affine-model';
 import {
   getSelectedRect,
   isTopLevelBlock,
+  overlayScale,
   requestThrottledConnectedFrame,
 } from '@labre/affine-shared/utils';
 import { MultiCursorDuotoneIcon } from '@blocksuite/icons/lit';
@@ -148,13 +149,15 @@ export class EdgelessRemoteSelectionWidget extends WidgetComponent<RootBlockMode
   };
 
   private readonly _updateTransform = requestThrottledConnectedFrame(() => {
-    const { translateX, translateY, zoom } = this.gfx.viewport;
+    const { translateX, translateY, viewScale } = this.gfx.viewport;
 
-    this.style.setProperty('--v-zoom', `${zoom}`);
+    // Stated in the scaled space of the container, like every other overlay
+    // and like `GfxBlockComponent.getCSSTransform`.
+    this.style.setProperty('--v-zoom', `${overlayScale(this.gfx.viewport)}`);
 
     this.style.setProperty(
       'transform',
-      `translate(${translateX}px, ${translateY}px) scale(var(--v-zoom))`
+      `translate(${translateX / viewScale}px, ${translateY / viewScale}px) scale(var(--v-zoom))`
     );
   }, this);
 

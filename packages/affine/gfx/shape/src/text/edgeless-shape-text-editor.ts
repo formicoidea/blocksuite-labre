@@ -11,7 +11,11 @@ import {
 } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
 import { ThemeProvider } from '@labre/affine-shared/services';
-import { getSelectedRect } from '@labre/affine-shared/utils';
+import {
+  getSelectedRect,
+  overlayScale,
+  toOverlayCoord,
+} from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, toRadian, Vec } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
@@ -331,7 +335,9 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
     const [verticalPadding, horiPadding] = this.element.padding;
     const textResizing = this.element.textResizing;
     const viewport = this.gfx.viewport;
-    const zoom = viewport.zoom;
+    // The editor is mounted inside the container the host may have scaled, so
+    // it is placed and scaled the way a gfx block is, not in screen pixels.
+    const scale = overlayScale(viewport);
     const rect = getSelectedRect([this.element]);
     const rotate = this.element.rotate;
     const [leftTopX, leftTopY] = Vec.rotWith(
@@ -339,7 +345,7 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       [rect.left + rect.width / 2, rect.top + rect.height / 2],
       toRadian(rotate)
     );
-    const [x, y] = this.gfx.viewport.toViewCoord(leftTopX, leftTopY);
+    const [x, y] = toOverlayCoord(viewport, leftTopX, leftTopY);
     const fixedBounds = this.element.textFitMode !== TextFitMode.Grow;
     const autoWidth =
       !fixedBounds && textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT;
@@ -365,7 +371,7 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       fontWeight: this.element.fontWeight,
       lineHeight: 'normal',
       outline: 'none',
-      transform: `scale(${zoom}, ${zoom}) rotate(${rotate}deg)`,
+      transform: `scale(${scale}, ${scale}) rotate(${rotate}deg)`,
       transformOrigin: 'top left',
       color,
       padding: `${verticalPadding}px ${horiPadding}px`,
