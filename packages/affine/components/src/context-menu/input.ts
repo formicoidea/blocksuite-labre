@@ -71,6 +71,9 @@ export class MenuInput extends MenuFocusable {
     }
     if (e.key === 'Enter') {
       this.complete();
+      // Blur before the menu goes away: unmounting a focused input does not
+      // emit `blur`, and blur is where the value is saved.
+      this.inputRef.blur();
       this.menu.close();
       return;
     }
