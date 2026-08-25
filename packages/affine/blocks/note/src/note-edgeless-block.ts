@@ -221,6 +221,19 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
     }
   }
 
+  /**
+   * A note carries its own `scale` on top of the viewport zoom. That scale
+   * belongs to the host element's transform, not to an inner wrapper: the
+   * element is laid out from the *unscaled* bound (see `getRenderingRect`), so
+   * scaling only the content would leave the element's box — the thing hit
+   * tests, the selection rect and the toolbar anchor read — out of step with
+   * what is painted at any scale other than 100%.
+   */
+  override getCSSTransform() {
+    const extraScale = this.model.props.edgeless?.scale ?? 1;
+    return `${super.getCSSTransform()} scale(${extraScale})`;
+  }
+
   override getRenderingRect() {
     const { xywh, edgeless } = this.model.props;
     const { collapse, scale = 1 } = edgeless;
@@ -255,7 +268,6 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
 
     const style = {
       borderRadius: borderRadius + 'px',
-      transform: `scale(${scale})`,
     };
 
     const extra = this._editing ? ACTIVE_NOTE_EXTRA_PADDING : 0;
