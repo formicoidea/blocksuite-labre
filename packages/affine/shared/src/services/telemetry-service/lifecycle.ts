@@ -185,42 +185,11 @@ export interface MapQualityNudgeEvent extends TelemetryEvent {
   checked: boolean;
 }
 
-/**
- * A quality CHECK-UP asked for (PF5.14). The on-demand moment exists so these
- * controls never touch the drawing budget, which also means nothing else
- * records that they run: how often a user asks, and how much a run finds, are
- * only knowable here.
- *
- * Counts only, never a rule id and never board content: which remarks a
- * particular map produced is the map's business.
- */
-export interface MapQualityCheckupEvent extends TelemetryEvent {
-  page?: 'whiteboard editor';
-  /** Owning framework of the rules walked, when the run had any. */
-  framework?: string;
-  /** How many on-demand rules the run walked. */
-  ruleCount: number;
-  /**
-   * How many remarks came back — for the ONE instance the run was about. A
-   * check-up walks the whole surface and reports on one map, so this is never a
-   * count over the board.
-   */
-  remarkCount: number;
-  /**
-   * Set when a rule threw and the run stopped early. Absent rather than `false`,
-   * per the repo convention — and worth knowing about on its own: a check-up
-   * that fails is invisible everywhere else, because it produces no remark to
-   * notice the absence of.
-   */
-  error?: true;
-}
-
 export type ValidationEvents = {
   ValidationExceptionGranted: ValidationExceptionEvent;
   ValidationExceptionRevoked: ValidationExceptionEvent;
   ValidationProfileChanged: ValidationProfileEvent;
   MapQualityNudgeToggled: MapQualityNudgeEvent;
-  MapQualityCheckupRun: MapQualityCheckupEvent;
 };
 
 /**

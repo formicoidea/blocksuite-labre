@@ -59,8 +59,9 @@ const sketch: ValidationProfile = {
  * ## Why W1 and W2 are not `blocking-overridable`
  *
  * They should be: pointing a change arrow backwards and parking an inertia bar
- * in white space are both statements that are simply false, and the architect's
- * recommendation is that strict refuse the gesture and offer the way out.
+ * in the middle of a phase are both statements that are simply false, and the
+ * architect's recommendation is that strict refuse the gesture and offer the
+ * way out.
  *
  * Nothing implements that yet. `blocking-overridable` is carried by the engine
  * and read by nobody: no gesture is refused anywhere in this library. Declaring

@@ -23,82 +23,53 @@ import {
   type QualityNudge,
   setNudgeChecked,
 } from './map-quality.js';
-import {
-  type CheckupRun,
-  liveViolations,
-  type RuleFamily,
-  userFacingViolations,
-  ValidationManager,
-  type Violation,
-} from './validation.js';
+import { ValidationManager } from './validation.js';
 
 export const MAP_QUALITY_WIDGET = 'affine-map-quality-widget';
 
 /**
- * Substitute `{name}` placeholders in a translated string.
- *
- * The whole of the library's interpolation needs, and deliberately not an i18n
- * runtime: what matters is that a sentence carrying a number reaches a
- * translator as ONE sentence, so a locale can put the count wherever its grammar
- * wants it. A placeholder the caller did not supply is left alone rather than
- * blanked — a visible `{done}` is a bug report, an empty gap is a mystery.
- */
-function fill(text: string, values: Record<string, string | number>): string {
-  return text.replace(/\{(\w+)\}/g, (match, key: string) =>
-    key in values ? String(values[key]) : match
-  );
-}
-
-/**
  * Width of the column the checkboxes live in, in screen pixels.
  *
- * Every body row of the panel reserves it — the ones with a box put the box in
- * it, the ones without leave it empty — so one vertical line runs down the left
- * edge of every sentence in the panel. The alternative the PO offered (boxes
- * aligned right) would have put the control furthest from the words it governs.
+ * One vertical line runs down the left edge of every sentence in the panel: the
+ * box sits in this column, the words in the next. The alternative the PO offered
+ * (boxes aligned right) would have put the control furthest from the words it
+ * governs.
  */
 const CHECKBOX_GUTTER = 22;
 
 /**
- * What the library calls each rule FAMILY, so a check-up can say what it looked
- * at — "Check-up (tones, nomenclature)" — instead of announcing a verdict about
- * nothing in particular.
- *
- * Chrome, and only chrome: a family is the LIBRARY's own vocabulary (it is
- * declared in `validation.ts` and no framework may add one), so wording it here
- * puts no words in a framework's mouth. The rule's own message still comes from
- * the framework, and the host catalogue still wins over both — these are keyed
- * like everything else.
- */
-const FAMILY_FALLBACK: Record<RuleFamily, string> = {
-  'element-in-background': 'placement',
-  'orientation-against-axis': 'orientation',
-  attachment: 'attachment',
-  'no-overlap': 'overlaps',
-  'relative-order-along-axis': 'order',
-  'tone-convention': 'tones',
-  'majority-fact': 'nomenclature',
-};
-
-/**
  * The **Map quality** panel (PF7.11): the checklist of nudges a framework
- * declares (PF7.10) and the remarks its on-demand check-up produces (PF5.14),
- * on one root instance.
+ * declares (PF7.10), on one root instance.
+ *
+ * ## One kind of statement, and only one (PO, 02/08/2026)
+ *
+ * The panel used to carry three: the checklist, a "Run check-up" button with the
+ * remarks and the families it had walked, and a count of the real-time warnings
+ * on the map. All three were true and the reader had to work out which was
+ * speaking — a check-up saying "Nothing to report" over a map wearing amber
+ * badges reads as a contradiction until you know it never looked at them. The
+ * PO's answer was not more wording: it was to take the other two away. What is
+ * left is the one thing the panel is FOR, the expectations the tool cannot judge
+ * and the user says they have taken care of.
+ *
+ * Nothing was removed from the engine. The on-demand moment (PF5.14) and the
+ * families that used it are still there, still tested; the canvas still carries
+ * the real-time findings, which is where they were always legible. Only this
+ * panel got shorter.
  *
  * ## Generic, not Wardley
  *
  * Nothing here names a framework, a role or a rule. The panel asks the ENGINE
- * what this instance has ({@link ValidationManager.nudgesFor},
- * {@link ValidationManager.checkupRulesFor}) and renders the answer. A second
- * framework declaring nudges or an on-demand rule gets the toolbar entry, this
- * panel and its check-up with no code written anywhere — which is the acceptance
- * criterion of PF7.11 and the reason none of this lives in `gfx/wardley`.
+ * what this instance has ({@link ValidationManager.nudgesFor}) and renders the
+ * answer. A second framework declaring nudges gets the toolbar entry and this
+ * panel with no code written anywhere — which is the acceptance criterion of
+ * PF7.11 and the reason none of this lives in `gfx/wardley`.
  *
  * ## Why a widget and not a menu
  *
  * Because a dropdown closes on the first click, and this is a surface you WORK
- * in: four boxes to tick, a button to press, a list that fills in afterwards.
- * The entry in the Validation dropdown opens it and gets out of the way
+ * in: four boxes to tick, one at a time, while looking at the map. The entry in
+ * the Validation dropdown opens it and gets out of the way
  * (`validation-toolbar.ts`); `ValidationManager.mapQualityFor$` is the seam
  * between the two, because the entry lives in `editor-menu-button`'s shadow root
  * and the panel lives on the root block — two trees with no DOM path between
@@ -122,37 +93,15 @@ const FAMILY_FALLBACK: Record<RuleFamily, string> = {
  *
  * Ticking a nudge WRITES on the document, so every checkbox is disabled in a
  * read-only store — and `setNudgeChecked` is behind the same guard, because a
- * disabled input is a UI promise and not an enforcement. Running the check-up
- * writes nothing at all, so it stays available: reading the quality of a map you
- * cannot edit is exactly what a reviewer is here to do.
+ * disabled input is a UI promise and not an enforcement. Opening the panel
+ * writes nothing, so a reviewer still reads the checklist.
  *
  * ## Ticking is assuming
  *
  * The panel never claims a nudge is satisfied. It records that somebody said so
- * — the same contract as an exception (PF8), and the reason the checklist and
- * the computed remarks are two clearly separated blocks rather than one list
- * that would blur what was measured with what was asserted.
- *
- * ## Saying which of the three it is (PO, 02/08)
- *
- * The review found a map wearing amber badges whose check-up reported "Nothing
- * to report", with a missing title and no legend. Every one of those statements
- * was true, and together they read as a contradiction, because the panel never
- * said WHO was speaking. Three different things live on this surface and the
- * wording now names all three, without moving a single boundary between them:
- *
- * - the CHECKLIST is introduced as "To be checked by you" — the tool does not
- *   judge it and now says so before the first box, not only in a comment here;
- * - the CHECK-UP names the families it walked — "Check-up (tones,
- *   nomenclature):" — so "Nothing to report" is a verdict about something
- *   rather than about everything;
- * - the REAL-TIME findings, which no check-up ever runs, get a read-only count
- *   for this map, so the badges on the canvas are accounted for in the panel
- *   that was appearing to deny them.
- *
- * No semantics changed: the same rules run at the same moments and write the
- * same things. Only the panel stopped leaving the reader to work out which is
- * which.
+ * — the same contract as an exception (PF8), and the reason the checklist is
+ * introduced as "To be checked by you" rather than as "Checklist", which left
+ * the reader to guess whether the tool had already been through it.
  */
 export class MapQualityWidget extends EditorAnchoredPanel {
   static override styles = [
@@ -198,25 +147,13 @@ export class MapQualityWidget extends EditorAnchoredPanel {
       letter-spacing: 0.04em;
     }
 
-    /* One column for the control, one for the words — and the same two columns
-       on every body row, whether or not it has a control to put in the first
-       one (PO, 02/08: the check-up lines hung a checkbox-width to the left of
-       the checklist and read as a hole). */
-    .map-quality-nudge,
-    .map-quality-indent {
+    /* One column for the control, one for the words. */
+    .map-quality-nudge {
       display: grid;
       grid-template-columns: ${unsafeCSS(CHECKBOX_GUTTER)}px 1fr;
       align-items: start;
-    }
-
-    .map-quality-nudge {
       padding: 4px 0;
       cursor: pointer;
-    }
-
-    /* The gutter is empty here: the second column is where the text goes. */
-    .map-quality-indent > * {
-      grid-column: 2;
     }
 
     .map-quality-nudge input[disabled] {
@@ -236,63 +173,10 @@ export class MapQualityWidget extends EditorAnchoredPanel {
       overflow-wrap: anywhere;
     }
 
-    .map-quality-run {
-      align-self: flex-start;
-      justify-self: start;
-      padding: 4px 10px;
-      border-radius: 4px;
-      border: 1px solid var(--affine-border-color);
-      background: transparent;
-      color: var(--affine-text-primary-color);
-      font-family: inherit;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    .map-quality-run:hover:not([disabled]) {
-      background: var(--affine-hover-color);
-    }
-
-    .map-quality-run[disabled] {
-      cursor: progress;
-      color: var(--affine-text-secondary-color);
-    }
-
-    .map-quality-run:focus-visible,
     .map-quality-close:focus-visible,
     .map-quality-nudge input:focus-visible {
       outline: 2px solid var(--affine-primary-color);
       outline-offset: 1px;
-    }
-
-    .map-quality-stamp {
-      color: var(--affine-text-secondary-color);
-      font-size: 12px;
-    }
-
-    /* What the check-up looked at, and what is flagged in real time — context,
-       not verdicts, so they read as secondary to the remarks they frame. */
-    .map-quality-scope,
-    .map-quality-realtime {
-      color: var(--affine-text-secondary-color);
-      font-size: 12px;
-    }
-
-    .map-quality-realtime {
-      margin-top: 4px;
-    }
-
-    .map-quality-remark + .map-quality-remark {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--affine-border-color);
-    }
-
-    .map-quality-remark-suggestion {
-      margin-top: 4px;
-      color: var(--affine-text-secondary-color);
-      font-size: 13px;
-      overflow-wrap: anywhere;
     }
     `,
   ];
@@ -300,22 +184,6 @@ export class MapQualityWidget extends EditorAnchoredPanel {
   /** The instance whose panel is open, mirrored off the manager's signal. */
   @state()
   private accessor _openFor: string | null = null;
-
-  @state()
-  private accessor _checkup: CheckupRun | null = null;
-
-  /**
-   * The live real-time findings, mirrored off the manager's signal for the
-   * context line ({@link _renderRealtime}).
-   *
-   * Mirrored rather than read inside `render`: a lit template does not track a
-   * preact signal, so a count read there would be whatever it was the last time
-   * something else forced a render — a number that is silently wrong is worse
-   * than no number, and this one exists precisely to be trusted against the
-   * badges on the canvas.
-   */
-  @state()
-  private accessor _violations: readonly Violation[] = [];
 
   /**
    * Bumped to force a re-render when the document changes underneath — a peer
@@ -402,23 +270,6 @@ export class MapQualityWidget extends EditorAnchoredPanel {
         effect(() => {
           this._openFor = validation.mapQualityFor$.value;
           this._watchElements();
-        })
-      );
-      _disposables.add(
-        effect(() => {
-          this._checkup = validation.checkup$.value;
-        })
-      );
-      _disposables.add(
-        effect(() => {
-          const next = liveViolations(
-            userFacingViolations(validation.violations$.value)
-          );
-          // A clean board hands out a fresh empty array on every evaluation;
-          // assigning it would re-render the panel for nothing, and does so
-          // once from inside the widget's own first update.
-          if (next.length === 0 && this._violations.length === 0) return;
-          this._violations = next;
         })
       );
     }
@@ -516,38 +367,6 @@ export class MapQualityWidget extends EditorAnchoredPanel {
     });
   }
 
-  private _runCheckup(element: GfxPrimitiveElementModel) {
-    const validation = this._validation;
-    if (!validation) return;
-
-    const rules = validation.checkupRulesFor(element);
-    validation
-      .runCheckup(element)
-      .then(run => {
-        // A superseded run reports nothing: the click that superseded it will.
-        if (!run) return;
-        this.std.getOptional(TelemetryProvider)?.track('MapQualityCheckupRun', {
-          page: 'whiteboard editor',
-          segment: 'whiteboard',
-          module: 'map quality panel',
-          control: 'run check-up',
-          ruleCount: run.total,
-          remarkCount: run.results.length,
-          ...(run.error ? { error: true } : {}),
-          ...(rules[0] !== undefined ? { framework: rules[0].framework } : {}),
-        });
-      })
-      // `runCheckup` already turns a throwing RULE into a finished run carrying
-      // `error`. This catches the rest — the driver itself failing — for the one
-      // reason that matters: an unhandled rejection would leave the last
-      // published run stuck below `total`, so the button stays disabled and
-      // there is no way left to ask again, on this map or any other.
-      .catch((error: unknown) => {
-        console.error('[map-quality] check-up failed', error);
-        this.requestUpdate();
-      });
-  }
-
   private _renderNudges(element: GfxPrimitiveElementModel) {
     const nudges = this._validation?.nudgesFor(element) ?? [];
     if (nudges.length === 0) return nothing;
@@ -601,194 +420,6 @@ export class MapQualityWidget extends EditorAnchoredPanel {
     </div>`;
   }
 
-  /**
-   * The families a check-up on this map walks, worded and joined — "tones,
-   * nomenclature".
-   *
-   * Distinct and in declared order: two rules of the same family are one thing
-   * being checked, and the list is read, not counted.
-   */
-  private _checkupScope(rules: readonly { family: RuleFamily }[]): string {
-    const families: string[] = [];
-    for (const rule of rules) {
-      const label = translateKey(
-        this.std,
-        `com.labre.validation.family.${rule.family}`,
-        FAMILY_FALLBACK[rule.family] ?? rule.family
-      );
-      if (!families.includes(label)) families.push(label);
-    }
-    return families.join(
-      translateKey(this.std, 'com.labre.validation.list-separator', ', ')
-    );
-  }
-
-  /**
-   * "N real-time warnings active on this map" — the missing half of the PO's
-   * 02/08 report, where a check-up said "Nothing to report" over a map wearing
-   * amber badges.
-   *
-   * Both statements were true and neither was legible on its own: the badges
-   * come from REAL-TIME rules, which a check-up never runs, and the check-up
-   * only ever spoke about its own two. So the panel says both, in the order a
-   * reader needs them, and neither one changes what the other means.
-   *
-   * Strictly READ-ONLY, and strictly this map's: the count comes off
-   * `violations$` — the same list the badges are drawn from — narrowed on
-   * `backgroundId`, exactly as `runCheckup` narrows a check-up. Audit findings
-   * are excluded because they are invisible by design, and excused ones because
-   * an exception is a decision already taken, not something still asking.
-   *
-   * Nothing is rendered when the count is zero: a line saying "0" is noise on
-   * the clean board, which is most boards.
-   */
-  private _renderRealtime(element: GfxPrimitiveElementModel) {
-    const count = this._violations.filter(
-      violation => violation.backgroundId === element.id
-    ).length;
-    if (count === 0) return nothing;
-
-    return html`<div class="map-quality-indent">
-      <div class="map-quality-realtime" data-testid="map-quality-realtime">
-        ${fill(
-          translateKey(
-            this.std,
-            'com.labre.validation.map-quality.realtime',
-            'Real-time warnings currently on this map: {count}.'
-          ),
-          { count }
-        )}
-      </div>
-    </div>`;
-  }
-
-  private _renderRemark(remark: Violation) {
-    return html`<div class="map-quality-remark" data-testid="map-quality-remark">
-      <div>
-        ${
-          // The FRAMEWORK's own wording when the host ships no catalogue, and
-          // the raw key when the framework shipped none either — the library
-          // never invents the wording of somebody else's rule.
-          translateKey(this.std, remark.messageKey, remark.messageFallback)
-        }
-      </div>
-      ${remark.suggestion
-        ? html`<div class="map-quality-remark-suggestion">
-            ${translateKey(
-              this.std,
-              remark.suggestion,
-              remark.suggestionFallback
-            )}
-          </div>`
-        : nothing}
-    </div>`;
-  }
-
-  private _renderCheckup(element: GfxPrimitiveElementModel) {
-    const rules = this._validation?.checkupRulesFor(element) ?? [];
-    if (rules.length === 0) return nothing;
-
-    // THIS map's check-up, and only this one. A run is measured on one instance
-    // and says so (`CheckupRun.backgroundId`); a board carries several maps, and
-    // rendering somebody else's run under this map's title would be the panel
-    // asserting things about the map the user is actually looking at. The engine
-    // already narrowed the remarks — this narrows the RUN, so a map nobody has
-    // checked shows no timestamp rather than the neighbour's.
-    const current = this._checkup;
-    const run =
-      current !== null && current.backgroundId === element.id ? current : null;
-    const running = run !== null && run.done < run.total;
-
-    return html`<div>
-      <div class="map-quality-group-label" id="map-quality-checkup-label">
-        ${translateKey(
-          this.std,
-          'com.labre.validation.map-quality.checkup',
-          'Check-up'
-        )}
-      </div>
-      <div class="map-quality-indent">
-        <button
-          class="map-quality-run"
-        type="button"
-        data-testid="map-quality-run"
-        ?disabled=${running}
-        @pointerdown=${this.swallow}
-        @pointerup=${this.swallow}
-        @click=${() => this._runCheckup(element)}
-      >
-        ${running
-          ? // ONE translatable sentence, with the numbers as placeholders. The
-            // concatenation it replaces ("Checking…" + " 1/2") was untranslatable
-            // as a phrase: a locale that puts the count first, or writes it
-            // differently, had no way to say so.
-            fill(
-              translateKey(
-                this.std,
-                'com.labre.validation.map-quality.running',
-                'Checking… {done}/{total}'
-              ),
-              { done: run.done, total: run.total }
-            )
-          : translateKey(
-              this.std,
-              'com.labre.validation.map-quality.run',
-              'Run check-up'
-            )}
-      </button>
-      <div
-        role="status"
-        aria-live="polite"
-        aria-labelledby="map-quality-checkup-label"
-        data-testid="map-quality-results"
-      >
-        ${run === null
-          ? nothing
-          : html`<div class="map-quality-stamp" data-testid="map-quality-stamp">
-                ${translateKey(
-                  this.std,
-                  'com.labre.validation.map-quality.stamp',
-                  'Last check-up'
-                )}:
-                ${new Date(run.at).toLocaleTimeString()}
-              </div>
-              <!-- WHAT was checked, on the result itself. A verdict that does
-                   not say what it looked at reads as a verdict on everything,
-                   which is how "Nothing to report" ended up contradicting the
-                   badges on the same map. -->
-              <div class="map-quality-scope" data-testid="map-quality-scope">
-                ${fill(
-                  translateKey(
-                    this.std,
-                    'com.labre.validation.map-quality.scope',
-                    'Check-up ({families}):'
-                  ),
-                  { families: this._checkupScope(rules) }
-                )}
-              </div>
-              ${run.error
-                ? html`<div data-testid="map-quality-error">
-                    ${translateKey(
-                      this.std,
-                      'com.labre.validation.map-quality.error',
-                      'The check-up could not finish. Try again.'
-                    )}
-                  </div>`
-                : nothing}
-              ${run.results.length === 0 && !running && !run.error
-                ? html`<div data-testid="map-quality-clean">
-                    ${translateKey(
-                      this.std,
-                      'com.labre.validation.map-quality.clean',
-                      'Nothing to report.'
-                    )}
-                  </div>`
-                : run.results.map(remark => this._renderRemark(remark))}`}
-      </div>
-      </div>
-    </div>`;
-  }
-
   override render() {
     const element = this._element;
     // An instance that lost its role, or whose framework was flagged off while
@@ -838,13 +469,7 @@ export class MapQualityWidget extends EditorAnchoredPanel {
             ×
           </button>
         </div>
-        ${this._renderNudges(element)} ${this._renderCheckup(element)}
-        ${
-          // Last, and outside the check-up block on purpose: it is context about
-          // the MAP, not a result of the button above it, and it has to be there
-          // for a framework that declares nudges and no on-demand rule at all.
-          this._renderRealtime(element)
-        }`
+        ${this._renderNudges(element)}`
     );
   }
 }
@@ -882,7 +507,7 @@ function mapQualityTarget(
  *
  * `owner: 'core'` and not a framework's, because the panel belongs to none: it
  * is generic surface tooling that appears for whichever framework declared a
- * nudge or an on-demand rule. Its gating rides on `when`, which asks the engine
+ * nudge. Its gating rides on `when`, which asks the engine
  * exactly what the toolbar asks — so a board with every framework flagged off
  * offers the command nowhere, with no flag test written here.
  *

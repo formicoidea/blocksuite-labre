@@ -186,11 +186,20 @@ const needs = (
   };
 };
 
-/** An inertia bar centred on an absolute model point. */
-const inertia = (id: string, x: number, y: number): CorpusElement => ({
+/**
+ * An inertia bar centred on an absolute model point, at the width the toolbox
+ * draws it — eight units, which is why "astride the divider" needs the map's
+ * declared band to mean anything for a bar somebody dropped by eye.
+ */
+const inertia = (
+  id: string,
+  x: number,
+  y: number,
+  w = 8
+): CorpusElement => ({
   id,
   role: WARDLEY_ROLE.inertia,
-  xywh: [x - 4, y - 22, 8, 44],
+  xywh: [x - w / 2, y - 22, w, 44],
 });
 
 /**
@@ -258,10 +267,10 @@ const w1Backwards: CorpusCard = {
   expected: [W1],
 };
 
-// ── W2 · the inertia bar sits on a dependency, at a transition ─────────
+// ── W2 · the inertia bar sits astride a phase transition ───────────────
 
 const w2OnTransition: CorpusCard = {
-  name: 'W2 valid — a bar across a link, on the phase boundary',
+  name: 'W2 valid — a bar on the phase boundary, across a link',
   elements: (() => {
     const { link: l, point } = crossing('l1', 0.45, 1);
     return [map(), l, inertia('i1', point[0], point[1])];
@@ -273,43 +282,23 @@ const w2SecondTransition: CorpusCard = {
   name: 'W2 valid — the same, on another transition, slightly off centre',
   elements: (() => {
     const { link: l, point } = crossing('l1', 0.6, 2);
-    // Within both tolerances: 12 units along the link, 12 off the boundary.
+    // 12 units off the divider, well inside the declared band.
     return [map(), l, inertia('i1', point[0] + 12, point[1] + 12)];
   })(),
   expected: [],
 };
 
-const w2FloatingBar: CorpusCard = {
-  name: 'W2 invalid — a bar in white space, on no link at all',
-  elements: (() => {
-    const { link: l } = crossing('l1', 0.45, 1);
-    const [x, y] = at(0.5, 0.15);
-    return [map(), l, inertia('i1', x, y)];
-  })(),
-  expected: [W2],
-};
-
-const w2MidPhase: CorpusCard = {
-  name: 'W2 invalid — a bar on the link but in the middle of a phase',
-  elements: (() => {
-    const { link: l, point } = crossing('l1', 0.45, 1);
-    // On the link, 150 units away from the transition it should mark — 9.8% of
-    // a 1530-wide plot, against a band that reaches 5% either side of the
-    // divider. Outside, and not marginally so.
-    return [map(), l, inertia('i1', point[0] + 150, point[1])];
-  })(),
-  expected: [W2],
-};
-
 /**
- * The PO recette of 01/08/2026: bars dropped squarely on the "Product" and
- * "Commodity" dividers, with no dependency under either. Being on the frontier
- * is not enough — inertia is resistance to a MOVEMENT, and the movement is the
- * link. The card pins the verdict; which of W2's two sentences each bar gets is
- * pinned in `validation.unit.spec.ts`.
+ * The PO's own capture, 02/08/2026 — and the reading this rule used to get
+ * wrong.
+ *
+ * Two bars dropped squarely on the "Product" and "Commodity" dividers, with no
+ * dependency under either. That is a VALID map: an inertia bar says "this does
+ * not cross here", and the frontier it refuses is the whole of what its
+ * position means. The rule flagged both until the PO spelled it out.
  */
-const w2OnDividerNoCarrier: CorpusCard = {
-  name: 'W2 invalid — two bars on the dividers, on no dependency at all',
+const w2AloneOnDividers: CorpusCard = {
+  name: 'W2 valid — two bars alone on the dividers, on no dependency at all',
   elements: (() => {
     const { link: l } = crossing('l1', 0.85, 0);
     return [
@@ -319,8 +308,52 @@ const w2OnDividerNoCarrier: CorpusCard = {
       inertia('i2', TRANSITIONS[2], at(0, 0.35)[1]),
     ];
   })(),
-  expected: [W2, W2],
-  expectedIds: [`${W2}:i1`, `${W2}:i2`],
+  expected: [],
+};
+
+/**
+ * The other half of the same clarification: a bar BETWEEN two dividers, which
+ * the PO's third capture shows as the mistake. Nothing about the link under it
+ * changes that, and nothing about the absence of one either.
+ */
+const w2MidPhase: CorpusCard = {
+  name: 'W2 invalid — a bar on a link, in the middle of a phase',
+  elements: (() => {
+    const { link: l, point } = crossing('l1', 0.45, 1);
+    // 150 units from the transition it should straddle — 9.8% of a 1530-wide
+    // plot, against a band that reaches 5% either side of the divider. Outside,
+    // and not marginally so.
+    return [map(), l, inertia('i1', point[0] + 150, point[1])];
+  })(),
+  expected: [W2],
+};
+
+const w2FloatingBar: CorpusCard = {
+  name: 'W2 invalid — a bar in white space, well inside a phase',
+  elements: (() => {
+    const { link: l } = crossing('l1', 0.45, 1);
+    const [x, y] = at(0.5, 0.15);
+    return [map(), l, inertia('i1', x, y)];
+  })(),
+  expected: [W2],
+};
+
+/**
+ * A bar somebody stretched, whose CENTRE is nowhere near the divider and which
+ * the divider nevertheless passes straight through. Valid, because "astride" is
+ * measured on the bar's extent: the dashed line is drawn over its ink, which is
+ * exactly what the PO's sentence describes.
+ */
+const w2WideBarOverDivider: CorpusCard = {
+  name: 'W2 valid — a wide bar the divider passes through, off-centre',
+  elements: (() => {
+    const { link: l } = crossing('l1', 0.45, 1);
+    const y = at(0, 0.45)[1];
+    // 220 wide, ending 20 units past the divider: its centre sits 90 units
+    // inside the previous phase, further out than the band reaches.
+    return [map(), l, inertia('i1', TRANSITIONS[1] - 90, y, 220)];
+  })(),
+  expected: [],
 };
 
 // ── W3 · nodes and labels must stay readable ───────────────────────────
@@ -682,9 +715,10 @@ export const WARDLEY_CORPUS: readonly CorpusCard[] = [
   w1Backwards,
   w2OnTransition,
   w2SecondTransition,
+  w2AloneOnDividers,
+  w2WideBarOverDivider,
   w2FloatingBar,
   w2MidPhase,
-  w2OnDividerNoCarrier,
   w3Clean,
   w3Tight,
   w3LinkInTheMargin,

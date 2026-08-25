@@ -75,8 +75,8 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  * - `element-in-background` — the subject must sit inside the framework's frame.
  * - `orientation-against-axis` — a DIRECTIONAL subject (an arrow, an edge) must
  *   not run against the declared sense of one of the frame's axes.
- * - `attachment` — the subject must be posed ON a carrier element, and
- *   optionally at one of the frame's zone transitions.
+ * - `attachment` — the subject must STRADDLE one of the frame's zone
+ *   transitions, and optionally be posed ON a carrier element.
  * - `no-overlap` — declared pairs of roles must not collide. The first family
  *   that is not element-local: it evaluates PAIRS.
  * - `tone-convention` — the subject must be drawn in one of the tones the
@@ -135,8 +135,9 @@ export interface AgainstAxisDef {
  * Split out of {@link ValidationRule} because a rule can have more than one way
  * of failing, and a family that knows WHICH one failed must be able to say so.
  * A single message covering two distinct mistakes is a message that describes
- * neither: "not on a dependency at a phase transition" leaves the user to guess
- * which half they got wrong, on a symbol that is eight units wide.
+ * neither: "not on a dependency at a phase transition" — the wording Wardley's
+ * W2 shipped with, before the PO reduced that rule to one condition — left the
+ * user to guess which half they had got wrong, on a symbol eight units wide.
  */
 export interface RuleMessage {
   /** i18n key of the message; resolved by the host. The engine holds no prose. */
@@ -157,34 +158,58 @@ export interface RuleMessage {
 /** `attachment` configuration. */
 export interface AttachmentDef {
   /**
-   * The role of the element the subject must be posed ON.
+   * OPTIONAL: the role of an element the subject must also be posed ON.
    *
    * It has to be an **edge** role: "posed on" is measured as a distance to a
    * PATH, and a node has none. A rule naming a node role here matches nothing
    * and warns once rather than failing silently — a rule that never fires and
    * never says why is the worst thing declarative data can do.
-   */
-  carrierRole: RoleId;
-  /** How far, in model units, the subject may sit from its carrier. */
-  tolerance: number;
-  /**
-   * Optional second requirement: the subject's centre must also sit inside one
-   * of the frame's declared TRANSITION BANDS, measured across this axis. Absent
-   * means anywhere along the carrier will do.
    *
-   * How wide "at a transition" is comes from the FRAME
-   * ({@link FrameworkBackgroundDef.transitionBandWidth}), never from a number
-   * of model units here: the band is a ratio of the plot, so it holds when the
-   * map is resized. A rule asking for a boundary against a frame that declares
-   * no band warns once and drops the requirement rather than indicting every
-   * subject on the board.
+   * Absent means the subject is judged on {@link boundaryAxis} alone, which is
+   * the shape Wardley's W2 took the day the PO spelled the rule out: a bar
+   * straddling a phase divider is right whether or not a dependency happens to
+   * run under it (recette of 02/08/2026).
+   */
+  carrierRole?: RoleId;
+  /**
+   * How far, in model units, the subject may sit from its carrier. Read only
+   * when a {@link carrierRole} is declared, and absent means "on the path" —
+   * a boundary-only rule declares neither.
+   */
+  tolerance?: number;
+  /**
+   * The subject must STRADDLE one of the frame's declared transitions, measured
+   * across this axis. Absent means the position along the axis is not judged at
+   * all.
+   *
+   * ## "Straddling", as geometry
+   *
+   * The subject's own EXTENT along the axis must intersect the transition BAND
+   * — the frontier widened by the frame's declared
+   * {@link FrameworkBackgroundDef.transitionBandWidth}. One interval overlap,
+   * and it says both halves of what the practitioner means at once:
+   *
+   * - a subject WIDE enough to cover the frontier is superimposed on it, and is
+   *   accepted whatever the band says — the line genuinely passes through it;
+   * - a subject too thin to cover anything (an inertia bar is eight units wide)
+   *   is accepted while it is within the band, which is the frame's own
+   *   declared tolerance for "on this frontier" and, on a Wardley map, Wardley's
+   *   zone of punctuated equilibrium.
+   *
+   * Measured on the extent and never on the centre: "superimposed on the line"
+   * is a statement about the subject's ink, not about a point inside it. The
+   * band is a ratio of the plot, so the verdict holds when the map is resized.
+   * A rule asking for a boundary against a frame that declares no band warns
+   * once and drops the requirement rather than indicting every subject on the
+   * board.
    */
   boundaryAxis?: string;
   /**
-   * The words for the boundary half, when the rule wants to say something other
-   * than its own message. Absent means both halves report identically — which
-   * is the right shape for a rule whose two requirements are one sentence, and
-   * the wrong one for a rule the user has two different ways of fixing.
+   * The words for the boundary half, when a rule that ALSO declares a
+   * {@link carrierRole} wants to say something other than its own message —
+   * two requirements the user has two different ways of fixing are two
+   * sentences. A boundary-only rule needs none: its own message is the only
+   * thing it can be saying.
    */
   offBoundary?: RuleMessage;
 }
@@ -1156,22 +1181,30 @@ function evaluateOrientationAgainstAxis(
 }
 
 /**
- * "Is this posed on what it is supposed to be posed on?"
+ * "Is this straddling what it is supposed to be straddling — and, if the rule
+ * asks, posed on what it is supposed to be posed on?"
  *
- * The subject must sit within `tolerance` of an element carrying the declared
- * CARRIER role (PF5.16) — the carrier being an edge, measured along its path —
- * and, when the rule asks for it, inside one of the frame's declared TRANSITION
- * BANDS ({@link backgroundTransitionBands}).
+ * The subject must STRADDLE one of the frame's declared transitions: its own
+ * extent along `boundaryAxis` has to intersect the transition band
+ * ({@link backgroundTransitionBands}), which is what "superimposed on the
+ * dashed line" is as geometry (see {@link AttachmentDef.boundaryAxis}).
  *
- * One finding, and it says which half failed. The two requirements are still a
+ * A rule may ALSO name a carrier (PF5.16), and then the subject must sit within
+ * `tolerance` of an element carrying that role — an edge, measured along its
+ * path. That half is optional, and Wardley's W2 stopped declaring it on the PO
+ * recette of 02/08/2026: a bar on a divider with no dependency under it is a
+ * legitimate map, not a mistake.
+ *
+ * One finding, and it says which half failed. Two requirements are still a
  * single badge on a single symbol — two would be pedantry on a bar eight units
  * wide — but they are two different mistakes with two different gestures to fix
  * them, so the finding carries the words of the one that actually failed. When
  * BOTH fail it reports the carrier: a symbol attached to nothing has to find
  * something to be about before where it sits can mean anything.
  *
- * Silence when the board carries no carrier at all: a map with no dependency
- * yet is a map being drawn, not a map with a misplaced symbol.
+ * A rule that names a carrier stays silent while the board carries none: a map
+ * with no dependency yet is a map being drawn, not a map with a misplaced
+ * symbol.
  */
 function evaluateAttachment(
   rule: ValidationRule,
@@ -1181,13 +1214,15 @@ function evaluateAttachment(
   const attachment = rule.attachment;
   if (subjectRole === undefined || attachment === undefined) return [];
 
+  const carrierRole = attachment.carrierRole;
   // A carrier is something with a PATH. Declaring anything else here produces a
   // rule that can never fire; say so once instead of shrugging.
-  const carrierKind = rule.roles[attachment.carrierRole]?.kind;
+  const carrierKind =
+    carrierRole === undefined ? undefined : rule.roles[carrierRole]?.kind;
   if (carrierKind !== undefined && carrierKind !== 'edge') {
     warnOnce(
       `attachment rule "${rule.id}" names a "${carrierKind}" role ` +
-        `("${attachment.carrierRole}") as its carrier — only an "edge" role ` +
+        `("${carrierRole}") as its carrier — only an "edge" role ` +
         `has a path, and "posed on" is a distance to one, so this rule can ` +
         `never fire.`
     );
@@ -1198,17 +1233,19 @@ function evaluateAttachment(
   const subjects: GfxPrimitiveElementModel[] = [];
   for (const el of elements) {
     if (el.role === undefined) continue;
-    if (roleIsA(el.role, attachment.carrierRole, rule.roles)) {
+    if (carrierRole !== undefined && roleIsA(el.role, carrierRole, rule.roles)) {
       const path = elementPath(el);
       if (path !== null) carriers.push(path);
     } else if (roleIsA(el.role, subjectRole, rule.roles)) {
       subjects.push(el);
     }
   }
-  if (subjects.length === 0 || carriers.length === 0) return [];
+  if (subjects.length === 0) return [];
+  if (carrierRole !== undefined && carriers.length === 0) return [];
 
   const backgrounds = backgroundsOf(rule, elements);
-  const toleranceSquared = attachment.tolerance * attachment.tolerance;
+  const tolerance = attachment.tolerance ?? 0;
+  const toleranceSquared = tolerance * tolerance;
   // The transition test needs a frame to read the bands off, so a rule asking
   // for one on a board with no frame simply does not ask.
   const def = rule.background;
@@ -1236,7 +1273,7 @@ function evaluateAttachment(
     const bound = el.elementBound;
     const centre = centreOf(bound);
 
-    let carried = false;
+    let carried = carrierRole === undefined;
     for (const path of carriers) {
       if (pointPathDistanceSquared(centre, path) <= toleranceSquared) {
         carried = true;
@@ -1257,11 +1294,19 @@ function evaluateAttachment(
         bands = axis.orientation === 'horizontal' ? all.x : all.y;
         bandsOf.set(frame.id, bands);
       }
-      const value = axis.orientation === 'horizontal' ? centre[0] : centre[1];
+      // The subject's own EXTENT across the axis, not a point inside it: the
+      // question is whether the frontier passes THROUGH the subject, and a
+      // centre cannot answer it for anything wider than a hair.
+      const horizontal = axis.orientation === 'horizontal';
+      const from = horizontal ? bound.x : bound.y;
+      const to = horizontal ? bound.maxX : bound.maxY;
+      const value = horizontal ? centre[0] : centre[1];
       inBand = false;
       let nearest = Infinity;
       for (const band of bands) {
-        if (value >= band.min && value <= band.max) {
+        // Two intervals overlapping: the subject covers the frontier, or the
+        // frame's declared band covers the subject.
+        if (from <= band.max && to >= band.min) {
           inBand = true;
           break;
         }
@@ -1276,8 +1321,10 @@ function evaluateAttachment(
     }
 
     if (carried && inBand) continue;
-    // Carrier first: the more actionable of the two, and the only one that
-    // makes the other one mean anything.
+    // The words of the half that failed. Carrier first when a rule declares
+    // one: it is the more actionable of the two, and the only one that makes
+    // the other mean anything. A boundary-only rule has `carried` true and no
+    // `offBoundary`, so it says its own sentence — the only one it has.
     const violation = raise(
       rule,
       [el.id],
@@ -3108,17 +3155,21 @@ export class ValidationManager extends InteractivityExtension {
 
   /**
    * Whether `element` has a Map quality panel to open at all: a framework of
-   * its own declaring a nudge or an on-demand rule.
+   * its own declaring a NUDGE.
+   *
+   * The panel is the checklist and nothing else since the PO recette of
+   * 02/08/2026, so this asks for the checklist and nothing else — a framework
+   * that declared only on-demand rules would otherwise be offered a panel with
+   * nothing in it. {@link checkupRulesFor} and {@link runCheckup} are unchanged
+   * and unrelated: a host can still ask for a check-up, it simply is not what
+   * this panel is.
    *
    * Generic by construction (PF7.11) — nothing here names a framework. A second
-   * framework shipping either gets the entry, the panel and the check-up with
-   * no code written anywhere.
+   * framework shipping nudges gets the entry and the panel with no code written
+   * anywhere.
    */
   hasMapQuality(element: GfxPrimitiveElementModel): boolean {
-    return (
-      this.nudgesFor(element).length > 0 ||
-      this.checkupRulesFor(element).length > 0
-    );
+    return this.nudgesFor(element).length > 0;
   }
 
   /**

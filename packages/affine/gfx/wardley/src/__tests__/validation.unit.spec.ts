@@ -198,13 +198,23 @@ describe('W1 · a change arrow pointing against evolution', () => {
   });
 });
 
-describe('W2 · an inertia bar off its dependency or off the transition', () => {
+/**
+ * W2, as the PO spelled it out on the recette of 02/08/2026:
+ *
+ * > "The horizontal position of an inertia bar is only valid if it is astride
+ * > two evolution phases, that is, superimposed on a dashed vertical axis."
+ *
+ * One condition, and it is the position. The carrier half this rule used to
+ * carry — "and there must be a dependency under it" — was our reading and not
+ * the rule; it is gone, with the second sentence that existed to tell the two
+ * halves apart. What is pinned here is the pair of captures the PO sent: a bar
+ * alone on a divider is RIGHT, a bar between two dividers is WRONG.
+ */
+describe('W2 · an inertia bar astride a phase transition', () => {
   const y = 450;
   const onTransition = TRANSITIONS[1];
 
-  const OFF_CARRIER = 'com.labre.wardley.validation.inertia-off-carrier';
-  const OFF_ZONE =
-    'com.labre.wardley.validation.inertia-off-equilibrium-zone';
+  const OFF_TRANSITION = 'com.labre.wardley.validation.inertia-off-transition';
 
   /** A link running horizontally across the second phase transition. */
   const link = () =>
@@ -215,113 +225,88 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
       [onTransition + 200, y]
     );
 
-  const bar = (cx: number, cy: number) =>
-    element('i1', [cx - 4, cy - 22, 8, 44], WARDLEY_ROLE.inertia);
+  const bar = (cx: number, cy: number, w = 8) =>
+    element('i1', [cx - w / 2, cy - 22, w, 44], WARDLEY_ROLE.inertia);
 
-  it('says nothing about a bar across a link, on the boundary', () => {
+  it('says nothing about a bar on the boundary, with a link under it', () => {
     expect(evaluate([background(), link(), bar(onTransition, y)])).toEqual([]);
   });
 
-  it('flags a bar floating in white space', () => {
-    const violations = evaluate([background(), link(), bar(700, 150)]);
+  it('says nothing about a bar ALONE on the boundary (PO capture, 02/08)', () => {
+    // The regression this version exists for. A bar dropped squarely on the
+    // "Product" divider, on a map whose dependencies all run elsewhere, is a
+    // map saying "this does not cross here" — not a mistake.
+    const elsewhere = edge(
+      'd9',
+      WARDLEY_ROLE.dependency,
+      [100, 800],
+      [400, 800]
+    );
+
+    expect(evaluate([background(), elsewhere, bar(onTransition, y)])).toEqual(
+      []
+    );
+    // ...and with no dependency anywhere on the board either.
+    expect(evaluate([background(), bar(onTransition, y)])).toEqual([]);
+  });
+
+  it('flags a bar between two dividers (PO capture, 02/08)', () => {
+    // 150 units from the transition it should straddle — 9.8% of the plot,
+    // against a band reaching 5% either side of the divider.
+    const violations = evaluate([
+      background(),
+      link(),
+      bar(onTransition + 150, y),
+    ]);
 
     expect(idsOf(violations)).toEqual([W2]);
     expect(violations[0].elementIds).toEqual(['i1']);
     expect(violations[0].backgroundId).toBe('bg');
+    expect(violations[0].messageKey).toBe(OFF_TRANSITION);
+    expect(violations[0].suggestion).toBe(`${OFF_TRANSITION}.suggestion`);
+    expect(violations[0].suggestionFallback).toContain('astride');
+    // WHICH frontier it missed — the nearest one, named off the declaration.
+    expect(violations[0].boundaryId).toBe('custom-built|product');
   });
 
-  it('flags a bar on the link but in the middle of a phase', () => {
-    // On its carrier, 150 units from the transition it should be marking —
-    // 9.8% of the plot, against a band reaching 5% either side of the divider.
-    expect(idsOf(evaluate([background(), link(), bar(onTransition + 150, y)])))
-      .toEqual([W2]);
+  it('flags a bar floating mid-phase, with or without a link', () => {
+    // Halfway between the "Product" and "Commodity" dividers, and well clear of
+    // both bands — the emptiest place on the axis a bar can be.
+    const midPhase = (TRANSITIONS[1] + TRANSITIONS[2]) / 2;
+
+    expect(idsOf(evaluate([background(), link(), bar(midPhase, 150)]))).toEqual([
+      W2,
+    ]);
+    expect(idsOf(evaluate([background(), bar(midPhase, 150)]))).toEqual([W2]);
   });
 
-  /**
-   * The PO recette of 01/08/2026, reproduced.
-   *
-   * Two bars dropped squarely on the "Product" and "Commodity" dividers, on a
-   * map that carries dependencies elsewhere but none under them. Both were
-   * flagged — correctly — and both were told they were "not on a dependency at
-   * a phase transition", which is only half true and hides the half that
-   * matters: the transition condition was satisfied to the unit.
-   */
-  describe('the recette capture', () => {
-    const elsewhere = () =>
-      edge('d9', WARDLEY_ROLE.dependency, [100, 800], [400, 800]);
+  it('names the frontier the bar was actually aiming at', () => {
+    // Past the middle of the phase: the nearest transition is now the Commodity
+    // one. The finding follows the bar, not the first band on the map.
+    const [violation] = evaluate([
+      background(),
+      bar(TRANSITIONS[2] - 200, y),
+    ]);
 
-    it('blames the CARRIER, and says so, for a bar exactly on the divider', () => {
-      const [violation] = evaluate([
-        background(),
-        elsewhere(),
-        bar(onTransition, y),
-      ]);
-
-      expect(violation.messageKey).toBe(OFF_CARRIER);
-      // And never the other sentence: the bar is ON the transition, to the unit.
-      expect(violation.messageKey).not.toBe(OFF_ZONE);
-      expect(violation.suggestionFallback).toContain('draw the bar across');
-    });
-
-    it('goes green the moment a dependency runs under the bar', () => {
-      expect(evaluate([background(), link(), bar(onTransition, y)])).toEqual([]);
-    });
-
-    it('blames the ZONE for a bar on a link far from any transition', () => {
-      const midPhase = onTransition + 200;
-      const far = edge(
-        'd1',
-        WARDLEY_ROLE.dependency,
-        [midPhase - 100, y],
-        [midPhase + 100, y]
-      );
-      const [violation] = evaluate([background(), far, bar(midPhase, y)]);
-
-      expect(violation.messageKey).toBe(OFF_ZONE);
-      expect(violation.messageFallback).toContain('punctuated equilibrium');
-      expect(violation.suggestion).toBe(`${OFF_ZONE}.suggestion`);
-      // And WHICH frontier it missed — the nearest one, named off the
-      // declaration. "Outside the zone" is half an answer without it.
-      expect(violation.boundaryId).toBe('custom-built|product');
-    });
-
-    it('names the frontier the bar was actually aiming at', () => {
-      // The same phase, but past its middle: the nearest transition is now the
-      // Commodity one. The finding follows the bar, not the first band on the
-      // map.
-      const nearCommodity = TRANSITIONS[2] - 200;
-      const far = edge(
-        'd1',
-        WARDLEY_ROLE.dependency,
-        [nearCommodity - 100, y],
-        [nearCommodity + 100, y]
-      );
-      const [violation] = evaluate([background(), far, bar(nearCommodity, y)]);
-
-      expect(violation.boundaryId).toBe('product|commodity');
-    });
-
-    it('says nothing about a frontier when the CARRIER is what failed', () => {
-      // A bar attached to nothing has no frontier to have missed: the finding
-      // is about the link it never got drawn on.
-      const [violation] = evaluate([
-        background(),
-        elsewhere(),
-        bar(onTransition, y),
-      ]);
-
-      expect(violation.boundaryId).toBeUndefined();
-    });
+    expect(violation.boundaryId).toBe('product|commodity');
   });
 
-  it('gives ONE finding whichever half failed, and names the actionable one', () => {
-    // Two requirements, one symbol, one badge — but the sentence is the one the
-    // user can act on. Both halves wrong: the carrier comes first, because
-    // where a bar sits means nothing until it is attached to something.
+  it('measures the BAR, not a point inside it', () => {
+    // "Superimposed on the axis" is about ink. A bar somebody stretched, whose
+    // centre is further from the divider than the band reaches and which the
+    // divider nevertheless passes straight through, is astride it.
+    const wide = bar(onTransition - 90, y, 220);
+    expect(evaluate([background(), wide])).toEqual([]);
+    // The same width, parked halfway between two dividers: flagged.
+    const midPhase = (TRANSITIONS[1] + TRANSITIONS[2]) / 2;
+    expect(idsOf(evaluate([background(), bar(midPhase, y, 220)]))).toEqual([W2]);
+  });
+
+  it('gives ONE finding per bar, however far off it is', () => {
     const both = evaluate([background(), link(), bar(200, 150)]);
 
     expect(both).toHaveLength(1);
-    expect(both[0].messageKey).toBe(OFF_CARRIER);
+    expect(both[0].messageKey).toBe(OFF_TRANSITION);
   });
 
   it('judges a RESIZED map exactly as it judges the reference one', () => {
@@ -338,83 +323,19 @@ describe('W2 · an inertia bar off its dependency or off the transition', () => 
       const at = (fraction: number) =>
         transition + fraction * (w - 40 - 30);
       const cy = ((w * 9) / 16) * 0.5;
-      const carrier = edge(
-        'd1',
-        WARDLEY_ROLE.dependency,
-        [transition - 0.2 * w, cy],
-        [transition + 0.2 * w, cy]
-      );
 
       // Inside the band (4% of the plot off the line): green at every size.
-      expect(evaluate([map, carrier, bar(at(0.04), cy)])).toEqual([]);
-      // Outside it (8%): flagged at every size, and for the ZONE.
-      const [violation] = evaluate([map, carrier, bar(at(0.08), cy)]);
-      expect(violation?.messageKey).toBe(OFF_ZONE);
+      expect(evaluate([map, bar(at(0.04), cy)])).toEqual([]);
+      // Outside it (8%): flagged at every size.
+      const [violation] = evaluate([map, bar(at(0.08), cy)]);
+      expect(violation?.messageKey).toBe(OFF_TRANSITION);
     }
   });
 
-  it('says nothing when the map carries no dependency yet', () => {
-    // A map being drawn is not a map with a misplaced symbol.
-    expect(evaluate([background(), bar(700, 150)])).toEqual([]);
-  });
-
-  it('never mistakes a change arrow for a dependency', () => {
-    // The carrier role is `wardley:dependency`, and the change arrow does not
-    // specialise it — a bar drawn on an arrow is still unattached. The map
-    // carries a real dependency elsewhere, so this is the rule refusing the
-    // arrow as a carrier rather than the rule staying quiet for want of one.
-    const arrow = edge(
-      'a1',
-      WARDLEY_ROLE.changeArrow,
-      [onTransition - 200, y],
-      [onTransition + 200, y]
-    );
-    const elsewhere = edge(
-      'd2',
-      WARDLEY_ROLE.dependency,
-      [200, 800],
-      [600, 800]
-    );
-
-    expect(
-      idsOf(evaluate([background(), arrow, elsewhere, bar(onTransition, y)]))
-    ).toEqual([W2]);
-  });
-
-  it('follows a CURVED dependency, not the chord under it', () => {
-    // A curved connector stores its whole shape in two points carrying
-    // tangents, so reading the bare coordinates gives the chord. A bar sitting
-    // exactly on the drawn curve, 150 units above that chord, must be accepted:
-    // a rule confidently wrong about what the user can plainly see is worse
-    // than one that says nothing.
-    const apexY = 300;
-    const chordY = 450;
-    // Symmetric cubic from (x-400, 450) to (x+400, 450) bulging to y = 300 at
-    // its midpoint — control points 200 above give exactly that apex.
-    const curved = {
-      id: 'd1',
-      role: WARDLEY_ROLE.dependency,
-      absolutePath: [
-        Object.assign([onTransition - 400, chordY], {
-          absOut: [onTransition - 400, chordY - 200],
-        }),
-        Object.assign([onTransition + 400, chordY], {
-          absIn: [onTransition + 400, chordY - 200],
-        }),
-      ],
-      get elementBound() {
-        return new Bound(onTransition - 400, apexY, 800, chordY - apexY);
-      },
-    } as unknown as GfxPrimitiveElementModel;
-
-    // On the curve's apex, on the transition: silence.
-    expect(evaluate([background(), curved, bar(onTransition, apexY)])).toEqual(
-      []
-    );
-    // On the CHORD, 150 units below the drawn line: flagged.
-    expect(
-      idsOf(evaluate([background(), curved, bar(onTransition, chordY)]))
-    ).toEqual([W2]);
+  it('says nothing about a bar drawn on no map at all', () => {
+    // A bar on a blank board is a sketch, not a misplaced symbol: with no frame
+    // there is no frontier for it to be astride of.
+    expect(evaluate([bar(700, 150)])).toEqual([]);
   });
 });
 

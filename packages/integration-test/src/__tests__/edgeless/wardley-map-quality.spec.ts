@@ -3,11 +3,11 @@ import {
   checkedNudges,
   CHECKUP_SLICE_MS,
   EditorAnchoredPanel,
-  evaluateCheckup,
   MAP_QUALITY_WIDGET,
   READING_PROPOSAL_WIDGET,
   setNudgeChecked,
   ValidationManager,
+  ValidationRuleExtension,
   type ValidationRule,
 } from '@labre/affine/blocks/surface';
 import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
@@ -29,20 +29,64 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * Map quality end to end (PF5.14 / PF7.10 / PF7.11 / PF13.8 / PF13.9).
+ * Map quality end to end (PF5.14 / PF7.10 / PF7.11 / PF13.9).
  *
- * The unit suites own the engine — which colours are off-convention, when the
- * majority gate opens, what `setNudgeChecked` writes. This one owns what only a
- * real editor can answer: that the entry is reachable, that the DOCUMENT is what
- * remembers a tick, that ticking nothing writes nothing, that a check-up runs on
- * demand and never during a gesture, and that the whole checklist survives the
- * framework's flag going off and coming back.
+ * The unit suites own the engine — what `setNudgeChecked` writes, which rules a
+ * moment selects. This one owns what only a real editor can answer: that the
+ * entry is reachable, that the DOCUMENT is what remembers a tick, that ticking
+ * nothing writes nothing, that a check-up runs on demand and never during a
+ * gesture, and that the whole checklist survives the framework's flag going off
+ * and coming back.
+ *
+ * ## The panel is the checklist, and the check-up is engine-only (PO, 02/08)
+ *
+ * Wardley shipped two on-demand rules behind a "Run check-up" button in this
+ * panel, and the PO took both the button and the rules away: the panel is the
+ * checklist now. The on-demand MOMENT stayed — it is platform, and the next
+ * framework that wants a check-up declares one — so what used to be driven
+ * through the button is driven here through {@link ValidationManager.runCheckup}
+ * against a PROBE rule this file registers. The behaviour under test is the
+ * engine's, and it is the engine that is asked.
  */
 
 const NUDGE = 'wardley.q1-title';
-const TONE_RULE = 'wardley.tone-off-convention';
-/** The Wardley "change" tone — reserved, and therefore wrong on a component. */
-const RED = '#d6455d';
+
+/**
+ * Two on-demand rules, registered by the tests that need them.
+ *
+ * `element-in-background` is the cheapest family that actually walks the
+ * surface, and a component dropped outside the map makes it speak. `framework:
+ * 'wardley'` so a `wardley:map` instance is what a run is about — the manager
+ * matches a check-up to an instance by framework, and this file has a real
+ * Wardley map to hand.
+ */
+const PROBE_RULE = 'test.on-demand-probe';
+const PROBE_ROLES = {
+  'wardley:map': {
+    id: 'wardley:map',
+    kind: 'node' as const,
+    labelKey: 'com.labre.test.map',
+  },
+  'wardley:component': {
+    id: 'wardley:component',
+    kind: 'node' as const,
+    labelKey: 'com.labre.test.component',
+  },
+};
+const probe = (id: string): ValidationRule => ({
+  id,
+  framework: 'wardley',
+  family: 'element-in-background',
+  moment: 'on-demand',
+  severity: 'audit',
+  appliesTo: 'wardley:component',
+  roles: PROBE_ROLES,
+  messageKey: 'com.labre.test.on-demand-probe',
+  messageFallback: 'This component is off the map.',
+  version: 1,
+  backgroundRole: 'wardley:map',
+});
+const PROBES = [probe(PROBE_RULE), probe(`${PROBE_RULE}-2`)];
 
 /**
  * A slice budget every rule is guaranteed to exceed, so the yield and the race
@@ -156,23 +200,6 @@ describe('map quality', () => {
     (nudgeRows()
       .find(row => row.dataset.nudgeId === id)
       ?.querySelector('input') as HTMLInputElement | undefined) ?? null;
-  const runButton = () =>
-    widgetRoot()?.querySelector(
-      '[data-testid="map-quality-run"]'
-    ) as HTMLButtonElement | null;
-  const remarks = () =>
-    Array.from(
-      widgetRoot()?.querySelectorAll('[data-testid="map-quality-remark"]') ?? []
-    );
-  const textOf = (testid: string) =>
-    widgetRoot()
-      ?.querySelector(`[data-testid="${testid}"]`)
-      ?.textContent?.replace(/\s+/g, ' ')
-      .trim() ?? null;
-  const scopeLine = () => textOf('map-quality-scope');
-  const realtimeLine = () => textOf('map-quality-realtime');
-  const cleanLine = () => textOf('map-quality-clean');
-
   const toolbar = () =>
     (
       root.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
@@ -464,268 +491,127 @@ describe('map quality', () => {
     });
   });
 
-  describe('the check-up runs only when asked (PF5.14)', () => {
+  /**
+   * The on-demand moment, driven through the ENGINE (PF5.14).
+   *
+   * These used to be the "Run check-up" button's tests. The button is gone and
+   * the capability is not, so the same properties are pinned where they now
+   * live: a run happens only when somebody asks, it is about ONE instance, it
+   * survives a rule that throws, and a second run supersedes the first instead
+   * of mixing two answers.
+   */
+  describe('the on-demand moment, with no UI (PF5.14)', () => {
+    beforeEach(async () => {
+      unmount?.();
+      await mount([ValidationRuleExtension(PROBES)]);
+    });
+
+    /** A component dropped OUTSIDE the map: what the probe rules speak about. */
+    const addStray = (xywh: string) => addComponent(xywh);
+
     test('says nothing at all while the user draws', async () => {
       addBackground();
-      addComponent('[200,200,18,18]', RED);
+      addStray('[3000,3000,18,18]');
       await settle();
 
-      // The rule is registered and the board breaks it. Nothing reaches the
+      // The rules are registered and the board breaks them. Nothing reaches the
       // real-time list, and therefore nothing reaches the canvas.
       expect(
-        validation.violations$.value.some(v => v.ruleId === TONE_RULE)
+        validation.violations$.value.some(v => v.ruleId === PROBE_RULE)
       ).toBe(false);
       expect(validation.checkup$.value).toBeNull();
     });
 
-    test('produces its remark when the button is pressed', async () => {
+    test('produces its remarks when a run is asked for', async () => {
       const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
+      addStray('[3000,3000,18,18]');
+      await select(map);
 
-      expect(remarks()).toHaveLength(0);
-      clickElement(runButton()!);
-      await settle();
+      const run = await validation.runCheckup(model(map));
 
-      const run = validation.checkup$.value;
       expect(run).not.toBeNull();
       expect(run!.done).toBe(run!.total);
-      expect(run!.results.map(r => r.ruleId)).toContain(TONE_RULE);
-      // Timestamped, once for the whole run.
+      expect(run!.results.map(r => r.ruleId)).toContain(PROBE_RULE);
       expect(run!.at).toBeGreaterThan(0);
-      expect(remarks().length).toBeGreaterThan(0);
     });
 
     test('a remark never becomes a canvas mark', async () => {
       const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      clickElement(runButton()!);
-      await settle();
+      addStray('[3000,3000,18,18]');
+      await select(map);
+      await validation.runCheckup(model(map));
 
       // `violations$` is what the timeline, the bracket and the badge read; a
       // check-up result never lands there. "Outside the canvas affordance" is a
       // property of the wiring, not a filter somebody has to remember.
       expect(
-        validation.violations$.value.some(v => v.ruleId === TONE_RULE)
+        validation.violations$.value.some(v => v.ruleId === PROBE_RULE)
       ).toBe(false);
     });
 
-    test('reports the run', async () => {
-      const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      clickElement(runButton()!);
-      await settle();
-
-      const runs = tracked.filter(e => e.name === 'MapQualityCheckupRun');
-      expect(runs).toHaveLength(1);
-      expect(runs[0].props).toMatchObject({ framework: 'wardley' });
-      expect(runs[0].props.ruleCount).toBe(2);
-    });
-  });
-
-  /**
-   * The blocker of the 01/08 adversarial review: a check-up walks the whole
-   * surface, so without an owner it reports the neighbour's map under this map's
-   * title. `CheckupRun.backgroundId` names the instance, `runCheckup` narrows the
-   * remarks on `Violation.backgroundId`, and the panel refuses a run that is not
-   * its own.
-   *
-   * The three probes are the reviewer's, reproduced.
-   */
-  describe('a check-up is about ONE map', () => {
-    /** Two maps far enough apart that "nearest" is never in doubt. */
-    const twoMaps = () => {
+    test('is about ONE map, whatever else is on the board', async () => {
       const a = addBackground();
       const b = addBackground('[40000,0,1600,900]');
-      return { a, b };
-    };
-
-    test('probe A — the panel on A never lists B’s components', async () => {
-      const { a, b } = twoMaps();
-      // The only off-convention component on the board sits on B.
-      addComponent('[40200,200,18,18]', RED);
-      await open(a);
-      clickElement(runButton()!);
+      // The only stray component on the board is attributed to B — the map it
+      // is nearest to — so A's run has nothing to say.
+      addStray('[41800,200,18,18]');
       await settle();
 
-      const run = validation.checkup$.value!;
-      expect(run.backgroundId).toBe(a);
-      // Narrowed at the ENGINE: the finding exists and is correctly attributed
-      // to B, and it is simply not part of A's answer.
-      expect(run.results).toEqual([]);
-      expect(remarks()).toHaveLength(0);
+      const onA = await validation.runCheckup(model(a));
+      expect(onA!.backgroundId).toBe(a);
+      expect(onA!.results).toEqual([]);
 
-      // ...and it is B's answer when B is the one being asked.
-      await open(b);
-      clickElement(runButton()!);
-      await settle();
-
-      const onB = validation.checkup$.value!;
-      expect(onB.backgroundId).toBe(b);
-      expect(onB.results.map(r => r.backgroundId)).toEqual([b]);
-      expect(remarks()).toHaveLength(1);
+      const onB = await validation.runCheckup(model(b));
+      expect(onB!.backgroundId).toBe(b);
+      expect(onB!.results.map(r => r.backgroundId)).toEqual([b, b]);
     });
 
-    test('probe B — a map nobody has checked shows no timestamp', async () => {
-      const { a, b } = twoMaps();
-      addComponent('[40200,200,18,18]', RED);
-      await open(a);
-      clickElement(runButton()!);
-      await settle();
-      expect(
-        widgetRoot()?.querySelector('[data-testid="map-quality-stamp"]')
-      ).not.toBeNull();
-
-      // Close, reopen on the other map: A's stamp and A's remarks must not
-      // appear under B's title.
-      validation.closeMapQuality();
-      await settle();
-      await open(b);
-
-      expect(
-        widgetRoot()?.querySelector('[data-testid="map-quality-stamp"]')
-      ).toBeNull();
-      expect(remarks()).toHaveLength(0);
-      // Opening elsewhere also drops the run itself, so nothing is left in
-      // memory waiting to be shown again.
-      expect(validation.checkup$.value).toBeNull();
-    });
-
-    test('reopening the SAME map keeps its stamp', async () => {
+    test('deleting the map takes its check-up with it', async () => {
       const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      clickElement(runButton()!);
-      await settle();
-      const at = validation.checkup$.value!.at;
-
-      validation.closeMapQuality();
-      await settle();
-      await open(map);
-
-      // The one case where "last check-up: 01:51" is worth reading.
-      expect(validation.checkup$.value?.at).toBe(at);
-      expect(remarks()).toHaveLength(1);
-    });
-
-    test('probe F — deleting the map takes its check-up with it', async () => {
-      const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      clickElement(runButton()!);
-      await settle();
+      addStray('[3000,3000,18,18]');
+      await select(map);
+      await validation.runCheckup(model(map));
       expect(validation.checkup$.value).not.toBeNull();
 
       service.surface.deleteElement(map);
       await settle();
 
-      expect(panel()).toBeNull();
-      expect(validation.mapQualityFor$.value).toBeNull();
       // An answer about a map that no longer exists is an answer about nothing.
       expect(validation.checkup$.value).toBeNull();
     });
 
-    test('a family that names no map has said nothing about this one', async () => {
-      // The hardening the review asked to pin: a finding with no
-      // `backgroundId` cannot be attributed to the instance the panel is about,
-      // so it is dropped rather than shown under its title. `no-overlap`
-      // WITHOUT a `backgroundRole` is the real shape of that — the engine's own
-      // documented case of a family that records no frame.
+    test('reports the failure and lets the next run through', async () => {
       const map = addBackground();
-      const a = addComponent('[300,300,40,40]', RED);
-      const b = addComponent('[310,310,40,40]', RED);
-      await open(map);
-
-      const rules = validation.checkupRulesFor(model(map));
-      const anchorless: ValidationRule = {
-        ...rules[0],
-        id: 'wardley.anchorless-probe',
-        family: 'no-overlap',
-        // No `backgroundRole`, so no finding carries a `backgroundId`.
-        backgroundRole: undefined,
-        appliesTo: undefined,
-        overlap: [['wardley:component', 'wardley:component']],
-      };
-      const original = validation.checkupRulesFor.bind(validation);
-      validation.checkupRulesFor = () => [anchorless];
-
-      clickElement(runButton()!);
-      await settle();
-      validation.checkupRulesFor = original;
-
-      // The rule genuinely fires — the two components overlap — and every
-      // finding it produces names no map, so none of them is this map's.
-      expect(
-        evaluateCheckup(
-          [anchorless],
-          [model(map), model(a), model(b)]
-        ).length
-      ).toBeGreaterThan(0);
-      expect(validation.checkup$.value!.results).toEqual([]);
-      expect(remarks()).toHaveLength(0);
-    });
-
-    test('deleting a DIFFERENT map leaves this one’s check-up alone', async () => {
-      const { a, b } = twoMaps();
-      addComponent('[200,200,18,18]', RED);
-      await open(a);
-      clickElement(runButton()!);
-      await settle();
-
-      service.surface.deleteElement(b);
-      await settle();
-
-      expect(validation.checkup$.value?.backgroundId).toBe(a);
-      expect(panel()).not.toBeNull();
-    });
-  });
-
-  describe('a check-up that cannot finish (review, minor 2)', () => {
-    test('reports the failure and gives the button back', async () => {
-      const map = addBackground();
-      await open(map);
-
-      // A rule whose family does not exist: `RULE_FAMILIES[family]` is
-      // `undefined`, so dispatching it throws — the reviewer's own probe, and
-      // the closest thing to "a third-party family blows up" this suite can
-      // stage honestly.
-      const rules = validation.checkupRulesFor(model(map));
-      const broken = { ...rules[0], family: 'nope' };
-      const original = validation.checkupRulesFor.bind(validation);
-      validation.checkupRulesFor = () => [broken as (typeof rules)[number]];
-
-      clickElement(runButton()!);
-      await settle();
-      validation.checkupRulesFor = original;
-
-      const run = validation.checkup$.value!;
-      expect(run.error).toBe(true);
-      // Reported FINISHED on purpose: `done < total` would read as "Checking…"
-      // for ever and disable the only button that could try again.
-      expect(run.done).toBe(run.total);
-      expect(runButton()!.disabled).toBe(false);
-      expect(
-        widgetRoot()?.querySelector('[data-testid="map-quality-error"]')
-      ).not.toBeNull();
-
-      // ...and the next click actually works.
-      clickElement(runButton()!);
-      await settle();
-      expect(validation.checkup$.value?.error).toBeUndefined();
-    });
-  });
-
-  describe('the interruption, actually exercised (review, minor 1)', () => {
-    test('yields between rules, and a second run supersedes the first', async () => {
-      const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
       await select(map);
 
-      // At the shipped default the two Wardley rules cost half a millisecond
-      // between them and the yield never fires, which would leave the whole race
-      // path unreached. See {@link ALWAYS_YIELD}.
+      // A rule whose family does not exist: `RULE_FAMILIES[family]` is
+      // `undefined`, so dispatching it throws — the closest thing to "a
+      // third-party family blows up" this suite can stage honestly.
+      const broken = { ...PROBES[0], family: 'nope' } as unknown as ValidationRule;
+      const original = validation.checkupRulesFor.bind(validation);
+      validation.checkupRulesFor = () => [broken];
+      await validation.runCheckup(model(map));
+      validation.checkupRulesFor = original;
+
+      const failed = validation.checkup$.value!;
+      expect(failed.error).toBe(true);
+      // Reported FINISHED on purpose: `done < total` would read as a run still
+      // in flight for ever, and nothing could ask again.
+      expect(failed.done).toBe(failed.total);
+
+      // ...and the next run actually works.
+      await validation.runCheckup(model(map));
+      expect(validation.checkup$.value?.error).toBeUndefined();
+    });
+
+    test('yields between rules, and a second run supersedes the first', async () => {
+      const map = addBackground();
+      addStray('[3000,3000,18,18]');
+      await select(map);
+
+      // At the shipped default two rules cost a fraction of a millisecond and
+      // the yield never fires, which would leave the whole race path unreached.
+      // See {@link ALWAYS_YIELD}.
       validation.checkupSliceMs = ALWAYS_YIELD;
 
       const first = validation.runCheckup(model(map));
@@ -738,7 +624,6 @@ describe('map quality', () => {
       expect(secondRun).not.toBeNull();
       expect(secondRun!.done).toBe(secondRun!.total);
       expect(validation.checkup$.value).toBe(secondRun);
-      expect(secondRun!.results.map(r => r.ruleId)).toEqual([TONE_RULE]);
 
       validation.checkupSliceMs = CHECKUP_SLICE_MS;
     });
@@ -756,9 +641,28 @@ describe('map quality', () => {
       stop();
       validation.checkupSliceMs = CHECKUP_SLICE_MS;
 
-      // `done` climbs through every intermediate value: the panel reads the
+      // `done` climbs through every intermediate value: a caller reads the
       // progression off the same object the results arrive in.
       expect(seen).toEqual(['0/2', '1/2', '2/2']);
+    });
+
+    test('the panel is the checklist, and shows none of this', async () => {
+      const map = addBackground();
+      addStray('[3000,3000,18,18]');
+      await open(map);
+      await validation.runCheckup(model(map));
+      await settle();
+
+      // The rules ran and found something; the panel is still four boxes.
+      expect(validation.checkup$.value!.results.length).toBeGreaterThan(0);
+      expect(nudgeRows()).toHaveLength(4);
+      for (const gone of [
+        'map-quality-run',
+        'map-quality-remark',
+        'map-quality-realtime',
+      ]) {
+        expect(widgetRoot()?.querySelector(`[data-testid="${gone}"]`)).toBeNull();
+      }
     });
   });
 
@@ -789,10 +693,10 @@ describe('map quality', () => {
         row => (row.querySelector('input') as HTMLInputElement).disabled
       );
       expect(boxes).toEqual([true, true, true, true]);
+      // ...and the panel still OPENS: reading the quality of a map you cannot
+      // edit is what a reviewer is here to do.
+      expect(panel()).not.toBeNull();
 
-      // The check-up writes nothing, so it stays available: reading the quality
-      // of a map you cannot edit is what a reviewer is here to do.
-      expect(runButton()!.disabled).toBe(false);
       service.std.store.readonly = false;
     });
   });
@@ -815,54 +719,19 @@ describe('map quality', () => {
       // Claiming modality without trapping focus is a label that lies.
       expect(dialog.hasAttribute('aria-modal')).toBe(false);
     });
-
-    test('says how far the check-up has got in ONE translatable sentence', async () => {
-      const map = addBackground();
-      await open(map);
-      // Every rule becomes a slice, so the run is observable mid-flight.
-      validation.checkupSliceMs = ALWAYS_YIELD;
-
-      // Caught at the exact instant the first rule lands: the signal emits
-      // synchronously and lit's update is a microtask, while the run's own yield
-      // is a macrotask — so the panel is guaranteed to have rendered `1/2`
-      // before the second rule starts. No sleeping, no polling.
-      const midFlight = new Promise<void>(resolve => {
-        const stop = validation.checkup$.subscribe(current => {
-          if (current && current.done === 1) {
-            stop();
-            resolve();
-          }
-        });
-      });
-      const run = validation.runCheckup(model(map));
-      await midFlight;
-      await widget()?.updateComplete;
-
-      // Placeholders filled into one sentence, not "Checking…" + " 1/2": a
-      // locale that puts the count first, or writes it differently, has
-      // somewhere to say so.
-      expect(runButton()!.textContent?.trim()).toBe('Checking… 1/2');
-      expect(runButton()!.disabled).toBe(true);
-
-      await run;
-      validation.checkupSliceMs = CHECKUP_SLICE_MS;
-      await settle();
-      // ...and back to the plain label, with no leftover numbers.
-      expect(runButton()!.textContent?.trim()).toBe('Run check-up');
-      expect(runButton()!.disabled).toBe(false);
-    });
   });
 
   /**
    * PO recette, 02/08: a map wearing amber badges, with no title and no legend,
    * whose check-up answered "Nothing to report".
    *
-   * Nothing about WHAT runs changed — the real-time rules are still real time,
-   * the nudges are still unjudged, the check-up still walks its own two rules.
-   * What changed is that the panel now says which of the three is speaking on
-   * every line, so the three true statements stop reading as a contradiction.
+   * The first pass answered it with wording — the panel started naming which of
+   * the three kinds of statement was speaking on each line. The PO's second pass
+   * answered it by removal: the check-up block and the live-warning count are
+   * gone from this panel, and the checklist is the only thing left in it. Which
+   * leaves exactly one sentence to be sure of.
    */
-  describe('the panel says which of the three is speaking (PO, 02/08)', () => {
+  describe('the panel is the checklist, and says so (PO, 02/08)', () => {
     test('the checklist is introduced as the USER’s to check', async () => {
       const map = addBackground();
       await open(map);
@@ -873,137 +742,33 @@ describe('map quality', () => {
       expect(panel()?.textContent).not.toContain('Checklist');
     });
 
-    test('a clean check-up names what it checked, and the map’s live warnings', async () => {
+    test('carries nothing but its title, its four boxes and its close button', async () => {
       const map = addStrictBackground();
-      // One real-time warning, and nothing an on-demand rule would remark on.
+      // A map with a real-time warning on the canvas: the count the panel used
+      // to render for it is not the panel's business any more.
       addBackwardsArrow(400, 400);
       await open(map);
       await settle();
 
-      clickElement(runButton()!);
-      await settle();
-
-      // The verdict is about the two families it walked, not about the map.
-      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
-      expect(cleanLine()).toBe('Nothing to report.');
-      // ...and the badges on the canvas are accounted for, right there, instead
-      // of appearing to be denied by the line above.
-      expect(realtimeLine()).toBe(
-        'Real-time warnings currently on this map: 1.'
-      );
-    });
-
-    test('the live count is this map’s, and read-only', async () => {
-      const here = addStrictBackground();
-      const elsewhere = addStrictBackground('[40000,0,1600,900]');
-      addBackwardsArrow(400, 400);
-      // Two more warnings, on the OTHER map: a board carries several maps and
-      // this line is about one of them.
-      addBackwardsArrow(40400, 400);
-      addBackwardsArrow(40400, 600);
-      await open(here);
-      await settle();
-
-      expect(realtimeLine()).toBe(
-        'Real-time warnings currently on this map: 1.'
-      );
-
-      validation.closeMapQuality();
-      await settle();
-      await open(elsewhere);
-      await settle();
-
-      expect(realtimeLine()).toBe(
-        'Real-time warnings currently on this map: 2.'
-      );
-      // Reading is all it does: opening a panel writes nothing on either map.
-      expect(model(here).yMap.has('qualityChecklist')).toBe(false);
-      expect(model(elsewhere).yMap.has('qualityChecklist')).toBe(false);
-    });
-
-    test('a map with nothing flagged in real time says nothing about it', async () => {
-      const map = addBackground();
-      await open(map);
-      await settle();
-
-      // A line reading "0" is noise on the clean board, which is most boards.
-      expect(realtimeLine()).toBeNull();
-    });
-
-    test('a check-up WITH remarks still says what it looked at', async () => {
-      const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      clickElement(runButton()!);
-      await settle();
-
-      expect(remarks()).toHaveLength(1);
-      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
-      // The verdict line belongs to the empty answer only.
-      expect(cleanLine()).toBeNull();
-    });
-
-    test('says nothing about a check-up nobody has run', async () => {
-      const map = addBackground();
-      await open(map);
-      await settle();
-
-      // The scope line is part of the RESULT: before a run there is no result
-      // to qualify, and the button already says what it is.
-      expect(scopeLine()).toBeNull();
-      expect(cleanLine()).toBeNull();
-    });
-
-    test('reads the same in a read-only document', async () => {
-      const map = addStrictBackground();
-      addBackwardsArrow(400, 400);
-      addComponent('[200,200,18,18]', RED);
-      await open(map);
-      await settle();
-      service.std.store.readonly = true;
-      await settle();
-
-      // The check-up writes nothing, so it stays available to a reviewer...
-      expect(runButton()!.disabled).toBe(false);
-      clickElement(runButton()!);
-      await settle();
-
-      expect(scopeLine()).toBe('Check-up (tones, nomenclature):');
-      expect(remarks()).toHaveLength(1);
-      expect(realtimeLine()).toBe(
-        'Real-time warnings currently on this map: 1.'
-      );
-      // ...and the only thing that would write is the one thing barred.
-      expect(
-        nudgeRows().map(
-          row => (row.querySelector('input') as HTMLInputElement).disabled
-        )
-      ).toEqual([true, true, true, true]);
-
-      service.std.store.readonly = false;
+      expect(validation.violations$.value).toHaveLength(1);
+      expect(nudgeRows()).toHaveLength(4);
+      expect(panel()?.textContent).not.toContain('Run check-up');
+      expect(panel()?.textContent).not.toContain('Real-time warnings');
     });
 
     test('every line of the panel starts on the same vertical', async () => {
       const map = addBackground();
-      addComponent('[200,200,18,18]', RED);
       await open(map);
-      clickElement(runButton()!);
-      await settle();
 
-      // The gutter the checkboxes live in is reserved on every body row, so a
-      // row without a box no longer hangs a checkbox-width to the left of the
-      // ones with one (PO: "trou visuel").
+      // The gutter the checkboxes live in is the panel's left edge for the
+      // words: every label starts on the same vertical, whatever it reads.
       const left = (element: Element | null) =>
         Math.round(element!.getBoundingClientRect().left);
-      const nudgeLabel = nudgeRows()[0].querySelector(
-        '.map-quality-nudge-label'
+      const labels = nudgeRows().map(row =>
+        left(row.querySelector('.map-quality-nudge-label'))
       );
 
-      expect(left(runButton())).toBe(left(nudgeLabel));
-      expect(left(remarks()[0])).toBe(left(nudgeLabel));
-      expect(
-        left(widgetRoot()!.querySelector('[data-testid="map-quality-scope"]'))
-      ).toBe(left(nudgeLabel));
+      expect(new Set(labels).size).toBe(1);
     });
   });
 
