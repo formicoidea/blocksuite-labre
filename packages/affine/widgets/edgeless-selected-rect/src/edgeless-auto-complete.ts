@@ -238,6 +238,12 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
 
   private _timer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Whether `this.current` is a thing the auto-complete knows how to clone: a
+   * shape (subclasses included) or a note block. Deliberately says nothing
+   * about the selection — the drag-out path consults it *after* clearing the
+   * selection to open the shape picker.
+   */
   get canShowAutoComplete() {
     const { current } = this;
     return isShape(current) || isNoteBlock(current);
@@ -371,6 +377,8 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
   }
 
   private _generateElementOnClick(type: Direction) {
+    if (!this.canShowAutoComplete) return;
+
     const { store } = this.edgeless;
     const bound = this._computeNextBound(type);
     const id = createEdgelessElement(this.edgeless, this.current, bound);
@@ -682,7 +690,7 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
   }
 
   override firstUpdated() {
-    const { _disposables, edgeless, gfx } = this;
+    const { _disposables, gfx } = this;
 
     _disposables.add(
       this.gfx.selection.slots.updated.subscribe(() => {
@@ -699,21 +707,6 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
 
     _disposables.add(() => this.removeOverlay());
 
-    _disposables.add(
-      edgeless.host.event.add('pointerMove', ctx => {
-        const evt = ctx.get('pointerState');
-        const [x, y] = gfx.viewport.toModelCoord(evt.x, evt.y);
-        const elm = gfx.getElementByPoint(x, y);
-
-        if (!elm) {
-          this._isHover = false;
-          return;
-        }
-
-        this._isHover = elm === this.current ? true : false;
-      })
-    );
-
     this.edgeless.handleEvent('dragStart', () => {
       this._isMoving = true;
     });
@@ -722,12 +715,21 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
     });
   }
 
+  /**
+   * The single predicate the arrows are rendered on. It must stay stricter
+   * than, or equal to, what the click handlers can actually do: an arrow the
+   * click cannot honour is a crash waiting to happen (see
+   * `createEdgelessElement`). Hence the identity check — `current` is a
+   * property set by the selected-rect on the previous render, so it can lag
+   * behind the selection by a frame, and it is `current`, not the selection,
+   * that the click acts on.
+   */
   private _canAutoComplete() {
-    const selection = this.gfx.selection;
+    const selected = this.gfx.selection.selectedElements;
     return (
-      selection.selectedElements.length === 1 &&
-      (selection.selectedElements[0] instanceof ShapeElementModel ||
-        isNoteBlock(selection.selectedElements[0]))
+      selected.length === 1 &&
+      selected[0] === this.current &&
+      this.canShowAutoComplete
     );
   }
 
@@ -739,16 +741,13 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
   }
 
   override render() {
-    const isShape = this.current instanceof ShapeElementModel;
-    const isMindMap = this.current.group instanceof MindmapElementModel;
-
-    if (
-      this._isMoving ||
-      (this._isHover && !isShape && !this._canAutoComplete())
-    ) {
+    if (this._isMoving || !this._canAutoComplete()) {
       this.removeOverlay();
       return nothing;
     }
+
+    const isMindMap = this.current.group instanceof MindmapElementModel;
+
     const { selectedRect } = this;
 
     return html`<div
@@ -764,9 +763,6 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
       ${isMindMap ? this._renderMindMapButtons() : this._renderArrow()}
     </div>`;
   }
-
-  @state()
-  private accessor _isHover = true;
 
   @state()
   private accessor _isMoving = false;
