@@ -56,8 +56,13 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
 
   public getScale(): number {
     const table = this.table$.value;
-    if (!table) return 1;
-    return table.getBoundingClientRect().width / table.offsetWidth;
+    if (!table || !table.offsetWidth) return 1;
+    const rectWidth = table.getBoundingClientRect().width;
+    // offsetWidth is rounded to an integer while the rect is fractional: on
+    // fractional devicePixelRatio a plain CSS width would read as a phantom
+    // ~1.0001 scale. Within rounding distance there is no transform.
+    if (Math.abs(rectWidth - table.offsetWidth) <= 0.5) return 1;
+    return rectWidth / table.offsetWidth;
   }
 
   private readonly getRootRect = () => {
