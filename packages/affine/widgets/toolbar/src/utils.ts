@@ -235,12 +235,30 @@ export function emptyToolbarLayout(): ToolbarLayout {
   return { shrunk: new Set(), collapsed: new Set() };
 }
 
+/**
+ * Where the row's plan comes from, asked for by SIGNATURE.
+ *
+ * Called once per render, AFTER the entries are resolved and BEFORE anything
+ * reaches the DOM — which is the whole point. The mode an entry reads in is a
+ * datum of its render, so the plan has to be in hand before the first
+ * character is written; a plan applied afterwards is a plan the eye has
+ * already seen the row without.
+ *
+ * The signature describes the ROW, not its plan: same entries, same words,
+ * same signature. It is what lets the caller answer "the row you are about to
+ * draw is the one already on screen — here is the plan it is wearing" instead
+ * of starting every render from the undegraded row.
+ */
+export type ToolbarLayoutSource = (signature: string) => ToolbarLayout;
+
 /** What one render of the row tells the fitter about its own room to give. */
 export interface ToolbarFit {
   /** Every degradation available, in the order they must be spent. */
   steps: ToolbarLayoutStep[];
   /** Whether the rendered row already carries a "⋮" button. */
   hasMenu: boolean;
+  /** What this row is made of — see {@link ToolbarLayoutSource}. */
+  signature: string;
 }
 
 /**
@@ -271,7 +289,7 @@ export function renderToolbar(
   toolbar: EditorToolbar,
   context: ToolbarContext,
   flavour: string,
-  layout: ToolbarLayout = emptyToolbarLayout()
+  source: ToolbarLayoutSource = () => emptyToolbarLayout()
 ): ToolbarFit | null {
   const hasSurfaceScope = flavour.includes('surface');
   const toolbarRegistry = context.toolbarRegistry;
@@ -325,6 +343,29 @@ export function renderToolbar(
     };
   });
   const steps = toolbarDegradationSteps(items);
+
+  // What this row IS, before anything about how it is currently degraded. Two
+  // renders that produce the same signature produce the same widths, so the
+  // plan measured for one is the plan for the other — which is what lets a
+  // re-render mid-gesture keep the row exactly as the eye last saw it.
+  //
+  // The words are in it, not just the ids: an entry that changes its label
+  // ("Add exception" becoming "Revoke exception") changes what the row costs,
+  // and a plan measured on the old words no longer describes it.
+  const signature = [
+    flavour,
+    ...primaryActionGroup.map(action =>
+      [
+        action.id,
+        action.priority ?? 0,
+        action.showLabel && action.label ? action.label : '',
+        action.icon ? 'i' : '',
+        isPlainAction(action) ? 'p' : 'o',
+      ].join('~')
+    ),
+  ].join('|');
+
+  const layout = source(signature);
 
   // Entries the last measurement sent into the menu lead it: they came off the
   // row, so they are the first thing the user looks for after opening it.
@@ -396,7 +437,7 @@ export function renderToolbar(
     toolbar.dataset.open = 'true';
   }
 
-  return { steps, hasMenu };
+  return { steps, hasMenu, signature };
 }
 
 function renderActions(
@@ -636,10 +677,15 @@ function sameLayout(a: ToolbarLayout, b: ToolbarLayout) {
  * declared (`priority`, `icon`, `label`), so this class never learns that a
  * block or a framework exists.
  *
- * The row is measured ONCE per selection, while it is still whole. Every later
+ * The row is measured ONCE per ROW, while it is still whole. Every later
  * resize replans from those numbers instead of flashing the row back to its
  * full width just to measure it again — which is also what makes the collapse
  * reversible: widen the editor and the plan simply spends fewer steps.
+ *
+ * "Per row", not per render: the widget re-renders for reasons that have
+ * nothing to do with width, and a re-render is not a new row. Which row it is
+ * is answered by the {@link ToolbarFit.signature}, and a row that has not
+ * changed keeps the plan it is wearing — see {@link ToolbarFitter.render}.
  *
  * And it replans only at the ACCALMIE. While the room is still moving — a zoom,
  * a pan, a window being dragged — the plan on screen is frozen: see
@@ -662,6 +708,9 @@ export class ToolbarFitter {
 
   /** Armed while the room is still moving; fires at the accalmie. */
   #settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** What the row on screen is made of. `''` when there is no row. */
+  #signature = '';
 
   #steps: readonly ToolbarLayoutStep[] = [];
 
@@ -689,7 +738,7 @@ export class ToolbarFitter {
     if (sameLayout(next, this.#layout)) return false;
 
     this.#layout = next;
-    renderToolbar(this.toolbar, this.#context!, this.#flavour, next);
+    renderToolbar(this.toolbar, this.#context!, this.#flavour, () => next);
     return true;
   }
 
@@ -802,27 +851,58 @@ export class ToolbarFitter {
   }
 
   /**
-   * Renders the row whole — synchronously, so nothing about the first paint
-   * changes — then measures it and spends what it must.
+   * Renders the row, in the mode the plan on screen says.
+   *
+   * The widget re-renders for a great many reasons that have nothing to do
+   * with the row's width — an element updated anywhere on the canvas, a block
+   * updated, a selection re-emitted, something hovered — and any of them can
+   * land on any frame of a gesture. So this asks a question first: is the row
+   * about to be drawn the row already on screen?
+   *
+   * - **Yes** (same {@link ToolbarFit.signature}): it is drawn wearing the
+   *   plan it is already wearing, entry by entry, and nothing is measured.
+   *   The DOM does not change, so there is nothing to see — which is the
+   *   PO's recette of 25/08/2026. Before, every one of these re-renders threw
+   *   the plan away, painted the whole row, and only then measured and
+   *   degraded it again: one flash of "Read this component" per re-render,
+   *   plus a full replan at whatever width the gesture happened to be at,
+   *   straight through the freeze the accalmie was supposed to give.
+   * - **No**: a different row. Then, and only then, it is rendered whole,
+   *   measured, and spends what it must.
    */
   render(context: ToolbarContext, flavour: string) {
-    const token = ++this.#token;
-
-    // A new selection is a new row: whatever the old one was waiting for no
-    // longer describes anything, and it is measured whole again from here.
-    this.#cancelSettle();
-
     this.#context = context;
     this.#flavour = flavour;
-    this.#layout = emptyToolbarLayout();
+
+    // Answered while the entries are resolved and before they are drawn: the
+    // mode an entry reads in is an argument of its own render, never a fixup.
+    let fresh = false;
+    const fit = renderToolbar(this.toolbar, context, flavour, signature => {
+      fresh = signature !== this.#signature;
+      if (!fresh) return this.#layout;
+
+      this.#signature = signature;
+      this.#layout = emptyToolbarLayout();
+      return this.#layout;
+    });
+
+    if (!fit) {
+      this.reset();
+      return;
+    }
+
+    // The same row, re-rendered: it is already right, and a measurement now
+    // would be a measurement of a room that is still moving.
+    if (!fresh) return;
+
+    // A new row. Whatever the old one was waiting for describes nothing.
+    const token = ++this.#token;
+    this.#cancelSettle();
     this.#metrics = null;
-    this.#steps = [];
-
-    const fit = renderToolbar(this.toolbar, context, flavour, this.#layout);
-    if (!fit || fit.steps.length === 0) return;
-
     this.#steps = fit.steps;
     this.#hasMenu = fit.hasMenu;
+
+    if (fit.steps.length === 0) return;
 
     void this.#measure(token);
   }
@@ -833,6 +913,11 @@ export class ToolbarFitter {
     this.#cancelSettle();
     this.#context = null;
     this.#metrics = null;
+    this.#layout = emptyToolbarLayout();
+    this.#steps = [];
+    // The row that comes back is measured from scratch: `#metrics` went with
+    // it, and a plan with nothing behind it could never be revised.
+    this.#signature = '';
   }
 
   /**

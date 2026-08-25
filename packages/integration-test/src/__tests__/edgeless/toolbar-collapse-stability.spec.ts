@@ -56,6 +56,33 @@ describe('the contextual toolbar, while the viewport moves', () => {
       })
       .join('|');
 
+  /**
+   * The entry the PO's recette of 25/08/2026 is about.
+   *
+   * It is the wordiest thing on a component's toolbar, so it is the first to
+   * give way and the one whose mode the eye follows.
+   */
+  const READING = 'y1.element-reading';
+
+  /**
+   * How ONE entry reads, right now: its word, its icon alone, or a line of the
+   * "⋮" menu. This value changing during a gesture IS the glitch — the row's
+   * composition above says the same thing about the whole row, but the PO
+   * pointed at this entry, so this is what is sampled frame by frame.
+   */
+  const modeOf = (id: string) => {
+    const bar = toolbar();
+    if (!bar) return 'gone';
+    const node = bar.querySelector<HTMLElement>(
+      `[data-toolbar-action-id="${id}"]`
+    );
+    if (!node) return 'gone';
+    // Menu lines live in the toolbar's light DOM whether the menu is open or
+    // not, so an entry that moved into the "⋮" is found here too.
+    if (node.localName === 'editor-menu-action') return 'menu';
+    return node.querySelector('.label') ? 'label' : 'icon';
+  };
+
   /** Where the row is anchored, as the positioner last wrote it. */
   const anchor = () => toolbar()?.style.transform ?? '';
 
@@ -231,6 +258,107 @@ describe('the contextual toolbar, while the viewport moves', () => {
     );
 
     expect(revisited).toEqual([]);
+  });
+
+  /**
+   * **The word never comes back** (PO recette of 25/08/2026).
+   *
+   * The freeze of the second pass covers the REPLANNING — the path that starts
+   * from a room that changed. It does not cover the other path: the widget
+   * re-renders the row from the registry whenever anything it watches moves,
+   * and on the canvas that is a long list — an element updated anywhere, a
+   * block updated, a selection re-emitted, something hovered. Any of those can
+   * land on any frame of a gesture, and each one used to throw the plan away,
+   * paint the undegraded row, and only then measure and degrade it again.
+   *
+   * What the PO saw is exactly that: "Read this component" reading its word
+   * for a frame, then its icon, then a line of the "⋮", then its word again.
+   * The three tests below sample the ENTRY, frame by frame, with those
+   * re-renders happening during the gesture.
+   */
+  describe('and something else in the document changes while it moves', () => {
+    /**
+     * A write to an element the toolbar is not about.
+     *
+     * This is the production path, not a stand-in for it: `elementUpdated`
+     * reaches the widget, which rebuilds the row from the registry. A
+     * collaborator, a validation pass, a label edit finishing its debounce —
+     * all of them arrive here.
+     */
+    const touchSomethingElse = (id: string, n: number) =>
+      service.surface.updateElement(id, { xAxisTitle: `t${n}` });
+
+    test('a re-render does not put the word back, not even for a frame', async () => {
+      const map = addMap();
+      const component = addComponent();
+      await select(component);
+
+      await roomFor(320);
+
+      // The row is tight: this entry has already traded its word for its icon.
+      expect(modeOf(READING)).toBe('icon');
+
+      touchSomethingElse(map, 0);
+
+      // Read synchronously: the widget rebuilds the row in this very tick, so
+      // this is the frame the eye is given. It used to read `label` here.
+      expect(modeOf(READING)).toBe('icon');
+
+      await frames(1);
+      expect(modeOf(READING)).toBe('icon');
+
+      await settle();
+      expect(modeOf(READING)).toBe('icon');
+    });
+
+    test('a zoom never changes how the entry reads, re-renders and all', async () => {
+      const map = addMap();
+      const component = addComponent();
+      await select(component);
+
+      await roomFor(320);
+
+      const before = modeOf(READING);
+      expect(before).not.toBe('gone');
+
+      // Two samples per frame: the tick the re-render lands on, and the frame
+      // it was painted in. A flash that lives inside one frame is still a
+      // flash — it is what a 120Hz trackpad zoom shows.
+      const modes: string[] = [];
+      for (let i = 0; i < 24; i++) {
+        service.viewport.setZoom(service.viewport.zoom * 1.04, undefined, true);
+        if (i % 4 === 0) touchSomethingElse(map, i);
+        modes.push(modeOf(READING));
+        await frames(1);
+        modes.push(modeOf(READING));
+      }
+
+      expect([...new Set(modes)]).toEqual([before]);
+    });
+
+    test('and the row is still replanned once the gesture lands', async () => {
+      const map = addMap();
+      const component = addComponent();
+      await select(component);
+
+      await roomFor(320);
+
+      const renders = countRenders();
+      for (let i = 0; i < 24; i++) {
+        service.viewport.setZoom(service.viewport.zoom * 1.04, undefined, true);
+        if (i % 4 === 0) touchSomethingElse(map, i);
+        await frames(1);
+      }
+      await settle();
+
+      // Holding the plan still is not the same as never planning again: the
+      // accalmie spends one, for the width the gesture ended on, and the row
+      // that was `icon` throughout has given up its place by then.
+      expect(renders.stop()).toBeGreaterThan(0);
+      expect(modeOf(READING)).toBe('menu');
+      expect(composition()).not.toContain(':label');
+      expect(lines()).toBe(1);
+    });
   });
 
   test('a room that only trembles is a room that has not changed', async () => {
