@@ -11,6 +11,8 @@ export default [
   'packages/affine/blocks/code/vitest.config.ts',
   'packages/affine/blocks/database/vitest.config.ts',
   'packages/affine/blocks/edgeless-text/vitest.config.ts',
+  'packages/affine/blocks/latex/vitest.config.ts',
+  'packages/affine/blocks/embed-doc/vitest.config.ts',
   'packages/affine/blocks/note/vitest.config.ts',
   'packages/affine/blocks/root/vitest.config.ts',
   'packages/affine/blocks/surface/vitest.config.ts',
