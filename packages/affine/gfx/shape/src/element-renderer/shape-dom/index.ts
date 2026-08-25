@@ -5,6 +5,72 @@ import { SVGShapeBuilder } from '@labre/global/gfx';
 
 import { manageClassNames, setStyles } from './utils';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+type RetainedShapeDom = {
+  polygon: SVGPolygonElement | null;
+  svg: SVGSVGElement | null;
+};
+
+type RetainedShapeSvg = {
+  polygon: SVGPolygonElement;
+  svg: SVGSVGElement;
+};
+
+/**
+ * The nodes a shape host already owns, kept across renders. Rebuilding the
+ * `<svg>` on every frame made each pan or zoom allocate a fresh element per
+ * shape on the board; the attributes are cheap to overwrite in place.
+ */
+const retainedShapeDom = new WeakMap<HTMLElement, RetainedShapeDom>();
+
+function getRetainedShapeDom(element: HTMLElement): RetainedShapeDom {
+  const existing = retainedShapeDom.get(element);
+
+  if (existing) {
+    return existing;
+  }
+
+  const retained = {
+    svg: null,
+    polygon: null,
+  };
+  retainedShapeDom.set(element, retained);
+  return retained;
+}
+
+function getOrCreateSvg(
+  retained: RetainedShapeDom,
+  element: HTMLElement
+): RetainedShapeSvg {
+  if (retained.svg && retained.polygon) {
+    return {
+      svg: retained.svg,
+      polygon: retained.polygon,
+    };
+  }
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  const polygon = document.createElementNS(SVG_NS, 'polygon');
+  svg.append(polygon);
+
+  retained.svg = svg;
+  retained.polygon = polygon;
+  element.prepend(svg);
+
+  return { svg, polygon };
+}
+
+function removeSvg(retained: RetainedShapeDom) {
+  retained.svg?.remove();
+  retained.svg = null;
+  retained.polygon = null;
+}
+
 function applyShapeSpecificStyles(
   model: ShapeElementModel,
   element: HTMLElement,
@@ -13,14 +79,6 @@ function applyShapeSpecificStyles(
   // Reset properties that might be set by different shape types
   element.style.removeProperty('clip-path');
   element.style.removeProperty('border-radius');
-  // Clear DOM for shapes that don't use SVG, or if type changes from SVG-based to non-SVG-based
-  if (
-    model.shapeType !== 'diamond' &&
-    model.shapeType !== 'triangle' &&
-    model.shapeType !== 'polygon'
-  ) {
-    while (element.firstChild) element.firstChild.remove();
-  }
 
   switch (model.shapeType) {
     case 'rect': {
@@ -117,6 +175,7 @@ export const shapeDomRenderer = (
   const { zoom } = renderer.viewport;
   const unscaledWidth = model.w;
   const unscaledHeight = model.h;
+  const retained = getRetainedShapeDom(element);
 
   const fillColor = renderer.getColorValue(
     model.fillColor,
@@ -144,6 +203,7 @@ export const shapeDomRenderer = (
     // For diamond and triangle, fill and border are handled by inline SVG
     element.style.border = 'none'; // Ensure no standard CSS border interferes
     element.style.backgroundColor = 'transparent'; // Host element is transparent
+    const { polygon, svg } = getOrCreateSvg(retained, element);
 
     const strokeW = model.strokeWidth;
 
@@ -192,29 +252,19 @@ export const shapeDomRenderer = (
     // Determine fill color
     const finalFillColor = model.filled ? fillColor : 'transparent';
 
-    // Build SVG safely with DOM-API
-    const SVG_NS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
     svg.setAttribute('viewBox', `0 0 ${unscaledWidth} ${unscaledHeight}`);
-    svg.setAttribute('preserveAspectRatio', 'none');
-
-    const polygon = document.createElementNS(SVG_NS, 'polygon');
     polygon.setAttribute('points', svgPoints);
     polygon.setAttribute('fill', finalFillColor);
     polygon.setAttribute('stroke', finalStrokeColor);
     polygon.setAttribute('stroke-width', String(strokeW));
     if (finalStrokeDasharray !== 'none') {
       polygon.setAttribute('stroke-dasharray', finalStrokeDasharray);
+    } else {
+      polygon.removeAttribute('stroke-dasharray');
     }
-    svg.append(polygon);
-
-    // Replace existing children to avoid memory leaks
-    element.replaceChildren(svg);
   } else {
     // Standard rendering for other shapes (e.g., rect, ellipse)
-    // innerHTML was already cleared by applyShapeSpecificStyles if necessary
+    removeSvg(retained);
     element.style.backgroundColor = model.filled ? fillColor : 'transparent';
     applyBorderStyles(model, element, strokeColor, zoom); // Uses standard CSS border
   }

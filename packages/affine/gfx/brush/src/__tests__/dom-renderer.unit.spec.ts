@@ -87,6 +87,36 @@ describe.each([
     expect(host.style.zIndex).toBe('');
   });
 
+  it('keeps the same svg node across renders', () => {
+    const host = document.createElement('div');
+
+    render(makeStroke(), host, makeRenderer());
+    const first = host.querySelector('svg');
+
+    render(makeStroke({ commands: 'M0 0 L20 20 Z' }), host, makeRenderer(3));
+    const second = host.querySelector('svg');
+
+    expect(second).toBe(first);
+    expect(second!.querySelector('path')!.getAttribute('d')).toBe(
+      'M0 0 L20 20 Z'
+    );
+    expect(second!.style.width).toBe('120px');
+  });
+
+  it('drops the retained nodes when the stroke turns degenerate', () => {
+    const host = document.createElement('div');
+
+    render(makeStroke(), host, makeRenderer());
+    expect(host.querySelector('svg')).not.toBeNull();
+
+    render(makeStroke({ commands: '' }), host, makeRenderer());
+    expect(host.querySelector('svg')).toBeNull();
+
+    // ...and comes back with a fresh node once the stroke is drawable again.
+    render(makeStroke(), host, makeRenderer());
+    expect(host.querySelector('svg')).not.toBeNull();
+  });
+
   it('draws nothing for a degenerate stroke', () => {
     const host = document.createElement('div');
 

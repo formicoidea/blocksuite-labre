@@ -146,4 +146,36 @@ describe('Shape rendering with DOM renderer', () => {
     expect(shapeElement?.style.width).toBe('80px');
     expect(shapeElement?.style.height).toBe('60px');
   });
+  test('keeps the same svg node when a diamond is redrawn', async () => {
+    const surfaceView = getSurface(window.doc, window.editor);
+    const surfaceModel = surfaceView.model;
+    const shapeId = surfaceModel.addElement({
+      type: 'shape',
+      shapeType: 'diamond',
+      xywh: '[150, 150, 80, 60]',
+      fillColor: '#ff0000',
+      strokeColor: '#000000',
+      filled: true,
+    });
+    await wait(100);
+
+    const host = surfaceView.renderRoot.querySelector<HTMLElement>(
+      `[data-element-id="${shapeId}"]`
+    )!;
+    const svg = host.querySelector('svg');
+    expect(svg).not.toBeNull();
+
+    surfaceModel.updateElement(shapeId, { fillColor: '#00ff00' });
+    await wait(100);
+
+    // Retained: the renderer overwrites the attributes instead of allocating
+    // a new subtree on every frame.
+    expect(host.querySelector('svg')).toBe(svg);
+
+    surfaceModel.updateElement(shapeId, { shapeType: 'rect' });
+    await wait(100);
+
+    // ...and drops it when the shape no longer needs one.
+    expect(host.querySelector('svg')).toBeNull();
+  });
 });
