@@ -7,7 +7,11 @@ import {
   WrapIcon,
 } from '@labre/affine-components/icons';
 import type { MenuItemGroup } from '@labre/affine-components/toolbar';
-import { CommentProviderIdentifier } from '@labre/affine-shared/services';
+import {
+  CommentProviderIdentifier,
+  DocModeProvider,
+  TelemetryProvider,
+} from '@labre/affine-shared/services';
 import { isInsidePageEditor } from '@labre/affine-shared/utils';
 import { noop, sleep } from '@labre/global/utils';
 import {
@@ -101,7 +105,22 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
         generate: ({ blockComponent }) => {
           return {
             action: () => {
-              blockComponent.setCollapsed(!blockComponent.collapsed$.value);
+              const collapsed = !blockComponent.collapsed$.value;
+              blockComponent.setCollapsed(collapsed);
+
+              const std = blockComponent.std;
+              const mode =
+                std.getOptional(DocModeProvider)?.getEditorMode() ?? 'page';
+              std.getOptional(TelemetryProvider)?.track(
+                'codeBlockToggleCollapse',
+                {
+                  page: mode,
+                  segment: 'code block',
+                  module: 'code toolbar container',
+                  control: 'collapse button',
+                  type: collapsed ? 'collapse' : 'expand',
+                }
+              );
             },
             render: item => {
               const collapsed = blockComponent.collapsed$.value;
