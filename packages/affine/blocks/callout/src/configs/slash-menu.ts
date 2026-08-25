@@ -1,24 +1,16 @@
-import { CalloutBlockModel } from '@labre/affine-model';
 import { focusBlockEnd } from '@labre/affine-shared/commands';
 import { FeatureFlagService } from '@labre/affine-shared/services';
-import {
-  findAncestorModel,
-  isInsideBlockByFlavour,
-  matchModels,
-} from '@labre/affine-shared/utils';
+import { isInsideBlockByFlavour } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
 import { FontIcon } from '@blocksuite/icons/lit';
 
 import { calloutTooltip } from './tooltips';
 
+// No `disableWhen` here on purpose. The widget ORs every config's `disableWhen`
+// together and then refuses to open at all, so the callout's own guard used to
+// silence the WHOLE slash menu inside a callout — every block, every framework,
+// not just this one entry.
 export const calloutSlashMenuConfig: SlashMenuConfig = {
-  disableWhen: ({ model }) => {
-    return (
-      findAncestorModel(model, ancestor =>
-        matchModels(ancestor, [CalloutBlockModel])
-      ) !== null
-    );
-  },
   items: [
     {
       name: 'Callout',
@@ -33,7 +25,10 @@ export const calloutSlashMenuConfig: SlashMenuConfig = {
       when: ({ std, model }) => {
         return (
           std.get(FeatureFlagService).getFlag('enable_callout') &&
-          !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text')
+          !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text') &&
+          // The schema forbids a callout inside a callout, so offering the item
+          // there would only produce a thrown insertion.
+          !isInsideBlockByFlavour(model.store, model, 'affine:callout')
         );
       },
       action: ({ model, std }) => {
