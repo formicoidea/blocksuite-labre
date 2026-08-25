@@ -23,6 +23,14 @@ export const ZOOM_INITIAL = 1.0;
 
 export const FIT_TO_SCREEN_PADDING = 100;
 
+/**
+ * How far `offsetWidth` may sit from the painted width of an *unscaled*
+ * element. `offsetWidth` is an integer: the browser rounds the border box's
+ * left and right edges independently, so each contributes up to half a pixel.
+ * See {@link Viewport.viewScale}.
+ */
+const OFFSET_WIDTH_ROUNDING = 1;
+
 export interface ViewportRecord {
   left: number;
   top: number;
@@ -212,6 +220,18 @@ export class Viewport {
    * Note this is different from the zoom property.
    * The editor itself may be scaled by outer container which is common in nested editor scenarios.
    * This property is used to calculate the scale of the editor.
+   *
+   * The scale is read as "what the host paints" over "what the host lays out":
+   * `getBoundingClientRect().width` is the painted width, transforms included
+   * and fractional; `offsetWidth` is the laid out width with no transform, but
+   * the browser gives it as an integer — it rounds both border-box edges, so it
+   * can sit up to a pixel away from the fractional width even when nothing is
+   * scaled at all. A host that is merely a fraction of a pixel wide (a HiDPI
+   * window, a flex remainder) would otherwise report a phantom scale of
+   * ~1.0001, and every pointer delta divided by it comes back short: a 100px
+   * drag moves the element 99.986. Below the rounding error there is no scale
+   * to read, so answer exactly 1; a container that really scales the editor is
+   * orders of magnitude past that pixel.
    */
   get viewScale() {
     if (
@@ -220,7 +240,10 @@ export class Viewport {
       this._cachedOffsetWidth === 0
     )
       return 1;
-    return this.boundingClientRect.width / this._cachedOffsetWidth;
+    const { width } = this.boundingClientRect;
+    if (Math.abs(width - this._cachedOffsetWidth) <= OFFSET_WIDTH_ROUNDING)
+      return 1;
+    return width / this._cachedOffsetWidth;
   }
 
   get top() {
