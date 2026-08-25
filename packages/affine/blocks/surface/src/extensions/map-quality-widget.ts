@@ -1,10 +1,8 @@
-import type { RootBlockModel } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import {
   type AnyCommandDescriptor,
   type BlockStdScope,
   type CommandDescriptor,
-  WidgetComponent,
   WidgetViewExtension,
 } from '@labre/std';
 import {
@@ -14,9 +12,12 @@ import {
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import {
+  EditorAnchoredPanel,
+  editorAnchoredPanelStyles,
+} from './editor-anchored-panel.js';
 import {
   checkedNudges,
   type QualityNudge,
@@ -47,15 +48,6 @@ function fill(text: string, values: Record<string, string | number>): string {
     key in values ? String(values[key]) : match
   );
 }
-
-/**
- * The panel is TEXT and controls, so it is sized in screen pixels — the same
- * reasoning that keeps the violation bubble in screen units while the markers
- * that open it scale with the board.
- */
-const PANEL_WIDTH = 320;
-const PANEL_GAP = 12;
-const PANEL_MAX_HEIGHT = 420;
 
 /**
  * Width of the column the checkboxes live in, in screen pixels.
@@ -112,11 +104,19 @@ const FAMILY_FALLBACK: Record<RuleFamily, string> = {
  * and the panel lives on the root block — two trees with no DOM path between
  * them.
  *
- * DOM rather than the canvas overlay for the reason `ViolationDetailWidget`
- * gives at length: it takes clicks. Same host geometry (an absolutely
- * positioned, zero-sized box at the viewport origin, so only its positioned
- * children are hit), same pointer-pair swallowing, same click-away and Escape
- * handling.
+ * ## Where it sits
+ *
+ * **Anchored to the EDITOR, above the senior button bar and at its width** —
+ * the same place, the same layer and the same shared class as the reversed
+ * reading's panel (ADR 0011, PO decision of 02/08/2026). It shipped as a
+ * popover hanging off the map's top-right corner, at 320px, flipping sides and
+ * ends to stay on screen; every line of that arithmetic is gone, and with it
+ * the two faults the PO named — a floating box that loses the z-order contest
+ * with the toolbars, and a measure that lines up with nothing.
+ *
+ * Only the PRESENTATION moved. The entry in the background's contextual menu is
+ * still the trigger, the panel is still about one root instance and still says
+ * so in `data-element-id`, and nothing about what it renders changed.
  *
  * ## Read-only
  *
@@ -154,37 +154,16 @@ const FAMILY_FALLBACK: Record<RuleFamily, string> = {
  * same things. Only the panel stopped leaving the reader to work out which is
  * which.
  */
-export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
-  static override styles = css`
-    /* Above edgeless-selected-rect (z-index 1) and level with the violation
-       badge, well below the toolbars. */
-    :host {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-
+export class MapQualityWidget extends EditorAnchoredPanel {
+  static override styles = [
+    editorAnchoredPanelStyles,
+    css`
+    /* The box, the layer and the anchoring come from the shared pattern; this
+       is the panel's own stacking of sections inside it. */
     .map-quality-panel {
-      position: absolute;
-      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      width: ${unsafeCSS(PANEL_WIDTH)}px;
-      max-height: ${unsafeCSS(PANEL_MAX_HEIGHT)}px;
-      overflow-y: auto;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--affine-border-color);
-      background: var(--affine-background-overlay-panel-color, #fff);
-      box-shadow: var(--affine-shadow-2);
-      color: var(--affine-text-primary-color);
-      font-family: var(--affine-font-family);
-      font-size: 14px;
-      line-height: 1.4;
-      pointer-events: auto;
     }
 
     .map-quality-head {
@@ -315,7 +294,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
       font-size: 13px;
       overflow-wrap: anywhere;
     }
-  `;
+    `,
+  ];
 
   /** The instance whose panel is open, mirrored off the manager's signal. */
   @state()
@@ -350,12 +330,16 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
   /** The instance whose panel has already been given the focus, if any. */
   private _focused: string | null = null;
 
-  get gfx() {
-    return this.std.get(GfxControllerIdentifier);
-  }
-
   private get _validation() {
     return this.std.getOptional(ValidationManager);
+  }
+
+  protected override get panelOpen(): boolean {
+    return this._openFor !== null;
+  }
+
+  protected override closePanel(): void {
+    this._close();
   }
 
   /** The open instance, if it still exists and still has a panel to show. */
@@ -366,31 +350,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     return this._validation?.hasMapQuality(element) ? element : null;
   }
 
-  private readonly _swallow = (event: Event) => {
-    event.stopPropagation();
-  };
-
   private readonly _close = () => {
     this._validation?.closeMapQuality();
-  };
-
-  private readonly _onDocumentPointerDown = (event: PointerEvent) => {
-    if (this._openFor === null) return;
-    // Anything inside this widget keeps it open. The toolbar entry that opened
-    // it is in another tree, and its own click already landed.
-    if (event.composedPath().includes(this)) return;
-    this._close();
-  };
-
-  /**
-   * Escape is listened for on the EDITOR HOST, not on `document`, so a host
-   * application keeps its own global Escape while this panel handles its own —
-   * the rule `ViolationDetailWidget` established.
-   */
-  private readonly _onHostKeydown = (event: KeyboardEvent) => {
-    if (this._openFor === null || event.key !== 'Escape') return;
-    event.stopPropagation();
-    this._close();
   };
 
   /**
@@ -433,7 +394,7 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * while lit runs `firstUpdated` exactly once.
    */
   private _wire() {
-    const { _disposables, gfx } = this;
+    const { _disposables } = this;
 
     const validation = this._validation;
     if (validation) {
@@ -462,28 +423,17 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
       );
     }
 
-    _disposables.add(
-      gfx.viewport.viewportUpdated.subscribe(() => {
-        // The panel FOLLOWS the instance instead of closing on pan and zoom,
-        // unlike the violation bubble: that one is a transient read of one
-        // finding, this one is a surface somebody is halfway through ticking,
-        // and losing their place because they scrolled would be the tool
-        // throwing work away.
-        if (this._openFor !== null) this.requestUpdate();
-      })
-    );
-
-    document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
-    const host = this.std.host;
-    host.addEventListener('keydown', this._onHostKeydown, true);
+    // Click-away, Escape, and the re-measure of the bar the panel is aligned
+    // on — the shared pattern, and the same call the reading panel makes.
+    //
+    // The panel no longer follows the instance on a pan or a zoom, because it
+    // no longer hangs off it: it is anchored to the EDITOR, so a gesture that
+    // moves the map leaves the surface somebody is halfway through ticking
+    // exactly where they left it — which was the point of not closing on pan in
+    // the first place, now obtained by construction.
+    this.wireAnchoredPanel();
 
     _disposables.add(() => {
-      document.removeEventListener(
-        'pointerdown',
-        this._onDocumentPointerDown,
-        true
-      );
-      host.removeEventListener('keydown', this._onHostKeydown, true);
       for (const subscription of this._elementSubscriptions) {
         subscription.unsubscribe();
       }
@@ -515,18 +465,12 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
    * the viewport origin and the browser would otherwise scroll the editor to
    * "reveal" it.
    *
-   * ## Deliberately NOT `aria-modal`, and no focus trap
-   *
-   * `aria-modal="true"` is a promise that everything behind the dialog is inert,
-   * and this panel promises the opposite: the canvas stays usable behind it,
-   * which is the whole reason it follows the instance on pan instead of closing.
-   * Claiming modality without trapping focus is a label that lies to a screen
-   * reader, and trapping Tab from a host that is still perfectly interactive
-   * would be the library taking something that is not its to take. So:
-   * `role="dialog"` for the announcement, `tabindex="-1"` and this focus move
-   * for the reachability, and nothing that claims exclusivity.
+   * The dialog semantics themselves — `role`, `tabindex`, and the deliberate
+   * absence of `aria-modal` — come from {@link EditorAnchoredPanel}, which is
+   * also where the reasoning for that absence now lives.
    */
   override updated() {
+    super.updated();
     if (this._openFor === null || this._openFor === this._focused) {
       if (this._openFor === null) this._focused = null;
       return;
@@ -641,8 +585,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
               .checked=${on}
               ?disabled=${readonly}
               aria-label=${label}
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @change=${(event: Event) =>
                 this._toggleNudge(
                   element,
@@ -769,8 +713,8 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
         type="button"
         data-testid="map-quality-run"
         ?disabled=${running}
-        @pointerdown=${this._swallow}
-        @pointerup=${this._swallow}
+        @pointerdown=${this.swallow}
+        @pointerup=${this.swallow}
         @click=${() => this._runCheckup(element)}
       >
         ${running
@@ -863,65 +807,45 @@ export class MapQualityWidget extends WidgetComponent<RootBlockModel> {
     // nothing.
     void this._revision;
 
-    const { viewport } = this.gfx;
-    const bound = element.elementBound;
-    const [anchorX, anchorY] = viewport.toViewCoord(bound.maxX, bound.y);
-    const flipX = anchorX + PANEL_GAP + PANEL_WIDTH > viewport.width;
-    // Pinned by its BOTTOM edge when it would overflow, which is exact whatever
-    // the content measures — the violation bubble's trick, and for the same
-    // reason: the height is not known before layout.
-    const flipY = anchorY + PANEL_GAP + PANEL_MAX_HEIGHT > viewport.height;
     const title = translateKey(
       this.std,
       'com.labre.validation.map-quality.section',
       'Map quality'
     );
 
-    return html`<div
-      class="map-quality-panel"
-      role="dialog"
-      aria-label=${title}
-      data-testid="map-quality-panel"
-      data-element-id=${element.id}
-      data-flip-y=${flipY}
-      tabindex="-1"
-      style=${styleMap({
-        left: flipX
-          ? `${anchorX - PANEL_GAP - PANEL_WIDTH}px`
-          : `${anchorX + PANEL_GAP}px`,
-        top: flipY ? `${viewport.height - PANEL_GAP}px` : `${anchorY}px`,
-        ...(flipY ? { transform: 'translateY(-100%)' } : {}),
-      })}
-      @pointerdown=${this._swallow}
-      @pointerup=${this._swallow}
-      @click=${this._swallow}
-    >
-      <div class="map-quality-head">
-        <span>${title}</span>
-        <button
-          class="map-quality-close"
-          type="button"
-          data-testid="map-quality-close"
-          aria-label=${translateKey(
-            this.std,
-            'com.labre.validation.map-quality.close',
-            'Close'
-          )}
-          @pointerdown=${this._swallow}
-          @pointerup=${this._swallow}
-          @click=${this._close}
-        >
-          ×
-        </button>
-      </div>
-      ${this._renderNudges(element)} ${this._renderCheckup(element)}
-      ${
-        // Last, and outside the check-up block on purpose: it is context about
-        // the MAP, not a result of the button above it, and it has to be there
-        // for a framework that declares nudges and no on-demand rule at all.
-        this._renderRealtime(element)
-      }
-    </div>`;
+    return this.renderAnchoredPanel(
+      {
+        testid: 'map-quality-panel',
+        variant: 'map-quality-panel',
+        elementId: element.id,
+        label: title,
+      },
+      html`<div class="map-quality-head">
+          <span>${title}</span>
+          <button
+            class="map-quality-close"
+            type="button"
+            data-testid="map-quality-close"
+            aria-label=${translateKey(
+              this.std,
+              'com.labre.validation.map-quality.close',
+              'Close'
+            )}
+            @pointerdown=${this.swallow}
+            @pointerup=${this.swallow}
+            @click=${this._close}
+          >
+            ×
+          </button>
+        </div>
+        ${this._renderNudges(element)} ${this._renderCheckup(element)}
+        ${
+          // Last, and outside the check-up block on purpose: it is context about
+          // the MAP, not a result of the button above it, and it has to be there
+          // for a framework that declares nudges and no on-demand rule at all.
+          this._renderRealtime(element)
+        }`
+    );
   }
 }
 

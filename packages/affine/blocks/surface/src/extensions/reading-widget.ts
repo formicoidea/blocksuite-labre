@@ -1,18 +1,24 @@
-import type { RootBlockModel } from '@labre/affine-model';
 import {
   buildOccurrencePatch,
   getUniverseRegistry,
   publishOccurrenceMaterialities,
   translateKey,
 } from '@labre/affine-shared/services';
-import { getRegisteredCommands, runCommand, WidgetComponent, WidgetViewExtension } from '@labre/std';
-import { GfxControllerIdentifier, isPivotBound } from '@labre/std/gfx';
+import {
+  getRegisteredCommands,
+  runCommand,
+  WidgetViewExtension,
+} from '@labre/std';
+import { isPivotBound } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
-import { css, html, nothing, type TemplateResult, unsafeCSS } from 'lit';
+import { css, html, nothing, type TemplateResult } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import {
+  EditorAnchoredPanel,
+  editorAnchoredPanelStyles,
+} from './editor-anchored-panel.js';
 import {
   type ElementReading,
   PivotRecordPickerProvider,
@@ -25,57 +31,6 @@ import {
 } from './reading.js';
 
 export const READING_PROPOSAL_WIDGET = 'affine-reading-proposal-widget';
-
-/**
- * Screen pixels. The panel is TEXT, so it does not scale with the board.
- *
- * A comfortable measure rather than the 300px of a floating bubble: this is a
- * paragraph of prose about a component, read in one go, and it is anchored to
- * the editor rather than squeezed beside an element.
- */
-const PANEL_WIDTH = 480;
-/** Never narrower than this, however cramped the editor gets. */
-const PANEL_MIN_WIDTH = 240;
-/**
- * Clearance kept above the editor's bottom edge, so the panel sits just OVER
- * the bottom toolbar strip instead of burying its buttons.
- *
- * `edgeless-toolbar` is 64px tall over a 16px bottom padding; the remainder is
- * the gap. What opens UPWARDS out of that strip — the senior sub-menu — is what
- * {@link READING_PANEL_Z_INDEX} exists to stay on top of.
- */
-const PANEL_BOTTOM_GAP = 96;
-/** Breathing room at the sides and at the top of a small editor. */
-const PANEL_MARGIN = 16;
-const PANEL_MAX_HEIGHT = 420;
-const PANEL_MIN_HEIGHT = 160;
-
-/**
- * **Above every toolbar, the contextual one included.**
- *
- * The ceiling inside `.widgets-container` is `--affine-z-index-popover`, which
- * the theme sets to `1000`: `editor-toolbar` — the contextual toolbar the PO
- * found this panel hiding behind — takes it verbatim, and so does the zoom bar.
- * The bottom `edgeless-toolbar` is only `z-index: 1`, and its senior sub-menus
- * are appended INSIDE its own subtree, so they are capped at that 1 with it.
- * Ten above the variable clears the lot with headroom to spare.
- *
- * The fallback matters as much as the value: it is the host's theme stylesheet
- * that defines the variable, never this library.
- *
- * It is set on the HOST rather than on the panel. Every widget host is a
- * sibling in `.widgets-container`, and `affine-toolbar-widget` declares no
- * stacking context of its own, so `editor-toolbar`'s 1000 competes at that
- * level — which makes it the only level where this contest can be won. The
- * previous `z-index: 2` was chosen to sit "well below the toolbars", and this
- * is the deliberate reversal of that choice for this one panel.
- *
- * What still paints above it, correctly and by design: `popMenu` context menus
- * (1001) and the toolbar drag preview (9999), both mounted on `editor-host`
- * outside the contained widgets layer. A dropdown opened FROM this panel would
- * go through `popMenu` and land on top of it, which is what one wants.
- */
-const READING_PANEL_Z_INDEX = 'calc(var(--affine-z-index-popover, 1000) + 10)';
 
 /** The two commands the confirmations drive. Spelled once. */
 const TAG_SET_ID = 'tag.set';
@@ -116,70 +71,26 @@ const PIVOT_BIND_ID = 'pivot.bind';
  *
  * ## Where it sits
  *
- * **Anchored to the EDITOR, low and centred, over every toolbar** — the PO's
- * recette of 02/08/2026. It shipped as a bubble floating beside the element and
- * came back with two faults: it rendered BEHIND the contextual toolbar, and a
- * paragraph of prose is not a thing to read out of the corner of a shape. So it
- * is now a bottom-centre panel at a comfortable measure, in a layer above every
- * toolbar including the senior menu and its sub-menu — see
- * {@link READING_PANEL_Z_INDEX} for why that layer is where it is, and the
- * styles for why the host stays zero-sized while the panel carries the box.
+ * **Anchored to the EDITOR, above the senior button bar and at its width** —
+ * the PO's recette of 02/08/2026 and its second pass, now the shared contract
+ * of ADR 0011. It shipped as a bubble floating beside the element and came back
+ * with two faults: it rendered BEHIND the contextual toolbar, and a paragraph
+ * of prose is not a thing to read out of the corner of a shape. The first pass
+ * made it a bottom-centre panel at a fixed 480px; the second replaced that
+ * arbitrary measure with the toolbar's own, so the two boxes share their left
+ * and right edges. All of that geometry — and the layer above every toolbar
+ * that goes with it — lives in {@link EditorAnchoredPanel}; what is left here
+ * is the reading itself.
  *
- * Modelled on `violation-detail-widget.ts` down to the mechanics that are easy
- * to get wrong: a zero-sized host so the canvas stays clickable, the pointer
- * pair swallowed on the panel itself, Escape listened for on the EDITOR HOST
- * rather than on `document`, and click-away that observes without swallowing.
+ * The mechanics that are easy to get wrong are the base class's too: a
+ * zero-sized host so the canvas stays clickable, the pointer pair swallowed on
+ * the panel itself, Escape listened for on the EDITOR HOST rather than on
+ * `document`, and click-away that observes without swallowing.
  */
-export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
-  static override styles = css`
-    /*
-      A ZERO-SIZED host, pinned to the bottom centre of the editor.
-
-      Zero-sized is not a style choice, it is the only safe one:
-      \`.widgets-container > * { pointer-events: auto }\` is an OUTER-tree rule
-      on a shadowless block component, so it beats \`:host { pointer-events:
-      none }\` outright. A host with a real box would swallow canvas clicks
-      across the whole bottom of the board. The panel below carries the box.
-
-      \`left: 50%\` centres against \`.widgets-container\`, which is the editor
-      viewport at 100% × 100% — the very reference \`edgeless-toolbar\` centres
-      on, so the two are co-centred by construction rather than by arithmetic.
-    */
-    :host {
-      position: absolute;
-      left: 50%;
-      bottom: 0;
-      z-index: ${unsafeCSS(READING_PANEL_Z_INDEX)};
-      pointer-events: none;
-    }
-
-    /*
-      Anchored to the editor, not to the element: \`left: 0\` is the host's
-      zero-width box — the editor's horizontal centre — and the translate puts
-      the panel's own centre on it. \`bottom\` lifts it clear of the toolbar
-      strip so the buttons underneath stay usable.
-    */
-    .reading-panel {
-      position: absolute;
-      left: 0;
-      bottom: ${unsafeCSS(PANEL_BOTTOM_GAP)}px;
-      transform: translateX(-50%);
-      box-sizing: border-box;
-      width: ${unsafeCSS(PANEL_WIDTH)}px;
-      max-height: ${unsafeCSS(PANEL_MAX_HEIGHT)}px;
-      overflow-y: auto;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--affine-border-color);
-      background: var(--affine-background-overlay-panel-color, #fff);
-      box-shadow: var(--affine-shadow-2);
-      color: var(--affine-text-primary-color);
-      font-family: var(--affine-font-family);
-      font-size: 14px;
-      line-height: 1.4;
-      pointer-events: auto;
-    }
-
+export class ReadingProposalWidget extends EditorAnchoredPanel {
+  static override styles = [
+    editorAnchoredPanelStyles,
+    css`
     .reading-title {
       font-weight: 600;
       margin-bottom: 8px;
@@ -241,7 +152,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       outline: 2px solid var(--affine-primary-color);
       outline-offset: 1px;
     }
-  `;
+    `,
+  ];
 
   /** Bumped to force a re-render; the reading itself is never stored. */
   @state()
@@ -249,36 +161,17 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
 
   private _elementSubscription: { unsubscribe(): void } | null = null;
 
-  get gfx() {
-    return this.std.get(GfxControllerIdentifier);
-  }
-
   private get _manager(): ReadingManager | null {
     return this.std.getOptional(ReadingManager) ?? null;
   }
 
-  private readonly _swallow = (event: Event) => {
-    event.stopPropagation();
-  };
+  protected override get panelOpen(): boolean {
+    return Boolean(this._manager?.open$.value);
+  }
 
-  private readonly _onDocumentPointerDown = (event: PointerEvent) => {
-    const manager = this._manager;
-    if (!manager?.open$.value) return;
-    if (event.composedPath().includes(this)) return;
-    manager.close();
-  };
-
-  /**
-   * Escape on the EDITOR HOST, not on `document`: with a panel open Escape
-   * dismisses the panel rather than clearing the canvas selection behind it,
-   * and a library has no business making that call for the whole page.
-   */
-  private readonly _onHostKeydown = (event: KeyboardEvent) => {
-    const manager = this._manager;
-    if (!manager?.open$.value || event.key !== 'Escape') return;
-    event.stopPropagation();
-    manager.close();
-  };
+  protected override closePanel(): void {
+    this._manager?.close();
+  }
 
   private _wire() {
     const { _disposables, gfx } = this;
@@ -304,18 +197,13 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       );
     }
 
-    _disposables.add(
-      gfx.viewport.viewportUpdated.subscribe(() => {
-        // The panel used to CLOSE here, because it hung off an element that a
-        // pan or a zoom moved out from under it. Anchored to the editor it no
-        // longer does: panning to look at what the reading is talking about
-        // while the reading is on screen is the obvious thing to want, and
-        // dismissing it mid-gesture was the old anchor's problem, not the
-        // user's. A re-render is still owed — `viewportUpdated` fires on a
-        // RESIZE too, and the panel's box is clamped to the editor's.
-        if (this._manager?.open$.value) this._revision++;
-      })
-    );
+    // Click-away, Escape, and the re-measure of the bar the panel is aligned
+    // on — one call, and the same one Map quality makes (ADR 0011). The panel
+    // used to CLOSE on a viewport change, because it hung off an element that a
+    // pan or a zoom moved out from under it; anchored to the editor it merely
+    // re-measures, and panning to look at what the reading is talking about
+    // while the reading is on screen keeps working.
+    this.wireAnchoredPanel();
 
     // The surface is a signal, not a fact: it can arrive after the widget and
     // be replaced under it. Anything on the board can change what is read — a
@@ -333,17 +221,7 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       })
     );
 
-    document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
-    const host = this.std.host;
-    host.addEventListener('keydown', this._onHostKeydown, true);
-
     _disposables.add(() => {
-      document.removeEventListener(
-        'pointerdown',
-        this._onDocumentPointerDown,
-        true
-      );
-      host.removeEventListener('keydown', this._onHostKeydown, true);
       this._elementSubscription?.unsubscribe();
       this._elementSubscription = null;
     });
@@ -477,8 +355,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
               class="reading-action"
               type="button"
               data-testid="reading-confirm-nature"
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @click=${this._confirmNature(reading.elementId, tagId, proposed)}
             >
               ${translateKey(
@@ -689,8 +567,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
               class="reading-action"
               type="button"
               data-testid="reading-link-record"
-              @pointerdown=${this._swallow}
-              @pointerup=${this._swallow}
+              @pointerdown=${this.swallow}
+              @pointerup=${this.swallow}
               @click=${this._linkRecord(reading.elementId)}
             >
               ${translateKey(
@@ -727,8 +605,8 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
             class="reading-action"
             type="button"
             data-testid="reading-update-record"
-            @pointerdown=${this._swallow}
-            @pointerup=${this._swallow}
+            @pointerdown=${this.swallow}
+            @pointerup=${this.swallow}
             @click=${this._updateRecord(drift.elementId, drift.pivotDocId)}
           >
             ${translateKey(
@@ -812,31 +690,6 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
       if (manager) manager.drift$.value = null;
     };
 
-  /**
-   * The panel's box, clamped to the editor it is anchored to.
-   *
-   * The CSS already places it; this only stops a comfortable measure from
-   * becoming an overflowing one on a narrow or short editor. Both dimensions
-   * keep a floor, because a panel squeezed to nothing is not a smaller panel,
-   * it is an unreadable one.
-   */
-  private _panelBox(): { width: number; maxHeight: number } {
-    const { viewport } = this.gfx;
-    return {
-      width: Math.max(
-        PANEL_MIN_WIDTH,
-        Math.min(PANEL_WIDTH, viewport.width - PANEL_MARGIN * 2)
-      ),
-      maxHeight: Math.max(
-        PANEL_MIN_HEIGHT,
-        Math.min(
-          PANEL_MAX_HEIGHT,
-          viewport.height - PANEL_BOTTOM_GAP - PANEL_MARGIN
-        )
-      ),
-    };
-  }
-
   override render() {
     // Read the revision so lit re-renders when a signal moved.
     void this._revision;
@@ -858,40 +711,31 @@ export class ReadingProposalWidget extends WidgetComponent<RootBlockModel> {
     // would refuse it anyway, silently, which is worse.
     const writable = !this.std.store.readonly;
 
-    const { width, maxHeight } = this._panelBox();
-
-    return html`<div
-      class="reading-panel"
-      role="dialog"
-      data-testid="reading-panel"
-      data-element-id=${elementId}
-      aria-label=${translateKey(
-        this.std,
-        'com.labre.reading.panel.label',
-        'Proposed record'
-      )}
-      style=${styleMap({
-        width: `${width}px`,
-        maxHeight: `${maxHeight}px`,
-      })}
-      @pointerdown=${this._swallow}
-      @pointerup=${this._swallow}
-      @click=${this._swallow}
-    >
-      <div class="reading-title">
-        ${translateKey(
+    return this.renderAnchoredPanel(
+      {
+        testid: 'reading-panel',
+        variant: 'reading-panel',
+        elementId,
+        label: translateKey(
           this.std,
-          'com.labre.reading.panel.title',
-          'What this map says about this component'
-        )}
-      </div>
-      ${this._renderNodeType(reading, profile)}
-      ${this._renderNature(reading, profile, record, writable)}
-      ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
-      ${this._renderPhase(reading)}
-      ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
-      ${writable ? this._renderDrift(reading) : nothing}
-    </div>`;
+          'com.labre.reading.panel.label',
+          'Proposed record'
+        ),
+      },
+      html`<div class="reading-title">
+          ${translateKey(
+            this.std,
+            'com.labre.reading.panel.title',
+            'What this map says about this component'
+          )}
+        </div>
+        ${this._renderNodeType(reading, profile)}
+        ${this._renderNature(reading, profile, record, writable)}
+        ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
+        ${this._renderPhase(reading)}
+        ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
+        ${writable ? this._renderDrift(reading) : nothing}`
+    );
   }
 }
 

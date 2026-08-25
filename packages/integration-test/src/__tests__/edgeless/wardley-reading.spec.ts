@@ -402,10 +402,11 @@ describe('the reversed reading of a Wardley component', () => {
   });
 
   /**
-   * The PO recette of 02/08/2026, point 1: the panel came back rendering BEHIND
-   * the contextual toolbar. It is now anchored to the EDITOR — low, centred,
-   * and in a layer above every toolbar — rather than floating beside the
-   * element it is about.
+   * The PO recette of 02/08/2026, point 1 and its second pass: the panel came
+   * back rendering BEHIND the contextual toolbar, and then at a 480px measure
+   * that lined up with nothing. It is now anchored to the EDITOR — above the
+   * senior button bar, at the bar's own width, in a layer above every toolbar
+   * (ADR 0011) — rather than floating beside the element it is about.
    */
   describe('where the panel sits', () => {
     /** `auto` is not a number, and a panel must beat it too. Treat it as 0. */
@@ -421,6 +422,23 @@ describe('the reversed reading of a Wardley component', () => {
       manager().open(component);
       await settle();
       return component;
+    };
+
+    /** The senior button bar itself — the visible box, not the widget's slab. */
+    const seniorBar = () =>
+      (
+        root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
+          | HTMLElement
+          | undefined
+      )?.shadowRoot?.querySelector<HTMLElement>('.edgeless-toolbar-container') ??
+      null;
+
+    /** Resize the editor and let the toolbar settle at its new tool count. */
+    const resizeEditorTo = async (width: string) => {
+      const app = window.editor.parentElement as HTMLElement;
+      app.style.width = width;
+      await settle();
+      await settle();
     };
 
     test('it renders above the contextual toolbar and the bottom one', async () => {
@@ -457,11 +475,12 @@ describe('the reversed reading of a Wardley component', () => {
       );
     });
 
-    test('it is anchored low and centred in the editor, inside the viewport', async () => {
+    test('it takes the senior bar’s width, and sits just above it', async () => {
       await openOnAComponent();
 
       const box = panel()!.getBoundingClientRect();
       const editor = root.getBoundingClientRect();
+      const bar = seniorBar()!.getBoundingClientRect();
 
       // Inside the viewport, on all four sides.
       expect(box.left).toBeGreaterThanOrEqual(editor.left);
@@ -469,16 +488,39 @@ describe('the reversed reading of a Wardley component', () => {
       expect(box.top).toBeGreaterThanOrEqual(editor.top);
       expect(box.bottom).toBeLessThanOrEqual(editor.bottom);
 
-      // Centred on the same axis the bottom toolbar centres on.
-      const panelCentre = box.left + box.width / 2;
-      const editorCentre = editor.left + editor.width / 2;
-      expect(Math.abs(panelCentre - editorCentre)).toBeLessThan(2);
+      // The PO's two red rules: the panel's edges ARE the bar's edges.
+      expect(box.left).toBeCloseTo(bar.left, 0);
+      expect(box.right).toBeCloseTo(bar.right, 0);
+      expect(box.width).toBeCloseTo(bar.width, 0);
 
-      // Low: clear of the toolbar strip, so its buttons stay usable under it.
-      expect(editor.bottom - box.bottom).toBeGreaterThanOrEqual(80);
+      // Above it, and clear of it: the buttons underneath stay usable.
+      expect(box.bottom).toBeLessThanOrEqual(bar.top);
+      expect(bar.top - box.bottom).toBeLessThan(24);
+    });
 
-      // A comfortable measure, not the 300px of the bubble it replaced.
-      expect(box.width).toBeGreaterThan(300);
+    test('…at both window sizes, because the bar is measured and not guessed', async () => {
+      await openOnAComponent();
+
+      const measure = () => {
+        const box = panel()!.getBoundingClientRect();
+        const bar = seniorBar()!.getBoundingClientRect();
+        return { box, bar };
+      };
+
+      // Wide: the toolbar sits at its 900px cap, so the bar is at its widest.
+      await resizeEditorTo('1400px');
+      const wide = measure();
+      expect(wide.box.width).toBeCloseTo(wide.bar.width, 0);
+      expect(wide.box.left).toBeCloseTo(wide.bar.left, 0);
+
+      // Narrow enough that the bar is squeezed by `max-width: calc(100% -
+      // 128px)` and changes width under the panel. A fixed 480px would survive
+      // the first assertion and fail this one — which is the whole point.
+      await resizeEditorTo('620px');
+      const narrow = measure();
+      expect(narrow.box.width).toBeCloseTo(narrow.bar.width, 0);
+      expect(narrow.box.left).toBeCloseTo(narrow.bar.left, 0);
+      expect(narrow.box.width).toBeLessThan(wide.box.width);
     });
 
     test('it does not follow the element it is about', async () => {
