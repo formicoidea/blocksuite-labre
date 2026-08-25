@@ -1,5 +1,5 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import { getSelectedRect } from '@labre/affine-shared/utils';
+import { getSelectedRect, toOverlayCoord } from '@labre/affine-shared/utils';
 import { type IVec, Rect } from '@labre/global/gfx';
 import {
   GfxControllerIdentifier,
@@ -130,8 +130,15 @@ export class EdgelessWatcher {
 
     const { viewport } = this.gfx;
     const rect = getSelectedRect([edgelessElement]);
-    let [left, top] = viewport.toViewCoord(rect.left, rect.top);
-    const scale = this.widget.scale.peek();
+    // The handle is drawn inside the container the host may have scaled, so
+    // the area it hugs is stated in that container's space, the way a gfx
+    // block states its own placement.
+    const { viewScale } = viewport;
+    let [left, top] = toOverlayCoord(viewport, rect.left, rect.top);
+    // The widget's scale tracks the viewport zoom
+    // (see `_handleEdgelessViewPortUpdated`); dividing it by `viewScale` is
+    // what `overlayScale` does for every other overlay.
+    const scale = this.widget.scale.peek() / viewScale;
     const width = rect.width * scale;
     const height = rect.height * scale;
 
@@ -140,7 +147,7 @@ export class EdgelessWatcher {
     const padding = HOVER_AREA_RECT_PADDING_TOP_LEVEL * scale;
 
     const containerWidth = DRAG_HANDLE_CONTAINER_WIDTH_TOP_LEVEL * scale;
-    const offsetLeft = DRAG_HANDLE_CONTAINER_OFFSET_LEFT_TOP_LEVEL;
+    const offsetLeft = DRAG_HANDLE_CONTAINER_OFFSET_LEFT_TOP_LEVEL / viewScale;
 
     left -= containerWidth + offsetLeft;
     right += padding;

@@ -1,6 +1,7 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import type { GroupElementModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
+import { toOverlayCoord } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
@@ -145,7 +146,9 @@ export class EdgelessGroupTitleEditor extends WithDisposable(
     }
     const viewport = this.gfx.viewport;
     const bound = Bound.deserialize(this.group.externalXYWH);
-    const [x, y] = viewport.toViewCoord(bound.x, bound.y);
+    // The editor is mounted inside the container the host may have scaled, so
+    // it is placed the way the title it replaces is, not in screen pixels.
+    const [x, y] = toOverlayCoord(viewport, bound.x, bound.y);
 
     const inlineEditorStyle = styleMap({
       transformOrigin: 'top left',
