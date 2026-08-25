@@ -19,9 +19,9 @@ export {
 } from './invert-direction.js';
 export {
   asTypedEdge,
-  type EdgeEndpointNames,
   edgeIsBound,
-  endpointNamesOf,
+  type EdgeVerb,
+  edgeVerbOf,
   roleVocabularies,
   type TypedEdge,
 } from './typed-edge.js';

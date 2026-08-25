@@ -7,7 +7,7 @@ import {
   invertEdge,
   invertEdgeDirectionParams,
 } from '../direction/invert-direction';
-import { endpointNamesOf } from '../direction/typed-edge';
+import { edgeVerbOf, type TypedEdge } from '../direction/typed-edge';
 
 /**
  * M2 and M3 of `docs/adr/0010`, at the level where they are pure: where the
@@ -144,12 +144,12 @@ describe('inverting a typed edge (M3)', () => {
 });
 
 /**
- * The PO's acceptance of 02/08/2026, point 5: the sentence is laid ALONG the
- * link, and one end of its box is a point aimed at the provider. What that
- * costs geometrically is a midpoint, an angle and a side, and all three are
- * pure — so all three are stated here rather than eyeballed on a canvas.
+ * The PO's acceptance of 02/08/2026, point 5: the label is laid ALONG the link,
+ * and one end of its box is a point aimed at the provider. What that costs
+ * geometrically is a midpoint, an angle and a side, and all three are pure — so
+ * all three are stated here rather than eyeballed on a canvas.
  */
-describe('where the reveal lays its sentence (M2)', () => {
+describe('where the reveal lays its label (M2)', () => {
   const edgeWith = (path: [number, number][]) =>
     ({ absolutePath: path }) as unknown as ConnectorElementModel;
 
@@ -319,78 +319,57 @@ describe('where the reveal lays its sentence (M2)', () => {
 });
 
 /**
- * The names the sentence is made of. Read from the DOCUMENT — never invented,
- * never i18n'd: only the verb comes from the role vocabulary.
+ * What the label SAYS, second pass of the PO recette of 02/08/2026 (point 5).
+ *
+ * The first cut said the whole sentence, `Kettle depends on Electricity`. On a
+ * short link that box is longer than the link, so it covered the two components
+ * it was naming — and their names are already drawn at both ends of the line.
+ * The label is the VERB alone now, and the verb comes from one place only: the
+ * `direction` a ROLE declares (`RoleDef.direction.verbKey`).
  */
-describe('naming the two ends of a typed edge', () => {
-  const ROLES = [{ 'demo:label': { id: 'demo:label', kind: 'text' } }] as never;
-
-  /** A surface holding elements by id, as the real one answers. */
-  const edgeOn = (
-    elements: Record<string, unknown>,
-    ends: { source?: string; target?: string }
-  ) =>
+describe('what the reveal says about a typed edge', () => {
+  const edgeOf = (role: Record<string, unknown>) =>
     ({
-      source: ends.source ? { id: ends.source } : {},
-      target: ends.target ? { id: ends.target } : {},
-      surface: { getElementById: (id: string) => elements[id] ?? null },
-    }) as unknown as ConnectorElementModel;
+      model: {} as ConnectorElementModel,
+      role,
+      ...(role.direction ? { direction: role.direction } : {}),
+    }) as unknown as TypedEdge;
 
-  it('reads the text an element carries itself', () => {
-    const names = endpointNamesOf(
-      ROLES,
-      edgeOn(
-        { a: { id: 'a', text: 'Kettle' }, b: { id: 'b', text: ' Power  ' } },
-        { source: 'a', target: 'b' }
-      )
+  it('says the role verb, and NOT the names of the two ends', () => {
+    const verb = edgeVerbOf(
+      edgeOf({
+        id: 'demo:dependency',
+        kind: 'edge',
+        labelKey: 'demo.dependency.label',
+        labelFallback: 'Dependency',
+        direction: {
+          verbKey: 'demo.dependency.verb',
+          verbFallback: 'depends on',
+        },
+      })
     );
 
-    expect(names).toEqual({ source: 'Kettle', target: 'Power' });
+    // One key, and it is the VERB's — never the role's own label, which names
+    // the kind of link rather than what it claims.
+    expect(verb).toEqual({
+      key: 'demo.dependency.verb',
+      fallback: 'depends on',
+    });
   });
 
-  it('falls back to the grouped LABEL sibling, found by role kind alone', () => {
-    // A Wardley component is a circle with a free text beside it, the two held
-    // in one group. No framework role id is named here: `kind: 'text'` is the
-    // whole test the reveal applies, so any framework composed the same way
-    // gets its names read for free.
-    const label = { id: 'l', role: 'demo:label', text: 'Electricity' };
-    const decoration = { id: 'd', role: 'demo:bar', text: 'inertia' };
-    const node: Record<string, unknown> = { id: 'b' };
-    node.group = { childElements: [node, decoration, label] };
-
-    const names = endpointNamesOf(
-      ROLES,
-      edgeOn(
-        { a: { id: 'a', text: 'Kettle' }, b: node },
-        { source: 'a', target: 'b' }
+  it('falls back to the role LABEL when no verb is declared', () => {
+    // An unlabelled arrow says which way without ever saying what, so the role's
+    // own name is better than silence.
+    expect(
+      edgeVerbOf(
+        edgeOf({ id: 'demo:link', kind: 'edge', labelKey: 'demo.link.label' })
       )
-    );
-
-    expect(names).toEqual({ source: 'Kettle', target: 'Electricity' });
+    ).toEqual({ key: 'demo.link.label' });
   });
 
-  it('answers "" for an end with no name, and never throws', () => {
-    // `group` is a getter that walks the surface, so on a detached element it
-    // throws. A label that crashes the widget is worse than a half-sentence.
-    const detached = {
-      id: 'b',
-      get group(): never {
-        throw new Error('detached');
-      },
-    };
-
-    expect(
-      endpointNamesOf(
-        ROLES,
-        edgeOn({ b: detached }, { source: 'missing', target: 'b' })
-      )
-    ).toEqual({ source: '', target: '' });
-    // And an edge with no surface behind it at all.
-    expect(
-      endpointNamesOf(ROLES, {
-        source: { id: 'a' },
-        target: { id: 'b' },
-      } as unknown as ConnectorElementModel)
-    ).toEqual({ source: '', target: '' });
+  it('says nothing at all when the role declares neither', () => {
+    // The one case where the library genuinely has nothing to add — and the
+    // widget draws no box rather than an empty one.
+    expect(edgeVerbOf(edgeOf({ id: 'demo:bare', kind: 'edge' }))).toBeNull();
   });
 });
