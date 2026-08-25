@@ -77,6 +77,8 @@ export function mountShapeTextEditor(
 }
 
 export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
+  private _compositionUpdateRaf: number | null = null;
+
   private _keeping = false;
 
   private _lastXYWH = '';
@@ -155,6 +157,8 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
   }
 
   private _unmount() {
+    this._cancelScheduledElementWHUpdate();
+
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
 
@@ -175,6 +179,37 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
     this.selection.set({
       elements: [],
       editing: false,
+    });
+  }
+
+  private _cancelScheduledElementWHUpdate() {
+    if (this._compositionUpdateRaf !== null) {
+      cancelAnimationFrame(this._compositionUpdateRaf);
+      this._compositionUpdateRaf = null;
+    }
+  }
+
+  /**
+   * While an IME composition is in progress the text is only in the DOM, not
+   * yet in the model, so `renderComplete` never fires and the shape keeps the
+   * size it had before the user started composing — the preedit string spills
+   * out of it. Remeasure once per frame instead, and once more when the
+   * composition ends.
+   */
+  private _scheduleElementWHUpdate(flush = false) {
+    if (flush) {
+      this._cancelScheduledElementWHUpdate();
+      this._updateElementWH();
+      return;
+    }
+
+    if (this._compositionUpdateRaf !== null) {
+      return;
+    }
+
+    this._compositionUpdateRaf = requestAnimationFrame(() => {
+      this._compositionUpdateRaf = null;
+      this._updateElementWH();
     });
   }
 
@@ -233,7 +268,11 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       if (this.isMindMapNode) {
         const mindmap = this.element.group as MindmapElementModel;
 
-        mindmap.layout();
+        // Re-place the nodes, but without re-applying the style: that would
+        // fit the node back to the text the *model* holds and undo the size
+        // just measured from the editor. The full layout runs again when the
+        // editor is unmounted.
+        mindmap.layout(mindmap.tree, { applyStyle: false });
       }
 
       this.richText.style.minHeight = `${containerHeight}px`;
@@ -298,6 +337,21 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
           () => {
             if (this._keeping) return;
             this._unmount();
+          }
+        );
+
+        this.disposables.addFromEvent(
+          this.inlineEditorContainer,
+          'compositionupdate',
+          () => {
+            this._scheduleElementWHUpdate();
+          }
+        );
+        this.disposables.addFromEvent(
+          this.inlineEditorContainer,
+          'compositionend',
+          () => {
+            this._scheduleElementWHUpdate(true);
           }
         );
       })

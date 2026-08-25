@@ -1,5 +1,10 @@
 import type { MindMapView } from '@labre/affine/gfx/mindmap';
-import { LayoutType, type MindmapElementModel } from '@labre/affine-model';
+import { mountShapeTextEditor } from '@labre/affine/gfx/shape';
+import {
+  LayoutType,
+  type MindmapElementModel,
+  type ShapeElementModel,
+} from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -34,6 +39,58 @@ describe('mindmap', () => {
     gfx = getDocRootBlock(window.doc, window.editor, 'edgeless').gfx;
 
     return cleanup;
+  });
+
+  test('a node grows while an IME composition is still in progress', async () => {
+    const mindmapId = gfx.surface!.addElement({
+      type: 'mindmap',
+      children: { text: 'root', children: [{ text: 'leaf1' }] },
+    });
+    const mindmap = gfx.getElementById(mindmapId) as MindmapElementModel;
+    const root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    doc.captureSync();
+    await wait();
+
+    const rootNode = mindmap.tree.element as ShapeElementModel;
+    mountShapeTextEditor(rootNode, root);
+    await wait();
+
+    const shapeEditor = root.querySelector('edgeless-shape-text-editor') as
+      | (HTMLElement & { inlineEditorContainer?: HTMLElement })
+      | null;
+    const container = shapeEditor?.inlineEditorContainer;
+    expect(container).toBeTruthy();
+
+    const initialWidth = rootNode.w;
+
+    // A composition only ever touches the DOM: the model is written when the
+    // user validates, so nothing would tell the shape to grow in between.
+    container!.dispatchEvent(
+      new CompositionEvent('compositionstart', { data: '', bubbles: true })
+    );
+    const preedit = container!.querySelector('[data-v-text="true"]');
+    expect(preedit).toBeTruthy();
+    const composed = '測試測試測試測試測試測試測試測試測試測試';
+    preedit!.textContent = composed;
+    container!.dispatchEvent(
+      new CompositionEvent('compositionupdate', {
+        data: composed,
+        bubbles: true,
+      })
+    );
+    await wait();
+    await wait();
+
+    expect(rootNode.w).toBeGreaterThan(initialWidth);
+
+    container!.dispatchEvent(
+      new CompositionEvent('compositionend', {
+        data: composed,
+        bubbles: true,
+      })
+    );
+    await wait();
   });
 
   test('delete the root node should remove all children', async () => {
