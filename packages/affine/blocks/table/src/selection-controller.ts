@@ -21,7 +21,7 @@ import {
   type TableCell,
   TableCellComponentName,
 } from './table-cell';
-import { cleanSelection } from './utils';
+import { cleanSelection, isTableDragHandle } from './utils';
 type Cells = string[][];
 const TEXT = 'text/plain';
 export class SelectionController implements ReactiveController {
@@ -33,7 +33,22 @@ export class SelectionController implements ReactiveController {
     this.host.handleEvent('copy', this.onCopy);
     this.host.handleEvent('cut', this.onCut);
     this.host.handleEvent('paste', this.onPaste);
+    this.host.handleEvent('dragStart', this.onDragStartEvent);
   }
+
+  /**
+   * Claim a drag that starts on a resize/reorder handle. Without this the
+   * edgeless canvas turns the gesture into an element drag and the column
+   * never resizes.
+   */
+  private readonly onDragStartEvent = (context: UIEventStateContext) => {
+    if (IS_MOBILE || this.dataManager.readonly$.value) return false;
+    const event = context.get('pointerState').raw;
+    if (!isTableDragHandle(event.target)) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
   private get dataManager() {
     return this.host.dataManager;
   }
@@ -84,6 +99,13 @@ export class SelectionController implements ReactiveController {
     if (IS_MOBILE || this.dataManager.readonly$.value) {
       return;
     }
+    // Keep the pointer sequence inside the table too: in edgeless the canvas
+    // listens for `pointerdown` and would start dragging the block.
+    this.host.disposables.addFromEvent(this.host, 'pointerdown', event => {
+      if (isTableDragHandle(event.target)) {
+        event.stopPropagation();
+      }
+    });
     this.host.disposables.addFromEvent(this.host, 'mousedown', event => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) {
