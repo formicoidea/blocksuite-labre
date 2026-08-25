@@ -64,6 +64,40 @@ export class Group<
   }
 }
 
+/**
+ * Move `groupKey` to `position` inside `keys`, or leave the order untouched
+ * when the move cannot be honoured: an unknown group, an unknown anchor, or a
+ * group dropped onto itself. Reordering blindly would splice at index -1 and
+ * quietly destroy the manual order of an unrelated group.
+ */
+export const reorderGroupKeys = (
+  keys: string[],
+  groupKey: string,
+  position: InsertToPosition
+) => {
+  const currentIndex = keys.findIndex(key => key === groupKey);
+  if (currentIndex < 0) {
+    return keys;
+  }
+  if (typeof position === 'object') {
+    if (position.id === groupKey) {
+      return keys;
+    }
+    if (!keys.includes(position.id)) {
+      return keys;
+    }
+  }
+
+  const reordered = [...keys];
+  reordered.splice(currentIndex, 1);
+  const index = insertPositionToIndex(position, reordered, key => key);
+  if (index < 0) {
+    return keys;
+  }
+  reordered.splice(index, 0, groupKey);
+  return reordered;
+};
+
 export class GroupTrait {
   groupInfo$ = computed<GroupInfo | undefined>(() => {
     const groupBy = this.groupBy$.value;
@@ -300,14 +334,15 @@ export class GroupTrait {
     if (!groups) {
       return;
     }
-    const keys = groups.map(v => v.key);
-    keys.splice(
-      keys.findIndex(key => key === groupKey),
-      1
-    );
-    const index = insertPositionToIndex(position, keys, key => key);
-    keys.splice(index, 0, groupKey);
-    this.changeGroupSort(keys);
+    const currentKeys = groups.map(v => v.key);
+    const reorderedKeys = reorderGroupKeys(currentKeys, groupKey, position);
+    if (
+      currentKeys.length === reorderedKeys.length &&
+      currentKeys.every((key, index) => key === reorderedKeys[index])
+    ) {
+      return;
+    }
+    this.changeGroupSort(reorderedKeys);
   }
 
   removeFromGroup(rowId: string, key: string) {
