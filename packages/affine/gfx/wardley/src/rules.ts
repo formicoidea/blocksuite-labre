@@ -71,38 +71,42 @@ const changeArrowAgainstEvolution: ValidationRule = {
 };
 
 /**
- * **W2** — the inertia bar belongs on a dependency, at a phase transition.
+ * **W2** — the inertia bar straddles a phase transition.
  *
- * Inertia is resistance to a specific movement: it is drawn ACROSS the link
- * that would have to move, at the boundary the thing is refusing to cross. A
- * bar floating in white space, or sitting on a link in the middle of a phase,
- * has lost the whole of its meaning — it becomes a black rectangle.
+ * > "The horizontal position of an inertia bar is only valid if it is ASTRIDE
+ * > two evolution phases, that is, superimposed on a dashed vertical axis."
+ * > — the PO, spelling the rule out on the recette of 02/08/2026
  *
- * ## Two mistakes, two sentences
+ * Inertia is resistance to crossing a frontier. The bar is the frontier being
+ * refused, so it is drawn ON the divider; a bar parked in the middle of a phase
+ * marks nothing at all and becomes a black rectangle.
  *
- * Those are two different errors with two different gestures to fix them, and
- * the PO recette of 01/08/2026 caught what one message costs: two bars dropped
- * squarely on the "Product" and "Commodity" dividers, both flagged, both told
- * they were "not on a dependency at a phase transition" — when the transition
- * half was perfectly satisfied (0.00 units off the line) and the carrier half
- * was the whole complaint (410 and 846 units from the nearest dependency). The
- * user could read the badge ten times without learning to draw the link first.
- * The rule stays ONE rule with one badge; it now says which half failed, and
- * the carrier wins when both do.
+ * ## What this rule used to ask, and no longer does
  *
- * ## The zone of punctuated equilibrium
+ * Until this version it ALSO demanded a dependency under the bar, and reported
+ * that half first ("This inertia bar is not drawn on a dependency."). That was
+ * our reading of inertia, not the PO's rule, and it was wrong in both
+ * directions: a bar alone on a divider — a perfectly ordinary way to say "this
+ * whole column is stuck" — was flagged, while nothing in the sentence pointed at
+ * the position that actually decides the verdict. The carrier condition is gone
+ * entirely, with the second message that existed only to tell the two halves
+ * apart. One condition, one sentence.
  *
- * The transition half no longer measures against a number of model units. It
- * measures against the band the map DECLARES around each divider
- * (`transitionBandWidth`, a ratio of the plot) — Wardley's zone of punctuated
- * equilibrium, where inertia actually lives. The old 40 units were 2.6% of the
- * plot on the reference map, 5.5% on an 800-wide one and 1.3% on a 3200-wide
- * one: the same gesture judged four times as harshly for having zoomed the map
- * out, which nothing on screen could explain.
+ * ## "Astride", as geometry
  *
- * The carrier tolerance stays absolute at 24 units, and rightly so: "is the bar
- * ON the line" is a question about ink, and the ink is 8 units wide whatever
- * the map measures.
+ * The engine takes the bar's own horizontal EXTENT and asks whether it
+ * intersects the transition band — the divider widened by the map's declared
+ * `transitionBandWidth` (see {@link AttachmentDef.boundaryAxis}). That single
+ * overlap test says both halves of "superimposed on the axis": a bar wide enough
+ * to cover the divider genuinely has the line running through it, and a bar too
+ * thin to cover anything (the toolbox draws it eight units wide) is accepted
+ * inside the band the map itself declares around the frontier — Wardley's zone
+ * of punctuated equilibrium, where inertia lives.
+ *
+ * Measured on the extent rather than on the centre because "superimposed on the
+ * line" is a statement about ink; measured against a band declared as a RATIO of
+ * the plot because the same gesture must get the same verdict on a map somebody
+ * resized (the lesson of the 01/08/2026 recette).
  */
 const inertiaOffTransition: ValidationRule = {
   id: 'wardley.inertia-off-transition',
@@ -111,30 +115,22 @@ const inertiaOffTransition: ValidationRule = {
   severity: 'warning',
   appliesTo: WARDLEY_ROLE.inertia,
   roles: WARDLEY_ROLES,
-  // The rule's own words are the CARRIER half: the first thing to fix, and the
-  // one the other half means nothing without.
-  messageKey: 'com.labre.wardley.validation.inertia-off-carrier',
-  messageFallback: 'This inertia bar is not drawn on a dependency.',
-  suggestionKey: 'com.labre.wardley.validation.inertia-off-carrier.suggestion',
+  // ONE sentence, because there is now one condition. The key is the rule's own
+  // id: the two keys it replaces named halves of a rule that no longer has any.
+  messageKey: 'com.labre.wardley.validation.inertia-off-transition',
+  messageFallback:
+    'This inertia bar sits inside a phase, not astride a phase transition.',
+  suggestionKey:
+    'com.labre.wardley.validation.inertia-off-transition.suggestion',
   suggestionFallback:
-    'Inertia is resistance to a movement: draw the bar across the dependency that would have to move.',
-  version: 2,
+    'Inertia bites at a frontier — slide the bar sideways until it sits astride the dashed line between two evolution phases.',
+  // 3: the carrier condition is gone and the position is judged on the bar's
+  // extent — a different verdict on the same map, so a new version.
+  version: 3,
   backgroundRole: WARDLEY_ROLE.map,
   background: WARDLEY_BACKGROUND,
   attachment: {
-    carrierRole: WARDLEY_ROLE.dependency,
-    tolerance: 24,
     boundaryAxis: 'evolution',
-    offBoundary: {
-      messageKey:
-        'com.labre.wardley.validation.inertia-off-equilibrium-zone',
-      messageFallback:
-        'This inertia bar sits mid-phase, outside the zone of punctuated equilibrium.',
-      suggestionKey:
-        'com.labre.wardley.validation.inertia-off-equilibrium-zone.suggestion',
-      suggestionFallback:
-        'Inertia bites at a frontier — slide the bar along its dependency until it reaches the dashed phase boundary it refuses to cross.',
-    },
   },
 };
 

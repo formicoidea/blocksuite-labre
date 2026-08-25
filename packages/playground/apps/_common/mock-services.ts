@@ -187,40 +187,59 @@ export function mockGenerateDocUrlService(collection: Workspace) {
  * a pivot record is — but it left the playground with no way to exercise
  * `pivot.bind` at all, which is what this fills.
  *
- * It is a `window.prompt` over the collection's own documents: crude on
- * purpose, so nobody mistakes it for the real picker. The real host opens its
- * record browser; this one lists what the playground happens to have and takes
- * a number. Do not grow it — if a recette needs more, the answer is to run the
- * SaaS host, not to build a second picker here.
+ * It is a bare floating list over the collection's own documents: crude on
+ * purpose, so nobody mistakes it for the real picker. (`window.prompt` would
+ * be cruder still, but embedded browsers disable it.) The real host opens its
+ * record browser; this one lists what the playground happens to have. Do not
+ * grow it — if a recette needs more, the answer is to run the SaaS host, not
+ * to build a second picker here.
  */
 export function mockPivotRecordPicker(): PivotRecordPicker {
   return {
     // The contract says a picker MUST NOT throw and resolves to `null` on a
-    // cancel. `prompt` returns `null` on cancel, which lands on the same
-    // behaviour for free; anything unparseable is treated as a cancel too.
+    // cancel — clicking outside the list or pressing Escape cancels.
     pick: async (std: BlockStdScope) => {
       const docs = [...std.store.workspace.docs.values()];
       if (docs.length === 0) return null;
 
-      const menu = docs
-        .map((doc, index) => `${index + 1}. ${doc.meta?.title || 'Untitled'}`)
-        .join('\n');
-      const answer = window.prompt(
-        `[playground mock-up] Link this element to which record?\n\n${menu}\n\nNumber, or a raw doc id:`,
-        '1'
-      );
-      if (answer === null) return null;
-
-      const trimmed = answer.trim();
-      if (trimmed === '') return null;
-
-      const index = Number(trimmed);
-      if (Number.isInteger(index) && index >= 1 && index <= docs.length) {
-        return docs[index - 1].id;
-      }
-      // A raw id, so a record that is NOT one of the playground's docs can be
-      // typed in — the host's records are not the editor's documents.
-      return trimmed;
+      return new Promise<string | null>(resolve => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText =
+          'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.3);' +
+          'display:flex;align-items:center;justify-content:center;';
+        const box = document.createElement('div');
+        box.style.cssText =
+          'background:#fff;color:#111;border-radius:8px;padding:12px 16px;' +
+          'min-width:280px;max-height:60vh;overflow:auto;font:14px sans-serif;' +
+          'box-shadow:0 8px 30px rgba(0,0,0,.3);';
+        box.innerHTML =
+          '<div style="font-weight:600;margin-bottom:8px">' +
+          '[playground mock-up] Link to which record?</div>';
+        const done = (id: string | null) => {
+          overlay.remove();
+          window.removeEventListener('keydown', onKey, true);
+          resolve(id);
+        };
+        const onKey = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') done(null);
+        };
+        window.addEventListener('keydown', onKey, true);
+        overlay.addEventListener('click', e => {
+          if (e.target === overlay) done(null);
+        });
+        for (const doc of docs) {
+          const row = document.createElement('button');
+          row.textContent = doc.meta?.title || 'Untitled';
+          row.style.cssText =
+            'display:block;width:100%;text-align:left;padding:6px 8px;' +
+            'margin:2px 0;border:0;border-radius:4px;background:#f4f4f5;' +
+            'cursor:pointer;font:inherit;';
+          row.onclick = () => done(doc.id);
+          box.append(row);
+        }
+        overlay.append(box);
+        document.body.append(overlay);
+      });
     },
   };
 }

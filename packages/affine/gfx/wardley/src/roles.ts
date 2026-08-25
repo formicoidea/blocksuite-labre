@@ -161,9 +161,10 @@ const DEFS: readonly RoleDef[] = [
         'Drag from where the component stands today to where it is heading.',
     },
   },
-  // The inertia bar: resistance to a movement, drawn ACROSS a dependency. A
-  // plain filled rect on the canvas, which is exactly why it needs a role —
-  // nothing about its shape says what it means.
+  // The inertia bar: resistance to a movement, drawn ASTRIDE the phase divider
+  // the thing refuses to cross (W2). A plain filled rect on the canvas, which
+  // is exactly why it needs a role — nothing about its shape says what it
+  // means.
   {
     id: WARDLEY_ROLE.inertia,
     kind: 'node',

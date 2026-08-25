@@ -31,8 +31,8 @@ function boxFor(options: {
   bar: [number, number, number, number] | null;
 }): AnchoredPanelBox {
   const [originX, originY] = options.origin;
-  // Bound to a const so the narrowing survives into the closure below —
-  // `options.bar` is a mutable property and TS re-widens it there.
+  // Read out of the options object: TypeScript cannot narrow a mutable property
+  // inside a closure, and the spread below needs the narrowed tuple.
   const bar = options.bar;
   const stub = {
     gfx: { viewport: options.editor },

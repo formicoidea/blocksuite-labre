@@ -8,8 +8,8 @@ import {
 import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria.js';
 import { WARDLEY_BACKGROUND } from './background.js';
 import { wardleyCommands } from './commands.js';
+import { WARDLEY_NUDGES } from './nudges.js';
 import { WARDLEY_PROFILES } from './profiles.js';
-import { WARDLEY_CHECKUP_RULES, WARDLEY_NUDGES } from './quality.js';
 import { WARDLEY_READING } from './reading.js';
 import { WARDLEY_ROLES } from './roles.js';
 import { WARDLEY_RULES } from './rules.js';
@@ -33,7 +33,7 @@ export const wardleyTranslationEntries: TranslationKeyManifestEntry[] =
     commandTranslationEntries(wardleyCommands),
     collectTranslationKeys('role', WARDLEY_ROLES),
     collectTranslationKeys('background', WARDLEY_BACKGROUND),
-    collectTranslationKeys('rule', [WARDLEY_RULES, WARDLEY_CHECKUP_RULES]),
+    collectTranslationKeys('rule', WARDLEY_RULES),
     collectTranslationKeys('nudge', WARDLEY_NUDGES),
     collectTranslationKeys('profile', WARDLEY_PROFILES),
     collectTranslationKeys('audit-criterion', WARDLEY_AUDIT_CRITERIA),

@@ -1,6 +1,5 @@
 import {
   EXEMPTION_FALLBACK,
-  FAMILY_FALLBACK,
   RELATION_SIDE_FALLBACK,
   SEVERITY_FALLBACK,
 } from '@labre/affine-block-surface';
@@ -37,7 +36,7 @@ import { FRAMEWORK_DESCRIPTORS } from './frameworks.js';
  * `@formicoidea/labre-core` is the editor MINUS the frameworks: a manifest that
  * imported each framework's data into this file would break `build:bundles`
  * outright, and stripping the imports would leave `getTranslationKeyManifest()`
- * quietly answering with core's share alone (84 keys of 197) under a signature
+ * quietly answering with core's share alone (68 keys of 175) under a signature
  * promising the whole library.
  *
  * So each framework exports its own `…TranslationEntries`
@@ -106,7 +105,6 @@ const CHROME_TABLES: readonly [
 ][] = [
   ['com.labre.validation.severity.', SEVERITY_FALLBACK],
   ['com.labre.validation.state.exempted.', EXEMPTION_FALLBACK],
-  ['com.labre.validation.family.', FAMILY_FALLBACK],
   ['com.labre.reading.relations.', RELATION_SIDE_FALLBACK],
 ];
 
@@ -137,25 +135,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ],
   ['com.labre.validation.action.revoke', 'Revoke'],
   ['com.labre.validation.action.revoke-exception', 'Revoke exception'],
-  ['com.labre.validation.list-separator', ', '],
   // Map quality panel
   ['com.labre.validation.map-quality.open', 'Map quality…'],
   ['com.labre.validation.map-quality.section', 'Map quality'],
   ['com.labre.validation.map-quality.checklist.yours', 'To be checked by you:'],
-  ['com.labre.validation.map-quality.checkup', 'Check-up'],
-  ['com.labre.validation.map-quality.run', 'Run check-up'],
-  ['com.labre.validation.map-quality.running', 'Checking… {done}/{total}'],
-  ['com.labre.validation.map-quality.scope', 'Check-up ({families}):'],
-  [
-    'com.labre.validation.map-quality.realtime',
-    'Real-time warnings currently on this map: {count}.',
-  ],
-  ['com.labre.validation.map-quality.stamp', 'Last check-up'],
-  [
-    'com.labre.validation.map-quality.error',
-    'The check-up could not finish. Try again.',
-  ],
-  ['com.labre.validation.map-quality.clean', 'Nothing to report.'],
   ['com.labre.validation.map-quality.close', 'Close'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],

@@ -126,8 +126,8 @@ function profileTarget(ctx: ToolbarContext): ProfileTarget | null {
 }
 
 /**
- * The selection, if it is a root instance whose framework declares a nudge or
- * an on-demand rule (PF7.11).
+ * The selection, if it is a root instance whose framework declares a nudge
+ * (PF7.11).
  *
  * Independent of {@link profileTarget}: a framework may ship a checklist and no
  * second profile, or the other way round, and the dropdown must show whichever
@@ -205,16 +205,16 @@ function renderSection(
 /**
  * The Map quality section (PF7.11): one entry, which OPENS the panel.
  *
- * A menu is the wrong shape for a checklist — four tickable lines, a button and
- * a list of remarks do not belong in a dropdown that closes on the first click.
- * So the entry does the one thing a menu entry is good at, which is to open
- * something; `ValidationManager.mapQualityFor$` carries the request across to
- * the widget that draws it (`map-quality-widget.ts`).
+ * A menu is the wrong shape for a checklist — four tickable lines do not belong
+ * in a dropdown that closes on the first click. So the entry does the one thing
+ * a menu entry is good at, which is to open something;
+ * `ValidationManager.mapQualityFor$` carries the request across to the widget
+ * that draws it (`map-quality-widget.ts`).
  *
  * Nothing here names a framework: the entry appears when the ENGINE says the
- * selected instance has a checklist or a check-up
+ * selected instance has a checklist
  * ({@link ValidationManager.hasMapQuality}), which is derived from what the
- * frameworks registered. A second framework declaring either gets this entry
+ * frameworks registered. A second framework declaring nudges gets this entry
  * with no change to this file.
  */
 function renderMapQualitySection(

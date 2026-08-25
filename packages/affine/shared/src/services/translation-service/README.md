@@ -63,7 +63,7 @@ and a pipeline that separates them gets that list for free.
 
 `@formicoidea/labre-core` is the editor **minus the frameworks**, so
 `getTranslationKeyManifest()` from core answers with core's share only —
-roughly 84 keys of 197. The missing 113 belong to the framework bundles, and
+roughly 68 keys of 175. The missing 107 belong to the framework bundles, and
 each one exports them, exactly as it exports its commands:
 
 ```ts

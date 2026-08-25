@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 
 import { WARDLEY_PROFILES } from '../profiles';
-import { WARDLEY_CHECKUP_RULES } from '../quality';
 import { WARDLEY_ROLE } from '../roles';
 import { WARDLEY_RULES } from '../rules';
 
@@ -56,6 +55,22 @@ const BENCH_TIMEOUT_MS = 30_000;
 
 /** Wardley elements on the reference map, background excluded. */
 const MAP_SIZE = 500;
+
+/**
+ * An ON-DEMAND rule, declared here because no framework ships one any more: the
+ * PO dropped Wardley's check-up on the recette of 02/08/2026, while the moment
+ * itself (PF5.14) stayed in the engine as a platform capability. The zero-cost
+ * claim below is the engine's, so it is measured with the engine's own switch
+ * flipped on a rule that otherwise does real work on this map.
+ */
+const ON_DEMAND_PROBE: readonly ValidationRule[] = [
+  {
+    ...WARDLEY_RULES[0],
+    id: 'bench.on-demand-probe',
+    moment: 'on-demand',
+    severity: 'audit',
+  },
+];
 
 const MAP_W = 1600;
 const MAP_H = 900;
@@ -377,6 +392,11 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
    * PF5.14's acceptance criterion, measured rather than asserted in prose: an
    * on-demand rule must cost the drawing path ZERO.
    *
+   * Measured against a PROBE rule since 02/08/2026 — Wardley ships no on-demand
+   * rule any more (the PO dropped the check-up), and the property being measured
+   * is the engine's, not the framework's. The probe is one of the real rules
+   * with its moment changed, so the work skipped is real work on a real map.
+   *
    * Both halves are checked, because either one alone is easy to fake: the
    * ANSWER must be identical (the rules are never evaluated, not merely
    * filtered out of the results afterwards), and the TIME must be
@@ -391,7 +411,7 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
    * anything does.
    */
   it('pays nothing for the on-demand rules registered beside them', () => {
-    const both = [...WARDLEY_RULES, ...WARDLEY_CHECKUP_RULES];
+    const both = [...WARDLEY_RULES, ...ON_DEMAND_PROBE];
 
     expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
 
@@ -423,7 +443,7 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
 
     console.info(
       `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
-        `with ${WARDLEY_CHECKUP_RULES.length} on-demand rules also registered: ` +
+        `with ${ON_DEMAND_PROBE.length} on-demand rules also registered: ` +
         `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
         `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
         `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
@@ -435,18 +455,19 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
   }, BENCH_TIMEOUT_MS);
 
   it('runs those same rules only when asked, and finds something', () => {
-    // The other side of the coin: they are not inert data, they are rules that
-    // work — they simply work at the other moment.
+    // The other side of the coin: an on-demand rule is not inert data, it is a
+    // rule that works — it simply works at the other moment. The probe is W1
+    // with its moment changed, and a tenth of the arrows on this map run
+    // backwards, so a check-up over it must find them.
     const checked = referenceMap(MAP_SIZE);
-    const remarks = evaluateCheckup(WARDLEY_CHECKUP_RULES, checked);
+    const remarks = evaluateCheckup(ON_DEMAND_PROBE, checked);
 
     console.info(
       `[bench] check-up over ${MAP_SIZE} elements: ${remarks.length} remarks`
     );
-    // The generator draws every node in the toolbox's own greys, so Q5 is
-    // clean; Q6 is gated on a `nature` nothing writes yet. A check-up that
-    // found something here would mean one of the two had started guessing.
-    expect(remarks).toEqual([]);
+    expect(remarks.length).toBeGreaterThan(0);
+    // ...and not one of them reached the real-time answer.
+    expect(evaluateRules(ON_DEMAND_PROBE, checked)).toEqual([]);
   });
 
   it(`stays inside the frame with profiles in force`, () => {

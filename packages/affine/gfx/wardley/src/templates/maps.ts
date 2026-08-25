@@ -76,10 +76,11 @@ const PHASES = backgroundZoneBoundaries(WARDLEY_BACKGROUND).x;
  * Where the segment `from → to` crosses the evolution transition at `PHASES[i]`,
  * in (evolution, value) coordinates.
  *
- * This is where an inertia bar belongs, and the whole of what it means (W2): on
- * the dependency that would have to move, at the boundary the thing is refusing
- * to cross. Computed rather than eyeballed, so the symbol stays on the line and
- * on the boundary whatever the declaration says either of them is.
+ * This is where an inertia bar belongs: astride the boundary the thing refuses
+ * to cross — which is all W2 asks since the PO spelled it out (02/08/2026) — and
+ * on the dependency that would have to move, which the rule no longer demands
+ * and a well-drawn map still shows. Computed rather than eyeballed, so the
+ * symbol stays on both whatever the declaration says either of them is.
  */
 function crossing(
   from: readonly [number, number],
@@ -354,9 +355,11 @@ function kodak(): SurfaceElementsJSON {
   // The future dependency `capture → storage` is the movement Kodak resisted,
   // and the inertia bar belongs where that dependency crosses into commodity —
   // the boundary the capability refused to cross. It used to sit 105 units away
-  // from any transition and on no dependency at all: the template named after
-  // inertia was the counter-example to the inertia rule. Computed from the two
-  // node positions and the declared transitions, so it cannot drift again.
+  // from any transition: the template named after inertia was the
+  // counter-example to the inertia rule. Computed from the two node positions
+  // and the declared transitions, so it cannot drift again — and the bar comes
+  // out centred on the divider, which is exactly what W2 asks of it now that
+  // "astride the transition" is the whole of the rule.
   const CAPTURE = [0.53, 0.8] as const;
   const STORAGE = [0.84, 0.4] as const;
   const [barE, barV] = crossing(CAPTURE, STORAGE, 2);
