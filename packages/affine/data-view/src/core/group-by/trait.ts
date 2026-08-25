@@ -2,7 +2,12 @@ import {
   insertPositionToIndex,
   type InsertToPosition,
 } from '@labre/affine-shared/utils';
-import { computed, type ReadonlySignal } from '@preact/signals-core';
+import {
+  computed,
+  effect,
+  type ReadonlySignal,
+  signal,
+} from '@preact/signals-core';
 
 import type { GroupBy, GroupProperty } from '../common/types.js';
 import type { TypeInstance } from '../logical/type.js';
@@ -11,8 +16,9 @@ import { computedLock } from '../utils/lock.js';
 import type { Property } from '../view-manager/property.js';
 import type { Row } from '../view-manager/row.js';
 import type { SingleView } from '../view-manager/single-view.js';
+import { compareDateKeys } from './compare-date-keys.js';
 import { defaultGroupBy } from './default.js';
-import { getGroupByService } from './matcher.js';
+import { findGroupByConfigByName, getGroupByService } from './matcher.js';
 import type { GroupByConfig } from './types.js';
 
 export type GroupInfo<
@@ -64,6 +70,26 @@ export class Group<
   }
 }
 
+export const isDateGroupInfo = (groupInfo: GroupInfo | undefined) =>
+  groupInfo?.config.matchType.name === 'Date';
+
+/**
+ * Order the group keys. Date groups read chronologically — their keys are
+ * timestamps, or the relative buckets from last30 to next30 — so the manual
+ * drag order does not apply to them and `sortGroup` is bypassed.
+ */
+export const orderGroupKeys = (
+  keys: string[],
+  groupInfo: GroupInfo | undefined,
+  sortGroup: (keys: string[]) => string[],
+  sortAsc: boolean
+) => {
+  if (isDateGroupInfo(groupInfo)) {
+    return [...keys].sort(compareDateKeys(groupInfo?.config.name, sortAsc));
+  }
+  return sortGroup(keys);
+};
+
 /**
  * Move `groupKey` to `position` inside `keys`, or leave the order untouched
  * when the move cannot be honoured: an unknown group, an unknown anchor, or a
@@ -99,6 +125,13 @@ export const reorderGroupKeys = (
 };
 
 export class GroupTrait {
+  /**
+   * Reading direction of a date grouping. Kept in a signal so the UI can flip
+   * it, and mirrored from the stored `groupBy.sort` so a reload reads the same
+   * way round.
+   */
+  sortAsc$ = signal(true);
+
   groupInfo$ = computed<GroupInfo | undefined>(() => {
     const groupBy = this.groupBy$.value;
     if (!groupBy) {
@@ -113,7 +146,13 @@ export class GroupTrait {
       return;
     }
     const groupByService = getGroupByService(this.view.manager.dataSource);
-    const result = groupByService?.matcher.match(tType);
+    // The stored name wins: a date property offers several grains and only the
+    // name says which one was chosen. Matching on the type alone would snap a
+    // "by month" grouping back to the default grain on every reload.
+    const result =
+      (groupBy.name != null
+        ? findGroupByConfigByName(this.view.manager.dataSource, groupBy.name)
+        : undefined) ?? groupByService?.matcher.match(tType);
     if (!result) {
       return;
     }
@@ -170,7 +209,12 @@ export class GroupTrait {
       if (!groupMap) {
         return;
       }
-      const sortedGroup = this.ops.sortGroup(Object.keys(groupMap));
+      const sortedGroup = orderGroupKeys(
+        Object.keys(groupMap),
+        this.groupInfo$.value,
+        this.ops.sortGroup,
+        this.sortAsc$.value
+      );
       sortedGroup.forEach(key => {
         if (!groupMap[key]) return;
         groupMap[key].rows = this.ops.sortRow(key, groupMap[key].rows);
@@ -216,7 +260,49 @@ export class GroupTrait {
         keys: string[]
       ) => void;
     }
-  ) {}
+  ) {
+    // Mirror the stored reading direction into the signal the UI drives.
+    effect(() => {
+      const desc = this.groupBy$.value?.sort?.desc;
+      if (desc != null && this.sortAsc$.value === desc) {
+        this.sortAsc$.value = !desc;
+      }
+    });
+  }
+
+  /**
+   * Whether the current grouping reads a date property, and so offers grains
+   * and a reading direction rather than a manual group order.
+   */
+  isDateGroup$ = computed(() => isDateGroupInfo(this.groupInfo$.value));
+
+  /**
+   * Re-read the same property at another grain — relative, day, week, month,
+   * year — keeping the reading direction.
+   */
+  changeGroupMode(modeName: string) {
+    const propertyId = this.property$.value?.id;
+    if (!propertyId) {
+      return;
+    }
+    this.ops.groupBySet({
+      type: 'groupBy',
+      columnId: propertyId,
+      name: modeName,
+      sort: { desc: !this.sortAsc$.value },
+    });
+  }
+
+  /**
+   * Flip a date grouping between oldest-first and newest-first.
+   */
+  setDateSortOrder(asc: boolean) {
+    this.sortAsc$.value = asc;
+    const groupBy = this.groupBy$.value;
+    if (groupBy) {
+      this.ops.groupBySet({ ...groupBy, sort: { desc: !asc } });
+    }
+  }
 
   addToGroup(rowId: string, key: string) {
     this.view.lockRows(false);
@@ -263,14 +349,16 @@ export class GroupTrait {
       column.type$.value
     );
     if (propertyMeta) {
-      this.ops.groupBySet(
-        defaultGroupBy(
-          this.view.manager.dataSource,
-          propertyMeta,
-          column.id,
-          column.data$.value
-        )
+      const groupBy = defaultGroupBy(
+        this.view.manager.dataSource,
+        propertyMeta,
+        column.id,
+        column.data$.value
       );
+      if (groupBy) {
+        groupBy.sort = { desc: !this.sortAsc$.value };
+      }
+      this.ops.groupBySet(groupBy);
     }
   }
 

@@ -38,6 +38,7 @@ export default [
   'packages/affine/shared/vitest.config.ts',
   'packages/affine/widgets/linked-doc/vitest.config.ts',
   'packages/affine/widgets/slash-menu/vitest.config.ts',
+  'packages/affine/widgets/toolbar/vitest.config.ts',
   'packages/framework/global/vitest.config.ts',
   'packages/framework/std/vitest.config.ts',
   'packages/framework/store/vitest.config.ts',

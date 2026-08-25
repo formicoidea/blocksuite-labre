@@ -129,9 +129,16 @@ export const getSelectedBlocksCommand: Command<
     dirtyResult = dirtyResult.filter(ctx.filter);
   }
 
-  // remove duplicate elements
+  // Remove duplicate elements. A `Set` and not `indexOf`: selecting a whole
+  // document hands this command every block at once, and a scan per block is
+  // quadratic in the size of the document.
+  const seen = new Set<BlockComponent>();
   const result: BlockComponent[] = dirtyResult
-    .filter((el, index) => dirtyResult.indexOf(el) === index)
+    .filter(el => {
+      if (seen.has(el)) return false;
+      seen.add(el);
+      return true;
+    })
     // sort by document position
     .sort((a, b) => {
       if (a === b) {

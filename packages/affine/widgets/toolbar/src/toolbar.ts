@@ -134,7 +134,19 @@ export class AffineToolbarWidget extends WidgetComponent {
   }
 
   setReferenceElementWithBlocks(blocks: BlockComponent[]) {
-    const getClientRects = () => blocks.map(e => e.getBoundingClientRect());
+    // A single position pass asks for the rects twice — once for the common
+    // bound, once for the inline middleware — and the pass runs on every
+    // scroll frame. One measure per frame is enough.
+    let cachedClientRects: DOMRect[] | null = null;
+    const getClientRects = () => {
+      if (!cachedClientRects) {
+        cachedClientRects = blocks.map(e => e.getBoundingClientRect());
+        requestAnimationFrame(() => {
+          cachedClientRects = null;
+        });
+      }
+      return cachedClientRects;
+    };
 
     this.referenceElement$.value = blocks.length
       ? () => ({

@@ -64,7 +64,7 @@ export function autoUpdatePosition(
   flavour: string,
   placement: ToolbarPlacement,
   sideOptions: Partial<SideObject> | null,
-  options: AutoUpdateOptions = { elementResize: false, animationFrame: true },
+  options: AutoUpdateOptions = { elementResize: false },
   /**
    * Called whenever the room the row has just changed. This is the only place
    * that knows it: `size` is what writes the cap, and it re-runs on every
@@ -183,7 +183,9 @@ export function autoUpdatePosition(
     () => {
       update().catch(console.error);
     },
-    options
+    // Only a canvas anchor moves without a scroll or a resize to announce it,
+    // so only a canvas anchor pays for a per-frame re-measure.
+    { animationFrame: hasSurfaceScope, ...options }
   );
 }
 

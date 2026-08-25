@@ -173,6 +173,82 @@ export class GroupSetting extends SignalWatcher(
   accessor groupContainer!: HTMLElement;
 }
 
+/**
+ * The grains a date property can be read at, in the order the picker offers
+ * them. Keys match the group-by config names registered in `define.ts`.
+ */
+const dateGroupModes: { name: string; label: string }[] = [
+  { name: 'date-relative', label: 'Relative' },
+  { name: 'date-day', label: 'Day' },
+  { name: 'date-week-mon', label: 'Week (starts Monday)' },
+  { name: 'date-week-sun', label: 'Week (starts Sunday)' },
+  { name: 'date-month', label: 'Month' },
+  { name: 'date-year', label: 'Year' },
+];
+
+const dateGroupModeLabel = (name: string | undefined) =>
+  dateGroupModes.find(mode => mode.name === name)?.label ?? '';
+
+const dateGroupSettingItems = (
+  group: GroupTrait,
+  reopen: () => void
+): MenuConfig[] => [
+  menu.subMenu({
+    name: 'Group dates by',
+    postfix: html`
+      <div
+        style="font-size: 12px;line-height: 20px;color: var(--affine-text-secondary-color);margin-right: 4px;margin-left: 8px;"
+      >
+        ${dateGroupModeLabel(group.groupInfo$.value?.config.name)}
+      </div>
+    `,
+    options: {
+      title: { text: 'Group dates by' },
+      items: dateGroupModes.map<MenuConfig>(mode =>
+        menu.action({
+          name: mode.label,
+          isSelected: group.groupInfo$.value?.config.name === mode.name,
+          select: () => {
+            group.changeGroupMode(mode.name);
+            reopen();
+          },
+        })
+      ),
+    },
+  }),
+  menu.subMenu({
+    name: 'Order',
+    postfix: html`
+      <div
+        style="font-size: 12px;line-height: 20px;color: var(--affine-text-secondary-color);margin-right: 4px;margin-left: 8px;"
+      >
+        ${group.sortAsc$.value ? 'Oldest first' : 'Newest first'}
+      </div>
+    `,
+    options: {
+      title: { text: 'Order' },
+      items: [
+        menu.action({
+          name: 'Oldest first',
+          isSelected: group.sortAsc$.value,
+          select: () => {
+            group.setDateSortOrder(true);
+            reopen();
+          },
+        }),
+        menu.action({
+          name: 'Newest first',
+          isSelected: !group.sortAsc$.value,
+          select: () => {
+            group.setDateSortOrder(false);
+            reopen();
+          },
+        }),
+      ],
+    },
+  }),
+];
+
 export const selectGroupByProperty = (
   group: GroupTrait,
   ops?: {
@@ -294,14 +370,26 @@ export const popGroupSetting = (
           ],
         }),
         menu.group({
-          items: [
-            menu =>
-              html` <data-view-group-setting
-                @mouseenter="${() => menu.closeSubMenu()}"
-                .groupTrait="${group}"
-                .columnId="${groupProperty.id}"
-              ></data-view-group-setting>`,
-          ],
+          items: group.isDateGroup$.value
+            ? dateGroupSettingItems(group, () => {
+                menuHandler.close();
+                popGroupSetting(target, group, onBack);
+              })
+            : [],
+        }),
+        menu.group({
+          // A date grouping has no manual group order: its groups are derived
+          // from the dates themselves and read chronologically.
+          items: group.isDateGroup$.value
+            ? []
+            : [
+                menu =>
+                  html` <data-view-group-setting
+                    @mouseenter="${() => menu.closeSubMenu()}"
+                    .groupTrait="${group}"
+                    .columnId="${groupProperty.id}"
+                  ></data-view-group-setting>`,
+              ],
         }),
         menu.group({
           items: [
