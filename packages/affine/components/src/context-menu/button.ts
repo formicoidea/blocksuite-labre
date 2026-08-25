@@ -22,6 +22,12 @@ export type MenuButtonData = {
   class: ClassInfo;
   select: (ele: HTMLElement) => void | false;
   onHover?: (hover: boolean) => void;
+  /**
+   * Keep the menu open after the item is selected. Defaults to `true`, which
+   * closes the menu — a toggle-like item passes `false` so the reader can flip
+   * several switches without reopening the menu each time.
+   */
+  closeOnSelect?: boolean;
   testId?: string;
 };
 
@@ -85,7 +91,9 @@ export class MenuButton extends MenuFocusable {
   onClick() {
     if (this.data.select(this) !== false) {
       this.menu.options.onComplete?.();
-      this.menu.close();
+      if (this.data.closeOnSelect !== false) {
+        this.menu.close();
+      }
     }
   }
 
@@ -150,7 +158,9 @@ export class MobileMenuButton extends MenuFocusable {
   onClick() {
     if (this.data.select(this) !== false) {
       this.menu.options.onComplete?.();
-      this.menu.close();
+      if (this.data.closeOnSelect !== false) {
+        this.menu.close();
+      }
     }
   }
 
@@ -200,6 +210,7 @@ export const menuButtonItems = {
       onHover?: (hover: boolean) => void;
       class?: MenuClass;
       hide?: () => boolean;
+      closeOnSelect?: boolean;
       testId?: string;
     }) =>
     menu => {
@@ -218,6 +229,7 @@ export const menuButtonItems = {
         },
         onHover: config.onHover,
         select: config.select,
+        closeOnSelect: config.closeOnSelect,
         class: {
           'selected-item': config.isSelected ?? false,
           ...config.class,

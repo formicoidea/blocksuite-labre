@@ -8,6 +8,7 @@ import { BlockSuiteError } from '@labre/global/exceptions';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import {
   type Clipboard,
+  type DndController,
   type EventName,
   ShadowlessElement,
   type UIEventHandler,
@@ -29,6 +30,7 @@ import type { DataViewWidget } from './widget/index.js';
 
 export type DataViewRendererConfig = {
   clipboard: Clipboard;
+  dnd?: DndController;
   onDrag?: (evt: MouseEvent, id: string) => () => void;
   notification: {
     toast: (message: string) => void;
