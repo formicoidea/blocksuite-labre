@@ -9,6 +9,7 @@ import {
   StrokeStyle,
   TextFitMode,
   type WardleyBgVariant,
+  type WardleyNodeKind,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
@@ -120,7 +121,7 @@ const NODE_PRESETS = {
   ecosystem: { d: ECOSYSTEM_SIZE, fill: NODE_FILL, label: ECOSYSTEM_LABEL },
   // Method: the FILL color encodes the chosen method (editable).
   method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
-} as const;
+} as const satisfies Partial<Record<WardleyNodeKind, unknown>>;
 
 /**
  * The subset of {@link WardleyNodeKind} that the single-circle presets above
