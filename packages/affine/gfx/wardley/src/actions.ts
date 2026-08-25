@@ -121,8 +121,6 @@ const NODE_PRESETS = {
   ecosystem: { d: ECOSYSTEM_SIZE, fill: NODE_FILL, label: ECOSYSTEM_LABEL },
   // Method: the FILL color encodes the chosen method (editable).
   method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
-  // The `satisfies` keeps every key inside the model's `WardleyNodeKind` union
-  // — `WARDLEY_ROLE[kind]` and the semantic vocabulary rely on it.
 } as const satisfies Partial<Record<WardleyNodeKind, unknown>>;
 
 /**
