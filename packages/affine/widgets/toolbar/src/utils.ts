@@ -236,29 +236,48 @@ export function emptyToolbarLayout(): ToolbarLayout {
 }
 
 /**
- * Where the row's plan comes from, asked for by SIGNATURE.
+ * What the row is, in two values — the question the plan is asked by.
+ *
+ * The split is the whole of the second half of the PO's recette of 25/08/2026,
+ * and it is the difference between the two things a re-render can invalidate:
+ *
+ * - {@link entries} is WHICH ENTRIES the row has, with their words, their
+ *   icons, their priorities and whether the widget can move them into the "⋮".
+ *   It is what makes a PLAN applicable: a plan is a list of entry ids, and it
+ *   describes this row only for as long as this list holds.
+ * - {@link state} is WHAT THOSE ENTRIES SAY. It changes nothing about which
+ *   degradations exist, and everything about what they are worth: the same
+ *   dropdown naming `Strict` instead of `Sketch` is ten pixels narrower, and a
+ *   group that gained a member is a button wider. It is what makes a
+ *   MEASUREMENT applicable.
+ *
+ * A row whose entries changed is a new row and is planned from scratch. A row
+ * whose state changed keeps the plan it is wearing — the eye sees nothing — and
+ * is only re-measured. A row where neither moved is free, which is what makes
+ * a gesture's re-renders cost nothing at all.
+ */
+export interface ToolbarRow {
+  entries: string;
+  state: string;
+}
+
+/**
+ * Where the row's plan comes from, asked for by {@link ToolbarRow}.
  *
  * Called once per render, AFTER the entries are resolved and BEFORE anything
  * reaches the DOM — which is the whole point. The mode an entry reads in is a
  * datum of its render, so the plan has to be in hand before the first
  * character is written; a plan applied afterwards is a plan the eye has
  * already seen the row without.
- *
- * The signature describes the ROW, not its plan: same entries, same words,
- * same signature. It is what lets the caller answer "the row you are about to
- * draw is the one already on screen — here is the plan it is wearing" instead
- * of starting every render from the undegraded row.
  */
-export type ToolbarLayoutSource = (signature: string) => ToolbarLayout;
+export type ToolbarLayoutSource = (row: ToolbarRow) => ToolbarLayout;
 
 /** What one render of the row tells the fitter about its own room to give. */
-export interface ToolbarFit {
+export interface ToolbarFit extends ToolbarRow {
   /** Every degradation available, in the order they must be spent. */
   steps: ToolbarLayoutStep[];
   /** Whether the rendered row already carries a "⋮" button. */
   hasMenu: boolean;
-  /** What this row is made of — see {@link ToolbarLayoutSource}. */
-  signature: string;
 }
 
 /**
@@ -274,6 +293,197 @@ function isPlainAction(action: ToolbarAction): boolean {
   if ('content' in action) return false;
   if ('actions' in action) return false;
   return typeof action.run === 'function';
+}
+
+/** One child of a group entry, with its own template already resolved. */
+interface ResolvedChild {
+  action: ToolbarAction;
+  /** Set when the child brings its own template; `undefined` for a plain one. */
+  template?: unknown;
+}
+
+/**
+ * One entry of the row, RESOLVED: what it is about to draw, before it draws it.
+ *
+ * The row's signature has to know what the row will SAY, and an entry that
+ * brings its own template only says it once `content(context)` has been called.
+ * So the call happens here, once, and both the signature and the render read
+ * the same answer — calling it twice would be one evaluation of somebody else's
+ * code per render for nothing, and two answers that could disagree.
+ */
+type ResolvedEntry =
+  | { kind: 'template'; action: ToolbarAction; template: unknown }
+  | { kind: 'group'; action: ToolbarAction; children: ResolvedChild[] }
+  | { kind: 'action'; action: ToolbarAction };
+
+function resolveContent(action: ToolbarAction, context: ToolbarContext) {
+  if (!('content' in action)) return undefined;
+  if (typeof action.content === 'function') return action.content(context);
+  return action.content ?? null;
+}
+
+/**
+ * Resolves every entry of the row, in order, dropping the ones that render
+ * nothing — the same precedence {@link renderResolvedActions} then applies.
+ */
+function resolveActions(
+  actions: ToolbarActions,
+  context: ToolbarContext
+): ResolvedEntry[] {
+  const resolved: ResolvedEntry[] = [];
+
+  for (const action of actions) {
+    if ('content' in action) {
+      const template = resolveContent(action, context);
+      if (template === null || template === undefined) continue;
+      resolved.push({ kind: 'template', action, template });
+      continue;
+    }
+
+    if ('actions' in action && action.actions.length) {
+      const combined = combine(action.actions, context);
+      if (!combined.length) continue;
+
+      const ordered = orderBy(combined, ['id', 'score'], ['asc', 'asc']);
+      resolved.push({
+        kind: 'group',
+        action,
+        children: ordered.map(child => ({
+          action: child,
+          template: resolveContent(child, context),
+        })),
+      });
+      continue;
+    }
+
+    if ('run' in action && action.run) {
+      resolved.push({ kind: 'action', action });
+    }
+  }
+
+  return resolved;
+}
+
+/**
+ * A stable name for one template, by the only thing about it that is stable.
+ *
+ * A tagged template literal hands the SAME frozen strings array to every
+ * evaluation of its call site — that array IS which template this is, and it is
+ * what Lit itself diffs on. The `TemplateResult` wrapped around it, on the other
+ * hand, is a fresh object every single render, which is precisely why an entry's
+ * template can never be compared by identity.
+ */
+const templateNames = new WeakMap<object, string>();
+let templateCount = 0;
+
+function templateName(strings: object) {
+  let name = templateNames.get(strings);
+  if (name === undefined) {
+    name = `t${++templateCount}`;
+    templateNames.set(strings, name);
+  }
+  return name;
+}
+
+/** How deep a template may nest before the digest stops caring. */
+const MAX_DIGEST_DEPTH = 8;
+
+/**
+ * What a template SAYS, as values.
+ *
+ * Only the things that end up as characters on the row are collected — the
+ * words and the numbers, plus a name for each template so that a different
+ * shape reads differently. Everything else is deliberately dropped:
+ *
+ * - **Functions** are event handlers. A fresh closure per render is the normal
+ *   way to write one, and it changes nothing the eye can see.
+ * - **Booleans** are attributes (`?active`, `?disabled`). They change how an
+ *   entry LOOKS, never how wide it is, and a row does not need re-planning
+ *   because a toggle went blue.
+ * - **Anything else** — a model, a context, a DOM node — is an object whose
+ *   identity says nothing about the row.
+ *
+ * That asymmetry is the whole point: same words, same digest, whatever objects
+ * were built to carry them.
+ */
+function digestValue(value: unknown, out: string[], depth = 0): void {
+  if (depth > MAX_DIGEST_DEPTH || value === null || value === undefined) return;
+
+  switch (typeof value) {
+    case 'string':
+    case 'number':
+    case 'bigint':
+      out.push(String(value));
+      return;
+    case 'boolean':
+    case 'function':
+    case 'symbol':
+      return;
+    default:
+      break;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) digestValue(item, out, depth + 1);
+    return;
+  }
+
+  // A `TemplateResult` (`strings` + `values`) or a directive result (`values`
+  // alone: `repeat`, `join`, `keyed`, `ifDefined`…). Both are walked the same
+  // way, and anything shaped like neither contributes nothing.
+  const parts = value as { strings?: unknown; values?: unknown };
+  if (Array.isArray(parts.strings)) out.push(templateName(parts.strings));
+  if (Array.isArray(parts.values)) {
+    for (const item of parts.values) digestValue(item, out, depth + 1);
+  }
+}
+
+/**
+ * What the row SAYS, entry by entry — the half of its signature that the
+ * entries' own state decides.
+ *
+ * The other half ({@link renderToolbar}'s list of ids, priorities, words and
+ * icons) describes the entries the widget itself draws, and for a row made of
+ * nothing else it is a complete description: same list, same widths. A row that
+ * carries OPAQUE entries — a dropdown that names the profile in force, a group
+ * whose members come and go with the element they are about — is not described
+ * by that list at all, and two rows it calls identical can be twenty pixels
+ * apart. This is what closes that gap.
+ *
+ * Plain entries add nothing here: their word and their icon are already in the
+ * other half, and repeating them would only make the string longer.
+ */
+function digestEntries(entries: readonly ResolvedEntry[]): string {
+  const out: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.kind === 'action') continue;
+
+    out.push(entry.action.id);
+
+    if (entry.kind === 'template') {
+      digestValue(entry.template, out, 0);
+      continue;
+    }
+
+    for (const child of entry.children) {
+      out.push(child.action.id);
+      if (child.template !== undefined) {
+        digestValue(child.template, out, 0);
+        continue;
+      }
+      // A plain member of a group: the widget draws it, so what it will say is
+      // known without resolving anything.
+      out.push(
+        child.action.showLabel && child.action.label
+          ? String(child.action.label)
+          : ''
+      );
+      out.push(child.action.icon ? 'i' : '');
+    }
+  }
+
+  return out.join('');
 }
 
 /**
@@ -344,33 +554,44 @@ export function renderToolbar(
   });
   const steps = toolbarDegradationSteps(items);
 
-  // What this row IS, before anything about how it is currently degraded. Two
-  // renders that produce the same signature produce the same widths, so the
-  // plan measured for one is the plan for the other — which is what lets a
-  // re-render mid-gesture keep the row exactly as the eye last saw it.
-  //
-  // The words are in it, not just the ids: an entry that changes its label
-  // ("Add exception" becoming "Revoke exception") changes what the row costs,
-  // and a plan measured on the old words no longer describes it.
-  const signature = [
-    flavour,
-    ...primaryActionGroup.map(action =>
-      [
-        action.id,
-        action.priority ?? 0,
-        action.showLabel && action.label ? action.label : '',
-        action.icon ? 'i' : '',
-        isPlainAction(action) ? 'p' : 'o',
-      ].join('~')
-    ),
-  ].join('|');
+  // Resolved BEFORE the plan is asked for, and drawn from this same answer: an
+  // entry that brings its own template only says what it says once it has been
+  // called, and the signature below has to know.
+  const resolved = resolveActions(primaryActionGroup, context);
 
-  const layout = source(signature);
+  // What this row IS, before anything about how it is currently degraded — in
+  // the two halves {@link ToolbarRow} describes. Both are VALUES: nothing that
+  // varies with the objects a render happens to allocate — a fresh template, a
+  // fresh event handler — reaches either string, which is what keeps them
+  // identical across two identical rebuilds.
+  //
+  // The words are in the first half, not just the ids: an entry that changes
+  // its label ("Add exception" becoming "Revoke exception") changes what the
+  // row costs, and a plan measured on the old words no longer describes it.
+  const row: ToolbarRow = {
+    entries: [
+      flavour,
+      ...primaryActionGroup.map(action =>
+        [
+          action.id,
+          action.priority ?? 0,
+          action.showLabel && action.label ? action.label : '',
+          action.icon ? 'i' : '',
+          isPlainAction(action) ? 'p' : 'o',
+        ].join('~')
+      ),
+    ].join('|'),
+    state: digestEntries(resolved),
+  };
+
+  const layout = source(row);
 
   // Entries the last measurement sent into the menu lead it: they came off the
   // row, so they are the first thing the user looks for after opening it.
   const collapsed = primaryActionGroup.filter(a => layout.collapsed.has(a.id));
-  const primary = primaryActionGroup.filter(a => !layout.collapsed.has(a.id));
+  const primary = resolved.filter(
+    entry => !layout.collapsed.has(entry.action.id)
+  );
   const more = [...collapsed, ...moreActionGroup];
 
   const innerToolbar = context.placement$.value === 'inner';
@@ -383,8 +604,11 @@ export function renderToolbar(
       hasMenu = true;
 
       primary.push({
-        id: 'more',
-        content: html`${keyed(
+        kind: 'template',
+        // Not an entry of the row's signature: the "⋮" is DERIVED from the
+        // plan, and a row is never re-planned because its own plan opened one.
+        action: { id: 'more' } as ToolbarAction,
+        template: html`${keyed(
           `${flavour}:${key}`,
           html`
             <editor-menu-button
@@ -416,7 +640,12 @@ export function renderToolbar(
 
   render(
     join(
-      renderActions(primary, context, renderActionItem, layout.shrunk),
+      renderResolvedActions(
+        primary,
+        context,
+        renderActionItem,
+        layout.shrunk
+      ),
       innerToolbar ? null : renderToolbarSeparator()
     ),
     toolbar
@@ -437,7 +666,35 @@ export function renderToolbar(
     toolbar.dataset.open = 'true';
   }
 
-  return { steps, hasMenu, signature };
+  return { steps, hasMenu, ...row };
+}
+
+function renderResolvedActions(
+  entries: readonly ResolvedEntry[],
+  context: ToolbarContext,
+  render = renderActionItem,
+  shrunk?: ReadonlySet<string>
+) {
+  return entries.map(entry => {
+    if (entry.kind === 'template') return entry.template;
+
+    if (entry.kind === 'group') {
+      return repeat(
+        entry.children,
+        child => child.action.id,
+        child =>
+          child.template !== undefined
+            ? child.template
+            : render(
+                child.action,
+                context,
+                shrunk?.has(child.action.id) ?? false
+              )
+      );
+    }
+
+    return render(entry.action, context, shrunk?.has(entry.action.id) ?? false);
+  });
 }
 
 function renderActions(
@@ -446,46 +703,12 @@ function renderActions(
   render = renderActionItem,
   shrunk?: ReadonlySet<string>
 ) {
-  return actions
-    .map(action => {
-      if ('content' in action) {
-        if (typeof action.content === 'function') {
-          return action.content(context);
-        } else {
-          return action.content ?? null;
-        }
-      }
-
-      if ('actions' in action && action.actions.length) {
-        const combined = combine(action.actions, context);
-
-        if (!combined.length) return null;
-
-        const ordered = orderBy(combined, ['id', 'score'], ['asc', 'asc']);
-
-        return repeat(
-          ordered,
-          a => a.id,
-          a => {
-            if ('content' in a) {
-              if (typeof a.content === 'function') {
-                return a.content(context);
-              } else {
-                return a.content ?? null;
-              }
-            }
-            return render(a, context, shrunk?.has(a.id) ?? false);
-          }
-        );
-      }
-
-      if ('run' in action && action.run) {
-        return render(action, context, shrunk?.has(action.id) ?? false);
-      }
-
-      return null;
-    })
-    .filter(action => action !== null);
+  return renderResolvedActions(
+    resolveActions(actions, context),
+    context,
+    render,
+    shrunk
+  );
 }
 
 // TODO(@fundon): supports templates
@@ -656,6 +879,65 @@ function measureToolbar(
   };
 }
 
+/**
+ * The WHOLE row's measurements, read from the row as it is currently DRAWN.
+ *
+ * A state change — a dropdown naming a different profile, a group that gained
+ * a member — invalidates the widths the plan was made from. It does not
+ * invalidate the plan itself: the entries are the same entries and they give
+ * way in the same order. So the row must be re-measured, and the one thing it
+ * must not do to be re-measured is appear undegraded for a frame, which is the
+ * flash the PO reported and the second pass removed.
+ *
+ * It does not have to. The row is measured wearing its plan, and what the plan
+ * took off is added back from the numbers that made it — an entry that is not
+ * on the row is not on screen, so nothing about it can have moved under it.
+ * What comes out is the row whole, measured without ever having been shown
+ * whole.
+ */
+function wholeRowMetrics(
+  drawn: ToolbarMetrics,
+  previous: ToolbarMetrics,
+  layout: ToolbarLayout
+): ToolbarMetrics {
+  const label: Record<string, number> = { ...previous.label, ...drawn.label };
+  const entry: Record<string, number> = { ...previous.entry, ...drawn.entry };
+  let content = drawn.content;
+
+  // An entry drawn as its icon alone: it is on the row, so its icon was just
+  // measured; the word it is not wearing is worth what it was worth.
+  for (const id of layout.shrunk) {
+    const word = previous.label[id] ?? 0;
+    label[id] = word;
+    entry[id] = (drawn.entry[id] ?? previous.entry[id] ?? 0) + word;
+    content += word;
+  }
+
+  // An entry in the "⋮": nothing of it is on the row, so it costs the row what
+  // it cost the last time the row carried it.
+  for (const id of layout.collapsed) {
+    const cost = previous.entry[id] ?? 0;
+    entry[id] = cost;
+    label[id] = previous.label[id] ?? 0;
+    content += cost;
+  }
+
+  // And the "⋮" the plan opened is not part of the row it opened it for.
+  if (layout.collapsed.size > 0 && !previous.hasMenu) {
+    content -= drawn.menuCost;
+  }
+
+  return {
+    content,
+    available: drawn.available,
+    label,
+    entry,
+    menuCost: drawn.menuCost,
+    // What the row carries on its OWN account, which the plan never changed.
+    hasMenu: previous.hasMenu,
+  };
+}
+
 function stepKey(step: ToolbarLayoutStep) {
   return `${step.kind}:${step.id}`;
 }
@@ -684,8 +966,17 @@ function sameLayout(a: ToolbarLayout, b: ToolbarLayout) {
  *
  * "Per row", not per render: the widget re-renders for reasons that have
  * nothing to do with width, and a re-render is not a new row. Which row it is
- * is answered by the {@link ToolbarFit.signature}, and a row that has not
- * changed keeps the plan it is wearing — see {@link ToolbarFitter.render}.
+ * is answered by {@link ToolbarRow}, and a row that has not changed keeps the
+ * plan it is wearing — see {@link ToolbarFitter.render}.
+ *
+ * A row that changed only what it SAYS keeps it too, and is simply re-measured
+ * where it stands ({@link ToolbarFitter.#remeasure}). That is the generalisation
+ * the PO's recette of 25/08/2026 asked for: the components' row is made
+ * entirely of entries the widget draws itself, so the list of entries is a
+ * complete description of it and the first half of {@link ToolbarRow} was
+ * enough; a framework background's row is mostly OPAQUE — toggles grouped by
+ * the framework, a dropdown naming the level of requirement in force — and for
+ * that row the list says nothing about what it costs.
  *
  * And it replans only at the ACCALMIE. While the room is still moving — a zoom,
  * a pan, a window being dragged — the plan on screen is frozen: see
@@ -709,8 +1000,11 @@ export class ToolbarFitter {
   /** Armed while the room is still moving; fires at the accalmie. */
   #settleTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** What the row on screen is made of. `''` when there is no row. */
-  #signature = '';
+  /** Which entries the row on screen has. `''` when there is no row. */
+  #entries = '';
+
+  /** What those entries currently say. See {@link ToolbarRow}. */
+  #state = '';
 
   #steps: readonly ToolbarLayoutStep[] = [];
 
@@ -851,6 +1145,31 @@ export class ToolbarFitter {
   }
 
   /**
+   * The row said something new. Measure it again, wearing what it is wearing.
+   *
+   * The plan is untouched — the entries are the same entries — so this never
+   * draws the whole row, and the eye sees the row change at most once: when the
+   * new widths genuinely no longer fit the same plan.
+   */
+  async #remeasure(token: number) {
+    await settled();
+    if (token !== this.#token || !this.#context) return;
+
+    const previous = this.#metrics;
+    const drawn = measureToolbar(
+      this.toolbar,
+      this.#hasMenu || this.#layout.collapsed.size > 0
+    );
+    const metrics = previous
+      ? wholeRowMetrics(drawn, previous, this.#layout)
+      : drawn;
+
+    this.#metrics = metrics;
+
+    await this.#converge(planToolbarLayout(this.#steps, metrics), token);
+  }
+
+  /**
    * Renders the row, in the mode the plan on screen says.
    *
    * The widget re-renders for a great many reasons that have nothing to do
@@ -859,7 +1178,7 @@ export class ToolbarFitter {
    * land on any frame of a gesture. So this asks a question first: is the row
    * about to be drawn the row already on screen?
    *
-   * - **Yes** (same {@link ToolbarFit.signature}): it is drawn wearing the
+   * - **Yes** (same {@link ToolbarRow}, both halves): it is drawn wearing the
    *   plan it is already wearing, entry by entry, and nothing is measured.
    *   The DOM does not change, so there is nothing to see — which is the
    *   PO's recette of 25/08/2026. Before, every one of these re-renders threw
@@ -867,6 +1186,11 @@ export class ToolbarFitter {
    *   degraded it again: one flash of "Read this component" per re-render,
    *   plus a full replan at whatever width the gesture happened to be at,
    *   straight through the freeze the accalmie was supposed to give.
+   * - **The same entries, saying something new** — a dropdown naming another
+   *   profile, a group that gained a member: the PLAN still describes the row
+   *   and stays on it, so again there is nothing to see. Only the widths it was
+   *   made from are out of date, and {@link ToolbarFitter.#remeasure} reads
+   *   them back off the row as it is drawn.
    * - **No**: a different row. Then, and only then, it is rendered whole,
    *   measured, and spends what it must.
    */
@@ -876,13 +1200,23 @@ export class ToolbarFitter {
 
     // Answered while the entries are resolved and before they are drawn: the
     // mode an entry reads in is an argument of its own render, never a fixup.
-    let fresh = false;
-    const fit = renderToolbar(this.toolbar, context, flavour, signature => {
-      fresh = signature !== this.#signature;
-      if (!fresh) return this.#layout;
+    let change: 'none' | 'state' | 'row' = 'none';
+    const fit = renderToolbar(this.toolbar, context, flavour, row => {
+      if (row.entries !== this.#entries) {
+        change = 'row';
+        this.#entries = row.entries;
+        this.#state = row.state;
+        this.#layout = emptyToolbarLayout();
+        return this.#layout;
+      }
 
-      this.#signature = signature;
-      this.#layout = emptyToolbarLayout();
+      if (row.state !== this.#state) {
+        change = 'state';
+        this.#state = row.state;
+      }
+
+      // Either way the row keeps what it is wearing: a plan is a list of
+      // entries, and this is the same list.
       return this.#layout;
     });
 
@@ -891,13 +1225,22 @@ export class ToolbarFitter {
       return;
     }
 
-    // The same row, re-rendered: it is already right, and a measurement now
-    // would be a measurement of a room that is still moving.
-    if (!fresh) return;
+    // The same row saying the same things: it is already right, and a
+    // measurement now would be a measurement of a room that is still moving.
+    if (change === 'none') return;
 
-    // A new row. Whatever the old one was waiting for describes nothing.
     const token = ++this.#token;
     this.#cancelSettle();
+
+    if (change === 'state') {
+      // The entries did not move, so neither did what they can give up nor
+      // whether the row carries a "⋮" of its own. Only the numbers changed.
+      if (this.#steps.length === 0) return;
+      void this.#remeasure(token);
+      return;
+    }
+
+    // A new row. Whatever the old one was waiting for describes nothing.
     this.#metrics = null;
     this.#steps = fit.steps;
     this.#hasMenu = fit.hasMenu;
@@ -915,9 +1258,11 @@ export class ToolbarFitter {
     this.#metrics = null;
     this.#layout = emptyToolbarLayout();
     this.#steps = [];
+    this.#hasMenu = false;
     // The row that comes back is measured from scratch: `#metrics` went with
     // it, and a plan with nothing behind it could never be revised.
-    this.#signature = '';
+    this.#entries = '';
+    this.#state = '';
   }
 
   /**
