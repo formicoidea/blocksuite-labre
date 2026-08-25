@@ -356,7 +356,13 @@ export class EdgelessRootBlockComponent extends BlockComponent<
         }
         // pan
         else {
-          const simulateHorizontalScroll = IS_WINDOWS && e.shiftKey;
+          // Shift+wheel means "scroll sideways" on every platform. Windows
+          // never sends a horizontal delta for it, so the vertical one has to
+          // be reinterpreted; elsewhere the OS does it natively for trackpads
+          // and horizontal-capable mice, and `deltaX === 0` is what a plain
+          // mouse — with nothing but a vertical wheel — leaves us to work with.
+          const simulateHorizontalScroll =
+            e.shiftKey && (IS_WINDOWS || e.deltaX === 0);
           const dx = simulateHorizontalScroll
             ? e.deltaY / viewport.zoom
             : e.deltaX / viewport.zoom;
