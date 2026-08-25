@@ -648,12 +648,11 @@ export class TableCell extends SignalWatcher(
   }
 
   private readonly _handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape') {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        return;
-      }
-      e.stopPropagation();
+    // Tab is the only key the cell still swallows: it would move the focus out
+    // of the table. Everything else is left to propagate, so the table keymap
+    // (see table-keymap.ts) can answer it.
+    if (e.key === 'Tab') {
+      e.preventDefault();
     }
   };
 
