@@ -1,4 +1,5 @@
 export { coreDomainCommandIcons, coreDomainCommands } from './commands.js';
+export { coreDomainTranslationEntries } from './translations.js';
 export { coreDomain } from './core-domain/element-renderer.js';
 export { coreDomainTemplateCategory } from './templates.js';
 export { coreDomainSeniorTool } from './toolbar/senior-tool.js';

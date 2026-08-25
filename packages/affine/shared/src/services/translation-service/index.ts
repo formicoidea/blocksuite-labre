@@ -18,6 +18,10 @@ import type { ExtensionType } from '@labre/store';
  * Mirrors `TelemetryExtension` / `KeymapOverrideExtension`: an optional
  * host-injected service, absent by default, with a graceful fallback at every
  * call site (see {@link translateKey}).
+ *
+ * A host builds its catalogue from `getTranslationKeyManifest()`
+ * (`@labre/affine/translations`) — every key the library can ask for, with its
+ * English fallback — rather than chasing call sites. See `./README.md`.
  */
 export interface TranslationService {
   /**

@@ -6,6 +6,7 @@ export {
 } from './roles';
 export { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 export { wardleyCommandIcons, wardleyCommands } from './commands';
+export { wardleyTranslationEntries } from './translations.js';
 export {
   WARDLEY_NATURE,
   WARDLEY_NATURE_TAG_ID,

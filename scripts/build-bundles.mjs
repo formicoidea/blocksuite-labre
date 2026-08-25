@@ -356,27 +356,37 @@ function buildCore() {
         `${e.flag} flag`
       );
     }
-    // A framework's command contribution ships with ITS bundle, not with
-    // core: strip the import and the group entry from the copied commands.ts
-    // (the host composes core's registry with each enabled framework bundle's
-    // exported commands). The shortcut manifest derives from the registry, so
-    // stripping here strips both.
+    // A framework's command and translation-key contributions ship with ITS
+    // bundle, not with core: strip the import and the group entry from the
+    // copied commands.ts and translations.ts (the host composes core's registry
+    // and core's manifest with each enabled framework bundle's own exports).
+    // The shortcut manifest derives from the registry, so stripping commands.ts
+    // strips both.
+    //
+    // The two files have the SAME shape on purpose — a one-line
+    // `{ owner: '<id>', … }` entry per framework — so one rule covers them and
+    // a new framework needs no edit here.
     if (fw.shortcuts) {
-      const commandsTs = path.join(CORE_SRC, 'commands.ts');
-      dropStatement(
-        commandsTs,
-        new RegExp(
-          `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}['"];?\\r?\\n`
-        ),
-        1,
-        `${fw.out} commands import`
-      );
-      dropLines(
-        commandsTs,
-        new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.id)}',`),
-        1,
-        `${fw.out} command group`
-      );
+      for (const [file, label] of [
+        ['commands.ts', 'commands'],
+        ['translations.ts', 'translation entries'],
+      ]) {
+        const fileAbs = path.join(CORE_SRC, file);
+        dropStatement(
+          fileAbs,
+          new RegExp(
+            `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}['"];?\\r?\\n`
+          ),
+          1,
+          `${fw.out} ${label} import`
+        );
+        dropLines(
+          fileAbs,
+          new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.id)}',`),
+          1,
+          `${fw.out} ${label} group`
+        );
+      }
     }
   }
   // 4. rewrite all @labre/* imports → relative vendored paths
