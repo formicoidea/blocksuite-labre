@@ -241,6 +241,24 @@ function canStoreUnknownPropValue(value: unknown): boolean {
 }
 
 export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
+  /**
+   * The props that are known to move the bound of the containing group, so a
+   * write on one of them refreshes that bound eagerly (and notifies the layer
+   * and the renderer within the same tick).
+   *
+   * It is deliberately NOT the exhaustive list of what a bound can depend on:
+   * a subclass may fold a custom prop into its own `elementBound` (our polygon
+   * shape does it with `vertices`, the connector with `labelXYWH`). Anything
+   * outside this set therefore only *invalidates* the cached bound — the next
+   * read recomputes it — which keeps such elements correct without paying the
+   * eager recomputation on every unrelated prop write.
+   */
+  private static readonly _groupBoundImpactKeys = new Set([
+    'xywh',
+    'rotate',
+    'hidden',
+  ]);
+
   protected _decoratorState = createDecoratorState();
 
   protected _elementCtorMap: Record<
@@ -514,6 +532,74 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     };
   }
 
+  /**
+   * The single place an element update leaves the surface: it fans the payload
+   * out to the subscribers and keeps the bound of the containing group in sync.
+   */
+  private _emitElementUpdated(
+    model: GfxPrimitiveElementModel,
+    payload: ElementUpdatedData
+  ) {
+    this.elementUpdated.next(payload);
+    Object.keys(payload.props).forEach(key => {
+      model.propsUpdated.next({ key });
+    });
+
+    this._refreshParentGroupBoundsForElement(model, payload);
+  }
+
+  private _invalidateParentGroupBounds(id: string) {
+    if (this._groupLikeModels.size === 0) {
+      return;
+    }
+
+    const group = this.getGroup(id);
+
+    if (group instanceof GfxGroupLikeElementModel) {
+      group.invalidateXYWH();
+    }
+  }
+
+  private _refreshParentGroupBounds(id: string, local: boolean) {
+    if (this._groupLikeModels.size === 0) {
+      return;
+    }
+
+    const group = this.getGroup(id);
+
+    if (group instanceof GfxGroupLikeElementModel) {
+      group.refreshXYWH(local);
+    }
+  }
+
+  private _refreshParentGroupBoundsForElement(
+    model: GfxPrimitiveElementModel,
+    payload: ElementUpdatedData
+  ) {
+    if (
+      model instanceof GfxGroupLikeElementModel &&
+      ('childIds' in payload.props || 'childIds' in payload.oldValues)
+    ) {
+      model.refreshXYWH(payload.local);
+      return;
+    }
+
+    const affectedKeys = new Set([
+      ...Object.keys(payload.props),
+      ...Object.keys(payload.oldValues),
+    ]);
+
+    if (
+      Array.from(affectedKeys).some(key =>
+        SurfaceBlockModel._groupBoundImpactKeys.has(key)
+      )
+    ) {
+      this._refreshParentGroupBounds(model.id, payload.local);
+    } else {
+      this._invalidateParentGroupBounds(model.id);
+    }
+  }
+
   private _initElementModels() {
     const elementsYMap = this.elements.getValue()!;
     const addToType = (type: string, model: GfxPrimitiveElementModel) => {
@@ -571,10 +657,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
                     element,
                     {
                       onChange: payload => {
-                        this.elementUpdated.next(payload);
-                        Object.keys(payload.props).forEach(key => {
-                          model.model.propsUpdated.next({ key });
-                        });
+                        this._emitElementUpdated(model.model, payload);
                       },
                       skipFieldInit: true,
                     }
@@ -618,10 +701,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         val,
         {
           onChange: payload => {
-            this.elementUpdated.next(payload),
-              Object.keys(payload.props).forEach(key => {
-                model.model.propsUpdated.next({ key });
-              });
+            this._emitElementUpdated(model.model, payload);
           },
           skipFieldInit: true,
         }
@@ -650,6 +730,10 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
             this._groupLikeModels.set(payload.id, payload.model);
           }
 
+          if (payload.model instanceof BlockModel) {
+            this._refreshParentGroupBounds(payload.id, payload.isLocal);
+          }
+
           break;
         case 'delete':
           if (isGfxGroupCompatibleModel(payload.model)) {
@@ -661,6 +745,17 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
               // oxlint-disable-next-line unicorn/prefer-dom-node-remove
               group.removeChild(payload.model as GfxModel);
             }
+          }
+
+          break;
+        case 'update':
+          // A canvas block folds nothing else into its `elementBound`, so
+          // unlike a surface element it needs no lazy invalidation here.
+          if (
+            payload.props.key &&
+            SurfaceBlockModel._groupBoundImpactKeys.has(payload.props.key)
+          ) {
+            this._refreshParentGroupBounds(payload.id, payload.isLocal);
           }
 
           break;
@@ -797,10 +892,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
 
     const elementModel = this._createElementFromProps(props, {
       onChange: payload => {
-        this.elementUpdated.next(payload);
-        Object.keys(payload.props).forEach(key => {
-          elementModel.model.propsUpdated.next({ key });
-        });
+        this._emitElementUpdated(elementModel.model, payload);
       },
     });
 

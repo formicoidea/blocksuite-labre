@@ -182,8 +182,11 @@ export abstract class GfxPrimitiveElementModel<
   }
 
   get deserializedXYWH() {
-    if (!this._lastXYWH || this.xywh !== this._lastXYWH) {
-      const xywh = this.xywh;
+    // Read `xywh` once: on a group it is a derived getter that may recompute
+    // the union of every child bound, so reading it twice doubles the cost.
+    const xywh = this.xywh;
+
+    if (!this._lastXYWH || xywh !== this._lastXYWH) {
       this._local.set('deserializedXYWH', deserializeXYWH(xywh));
       this._lastXYWH = xywh;
     }
@@ -742,6 +745,18 @@ export abstract class GfxGroupLikeElementModel<
 
   private readonly _mutex = createMutex();
 
+  /**
+   * Whether the cached `xywh` must be recomputed from the children.
+   *
+   * The bound of a group is the union of its children bounds, which used to be
+   * recomputed on **every** read of `xywh` — and `xywh` is read many times per
+   * frame (renderer, hit test, toolbar anchor, selection rect…). It is now
+   * computed once per mutation: the surface marks the group dirty (or
+   * refreshes it eagerly) whenever a child changes, see
+   * {@link invalidateXYWH} / {@link refreshXYWH}.
+   */
+  private _xywhDirty = true;
+
   abstract children: Y.Map<any>;
 
   [gfxGroupCompatibleSymbol] = true as const;
@@ -774,24 +789,8 @@ export abstract class GfxGroupLikeElementModel<
 
   get xywh() {
     this._mutex(() => {
-      const curXYWH =
-        (this._local.get('xywh') as SerializedXYWH) ?? '[0,0,0,0]';
-      const newXYWH = this._getXYWH().serialize();
-
-      if (curXYWH !== newXYWH || !this._local.has('xywh')) {
-        this._local.set('xywh', newXYWH);
-
-        if (curXYWH !== newXYWH) {
-          this._onChange({
-            props: {
-              xywh: newXYWH,
-            },
-            oldValues: {
-              xywh: curXYWH,
-            },
-            local: true,
-          });
-        }
+      if (this._xywhDirty || !this._local.has('xywh')) {
+        this._recomputeXYWH(true);
       }
     });
 
@@ -800,6 +799,45 @@ export abstract class GfxGroupLikeElementModel<
 
   set xywh(_) {}
 
+  /**
+   * Recompute the cached bound and notify the listeners when it moved.
+   *
+   * Always run it through {@link _mutex}: the notification re-enters the
+   * `xywh` getter (a parent group unites this bound again), and the mutex is
+   * what keeps that read from recomputing this very group a second time.
+   */
+  private _recomputeXYWH(local: boolean) {
+    const oldXYWH = (this._local.get('xywh') as SerializedXYWH) ?? '[0,0,0,0]';
+    const hadXYWH = this._local.has('xywh');
+    const nextXYWH = this._getXYWH().serialize();
+
+    this._xywhDirty = false;
+
+    if (hadXYWH && oldXYWH === nextXYWH) {
+      return;
+    }
+
+    // Set before notifying: the listeners read `xywh` back, and the mutex
+    // makes that read return the cached value instead of recomputing.
+    this._local.set('xywh', nextXYWH);
+
+    if (oldXYWH !== nextXYWH) {
+      this._onChange({
+        props: {
+          xywh: nextXYWH,
+        },
+        oldValues: {
+          xywh: oldXYWH,
+        },
+        local,
+      });
+    }
+  }
+
+  /**
+   * Pure: it only reads the children. The cache is written by
+   * {@link _recomputeXYWH}, which is the single place allowed to store it.
+   */
   protected _getXYWH(): Bound {
     let bound: Bound | undefined;
 
@@ -811,13 +849,30 @@ export abstract class GfxGroupLikeElementModel<
       bound = bound ? bound.unite(child.elementBound) : child.elementBound;
     });
 
-    if (bound) {
-      this._local.set('xywh', bound.serialize());
-    } else {
-      this._local.delete('xywh');
-    }
-
     return bound ?? new Bound(0, 0, 0, 0);
+  }
+
+  /**
+   * Mark the cached bound as stale without recomputing it. The next read of
+   * `xywh` pays for the recomputation, and notifies the listeners if the
+   * bound actually moved.
+   *
+   * Use it for the changes that only *may* move the bound (a custom prop a
+   * subclass folds into its own `elementBound`); use {@link refreshXYWH} for
+   * the changes that are known to move it.
+   */
+  invalidateXYWH() {
+    this._xywhDirty = true;
+  }
+
+  /**
+   * Recompute the cached bound right away, and notify the listeners when it
+   * moved. `local` is the origin of the mutation that moved it.
+   */
+  refreshXYWH(local: boolean) {
+    this._mutex(() => {
+      this._recomputeXYWH(local);
+    });
   }
 
   abstract addChild(element: GfxModel): void;
@@ -850,6 +905,7 @@ export abstract class GfxGroupLikeElementModel<
   setChildIds(value: string[], fromLocal: boolean) {
     const oldChildIds = this.childIds;
     this._childIds = value;
+    this.invalidateXYWH();
 
     this._onChange({
       props: {

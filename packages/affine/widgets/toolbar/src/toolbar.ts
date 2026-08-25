@@ -162,10 +162,14 @@ export class AffineToolbarWidget extends WidgetComponent {
   }
 
   setReferenceElementWithElements(gfx: GfxController, elements: GfxModel[]) {
+    // Measured once per selection change, not on every anchor read: floating-ui
+    // calls `getBoundingClientRect` on each frame of a pan or a zoom, and the
+    // surface bound of a group walks all of its children.
+    const surfaceBounds = getCommonBoundWithRotation(elements);
+
     const getBoundingClientRect = () => {
-      const bounds = getCommonBoundWithRotation(elements);
       const { x: offsetX, y: offsetY } = this.getBoundingClientRect();
-      const [x, y, w, h] = gfx.viewport.toViewBound(bounds).toXYWH();
+      const [x, y, w, h] = gfx.viewport.toViewBound(surfaceBounds).toXYWH();
       const rect = new DOMRect(x + offsetX, y + offsetY, w, h);
       return rect;
     };
