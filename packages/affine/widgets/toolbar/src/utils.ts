@@ -120,7 +120,16 @@ export function autoUpdatePosition(
             crossAxis: state.placement.includes('bottom'),
             limiter: limitShift(),
           })),
-          flip({ padding: 10 }),
+          // `flip` answers ONE question here — above or below — so both of its
+          // sideways ideas are off. Left on (their default), they teleport the
+          // row: on a reference far wider than the screen, every alignment
+          // overflows somewhere, `bestFit` picks between `-start` and `-end`
+          // by a margin of a few pixels, and under a zoom that verdict changes
+          // from one frame to the next — the row jumps between the LEFT clamp
+          // and the RIGHT clamp of the very same geometry (PO recette of
+          // 25/08/2026, third video: the map background's row). Horizontal
+          // placement belongs to `shift`, which slides — it never teleports.
+          flip({ padding: 10, crossAxis: false, flipAlignment: false }),
           hide(),
         ],
       };
@@ -141,6 +150,10 @@ export function autoUpdatePosition(
     if (signal.aborted) return;
 
     const result = await computePosition(referenceElement, toolbar, config);
+
+    // The gesture may have aborted this loop while the position was being
+    // computed. A dying loop that still writes is a second anchor on screen.
+    if (signal.aborted) return;
 
     const { x, middlewareData, placement: currentPlacement } = result;
     const y =
@@ -164,14 +177,37 @@ export function autoUpdatePosition(
     }
   };
 
-  return autoUpdate(
-    referenceElement,
-    toolbar,
-    () => {
-      update().catch(console.error);
-    },
-    options
-  );
+  // **One position in flight at a time.** `update` is async — it awaits the
+  // toolbar's render, then an async `computePosition` — while `autoUpdate`
+  // fires it again on every frame of a gesture. Left unserialized, several
+  // computations overlap and resolve in whatever order the microtasks land:
+  // the ordered trace of the PO's recette of 25/08/2026 shows a position from
+  // a frame-old reference written AFTER a fresher one — one stale landing, on
+  // screen, is one visible jump backwards. (The two-anchor teleport of that
+  // recette was the `flip` defect above, not this: this guard is against the
+  // out-of-order landings observed alongside it.) One in flight, one queued,
+  // keep the last: writes land in the order they were computed, and the
+  // newest state always gets applied.
+  let running = false;
+  let queued = false;
+  const run = () => {
+    if (running) {
+      queued = true;
+      return;
+    }
+    running = true;
+    update()
+      .catch(console.error)
+      .finally(() => {
+        running = false;
+        if (queued && !signal.aborted) {
+          queued = false;
+          run();
+        }
+      });
+  };
+
+  return autoUpdate(referenceElement, toolbar, run, options);
 }
 
 export function combine(actions: ToolbarActions, context: ToolbarContext) {
