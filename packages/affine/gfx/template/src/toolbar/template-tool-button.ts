@@ -117,6 +117,8 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
 
   private _cleanup: (() => void) | null = null;
 
+  private _autoUpdateCleanup: (() => void) | null = null;
+
   private _prevTool: ToolOptionWithType | null = null;
 
   override enableActiveBackground = true;
@@ -128,10 +130,22 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
     return [TemplateCard1[theme], TemplateCard2[theme], TemplateCard3[theme]];
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    // The panel can still be open when the button is removed: without this the
+    // `autoUpdate` listeners outlive the element and leak.
+    this.disposables.add(() => {
+      this._autoUpdateCleanup?.();
+      this._autoUpdateCleanup = null;
+    });
+  }
+
   private _closePanel() {
     if (this._openedPanel) {
       this._openedPanel.remove();
       this._openedPanel = null;
+      this._autoUpdateCleanup?.();
+      this._autoUpdateCleanup = null;
       this._cleanup?.();
       this._cleanup = null;
       this.requestUpdate();
@@ -174,9 +188,14 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
     this.renderRoot.append(panel);
 
     requestAnimationFrame(() => {
+      // The panel may already have been closed before this frame ran; starting
+      // a loop on it now would never be stopped.
+      if (this._openedPanel !== panel) return;
+
       const arrowEl = panel.renderRoot.querySelector('.arrow') as HTMLElement;
 
-      autoUpdate(this, panel, () => {
+      this._autoUpdateCleanup?.();
+      this._autoUpdateCleanup = autoUpdate(this, panel, () => {
         computePosition(this, panel, {
           placement: 'top',
           middleware: [offset(20), arrow({ element: arrowEl }), shift()],

@@ -442,11 +442,14 @@ export const createPopup = (
   }
 ) => {
   const close = () => {
+    // Removing the modal does not stop the positioning loop: without this the
+    // `autoUpdate` listeners outlive the popup and leak.
+    cleanup();
     modal.remove();
     options?.onClose?.();
   };
   const modal = createModal(target.root);
-  autoUpdate(target.targetRect, content, () => {
+  const cleanup = autoUpdate(target.targetRect, content, () => {
     computePosition(target.targetRect, content, {
       middleware: options?.middleware ?? [shift({ crossAxis: true })],
     })
