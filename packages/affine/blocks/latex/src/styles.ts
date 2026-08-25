@@ -9,7 +9,12 @@ export const latexBlockStyles = css`
     height: 100%;
     padding: 10px 24px;
     flex-direction: column;
-    align-items: center;
+    /**
+     * The rendered formula must span the container so a wide equation can be
+     * scrolled through (overflow-x below); centring shrank it to its content
+     * and pushed the overflow out of reach.
+     */
+    align-items: stretch;
     justify-content: center;
     border-radius: 4px;
     overflow-x: auto;
