@@ -1,5 +1,6 @@
 import {
   EdgelessCRUDIdentifier,
+  isNoteBlock,
   type Options,
   Overlay,
   type RoughCanvas,
@@ -275,9 +276,23 @@ export function capitalizeFirstLetter(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+/**
+ * Clone `current` one bound further along, so an auto-complete arrow can drop a
+ * sibling of what is selected.
+ *
+ * Only two kinds of thing can be cloned this way: a shape (any
+ * `ShapeElementModel`, subclasses included — a wardley node, an EDGY node, a
+ * BPMN node) and a note block. Everything else on the canvas — a group, a free
+ * text label, a connector, a framework background — has no `props` bag at all,
+ * and reading one blindly is what used to throw
+ * `Cannot read properties of undefined (reading 'background')` the moment an
+ * arrow was offered on a selected wardley component (which selects the *group*
+ * wrapping node + label, not the node). We return `null` instead: the caller
+ * already treats a falsy id as "nothing to complete".
+ */
 export function createEdgelessElement(
   edgeless: BlockComponent,
-  current: ShapeElementModel | NoteBlockModel,
+  current: GfxModel,
   bound: Bound
 ) {
   const crud = edgeless.std.get(EdgelessCRUDIdentifier);
@@ -293,7 +308,7 @@ export function createEdgelessElement(
     });
     if (!id) return null;
     element = crud.getElementById(id);
-  } else {
+  } else if (isNoteBlock(current)) {
     const { store } = edgeless;
     id = store.addBlock(
       'affine:note',
@@ -319,6 +334,8 @@ export function createEdgelessElement(
     store.addBlock('affine:paragraph', {}, note.id);
 
     element = note;
+  } else {
+    return null;
   }
 
   if (!element) {
