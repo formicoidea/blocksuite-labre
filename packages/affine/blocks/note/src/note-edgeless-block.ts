@@ -521,6 +521,11 @@ export const EdgelessNoteInteraction =
                   }
                 })
                 .catch(console.error);
+            } else if (multiSelect && alreadySelected && editing) {
+              // Shift-clicking inside a note being edited extends the text
+              // range; the default multi-select would drop the editing state
+              // and take the range with it.
+              return;
             } else {
               context.default(context);
             }

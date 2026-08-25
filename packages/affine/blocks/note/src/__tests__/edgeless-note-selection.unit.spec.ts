@@ -138,4 +138,34 @@ describe('edgeless note selection', () => {
       expect(mocks.handleNativeRangeAtPoint).toHaveBeenCalledWith(120, 48);
     });
   });
+
+  describe('shift-click range selection (upstream #14675)', () => {
+    it('keeps the editing state when shift-clicking inside the note', () => {
+      const { onSelect, selectionSet } = setup({
+        editing: true,
+        alreadySelected: true,
+      });
+      const fallback = vi.fn();
+
+      onSelect(
+        selectContext(120, 120, { multiSelect: true, fallback }) as never
+      );
+
+      // The default multi-select toggles the note out of editing, which drops
+      // the range the shift-click was building.
+      expect(fallback).not.toHaveBeenCalled();
+      expect(selectionSet).not.toHaveBeenCalled();
+    });
+
+    it('still runs the default multi-select on a note that is not being edited', () => {
+      const { onSelect } = setup({ editing: false, alreadySelected: true });
+      const fallback = vi.fn();
+
+      onSelect(
+        selectContext(120, 120, { multiSelect: true, fallback }) as never
+      );
+
+      expect(fallback).toHaveBeenCalledTimes(1);
+    });
+  });
 });
