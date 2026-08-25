@@ -2,6 +2,7 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { ValidationManager } from '@labre/affine/blocks/surface';
 import {
   connectorToolbarConfig,
+  EDGE_DIRECTION_WIDGET,
   EdgeDirectionManager,
   invertibleEdges,
 } from '@labre/affine/gfx/connector';
@@ -13,6 +14,8 @@ import {
   toShortcutDescriptor,
   type AnyCommandDescriptor,
 } from '@labre/affine/std';
+import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
+import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -384,9 +387,7 @@ describe('the direction of a wardley dependency', () => {
       'wardley:dependency',
     ]);
 
-    // ...and the DOM half says the sentence. With neither end named there are
-    // no names to put in it, so it reads as the bare verb — a half-sentence,
-    // never a blank where a name was promised.
+    // ...and the DOM half says the verb, which is the whole of what it says.
     const widget = edgeless.querySelector('affine-edge-direction-widget');
     expect(widget).toBeTruthy();
     await wait(50);
@@ -414,15 +415,20 @@ describe('the direction of a wardley dependency', () => {
   });
 
   /**
-   * The PO's acceptance of 02/08/2026, point 5.
+   * The PO's acceptance of 02/08/2026, point 5, and its second pass.
    *
    * The reveal used to be two marks that covered each other: a canvas chevron
    * at the tip of the link, and a horizontal `depends on` tooltip that landed
    * on the same tip (the "middle" of a two-point path is its last point). It is
-   * one mark now — the whole sentence, turned onto the line, ending in a point
-   * aimed at the provider:
+   * one mark now — turned onto the line, ending in a point aimed at the
+   * provider:
    *
-   *     Kettle | depends on > Electricity
+   *     depends on >
+   *
+   * The second pass took the two NAMES back out of it. `Kettle depends on
+   * Electricity` is a box longer than most links, so it covered the very
+   * components it was naming — and the map already draws those names at both
+   * ends of the line. What the drawing does not say is what the line MEANS.
    */
   test('the reveal reads ALONG the link, pointing at the provider', async () => {
     addMap();
@@ -459,10 +465,12 @@ describe('the direction of a wardley dependency', () => {
     const shown = await label();
     expect(shown).toBeTruthy();
 
-    // The whole sentence, in the order it is read: who needs, the role's verb,
-    // what is needed. The two names come out of the DOCUMENT — the grouped
-    // label beside each circle — and only the verb out of the vocabulary.
-    expect(shown!.textContent?.trim()).toBe('Kettle depends on Electricity');
+    // The VERB, and nothing else. Both ends are named on this board — the
+    // grouped label beside each circle — and neither name is in the box: the
+    // label is short enough to sit on the link instead of over the map.
+    expect(shown!.textContent?.trim()).toBe('depends on');
+    expect(shown!.textContent).not.toContain('Kettle');
+    expect(shown!.textContent).not.toContain('Electricity');
 
     // Turned onto the segment it sits on, not laid flat across it.
     expect(transform(shown!).degrees).toBeCloseTo(45, 0);
@@ -486,19 +494,97 @@ describe('the direction of a wardley dependency', () => {
       ).toBeGreaterThan(60);
     }
 
-    // M3 turns the box over: the sentence swaps its subject and its object,
-    // and the point moves to the end that now faces the provider. The picture
-    // and the data cannot disagree.
+    // M3 turns the box over: the POINT moves to the end that now faces the
+    // provider, while the verb is spelled exactly as before — it is read the
+    // same way round whichever way the link runs. The picture and the data
+    // cannot disagree.
     invert([edge]);
     const reversed = await label();
-    expect(reversed!.textContent?.trim()).toBe('Electricity depends on Kettle');
+    expect(reversed!.textContent?.trim()).toBe('depends on');
     expect(reversed!.dataset.arrow).toBe('start');
     // Still readable: the link now runs up-and-left, so the box is turned by
     // 180° and lands back at the same +45°.
     expect(transform(reversed!).degrees).toBeCloseTo(45, 0);
   });
 
-  test('the sentence is in MODEL units — it zooms with the map', async () => {
+  /**
+   * The PO recette of 02/08/2026, second pass, point 4: `depends on` was
+   * painting OVER the senior menu. The label belongs to the canvas and the
+   * toolbars overhang the canvas, so the layer was simply the wrong way round.
+   */
+  describe('the label sits UNDER the toolbars', () => {
+    /** `auto` is not a number, and it is the level a bare host sits at. */
+    const zOf = (element: Element) => {
+      const value = getComputedStyle(element).zIndex;
+      return value === 'auto' ? 0 : Number.parseInt(value, 10);
+    };
+
+    /** The direction widget's HOST — the sibling that carries the layer. */
+    const host = () =>
+      edgeless.widgetComponents[
+        EDGE_DIRECTION_WIDGET
+      ] as unknown as HTMLElement;
+
+    const revealOnASelectedEdge = async () => {
+      addMap();
+      const consumer = addNamedNode(400, 200, 'Kettle');
+      const provider = addNamedNode(900, 700, 'Electricity');
+      const edge = addDependency(consumer, provider);
+      await wait(50);
+      service.selection.set({ elements: [edge], editing: false });
+      await wait(100);
+      await (host() as unknown as { updateComplete: Promise<unknown> })
+        .updateComplete;
+      return edge;
+    };
+
+    test('under the bottom toolbar, whose senior menu rides on it', async () => {
+      await revealOnASelectedEdge();
+      expect(
+        host().shadowRoot?.querySelector('[data-testid="edge-direction-label"]')
+      ).not.toBeNull();
+
+      // The senior menu and its sub-menus are appended INSIDE
+      // `edgeless-toolbar-widget`'s own subtree, so they are capped at its
+      // z-index — beating that one host is what put the label over the menu.
+      const bottom = edgeless.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as
+        | unknown as HTMLElement
+        | undefined;
+      expect(bottom).not.toBeUndefined();
+      expect(zOf(host())).toBeLessThan(zOf(bottom!));
+    });
+
+    test('…and under the contextual toolbar as well', async () => {
+      await revealOnASelectedEdge();
+
+      // `editor-toolbar` takes `--affine-z-index-popover` verbatim. The
+      // contest is decided between HOSTS: `affine-toolbar-widget` declares no
+      // stacking context of its own, so that 1000 competes at the sibling
+      // level this widget's host lives at.
+      const contextual = (
+        edgeless.widgetComponents[AFFINE_TOOLBAR_WIDGET] as unknown as
+          | { toolbar?: HTMLElement }
+          | undefined
+      )?.toolbar;
+      expect(contextual, 'the element toolbar did not open').toBeTruthy();
+      expect(zOf(host())).toBeLessThan(zOf(contextual!));
+    });
+
+    test('…and it is a direct child of the widgets layer, over the canvas', async () => {
+      await revealOnASelectedEdge();
+
+      // `.widgets-container` has `contain: layout`, so it IS a stacking
+      // context: being its direct child is what makes the two comparisons
+      // above meaningful, and what keeps a z-index of 0 above the canvas —
+      // the container as a whole paints over `.edgeless-container`, its
+      // earlier sibling outside it.
+      expect(
+        host().parentElement?.classList.contains('widgets-container')
+      ).toBe(true);
+    });
+  });
+
+  test('the label is in MODEL units — it zooms with the map', async () => {
     addMap();
     const consumer = addNamedNode(400, 200, 'Kettle');
     const provider = addNamedNode(900, 700, 'Electricity');

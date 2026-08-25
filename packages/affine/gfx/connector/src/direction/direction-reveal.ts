@@ -14,12 +14,11 @@ import {
 /**
  * **M2 of `docs/adr/0010` — "show it".**
  *
- * A typed edge reveals its orientation on hover and on selection: ONE mark,
- * the whole sentence laid ALONG the link — `Kettle depends on Electricity` —
- * in a box whose far end is a point aimed at the target. At rest the board
- * keeps the canonical arrowless look, because on a Wardley map a permanent
- * head already means something else (evolution movement), and two meanings on
- * one glyph make both unreadable.
+ * A typed edge reveals its orientation on hover and on selection: ONE mark, the
+ * role's verb laid ALONG the link — `depends on` — in a box whose far end is a
+ * point aimed at the target. At rest the board keeps the canonical arrowless
+ * look, because on a Wardley map a permanent head already means something else
+ * (evolution movement), and two meanings on one glyph make both unreadable.
  *
  * ## The chevron is gone (PO acceptance of 02/08/2026, point 5)
  *
@@ -34,7 +33,7 @@ import {
  * - Even placed correctly, a horizontal box across a diagonal link reads as a
  *   sticker dropped on the map rather than as a statement about that link.
  *
- * The fix is one mark instead of two: the sentence, rotated onto the line,
+ * The fix is one mark instead of two: the verb, rotated onto the line,
  * ending in the point that used to be a separate chevron. So this file no
  * longer owns a canvas overlay at all — {@link labelAnchorOf} says where the
  * label goes and which way it turns, and the DOM widget draws it. Nothing can
@@ -64,7 +63,7 @@ const pathOf = (model: ConnectorElementModel): IVec[] | null => {
 };
 
 /**
- * Where the sentence sits on a typed edge, and how it is turned.
+ * Where the label sits on a typed edge, and how it is turned.
  *
  * All of it in MODEL space: the widget projects `at` through the viewport and
  * scales the box by the zoom, so the label is glued to its link the way a
@@ -82,8 +81,8 @@ export interface EdgeLabelAnchor {
    * Whether that 180° turn happened. It is the whole reason the caller needs
    * this flag: the point of the box must face the TARGET, so on a link running
    * right-to-left — where the turn put the box's right end at the SOURCE — the
-   * point moves to the box's left end. The sentence itself never reverses; a
-   * mirrored `A depends on B` would be a lie, not a rotation.
+   * point moves to the box's left end. The words themselves never reverse; a
+   * mirrored `depends on` would be a smudge, not a rotation.
    */
   flipped: boolean;
 }
@@ -132,7 +131,7 @@ function median(
 }
 
 /**
- * Where a typed edge's sentence goes and how it is turned — the whole geometry
+ * Where a typed edge's label goes and how it is turned — the whole geometry
  * of M2 since the chevron was folded into the label.
  *
  * `null` for an edge with no direction to show: no routed path yet, or a path

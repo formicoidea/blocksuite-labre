@@ -1,7 +1,7 @@
 import type { RootBlockModel } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
-import { GfxControllerIdentifier, type RoleDefs } from '@labre/std/gfx';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
@@ -13,44 +13,70 @@ import {
   EdgeDirectionManager,
   labelAnchorOf,
 } from './direction-reveal.js';
-import {
-  endpointNamesOf,
-  roleVocabularies,
-  type TypedEdge,
-} from './typed-edge.js';
+import { edgeVerbOf, type TypedEdge } from './typed-edge.js';
 
 export const EDGE_DIRECTION_WIDGET = 'affine-edge-direction-widget';
 
 /**
  * Screen pixels between the bottom of the viewport and the armed-tool hint —
  * clear of the edgeless toolbar, which is the one thing that lives down there.
+ * The hint hangs UPWARDS from that line (see the rule below), so the whole box
+ * is above the strip and not merely its top edge.
  */
 const HINT_BOTTOM_GAP = 96;
 
 /** How wide the hint may get before the sentence wraps. */
 const HINT_MAX_WIDTH = 420;
 
+/** One line of hint, box included — the room it needs above its anchor line. */
+const HINT_MIN_HEIGHT = 48;
+
+/**
+ * **Under every toolbar** — the reverse of the reading panel's choice, for the
+ * reverse reason (PO recette of 02/08/2026, point 4).
+ *
+ * What this widget draws belongs to the CANVAS: a label glued to a link, in
+ * model units, turning and scaling with the map. The toolbars overhang the
+ * canvas, so a canvas mark that paints over the senior menu — which is what the
+ * PO photographed — is a layering mistake and not a matter of taste. The
+ * reading panel is the opposite case: a piece of UI the user is reading, which
+ * the toolbars may wait underneath.
+ *
+ * `0`, not `2`, and both numbers are about siblings rather than about depth.
+ * `.widgets-container` has `contain: layout`, so it is a stacking context and
+ * every widget host competes inside it: `edgeless-toolbar-widget` takes
+ * `z-index: 1` (its senior menu and sub-menus are appended inside its own
+ * subtree, so they ride on that 1), and `editor-toolbar` — the contextual one —
+ * takes `--affine-z-index-popover`, which the theme sets to 1000. `2` cleared
+ * the first of those and that is exactly the bug. `0` is under both, and still
+ * over the canvas: the container as a whole paints above `.edgeless-container`,
+ * which is its earlier sibling OUTSIDE it.
+ */
+const EDGE_DIRECTION_Z_INDEX = 0;
+
 /**
  * The PROSE of `docs/adr/0010`'s M1 and M2, on the pattern
  * `violation-detail-widget` established one directory away — and, since the
  * chevron was folded into the label, the whole of what M2 draws.
  *
- * Two things, both of them sentences and therefore both of them here rather
- * than on the canvas (a tooltip rendered at a quarter size is not a smaller
- * tooltip, it is an unreadable one):
+ * Two things, both of them WORDS and therefore both of them here rather than on
+ * the canvas (a tooltip rendered at a quarter size is not a smaller tooltip, it
+ * is an unreadable one):
  *
- * - **M2** — while a typed edge is hovered or selected, the WHOLE sentence laid
- *   along the link: `Kettle depends on Electricity`, in a box that ends in a
- *   point aimed at the provider. Since the PO acceptance of 02/08/2026 this is
- *   the only mark the reveal draws; the canvas chevron it used to sit on top of
- *   is folded into that point (see `direction-reveal.ts`).
+ * - **M2** — while a typed edge is hovered or selected, the role's VERB laid
+ *   along the link: `depends on`, in a box that ends in a point aimed at the
+ *   provider. Since the PO acceptance of 02/08/2026 this is the only mark the
+ *   reveal draws; the canvas chevron it used to sit on top of is folded into
+ *   that point (see `direction-reveal.ts`). Since the second pass of the same
+ *   recette it is the verb ALONE: the full sentence was longer than the links
+ *   it was laid on, so it covered the very components it named — and those
+ *   names are already drawn at both ends of the line.
  * - **M1** — while a tool that draws a typed edge is armed, the sentence that
  *   tells the user which way to drag. That is what turns the direction their
  *   gesture writes into a statement they made.
  *
  * It knows no framework: the verb is a key declared by a ROLE
- * (`EdgeDirectionDef`) and resolved through the host's catalogue, and the two
- * names come out of the document itself.
+ * (`EdgeDirectionDef`) and resolved through the host's catalogue.
  */
 export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
@@ -58,12 +84,12 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 2;
+      z-index: ${unsafeCSS(EDGE_DIRECTION_Z_INDEX)};
       pointer-events: none;
     }
 
     /*
-     * The sentence, laid along its link.
+     * The verb, laid along its link.
      *
      * Every length below is in MODEL units: render() multiplies the whole box
      * by the viewport zoom, so the label keeps its proportion to the line it
@@ -98,12 +124,12 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
     }
 
     /*
-     * Which END of the box is the point — never which end of the SENTENCE.
+     * Which END of the box is the point — never which end of the WORDS.
      * data-arrow=end is the ordinary case: the link runs left-to-right on
      * screen, so the target is past the last word. data-arrow=start is the same
      * box on a link running the other way, turned 180° to stay readable: the
      * target is now behind the first word, so the point moves there and the
-     * sentence is left alone.
+     * verb is left alone, spelled the way it is read.
      */
     .edge-direction-label[data-arrow='end'] {
       padding-right: calc(8px + var(--edge-direction-point));
@@ -140,7 +166,16 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
      */
     .edge-direction-hint {
       position: absolute;
-      transform: translateX(-50%);
+      /*
+       * Hangs UPWARDS from the line render() computes, rather than downwards
+       * from it. The widget now paints UNDER the toolbars (see
+       * EDGE_DIRECTION_Z_INDEX), so a box whose lower third crossed the
+       * 80px-tall toolbar strip would have that third clipped away by it — and
+       * the clipped third is where a two-line hint puts its second line.
+       * HINT_BOTTOM_GAP is the strip's clearance, so anchoring the box's
+       * BOTTOM there puts the whole of it in the clear whatever it says.
+       */
+      transform: translate(-50%, -100%);
       /*
        * width, not max-width alone. An absolutely positioned box shrinks to fit
        * its CONTAINING BLOCK, and this one's containing block is the zero-sized
@@ -173,8 +208,6 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
 
   @state()
   private accessor _hint: { key: string; fallback?: string } | null = null;
-
-  private _vocabularies: readonly RoleDefs[] | null = null;
 
   get gfx() {
     return this.std.get(GfxControllerIdentifier);
@@ -240,33 +273,15 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
-   * The sentence a revealed edge makes, in the framework's own words.
+   * The word a revealed edge is labelled with, in the framework's own words —
+   * the role's verb, said in the host's language.
    *
-   * The verb when the role declares one; the role's LABEL otherwise, because
-   * the label is the only mark left and an unlabelled arrow says which way
-   * without ever saying what. `''` when the role declares neither, which is the
-   * one case where the library genuinely has nothing to add.
+   * `''` when the role declares neither verb nor label, in which case the
+   * caller draws nothing at all.
    */
-  private _sentenceFor(edge: TypedEdge): string {
-    const verb = edge.direction
-      ? translateKey(
-          this.std,
-          edge.direction.verbKey,
-          edge.direction.verbFallback
-        )
-      : edge.role.labelKey
-        ? translateKey(this.std, edge.role.labelKey, edge.role.labelFallback)
-        : '';
-
-    // Resolved once: this runs on every pan and every zoom frame while an edge
-    // is revealed, and the registered vocabularies cannot change under a
-    // mounted editor.
-    this._vocabularies ??= roleVocabularies(this.std);
-    const { source, target } = endpointNamesOf(this._vocabularies, edge.model);
-    // An unnamed end is DROPPED, not blanked: `depends on Electricity` is a
-    // half-sentence the user can finish by looking at the line; a leading gap
-    // is a promise of a name that was never there.
-    return [source, verb, target].filter(Boolean).join(' ');
+  private _verbFor(edge: TypedEdge): string {
+    const verb = edgeVerbOf(edge);
+    return verb ? translateKey(this.std, verb.key, verb.fallback) : '';
   }
 
   private _renderLabel(edgeId: string) {
@@ -279,8 +294,8 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
     const anchor = labelAnchorOf(edge.model);
     if (!anchor) return nothing;
 
-    const sentence = this._sentenceFor(edge);
-    if (!sentence) return nothing;
+    const verb = this._verbFor(edge);
+    if (!verb) return nothing;
 
     const { viewport } = this.gfx;
     const [x, y] = viewport.toViewCoord(anchor.at[0], anchor.at[1]);
@@ -295,7 +310,7 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
       data-arrow=${anchor.flipped ? 'start' : 'end'}
       title=${edge.role.labelKey
         ? translateKey(this.std, edge.role.labelKey, edge.role.labelFallback)
-        : sentence}
+        : verb}
       style=${styleMap({
         left: `${x}px`,
         top: `${y}px`,
@@ -306,7 +321,7 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
         transform: `translate(-50%, -50%) rotate(${degrees}deg) scale(${viewport.zoom})`,
       })}
     >
-      ${sentence}
+      ${verb}
     </div>`;
   }
 
@@ -326,7 +341,10 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
       data-testid="edge-direction-hint"
       style=${styleMap({
         left: `${viewport.width / 2}px`,
-        top: `${Math.max(0, viewport.height - HINT_BOTTOM_GAP)}px`,
+        // The BOTTOM of the box, since the rule above hangs it upwards. The
+        // floor is what keeps a very short editor pushing the banner down
+        // rather than off its top edge, which is what `0` would now do.
+        top: `${Math.max(HINT_MIN_HEIGHT, viewport.height - HINT_BOTTOM_GAP)}px`,
         // The cap a percentage cannot express here: the containing block is the
         // zero-sized host, so the only honest width bound is the viewport's.
         maxWidth: `${Math.max(120, Math.min(HINT_MAX_WIDTH, viewport.width - 32))}px`,
