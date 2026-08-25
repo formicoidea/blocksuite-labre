@@ -155,6 +155,10 @@ export class MobileMenuInput extends MenuFocusable {
     this.data.onChange?.(this.inputRef.value);
   };
 
+  private readonly onBlur = () => {
+    this.data.onBlur?.(this.inputRef.value);
+  };
+
   private readonly onInput = (e: InputEvent) => {
     e.stopPropagation();
     if (e.isComposing) return;
@@ -184,6 +188,7 @@ export class MobileMenuInput extends MenuFocusable {
       @focus="${() => {
         this.menu.setFocusOnly(this);
       }}"
+      @blur="${this.onBlur}"
       @input="${this.onInput}"
       @copy="${this.stopPropagation}"
       @paste="${this.stopPropagation}"
