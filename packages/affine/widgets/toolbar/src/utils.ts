@@ -6,6 +6,7 @@ import {
 import {
   ActionPlacement,
   planToolbarLayout,
+  TOOLBAR_SETTLE_DELAY,
   type ToolbarAction,
   type ToolbarActions,
   type ToolbarContext,
@@ -14,8 +15,10 @@ import {
   type ToolbarLayoutStep,
   type ToolbarMetrics,
   type ToolbarPlacement,
+  toolbarRoomChanged,
 } from '@labre/affine-shared/services';
 import { nextTick } from '@labre/global/utils';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { MoreVerticalIcon } from '@blocksuite/icons/lit';
 import type {
   AutoUpdateOptions,
@@ -637,6 +640,10 @@ function sameLayout(a: ToolbarLayout, b: ToolbarLayout) {
  * resize replans from those numbers instead of flashing the row back to its
  * full width just to measure it again — which is also what makes the collapse
  * reversible: widen the editor and the plan simply spends fewer steps.
+ *
+ * And it replans only at the ACCALMIE. While the room is still moving — a zoom,
+ * a pan, a window being dragged — the plan on screen is frozen: see
+ * {@link ToolbarFitter.resize}.
  */
 export class ToolbarFitter {
   #context: ToolbarContext | null = null;
@@ -650,12 +657,27 @@ export class ToolbarFitter {
   /** The whole row, measured once. `null` until the first frame lands. */
   #metrics: ToolbarMetrics | null = null;
 
+  /** The room the row is waiting to be replanned for, once it holds still. */
+  #pending: number | null = null;
+
+  /** Armed while the room is still moving; fires at the accalmie. */
+  #settleTimer: ReturnType<typeof setTimeout> | null = null;
+
   #steps: readonly ToolbarLayoutStep[] = [];
 
   /** Bumped by anything that invalidates a measurement still in flight. */
   #token = 0;
 
   constructor(private readonly toolbar: EditorToolbar) {}
+
+  /** Nothing is waiting on the room any more. */
+  #cancelSettle() {
+    if (this.#settleTimer !== null) {
+      clearTimeout(this.#settleTimer);
+      this.#settleTimer = null;
+    }
+    this.#pending = null;
+  }
 
   #apply(plan: readonly ToolbarLayoutStep[]) {
     const next = emptyToolbarLayout();
@@ -708,6 +730,66 @@ export class ToolbarFitter {
     }
   }
 
+  /**
+   * Spends the room the last measurement was waiting on.
+   *
+   * The hysteresis is checked a second time here, against the plan that is
+   * actually on screen: a gesture that wandered away and came back has changed
+   * nothing, and a row is not rebuilt to arrive where it already is.
+   */
+  #replan() {
+    const metrics = this.#metrics;
+    const available = this.#pending;
+    this.#pending = null;
+
+    if (!metrics || available === null || !this.#context) return;
+    if (!toolbarRoomChanged(metrics.available, available)) return;
+
+    this.#metrics = { ...metrics, available };
+    void this.#converge(
+      planToolbarLayout(this.#steps, this.#metrics),
+      ++this.#token
+    );
+  }
+
+  /**
+   * Waits for the room to hold still, then replans once.
+   *
+   * Re-armed by every further change, so a gesture of any length spends exactly
+   * one plan — the one for the width it ended on.
+   */
+  #settle() {
+    if (this.#settleTimer !== null) clearTimeout(this.#settleTimer);
+
+    this.#settleTimer = setTimeout(() => {
+      this.#settleTimer = null;
+
+      // A wheel zoom breathes: between two notches the room can hold still for
+      // longer than the delay and the gesture still be under way. The viewport
+      // knows it is, and says so for as long as it lasts.
+      if (this.#zooming()) {
+        this.#settle();
+        return;
+      }
+
+      this.#replan();
+    }, TOOLBAR_SETTLE_DELAY);
+  }
+
+  /**
+   * Whether a zoom gesture is under way, as the viewport itself reports it.
+   *
+   * Only the zoom. A pan changes the room on every frame of the drag, so the
+   * delay above already spans it whole; and `panning$` is raised by every
+   * programmatic recentring too, which would freeze the row for gestures no one
+   * is making. In page mode there is no viewport at all, and the delay is then
+   * the only signal there is — which is all it needs to be.
+   */
+  #zooming() {
+    const gfx = this.#context?.std.getOptional(GfxControllerIdentifier);
+    return gfx?.viewport.zooming$.value === true;
+  }
+
   async #measure(token: number) {
     await settled();
     if (token !== this.#token || !this.#context) return;
@@ -725,6 +807,10 @@ export class ToolbarFitter {
    */
   render(context: ToolbarContext, flavour: string) {
     const token = ++this.#token;
+
+    // A new selection is a new row: whatever the old one was waiting for no
+    // longer describes anything, and it is measured whole again from here.
+    this.#cancelSettle();
 
     this.#context = context;
     this.#flavour = flavour;
@@ -744,25 +830,36 @@ export class ToolbarFitter {
   /** The toolbar is going away: stop measuring it. */
   reset() {
     this.#token++;
+    this.#cancelSettle();
     this.#context = null;
     this.#metrics = null;
   }
 
   /**
-   * The room the row has may have changed — replan, and re-render only if the
-   * answer differs from what is already on screen.
+   * The room the row has may have changed.
+   *
+   * Two answers are refused before anything is replanned, and the PO's second
+   * pass of 02/08/2026 is about both:
+   *
+   * 1. **A change too small to mean anything.** Two measurements a pixel apart
+   *    are the same measurement, and a row that believes them alternates
+   *    between two compositions for as long as they alternate.
+   * 2. **A change that is still happening.** A zoom moves the room on every
+   *    frame; replanning on each of them re-composes the row under the cursor,
+   *    and every new width moves the anchoring with it — which is the toolbar
+   *    "hesitating between anchor points" the PO reported. The plan on screen
+   *    is FROZEN for the whole gesture and spent once, when the viewport lands.
+   *
+   * The room is remembered as it goes by, so the plan that is finally made is
+   * the one for the width the gesture ended on, not the width it started from.
    */
   resize() {
-    const metrics = this.#metrics;
-    if (!metrics || !this.#context) return;
+    if (!this.#metrics || !this.#context) return;
 
     const available = availableWidthOf(this.toolbar);
-    if (available === metrics.available) return;
+    if (!toolbarRoomChanged(this.#metrics.available, available)) return;
 
-    this.#metrics = { ...metrics, available };
-    void this.#converge(
-      planToolbarLayout(this.#steps, this.#metrics),
-      ++this.#token
-    );
+    this.#pending = available;
+    this.#settle();
   }
 }

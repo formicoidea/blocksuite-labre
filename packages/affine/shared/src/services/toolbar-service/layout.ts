@@ -32,7 +32,58 @@
  *
  * Every entry that CAN shrink shrinks before any entry moves — a row of icons
  * is still a row of things you can click, and a menu is not.
+ *
+ * ## When a plan is worth remaking
+ *
+ * The arithmetic above answers "what should the row look like at this width".
+ * It does NOT answer "is this width worth answering for", and the PO's second
+ * pass of 02/08/2026 is about that second question: during a zoom the room the
+ * row has moves sixty times a second, and a row that replans on every one of
+ * those frames visibly hesitates between several compositions — and, since its
+ * width is what the positioner anchors, between several places.
+ *
+ * Two answers are refused, both of them pure and both of them here:
+ * {@link toolbarRoomChanged} refuses a change too small to mean anything, and
+ * {@link TOOLBAR_SETTLE_DELAY} is how long the room must hold still before the
+ * widget bothers to ask at all.
  */
+
+/**
+ * How much the room must move before the row is worth re-composing, in pixels.
+ *
+ * A few pixels, deliberately: less than the narrowest thing the row could give
+ * up, so no real degradation is ever delayed by it, and more than the noise the
+ * measurements carry — a fractional zoom, a rounded rect, a scrollbar coming
+ * and going. Two measurements that differ by a hair are the same measurement,
+ * and treating them as two is how a composition ends up alternating forever.
+ */
+export const TOOLBAR_ROOM_HYSTERESIS = 4;
+
+/**
+ * How long the room must hold still before the row is replanned, in ms.
+ *
+ * Long enough to bridge the frames of a gesture — a zoom, a pan, a window being
+ * dragged — so the row keeps ONE composition for the whole of it, and short
+ * enough that letting go feels like the row simply followed.
+ */
+export const TOOLBAR_SETTLE_DELAY = 150;
+
+/**
+ * Whether the room the row has really changed since the plan on screen.
+ *
+ * `Infinity` is a value like any other here: a row nothing has positioned yet
+ * has all the room in the world, and going from that to a finite cap (or back)
+ * is always a change, however large the numbers are.
+ */
+export function toolbarRoomChanged(
+  planned: number,
+  measured: number,
+  threshold: number = TOOLBAR_ROOM_HYSTERESIS
+): boolean {
+  if (planned === measured) return false;
+  if (!Number.isFinite(planned) || !Number.isFinite(measured)) return true;
+  return Math.abs(measured - planned) > threshold;
+}
 
 /** One entry of the row, as the planner sees it. */
 export interface ToolbarLayoutItem {

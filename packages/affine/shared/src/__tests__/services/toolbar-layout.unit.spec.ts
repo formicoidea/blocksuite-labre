@@ -2,10 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import {
   planToolbarLayout,
+  TOOLBAR_ROOM_HYSTERESIS,
   type ToolbarLayoutItem,
   type ToolbarLayoutStep,
   type ToolbarMetrics,
   toolbarDegradationSteps,
+  toolbarRoomChanged,
 } from '../../services/toolbar-service/layout.js';
 
 /**
@@ -210,5 +212,51 @@ describe('how much of the row is spent', () => {
     );
 
     expect(plan).toEqual([]);
+  });
+});
+
+describe('whether a new width is worth a new plan', () => {
+  // The PO's second pass, point 1: the row hesitated between compositions
+  // during a zoom. Half the remedy is here — a measurement that barely moved
+  // is not a new measurement, so it can never make the row change its mind.
+  // (The other half, freezing the plan for the length of the gesture, is
+  // `toolbar-collapse-stability.spec.ts`: it needs a viewport that moves.)
+
+  test('the same width is not a change', () => {
+    expect(toolbarRoomChanged(320, 320)).toBe(false);
+  });
+
+  test('a pixel of tremor is not a change', () => {
+    // The two measurements a rounding error alternates between. Neither of
+    // them may replan, in either direction, or the row oscillates forever.
+    expect(toolbarRoomChanged(320, 321)).toBe(false);
+    expect(toolbarRoomChanged(321, 320)).toBe(false);
+    expect(toolbarRoomChanged(320, 319.5)).toBe(false);
+  });
+
+  test('the threshold is the last width that is still tremor', () => {
+    const room = 320;
+
+    expect(toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS)).toBe(false);
+    expect(
+      toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS + 0.5)
+    ).toBe(true);
+  });
+
+  test('a room that really moved is a change', () => {
+    // Narrower and wider both count: the collapse is reversible, and the room
+    // coming back has to be as audible as the room running out.
+    expect(toolbarRoomChanged(320, 240)).toBe(true);
+    expect(toolbarRoomChanged(240, 320)).toBe(true);
+  });
+
+  test('getting a cap at all is always a change', () => {
+    // A row nothing has positioned yet has all the room in the world; the
+    // first reposition is what tells it otherwise, and no threshold applies.
+    expect(toolbarRoomChanged(Number.POSITIVE_INFINITY, 320)).toBe(true);
+    expect(toolbarRoomChanged(320, Number.POSITIVE_INFINITY)).toBe(true);
+    expect(
+      toolbarRoomChanged(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)
+    ).toBe(false);
   });
 });
