@@ -6,5 +6,6 @@ export * from './code-block-service';
 export * from './code-preview-extension';
 export * from './code-toolbar';
 export * from './highlight/const';
+export * from './line-numbers';
 export * from './turbo/code-layout-handler';
 export * from './turbo/code-painter.worker';

@@ -8,6 +8,7 @@ import {
 import {
   BlockCommentManager,
   DocModeProvider,
+  EditorSettingProvider,
   NotificationProvider,
 } from '@labre/affine-shared/services';
 import { getViewportElement } from '@labre/affine-shared/utils';
@@ -34,6 +35,10 @@ import { CodeBlockConfigExtension } from './code-block-config.js';
 import { CodeBlockInlineManagerExtension } from './code-block-inline.js';
 import { CodeBlockHighlighter } from './code-block-service.js';
 import { CodeBlockPreviewIdentifier } from './code-preview-extension.js';
+import {
+  readGlobalLineNumbers,
+  resolveShowLineNumbers,
+} from './line-numbers.js';
 import { codeBlockStyles } from './styles.js';
 
 export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> {
@@ -95,6 +100,22 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
 
   get highlighter() {
     return this.std.get(CodeBlockHighlighter);
+  }
+
+  /**
+   * Whether line numbers are currently shown for this block, accounting for the
+   * global setting and feature flags.
+   */
+  get showLineNumbers(): boolean {
+    return resolveShowLineNumbers({
+      // Feature flag: mobile (or any other consumer) can hard-disable via
+      // CodeBlockConfigExtension.
+      featureEnabled:
+        this.std.getOptional(CodeBlockConfigExtension.identifier)
+          ?.showLineNumbers ?? true,
+      blockOverride: this.model.props.lineNumber,
+      globalDefault: this._showLineNumbersGlobal$.value,
+    });
   }
 
   override get topContenteditableElement() {
@@ -159,8 +180,31 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
     }
   }
 
+  /**
+   * Stable signal: true when the global editor setting enables line numbers.
+   * Defaults to true. Updated reactively by an effect in connectedCallback.
+   * Using a writable signal (not reassigned to computed) keeps the reference
+   * stable so any downstream computed/effect that captures it stays correct.
+   */
+  private readonly _showLineNumbersGlobal$: Signal<boolean> = signal(true);
+
   override connectedCallback() {
     super.connectedCallback();
+
+    // Reactively sync the global line-number preference from EditorSettingProvider
+    // into the stable _showLineNumbersGlobal$ signal. The host owns the storage:
+    // the library only reads whatever the injected setting service exposes, the
+    // same seam as the telemetry adapter.
+    const editorSetting = this.std.getOptional(EditorSettingProvider);
+    if (editorSetting) {
+      this.disposables.add(
+        effect(() => {
+          this._showLineNumbersGlobal$.value = readGlobalLineNumbers(
+            editorSetting.setting$.value
+          );
+        })
+      );
+    }
 
     // set highlight options getter used by "exportToHtml"
     this.disposables.add(
@@ -410,11 +454,7 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
   }
 
   override renderBlock(): TemplateResult<1> {
-    const showLineNumbers =
-      (this.std.getOptional(CodeBlockConfigExtension.identifier)
-        ?.showLineNumbers ??
-        true) &&
-      (this.model.props.lineNumber ?? true);
+    const showLineNumbers = this.showLineNumbers;
 
     const preview = this.preview$.value;
     const previewContext = this.std.getOptional(
