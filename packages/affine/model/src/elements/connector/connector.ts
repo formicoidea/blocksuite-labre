@@ -177,6 +177,11 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
   override getNearestPoint(point: IVec): IVec {
     const { mode, absolutePath: path } = this;
 
+    // Degraded connector (vanished endpoint): no path to project onto.
+    if (path.length === 0) {
+      return [this.x, this.y];
+    }
+
     if (mode === ConnectorMode.Straight) {
       const first = path[0];
       const last = path[path.length - 1];
@@ -204,6 +209,11 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
    */
   getOffsetDistanceByPoint(point: IVec, bounds?: Bound) {
     const { mode, absolutePath: path } = this;
+
+    // Degraded connector (vanished endpoint): no path to measure along.
+    if (path.length === 0) {
+      return 0.5;
+    }
 
     let { x, y, w, h } = this;
     if (bounds) {
@@ -243,6 +253,12 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
    */
   getPointByOffsetDistance(offsetDistance = 0.5, bounds?: Bound): IVec {
     const { mode, absolutePath: path } = this;
+
+    // Degraded connector (vanished endpoint): fall back to the bound center.
+    if (path.length === 0) {
+      const b = bounds ?? this;
+      return [b.x + b.w / 2, b.y + b.h / 2];
+    }
 
     if (mode === ConnectorMode.Straight) {
       const first = path[0];
@@ -299,6 +315,12 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     }
 
     const { mode, strokeWidth, absolutePath: path } = this;
+
+    // Degraded connector (vanished endpoint): nothing painted, nothing hit.
+    // The label check above still applies if a label is displayed.
+    if (path.length === 0) {
+      return false;
+    }
 
     const point =
       mode === ConnectorMode.Curve
