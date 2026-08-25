@@ -245,8 +245,10 @@ export class KanbanSingleView extends SingleViewBase<KanbanViewData> {
 
   isShow(rowId: string): boolean {
     if (this.filter$.value?.conditions.length) {
+      // Filters are evaluated against every property of the view, hidden ones
+      // included: hiding a column must not silently drop the condition on it.
       const rowMap = Object.fromEntries(
-        this.properties$.value.map(column => [
+        this.propertiesRaw$.value.map(column => [
           column.id,
           column.cellGetOrCreate(rowId).jsonValue$.value,
         ])
