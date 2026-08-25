@@ -355,10 +355,12 @@ describe('wardley validation on the canvas', () => {
         xywh,
       });
 
-    test('W2 flags an inertia bar that is on no dependency', async () => {
+    test('W2 flags an inertia bar parked between two phase dividers', async () => {
       addBackground();
       addLink([400, 450], [900, 450]);
-      const bar = addInertia(700, 200);
+      // x = 880 is halfway between the "Product" and "Commodity" dividers of a
+      // 1600-wide map (652 and 1111), well clear of the band around either.
+      const bar = addInertia(880, 200);
       await settle();
 
       const violations = validation.violations$.value;
@@ -367,6 +369,17 @@ describe('wardley validation on the canvas', () => {
         ruleId: 'wardley.inertia-off-transition',
         elementIds: [bar],
       });
+    });
+
+    test('W2 says nothing about a bar astride a divider, alone (PO, 02/08)', async () => {
+      addBackground();
+      // The divider at x = 652, and no dependency anywhere near the bar: since
+      // the PO spelled the rule out, being astride the dashed line is the whole
+      // of what W2 asks.
+      addInertia(652, 200);
+      await settle();
+
+      expect(validation.violations$.value).toEqual([]);
     });
 
     /**
@@ -514,7 +527,8 @@ describe('wardley validation on the canvas', () => {
       });
       addBackwardsArrow('[300,300,40,40]');
       addLink([400, 450], [900, 450]);
-      addInertia(700, 200);
+      // Halfway between two phase dividers, so W2 has something to say.
+      addInertia(880, 200);
       addNode('[400,400,18,18]');
       addNode('[404,400,18,18]');
       await settle();

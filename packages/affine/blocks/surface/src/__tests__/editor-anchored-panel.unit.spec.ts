@@ -31,13 +31,14 @@ function boxFor(options: {
   bar: [number, number, number, number] | null;
 }): AnchoredPanelBox {
   const [originX, originY] = options.origin;
+  // Read out of the options object: TypeScript cannot narrow a mutable property
+  // inside a closure, and the spread below needs the narrowed tuple.
+  const bar = options.bar;
   const stub = {
     gfx: { viewport: options.editor },
     getBoundingClientRect: () => new DOMRect(originX, originY, 0, 0),
     anchorBar: () =>
-      options.bar
-        ? { getBoundingClientRect: () => new DOMRect(...options.bar) }
-        : null,
+      bar ? { getBoundingClientRect: () => new DOMRect(...bar) } : null,
   };
   return (
     EditorAnchoredPanel.prototype as unknown as {

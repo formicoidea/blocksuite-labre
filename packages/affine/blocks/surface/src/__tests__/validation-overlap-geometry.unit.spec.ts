@@ -228,6 +228,35 @@ describe('a `text` role is measured by its ink', () => {
     ]);
   });
 
+  /**
+   * A connector stores its whole shape in two points carrying TANGENTS, so
+   * reading the bare coordinates gives the chord and not the line the user can
+   * see. Every family that measures against an edge goes through the same
+   * sampler, and this is where it is pinned: a rule confidently wrong about
+   * what is plainly on screen is worse than one that says nothing.
+   */
+  it('follows a CURVED edge, not the chord under it', () => {
+    // Symmetric cubic from (0, 200) to (400, 200), control points 200 above:
+    // the drawn apex is (200, 50), 150 units above the chord.
+    const curved = element('e1', [0, 50, 400, 150], 'test:edge', {
+      absolutePath: [
+        Object.assign([0, 200], { absOut: [0, 0] }),
+        Object.assign([400, 200], { absIn: [400, 0] }),
+      ],
+    });
+    const word = (y: number) =>
+      element('t1', [150, y - 10, 200, 20], 'test:text', {
+        text: 'abcdefghij',
+        fontSize: 20,
+        textAlign: 'left' as const,
+      });
+
+    // Written across the apex of the drawn curve: struck through.
+    expect(raised(RULE, [curved, word(50)])).toEqual(['e1+t1']);
+    // Written on the chord, where nothing is actually drawn: silence.
+    expect(raised(RULE, [curved, word(200)])).toEqual([]);
+  });
+
   it('never widens a box, and leaves an element with no text alone', () => {
     // A word longer than its box is clipped by the box, not spilled out of it.
     const long = text('t1', 0, 'a'.repeat(200));
