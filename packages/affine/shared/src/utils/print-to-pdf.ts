@@ -1,3 +1,48 @@
+/**
+ * Styles injected into the print iframe.
+ *
+ * The printed document is always rendered on white paper, so the whole
+ * palette is pinned to a light one: a document read in the dark theme would
+ * otherwise print light text on a background the printer leaves white, and
+ * every one of those elements would come out invisible.
+ *
+ * Exported so the print-fidelity rules can be asserted in unit tests.
+ */
+export const printToPdfStyles = `@media print {
+              html, body {
+                height: initial !important;
+                overflow: initial !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+                color: #000 !important;
+                background: #fff !important;
+                color-scheme: light !important;
+              }
+              ::-webkit-scrollbar {
+                display: none;
+              }
+              :root, body {
+                --affine-text-primary: #000 !important;
+                --affine-text-secondary: #111 !important;
+                --affine-text-tertiary: #333 !important;
+                --affine-background-primary: #fff !important;
+                --affine-background-secondary: #fff !important;
+                --affine-background-tertiary: #fff !important;
+              }
+              body, [data-theme='dark'] {
+                color: #000 !important;
+                background: #fff !important;
+              }
+              body * {
+                color: #000 !important;
+                -webkit-text-fill-color: #000 !important;
+              }
+              :root {
+                --affine-note-shadow-box: none !important;
+                --affine-note-shadow-sticker: none !important;
+              }
+            }`;
+
 export async function printToPdf(
   rootElement: HTMLElement | null = document.querySelector(
     '.affine-page-viewport'
@@ -28,28 +73,18 @@ export async function printToPdf(
         reject(new Error('Root element not defined, unable to print pdf'));
         return;
       }
-      iframe.contentWindow.document
-        .write(`<!DOCTYPE html><html><head><style>@media print {
-              html, body {
-                height: initial !important;
-                overflow: initial !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-              }
-              ::-webkit-scrollbar {
-                display: none;
-              }
-              :root {
-                --affine-note-shadow-box: none !important;
-                --affine-note-shadow-sticker: none !important;
-              }
-            }</style></head><body></body></html>`);
+      const doc = iframe.contentWindow.document;
+
+      doc.write(
+        `<!DOCTYPE html><html><head><style>${printToPdfStyles}</style></head><body></body></html>`
+      );
+      doc.close();
 
       // copy all styles to iframe
       for (const element of document.styleSheets) {
         try {
           for (const cssRule of element.cssRules) {
-            const target = iframe.contentWindow.document.styleSheets[0];
+            const target = doc.styleSheets[0];
             target.insertRule(cssRule.cssText, target.cssRules.length);
           }
         } catch (e) {
@@ -90,10 +125,12 @@ export async function printToPdf(
         );
       }
 
-      const importedRoot = iframe.contentWindow.document.importNode(
-        rootElement,
-        true
-      ) as HTMLDivElement;
+      const importedRoot = doc.importNode(rootElement, true) as HTMLDivElement;
+
+      // force light theme in print iframe
+      doc.documentElement.dataset.theme = 'light';
+      doc.body.dataset.theme = 'light';
+      importedRoot.dataset.theme = 'light';
 
       // draw saved canvas image to canvas
       const allImportedCanvas = importedRoot.getElementsByTagName('canvas');
@@ -112,7 +149,7 @@ export async function printToPdf(
       }
 
       // append to iframe and print
-      iframe.contentWindow.document.body.append(importedRoot);
+      doc.body.append(importedRoot);
 
       await options.beforeprint?.(iframe);
 
