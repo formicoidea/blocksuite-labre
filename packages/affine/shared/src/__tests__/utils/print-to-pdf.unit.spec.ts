@@ -20,3 +20,14 @@ describe('printToPdfStyles', () => {
     );
   });
 });
+
+describe('printToPdfStyles code blocks and quotes', () => {
+  it('keeps the surfaces that carry code, quotes and borders visible', () => {
+    // pinning every background to #fff would flatten these three away
+    expect(printToPdfStyles).toContain(
+      '--affine-background-code-block: #f5f5f5 !important'
+    );
+    expect(printToPdfStyles).toContain('--affine-quote-color: #e3e3e3');
+    expect(printToPdfStyles).toContain('--affine-border-color: #e3e3e3');
+  });
+});

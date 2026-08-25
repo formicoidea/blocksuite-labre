@@ -28,6 +28,9 @@ export const printToPdfStyles = `@media print {
                 --affine-background-primary: #fff !important;
                 --affine-background-secondary: #fff !important;
                 --affine-background-tertiary: #fff !important;
+                --affine-background-code-block: #f5f5f5 !important;
+                --affine-quote-color: #e3e3e3 !important;
+                --affine-border-color: #e3e3e3 !important;
               }
               body, [data-theme='dark'] {
                 color: #000 !important;
