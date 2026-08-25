@@ -549,6 +549,10 @@ export const popMenu = (
         ],
       }),
       offset(4),
+      // Keep the menu inside the viewport: on a constrained viewport the
+      // allowed placements can all overflow, and without a shift the menu
+      // simply hangs off the edge of the screen.
+      shift({ padding: 8 }),
     ],
     container: props.container,
   });
