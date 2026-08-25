@@ -66,6 +66,35 @@ describe('TableHotkeysController', () => {
     expect(ui.requestUpdate).toHaveBeenCalled();
   });
 
+  it('clears the focused cell on Delete', () => {
+    const { logic, selectionController } = createLogic();
+    const ctrl = new TableHotkeysController(logic as any);
+    ctrl.hostConnected();
+    const cell = {
+      rowId: 'r1',
+      dataset: { rowId: 'r1', columnId: 'c1' },
+      column: { valueSetFromString: vi.fn(), type$: { value: 'text' } },
+    };
+    selectionController.getCellContainer.mockReturnValue(cell);
+    selectionController.selection = TableViewAreaSelection.create({
+      focus: { rowIndex: 0, columnIndex: 0 },
+      isEditing: false,
+    });
+    logic.hotkeys.Delete();
+    expect(cell.column.valueSetFromString).toHaveBeenCalledWith('r1', '');
+  });
+
+  it('deletes rows on Delete', () => {
+    const { logic, view, selectionController } = createLogic();
+    const ctrl = new TableHotkeysController(logic as any);
+    ctrl.hostConnected();
+    selectionController.selection = TableViewRowSelection.create({
+      rows: [{ id: 'r1' }],
+    });
+    logic.hotkeys.Delete();
+    expect(view.rowsDelete).toHaveBeenCalledWith(['r1']);
+  });
+
   it('starts editing on character key', () => {
     const { logic, selectionController } = createLogic();
     const ctrl = new TableHotkeysController(logic as any);
@@ -133,6 +162,29 @@ describe('TableHotkeysController', () => {
 });
 
 describe('Virtual TableHotkeysController', () => {
+  it('clears the focused cell on Delete', () => {
+    const { logic, selectionController } = createLogic();
+    const ctrl = new VirtualHotkeysController(logic as any);
+    ctrl.hostConnected();
+    const cell = {
+      rowId: 'r1',
+      dataset: { rowId: 'r1', columnId: 'c1' },
+      column$: {
+        value: { valueSetFromString: vi.fn(), type$: { value: 'text' } },
+      },
+    };
+    selectionController.getCellContainer.mockReturnValue(cell);
+    selectionController.selection = TableViewAreaSelection.create({
+      focus: { rowIndex: 0, columnIndex: 0 },
+      isEditing: false,
+    });
+    logic.hotkeys.Delete();
+    expect(cell.column$.value.valueSetFromString).toHaveBeenCalledWith(
+      'r1',
+      ''
+    );
+  });
+
   it('writes character to cell', () => {
     const { logic, selectionController } = createLogic();
     const ctrl = new VirtualHotkeysController(logic as any);
