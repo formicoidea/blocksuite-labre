@@ -16,14 +16,101 @@ import type {
   SliceSnapshot,
   TransformerMiddleware,
 } from '@labre/store';
-import { AssetsManager, MemoryBlobCRUD } from '@labre/store';
+import { AssetsManager, MemoryBlobCRUD, Schema } from '@labre/store';
+import { TestWorkspace } from '@labre/store/test';
+import { MarkdownTransformer } from '@labre/affine-widget-linked-doc';
 import { describe, expect, test } from 'vitest';
 
+import { AffineSchemas } from '../../schemas.js';
 import { createJob } from '../utils/create-job.js';
 import { getProvider } from '../utils/get-provider.js';
 import { nanoidReplacement } from '../utils/nanoid-replacement.js';
+import { testStoreExtensions } from '../utils/store.js';
 
 const provider = getProvider();
+
+describe('markdown frontmatter', () => {
+  const importDoc = async (markdown: string, fileName = 'fallback-title') => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const docId = await MarkdownTransformer.importMarkdownToDoc({
+      collection,
+      schema,
+      markdown,
+      fileName,
+      extensions: testStoreExtensions,
+    });
+    expect(docId).toBeTruthy();
+    return { collection, docId: docId! };
+  };
+
+  const exportDocToMarkdown = async (collection: TestWorkspace, id: string) => {
+    const doc = collection.getDoc(id)!.getStore({ id });
+    const job = doc.getTransformer();
+    const snapshot = job.docToSnapshot(doc)!;
+    const adapter = new MarkdownAdapter(job, doc.provider);
+    const result = await adapter.fromDocSnapshot({
+      snapshot,
+      assets: job.assetsManager,
+    });
+    return result.file;
+  };
+
+  test('imports frontmatter metadata into doc meta', async () => {
+    const { collection, docId } = await importDoc(`---
+title: Web developer
+created: 2018-04-12T09:51:00
+updated: 2018-04-12T10:00:00
+tags: [a, b]
+favorite: true
+---
+Hello world
+`);
+
+    const meta = collection.meta.getDocMeta(docId);
+    expect(meta?.title).toBe('Web developer');
+    expect(meta?.createDate).toBe(Date.parse('2018-04-12T09:51:00'));
+    expect(meta?.updatedDate).toBe(Date.parse('2018-04-12T10:00:00'));
+    expect(meta?.favorite).toBe(true);
+    expect(meta?.tags).toEqual(['a', 'b']);
+  });
+
+  test('keeps the frontmatter out of the content on a round trip', async () => {
+    const { collection, docId } = await importDoc(`---
+title: Web developer
+tags: [a, b]
+---
+Hello world
+`);
+
+    // The metadata went to doc meta, so it is gone from the exported markdown;
+    // the content itself comes back unchanged.
+    const exported = await exportDocToMarkdown(collection, docId);
+    expect(exported).not.toContain('---');
+    expect(exported).not.toContain('tags:');
+    expect(exported.trim().endsWith('Hello world')).toBe(true);
+  });
+
+  test('falls back to the file name without a frontmatter title', async () => {
+    const { collection, docId } = await importDoc(
+      'Hello world\n',
+      'fallback-title'
+    );
+    expect(collection.meta.getDocMeta(docId)?.title).toBe('fallback-title');
+  });
+
+  test('leaves a leading horizontal rule in the content', async () => {
+    const { collection, docId } = await importDoc('---\n\nHello world\n');
+    // The divider survives the round trip (remark writes it as `***`), and no
+    // metadata was invented out of it.
+    const exported = await exportDocToMarkdown(collection, docId);
+    expect(exported).toContain('***');
+    expect(collection.meta.getDocMeta(docId)?.title).toBe('fallback-title');
+  });
+});
 
 describe('snapshot to markdown', () => {
   test('code', async () => {

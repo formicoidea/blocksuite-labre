@@ -138,6 +138,94 @@ export async function createAssetsArchive(
   return zip;
 }
 
+/**
+ * A frontmatter block, and only at the very top of the file: a `---` further
+ * down is a horizontal rule and the reader expects to see it.
+ */
+const FRONTMATTER = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+
+export type FrontmatterValue = string | string[];
+
+const unquote = (value: string) => {
+  const trimmed = value.trim();
+  const quote = trimmed[0];
+  if (
+    trimmed.length >= 2 &&
+    (quote === '"' || quote === "'") &&
+    trimmed.endsWith(quote)
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+};
+
+/**
+ * Parse the flat subset of YAML a frontmatter block actually uses: `key: value`
+ * pairs, flow sequences (`tags: [a, b]`) and block sequences. Every scalar
+ * stays a string — the caller knows which of them is a date, a flag or a list,
+ * and a full YAML parser would only add a dependency to guess it for us.
+ * Nested mappings are ignored rather than flattened.
+ */
+const parseFrontmatterBody = (
+  source: string
+): Record<string, FrontmatterValue> | null => {
+  const data: Record<string, FrontmatterValue> = {};
+  let listKey: string | null = null;
+
+  for (const line of source.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const item = trimmed.match(/^-\s+(.*)$/);
+    if (item && listKey) {
+      const list = data[listKey];
+      const value = unquote(item[1]);
+      if (Array.isArray(list)) list.push(value);
+      else data[listKey] = [value];
+      continue;
+    }
+
+    // Keys are read at the top level only, so an indented mapping under a key
+    // does not silently become a sibling of it.
+    const entry = line.match(/^([A-Za-z0-9_][A-Za-z0-9_ -]*):(.*)$/);
+    if (!entry) {
+      listKey = null;
+      continue;
+    }
+    const key = entry[1].trim();
+    const value = entry[2].trim();
+    listKey = null;
+    if (!value) {
+      // Either a block sequence follows, or a nested mapping we will ignore.
+      data[key] = [];
+      listKey = key;
+      continue;
+    }
+    const flow = value.match(/^\[(.*)\]$/);
+    data[key] = flow
+      ? flow[1].split(',').map(unquote).filter(Boolean)
+      : unquote(value);
+  }
+
+  return Object.keys(data).length ? data : null;
+};
+
+/**
+ * Split a markdown file into its frontmatter metadata and the content below,
+ * or `null` when it opens with no frontmatter at all.
+ */
+export const parseMatter = (contents: string) => {
+  const match = contents.match(FRONTMATTER);
+  if (!match) return null;
+  const metadata = parseFrontmatterBody(match[1]);
+  if (!metadata) return null;
+  return {
+    matter: match[1],
+    body: contents.slice(match[0].length),
+    metadata,
+  };
+};
+
 export function download(blob: Blob, name: string) {
   const element = document.createElement('a');
   element.setAttribute('download', name);
