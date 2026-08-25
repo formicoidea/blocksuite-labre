@@ -220,7 +220,12 @@ export class Viewport {
       this._cachedOffsetWidth === 0
     )
       return 1;
-    return this.boundingClientRect.width / this._cachedOffsetWidth;
+    const width = this.boundingClientRect.width;
+    // offsetWidth is rounded to an integer while the client rect is not:
+    // on fractional devicePixelRatio displays an untransformed shell has a
+    // fractional CSS width, which must not be mistaken for an outer scale.
+    if (Math.abs(width - this._cachedOffsetWidth) <= 0.5) return 1;
+    return width / this._cachedOffsetWidth;
   }
 
   get top() {
