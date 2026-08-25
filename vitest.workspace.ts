@@ -26,6 +26,7 @@ export default [
   'packages/affine/inlines/footnote/vitest.config.ts',
   'packages/affine/inlines/link/vitest.config.ts',
   'packages/affine/shared/vitest.config.ts',
+  'packages/affine/widgets/slash-menu/vitest.config.ts',
   'packages/framework/global/vitest.config.ts',
   'packages/framework/std/vitest.config.ts',
   'packages/framework/store/vitest.config.ts',

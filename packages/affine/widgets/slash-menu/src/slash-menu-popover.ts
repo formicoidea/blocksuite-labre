@@ -43,6 +43,7 @@ import type {
 import {
   isActionItem,
   isSubMenuItem,
+  isTextInputKey,
   parseGroup,
   slashItemClassName,
 } from './utils.js';
@@ -229,9 +230,15 @@ export class SlashMenu extends WithDisposable(LitElement) {
           return;
         }
 
-        if (key !== 'Backspace' && this._queryState === 'no_result') {
-          // if the following key is not the backspace key,
-          // the slash menu will be closed
+        if (
+          key !== 'Backspace' &&
+          this._queryState === 'no_result' &&
+          !isTextInputKey(event)
+        ) {
+          // The search found nothing and the user is not typing: whatever this
+          // key is, it is not narrowing the query, so the slash menu closes.
+          // Typing keeps it alive — the query state is refreshed asynchronously
+          // and would otherwise be judged stale.
           this.abortController.abort();
           return;
         }

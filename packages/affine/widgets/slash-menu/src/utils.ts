@@ -6,6 +6,31 @@ import type {
   SlashMenuSubMenu,
 } from './types';
 
+/**
+ * Whether a keydown is the user typing one more character into the query.
+ *
+ * The slash menu closes on the first key that follows an empty result, which is
+ * right for a command key and wrong for a letter: the query state is computed
+ * asynchronously, so a letter typed just after a deletion is judged against a
+ * STALE `no_result` and kills a menu that was about to find matches again.
+ */
+export function isTextInputKey(event: KeyboardEvent) {
+  // Keys combined with modifiers are not text input.
+  if (event.ctrlKey || event.metaKey || event.altKey) return false;
+
+  // During IME composition, the query is updated by the input / composition
+  // hooks, never by the keydown.
+  if (event.isComposing) return false;
+
+  // Only single-character keys are text input: `Enter`, `Tab`, `F2`… are not.
+  if (event.key.length !== 1) return false;
+
+  // Space still closes the slash menu — unchanged behaviour.
+  if (event.key === ' ') return false;
+
+  return true;
+}
+
 export function isActionItem(item: SlashMenuItem): item is SlashMenuActionItem {
   return 'action' in item;
 }
