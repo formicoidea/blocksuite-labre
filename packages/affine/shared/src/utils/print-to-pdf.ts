@@ -46,6 +46,50 @@ export const printToPdfStyles = `@media print {
               }
             }`;
 
+/**
+ * Waits until every image inside `container` — shadow roots included — has
+ * either decoded or given up.
+ *
+ * A print dialog opened while images are still in flight prints their empty
+ * frames, so this is awaited before handing the document to the printer. An
+ * image that fails to load resolves too: a broken picture must not hang the
+ * print for ever.
+ */
+export async function waitForImages(container: HTMLElement) {
+  const images: HTMLImageElement[] = [];
+  const view = container.ownerDocument.defaultView;
+  if (!view) return;
+
+  const findImages = (root: Node) => {
+    if (root instanceof view.HTMLImageElement) {
+      images.push(root);
+    }
+    if (root instanceof view.HTMLElement || root instanceof view.ShadowRoot) {
+      root.childNodes.forEach(findImages);
+    }
+    if (root instanceof view.HTMLElement && root.shadowRoot) {
+      findImages(root.shadowRoot);
+    }
+  };
+
+  findImages(container);
+
+  await Promise.all(
+    images.map(img => {
+      if (img.complete) {
+        if (img.naturalWidth === 0) {
+          console.warn('Image failed to load:', img.src);
+        }
+        return Promise.resolve();
+      }
+      return new Promise<unknown>(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+}
+
 export async function printToPdf(
   rootElement: HTMLElement | null = document.querySelector(
     '.affine-page-viewport'
@@ -65,7 +109,15 @@ export async function printToPdf(
   return new Promise<void>((resolve, reject) => {
     const iframe = document.createElement('iframe');
     document.body.append(iframe);
-    iframe.style.display = 'none';
+    // hidden, but still laid out and painted: a `display: none` iframe never
+    // loads the images it contains, so they would be missing from the print
+    Object.assign(iframe.style, {
+      visibility: 'hidden',
+      position: 'absolute',
+      width: '0',
+      height: '0',
+      border: 'none',
+    });
     iframe.srcdoc = '<!DOCTYPE html>';
     iframe.onload = async () => {
       if (!iframe.contentWindow) {
@@ -102,12 +154,32 @@ export async function printToPdf(
         }
       }
 
+      // find every canvas, including the ones sitting inside a shadow root
+      const findAllCanvases = (root: Node): HTMLCanvasElement[] => {
+        const canvases: HTMLCanvasElement[] = [];
+        const traverse = (node: Node) => {
+          if (node instanceof HTMLCanvasElement) {
+            canvases.push(node);
+          }
+          if (node instanceof HTMLElement || node instanceof ShadowRoot) {
+            node.childNodes.forEach(traverse);
+          }
+          if (node instanceof HTMLElement && node.shadowRoot) {
+            traverse(node.shadowRoot);
+          }
+        };
+        traverse(root);
+        return canvases;
+      };
+
       // convert all canvas to image
       const canvasImgObjectUrlMap = new Map<string, string>();
-      const allCanvas = rootElement.getElementsByTagName('canvas');
+      const allCanvas = findAllCanvases(rootElement);
+      const canvasToKeyMap = new Map<HTMLCanvasElement, string>();
       let canvasKey = 1;
       for (const canvas of allCanvas) {
-        canvas.dataset['printToPdfCanvasKey'] = canvasKey.toString();
+        const key = canvasKey.toString();
+        canvasToKeyMap.set(canvas, key);
         canvasKey++;
         const canvasImgObjectUrl = await new Promise<Blob | null>(resolve => {
           try {
@@ -122,13 +194,39 @@ export async function printToPdf(
           );
           continue;
         }
-        canvasImgObjectUrlMap.set(
-          canvas.dataset['printToPdfCanvasKey'],
-          URL.createObjectURL(canvasImgObjectUrl)
-        );
+        canvasImgObjectUrlMap.set(key, URL.createObjectURL(canvasImgObjectUrl));
       }
 
-      const importedRoot = doc.importNode(rootElement, true) as HTMLDivElement;
+      // deep clone that flattens shadow DOM into light DOM, so what the
+      // printer sees is what the reader sees
+      const deepCloneWithShadows = (node: Node): Node => {
+        const clone = doc.importNode(node, false);
+
+        if (
+          clone instanceof HTMLCanvasElement &&
+          node instanceof HTMLCanvasElement
+        ) {
+          const key = canvasToKeyMap.get(node);
+          if (key) {
+            clone.dataset['printToPdfCanvasKey'] = key;
+          }
+        }
+
+        const appendChildren = (source: Node) => {
+          source.childNodes.forEach(child => {
+            (clone as Element).append(deepCloneWithShadows(child));
+          });
+        };
+
+        if (node instanceof HTMLElement && node.shadowRoot) {
+          appendChildren(node.shadowRoot);
+        }
+        appendChildren(node);
+
+        return clone;
+      };
+
+      const importedRoot = deepCloneWithShadows(rootElement) as HTMLDivElement;
 
       // force light theme in print iframe
       doc.documentElement.dataset.theme = 'light';
@@ -151,25 +249,34 @@ export async function printToPdf(
         }
       }
 
+      // a lazily loaded image would still be waiting for a scroll that never
+      // happens in the print iframe: ask for it now
+      const allImages = importedRoot.querySelectorAll('img');
+      allImages.forEach(img => {
+        img.removeAttribute('loading');
+        const src = img.getAttribute('src');
+        if (src) img.setAttribute('src', src);
+      });
+
       // append to iframe and print
       doc.body.append(importedRoot);
 
       await options.beforeprint?.(iframe);
 
-      // browser may take some time to load font
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          resolve();
-        }, 1000);
-      });
+      await waitForImages(importedRoot);
+
+      // browser may take some time to load font or other resources
+      await (doc.fonts?.ready ??
+        new Promise<void>(resolve => {
+          setTimeout(() => {
+            resolve();
+          }, 1000);
+        }));
 
       iframe.contentWindow.onafterprint = async () => {
         iframe.remove();
 
         // clean up
-        for (const canvas of allCanvas) {
-          delete canvas.dataset['printToPdfCanvasKey'];
-        }
         for (const [_, url] of canvasImgObjectUrlMap) {
           URL.revokeObjectURL(url);
         }
