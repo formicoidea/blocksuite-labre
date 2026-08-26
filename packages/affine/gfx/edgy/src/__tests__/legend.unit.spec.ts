@@ -1,7 +1,7 @@
 import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
 import { describe, expect, it } from 'vitest';
 
-import { EDGY_AUTO_LEGEND, EDGY_LEGEND_ROLES } from '../legend';
+import { EDGY_AUTO_LEGEND } from '../legend';
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_ZONE_FILL,
@@ -143,12 +143,34 @@ describe('what an EDGY board puts in its legend', () => {
     ]);
   });
 
-  it('flattens the twelve for reading, and leaves the real vocabulary alone', () => {
+  it('asks for the exact role on the four bases, and only on them', () => {
+    // The legend reads the REAL vocabulary — the twelve still specialise their
+    // kind for every rule that walks it — so the four base rows have to say for
+    // themselves that they mean the bare kind and not the family.
+    const exact = EDGY_AUTO_LEGEND.sections
+      .flatMap(s => s.entries)
+      .filter(e => e.exact)
+      .map(e => e.role);
+    expect(exact).toEqual([
+      EDGY_ROLE.people,
+      EDGY_ROLE.outcome,
+      EDGY_ROLE.object,
+      EDGY_ROLE.activity,
+    ]);
     for (const name of Object.keys(EDGY_DYNAMIC_NODES) as EdgyElementName[]) {
-      expect(EDGY_LEGEND_ROLES[EDGY_ROLE[name]].parent).toBe(EDGY_ROLE.element);
-      // The vocabulary every rule reads still walks up to the official kind.
       expect(EDGY_ROLES[EDGY_ROLE[name]].parent).toBe(
         EDGY_ROLE[EDGY_DYNAMIC_NODES[name].kind]
+      );
+    }
+  });
+
+  it('never claims a base kind on a board carrying only its specialisations', () => {
+    // Every one of the twelve, drawn alone: the kind it specialises must not
+    // put a white square in the box.
+    for (const name of Object.keys(EDGY_DYNAMIC_NODES) as EdgyElementName[]) {
+      const titles = labels([EDGY_ROLE[name]]).map(s => s.title);
+      expect(titles, `${name} lit up the base section`).not.toContain(
+        'Base elements'
       );
     }
   });

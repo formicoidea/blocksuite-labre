@@ -45,6 +45,28 @@ import {
 export interface AutoLegendEntry {
   role: RoleId;
   row: LegendRow;
+  /**
+   * Match `role` and `role` ALONE, without the specialisation walk.
+   *
+   * The default — an entry lights up for any of its children — is what a legend
+   * usually wants: one "Relation" row covers the twenty-two verbs, one
+   * "Sub-domain" row would cover the five kinds. It is also what a validation
+   * rule wants, and for the same reason: a statement about a family is a
+   * statement about every member of it.
+   *
+   * A legend sometimes wants the opposite, because it documents what is DRAWN
+   * rather than what is meant. EDGY's four base kinds are the case: Content
+   * specialises Object, so an entry on `edgy:object` would put an "Object" row
+   * on a board where nobody ever dropped a bare Object — the row would name a
+   * white square that is nowhere on the diagram. `exact` makes the base and its
+   * specialisations two separate statements, so each is listed when, and only
+   * when, it is the thing the user actually put down.
+   *
+   * Reach for it when a row's swatch would be a lie on a board carrying only
+   * children — a distinct colour, a distinct shape, a distinct wording. Leave it
+   * off when the parent row is a fair summary of the whole family.
+   */
+  exact?: boolean;
 }
 
 export interface AutoLegendSectionSpec {
@@ -65,7 +87,9 @@ export interface AutoLegendSpec {
   /**
    * The framework's role vocabulary, so a present role is matched against an
    * entry's role THROUGH the specialisation chain: an entry written on a parent
-   * role lists itself as soon as any of its children is on the board.
+   * role lists itself as soon as any of its children is on the board — unless
+   * it asks for {@link AutoLegendEntry.exact}, which is the whole of the
+   * exception.
    */
   roles: RoleDefs;
   sections: readonly AutoLegendSectionSpec[];
@@ -107,8 +131,9 @@ export function rolesInBound(gfx: GfxController, bound: Bound): Set<RoleId> {
 
 /**
  * The sections to draw for a given set of present roles: every entry whose role
- * is present (directly or through a specialisation), in declaration order, with
- * empty sections — sub-title included — dropped.
+ * is present (directly or through a specialisation, unless the entry asks for
+ * {@link AutoLegendEntry.exact}), in declaration order, with empty sections —
+ * sub-title included — dropped.
  *
  * When nothing is recognised the result is an EMPTY array, and the caller still
  * draws the box: that is Wardley's behaviour (an empty map yields a framed
@@ -124,7 +149,9 @@ export function autoLegendSections(
   for (const section of spec.sections) {
     const rows = section.entries
       .filter(entry =>
-        [...present].some(role => roleIsA(role, entry.role, spec.roles))
+        entry.exact
+          ? present.has(entry.role)
+          : [...present].some(role => roleIsA(role, entry.role, spec.roles))
       )
       .map(entry => entry.row);
     if (rows.length) sections.push({ title: section.title, rows });

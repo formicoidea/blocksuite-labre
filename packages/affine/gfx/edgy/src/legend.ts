@@ -3,7 +3,6 @@ import {
   type AutoLegendSpec,
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
-import type { RoleDefs } from '@labre/std/gfx';
 
 import {
   EDGY_DYNAMIC_NODES,
@@ -39,37 +38,6 @@ import { EDGY_ROLE, EDGY_ROLES } from './roles';
  * reading order of {@link EDGY_ZONES} and, before it, of the Venn itself.
  */
 
-/**
- * The vocabulary the legend READS with: EDGY's own, with the twelve official
- * elements re-parented from their base kind to `edgy:element`.
- *
- * Detection is `roleIsA`, an ANCESTOR walk, so an entry written on
- * `edgy:object` lists itself as soon as ANY element that specialises Object —
- * Content, Asset, Channel, Organisation, Product, Brand — is on the board. For
- * a validation rule that is exactly right: a rule about objects is a rule about
- * all of them. For a LEGEND it is a small lie, because "Object" would then
- * appear on a board where nobody ever dropped a bare Object.
- *
- * Flattening the twelve makes each of them match itself and nothing else, and
- * leaves the relation chain untouched — the 22 verb roles keep `edgy:relation`
- * as their parent, which is what gives the single "Relation" row below. The
- * real vocabulary is not modified: `EDGY_ROLES` keeps its hierarchy and every
- * rule keeps reading it.
- *
- * The tidier fix lives in the shared generic — an `exact` flag on
- * `AutoLegendEntry` — and belongs to whoever owns `ddd-shared`.
- */
-export const EDGY_LEGEND_ROLES: RoleDefs = Object.assign(
-  Object.create(null),
-  EDGY_ROLES,
-  Object.fromEntries(
-    (Object.keys(EDGY_DYNAMIC_NODES) as EdgyElementName[]).map(name => {
-      const id = EDGY_ROLE[name];
-      return [id, { ...EDGY_ROLES[id], parent: EDGY_ROLE.element }];
-    })
-  )
-);
-
 /** One row per official element of `zone`, in the metamodel's own order. */
 function zoneEntries(zone: EdgyZone) {
   return (Object.entries(EDGY_DYNAMIC_NODES) as [
@@ -83,7 +51,7 @@ function zoneEntries(zone: EdgyZone) {
         swatch: 'square' as const,
         // The zone's fill, which IS what the diagram paints the element with.
         color: EDGY_ZONE_FILL[zone],
-        label: roleLabel(EDGY_LEGEND_ROLES, EDGY_ROLE[name]),
+        label: roleLabel(EDGY_ROLES, EDGY_ROLE[name]),
       },
     }));
 }
@@ -112,15 +80,23 @@ const INTERSECTIONS_SECTION: AutoLegendSectionSpec = {
  * element the user dropped from the toolbox and left as a People, an Outcome,
  * an Object or an Activity, without saying which of the twelve it is. White,
  * because that is the fill the palette gives them (`node/consts.ts`).
+ *
+ * `exact` is what makes "bare" true. Detection is otherwise an ancestor walk,
+ * and the twelve official elements specialise these four — Content is an
+ * object, Story an activity — so an "Object" row would appear on a board
+ * carrying nothing but Contents, keyed to a white swatch that is drawn nowhere
+ * on it. The relation entry below keeps the walk, because there the parent row
+ * IS the fair summary: a board carrying `edgy:expresses` carries a relation.
  */
 const BASE_SECTION: AutoLegendSectionSpec = {
   title: 'Base elements',
   entries: (['people', 'outcome', 'object', 'activity'] as const).map(kind => ({
     role: EDGY_ROLE[kind],
+    exact: true,
     row: {
       swatch: 'square' as const,
       color: NODE_FILL,
-      label: roleLabel(EDGY_LEGEND_ROLES, EDGY_ROLE[kind]),
+      label: roleLabel(EDGY_ROLES, EDGY_ROLE[kind]),
     },
   })),
 };
@@ -141,7 +117,7 @@ const RELATIONS_SECTION: AutoLegendSectionSpec = {
         swatch: 'line' as const,
         // The stroke `activateEdgyRelation` arms the connector tool with.
         color: NODE_STROKE,
-        label: roleLabel(EDGY_LEGEND_ROLES, EDGY_ROLE.relation),
+        label: roleLabel(EDGY_ROLES, EDGY_ROLE.relation),
       },
     },
   ],
@@ -149,7 +125,7 @@ const RELATIONS_SECTION: AutoLegendSectionSpec = {
 
 export const EDGY_AUTO_LEGEND: AutoLegendSpec = {
   title: 'Légende',
-  roles: EDGY_LEGEND_ROLES,
+  roles: EDGY_ROLES,
   sections: [
     ...FACET_SECTIONS,
     INTERSECTIONS_SECTION,

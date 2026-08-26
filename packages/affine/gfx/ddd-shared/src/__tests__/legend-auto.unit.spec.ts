@@ -149,6 +149,76 @@ describe('autoLegendSections', () => {
   it('says nothing about roles it does not know', () => {
     expect(autoLegendSections(new Set(['other:thing']), SPEC)).toEqual([]);
   });
+
+  describe('an entry that demands its exact role', () => {
+    /**
+     * The same parent entry as above, with `exact` — the case a legend has when
+     * the parent is a thing the user can actually put down (EDGY's bare
+     * "Object") and not merely the name of a family.
+     */
+    const exactSpec: AutoLegendSpec = {
+      title: 'Legend',
+      roles: ROLES,
+      sections: [
+        {
+          entries: [
+            { role: 'fx:sticky', exact: true, row: { swatch: 'square', color: '#fff', label: 'Sticky' } },
+            { role: 'fx:event', row: { swatch: 'square', color: '#F5963B', label: 'Event' } },
+          ],
+        },
+      ],
+    };
+
+    it('stays silent when only a specialisation is on the board', () => {
+      expect(autoLegendSections(new Set(['fx:event']), exactSpec)).toEqual([
+        {
+          title: undefined,
+          rows: [{ swatch: 'square', color: '#F5963B', label: 'Event' }],
+        },
+      ]);
+    });
+
+    it('lists itself when the bare role is on the board', () => {
+      expect(autoLegendSections(new Set(['fx:sticky']), exactSpec)).toEqual([
+        {
+          title: undefined,
+          rows: [{ swatch: 'square', color: '#fff', label: 'Sticky' }],
+        },
+      ]);
+    });
+
+    it('lists both when the board carries the bare role AND a specialisation', () => {
+      expect(
+        autoLegendSections(new Set(['fx:sticky', 'fx:event']), exactSpec)
+      ).toEqual([
+        {
+          title: undefined,
+          rows: [
+            { swatch: 'square', color: '#fff', label: 'Sticky' },
+            { swatch: 'square', color: '#F5963B', label: 'Event' },
+          ],
+        },
+      ]);
+    });
+
+    it('leaves the default alone: without the flag the walk still resolves', () => {
+      const loose: AutoLegendSpec = {
+        ...exactSpec,
+        sections: [
+          {
+            entries: exactSpec.sections[0].entries.map(({ role, row }) => ({
+              role,
+              row,
+            })),
+          },
+        ],
+      };
+      expect(autoLegendSections(new Set(['fx:event']), loose)[0].rows).toEqual([
+        { swatch: 'square', color: '#fff', label: 'Sticky' },
+        { swatch: 'square', color: '#F5963B', label: 'Event' },
+      ]);
+    });
+  });
 });
 
 describe('roleLabel', () => {
