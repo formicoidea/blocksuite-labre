@@ -12,8 +12,10 @@ import {
   backgroundElementIds,
   evaluateCheckup,
   evaluateRules,
+  frameworksOfRole,
   onDemandRules,
   toneOf,
+  type ValidationFrameworkDef,
   type ValidationRule,
 } from '../extensions/validation.js';
 
@@ -219,6 +221,100 @@ describe('the on-demand moment (PF5.14)', () => {
       expect([...backgroundElementIds([REALTIME], elements)]).toEqual(['frame']);
       expect([...backgroundElementIds([TONE, MAJORITY], elements)]).toEqual([]);
     });
+  });
+});
+
+/**
+ * The GATE the whole per-instance surface hangs off: the profile picker, this
+ * checklist and the check-up all ask the same question — "is this element
+ * somebody's frame?" — and `frameworksOfRole` is the one place that answers it.
+ *
+ * Two sources, because a framework with no rule to derive one from still has a
+ * background: Estuarine's map is negotiated, not measured, so it ships nudges
+ * and nothing computable. Inventing a rule that never fires to make the panel
+ * appear would be data claiming an effect it does not have.
+ */
+describe('what makes an element a root instance', () => {
+  const ESTUARINE_ROLES: RoleDefs = {
+    'est:map': { id: 'est:map', kind: 'node', labelKey: 'est.map' },
+    'est:big-map': {
+      id: 'est:big-map',
+      parent: 'est:map',
+      kind: 'node',
+      labelKey: 'est.big-map',
+    },
+    'est:constraint': {
+      id: 'est:constraint',
+      kind: 'node',
+      labelKey: 'est.constraint',
+    },
+  };
+
+  const ESTUARINE: ValidationFrameworkDef = {
+    framework: 'estuarine',
+    backgroundRole: 'est:map',
+    roles: ESTUARINE_ROLES,
+  };
+
+  const of = (
+    role: string | undefined,
+    rules: ValidationRule[] = [REALTIME],
+    defs: ValidationFrameworkDef[] = []
+  ) => [...frameworksOfRole(role, rules, defs)];
+
+  it('derives it from a rule that frames against the role', () => {
+    expect(of('test:frame')).toEqual(['test']);
+    expect(of('test:node')).toEqual([]);
+  });
+
+  it('knows nothing about a framework that ships no rule…', () => {
+    expect(of('est:map')).toEqual([]);
+  });
+
+  it('…until that framework declares its root instance outright', () => {
+    expect(of('est:map', [REALTIME], [ESTUARINE])).toEqual(['estuarine']);
+  });
+
+  it('reads BOTH sources, and says each framework once', () => {
+    // The same role can be a rule's frame and a declaration's, and two
+    // frameworks can claim one role — an answer per framework, never per
+    // source.
+    const alsoDeclared: ValidationFrameworkDef = {
+      framework: 'test',
+      backgroundRole: 'test:frame',
+      roles: ROLES,
+    };
+    const other: ValidationFrameworkDef = {
+      framework: 'other',
+      backgroundRole: 'test:frame',
+      roles: ROLES,
+    };
+
+    expect(of('test:frame', [REALTIME], [alsoDeclared, other]).sort()).toEqual([
+      'other',
+      'test',
+    ]);
+  });
+
+  it('follows a specialisation, from either source', () => {
+    // A declaration written on the parent role covers the board that
+    // specialises it, exactly as a rule's `backgroundRole` does.
+    expect(of('est:big-map', [], [ESTUARINE])).toEqual(['estuarine']);
+    expect(of('est:constraint', [], [ESTUARINE])).toEqual([]);
+  });
+
+  it('answers nothing for a neutral element', () => {
+    // No role, no framework, no tooling — and for a background authored
+    // before its role existed, the same.
+    expect(of(undefined, [REALTIME], [ESTUARINE])).toEqual([]);
+  });
+
+  it('ignores a rule that frames against nothing', () => {
+    // `no-overlap` may ship without a `backgroundRole`: it frames nothing, so
+    // it makes no element a root instance.
+    const frameless: ValidationRule = { ...REALTIME, backgroundRole: undefined };
+
+    expect(of('test:frame', [frameless])).toEqual([]);
   });
 });
 
