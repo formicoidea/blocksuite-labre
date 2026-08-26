@@ -50,7 +50,10 @@ import {
 import { z } from 'zod';
 
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
-import { backgroundPlot } from '../framework-background/def.js';
+import {
+  backgroundInstanceZones,
+  backgroundPlot,
+} from '../framework-background/def.js';
 import { backgroundAxisFacts } from '../framework-background/facts.js';
 import {
   ValidationManager,
@@ -153,10 +156,26 @@ function collectFrames(
           type: def.type,
           ...(typeof profileId === 'string' ? { profileId } : {}),
           axes: backgroundAxisFacts(def),
-          zones: (def.zones ?? []).map(zone => ({
-            id: zone.id,
-            rect: { ...zone.rect },
-          })),
+          // The framework's zones first, then the ones THIS frame declares —
+          // a BPMN pool's lanes. Concatenated rather than merged: the two
+          // namespaces are kept apart by the instance ids' prefix, so `zoneAt`
+          // resolves them by the same containment test and a framework zone
+          // still wins a genuine overlap, which is the reading that was true
+          // before an element could partition its own plot.
+          zones: [
+            ...(def.zones ?? []).map(zone => ({
+              id: zone.id,
+              rect: { ...zone.rect },
+            })),
+            ...backgroundInstanceZones(
+              def,
+              el as unknown as Readonly<Record<string, unknown>>
+            ).map(zone => ({
+              id: zone.id,
+              ...(zone.name !== undefined ? { name: zone.name } : {}),
+              rect: { ...zone.rect },
+            })),
+          ],
         },
       });
     }
@@ -225,7 +244,11 @@ function plotRatios(
   ];
 }
 
-/** The declared zone a plot-ratio point falls in, if any. */
+/**
+ * The zone a plot-ratio point falls in, if any — one the framework declares or
+ * one the frame itself does. It needs to know nothing about the difference: the
+ * fact carries both, in that order, as rectangles in the same ratios.
+ */
 function zoneAt(
   frame: Frame,
   at: readonly [number, number]

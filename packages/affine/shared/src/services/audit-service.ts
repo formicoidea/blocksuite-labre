@@ -102,6 +102,17 @@ export interface AuditAxisFact {
  */
 export interface AuditZoneFact {
   id: string;
+  /**
+   * The user's own wording, when the zone is one THIS frame declares rather
+   * than one the framework does — a BPMN pool's lanes. Namespaced ids keep the
+   * two apart (`lane:sales` against `product`), and the name is what makes an
+   * instance zone worth reporting at all: `lane:2` says nothing to an assistant,
+   * "Facturation" says what the band is for.
+   *
+   * Absent on every framework zone, whose meaning is the framework's and whose
+   * wording is the host's to translate.
+   */
+  name?: string;
   rect: { x: number; y: number; w: number; h: number };
 }
 
@@ -292,9 +303,8 @@ export interface AuditService {
   ): Promise<AuditResult>;
 }
 
-export const AuditProvider = createIdentifier<AuditService>(
-  'LabreAuditService'
-);
+export const AuditProvider =
+  createIdentifier<AuditService>('LabreAuditService');
 
 /**
  * The ONLY way in. **No noop default is registered**, exactly as for
