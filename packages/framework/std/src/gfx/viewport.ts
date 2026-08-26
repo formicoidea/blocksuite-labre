@@ -23,14 +23,6 @@ export const ZOOM_INITIAL = 1.0;
 
 export const FIT_TO_SCREEN_PADDING = 100;
 
-/**
- * How far `offsetWidth` may sit from the painted width of an *unscaled*
- * element. `offsetWidth` is an integer: the browser rounds the border box's
- * left and right edges independently, so each contributes up to half a pixel.
- * See {@link Viewport.viewScale}.
- */
-const OFFSET_WIDTH_ROUNDING = 1;
-
 export interface ViewportRecord {
   left: number;
   top: number;
@@ -240,9 +232,11 @@ export class Viewport {
       this._cachedOffsetWidth === 0
     )
       return 1;
-    const { width } = this.boundingClientRect;
-    if (Math.abs(width - this._cachedOffsetWidth) <= OFFSET_WIDTH_ROUNDING)
-      return 1;
+    const width = this.boundingClientRect.width;
+    // offsetWidth is rounded to an integer while the client rect is not:
+    // on fractional devicePixelRatio displays an untransformed shell has a
+    // fractional CSS width, which must not be mistaken for an outer scale.
+    if (Math.abs(width - this._cachedOffsetWidth) <= 0.5) return 1;
     return width / this._cachedOffsetWidth;
   }
 

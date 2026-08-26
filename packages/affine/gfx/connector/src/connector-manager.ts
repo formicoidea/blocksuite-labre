@@ -1468,9 +1468,11 @@ export class ConnectorPathGenerator extends PathGenerator {
     // missing element and has no fallback position). Keep the last bound and
     // paint nothing rather than derive a bbox from an empty point set.
     if (points.length === 0) {
-      connector.updatingPath = true;
-      connector.path = [];
-      connector.updatingPath = false;
+      if (connector.path.length > 0) {
+        connector.updatingPath = true;
+        connector.path = [];
+        connector.updatingPath = false;
+      }
       return;
     }
 
@@ -1851,7 +1853,7 @@ export class ConnectorPathGenerator extends PathGenerator {
     const id = connector[type].id;
 
     if (id) {
-      return this.options.getElementById(id) as Connectable;
+      return this.options.getElementById(id) as Connectable | null;
     }
 
     return null;

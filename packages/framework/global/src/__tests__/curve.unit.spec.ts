@@ -1,17 +1,21 @@
 import { describe, expect, test } from 'vitest';
 
-import { getBezierParameters } from '../gfx/curve.js';
+import { getBezierNearestPoint, getBezierParameters } from '../gfx/curve.js';
 import { PointLocation } from '../gfx/model/index.js';
 
 describe('getBezierParameters', () => {
-  test('should handle empty path', () => {
-    expect(() => getBezierParameters([])).not.toThrow();
-    expect(getBezierParameters([])).toEqual([
+  test('degrades on an empty path instead of throwing', () => {
+    const params = getBezierParameters([]);
+
+    expect(params).toHaveLength(4);
+    expect(params).toEqual([
       new PointLocation(),
       new PointLocation(),
       new PointLocation(),
       new PointLocation(),
     ]);
+    // Degenerate curve at the origin — every evaluation stays finite.
+    expect(getBezierNearestPoint(params, [3, 4])).toEqual([0, 0]);
   });
 
   test('should handle single-point path', () => {
