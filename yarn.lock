@@ -2658,7 +2658,9 @@ __metadata:
     "@labre/global": "workspace:*"
     "@labre/std": "workspace:*"
     "@labre/store": "workspace:*"
+    "@preact/signals-core": "npm:^1.8.0"
     lit: "npm:^3.2.0"
+    yjs: "npm:^13.6.21"
   languageName: unknown
   linkType: soft
 

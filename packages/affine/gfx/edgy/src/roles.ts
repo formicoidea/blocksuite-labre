@@ -131,6 +131,46 @@ export const EDGY_VERB_ROLE: Readonly<Record<string, EdgyRoleId>> =
     )
   );
 
+/**
+ * Key of an ORDERED pair of element roles: `edgy:process edgy:capability`.
+ *
+ * A SPACE separates them, and not `-`, `:` or `>`: a role id already contains a
+ * colon and may contain a dash (`edgy:is-part-of`), and a separator that can
+ * occur inside a value is a lookup table with collisions waiting in it. No role
+ * id has ever contained whitespace — `verbRoleId` above replaces it on the one
+ * family that could.
+ */
+export const edgyPairKey = (source: string, target: string): string =>
+  `${source} ${target}`;
+
+/**
+ * Ordered pair of ELEMENT roles → the canonical verb the metamodel gives it,
+ * DERIVED from {@link EDGY_DYNAMIC_RELATIONS}.
+ *
+ * The metamodel's 24 rows are 24 DISTINCT ordered pairs, so the verb of a
+ * relation is entirely determined by which two elements it runs between: there
+ * is never a choice to offer. That is what lets the toolbox ship ONE "Relation"
+ * entry instead of twenty-two, and what `./relation.ts` reads to name a
+ * hand-drawn link after the pair the user attached it to.
+ *
+ * Derived, never restated — same contract as {@link EDGY_VERB_ROLE}: a relation
+ * added to `./metamodel.ts` becomes nameable by hand without anybody editing
+ * this file.
+ */
+export const EDGY_PAIR_TO_VERB: Readonly<Record<string, string>> =
+  Object.assign(
+    Object.create(null),
+    Object.fromEntries(
+      EDGY_DYNAMIC_RELATIONS.map(([source, target, verb]) => [
+        edgyPairKey(
+          EDGY_ROLE[source as EdgyElementRole],
+          EDGY_ROLE[target as EdgyElementRole]
+        ),
+        verb,
+      ])
+    )
+  );
+
 /** i18n key stem of a role id: `edgy:is-part-of` → `com.labre.edgy.role.is-part-of`. */
 const roleKey = (id: RoleId) => `com.labre.edgy.role.${id.slice('edgy:'.length)}`;
 

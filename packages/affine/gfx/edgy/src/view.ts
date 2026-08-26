@@ -18,6 +18,7 @@ import { edgyCommandIcons, edgyCommands } from './commands';
 import { effects } from './effects';
 import { EDGY_NUDGES } from './nudges';
 import { EDGY_PROFILES } from './profiles';
+import { EdgyRelationResolver } from './relation-resolver';
 import { EDGY_ROLES } from './roles';
 import { EDGY_RULES } from './rules';
 import { edgyTemplateCategory } from './templates';
@@ -116,8 +117,18 @@ export class EdgyViewExtension extends ViewExtensionProvider {
           })
         );
       }
+      // The resolver that turns a hand-drawn `edgy:relation` into the verb the
+      // metamodel gives its two ends. It belongs HERE and not in the always-on
+      // extension above, and the test is the one `docs/adr/0009` asks: does it
+      // paint stored content, or does it author new content? It authors — it
+      // writes a role and a label into the document — and the only edges it
+      // ever sees are the ones the flag-gated tool below stamps. A board drawn
+      // while the flag was on keeps every verb it was given (the vocabulary and
+      // the renderers are always on); with the flag off nothing new is named
+      // because nothing new is being armed. See `./relation-resolver.ts`.
+      context.register(EdgyRelationResolver);
       context.register(edgySeniorTool);
-      // The seven EDGY commands: the sub-menu renders them, Settings ›
+      // The eight EDGY commands: the sub-menu renders them, Settings ›
       // Shortcuts finally lists them, and a host override on an id binds.
       context.register(CommandExtension(edgyCommands, edgyCommandIcons));
     }

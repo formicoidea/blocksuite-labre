@@ -1,7 +1,9 @@
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import {
+  activateEdgyRelation,
   createEdgyBoard,
   createEdgyBox,
   createEdgyDynamic,
@@ -16,18 +18,42 @@ import {
   edgyObjectIcon,
   edgyOutcomeIcon,
   edgyPeopleIcon,
+  edgyRelationIcon,
 } from './toolbar/icons';
 
 /**
  * The EDGY toolbox as commands. Before PF3 these seven artefacts existed ONLY
  * as hard-coded buttons, so EDGY was entirely invisible to Settings ›
  * Shortcuts; they are all bindable now, all keyless by default (`docs/adr/0008`).
+ *
+ * An eighth entry joined them on the PO recette of 26/08/2026, and it is the
+ * first EDGY command that arms a TOOL rather than dropping an artefact:
+ * `addRelation`. Until it landed the 24 typed relations of the metamodel could
+ * only be born of the "EDGY dynamic" template, so a practitioner drawing their
+ * own board had no way of saying "this Process requires that Asset" — see
+ * `../relation.ts` for why there is one entry and not twenty-two.
  */
 interface Spec {
   id: string;
   label: string;
+  /**
+   * The sentence shown under the label — what the GESTURE means (M1 of
+   * `docs/adr/0010`). Present only on the relation tool, and written HERE
+   * rather than read off a role, unlike Wardley's two connectors: the tool arms
+   * the PARENT role `edgy:relation`, which declares no `direction` because it
+   * names no verb. There are twenty-two verbs behind this one button and the
+   * metamodel picks which, so the only sentence that is true of every drag is
+   * the generic one — subject first, object second.
+   */
+  description?: string;
   iconKey: string;
-  category: 'diagrams' | 'elements';
+  category: 'diagrams' | 'elements' | 'relations';
+  /**
+   * `'tool'` arms something and reports `FrameworkToolPicked`; `'artefact'`
+   * drops something and reports `FrameworkElementAdded`. Absent = `'artefact'`,
+   * which is what the seven original EDGY entries are.
+   */
+  kind?: 'artefact' | 'tool';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
   run: (std: BlockStdScope) => void | Promise<void>;
@@ -90,14 +116,31 @@ const SPECS: Spec[] = [
     element: 'node:activity',
     run: std => createEdgyBox(std, 'activity'),
   },
+  {
+    id: 'addRelation',
+    label: 'Relation',
+    description:
+      'Drag from the element that is the subject of the relation to the one it is about; EDGY names the link itself.',
+    iconKey: 'edgy.relation',
+    category: 'relations',
+    kind: 'tool',
+    element: 'connector:relation',
+    run: std => activateEdgyRelation(std.get(GfxControllerIdentifier)),
+  },
 ];
 
 export const edgyCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   id: `edgy.${spec.id}`,
   owner: 'edgy',
-  kind: 'artefact',
+  kind: spec.kind ?? 'artefact',
   labelKey: `com.labre.commands.edgy.${spec.id}`,
   labelFallback: spec.label,
+  ...(spec.description === undefined
+    ? {}
+    : {
+        descriptionKey: `com.labre.commands.edgy.${spec.id}.description`,
+        descriptionFallback: spec.description,
+      }),
   category: spec.category,
   iconKey: spec.iconKey,
   surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
@@ -117,4 +160,5 @@ export const edgyCommandIcons: Record<string, TemplateResult> = {
   'edgy.outcome': edgyOutcomeIcon,
   'edgy.object': edgyObjectIcon,
   'edgy.activity': edgyActivityIcon,
+  'edgy.relation': edgyRelationIcon,
 };

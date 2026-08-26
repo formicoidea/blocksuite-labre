@@ -30,7 +30,9 @@ describe('command registry invariants', () => {
     );
     expect(counts).toEqual({
       wardley: 13,
-      edgy: 7,
+      // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
+      // seven artefacts — the first EDGY entry that arms a tool.
+      edgy: 8,
       'cynefin-estuarine': 3,
       bpmn: 6,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
@@ -56,7 +58,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(75);
+    expect(commands).toHaveLength(76);
   });
 
   /**

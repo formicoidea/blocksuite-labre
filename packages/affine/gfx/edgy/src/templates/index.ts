@@ -20,6 +20,10 @@ import {
   EDGY_DYNAMIC_RELATIONS,
   type EdgyElementName,
 } from '../metamodel';
+import {
+  EDGY_RELATION_LABEL_DISTANCE,
+  edgyVerbLabelXYWH,
+} from '../relation';
 import { EDGY_ROLE, EDGY_VERB_ROLE } from '../roles';
 import {
   ACTIVITY_VERTICES,
@@ -353,8 +357,8 @@ function dynamic(): SurfaceElementsJSON {
       // box — size it to the verb so the text lays out on one line. The
       // distance slides the verb along the link like the reference diagram.
       text: surfaceText(verb),
-      labelXYWH: [0, 0, verb.length * 9 + 24, 26],
-      labelOffset: { distance: t ?? 0.5 },
+      labelXYWH: edgyVerbLabelXYWH(verb),
+      labelOffset: { distance: t ?? EDGY_RELATION_LABEL_DISTANCE },
     };
   });
   return out;

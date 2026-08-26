@@ -22,6 +22,12 @@ import { EDGY_RULES } from './rules.js';
  * the roles: one key per canonical verb, derived from the metamodel, so a
  * relation added there contributes its keys without anybody editing this file.
  *
+ * That derivation is why the hand-drawn relation tool needed no line here: its
+ * `com.labre.commands.edgy.addRelation` and the `.description` key that carries
+ * its gesture sentence — the first DESCRIPTION any EDGY command has declared —
+ * are collected off `edgyCommands` with their English fallbacks, like every
+ * label before them.
+ *
  * The contribution therefore ships WITH the framework: in the bundled
  * distribution `@formicoidea/labre-framework-edgy` carries it, and a host
  * composes it into its catalogue exactly as it already composes `edgyCommands`
