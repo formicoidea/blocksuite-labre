@@ -104,6 +104,7 @@ import {
   type OptionalBlock,
 } from '../flags.js';
 import { CommandTelemetryViewExtension } from './command-telemetry.js';
+import { CommandUsageViewExtension } from './command-usage.js';
 
 /**
  * View extensions.
@@ -121,6 +122,10 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     // The single command-telemetry emitter. Unconditional: a disabled
     // framework simply never invokes a command (docs/adr/0008).
     CommandTelemetryViewExtension,
+    // The default (browser-local) recency/frequency measure. Unconditional for
+    // the same reason, and independent of telemetry: it feeds an in-editor
+    // ranking, not a dashboard (docs/adr/0008).
+    CommandUsageViewExtension,
 
     // Gfx — each framework contributes an always-on `…Render…` extension
     // (element view + renderer + interaction + contextual toolbar) and a
