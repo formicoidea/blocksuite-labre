@@ -14,8 +14,8 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * because it is not one activity, it is a SEQUENCE of them, and the same wall
  * means different things at each stage:
  *
- * 1. **Big Picture** — everything on the wall at once, out of order, the
- *    grammar not yet decided. The linter must be silent;
+ * 1. **Big Picture (Sketch)** — everything on the wall at once, out of order,
+ *    the grammar not yet decided. The linter must be silent;
  * 2. **Process modelling** — the frieze gets read left to right and reordered.
  *    Time starts to mean something; the grammar still does not;
  * 3. **Software design** — the sentences are supposed to be sentences.
@@ -36,6 +36,14 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * `violations$` for a host panel and a conformance report, and the canvas says
  * nothing.
  *
+ * Named **"Big Picture (Sketch)"** in the dropdown, both words on purpose (PO
+ * recette, 26/08/2026). "Sketch" is the vocabulary every framework in this
+ * library shares for its quietest level, and it is the word the recette script
+ * uses; "Big Picture" is the word the workshop uses for this stage and the only
+ * one a facilitator would look for. Carrying both is what lets the two readings
+ * meet on one entry instead of the user having to learn which name this
+ * framework chose.
+ *
  * The DEFAULT, and more deliberately here than anywhere else in the library. A
  * Big Picture is **supposed to be chaotic**: that is the method, not a failure
  * of it. Events go up out of order because remembering is not sorting, arcs get
@@ -52,7 +60,7 @@ const sketch: ValidationProfile = {
   id: 'es.sketch',
   framework: 'ddd-event-storming',
   labelKey: 'com.labre.event-storming.profile.sketch',
-  fallback: 'Big Picture',
+  fallback: 'Big Picture (Sketch)',
   isDefault: true,
   rules: {
     'es.against-timeline': 'audit',

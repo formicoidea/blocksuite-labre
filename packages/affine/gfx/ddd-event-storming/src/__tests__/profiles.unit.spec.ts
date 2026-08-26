@@ -41,6 +41,14 @@ describe('event storming validation profiles', () => {
     expect(Object.values(sketch.rules).every(s => s === 'audit')).toBe(true);
   });
 
+  it('names the default in both vocabularies', () => {
+    // PO recette, 26/08/2026: the dropdown carries the word the workshop uses
+    // for the stage AND the word every framework here uses for its quietest
+    // level, so neither reader has to learn the other's name for it.
+    const [sketch] = EVENT_STORMING_PROFILES;
+    expect(sketch.fallback).toBe('Big Picture (Sketch)');
+  });
+
   it('promotes the timeline, and only the timeline, on process modelling', () => {
     const [, process] = EVENT_STORMING_PROFILES;
     expect(process.rules['es.against-timeline']).toBe('warning');

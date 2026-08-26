@@ -88,13 +88,30 @@ export const EVENT_STORMING_BACKGROUND: FrameworkBackgroundDef = {
       at: 1,
       // Forward is RIGHT: later. The one fact `es.against-timeline` reads.
       arrow: 'forward',
-      arrowSize: 10,
-      stroke: { color: '@axis', width: 1.5 },
+      // Drawn HEAVY, and deliberately heavier than any other axis in the
+      // library (PO recette, 26/08/2026). On a 3200-wide roll the timeline is
+      // not decoration beside the plot, it IS the frame of reference — the one
+      // thing the board declares and the one thing a rule measures against —
+      // and at the zoom where a whole Big Picture fits on screen a hairline
+      // simply disappears under the frieze. Six model units survive that.
+      //
+      // The head is sized WITH the line rather than left at its default: the
+      // renderer takes `arrowSize` as the head's LENGTH and spreads the base
+      // half that either side, so head width tracks head length. At 6× the
+      // stroke the triangle still reads as the end of this line and not as a
+      // separate mark — the same register as Wardley's 11-on-2, given room to
+      // scale up with the stroke.
+      arrowSize: 36,
+      stroke: { color: '@axis', width: 6 },
       title: {
         id: 'timeAxisTitle',
         labelKey: 'com.labre.event-storming.background.axis.time',
         fallback: 'Time',
-        anchor: { x: 1, y: 1, dx: -8, dy: 34 },
+        // Pushed down with the stroke: the line now grows ~2 units further
+        // below its centre, and the word keeps the air it had above its cap
+        // height instead of being crowded by the thicker trait. Still clear of
+        // the 56-unit bottom margin, baseline plus descender.
+        anchor: { x: 1, y: 1, dx: -8, dy: 38 },
         style: AXIS_TEXT,
         align: 'right',
       },

@@ -37,6 +37,28 @@ describe('the event storming board declaration', () => {
     );
   });
 
+  it('draws the timeline heavy enough to read zoomed out', () => {
+    // PO recette, 26/08/2026. The one frame of reference a 3200-wide roll has
+    // has to survive the zoom where the whole board fits on screen; a hairline
+    // does not. Pinned because it is a judgement, not a default.
+    const [time] = EVENT_STORMING_BACKGROUND.axes!;
+    expect(time.stroke.width).toBe(6);
+    // The head is sized WITH the line rather than left at the renderer's
+    // default, so the arrow stays the end of this trait instead of shrinking
+    // into a pinhead on it.
+    expect(time.arrowSize).toBe(36);
+    expect(time.arrowSize! / time.stroke.width).toBeGreaterThanOrEqual(5);
+    // Head length is a fraction of the roll, not a bar across it.
+    expect(time.arrowSize!).toBeLessThan(
+      backgroundSize(EVENT_STORMING_BACKGROUND).width / 50
+    );
+    // And the word keeps clear of the thickened trait, inside the bottom
+    // margin the geometry reserves for it.
+    const dy = time.title!.anchor.dy!;
+    expect(dy).toBeGreaterThan(time.stroke.width / 2 + 16);
+    expect(dy).toBeLessThan(EVENT_STORMING_BACKGROUND.geometry.margin.bottom);
+  });
+
   it('declares no zones and no variant — swimlanes are cut from v1', () => {
     // A lane would be a variant declaration plus a rule family that reads it.
     // Painting bands nothing can read would put a semantic on the vertical the

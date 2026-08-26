@@ -51,12 +51,12 @@ been discussed, the actors and external systems are identified, the pivotal
 events are marked.
 
 Three levels of requirement ship with it, chosen per board from the board's own
-toolbar, because Event Storming is not one activity but three. **Big Picture**
-(the default) says nothing at all — a Big Picture is supposed to be chaotic, and
-a tool arguing with that hand is judging one stage of the workshop by the
-criteria of a later one. **Process modelling** turns on the timeline and only the
-timeline: that stage is about ordering the frieze, and the kinds are still being
-settled. **Software design** turns on all three.
+toolbar, because Event Storming is not one activity but three. **Big Picture
+(Sketch)** (the default) says nothing at all — a Big Picture is supposed to be
+chaotic, and a tool arguing with that hand is judging one stage of the workshop
+by the criteria of a later one. **Process modelling** turns on the timeline and
+only the timeline: that stage is about ordering the frieze, and the kinds are
+still being settled. **Software design** turns on all three.
 
 **Nothing already drawn changes.** Walls stormed before this release carry no
 roles, so not one of them is judged, and the old flow arrows keep rendering
