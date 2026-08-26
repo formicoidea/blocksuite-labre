@@ -218,4 +218,77 @@ describe('the pool the primitive paints', () => {
     expect(rec.texts[0].x).toBe(14);
     expect(rec.texts[0].font).toBe('600 15px Inter, sans-serif');
   });
+
+  /**
+   * The guard the lane work is answerable to: EVERY assertion above is written
+   * for a pool with no `lanes` key, which is every pool in every document
+   * authored before B4. The lane title bands are painted from the model, so a
+   * pool that carries none must reach the identical op stream — this states it
+   * once, against the whole recording rather than against one field of it, so
+   * a later change to the lane chrome cannot quietly alter an undivided pool.
+   */
+  it('paints an undivided pool exactly as it did before lanes existed', () => {
+    const withoutKey = render(pool());
+    const withEmptyKey = render(pool({ lanes: [] }));
+    const withMalformedKey = render(pool({ lanes: 'nonsense' }));
+
+    for (const rec of [withEmptyKey, withMalformedKey]) {
+      expect(rec.ops).toEqual(withoutKey.ops);
+      expect(rec.rects).toEqual(withoutKey.rects);
+      expect(rec.segments).toEqual(withoutKey.segments);
+      expect(rec.texts).toEqual(withoutKey.texts);
+      expect(rec.strokes).toEqual(withoutKey.strokes);
+      expect(rec.paths).toEqual(withoutKey.paths);
+      expect(rec.dashes).toEqual(withoutKey.dashes);
+    }
+  });
+
+  it('adds the lane band, and only the lane band, once a pool is divided', () => {
+    const plain = render(pool());
+    const divided = render(
+      pool({
+        lanes: [
+          { id: 'a', name: 'Front office', size: 1 },
+          { id: 'b', name: 'Back office', size: 1 },
+        ],
+      })
+    );
+
+    // The card is dressed exactly as before — fill, band, band divider, frame —
+    // and the lane furniture is added at the two stages that own it: the
+    // separators with the zones, the strips and their names with the labels,
+    // after the participant's own.
+    expect(divided.ops).toEqual([
+      'fill',
+      'fillRect',
+      'stroke', // the participant band's divider
+      'stroke', // the frame
+      'stroke', // the separator between the two lanes
+      'fillText', // the participant name
+      'stroke', // lane 0's title strip
+      'fillText',
+      'stroke', // lane 1's title strip
+      'fillText',
+    ]);
+    expect(divided.rects).toEqual(plain.rects);
+    // …and what is added is the lane furniture: one separator between the two
+    // lanes, plus one rule down each lane's own title strip.
+    expect(divided.segments.slice(0, plain.segments.length)).toEqual(
+      plain.segments
+    );
+    expect(divided.segments.slice(plain.segments.length)).toEqual([
+      { x1: 28, y1: 100, x2: 560, y2: 100 },
+      { x1: 52, y1: 0, x2: 52, y2: 100 },
+      { x1: 52, y1: 100, x2: 52, y2: 200 },
+    ]);
+
+    // The two lane names, turned on their side and centred in their strips —
+    // 28 (the participant band) + 24 / 2.
+    expect(
+      divided.texts.slice(1).map(t => [t.text, t.x, t.y, t.vertical])
+    ).toEqual([
+      ['Front office', 40, 50, true],
+      ['Back office', 40, 150, true],
+    ]);
+  });
 });

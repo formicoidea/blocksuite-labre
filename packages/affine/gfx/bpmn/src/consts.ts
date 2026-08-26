@@ -63,6 +63,61 @@ export const POOL_NAME_COLOR = '#262626';
 export const POOL_FONT_FAMILY = 'Inter, sans-serif';
 
 /**
+ * Lane (couloir) name size — two units under the participant's own.
+ *
+ * The pool names WHO does the work and the lane names which part of them does
+ * it: a subdivision reads as a subdivision when its label is quieter than the
+ * one it sits under. Two units is the smallest difference that survives being
+ * zoomed out, which is the size the distinction has to hold at.
+ */
+export const POOL_LANE_NAME_FONT_SIZE = 13;
+
+/**
+ * Width of a lane's own title band, in model units — the strip immediately
+ * inside the participant band, with the lane name turned on its side.
+ *
+ * Four units narrower than {@link POOL_BAND_WIDTH}, and for the same reason the
+ * font is two points smaller: the two strips sit side by side, so the
+ * subordinate one has to say so. Identical widths read as a single 56-unit
+ * gutter rather than as a participant containing lanes, which is exactly the
+ * relationship the picture has to carry.
+ *
+ * NO fill, divider only — what bpmn.io, Camunda and Visio all draw. A second
+ * grey strip beside the pool's own would double the furniture and leave the
+ * flow area looking inset by two margins.
+ */
+export const POOL_LANE_BAND_WIDTH = 24;
+
+/**
+ * How close to an internal lane boundary a pointer has to be, in MODEL units,
+ * for the gesture to be a separator drag rather than a click on the pool.
+ *
+ * Symmetric, so the zone is 12 units wide. Model units and not view pixels on
+ * purpose: the grab zone then scales with the drawing, exactly like the lane it
+ * belongs to, and a pool zoomed out to a thumbnail does not become a strip of
+ * overlapping hit zones with no lane left between them.
+ */
+export const POOL_LANE_GRAB = 6;
+
+/**
+ * The smallest a lane may be dragged to, in model units of a pool at its
+ * REFERENCE height ({@link POOL_REF_HEIGHT}).
+ *
+ * A floor and not a minimum height: sizes are weights, so this is converted to
+ * a weight against the pool's current total before it is applied. 24 units is
+ * about one line of a lane name plus its inset — below that the band cannot
+ * show what it is, and a lane nothing can be put in and nothing can be read off
+ * is one the user did not mean to make.
+ */
+export const POOL_LANE_MIN_HEIGHT = 24;
+
+// The lane-name hit box used to be a corner box declared here
+// (`POOL_LANE_NAME_HIT_WIDTH` / `_HEIGHT`). Since the PO's recette moved the
+// name into a title band, the target IS that band: `element-view.ts` reads it
+// from `backgroundInstanceZoneBand`, so there is nothing left to declare and
+// nothing left that can drift away from what is painted.
+
+/**
  * The size a fresh pool is created at. Unlike a map, a pool is NOT grown to
  * cover the ones already on the board: pools sit side by side, one per
  * participant, and a second lane that matched the first one's height would

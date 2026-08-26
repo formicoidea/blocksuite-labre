@@ -41,3 +41,19 @@ export const bpmnPoolIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" 
   <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
   <path d="M8 5.5 V18.5" stroke="currentColor" stroke-width="1.6"/>
 </svg>`;
+
+/** Add lane — the pool, cut in two, with a plus on the new band. */
+export const bpmnLaneAddIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 5.5 V18.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M14.25 13.25 V17 M12.4 15.1 H16.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/** Remove lane — the same pool, with a minus on the band that goes. */
+export const bpmnLaneRemoveIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 5.5 V18.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M12.4 15.1 H16.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;

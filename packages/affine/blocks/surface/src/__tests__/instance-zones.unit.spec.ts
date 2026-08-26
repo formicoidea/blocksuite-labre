@@ -5,8 +5,10 @@ import type {
   FrameworkBackgroundDef,
 } from '../framework-background/index.js';
 import {
+  backgroundInstanceZoneBand,
   backgroundInstanceZones,
   backgroundLabelHits,
+  backgroundPlot,
   createFrameworkBackgroundRenderer,
 } from '../framework-background/index.js';
 
@@ -36,6 +38,7 @@ function stub() {
     align: string;
     baseline: string;
     color: string;
+    vertical?: boolean;
   }> = [];
   const dashes: number[][] = [];
   const strokes: Array<[string, number]> = [];
@@ -43,6 +46,9 @@ function stub() {
   const ops: string[] = [];
   let mx = 0;
   let my = 0;
+  let tx = 0;
+  let ty = 0;
+  let rotated = false;
 
   const ctx = {
     fillStyle: '' as string,
@@ -77,19 +83,33 @@ function stub() {
       if (d.length) dashes.push(d);
     }),
     save: vi.fn(),
-    restore: vi.fn(),
-    translate: vi.fn(),
-    rotate: vi.fn(),
+    restore: vi.fn(() => {
+      tx = 0;
+      ty = 0;
+      rotated = false;
+    }),
+    // Vertical text is drawn by translating to its anchor and rotating a
+    // quarter turn, so `fillText` receives (0, 0) and the ANCHOR lives in the
+    // transform. Tracking the two puts a rotated name back into the same
+    // coordinates an upright one is asserted in.
+    translate: vi.fn((x: number, y: number) => {
+      tx = x;
+      ty = y;
+    }),
+    rotate: vi.fn(() => {
+      rotated = true;
+    }),
     fillText: vi.fn((text: string, x: number, y: number) => {
       ops.push('fillText');
       texts.push({
         text,
-        x,
-        y,
+        x: rotated ? tx : x,
+        y: rotated ? ty : y,
         font: ctx.font,
         align: ctx.textAlign,
         baseline: ctx.textBaseline,
         color: ctx.fillStyle,
+        ...(rotated ? { vertical: true } : {}),
       });
     }),
     createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
@@ -464,6 +484,209 @@ describe('the partition the primitive paints', () => {
     // one place and clicked in another. Zones are renamed through the
     // framework's own tooling.
     expect(backgroundLabelHits(BANDED, THREE, 440, 320)).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* The band placement                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The label STRIP placement (PO recette, 2026-08-26) — how BPMN 2.0, bpmn.io,
+ * Camunda and Visio all draw a lane title, and now the second placement this
+ * primitive offers.
+ *
+ * The corner placement above is untouched and stays the default; every
+ * assertion in this block is about what the `band` field ADDS. The two cannot
+ * be confused: `BANDED` declares no band and is asserted against the corner
+ * metrics thirty lines up.
+ */
+describe('a zone name written down its own title band', () => {
+  const BAND = { width: 24, divider: { color: '#262626', width: 1.5 } };
+
+  const BANDED_LABEL: FrameworkBackgroundDef = {
+    ...BANDED,
+    instanceZones: { ...LANES, label: { style: LABEL_STYLE, band: BAND } },
+  };
+
+  const COLUMNED_LABEL: FrameworkBackgroundDef = {
+    ...COLUMNED,
+    instanceZones: {
+      ...LANES,
+      stack: 'x',
+      label: { style: LABEL_STYLE, band: BAND },
+    },
+  };
+
+  it('resolves the strip at the leading edge of each zone', () => {
+    const plot = backgroundPlot(BANDED_LABEL, 440, 320);
+    const zones = backgroundInstanceZones(BANDED_LABEL, THREE);
+
+    // Plot is (20, 10) → 400 × 300; the three lanes weigh 1 : 2 : 1, so the
+    // strips are 75, 150 and 75 tall, stacked from the plot's top edge.
+    expect(
+      zones.map(zone => backgroundInstanceZoneBand(BANDED_LABEL, zone, plot))
+    ).toEqual([
+      { x: 20, y: 10, w: 24, h: 75 },
+      { x: 20, y: 85, w: 24, h: 150 },
+      { x: 20, y: 235, w: 24, h: 75 },
+    ]);
+  });
+
+  it('turns the strip on its side for an `x` stack', () => {
+    const plot = backgroundPlot(COLUMNED_LABEL, 440, 320);
+    const zones = backgroundInstanceZones(COLUMNED_LABEL, THREE);
+
+    expect(
+      zones.map(zone => backgroundInstanceZoneBand(COLUMNED_LABEL, zone, plot))
+    ).toEqual([
+      { x: 20, y: 10, w: 100, h: 24 },
+      { x: 120, y: 10, w: 200, h: 24 },
+      { x: 320, y: 10, w: 100, h: 24 },
+    ]);
+  });
+
+  it('resolves nothing for a declaration that asks for no band', () => {
+    const plot = backgroundPlot(BANDED, 440, 320);
+    const [zone] = backgroundInstanceZones(BANDED, THREE);
+    expect(backgroundInstanceZoneBand(BANDED, zone, plot)).toBeNull();
+  });
+
+  it('clamps a strip wider than the plot it sits in', () => {
+    // The same degenerate case a side band has, and the same answer.
+    const narrow: FrameworkBackgroundDef = {
+      ...BANDED_LABEL,
+      instanceZones: {
+        ...LANES,
+        label: { style: LABEL_STYLE, band: { width: 999 } },
+      },
+    };
+    const plot = backgroundPlot(narrow, 440, 320);
+    const [zone] = backgroundInstanceZones(narrow, THREE);
+    expect(backgroundInstanceZoneBand(narrow, zone, plot)?.w).toBe(400);
+  });
+
+  it('writes each name turned on its side, centred in its own strip', () => {
+    const rec = paint(BANDED_LABEL, THREE, 440, 320);
+
+    // Centred ACROSS the 24-unit strip (x = 20 + 12) and ALONG the lane:
+    // lane 0 spans y 10 → 85, lane 1 spans 85 → 235.
+    expect(rec.texts).toEqual([
+      {
+        text: 'Sales',
+        x: 32,
+        y: 47.5,
+        font: '600 13px Inter, sans-serif',
+        align: 'center',
+        baseline: 'middle',
+        color: '#262626',
+        vertical: true,
+      },
+      {
+        text: 'Ops',
+        x: 32,
+        y: 160,
+        font: '600 13px Inter, sans-serif',
+        align: 'center',
+        baseline: 'middle',
+        color: '#262626',
+        vertical: true,
+      },
+    ]);
+  });
+
+  it('leaves an `x` partition’s names upright — the strip is wide, not tall', () => {
+    const rec = paint(COLUMNED_LABEL, THREE, 440, 320);
+    // Centred across the 24-unit strip (y = 10 + 12) and along each column.
+    expect(rec.texts.map(t => [t.text, t.x, t.y, t.vertical])).toEqual([
+      ['Sales', 70, 22, undefined],
+      ['Ops', 220, 22, undefined],
+    ]);
+  });
+
+  it('draws the strip divider along every zone, named or not', () => {
+    // Every zone, because the strip is the zone's title band and a lane whose
+    // name was cleared still has one. N strips + N−1 separators.
+    const rec = paint(BANDED_LABEL, {
+      lanes: [
+        { id: 'a', size: 1 },
+        { id: 'b', size: 1 },
+      ],
+    });
+    expect(rec.texts).toEqual([]);
+    expect(rec.segments).toEqual([
+      // The separator between the two lanes (stage 3), full plot width — the
+      // default 400 × 300 frame, so the plot is x 20 → 380, y 10 → 290.
+      [20, 150, 380, 150],
+      // …then each strip's own divider, spanning only its own lane.
+      [44, 10, 44, 150],
+      [44, 150, 44, 290],
+    ]);
+  });
+
+  it('honours a dashed strip divider, and puts the dash back', () => {
+    const rec = paint(
+      {
+        ...BANDED_LABEL,
+        instanceZones: {
+          ...LANES,
+          divider: undefined,
+          label: {
+            style: LABEL_STYLE,
+            band: {
+              width: 24,
+              divider: { color: '#000', width: 1, dash: [2, 2] },
+            },
+          },
+        },
+      },
+      THREE
+    );
+    // One per zone: three lanes, three strips, three dashed rules.
+    expect(rec.dashes).toEqual([
+      [2, 2],
+      [2, 2],
+      [2, 2],
+    ]);
+  });
+
+  it('draws no strip divider when the band declares none', () => {
+    const rec = paint(
+      {
+        ...BANDED_LABEL,
+        instanceZones: {
+          ...LANES,
+          divider: undefined,
+          label: { style: LABEL_STYLE, band: { width: 24 } },
+        },
+      },
+      THREE
+    );
+    expect(rec.segments).toEqual([]);
+    // …and the names are still written: a band with no rule is still a band.
+    expect(rec.texts).toHaveLength(2);
+  });
+
+  it('keeps the strip a fixed width however far the frame is stretched', () => {
+    const rec = paint(BANDED_LABEL, THREE, 880, 320);
+    // Ratios scale, model units do not: the strip is 24 units at any size.
+    expect(rec.texts[0].x).toBe(32);
+  });
+
+  it('leaves the zone RECTS full-plot — the strip is chrome, not a smaller lane', () => {
+    // The BPMN reading, and the reason membership is untouched by this change:
+    // the title band belongs TO the lane, so an element dropped on it is in
+    // that lane, and naming a lane does not shrink its share of the pool.
+    expect(backgroundInstanceZones(BANDED_LABEL, THREE)).toEqual(
+      backgroundInstanceZones(BANDED, THREE)
+    );
+  });
+
+  it('still offers no zone name for in-place editing through the declaration', () => {
+    // Unchanged by the placement: the hit-test walk takes the DECLARATION
+    // alone. Under a band the framework's own view hit-tests
+    // `backgroundInstanceZoneBand` — the rectangle painted above — instead.
+    expect(backgroundLabelHits(BANDED_LABEL, THREE, 440, 320)).toEqual([]);
   });
 });
 

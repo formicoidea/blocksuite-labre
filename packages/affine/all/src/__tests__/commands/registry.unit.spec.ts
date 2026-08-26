@@ -34,7 +34,12 @@ describe('command registry invariants', () => {
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
       'cynefin-estuarine': 3,
-      bpmn: 6,
+      // 8 since B4 added the two lane gestures (`bpmn.addLane`,
+      // `bpmn.removeLane`) beside the six toolbox artefacts. They are the first
+      // BPMN commands that act on a SELECTION rather than create something, and
+      // therefore the first that decline `senior-menu` — which the catalogue
+      // test at the bottom of this file is precisely what makes safe.
+      bpmn: 8,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -58,7 +63,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(76);
+    expect(commands).toHaveLength(78);
   });
 
   /**

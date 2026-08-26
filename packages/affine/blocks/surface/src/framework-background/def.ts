@@ -242,6 +242,42 @@ export interface BackgroundInstanceZoneItem {
 }
 
 /**
+ * A label STRIP at the leading edge of every instance zone.
+ *
+ * The placement BPMN 2.0 draws a lane title in, and the one bpmn.io, Camunda
+ * and Visio all render: a fixed-width band along the lane's leading edge,
+ * immediately inside the pool's own participant band, with the lane name turned
+ * on its side. The first placement this file offered wrote the name across the
+ * zone's top-left corner instead; the PO's visual recette (2026-08-26) settled
+ * it against the corner, on notation rather than on taste — a reader who knows
+ * BPMN reads the strip as a lane title and a floating corner word as a note.
+ *
+ * ## The strip is CHROME, not a smaller zone
+ *
+ * {@link backgroundInstanceZones} keeps reporting the FULL plot slice, and the
+ * strip is painted inside it. That is the BPMN reading and not an
+ * implementation shortcut: the title band belongs TO the lane, so an element
+ * dropped on it is in that lane, and a lane's share of the pool does not shrink
+ * because it was given a name. Membership, the audit and every rule therefore
+ * see exactly what they saw before this existed.
+ *
+ * ## Which way the words run
+ *
+ * From the stack, not from a field: a `'y'` stack makes the strip tall and
+ * narrow, so the name is rotated to read bottom-to-top, exactly as the
+ * participant name is one level up ({@link BackgroundSideBandDef}); an `'x'`
+ * stack makes it short and wide, so the name stays upright. A declaration that
+ * could disagree with its own geometry would only ever be a way to get it
+ * wrong.
+ */
+export interface BackgroundInstanceZoneBandDef {
+  /** Strip thickness in FIXED model units — across the stacking direction. */
+  width: number;
+  /** The line between the strip and the rest of the zone. Absent means none. */
+  divider?: BackgroundStroke;
+}
+
+/**
  * A background whose plot its INSTANCES divide up.
  *
  * A framework declares here that its elements carry their own partition, which
@@ -272,21 +308,39 @@ export interface BackgroundInstanceZonesDef {
   /** The line between two adjacent zones. Absent means none is drawn. */
   divider?: BackgroundStroke;
   /**
-   * How a zone's {@link BackgroundInstanceZoneItem.name} is written: horizontal,
-   * anchored at the top-left corner of the band, inset by `dx` / `dy` in FIXED
-   * model units like every other offset here.
-   *
-   * Horizontal on purpose, and not a rotated band label like the participant
-   * name one level up ({@link BackgroundSideBandDef}): a lane is as wide as the
-   * whole pool and has all the room a name needs, so turning the words on their
-   * side would cost legibility to save space nobody needed.
+   * How a zone's {@link BackgroundInstanceZoneItem.name} is written.
    *
    * Not a {@link BackgroundTextDef}: there is one style for every zone of the
-   * instance, and the anchor is the band's own corner rather than a declared
+   * instance, and the anchor is the zone's own geometry rather than a declared
    * ratio — the whole point is that the declaration does not know how many
-   * bands there are or where they sit.
+   * zones there are or where they sit.
+   *
+   * ## Two placements, selected by the PRESENCE of {@link band}
+   *
+   * - **corner** (no `band`) — horizontal, anchored at the top-left of the
+   *   zone, inset by `dx` / `dy` in FIXED model units like every other offset
+   *   here. The original placement, and still the default;
+   * - **band** — a fixed-width label STRIP at the zone's leading edge, with the
+   *   name written along it: rotated for a `'y'` stack, upright for an `'x'`
+   *   one. See {@link BackgroundInstanceZoneBandDef}.
+   *
+   * Presence as the selector rather than a discriminated union, deliberately.
+   * A union would need a tag on every declaration that already exists, which
+   * makes an additive change a breaking one for no reader; and presence is
+   * already how this file says "this feature is off" everywhere else — an
+   * absent `instanceZones` is no partition, an absent `divider` is no line, an
+   * absent `label` is no names at all. `dx` / `dy` belong to the corner
+   * placement and are ignored under a band, which has no corner to inset from.
    */
-  label?: { style: BackgroundTextStyle; dx?: number; dy?: number };
+  label?: {
+    style: BackgroundTextStyle;
+    /** Corner placement only. */
+    dx?: number;
+    /** Corner placement only. */
+    dy?: number;
+    /** Present = band placement. */
+    band?: BackgroundInstanceZoneBandDef;
+  };
   /**
    * Prefix of the reported zone ids: `'lane'` reports `lane:sales`.
    *
@@ -607,6 +661,57 @@ export function backgroundInstanceZones(
     at += share;
   }
   return zones;
+}
+
+/** A rectangle in ELEMENT-LOCAL model units, i.e. what the renderer paints in. */
+export interface BackgroundRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * The label STRIP of one instance zone, in element-local model units.
+ *
+ * `null` when the declaration asks for no band, or when there is no room for
+ * one. THE one place that knows where a lane title sits: the renderer paints
+ * from it and the framework's view hit-tests a double-click against it, so the
+ * words a user aims at and the words they get are the same rectangle by
+ * construction rather than by two constants that must agree.
+ *
+ * Clamped to the plot, the way a side band clamps to an element narrower than
+ * its own margin ({@link BackgroundSideBandDef}) — the same degenerate case,
+ * and the same answer.
+ */
+export function backgroundInstanceZoneBand(
+  def: FrameworkBackgroundDef,
+  zone: BackgroundInstanceZone,
+  plot: ReturnType<typeof backgroundPlot>
+): BackgroundRect | null {
+  const spec = def.instanceZones;
+  const band = spec?.label?.band;
+  if (spec === undefined || band === undefined) return null;
+  if (!(band.width > 0)) return null;
+
+  if (spec.stack === 'y') {
+    const width = Math.min(band.width, plot.width);
+    if (!(width > 0)) return null;
+    return {
+      x: plot.x0,
+      y: plot.y0 + zone.rect.y * plot.height,
+      w: width,
+      h: zone.rect.h * plot.height,
+    };
+  }
+  const height = Math.min(band.width, plot.height);
+  if (!(height > 0)) return null;
+  return {
+    x: plot.x0 + zone.rect.x * plot.width,
+    y: plot.y0,
+    w: zone.rect.w * plot.width,
+    h: height,
+  };
 }
 
 /**

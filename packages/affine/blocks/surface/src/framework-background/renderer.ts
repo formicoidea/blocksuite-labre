@@ -13,6 +13,7 @@ import type {
 } from './def.js';
 import {
   backgroundColor,
+  backgroundInstanceZoneBand,
   backgroundInstanceZones,
   backgroundPlot,
   backgroundPoint,
@@ -383,19 +384,74 @@ export function createFrameworkBackgroundRenderer<
     //
     // Deliberately NOT routed through `backgroundTexts` (see `labels.ts`): that
     // walk is a function of the DECLARATION alone, and these names are a
-    // function of the MODEL. The consequence is that a zone name is not
-    // double-clickable on the canvas the way a declared label is — it is not in
-    // the hit-test walk either, and the two therefore cannot disagree. Names
-    // are edited through the framework's own tooling, which is where a zone is
-    // added and removed anyway: a lane the user cannot create by clicking is
-    // not one they should have to rename by clicking.
+    // function of the MODEL. A zone name is therefore not in the declaration's
+    // hit-test walk, and the two cannot disagree. Under the BAND placement the
+    // framework's own view hit-tests `backgroundInstanceZoneBand` instead —
+    // the very rectangle painted below — so the words a user aims at and the
+    // words they get are one shape rather than two constants that must agree.
     const zoneLabel = instanceZonesDef?.label;
     if (zoneLabel) {
+      const labelBand = zoneLabel.band;
       const dx = zoneLabel.dx ?? DEFAULT_INSTANCE_ZONE_LABEL_DX;
       const dy = zoneLabel.dy ?? DEFAULT_INSTANCE_ZONE_LABEL_DY;
+      const stackY = instanceZonesDef?.stack === 'y';
+
       for (const zone of instanceZones) {
+        // The strip is drawn for EVERY zone, named or not: it is the lane's
+        // title band, and a lane whose name has been cleared still has one —
+        // an empty band that reads as a lane waiting to be named, rather than
+        // a lane that silently loses its structure. The NAME is what is
+        // conditional, exactly as under the corner placement.
+        const strip = labelBand
+          ? backgroundInstanceZoneBand(def, zone, plot)
+          : null;
+
+        if (strip && labelBand?.divider) {
+          const divider = labelBand.divider;
+          ctx.strokeStyle = color(divider.color);
+          ctx.lineWidth = divider.width;
+          if (divider.dash?.length) ctx.setLineDash([...divider.dash]);
+          // The far edge of the strip, along the zone: the near edge is the
+          // plot boundary, already drawn by the frame or by the side band.
+          if (stackY) {
+            line(
+              strip.x + strip.w,
+              strip.y,
+              strip.x + strip.w,
+              strip.y + strip.h
+            );
+          } else {
+            line(
+              strip.x,
+              strip.y + strip.h,
+              strip.x + strip.w,
+              strip.y + strip.h
+            );
+          }
+          if (divider.dash?.length) ctx.setLineDash([]);
+        }
+
         // An unnamed zone is a band and nothing else; it is not an empty label.
         if (zone.name === undefined || zone.name === '') continue;
+
+        if (strip) {
+          // Centred ACROSS the strip and ALONG it, the way the participant name
+          // is centred in its own band one level up. `middle` regardless of
+          // what the style says: the room the text is given is the width of the
+          // strip, and a baseline anchor there would push the words against the
+          // divider.
+          const style = { ...zoneLabel.style, baseline: 'middle' as const };
+          drawText(
+            zone.name,
+            strip.x + strip.w / 2,
+            strip.y + strip.h / 2,
+            style,
+            'center',
+            stackY
+          );
+          continue;
+        }
+
         drawText(
           zone.name,
           x0 + zone.rect.x * pw + dx,
