@@ -28,6 +28,7 @@ import {
   START_WIDTH,
   TASK_RADIUS,
 } from './consts';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
 
 /**
  * Standalone creation/activation actions for the BPMN toolbox — lifted out of
@@ -78,6 +79,10 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
   const id = surface.addElement({
     type: 'bpmnNode',
     kind,
+    // Semantic identity (B1): posted next to `kind`, which stays untouched and
+    // keeps driving the rendering. The role is the authority on what the node
+    // MEANS — see the table in `./roles.ts`.
+    role: BPMN_ROLE_OF_KIND[kind],
     shapeType: preset.shapeType,
     filled: true,
     fillColor: NODE_FILL,
@@ -110,6 +115,9 @@ export function createBpmnPool(std: BlockStdScope) {
   const { centerX: cx, centerY: cy } = gfx.viewport;
   const id = surface.addElement({
     type: 'bpmnPool',
+    // The FRAME the flow objects are drawn in, and a role of its own: a rule
+    // written on the artefacts must never fall on the lane that holds them.
+    role: BPMN_ROLE.pool,
     xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
   });
   finish(gfx, id);
@@ -129,6 +137,13 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
     frontEndpointStyle: PointStyle.None,
     rearEndpointStyle: PointStyle.Triangle,
   });
-  gfxOf(std).tool.setTool(ConnectorTool, { mode: ConnectorMode.Orthogonal });
+  gfxOf(std).tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Orthogonal,
+    // A TYPED edge (`docs/adr/0010`): the arrow the user is about to draw says
+    // "is followed by", so its source is what happens first. The tool carries
+    // the role so the connector is born with it rather than acquiring one
+    // afterwards.
+    role: BPMN_ROLE.sequenceFlow,
+  });
   // Keep the palette open (native sub-menu behaviour).
 }

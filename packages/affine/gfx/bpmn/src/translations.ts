@@ -1,12 +1,17 @@
 import {
+  collectTranslationKeys,
   commandTranslationEntries,
+  mergeTranslationEntries,
   type TranslationKeyManifestEntry,
 } from '@labre/std';
 
 import { bpmnCommands } from './commands.js';
+import { BPMN_ROLES } from './roles.js';
 
 /**
- * THIS framework's contribution to the translation-key manifest.
+ * THIS framework's contribution to the translation-key manifest — every
+ * `com.labre.*` key BPMN can hand to `TranslationProvider.t`, derived from the
+ * very declarations the editor registers (never restated).
  *
  * Its command labels and descriptions are built from a TEMPLATE, so the
  * concrete keys exist nowhere but in the declarations themselves and the
@@ -18,4 +23,7 @@ import { bpmnCommands } from './commands.js';
  * `packages/affine/all/src/translations.ts`.
  */
 export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
-  commandTranslationEntries(bpmnCommands);
+  mergeTranslationEntries(
+    commandTranslationEntries(bpmnCommands),
+    collectTranslationKeys('role', BPMN_ROLES)
+  );

@@ -27,6 +27,7 @@ import {
   START_WIDTH,
   TASK_RADIUS,
 } from '../consts';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
 type NodeKind = 'startEvent' | 'endEvent' | 'task' | 'gatewayExclusive';
 
@@ -36,6 +37,10 @@ function node(kind: NodeKind, x: number, y: number, text?: string) {
   const base: Record<string, unknown> = {
     type: 'bpmnNode',
     kind,
+    // A template must produce the same typed artefacts as the toolbox, or a
+    // process started from a preset would read differently from a hand-drawn
+    // one.
+    role: BPMN_ROLE_OF_KIND[kind],
     filled: true,
     fillColor: NODE_FILL,
     shapeStyle: ShapeStyle.General,
@@ -63,13 +68,22 @@ function node(kind: NodeKind, x: number, y: number, text?: string) {
 }
 
 function pool(x: number, y: number, w: number, h: number, name = 'Pool') {
-  return { type: 'bpmnPool', name, xywh: `[${x},${y},${w},${h}]` };
+  return {
+    type: 'bpmnPool',
+    role: BPMN_ROLE.pool,
+    name,
+    xywh: `[${x},${y},${w},${h}]`,
+  };
 }
 
 /** A sequence-flow connector; ids are remapped on insert. */
 function seq(source: string, target: string) {
   return {
     type: 'connector',
+    // Both ends are BOUND, so this arrow relates two named things and its
+    // direction is a claim the template makes: source first, target next
+    // (`docs/adr/0010`).
+    role: BPMN_ROLE.sequenceFlow,
     mode: ConnectorMode.Orthogonal,
     stroke: SEQUENCE_STROKE,
     strokeWidth: SEQUENCE_WIDTH,
@@ -81,7 +95,16 @@ function seq(source: string, target: string) {
   };
 }
 
-/** A standalone (free) sequence-flow arrow for the prefab card. */
+/**
+ * A standalone (free) sequence-flow arrow for the prefab card.
+ *
+ * NEUTRAL on purpose (`docs/adr/0010` § Compatibility, and the same call the
+ * Wardley "Link" swatch makes): this is a horizontal stroke bound to nothing —
+ * a sample of a STYLE, in a palette. A typed edge claims "this is followed by
+ * that", and a stroke attached to neither end has no this and no that to say it
+ * about. Drawing it with the sequence-flow tool, or dropping this one and then
+ * attaching both of its ends, is what makes it a statement.
+ */
 function freeSeq(): Record<string, unknown> {
   return {
     type: 'connector',
