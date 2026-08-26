@@ -48,6 +48,7 @@ import throttle from 'lodash-es/throttle';
 import { filter } from 'rxjs/operators';
 import * as Y from 'yjs';
 
+import { isDocTrashed } from '../common/doc-trashed.js';
 import { renderLinkedDocInCard } from '../common/render-linked-doc';
 import { SyncedDocErrorIcon } from '../embed-synced-doc-block/styles.js';
 import { styles } from './styles.js';
@@ -327,7 +328,7 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
 
   private readonly _renderEmbedView = () => {
     const linkedDoc = this.linkedDoc;
-    const isDeleted = !linkedDoc;
+    const isDeleted = !linkedDoc || isDocTrashed(linkedDoc);
     const isLoading = this._loading;
     const isError = this.isError;
     const isEmpty = this._isDocEmpty() && this.isBannerEmpty;
@@ -525,11 +526,6 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
       );
 
       this._setDocUpdatedAt();
-      this.disposables.add(
-        this.store.workspace.slots.docListUpdated.subscribe(() => {
-          this._setDocUpdatedAt();
-        })
-      );
 
       if (this._referenceToNode) {
         this._linkedDocMode = this.model.props.params?.mode ?? 'page';
@@ -555,6 +551,15 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
             this.isError = true;
           });
         }
+      })
+    );
+
+    // Subscribed whether or not the doc exists right now: the doc list is also
+    // what tells the card that its target was trashed, restored or recreated.
+    this.disposables.add(
+      this.store.workspace.slots.docListUpdated.subscribe(() => {
+        this._setDocUpdatedAt();
+        this.refreshData();
       })
     );
 

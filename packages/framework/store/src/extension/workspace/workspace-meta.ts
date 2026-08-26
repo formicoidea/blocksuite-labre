@@ -17,6 +17,16 @@ export interface DocMeta {
   createDate: number;
   updatedDate?: number;
   favorite?: boolean;
+  /**
+   * Set by the host when the doc sits in its trash. The doc is still in the
+   * workspace — it loads and round-trips as usual — but references to it
+   * (linked-doc and synced-doc cards) render as deleted.
+   *
+   * Optional and absent from documents written before it existed: the meta map
+   * is stored key by key, so an older document simply reads `undefined` here
+   * and an older reader ignores the key.
+   */
+  trash?: boolean;
 }
 
 export interface WorkspaceMeta {
