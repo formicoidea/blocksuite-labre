@@ -31,15 +31,22 @@ import { recordingCtx, stubMatrix } from './canvas-stub';
  *   textAlign = 'center'; textBaseline = 'middle'; fillText(name, 0, 0)
  * ```
  *
- * ## The three knowing differences
+ * ## The four knowing differences
  *
- * 1. the band divider is now stroked BEFORE the frame instead of after. Same
+ * 1. **the card is now filled white**, where the old renderer left it
+ *    transparent. The only one of the four that is VISIBLE, and the only one
+ *    that is a decision rather than a consequence: taken by the PO at the
+ *    red-zone review of 26/08/2026, on the ground that a pool is a map
+ *    background and every map background paints an opaque card. A pool dropped
+ *    over existing strokes now covers them — which is what a Wardley map
+ *    dropped over them has always done;
+ * 2. the band divider is now stroked BEFORE the frame instead of after. Same
  *    colour, same width, and they meet at two points on a rounded corner-free
  *    edge — nothing on the canvas can tell;
- * 2. `lineJoin = 'round'` is no longer set. The path is a rounded rectangle
+ * 3. `lineJoin = 'round'` is no longer set. The path is a rounded rectangle
  *    whose only joins are tangent to its arcs, and the divider is one straight
  *    segment: the property had nothing to act on;
- * 3. the participant name is no longer HIDDEN on a pool narrower than twelve
+ * 4. the participant name is no longer HIDDEN on a pool narrower than twelve
  *    model units. A pool that narrow is smaller than one character of its own
  *    name, and the primitive has no vocabulary for "give up below this size" —
  *    the band itself still clamps to the element, as it always did.
@@ -124,9 +131,13 @@ describe('the pool the primitive paints', () => {
       { x: 0.75, y: 0.75, w: 558.5, h: 198.5, r: 6 },
     ]);
     expect(rec.strokes).toEqual(['#262626', '#262626']);
-    // No card fill: a pool is a frame, and a white card would hide whatever was
-    // already drawn under it.
-    expect(rec.fills).toEqual([]);
+  });
+
+  it('fills the card white, like every other framework background', () => {
+    // Knowing difference 1, and the only visible one: the old renderer left the
+    // pool transparent. The PO settled it the other way at the red-zone review
+    // of 26/08/2026 — a pool IS a map background, so it paints a card.
+    expect(render(pool()).fills).toEqual(['#ffffff']);
   });
 
   it('paints the name band and its divider where they have always been', () => {
@@ -156,10 +167,12 @@ describe('the pool the primitive paints', () => {
     ]);
   });
 
-  it('paints in the order a card is dressed: band, divider, frame, name', () => {
-    // The band is part of the CARD, so it goes under the frame — a band painted
-    // over it would erase the left edge and read as a broken pool.
+  it('paints in the order a card is dressed: fill, band, divider, frame, name', () => {
+    // The band is part of the CARD, so it goes over the fill and under the
+    // frame — a band painted over the frame would erase the left edge and read
+    // as a broken pool.
     expect(render(pool()).ops).toEqual([
+      'fill',
       'fillRect',
       'stroke',
       'stroke',

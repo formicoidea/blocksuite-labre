@@ -19,8 +19,9 @@ import { getAffineSchemas } from '../schemas.js';
 
 /**
  * A BPMN pool authored BEFORE the pool became an instance of the
- * framework-background primitive still opens, round-trips and paints
- * identically.
+ * framework-background primitive still opens, round-trips and paints the same
+ * pool — with one deliberate change to how it LOOKS, and none at all to what it
+ * carries.
  *
  * This is the document-format guarantee of the slice — the red-zone half of it,
  * asserted end to end against the real assembly points: the persisted element
@@ -28,6 +29,11 @@ import { getAffineSchemas } from '../schemas.js';
  * the model still behaves like the passive canvas it always was, and the
  * renderer the canvas looks up still draws the same frame, the same band and
  * the same name at the same coordinates.
+ *
+ * The deliberate change is the CARD: an old pool was transparent, a pool is now
+ * filled white like every other framework background (PO recette, 26/08/2026).
+ * Asserted below rather than glossed over — a legacy document paints one pixel
+ * differently and the review must see which one.
  *
  * Every expectation is a LITERAL. Nothing here is recomputed from the
  * declaration under test, so a change to the declaration fails this file.
@@ -181,7 +187,7 @@ describe('a BPMN pool written before the primitive', () => {
     ]);
   });
 
-  test('paints the same pool the old renderer painted', async () => {
+  test('paints the pool the old renderer painted, on a card it now fills', async () => {
     const { collection, transformer } = createEditor();
     const store = authorLegacyDocument(collection, 'doc:legacy-paint');
     const snapshot = transformer.docToSnapshot(store) as DocSnapshot;
@@ -201,6 +207,11 @@ describe('a BPMN pool written before the primitive', () => {
       identityMatrix()
     );
 
+    // The white card. The ONE deliberate visual change of this slice, decided
+    // by the PO at the red-zone review of 26/08/2026: a pool is a map
+    // background, so it paints an opaque card like every other one. The old
+    // renderer left it transparent.
+    expect(rec.fills).toEqual(['#ffffff']);
     // The filled name band, over the whole 28-unit left margin.
     expect(rec.rects).toEqual([[0, 0, 28, 200]]);
     // The divider between the band and the flow area.
@@ -219,6 +230,7 @@ function stub() {
   const rects: number[][] = [];
   const texts: Array<[string, number, number]> = [];
   const fonts: string[] = [];
+  const fills: string[] = [];
   const strokes: string[] = [];
   let mx = 0;
   let my = 0;
@@ -245,7 +257,9 @@ function stub() {
       my = y;
     }),
     arcTo: vi.fn(),
-    fill: vi.fn(),
+    fill: vi.fn(() => {
+      if (typeof ctx.fillStyle === 'string') fills.push(ctx.fillStyle);
+    }),
     stroke: vi.fn(() => strokes.push(ctx.strokeStyle)),
     fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
       rects.push([x, y, w, h]);
@@ -275,6 +289,7 @@ function stub() {
     rects,
     texts,
     fonts,
+    fills,
     strokes,
   };
 }

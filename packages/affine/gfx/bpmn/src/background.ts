@@ -3,6 +3,7 @@ import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
 import {
   POOL_BAND_FILL,
   POOL_BAND_WIDTH,
+  POOL_CARD_FILL,
   POOL_CORNER_RADIUS,
   POOL_FONT_FAMILY,
   POOL_FRAME_COLOR,
@@ -46,6 +47,7 @@ import { BPMN_ROLE } from './roles';
 
 /** The colour code: every colour named once, never repeated as a hex. */
 const PALETTE = {
+  card: POOL_CARD_FILL,
   frame: POOL_FRAME_COLOR,
   band: POOL_BAND_FILL,
   name: POOL_NAME_COLOR,
@@ -70,9 +72,19 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
   chrome: {
     fontFamily: POOL_FONT_FAMILY,
     palette: PALETTE,
-    // No fill: a pool is a FRAME the user drops nodes into, and a card painted
-    // white would hide whatever was already drawn under it.
+    // An opaque white card, like every other framework background (PO recette,
+    // 26/08/2026). The hand-written renderer left the pool transparent, on the
+    // reasoning that a lane is a frame you drop nodes INTO; the review settled
+    // it the other way, and settled it on identity: a pool is a map background,
+    // so it paints a card, and a board where one framework's backdrop is
+    // see-through and every other one is not reads as a bug.
+    //
+    // The consequence is the standard framework-background behaviour, not a
+    // pool quirk: dropping a pool over strokes already on the canvas covers
+    // them, exactly as dropping a Wardley map over them does. The user's answer
+    // is the same in both cases — send the background to the back.
     surface: {
+      fill: '@card',
       border: {
         color: '@frame',
         width: POOL_FRAME_WIDTH,

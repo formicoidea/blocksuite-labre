@@ -49,6 +49,12 @@ export const NODE_LABEL: Record<BpmnNodeKind, string> = {
  */
 export const POOL_BAND_WIDTH = 28;
 export const POOL_FRAME_COLOR = '#262626';
+/**
+ * The card. The same white every framework background paints — it is what
+ * `DEFAULT_BACKGROUND_SURFACE` gives a declaration that names no fill, and what
+ * the Wardley map, the Core Domain Chart and the Context Map board all declare.
+ */
+export const POOL_CARD_FILL = '#ffffff';
 export const POOL_BAND_FILL = '#f4f4f5';
 export const POOL_FRAME_WIDTH = 1.5;
 export const POOL_CORNER_RADIUS = 6;

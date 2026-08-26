@@ -13,14 +13,22 @@ every other background inherits. It is now an **instantiation of the
 framework-background primitive**, declared as data in `background.ts` like the
 Wardley map, the Core Domain Chart and the Event Storming board before it.
 
-Nothing about a pool changes on screen. The frame, its rounded corners, the
-filled name band, the divider and the participant name rotated up the band are
-reproduced operation for operation, and pinned by a fidelity suite that asserts
-every literal the deleted renderer used to emit. Three differences are known and
-recorded there: the divider is stroked before the frame instead of after (same
-ink, same width), a `lineJoin` that had nothing to act on is no longer set, and
-the participant name is no longer hidden on a pool narrower than twelve model
-units — a pool narrower than one character of its own name.
+One thing changes on screen, and it was asked for: **a pool now paints an opaque
+white card**, like every other framework background. It used to be transparent
+— a decision taken at the red-zone review of 26/08/2026, on the ground that a
+pool IS a map background, and a board where one framework's backdrop is
+see-through and every other one is not reads as a bug. A pool dropped over
+strokes already on the canvas covers them, exactly as a Wardley map dropped over
+them always has; sending the background to the back is the answer in both cases.
+
+Everything else is reproduced operation for operation — the frame, its rounded
+corners, the filled name band, the divider and the participant name rotated up
+the band — and pinned by a fidelity suite that asserts every literal the deleted
+renderer used to emit. Three further differences are known and recorded there,
+none of them visible: the divider is stroked before the frame instead of after
+(same ink, same width), a `lineJoin` that had nothing to act on is no longer
+set, and the participant name is no longer hidden on a pool narrower than twelve
+model units — a pool narrower than one character of its own name.
 
 The primitive gains the one concept the pool needed: **side bands**, a filled
 strip painted over a margin, with its own divider and its own label. A band has
