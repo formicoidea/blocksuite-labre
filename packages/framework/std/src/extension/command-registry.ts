@@ -304,6 +304,34 @@ export type CommandTelemetryReporter = (report: {
 export const CommandTelemetryIdentifier =
   createIdentifier<CommandTelemetryReporter>('CommandTelemetry');
 
+/**
+ * Per-user recency and frequency, measured at the same bottleneck telemetry is
+ * emitted from — and deliberately NOT the same thing.
+ *
+ * Telemetry is analytics: it leaves for a product dashboard, it only covers
+ * commands that declare a `telemetry` field, and no in-editor decision may
+ * depend on it. Usage is local state read back BY the editor: PF6 shows only
+ * seven of a framework's commands in the senior sub-menu once the framework has
+ * more than fourteen artefacts, ranked as "four most-used + three most-recent".
+ * That ranking needs a measure for EVERY command — a `core` action, a
+ * self-emitting one, one nobody ever thought to instrument — so the record call
+ * sits outside the telemetry condition and stays there.
+ *
+ * ADR 0008 listed this as an open question ("needs a host-side usage store; the
+ * registry only needs to accept an injected comparator"). This identifier is
+ * the measurement half of that answer; ranking is a later tranche and lives
+ * nowhere yet.
+ */
+export interface CommandUsageStore {
+  /** One invocation happened. Called by {@link runCommand}, best-effort. */
+  record(command: AnyCommandDescriptor, invocation: CommandInvocation): void;
+  /** `undefined` when the command was never invoked by this user. */
+  statsOf(commandId: string): { count: number; lastUsedAt: number } | undefined;
+}
+
+export const CommandUsageIdentifier =
+  createIdentifier<CommandUsageStore>('CommandUsage');
+
 const surfaceSelections = (std: BlockStdScope) =>
   std.selection.filter(SurfaceSelection);
 
@@ -350,9 +378,9 @@ export function isCommandAvailable(
 
 /**
  * THE bottleneck: the one place a command runs, and therefore the one place
- * its telemetry is emitted. Every surface (sub-menu, shortcut, palette,
- * sidepanel, agent) goes through here, which is what removes the per-menu
- * `track()` duplicates.
+ * its telemetry is emitted and its usage measured. Every surface (sub-menu,
+ * shortcut, palette, sidepanel, agent) goes through here, which is what removes
+ * the per-menu `track()` duplicates.
  */
 export function runCommand(
   std: BlockStdScope,
@@ -362,6 +390,9 @@ export function runCommand(
 ): void {
   const result = command.run(std, invocation, params as never);
   if (result instanceof Promise) result.catch(console.error);
+  // Before the telemetry gate on purpose: usage is measured for EVERY command,
+  // including the ones with no `telemetry` field and the self-emitting ones.
+  std.getOptional(CommandUsageIdentifier)?.record(command, invocation);
   if (!command.telemetry) return;
   std.getOptional(CommandTelemetryIdentifier)?.({ std, command, invocation });
 }
