@@ -13,6 +13,7 @@ import type {
 } from './def.js';
 import {
   backgroundColor,
+  backgroundInstanceZones,
   backgroundPlot,
   backgroundPoint,
   BROKEN_BACKGROUND_COLOR,
@@ -42,11 +43,12 @@ import {
  *    fill, then the bands over it, then the border over both, so the frame
  *    keeps outlining the whole element;
  * 2. the washes, over the plot;
- * 3. the zone tints;
+ * 3. the zone tints, then the dividers between the zones THIS INSTANCE
+ *    declares;
  * 4. the graduations of every axis;
  * 5. the axis lines and their arrowheads;
  * 6. every text — the band labels, the zone names, then per axis its title and
- *    its end labels.
+ *    its end labels, and last the names of the instance's own zones.
  *
  * A declaration that says nothing but its size therefore paints a plain white
  * rectangle: no axis, no zone, no decoration.
@@ -111,6 +113,20 @@ function fontOf(style: BackgroundTextStyle, fallbackFamily: string) {
 const DEFAULT_FONT_FAMILY = 'Inter, sans-serif';
 
 /**
+ * Where an instance zone's name sits in its band when the declaration states no
+ * offset: 8 model units in from the leading edge, 18 down from the top of the
+ * band.
+ *
+ * The two are not the same number, and that is not an oversight. The anchor is
+ * a BASELINE by default ({@link BackgroundTextStyle.baseline}), so the words
+ * hang ABOVE it: `dy` has to clear a cap height before it is an inset at all,
+ * and 18 leaves a name of the usual 12–15 units sitting just inside the top of
+ * its band. A declaration whose style anchors `middle` wants its own.
+ */
+const DEFAULT_INSTANCE_ZONE_LABEL_DX = 8;
+const DEFAULT_INSTANCE_ZONE_LABEL_DY = 18;
+
+/**
  * Build the canvas renderer of one declaration. Pure: the same declaration
  * always paints the same picture for the same model and size.
  */
@@ -122,6 +138,9 @@ export function createFrameworkBackgroundRenderer<
   const surface = def.chrome?.surface ?? DEFAULT_BACKGROUND_SURFACE;
   const color = (c: BackgroundColor | undefined) => backgroundColor(c, palette);
   const texts = backgroundTexts(def);
+  // The DECLARATION of the instance partition — how it stacks, how it is drawn.
+  // What it contains is the model's business and is read on every paint.
+  const instanceZonesDef = def.instanceZones;
 
   return (model, ctx, matrix, renderer) => {
     const props = model as unknown as BackgroundModelLike;
@@ -277,6 +296,42 @@ export function createFrameworkBackgroundRenderer<
       );
     }
 
+    // The partition THIS element carries, resolved once per paint: alone on
+    // this pipeline it is a function of the model rather than of the
+    // declaration. A framework that declares none never reads the model and
+    // never allocates.
+    const instanceZones = instanceZonesDef
+      ? backgroundInstanceZones(def, props)
+      : [];
+
+    // Dividers between adjacent instance zones: N zones, N−1 lines, on the
+    // INTERNAL boundaries only — the outer edges belong to the plot, and a line
+    // there would double the frame that is already drawn round it.
+    //
+    // Painted here, at the end of stage 3, rather than with the axis lines: a
+    // divider is part of what the zones ARE, so it belongs with the zones, and
+    // it must lie UNDER the graduations and the axes, which describe the frame
+    // of reference the user cannot move. After the tints, for the ordinary
+    // reason a fill goes under a line.
+    const zoneDivider = instanceZonesDef?.divider;
+    if (zoneDivider && instanceZones.length > 1) {
+      ctx.strokeStyle = color(zoneDivider.color);
+      ctx.lineWidth = zoneDivider.width;
+      if (zoneDivider.dash?.length) ctx.setLineDash([...zoneDivider.dash]);
+      // Every zone but the first opens on a boundary with the one before it.
+      for (let i = 1; i < instanceZones.length; i++) {
+        const { x, y } = instanceZones[i].rect;
+        if (instanceZonesDef?.stack === 'y') {
+          const ty = y0 + y * ph;
+          line(x0, ty, x1, ty);
+        } else {
+          const tx = x0 + x * pw;
+          line(tx, y0, tx, y1);
+        }
+      }
+      if (zoneDivider.dash?.length) ctx.setLineDash([]);
+    }
+
     // ── 4. Graduations ──────────────────────────────────────────────────
     for (const axis of def.axes ?? []) {
       const graduations = axis.ticks;
@@ -320,6 +375,36 @@ export function createFrameworkBackgroundRenderer<
         text.align,
         text.vertical === true
       );
+    }
+
+    // The instance's own zone names, after the declared texts — the same order
+    // the audit reports them in, and the same reason: what the framework says
+    // comes first, what this element adds comes after.
+    //
+    // Deliberately NOT routed through `backgroundTexts` (see `labels.ts`): that
+    // walk is a function of the DECLARATION alone, and these names are a
+    // function of the MODEL. The consequence is that a zone name is not
+    // double-clickable on the canvas the way a declared label is — it is not in
+    // the hit-test walk either, and the two therefore cannot disagree. Names
+    // are edited through the framework's own tooling, which is where a zone is
+    // added and removed anyway: a lane the user cannot create by clicking is
+    // not one they should have to rename by clicking.
+    const zoneLabel = instanceZonesDef?.label;
+    if (zoneLabel) {
+      const dx = zoneLabel.dx ?? DEFAULT_INSTANCE_ZONE_LABEL_DX;
+      const dy = zoneLabel.dy ?? DEFAULT_INSTANCE_ZONE_LABEL_DY;
+      for (const zone of instanceZones) {
+        // An unnamed zone is a band and nothing else; it is not an empty label.
+        if (zone.name === undefined || zone.name === '') continue;
+        drawText(
+          zone.name,
+          x0 + zone.rect.x * pw + dx,
+          y0 + zone.rect.y * ph + dy,
+          zoneLabel.style,
+          'left',
+          false
+        );
+      }
     }
   };
 }

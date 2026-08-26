@@ -221,6 +221,84 @@ export interface BackgroundZoneDef {
 }
 
 /**
+ * One region of the plot an INSTANCE declares, read off a model prop.
+ *
+ * The counterpart of {@link BackgroundZoneDef}, which is part of the framework
+ * and identical on every element of it. This one is the user's own partition of
+ * their own frame: a BPMN pool's lanes (couloirs) are exactly this — how many
+ * there are, what they are called and how the height is shared between them is
+ * a property of THAT pool, not of BPMN.
+ */
+export interface BackgroundInstanceZoneItem {
+  /** Stable id inside the instance; what a reported zone id is built from. */
+  id: string;
+  /** The zone name, drawn in the band. Absent means an unnamed band. */
+  name?: string;
+  /**
+   * A relative WEIGHT, not a length: the zones share the plot in proportion to
+   * their sizes. See {@link BackgroundInstanceZonesDef} for why.
+   */
+  size: number;
+}
+
+/**
+ * A background whose plot its INSTANCES divide up.
+ *
+ * A framework declares here that its elements carry their own partition, which
+ * prop holds it and how the pieces stack; the primitive paints the dividers and
+ * the names, and the audit reports the pieces as zones like any other. Named
+ * consumer: the BPMN pool, whose lanes arrive in the tranche after this one.
+ *
+ * ## Why weights and not model units
+ *
+ * Every position in this file is a ratio of the plot precisely so that a
+ * background survives being stretched, and an instance partition has to survive
+ * it too. Sizes are therefore NORMALISED over their sum: a pool with lanes of
+ * `1, 2, 1` gives the middle one half the height at any size, and dragging the
+ * pool taller redistributes the extra space proportionally instead of leaving a
+ * gap under the last band or pushing it out of the frame. The numbers are also
+ * free of a unit the user would have to think in — `2` reads as "twice the
+ * other one", which is the only thing a lane's height ever means.
+ */
+export interface BackgroundInstanceZonesDef {
+  /** Model prop holding the {@link BackgroundInstanceZoneItem}[]. */
+  prop: string;
+  /**
+   * Which way the zones stack. `'y'` lays them out as horizontal bands, full
+   * width, top to bottom in array order — the BPMN pool. `'x'` is the
+   * symmetric case: full-height columns, left to right.
+   */
+  stack: 'x' | 'y';
+  /** The line between two adjacent zones. Absent means none is drawn. */
+  divider?: BackgroundStroke;
+  /**
+   * How a zone's {@link BackgroundInstanceZoneItem.name} is written: horizontal,
+   * anchored at the top-left corner of the band, inset by `dx` / `dy` in FIXED
+   * model units like every other offset here.
+   *
+   * Horizontal on purpose, and not a rotated band label like the participant
+   * name one level up ({@link BackgroundSideBandDef}): a lane is as wide as the
+   * whole pool and has all the room a name needs, so turning the words on their
+   * side would cost legibility to save space nobody needed.
+   *
+   * Not a {@link BackgroundTextDef}: there is one style for every zone of the
+   * instance, and the anchor is the band's own corner rather than a declared
+   * ratio — the whole point is that the declaration does not know how many
+   * bands there are or where they sit.
+   */
+  label?: { style: BackgroundTextStyle; dx?: number; dy?: number };
+  /**
+   * Prefix of the reported zone ids: `'lane'` reports `lane:sales`.
+   *
+   * A namespace, not decoration. The instance zones are concatenated with the
+   * declared ones ({@link FrameworkBackgroundDef.zones}) wherever zones are
+   * consumed, and a user free to name a lane `early` must not be able to shadow
+   * a framework zone by doing so.
+   */
+  idPrefix: string;
+}
+
+/**
  * A flat colour wash over the plot, given as gradient stops.
  *
  * Stops are DATA — `[offset, alpha]` pairs — never a curve evaluated at paint
@@ -339,6 +417,12 @@ export interface FrameworkBackgroundDef {
   axes?: readonly BackgroundAxisDef[];
   zones?: readonly BackgroundZoneDef[];
   /**
+   * The plot partition each INSTANCE carries, if this framework lets its
+   * elements declare one. Absent — the case for every framework so far — means
+   * a background whose zones are the same on every element of it.
+   */
+  instanceZones?: BackgroundInstanceZonesDef;
+  /**
    * Width of the TOLERANCE BAND around each zone transition, as a ratio of the
    * plot span the transition is measured across. Centred on the transition, so
    * a band of `0.1` reaches `0.05` of the plot either side of the line.
@@ -398,10 +482,14 @@ export const BROKEN_BACKGROUND_COLOR = '#ff00ff';
 /** Warn once per distinct problem: a renderer runs on every frame. */
 const warned = new Set<string>();
 
-export function warnBrokenBackgroundColor(reason: string): void {
+function warnOnce(reason: string): void {
   if (warned.has(reason)) return;
   warned.add(reason);
   console.warn(`[framework-background] ${reason}`);
+}
+
+export function warnBrokenBackgroundColor(reason: string): void {
+  warnOnce(reason);
 }
 
 /**
@@ -421,6 +509,104 @@ export function backgroundColor(
   if (resolved !== undefined) return resolved;
   warnBrokenBackgroundColor(`no palette entry for "${color}"`);
   return BROKEN_BACKGROUND_COLOR;
+}
+
+/** One zone of one instance, resolved: a name and a rectangle in plot ratios. */
+export interface BackgroundInstanceZone {
+  /** `${idPrefix}:${item.id}` — never collides with a declared zone id. */
+  id: string;
+  name?: string;
+  rect: { x: Ratio; y: Ratio; w: Ratio; h: Ratio };
+}
+
+/** Nothing to report, shared so the common case allocates no array. */
+const NO_INSTANCE_ZONES: readonly BackgroundInstanceZone[] = Object.freeze([]);
+
+/**
+ * The plot partition ONE instance carries, as rectangles in plot ratios.
+ *
+ * The semantic accessor onto {@link BackgroundInstanceZonesDef}: everything
+ * that has to know where a user's own zones sit — the renderer that draws their
+ * dividers and their names, the audit that reports them, the rules a later
+ * tranche will judge inside them — reads them here, so a lane is one shape and
+ * not four that must agree. Named consumer: the BPMN pool's lanes (couloirs).
+ *
+ * Pure: declaration plus the instance's bag of props in, plain data out. Ratios
+ * and not model units, for the reason every position in this file is a ratio —
+ * an instance stretched to twice its height keeps the same partition.
+ *
+ * ## What a malformed partition does
+ *
+ * A partition is data the user edits, so it gets typos and half-written rows,
+ * and none of them may take the frame down or paint a picture that lies:
+ *
+ * - a missing, empty or non-array prop yields `[]` — a background that simply
+ *   has no partition yet, which is what every instance looks like the moment it
+ *   is created;
+ * - an entry that is not an object, or carries no string id, is dropped;
+ * - a size that is not a finite number, or is `0` or less, is dropped with a
+ *   warning: a zero-height band is a band nothing can be in, and a negative one
+ *   would eat into its neighbours. Dropped rather than clamped, for the reason
+ *   {@link FrameworkBackgroundDef.transitionBandWidth} drops its own degenerate
+ *   case — silently inventing a size is worse than showing one band fewer;
+ * - once for each distinct problem, like every other diagnostic on the paint
+ *   path (see {@link warnBrokenBackgroundColor}).
+ *
+ * The survivors keep their declaration ORDER, and their sizes are normalised
+ * over the sum of the survivors — so dropping a broken row redistributes its
+ * space rather than leaving a hole where it was.
+ */
+export function backgroundInstanceZones(
+  def: FrameworkBackgroundDef,
+  model: Readonly<Record<string, unknown>>
+): readonly BackgroundInstanceZone[] {
+  const spec = def.instanceZones;
+  if (spec === undefined) return NO_INSTANCE_ZONES;
+
+  const raw = model[spec.prop];
+  if (!Array.isArray(raw) || raw.length === 0) return NO_INSTANCE_ZONES;
+
+  const items: BackgroundInstanceZoneItem[] = [];
+  let total = 0;
+  for (const entry of raw as readonly unknown[]) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const item = entry as Partial<BackgroundInstanceZoneItem>;
+    if (typeof item.id !== 'string' || item.id === '') continue;
+
+    const size = item.size;
+    if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) {
+      warnOnce(
+        `"${def.type}" instance zone "${item.id}" declares a size of ${String(
+          size
+        )} — a zone with no extent is one nothing can be inside, so it is ` +
+          `dropped and its neighbours share the space.`
+      );
+      continue;
+    }
+    items.push({
+      id: item.id,
+      ...(typeof item.name === 'string' ? { name: item.name } : {}),
+      size,
+    });
+    total += size;
+  }
+  if (items.length === 0 || !(total > 0)) return NO_INSTANCE_ZONES;
+
+  const zones: BackgroundInstanceZone[] = [];
+  let at = 0;
+  for (const item of items) {
+    const share = item.size / total;
+    zones.push({
+      id: `${spec.idPrefix}:${item.id}`,
+      ...(item.name !== undefined ? { name: item.name } : {}),
+      rect:
+        spec.stack === 'y'
+          ? { x: 0, y: at, w: 1, h: share }
+          : { x: at, y: 0, w: share, h: 1 },
+    });
+    at += share;
+  }
+  return zones;
 }
 
 /**

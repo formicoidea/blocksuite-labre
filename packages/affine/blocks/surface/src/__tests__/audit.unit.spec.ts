@@ -24,7 +24,11 @@ import {
 } from '@labre/std/gfx';
 import { describe, expect, test, vi } from 'vitest';
 
-import { collectAuditFacts, runMapAudit, auditCommands } from '../extensions/audit.js';
+import {
+  collectAuditFacts,
+  runMapAudit,
+  auditCommands,
+} from '../extensions/audit.js';
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
 import {
   evaluateRules,
@@ -363,6 +367,115 @@ describe('the facts handed to the assistant', () => {
   });
 });
 
+/* -------------------------------------------------------------------------- */
+/* Zones a frame declares for ITSELF (PF2.1, tranche B3)                       */
+/* -------------------------------------------------------------------------- */
+
+describe('the zones a frame declares for itself', () => {
+  /**
+   * The same framework, whose frames partition their own plot into horizontal
+   * bands — a BPMN pool's lanes, in the shape they arrive in next tranche.
+   *
+   * The plot is 800 × 300 at (100, 100), so a 1 : 3 partition puts the first
+   * band's floor at model `y = 175` and gives the second everything below it.
+   */
+  const INSTANCE_ZONES = {
+    prop: 'lanes',
+    stack: 'y',
+    idPrefix: 'lane',
+  } as const;
+
+  const LANED: FrameworkBackgroundDef = {
+    ...BACKGROUND,
+    instanceZones: INSTANCE_ZONES,
+  };
+  /** The same again with the framework's own zones removed, so a lane can win. */
+  const LANES_ONLY: FrameworkBackgroundDef = { ...LANED, zones: [] };
+
+  const ruleFor = (background: FrameworkBackgroundDef): ValidationRule => ({
+    ...RULE,
+    background,
+  });
+
+  /** A frame carrying its own partition, as a document would. */
+  function lanedFrame() {
+    const frame = element('map', [0, 0, 1000, 500], ROLE.frame);
+    Object.defineProperty(frame, 'lanes', {
+      value: [
+        { id: 'sales', name: 'Ventes', size: 1 },
+        { id: 'ops', name: 'Production', size: 3 },
+      ],
+      enumerable: true,
+    });
+    return frame;
+  }
+
+  test('are reported as zones, AFTER the ones the framework declares', () => {
+    const facts = collectAuditFacts(
+      stubStd({
+        elements: [lanedFrame()],
+        rules: [ruleFor(LANED)],
+        manager: stubManager(),
+      })
+    );
+
+    expect(facts.frames[0].zones).toEqual([
+      { id: 'early', rect: { x: 0, y: 0, w: 0.5, h: 1 } },
+      { id: 'late', rect: { x: 0.5, y: 0, w: 0.5, h: 1 } },
+      // Namespaced, so a lane the user called `early` cannot shadow the
+      // framework's own zone — and carrying the user's wording, which is the
+      // only thing that makes `lane:ops` worth telling an assistant about.
+      {
+        id: 'lane:sales',
+        name: 'Ventes',
+        rect: { x: 0, y: 0, w: 1, h: 0.25 },
+      },
+      {
+        id: 'lane:ops',
+        name: 'Production',
+        rect: { x: 0, y: 0.25, w: 1, h: 0.75 },
+      },
+    ]);
+  });
+
+  test('stay render-free: the round-trip contract holds with a name on a zone', () => {
+    // ADR 0006 § 5, re-asserted because the fact grew a field.
+    const facts = collectAuditFacts(
+      stubStd({
+        elements: [lanedFrame()],
+        rules: [ruleFor(LANED)],
+        manager: stubManager(),
+      })
+    );
+    expect(JSON.parse(JSON.stringify(facts))).toEqual(facts);
+  });
+
+  test('place an element in the band its centre falls in', () => {
+    // Centre at (500, 300) → plot ratios (0.5, 0.6667), i.e. below the first
+    // band's floor and inside the second.
+    const inOps = element('n1', [480, 280, 40, 40], ROLE.node);
+    const facts = collectAuditFacts(
+      stubStd({
+        elements: [lanedFrame(), inOps],
+        rules: [ruleFor(LANES_ONLY)],
+        manager: stubManager(),
+      })
+    );
+    expect(facts.elements.find(e => e.id === 'n1')?.zone).toBe('lane:ops');
+  });
+
+  test('a frame carrying no partition reports the framework zones and nothing else', () => {
+    const facts = collectAuditFacts(
+      stubStd({
+        elements: [element('map', [0, 0, 1000, 500], ROLE.frame)],
+        rules: [ruleFor(LANED)],
+        manager: stubManager(),
+      })
+    );
+    expect(facts.frames[0].zones.map(z => z.id)).toEqual(['early', 'late']);
+  });
+});
+
 describe('running an audit', () => {
   test('hands the provider the criteria and the facts, and files the answer', async () => {
     const manager = stubManager();
@@ -589,7 +702,10 @@ describe('the command', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const manager = stubManager();
     await command.run(
-      stubStd({ manager, service: answering({ status: 'complete', findings: [] }) }),
+      stubStd({
+        manager,
+        service: answering({ status: 'complete', findings: [] }),
+      }),
       { surface: 'agent', source: 'ai' },
       { criterionIds: 'not-an-array' }
     );
@@ -881,7 +997,10 @@ describe('two audits at once: the newest wins', () => {
         runAudit: async () =>
           ++call === 1
             ? slow.promise
-            : { status: 'complete' as const, findings: [finding({ elementIds: ['FRESH'] })] },
+            : {
+                status: 'complete' as const,
+                findings: [finding({ elementIds: ['FRESH'] })],
+              },
       },
     });
     return { std, slow, events };
@@ -969,16 +1088,16 @@ describe('the 16 ms budget does not pay for the audit', () => {
     for (let i = 0; i < size; i++) {
       // A third of them deliberately off the map, so the rule really raises.
       const x = i % 3 === 0 ? 4000 + i : 120 + ((i * 7) % 700);
-      elements.push(element(`e-${i}`, [x, 120 + ((i * 11) % 250), 20, 20], ROLE.node));
+      elements.push(
+        element(`e-${i}`, [x, 120 + ((i * 11) % 250), 20, 20], ROLE.node)
+      );
     }
     return elements;
   }
 
   const elements = denseBoard(MAP_SIZE);
 
-  function managerOver(
-    board: GfxPrimitiveElementModel[]
-  ): ValidationManager {
+  function managerOver(board: GfxPrimitiveElementModel[]): ValidationManager {
     const feed = () => ({ subscribe: () => ({ unsubscribe() {} }) });
     const surface = {
       elementModels: board,
@@ -1043,8 +1162,8 @@ describe('the 16 ms budget does not pay for the audit', () => {
       clean.violations$.peek().map(key)
     );
     // ...and the engine's own signal never picked up the audit.
-    expect(
-      audited.violations$.peek().some(v => v.severity === 'audit')
-    ).toBe(false);
+    expect(audited.violations$.peek().some(v => v.severity === 'audit')).toBe(
+      false
+    );
   });
 });

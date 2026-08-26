@@ -134,6 +134,25 @@ const HIT_PAD = 6;
  * Two gates are INHERITED here rather than restated by every framework: a zone's
  * variants reach its label, and an axis' visibility reaches its title. Both are
  * overridden by a text that names its own.
+ *
+ * ## What this walk does NOT contain
+ *
+ * The names of the zones an INSTANCE declares
+ * ({@link FrameworkBackgroundDef.instanceZones} — a BPMN pool's lanes). This
+ * walk takes a declaration and nothing else, on purpose: it is what makes the
+ * hit boxes a pure function of the same data the renderer paints from, and
+ * every consumer of it — `backgroundLabelHits` above, the renderer's text
+ * stage — is built on that. Instance zone names come from the model, exist in a
+ * number the declaration does not know, and are anchored to a band whose
+ * position the declaration does not know either; widening the signature to take
+ * a model would push that question onto every caller to serve one of them.
+ *
+ * They are therefore drawn renderer-side and are NOT hit-testable: a zone name
+ * cannot be renamed by double-clicking it on the canvas. That is a deliberate
+ * limit and not an oversight — a zone is created and destroyed through its
+ * framework's own tooling, so that is where it is renamed too, and a label the
+ * hit tester never returns can never be drawn in one place and clicked in
+ * another either.
  */
 export function backgroundTexts(
   def: FrameworkBackgroundDef
@@ -209,8 +228,10 @@ export function backgroundLabelHits(
     }
 
     const align = text.align ?? 'left';
-    const minX = align === 'right' ? ax - tw : align === 'center' ? ax - tw / 2 : ax;
-    const maxX = align === 'right' ? ax : align === 'center' ? ax + tw / 2 : ax + tw;
+    const minX =
+      align === 'right' ? ax - tw : align === 'center' ? ax - tw / 2 : ax;
+    const maxX =
+      align === 'right' ? ax : align === 'center' ? ax + tw / 2 : ax + tw;
     hits.push({
       id: text.id,
       prop: text.prop,
