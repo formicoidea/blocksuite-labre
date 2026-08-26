@@ -1,83 +1,62 @@
 import {
-  addLegend,
+  type AutoLegendSpec,
   CD_SUBDOMAINS,
-  type LegendSection,
   MOVEMENT_COLOR,
-  TEAM_TOPOLOGIES,
+  roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
-import {
-  ConnectorElementModel,
-  type CoreDomainChartElementModel,
-  ShapeElementModel,
-  StrokeStyle,
-} from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
-import type { BlockStdScope } from '@labre/std';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+
+import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
 
 /**
- * Build the Notation legend sections. When `present` is given (a content-aware
- * scan of the background), only the sub-domain types / team-topology modes /
- * movement actually used are listed; otherwise the full notation is shown.
+ * What the Core Domain Chart's automatic legend can say — a TABLE, and nothing
+ * else: the scan, the placement and the box are `createAutoLegend`'s job.
+ *
+ * Every row is DERIVED from the presets the palette draws its dots with
+ * ({@link CD_SUBDOMAINS}) and from the role vocabulary's own labels, never
+ * restated — which also keeps this table and `core-domain.off-legend-colour`
+ * naming the same five colours by construction.
+ *
+ * ## What changed, and what is missing
+ *
+ * The chart's legend button predates roles: until now it scanned the perimeter
+ * for FILL COLOURS, which is why it could list a Team Topologies marker and why
+ * it fell back to the full notation when it recognised nothing. Detection is now
+ * by role, like every other reader of the board, with two consequences worth
+ * stating:
+ *
+ * - the **Team Topologies markers** carry no role — `addMarker` stamps none —
+ *   so they are no longer listed. The day they earn one their section lands here
+ *   in three lines, derived from `TEAM_TOPOLOGIES` like everything else;
+ * - a chart on which nothing is recognised now yields a legend box with a title
+ *   and no rows, rather than the whole notation. That is Wardley's behaviour and
+ *   the honest one: a legend lists what is drawn, not what could have been.
  */
-export function coreDomainLegendSections(present?: {
-  fills: Set<string>;
-  movement: boolean;
-}): LegendSection[] {
-  const has = (c: string) => !present || present.fills.has(c.toLowerCase());
-  const subRows = CD_SUBDOMAINS.filter(s => has(s.fill)).map(s => ({
-    swatch: 'dot' as const,
-    color: s.fill,
-    label: s.label,
-  }));
-  const ttRows = TEAM_TOPOLOGIES.filter(t => has(t.fill)).map(t => ({
-    swatch: 'square' as const,
-    color: t.fill,
-    letter: t.letter,
-    label: t.label,
-  }));
-  const sections: LegendSection[] = [];
-  if (subRows.length) sections.push({ title: 'Sub-domains', rows: subRows });
-  if (ttRows.length) sections.push({ title: 'Team topologies', rows: ttRows });
-  if (!present || present.movement) {
-    sections.push({
+export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
+  title: 'Légende',
+  roles: CORE_DOMAIN_ROLES,
+  sections: [
+    {
+      title: 'Sub-domains',
+      entries: CD_SUBDOMAINS.map(preset => ({
+        role: CORE_DOMAIN_ROLE[preset.kind],
+        row: { swatch: 'dot' as const, color: preset.fill, label: preset.label },
+      })),
+    },
+    {
       title: 'Movement',
-      rows: [{ swatch: 'line', color: MOVEMENT_COLOR, label: 'Movement over time' }],
-    });
-  }
-  // Content-aware scan found nothing recognizable → fall back to the full legend.
-  if (present && sections.length === 0) return coreDomainLegendSections();
-  return sections;
-}
-
-/**
- * Insert a content-aware legend next to a Core Domain background: scans the
- * shapes/connectors inside the background's perimeter and lists only the
- * notation actually present. Triggered from the element's contextual toolbar.
- */
-export function createCoreDomainLegend(
-  std: BlockStdScope,
-  bg: CoreDomainChartElementModel
-) {
-  const gfx = std.get(GfxControllerIdentifier);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const fills = new Set<string>();
-  let movement = false;
-  for (const el of gfx.getElementsByBound(Bound.deserialize(bg.xywh), {
-    type: 'canvas',
-  })) {
-    if (el instanceof ConnectorElementModel) {
-      if (el.strokeStyle === StrokeStyle.Dash) movement = true;
-    } else if (el instanceof ShapeElementModel) {
-      if (typeof el.fillColor === 'string') fills.add(el.fillColor.toLowerCase());
-    }
-  }
-
-  const [bx, by, bw] = bg.deserializedXYWH;
-  addLegend(surface, std, bx + bw + 30, by, {
-    title: 'Légende',
-    sections: coreDomainLegendSections({ fills, movement }),
-  });
-}
+      entries: [
+        {
+          role: CORE_DOMAIN_ROLE.movement,
+          row: {
+            swatch: 'line',
+            // The style `activateMovement` arms the connector tool with: a red
+            // dashed line.
+            color: MOVEMENT_COLOR,
+            dashed: true,
+            label: roleLabel(CORE_DOMAIN_ROLES, CORE_DOMAIN_ROLE.movement),
+          },
+        },
+      ],
+    },
+  ],
+};

@@ -1,12 +1,19 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  createAutoLegend,
+  dddLegendIcon,
+} from '@labre/affine-gfx-ddd-shared';
 import { EventStormingBoardElementModel } from '@labre/affine-model';
 import {
+  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
+
+import { EVENT_STORMING_AUTO_LEGEND } from '../legend';
 
 const ResizeIcon = html`<svg
   width="24"
@@ -23,10 +30,16 @@ const ResizeIcon = html`<svg
 </svg>`;
 
 /**
- * The selected board's contextual toolbar. One action, because the board has
- * one property: whether it offers its resize handles. Registered ALWAYS-ON
- * (`DddEventStormingRenderViewExtension`) — a stored board must stay usable
- * with the Event Storming button switched off (`docs/adr/0009`).
+ * The selected board's contextual toolbar: the resize toggle, and the automatic
+ * legend of the sticky kinds actually stuck to the board. Registered ALWAYS-ON
+ * (`DddEventStormingRenderViewExtension`) — a stored board must stay usable with
+ * the Event Storming button switched off (`docs/adr/0009`), legend included: a
+ * legend is real editable elements, so generating one is authoring a document,
+ * not tooling that a flag may take away.
+ *
+ * This is the module's ONLY legend gesture: the Event Storming palette never had
+ * a static Legend entry, and a wall of colour-coded stickies is exactly the
+ * board a reader needs one for.
  */
 export const eventStormingBoardToolbarConfig = {
   actions: [
@@ -51,6 +64,30 @@ export const eventStormingBoardToolbarConfig = {
         for (const model of models) {
           crud.updateElement(model.id, { resizeEnabled: enable });
         }
+      },
+    },
+    {
+      id: 'b.legend',
+      tooltip: 'Generate the legend (notation present)',
+      icon: dddLegendIcon,
+      run(ctx: ToolbarContext) {
+        const board = ctx.getSurfaceModelsByType(
+          EventStormingBoardElementModel
+        )[0];
+        if (!board) return;
+        createAutoLegend(ctx.std, board, EVENT_STORMING_AUTO_LEGEND);
+        ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
+          // The WIRE value, which is not the module id: the framework is
+          // `ddd-event-storming` in code and `event-storming` in PostHog
+          // (`frameworks.ts` `telemetryKey`, and the only value
+          // `FrameworkElementEvent` accepts). Same convention as Wardley's own
+          // legend button, so the two are comparable.
+          framework: 'event-storming',
+          element: 'legend',
+          page: 'whiteboard editor',
+          segment: 'element toolbar',
+          module: 'event-storming toolbar',
+        });
       },
     },
   ],
