@@ -1,3 +1,4 @@
+import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -6,12 +7,13 @@ import { extendTemplateCategory } from '@labre/affine-gfx-template';
 import { CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
+import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
 import { BPMN_ROLES } from './roles';
 import { bpmnTemplateCategory } from './templates';
 import { BpmnPoolRendererExtension } from './element-renderer';
-import { BpmnPoolInteraction, BpmnPoolView } from './element-view';
+import { BpmnPoolView } from './element-view';
 import { BpmnNodeRendererExtension } from './node/node-renderer';
 import { BpmnNodeView } from './node/node-view';
 import { bpmnPoolToolbarExtension } from './toolbar/config';
@@ -39,7 +41,12 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
     // was on and opened while it is off (`docs/adr/0009`, `docs/adr/0010`).
     context.register(RoleVocabularyExtension(BPMN_ROLES));
     if (this.isEdgeless(context.scope)) {
-      context.register(BpmnPoolInteraction);
+      // Resize gating, driven by the declaration like every other framework
+      // background: the handles stay hidden until `resizeEnabled` says
+      // otherwise, and the toolbar toggle is what writes it.
+      context.register(
+        FrameworkBackgroundInteractionExtension(BPMN_POOL_BACKGROUND)
+      );
       context.register(bpmnPoolToolbarExtension);
     }
   }

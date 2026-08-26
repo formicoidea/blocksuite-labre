@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   EVENT_END,
@@ -9,16 +9,12 @@ import {
   NODE_SIZE,
   START_WIDTH,
 } from '../consts';
-import { bpmnPool } from '../element-renderer';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 import { bpmnTemplateCategory } from '../templates';
 
-// The pool renderer only reads (model, ctx, matrix); cast to call with those.
-const renderPool = bpmnPool as unknown as (
-  model: unknown,
-  ctx: CanvasRenderingContext2D,
-  matrix: DOMMatrix
-) => void;
+// The pool renderer has its own file: `pool-background.unit.spec.ts`, where the
+// declaration it is now built from is checked operation by operation against
+// what the hand-written renderer used to draw.
 
 describe('bpmn style-C constants', () => {
   it('defines a size and label for every node kind', () => {
@@ -44,68 +40,6 @@ describe('bpmn style-C constants', () => {
     // End ring is heavier than the start ring (BPMN line weights).
     expect(END_WIDTH).toBeGreaterThan(START_WIDTH);
     expect(NEUTRAL_STROKE).toBe('#262626');
-  });
-});
-
-/** Minimal canvas-context stub recording only what the pool renderer touches. */
-function fakeCtx() {
-  const ctx = {
-    fillStyle: '',
-    strokeStyle: '',
-    lineWidth: 0,
-    lineJoin: '',
-    font: '',
-    textAlign: '',
-    textBaseline: '',
-    setTransform: vi.fn(),
-    fillRect: vi.fn(),
-    beginPath: vi.fn(),
-    moveTo: vi.fn(),
-    lineTo: vi.fn(),
-    arcTo: vi.fn(),
-    closePath: vi.fn(),
-    stroke: vi.fn(),
-    save: vi.fn(),
-    translate: vi.fn(),
-    rotate: vi.fn(),
-    restore: vi.fn(),
-    fillText: vi.fn(),
-  };
-  return ctx as unknown as CanvasRenderingContext2D & { fillText: ReturnType<typeof vi.fn> };
-}
-
-/** Chainable identity matrix stub (the renderer only calls *Self mutators). */
-function fakeMatrix() {
-  const m = {
-    translateSelf: () => m,
-    rotateSelf: () => m,
-  };
-  return m as unknown as DOMMatrix;
-}
-
-function poolModel(name: string, w = 560, h = 200) {
-  return { deserializedXYWH: [0, 0, w, h], rotate: 0, name } as never;
-}
-
-describe('bpmn pool renderer', () => {
-  it('draws the frame and the participant name when present', () => {
-    const ctx = fakeCtx();
-    renderPool(poolModel('Customer'), ctx, fakeMatrix());
-    expect(ctx.fillRect).toHaveBeenCalled(); // name band
-    expect(ctx.stroke).toHaveBeenCalled(); // frame + divider
-    expect(ctx.fillText).toHaveBeenCalledWith('Customer', 0, 0);
-  });
-
-  it('skips the name when empty', () => {
-    const ctx = fakeCtx();
-    renderPool(poolModel(''), ctx, fakeMatrix());
-    expect(ctx.fillText).not.toHaveBeenCalled();
-  });
-
-  it('skips the name when the pool is too narrow for the band', () => {
-    const ctx = fakeCtx();
-    renderPool(poolModel('Customer', 8), ctx, fakeMatrix());
-    expect(ctx.fillText).not.toHaveBeenCalled();
   });
 });
 
