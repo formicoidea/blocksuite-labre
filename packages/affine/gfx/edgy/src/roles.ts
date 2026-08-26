@@ -4,8 +4,10 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_DYNAMIC_RELATIONS,
+  edgyElementLabel,
   type EdgyElementName,
 } from './metamodel';
+import { NODE_LABEL } from './node/consts';
 
 /**
  * EDGY role vocabulary (WS1).
@@ -178,26 +180,38 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
   // The root of every artefact a board is made of. A rule written here covers
   // the four kinds and the twelve elements at once — which is exactly what
   // `edgy.overlapping-artefacts` needs and why the root exists.
-  { id: EDGY_ROLE.element, kind: 'node', labelKey: roleKey(EDGY_ROLE.element) },
+  {
+    id: EDGY_ROLE.element,
+    kind: 'node',
+    labelKey: roleKey(EDGY_ROLE.element),
+    labelFallback: 'Element',
+  },
   // The four PERSISTED kinds. They are the base shapes the toolbox offers, so
   // they are what an element created from the palette carries: somebody
   // dropping an "Object" on the board has said "object" and nothing more, and
   // the role says exactly that much.
+  //
+  // The fallback is the wording the palette itself writes inside the shape
+  // (`node/consts.ts`), so a reader who meets the role in a legend or a
+  // direction reveal meets the word they dropped on the board.
   ...(['people', 'outcome', 'object', 'activity'] as const).map(kind => ({
     id: EDGY_ROLE[kind],
     parent: EDGY_ROLE.element,
     kind: 'node' as const,
     labelKey: roleKey(EDGY_ROLE[kind]),
+    labelFallback: NODE_LABEL[kind],
   })),
   // The twelve official elements, each under the kind the metamodel draws it
   // with — Purpose is an outcome, Story an activity, Channel an object. The
   // parent is READ from `EDGY_DYNAMIC_NODES` rather than restated: the diagram
-  // and the vocabulary cannot drift apart if there is only one table.
+  // and the vocabulary cannot drift apart if there is only one table. So is the
+  // fallback wording, from the same table's own names.
   ...Object.entries(EDGY_DYNAMIC_NODES).map(([name, { kind }]) => ({
     id: EDGY_ROLE[name as EdgyElementRole],
     parent: EDGY_ROLE[kind],
     kind: 'node' as const,
     labelKey: roleKey(EDGY_ROLE[name as EdgyElementRole]),
+    labelFallback: edgyElementLabel(name as EdgyElementName),
   })),
 ];
 

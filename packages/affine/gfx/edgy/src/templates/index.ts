@@ -18,6 +18,8 @@ import { CROP, CROP_LABELED } from '../consts';
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_DYNAMIC_RELATIONS,
+  EDGY_ZONE_FILL,
+  edgyElementLabel,
   type EdgyElementName,
 } from '../metamodel';
 import {
@@ -321,16 +323,16 @@ function dynamic(): SurfaceElementsJSON {
       xywh: `[0,0,${CROP.w * DYN_SCALE},${CROP.h * DYN_SCALE}]`,
     },
   };
-  for (const [key, { kind, cx, cy, w, fill }] of Object.entries(
+  for (const [key, { kind, cx, cy, w, zone }] of Object.entries(
     EDGY_DYNAMIC_NODES
   ) as [EdgyElementName, (typeof EDGY_DYNAMIC_NODES)[EdgyElementName]][]) {
     const nw = w ?? NODE_SIZE[kind].w;
     const nh = NODE_SIZE[kind].h;
     const [mx, my] = dynToModel(cx, cy);
-    const name = key.charAt(0).toUpperCase() + key.slice(1);
+    const name = edgyElementLabel(key);
     out[key] = enode(kind, mx - nw / 2, my - nh / 2, nw, nh, {
       text: name,
-      fill,
+      fill: EDGY_ZONE_FILL[zone],
       // The OFFICIAL element, not just its kind: this template IS the
       // metamodel, so its Purpose is a Purpose and not merely an outcome.
       role: EDGY_ROLE[key],

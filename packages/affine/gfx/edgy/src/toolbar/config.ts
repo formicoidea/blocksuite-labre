@@ -1,15 +1,22 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
+  createAutoLegend,
+  dddLegendIcon,
+} from '@labre/affine-gfx-ddd-shared';
+import {
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
 } from '@labre/affine-model';
 import {
+  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html, type TemplateResult } from 'lit';
+
+import { EDGY_AUTO_LEGEND } from '../legend';
 
 const ResizeIcon = html`<svg
   width="24"
@@ -96,6 +103,43 @@ function booleanToggle<
   };
 }
 
+/**
+ * The legend action, shared by the two EDGY backgrounds: both frame the same
+ * notation, so both answer the same question — "what is actually drawn here" —
+ * with the same table ({@link EDGY_AUTO_LEGEND}) and the same box.
+ *
+ * Registered ALWAYS-ON (`EdgyRenderViewExtension`) with the toggles it sits
+ * next to: a legend is real, editable elements written into the document, so
+ * generating one is authoring, not tooling a flag may take away
+ * (`docs/adr/0009`).
+ */
+function legendAction<
+  T extends typeof EdgyFacetsElementModel | typeof EdgyBoardElementModel,
+>(Model: T, id: string) {
+  return {
+    id,
+    tooltip: 'Generate the legend (notation present)',
+    icon: dddLegendIcon,
+    run(ctx: ToolbarContext) {
+      const background = ctx.getSurfaceModelsByType(Model)[0] as unknown as
+        | { xywh: string }
+        | undefined;
+      if (!background) return;
+      createAutoLegend(ctx.std, background, EDGY_AUTO_LEGEND);
+      ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
+        // The WIRE value from `frameworks.ts` (`telemetryKey`), which for EDGY
+        // happens to be the module id itself. Same field set as Wardley's and
+        // the three DDD legend buttons, so the four are comparable.
+        framework: 'edgy',
+        element: 'legend',
+        page: 'whiteboard editor',
+        segment: 'element toolbar',
+        module: 'edgy toolbar',
+      });
+    },
+  };
+}
+
 export const edgyToolbarConfig = {
   actions: [
     booleanToggle(
@@ -119,6 +163,7 @@ export const edgyToolbarConfig = {
       SpotlightIcon,
       'spotlightEnabled'
     ),
+    legendAction(EdgyFacetsElementModel, 'd.legend'),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyFacetsElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
@@ -144,6 +189,7 @@ export const edgyBoardToolbarConfig = {
       SpotlightIcon,
       'spotlightEnabled'
     ),
+    legendAction(EdgyBoardElementModel, 'c.legend'),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyBoardElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;

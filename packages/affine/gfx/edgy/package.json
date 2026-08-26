@@ -18,6 +18,7 @@
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
     "@labre/affine-gfx-connector": "workspace:*",
+    "@labre/affine-gfx-ddd-shared": "workspace:*",
     "@labre/affine-gfx-group": "workspace:*",
     "@labre/affine-gfx-pointer": "workspace:*",
     "@labre/affine-gfx-shape": "workspace:*",
