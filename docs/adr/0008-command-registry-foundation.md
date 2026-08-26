@@ -774,7 +774,8 @@ exactly one declaration.
   the palette (consumer 4) ships — the two overlap, and the palette is the
   better place to converge.
 - **Recency / frequency ranking**: needs a host-side usage store; the registry
-  only needs to accept an injected comparator.
+  only needs to accept an injected comparator. **Superseded** by the amendment
+  of 2026-08-26 below.
 - **Per-user pinning** of the 14 senior slots.
 
 ## Resolved questions
@@ -860,3 +861,42 @@ under _Out of scope_ above; the extension points are the `Availability` union �
 closed today, with one named waiting-list candidate (`revision`, a document mode
 that does not exist yet) and the composition gap of resolved question 6 — and
 the self-emission exception of resolved question 5.
+
+## Amended 2026-08-26 — usage ranking resolved, and a shortcut budget
+
+Recorded by the BPMN-prerequisites tranches. Two points.
+
+**1. Recency / frequency ranking is no longer out of scope.** The bullet under
+_Out of scope_ ("needs a host-side usage store; the registry only needs to
+accept an injected comparator") is superseded: the store exists, and the
+ranking is not a comparator but a selection.
+
+- **Measurement** — `CommandUsageIdentifier`, a store seam fed by `runCommand`,
+  so usage is counted at the same bottleneck telemetry emits from and no
+  surface counts on its own. The library ships a localStorage default; a host
+  overrides it to persist per user in its own database.
+- **Selection** — `selectSeniorMenuCommands`, a pure helper, not a sort passed
+  to the menu. Per PF6: overflow applies **iff** the owner's catalogue exceeds
+  14; then the sub-menu shows **7 ranked slots — the 4 most-used plus the 3
+  most-recent, deduplicated** — beside a permanent _More artefacts_ button
+  opening the catalogue sidepanel (consumer 2). With no usage recorded yet, the
+  authored `order` is the cold start, so a fresh install is deterministic.
+
+The 14-slot cap of _Invariants enforced by unit tests_ is unchanged; the ranked
+7 are what a framework shows once it is past that cap.
+
+**2. PF10 — at most 14 default-bound shortcuts per framework.** A convention,
+aligned with the 14 senior slots so that one framework prefix plus one artefact
+letter remains enough to address every default binding. The resolution engine
+is untouched: this is enforced by a unit test in
+`packages/affine/all/src/__tests__/commands/registry.unit.spec.ts`, alongside
+the slot cap. It narrows — without contradicting — the note above that there is
+"deliberately no cap on how many commands carry a chord": the alphabet still
+does not constrain it, curation does. Past 14, a framework binds through a host
+override rather than by default.
+
+Chord-**prefix** allocation stays deferred per framework: a `chordPrefix`
+declared before that framework ships its first chord is dead data that reserves
+a scarce letter for nothing. It is allocated against `RESERVED_EDGELESS_KEYS`
+at the moment the first chord lands, which the existing prefix tests already
+enforce.
