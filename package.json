@@ -28,7 +28,7 @@
     "changeset": "changeset && node scripts/changelog.mjs"
   },
   "lint-staged": {
-    "!packages/**/*": [
+    "**/*": [
       "yarn exec prettier --write -u --cache"
     ]
   },
