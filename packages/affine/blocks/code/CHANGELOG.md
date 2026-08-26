@@ -1,5 +1,140 @@
 # @labre/affine-block-code
 
+## 0.32.0
+
+### Patch Changes
+
+- d6a0c71: A fresh code line renders before it is coloured
+
+  Syntax colours arrive asynchronously: while shiki re-tokenises the snippet, the
+  inline editor is already drawing the line the user just typed. The token table
+  still described the previous, shorter text, so the new line pointed past the end
+  of it and the render threw — taking the whole code block down mid-typing.
+
+  A line the highlighter has no tokens for is now drawn as plain text, and picks
+  up its colours on the next pass.
+
+- a3aa598: A long code snippet can be folded away
+
+  A pasted stack trace or a whole config file took over the page: the code block
+  grew to the height of its content and pushed everything after it below the
+  fold, and the only way back was to delete lines.
+
+  The code toolbar now carries a collapse toggle. A folded block shows its first
+  eight lines and fades out into its own background; the language preview is
+  hidden while it is folded, and unfolding brings both back. The fold is written
+  onto the block, so it survives a reload and travels with the document — a block
+  that was never folded keeps no such state and loads exactly as before.
+
+- 08e9b24: Folding a code block is reported, and menu labels stop being selectable
+
+  The code toolbar reported the language picker and the HTML preview toggle but
+  said nothing about the collapse toggle, so how often long snippets are folded
+  away was invisible. It now emits `codeBlockToggleCollapse`, carrying which way
+  the fold went. As everywhere else on this bus, a host with no telemetry adapter
+  is unaffected.
+
+  Dragging across a menu entry in a toolbar used to select its label as text; the
+  entries are buttons, so they no longer take a text selection.
+
+- 7a12ce2: Code block line numbers answer to a global preference, not only to each block
+
+  Turning line numbers off was a per-block chore: every new snippet came back
+  with them, and there was no way to state the preference once.
+
+  A code block now resolves the question in three steps — the embedder's feature
+  flag still overrules everything (mobile keeps line numbers off), then the
+  block's own toolbar override, then a global default read from the host's
+  `EditorSettingProvider` under the `codeBlockLineNumbers` key. The library reads
+  that setting and never writes it: persisting the preference is the host's
+  business, the same seam as the telemetry adapter. With no setting service
+  injected the default stays "shown", so nothing changes for a standalone editor.
+
+- 9acadeb: The second click on "Cancel line number" lands
+
+  The code block's More menu was drawn once into a floating portal and never
+  redrawn, so its entries kept the state they had read at that moment. Clicking
+  "Cancel line number" turned line numbers off; clicking it again wrote the same
+  value, so the entry looked dead and its label and switch never caught up. Wrap
+  had the same fault.
+
+  The menu is now a component of its own that redraws when `wrap` or `lineNumber`
+  changes, and both entries read the current state at the moment they are
+  clicked. Opening the menu, toggling, and toggling back now works as many times
+  as you like without closing it.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [6417a2f]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [3b30d8f]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5a61fb2]
+- Updated dependencies [8f339d1]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-inline-latex@0.32.0
+  - @labre/affine-inline-preset@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-widget-slash-menu@0.32.0
+  - @labre/affine-inline-link@0.32.0
+  - @labre/affine-gfx-turbo-renderer@0.32.0
+  - @labre/affine-inline-comment@0.32.0
+  - @labre/affine-rich-text@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @labre/affine-ext-loader
 
+## 0.32.0
+
+### Patch Changes
+
+- Updated dependencies [a2b7c44]
+- Updated dependencies [54488cd]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [5edd916]
+- Updated dependencies [025d6f5]
+  - @labre/store@0.32.0
+  - @labre/global@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

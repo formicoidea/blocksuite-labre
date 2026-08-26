@@ -1,5 +1,13 @@
 # @labre/sync
 
+## 0.32.0
+
+### Patch Changes
+
+- Updated dependencies [5ac0c68]
+- Updated dependencies [5edd916]
+  - @labre/global@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

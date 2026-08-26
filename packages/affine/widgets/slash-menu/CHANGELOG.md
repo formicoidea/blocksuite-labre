@@ -1,5 +1,80 @@
 # @labre/affine-widget-slash-menu
 
+## 0.32.0
+
+### Patch Changes
+
+- 5a61fb2: fix(blocks): a slash menu that found nothing survives the next letter
+
+  Typing `/eeee`, deleting back to `/` and typing `h` used to close the slash
+  menu instead of showing the headings. The menu closes on the first key that
+  follows an empty result, and the query state behind that verdict is refreshed
+  asynchronously — so the `h` was judged against a `no_result` that the deletion
+  had already made obsolete.
+
+  A key that adds a character to the query now keeps the menu open and refreshes
+  it. Everything else closes it exactly as before: space, `Escape`, `Enter`, the
+  arrows, and any character pressed with a modifier.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [90a9168]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-rich-text@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes
