@@ -255,6 +255,12 @@ export interface FrameworkDescriptor {
   id: FrameworkId;
   /** Replaces the raw English `SeniorTool.name`. */
   labelKey: string;
+  /**
+   * The English wording behind {@link labelKey}. Flows into the translation
+   * manifest via the `labelKey` ↔ `fallback` walker convention, so the
+   * senior buttons' restated tooltip wording has a declared counterpart.
+   */
+  fallback: string;
   iconKey: string;
   order?: number;
   /** First keystroke of this framework's chords — allocated, not ad hoc. */

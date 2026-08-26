@@ -30,6 +30,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'wardley',
     labelKey: 'com.labre.framework.wardley',
+    fallback: 'Wardley map',
     iconKey: 'wardley.toolbar',
     // The only allocated chord prefix: `w` was free against
     // RESERVED_EDGELESS_KEYS. The other six frameworks ship no chord, so they
@@ -54,6 +55,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'edgy',
     labelKey: 'com.labre.framework.edgy',
+    fallback: 'EDGY',
     iconKey: 'edgy.toolbar',
     telemetryKey: 'edgy',
     telemetrySegment: 'edgy toolbox',
@@ -71,6 +73,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'cynefin-estuarine',
     labelKey: 'com.labre.framework.cynefin-estuarine',
+    fallback: 'Cynefin / Estuarine',
     iconKey: 'cynefin.toolbar',
     // Historical PostHog value; the flag and the owner say
     // `cynefin-estuarine`, the wire says `cynefin`.
@@ -94,6 +97,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'bpmn',
     labelKey: 'com.labre.framework.bpmn',
+    fallback: 'BPMN',
     iconKey: 'bpmn.toolbar',
     telemetryKey: 'bpmn',
     telemetrySegment: 'bpmn toolbox',
@@ -111,6 +115,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'ddd-event-storming',
     labelKey: 'com.labre.framework.ddd-event-storming',
+    fallback: 'Event Storming',
     iconKey: 'ddd-event-storming.toolbar',
     telemetryKey: 'event-storming',
     telemetrySegment: 'ddd toolbox',
@@ -132,6 +137,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'ddd-core-domain',
     labelKey: 'com.labre.framework.ddd-core-domain',
+    fallback: 'Core Domain Chart',
     iconKey: 'ddd-core-domain.toolbar',
     telemetryKey: 'core-domain',
     telemetrySegment: 'ddd toolbox',
@@ -149,6 +155,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
   {
     id: 'ddd-context-map',
     labelKey: 'com.labre.framework.ddd-context-map',
+    fallback: 'Context Map',
     iconKey: 'ddd-context-map.toolbar',
     telemetryKey: 'context-map',
     telemetrySegment: 'ddd toolbox',
