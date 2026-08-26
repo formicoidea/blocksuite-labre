@@ -24,6 +24,7 @@
     "@labre/global": "workspace:*",
     "@labre/std": "workspace:*",
     "@labre/store": "workspace:*",
+    "@preact/signals-core": "^1.8.0",
     "lit": "^3.2.0"
   },
   "exports": {

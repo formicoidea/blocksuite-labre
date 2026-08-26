@@ -1,12 +1,21 @@
 import {
+  collectTranslationKeys,
   commandTranslationEntries,
+  mergeTranslationEntries,
   type TranslationKeyManifestEntry,
 } from '@labre/std';
 
 import { cynefinEstuarineCommands } from './commands.js';
+import { ESTUARINE_NUDGES } from './estuarine/nudges.js';
+import { ESTUARINE_ROLES } from './estuarine/roles.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest.
+ *
+ * Since WS4 it also carries the Estuarine ROLE labels and the four Map quality
+ * NUDGES — the framework's entire validation vocabulary, since it declares no
+ * rule and no profile (`estuarine/nudges.ts`). Cynefin contributes neither,
+ * having no role of its own.
  *
  * Its command labels and descriptions are built from a TEMPLATE, so the
  * concrete keys exist nowhere but in the declarations themselves and the
@@ -18,4 +27,8 @@ import { cynefinEstuarineCommands } from './commands.js';
  * `packages/affine/all/src/translations.ts`.
  */
 export const cynefinEstuarineTranslationEntries: TranslationKeyManifestEntry[] =
-  commandTranslationEntries(cynefinEstuarineCommands);
+  mergeTranslationEntries(
+    commandTranslationEntries(cynefinEstuarineCommands),
+    collectTranslationKeys('role', ESTUARINE_ROLES),
+    collectTranslationKeys('nudge', ESTUARINE_NUDGES)
+  );

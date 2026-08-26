@@ -23,6 +23,7 @@ export default [
   'packages/affine/gfx/bpmn/vitest.config.ts',
   'packages/affine/gfx/brush/vitest.config.ts',
   'packages/affine/gfx/connector/vitest.config.ts',
+  'packages/affine/gfx/cynefin-estuarine/vitest.config.ts',
   'packages/affine/gfx/ddd-aggregate/vitest.config.ts',
   'packages/affine/gfx/ddd-context-map/vitest.config.ts',
   'packages/affine/gfx/ddd-core-domain/vitest.config.ts',
