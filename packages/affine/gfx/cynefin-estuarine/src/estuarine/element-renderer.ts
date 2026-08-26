@@ -4,7 +4,7 @@ import {
 } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
 
-import { FONT_FAMILY, refScale } from '../utils';
+import { FONT_FAMILY } from '../utils';
 import {
   ARROWHEADS,
   AXIS_LABELS,
@@ -103,29 +103,100 @@ export function estuarineCurves(): readonly EstuarineCurve[] {
 }
 
 /**
- * Put `ctx` into the map's REFERENCE space: the fixed 690 × 801 design the
- * geometry is authored in, fitted uniformly (letterboxed) into the element's
- * bounds and rotated with it.
+ * How the fixed 690 × 801 reference design maps onto an element of `w × h`.
  *
- * Shared with the ghost overlay, which paints the very same curves one layer
- * above and must land on them to the pixel.
+ * ## Why an Estuarine map STRETCHES (PO recette, 26/08/2026)
+ *
+ * It used to be fitted uniformly and letterboxed (`refScale`), so widening the
+ * background left the drawing at its authored proportions, centred, with short
+ * axes floating in empty margins. That is wrong for THIS frame, and the reason
+ * is what an Estuarine map is: a coordinate system. The e axis measures energy
+ * to change, the t axis measures time, and the three curves are the boundaries
+ * a group negotiates ACROSS that plane. Give the user more room and they mean
+ * "more plane" — a longer time axis, a taller energy axis — not "the same
+ * picture, bigger". So both directions follow the element independently.
+ *
+ * **Cynefin, right next door, deliberately keeps the uniform letterbox**: its
+ * background is a figurative drawing — a cliff, hand-drawn arcs, a hatched
+ * fall — and a figurative drawing has proportions that stretching would simply
+ * damage. Two frames, two answers, and the difference is not an oversight.
+ *
+ * ## The two factors
+ *
+ * `sx` / `sy` stretch positions and paths. `strokeScale` is the ISOTROPIC
+ * factor for everything that must not be deformed — stroke widths, arrowhead
+ * triangles, font sizes, letter-spacing — taken as the geometric mean of the
+ * two, the usual area-preserving stand-in for "one scale" when there are two.
+ *
+ * At the authored ratio `sx === sy`, so all three collapse to the single old
+ * factor and `ox`/`oy` were zero: a map that has not been stretched paints
+ * exactly the pixels it painted before this change.
+ */
+export interface EstuarineFit {
+  /** Reference x → element x. */
+  sx: number;
+  /** Reference y → element y. */
+  sy: number;
+  /** The one undeformed factor: widths, arrowheads, type. */
+  strokeScale: number;
+  /**
+   * `lineWidth` correction for a path stroked INSIDE the stretched space.
+   *
+   * Canvas transforms the pen along with the path, so under `scale(sx, sy)` a
+   * nominal width `L` paints somewhere between `L·sx` and `L·sy` depending on
+   * the direction of the segment. There is no exact single number for a curve
+   * that runs in every direction; we approximate the pen's effective widening
+   * by the ARITHMETIC mean of the two factors and divide it out, which lands
+   * the ghost on {@link strokeScale} on average and keeps it within the
+   * sx/sy spread everywhere else. Exactly `1` at the authored ratio.
+   */
+  curveLineScale: number;
+}
+
+export function estuarineFit(w: number, h: number): EstuarineFit {
+  const sx = w / REF_W;
+  const sy = h / REF_H;
+  const strokeScale = Math.sqrt(sx * sy);
+  return { sx, sy, strokeScale, curveLineScale: strokeScale / ((sx + sy) / 2) };
+}
+
+/**
+ * Put `ctx` into the map's STRETCHED reference space, where the authored
+ * geometry (a `Path2D` built from `./consts.ts`) lands on the element's real
+ * bounds in both directions.
+ *
+ * The single source of truth for that transform, and it has to stay single:
+ * the ghost overlay paints the very same curves one layer above and must land
+ * on them to the pixel. Everything that must NOT be stretched — axes,
+ * arrowheads, legends — is drawn outside it, in element coordinates, from the
+ * same {@link EstuarineFit}.
  */
 export function applyEstuarineTransform(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number
-): void {
-  const { s, ox, oy } = refScale(w, h, REF_W, REF_H);
-  ctx.translate(ox, oy);
-  ctx.scale(s, s);
+): EstuarineFit {
+  const fit = estuarineFit(w, h);
+  ctx.scale(fit.sx, fit.sy);
+  return fit;
 }
 
 /**
  * Canvas renderer for the Estuarine framework map — reproduces the official SVG:
  * the e (vertical, double-headed) / t (horizontal, single-headed) axes and the
  * three reference curves (Liminal / Volatile / Counter-factual), each with its
- * legend and individually hideable. Drawn in the fixed reference space and
- * scaled uniformly to the element bounds.
+ * legend and individually hideable.
+ *
+ * Two spaces, and which one a mark belongs to is the whole design:
+ *
+ * - **Element coordinates**, entered by mapping each authored coordinate
+ *   through {@link EstuarineFit} by hand (`ax` / `ay` below): the axes, their
+ *   arrowheads and every word. Their POSITION follows the stretch — an axis
+ *   ends where the map now ends — while their SHAPE does not, because a
+ *   stretched arrowhead or a squashed letter is a defect, never a feature.
+ * - **Stretched reference space**, entered by {@link applyEstuarineTransform}:
+ *   the three curves, which are boundaries across the plane and must cover
+ *   whatever plane the user has made.
  */
 export const estuarine: ElementRenderer<EstuarineElementModel> = (
   model,
@@ -139,50 +210,68 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
     matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
   );
 
-  applyEstuarineTransform(ctx, w, h);
+  const fit = estuarineFit(w, h);
+  /** Authored x → element x. Proportional: `43.5 / 690` of the real width. */
+  const ax = (x: number) => x * fit.sx;
+  /** Authored y → element y. */
+  const ay = (y: number) => y * fit.sy;
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
   // ── Axes ────────────────────────────────────────────────────────────
+  // Drawn in element coordinates so the e axis spans the real height and the
+  // t axis the real width, while `lineWidth` stays one honest thickness
+  // instead of being fattened in whichever direction the map was pulled.
   ctx.strokeStyle = COLORS.axis;
   ctx.fillStyle = COLORS.axis;
-  ctx.lineWidth = AXIS_WIDTH;
+  ctx.lineWidth = AXIS_WIDTH * fit.strokeScale;
   ctx.beginPath();
-  ctx.moveTo(E_AXIS.x, E_AXIS.y1);
-  ctx.lineTo(E_AXIS.x, E_AXIS.y2);
-  ctx.moveTo(T_AXIS.x1, T_AXIS.y);
-  ctx.lineTo(T_AXIS.x2, T_AXIS.y);
+  ctx.moveTo(ax(E_AXIS.x), ay(E_AXIS.y1));
+  ctx.lineTo(ax(E_AXIS.x), ay(E_AXIS.y2));
+  ctx.moveTo(ax(T_AXIS.x1), ay(T_AXIS.y));
+  ctx.lineTo(ax(T_AXIS.x2), ay(T_AXIS.y));
   ctx.stroke();
-  for (const [[tx, ty], [ax, ay], [bx, by]] of ARROWHEADS) {
+  // Each head is pinned by its TIP — which travels to the real end of its axis
+  // — and then built from the authored offsets at the isotropic scale, so the
+  // triangle keeps its shape at any aspect ratio.
+  for (const [[tx, ty], [px, py], [qx, qy]] of ARROWHEADS) {
+    const tipX = ax(tx);
+    const tipY = ay(ty);
+    const k = fit.strokeScale;
     ctx.beginPath();
-    ctx.moveTo(tx, ty);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX + (px - tx) * k, tipY + (py - ty) * k);
+    ctx.lineTo(tipX + (qx - tx) * k, tipY + (qy - ty) * k);
     ctx.closePath();
     ctx.fill();
   }
 
   // Uppercase legend (centre-anchored, alphabetic baseline, letter-spaced).
+  // Anchored proportionally, typed isotropically — never inside the stretch.
   const hasSpacing = 'letterSpacing' in ctx;
   const legend = (l: { text: string; x: number; y: number; size: number; color: string }) => {
     ctx.fillStyle = l.color;
-    ctx.font = `600 ${l.size}px ${FONT_FAMILY}`;
+    ctx.font = `600 ${l.size * fit.strokeScale}px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    if (hasSpacing) ctx.letterSpacing = `${LABEL_LETTER_SPACING}px`;
-    ctx.fillText(l.text, l.x, l.y);
+    if (hasSpacing) {
+      ctx.letterSpacing = `${LABEL_LETTER_SPACING * fit.strokeScale}px`;
+    }
+    ctx.fillText(l.text, ax(l.x), ay(l.y));
     if (hasSpacing) ctx.letterSpacing = '0px';
   };
 
   // ── The three curves, as ghosts ─────────────────────────────────────
-  // `save`/`restore` around each one so the dash and the alpha never leak onto
-  // the legend that follows it — a legend is a name, and names stay solid.
+  // `save`/`restore` around each one so neither the stretch nor the dash nor
+  // the alpha leaks onto the legend that follows it — a legend is a name, and
+  // names stay solid, upright and undeformed.
   for (const curve of estuarineCurves()) {
     if (!model[curve.visibleProp]) continue;
     ctx.save();
+    applyEstuarineTransform(ctx, w, h);
     ctx.strokeStyle = curve.color;
-    ctx.lineWidth = curve.width;
+    ctx.lineWidth = curve.width * fit.curveLineScale;
     ctx.globalAlpha = GHOST_ALPHA;
     ctx.setLineDash([...GHOST_DASH]);
     ctx.stroke(curve.path);
@@ -193,11 +282,11 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // ── Italic e / t axis letters ───────────────────────────────────────
   if (model.showAxisLabels) {
     ctx.fillStyle = COLORS.axisLabel;
-    ctx.font = `italic 700 ${AXIS_LABELS.size}px Georgia, serif`;
+    ctx.font = `italic 700 ${AXIS_LABELS.size * fit.strokeScale}px Georgia, serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(AXIS_LABELS.e.text, AXIS_LABELS.e.x, AXIS_LABELS.e.y);
-    ctx.fillText(AXIS_LABELS.t.text, AXIS_LABELS.t.x, AXIS_LABELS.t.y);
+    ctx.fillText(AXIS_LABELS.e.text, ax(AXIS_LABELS.e.x), ay(AXIS_LABELS.e.y));
+    ctx.fillText(AXIS_LABELS.t.text, ax(AXIS_LABELS.t.x), ay(AXIS_LABELS.t.y));
   }
 };
 

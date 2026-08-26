@@ -230,14 +230,17 @@ export class EstuarineGhostOverlay extends Overlay {
       const [x, y, w, h] = model.deserializedXYWH;
       ctx.save();
       // Model space, exactly like the element renderer: translate to the
-      // element, rotate about its centre, then enter the reference frame.
-      // Recomputed at PAINT time rather than captured at reveal time, so the
-      // stroke follows a map the user drags or rotates mid-animation.
+      // element, rotate about its centre, then enter the STRETCHED reference
+      // frame through the shared transform — the reveal stroke has to sit on
+      // the ghost to the pixel, so the two go through one function, never two
+      // copies of the same arithmetic. Recomputed at PAINT time rather than
+      // captured at reveal time, so the stroke follows a map the user drags,
+      // rotates or resizes mid-animation.
       ctx.translate(x, y);
       ctx.translate(w / 2, h / 2);
       ctx.rotate((model.rotate * Math.PI) / 180);
       ctx.translate(-w / 2, -h / 2);
-      applyEstuarineTransform(ctx, w, h);
+      const fit = applyEstuarineTransform(ctx, w, h);
 
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -248,7 +251,7 @@ export class EstuarineGhostOverlay extends Overlay {
       for (const curve of estuarineCurves()) {
         if (!model[curve.visibleProp]) continue;
         ctx.strokeStyle = curve.color;
-        ctx.lineWidth = curve.width;
+        ctx.lineWidth = curve.width * fit.curveLineScale;
         ctx.stroke(curve.path);
       }
 
