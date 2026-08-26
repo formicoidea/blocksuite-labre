@@ -7,7 +7,11 @@ import {
 // Straight off the framework package, as the connector and template specs
 // already reach for theirs: `@labre/affine` re-exports the blocks, not the
 // framework modules.
-import { BPMN_POOL_BACKGROUND } from '@labre/affine-gfx-bpmn';
+import {
+  BPMN_POOL_BACKGROUND,
+  bpmnLaneOf,
+  bpmnPoolOf,
+} from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
   type BpmnPoolElementModel,
@@ -197,8 +201,6 @@ describe('BPMN pool lanes', () => {
     });
     const task = surface.getElementById(taskId) as BpmnNodeElementModel;
 
-    // The SAME answer the audit computes: the element's centre, as ratios of
-    // the plot, against the rectangles `backgroundInstanceZones` resolves.
     const zones = backgroundInstanceZones(
       BPMN_POOL_BACKGROUND,
       pool as unknown as Readonly<Record<string, unknown>>
@@ -209,19 +211,12 @@ describe('BPMN pool lanes', () => {
     ]);
     expect(zones[0].name).toBe('Front office');
 
-    const bound = task.elementBound;
-    const at = [
-      (bound.x + bound.w / 2 - px - plot.x0) / plot.width,
-      (bound.y + bound.h / 2 - py - plot.y0) / plot.height,
-    ] as const;
-    const containing = zones.filter(
-      zone =>
-        at[0] >= zone.rect.x &&
-        at[0] <= zone.rect.x + zone.rect.w &&
-        at[1] >= zone.rect.y &&
-        at[1] <= zone.rect.y + zone.rect.h
-    );
-    expect(containing.map(zone => zone.id)).toEqual([`lane:${lanes[1].id}`]);
+    // Asked, not recomputed. `bpmnLaneOf` IS the centre-against-plot-ratios
+    // arithmetic this spec used to spell out inline, and it is the same
+    // arithmetic the audit runs — so the question a rule will ask is the
+    // question answered here, on a real editor, against a real dropped task.
+    expect(bpmnLaneOf(pool, task.elementBound)?.id).toBe(lanes[1].id);
+    expect(bpmnPoolOf([pool], task.elementBound)).toBe(pool);
   });
 
   test('a lane’s title band belongs to the lane, not to a gutter', () => {
@@ -268,19 +263,10 @@ describe('BPMN pool lanes', () => {
     });
     const bound = (surface.getElementById(nodeId) as BpmnNodeElementModel)
       .elementBound;
-    const at = [
-      (bound.x + bound.w / 2 - px - plot.x0) / plot.width,
-      (bound.y + bound.h / 2 - py - plot.y0) / plot.height,
-    ] as const;
 
-    const containing = zones.filter(
-      zone =>
-        at[0] >= zone.rect.x &&
-        at[0] <= zone.rect.x + zone.rect.w &&
-        at[1] >= zone.rect.y &&
-        at[1] <= zone.rect.y + zone.rect.h
-    );
-    expect(containing.map(zone => zone.id)).toEqual(['lane:bottom']);
+    // Asked through the facts, like the lane test above: the strip is chrome,
+    // so the answer has to be the lane it is drawn in and not "no lane".
+    expect(bpmnLaneOf(pool, bound)?.id).toBe('bottom');
   });
 
   test('removing the last lane takes the prop back out of the document', async () => {
