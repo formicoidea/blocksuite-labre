@@ -124,7 +124,7 @@ const RELATIONS_SECTION: AutoLegendSectionSpec = {
 };
 
 export const EDGY_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Légende',
+  title: 'Legend',
   roles: EDGY_ROLES,
   sections: [
     ...FACET_SECTIONS,
