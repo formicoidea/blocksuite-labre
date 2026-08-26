@@ -4,6 +4,9 @@
 // audit's own consumers — can answer those questions without a canvas.
 export { BPMN_POOL_BACKGROUND } from './background.js';
 export { bpmnCommandIcons, bpmnCommands } from './commands';
+// Where an artefact sits, without a `BlockStdScope`: the same pool and lane
+// attribution the audit computes, answerable by a rule, a host or a test.
+export { bpmnLaneOf, bpmnPoolOf } from './facts.js';
 export {
   BPMN_ROLE,
   BPMN_ROLE_OF_KIND,
