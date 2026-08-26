@@ -81,9 +81,7 @@ describe('artefact catalogue sidepanel', () => {
     // (`EdgelessCommandMenu._renderCatalogueButton`). A library assembly where
     // it answered `undefined` would suppress the button silently, so the two
     // tranches meet here.
-    expect(
-      edgeless.std.getOptional(ArtefactCatalogueProvider)
-    ).toBeDefined();
+    expect(edgeless.std.getOptional(ArtefactCatalogueProvider)).toBeDefined();
     expect(panel()).toBeNull();
 
     await open();
@@ -143,9 +141,9 @@ describe('artefact catalogue sidepanel', () => {
     clickElement(row!);
     await settle();
 
-    expect(
-      edgeless.surface.model.getElementsByType('wardleyNode').length
-    ).toBe(1);
+    expect(edgeless.surface.model.getElementsByType('wardleyNode').length).toBe(
+      1
+    );
     // Back to the canvas the artefact landed on — the PO's default.
     expect(panel()).toBeNull();
     expect(armedTool()).toBe(before);

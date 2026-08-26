@@ -59,7 +59,10 @@ export abstract class FrameworkBackgroundElementModel<
   }
 
   override getNearestPoint(point: IVec): IVec {
-    return polygonNearestPoint(Bound.deserialize(this.xywh).points, point) as IVec;
+    return polygonNearestPoint(
+      Bound.deserialize(this.xywh).points,
+      point
+    ) as IVec;
   }
 
   override includesPoint(x: number, y: number): boolean {

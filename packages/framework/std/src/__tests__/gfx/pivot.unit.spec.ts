@@ -208,7 +208,10 @@ describe('collectPivotOccurrences', () => {
   test('finds every occurrence of one record on the surface', () => {
     const first = surface.addElement({ type: 'testShape', pivotDocId: RECORD });
     surface.addElement({ type: 'testShape' });
-    const second = surface.addElement({ type: 'testShape', pivotDocId: RECORD });
+    const second = surface.addElement({
+      type: 'testShape',
+      pivotDocId: RECORD,
+    });
     surface.addElement({ type: 'testShape', pivotDocId: OTHER_RECORD });
 
     expect(collectPivotOccurrences(surface, RECORD)).toEqual([

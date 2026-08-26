@@ -19,12 +19,7 @@ import {
   getClosestBlockComponentByPoint,
   matchModels,
 } from '@labre/affine-shared/utils';
-import {
-  Bound,
-  Point,
-  Rect,
-  type SerializedXYWH,
-} from '@labre/global/gfx';
+import { Bound, Point, Rect, type SerializedXYWH } from '@labre/global/gfx';
 import type { BlockComponent, EditorHost } from '@labre/std';
 import type {
   BaseSelection,

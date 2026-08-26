@@ -1,4 +1,7 @@
-export { eventStormingCommandIcons, eventStormingCommands } from './commands.js';
+export {
+  eventStormingCommandIcons,
+  eventStormingCommands,
+} from './commands.js';
 export { EVENT_STORMING_BACKGROUND } from './background.js';
 export { EVENT_STORMING_NUDGES } from './nudges.js';
 export { EVENT_STORMING_PROFILES } from './profiles.js';

@@ -11,11 +11,7 @@ import { BlockFlavourIdentifier } from '@labre/std';
 import { signal } from '@preact/signals-core';
 import { html } from 'lit';
 
-import {
-  boundForScale,
-  scaleFromSize,
-  sizeFromScale,
-} from './font-size.js';
+import { boundForScale, scaleFromSize, sizeFromScale } from './font-size.js';
 
 const FONT_SIZE_LIST = [
   { value: 16 },

@@ -1,7 +1,4 @@
-import {
-  type RoughCanvas,
-  ToolOverlay,
-} from '@labre/affine-block-surface';
+import { type RoughCanvas, ToolOverlay } from '@labre/affine-block-surface';
 import type { StrokeStyle } from '@labre/affine-model';
 import type { GfxController } from '@labre/std/gfx';
 

@@ -98,93 +98,95 @@ function unanimous<T>(values: T[]): T | undefined {
 
 const bindPivot: CommandDescriptor<BindPivotParams> = {
   id: 'pivot.bind',
-    owner: 'core',
-    kind: 'action',
-    // NOT `com.labre.keyboardShortcuts.*` like every labelKey before it: those
-    // all belong to commands that ship a default chord. This one is keyless by
-    // intent and lives in the palette and the agent, so filing it under
-    // "keyboard shortcuts" would mislead a translator.
-    labelKey: 'com.labre.command.pivot.bind',
-    labelFallback: 'Link to record',
-    descriptionKey: 'com.labre.command.pivot.bind.description',
-    surfaces: ['palette', 'agent'],
-    scope: 'edgeless',
-    // Keyless by intent — still bindable from Settings › Shortcuts, which is
-    // what `toShortcutDescriptor` being total buys.
-    defaultKeys: { mac: [], other: [] },
-    availability: 'selection',
-    // Narrows `'selection'`, never contradicts it: a read-only document, and a
-    // selection of nothing but canvas blocks, both have no bindable target.
+  owner: 'core',
+  kind: 'action',
+  // NOT `com.labre.keyboardShortcuts.*` like every labelKey before it: those
+  // all belong to commands that ship a default chord. This one is keyless by
+  // intent and lives in the palette and the agent, so filing it under
+  // "keyboard shortcuts" would mislead a translator.
+  labelKey: 'com.labre.command.pivot.bind',
+  labelFallback: 'Link to record',
+  descriptionKey: 'com.labre.command.pivot.bind.description',
+  surfaces: ['palette', 'agent'],
+  scope: 'edgeless',
+  // Keyless by intent — still bindable from Settings › Shortcuts, which is
+  // what `toShortcutDescriptor` being total buys.
+  defaultKeys: { mac: [], other: [] },
+  availability: 'selection',
+  // Narrows `'selection'`, never contradicts it: a read-only document, and a
+  // selection of nothing but canvas blocks, both have no bindable target.
+  //
+  // Read-only rides on `when` rather than on `availability` because the union
+  // does not COMPOSE: it is one value per command (`command-registry.ts`
+  // `isCommandAvailable`), so declaring `'editable'` would buy the read-only
+  // gate by dropping the selection gate a host panel needs far more often.
+  // `'selection'` stays the serializable answer — it is the precondition a
+  // catalogue must show — and the state precondition is enforced below.
+  // The missing composition is recorded as an amendment trigger in ADR 0008.
+  when: std => isBindable(std) && pivotTargets(std).length > 0,
+  params: bindPivotParams,
+  run: (std, invocation, params) => {
+    const parsed = bindPivotParams.safeParse(params);
+    if (!parsed.success) {
+      console.error('pivot.bind: invalid params', parsed.error.issues);
+      return;
+    }
+    const { pivotDocId, elementIds } = parsed.data;
+
+    // The load-bearing half of the read-only gate: see `isBindable`.
+    if (!isBindable(std)) return;
+
+    const targets = pivotTargets(std, elementIds);
+    if (!targets.length) return;
+
+    // A gesture that changes nothing emits nothing and costs no undo step.
+    const changing = targets.filter(
+      el => el.pivotDocId !== (pivotDocId ?? undefined)
+    );
+    if (!changing.length) return;
+
+    // BEFORE the write, not after. `store.transact()` is not an undo
+    // boundary: the `Y.UndoManager` is built with no `captureTimeout`, so
+    // Yjs's 500 ms default merges consecutive transactions — and a bind
+    // issued within 500 ms of a drag would be undone TOGETHER with the drag,
+    // making the promotion look like it moved geometry. `stopCapturing()`
+    // opens a new stack item for what comes NEXT, so it has to precede the
+    // write (`Store.captureSync` docstring; same order as `applyLastStyle`).
     //
-    // Read-only rides on `when` rather than on `availability` because the union
-    // does not COMPOSE: it is one value per command (`command-registry.ts`
-    // `isCommandAvailable`), so declaring `'editable'` would buy the read-only
-    // gate by dropping the selection gate a host panel needs far more often.
-    // `'selection'` stays the serializable answer — it is the precondition a
-    // catalogue must show — and the state precondition is enforced below.
-    // The missing composition is recorded as an amendment trigger in ADR 0008.
-    when: std => isBindable(std) && pivotTargets(std).length > 0,
-    params: bindPivotParams,
-    run: (std, invocation, params) => {
-      const parsed = bindPivotParams.safeParse(params);
-      if (!parsed.success) {
-        console.error('pivot.bind: invalid params', parsed.error.issues);
-        return;
+    // The ADRs' snippets (0005 § 3, 0007 § 6) show it after the write; that
+    // contradicts their own stated rationale and is treated as an editorial
+    // slip — see the PR description.
+    std.store.captureSync();
+
+    for (const element of changing) {
+      if (pivotDocId === null) {
+        // Not `updateElement(id, { pivotDocId: undefined })`: the `@field()`
+        // setter is unconditional, so that would leave the key behind as a
+        // tombstone. `clearField` removes it, and accepts this field because
+        // it is a declared, non-structural `@field()`.
+        element.clearField(PIVOT_DOC_ID);
+      } else {
+        element.surface.updateElement(element.id, { pivotDocId });
       }
-      const { pivotDocId, elementIds } = parsed.data;
+    }
 
-      // The load-bearing half of the read-only gate: see `isBindable`.
-      if (!isBindable(std)) return;
-
-      const targets = pivotTargets(std, elementIds);
-      if (!targets.length) return;
-
-      // A gesture that changes nothing emits nothing and costs no undo step.
-      const changing = targets.filter(el => el.pivotDocId !== (pivotDocId ?? undefined));
-      if (!changing.length) return;
-
-      // BEFORE the write, not after. `store.transact()` is not an undo
-      // boundary: the `Y.UndoManager` is built with no `captureTimeout`, so
-      // Yjs's 500 ms default merges consecutive transactions — and a bind
-      // issued within 500 ms of a drag would be undone TOGETHER with the drag,
-      // making the promotion look like it moved geometry. `stopCapturing()`
-      // opens a new stack item for what comes NEXT, so it has to precede the
-      // write (`Store.captureSync` docstring; same order as `applyLastStyle`).
-      //
-      // The ADRs' snippets (0005 § 3, 0007 § 6) show it after the write; that
-      // contradicts their own stated rationale and is treated as an editorial
-      // slip — see the PR description.
-      std.store.captureSync();
-
-      for (const element of changing) {
-        if (pivotDocId === null) {
-          // Not `updateElement(id, { pivotDocId: undefined })`: the `@field()`
-          // setter is unconditional, so that would leave the key behind as a
-          // tombstone. `clearField` removes it, and accepts this field because
-          // it is a declared, non-structural `@field()`.
-          element.clearField(PIVOT_DOC_ID);
-        } else {
-          element.surface.updateElement(element.id, { pivotDocId });
-        }
-      }
-
-      // The ONE emission for this gesture. Not routed through `runCommand`'s
-      // bottleneck: that emitter maps `CommandKind` onto the three creation
-      // events from a STATIC `{ framework, element }` on the descriptor, and a
-      // promotion is neither a creation nor static — `rung`, `direction` and
-      // `role` are facts of the invocation. See ADR 0007 § 7.
-      const roles = changing.map(el => el.role);
-      const role = unanimous(roles);
-      std.getOptional(TelemetryProvider)?.track('FrameworkElementPromoted', {
-        page: 'whiteboard editor',
-        framework: frameworkOfRole(role),
-        rung: 'pivot',
-        direction: pivotDocId === null ? 'demote' : 'promote',
-        role,
-        elementCount: changing.length,
-        control: invocation.source,
-        module: invocation.surface,
-      });
+    // The ONE emission for this gesture. Not routed through `runCommand`'s
+    // bottleneck: that emitter maps `CommandKind` onto the three creation
+    // events from a STATIC `{ framework, element }` on the descriptor, and a
+    // promotion is neither a creation nor static — `rung`, `direction` and
+    // `role` are facts of the invocation. See ADR 0007 § 7.
+    const roles = changing.map(el => el.role);
+    const role = unanimous(roles);
+    std.getOptional(TelemetryProvider)?.track('FrameworkElementPromoted', {
+      page: 'whiteboard editor',
+      framework: frameworkOfRole(role),
+      rung: 'pivot',
+      direction: pivotDocId === null ? 'demote' : 'promote',
+      role,
+      elementCount: changing.length,
+      control: invocation.source,
+      module: invocation.surface,
+    });
   },
 };
 

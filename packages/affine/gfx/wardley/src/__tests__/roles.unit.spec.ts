@@ -233,9 +233,7 @@ describe('built-in templates are typed like hand-drawn maps', () => {
   });
 
   it('types template dependency links AND change arrows', () => {
-    const connectors = templateElements().filter(
-      el => el.type === 'connector'
-    );
+    const connectors = templateElements().filter(el => el.type === 'connector');
     const roles = new Set(connectors.map(c => c.role));
 
     expect(connectors.length).toBeGreaterThan(10);

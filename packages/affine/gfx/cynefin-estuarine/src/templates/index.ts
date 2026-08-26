@@ -68,11 +68,21 @@ function caption(x: number, y: number, str: string) {
   };
 }
 
-function tpl(name: string, preview: string, elements: SurfaceElementsJSON): Template {
-  return { name, type: 'template', preview, content: makeTemplateSnapshot(elements, name) };
+function tpl(
+  name: string,
+  preview: string,
+  elements: SurfaceElementsJSON
+): Template {
+  return {
+    name,
+    type: 'template',
+    preview,
+    content: makeTemplateSnapshot(elements, name),
+  };
 }
 
-const ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
+const ATTRS =
+  'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 
 // Cynefin's background carries NO role, deliberately and for good: the
 // framework is out of the validation perimeter (PO, 26/08/2026). See

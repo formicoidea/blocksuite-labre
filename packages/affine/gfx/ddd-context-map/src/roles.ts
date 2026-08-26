@@ -79,8 +79,7 @@ const UPSTREAM_DIRECTION = {
   verbKey: 'com.labre.ddd-context-map.role.relationship.verb',
   verbFallback: 'is upstream of',
   gestureHintKey: 'com.labre.ddd-context-map.role.relationship.gesture',
-  gestureHintFallback:
-    'Drag from the upstream context to the downstream one.',
+  gestureHintFallback: 'Drag from the upstream context to the downstream one.',
 } as const;
 
 const DEFS: readonly RoleDef[] = [

@@ -9,10 +9,7 @@ import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
 
-import {
-  activateEventStormingFlow,
-  createEventStormingBoard,
-} from './actions';
+import { activateEventStormingFlow, createEventStormingBoard } from './actions';
 import { ES_STICKY_ROLE } from './roles';
 
 /**

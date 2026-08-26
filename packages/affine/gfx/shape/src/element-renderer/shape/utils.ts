@@ -197,9 +197,11 @@ function drawPolygon(
       ? shapeModel.smoothFlags
       : null;
 
-  const controlPoints: ((number[] | null)[] | null) =
-    'controlPoints' in shapeModel && (shapeModel as unknown as Record<string, unknown>).controlPoints
-      ? (shapeModel as unknown as { controlPoints: (number[] | null)[] }).controlPoints
+  const controlPoints: (number[] | null)[] | null =
+    'controlPoints' in shapeModel &&
+    (shapeModel as unknown as Record<string, unknown>).controlPoints
+      ? (shapeModel as unknown as { controlPoints: (number[] | null)[] })
+          .controlPoints
       : null;
 
   const count = vertices.length;
@@ -214,7 +216,10 @@ function drawPolygon(
       ctx.lineTo(vertices[i][0] * width, vertices[i][1] * height);
     }
   } else {
-    const abs = (v: number[]): [number, number] => [v[0] * width, v[1] * height];
+    const abs = (v: number[]): [number, number] => [
+      v[0] * width,
+      v[1] * height,
+    ];
 
     ctx.moveTo(vertices[0][0] * width, vertices[0][1] * height);
 
@@ -296,8 +301,7 @@ export const MIN_CONTAINED_FONT_SIZE = 8;
 export function effectiveShapeFontSize(
   model: ShapeElementModel | LocalShapeElementModel
 ): number {
-  const mode =
-    'textFitMode' in model ? model.textFitMode : TextFitMode.Grow;
+  const mode = 'textFitMode' in model ? model.textFitMode : TextFitMode.Grow;
   const text = model.text;
   if (mode !== TextFitMode.Contained || !text || typeof text === 'string') {
     return model.fontSize;

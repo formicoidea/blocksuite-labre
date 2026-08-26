@@ -92,7 +92,11 @@ function board(
       updates.push({ id, props });
     },
   };
-  return { surface: surface as unknown as SurfaceBlockModel, updates, captures };
+  return {
+    surface: surface as unknown as SurfaceBlockModel,
+    updates,
+    captures,
+  };
 }
 
 describe('EDGY relation naming', () => {
@@ -315,7 +319,9 @@ describe('the Relation entry in the EDGY toolbox', () => {
     expect(relation).toBeDefined();
     // Twenty-two verbs behind one button: the metamodel picks, the user does
     // not have to.
-    expect(edgyCommands.filter(c => c.category === 'relations')).toHaveLength(1);
+    expect(edgyCommands.filter(c => c.category === 'relations')).toHaveLength(
+      1
+    );
   });
 
   it('arms a tool rather than dropping an artefact', () => {

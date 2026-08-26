@@ -134,9 +134,20 @@ function swot(): SurfaceElementsJSON {
 // ── Kanban (To do / Doing / Done) ─────────────────────────────────────
 function kanban(): SurfaceElementsJSON {
   const colOpts = { fill: '#f4f4f5', stroke: MUTED, sw: 1.5, radius: 10 };
-  const head = { fontSize: 18, weight: FontWeight.Medium, align: TextAlign.Center } as const;
+  const head = {
+    fontSize: 18,
+    weight: FontWeight.Medium,
+    align: TextAlign.Center,
+  } as const;
   const card = (x: number, y: number, fill: string, stroke: string) =>
-    rect(x, y, 188, 60, { fill, stroke, sw: 1.5, radius: 8, text: 'Card', fontSize: 14 });
+    rect(x, y, 188, 60, {
+      fill,
+      stroke,
+      sw: 1.5,
+      radius: 8,
+      text: 'Card',
+      fontSize: 14,
+    });
   return {
     c1: rect(0, 0, 220, 420, colOpts),
     c2: rect(244, 0, 220, 420, colOpts),
@@ -156,7 +167,10 @@ function kanban(): SurfaceElementsJSON {
 function bmc(): SurfaceElementsJSON {
   const blk = { stroke: DARK, sw: 1.5 } as const;
   const t = (x: number, y: number, s: string) =>
-    label(x + 12, y + 12, 180, 22, s, { fontSize: 14, weight: FontWeight.Medium });
+    label(x + 12, y + 12, 180, 22, s, {
+      fontSize: 14,
+      weight: FontWeight.Medium,
+    });
   const hdr = (x: number, s: string) => ({
     box: rect(x, 8, 128, 34, { stroke: MUTED, sw: 1 }),
     txt: label(x + 8, 16, 120, 18, s, { fontSize: 11, color: '#5f6368' }),
@@ -170,18 +184,32 @@ function bmc(): SurfaceElementsJSON {
       fontSize: 24,
       weight: FontWeight.Medium,
     }),
-    h1b: h1.box, h1t: h1.txt, h2b: h2.box, h2t: h2.txt,
-    h3b: h3.box, h3t: h3.txt, h4b: h4.box, h4t: h4.txt,
-    kp: rect(0, 56, 196, 300, blk), ka: rect(200, 56, 196, 146, blk),
-    kr: rect(200, 206, 196, 150, blk), vp: rect(400, 56, 196, 300, blk),
-    cr: rect(600, 56, 196, 146, blk), ch: rect(600, 206, 196, 150, blk),
+    h1b: h1.box,
+    h1t: h1.txt,
+    h2b: h2.box,
+    h2t: h2.txt,
+    h3b: h3.box,
+    h3t: h3.txt,
+    h4b: h4.box,
+    h4t: h4.txt,
+    kp: rect(0, 56, 196, 300, blk),
+    ka: rect(200, 56, 196, 146, blk),
+    kr: rect(200, 206, 196, 150, blk),
+    vp: rect(400, 56, 196, 300, blk),
+    cr: rect(600, 56, 196, 146, blk),
+    ch: rect(600, 206, 196, 150, blk),
     cs: rect(800, 56, 196, 300, blk),
-    cost: rect(0, 360, 496, 84, blk), rev: rect(500, 360, 496, 84, blk),
-    tkp: t(0, 56, 'Key partnerships'), tka: t(200, 56, 'Key activities'),
-    tkr: t(200, 206, 'Key resources'), tvp: t(400, 56, 'Value propositions'),
-    tcr: t(600, 56, 'Customer relationships'), tch: t(600, 206, 'Channels'),
+    cost: rect(0, 360, 496, 84, blk),
+    rev: rect(500, 360, 496, 84, blk),
+    tkp: t(0, 56, 'Key partnerships'),
+    tka: t(200, 56, 'Key activities'),
+    tkr: t(200, 206, 'Key resources'),
+    tvp: t(400, 56, 'Value propositions'),
+    tcr: t(600, 56, 'Customer relationships'),
+    tch: t(600, 206, 'Channels'),
     tcs: t(800, 56, 'Customer segments'),
-    tcost: t(0, 360, 'Cost structure'), trev: t(500, 360, 'Revenue streams'),
+    tcost: t(0, 360, 'Cost structure'),
+    trev: t(500, 360, 'Revenue streams'),
   };
 }
 
@@ -190,7 +218,14 @@ function fishbone(): SurfaceElementsJSON {
   const cat = (x: number, y: number) =>
     rect(x, y, 150, 44, { text: 'CATEGORY', fontSize: 13 });
   const item = (x: number, y: number, n: string) =>
-    rect(x, y, 130, 40, { stroke: MUTED, sw: 1.4, dash: true, text: n, textColor: '#5f6368', fontSize: 13 });
+    rect(x, y, 130, 40, {
+      stroke: MUTED,
+      sw: 1.4,
+      dash: true,
+      text: n,
+      textColor: '#5f6368',
+      fontSize: 13,
+    });
   const out: SurfaceElementsJSON = {
     spine: line(80, 360, 1120, 360, { sw: 6 }),
     head: rect(1124, 332, 130, 56, { text: 'Effect', fontSize: 16 }),
@@ -224,18 +259,28 @@ function gantt(): SurfaceElementsJSON {
   for (let i = 0; i < 6; i++) {
     const x = 220 + i * 130;
     out[`g${i}`] = line(x, 40, x, 268, { stroke: '#e0e0e0', sw: 1 });
-    out[`w${i}`] = label(x - 16, 12, 40, 20, `W${i + 1}`, { fontSize: 12, color: '#5f6368', align: TextAlign.Center });
+    out[`w${i}`] = label(x - 16, 12, 40, 20, `W${i + 1}`, {
+      fontSize: 12,
+      color: '#5f6368',
+      align: TextAlign.Center,
+    });
   }
   rows.forEach((name, r) => {
     const y = 56 + r * 52;
     out[`t${r}`] = label(0, y + 6, 180, 24, name, { fontSize: 14 });
     const [bx, bw, fill] = bars[r];
-    out[`b${r}`] = rect(bx, y, bw, 28, { fill, stroke: fill, sw: 0, radius: 6 });
+    out[`b${r}`] = rect(bx, y, bw, 28, {
+      fill,
+      stroke: fill,
+      sw: 0,
+      radius: 6,
+    });
   });
   return out;
 }
 
-const ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
+const ATTRS =
+  'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 const previews = {
   swot: `<svg ${ATTRS} fill="none"><rect x="20" y="12" width="95" height="56" stroke="#262626" stroke-width="2"/><path d="M67.5 12 V68 M20 40 H115" stroke="#262626" stroke-width="1.6"/></svg>`,
   kanban: `<svg ${ATTRS} fill="none"><rect x="10" y="12" width="35" height="56" rx="4" stroke="#9aa0a6"/><rect x="50" y="12" width="35" height="56" rx="4" stroke="#9aa0a6"/><rect x="90" y="12" width="35" height="56" rx="4" stroke="#9aa0a6"/><rect x="15" y="22" width="25" height="11" rx="2" fill="#fde6c8"/><rect x="55" y="22" width="25" height="11" rx="2" fill="#d6e4fb"/><rect x="95" y="22" width="25" height="11" rx="2" fill="#d5efd9"/></svg>`,
@@ -244,8 +289,17 @@ const previews = {
   gantt: `<svg ${ATTRS} fill="none"><path d="M40 14 V70 M62 14 V70 M84 14 V70 M106 14 V70" stroke="#e0e0e0"/><rect x="40" y="22" width="34" height="8" rx="2" fill="#4574c4"/><rect x="52" y="36" width="44" height="8" rx="2" fill="#2f9e95"/><rect x="62" y="50" width="50" height="8" rx="2" fill="#d99a2b"/><rect x="84" y="64" width="28" height="8" rx="2" fill="#43a06b"/></svg>`,
 };
 
-function t(name: string, preview: string, elements: SurfaceElementsJSON): Template {
-  return { name, type: 'template', preview, content: makeTemplateSnapshot(elements, name) };
+function t(
+  name: string,
+  preview: string,
+  elements: SurfaceElementsJSON
+): Template {
+  return {
+    name,
+    type: 'template',
+    preview,
+    content: makeTemplateSnapshot(elements, name),
+  };
 }
 
 export const otherTemplateCategory: TemplateCategory = {

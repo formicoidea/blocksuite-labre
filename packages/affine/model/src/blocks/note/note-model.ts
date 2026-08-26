@@ -1,8 +1,5 @@
 import { Bound } from '@labre/global/gfx';
-import type {
-  GfxCompatibleProps,
-  GfxElementGeometry,
-} from '@labre/std/gfx';
+import type { GfxCompatibleProps, GfxElementGeometry } from '@labre/std/gfx';
 import { GfxCompatible } from '@labre/std/gfx';
 import {
   BlockModel,

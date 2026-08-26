@@ -17,11 +17,7 @@ import {
 } from '@labre/affine-shared/utils';
 import { Bound, clamp } from '@labre/global/gfx';
 import type { BlockComponent } from '@labre/std';
-import {
-  BlockSelection,
-  GfxBlockComponent,
-  TextSelection,
-} from '@labre/std';
+import { BlockSelection, GfxBlockComponent, TextSelection } from '@labre/std';
 import { GfxViewInteractionExtension } from '@labre/std/gfx';
 import { computed } from '@preact/signals-core';
 import { css, html } from 'lit';

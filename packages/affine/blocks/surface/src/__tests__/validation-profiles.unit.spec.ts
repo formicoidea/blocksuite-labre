@@ -230,7 +230,9 @@ describe('an off rule is not evaluated at all', () => {
       OFF_BY_DEFAULT
     );
 
-    expect(violations.map(violation => violation.elementIds[0])).toEqual(['n2']);
+    expect(violations.map(violation => violation.elementIds[0])).toEqual([
+      'n2',
+    ]);
   });
 });
 

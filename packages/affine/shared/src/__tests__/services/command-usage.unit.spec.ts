@@ -120,7 +120,9 @@ describe('local command usage store', () => {
 
     test('recording and reading are silent no-ops', () => {
       const store = createLocalCommandUsageStore();
-      expect(() => store.record(command('wardley.addMap'), invocation)).not.toThrow();
+      expect(() =>
+        store.record(command('wardley.addMap'), invocation)
+      ).not.toThrow();
       expect(store.statsOf('wardley.addMap')).toBe(undefined);
     });
   });

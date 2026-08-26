@@ -43,7 +43,11 @@ export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
       title: 'Sub-domains',
       entries: CD_SUBDOMAINS.map(preset => ({
         role: CORE_DOMAIN_ROLE[preset.kind],
-        row: { swatch: 'dot' as const, color: preset.fill, label: preset.label },
+        row: {
+          swatch: 'dot' as const,
+          color: preset.fill,
+          label: preset.label,
+        },
       })),
     },
     {

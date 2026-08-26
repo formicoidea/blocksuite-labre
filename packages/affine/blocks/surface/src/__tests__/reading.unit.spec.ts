@@ -61,7 +61,13 @@ const BACKGROUND: FrameworkBackgroundDef = {
     {
       id: 'late',
       rect: { x: 0.5, y: 0, w: 0.5, h: 1 },
-      label: { id: 'l', labelKey: 'k.late', fallback: 'Late', anchor: { x: 0.5, y: 1 }, style: { size: 10, color: '#000' } },
+      label: {
+        id: 'l',
+        labelKey: 'k.late',
+        fallback: 'Late',
+        anchor: { x: 0.5, y: 1 },
+        style: { size: 10, color: '#000' },
+      },
     },
   ],
   // ±5% of the plot around the single transition at 0.5 — i.e. x ∈ [450, 550]
@@ -166,7 +172,8 @@ function grouped(
   return group;
 }
 
-const map = () => element({ id: 'map', role: 'test:map', bound: [0, 0, 1000, 500] });
+const map = () =>
+  element({ id: 'map', role: 'test:map', bound: [0, 0, 1000, 500] });
 
 const read = (
   subject: GfxPrimitiveElementModel,
@@ -216,7 +223,11 @@ describe('the type of node', () => {
 describe('the nature', () => {
   it('is what the element carries', () => {
     const reading = read(
-      element({ id: 'a', role: 'test:component', tags: { [NATURE_TAG]: [THING] } })
+      element({
+        id: 'a',
+        role: 'test:component',
+        tags: { [NATURE_TAG]: [THING] },
+      })
     )!;
     expect(reading.nature).toEqual({ tagId: NATURE_TAG, valueIds: [THING] });
   });
@@ -272,7 +283,10 @@ describe('the parent-child relations', () => {
     });
 
     const [relation] = read(me, [consumer, edge])!.relations;
-    expect(relation).toMatchObject({ side: 'consumer', contradictsGeometry: false });
+    expect(relation).toMatchObject({
+      side: 'consumer',
+      contradictsGeometry: false,
+    });
   });
 
   it('says so when the declaration contradicts the drawing', () => {
@@ -350,7 +364,12 @@ describe('the value flow', () => {
     });
 
   const edge = (source: string, target: string) =>
-    element({ id: `${source}->${target}`, role: 'test:dependency', source, target });
+    element({
+      id: `${source}->${target}`,
+      role: 'test:dependency',
+      source,
+      target,
+    });
 
   it('runs UP from a supplier to the subject', () => {
     // The dependency arrow points down (`me` needs `Kettle`); the VALUE travels
@@ -412,7 +431,11 @@ describe('the value flow', () => {
   });
 
   it('falls back to the id only when nothing on the board names an end', () => {
-    const me = element({ id: 'me', role: 'test:component', bound: [100, 200, 20, 20] });
+    const me = element({
+      id: 'me',
+      role: 'test:component',
+      bound: [100, 200, 20, 20],
+    });
     const supplier = element({
       id: 'db',
       role: 'test:component',
@@ -427,7 +450,11 @@ describe('the value flow', () => {
   it('reads the name off the label sibling, like every other field', () => {
     // A framework artefact is a composite: the role is on the circle and the
     // name on a free text beside it. The flow sentence must say the name.
-    const node = element({ id: 'me', role: 'test:component', bound: [100, 200, 20, 20] });
+    const node = element({
+      id: 'me',
+      role: 'test:component',
+      bound: [100, 200, 20, 20],
+    });
     const label = element({
       id: 'me-label',
       role: 'test:label',
@@ -483,7 +510,16 @@ describe('the evolution phase', () => {
   });
 
   it('is absent for an element beside the frame', () => {
-    expect(read(element({ id: 'a', role: 'test:component', bound: [2000, 100, 20, 20] }), [map()])!.phase).toBeUndefined();
+    expect(
+      read(
+        element({
+          id: 'a',
+          role: 'test:component',
+          bound: [2000, 100, 20, 20],
+        }),
+        [map()]
+      )!.phase
+    ).toBeUndefined();
   });
 });
 
@@ -513,7 +549,9 @@ describe('the naming convention', () => {
   });
 
   it('reads the negative form too', () => {
-    expect(read(named('Customer register', THING))!.naming?.conforms).toBe(true);
+    expect(read(named('Customer register', THING))!.naming?.conforms).toBe(
+      true
+    );
     expect(read(named('Registering customers', THING))!.naming?.conforms).toBe(
       false
     );
@@ -536,7 +574,11 @@ describe('the naming convention', () => {
 
   it('says nothing about an unnamed element', () => {
     const reading = read(
-      element({ id: 'a', role: 'test:component', tags: { [NATURE_TAG]: [DOING] } })
+      element({
+        id: 'a',
+        role: 'test:component',
+        tags: { [NATURE_TAG]: [DOING] },
+      })
     )!;
     expect(reading.naming).toBeUndefined();
   });
@@ -637,7 +679,9 @@ describe('resolving what the RECORD says against the framework’s vocabulary', 
   });
 
   it('de-duplicates two spellings of one value', () => {
-    expect(resolveRecordNature(def, ['Doing', DOING]).resolved).toEqual([DOING]);
+    expect(resolveRecordNature(def, ['Doing', DOING]).resolved).toEqual([
+      DOING,
+    ]);
   });
 });
 

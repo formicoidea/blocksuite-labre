@@ -1,9 +1,5 @@
 import type { Command } from '@labre/std';
-import {
-  type BlockModel,
-  type DraftModel,
-  toDraftModel,
-} from '@labre/store';
+import { type BlockModel, type DraftModel, toDraftModel } from '@labre/store';
 
 export const draftSelectedModelsCommand: Command<
   {

@@ -1,9 +1,6 @@
 import type { RootBlockModel } from '@labre/affine-model';
 import { ViewportElementProvider } from '@labre/affine-shared/services';
-import {
-  autoScroll,
-  getScrollContainer,
-} from '@labre/affine-shared/utils';
+import { autoScroll, getScrollContainer } from '@labre/affine-shared/utils';
 import {
   BlockComponent,
   BlockSelection,

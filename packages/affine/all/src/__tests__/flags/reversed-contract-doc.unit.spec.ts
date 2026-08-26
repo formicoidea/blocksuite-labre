@@ -191,17 +191,19 @@ function mountEdgelessProvider(flags: BlockFlags) {
 }
 
 describe('framework renderers are mounted even with every flag off', () => {
-  test.each(['wardley', 'wardleyNode', 'edgy', 'edgyBoard', 'brush', 'bpmnPool'])(
-    'the %s element renderer is bound with every flag off',
-    type => {
-      const off = mountEdgelessProvider(ALL_OFF);
-      expect(
-        off.getOptional(ElementRendererIdentifier(type))
-      ).toBeDefined();
+  test.each([
+    'wardley',
+    'wardleyNode',
+    'edgy',
+    'edgyBoard',
+    'brush',
+    'bpmnPool',
+  ])('the %s element renderer is bound with every flag off', type => {
+    const off = mountEdgelessProvider(ALL_OFF);
+    expect(off.getOptional(ElementRendererIdentifier(type))).toBeDefined();
 
-      // ...and it is the same binding as with everything enabled.
-      const on = mountEdgelessProvider(ALL_ON);
-      expect(on.getOptional(ElementRendererIdentifier(type))).toBeDefined();
-    }
-  );
+    // ...and it is the same binding as with everything enabled.
+    const on = mountEdgelessProvider(ALL_ON);
+    expect(on.getOptional(ElementRendererIdentifier(type))).toBeDefined();
+  });
 });

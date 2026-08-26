@@ -1,7 +1,4 @@
-import type {
-  CanvasRenderer,
-  RoughCanvas,
-} from '@labre/affine-block-surface';
+import type { CanvasRenderer, RoughCanvas } from '@labre/affine-block-surface';
 import type {
   LocalShapeElementModel,
   ShapeElementModel,

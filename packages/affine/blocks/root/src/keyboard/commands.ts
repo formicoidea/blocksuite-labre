@@ -2,10 +2,7 @@ import {
   EdgelessCRUDIdentifier,
   getLastPropsKey,
 } from '@labre/affine-block-surface';
-import type {
-  LastProps,
-  LastPropsKey,
-} from '@labre/affine-shared/services';
+import type { LastProps, LastPropsKey } from '@labre/affine-shared/services';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { pickStylePropsForKey } from '@labre/affine-shared/utils';
 import { IS_WINDOWS } from '@labre/global/env';

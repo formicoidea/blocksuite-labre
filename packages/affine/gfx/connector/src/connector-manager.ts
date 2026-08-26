@@ -10,10 +10,7 @@ import {
   ShapeElementModel,
   ShapeType,
 } from '@labre/affine-model';
-import {
-  EditPropsStore,
-  ThemeProvider,
-} from '@labre/affine-shared/services';
+import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
 import { BlockSuiteError } from '@labre/global/exceptions';
 import type { IBound, IVec, IVec3 } from '@labre/global/gfx';
 import {
@@ -303,14 +300,13 @@ export function getAnchors(ele: GfxModel, includeCenterAnchor = true) {
       { ...bound, rotate },
       bound.center
     );
-    return [{ point: new PointLocation(centerPoint), coord: [0.5, 0.5] as IVec }];
+    return [
+      { point: new PointLocation(centerPoint), coord: [0.5, 0.5] as IVec },
+    ];
   }
 
   // For polygon shapes, generate anchors at each vertex and edge midpoint
-  if (
-    ele instanceof ShapeElementModel &&
-    ele.shapeType === ShapeType.Polygon
-  ) {
+  if (ele instanceof ShapeElementModel && ele.shapeType === ShapeType.Polygon) {
     const verts: number[][] = ele.vertices ?? DEFAULT_POLYGON_VERTICES;
 
     for (let i = 0; i < verts.length; i++) {
@@ -344,10 +340,7 @@ export function getAnchors(ele: GfxModel, includeCenterAnchor = true) {
       });
 
       // --- Edge midpoint anchor ---
-      const midCoord: IVec = [
-        (curr[0] + next[0]) / 2,
-        (curr[1] + next[1]) / 2,
-      ];
+      const midCoord: IVec = [(curr[0] + next[0]) / 2, (curr[1] + next[1]) / 2];
       const midAbs: IVec = [
         bound.x + midCoord[0] * bound.w,
         bound.y + midCoord[1] * bound.h,
@@ -1810,8 +1803,7 @@ export class ConnectorPathGenerator extends PathGenerator {
       bound.center
     );
     return (
-      almostEqual(point[0], center[0], 1) &&
-      almostEqual(point[1], center[1], 1)
+      almostEqual(point[0], center[0], 1) && almostEqual(point[1], center[1], 1)
     );
   }
 

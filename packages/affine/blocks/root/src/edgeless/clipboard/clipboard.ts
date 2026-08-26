@@ -9,10 +9,7 @@ import {
   getSurfaceComponent,
 } from '@labre/affine-block-surface';
 import { splitIntoLines } from '@labre/affine-gfx-text';
-import type {
-  EmbedCardStyle,
-  ShapeElementModel,
-} from '@labre/affine-model';
+import type { EmbedCardStyle, ShapeElementModel } from '@labre/affine-model';
 import {
   BookmarkStyles,
   DEFAULT_NOTE_HEIGHT,

@@ -20,10 +20,7 @@ import { PresentTool } from '@labre/affine/blocks/frame';
 import { ExportManager } from '@labre/affine/blocks/surface';
 import { toast } from '@labre/affine/components/toast';
 import { StoreExtensionManagerIdentifier } from '@labre/affine/ext-loader';
-import {
-  BlockSuiteError,
-  ErrorCode,
-} from '@labre/affine/global/exceptions';
+import { BlockSuiteError, ErrorCode } from '@labre/affine/global/exceptions';
 import type { SerializedXYWH } from '@labre/affine/global/gfx';
 import { ColorScheme, type DocMode } from '@labre/affine/model';
 import {
@@ -34,10 +31,7 @@ import {
   PlainTextAdapterFactoryIdentifier,
   titleMiddleware,
 } from '@labre/affine/shared/adapters';
-import {
-  DocModeProvider,
-  EditPropsStore,
-} from '@labre/affine/shared/services';
+import { DocModeProvider, EditPropsStore } from '@labre/affine/shared/services';
 import {
   ColorVariables,
   FontFamilyVariables,
@@ -51,11 +45,7 @@ import {
 } from '@labre/affine/shared/utils';
 import { ShadowlessElement } from '@labre/affine/std';
 import { GfxControllerIdentifier } from '@labre/affine/std/gfx';
-import {
-  type DeltaInsert,
-  Text,
-  type Workspace,
-} from '@labre/affine/store';
+import { type DeltaInsert, Text, type Workspace } from '@labre/affine/store';
 import {
   createAssetsArchive,
   download,

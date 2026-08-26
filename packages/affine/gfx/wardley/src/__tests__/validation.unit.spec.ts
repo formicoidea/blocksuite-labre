@@ -138,11 +138,16 @@ describe('W1 · a change arrow pointing against evolution', () => {
   });
 
   it('says nothing about an arrow heading towards commodity', () => {
-    expect(evaluate([background(), arrow([400, 400], [1200, 400])])).toEqual([]);
+    expect(evaluate([background(), arrow([400, 400], [1200, 400])])).toEqual(
+      []
+    );
   });
 
   it('produces a well-formed violation object, with no prose', () => {
-    const [violation] = evaluate([background(), arrow([1200, 400], [400, 400])]);
+    const [violation] = evaluate([
+      background(),
+      arrow([1200, 400], [400, 400]),
+    ]);
 
     expect(violation).toStrictEqual<Violation>({
       ruleId: W1,
@@ -277,19 +282,16 @@ describe('W2 · an inertia bar astride a phase transition', () => {
     // both bands — the emptiest place on the axis a bar can be.
     const midPhase = (TRANSITIONS[1] + TRANSITIONS[2]) / 2;
 
-    expect(idsOf(evaluate([background(), link(), bar(midPhase, 150)]))).toEqual([
-      W2,
-    ]);
+    expect(idsOf(evaluate([background(), link(), bar(midPhase, 150)]))).toEqual(
+      [W2]
+    );
     expect(idsOf(evaluate([background(), bar(midPhase, 150)]))).toEqual([W2]);
   });
 
   it('names the frontier the bar was actually aiming at', () => {
     // Past the middle of the phase: the nearest transition is now the Commodity
     // one. The finding follows the bar, not the first band on the map.
-    const [violation] = evaluate([
-      background(),
-      bar(TRANSITIONS[2] - 200, y),
-    ]);
+    const [violation] = evaluate([background(), bar(TRANSITIONS[2] - 200, y)]);
 
     expect(violation.boundaryId).toBe('product|commodity');
   });
@@ -302,7 +304,9 @@ describe('W2 · an inertia bar astride a phase transition', () => {
     expect(evaluate([background(), wide])).toEqual([]);
     // The same width, parked halfway between two dividers: flagged.
     const midPhase = (TRANSITIONS[1] + TRANSITIONS[2]) / 2;
-    expect(idsOf(evaluate([background(), bar(midPhase, y, 220)]))).toEqual([W2]);
+    expect(idsOf(evaluate([background(), bar(midPhase, y, 220)]))).toEqual([
+      W2,
+    ]);
   });
 
   it('gives ONE finding per bar, however far off it is', () => {
@@ -323,8 +327,7 @@ describe('W2 · an inertia bar astride a phase transition', () => {
         WARDLEY_BACKGROUND,
         new Bound(0, 0, w, (w * 9) / 16)
       ).x.slice(1);
-      const at = (fraction: number) =>
-        transition + fraction * (w - 40 - 30);
+      const at = (fraction: number) => transition + fraction * (w - 40 - 30);
       const cy = ((w * 9) / 16) * 0.5;
 
       // Inside the band (4% of the plot off the line): green at every size.
@@ -494,16 +497,18 @@ describe('W3 · overlapping nodes and labels', () => {
 
   it('flags a label written across a node', () => {
     expect(
-      idsOf(evaluate([background(), node('n1', 400, 400), label('l1', 380, 394)]))
+      idsOf(
+        evaluate([background(), node('n1', 400, 400), label('l1', 380, 394)])
+      )
     ).toEqual([W3]);
   });
 
   it('flags a label crossed out by the dependency under it', () => {
     const link = edge('d1', WARDLEY_ROLE.dependency, [300, 407], [700, 407]);
 
-    expect(idsOf(evaluate([background(), link, label('l1', 400, 394)]))).toEqual([
-      W3,
-    ]);
+    expect(
+      idsOf(evaluate([background(), link, label('l1', 400, 394)]))
+    ).toEqual([W3]);
   });
 
   /**
@@ -540,7 +545,12 @@ describe('W3 · overlapping nodes and labels', () => {
       // PO's first capture, with another word in the box.
       const narrow = label('l1', 400, 394, { text: 'utility', w: 200 });
       const past = edge('d1', WARDLEY_ROLE.dependency, [455, 300], [455, 500]);
-      const inside = edge('d2', WARDLEY_ROLE.dependency, [420, 300], [420, 500]);
+      const inside = edge(
+        'd2',
+        WARDLEY_ROLE.dependency,
+        [420, 300],
+        [420, 500]
+      );
 
       expect(evaluate([background(), past, narrow])).toEqual([]);
       expect(idsOf(evaluate([background(), inside, narrow]))).toEqual([W3]);
@@ -566,11 +576,23 @@ describe('W3 · overlapping nodes and labels', () => {
       // Same box, same word: only `textAlign` says which end of the box the
       // 72 units of ink sit at, and the rule has to agree with the renderer.
       const right = label('l1', 400, 394, { align: 'right' });
-      const overLeftEnd = edge('d1', WARDLEY_ROLE.dependency, [410, 300], [410, 500]);
-      const overRightEnd = edge('d2', WARDLEY_ROLE.dependency, [500, 300], [500, 500]);
+      const overLeftEnd = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [410, 300],
+        [410, 500]
+      );
+      const overRightEnd = edge(
+        'd2',
+        WARDLEY_ROLE.dependency,
+        [500, 300],
+        [500, 500]
+      );
 
       expect(evaluate([background(), overLeftEnd, right])).toEqual([]);
-      expect(idsOf(evaluate([background(), overRightEnd, right]))).toEqual([W3]);
+      expect(idsOf(evaluate([background(), overRightEnd, right]))).toEqual([
+        W3,
+      ]);
     });
 
     it('measures an element that exposes no text by its box, as before', () => {
@@ -592,8 +614,18 @@ describe('W3 · overlapping nodes and labels', () => {
       const name = label('l1', 400, 394);
       // The label runs from y 394 to y 420. A link one unit under its top edge
       // touches the box and strikes out nothing.
-      const grazing = edge('d1', WARDLEY_ROLE.dependency, [300, 395], [700, 395]);
-      const through = edge('d2', WARDLEY_ROLE.dependency, [300, 401], [700, 401]);
+      const grazing = edge(
+        'd1',
+        WARDLEY_ROLE.dependency,
+        [300, 395],
+        [700, 395]
+      );
+      const through = edge(
+        'd2',
+        WARDLEY_ROLE.dependency,
+        [300, 401],
+        [700, 401]
+      );
 
       expect(evaluate([background(), grazing, name])).toEqual([]);
       // Seven units in — past the threshold, into the letters.
@@ -610,7 +642,9 @@ describe('W3 · overlapping nodes and labels', () => {
       ).toEqual([]);
       // Six, and the two words are genuinely one blur.
       expect(
-        idsOf(evaluate([background(), a, label('l2', 427, 394, { text: 'Cloud' })]))
+        idsOf(
+          evaluate([background(), a, label('l2', 427, 394, { text: 'Cloud' })])
+        )
       ).toEqual([W3]);
     });
 
@@ -629,9 +663,16 @@ describe('W3 · overlapping nodes and labels', () => {
     // The box of this diagonal covers the whole quadrant; the line itself runs
     // nowhere near the label. Measuring boxes would indict every label on the
     // map, which is exactly why the geometry follows the role's `kind`.
-    const diagonal = edge('d1', WARDLEY_ROLE.dependency, [300, 300], [900, 800]);
+    const diagonal = edge(
+      'd1',
+      WARDLEY_ROLE.dependency,
+      [300, 300],
+      [900, 800]
+    );
 
-    expect(evaluate([background(), diagonal, label('l1', 780, 320)])).toEqual([]);
+    expect(evaluate([background(), diagonal, label('l1', 780, 320)])).toEqual(
+      []
+    );
   });
 
   it('says nothing about two links that cross', () => {
@@ -665,7 +706,9 @@ describe('W3 · overlapping nodes and labels', () => {
     // Past the threshold it is an overlap again, and the family's own epsilon
     // is what it always was.
     expect(
-      idsOf(evaluate([background(), node('n1', 400, 400), node('n2', 413, 400)]))
+      idsOf(
+        evaluate([background(), node('n1', 400, 400), node('n2', 413, 400)])
+      )
     ).toEqual([W3]);
   });
 
@@ -793,7 +836,12 @@ describe('W4 · a provider above its consumer', () => {
     const provider = at('n2', 800, 700);
 
     expect(
-      evaluate([background(), consumer, provider, needs('d1', consumer, provider)])
+      evaluate([
+        background(),
+        consumer,
+        provider,
+        needs('d1', consumer, provider),
+      ])
     ).toEqual([]);
   });
 
@@ -831,7 +879,14 @@ describe('W4 · a provider above its consumer', () => {
 
     const outside = at('n2', 800, 460);
     expect(
-      idsOf(evaluate([background(), consumer, outside, needs('d1', consumer, outside)]))
+      idsOf(
+        evaluate([
+          background(),
+          consumer,
+          outside,
+          needs('d1', consumer, outside),
+        ])
+      )
     ).toEqual([W4]);
   });
 
@@ -841,12 +896,12 @@ describe('W4 · a provider above its consumer', () => {
     const high = at('n1', 400, 200);
     const low = at('n2', 800, 700);
 
-    expect(idsOf(evaluate([background(), high, low, needs('d1', high, low)]))).toEqual(
-      []
-    );
-    expect(idsOf(evaluate([background(), high, low, needs('d1', low, high)]))).toEqual(
-      [W4]
-    );
+    expect(
+      idsOf(evaluate([background(), high, low, needs('d1', high, low)]))
+    ).toEqual([]);
+    expect(
+      idsOf(evaluate([background(), high, low, needs('d1', low, high)]))
+    ).toEqual([W4]);
   });
 
   it('never evaluates an edge with a free end', () => {
@@ -866,9 +921,9 @@ describe('W4 · a provider above its consumer', () => {
     const provider = at('n2', 800, 200);
     // The provider was deleted between two evaluations: a dangling id says
     // nothing about a layout.
-    expect(evaluate([background(), consumer, needs('d1', consumer, provider)])).toEqual(
-      []
-    );
+    expect(
+      evaluate([background(), consumer, needs('d1', consumer, provider)])
+    ).toEqual([]);
   });
 
   it('never compares a pair that straddles two maps', () => {
@@ -893,9 +948,9 @@ describe('W4 · a provider above its consumer', () => {
     const consumer = at('n1', 400, 700);
     const provider = at('n2', 800, 200);
 
-    expect(evaluate([consumer, provider, needs('d1', consumer, provider)])).toEqual(
-      []
-    );
+    expect(
+      evaluate([consumer, provider, needs('d1', consumer, provider)])
+    ).toEqual([]);
   });
 
   it('never falls on an edge carrying another role, or none', () => {
@@ -921,15 +976,17 @@ describe('W4 · a provider above its consumer', () => {
       source: { id: 'n1' },
       target: { id: 'n2' },
     } as unknown as GfxPrimitiveElementModel;
-    expect(idsOf(evaluate([background(), consumer, provider, neutral]))).toEqual(
-      []
-    );
+    expect(
+      idsOf(evaluate([background(), consumer, provider, neutral]))
+    ).toEqual([]);
   });
 
   it('says nothing about an edge that links an element to itself', () => {
     const alone = at('n1', 400, 700);
 
-    expect(evaluate([background(), alone, needs('d1', alone, alone)])).toEqual([]);
+    expect(evaluate([background(), alone, needs('d1', alone, alone)])).toEqual(
+      []
+    );
   });
 
   it('costs one finding per RELATION, never per pair of nodes', () => {

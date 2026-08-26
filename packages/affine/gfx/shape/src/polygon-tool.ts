@@ -4,11 +4,7 @@ import {
   EXCLUDING_MOUSE_OUT_CLASS_LIST,
   type SurfaceBlockComponent,
 } from '@labre/affine-block-surface';
-import {
-  DefaultTheme,
-  ShapeType,
-  type StrokeStyle,
-} from '@labre/affine-model';
+import { DefaultTheme, ShapeType, type StrokeStyle } from '@labre/affine-model';
 import {
   EditPropsStore,
   TelemetryProvider,
@@ -258,8 +254,7 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
     let signedArea2 = 0;
     for (let i = 0; i < normalizedVertices.length; i++) {
       const [x1, y1] = normalizedVertices[i];
-      const [x2, y2] =
-        normalizedVertices[(i + 1) % normalizedVertices.length];
+      const [x2, y2] = normalizedVertices[(i + 1) % normalizedVertices.length];
       signedArea2 += (x2 - x1) * (y2 + y1);
     }
     // In screen coordinates (Y-down), positive signedArea2 means
@@ -297,7 +292,9 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
       vertices: normalizedVertices,
       isClosed: true,
       smoothFlags: smoothFlagsForModel,
-      ...(controlPointsForModel ? { controlPoints: controlPointsForModel } : {}),
+      ...(controlPointsForModel
+        ? { controlPoints: controlPointsForModel }
+        : {}),
     });
 
     this.std.getOptional(TelemetryProvider)?.track('CanvasElementAdded', {
@@ -391,11 +388,7 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
 
     return this.std
       .get(ThemeProvider)
-      .getColorValue(
-        props?.strokeColor,
-        DefaultTheme.shapeStrokeColor,
-        true
-      );
+      .getColorValue(props?.strokeColor, DefaultTheme.shapeStrokeColor, true);
   }
 
   private _getStrokeProps(): {
@@ -408,7 +401,8 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
       this.std.get(EditPropsStore).lastProps$.value['shape:rect'];
 
     return {
-      strokeStyle: (props?.strokeStyle as StrokeStyle) ?? ('solid' as StrokeStyle),
+      strokeStyle:
+        (props?.strokeStyle as StrokeStyle) ?? ('solid' as StrokeStyle),
       strokeWidth: (props?.strokeWidth as number) ?? 4,
     };
   }
@@ -421,10 +415,6 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
 
     return this.std
       .get(ThemeProvider)
-      .getColorValue(
-        props?.fillColor,
-        DefaultTheme.shapeFillColor,
-        true
-      );
+      .getColorValue(props?.fillColor, DefaultTheme.shapeFillColor, true);
   }
 }

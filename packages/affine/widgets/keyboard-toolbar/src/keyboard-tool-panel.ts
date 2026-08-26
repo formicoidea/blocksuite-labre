@@ -1,9 +1,5 @@
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import {
-  PropTypes,
-  requiredProperties,
-  ShadowlessElement,
-} from '@labre/std';
+import { PropTypes, requiredProperties, ShadowlessElement } from '@labre/std';
 import { html, nothing, type PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';

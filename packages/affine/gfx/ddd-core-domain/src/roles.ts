@@ -209,8 +209,7 @@ const DEFS: readonly RoleDef[] = [
       verbKey: 'com.labre.core-domain.role.movement.verb',
       verbFallback: 'is moving to',
       gestureHintKey: 'com.labre.core-domain.role.movement.gesture',
-      gestureHintFallback:
-        'Drag from the current position to the future one.',
+      gestureHintFallback: 'Drag from the current position to the future one.',
     },
   },
 ];

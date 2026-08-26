@@ -1,8 +1,4 @@
-import {
-  DEFAULT_ROUGHNESS,
-  LineWidth,
-  StrokeStyle,
-} from '@labre/affine-model';
+import { DEFAULT_ROUGHNESS, LineWidth, StrokeStyle } from '@labre/affine-model';
 
 export const SHAPE_OVERLAY_WIDTH = 100;
 export const SHAPE_OVERLAY_HEIGHT = 100;

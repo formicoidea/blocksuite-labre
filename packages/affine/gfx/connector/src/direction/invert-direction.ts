@@ -170,7 +170,10 @@ const invertEdgeDirection: CommandDescriptor<InvertEdgeDirectionParams> = {
     // reads "no arguments" rather than "invalid arguments".
     const parsed = invertEdgeDirectionParams.safeParse(params ?? {});
     if (!parsed.success) {
-      console.error('edge.invert-direction: invalid params', parsed.error.issues);
+      console.error(
+        'edge.invert-direction: invalid params',
+        parsed.error.issues
+      );
       return;
     }
 
@@ -197,9 +200,7 @@ const invertEdgeDirection: CommandDescriptor<InvertEdgeDirectionParams> = {
     std.getOptional(TelemetryProvider)?.track('EdgeDirectionInverted', {
       page: 'whiteboard editor',
       ...(role !== undefined ? { role } : {}),
-      ...(role !== undefined
-        ? { framework: role.split(':')[0] }
-        : {}),
+      ...(role !== undefined ? { framework: role.split(':')[0] } : {}),
       elementCount: edges.length,
       control: invocation.source,
       module: invocation.surface,

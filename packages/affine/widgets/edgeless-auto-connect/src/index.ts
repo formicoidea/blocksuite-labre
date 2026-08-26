@@ -20,10 +20,7 @@ import {
   InvisibleIcon,
 } from '@blocksuite/icons/lit';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
-import {
-  type GfxController,
-  GfxControllerIdentifier,
-} from '@labre/std/gfx';
+import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import { css, html, nothing, type TemplateResult } from 'lit';
 import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';

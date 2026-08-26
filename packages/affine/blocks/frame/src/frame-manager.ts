@@ -274,7 +274,11 @@ export class EdgelessFrameManager extends GfxExtension {
             // Only add elements that aren't already grouped and have a valid
             // frame, and never let the frame swallow a backdrop that encloses
             // it (e.g. a Wardley map background the frame was drawn on top of).
-            if (!element.group && frame && !this._enclosesFrame(element, frame)) {
+            if (
+              !element.group &&
+              frame &&
+              !this._enclosesFrame(element, frame)
+            ) {
               this._adoptNewlyCreatedElement(frame, element);
             }
           });

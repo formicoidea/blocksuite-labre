@@ -26,7 +26,8 @@ const DIFF_DOM: readonly [number, number] = [0, 0.86];
 const fOper = (x: number) => asym(x, 0.85, 0.1, 0.075);
 const OPER_DOM: readonly [number, number] = [0.62, 1];
 // Benefit / investment (signed): big positive bell − small negative bell.
-const fBen = (x: number) => asym(x, 0.49, 0.17, 0.24) - 0.42 * bell(x, 0.1, 0.075);
+const fBen = (x: number) =>
+  asym(x, 0.49, 0.17, 0.24) - 0.42 * bell(x, 0.1, 0.075);
 
 // Evolution-gradient — Simon Wardley's classic evolution presentation: a
 // symmetric grey "U", strong at both evolution extremes (uncharted /
@@ -52,7 +53,8 @@ const RR = rangeOf(fOper, OPER_DOM[0], OPER_DOM[1]);
 const RB = rangeOf(fBen, 0, 1);
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-const norm = (v: number, lo: number, hi: number) => (hi > lo ? (v - lo) / (hi - lo) : 0);
+const norm = (v: number, lo: number, hi: number) =>
+  hi > lo ? (v - lo) / (hi - lo) : 0;
 
 export const GRADIENT_GREEN = '#1f9e4d';
 export const GRADIENT_RED = '#d6455d';

@@ -32,11 +32,11 @@
   built from: `model.props.foo# @labre/store
  was simply missing until something assigned
   `model.props.foo`a value. Anything that wanted to observe such a prop — or set
-  it through its signal — from the moment the block loaded hit`undefined` instead
+  it through its signal — from the moment the block loaded hit`undefined`instead
   of a signal.
-  Optional props now get their signal at load time, holding `undefined` until the
+  Optional props now get their signal at load time, holding`undefined`until the
   prop is given a value, and assigning through it writes to the document like any
-  other prop. What is stored is unchanged: a prop with an `undefined` default is
+  other prop. What is stored is unchanged: a prop with an`undefined` default is
   still never written, and defaults that do have a value are still applied at the
   same point, so documents written before this change load and round-trip
   byte-for-byte identically.

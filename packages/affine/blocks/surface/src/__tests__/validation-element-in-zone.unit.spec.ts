@@ -168,12 +168,18 @@ describe('forbidden ground (expect: outside)', () => {
     // colours to print a clean chart has not told the tool that the Core
     // stopped being the Core.
     expect(
-      ids(RULE, [chart('chart', [0, 0, 1000, 1000], { showZones: false }), inCore('d1')])
+      ids(RULE, [
+        chart('chart', [0, 0, 1000, 1000], { showZones: false }),
+        inCore('d1'),
+      ])
     ).toEqual(['d1']);
   });
 
   it('covers a specialisation through its parent role', () => {
-    const onSubdomain: ValidationRule = { ...RULE, appliesTo: 'test:subdomain' };
+    const onSubdomain: ValidationRule = {
+      ...RULE,
+      appliesTo: 'test:subdomain',
+    };
     expect(ids(onSubdomain, [chart(), inCore('d1')])).toEqual(['d1']);
   });
 });
@@ -264,7 +270,10 @@ describe('a frame turned to one of its two readings', () => {
 
   it('measures against a zone the instance actually reads', () => {
     expect(
-      ids(RULE_TR, [chart('c', [0, 0, 1000, 1000], { reading: 'investment' }), inCore('d1')])
+      ids(RULE_TR, [
+        chart('c', [0, 0, 1000, 1000], { reading: 'investment' }),
+        inCore('d1'),
+      ])
     ).toEqual(['d1']);
   });
 
@@ -272,7 +281,10 @@ describe('a frame turned to one of its two readings', () => {
     // The Core quadrant is not on this chart: the user is looking at the
     // migration page, where that ground is not Core ground.
     expect(
-      ids(RULE_TR, [chart('c', [0, 0, 1000, 1000], { reading: 'migration' }), inCore('d1')])
+      ids(RULE_TR, [
+        chart('c', [0, 0, 1000, 1000], { reading: 'migration' }),
+        inCore('d1'),
+      ])
     ).toEqual([]);
   });
 
@@ -338,12 +350,17 @@ describe('what the family stays silent about', () => {
   });
 
   it('an element with no role, whatever it sits on', () => {
-    expect(ids(RULE, [chart(), element('free', [600, 200, 40, 40])])).toEqual([]);
+    expect(ids(RULE, [chart(), element('free', [600, 200, 40, 40])])).toEqual(
+      []
+    );
   });
 
   it('a subject carrying another role', () => {
     expect(
-      ids(RULE, [chart(), element('n', [600, 200, 40, 40], { role: 'test:chart' })])
+      ids(RULE, [
+        chart(),
+        element('n', [600, 200, 40, 40], { role: 'test:chart' }),
+      ])
     ).toEqual([]);
   });
 

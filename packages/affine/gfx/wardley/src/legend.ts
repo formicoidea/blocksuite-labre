@@ -67,7 +67,10 @@ const LEGEND_DESC: Record<LegendType, string> = {
   inertia: 'Inertia to change',
 };
 
-type GradientVariant = Exclude<WardleyBackgroundElementModel['variant'], 'classic'>;
+type GradientVariant = Exclude<
+  WardleyBackgroundElementModel['variant'],
+  'classic'
+>;
 
 /** Gradient-meaning block, keyed by variant (caption + 2-colour swatch). */
 const LEGEND_GRADIENT: Record<
@@ -292,7 +295,12 @@ export function createWardleyLegend(
             strokeWidth: MARKET_DOT_STROKE_WIDTH,
             shapeStyle: ShapeStyle.General,
             roughness: 0,
-            xywh: new Bound(cx + vx - dr, cy + vy - dr, dr * 2, dr * 2).serialize(),
+            xywh: new Bound(
+              cx + vx - dr,
+              cy + vy - dr,
+              dr * 2,
+              dr * 2
+            ).serialize(),
           })
         );
         const conns = [
@@ -421,7 +429,12 @@ export function createWardleyLegend(
           shapeStyle: ShapeStyle.General,
           roughness: 0,
           radius: 1,
-          xywh: new Bound(sx + i * (sw + sgap), cyRow - sw / 2, sw, sw).serialize(),
+          xywh: new Bound(
+            sx + i * (sw + sgap),
+            cyRow - sw / 2,
+            sw,
+            sw
+          ).serialize(),
         })
       );
     });

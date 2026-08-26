@@ -1,10 +1,6 @@
 import { DividerBlockModel } from '@labre/affine-model';
 import { DisposableGroup } from '@labre/global/disposable';
-import {
-  BlockSelection,
-  LifeCycleWatcher,
-  TextSelection,
-} from '@labre/std';
+import { BlockSelection, LifeCycleWatcher, TextSelection } from '@labre/std';
 import type { BaseSelection, BlockModel } from '@labre/store';
 import { signal } from '@preact/signals-core';
 

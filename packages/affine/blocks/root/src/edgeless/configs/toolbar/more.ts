@@ -31,10 +31,7 @@ import type {
   ToolbarContext,
 } from '@labre/affine-shared/services';
 import { QuickSearchProvider } from '@labre/affine-shared/services';
-import {
-  matchModels,
-  type ReorderingType,
-} from '@labre/affine-shared/utils';
+import { matchModels, type ReorderingType } from '@labre/affine-shared/utils';
 import { Bound, getCommonBoundWithRotation } from '@labre/global/gfx';
 import {
   ArrowDownBigBottomIcon,

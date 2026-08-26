@@ -33,7 +33,8 @@ function deltaE(a: string, b: string): number {
     const [r, g, bl] = [1, 3, 5].map(i =>
       linear(parseInt(hex.substr(i, 2), 16))
     );
-    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const f = (t: number) =>
+      t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
     const x = f((r * 0.4124 + g * 0.3576 + bl * 0.1805) / 0.95047);
     const y = f(r * 0.2126 + g * 0.7152 + bl * 0.0722);
     const z = f((r * 0.0193 + g * 0.1192 + bl * 0.9505) / 1.08883);
@@ -66,8 +67,7 @@ describe('ddd shared presets', () => {
     // The plan's indicative `#FDF0A0` measured ΔE 3.5 from the actor — two
     // stickies nobody could tell apart. The palette is a LADDER: constraint
     // saturated, actor light, aggregate palest. See `consts.ts`.
-    const fill = (kind: string) =>
-      ES_STICKIES.find(s => s.kind === kind)!.fill;
+    const fill = (kind: string) => ES_STICKIES.find(s => s.kind === kind)!.fill;
     const aggregate = fill('aggregate');
     expect(deltaE(aggregate, fill('actor'))).toBeGreaterThan(12);
     expect(deltaE(aggregate, fill('constraint'))).toBeGreaterThan(30);
@@ -185,7 +185,15 @@ describe('prefabs stamp a role only when asked', () => {
 
   it('puts a dot role on the ellipse', () => {
     const { surface, added } = surfaceStub();
-    addDot(surface, stdStub(), 0, 0, '#9933ff', undefined, 'core-domain:big-bet');
+    addDot(
+      surface,
+      stdStub(),
+      0,
+      0,
+      '#9933ff',
+      undefined,
+      'core-domain:big-bet'
+    );
     expect(added[0].role).toBe('core-domain:big-bet');
   });
 

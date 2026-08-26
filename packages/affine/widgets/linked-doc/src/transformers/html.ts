@@ -8,12 +8,7 @@ import {
 } from '@labre/affine-shared/adapters';
 import { Container } from '@labre/global/di';
 import { sha } from '@labre/global/utils';
-import type {
-  ExtensionType,
-  Schema,
-  Store,
-  Workspace,
-} from '@labre/store';
+import type { ExtensionType, Schema, Store, Workspace } from '@labre/store';
 import { extMimeMap, Transformer } from '@labre/store';
 
 import type { AssetMap, ImportedFileEntry, PathBlobIdMap } from './type.js';

@@ -365,7 +365,10 @@ describe('estuarine — a stretched map stretches', () => {
     expect(headsOf(paths).map(head => head.points)).toEqual(
       ARROWHEADS.map(head => head.map(([x, y]) => [x * 3, y * 3]))
     );
-    expect(fillTexts[0].at).toEqual([LABELS.liminal.x * 3, LABELS.liminal.y * 3]);
+    expect(fillTexts[0].at).toEqual([
+      LABELS.liminal.x * 3,
+      LABELS.liminal.y * 3,
+    ]);
     expect(fillTexts[0].font).toContain(`${LABELS.liminal.size * 3}px`);
     for (const stroke of strokes) expect(stroke.scale).toEqual([3, 3]);
     expect(strokes[0].lineWidth).toBeCloseTo(estuarineCurves()[0].width, 9);
@@ -381,7 +384,7 @@ describe('estuarine — a stretched map stretches', () => {
     // width that doubled — instead of stopping where the old letterbox left it.
     expect(axes?.points[2]).toEqual([T_AXIS.x1 * 2, T_AXIS.y]);
     expect(axes?.points[3]).toEqual([T_AXIS.x2 * 2, T_AXIS.y]);
-    expect(T_AXIS.x2 * 2 / (REF_W * 2)).toBeCloseTo(T_AXIS.x2 / REF_W, 9);
+    expect((T_AXIS.x2 * 2) / (REF_W * 2)).toBeCloseTo(T_AXIS.x2 / REF_W, 9);
 
     // The e axis keeps the untouched height, at the stretched x.
     expect(axes?.points[0]).toEqual([E_AXIS.x * 2, E_AXIS.y1]);
@@ -419,7 +422,10 @@ describe('estuarine — a stretched map stretches', () => {
 
   it('never draws a word inside the stretch', () => {
     const { fillTexts } = render(
-      fakeMap({ deserializedXYWH: [0, 0, REF_W * 2, REF_H], showAxisLabels: true })
+      fakeMap({
+        deserializedXYWH: [0, 0, REF_W * 2, REF_H],
+        showAxisLabels: true,
+      })
     );
     const { sx, sy, strokeScale } = estuarineFit(REF_W * 2, REF_H);
 

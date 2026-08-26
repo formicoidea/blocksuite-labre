@@ -1,17 +1,11 @@
 import { EdgelessFrameManager } from '@labre/affine-block-frame';
 import type { FrameBlockModel } from '@labre/affine-model';
-import {
-  DocModeProvider,
-  EditPropsStore,
-} from '@labre/affine-shared/services';
+import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { type EditorHost, ShadowlessElement } from '@labre/std';
-import {
-  generateKeyBetweenV2,
-  GfxControllerIdentifier,
-} from '@labre/std/gfx';
+import { generateKeyBetweenV2, GfxControllerIdentifier } from '@labre/std/gfx';
 import type { Store } from '@labre/store';
 import { css, html, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';

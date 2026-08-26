@@ -6,10 +6,7 @@ import {
 } from '@labre/affine-block-surface';
 import { EditorChevronDown } from '@labre/affine-components/toolbar';
 import type { ToolbarContext } from '@labre/affine-shared/services';
-import type {
-  Menu,
-  MenuItem,
-} from '@labre/affine-widget-edgeless-toolbar';
+import type { Menu, MenuItem } from '@labre/affine-widget-edgeless-toolbar';
 import { renderMenuItems } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
 import {

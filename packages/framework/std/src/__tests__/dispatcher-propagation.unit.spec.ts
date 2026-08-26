@@ -1,11 +1,11 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import { UIEventState, UIEventStateContext } from '../event/base.js';
+import { type EventName, UIEventDispatcher } from '../event/dispatcher.js';
 import {
-  type EventName,
-  UIEventDispatcher,
-} from '../event/dispatcher.js';
-import { EventScopeSourceType, EventSourceState } from '../event/state/source.js';
+  EventScopeSourceType,
+  EventSourceState,
+} from '../event/state/source.js';
 import type { BlockStdScope } from '../scope/index.js';
 
 /**

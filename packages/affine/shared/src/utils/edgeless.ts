@@ -1,8 +1,5 @@
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
-import {
-  deserializeXYWH,
-  getQuadBoundWithRotation,
-} from '@labre/global/gfx';
+import { deserializeXYWH, getQuadBoundWithRotation } from '@labre/global/gfx';
 import type { GfxBlockElementModel, GfxModel } from '@labre/std/gfx';
 import type { BlockModel } from '@labre/store';
 

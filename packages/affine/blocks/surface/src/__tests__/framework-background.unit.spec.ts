@@ -19,7 +19,13 @@ import {
 
 function stub() {
   const segments: Array<[number, number, number, number]> = [];
-  const rects: Array<{ x: number; y: number; w: number; h: number; fill: string }> = [];
+  const rects: Array<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    fill: string;
+  }> = [];
   const texts: Array<{
     text: string;
     x: number;
@@ -292,7 +298,14 @@ describe('the declaration vocabulary', () => {
       ...BARE,
       chrome: {
         washes: [
-          { id: 'w', color: 'rebeccapurple', stops: [[0, 0.5], [1, 0]] },
+          {
+            id: 'w',
+            color: 'rebeccapurple',
+            stops: [
+              [0, 0.5],
+              [1, 0],
+            ],
+          },
         ],
       },
     };
@@ -345,7 +358,13 @@ describe('the declaration vocabulary', () => {
 
   it('tints only the zones that declare a fill, and names them all', () => {
     const { rects, texts } = paint(FULL, { rightName: 'Droite' });
-    expect(rects).toContainEqual({ x: 20, y: 20, w: 180, h: 160, fill: '#eeeeee' });
+    expect(rects).toContainEqual({
+      x: 20,
+      y: 20,
+      w: 180,
+      h: 160,
+      fill: '#eeeeee',
+    });
     expect(rects.filter(r => r.w === 180)).toHaveLength(1);
     // The user's own wording wins over the vocabulary and over the default.
     expect(texts.map(t => t.text)).toContain('Left');
@@ -604,7 +623,9 @@ describe('a declaration with two readings of the same frame', () => {
     // the washes have always given.
     expect(tints()).toEqual(['#111111']);
     expect(paint(TWO_READINGS).gradients).toEqual([]);
-    expect(paint(TWO_READINGS, { variant: 'migration' }).gradients).toEqual([1]);
+    expect(paint(TWO_READINGS, { variant: 'migration' }).gradients).toEqual([
+      1,
+    ]);
   });
 
   it('says out loud, once, that no prop can ever select a variant', () => {
@@ -633,9 +654,9 @@ describe('a declaration with two readings of the same frame', () => {
       ],
     };
 
-    expect(paint(broken, { variant: 'migration' }).rects.map(r => r.fill)).toEqual([
-      '#111111',
-    ]);
+    expect(
+      paint(broken, { variant: 'migration' }).rects.map(r => r.fill)
+    ).toEqual(['#111111']);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('variantProp'));
 
@@ -680,7 +701,10 @@ const BANDED: FrameworkBackgroundDef = {
   chrome: {
     fontFamily: 'Demo, sans-serif',
     palette: { ink: '#111111', strip: '#eeeeee' },
-    surface: { fill: '#ffffff', border: { color: '@ink', width: 2, radius: 4 } },
+    surface: {
+      fill: '#ffffff',
+      border: { color: '@ink', width: 2, radius: 4 },
+    },
     sideBands: [
       {
         side: 'left',

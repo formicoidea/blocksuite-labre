@@ -209,9 +209,9 @@ describe('the reversed reading of a Wardley component', () => {
 
     // The whole arbitration, in one assertion: a reading is a read.
     expect(snapshot()).toEqual(before);
-    expect(
-      service.surface.getElementById(component)!.yMap.has('tags')
-    ).toBe(false);
+    expect(service.surface.getElementById(component)!.yMap.has('tags')).toBe(
+      false
+    );
   });
 
   test('with no host picker there is nothing to link with', async () => {
@@ -245,7 +245,9 @@ describe('the reversed reading of a Wardley component', () => {
     const link = field('reading-link-record') as HTMLElement | null;
     expect(link).not.toBeNull();
     // Before the click, nothing is bound: rendering the proposal wrote nothing.
-    expect(service.surface.getElementById(component)!.pivotDocId).toBeUndefined();
+    expect(
+      service.surface.getElementById(component)!.pivotDocId
+    ).toBeUndefined();
 
     clickElement(link!);
     await settle();
@@ -306,9 +308,11 @@ describe('the reversed reading of a Wardley component', () => {
     // "Activity" would put a value nothing describes into the document: the
     // naming line would vanish, the qualification dropdown would show a raw id,
     // and every rule indexed on the nature would stop matching.
-    expect(readElementTags(service.surface.getElementById(component)!)).toEqual({
-      'wardley:nature': ['wardley:nature/activity'],
-    });
+    expect(readElementTags(service.surface.getElementById(component)!)).toEqual(
+      {
+        'wardley:nature': ['wardley:nature/activity'],
+      }
+    );
   });
 
   test('a word the framework does not describe is named, not offered', async () => {
@@ -359,7 +363,9 @@ describe('the reversed reading of a Wardley component', () => {
     // behind that sentence has to cover the synchronous case too, or the throw
     // escapes a lit event handler as an unhandled error.
     expect(panel()).not.toBeNull();
-    expect(service.surface.getElementById(component)!.pivotDocId).toBeUndefined();
+    expect(
+      service.surface.getElementById(component)!.pivotDocId
+    ).toBeUndefined();
   });
 
   /** An activity named the English way, open in a host serving `language`. */
@@ -430,8 +436,9 @@ describe('the reversed reading of a Wardley component', () => {
         root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
           | HTMLElement
           | undefined
-      )?.shadowRoot?.querySelector<HTMLElement>('.edgeless-toolbar-container') ??
-      null;
+      )?.shadowRoot?.querySelector<HTMLElement>(
+        '.edgeless-toolbar-container'
+      ) ?? null;
 
     /** Resize the editor and let the toolbar settle at its new tool count. */
     const resizeEditorTo = async (width: string) => {
@@ -456,9 +463,9 @@ describe('the reversed reading of a Wardley component', () => {
       expect(contextual).not.toBeNull();
       expect(reading).toBeGreaterThan(zOf(contextual!));
 
-      const bottom = root.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as unknown as
-        | HTMLElement
-        | undefined;
+      const bottom = root.widgetComponents[
+        EDGELESS_TOOLBAR_WIDGET
+      ] as unknown as HTMLElement | undefined;
       expect(bottom).not.toBeUndefined();
       expect(reading).toBeGreaterThan(zOf(bottom!));
     });

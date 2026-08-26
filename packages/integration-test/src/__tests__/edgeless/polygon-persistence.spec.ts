@@ -294,13 +294,13 @@ describe('polygon round-trip persistence', () => {
     const vertices: number[][] = [];
     for (let i = 0; i < numVertices; i++) {
       const angle = (2 * Math.PI * i) / numVertices;
-      vertices.push([
-        0.5 + 0.5 * Math.cos(angle),
-        0.5 + 0.5 * Math.sin(angle),
-      ]);
+      vertices.push([0.5 + 0.5 * Math.cos(angle), 0.5 + 0.5 * Math.sin(angle)]);
     }
 
-    const smoothFlags = Array.from({ length: numVertices }, (_, i) => i % 2 === 0);
+    const smoothFlags = Array.from(
+      { length: numVertices },
+      (_, i) => i % 2 === 0
+    );
 
     const id = model.addElement({
       type: 'shape',

@@ -506,9 +506,7 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       // override rich-text style (height: 100%)
       height: 'initial',
       minHeight: autoWidth ? '1em' : `${rect.height}px`,
-      maxWidth: constrainedAutoWidth
-        ? `${this.element.maxWidth}px`
-        : undefined,
+      maxWidth: constrainedAutoWidth ? `${this.element.maxWidth}px` : undefined,
       boxSizing: 'border-box',
       fontSize: effectiveShapeFontSize(this.element) + 'px',
       fontFamily: TextUtils.wrapFontFamily(this.element.fontFamily),

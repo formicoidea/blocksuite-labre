@@ -229,9 +229,9 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
       // Geometric centroid as a center anchor (gated on the global toggle),
       // mirroring the center anchor offered for other shape types.
       const centerAnchorEnabled =
-        this.std.getOptional(EditPropsStore)?.getStorage(
-          'connectorCenterAnchor'
-        ) ?? true;
+        this.std
+          .getOptional(EditPropsStore)
+          ?.getStorage('connectorCenterAnchor') ?? true;
       if (centerAnchorEnabled) {
         locations.push(polygonCentroid(verts));
       }
@@ -241,9 +241,9 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
       this._sourceLocations = [[0.5, 0.5]];
     } else {
       const centerAnchorEnabled =
-        this.std.getOptional(EditPropsStore)?.getStorage(
-          'connectorCenterAnchor'
-        ) ?? true;
+        this.std
+          .getOptional(EditPropsStore)
+          ?.getStorage('connectorCenterAnchor') ?? true;
       this._sourceLocations =
         element instanceof ShapeElementModel &&
         element.shapeType === ShapeType.Triangle

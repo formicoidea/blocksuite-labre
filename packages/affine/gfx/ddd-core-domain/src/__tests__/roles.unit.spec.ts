@@ -64,7 +64,9 @@ function fakeStd() {
 }
 
 const run = (id: string, std: never) => {
-  const command = coreDomainCommands.find(c => c.id === `ddd-core-domain.${id}`);
+  const command = coreDomainCommands.find(
+    c => c.id === `ddd-core-domain.${id}`
+  );
   expect(command, `command ${id}`).toBeDefined();
   (command!.run as unknown as (s: never) => void)(std);
 };
@@ -129,13 +131,17 @@ describe('the Core Domain role vocabulary', () => {
       CORE_DOMAIN_ROLE.marker,
       ...TEAM_TOPOLOGIES.map(preset => markerRole(preset.kind)),
     ]) {
-      expect(
-        roleIsA(role, CORE_DOMAIN_ROLE.subdomain, CORE_DOMAIN_ROLES)
-      ).toBe(false);
+      expect(roleIsA(role, CORE_DOMAIN_ROLE.subdomain, CORE_DOMAIN_ROLES)).toBe(
+        false
+      );
     }
     // And the other way round: the marker family owns no sub-domain either.
     expect(
-      roleIsA(CORE_DOMAIN_ROLE.bcCurrent, CORE_DOMAIN_ROLE.marker, CORE_DOMAIN_ROLES)
+      roleIsA(
+        CORE_DOMAIN_ROLE.bcCurrent,
+        CORE_DOMAIN_ROLE.marker,
+        CORE_DOMAIN_ROLES
+      )
     ).toBe(false);
   });
 
@@ -146,9 +152,7 @@ describe('the Core Domain role vocabulary', () => {
       'current position'
     );
     // A node role has no business declaring one.
-    expect(
-      CORE_DOMAIN_ROLES[CORE_DOMAIN_ROLE.chart].direction
-    ).toBeUndefined();
+    expect(CORE_DOMAIN_ROLES[CORE_DOMAIN_ROLE.chart].direction).toBeUndefined();
   });
 
   it('is a null-prototype table', () => {
@@ -211,9 +215,7 @@ describe('what the creation sites stamp', () => {
   });
 
   it('keeps every telemetry `element` value untouched', () => {
-    expect(
-      coreDomainCommands.map(c => c.telemetry?.element)
-    ).toEqual([
+    expect(coreDomainCommands.map(c => c.telemetry?.element)).toEqual([
       'background',
       'subdomain:bigBet',
       'subdomain:platform',

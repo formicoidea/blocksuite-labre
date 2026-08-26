@@ -5,10 +5,7 @@ import {
   matchModels,
 } from '@labre/affine-shared/utils';
 import type { Constructor } from '@labre/global/utils';
-import {
-  GfxBlockElementModel,
-  GfxControllerIdentifier,
-} from '@labre/std/gfx';
+import { GfxBlockElementModel, GfxControllerIdentifier } from '@labre/std/gfx';
 import type { BlockModel } from '@labre/store';
 import type { LitElement, TemplateResult } from 'lit';
 

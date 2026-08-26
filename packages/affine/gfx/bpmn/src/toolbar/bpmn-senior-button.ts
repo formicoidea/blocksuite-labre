@@ -44,7 +44,10 @@ export class EdgelessBpmnSeniorButton extends EdgelessToolbarToolMixin(
       translate: var(--active-x, 0) var(--active-y, 0);
       rotate: var(--active-r, -2deg);
       scale: var(--active-s, 1);
-      transition: transform 0.3s ease, translate 0.3s ease, rotate 0.3s ease,
+      transition:
+        transform 0.3s ease,
+        translate 0.3s ease,
+        rotate 0.3s ease,
         scale 0.3s ease;
     }
     .bpmn-card svg {
@@ -72,7 +75,6 @@ export class EdgelessBpmnSeniorButton extends EdgelessToolbarToolMixin(
     this.setEdgelessTool(DefaultTool);
     const menu = this.createPopper('edgeless-bpmn-menu', this);
     menu.element.edgeless = this.edgeless;
-
   }
 
   override render() {

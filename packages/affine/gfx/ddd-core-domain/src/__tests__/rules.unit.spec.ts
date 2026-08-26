@@ -68,8 +68,10 @@ describe('C1 — an outsourced sub-domain in the Core quadrant', () => {
   /** Dead centre of the Core quadrant. */
   const inCore = (elId: string, role: string = CORE_DOMAIN_ROLE.outsourced) =>
     dot(elId, role, 640, 210);
-  const inGeneric = (elId: string, role: string = CORE_DOMAIN_ROLE.outsourced) =>
-    dot(elId, role, 145, 400);
+  const inGeneric = (
+    elId: string,
+    role: string = CORE_DOMAIN_ROLE.outsourced
+  ) => dot(elId, role, 145, 400);
 
   it('speaks when the dot is in the core', () => {
     expect(ids(id, [chart(), inCore('d1')])).toEqual(['d1']);
@@ -95,9 +97,7 @@ describe('C1 — an outsourced sub-domain in the Core quadrant', () => {
 
   it('says nothing about a dot on blank canvas, or a neutral one', () => {
     expect(ids(id, [inCore('d1')])).toEqual([]);
-    expect(
-      ids(id, [chart(), element('d1', [627, 197, 26, 26])])
-    ).toEqual([]);
+    expect(ids(id, [chart(), element('d1', [627, 197, 26, 26])])).toEqual([]);
   });
 
   /**
@@ -115,8 +115,10 @@ describe('C1 — an outsourced sub-domain in the Core quadrant', () => {
 
 describe('C2 — a malformed movement', () => {
   const id = 'core-domain.malformed-movement';
-  const current = (elId: string) => dot(elId, CORE_DOMAIN_ROLE.bcCurrent, 200, 200);
-  const future = (elId: string) => dot(elId, CORE_DOMAIN_ROLE.bcFuture, 600, 200);
+  const current = (elId: string) =>
+    dot(elId, CORE_DOMAIN_ROLE.bcCurrent, 200, 200);
+  const future = (elId: string) =>
+    dot(elId, CORE_DOMAIN_ROLE.bcFuture, 600, 200);
 
   it('says nothing about a movement drawn the right way round', () => {
     expect(
@@ -133,9 +135,9 @@ describe('C2 — a malformed movement', () => {
   });
 
   it('speaks when the movement loops back on its own start', () => {
-    expect(
-      ids(id, [chart(), current('a'), movement('m', 'a', 'a')])
-    ).toEqual(['a+m']);
+    expect(ids(id, [chart(), current('a'), movement('m', 'a', 'a')])).toEqual([
+      'a+m',
+    ]);
   });
 
   it('stays silent on a free connector — a drawing is not a claim', () => {
@@ -155,9 +157,9 @@ describe('C2 — a malformed movement', () => {
       target: { position: [10, 10] },
     });
     expect(ids(id, [chart(), current('a'), loose])).toEqual([]);
-    expect(ids(id, [chart(), current('a'), movement('m', 'a', 'gone')])).toEqual(
-      []
-    );
+    expect(
+      ids(id, [chart(), current('a'), movement('m', 'a', 'gone')])
+    ).toEqual([]);
   });
 
   /**
@@ -167,9 +169,9 @@ describe('C2 — a malformed movement', () => {
    */
   it('stays silent when an end is outside its alphabet', () => {
     const bet = dot('x', CORE_DOMAIN_ROLE.bigBet, 600, 400);
-    expect(ids(id, [chart(), current('a'), bet, movement('m', 'a', 'x')])).toEqual(
-      []
-    );
+    expect(
+      ids(id, [chart(), current('a'), bet, movement('m', 'a', 'x')])
+    ).toEqual([]);
     const neutral = element('n', [600, 400, 26, 26]);
     expect(
       ids(id, [chart(), current('a'), neutral, movement('m', 'a', 'n')])
@@ -234,7 +236,13 @@ describe('C4 — a dot off the legend colours', () => {
   });
 
   it('says nothing about the five legend colours', () => {
-    for (const fill of ['#9933ff', '#66b2ff', '#99ff99', '#ff3333', '#cccccc']) {
+    for (const fill of [
+      '#9933ff',
+      '#66b2ff',
+      '#99ff99',
+      '#ff3333',
+      '#cccccc',
+    ]) {
       expect(
         ids(id, [
           chart(),

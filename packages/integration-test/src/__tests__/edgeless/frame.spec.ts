@@ -114,7 +114,9 @@ describe('frame', () => {
     await wait();
 
     const a = surface.getElementById(aId)!;
-    const frame = service.frame.createFrameOnBound(new Bound(-50, -50, 300, 250));
+    const frame = service.frame.createFrameOnBound(
+      new Bound(-50, -50, 300, 250)
+    );
     await wait();
     expect(a.group).toBe(frame);
 

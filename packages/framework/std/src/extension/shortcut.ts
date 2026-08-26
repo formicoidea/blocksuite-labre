@@ -122,7 +122,10 @@ const LEGACY_MODIFIER = /^(mod|cmd|meta|ctrl|control|alt|shift)$/i;
  * folded: they are valid chord prefixes.
  */
 export function normalizeLegacyCombo(keys: string[]): string[] {
-  if (keys.length > 1 && keys.slice(0, -1).every(k => LEGACY_MODIFIER.test(k))) {
+  if (
+    keys.length > 1 &&
+    keys.slice(0, -1).every(k => LEGACY_MODIFIER.test(k))
+  ) {
     return [keys.join('-')];
   }
   return keys;
@@ -156,10 +159,7 @@ export function resolveKeymap(
       // Invalid keystroke (host override typo, unknown modifier): skip the
       // binding instead of letting the keymap installer throw and take the
       // whole scope down.
-      console.warn(
-        `[shortcut] invalid keys for "${d.id}" — not bound:`,
-        keys
-      );
+      console.warn(`[shortcut] invalid keys for "${d.id}" — not bound:`, keys);
       continue;
     }
     const existing = boundBy.get(canonical);

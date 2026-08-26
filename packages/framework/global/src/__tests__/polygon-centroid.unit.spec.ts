@@ -61,7 +61,12 @@ describe('polygonCentroid', () => {
 
   test('degenerate inputs fall back to the vertex average', () => {
     // Fewer than 3 vertices.
-    expect(polygonCentroid([[0, 0], [1, 1]])).toEqual([0.5, 0.5]);
+    expect(
+      polygonCentroid([
+        [0, 0],
+        [1, 1],
+      ])
+    ).toEqual([0.5, 0.5]);
     // Collinear (zero-area) triangle -> average of the three points.
     const collinear = polygonCentroid([
       [0, 0],

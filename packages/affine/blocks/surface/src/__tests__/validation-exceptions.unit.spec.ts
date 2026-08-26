@@ -387,9 +387,9 @@ describe('what wakes a re-evaluation', () => {
   });
 
   it('still reacts to an ordinary write', () => {
-    expect(touchesVerdict({ props: { xywh: '[0,0,1,1]' }, oldValues: {} })).toBe(
-      true
-    );
+    expect(
+      touchesVerdict({ props: { xywh: '[0,0,1,1]' }, oldValues: {} })
+    ).toBe(true);
   });
 
   it('stays asleep for a prop that cannot change a verdict', () => {
@@ -450,7 +450,8 @@ describe('what wakes a re-evaluation', () => {
 
       expect(props.has('showColumns')).toBe(true);
       // …on top of, never instead of, the ones that hold for every framework.
-      for (const constant of VERDICT_PROPS) expect(props.has(constant)).toBe(true);
+      for (const constant of VERDICT_PROPS)
+        expect(props.has(constant)).toBe(true);
     });
 
     it('adds nothing for a framework that declares no toggle', () => {
@@ -465,9 +466,9 @@ describe('what wakes a re-evaluation', () => {
         true
       );
       // A toggle nobody's rule measures against is still just a colour.
-      expect(touchesVerdict({ props: { showCornerLabels: false } }, watched)).toBe(
-        false
-      );
+      expect(
+        touchesVerdict({ props: { showCornerLabels: false } }, watched)
+      ).toBe(false);
       // And with the framework absent, the same write changes no verdict.
       expect(touchesVerdict({ props: { showColumns: false } })).toBe(false);
     });
@@ -493,7 +494,11 @@ describe('what the bubble collapses to', () => {
       severity: 'warning',
       messageKey: RULE_A.messageKey,
     };
-    const excused: Violation = { ...live, elementIds: ['b'], exemption: 'element' };
+    const excused: Violation = {
+      ...live,
+      elementIds: ['b'],
+      exemption: 'element',
+    };
 
     // Two members of one group, one excused and one not: the line has to read
     // "this rule still applies here".

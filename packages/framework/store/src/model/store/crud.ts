@@ -267,7 +267,12 @@ export class DocCRUD {
       // `at(-1)` would wrap around to the last child, so the first child has to
       // be answered before indexing.
       if (index === 0) return null;
-      return parent.get('sys:children').toArray().at(index - 1) ?? null;
+      return (
+        parent
+          .get('sys:children')
+          .toArray()
+          .at(index - 1) ?? null
+      );
     });
   }
 

@@ -31,7 +31,9 @@ describe('the Q1–Q4 checklist (PF13.9)', () => {
     // The seam is the same as a profile's and a background label's: a host with
     // a catalogue always wins, a host without one still reads a sentence.
     for (const nudge of WARDLEY_NUDGES) {
-      expect(nudge.labelKey.startsWith('com.labre.wardley.quality.')).toBe(true);
+      expect(nudge.labelKey.startsWith('com.labre.wardley.quality.')).toBe(
+        true
+      );
       expect(nudge.fallback && nudge.fallback.length > 10).toBe(true);
     }
   });

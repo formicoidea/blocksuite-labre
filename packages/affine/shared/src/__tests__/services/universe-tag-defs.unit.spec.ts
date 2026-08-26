@@ -81,9 +81,9 @@ describe('role scoping', () => {
     ).toEqual(['wardley:nature']);
     // `market` specialises `component`, so it gets the tag for free. That is
     // the entire reason role hierarchy is DATA and not TS inheritance.
-    expect(registry.tagsForRole('wardley:market', ROLES).map(t => t.id)).toEqual(
-      ['wardley:nature']
-    );
+    expect(
+      registry.tagsForRole('wardley:market', ROLES).map(t => t.id)
+    ).toEqual(['wardley:nature']);
     // `anchor` is a role of its own — a user / need has no nature.
     expect(registry.tagsForRole('wardley:anchor', ROLES)).toEqual([]);
   });
@@ -258,7 +258,9 @@ describe('a malformed pack degrades, and never throws', () => {
       }),
     ]);
 
-    expect((registry.tag('wardley:nature')!.values as unknown[]).length).toBe(1);
+    expect((registry.tag('wardley:nature')!.values as unknown[]).length).toBe(
+      1
+    );
     expect(registry.issues()).toHaveLength(2);
   });
 

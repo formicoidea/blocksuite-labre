@@ -149,8 +149,9 @@ describe('validation profiles', () => {
     toolbarQuery('[data-testid="validation-profile-section"]');
   const options = () =>
     Array.from(
-      toolbar()?.querySelectorAll('[data-testid="validation-profile-option"]') ??
-        []
+      toolbar()?.querySelectorAll(
+        '[data-testid="validation-profile-option"]'
+      ) ?? []
     );
   const option = (id: string) =>
     options().find(el => (el as HTMLElement).dataset.profileId === id) ?? null;

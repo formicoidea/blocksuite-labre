@@ -1,8 +1,5 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import {
-  createAutoLegend,
-  dddLegendIcon,
-} from '@labre/affine-gfx-ddd-shared';
+import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { ContextMapBoardElementModel } from '@labre/affine-model';
 import {
   TelemetryProvider,
@@ -73,18 +70,20 @@ export const contextMapBoardToolbarConfig = {
         )[0];
         if (!board) return;
         createAutoLegend(ctx.std, board, CONTEXT_MAP_AUTO_LEGEND);
-        ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
-          // The WIRE value, which is not the module id: the framework is
-          // `ddd-context-map` in code and `context-map` in PostHog
-          // (`frameworks.ts` `telemetryKey`, and the only value
-          // `FrameworkElementEvent` accepts). Same convention as Wardley's own
-          // legend button, so the two are comparable.
-          framework: 'context-map',
-          element: 'legend',
-          page: 'whiteboard editor',
-          segment: 'element toolbar',
-          module: 'context-map toolbar',
-        });
+        ctx.std
+          .getOptional(TelemetryProvider)
+          ?.track('FrameworkLegendCreated', {
+            // The WIRE value, which is not the module id: the framework is
+            // `ddd-context-map` in code and `context-map` in PostHog
+            // (`frameworks.ts` `telemetryKey`, and the only value
+            // `FrameworkElementEvent` accepts). Same convention as Wardley's own
+            // legend button, so the two are comparable.
+            framework: 'context-map',
+            element: 'legend',
+            page: 'whiteboard editor',
+            segment: 'element toolbar',
+            module: 'context-map toolbar',
+          });
       },
     },
   ],

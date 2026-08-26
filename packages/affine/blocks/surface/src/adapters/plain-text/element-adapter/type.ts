@@ -1,8 +1,5 @@
 import type { TextBuffer } from '@labre/affine-shared/adapters';
-import {
-  createIdentifier,
-  type ServiceIdentifier,
-} from '@labre/global/di';
+import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
 import type { ExtensionType } from '@labre/store';
 
 import type { ElementModelMatcher } from '../../type.js';

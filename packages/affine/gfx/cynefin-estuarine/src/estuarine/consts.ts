@@ -33,11 +33,27 @@ export const AXIS_WIDTH = 8;
 
 /** Filled arrowhead triangles: [[tipX,tipY],[baseAX,baseAY],[baseBX,baseBY]]. */
 export const ARROWHEADS: ReadonlyArray<
-  readonly [readonly [number, number], readonly [number, number], readonly [number, number]]
+  readonly [
+    readonly [number, number],
+    readonly [number, number],
+    readonly [number, number],
+  ]
 > = [
-  [[43.5, 72], [30, 100], [57, 100]], // e — top
-  [[43.5, 785], [30, 758], [57, 758]], // e — bottom
-  [[643, 649], [613, 636], [613, 662]], // t — right
+  [
+    [43.5, 72],
+    [30, 100],
+    [57, 100],
+  ], // e — top
+  [
+    [43.5, 785],
+    [30, 758],
+    [57, 758],
+  ], // e — bottom
+  [
+    [643, 649],
+    [613, 636],
+    [613, 662],
+  ], // t — right
 ];
 
 /** Liminal: green boundary rising gently then dipping at the right end. */
@@ -57,9 +73,27 @@ export const VOLATILE_WIDTH = 5;
 
 /** Uppercase legends: anchored centre, alphabetic baseline, with letter-spacing. */
 export const LABELS = {
-  counterfactual: { text: 'COUNTER FACTUAL', x: 422, y: 25, size: 20, color: COLORS.label },
-  liminal: { text: 'LIMINAL', x: 316, y: 192, size: 18, color: COLORS.liminalLabel },
-  volatile: { text: 'VOLATILE', x: 219, y: 783, size: 20, color: COLORS.volatile },
+  counterfactual: {
+    text: 'COUNTER FACTUAL',
+    x: 422,
+    y: 25,
+    size: 20,
+    color: COLORS.label,
+  },
+  liminal: {
+    text: 'LIMINAL',
+    x: 316,
+    y: 192,
+    size: 18,
+    color: COLORS.liminalLabel,
+  },
+  volatile: {
+    text: 'VOLATILE',
+    x: 219,
+    y: 783,
+    size: 20,
+    color: COLORS.volatile,
+  },
 } as const;
 
 /** Italic Georgia axis letters (left-anchored, alphabetic baseline). */

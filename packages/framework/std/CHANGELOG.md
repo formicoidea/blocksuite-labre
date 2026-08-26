@@ -78,36 +78,36 @@
     is its own slice; until then the gap is pinned by two assertions that state
     both ends — the tag id that exists and the flat prop that does not — so it
     cannot rot into "later means never".
-  Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
-  carry the framework, the nudge id and the counts — never board content. A nudge
-  everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
-  ticks is an expectation the tool failed to make actionable. Nothing else can say
-  either, because nothing here is ever computed.
-  **Persistence.** One new optional `@field()` on the base element model,
-  `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
-  BASE class for the same reason `role`, `validationExceptions` and
-  `validationProfile` are: an element re-created from props only reaches the Y.Map
-  through declared accessors, so a per-subclass declaration would be silently
-  dropped on copy. Its default is `undefined` and is never written, so an instance
-  with nothing ticked stays byte-identical to one created before the field
-  existed: no block schema change, no version bump, no migration, and documents
-  written before and after remain mutually loadable. Unticking the last one removes
-  the KEY through `clearField` rather than leaving an empty array behind, so an
-  emptied checklist is byte-identical again too — in the document, and not merely
-  through the getter. Ids of nudges no framework declares any more are kept rather
-  than pruned: the tooling comes and goes with a flag, the decisions recorded on it
-  do not. `setNudgeChecked` enforces read-only itself, at the seam, like
-  `setProfile` and `setException` do: a disabled checkbox covers exactly one
-  caller, and `clearField` goes through `Store.transact`, which — unlike
-  `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
-  own, so unticking would genuinely delete the key from a document nobody may edit.
-  **Cost.** Measured, not asserted: registering the two Wardley check-up rules
-  beside the three real-time ones leaves both the verdict and the timing of the
-  drawing path unchanged on the 500-element reference map. The two timings are
-  measured on INTERLEAVED samples, because taken one after the other they compare
-  two moments in the runner's life as much as two rule sets — the same evaluation
-  drifts by half again between back-to-back medians, which is several times the
-  effect being looked for. That is the whole point of the second moment.
+    Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
+    carry the framework, the nudge id and the counts — never board content. A nudge
+    everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
+    ticks is an expectation the tool failed to make actionable. Nothing else can say
+    either, because nothing here is ever computed.
+    **Persistence.** One new optional `@field()` on the base element model,
+    `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
+    BASE class for the same reason `role`, `validationExceptions` and
+    `validationProfile` are: an element re-created from props only reaches the Y.Map
+    through declared accessors, so a per-subclass declaration would be silently
+    dropped on copy. Its default is `undefined` and is never written, so an instance
+    with nothing ticked stays byte-identical to one created before the field
+    existed: no block schema change, no version bump, no migration, and documents
+    written before and after remain mutually loadable. Unticking the last one removes
+    the KEY through `clearField` rather than leaving an empty array behind, so an
+    emptied checklist is byte-identical again too — in the document, and not merely
+    through the getter. Ids of nudges no framework declares any more are kept rather
+    than pruned: the tooling comes and goes with a flag, the decisions recorded on it
+    do not. `setNudgeChecked` enforces read-only itself, at the seam, like
+    `setProfile` and `setException` do: a disabled checkbox covers exactly one
+    caller, and `clearField` goes through `Store.transact`, which — unlike
+    `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
+    own, so unticking would genuinely delete the key from a document nobody may edit.
+    **Cost.** Measured, not asserted: registering the two Wardley check-up rules
+    beside the three real-time ones leaves both the verdict and the timing of the
+    drawing path unchanged on the 500-element reference map. The two timings are
+    measured on INTERLEAVED samples, because taken one after the other they compare
+    two moments in the runner's life as much as two rule sets — the same evaluation
+    drifts by half again between back-to-back medians, which is several times the
+    effect being looked for. That is the whole point of the second moment.
 - 02797b5: Surface elements can now be an **occurrence of a pivot record**: a new optional
   `pivotDocId` field on `GfxPrimitiveElementModel`, a `pivot.bind` command that
   writes it, and an injectable `PivotPropertiesProvider` the host implements to
@@ -418,10 +418,10 @@ pivotDocId?)` walks the surface and returns the occurrences; there is no index,
   - **Strict**: the pilot rule bites at `warning`, and the canvas affordance
     (PF7) appears as before. Still never blocking — strict is a level of
     attention, not a wall.
-  **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
-  board hold two independent levels: a sketch can sit next to a deliverable
-  without either dictating the other's requirements. The engine reads the profile
-  off the background a finding was measured against — an id it already recorded.
+    **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
+    board hold two independent levels: a sketch can sit next to a deliverable
+    without either dictating the other's requirements. The engine reads the profile
+    off the background a finding was measured against — an id it already recorded.
   ### What is persisted
   One optional flat string, `validationProfile`, declared as a `@field()` on the
   element base class — the same place and the same reasoning as `role` (PF1) and

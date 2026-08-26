@@ -1,10 +1,4 @@
-import {
-  Bound,
-  clamp,
-  type IPoint,
-  type IVec,
-  Vec,
-} from '@labre/global/gfx';
+import { Bound, clamp, type IPoint, type IVec, Vec } from '@labre/global/gfx';
 import debounce from 'lodash-es/debounce';
 import { BehaviorSubject, debounceTime, Subject } from 'rxjs';
 

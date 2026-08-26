@@ -176,7 +176,11 @@ describe('the on-demand moment (PF5.14)', () => {
     /** Elements whose `role` read is counted — one tick over the surface. */
     const counting = () => {
       const reads = { count: 0 };
-      const make = (id: string, role: string, box: [number, number, number, number]) => {
+      const make = (
+        id: string,
+        role: string,
+        box: [number, number, number, number]
+      ) => {
         const stub = {
           id,
           type: 'test',
@@ -218,7 +222,9 @@ describe('the on-demand moment (PF5.14)', () => {
       // pass has nothing to invalidate in it.
       const { elements } = counting();
 
-      expect([...backgroundElementIds([REALTIME], elements)]).toEqual(['frame']);
+      expect([...backgroundElementIds([REALTIME], elements)]).toEqual([
+        'frame',
+      ]);
       expect([...backgroundElementIds([TONE, MAJORITY], elements)]).toEqual([]);
     });
   });
@@ -312,7 +318,10 @@ describe('what makes an element a root instance', () => {
   it('ignores a rule that frames against nothing', () => {
     // `no-overlap` may ship without a `backgroundRole`: it frames nothing, so
     // it makes no element a root instance.
-    const frameless: ValidationRule = { ...REALTIME, backgroundRole: undefined };
+    const frameless: ValidationRule = {
+      ...REALTIME,
+      backgroundRole: undefined,
+    };
 
     expect(of('test:frame', [frameless])).toEqual([]);
   });
@@ -417,7 +426,10 @@ describe('the tone convention (Q5)', () => {
     // Proportionality: a generalist rectangle is not part of anybody's
     // landscape.
     expect(
-      remarks([frame(), element('free', [10, 10, 20, 20], { fillColor: '#d6455d' })])
+      remarks([
+        frame(),
+        element('free', [10, 10, 20, 20], { fillColor: '#d6455d' }),
+      ])
     ).toEqual([]);
   });
 
@@ -426,7 +438,10 @@ describe('the tone convention (Q5)', () => {
     // A convention with no reference colour is not a convention. Silence beats
     // indicting the whole board over a broken declaration.
     expect(
-      evaluateCheckup([broken], [frame(), node('a', { strokeColor: '#d6455d' })])
+      evaluateCheckup(
+        [broken],
+        [frame(), node('a', { strokeColor: '#d6455d' })]
+      )
     ).toEqual([]);
   });
 });

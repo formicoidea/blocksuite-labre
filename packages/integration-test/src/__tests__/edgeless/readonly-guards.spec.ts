@@ -85,9 +85,7 @@ describe('a readonly document refuses surface writes', () => {
    * Yjs map the document actually round-trips.
    */
   function storedXYWH(id: string) {
-    const elements = gfx.surface!.elements.getValue() as Y.Map<
-      Y.Map<unknown>
-    >;
+    const elements = gfx.surface!.elements.getValue() as Y.Map<Y.Map<unknown>>;
     return elements.get(id)?.get('xywh') as string | undefined;
   }
 

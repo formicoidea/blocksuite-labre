@@ -4,10 +4,7 @@ import {
   readingCommands,
   tagCommands,
 } from '@labre/affine-block-root';
-import {
-  auditCommands,
-  mapQualityCommands,
-} from '@labre/affine-block-surface';
+import { auditCommands, mapQualityCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
@@ -121,9 +118,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
  * sidepanel, the palette and the agent. No functions, no templates: an
  * `iconKey` resolved lib-side, and availability as a closed union.
  */
-export function getCommandManifest(
-  flags?: LabreFlags
-): CommandManifestEntry[] {
+export function getCommandManifest(flags?: LabreFlags): CommandManifestEntry[] {
   return getCommands(flags).map(toCommandManifestEntry);
 }
 

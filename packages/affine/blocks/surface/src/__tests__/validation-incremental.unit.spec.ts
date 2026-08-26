@@ -126,7 +126,10 @@ describe('an incremental pass answers exactly what a full pass would', () => {
       node('a', 400),
       node('b', 410),
     ];
-    const previous = evaluateRules([RULE], [frame(), node('a', 400), node('b', 410)]);
+    const previous = evaluateRules(
+      [RULE],
+      [frame(), node('a', 400), node('b', 410)]
+    );
 
     const { full, incremental } = bothWays(elements, {
       dirty: new Set(['map']),
@@ -157,10 +160,12 @@ describe('an incremental pass answers exactly what a full pass would', () => {
     // The overlap survives its map: it never depended on the frame for
     // anything but attribution, and it loses only that.
     expect(full).toHaveLength(1);
-    expect(evaluateRules([RULE], after, [], {
-      dirty: new Set(['map']),
-      previous,
-    })[0].backgroundId).toBeUndefined();
+    expect(
+      evaluateRules([RULE], after, [], {
+        dirty: new Set(['map']),
+        previous,
+      })[0].backgroundId
+    ).toBeUndefined();
   });
 
   it('when EVERYTHING moved at once', () => {
@@ -298,7 +303,11 @@ describe('a background that has been SILENCED still forces a full pass', () => {
       validationProfile?: string;
     } & GfxPrimitiveElementModel;
     (map as { validationProfile?: string }).validationProfile = OFF.id;
-    const elements: GfxPrimitiveElementModel[] = [map, node('a', 400), node('b', 410)];
+    const elements: GfxPrimitiveElementModel[] = [
+      map,
+      node('a', 400),
+      node('b', 410),
+    ];
 
     const surface = fakeSurface(elements);
     const manager = new ValidationManager({

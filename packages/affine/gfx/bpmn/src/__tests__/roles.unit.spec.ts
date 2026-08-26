@@ -112,9 +112,9 @@ describe('BPMN role vocabulary', () => {
     // Two verbs, two roles, and neither is the parent of the other: a sequence
     // flow orders the work inside a pool, a message flow crosses between them
     // and says nothing about order at all.
-    expect(
-      BPMN_ROLES[BPMN_ROLE.sequenceFlow].direction?.verbFallback
-    ).toBe('is followed by');
+    expect(BPMN_ROLES[BPMN_ROLE.sequenceFlow].direction?.verbFallback).toBe(
+      'is followed by'
+    );
     expect(BPMN_ROLES[BPMN_ROLE.messageFlow].direction?.verbFallback).toBe(
       'sends a message to'
     );
@@ -127,9 +127,7 @@ describe('BPMN role vocabulary', () => {
 
   it('is a null-prototype lookup table', () => {
     expect(Object.getPrototypeOf(BPMN_ROLES)).toBeNull();
-    expect(
-      (BPMN_ROLES as Record<string, unknown>)['toString']
-    ).toBeUndefined();
+    expect((BPMN_ROLES as Record<string, unknown>)['toString']).toBeUndefined();
   });
 });
 
@@ -156,9 +154,7 @@ describe('the kind → role bridge', () => {
     expect(BPMN_ROLE_OF_KIND.startEvent).toBe(BPMN_ROLE.startEvent);
     expect(BPMN_ROLE_OF_KIND.endEvent).toBe(BPMN_ROLE.endEvent);
     expect(BPMN_ROLE_OF_KIND.task).toBe(BPMN_ROLE.task);
-    expect(BPMN_ROLE_OF_KIND.gatewayExclusive).toBe(
-      BPMN_ROLE.gatewayExclusive
-    );
+    expect(BPMN_ROLE_OF_KIND.gatewayExclusive).toBe(BPMN_ROLE.gatewayExclusive);
     // Nothing is ever stamped with a family role: the palette always says which
     // event, which activity, which gateway.
     for (const id of Object.values(BPMN_ROLE_OF_KIND)) {
@@ -177,7 +173,10 @@ describe('the sequence flow answers as a typed edge', () => {
   };
 
   it('reads a stored bpmn:sequence-flow connector as a typed edge', () => {
-    const edge = asTypedEdge(vocabularies, connectorWith(BPMN_ROLE.sequenceFlow));
+    const edge = asTypedEdge(
+      vocabularies,
+      connectorWith(BPMN_ROLE.sequenceFlow)
+    );
     expect(edge).not.toBeNull();
     expect(edge!.role.id).toBe(BPMN_ROLE.sequenceFlow);
     // What the hover reveal writes on the link: the VERB, never the role label.

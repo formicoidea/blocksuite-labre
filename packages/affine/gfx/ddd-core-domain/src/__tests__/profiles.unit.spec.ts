@@ -31,8 +31,12 @@ describe('the Core Domain profiles', () => {
   });
 
   it('silences the canvas on the sketch and bites on the strict one', () => {
-    const sketch = CORE_DOMAIN_PROFILES.find(p => p.id === 'core-domain.sketch');
-    const strict = CORE_DOMAIN_PROFILES.find(p => p.id === 'core-domain.strict');
+    const sketch = CORE_DOMAIN_PROFILES.find(
+      p => p.id === 'core-domain.sketch'
+    );
+    const strict = CORE_DOMAIN_PROFILES.find(
+      p => p.id === 'core-domain.strict'
+    );
 
     expect(Object.values(sketch!.rules).every(s => s === 'audit')).toBe(true);
     expect(strict!.rules['core-domain.outsourced-core']).toBe('warning');

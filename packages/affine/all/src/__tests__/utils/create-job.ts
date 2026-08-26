@@ -1,9 +1,5 @@
 import { defaultImageProxyMiddleware } from '@labre/affine-shared/adapters';
-import {
-  Schema,
-  Transformer,
-  type TransformerMiddleware,
-} from '@labre/store';
+import { Schema, Transformer, type TransformerMiddleware } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 
 import { AffineSchemas } from '../../schemas.js';

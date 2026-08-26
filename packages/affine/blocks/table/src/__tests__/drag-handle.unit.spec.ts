@@ -21,7 +21,9 @@ describe('isTableDragHandle', () => {
   });
 
   it('recognises the column and row drag handles', () => {
-    expect(isTableDragHandle(buildCell('data-drag-column-id').inner)).toBe(true);
+    expect(isTableDragHandle(buildCell('data-drag-column-id').inner)).toBe(
+      true
+    );
     expect(isTableDragHandle(buildCell('data-drag-row-id').inner)).toBe(true);
   });
 

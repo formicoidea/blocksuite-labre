@@ -220,7 +220,8 @@ export abstract class EditorAnchoredPanel extends WidgetComponent<RootBlockModel
   protected anchorBar(): HTMLElement | null {
     const widget = this.std.host.querySelector(ANCHOR_WIDGET_TAG);
     return (
-      widget?.shadowRoot?.querySelector<HTMLElement>(ANCHOR_BAR_SELECTOR) ?? null
+      widget?.shadowRoot?.querySelector<HTMLElement>(ANCHOR_BAR_SELECTOR) ??
+      null
     );
   }
 

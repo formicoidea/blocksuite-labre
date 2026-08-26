@@ -2,10 +2,7 @@ import type { BlockCaptionEditor } from '@labre/affine-components/caption';
 import { LoadingIcon } from '@labre/affine-components/icons';
 import { Peekable } from '@labre/affine-components/peek';
 import { ResourceController } from '@labre/affine-components/resource';
-import {
-  type ImageBlockModel,
-  ImageBlockSchema,
-} from '@labre/affine-model';
+import { type ImageBlockModel, ImageBlockSchema } from '@labre/affine-model';
 import { cssVarV2, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { formatSize } from '@labre/affine-shared/utils';
 import { BrokenImageIcon, ImageIcon } from '@blocksuite/icons/lit';

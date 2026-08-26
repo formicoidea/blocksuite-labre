@@ -39,12 +39,7 @@ import {
   OpenInNewIcon,
 } from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier, isGfxBlockComponent } from '@labre/std';
-import {
-  type BlockModel,
-  type ExtensionType,
-  Slice,
-  Text,
-} from '@labre/store';
+import { type BlockModel, type ExtensionType, Slice, Text } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 import { html } from 'lit';
 import { ifDefined } from 'lit/directives/if-defined.js';

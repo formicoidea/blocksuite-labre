@@ -91,7 +91,11 @@ export const CORE_DOMAIN_LEGEND_TONES: readonly string[] = CD_SUBDOMAINS.map(
   preset => preset.kind
 );
 
-const AXIS_TEXT: BackgroundTextStyle = { size: 14, weight: 600, color: '@title' };
+const AXIS_TEXT: BackgroundTextStyle = {
+  size: 14,
+  weight: 600,
+  color: '@title',
+};
 const TICK_TEXT: BackgroundTextStyle = { size: 12, color: '@tick' };
 const ZONE_TEXT: BackgroundTextStyle = {
   size: 20,

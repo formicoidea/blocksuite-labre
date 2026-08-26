@@ -1,11 +1,7 @@
 import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { LABEL_COLOR } from '@labre/affine-gfx-ddd-shared';
-import {
-  ConnectorMode,
-  PointStyle,
-  StrokeStyle,
-} from '@labre/affine-model';
+import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';

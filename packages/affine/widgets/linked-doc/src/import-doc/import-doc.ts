@@ -6,10 +6,7 @@ import {
   NewIcon,
   NotionIcon,
 } from '@labre/affine-components/icons';
-import {
-  openFilesWith,
-  openSingleFileWith,
-} from '@labre/affine-shared/utils';
+import { openFilesWith, openSingleFileWith } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import type { ExtensionType, Schema, Workspace } from '@labre/store';
 import { html, LitElement, type PropertyValues } from 'lit';

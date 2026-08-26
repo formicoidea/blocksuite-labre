@@ -95,9 +95,9 @@ function stubStd(
 }
 
 /** A provider that answers with exactly what it is given. */
-const provider = (
-  run: AuditService['runAudit']
-): AuditService => ({ runAudit: run });
+const provider = (run: AuditService['runAudit']): AuditService => ({
+  runAudit: run,
+});
 
 const complete = (findings: AuditFinding[]): AuditResult => ({
   status: 'complete',
@@ -169,7 +169,10 @@ describe('the provider contract is enforced, not trusted', () => {
   test('an answer to a question that was not asked is dropped', async () => {
     const std = stubStd(
       provider(async () =>
-        complete([raw({ criterionId: A1.id }), raw({ criterionId: 'invented' })])
+        complete([
+          raw({ criterionId: A1.id }),
+          raw({ criterionId: 'invented' }),
+        ])
       )
     );
 
@@ -454,7 +457,9 @@ describe('the request is ISOLATED, not merely serializable', () => {
             elementId: 'map',
             framework: 'wardley',
             type: 'wardley',
-            axes: [{ id: 'evolution', orientation: 'horizontal', forward: shared }],
+            axes: [
+              { id: 'evolution', orientation: 'horizontal', forward: shared },
+            ],
             zones: [],
           },
         ],
@@ -463,8 +468,10 @@ describe('the request is ISOLATED, not merely serializable', () => {
 
     const std = stubStd(
       provider(async r => {
-        const forward = r.facts.frames[0].axes[0]
-          .forward as unknown as [number, number];
+        const forward = r.facts.frames[0].axes[0].forward as unknown as [
+          number,
+          number,
+        ];
         forward[0] = -1;
         forward[1] = 99;
         (r.facts.frames[0] as { framework: string }).framework = 'hijacked';

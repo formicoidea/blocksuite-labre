@@ -3,10 +3,7 @@ import {
   darkToolbarStyles,
   lightToolbarStyles,
 } from '@labre/affine-components/toolbar';
-import {
-  EditPropsStore,
-  ThemeProvider,
-} from '@labre/affine-shared/services';
+import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
 import {
   requestConnectedFrame,
   stopPropagation,

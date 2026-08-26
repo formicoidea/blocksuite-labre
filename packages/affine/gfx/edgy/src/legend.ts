@@ -40,10 +40,12 @@ import { EDGY_ROLE, EDGY_ROLES } from './roles';
 
 /** One row per official element of `zone`, in the metamodel's own order. */
 function zoneEntries(zone: EdgyZone) {
-  return (Object.entries(EDGY_DYNAMIC_NODES) as [
-    EdgyElementName,
-    (typeof EDGY_DYNAMIC_NODES)[EdgyElementName],
-  ][])
+  return (
+    Object.entries(EDGY_DYNAMIC_NODES) as [
+      EdgyElementName,
+      (typeof EDGY_DYNAMIC_NODES)[EdgyElementName],
+    ][]
+  )
     .filter(([, node]) => node.zone === zone)
     .map(([name]) => ({
       role: EDGY_ROLE[name],

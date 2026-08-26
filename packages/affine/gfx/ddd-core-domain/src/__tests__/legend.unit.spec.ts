@@ -101,7 +101,12 @@ describe('what a drawn chart puts in its legend', () => {
       'Team interaction modes',
     ]);
     expect(sections[1].rows).toEqual([
-      { swatch: 'square', color: '#66b2ff', letter: 'X', label: 'X-as-a-Service' },
+      {
+        swatch: 'square',
+        color: '#66b2ff',
+        letter: 'X',
+        label: 'X-as-a-Service',
+      },
     ]);
   });
 

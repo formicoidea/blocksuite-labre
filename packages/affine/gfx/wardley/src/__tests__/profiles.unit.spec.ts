@@ -75,7 +75,9 @@ describe('what Wardley ships', () => {
       'wardley.sketch'
     );
     // Exactly one, or "the default" would depend on registration order.
-    expect(WARDLEY_PROFILES.filter(profile => profile.isDefault)).toHaveLength(1);
+    expect(WARDLEY_PROFILES.filter(profile => profile.isDefault)).toHaveLength(
+      1
+    );
   });
 
   it('names every rule the framework ships, and nothing else', () => {

@@ -1,9 +1,5 @@
 import { createIdentifier, type ServiceProvider } from '@labre/global/di';
-import type {
-  BaseAdapter,
-  ExtensionType,
-  Transformer,
-} from '@labre/store';
+import type { BaseAdapter, ExtensionType, Transformer } from '@labre/store';
 
 type AdapterConstructor = new (
   job: Transformer,

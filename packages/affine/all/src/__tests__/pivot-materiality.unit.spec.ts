@@ -375,9 +375,9 @@ describe('a remote peer', () => {
 
     // `prop:elements` is a `Boxed`, i.e. a Y.Map holding the real elements map
     // under `value`.
-    const remoteBlock = remote.getMap('blocks').get(ctx.surface.id) as Y.Map<
-      unknown
-    >;
+    const remoteBlock = remote
+      .getMap('blocks')
+      .get(ctx.surface.id) as Y.Map<unknown>;
     const remoteElements = (
       remoteBlock.get('prop:elements') as Y.Map<unknown>
     ).get('value') as Y.Map<Y.Map<unknown>>;

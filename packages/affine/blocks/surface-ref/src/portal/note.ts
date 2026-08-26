@@ -1,11 +1,7 @@
 import type { CanvasRenderer } from '@labre/affine-block-surface';
 import { ViewExtensionManagerIdentifier } from '@labre/affine-ext-loader';
 import type { NoteBlockModel } from '@labre/affine-model';
-import {
-  DefaultTheme,
-  NoteDisplayMode,
-  NoteShadow,
-} from '@labre/affine-model';
+import { DefaultTheme, NoteDisplayMode, NoteShadow } from '@labre/affine-model';
 import {
   EDGELESS_BLOCK_CHILD_BORDER_WIDTH,
   EDGELESS_BLOCK_CHILD_PADDING,
@@ -13,11 +9,7 @@ import {
 import { ThemeProvider } from '@labre/affine-shared/services';
 import { deserializeXYWH } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
-import {
-  BlockStdScope,
-  type EditorHost,
-  ShadowlessElement,
-} from '@labre/std';
+import { BlockStdScope, type EditorHost, ShadowlessElement } from '@labre/std';
 import { RANGE_QUERY_EXCLUDE_ATTR } from '@labre/std/inline';
 import { type BlockModel, type Query } from '@labre/store';
 import { css, nothing } from 'lit';

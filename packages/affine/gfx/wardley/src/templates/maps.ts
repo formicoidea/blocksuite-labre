@@ -104,7 +104,13 @@ const bg = (variant = 'classic') => ({
   xywh: `[0,0,${W},${H}]`,
 });
 
-function dot(e: number, v: number, sw: number, stroke = NODE_STROKE, fill = NODE_FILL) {
+function dot(
+  e: number,
+  v: number,
+  sw: number,
+  stroke = NODE_STROKE,
+  fill = NODE_FILL
+) {
   const cx = ex(e);
   const cy = vy(v);
   return {
@@ -144,7 +150,14 @@ function stake(e: number, v: number) {
   };
 }
 
-type LblOpts = { dx?: number; dy?: number; align?: 'left' | 'right' | 'center'; color?: string; size?: number; w?: number };
+type LblOpts = {
+  dx?: number;
+  dy?: number;
+  align?: 'left' | 'right' | 'center';
+  color?: string;
+  size?: number;
+  w?: number;
+};
 function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
   const cx = ex(e);
   const cy = vy(v);
@@ -152,7 +165,8 @@ function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
   const dx = o.dx ?? 12;
   const dy = o.dy ?? -10;
   const align = o.align ?? 'left';
-  const x = align === 'right' ? cx - w - dx : align === 'center' ? cx - w / 2 : cx + dx;
+  const x =
+    align === 'right' ? cx - w - dx : align === 'center' ? cx - w / 2 : cx + dx;
   return {
     type: 'text',
     text: surfaceText(text),
@@ -163,7 +177,12 @@ function lbl(e: number, v: number, text: string, o: LblOpts = {}) {
     color: o.color ?? NODE_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: o.size ?? LABEL_FONT_SIZE,
-    textAlign: align === 'right' ? TextAlign.Right : align === 'center' ? TextAlign.Center : TextAlign.Left,
+    textAlign:
+      align === 'right'
+        ? TextAlign.Right
+        : align === 'center'
+          ? TextAlign.Center
+          : TextAlign.Left,
     xywh: `[${x},${cy + dy},${w},26]`,
   };
 }
@@ -241,7 +260,14 @@ function panel(x: number, y: number, w: number, h: number) {
     xywh: `[${x},${y},${w},${h}]`,
   };
 }
-function freeText(x: number, y: number, w: number, str: string, size = 16, color = NODE_STROKE) {
+function freeText(
+  x: number,
+  y: number,
+  w: number,
+  str: string,
+  size = 16,
+  color = NODE_STROKE
+) {
   return {
     type: 'text',
     text: surfaceText(str),
@@ -265,12 +291,22 @@ function title(str: string) {
   };
 }
 
-const ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
+const ATTRS =
+  'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 const mapPreview = (extra: string) =>
   `<svg ${ATTRS} fill="none"><path d="M22 12 V64 H120" stroke="#3b3d42" stroke-width="2"/>${extra}</svg>`;
 
-function tpl(name: string, preview: string, elements: SurfaceElementsJSON): Template {
-  return { name, type: 'template', preview, content: makeTemplateSnapshot(elements, name) };
+function tpl(
+  name: string,
+  preview: string,
+  elements: SurfaceElementsJSON
+): Template {
+  return {
+    name,
+    type: 'template',
+    preview,
+    content: makeTemplateSnapshot(elements, name),
+  };
 }
 
 function ann(e: number, v: number) {
@@ -308,9 +344,19 @@ function teaShop(): SurfaceElementsJSON {
     bg: bg(),
     title: title('Tea Shop'),
     annBox: panel(120, 200, 420, 64),
-    annText: freeText(132, 208, 400, 'Annotations:\n1. Standardising power lets kettles evolve faster\n2. Hot water is obvious and well known', 13),
+    annText: freeText(
+      132,
+      208,
+      400,
+      'Annotations:\n1. Standardising power lets kettles evolve faster\n2. Hot water is obvious and well known',
+      13
+    ),
     business: stake(0.62, 0.93),
-    businessL: lbl(0.62, 0.93, 'Business', { align: 'center', dy: -28, w: 120 }),
+    businessL: lbl(0.62, 0.93, 'Business', {
+      align: 'center',
+      dy: -28,
+      w: 120,
+    }),
     public: stake(0.78, 0.93),
     publicL: lbl(0.78, 0.93, 'Public', { align: 'center', dy: -28, w: 120 }),
     cupOfTea: comp(0.62, 0.74),
@@ -334,9 +380,16 @@ function teaShop(): SurfaceElementsJSON {
     // ABOVE the link it annotates, not across it. Written on the line it reads
     // as a label nobody can read — which is the finding W3 raises, and it was
     // raising it on the map that ships as the canonical example.
-    limitedBy: lbl(0.56, 0.43, 'limited by', { align: 'center', w: 120, size: 13, dy: -34 }),
-    ann1a: ann(0.5, 0.385), ann1t: annTxt(0.5, 0.385, '1'),
-    ann2a: ann(0.84, 0.45), ann2t: annTxt(0.84, 0.45, '2'),
+    limitedBy: lbl(0.56, 0.43, 'limited by', {
+      align: 'center',
+      w: 120,
+      size: 13,
+      dy: -34,
+    }),
+    ann1a: ann(0.5, 0.385),
+    ann1t: annTxt(0.5, 0.385, '1'),
+    ann2a: ann(0.84, 0.45),
+    ann2t: annTxt(0.84, 0.45, '2'),
     l1: link('business', 'cupOfTea'),
     l2: link('public', 'cupOfTea'),
     l3: link('cupOfTea', 'cup'),
@@ -398,6 +451,18 @@ function kodak(): SurfaceElementsJSON {
 }
 
 export const wardleyMaps: Template[] = [
-  tpl('Tea Shop', mapPreview('<circle cx="78" cy="24" r="3" fill="#fff" stroke="#1f2328"/><circle cx="50" cy="44" r="3" fill="#fff" stroke="#1f2328"/><circle cx="86" cy="40" r="3" fill="#fff" stroke="#1f2328"/><circle cx="92" cy="58" r="3" fill="#fff" stroke="#1f2328"/><path d="M78 24 L50 44 M78 24 L86 40 L92 58" stroke="#666"/><path d="M50 44 h22" stroke="#d6455d" stroke-dasharray="3 2"/>'), teaShop()),
-  tpl('Kodak inertia', mapPreview('<circle cx="56" cy="22" r="3" fill="#fff" stroke="#1f2328"/><circle cx="54" cy="40" r="3" fill="#fff" stroke="#1f2328"/><circle cx="86" cy="40" r="3" fill="#fff" stroke="#d6455d"/><rect x="76" y="35" width="2.5" height="11" fill="#1f2328"/><path d="M57 40 h17" stroke="#d6455d" stroke-dasharray="3 2"/>'), kodak()),
+  tpl(
+    'Tea Shop',
+    mapPreview(
+      '<circle cx="78" cy="24" r="3" fill="#fff" stroke="#1f2328"/><circle cx="50" cy="44" r="3" fill="#fff" stroke="#1f2328"/><circle cx="86" cy="40" r="3" fill="#fff" stroke="#1f2328"/><circle cx="92" cy="58" r="3" fill="#fff" stroke="#1f2328"/><path d="M78 24 L50 44 M78 24 L86 40 L92 58" stroke="#666"/><path d="M50 44 h22" stroke="#d6455d" stroke-dasharray="3 2"/>'
+    ),
+    teaShop()
+  ),
+  tpl(
+    'Kodak inertia',
+    mapPreview(
+      '<circle cx="56" cy="22" r="3" fill="#fff" stroke="#1f2328"/><circle cx="54" cy="40" r="3" fill="#fff" stroke="#1f2328"/><circle cx="86" cy="40" r="3" fill="#fff" stroke="#d6455d"/><rect x="76" y="35" width="2.5" height="11" fill="#1f2328"/><path d="M57 40 h17" stroke="#d6455d" stroke-dasharray="3 2"/>'
+    ),
+    kodak()
+  ),
 ];

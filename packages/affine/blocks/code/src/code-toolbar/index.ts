@@ -8,11 +8,7 @@ import {
   getMoreMenuConfig,
 } from '@labre/affine-components/toolbar';
 import type { CodeBlockModel } from '@labre/affine-model';
-import {
-  BlockSelection,
-  TextSelection,
-  WidgetComponent,
-} from '@labre/std';
+import { BlockSelection, TextSelection, WidgetComponent } from '@labre/std';
 import { limitShift, shift, size } from '@floating-ui/dom';
 import { html } from 'lit';
 

@@ -25,7 +25,14 @@ describe('senior-tool label keys', () => {
     '$id declares $labelKey on its senior tool',
     ({ dir, labelKey }) => {
       const source = readFileSync(
-        join(ROOT, 'packages', ...dir.split('/'), 'src', 'toolbar', 'senior-tool.ts'),
+        join(
+          ROOT,
+          'packages',
+          ...dir.split('/'),
+          'src',
+          'toolbar',
+          'senior-tool.ts'
+        ),
         'utf8'
       );
       expect(source).toContain(`labelKey: '${labelKey}',`);

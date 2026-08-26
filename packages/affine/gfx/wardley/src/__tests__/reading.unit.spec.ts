@@ -56,8 +56,7 @@ function element({
   return el;
 }
 
-const map = () =>
-  element({ id: 'map', role: WARDLEY_ROLE.map, bound: MAP });
+const map = () => element({ id: 'map', role: WARDLEY_ROLE.map, bound: MAP });
 
 /** A node whose CENTRE sits at the given fraction of the map. */
 const node = (
@@ -153,14 +152,22 @@ describe('what a Wardley map is read as', () => {
       target: 'me',
     });
 
-    const relations = read(me, [map(), supplier, consumer, down, up])!.relations;
+    const relations = read(me, [
+      map(),
+      supplier,
+      consumer,
+      down,
+      up,
+    ])!.relations;
     expect(
       relations.map(relation => [relation.otherId, relation.side])
     ).toEqual([
       ['db', 'supplier'],
       ['ui', 'consumer'],
     ]);
-    expect(relations.some(relation => relation.contradictsGeometry)).toBe(false);
+    expect(relations.some(relation => relation.contradictsGeometry)).toBe(
+      false
+    );
   });
 
   it('reports an upside-down dependency without picking a winner', () => {
@@ -219,10 +226,9 @@ describe('the naming convention, as data', () => {
   });
 
   it('is a suggestion with its own words, never a verdict', () => {
-    const naming = read(
-      named('Tea', WARDLEY_NATURE.activity),
-      [map()]
-    )!.naming!;
+    const naming = read(named('Tea', WARDLEY_NATURE.activity), [
+      map(),
+    ])!.naming!;
     expect(naming.conforms).toBe(false);
     expect(naming.hintKey).toBe('com.labre.wardley.reading.naming.activity');
     expect(naming.hintFallback).toContain('verb');

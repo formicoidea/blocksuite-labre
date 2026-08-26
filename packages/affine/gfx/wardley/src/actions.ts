@@ -276,9 +276,7 @@ export function createWardleyNode(
 }
 
 /** Create an inertia bar (filled black rect). */
-export function createWardleyInertia(
-  gfx: GfxController
-) {
+export function createWardleyInertia(gfx: GfxController) {
   if (!gfx.surface) return;
 
   const { w, h } = INERTIA_SIZE;
@@ -310,9 +308,7 @@ export function createWardleyInertia(
  * label are grouped, then grouped again with the body so the whole pipeline
  * moves as one. Pure composition of native elements — no custom type / view.
  */
-export function createWardleyPipeline(
-  gfx: GfxController
-) {
+export function createWardleyPipeline(gfx: GfxController) {
   if (!gfx.surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
@@ -375,9 +371,7 @@ export function createWardleyPipeline(
  * the node centers and follow on move/resize). A label sits to the right and
  * everything is grouped into one object.
  */
-export function createWardleyMarket(
-  gfx: GfxController
-) {
+export function createWardleyMarket(gfx: GfxController) {
   const surface = gfx.surface;
   if (!surface) return;
 
@@ -387,7 +381,14 @@ export function createWardleyMarket(
   const sin60 = Math.sqrt(3) / 2;
 
   // Outer circle = the market node (connectable, center-only).
-  const circleId = addEllipseNode(surface, 'market', cx, cy, MARKET_SIZE, NODE_FILL);
+  const circleId = addEllipseNode(
+    surface,
+    'market',
+    cx,
+    cy,
+    MARKET_SIZE,
+    NODE_FILL
+  );
 
   // 3 inner component nodes (thick border, no label) at the triangle vertices.
   const verts = [
@@ -427,7 +428,12 @@ export function createWardleyMarket(
     })
   );
 
-  const labelId = addLabel(surface, MARKET_LABEL, cx + R + LABEL_GAP, cy - LABEL_H / 2);
+  const labelId = addLabel(
+    surface,
+    MARKET_LABEL,
+    cx + R + LABEL_GAP,
+    cy - LABEL_H / 2
+  );
 
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
 }
@@ -467,8 +473,7 @@ export function activateWardleyConnector(
     // (PF13.4, reversing #71 — see `roles.ts`). Two roles, never one
     // specialising the other: W1 is about where an arrow points and must never
     // fall on a dependency.
-    role:
-      kind === 'link' ? WARDLEY_ROLE.dependency : WARDLEY_ROLE.changeArrow,
+    role: kind === 'link' ? WARDLEY_ROLE.dependency : WARDLEY_ROLE.changeArrow,
   });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

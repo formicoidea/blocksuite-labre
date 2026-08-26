@@ -963,7 +963,8 @@ export function backgroundElementIds(
   const ids = new Set<string>();
   for (const rule of rules) {
     if (!isRealtime(rule)) continue;
-    for (const background of backgroundsOf(rule, elements)) ids.add(background.id);
+    for (const background of backgroundsOf(rule, elements))
+      ids.add(background.id);
   }
   return ids;
 }
@@ -1146,13 +1147,7 @@ type Point = [number, number];
 const CURVE_SAMPLES = 32;
 
 /** A point on the cubic Bézier `p0 → p1` with control points `c0`, `c1`. */
-function cubicAt(
-  p0: Point,
-  c0: Point,
-  c1: Point,
-  p1: Point,
-  t: number
-): Point {
+function cubicAt(p0: Point, c0: Point, c1: Point, p1: Point, t: number): Point {
   const u = 1 - t;
   const a = u * u * u;
   const b = 3 * u * u * t;
@@ -1168,7 +1163,8 @@ function cubicAt(
 function departsFrom(candidate: unknown, p: Point): candidate is Point {
   return (
     isPoint(candidate) &&
-    (Math.abs(candidate[0] - p[0]) > 1e-6 || Math.abs(candidate[1] - p[1]) > 1e-6)
+    (Math.abs(candidate[0] - p[0]) > 1e-6 ||
+      Math.abs(candidate[1] - p[1]) > 1e-6)
   );
 }
 
@@ -1351,11 +1347,16 @@ function evaluateOrientationAgainstAxis(
     const direction = elementDirection(el);
     if (direction === null) continue;
 
-    const alignment = direction[0] * axis.forward[0] + direction[1] * axis.forward[1];
+    const alignment =
+      direction[0] * axis.forward[0] + direction[1] * axis.forward[1];
     if (alignment >= limit) continue;
 
     violations.push(
-      raise(rule, [el.id], attributeBackground(el.elementBound, backgrounds)?.id)
+      raise(
+        rule,
+        [el.id],
+        attributeBackground(el.elementBound, backgrounds)?.id
+      )
     );
   }
   return violations;
@@ -1429,7 +1430,10 @@ function evaluateAttachment(
   const subjects: GfxPrimitiveElementModel[] = [];
   for (const el of elements) {
     if (el.role === undefined) continue;
-    if (carrierRole !== undefined && roleIsA(el.role, carrierRole, rule.roles)) {
+    if (
+      carrierRole !== undefined &&
+      roleIsA(el.role, carrierRole, rule.roles)
+    ) {
       const path = elementPath(el);
       if (path !== null) carriers.push(path);
     } else if (roleIsA(el.role, subjectRole, rule.roles)) {
@@ -1607,7 +1611,8 @@ function subjectsCollide(
   if (!boundsOverlap(a.bound, b.bound)) return false;
   if (a.path === null && b.path === null) {
     return (
-      minPenetration <= 0 || boundsPenetration(a.bound, b.bound) > minPenetration
+      minPenetration <= 0 ||
+      boundsPenetration(a.bound, b.bound) > minPenetration
     );
   }
   // Two paths: zero-width lines, so there is no depth to measure and a declared
@@ -1617,9 +1622,7 @@ function subjectsCollide(
   const path = (a.path ?? b.path) as Point[];
   const bound = a.path === null ? a.bound : b.bound;
   if (!pathHitsBound(path, bound)) return false;
-  return (
-    minPenetration <= 0 || pathPenetration(path, bound) > minPenetration
-  );
+  return minPenetration <= 0 || pathPenetration(path, bound) > minPenetration;
 }
 
 /**
@@ -1952,7 +1955,8 @@ function evaluateNoOverlap(
 
   const sweep = () => {
     for (let i = 0; i < subjects.length; i++) {
-      for (let j = i + 1; j < subjects.length; j++) test(subjects[i], subjects[j]);
+      for (let j = i + 1; j < subjects.length; j++)
+        test(subjects[i], subjects[j]);
     }
     return found;
   };
@@ -2266,7 +2270,11 @@ function evaluateToneConvention(
     if (!departsFromTones(el, allowed)) continue;
 
     violations.push(
-      raise(rule, [el.id], attributeBackground(el.elementBound, backgrounds)?.id)
+      raise(
+        rule,
+        [el.id],
+        attributeBackground(el.elementBound, backgrounds)?.id
+      )
     );
   }
   return violations;
@@ -2466,7 +2474,8 @@ function evaluateRelativeOrder(
     const frame = attributeBackground(sourceBound, backgrounds);
     // Two maps, two frames of reference: the question does not arise.
     if (frame === null) continue;
-    if (attributeBackground(targetBound, backgrounds)?.id !== frame.id) continue;
+    if (attributeBackground(targetBound, backgrounds)?.id !== frame.id)
+      continue;
 
     const ahead = along(sourceBound) - along(targetBound);
     const expected = order.expect === 'source-ahead' ? ahead : -ahead;
@@ -2658,7 +2667,8 @@ function evaluateRelationEndpoints(
   // id list and a map entry PER EDGE, and a rule that judges sentences only
   // would have allocated all three just to drop them. This runs on the gesture
   // path, inside the 16 ms the drawing has.
-  const needsPairs = endpoints.forbidDuplicate === true || exclusivePairs.length > 0;
+  const needsPairs =
+    endpoints.forbidDuplicate === true || exclusivePairs.length > 0;
 
   const violations: Violation[] = [];
   // Every relation drawn between one UNORDERED pair of elements, which is the
@@ -2961,9 +2971,7 @@ function evaluateElementInZone(
     // no id and no variant name contains — so the two halves can never fold
     // into one entry.
     const variant =
-      def.variantProp === undefined
-        ? ''
-        : String(frame.props[def.variantProp]);
+      def.variantProp === undefined ? '' : String(frame.props[def.variantProp]);
     const key = `${frame.id}\u0000${variant}`;
     let regions = regionsOf.get(key);
     if (regions === undefined) {
@@ -2982,7 +2990,9 @@ function evaluateElementInZone(
     // readings, so two neighbours never disagree about an artefact on their
     // frontier.
     const occupies = (region: ZoneRegion) =>
-      extent ? region.bound.contains(bound) : region.bound.containsPoint(centre);
+      extent
+        ? region.bound.contains(bound)
+        : region.bound.containsPoint(centre);
     const touches = (region: ZoneRegion) =>
       extent
         ? boundsOverlap(region.bound, bound)
@@ -3500,7 +3510,9 @@ export function ValidationFrameworkExtension(
     setup: di => {
       for (const def of defs) {
         di.addImpl(
-          ValidationFrameworkIdentifier(`${def.framework}|${def.backgroundRole}`),
+          ValidationFrameworkIdentifier(
+            `${def.framework}|${def.backgroundRole}`
+          ),
           () => def
         );
       }
@@ -4020,9 +4032,7 @@ export class ValidationManager extends InteractivityExtension {
    * Empty for a neutral element, and for a background authored before its role
    * existed: no role, no framework, no profile.
    */
-  profilesFor(
-    element: GfxPrimitiveElementModel
-  ): readonly ValidationProfile[] {
+  profilesFor(element: GfxPrimitiveElementModel): readonly ValidationProfile[] {
     const frameworks = this.frameworksOf(element);
     if (frameworks.size === 0) return [];
 
@@ -4211,7 +4221,10 @@ export class ValidationManager extends InteractivityExtension {
           if (remark.backgroundId === backgroundId) results.push(remark);
         }
       } catch (error) {
-        console.error(`[validation] check-up rule "${rules[i].id}" threw`, error);
+        console.error(
+          `[validation] check-up rule "${rules[i].id}" threw`,
+          error
+        );
         const failed: CheckupRun = {
           backgroundId,
           at,
@@ -4246,9 +4259,7 @@ export class ValidationManager extends InteractivityExtension {
       }
     }
 
-    return generation === this._checkupGeneration
-      ? this.checkup$.peek()
-      : null;
+    return generation === this._checkupGeneration ? this.checkup$.peek() : null;
   }
 
   /**
@@ -4256,9 +4267,7 @@ export class ValidationManager extends InteractivityExtension {
    * its framework's default. `undefined` when it is not a root instance of any
    * enabled framework, or when its framework ships no profile.
    */
-  profileOf(
-    element: GfxPrimitiveElementModel
-  ): ValidationProfile | undefined {
+  profileOf(element: GfxPrimitiveElementModel): ValidationProfile | undefined {
     const available = this.profilesFor(element);
     const named = available.find(
       profile => profile.id === element.validationProfile
@@ -4533,7 +4542,10 @@ function pathMidpoint(path: readonly Point[]): Point | null {
 
   let total = 0;
   for (let i = 1; i < path.length; i++) {
-    total += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    total += Math.hypot(
+      path[i][0] - path[i - 1][0],
+      path[i][1] - path[i - 1][1]
+    );
   }
   // A degenerate path (every point on top of the last) has no middle to find;
   // any of its points is the answer.

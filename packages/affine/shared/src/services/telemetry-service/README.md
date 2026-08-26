@@ -27,13 +27,13 @@ Every block flavour reports the same five moments, so product analytics can
 compare blocks with one query. **A new block is not done until it emits these
 events** (this is part of the block template):
 
-| Event                | When                                                          | Required props |
-| -------------------- | ------------------------------------------------------------- | -------------- |
-| `BlockCreated`       | the block is inserted by a user action                        | `blockType` |
-| `BlockEdited`        | first edit of an editing session on the block                 | `flavour` |
-| `BlockDeleted`       | the block is removed by a user action                         | `flavour` |
-| `BlockAbandoned`     | created then emptied/undone/deleted shortly after creation    | `flavour`, `reason` (`emptied` \| `deleted-after-create` \| `undo`), `ageMs` |
-| `BlockUsageDuration` | end of an editing session on the block                        | `flavour`, `durationMs` |
+| Event                | When                                                       | Required props                                                               |
+| -------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `BlockCreated`       | the block is inserted by a user action                     | `blockType`                                                                  |
+| `BlockEdited`        | first edit of an editing session on the block              | `flavour`                                                                    |
+| `BlockDeleted`       | the block is removed by a user action                      | `flavour`                                                                    |
+| `BlockAbandoned`     | created then emptied/undone/deleted shortly after creation | `flavour`, `reason` (`emptied` \| `deleted-after-create` \| `undo`), `ageMs` |
+| `BlockUsageDuration` | end of an editing session on the block                     | `flavour`, `durationMs`                                                      |
 
 `BlockEdited`, `BlockDeleted`, `BlockAbandoned` and `BlockUsageDuration` are
 emitted automatically for every flavour by `BlockLifecycleTelemetryWatcher`
@@ -53,11 +53,11 @@ Conventions:
 Business framework diagrams share one vocabulary; `framework` segments,
 `element` identifies what was manipulated:
 
-| Event                    | When                                  | `element` examples |
-| ------------------------ | ------------------------------------- | ------------------ |
+| Event                    | When                                  | `element` examples                                                                               |
+| ------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `FrameworkElementAdded`  | an element is created from a toolbox  | `background:classic`, `background:opportunity`, `node:component`, `node:market`, `node:pipeline` |
-| `FrameworkToolPicked`    | a framework drawing tool is activated | `connector:link`, `connector:arrow` |
-| `FrameworkLegendCreated` | an auto-legend is generated           | `legend` |
+| `FrameworkToolPicked`    | a framework drawing tool is activated | `connector:link`, `connector:arrow`                                                              |
+| `FrameworkLegendCreated` | an auto-legend is generated           | `legend`                                                                                         |
 
 Adding a framework = reuse these three events with a new `framework` value
 (add it to the `FrameworkElementEvent['framework']` union in `lifecycle.ts`).
@@ -68,9 +68,9 @@ Adding a framework = reuse these three events with a new `framework` value
 is **not** a creation: shape → role → component → materialities, every rung
 reversible, no element created, destroyed or swapped.
 
-| Event                      | When                                       | Required props |
-| -------------------------- | ------------------------------------------ | -------------- |
-| `FrameworkElementPromoted` | a rung of the promotion ladder is crossed  | `rung` (`role` \| `pivot` \| `tag`), `direction` (`promote` \| `demote`), `elementCount` |
+| Event                      | When                                      | Required props                                                                           |
+| -------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `FrameworkElementPromoted` | a rung of the promotion ladder is crossed | `rung` (`role` \| `pivot` \| `tag`), `direction` (`promote` \| `demote`), `elementCount` |
 
 It is a separate event on purpose. `FrameworkElementAdded` is a UI-intent event
 emitted at insertion sites; a promotion inserts nothing, so reusing it would
@@ -87,9 +87,9 @@ For a connector carrying an edge role, the persisted `source → target` pair IS
 the relation's orientation. Reversing it is a correction of a statement, not a
 style change, so it reports as its own event.
 
-| Event                   | When                                          | Required props |
-| ----------------------- | --------------------------------------------- | -------------- |
-| `EdgeDirectionInverted` | the user reverses a typed edge (M3)            | `elementCount` |
+| Event                   | When                                | Required props |
+| ----------------------- | ----------------------------------- | -------------- |
+| `EdgeDirectionInverted` | the user reverses a typed edge (M3) | `elementCount` |
 
 `role` and `framework` are optional and carry ids only — never the two element
 ids and never board content. A gesture that reverses nothing emits nothing.
@@ -103,10 +103,10 @@ No rule is a wall: every violation can be waived, and every waiver is reported.
 A rule waived on every board is a rule that is wrong — these two events are the
 only place that says so.
 
-| Event                         | When                                   | Required props |
-| ----------------------------- | -------------------------------------- | -------------- |
-| `ValidationExceptionGranted`  | the user waives a rule from the bubble  | `ruleId`, `scope` (`element` \| `map`), `elementCount` |
-| `ValidationExceptionRevoked`  | the user restores a waived rule         | `ruleId`, `scope`, `elementCount` |
+| Event                        | When                                   | Required props                                         |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------------ |
+| `ValidationExceptionGranted` | the user waives a rule from the bubble | `ruleId`, `scope` (`element` \| `map`), `elementCount` |
+| `ValidationExceptionRevoked` | the user restores a waived rule        | `ruleId`, `scope`, `elementCount`                      |
 
 `ruleId` is the framework-namespaced rule id (`wardley.change-arrow-against-evolution`);
 `framework` segments as elsewhere. Neither event carries board content — a
@@ -119,8 +119,8 @@ A framework exposes several levels of requirement and the user picks one per
 instance. Which one they pick, and how often they leave the default, is the
 only signal that says whether the default is right.
 
-| Event                      | When                                        | Required props |
-| -------------------------- | ------------------------------------------- | -------------- |
+| Event                      | When                                         | Required props           |
+| -------------------------- | -------------------------------------------- | ------------------------ |
 | `ValidationProfileChanged` | the user puts an instance on another profile | `framework`, `profileId` |
 
 `profileId` is the framework-namespaced profile id (`wardley.strict`), and
@@ -133,11 +133,11 @@ Level 3 — the criteria a framework declares as data, evaluated app-side by the
 Labre Assistant through the `AuditProvider` seam. The library owns the seam, not
 the model, so what it can report is when a run was asked for and how it ended.
 
-| Event                  | When                                     | Required props                                    |
-| ---------------------- | ---------------------------------------- | ------------------------------------------------- |
-| `MapAuditStarted`      | `map.audit` is invoked — **before the provider is looked up at all** | `criterionCount`, `frameCount`   |
-| `MapAuditCompleted`    | the provider settled every criterion      | + `findingCount`, `durationMs`                     |
-| `MapAuditInterrupted`  | aborted, failed, unanswerable, or superseded | + `reason` (`aborted` / `error` / `unavailable` / `superseded`), `durationMs` |
+| Event                 | When                                                                 | Required props                                                                |
+| --------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `MapAuditStarted`     | `map.audit` is invoked — **before the provider is looked up at all** | `criterionCount`, `frameCount`                                                |
+| `MapAuditCompleted`   | the provider settled every criterion                                 | + `findingCount`, `durationMs`                                                |
+| `MapAuditInterrupted` | aborted, failed, unanswerable, or superseded                         | + `reason` (`aborted` / `error` / `unavailable` / `superseded`), `durationMs` |
 
 Three events rather than one with a status: "how often is an audit asked for"
 and "how often does it finish" are different questions, and a single event would

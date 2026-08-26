@@ -37,7 +37,9 @@ describe('canonicalCombo', () => {
 
   test('canonicalizes each keystroke of a sequence', () => {
     expect(canonicalCombo(['w', 'C'])).toBe(canonicalCombo(['w', 'c']));
-    expect(canonicalCombo(['w', 'Cmd-k'])).toBe(canonicalCombo(['w', 'Meta-k']));
+    expect(canonicalCombo(['w', 'Cmd-k'])).toBe(
+      canonicalCombo(['w', 'Meta-k'])
+    );
     // A sequence is distinct from a single keystroke with the same letters.
     expect(canonicalCombo(['w', 'c'])).not.toBe(canonicalCombo(['w-c']));
   });

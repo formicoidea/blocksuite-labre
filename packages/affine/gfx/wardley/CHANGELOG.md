@@ -182,36 +182,36 @@
     is its own slice; until then the gap is pinned by two assertions that state
     both ends — the tag id that exists and the flat prop that does not — so it
     cannot rot into "later means never".
-  Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
-  carry the framework, the nudge id and the counts — never board content. A nudge
-  everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
-  ticks is an expectation the tool failed to make actionable. Nothing else can say
-  either, because nothing here is ever computed.
-  **Persistence.** One new optional `@field()` on the base element model,
-  `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
-  BASE class for the same reason `role`, `validationExceptions` and
-  `validationProfile` are: an element re-created from props only reaches the Y.Map
-  through declared accessors, so a per-subclass declaration would be silently
-  dropped on copy. Its default is `undefined` and is never written, so an instance
-  with nothing ticked stays byte-identical to one created before the field
-  existed: no block schema change, no version bump, no migration, and documents
-  written before and after remain mutually loadable. Unticking the last one removes
-  the KEY through `clearField` rather than leaving an empty array behind, so an
-  emptied checklist is byte-identical again too — in the document, and not merely
-  through the getter. Ids of nudges no framework declares any more are kept rather
-  than pruned: the tooling comes and goes with a flag, the decisions recorded on it
-  do not. `setNudgeChecked` enforces read-only itself, at the seam, like
-  `setProfile` and `setException` do: a disabled checkbox covers exactly one
-  caller, and `clearField` goes through `Store.transact`, which — unlike
-  `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
-  own, so unticking would genuinely delete the key from a document nobody may edit.
-  **Cost.** Measured, not asserted: registering the two Wardley check-up rules
-  beside the three real-time ones leaves both the verdict and the timing of the
-  drawing path unchanged on the 500-element reference map. The two timings are
-  measured on INTERLEAVED samples, because taken one after the other they compare
-  two moments in the runner's life as much as two rule sets — the same evaluation
-  drifts by half again between back-to-back medians, which is several times the
-  effect being looked for. That is the whole point of the second moment.
+    Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
+    carry the framework, the nudge id and the counts — never board content. A nudge
+    everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
+    ticks is an expectation the tool failed to make actionable. Nothing else can say
+    either, because nothing here is ever computed.
+    **Persistence.** One new optional `@field()` on the base element model,
+    `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
+    BASE class for the same reason `role`, `validationExceptions` and
+    `validationProfile` are: an element re-created from props only reaches the Y.Map
+    through declared accessors, so a per-subclass declaration would be silently
+    dropped on copy. Its default is `undefined` and is never written, so an instance
+    with nothing ticked stays byte-identical to one created before the field
+    existed: no block schema change, no version bump, no migration, and documents
+    written before and after remain mutually loadable. Unticking the last one removes
+    the KEY through `clearField` rather than leaving an empty array behind, so an
+    emptied checklist is byte-identical again too — in the document, and not merely
+    through the getter. Ids of nudges no framework declares any more are kept rather
+    than pruned: the tooling comes and goes with a flag, the decisions recorded on it
+    do not. `setNudgeChecked` enforces read-only itself, at the seam, like
+    `setProfile` and `setException` do: a disabled checkbox covers exactly one
+    caller, and `clearField` goes through `Store.transact`, which — unlike
+    `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
+    own, so unticking would genuinely delete the key from a document nobody may edit.
+    **Cost.** Measured, not asserted: registering the two Wardley check-up rules
+    beside the three real-time ones leaves both the verdict and the timing of the
+    drawing path unchanged on the 500-element reference map. The two timings are
+    measured on INTERLEAVED samples, because taken one after the other they compare
+    two moments in the runner's life as much as two rule sets — the same evaluation
+    drifts by half again between back-to-back medians, which is several times the
+    effect being looked for. That is the whole point of the second moment.
 - 521accb: feat(blocks): flags gate tooling only — a disabled framework stays visible in documents
 
   Block flags used to decide whether a block was registered at all. A document
@@ -519,7 +519,7 @@
   discreet mark on the canvas. Wave 1 — the path end to end, one rule wide.
   - `@labre/affine-block-surface`: the engine. Rules are declarative, versioned
     DATA owned by their framework (`{ id, framework, family, severity, appliesTo,
- messageKey, version }`); the engine only knows how to evaluate a FAMILY. One
+messageKey, version }`); the engine only knows how to evaluate a FAMILY. One
     family ships: `element-in-background`. Results are violation OBJECTS
     (`{ ruleId, elementIds, severity, messageKey, suggestion? }`) on a reactive
     signal, `ValidationManager.violations# @labre/affine-gfx-wardley
@@ -537,22 +537,22 @@
   - Affordance (PF7, minimal): elements in violation get amber corner brackets
     drawn by a canvas overlay. No element model is touched, nothing is written to
     the document, no undo entry is created. No conformance panel yet.
-  Proportionality is enforced by construction: an element with no role is never
-  evaluated, and a framework's rules only ever match its own roles.
-  Gating follows the reversed flag contract (`docs/adr/0009`) with no new
-  machinery: rules are registered by the FLAG-GATED `WardleyViewExtension`, so
-  turning the `wardley` flag off removes them with the rest of the tooling.
-  Already-drawn maps keep rendering, they simply stop being checked, and a board
-  with every framework disabled does zero validation work.
-  Like every flag in this library, that gate is an assembly-time gate, not a
-  runtime switch: flipping a flag mid-session neither starts nor stops
-  validation, and marks already on screen stay there until the editor is
-  reassembled.
-  Performance is asserted, not hoped for: a bench in the normal unit suite builds
-  a 500-element reference map — backed by real `Y.Map`s, so field reads and
-  `xywh` deserialization cost what they cost in production — and fails the build
-  if a full evaluation exceeds one 60 fps frame (16 ms). It currently runs in
-  ~0.15 ms, and ~0.0002 ms with the flag off.
+    Proportionality is enforced by construction: an element with no role is never
+    evaluated, and a framework's rules only ever match its own roles.
+    Gating follows the reversed flag contract (`docs/adr/0009`) with no new
+    machinery: rules are registered by the FLAG-GATED `WardleyViewExtension`, so
+    turning the `wardley` flag off removes them with the rest of the tooling.
+    Already-drawn maps keep rendering, they simply stop being checked, and a board
+    with every framework disabled does zero validation work.
+    Like every flag in this library, that gate is an assembly-time gate, not a
+    runtime switch: flipping a flag mid-session neither starts nor stops
+    validation, and marks already on screen stay there until the editor is
+    reassembled.
+    Performance is asserted, not hoped for: a bench in the normal unit suite builds
+    a 500-element reference map — backed by real `Y.Map`s, so field reads and
+    `xywh` deserialization cost what they cost in production — and fails the build
+    if a full evaluation exceeds one 60 fps frame (16 ms). It currently runs in
+    ~0.15 ms, and ~0.0002 ms with the flag off.
 - 7b940cf: fix(edgeless): the validation profile belongs in the map's toolbar
 
   PF9 shipped the profile selector as a chip pinned to the instance's top-left
@@ -626,10 +626,10 @@
   - **Strict**: the pilot rule bites at `warning`, and the canvas affordance
     (PF7) appears as before. Still never blocking — strict is a level of
     attention, not a wall.
-  **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
-  board hold two independent levels: a sketch can sit next to a deliverable
-  without either dictating the other's requirements. The engine reads the profile
-  off the background a finding was measured against — an id it already recorded.
+    **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
+    board hold two independent levels: a sketch can sit next to a deliverable
+    without either dictating the other's requirements. The engine reads the profile
+    off the background a finding was measured against — an id it already recorded.
   ### What is persisted
   One optional flat string, `validationProfile`, declared as a `@field()` on the
   element base class — the same place and the same reasoning as `role` (PF1) and

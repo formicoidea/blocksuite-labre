@@ -57,7 +57,9 @@ const kebab = (kind: string): string =>
  * would make the grammar read `command → system`, which is not a sentence
  * anybody says. One entry in a table is the cost of keeping both right.
  */
-const ROLE_SLUG: Partial<Record<string, string>> = { system: 'external-system' };
+const ROLE_SLUG: Partial<Record<string, string>> = {
+  system: 'external-system',
+};
 
 const slug = (kind: string): string => ROLE_SLUG[kind] ?? kebab(kind);
 

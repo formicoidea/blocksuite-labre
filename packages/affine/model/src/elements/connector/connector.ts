@@ -17,12 +17,7 @@ import type {
   PointTestOptions,
   SerializedElement,
 } from '@labre/std/gfx';
-import {
-  derive,
-  field,
-  GfxPrimitiveElementModel,
-  local,
-} from '@labre/std/gfx';
+import { derive, field, GfxPrimitiveElementModel, local } from '@labre/std/gfx';
 import * as Y from 'yjs';
 
 import {

@@ -1,7 +1,4 @@
-import type {
-  GfxCommonBlockProps,
-  GfxElementGeometry,
-} from '@labre/std/gfx';
+import type { GfxCommonBlockProps, GfxElementGeometry } from '@labre/std/gfx';
 import { GfxCompatible } from '@labre/std/gfx';
 import {
   BlockModel,

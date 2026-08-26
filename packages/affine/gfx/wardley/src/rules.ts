@@ -191,7 +191,8 @@ const overlappingArtefacts: ValidationRule = {
   roles: WARDLEY_ROLES,
   messageKey: 'com.labre.wardley.validation.overlapping-artefacts',
   messageFallback: 'These two overlap and make the map harder to read.',
-  suggestionKey: 'com.labre.wardley.validation.overlapping-artefacts.suggestion',
+  suggestionKey:
+    'com.labre.wardley.validation.overlapping-artefacts.suggestion',
   suggestionFallback: 'Move one of them aside.',
   // 2: measured on the ink of a label rather than on its creation box, and
   // calibrated with a penetration threshold — the same mistakes, fewer of the
@@ -259,8 +260,7 @@ const providerAboveConsumer: ValidationRule = {
   // indicted elements here would be data that lies.
   roles: WARDLEY_ROLES,
   messageKey: 'com.labre.wardley.validation.provider-above-consumer',
-  messageFallback:
-    'This component sits above the one that depends on it.',
+  messageFallback: 'This component sits above the one that depends on it.',
   suggestionKey:
     'com.labre.wardley.validation.provider-above-consumer.suggestion',
   suggestionFallback:

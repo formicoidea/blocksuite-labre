@@ -50,7 +50,11 @@ describe('whenLinkedDocContentReady', () => {
     const resolve = vi.fn(async () => {
       doc.root = {};
     });
-    const ready = await whenLinkedDocContentReady(makeStd({ resolve }), doc, 'd2');
+    const ready = await whenLinkedDocContentReady(
+      makeStd({ resolve }),
+      doc,
+      'd2'
+    );
     expect(resolve).toHaveBeenCalledWith('d2');
     expect(ready).toBe(true);
   });

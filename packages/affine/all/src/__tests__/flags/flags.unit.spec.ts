@@ -97,7 +97,11 @@ describe('reversed flag contract — tooling side is gated', () => {
   test.each([
     ['wardley', WardleyViewExtension, WardleyRenderViewExtension],
     ['edgy', EdgyViewExtension, EdgyRenderViewExtension],
-    ['cynefin-estuarine', CynefinEstuarineViewExtension, CynefinEstuarineRenderViewExtension],
+    [
+      'cynefin-estuarine',
+      CynefinEstuarineViewExtension,
+      CynefinEstuarineRenderViewExtension,
+    ],
     ['bpmn', BpmnViewExtension, BpmnRenderViewExtension],
     ['brush', BrushViewExtension, BrushRenderViewExtension],
   ] as const)(

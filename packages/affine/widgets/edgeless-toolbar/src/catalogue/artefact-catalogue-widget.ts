@@ -501,20 +501,24 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
           ×
         </button>
       </div>
-      <div class="artefact-catalogue-body" data-testid="artefact-catalogue-body">
+      <div
+        class="artefact-catalogue-body"
+        data-testid="artefact-catalogue-body"
+      >
         ${groups.map(
-          group => html`<div
-            class="artefact-catalogue-group"
-            data-testid="artefact-catalogue-group"
-            data-category=${group.category ?? ''}
-            role="group"
-            aria-label=${this._groupLabel(group)}
-          >
-            <div class="artefact-catalogue-group-label">
-              ${this._groupLabel(group)}
-            </div>
-            ${group.commands.map(command => this._renderEntry(command))}
-          </div>`
+          group =>
+            html`<div
+              class="artefact-catalogue-group"
+              data-testid="artefact-catalogue-group"
+              data-category=${group.category ?? ''}
+              role="group"
+              aria-label=${this._groupLabel(group)}
+            >
+              <div class="artefact-catalogue-group-label">
+                ${this._groupLabel(group)}
+              </div>
+              ${group.commands.map(command => this._renderEntry(command))}
+            </div>`
         )}
       </div>
     </div>`;

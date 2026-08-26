@@ -14,11 +14,7 @@ import {
 import { DisposableGroup } from '@labre/global/disposable';
 import { IS_MOBILE } from '@labre/global/env';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
-import {
-  computed,
-  type ReadonlySignal,
-  signal,
-} from '@preact/signals-core';
+import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
 import {
   deleteView,

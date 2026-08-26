@@ -31,7 +31,10 @@ import {
   type BlockStdScope,
   type CommandInvocation,
 } from '@labre/std';
-import { GfxControllerIdentifier, GfxPrimitiveElementModel } from '@labre/std/gfx';
+import {
+  GfxControllerIdentifier,
+  GfxPrimitiveElementModel,
+} from '@labre/std/gfx';
 import { Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { computed } from '@preact/signals-core';

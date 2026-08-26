@@ -563,7 +563,8 @@ export function renderToolbar(
     return {
       id: action.id,
       priority: action.priority ?? 0,
-      shrinkable: plain && Boolean(action.icon && action.showLabel && action.label),
+      shrinkable:
+        plain && Boolean(action.icon && action.showLabel && action.label),
       collapsible: plain,
     };
   });
@@ -655,12 +656,7 @@ export function renderToolbar(
 
   render(
     join(
-      renderResolvedActions(
-        primary,
-        context,
-        renderActionItem,
-        layout.shrunk
-      ),
+      renderResolvedActions(primary, context, renderActionItem, layout.shrunk),
       innerToolbar ? null : renderToolbarSeparator()
     ),
     toolbar

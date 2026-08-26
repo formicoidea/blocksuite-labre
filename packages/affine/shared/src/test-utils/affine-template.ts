@@ -9,12 +9,7 @@ import {
 } from '@labre/affine-model';
 import { Container } from '@labre/global/di';
 import { TextSelection } from '@labre/std';
-import {
-  type Block,
-  type ExtensionType,
-  type Store,
-  Text,
-} from '@labre/store';
+import { type Block, type ExtensionType, type Store, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 
 import { createTestHost } from './create-test-host';

@@ -1,4 +1,7 @@
-import { backgroundAxisFact, backgroundSize } from '@labre/affine-block-surface';
+import {
+  backgroundAxisFact,
+  backgroundSize,
+} from '@labre/affine-block-surface';
 import { ES_STICKIES } from '@labre/affine-gfx-ddd-shared';
 import { EventStormingBoardElementModel } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
@@ -32,9 +35,9 @@ describe('the event storming board declaration', () => {
     );
     expect(time.title?.fallback).toBe('Time');
     // The fact `es.against-timeline` reads: forward is +x, i.e. later is right.
-    expect(backgroundAxisFact(EVENT_STORMING_BACKGROUND, 'time')?.forward).toEqual(
-      [1, 0]
-    );
+    expect(
+      backgroundAxisFact(EVENT_STORMING_BACKGROUND, 'time')?.forward
+    ).toEqual([1, 0]);
   });
 
   it('draws the timeline heavy enough to read zoomed out', () => {

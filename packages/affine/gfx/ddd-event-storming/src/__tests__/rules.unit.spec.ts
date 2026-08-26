@@ -83,8 +83,11 @@ describe('what the framework ships', () => {
     // PO arbitration, 26/08/2026. Deciding "Order placed" from "Place order"
     // means parsing a human sentence in whatever language the room speaks.
     for (const rule of EVENT_STORMING_RULES) {
-      expect(['relative-order-along-axis', 'relation-endpoints', 'no-overlap'])
-        .toContain(rule.family);
+      expect([
+        'relative-order-along-axis',
+        'relation-endpoints',
+        'no-overlap',
+      ]).toContain(rule.family);
     }
   });
 });
@@ -186,9 +189,7 @@ describe('ES2 · the grammar of a flow', () => {
   });
 
   it('holds the whole grammar and nothing else', () => {
-    expect(
-      ES_FLOW_MATRIX.map(t => `${t.source} → ${t.target}`)
-    ).toEqual([
+    expect(ES_FLOW_MATRIX.map(t => `${t.source} → ${t.target}`)).toEqual([
       'es:actor → es:command',
       'es:command → es:aggregate',
       'es:command → es:external-system',

@@ -48,11 +48,26 @@ function node(kind: NodeKind, x: number, y: number, text?: string) {
     xywh: `[${x},${y},${w},${h}]`,
   };
   if (kind === 'startEvent')
-    return { ...base, shapeType: 'ellipse', strokeColor: EVENT_START, strokeWidth: START_WIDTH };
+    return {
+      ...base,
+      shapeType: 'ellipse',
+      strokeColor: EVENT_START,
+      strokeWidth: START_WIDTH,
+    };
   if (kind === 'endEvent')
-    return { ...base, shapeType: 'ellipse', strokeColor: EVENT_END, strokeWidth: END_WIDTH };
+    return {
+      ...base,
+      shapeType: 'ellipse',
+      strokeColor: EVENT_END,
+      strokeWidth: END_WIDTH,
+    };
   if (kind === 'gatewayExclusive')
-    return { ...base, shapeType: 'diamond', strokeColor: NEUTRAL_STROKE, strokeWidth: NODE_STROKE_WIDTH };
+    return {
+      ...base,
+      shapeType: 'diamond',
+      strokeColor: NEUTRAL_STROKE,
+      strokeWidth: NODE_STROKE_WIDTH,
+    };
   return {
     ...base,
     shapeType: 'rect',
@@ -119,9 +134,12 @@ function freeSeq(): Record<string, unknown> {
   };
 }
 
-const single = (el: Record<string, unknown>): SurfaceElementsJSON => ({ a: el });
+const single = (el: Record<string, unknown>): SurfaceElementsJSON => ({
+  a: el,
+});
 
-const PREVIEW_ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
+const PREVIEW_ATTRS =
+  'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 
 const previews = {
   process: `<svg ${PREVIEW_ATTRS} fill="none"><circle cx="16" cy="40" r="8" stroke="#43a06b" stroke-width="2"/><rect x="34" y="31" width="26" height="18" rx="3" stroke="#262626" stroke-width="1.6"/><path d="M78 31 L88 40 L78 49 L68 40 Z" stroke="#262626" stroke-width="1.4"/><path d="M73 37 L83 43 M83 37 L73 43" stroke="#262626" stroke-width="1.2"/><circle cx="118" cy="40" r="8" stroke="#cf5648" stroke-width="3"/><path d="M24 40 H34 M60 40 H68 M88 40 H110" stroke="#262626" stroke-width="1.2"/></svg>`,
@@ -167,7 +185,11 @@ function bpmnTemplates(): Template[] {
     t('Start event', previews.startEvent, single(node('startEvent', 0, 0))),
     t('End event', previews.endEvent, single(node('endEvent', 0, 0))),
     t('Task', previews.task, single(node('task', 0, 0))),
-    t('Exclusive gateway', previews.gateway, single(node('gatewayExclusive', 0, 0))),
+    t(
+      'Exclusive gateway',
+      previews.gateway,
+      single(node('gatewayExclusive', 0, 0))
+    ),
     t('Sequence flow', previews.sequence, single(freeSeq())),
     t('Pool', previews.pool, single(pool(0, 0, 560, 200))),
   ];

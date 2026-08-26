@@ -298,7 +298,12 @@ describe('edgy board renderer', () => {
 
 // ── spotlight connected set ────────────────────────────────────────────
 
-type ConnectorStub = { id: string; type: string; source?: { id?: string }; target?: { id?: string } };
+type ConnectorStub = {
+  id: string;
+  type: string;
+  source?: { id?: string };
+  target?: { id?: string };
+};
 const connector = (id: string, src?: string, dst?: string): ConnectorStub => ({
   id,
   type: 'connector',
@@ -315,10 +320,7 @@ describe('spotlightSet', () => {
     ) as unknown as ConnectorElementModel[];
 
   it('keeps a hovered node, its connectors and their endpoints', () => {
-    const keep = spotlightSet(
-      { id: 'n1', type: 'edgyNode' } as never,
-      byId
-    );
+    const keep = spotlightSet({ id: 'n1', type: 'edgyNode' } as never, byId);
     expect(keep).toEqual(new Set(['n1', 'c1', 'n2', 'c2', 'n3']));
   });
 

@@ -1,7 +1,4 @@
-import {
-  EdgelessCRUDIdentifier,
-  TextUtils,
-} from '@labre/affine-block-surface';
+import { EdgelessCRUDIdentifier, TextUtils } from '@labre/affine-block-surface';
 import {
   packColor,
   type PickColorEvent,

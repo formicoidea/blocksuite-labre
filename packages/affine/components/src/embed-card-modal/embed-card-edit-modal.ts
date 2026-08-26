@@ -11,10 +11,7 @@ import {
 } from '@labre/affine-shared/services';
 import { fontSMStyle, fontXSStyle } from '@labre/affine-shared/styles';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import {
-  listenClickAway,
-  stopPropagation,
-} from '@labre/affine-shared/utils';
+import { listenClickAway, stopPropagation } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { nextTick } from '@labre/global/utils';
 import {

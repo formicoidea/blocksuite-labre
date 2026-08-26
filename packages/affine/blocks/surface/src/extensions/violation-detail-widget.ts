@@ -442,7 +442,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     // open on it would float with nothing underneath it.
     const stillFlagged =
       surface !== null &&
-      resolveViolationAnchors(this._violations, surface, this._vocabularies).some(
+      resolveViolationAnchors(
+        this._violations,
+        surface,
+        this._vocabularies
+      ).some(
         anchor =>
           anchor.id === this._openAnchorId &&
           anchor.violations.some(v => v.exemption === undefined)
@@ -683,7 +687,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   }
 
   private readonly _exception =
-    (violations: readonly Violation[], scope: ExemptionScope, granted: boolean) =>
+    (
+      violations: readonly Violation[],
+      scope: ExemptionScope,
+      granted: boolean
+    ) =>
     (event: Event) => {
       event.stopPropagation();
       this._setException(violations, scope, granted);
@@ -730,16 +738,17 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       testid: string,
       scope: ExemptionScope,
       granted: boolean
-    ) => html`<button
-      class="violation-action"
-      type="button"
-      data-testid=${testid}
-      @pointerdown=${this._swallow}
-      @pointerup=${this._swallow}
-      @click=${this._exception(violations, scope, granted)}
-    >
-      ${translateKey(this.std, key, fallback)}
-    </button>`;
+    ) =>
+      html`<button
+        class="violation-action"
+        type="button"
+        data-testid=${testid}
+        @pointerdown=${this._swallow}
+        @pointerup=${this._swallow}
+        @click=${this._exception(violations, scope, granted)}
+      >
+        ${translateKey(this.std, key, fallback)}
+      </button>`;
 
     return html`<div class="violation-entry" data-exemption=${exemption ?? ''}>
       <div class="violation-severity" data-severity=${entry.severity}>
@@ -764,7 +773,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       </div>
       ${entry.suggestion
         ? html`<div class="violation-suggestion">
-            ${translateKey(this.std, entry.suggestion, entry.suggestionFallback)}
+            ${translateKey(
+              this.std,
+              entry.suggestion,
+              entry.suggestionFallback
+            )}
           </div>`
         : nothing}
       <div class="violation-actions">
@@ -787,8 +800,9 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
               // A family that measures against no background records no
               // `backgroundId`, so there is no map to write the wider
               // arbitration on and the action simply does not exist.
-              violations.some(violation => violation.backgroundId !== undefined) &&
-              this._isRepeated(violations)
+              violations.some(
+                violation => violation.backgroundId !== undefined
+              ) && this._isRepeated(violations)
                 ? action(
                     'com.labre.validation.action.ignore-map',
                     'Ignore this rule on the whole map',
@@ -802,7 +816,11 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     </div>`;
   }
 
-  private _renderBubble(violations: readonly Violation[], x: number, y: number) {
+  private _renderBubble(
+    violations: readonly Violation[],
+    x: number,
+    y: number
+  ) {
     const entries = distinctByRule(violations);
     const { viewport } = this.gfx;
 
@@ -831,7 +849,9 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
         'Validation details'
       )}
       style=${styleMap({
-        left: flipX ? `${x - BUBBLE_GAP - BUBBLE_WIDTH}px` : `${x + BUBBLE_GAP}px`,
+        left: flipX
+          ? `${x - BUBBLE_GAP - BUBBLE_WIDTH}px`
+          : `${x + BUBBLE_GAP}px`,
         top: flipY ? `${y - BUBBLE_GAP}px` : `${y + BUBBLE_GAP}px`,
         ...(flipY ? { transform: 'translateY(-100%)' } : {}),
       })}
@@ -928,31 +948,37 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     const height = bottom - top;
 
     const strips = [
-      { left: left - band, top: top - band, width: width + band * 2, height: band },
+      {
+        left: left - band,
+        top: top - band,
+        width: width + band * 2,
+        height: band,
+      },
       { left: left - band, top: bottom, width: width + band * 2, height: band },
       { left: left - band, top, width: band, height },
       { left: right, top, width: band, height },
     ];
 
     return strips.map(
-      strip => html`<button
-        class="violation-bracket-hit"
-        type="button"
-        tabindex="-1"
-        aria-hidden="true"
-        data-anchor-id=${anchor.id}
-        data-testid="violation-bracket-hit"
-        title=${label}
-        style=${styleMap({
-          left: `${strip.left}px`,
-          top: `${strip.top}px`,
-          width: `${Math.max(0, strip.width)}px`,
-          height: `${Math.max(0, strip.height)}px`,
-        })}
-        @pointerdown=${this._swallow}
-        @pointerup=${this._swallow}
-        @click=${this._open(anchor.id)}
-      ></button>`
+      strip =>
+        html`<button
+          class="violation-bracket-hit"
+          type="button"
+          tabindex="-1"
+          aria-hidden="true"
+          data-anchor-id=${anchor.id}
+          data-testid="violation-bracket-hit"
+          title=${label}
+          style=${styleMap({
+            left: `${strip.left}px`,
+            top: `${strip.top}px`,
+            width: `${Math.max(0, strip.width)}px`,
+            height: `${Math.max(0, strip.height)}px`,
+          })}
+          @pointerdown=${this._swallow}
+          @pointerup=${this._swallow}
+          @click=${this._open(anchor.id)}
+        ></button>`
     );
   }
 
@@ -994,7 +1020,9 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       }
       // Strictly one marker at a time: while the bracket is still drawn the
       // badge does not exist, and the bracket's own band takes the clicks.
-      const fresh = timeline ? anchorEmphasis(anchor, timeline, now) > 0 : false;
+      const fresh = timeline
+        ? anchorEmphasis(anchor, timeline, now) > 0
+        : false;
       const [badgeX, badgeY] = this._badgeAt(anchor);
 
       return html`${fresh

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  printToPdfStyles,
-  waitForImages,
-} from '../../utils/print-to-pdf.js';
+import { printToPdfStyles, waitForImages } from '../../utils/print-to-pdf.js';
 
 describe('printToPdfStyles', () => {
   it('only applies to the print medium', () => {
@@ -12,7 +9,9 @@ describe('printToPdfStyles', () => {
 
   it('forces a light colour scheme so nothing prints white on white', () => {
     expect(printToPdfStyles).toContain('color-scheme: light !important');
-    expect(printToPdfStyles).toContain('--affine-text-primary: #000 !important');
+    expect(printToPdfStyles).toContain(
+      '--affine-text-primary: #000 !important'
+    );
     expect(printToPdfStyles).toContain(
       '--affine-background-primary: #fff !important'
     );

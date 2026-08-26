@@ -172,8 +172,7 @@ export class DatabaseBlockDataSource extends ExternalDataSourceBase {
   }
 
   protected getPropertyMetas(): PropertyMetaConfig[] {
-    return DatabaseBlockDataSource.propertiesList
-      .value as PropertyMetaConfig[];
+    return DatabaseBlockDataSource.propertiesList.value as PropertyMetaConfig[];
   }
 
   protected getCellValue(rowId: string, propertyId: string): unknown {

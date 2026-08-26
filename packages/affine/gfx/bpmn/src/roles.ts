@@ -85,7 +85,8 @@ export const BPMN_ROLE = {
 } as const satisfies Record<BpmnRoleKey, BpmnRoleId>;
 
 /** i18n key stem of a role id: `bpmn:start-event` → `com.labre.bpmn.role.start-event`. */
-const roleKey = (id: RoleId) => `com.labre.bpmn.role.${id.slice('bpmn:'.length)}`;
+const roleKey = (id: RoleId) =>
+  `com.labre.bpmn.role.${id.slice('bpmn:'.length)}`;
 
 const FLOW_OBJECT_DEFS: readonly RoleDef[] = [
   // The three parents. None of them is ever STAMPED on an element — the palette

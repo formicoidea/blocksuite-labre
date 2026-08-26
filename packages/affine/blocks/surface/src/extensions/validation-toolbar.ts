@@ -281,7 +281,11 @@ function renderSections(
 
     sections.push(
       renderSection(
-        translateKey(ctx.std, 'com.labre.validation.profile.section', 'Profile'),
+        translateKey(
+          ctx.std,
+          'com.labre.validation.profile.section',
+          'Profile'
+        ),
         'validation-profile-section',
         options
       )

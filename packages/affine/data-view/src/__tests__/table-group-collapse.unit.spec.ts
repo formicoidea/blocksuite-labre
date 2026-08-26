@@ -11,7 +11,10 @@ import type { TableGroup } from '../view-presets/table/pc/group.js';
 
 /** @vitest-environment happy-dom */
 
-type Collapsible = { collapsed$: { value: boolean }; _toggleCollapse: () => void };
+type Collapsible = {
+  collapsed$: { value: boolean };
+  _toggleCollapse: () => void;
+};
 
 const toggle = (element: unknown) => {
   (element as unknown as Collapsible)._toggleCollapse();

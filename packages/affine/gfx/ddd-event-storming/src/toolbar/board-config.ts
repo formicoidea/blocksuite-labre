@@ -1,8 +1,5 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import {
-  createAutoLegend,
-  dddLegendIcon,
-} from '@labre/affine-gfx-ddd-shared';
+import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { EventStormingBoardElementModel } from '@labre/affine-model';
 import {
   TelemetryProvider,
@@ -76,18 +73,20 @@ export const eventStormingBoardToolbarConfig = {
         )[0];
         if (!board) return;
         createAutoLegend(ctx.std, board, EVENT_STORMING_AUTO_LEGEND);
-        ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
-          // The WIRE value, which is not the module id: the framework is
-          // `ddd-event-storming` in code and `event-storming` in PostHog
-          // (`frameworks.ts` `telemetryKey`, and the only value
-          // `FrameworkElementEvent` accepts). Same convention as Wardley's own
-          // legend button, so the two are comparable.
-          framework: 'event-storming',
-          element: 'legend',
-          page: 'whiteboard editor',
-          segment: 'element toolbar',
-          module: 'event-storming toolbar',
-        });
+        ctx.std
+          .getOptional(TelemetryProvider)
+          ?.track('FrameworkLegendCreated', {
+            // The WIRE value, which is not the module id: the framework is
+            // `ddd-event-storming` in code and `event-storming` in PostHog
+            // (`frameworks.ts` `telemetryKey`, and the only value
+            // `FrameworkElementEvent` accepts). Same convention as Wardley's own
+            // legend button, so the two are comparable.
+            framework: 'event-storming',
+            element: 'legend',
+            page: 'whiteboard editor',
+            segment: 'element toolbar',
+            module: 'event-storming toolbar',
+          });
       },
     },
   ],

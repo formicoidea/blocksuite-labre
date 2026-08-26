@@ -1,8 +1,5 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import {
-  DocModeProvider,
-  EditPropsStore,
-} from '@labre/affine-shared/services';
+import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
 import type { EditorHost } from '@labre/std';
 import { css, html, LitElement, type PropertyValues } from 'lit';

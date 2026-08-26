@@ -207,7 +207,10 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   const cx = w / 2;
   const cy = h / 2;
   ctx.setTransform(
-    matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
+    matrix
+      .translateSelf(cx, cy)
+      .rotateSelf(model.rotate)
+      .translateSelf(-cx, -cy)
   );
 
   const fit = estuarineFit(w, h);
@@ -250,7 +253,13 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // Uppercase legend (centre-anchored, alphabetic baseline, letter-spaced).
   // Anchored proportionally, typed isotropically — never inside the stretch.
   const hasSpacing = 'letterSpacing' in ctx;
-  const legend = (l: { text: string; x: number; y: number; size: number; color: string }) => {
+  const legend = (l: {
+    text: string;
+    x: number;
+    y: number;
+    size: number;
+    color: string;
+  }) => {
     ctx.fillStyle = l.color;
     ctx.font = `600 ${l.size * fit.strokeScale}px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';

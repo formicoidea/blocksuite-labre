@@ -1,8 +1,4 @@
-import {
-  type BlockComponent,
-  type Command,
-  TextSelection,
-} from '@labre/std';
+import { type BlockComponent, type Command, TextSelection } from '@labre/std';
 
 export const focusBlockStart: Command<{
   focusBlock?: BlockComponent;

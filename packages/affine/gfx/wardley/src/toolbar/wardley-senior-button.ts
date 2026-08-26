@@ -42,12 +42,15 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
       bottom: 0;
       width: 54px;
       height: 54px;
-      transform: translateY(var(--y)) scale(var(--s));   /* base */
-      translate: var(--active-x, 0) var(--active-y, 0);   /* actif */
+      transform: translateY(var(--y)) scale(var(--s)); /* base */
+      translate: var(--active-x, 0) var(--active-y, 0); /* actif */
       rotate: var(--active-r, -2deg);
-        scale: var(--active-s, 1);
-      transition: transform 0.3s ease, translate 0.3s ease,
-        rotate 0.3s ease, scale 0.3s ease;
+      scale: var(--active-s, 1);
+      transition:
+        transform 0.3s ease,
+        translate 0.3s ease,
+        rotate 0.3s ease,
+        scale 0.3s ease;
     }
     .wardley-card svg {
       display: block;
@@ -80,7 +83,6 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
     this.setEdgelessTool(DefaultTool);
     const menu = this.createPopper('edgeless-wardley-menu', this);
     menu.element.edgeless = this.edgeless;
-
   }
 
   override render() {

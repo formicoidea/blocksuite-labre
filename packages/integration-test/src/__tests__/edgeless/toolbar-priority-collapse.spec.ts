@@ -61,8 +61,7 @@ describe('the contextual toolbar, on one line', () => {
 
   const toolbar = () => widget()?.toolbar ?? null;
 
-  const entries = () =>
-    Array.from(toolbar()?.children ?? []) as HTMLElement[];
+  const entries = () => Array.from(toolbar()?.children ?? []) as HTMLElement[];
 
   /** The entry as it sits on the ROW, or `null` when it is not there. */
   const onRow = (id: string) =>
@@ -75,8 +74,9 @@ describe('the contextual toolbar, on one line', () => {
 
   /** The entry as an entry of the "⋮" menu, or `null`. */
   const inMenu = (id: string) =>
-    moreMenu()?.querySelector<HTMLElement>(`[data-toolbar-action-id="${id}"]`) ??
-    null;
+    moreMenu()?.querySelector<HTMLElement>(
+      `[data-toolbar-action-id="${id}"]`
+    ) ?? null;
 
   /**
    * Where one entry stands: on the row with its word, on the row as an icon, or
@@ -252,9 +252,9 @@ describe('the contextual toolbar, on one line', () => {
 
     // Nothing has given way: no entry is wearing the icon-only fallback, and
     // the row still holds everything it holds today.
-    expect(
-      row.filter(child => child.dataset.iconOnly === 'true')
-    ).toHaveLength(0);
+    expect(row.filter(child => child.dataset.iconOnly === 'true')).toHaveLength(
+      0
+    );
     expect(toolbar()!.scrollWidth).toBeLessThanOrEqual(
       toolbar()!.clientWidth + 1
     );

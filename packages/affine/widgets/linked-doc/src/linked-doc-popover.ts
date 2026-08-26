@@ -22,10 +22,7 @@ import throttle from 'lodash-es/throttle';
 
 import type { LinkedDocContext, LinkedMenuGroup } from './config.js';
 import { linkedDocPopoverStyles } from './styles.js';
-import {
-  createLinkedDocKeydownInterceptor,
-  resolveSignal,
-} from './utils.js';
+import { createLinkedDocKeydownInterceptor, resolveSignal } from './utils.js';
 
 @requiredProperties({
   context: PropTypes.object,
@@ -185,7 +182,9 @@ export class LinkedDocPopover extends SignalWatcher(
     createKeydownObserver({
       target: eventSource,
       signal: keydownObserverAbortController.signal,
-      interceptor: createLinkedDocKeydownInterceptor(() => this.context.close()),
+      interceptor: createLinkedDocKeydownInterceptor(() =>
+        this.context.close()
+      ),
       onInput: isComposition => {
         if (isComposition) {
           this._updateLinkedDocGroup().catch(console.error);

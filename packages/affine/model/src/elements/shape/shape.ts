@@ -109,7 +109,9 @@ export class ShapeElementModel extends GfxPrimitiveElementModel<ShapeProps> {
    * default implementation.
    */
   override get elementBound() {
-    const polygonApi = shapeMethods[ShapeType.Polygon] as typeof shapeMethods[ShapeType] & {
+    const polygonApi = shapeMethods[
+      ShapeType.Polygon
+    ] as (typeof shapeMethods)[ShapeType] & {
       elementBound?: (element: ShapeElementModel) => Bound;
     };
     if (this.shapeType === ShapeType.Polygon && polygonApi.elementBound) {

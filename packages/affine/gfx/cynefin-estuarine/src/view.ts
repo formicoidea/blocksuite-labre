@@ -126,10 +126,7 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
       );
       context.register(cynefinEstuarineSeniorTool);
       context.register(
-        CommandExtension(
-          cynefinEstuarineCommands,
-          cynefinEstuarineCommandIcons
-        )
+        CommandExtension(cynefinEstuarineCommands, cynefinEstuarineCommandIcons)
       );
     }
   }

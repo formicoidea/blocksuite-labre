@@ -1,10 +1,6 @@
 import { DisposableGroup } from '@labre/global/disposable';
 import type { IBound } from '@labre/global/gfx';
-import {
-  Bound,
-  getBoundWithRotation,
-  intersects,
-} from '@labre/global/gfx';
+import { Bound, getBoundWithRotation, intersects } from '@labre/global/gfx';
 import type { BlockModel } from '@labre/store';
 
 import { compare } from '../utils/layer.js';

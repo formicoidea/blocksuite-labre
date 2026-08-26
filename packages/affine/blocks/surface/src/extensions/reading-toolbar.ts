@@ -154,7 +154,11 @@ export const readingToolbarConfig = {
       // generator form: it is the only shape that receives the context, and
       // `translateKey` needs `std` to reach the host's catalogue.
       generate: (ctx: ToolbarContext) => {
-        const label = translateKey(ctx.std, READ_LABEL_KEY, READ_LABEL_FALLBACK);
+        const label = translateKey(
+          ctx.std,
+          READ_LABEL_KEY,
+          READ_LABEL_FALLBACK
+        );
         return {
           label,
           // Words, not a glyph: "what does the tool make of this?" is not a

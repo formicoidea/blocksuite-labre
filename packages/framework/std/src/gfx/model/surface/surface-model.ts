@@ -110,7 +110,10 @@ function isDeclaredElementProp(
   element: GfxPrimitiveElementModel,
   key: string
 ): boolean {
-  if (getFieldPropsSet(element).has(key) || getLocalPropsSet(element).has(key)) {
+  if (
+    getFieldPropsSet(element).has(key) ||
+    getLocalPropsSet(element).has(key)
+  ) {
     return true;
   }
 

@@ -28,8 +28,9 @@ const mount = async <T extends LitElement>(element: T): Promise<T> => {
   return element;
 };
 
-const cells = (root: HTMLElement) =>
-  [...(root.shadowRoot?.querySelectorAll<HTMLElement>('.picker-cell') ?? [])];
+const cells = (root: HTMLElement) => [
+  ...(root.shadowRoot?.querySelectorAll<HTMLElement>('.picker-cell') ?? []),
+];
 
 describe('emoji data', () => {
   test('groups the dataset into the eight upstream categories', () => {
@@ -123,15 +124,17 @@ describe('affine-icon-picker', () => {
       picker.shadowRoot?.querySelector<HTMLElement>(`[data-tab="${value}"]`);
 
     expect(tab('icons')?.dataset.active).toBe('true');
-    expect(picker.shadowRoot?.querySelector('affine-icon-picker-panel')).not.
-      toBeNull();
+    expect(
+      picker.shadowRoot?.querySelector('affine-icon-picker-panel')
+    ).not.toBeNull();
 
     tab('emoji')?.click();
     await picker.updateComplete;
 
     expect(tab('emoji')?.dataset.active).toBe('true');
-    expect(picker.shadowRoot?.querySelector('affine-emoji-picker-panel')).not.
-      toBeNull();
+    expect(
+      picker.shadowRoot?.querySelector('affine-emoji-picker-panel')
+    ).not.toBeNull();
   });
 
   test('Remove emits a null selection', async () => {
@@ -218,7 +221,9 @@ describe('affine-emoji-picker-panel', () => {
     input.dispatchEvent(new Event('input'));
     await panel.updateComplete;
 
-    cells(panel).find(cell => cell.textContent?.includes('🍕'))?.click();
+    cells(panel)
+      .find(cell => cell.textContent?.includes('🍕'))
+      ?.click();
 
     expect(details).toEqual([{ type: IconType.Emoji, unicode: '🍕' }]);
   });
@@ -237,7 +242,9 @@ describe('affine-emoji-picker-panel', () => {
       ?.click();
     await panel.updateComplete;
 
-    const menu = panel.shadowRoot?.querySelector('[data-testid="skin-tone-menu"]');
+    const menu = panel.shadowRoot?.querySelector(
+      '[data-testid="skin-tone-menu"]'
+    );
     expect(menu).not.toBeNull();
     menu?.querySelectorAll<HTMLElement>('button')[5]?.click();
     await panel.updateComplete;
@@ -246,7 +253,9 @@ describe('affine-emoji-picker-panel', () => {
     panel.addEventListener('select', event =>
       details.push((event as CustomEvent<IconPickerSelectDetail>).detail)
     );
-    cells(panel).find(cell => cell.textContent?.includes('👋'))?.click();
+    cells(panel)
+      .find(cell => cell.textContent?.includes('👋'))
+      ?.click();
 
     expect(details).toHaveLength(1);
     const [detail] = details;
@@ -319,6 +328,8 @@ describe('affine-icon-picker-panel', () => {
       ?.click();
 
     const [detail] = details;
-    expect(detail && 'color' in detail && detail.color).toContain('callout-icon-red');
+    expect(detail && 'color' in detail && detail.color).toContain(
+      'callout-icon-red'
+    );
   });
 });

@@ -10,15 +10,8 @@ import {
   ParagraphBlockModel,
 } from '@labre/affine-model';
 import { EMBED_BLOCK_MODEL_LIST } from '@labre/affine-shared/consts';
-import {
-  getNextContentBlock,
-  matchModels,
-} from '@labre/affine-shared/utils';
-import {
-  BlockSelection,
-  type BlockStdScope,
-  TextSelection,
-} from '@labre/std';
+import { getNextContentBlock, matchModels } from '@labre/affine-shared/utils';
+import { BlockSelection, type BlockStdScope, TextSelection } from '@labre/std';
 
 export function forwardDelete(std: BlockStdScope) {
   const { store, host } = std;

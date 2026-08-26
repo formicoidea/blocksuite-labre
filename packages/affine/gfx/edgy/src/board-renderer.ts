@@ -24,7 +24,10 @@ export const edgyBoard: ElementRenderer<EdgyBoardElementModel> = (
   const cx = w / 2;
   const cy = h / 2;
   ctx.setTransform(
-    matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
+    matrix
+      .translateSelf(cx, cy)
+      .rotateSelf(model.rotate)
+      .translateSelf(-cx, -cy)
   );
 
   ctx.beginPath();

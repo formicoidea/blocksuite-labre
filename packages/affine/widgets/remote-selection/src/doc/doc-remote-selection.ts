@@ -9,11 +9,7 @@ import {
 import { getSelectionRectsCommand } from '@labre/affine-shared/commands';
 import { EMBED_BLOCK_MODEL_LIST } from '@labre/affine-shared/consts';
 import { matchModels } from '@labre/affine-shared/utils';
-import {
-  BlockSelection,
-  TextSelection,
-  WidgetComponent,
-} from '@labre/std';
+import { BlockSelection, TextSelection, WidgetComponent } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { BaseSelection, UserInfo } from '@labre/store';
 import { computed, effect } from '@preact/signals-core';

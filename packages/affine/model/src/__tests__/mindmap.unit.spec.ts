@@ -22,7 +22,12 @@ describe('mindmap node style', () => {
       expect(getter.root.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
 
       // the style of a node is picked by its path, so probe a few depths
-      for (const path of [[0, 0], [0, 1], [0, 0, 0], [0, 2, 1]]) {
+      for (const path of [
+        [0, 0],
+        [0, 1],
+        [0, 0, 0],
+        [0, 2, 1],
+      ]) {
         const { node } = getter.getNodeStyle({} as MindmapNode, path);
         expect(node.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
       }

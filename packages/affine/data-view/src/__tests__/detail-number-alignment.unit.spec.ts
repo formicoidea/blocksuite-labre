@@ -23,7 +23,10 @@ const alignmentSelector = () => {
   // The rule that overrides the right-aligned default of a number cell.
   const match = cssText.match(/([^{}]+)\{ text-align: left;[^{}]*\}/);
   const selector = match?.[1];
-  expect(selector, 'the detail panel keeps a number alignment rule').toBeTruthy();
+  expect(
+    selector,
+    'the detail panel keeps a number alignment rule'
+  ).toBeTruthy();
   return selector!.trim();
 };
 

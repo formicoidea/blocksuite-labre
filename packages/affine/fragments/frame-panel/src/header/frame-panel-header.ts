@@ -1,12 +1,6 @@
-import {
-  type NavigatorMode,
-  PresentTool,
-} from '@labre/affine-block-frame';
+import { type NavigatorMode, PresentTool } from '@labre/affine-block-frame';
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import {
-  DocModeProvider,
-  EditPropsStore,
-} from '@labre/affine-shared/services';
+import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { WithDisposable } from '@labre/global/lit';

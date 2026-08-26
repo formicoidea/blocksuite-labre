@@ -126,7 +126,9 @@ describe('the in-place label editor', () => {
     input.dispatchEvent(new Event('blur'));
 
     expect(yMap.get('xAxisTitle')).toBe('Maturité');
-    expect(updateElement).toHaveBeenCalledWith('bg', { xAxisTitle: 'Maturité' });
+    expect(updateElement).toHaveBeenCalledWith('bg', {
+      xAxisTitle: 'Maturité',
+    });
     expect(captureSync).toHaveBeenCalled();
   });
 

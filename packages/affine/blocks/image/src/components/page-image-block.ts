@@ -9,11 +9,7 @@ import { ImageSelection } from '@labre/affine-shared/selection';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import type { BlockComponent, UIEventStateContext } from '@labre/std';
-import {
-  BlockSelection,
-  ShadowlessElement,
-  TextSelection,
-} from '@labre/std';
+import { BlockSelection, ShadowlessElement, TextSelection } from '@labre/std';
 import type { BaseSelection } from '@labre/store';
 import { computed } from '@preact/signals-core';
 import { css, html, type PropertyValues } from 'lit';

@@ -163,7 +163,9 @@ describe('a Wardley map written before the primitive', () => {
 
   test('is not what a map created TODAY writes — and reads the same', () => {
     const { collection } = createEditor();
-    const store = collection.createDoc('doc:fresh').getStore({ id: 'doc:fresh' });
+    const store = collection
+      .createDoc('doc:fresh')
+      .getStore({ id: 'doc:fresh' });
     let surfaceId = '';
     store.load(() => {
       const rootId = store.addBlock('affine:page', { title: new Text('PF2') });
