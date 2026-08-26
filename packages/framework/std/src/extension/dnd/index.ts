@@ -367,7 +367,7 @@ export class DndController extends LifeCycleWatcher {
   autoScroll<
     PayloadEntity extends DragEntity = DragEntity,
     PayloadFrom extends DragFrom = DragFromBlockSuite,
-  >(options: AutoScroll<PayloadEntity, PayloadFrom>) {
+  >(options: AutoScroll<PayloadEntity, PayloadFrom>): () => void {
     return autoScrollForElements(options as OriginalAutoScrollOption);
   }
 }
