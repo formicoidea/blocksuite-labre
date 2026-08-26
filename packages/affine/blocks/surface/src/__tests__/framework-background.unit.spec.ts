@@ -20,14 +20,25 @@ import {
 function stub() {
   const segments: Array<[number, number, number, number]> = [];
   const rects: Array<{ x: number; y: number; w: number; h: number; fill: string }> = [];
-  const texts: Array<{ text: string; x: number; y: number; font: string }> = [];
+  const texts: Array<{
+    text: string;
+    x: number;
+    y: number;
+    font: string;
+    baseline: string;
+  }> = [];
   const dashes: number[][] = [];
   const fills: string[] = [];
   const strokes: string[] = [];
   const gradients: number[] = [];
   const gradientStops: Array<[number, string]> = [];
+  /** Every painting operation, in order — paint ORDER is a contract too. */
+  const ops: string[] = [];
   let mx = 0;
   let my = 0;
+  // Vertical text is drawn at the origin of a translated + rotated frame.
+  let frame: [number, number] | null = null;
+  let rotated = false;
 
   const ctx = {
     fillStyle: '' as unknown,
@@ -50,10 +61,15 @@ function stub() {
     }),
     arcTo: vi.fn(),
     fill: vi.fn(() => {
+      ops.push('fill');
       if (typeof ctx.fillStyle === 'string') fills.push(ctx.fillStyle);
     }),
-    stroke: vi.fn(() => strokes.push(ctx.strokeStyle)),
+    stroke: vi.fn(() => {
+      ops.push('stroke');
+      strokes.push(ctx.strokeStyle);
+    }),
     fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
+      ops.push('fillRect');
       if (typeof ctx.fillStyle === 'string') {
         rects.push({ x, y, w, h, fill: ctx.fillStyle });
       }
@@ -62,12 +78,26 @@ function stub() {
       if (d.length) dashes.push(d);
     }),
     save: vi.fn(),
-    restore: vi.fn(),
-    translate: vi.fn(),
-    rotate: vi.fn(),
-    fillText: vi.fn((text: string, x: number, y: number) =>
-      texts.push({ text, x, y, font: ctx.font })
-    ),
+    restore: vi.fn(() => {
+      frame = null;
+      rotated = false;
+    }),
+    translate: vi.fn((x: number, y: number) => {
+      frame = [x, y];
+    }),
+    rotate: vi.fn(() => {
+      rotated = true;
+    }),
+    fillText: vi.fn((text: string, x: number, y: number) => {
+      ops.push('fillText');
+      texts.push({
+        text,
+        x: rotated && frame ? frame[0] : x,
+        y: rotated && frame ? frame[1] : y,
+        font: ctx.font,
+        baseline: ctx.textBaseline,
+      });
+    }),
     createLinearGradient: vi.fn(() => {
       gradients.push(1);
       return {
@@ -87,6 +117,7 @@ function stub() {
     strokes,
     gradients,
     gradientStops,
+    ops,
   };
 }
 
@@ -627,5 +658,127 @@ describe('a declaration with two readings of the same frame', () => {
     expect(
       backgroundLabelHits(TWO_READINGS, { variant: 'classic' }, 400, 200)
     ).toEqual([]);
+  });
+});
+
+/**
+ * SIDE BANDS: a filled strip over a margin, and the words written in it.
+ *
+ * The concept the BPMN pool asked for. A band has no width of its own — it IS
+ * the margin it covers — and it belongs to the CARD: painted over the card's
+ * fill, under its border, so the frame keeps outlining the whole element.
+ */
+const BANDED: FrameworkBackgroundDef = {
+  type: 'banded',
+  geometry: {
+    width: 200,
+    height: 100,
+    lockAspectRatio: false,
+    resizable: true,
+    margin: { top: 0, right: 0, bottom: 0, left: 20 },
+  },
+  chrome: {
+    fontFamily: 'Demo, sans-serif',
+    palette: { ink: '#111111', strip: '#eeeeee' },
+    surface: { fill: '#ffffff', border: { color: '@ink', width: 2, radius: 4 } },
+    sideBands: [
+      {
+        side: 'left',
+        fill: '@strip',
+        divider: { color: '@ink', width: 1 },
+        label: {
+          id: 'who',
+          prop: 'who',
+          fallback: 'Who',
+          // `x: 0` is the band's INNER edge; half a band back is its middle.
+          anchor: { x: 0, y: 0.5, dx: -10 },
+          style: { size: 12, color: '@ink', weight: 600, baseline: 'middle' },
+          vertical: true,
+        },
+      },
+    ],
+  },
+};
+
+describe('a declaration with a side band', () => {
+  it('paints the band over the whole margin strip, and nothing wider', () => {
+    const { rects } = paint(BANDED, {}, 200, 100);
+    expect(rects).toEqual([{ x: 0, y: 0, w: 20, h: 100, fill: '#eeeeee' }]);
+  });
+
+  it('draws the divider at the plot edge, down the whole side', () => {
+    const { segments } = paint(BANDED, {}, 200, 100);
+    expect(segments).toEqual([[20, 0, 20, 100]]);
+  });
+
+  it('dresses the card in the documented order: fill, band, divider, frame', () => {
+    // A band painted over the border would erase the edge it runs along, which
+    // reads as a broken card rather than as a band.
+    expect(paint(BANDED, { who: 'Client' }, 200, 100).ops).toEqual([
+      'fill',
+      'fillRect',
+      'stroke',
+      'stroke',
+      'fillText',
+    ]);
+  });
+
+  it('traces the card path a second time, because the divider reset it', () => {
+    const rec = paint(BANDED, {}, 200, 100);
+    expect(rec.ctx.arcTo).toHaveBeenCalledTimes(8);
+  });
+
+  it('writes the band label in the band, centred across it', () => {
+    const { texts } = paint(BANDED, { who: 'Client' }, 200, 100);
+    expect(texts).toEqual([
+      {
+        text: 'Client',
+        x: 10,
+        y: 50,
+        font: '600 12px Demo, sans-serif',
+        baseline: 'middle',
+      },
+    ]);
+  });
+
+  it('offers the band label for in-place editing like any other', () => {
+    // One walk over the declaration feeds both the renderer and the hit test,
+    // so a band label can never be drawn in one place and clicked in another.
+    expect(
+      backgroundLabelHits(BANDED, { who: 'Client' }, 200, 100).map(h => [
+        h.id,
+        h.prop,
+        h.text,
+      ])
+    ).toEqual([['who', 'who', 'Client']]);
+  });
+
+  it('clamps the band to an element narrower than its own margin', () => {
+    const { rects, segments } = paint(BANDED, {}, 12, 100);
+    expect(rects).toEqual([{ x: 0, y: 0, w: 12, h: 100, fill: '#eeeeee' }]);
+    expect(segments).toEqual([[12, 0, 12, 100]]);
+  });
+
+  it('paints only what the band declares', () => {
+    const bare: FrameworkBackgroundDef = {
+      ...BANDED,
+      chrome: { ...BANDED.chrome, sideBands: [{ side: 'left' }] },
+    };
+    const rec = paint(bare, {}, 200, 100);
+    expect(rec.rects).toEqual([]);
+    expect(rec.segments).toEqual([]);
+    expect(rec.texts).toEqual([]);
+    expect(rec.ops).toEqual(['fill', 'stroke']);
+  });
+
+  it('leaves a declaration with no band untouched, down to the operation', () => {
+    // The regression guard for every background that already existed: nothing
+    // happens between the card's fill and its stroke, and the path is traced
+    // once, exactly as before side bands were a concept.
+    const rec = paint(FULL);
+    expect(rec.ops.slice(0, 2)).toEqual(['fill', 'stroke']);
+    expect(rec.ctx.arcTo).toHaveBeenCalledTimes(4);
+    // And the default text baseline is the one every text has always used.
+    expect(rec.texts.every(t => t.baseline === 'alphabetic')).toBe(true);
   });
 });

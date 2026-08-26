@@ -38,12 +38,15 @@ import {
  * change, because order is what makes two backgrounds look like the same
  * product rather than two drawings:
  *
- * 1. the card — the element rectangle;
+ * 1. the card — the element rectangle, and the side bands that dress it: the
+ *    fill, then the bands over it, then the border over both, so the frame
+ *    keeps outlining the whole element;
  * 2. the washes, over the plot;
  * 3. the zone tints;
  * 4. the graduations of every axis;
  * 5. the axis lines and their arrowheads;
- * 6. every text — zone names, then per axis its title and its end labels.
+ * 6. every text — the band labels, the zone names, then per axis its title and
+ *    its end labels.
  *
  * A declaration that says nothing but its size therefore paints a plain white
  * rectangle: no axis, no zone, no decoration.
@@ -176,7 +179,7 @@ export function createFrameworkBackgroundRenderer<
         ctx.font = fontOf(style, family);
         ctx.fillStyle = color(style.color);
         ctx.textAlign = align ?? 'center';
-        ctx.textBaseline = 'alphabetic';
+        ctx.textBaseline = style.baseline ?? 'alphabetic';
         ctx.fillText(words, 0, 0);
         ctx.restore();
         return;
@@ -184,25 +187,59 @@ export function createFrameworkBackgroundRenderer<
       ctx.font = fontOf(style, family);
       ctx.fillStyle = color(style.color);
       ctx.textAlign = align ?? 'left';
-      ctx.textBaseline = 'alphabetic';
+      ctx.textBaseline = style.baseline ?? 'alphabetic';
       ctx.fillText(words, ax, ay);
     };
 
-    // ── 1. The card ─────────────────────────────────────────────────────
+    // ── 1. The card, and the bands that dress it ────────────────────────
     const border = surface.border;
     const inset = border ? border.width / 2 : 0;
-    roundRectPath(
-      ctx,
-      inset,
-      inset,
-      w - inset * 2,
-      h - inset * 2,
-      border?.radius ?? 0
-    );
+    const cardPath = () =>
+      roundRectPath(
+        ctx,
+        inset,
+        inset,
+        w - inset * 2,
+        h - inset * 2,
+        border?.radius ?? 0
+      );
+
+    cardPath();
     if (surface.fill) {
       ctx.fillStyle = color(surface.fill);
       ctx.fill();
     }
+
+    // The side bands sit BETWEEN the fill and the border: a band is part of the
+    // card, and one painted over the frame would erase the edge it runs along,
+    // which reads as a broken card rather than as a band. Drawing a divider
+    // resets the current path, hence the second trace before the stroke — a
+    // declaration with no band never reaches it, so its picture is unchanged
+    // down to the operation.
+    const bands = def.chrome?.sideBands;
+    if (bands?.length) {
+      // The band IS the margin strip, clamped to an element narrower than its
+      // own margin — the one case where the two can disagree.
+      const bandWidth = Math.min(x0, w);
+      for (const band of bands) {
+        if (bandWidth <= 0) continue;
+        if (band.fill) {
+          ctx.fillStyle = color(band.fill);
+          ctx.fillRect(0, 0, bandWidth, h);
+        }
+        const divider = band.divider;
+        if (divider) {
+          ctx.strokeStyle = color(divider.color);
+          ctx.lineWidth = divider.width;
+          if (divider.dash?.length) ctx.setLineDash([...divider.dash]);
+          // Full height: the strip a margin gives up runs the whole side.
+          line(bandWidth, 0, bandWidth, h);
+          if (divider.dash?.length) ctx.setLineDash([]);
+        }
+      }
+      if (border) cardPath();
+    }
+
     if (border) {
       ctx.strokeStyle = color(border.color);
       ctx.lineWidth = border.width;
