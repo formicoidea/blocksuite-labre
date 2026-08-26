@@ -16,6 +16,7 @@ import { ColorScheme, type RootBlockModel } from '@labre/affine-model';
 import {
   EditPropsStore,
   ThemeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import {
@@ -45,6 +46,7 @@ import {
 import type { MenuPopper } from './create-popper.js';
 import {
   QuickToolIdentifier,
+  type SeniorTool,
   SeniorToolIdentifier,
 } from './extension/index.js';
 
@@ -366,17 +368,30 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     );
   }
 
+  /**
+   * The wording shown for a senior tool. A framework declares an i18n key and
+   * the host catalogue answers it; `name` is the English fallback, and the only
+   * thing the core tools have.
+   */
+  private _seniorToolLabel(tool?: SeniorTool) {
+    if (!tool) return '';
+    return tool.labelKey
+      ? translateKey(this.std, tool.labelKey, tool.name)
+      : tool.name;
+  }
+
   private get _seniorNextTooltip() {
     if (this._seniorScrollNextDisabled) return '';
-    const nextTool =
-      this._seniorTools[this.scrollSeniorToolIndex + this.scrollSeniorToolSize];
-    return nextTool?.name ?? '';
+    return this._seniorToolLabel(
+      this._seniorTools[this.scrollSeniorToolIndex + this.scrollSeniorToolSize]
+    );
   }
 
   private get _seniorPrevTooltip() {
     if (this._seniorScrollPrevDisabled) return '';
-    const prevTool = this._seniorTools[this.scrollSeniorToolIndex - 1];
-    return prevTool?.name ?? '';
+    return this._seniorToolLabel(
+      this._seniorTools[this.scrollSeniorToolIndex - 1]
+    );
   }
 
   private get _seniorScrollNextDisabled() {

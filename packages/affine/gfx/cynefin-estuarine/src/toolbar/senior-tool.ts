@@ -7,6 +7,7 @@ export const cynefinEstuarineSeniorTool = SeniorToolExtension(
   ({ block }) => {
     return {
       name: 'Cynefin / Estuarine',
+      labelKey: 'com.labre.framework.cynefin-estuarine',
       content: html`<edgeless-cynefin-estuarine-senior-button
         .edgeless=${block}
       ></edgeless-cynefin-estuarine-senior-button>`,
