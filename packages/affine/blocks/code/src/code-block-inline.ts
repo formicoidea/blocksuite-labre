@@ -11,10 +11,7 @@ import {
   UnderlineInlineSpecExtension,
 } from '@labre/affine-inline-preset';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
-import {
-  InlineManagerExtension,
-  InlineSpecExtension,
-} from '@labre/std/inline';
+import { InlineManagerExtension, InlineSpecExtension } from '@labre/std/inline';
 import { html } from 'lit';
 import { z } from 'zod';
 

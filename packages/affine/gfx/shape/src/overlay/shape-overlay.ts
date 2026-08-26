@@ -4,11 +4,7 @@ import {
   type RoughCanvas,
   ToolOverlay,
 } from '@labre/affine-block-surface';
-import {
-  type Color,
-  DefaultTheme,
-  type ShapeStyle,
-} from '@labre/affine-model';
+import { type Color, DefaultTheme, type ShapeStyle } from '@labre/affine-model';
 import { ThemeProvider } from '@labre/affine-shared/services';
 import type { XYWH } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';

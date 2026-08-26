@@ -108,7 +108,10 @@ export class TableGroup extends SignalWatcher(
     this.storageLoaded = true;
     const view = this.tableViewLogic?.view;
     if (!view) return;
-    this.collapsed$.value = getCollapsedState(view.id, this.group?.key ?? 'all');
+    this.collapsed$.value = getCollapsedState(
+      view.id,
+      this.group?.key ?? 'all'
+    );
   }
 
   private readonly _toggleCollapse = (e?: MouseEvent) => {
@@ -199,7 +202,9 @@ export class TableGroup extends SignalWatcher(
           class="group-toggle-btn"
           role="button"
           aria-expanded=${this.collapsed$.value ? 'false' : 'true'}
-          aria-label=${this.collapsed$.value ? 'Expand group' : 'Collapse group'}
+          aria-label=${this.collapsed$.value
+            ? 'Expand group'
+            : 'Collapse group'}
           tabindex="0"
           @click=${this._toggleCollapse}
           @keydown=${(e: KeyboardEvent) => {

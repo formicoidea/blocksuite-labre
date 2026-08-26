@@ -154,7 +154,8 @@ describe('the contextual toolbar, while the viewport moves', () => {
    * gesture the widget sees — not a programmatic jump to a zoom level.
    */
   const zoomFrames = async (count: number, step = 1.04) => {
-    const samples: { composition: string; anchor: string; lines: number }[] = [];
+    const samples: { composition: string; anchor: string; lines: number }[] =
+      [];
     for (let i = 0; i < count; i++) {
       service.viewport.setZoom(service.viewport.zoom * step, undefined, true);
       await frames(1);
@@ -271,7 +272,8 @@ describe('the contextual toolbar, while the viewport moves', () => {
     // back after another one was shown is the toolbar hesitating between two
     // anchor points, which is what the PO reported.
     const revisited = seen.filter(
-      (value, index) => seen.indexOf(value) !== index && seen[index - 1] !== value
+      (value, index) =>
+        seen.indexOf(value) !== index && seen[index - 1] !== value
     );
 
     expect(revisited).toEqual([]);
@@ -300,7 +302,8 @@ describe('the contextual toolbar, while the viewport moves', () => {
 
     const seen = samples.map(s => s.anchor);
     const revisited = seen.filter(
-      (value, index) => seen.indexOf(value) !== index && seen[index - 1] !== value
+      (value, index) =>
+        seen.indexOf(value) !== index && seen[index - 1] !== value
     );
     expect(revisited).toEqual([]);
   });
@@ -529,7 +532,11 @@ describe('the contextual toolbar, while the viewport moves', () => {
       // frame, because a row that spills for one frame spills.
       const samples: { spill: number; owed: number; lines: number }[] = [];
       for (let i = 0; i < 24; i++) {
-        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        service.viewport.setZoom(
+          service.viewport.zoom * 1.002,
+          undefined,
+          true
+        );
         if (i % 4 === 0)
           setVariant(map, i % 8 === 0 ? 'classic' : 'opportunity');
         const sample = () =>
@@ -563,7 +570,11 @@ describe('the contextual toolbar, while the viewport moves', () => {
 
       const seen: string[] = [];
       for (let i = 0; i < 24; i++) {
-        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        service.viewport.setZoom(
+          service.viewport.zoom * 1.002,
+          undefined,
+          true
+        );
         // `Sketch` becomes `Strict` on the dropdown's own trigger: a real
         // change, and the only one of the gesture.
         if (i === 8) setProfile(map, 'wardley.strict');
@@ -600,7 +611,11 @@ describe('the contextual toolbar, while the viewport moves', () => {
       // the same thing. Nothing may come of it.
       const seen: string[] = [];
       for (let i = 0; i < 24; i++) {
-        service.viewport.setZoom(service.viewport.zoom * 1.002, undefined, true);
+        service.viewport.setZoom(
+          service.viewport.zoom * 1.002,
+          undefined,
+          true
+        );
         if (i % 4 === 0)
           service.surface.updateElement(component, {
             xywh: `[${871 + i},441,18,18]`,

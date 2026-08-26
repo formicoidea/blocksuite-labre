@@ -23,10 +23,7 @@ import {
   FileSizeLimitProvider,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
-import {
-  formatSize,
-  openSingleFileWith,
-} from '@labre/affine-shared/utils';
+import { formatSize, openSingleFileWith } from '@labre/affine-shared/utils';
 import {
   AttachmentIcon,
   ResetIcon,

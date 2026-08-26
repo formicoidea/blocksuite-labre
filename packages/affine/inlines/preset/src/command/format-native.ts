@@ -1,13 +1,6 @@
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
-import {
-  BLOCK_ID_ATTR,
-  type BlockComponent,
-  type Command,
-} from '@labre/std';
-import {
-  INLINE_ROOT_ATTR,
-  type InlineRootElement,
-} from '@labre/std/inline';
+import { BLOCK_ID_ATTR, type BlockComponent, type Command } from '@labre/std';
+import { INLINE_ROOT_ATTR, type InlineRootElement } from '@labre/std/inline';
 
 import { FORMAT_NATIVE_SUPPORT_FLAVOURS } from './consts.js';
 

@@ -3,7 +3,10 @@ import {
   ElementRendererExtension,
 } from '@labre/affine-block-surface';
 import { shape as shapeRenderer } from '@labre/affine-gfx-shape';
-import { type WardleyNodeElementModel, DefaultTheme } from '@labre/affine-model';
+import {
+  type WardleyNodeElementModel,
+  DefaultTheme,
+} from '@labre/affine-model';
 
 import { ANCHOR, ECOSYSTEM, METHOD, NODE_FILL } from './consts';
 

@@ -157,7 +157,13 @@ describe('the Wardley background paints what it always painted', () => {
   it('draws the card at the published inset, fill and border', () => {
     const { paths, fills, strokes } = render(map());
     // 1.5-wide border => a 0.75 inset, radius 10.
-    expect(paths[0]).toMatchObject({ x: 0.75, y: 0.75, w: 1598.5, h: 898.5, r: 10 });
+    expect(paths[0]).toMatchObject({
+      x: 0.75,
+      y: 0.75,
+      w: 1598.5,
+      h: 898.5,
+      r: 10,
+    });
     expect(fills[0]).toBe('#ffffff');
     expect(strokes).toContain('#e3e2e4');
   });
@@ -193,18 +199,62 @@ describe('the Wardley background paints what it always painted', () => {
     expect(texts).toEqual([
       // Phase labels, left-aligned at each zone start, below the X axis.
       t('Genesis', 46, 884, '18px Inter, sans-serif', 'left', '#6b7280'),
-      t('Custom-Built', 313.75, 884, '18px Inter, sans-serif', 'left', '#6b7280'),
-      t('Product (+Rental)', 658, 884, '18px Inter, sans-serif', 'left', '#6b7280'),
-      t('Commodity (+Utility)', 1117, 884, '18px Inter, sans-serif', 'left', '#6b7280'),
+      t(
+        'Custom-Built',
+        313.75,
+        884,
+        '18px Inter, sans-serif',
+        'left',
+        '#6b7280'
+      ),
+      t(
+        'Product (+Rental)',
+        658,
+        884,
+        '18px Inter, sans-serif',
+        'left',
+        '#6b7280'
+      ),
+      t(
+        'Commodity (+Utility)',
+        1117,
+        884,
+        '18px Inter, sans-serif',
+        'left',
+        '#6b7280'
+      ),
       // "Evolution", right-aligned near the X arrow, on the same baseline.
       t('Evolution', 1554, 884, '18px Inter, sans-serif', 'right', '#3b3d42'),
       // Direction indicators in the top corners.
       t('Uncharted', 54, 50, '13px Inter, sans-serif', 'left', '#6b7280'),
-      t('Industrialized', 1564, 50, '13px Inter, sans-serif', 'right', '#6b7280'),
+      t(
+        'Industrialized',
+        1564,
+        50,
+        '13px Inter, sans-serif',
+        'right',
+        '#6b7280'
+      ),
       // Rotated Y labels, hugging the axis.
-      t('Value Chain', 31, 446, '18px Inter, sans-serif', 'center', '#3b3d42', true),
+      t(
+        'Value Chain',
+        31,
+        446,
+        '18px Inter, sans-serif',
+        'center',
+        '#3b3d42',
+        true
+      ),
       t('Visible', 31, 86, '16px Inter, sans-serif', 'center', '#6b7280', true),
-      t('Invisible', 31, 818, '16px Inter, sans-serif', 'center', '#6b7280', true),
+      t(
+        'Invisible',
+        31,
+        818,
+        '16px Inter, sans-serif',
+        'center',
+        '#6b7280',
+        true
+      ),
     ]);
   });
 
@@ -213,12 +263,22 @@ describe('the Wardley background paints what it always painted', () => {
 
     // The X axis takes its title with it; the corner labels stay.
     const noX = off('showXAxis');
-    expect(noX.segments).not.toContainEqual({ x1: 40, y1: 862, x2: 1560, y2: 862 });
+    expect(noX.segments).not.toContainEqual({
+      x1: 40,
+      y1: 862,
+      x2: 1560,
+      y2: 862,
+    });
     expect(noX.texts.map(x => x.text)).not.toContain('Evolution');
     expect(noX.texts.map(x => x.text)).toContain('Uncharted');
 
     const noY = off('showYAxis');
-    expect(noY.segments).not.toContainEqual({ x1: 40, y1: 862, x2: 40, y2: 40 });
+    expect(noY.segments).not.toContainEqual({
+      x1: 40,
+      y1: 862,
+      x2: 40,
+      y2: 40,
+    });
     expect(noY.texts.map(x => x.text)).not.toContain('Value Chain');
     // The Visible / Invisible pair is a separate decision from the axis.
     expect(noY.texts.map(x => x.text)).toContain('Visible');
@@ -229,9 +289,15 @@ describe('the Wardley background paints what it always painted', () => {
       x2: 652,
       y2: 862,
     });
-    expect(off('showColumnLabels').texts.map(x => x.text)).not.toContain('Genesis');
-    expect(off('showCornerLabels').texts.map(x => x.text)).not.toContain('Uncharted');
-    expect(off('showVisibilityLabels').texts.map(x => x.text)).not.toContain('Visible');
+    expect(off('showColumnLabels').texts.map(x => x.text)).not.toContain(
+      'Genesis'
+    );
+    expect(off('showCornerLabels').texts.map(x => x.text)).not.toContain(
+      'Uncharted'
+    );
+    expect(off('showVisibilityLabels').texts.map(x => x.text)).not.toContain(
+      'Visible'
+    );
   });
 
   it('paints a gradient variant as two washes, and nothing for classic', () => {
@@ -240,7 +306,9 @@ describe('the Wardley background paints what it always painted', () => {
     expect(render(map({ variant: 'opportunity' })).gradients).toHaveLength(2);
     expect(render(map({ variant: 'benefit' })).gradients).toHaveLength(2);
     // The classic grey evolution wash is a single layer.
-    expect(render(map({ variant: 'evolution-gradient' })).gradients).toHaveLength(1);
+    expect(
+      render(map({ variant: 'evolution-gradient' })).gradients
+    ).toHaveLength(1);
     // Hiding the gradient brings the plain white frame back.
     expect(
       render(map({ variant: 'opportunity', showGradient: false })).gradients
@@ -300,7 +368,12 @@ describe('a map nobody has renamed', () => {
     };
     const rec = recordingCtx();
     (
-      wardley as unknown as (m: unknown, c: unknown, x: unknown, r: unknown) => void
+      wardley as unknown as (
+        m: unknown,
+        c: unknown,
+        x: unknown,
+        r: unknown
+      ) => void
     )(virgin(), rec.ctx, stubMatrix(), host);
 
     const said = rec.texts.map(t => t.text);

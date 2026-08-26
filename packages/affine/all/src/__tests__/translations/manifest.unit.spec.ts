@@ -116,9 +116,9 @@ describe('getTranslationKeyManifest', () => {
     expect(byKey.get('com.labre.wardley.profile.sketch')?.fallback).toBe(
       'Sketch'
     );
-    expect(
-      byKey.get('com.labre.wardley.reading.naming.activity')?.source
-    ).toBe('reading');
+    expect(byKey.get('com.labre.wardley.reading.naming.activity')?.source).toBe(
+      'reading'
+    );
     expect(byKey.get('com.labre.command.tag.set')?.source).toBe('command');
     // The capability-gated command is enumerated too: a catalogue is built for
     // the whole library, not for one flag set.
@@ -131,90 +131,86 @@ describe('getTranslationKeyManifest', () => {
     });
   });
 
-  test(
-    'the manifest and the library source agree, in both directions',
-    () => {
-      const files = SCAN_DIRS.flatMap(dir => sourceFiles(join(ROOT, dir)));
-      expect(files.length).toBeGreaterThan(100);
+  test('the manifest and the library source agree, in both directions', () => {
+    const files = SCAN_DIRS.flatMap(dir => sourceFiles(join(ROOT, dir)));
+    expect(files.length).toBeGreaterThan(100);
 
-      /** Full keys seen as literals. */
-      const usedKeys = new Set<string>();
-      /** Prefixes seen as template keys (or as a literal ending in `.`). */
-      const usedPrefixes = new Set<string>();
-      const missing: string[] = [];
-      const drifted: string[] = [];
-      /** Chrome keys whose WORDING the scan could confirm. */
-      const confirmed = new Set<string>();
+    /** Full keys seen as literals. */
+    const usedKeys = new Set<string>();
+    /** Prefixes seen as template keys (or as a literal ending in `.`). */
+    const usedPrefixes = new Set<string>();
+    const missing: string[] = [];
+    const drifted: string[] = [];
+    /** Chrome keys whose WORDING the scan could confirm. */
+    const confirmed = new Set<string>();
 
-      for (const file of files) {
-        const src = readFileSync(file, 'utf8');
+    for (const file of files) {
+      const src = readFileSync(file, 'utf8');
 
-        for (const [, key] of src.matchAll(LITERAL)) {
-          if (key.endsWith('.')) usedPrefixes.add(key);
-          else usedKeys.add(key);
-        }
-        for (const [, prefix] of src.matchAll(TEMPLATE)) {
-          usedPrefixes.add(prefix);
-        }
-
-        const pairs = [
-          ...[...src.matchAll(PAIR)].map(m => [m[1], m[2]] as const),
-          ...[...src.matchAll(CONST_PAIR)].map(m => [m[2], m[3]] as const),
-        ];
-        for (const [key, fallback] of pairs) {
-          confirmed.add(key);
-          const declared = byKey.get(key)?.fallback;
-          if (declared !== unescape(fallback)) {
-            drifted.push(
-              `${key}: source says ${JSON.stringify(unescape(fallback))}, ` +
-                `manifest says ${JSON.stringify(declared)} (${file})`
-            );
-          }
-        }
+      for (const [, key] of src.matchAll(LITERAL)) {
+        if (key.endsWith('.')) usedPrefixes.add(key);
+        else usedKeys.add(key);
+      }
+      for (const [, prefix] of src.matchAll(TEMPLATE)) {
+        usedPrefixes.add(prefix);
       }
 
-      const covered = (key: string) =>
-        byKey.has(key) || manifest.some(entry => entry.key.startsWith(key));
-      for (const key of usedKeys) if (!covered(key)) missing.push(key);
-      for (const prefix of usedPrefixes) {
-        if (!manifest.some(entry => entry.key.startsWith(prefix))) {
-          missing.push(`${prefix}*`);
+      const pairs = [
+        ...[...src.matchAll(PAIR)].map(m => [m[1], m[2]] as const),
+        ...[...src.matchAll(CONST_PAIR)].map(m => [m[2], m[3]] as const),
+      ];
+      for (const [key, fallback] of pairs) {
+        confirmed.add(key);
+        const declared = byKey.get(key)?.fallback;
+        if (declared !== unescape(fallback)) {
+          drifted.push(
+            `${key}: source says ${JSON.stringify(unescape(fallback))}, ` +
+              `manifest says ${JSON.stringify(declared)} (${file})`
+          );
         }
       }
-      expect(missing.sort(), 'keys used but absent from the manifest').toEqual(
-        []
+    }
+
+    const covered = (key: string) =>
+      byKey.has(key) || manifest.some(entry => entry.key.startsWith(key));
+    for (const key of usedKeys) if (!covered(key)) missing.push(key);
+    for (const prefix of usedPrefixes) {
+      if (!manifest.some(entry => entry.key.startsWith(prefix))) {
+        missing.push(`${prefix}*`);
+      }
+    }
+    expect(missing.sort(), 'keys used but absent from the manifest').toEqual(
+      []
+    );
+
+    // The other direction: an entry nobody uses is a key a host would
+    // translate for nothing — a rename that left its old name behind.
+    const dead = manifest
+      .map(entry => entry.key)
+      .filter(
+        key =>
+          !usedKeys.has(key) &&
+          ![...usedPrefixes].some(prefix => key.startsWith(prefix))
       );
+    expect(dead.sort(), 'manifest entries no source uses').toEqual([]);
 
-      // The other direction: an entry nobody uses is a key a host would
-      // translate for nothing — a rename that left its old name behind.
-      const dead = manifest
+    expect(drifted.sort(), 'restated fallbacks that drifted').toEqual([]);
+
+    // What the drift check CANNOT see, pinned so the limit stays known.
+    // Every chrome wording restated in `CHROME_KEYS` must be confirmed
+    // against the widget that renders it; the table-walked ones are not
+    // restated at all, so there is nothing to confirm.
+    const chromeLiterals = manifest.filter(
+      entry =>
+        entry.source === 'chrome' &&
+        !CHROME_TABLE_PREFIXES.some(prefix => entry.key.startsWith(prefix))
+    );
+    expect(
+      chromeLiterals
         .map(entry => entry.key)
-        .filter(
-          key =>
-            !usedKeys.has(key) &&
-            ![...usedPrefixes].some(prefix => key.startsWith(prefix))
-        );
-      expect(dead.sort(), 'manifest entries no source uses').toEqual([]);
-
-      expect(drifted.sort(), 'restated fallbacks that drifted').toEqual([]);
-
-      // What the drift check CANNOT see, pinned so the limit stays known.
-      // Every chrome wording restated in `CHROME_KEYS` must be confirmed
-      // against the widget that renders it; the table-walked ones are not
-      // restated at all, so there is nothing to confirm.
-      const chromeLiterals = manifest.filter(
-        entry =>
-          entry.source === 'chrome' &&
-          !CHROME_TABLE_PREFIXES.some(prefix => entry.key.startsWith(prefix))
-      );
-      expect(
-        chromeLiterals
-          .map(entry => entry.key)
-          .filter(key => !confirmed.has(key))
-          .sort(),
-        'chrome wordings the scan could not pair with their call site'
-      ).toEqual(UNPAIRABLE_CHROME_KEYS);
-    },
-    15_000
-  );
+        .filter(key => !confirmed.has(key))
+        .sort(),
+      'chrome wordings the scan could not pair with their call site'
+    ).toEqual(UNPAIRABLE_CHROME_KEYS);
+  }, 15_000);
 });

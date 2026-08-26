@@ -18,10 +18,7 @@ import { formatChord } from '../catalogue/chord-format.js';
  * why it lives in its own module.
  */
 
-const command = (
-  id: string,
-  category?: string
-): AnyCommandDescriptor =>
+const command = (id: string, category?: string): AnyCommandDescriptor =>
   ({
     id,
     owner: 'wardley',
@@ -72,9 +69,7 @@ describe('groupCommandsByCategory', () => {
 
   test('a framework whose commands are all uncategorised gets one group', () => {
     const groups = groupCommandsByCategory([command('a'), command('b')]);
-    expect(groups).toEqual([
-      { category: null, commands: expect.any(Array) },
-    ]);
+    expect(groups).toEqual([{ category: null, commands: expect.any(Array) }]);
     expect(groups[0].commands).toHaveLength(2);
   });
 

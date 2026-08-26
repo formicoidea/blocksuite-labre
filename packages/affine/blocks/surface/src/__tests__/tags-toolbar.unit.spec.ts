@@ -136,7 +136,10 @@ describe('when the qualification entry stands up', () => {
   });
 
   it('does not, on something that is not a surface element', () => {
-    const block = { id: 'note', role: 'wardley:component' } as unknown as GfxModel;
+    const block = {
+      id: 'note',
+      role: 'wardley:component',
+    } as unknown as GfxModel;
     expect(stands(context([block]))).toBe(false);
   });
 
@@ -171,7 +174,9 @@ describe('which element answers for the qualification', () => {
     // "no entry" is better than picking the first.
     expect(
       stands(
-        context([group(element('wardley:component'), element('wardley:market'))])
+        context([
+          group(element('wardley:component'), element('wardley:market')),
+        ])
       )
     ).toBe(false);
   });
@@ -181,9 +186,9 @@ describe('which element answers for the qualification', () => {
   });
 
   it('stands down on a group whose members no tag applies to', () => {
-    expect(
-      stands(context([group(element('wardley:anchor'), element())]))
-    ).toBe(false);
+    expect(stands(context([group(element('wardley:anchor'), element())]))).toBe(
+      false
+    );
   });
 
   it('answers for the element itself when it is the qualifiable one', () => {

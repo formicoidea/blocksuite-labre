@@ -235,7 +235,10 @@ describe('Connector center anchor', () => {
     [0, 1],
   ];
 
-  const addPolygon = (vertices: number[][], extra: Record<string, unknown> = {}) => {
+  const addPolygon = (
+    vertices: number[][],
+    extra: Record<string, unknown> = {}
+  ) => {
     const id = service.crud.addElement('shape', {
       shapeType: ShapeType.Polygon,
       xywh: '[0,0,100,100]',

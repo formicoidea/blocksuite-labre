@@ -1,8 +1,4 @@
-import {
-  BlockSelection,
-  type BlockStdScope,
-  TextSelection,
-} from '@labre/std';
+import { BlockSelection, type BlockStdScope, TextSelection } from '@labre/std';
 
 const getSelection = (std: BlockStdScope) => std.selection;
 

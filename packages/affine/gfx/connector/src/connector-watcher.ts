@@ -59,13 +59,13 @@ function reanchorConnectorsForPolygon(
 
       // Convert the stored normalized [0-1] position to absolute model coords.
       const [nx, ny] = connection.position;
-      const absPos: IVec = [
-        bound.x + nx * bound.w,
-        bound.y + ny * bound.h,
-      ];
+      const absPos: IVec = [bound.x + nx * bound.w, bound.y + ny * bound.h];
 
       // Find the nearest anchor on the updated polygon boundary.
-      let nearestCoord: [number, number] = connection.position as [number, number];
+      let nearestCoord: [number, number] = connection.position as [
+        number,
+        number,
+      ];
       let minDist = Infinity;
       for (const anchor of anchors) {
         const d = Vec.dist(absPos, anchor.point as IVec);

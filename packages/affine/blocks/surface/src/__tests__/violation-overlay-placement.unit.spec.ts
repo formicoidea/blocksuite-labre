@@ -99,8 +99,9 @@ describe('the PF7 marks in a scaled host', () => {
   describe('the badge', () => {
     it('sits on its anchor when the host applies no scale', () => {
       // (150 - 100) * 2 = 100, (100 - 50) * 2 = 100; dot 16 model units * 2.
-      expect(badgeStyle(unscaled, anchorAt([150, 100], new Bound(0, 0, 1, 1))))
-        .toEqual({ left: '100px', top: '100px', dotWidth: '32px' });
+      expect(
+        badgeStyle(unscaled, anchorAt([150, 100], new Bound(0, 0, 1, 1)))
+      ).toEqual({ left: '100px', top: '100px', dotWidth: '32px' });
     });
 
     it('states its placement in the space the host scales, not in screen pixels', () => {
@@ -108,8 +109,9 @@ describe('the PF7 marks in a scaled host', () => {
       // container multiplies whatever is written here by 4, so the badge has to
       // ask for a quarter of the screen figure to land in the same place.
       const scaled = { ...unscaled, viewScale: 4 };
-      expect(badgeStyle(scaled, anchorAt([150, 100], new Bound(0, 0, 1, 1))))
-        .toEqual({ left: '25px', top: '25px', dotWidth: '8px' });
+      expect(
+        badgeStyle(scaled, anchorAt([150, 100], new Bound(0, 0, 1, 1)))
+      ).toEqual({ left: '25px', top: '25px', dotWidth: '8px' });
     });
   });
 

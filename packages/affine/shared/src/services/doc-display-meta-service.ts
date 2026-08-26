@@ -1,9 +1,6 @@
 import type { AliasInfo, ReferenceParams } from '@labre/affine-model';
 import { type Container, createIdentifier } from '@labre/global/di';
-import {
-  type DisposableMember,
-  disposeMember,
-} from '@labre/global/disposable';
+import { type DisposableMember, disposeMember } from '@labre/global/disposable';
 import {
   AliasIcon,
   BlockLinkIcon,

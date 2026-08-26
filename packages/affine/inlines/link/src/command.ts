@@ -1,9 +1,6 @@
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import type { Command } from '@labre/std';
-import {
-  INLINE_ROOT_ATTR,
-  type InlineRootElement,
-} from '@labre/std/inline';
+import { INLINE_ROOT_ATTR, type InlineRootElement } from '@labre/std/inline';
 
 import { toggleLinkPopup } from './link-node/link-popup/toggle-link-popup';
 

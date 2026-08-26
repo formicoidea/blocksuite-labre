@@ -1,7 +1,4 @@
-import {
-  panelBaseStyle,
-  scrollbarStyle,
-} from '@labre/affine-shared/styles';
+import { panelBaseStyle, scrollbarStyle } from '@labre/affine-shared/styles';
 import {
   type ButtonPopperOptions,
   createButtonPopper,

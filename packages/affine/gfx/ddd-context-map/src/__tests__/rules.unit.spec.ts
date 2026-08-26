@@ -88,9 +88,9 @@ describe('what the framework ships', () => {
     for (const rule of CONTEXT_MAP_RULES) {
       expect(['warning', 'audit']).toContain(rule.severity);
     }
-    expect(
-      CONTEXT_MAP_RULES.find(rule => rule.id === CM4)?.severity
-    ).toBe('audit');
+    expect(CONTEXT_MAP_RULES.find(rule => rule.id === CM4)?.severity).toBe(
+      'audit'
+    );
   });
 });
 

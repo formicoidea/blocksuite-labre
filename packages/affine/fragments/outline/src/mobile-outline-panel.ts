@@ -7,11 +7,7 @@ import { DocModeProvider } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { matchModels } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import {
-  type EditorHost,
-  PropTypes,
-  requiredProperties,
-} from '@labre/std';
+import { type EditorHost, PropTypes, requiredProperties } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 import { signal } from '@preact/signals-core';
 import { css, html, LitElement, nothing } from 'lit';

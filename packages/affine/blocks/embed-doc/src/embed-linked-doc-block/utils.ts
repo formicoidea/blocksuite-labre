@@ -2,10 +2,7 @@ import {
   EmbedEdgelessIcon,
   EmbedPageIcon,
 } from '@labre/affine-components/icons';
-import {
-  ColorScheme,
-  type EmbedLinkedDocStyles,
-} from '@labre/affine-model';
+import { ColorScheme, type EmbedLinkedDocStyles } from '@labre/affine-model';
 import type { TemplateResult } from 'lit';
 
 import {

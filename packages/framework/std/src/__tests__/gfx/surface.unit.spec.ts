@@ -102,7 +102,10 @@ describe('surface basic', () => {
     // persisted into the shared yMap, not just the in-memory accessor
     expect(el.yMap.get('linkedDocId')).toBe('doc-1');
 
-    model.updateElement(id, { linkedDocId: undefined, externalLink: 'https://x' });
+    model.updateElement(id, {
+      linkedDocId: undefined,
+      externalLink: 'https://x',
+    });
     expect(el.linkedDocId).toBeUndefined();
     expect(el.externalLink).toBe('https://x');
   });

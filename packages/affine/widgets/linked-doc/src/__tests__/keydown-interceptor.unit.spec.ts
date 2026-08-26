@@ -55,17 +55,14 @@ describe('linked doc popover keydown interceptor', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
-  it.each(['ArrowLeft', 'ArrowRight'])(
-    'keeps the caret still on %s',
-    key => {
-      const { close, next, press } = interceptorUnderTest();
-      const { event } = press({ key });
+  it.each(['ArrowLeft', 'ArrowRight'])('keeps the caret still on %s', key => {
+    const { close, next, press } = interceptorUnderTest();
+    const { event } = press({ key });
 
-      expect(event.defaultPrevented).toBe(true);
-      expect(next).not.toHaveBeenCalled();
-      expect(close).not.toHaveBeenCalled();
-    }
-  );
+    expect(event.defaultPrevented).toBe(true);
+    expect(next).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
 
   it('hands every other key to the observer', () => {
     const { close, next, press } = interceptorUnderTest();

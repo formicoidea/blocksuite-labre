@@ -23,7 +23,13 @@ function setup(startAt = 1_000) {
 }
 
 const add = (id: string, init = false) =>
-  ({ type: 'add', id, flavour: 'affine:paragraph', isLocal: true, init }) as const;
+  ({
+    type: 'add',
+    id,
+    flavour: 'affine:paragraph',
+    isLocal: true,
+    init,
+  }) as const;
 const update = (id: string) =>
   ({ type: 'update', id, flavour: 'affine:paragraph', isLocal: true }) as const;
 const del = (id: string) =>

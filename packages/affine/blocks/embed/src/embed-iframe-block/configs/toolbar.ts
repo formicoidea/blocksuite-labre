@@ -1,9 +1,6 @@
 import { reassociateConnectorsCommand } from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
-import {
-  BookmarkStyles,
-  EmbedIframeBlockModel,
-} from '@labre/affine-model';
+import { BookmarkStyles, EmbedIframeBlockModel } from '@labre/affine-model';
 import {
   EMBED_CARD_HEIGHT,
   EMBED_CARD_WIDTH,
@@ -28,12 +25,7 @@ import {
   ResetIcon,
 } from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier, BlockSelection } from '@labre/std';
-import {
-  type ExtensionType,
-  Slice,
-  Text,
-  toDraftModel,
-} from '@labre/store';
+import { type ExtensionType, Slice, Text, toDraftModel } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 import { html } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';

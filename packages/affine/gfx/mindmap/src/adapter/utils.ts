@@ -1,8 +1,5 @@
 import { getShapeText } from '@labre/affine-gfx-shape';
-import {
-  buildMindMapTree,
-  type MindMapTreeNode,
-} from '@labre/affine-model';
+import { buildMindMapTree, type MindMapTreeNode } from '@labre/affine-model';
 
 /**
  * traverse the mindMapTree and construct the content string

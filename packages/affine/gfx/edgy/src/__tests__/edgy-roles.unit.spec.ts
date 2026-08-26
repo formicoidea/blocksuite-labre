@@ -56,7 +56,9 @@ describe('EDGY role vocabulary', () => {
   it('roots the four persisted kinds on edgy:element', () => {
     for (const kind of ['people', 'outcome', 'object', 'activity'] as const) {
       expect(EDGY_ROLES[EDGY_ROLE[kind]].parent).toBe(EDGY_ROLE.element);
-      expect(roleIsA(EDGY_ROLE[kind], EDGY_ROLE.element, EDGY_ROLES)).toBe(true);
+      expect(roleIsA(EDGY_ROLE[kind], EDGY_ROLE.element, EDGY_ROLES)).toBe(
+        true
+      );
     }
   });
 
@@ -86,9 +88,7 @@ describe('EDGY role vocabulary', () => {
 
 describe('EDGY relation grammar', () => {
   it('derives exactly the 24 sanctioned sentences from the metamodel', () => {
-    expect(EDGY_ALLOWED_RELATIONS).toHaveLength(
-      EDGY_DYNAMIC_RELATIONS.length
-    );
+    expect(EDGY_ALLOWED_RELATIONS).toHaveLength(EDGY_DYNAMIC_RELATIONS.length);
     const sentence = (t: { source: string; edge: string; target: string }) =>
       `${t.source} ${t.edge} ${t.target}`;
     expect(EDGY_ALLOWED_RELATIONS.map(sentence).sort()).toEqual(

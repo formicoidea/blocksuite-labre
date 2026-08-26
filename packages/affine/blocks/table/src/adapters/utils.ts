@@ -4,10 +4,7 @@ import type {
   TableColumn,
   TableRow,
 } from '@labre/affine-model';
-import {
-  type HtmlAST,
-  type MarkdownAST,
-} from '@labre/affine-shared/adapters';
+import { type HtmlAST, type MarkdownAST } from '@labre/affine-shared/adapters';
 import { HastUtils } from '@labre/affine-shared/adapters';
 import { generateFractionalIndexingKeyBetween } from '@labre/affine-shared/utils';
 import type { DeltaInsert } from '@labre/store';

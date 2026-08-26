@@ -1,7 +1,4 @@
-import {
-  createIdentifier,
-  type ServiceIdentifier,
-} from '@labre/global/di';
+import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
 import type { DeltaInsert, ExtensionType } from '@labre/store';
 import type { Root } from 'hast';
 import type { PhrasingContent } from 'mdast';

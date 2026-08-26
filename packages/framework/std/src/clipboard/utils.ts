@@ -10,7 +10,10 @@ type HastUnionType<
  * Used to embed plain text in the clipboard snapshot wrapper.
  */
 export function escapeHTML(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 export function onlyContainImgElement(

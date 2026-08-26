@@ -38,7 +38,10 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   const cx = w / 2;
   const cy = h / 2;
   ctx.setTransform(
-    matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
+    matrix
+      .translateSelf(cx, cy)
+      .rotateSelf(model.rotate)
+      .translateSelf(-cx, -cy)
   );
 
   const { s, ox, oy } = refScale(w, h, REF_W, REF_H);

@@ -2,11 +2,7 @@ import { CM_RELATIONSHIPS } from '@labre/affine-gfx-ddd-shared';
 import { roleIsA } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import {
-  CM_PATTERN_ROLE,
-  CONTEXT_MAP_ROLE,
-  CONTEXT_MAP_ROLES,
-} from '../roles';
+import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from '../roles';
 
 describe('context map role vocabulary', () => {
   it('declares a role for each of the nine patterns, plus board / context / parent', () => {

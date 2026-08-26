@@ -22,7 +22,11 @@ import {
 const ROLES: RoleDefs = {
   'test:frame': { id: 'test:frame', kind: 'node', labelKey: 'test.frame' },
   'test:actor': { id: 'test:actor', kind: 'node', labelKey: 'test.actor' },
-  'test:command': { id: 'test:command', kind: 'node', labelKey: 'test.command' },
+  'test:command': {
+    id: 'test:command',
+    kind: 'node',
+    labelKey: 'test.command',
+  },
   'test:aggregate': {
     id: 'test:aggregate',
     kind: 'node',
@@ -37,7 +41,11 @@ const ROLES: RoleDefs = {
   },
   // Cited by no triplet: the artefact somebody drops on the board to say
   // "there is something here".
-  'test:hotspot': { id: 'test:hotspot', kind: 'node', labelKey: 'test.hotspot' },
+  'test:hotspot': {
+    id: 'test:hotspot',
+    kind: 'node',
+    labelKey: 'test.hotspot',
+  },
   'test:flow': { id: 'test:flow', kind: 'edge', labelKey: 'test.flow' },
   'test:relation': {
     id: 'test:relation',
@@ -353,9 +361,9 @@ describe('what the family stays silent about', () => {
           forbidDuplicate: true,
         },
       };
-      expect(
-        ids(strict, surface(edge('e1', 'h', 'h', 'test:flow')))
-      ).toEqual([]);
+      expect(ids(strict, surface(edge('e1', 'h', 'h', 'test:flow')))).toEqual(
+        []
+      );
       expect(
         ids(
           strict,
@@ -466,8 +474,14 @@ describe('two relations that may not coexist', () => {
   it('indicts the couple whichever way round it is declared', () => {
     // The role pair is unordered, and so is the pair of artefacts: the two
     // relations are drawn from opposite ends here.
-    const forwards = evaluateRules([PAIRS], between('test:acl', 'test:conformist'));
-    const backwards = evaluateRules([PAIRS], between('test:conformist', 'test:acl'));
+    const forwards = evaluateRules(
+      [PAIRS],
+      between('test:acl', 'test:conformist')
+    );
+    const backwards = evaluateRules(
+      [PAIRS],
+      between('test:conformist', 'test:acl')
+    );
 
     expect(forwards).toHaveLength(1);
     expect(backwards).toHaveLength(1);

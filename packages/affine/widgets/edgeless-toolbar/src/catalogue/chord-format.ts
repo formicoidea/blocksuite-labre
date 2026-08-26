@@ -45,7 +45,10 @@ export function formatChord(keys: readonly string[], isMac: boolean): string {
   return keys
     .map(keystroke =>
       // `-(?!$)` so a literal `-` key survives being the separator too.
-      keystroke.split(/-(?!$)/).map(part).join(isMac ? '' : '+')
+      keystroke
+        .split(/-(?!$)/)
+        .map(part)
+        .join(isMac ? '' : '+')
     )
     .join(' ');
 }

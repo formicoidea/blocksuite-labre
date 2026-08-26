@@ -56,7 +56,9 @@ describe('the parameter contract of the inversion', () => {
   it('rejects `undefined` on its own, and accepts the empty object', () => {
     // What `runCommand` forwards when a caller passes nothing…
     const noArguments: unknown = undefined;
-    expect(invertEdgeDirectionParams.safeParse(noArguments).success).toBe(false);
+    expect(invertEdgeDirectionParams.safeParse(noArguments).success).toBe(
+      false
+    );
     // …and what `run` parses instead, which is the whole of the fix.
     expect(invertEdgeDirectionParams.safeParse(noArguments ?? {}).success).toBe(
       true
@@ -138,8 +140,9 @@ describe('inverting a typed edge (M3)', () => {
 
     invertEdge(model);
 
-    expect((model as unknown as { curveControlPoint: unknown }).curveControlPoint)
-      .toBe(control);
+    expect(
+      (model as unknown as { curveControlPoint: unknown }).curveControlPoint
+    ).toBe(control);
   });
 });
 
@@ -217,10 +220,38 @@ describe('where the reveal lays its label (M2)', () => {
     // still for. Straight down and straight up are the boundary and are left
     // alone; anything past them is turned back.
     for (const [path, expected, flipped] of [
-      [[[0, 0], [0, 100]], 90, false],
-      [[[0, 100], [0, 0]], -90, false],
-      [[[100, 0], [0, 0]], 0, true],
-      [[[100, 0], [0, 100]], -45, true],
+      [
+        [
+          [0, 0],
+          [0, 100],
+        ],
+        90,
+        false,
+      ],
+      [
+        [
+          [0, 100],
+          [0, 0],
+        ],
+        -90,
+        false,
+      ],
+      [
+        [
+          [100, 0],
+          [0, 0],
+        ],
+        0,
+        true,
+      ],
+      [
+        [
+          [100, 0],
+          [0, 100],
+        ],
+        -45,
+        true,
+      ],
     ] as [[number, number][], number, boolean][]) {
       const anchor = labelAnchorOf(edgeWith(path));
       expect(degrees(anchor?.angle)).toBe(expected);

@@ -5,11 +5,7 @@ import {
   type SurfaceBlockComponent,
 } from '@labre/affine-block-surface';
 import type { ShapeElementModel, ShapeName } from '@labre/affine-model';
-import {
-  DefaultTheme,
-  getShapeType,
-  ShapeType,
-} from '@labre/affine-model';
+import { DefaultTheme, getShapeType, ShapeType } from '@labre/affine-model';
 import {
   EditPropsStore,
   TelemetryProvider,

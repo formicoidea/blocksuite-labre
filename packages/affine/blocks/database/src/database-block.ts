@@ -441,89 +441,89 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   private _buildDataViewRootLogic(): DataViewRootUILogic {
     return new DataViewRootUILogic({
       virtualPadding$: this.virtualPadding$,
-        bindHotkey: hotkeys => {
-          return {
-            dispose: this.host.event.bindHotkey(hotkeys, {
-              blockId: this.topContenteditableElement?.blockId ?? this.blockId,
-            }),
-          };
-        },
-        handleEvent: (name, handler) => {
-          return {
-            dispose: this.host.event.add(name, handler, {
-              blockId: this.blockId,
-            }),
-          };
-        },
-        selection$: this.viewSelection$,
-        setSelection: this.setSelection,
-        dataSource: this.dataSource,
-        headerWidget: this.headerWidget,
-        onDrag: this.onDrag,
-        clipboard: this.std.clipboard,
-        dnd: this.std.dnd,
-        notification: {
-          toast: message => {
-            const notification = this.std.getOptional(NotificationProvider);
-            if (notification) {
-              notification.toast(message);
-            } else {
-              toast(this.host, message);
-            }
-          },
-        },
-        eventTrace: (key, params) => {
-          const telemetryService = this.std.getOptional(TelemetryProvider);
-          telemetryService?.track(key, {
-            ...(params as TelemetryEventMap[typeof key]),
+      bindHotkey: hotkeys => {
+        return {
+          dispose: this.host.event.bindHotkey(hotkeys, {
+            blockId: this.topContenteditableElement?.blockId ?? this.blockId,
+          }),
+        };
+      },
+      handleEvent: (name, handler) => {
+        return {
+          dispose: this.host.event.add(name, handler, {
             blockId: this.blockId,
-          });
+          }),
+        };
+      },
+      selection$: this.viewSelection$,
+      setSelection: this.setSelection,
+      dataSource: this.dataSource,
+      headerWidget: this.headerWidget,
+      onDrag: this.onDrag,
+      clipboard: this.std.clipboard,
+      dnd: this.std.dnd,
+      notification: {
+        toast: message => {
+          const notification = this.std.getOptional(NotificationProvider);
+          if (notification) {
+            notification.toast(message);
+          } else {
+            toast(this.host, message);
+          }
         },
-        detailPanelConfig: {
-          openDetailPanel: (target, data) => {
-            const peekViewService = this.std.getOptional(PeekViewProvider);
-            if (peekViewService) {
-              const openDoc = (docId: string) => {
-                return peekViewService.peek({
-                  docId,
-                  databaseId: this.blockId,
-                  databaseDocId: this.model.store.id,
-                  databaseRowId: data.rowId,
-                  target: this,
-                });
-              };
-              const doc = getSingleDocIdFromText(
-                this.model.store.getBlock(data.rowId)?.model?.text
-              );
-              if (doc) {
-                return openDoc(doc);
-              }
-              const abort = new AbortController();
-              return new Promise<void>(focusBack => {
-                peekViewService
-                  .peek(
-                    {
-                      target,
-                      template: this.createTemplate(data, docId => {
-                        // abort.abort();
-                        openDoc(docId).then(focusBack).catch(focusBack);
-                      }),
-                    },
-                    { abortSignal: abort.signal }
-                  )
-                  .then(focusBack)
-                  .catch(focusBack);
+      },
+      eventTrace: (key, params) => {
+        const telemetryService = this.std.getOptional(TelemetryProvider);
+        telemetryService?.track(key, {
+          ...(params as TelemetryEventMap[typeof key]),
+          blockId: this.blockId,
+        });
+      },
+      detailPanelConfig: {
+        openDetailPanel: (target, data) => {
+          const peekViewService = this.std.getOptional(PeekViewProvider);
+          if (peekViewService) {
+            const openDoc = (docId: string) => {
+              return peekViewService.peek({
+                docId,
+                databaseId: this.blockId,
+                databaseDocId: this.model.store.id,
+                databaseRowId: data.rowId,
+                target: this,
               });
-            } else {
-              return popSideDetail(
-                this.createTemplate(data, () => {
-                  //
-                })
-              );
+            };
+            const doc = getSingleDocIdFromText(
+              this.model.store.getBlock(data.rowId)?.model?.text
+            );
+            if (doc) {
+              return openDoc(doc);
             }
-          },
+            const abort = new AbortController();
+            return new Promise<void>(focusBack => {
+              peekViewService
+                .peek(
+                  {
+                    target,
+                    template: this.createTemplate(data, docId => {
+                      // abort.abort();
+                      openDoc(docId).then(focusBack).catch(focusBack);
+                    }),
+                  },
+                  { abortSignal: abort.signal }
+                )
+                .then(focusBack)
+                .catch(focusBack);
+            });
+          } else {
+            return popSideDetail(
+              this.createTemplate(data, () => {
+                //
+              })
+            );
+          }
         },
-      });
+      },
+    });
   }
 
   override renderBlock() {

@@ -1,7 +1,4 @@
-import {
-  EmbedFigmaBlockSchema,
-  EmbedFigmaStyles,
-} from '@labre/affine-model';
+import { EmbedFigmaBlockSchema, EmbedFigmaStyles } from '@labre/affine-model';
 import { EmbedOptionConfig } from '@labre/affine-shared/services';
 
 import { figmaUrlRegex } from './embed-figma-model.js';

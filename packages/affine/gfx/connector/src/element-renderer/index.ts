@@ -19,10 +19,7 @@ import {
   type LocalConnectorElementModel,
   type PointStyle,
 } from '@labre/affine-model';
-import {
-  getBezierParameters,
-  type PointLocation,
-} from '@labre/global/gfx';
+import { getBezierParameters, type PointLocation } from '@labre/global/gfx';
 import { deltaInsertsToChunks } from '@labre/std/inline';
 
 import { isConnectorWithLabel } from '../connector-manager.js';

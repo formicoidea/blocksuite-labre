@@ -107,77 +107,77 @@ export class MapQualityWidget extends EditorAnchoredPanel {
   static override styles = [
     editorAnchoredPanelStyles,
     css`
-    /* The box, the layer and the anchoring come from the shared pattern; this
+      /* The box, the layer and the anchoring come from the shared pattern; this
        is the panel's own stacking of sections inside it. */
-    .map-quality-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+      .map-quality-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
 
-    .map-quality-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-weight: 600;
-    }
+      .map-quality-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-weight: 600;
+      }
 
-    .map-quality-close {
-      border: none;
-      background: transparent;
-      color: var(--affine-text-secondary-color);
-      font-family: inherit;
-      font-size: 16px;
-      line-height: 1;
-      padding: 2px 6px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+      .map-quality-close {
+        border: none;
+        background: transparent;
+        color: var(--affine-text-secondary-color);
+        font-family: inherit;
+        font-size: 16px;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
 
-    .map-quality-close:hover {
-      background: var(--affine-hover-color);
-      color: var(--affine-text-primary-color);
-    }
+      .map-quality-close:hover {
+        background: var(--affine-hover-color);
+        color: var(--affine-text-primary-color);
+      }
 
-    .map-quality-group-label {
-      color: var(--affine-text-secondary-color);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
+      .map-quality-group-label {
+        color: var(--affine-text-secondary-color);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
 
-    /* One column for the control, one for the words. */
-    .map-quality-nudge {
-      display: grid;
-      grid-template-columns: ${unsafeCSS(CHECKBOX_GUTTER)}px 1fr;
-      align-items: start;
-      padding: 4px 0;
-      cursor: pointer;
-    }
+      /* One column for the control, one for the words. */
+      .map-quality-nudge {
+        display: grid;
+        grid-template-columns: ${unsafeCSS(CHECKBOX_GUTTER)}px 1fr;
+        align-items: start;
+        padding: 4px 0;
+        cursor: pointer;
+      }
 
-    .map-quality-nudge input[disabled] {
-      cursor: not-allowed;
-    }
+      .map-quality-nudge input[disabled] {
+        cursor: not-allowed;
+      }
 
-    .map-quality-nudge input {
-      margin: 2px 0 0;
-      justify-self: start;
-    }
+      .map-quality-nudge input {
+        margin: 2px 0 0;
+        justify-self: start;
+      }
 
-    .map-quality-nudge[data-checked='true'] .map-quality-nudge-label {
-      color: var(--affine-text-secondary-color);
-    }
+      .map-quality-nudge[data-checked='true'] .map-quality-nudge-label {
+        color: var(--affine-text-secondary-color);
+      }
 
-    .map-quality-nudge-label {
-      overflow-wrap: anywhere;
-    }
+      .map-quality-nudge-label {
+        overflow-wrap: anywhere;
+      }
 
-    .map-quality-close:focus-visible,
-    .map-quality-nudge input:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
-      outline-offset: 1px;
-    }
+      .map-quality-close:focus-visible,
+      .map-quality-nudge input:focus-visible {
+        outline: 2px solid var(--affine-primary-color);
+        outline-offset: 1px;
+      }
     `,
   ];
 
@@ -235,7 +235,7 @@ export class MapQualityWidget extends EditorAnchoredPanel {
    */
   private _watchElements() {
     const wanted = this._openFor !== null;
-    if (wanted === (this._elementSubscriptions.length > 0)) return;
+    if (wanted === this._elementSubscriptions.length > 0) return;
 
     for (const subscription of this._elementSubscriptions) {
       subscription.unsubscribe();
@@ -484,9 +484,7 @@ export const mapQualityWidget = WidgetViewExtension(
  * The single selected root instance with a Map quality panel, or `null` — the
  * same answer the toolbar entry computes, asked without a `ToolbarContext`.
  */
-function mapQualityTarget(
-  std: BlockStdScope
-): GfxPrimitiveElementModel | null {
+function mapQualityTarget(std: BlockStdScope): GfxPrimitiveElementModel | null {
   const validation = std.getOptional(ValidationManager);
   if (!validation) return null;
 

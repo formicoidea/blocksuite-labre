@@ -67,7 +67,8 @@ export async function whenLinkedDocContentReady(
     if (doc.root) return true;
   }
 
-  const timeoutMs = resolver?.timeoutMs ?? DEFAULT_LINKED_DOC_CONTENT_TIMEOUT_MS;
+  const timeoutMs =
+    resolver?.timeoutMs ?? DEFAULT_LINKED_DOC_CONTENT_TIMEOUT_MS;
   return new Promise<boolean>(resolve => {
     let settled = false;
     const finish = (ready: boolean) => {

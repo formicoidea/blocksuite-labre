@@ -1,8 +1,5 @@
 import { toast } from '@labre/affine-components/toast';
-import type {
-  ListBlockModel,
-  ParagraphBlockModel,
-} from '@labre/affine-model';
+import type { ListBlockModel, ParagraphBlockModel } from '@labre/affine-model';
 import { insertContent } from '@labre/affine-rich-text';
 import {
   ArrowDownBigIcon,

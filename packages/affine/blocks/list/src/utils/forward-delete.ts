@@ -1,8 +1,5 @@
 import { ListBlockModel } from '@labre/affine-model';
-import {
-  getNextContentBlock,
-  matchModels,
-} from '@labre/affine-shared/utils';
+import { getNextContentBlock, matchModels } from '@labre/affine-shared/utils';
 import { type BlockStdScope, TextSelection } from '@labre/std';
 import type { Text } from '@labre/store';
 

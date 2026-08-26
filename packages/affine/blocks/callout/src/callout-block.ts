@@ -4,10 +4,7 @@ import { DefaultInlineManagerExtension } from '@labre/affine-inline-preset';
 import { type CalloutBlockModel } from '@labre/affine-model';
 import { focusTextModel } from '@labre/affine-rich-text';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
-import {
-  DocModeProvider,
-  ThemeProvider,
-} from '@labre/affine-shared/services';
+import { DocModeProvider, ThemeProvider } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { BlockComponent } from '@labre/std';
 import { flip, offset } from '@floating-ui/dom';

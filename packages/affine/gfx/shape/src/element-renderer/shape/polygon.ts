@@ -1,7 +1,4 @@
-import type {
-  CanvasRenderer,
-  RoughCanvas,
-} from '@labre/affine-block-surface';
+import type { CanvasRenderer, RoughCanvas } from '@labre/affine-block-surface';
 import type {
   LocalShapeElementModel,
   ShapeElementModel,
@@ -64,13 +61,13 @@ export function polygon(
     );
 
     const smoothFlags =
-      'smoothFlags' in model && model.smoothFlags
-        ? model.smoothFlags
-        : null;
+      'smoothFlags' in model && model.smoothFlags ? model.smoothFlags : null;
 
-    const controlPoints: ((number[] | null)[] | null) =
-      'controlPoints' in model && (model as unknown as Record<string, unknown>).controlPoints
-        ? (model as unknown as { controlPoints: (number[] | null)[] }).controlPoints
+    const controlPoints: (number[] | null)[] | null =
+      'controlPoints' in model &&
+      (model as unknown as Record<string, unknown>).controlPoints
+        ? (model as unknown as { controlPoints: (number[] | null)[] })
+            .controlPoints
         : null;
 
     const hasBezier = smoothFlags && smoothFlags.some(f => f);
@@ -92,8 +89,12 @@ export function polygon(
           let cp1x: number, cp1y: number;
           const customCurr = controlPoints?.[i];
           if (currSmooth) {
-            cp1x = customCurr ? customCurr[2] * renderWidth : cx + (nx - cx) / 3;
-            cp1y = customCurr ? customCurr[3] * renderHeight : cy + (ny - cy) / 3;
+            cp1x = customCurr
+              ? customCurr[2] * renderWidth
+              : cx + (nx - cx) / 3;
+            cp1y = customCurr
+              ? customCurr[3] * renderHeight
+              : cy + (ny - cy) / 3;
           } else {
             cp1x = cx;
             cp1y = cy;
@@ -101,8 +102,12 @@ export function polygon(
           let cp2x: number, cp2y: number;
           const customNext = controlPoints?.[next];
           if (nextSmooth) {
-            cp2x = customNext ? customNext[0] * renderWidth : nx + (cx - nx) / 3;
-            cp2y = customNext ? customNext[1] * renderHeight : ny + (cy - ny) / 3;
+            cp2x = customNext
+              ? customNext[0] * renderWidth
+              : nx + (cx - nx) / 3;
+            cp2y = customNext
+              ? customNext[1] * renderHeight
+              : ny + (cy - ny) / 3;
           } else {
             cp2x = nx;
             cp2y = ny;

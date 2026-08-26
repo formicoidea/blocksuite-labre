@@ -1,7 +1,4 @@
-import {
-  createAutoLegend,
-  dddLegendIcon,
-} from '@labre/affine-gfx-ddd-shared';
+import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { CoreDomainChartElementModel } from '@labre/affine-model';
 import {
   TelemetryProvider,
@@ -23,17 +20,19 @@ const coreDomainToolbarConfig = {
         const bg = ctx.getSurfaceModelsByType(CoreDomainChartElementModel)[0];
         if (!bg) return;
         createAutoLegend(ctx.std, bg, CORE_DOMAIN_AUTO_LEGEND);
-        ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
-          // The WIRE value, which is not the module id: the framework is
-          // `ddd-core-domain` in code and `core-domain` in PostHog
-          // (`frameworks.ts` `telemetryKey`). Unchanged by this rework — the
-          // button is the same gesture, it just detects by role now.
-          framework: 'core-domain',
-          element: 'legend',
-          page: 'whiteboard editor',
-          segment: 'element toolbar',
-          module: 'core-domain toolbar',
-        });
+        ctx.std
+          .getOptional(TelemetryProvider)
+          ?.track('FrameworkLegendCreated', {
+            // The WIRE value, which is not the module id: the framework is
+            // `ddd-core-domain` in code and `core-domain` in PostHog
+            // (`frameworks.ts` `telemetryKey`). Unchanged by this rework — the
+            // button is the same gesture, it just detects by role now.
+            framework: 'core-domain',
+            element: 'legend',
+            page: 'whiteboard editor',
+            segment: 'element toolbar',
+            module: 'core-domain toolbar',
+          });
       },
     },
   ],

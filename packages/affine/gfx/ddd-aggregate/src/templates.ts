@@ -101,7 +101,10 @@ export const aggregateTemplateCategory: TemplateCategory = {
       name: 'Aggregate Design Canvas',
       type: 'template',
       preview: PREVIEW,
-      content: makeTemplateSnapshot(aggregateCanvas(), 'Aggregate Design Canvas'),
+      content: makeTemplateSnapshot(
+        aggregateCanvas(),
+        'Aggregate Design Canvas'
+      ),
     } satisfies Template,
   ],
 };

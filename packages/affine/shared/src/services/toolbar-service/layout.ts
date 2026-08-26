@@ -143,10 +143,12 @@ export function toolbarDegradationSteps(
       .map(({ item }): ToolbarLayoutStep => ({ kind: 'shrink', id: item.id })),
     ...order
       .filter(({ item }) => item.collapsible)
-      .map(({ item }): ToolbarLayoutStep => ({
-        kind: 'collapse',
-        id: item.id,
-      })),
+      .map(
+        ({ item }): ToolbarLayoutStep => ({
+          kind: 'collapse',
+          id: item.id,
+        })
+      ),
   ];
 }
 

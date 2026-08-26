@@ -73,9 +73,7 @@ describe('command registry on the canvas', () => {
     });
     await wait();
 
-    expect(
-      edgeless.surface.model.getElementsByType('bpmnPool').length
-    ).toBe(1);
+    expect(edgeless.surface.model.getElementsByType('bpmnPool').length).toBe(1);
   });
 
   test('a keyless command is still invocable — the point of the registry', async () => {

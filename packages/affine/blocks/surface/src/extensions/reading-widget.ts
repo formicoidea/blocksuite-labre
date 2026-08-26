@@ -107,67 +107,67 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   static override styles = [
     editorAnchoredPanelStyles,
     css`
-    .reading-title {
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
+      .reading-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
 
-    .reading-field + .reading-field {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--affine-border-color);
-    }
+      .reading-field + .reading-field {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--affine-border-color);
+      }
 
-    .reading-label {
-      color: var(--affine-text-secondary-color);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
+      .reading-label {
+        color: var(--affine-text-secondary-color);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
 
-    .reading-value {
-      overflow-wrap: anywhere;
-    }
+      .reading-value {
+        overflow-wrap: anywhere;
+      }
 
-    .reading-empty {
-      color: var(--affine-text-secondary-color);
-      font-style: italic;
-    }
+      .reading-empty {
+        color: var(--affine-text-secondary-color);
+        font-style: italic;
+      }
 
-    .reading-note {
-      margin-top: 2px;
-      color: var(--affine-text-secondary-color);
-      font-size: 13px;
-      overflow-wrap: anywhere;
-    }
+      .reading-note {
+        margin-top: 2px;
+        color: var(--affine-text-secondary-color);
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
 
-    .reading-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
+      .reading-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
 
-    .reading-action {
-      padding: 2px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--affine-border-color);
-      background: transparent;
-      color: var(--affine-text-secondary-color);
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
-    }
+      .reading-action {
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--affine-border-color);
+        background: transparent;
+        color: var(--affine-text-secondary-color);
+        font-family: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
 
-    .reading-action:hover {
-      background: var(--affine-hover-color);
-      color: var(--affine-text-primary-color);
-    }
+      .reading-action:hover {
+        background: var(--affine-hover-color);
+        color: var(--affine-text-primary-color);
+      }
 
-    .reading-action:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
-      outline-offset: 1px;
-    }
+      .reading-action:focus-visible {
+        outline: 2px solid var(--affine-primary-color);
+        outline-offset: 1px;
+      }
     `,
   ];
 
@@ -282,7 +282,11 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
     // its role defs, not because this panel knows what a market is.
     const chain = nodeType.specialises
       .map(roleId =>
-        translateKey(this.std, profile.roles[roleId]?.labelKey ?? roleId, roleId)
+        translateKey(
+          this.std,
+          profile.roles[roleId]?.labelKey ?? roleId,
+          roleId
+        )
       )
       .join(' › ');
 
@@ -380,8 +384,7 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
                 'com.labre.reading.action.confirm-nature',
                 'Confirm'
               )}
-              ·
-              ${proposed.map(id => this._natureLabel(tagId, id)).join(', ')}
+              · ${proposed.map(id => this._natureLabel(tagId, id)).join(', ')}
             </button>
           </div>`
         : nothing}`
@@ -424,8 +427,7 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
             )}
           </div>`
         : nothing}
-      ${line(consumers, 'consumers')}
-      ${line(suppliers, 'suppliers')}
+      ${line(consumers, 'consumers')} ${line(suppliers, 'suppliers')}
       ${contradictions.length
         ? html`<div class="reading-note" data-testid="reading-contradiction">
             ${translateKey(
@@ -476,13 +478,14 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
         'Value flow'
       ),
       html`${flows.map(
-        flow => html`<div
-          class="reading-value"
-          data-testid="reading-value-flow-line"
-          data-edge-id=${flow.edgeId}
-        >
-          ${from} ${flow.from} ${to} ${flow.to}
-        </div>`
+        flow =>
+          html`<div
+            class="reading-value"
+            data-testid="reading-value-flow-line"
+            data-edge-id=${flow.edgeId}
+          >
+            ${from} ${flow.from} ${to} ${flow.to}
+          </div>`
       )}`
     );
   }
@@ -567,34 +570,38 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
       'reading-record',
       translateKey(this.std, 'com.labre.reading.field.record', 'Record'),
       html`<div class="reading-value">
-        ${bound
-          ? translateKey(this.std, 'com.labre.reading.record.linked', 'Linked')
-          : html`<span class="reading-empty"
-              >${translateKey(
+          ${bound
+            ? translateKey(
                 this.std,
-                'com.labre.reading.record.none',
-                'Not linked to a record.'
-              )}</span
-            >`}
-      </div>
-      ${!bound && picker && writable
-        ? html`<div class="reading-actions">
-            <button
-              class="reading-action"
-              type="button"
-              data-testid="reading-link-record"
-              @pointerdown=${this.swallow}
-              @pointerup=${this.swallow}
-              @click=${this._linkRecord(reading.elementId)}
-            >
-              ${translateKey(
-                this.std,
-                'com.labre.reading.action.link',
-                'Link to a record'
-              )}
-            </button>
-          </div>`
-        : nothing}`
+                'com.labre.reading.record.linked',
+                'Linked'
+              )
+            : html`<span class="reading-empty"
+                >${translateKey(
+                  this.std,
+                  'com.labre.reading.record.none',
+                  'Not linked to a record.'
+                )}</span
+              >`}
+        </div>
+        ${!bound && picker && writable
+          ? html`<div class="reading-actions">
+              <button
+                class="reading-action"
+                type="button"
+                data-testid="reading-link-record"
+                @pointerdown=${this.swallow}
+                @pointerup=${this.swallow}
+                @click=${this._linkRecord(reading.elementId)}
+              >
+                ${translateKey(
+                  this.std,
+                  'com.labre.reading.action.link',
+                  'Link to a record'
+                )}
+              </button>
+            </div>`
+          : nothing}`
     );
   }
 
@@ -613,7 +620,9 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
             'The board and the record disagree'
           )}:
           ${drift.fields
-            .map(field => `${field.field} — ${field.read || '—'} / ${field.record}`)
+            .map(
+              field => `${field.field} — ${field.read || '—'} / ${field.record}`
+            )
             .join('; ')}
         </div>
         <div class="reading-actions">
@@ -748,8 +757,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
         ${this._renderNodeType(reading, profile)}
         ${this._renderNature(reading, profile, record, writable)}
         ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
-        ${this._renderPhase(reading)}
-        ${this._renderNaming(reading)} ${this._renderRecord(reading, writable)}
+        ${this._renderPhase(reading)} ${this._renderNaming(reading)}
+        ${this._renderRecord(reading, writable)}
         ${writable ? this._renderDrift(reading) : nothing}`
     );
   }

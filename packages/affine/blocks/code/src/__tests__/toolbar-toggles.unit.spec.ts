@@ -65,9 +65,9 @@ function stubComponent(store: Store, model: CodeBlockModel) {
 function clickHandlerOf(type: string, blockComponent: unknown): () => void {
   const item = toggleGroup.items.find(entry => entry.type === type)!;
   const part = item.generate!({ blockComponent } as never)!;
-  const handler = part
-    .render!(part as never)
-    .values.find(value => typeof value === 'function');
+  const handler = part.render!(part as never).values.find(
+    value => typeof value === 'function'
+  );
   return handler as () => void;
 }
 

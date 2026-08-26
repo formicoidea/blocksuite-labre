@@ -6,7 +6,8 @@ import { EVENT_STORMING_PROFILES } from '../profiles';
 import { EVENT_STORMING_RULES } from '../rules';
 
 const warnings = (profile: ValidationProfile) =>
-  Object.values(profile.rules).filter(severity => severity === 'warning').length;
+  Object.values(profile.rules).filter(severity => severity === 'warning')
+    .length;
 
 describe('event storming validation profiles', () => {
   it('ships exactly three, with one default', () => {
@@ -71,8 +72,10 @@ describe('event storming validation profiles', () => {
       const ladder = EVENT_STORMING_PROFILES.map(p => p.rules[rule.id]);
       const firstWarning = ladder.indexOf('warning');
       if (firstWarning < 0) continue;
-      expect(ladder.slice(firstWarning).every(s => s === 'warning'), rule.id)
-        .toBe(true);
+      expect(
+        ladder.slice(firstWarning).every(s => s === 'warning'),
+        rule.id
+      ).toBe(true);
     }
   });
 

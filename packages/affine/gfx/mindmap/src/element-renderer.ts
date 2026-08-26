@@ -6,10 +6,7 @@ import {
   connector as renderConnector,
   ConnectorPathGenerator,
 } from '@labre/affine-gfx-connector';
-import type {
-  MindmapElementModel,
-  MindmapNode,
-} from '@labre/affine-model';
+import type { MindmapElementModel, MindmapNode } from '@labre/affine-model';
 import type { GfxModel } from '@labre/std/gfx';
 
 export const mindmap: ElementRenderer<MindmapElementModel> = (

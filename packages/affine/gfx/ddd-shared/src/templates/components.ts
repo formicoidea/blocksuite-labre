@@ -36,11 +36,25 @@ const ATTRS =
   'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 const NO_STROKE = '#00000000';
 
-function tpl(name: string, preview: string, elements: SurfaceElementsJSON): Template {
-  return { name, type: 'template', preview, content: makeTemplateSnapshot(elements, name) };
+function tpl(
+  name: string,
+  preview: string,
+  elements: SurfaceElementsJSON
+): Template {
+  return {
+    name,
+    type: 'template',
+    preview,
+    content: makeTemplateSnapshot(elements, name),
+  };
 }
 
-function stickyEl(fill: string, text: string, label: string, shapeType: 'rect' | 'diamond') {
+function stickyEl(
+  fill: string,
+  text: string,
+  label: string,
+  shapeType: 'rect' | 'diamond'
+) {
   return {
     type: 'shape',
     shapeType,
@@ -74,7 +88,9 @@ const line = (dashed: boolean, arrow: boolean) =>
 /** Event Storming: one template per sticky kind + the hotspot. */
 export const ES_TEMPLATES: Template[] = [
   ...ES_STICKIES.map(p =>
-    tpl(`Event Storming — ${p.label}`, sq(p.fill), { s: stickyEl(p.fill, p.text, p.label, 'rect') })
+    tpl(`Event Storming — ${p.label}`, sq(p.fill), {
+      s: stickyEl(p.fill, p.text, p.label, 'rect'),
+    })
   ),
   tpl('Event Storming — Hotspot', dia(ES_HOTSPOT.fill), {
     s: stickyEl(ES_HOTSPOT.fill, ES_HOTSPOT.text, ES_HOTSPOT.label, 'diamond'),

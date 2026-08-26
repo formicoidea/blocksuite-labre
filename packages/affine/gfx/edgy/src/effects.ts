@@ -3,7 +3,10 @@ import { EdgelessEdgySeniorButton } from './toolbar/edgy-senior-button';
 
 export function effects() {
   customElements.define('edgeless-edgy-menu', EdgelessEdgyMenu);
-  customElements.define('edgeless-edgy-senior-button', EdgelessEdgySeniorButton);
+  customElements.define(
+    'edgeless-edgy-senior-button',
+    EdgelessEdgySeniorButton
+  );
 }
 
 declare global {

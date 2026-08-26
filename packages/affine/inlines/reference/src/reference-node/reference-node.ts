@@ -1,10 +1,7 @@
 import { whenHover } from '@labre/affine-components/hover';
 import { Peekable } from '@labre/affine-components/peek';
 import type { ReferenceInfo } from '@labre/affine-model';
-import {
-  DEFAULT_DOC_NAME,
-  REFERENCE_NODE,
-} from '@labre/affine-shared/consts';
+import { DEFAULT_DOC_NAME, REFERENCE_NODE } from '@labre/affine-shared/consts';
 import {
   DocDisplayMetaProvider,
   ToolbarRegistryIdentifier,

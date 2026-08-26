@@ -51,7 +51,8 @@ const RECORD = 'pivot-payments';
 const MAP = [0, 0, 1600, 900] as const;
 
 /** Longer than the trigger's own debounce, so a settled board is settled. */
-const settleDrift = () => new Promise<void>(resolve => setTimeout(resolve, 320));
+const settleDrift = () =>
+  new Promise<void>(resolve => setTimeout(resolve, 320));
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 function setup({
@@ -137,7 +138,11 @@ function setup({
     });
 
   /** A component whose centre sits at the given fraction of the map. */
-  const addComponent = (fx = 0.55, fy = 0.5, props: Record<string, unknown> = {}) =>
+  const addComponent = (
+    fx = 0.55,
+    fy = 0.5,
+    props: Record<string, unknown> = {}
+  ) =>
     add({
       type: 'shape',
       shapeType: 'ellipse',
@@ -433,14 +438,20 @@ describe('the drift trigger', () => {
       pivotDocId: RECORD,
       // The zone's OWN wording, straight out of the background declaration —
       // the library never re-spells a framework's vocabulary.
-      fields: [{ field: 'phase', read: 'Product (+Rental)', record: 'genesis' }],
+      fields: [
+        { field: 'phase', read: 'Product (+Rental)', record: 'genesis' },
+      ],
     });
   });
 
   test('says nothing about an element that is not linked', async () => {
     const ctx = setup({
       properties: [
-        { key: 'phase', label: 'Phase', value: { kind: 'text', value: 'genesis' } },
+        {
+          key: 'phase',
+          label: 'Phase',
+          value: { kind: 'text', value: 'genesis' },
+        },
       ],
     });
     ctx.addMap();
@@ -457,7 +468,11 @@ describe('the drift trigger', () => {
   test('stays silent on a colleague’s change', async () => {
     const ctx = setup({
       properties: [
-        { key: 'phase', label: 'Phase', value: { kind: 'text', value: 'genesis' } },
+        {
+          key: 'phase',
+          label: 'Phase',
+          value: { kind: 'text', value: 'genesis' },
+        },
       ],
     });
     ctx.addMap();

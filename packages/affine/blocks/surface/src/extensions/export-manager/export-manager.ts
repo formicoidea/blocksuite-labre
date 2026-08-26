@@ -5,10 +5,7 @@ import {
   DEFAULT_IMAGE_PROXY_ENDPOINT,
 } from '@labre/affine-shared/consts';
 import type { Viewport } from '@labre/affine-shared/types';
-import {
-  isInsidePageEditor,
-  matchModels,
-} from '@labre/affine-shared/utils';
+import { isInsidePageEditor, matchModels } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type { IBound } from '@labre/global/gfx';
 import { deserializeXYWH } from '@labre/global/gfx';

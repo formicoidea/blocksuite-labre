@@ -137,7 +137,10 @@ export class PivotMaterialityPublisher extends LifeCycleWatcher {
     // there is nobody to announce to, so nothing is subscribed and the whole
     // watcher costs one lookup. Binding and qualification keep working: they
     // are element-local writes and never needed the host.
-    if (!this.std.getOptional(PivotPropertiesProvider)?.publishOccurrenceMaterialities) {
+    if (
+      !this.std.getOptional(PivotPropertiesProvider)
+        ?.publishOccurrenceMaterialities
+    ) {
       return;
     }
 
@@ -208,7 +211,8 @@ export class PivotMaterialityPublisher extends LifeCycleWatcher {
     // are not a local change, and republishing a whole board on every editor
     // open would flood the host with patches it already holds. The rebuild path
     // (`collectPivotOccurrences`) is the deliberate way to resynchronise.
-    for (const element of surface.elementModels) this._track(surface, element.id);
+    for (const element of surface.elementModels)
+      this._track(surface, element.id);
   }
 
   /**

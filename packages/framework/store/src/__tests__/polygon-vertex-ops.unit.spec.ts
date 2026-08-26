@@ -67,7 +67,11 @@ function insertVertexAtMidpoint(
   vertices: number[][],
   smoothFlags: boolean[] | null,
   edgeIndex: number
-): { vertices: number[][]; smoothFlags: boolean[] | null; insertedIndex: number } {
+): {
+  vertices: number[][];
+  smoothFlags: boolean[] | null;
+  insertedIndex: number;
+} {
   const verts = [...vertices];
   const nextIdx = (edgeIndex + 1) % verts.length;
   const midNorm = [
@@ -130,7 +134,9 @@ function toggleVertexSmooth(
   vertexIndex: number
 ): boolean[] {
   const count = vertices.length;
-  let flags = smoothFlags ? [...smoothFlags] : new Array<boolean>(count).fill(false);
+  let flags = smoothFlags
+    ? [...smoothFlags]
+    : new Array<boolean>(count).fill(false);
   while (flags.length < count) flags.push(false);
   if (flags.length > count) flags = flags.slice(0, count);
   flags[vertexIndex] = !flags[vertexIndex];
@@ -150,11 +156,10 @@ function moveVertex(
   vertices: number[][];
   bound: { x: number; y: number; w: number; h: number };
 } {
-  const newAbsVertices: Vertex[] = vertices.map(
-    (v, i) =>
-      i === vertexIndex
-        ? ([newAbsX, newAbsY] as Vertex)
-        : (toAbsolute(v, bound) as Vertex)
+  const newAbsVertices: Vertex[] = vertices.map((v, i) =>
+    i === vertexIndex
+      ? ([newAbsX, newAbsY] as Vertex)
+      : (toAbsolute(v, bound) as Vertex)
   );
   const { normalized, bound: newBound } = recomputeBound(newAbsVertices);
   return { vertices: normalized, bound: newBound };
@@ -271,8 +276,11 @@ describe('polygon vertex add (insertVertexAtMidpoint)', () => {
 
   test('inserts false into smoothFlags at the correct index', () => {
     const smoothFlags = [true, false, true, false]; // SQUARE has 4 vertices
-    const { smoothFlags: newFlags, insertedIndex } =
-      insertVertexAtMidpoint(SQUARE, smoothFlags, 1);
+    const { smoothFlags: newFlags, insertedIndex } = insertVertexAtMidpoint(
+      SQUARE,
+      smoothFlags,
+      1
+    );
     expect(newFlags).not.toBeNull();
     expect(newFlags!.length).toBe(5);
     expect(newFlags![insertedIndex]).toBe(false); // new vertex is always sharp
@@ -288,7 +296,11 @@ describe('polygon vertex add (insertVertexAtMidpoint)', () => {
   test('midpoint is correct for a diagonal edge', () => {
     // Triangle: [0.5,0], [1,1], [0,1]
     // Edge 0-1: midpoint = ([0.5+1]/2, [0+1]/2) = [0.75, 0.5]
-    const { vertices, insertedIndex } = insertVertexAtMidpoint(TRIANGLE, null, 0);
+    const { vertices, insertedIndex } = insertVertexAtMidpoint(
+      TRIANGLE,
+      null,
+      0
+    );
     expect(insertedIndex).toBe(1);
     expect(vertices[insertedIndex][0]).toBeCloseTo(0.75, 10);
     expect(vertices[insertedIndex][1]).toBeCloseTo(0.5, 10);
@@ -300,7 +312,11 @@ describe('polygon vertex add (insertVertexAtMidpoint)', () => {
     // insertIdx = 3
     // New vertex at midpoint: [0.5, 1]
     // Result: [0.5,0], [1,0.38], [0.81,1], [0.5,1], [0.19,1], [0,0.38]
-    const { vertices, insertedIndex } = insertVertexAtMidpoint(PENTAGON, null, 2);
+    const { vertices, insertedIndex } = insertVertexAtMidpoint(
+      PENTAGON,
+      null,
+      2
+    );
     expect(vertices.length).toBe(6);
     expect(insertedIndex).toBe(3);
 
@@ -726,7 +742,11 @@ describe('edge cases and invariants', () => {
     // Move all vertices to the same point → bound collapses
     // The moveVertex function has w = Math.max(maxX - minX, 1)
     // Test recomputeBound with all vertices at the same point
-    const allSame: Vertex[] = [[50, 50], [50, 50], [50, 50]];
+    const allSame: Vertex[] = [
+      [50, 50],
+      [50, 50],
+      [50, 50],
+    ];
     const { bound, normalized } = recomputeBound(allSame);
     expect(bound.w).toBeGreaterThanOrEqual(1);
     expect(bound.h).toBeGreaterThanOrEqual(1);
@@ -744,7 +764,11 @@ describe('edge cases and invariants', () => {
     expect(flags.length).toBe(verts.length);
 
     // Insert a vertex
-    const { vertices: v2, smoothFlags: f2 } = insertVertexAtMidpoint(verts, flags, 1);
+    const { vertices: v2, smoothFlags: f2 } = insertVertexAtMidpoint(
+      verts,
+      flags,
+      1
+    );
     verts = v2;
     flags = f2;
     expect(flags!.length).toBe(verts.length);

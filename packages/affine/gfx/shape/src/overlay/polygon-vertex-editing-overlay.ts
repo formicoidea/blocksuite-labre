@@ -1,7 +1,4 @@
-import {
-  type RoughCanvas,
-  ToolOverlay,
-} from '@labre/affine-block-surface';
+import { type RoughCanvas, ToolOverlay } from '@labre/affine-block-surface';
 import { ShapeElementModel, ShapeType } from '@labre/affine-model';
 import {
   Bound,
@@ -128,10 +125,7 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
   private _getPolygonModel(): ShapeElementModel | null {
     if (!this._elementId) return null;
     const el = this.gfx.getElementById(this._elementId);
-    if (
-      el instanceof ShapeElementModel &&
-      el.shapeType === ShapeType.Polygon
-    ) {
+    if (el instanceof ShapeElementModel && el.shapeType === ShapeType.Polygon) {
       return el;
     }
     return null;
@@ -141,20 +135,14 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
    * Convert a normalized [0-1] vertex to absolute model coordinates
    * based on the polygon's bounding box.
    */
-  private _toAbsolute(
-    nv: number[],
-    bound: Bound
-  ): [number, number] {
+  private _toAbsolute(nv: number[], bound: Bound): [number, number] {
     return [bound.x + nv[0] * bound.w, bound.y + nv[1] * bound.h];
   }
 
   /**
    * Test if a model-coordinate point is within hit distance of a vertex.
    */
-  hitTestVertex(
-    modelX: number,
-    modelY: number
-  ): number {
+  hitTestVertex(modelX: number, modelY: number): number {
     const model = this._getPolygonModel();
     if (!model || !model.vertices) return -1;
 
@@ -194,11 +182,7 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
    * against other vertices. Updates the model's normalized vertices
    * and bounding box.
    */
-  moveVertex(
-    vertexIndex: number,
-    modelX: number,
-    modelY: number
-  ): void {
+  moveVertex(vertexIndex: number, modelX: number, modelY: number): void {
     const model = this._getPolygonModel();
     if (!model || !model.vertices) return;
 
@@ -245,11 +229,10 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
     }
 
     // Compute new absolute vertices array
-    const newAbsVertices: [number, number][] = model.vertices.map(
-      (v, i) =>
-        i === vertexIndex
-          ? ([snappedX, snappedY] as [number, number])
-          : (this._toAbsolute(v, bound) as [number, number])
+    const newAbsVertices: [number, number][] = model.vertices.map((v, i) =>
+      i === vertexIndex
+        ? ([snappedX, snappedY] as [number, number])
+        : (this._toAbsolute(v, bound) as [number, number])
     );
 
     // Re-compute bounding box from new absolute positions
@@ -378,10 +361,7 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
    * Returns the edge index (i.e., the midpoint between vertex i and vertex i+1),
    * or -1 if not near any midpoint.
    */
-  hitTestMidpoint(
-    modelX: number,
-    modelY: number
-  ): number {
+  hitTestMidpoint(modelX: number, modelY: number): number {
     const model = this._getPolygonModel();
     if (!model || !model.vertices) return -1;
 
@@ -434,7 +414,7 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
 
     const bound = Bound.deserialize(model.xywh);
     const zoom = this.gfx.viewport.zoom;
-    const hitDist = BEZIER_HANDLE_RADIUS * 2 / zoom;
+    const hitDist = (BEZIER_HANDLE_RADIUS * 2) / zoom;
 
     // Inverse-rotate incoming world coordinates into polygon's local space
     let localX = modelX;
@@ -545,7 +525,8 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
     // ── Re-normalize: expand bounding box to encompass all Bezier geometry ──
     // Collect all absolute vertex positions
     const absVertices: [number, number][] = model.vertices.map(
-      v => [bound.x + v[0] * bound.w, bound.y + v[1] * bound.h] as [number, number]
+      v =>
+        [bound.x + v[0] * bound.w, bound.y + v[1] * bound.h] as [number, number]
     );
 
     let minX = Infinity,
@@ -846,7 +827,9 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
 
     const bound = Bound.deserialize(model.xywh);
     const count = model.vertices.length;
-    let flags = model.smoothFlags ? [...model.smoothFlags] : new Array(count).fill(false);
+    let flags = model.smoothFlags
+      ? [...model.smoothFlags]
+      : new Array(count).fill(false);
 
     // Ensure flags array matches vertex count
     while (flags.length < count) flags.push(false);
@@ -872,7 +855,8 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
 
     // Collect all absolute vertex positions
     const absVertices: [number, number][] = model.vertices.map(
-      v => [bound.x + v[0] * bound.w, bound.y + v[1] * bound.h] as [number, number]
+      v =>
+        [bound.x + v[0] * bound.w, bound.y + v[1] * bound.h] as [number, number]
     );
 
     let minX = Infinity,
@@ -1022,7 +1006,10 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
     const vertices = model.vertices;
     const count = vertices.length;
 
-    const prev = this._toAbsolute(vertices[(vertexIndex - 1 + count) % count], bound);
+    const prev = this._toAbsolute(
+      vertices[(vertexIndex - 1 + count) % count],
+      bound
+    );
     const curr = this._toAbsolute(vertices[vertexIndex], bound);
     const next = this._toAbsolute(vertices[(vertexIndex + 1) % count], bound);
 
@@ -1139,8 +1126,13 @@ export class PolygonVertexEditingOverlay extends ToolOverlay {
         const my = (ay + by) / 2;
 
         const isHoveredMid = i === this.hoveredMidpointIndex;
-        const midR = (isHoveredMid ? MIDPOINT_HANDLE_HOVER_RADIUS : MIDPOINT_HANDLE_RADIUS) / zoom;
-        const midFill = isHoveredMid ? MIDPOINT_HOVER_FILL_COLOR : MIDPOINT_FILL_COLOR;
+        const midR =
+          (isHoveredMid
+            ? MIDPOINT_HANDLE_HOVER_RADIUS
+            : MIDPOINT_HANDLE_RADIUS) / zoom;
+        const midFill = isHoveredMid
+          ? MIDPOINT_HOVER_FILL_COLOR
+          : MIDPOINT_FILL_COLOR;
 
         ctx.beginPath();
         ctx.arc(mx, my, midR, 0, Math.PI * 2);

@@ -105,7 +105,8 @@ const malformedMovement: ValidationRule = {
   // indicted elements here would be data that lies.
   roles: CORE_DOMAIN_ROLES,
   messageKey: 'com.labre.core-domain.validation.malformed-movement',
-  messageFallback: 'This movement does not run from a current position to a future one.',
+  messageFallback:
+    'This movement does not run from a current position to a future one.',
   suggestionKey:
     'com.labre.core-domain.validation.malformed-movement.suggestion',
   suggestionFallback:
@@ -124,7 +125,8 @@ const malformedMovement: ValidationRule = {
     forbidSelfLoop: true,
     selfLoop: {
       messageKey: 'com.labre.core-domain.validation.movement-self-loop',
-      messageFallback: 'This movement points back at its own starting position.',
+      messageFallback:
+        'This movement points back at its own starting position.',
       suggestionKey:
         'com.labre.core-domain.validation.movement-self-loop.suggestion',
       suggestionFallback:
@@ -191,7 +193,8 @@ const offLegendColour: ValidationRule = {
   roles: CORE_DOMAIN_ROLES,
   messageKey: 'com.labre.core-domain.validation.off-legend-colour',
   messageFallback: 'This sub-domain is not drawn in one of the legend colours.',
-  suggestionKey: 'com.labre.core-domain.validation.off-legend-colour.suggestion',
+  suggestionKey:
+    'com.labre.core-domain.validation.off-legend-colour.suggestion',
   suggestionFallback:
     'The chart reads by its notation — put the dot back on one of the five legend colours, or add the new one to the legend.',
   version: 1,

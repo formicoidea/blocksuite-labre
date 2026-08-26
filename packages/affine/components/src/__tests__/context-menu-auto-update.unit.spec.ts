@@ -72,7 +72,10 @@ describe('MenuSubMenu', () => {
 
     const subMenu = new MenuSubMenu();
     subMenu.menu = menu;
-    subMenu.data = { content: () => undefined as never, options: { items: [] } };
+    subMenu.data = {
+      content: () => undefined as never,
+      options: { items: [] },
+    };
     menu.menuElement.append(subMenu);
     await subMenu.updateComplete;
 

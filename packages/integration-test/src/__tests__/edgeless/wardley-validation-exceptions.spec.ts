@@ -809,9 +809,9 @@ describe('validation exceptions', () => {
 
       // Granting the same exception twice is not two arbitrations: nothing is
       // written, so the widget has nothing to report.
-      expect(validation.setException([violationOf(id)!], 'element', true)).toEqual(
-        []
-      );
+      expect(
+        validation.setException([violationOf(id)!], 'element', true)
+      ).toEqual([]);
       expect(
         tracked.filter(event => event.name === 'ValidationExceptionGranted')
       ).toHaveLength(1);

@@ -28,7 +28,12 @@ function transformFor(options: {
   const [translateX, translateY] = options.translate;
   const stub = {
     gfx: {
-      viewport: { translateX, translateY, zoom: options.zoom, viewScale: options.viewScale },
+      viewport: {
+        translateX,
+        translateY,
+        zoom: options.zoom,
+        viewScale: options.viewScale,
+      },
     },
     model: { xywh: `[${options.bound.join(',')}]` },
   };
@@ -73,7 +78,9 @@ describe('gfx block CSS transform', () => {
       Base as unknown as Parameters<typeof toGfxBlockComponent>[0]
     ) as unknown as { prototype: { getCSSTransform: () => string } };
     const stub = {
-      gfx: { viewport: { translateX: 100, translateY: 50, zoom: 2, viewScale: 4 } },
+      gfx: {
+        viewport: { translateX: 100, translateY: 50, zoom: 2, viewScale: 4 },
+      },
       model: { xywh: '[10,20,100,100]' },
     };
 

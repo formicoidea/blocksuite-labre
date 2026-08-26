@@ -66,7 +66,9 @@ const parseHex = (value: string): ParsedColor | null => {
   const hex = value.slice(1);
   if (!/^[0-9a-f]+$/i.test(hex)) return null;
   const expand = (part: string) =>
-    part.length === 1 ? Number.parseInt(part + part, 16) : Number.parseInt(part, 16);
+    part.length === 1
+      ? Number.parseInt(part + part, 16)
+      : Number.parseInt(part, 16);
   const size = hex.length === 3 || hex.length === 4 ? 1 : 2;
   if (hex.length !== size * 3 && hex.length !== size * 4) return null;
   return {
@@ -83,7 +85,9 @@ const parseChannel = (token: string): number | null => {
   const trimmed = token.trim();
   if (!trimmed) return null;
   const isPercentage = trimmed.endsWith('%');
-  const value = Number.parseFloat(isPercentage ? trimmed.slice(0, -1) : trimmed);
+  const value = Number.parseFloat(
+    isPercentage ? trimmed.slice(0, -1) : trimmed
+  );
   if (Number.isNaN(value)) return null;
   return clamp(Math.round(isPercentage ? (value / 100) * 255 : value), 0, 255);
 };
@@ -94,7 +98,9 @@ const parseAlpha = (token: string | null): number | null => {
   const trimmed = token.trim();
   if (!trimmed) return null;
   const isPercentage = trimmed.endsWith('%');
-  const value = Number.parseFloat(isPercentage ? trimmed.slice(0, -1) : trimmed);
+  const value = Number.parseFloat(
+    isPercentage ? trimmed.slice(0, -1) : trimmed
+  );
   if (Number.isNaN(value)) return null;
   return clamp(isPercentage ? value / 100 : value, 0, 1);
 };
@@ -257,7 +263,8 @@ export const resolveNearestSupportedColor = (color: string): string | null => {
   const achromatic = target.chroma < ACHROMATIC_CHROMA_THRESHOLD;
   if (
     achromatic &&
-    (target.l < DEFAULT_TEXT_LIGHTNESS_MIN || target.l > DEFAULT_TEXT_LIGHTNESS_MAX)
+    (target.l < DEFAULT_TEXT_LIGHTNESS_MIN ||
+      target.l > DEFAULT_TEXT_LIGHTNESS_MAX)
   ) {
     return null;
   }

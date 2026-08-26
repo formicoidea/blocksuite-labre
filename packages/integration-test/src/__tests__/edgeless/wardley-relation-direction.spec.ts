@@ -226,24 +226,26 @@ describe('the direction of a wardley dependency', () => {
     ['the contextual toolbar', () => invokers.toolbar()],
     ['the palette', () => invokers.palette()],
     ['a keystroke', () => invokers.shortcut()],
-  ])('reverses from %s, on the selection and with no arguments', async (
-    _name,
-    invoke
-  ) => {
-    addMap();
-    const consumer = addNode(400, 700);
-    const provider = addNode(800, 200);
-    const edge = addDependency(consumer, provider);
-    select(edge);
-    await wait(50);
+  ])(
+    'reverses from %s, on the selection and with no arguments',
+    async (_name, invoke) => {
+      addMap();
+      const consumer = addNode(400, 700);
+      const provider = addNode(800, 200);
+      const edge = addDependency(consumer, provider);
+      select(edge);
+      await wait(50);
 
-    invoke();
-    await wait(50);
+      invoke();
+      await wait(50);
 
-    const model = service.surface.getElementById(edge) as ConnectorElementModel;
-    expect(model.source.id).toBe(provider);
-    expect(model.target.id).toBe(consumer);
-  });
+      const model = service.surface.getElementById(
+        edge
+      ) as ConnectorElementModel;
+      expect(model.source.id).toBe(provider);
+      expect(model.target.id).toBe(consumer);
+    }
+  );
 
   test('a mixed selection reverses the typed edges and leaves the rest alone', async () => {
     addMap();
@@ -341,8 +343,9 @@ describe('the direction of a wardley dependency', () => {
     // The fixture is honest only if the curve really departs from its chord.
     const chordMid = [(400 + 900) / 2, (200 + 700) / 2];
     const drawnMid = before[SAMPLES / 2];
-    expect(Math.hypot(drawnMid[0] - chordMid[0], drawnMid[1] - chordMid[1]))
-      .toBeGreaterThan(100);
+    expect(
+      Math.hypot(drawnMid[0] - chordMid[0], drawnMid[1] - chordMid[1])
+    ).toBeGreaterThan(100);
 
     invert([edge]);
     await wait(100);
@@ -547,9 +550,9 @@ describe('the direction of a wardley dependency', () => {
       // The senior menu and its sub-menus are appended INSIDE
       // `edgeless-toolbar-widget`'s own subtree, so they are capped at its
       // z-index — beating that one host is what put the label over the menu.
-      const bottom = edgeless.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as
-        | unknown as HTMLElement
-        | undefined;
+      const bottom = edgeless.widgetComponents[
+        EDGELESS_TOOLBAR_WIDGET
+      ] as unknown as HTMLElement | undefined;
       expect(bottom).not.toBeUndefined();
       expect(zOf(host())).toBeLessThan(zOf(bottom!));
     });

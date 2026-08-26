@@ -15,202 +15,138 @@
  * (docs/adr/0008).
  */
 export const KEYMAP_GOLDEN = {
-  "declarations": [
+  declarations: [
     {
-      "id": "applyLastStyle",
-      "owner": "core",
-      "scope": "edgeless",
-      "mac": [
-        "Mod-y"
-      ],
-      "other": [
-        "Mod-y"
-      ]
+      id: 'applyLastStyle',
+      owner: 'core',
+      scope: 'edgeless',
+      mac: ['Mod-y'],
+      other: ['Mod-y'],
     },
     {
-      "id": "duplicate",
-      "owner": "core",
-      "scope": "edgeless",
-      "mac": [
-        "Mod-d"
-      ],
-      "other": [
-        "Mod-d"
-      ]
+      id: 'duplicate',
+      owner: 'core',
+      scope: 'edgeless',
+      mac: ['Mod-d'],
+      other: ['Mod-d'],
     },
     {
-      "id": "redo",
-      "owner": "core",
-      "scope": "global",
-      "mac": [
-        "Shift-Mod-z"
-      ],
-      "other": [
-        "Shift-Mod-z"
-      ]
+      id: 'redo',
+      owner: 'core',
+      scope: 'global',
+      mac: ['Shift-Mod-z'],
+      other: ['Shift-Mod-z'],
     },
     {
-      "id": "redo-windows",
-      "owner": "core",
-      "scope": "global",
-      "mac": [],
-      "other": [
-        "Control-y"
-      ]
+      id: 'redo-windows',
+      owner: 'core',
+      scope: 'global',
+      mac: [],
+      other: ['Control-y'],
     },
     {
-      "id": "shape.cycleTextFit",
-      "owner": "core",
-      "scope": "edgeless",
-      "mac": [
-        "Mod-Shift-f"
-      ],
-      "other": [
-        "Mod-Shift-f"
-      ]
+      id: 'shape.cycleTextFit',
+      owner: 'core',
+      scope: 'edgeless',
+      mac: ['Mod-Shift-f'],
+      other: ['Mod-Shift-f'],
     },
     {
-      "id": "undo",
-      "owner": "core",
-      "scope": "global",
-      "mac": [
-        "Mod-z"
-      ],
-      "other": [
-        "Mod-z"
-      ]
+      id: 'undo',
+      owner: 'core',
+      scope: 'global',
+      mac: ['Mod-z'],
+      other: ['Mod-z'],
     },
     {
-      "id": "wardley.addBackground",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "b"
-      ],
-      "other": [
-        "w",
-        "b"
-      ]
+      id: 'wardley.addBackground',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'b'],
+      other: ['w', 'b'],
     },
     {
-      "id": "wardley.addComponent",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "c"
-      ],
-      "other": [
-        "w",
-        "c"
-      ]
+      id: 'wardley.addComponent',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'c'],
+      other: ['w', 'c'],
     },
     {
-      "id": "wardley.addInertia",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "i"
-      ],
-      "other": [
-        "w",
-        "i"
-      ]
+      id: 'wardley.addInertia',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'i'],
+      other: ['w', 'i'],
     },
     {
-      "id": "wardley.addMethod",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "m"
-      ],
-      "other": [
-        "w",
-        "m"
-      ]
+      id: 'wardley.addMethod',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'm'],
+      other: ['w', 'm'],
     },
     {
-      "id": "wardley.addPipeline",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "p"
-      ],
-      "other": [
-        "w",
-        "p"
-      ]
+      id: 'wardley.addPipeline',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'p'],
+      other: ['w', 'p'],
     },
     {
-      "id": "wardley.evolutionArrow",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "a"
-      ],
-      "other": [
-        "w",
-        "a"
-      ]
+      id: 'wardley.evolutionArrow',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'a'],
+      other: ['w', 'a'],
     },
     {
-      "id": "wardley.linkTool",
-      "owner": "wardley",
-      "scope": "edgeless",
-      "mac": [
-        "w",
-        "l"
-      ],
-      "other": [
-        "w",
-        "l"
-      ]
-    }
+      id: 'wardley.linkTool',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'l'],
+      other: ['w', 'l'],
+    },
   ],
-  "bindings": {
-    "mac": {
-      "global": {
-        "Mod-z": "undo",
-        "Shift-Mod-z": "redo"
+  bindings: {
+    mac: {
+      global: {
+        'Mod-z': 'undo',
+        'Shift-Mod-z': 'redo',
       },
-      "page": {},
-      "edgeless": {
-        "Mod-d": "duplicate",
-        "Mod-y": "applyLastStyle",
-        "Mod-Shift-f": "shape.cycleTextFit",
-        "w c": "wardley.addComponent",
-        "w l": "wardley.linkTool",
-        "w a": "wardley.evolutionArrow",
-        "w i": "wardley.addInertia",
-        "w p": "wardley.addPipeline",
-        "w m": "wardley.addMethod",
-        "w b": "wardley.addBackground"
-      }
+      page: {},
+      edgeless: {
+        'Mod-d': 'duplicate',
+        'Mod-y': 'applyLastStyle',
+        'Mod-Shift-f': 'shape.cycleTextFit',
+        'w c': 'wardley.addComponent',
+        'w l': 'wardley.linkTool',
+        'w a': 'wardley.evolutionArrow',
+        'w i': 'wardley.addInertia',
+        'w p': 'wardley.addPipeline',
+        'w m': 'wardley.addMethod',
+        'w b': 'wardley.addBackground',
+      },
     },
-    "other": {
-      "global": {
-        "Mod-z": "undo",
-        "Shift-Mod-z": "redo",
-        "Control-y": "redo-windows"
+    other: {
+      global: {
+        'Mod-z': 'undo',
+        'Shift-Mod-z': 'redo',
+        'Control-y': 'redo-windows',
       },
-      "page": {},
-      "edgeless": {
-        "Mod-d": "duplicate",
-        "Mod-y": "applyLastStyle",
-        "Mod-Shift-f": "shape.cycleTextFit",
-        "w c": "wardley.addComponent",
-        "w l": "wardley.linkTool",
-        "w a": "wardley.evolutionArrow",
-        "w i": "wardley.addInertia",
-        "w p": "wardley.addPipeline",
-        "w m": "wardley.addMethod",
-        "w b": "wardley.addBackground"
-      }
-    }
-  }
+      page: {},
+      edgeless: {
+        'Mod-d': 'duplicate',
+        'Mod-y': 'applyLastStyle',
+        'Mod-Shift-f': 'shape.cycleTextFit',
+        'w c': 'wardley.addComponent',
+        'w l': 'wardley.linkTool',
+        'w a': 'wardley.evolutionArrow',
+        'w i': 'wardley.addInertia',
+        'w p': 'wardley.addPipeline',
+        'w m': 'wardley.addMethod',
+        'w b': 'wardley.addBackground',
+      },
+    },
+  },
 } as const;

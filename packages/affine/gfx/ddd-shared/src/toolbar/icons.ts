@@ -18,7 +18,15 @@ export const dddLegendIcon = html`<svg
   fill="none"
   xmlns="http://www.w3.org/2000/svg"
 >
-  <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6" />
+  <rect
+    x="3"
+    y="4"
+    width="18"
+    height="16"
+    rx="2"
+    stroke="currentColor"
+    stroke-width="1.6"
+  />
   <circle cx="7" cy="9" r="1.6" fill="currentColor" />
   <circle cx="7" cy="14" r="1.6" fill="currentColor" />
   <path d="M11 9 H18 M11 14 H18" stroke="currentColor" stroke-width="1.4" />

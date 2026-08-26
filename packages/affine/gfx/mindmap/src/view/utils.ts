@@ -12,10 +12,7 @@ import {
 } from '@labre/affine-model';
 import type { IVec } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
-import {
-  generateKeyBetween,
-  type SurfaceBlockModel,
-} from '@labre/std/gfx';
+import { generateKeyBetween, type SurfaceBlockModel } from '@labre/std/gfx';
 import isEqual from 'lodash-es/isEqual';
 import last from 'lodash-es/last';
 import * as Y from 'yjs';

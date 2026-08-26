@@ -1,7 +1,4 @@
-import {
-  createIdentifier,
-  type ServiceIdentifier,
-} from '@labre/global/di';
+import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
 import type { BaseTextAttributes, ExtensionType } from '@labre/store';
 
 import type { InlineMarkdownMatch } from './type.js';

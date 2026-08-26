@@ -6,11 +6,7 @@ import {
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
 
-import {
-  CM_PATTERN_ROLE,
-  CONTEXT_MAP_ROLE,
-  CONTEXT_MAP_ROLES,
-} from './roles';
+import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from './roles';
 
 /**
  * What the Context Map board's automatic legend can say — a TABLE, and nothing

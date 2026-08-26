@@ -1,7 +1,4 @@
-import {
-  DefaultTool,
-  OverlayIdentifier,
-} from '@labre/affine-block-surface';
+import { DefaultTool, OverlayIdentifier } from '@labre/affine-block-surface';
 import type { FrameBlockModel } from '@labre/affine-model';
 import {
   EditPropsStore,

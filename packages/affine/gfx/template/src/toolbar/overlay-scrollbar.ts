@@ -1,8 +1,4 @@
-import {
-  on,
-  once,
-  requestConnectedFrame,
-} from '@labre/affine-shared/utils';
+import { on, once, requestConnectedFrame } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { css, html, LitElement } from 'lit';
 import { query } from 'lit/decorators.js';

@@ -12,10 +12,7 @@ import {
   ParagraphBlockModel,
   type RootBlockModel,
 } from '@labre/affine-model';
-import {
-  asyncSetInlineRange,
-  focusTextModel,
-} from '@labre/affine-rich-text';
+import { asyncSetInlineRange, focusTextModel } from '@labre/affine-rich-text';
 import { EMBED_BLOCK_MODEL_LIST } from '@labre/affine-shared/consts';
 import type { ExtendedModel } from '@labre/affine-shared/types';
 import {

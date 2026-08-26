@@ -53,9 +53,9 @@ describe('the editor-anchored panel (ADR 0011)', () => {
       // The decision names a shared component, and this is what "shared" means
       // in a language with prototypes: a second copy of the geometry would
       // still pass every visual assertion and fail this one.
-      expect(
-        Object.getPrototypeOf(ReadingProposalWidget) as unknown
-      ).toBe(EditorAnchoredPanel);
+      expect(Object.getPrototypeOf(ReadingProposalWidget) as unknown).toBe(
+        EditorAnchoredPanel
+      );
       expect(Object.getPrototypeOf(MapQualityWidget) as unknown).toBe(
         EditorAnchoredPanel
       );

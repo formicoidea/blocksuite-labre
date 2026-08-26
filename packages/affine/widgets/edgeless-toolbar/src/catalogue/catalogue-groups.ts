@@ -52,7 +52,8 @@ export function groupCommandsByCategory(
   const groups: CatalogueGroup[] = [...byCategory].map(
     ([category, commands]) => ({ category, commands })
   );
-  if (uncategorised.length) groups.push({ category: null, commands: uncategorised });
+  if (uncategorised.length)
+    groups.push({ category: null, commands: uncategorised });
   return groups;
 }
 

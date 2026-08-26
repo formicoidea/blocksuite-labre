@@ -18,7 +18,12 @@ import { bpmnTemplateCategory } from '../templates';
 
 describe('bpmn style-C constants', () => {
   it('defines a size and label for every node kind', () => {
-    const kinds = ['startEvent', 'endEvent', 'task', 'gatewayExclusive'] as const;
+    const kinds = [
+      'startEvent',
+      'endEvent',
+      'task',
+      'gatewayExclusive',
+    ] as const;
     for (const kind of kinds) {
       expect(NODE_SIZE[kind].w).toBeGreaterThan(0);
       expect(NODE_SIZE[kind].h).toBeGreaterThan(0);
@@ -64,7 +69,9 @@ describe('bpmn templates carry the toolbox roles', () => {
   const templateElements: TemplateElement[] = templates.flatMap(template => {
     const surface = (
       template.content as unknown as {
-        blocks: { children: { props: { elements: Record<string, unknown> } }[] };
+        blocks: {
+          children: { props: { elements: Record<string, unknown> } }[];
+        };
       }
     ).blocks.children[0];
     return Object.entries(surface.props.elements).map(

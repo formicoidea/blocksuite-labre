@@ -90,7 +90,10 @@ const HOVER_FIELDS = ['owner', 'status'];
 describe('properties$ is synchronous, and settles later', () => {
   test('returns a signal at the call, with no await anywhere on the path', () => {
     const { service } = spyProvider();
-    const state$ = queryPivotProperties(stubStd(service, { hoverFields: HOVER_FIELDS }), RECORD);
+    const state$ = queryPivotProperties(
+      stubStd(service, { hoverFields: HOVER_FIELDS }),
+      RECORD
+    );
 
     // The whole point: a value, now. Not a Promise, not undefined-until-ready.
     expect(state$).toBeTruthy();
@@ -137,7 +140,10 @@ describe('the provider is asked for the configured fields and nothing else', () 
   test('the configured list is passed explicitly, in order', () => {
     const { service, calls } = spyProvider();
 
-    queryPivotProperties(stubStd(service, { hoverFields: HOVER_FIELDS }), RECORD);
+    queryPivotProperties(
+      stubStd(service, { hoverFields: HOVER_FIELDS }),
+      RECORD
+    );
 
     // Explicit rather than implicit so the provider's cache key is complete:
     // `(pivotDocId, fields)`. A config change must not serve a snapshot
@@ -163,7 +169,9 @@ describe('the provider is asked for the configured fields and nothing else', () 
     const { service, calls } = spyProvider();
 
     // Host wiring error, not a crash: same observable behaviour as no provider.
-    expect(queryPivotProperties(stubStd(service, undefined), RECORD)).toBeUndefined();
+    expect(
+      queryPivotProperties(stubStd(service, undefined), RECORD)
+    ).toBeUndefined();
     expect(calls).toEqual([]);
   });
 
@@ -196,8 +204,10 @@ describe('degradation with no provider registered', () => {
     // error line in front of every standalone user, forever.
     expect(queryPivotProperties(stubStd(undefined), RECORD)).toBeUndefined();
     expect(
-      queryPivotProperties(stubStd(service, { hoverFields: HOVER_FIELDS }), RECORD)!
-        .value
+      queryPivotProperties(
+        stubStd(service, { hoverFields: HOVER_FIELDS }),
+        RECORD
+      )!.value
     ).toEqual({ status: 'missing' });
   });
 
@@ -271,7 +281,10 @@ describe('a throwing host never reaches the user', () => {
     };
 
     expect(
-      peekPivotProperties(stubStd(service, { hoverFields: HOVER_FIELDS }), RECORD)
+      peekPivotProperties(
+        stubStd(service, { hoverFields: HOVER_FIELDS }),
+        RECORD
+      )
     ).toBeUndefined();
     expect(error).toHaveBeenCalled();
     error.mockRestore();

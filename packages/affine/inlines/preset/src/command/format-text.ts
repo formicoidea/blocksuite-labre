@@ -5,10 +5,7 @@ import type {
   AffineTextStyleAttributes,
 } from '@labre/affine-shared/types';
 import type { Command, TextSelection } from '@labre/std';
-import {
-  INLINE_ROOT_ATTR,
-  type InlineRootElement,
-} from '@labre/std/inline';
+import { INLINE_ROOT_ATTR, type InlineRootElement } from '@labre/std/inline';
 
 import { FORMAT_TEXT_SUPPORT_FLAVOURS } from './consts.js';
 

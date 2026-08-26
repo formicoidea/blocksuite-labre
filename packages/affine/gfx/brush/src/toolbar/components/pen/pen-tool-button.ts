@@ -1,8 +1,5 @@
 import { keepColor } from '@labre/affine-components/color-picker';
-import {
-  EditPropsStore,
-  ThemeProvider,
-} from '@labre/affine-shared/services';
+import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { computed, signal } from '@preact/signals-core';

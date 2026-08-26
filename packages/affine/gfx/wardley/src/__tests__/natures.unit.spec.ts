@@ -151,9 +151,9 @@ describe('the nature is a fact the engine can read', () => {
     const el = qualified({ [WARDLEY_NATURE_TAG_ID]: [WARDLEY_NATURE.data] });
 
     expect(natureOf(el)).toBe(WARDLEY_NATURE.data);
-    expect(hasElementTagValue(el, WARDLEY_NATURE_TAG_ID, WARDLEY_NATURE.data)).toBe(
-      true
-    );
+    expect(
+      hasElementTagValue(el, WARDLEY_NATURE_TAG_ID, WARDLEY_NATURE.data)
+    ).toBe(true);
     expect(readElementTags(el)).toEqual({
       [WARDLEY_NATURE_TAG_ID]: [WARDLEY_NATURE.data],
     });
@@ -170,7 +170,9 @@ describe('the nature is a fact the engine can read', () => {
     // Defs are runtime configuration and are never persisted. A rule reads what
     // the DOCUMENT says, not what the registry currently admits — otherwise a
     // removed pack would silently change every verdict on old boards.
-    const el = qualified({ [WARDLEY_NATURE_TAG_ID]: ['wardley:nature/retired'] });
+    const el = qualified({
+      [WARDLEY_NATURE_TAG_ID]: ['wardley:nature/retired'],
+    });
 
     expect(natureOf(el)).toBe('wardley:nature/retired');
     expect(registry.tag('wardley:nature/retired')).toBeUndefined();

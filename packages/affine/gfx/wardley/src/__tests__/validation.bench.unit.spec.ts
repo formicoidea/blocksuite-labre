@@ -242,10 +242,14 @@ function referenceMap(
         const from: [number, number] = back ? [x + 180, y] : [x, y];
         const to: [number, number] = back ? [x, y] : [x + 180, y];
         elements.push(
-          element(doc, id, [x, y, 180, 2], WARDLEY_ROLE.changeArrow, undefined, [
-            from,
-            to,
-          ])
+          element(
+            doc,
+            id,
+            [x, y, 180, 2],
+            WARDLEY_ROLE.changeArrow,
+            undefined,
+            [from, to]
+          )
         );
         break;
       }
@@ -410,49 +414,55 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
    * nothing about the engine — the assertions below are what must fail, if
    * anything does.
    */
-  it('pays nothing for the on-demand rules registered beside them', () => {
-    const both = [...WARDLEY_RULES, ...ON_DEMAND_PROBE];
+  it(
+    'pays nothing for the on-demand rules registered beside them',
+    () => {
+      const both = [...WARDLEY_RULES, ...ON_DEMAND_PROBE];
 
-    expect(evaluateRules(both, map)).toEqual(evaluateRules(WARDLEY_RULES, map));
+      expect(evaluateRules(both, map)).toEqual(
+        evaluateRules(WARDLEY_RULES, map)
+      );
 
-    /**
-     * THREE variants in ONE sweep, two of which are the same work.
-     *
-     * Interleaving alone still cannot name a fixed bound, because the number the
-     * assertion needs is "how far apart may two IDENTICAL measurements land on
-     * this machine, right now" — and a loaded runner deschedules threads and
-     * pauses for GC inside one variant's samples and not another's. No constant
-     * chosen on a developer's laptop describes a CI box under ten parallel
-     * suites; measured across runs here, the same evaluation lands anywhere
-     * between ×1.05 and ×1.4 of itself.
-     *
-     * So the noise floor is measured FROM THE SAME SAMPLES as the claim, not by
-     * a second call a moment later — which was the flaw in the first attempt:
-     * a separate calibration sweep reports the machine's mood at a different
-     * moment, which is precisely the thing being corrected for.
-     */
-    const [withoutA, with_, withoutB] = medianEachMs([
-      () => evaluateRules(WARDLEY_RULES, map),
-      () => evaluateRules(both, map),
-      () => evaluateRules(WARDLEY_RULES, map),
-    ]);
+      /**
+       * THREE variants in ONE sweep, two of which are the same work.
+       *
+       * Interleaving alone still cannot name a fixed bound, because the number the
+       * assertion needs is "how far apart may two IDENTICAL measurements land on
+       * this machine, right now" — and a loaded runner deschedules threads and
+       * pauses for GC inside one variant's samples and not another's. No constant
+       * chosen on a developer's laptop describes a CI box under ten parallel
+       * suites; measured across runs here, the same evaluation lands anywhere
+       * between ×1.05 and ×1.4 of itself.
+       *
+       * So the noise floor is measured FROM THE SAME SAMPLES as the claim, not by
+       * a second call a moment later — which was the flaw in the first attempt:
+       * a separate calibration sweep reports the machine's mood at a different
+       * moment, which is precisely the thing being corrected for.
+       */
+      const [withoutA, with_, withoutB] = medianEachMs([
+        () => evaluateRules(WARDLEY_RULES, map),
+        () => evaluateRules(both, map),
+        () => evaluateRules(WARDLEY_RULES, map),
+      ]);
 
-    const without = (withoutA + withoutB) / 2;
-    const noise = Math.max(withoutA, withoutB) / Math.min(withoutA, withoutB);
-    const bound = without * Math.max(noise, 1.25) + 0.05;
+      const without = (withoutA + withoutB) / 2;
+      const noise = Math.max(withoutA, withoutB) / Math.min(withoutA, withoutB);
+      const bound = without * Math.max(noise, 1.25) + 0.05;
 
-    console.info(
-      `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
-        `with ${ON_DEMAND_PROBE.length} on-demand rules also registered: ` +
-        `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
-        `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
-        `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
-    );
-    // What the extra rules may cost is two property reads per evaluation, which
-    // is unmeasurable. Anything past the spread the SAME work shows on this
-    // machine would mean they are actually being walked.
-    expect(with_).toBeLessThan(bound);
-  }, BENCH_TIMEOUT_MS);
+      console.info(
+        `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
+          `with ${ON_DEMAND_PROBE.length} on-demand rules also registered: ` +
+          `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
+          `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
+          `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
+      );
+      // What the extra rules may cost is two property reads per evaluation, which
+      // is unmeasurable. Anything past the spread the SAME work shows on this
+      // machine would mean they are actually being walked.
+      expect(with_).toBeLessThan(bound);
+    },
+    BENCH_TIMEOUT_MS
+  );
 
   it('runs those same rules only when asked, and finds something', () => {
     // The other side of the coin: an on-demand rule is not inert data, it is a
@@ -482,8 +492,9 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
     console.info(
       `[bench] strict profile, ${MAP_SIZE} elements + background: ${ms.toFixed(3)} ms (budget ${FRAME_BUDGET_MS} ms)`
     );
-    expect(evaluateRules(WARDLEY_RULES, strict, WARDLEY_PROFILES).length)
-      .toBeGreaterThan(20);
+    expect(
+      evaluateRules(WARDLEY_RULES, strict, WARDLEY_PROFILES).length
+    ).toBeGreaterThan(20);
     expect(ms).toBeLessThan(FRAME_BUDGET_MS);
   });
 });
@@ -551,21 +562,28 @@ describe('a drag on a dense map re-judges only what moved', () => {
     expect(mapMoved.map(key).sort()).toEqual(previous.map(key).sort());
   });
 
-  it('is cheaper than the full pass it replaces', () => {
-    // Interleaved: the saving is the pair-wise family's, while the three
-    // element-local rules and W4 cost the same on both sides, so the margin is
-    // a fraction of the total and a drifting runner would decide the verdict.
-    const [full, incremental] = pairedMedianMs(
-      () => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES),
-      () =>
-        evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, { dirty, previous })
-    );
+  it(
+    'is cheaper than the full pass it replaces',
+    () => {
+      // Interleaved: the saving is the pair-wise family's, while the three
+      // element-local rules and W4 cost the same on both sides, so the margin is
+      // a fraction of the total and a drifting runner would decide the verdict.
+      const [full, incremental] = pairedMedianMs(
+        () => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES),
+        () =>
+          evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
+            dirty,
+            previous,
+          })
+      );
 
-    console.info(
-      `[bench] full ${full.toFixed(3)} ms vs dirty ${incremental.toFixed(3)} ms`
-    );
-    expect(incremental).toBeLessThan(full);
-  }, BENCH_TIMEOUT_MS);
+      console.info(
+        `[bench] full ${full.toFixed(3)} ms vs dirty ${incremental.toFixed(3)} ms`
+      );
+      expect(incremental).toBeLessThan(full);
+    },
+    BENCH_TIMEOUT_MS
+  );
 
   /**
    * The case a three-element drag hides: a LASSO.
@@ -584,65 +602,69 @@ describe('a drag on a dense map re-judges only what moved', () => {
   // an engine that now carries a fourth rule: past the package's 1 s default on
   // a loaded machine. The BUDGET each evaluation is held to is unchanged — it
   // is the number of evaluations this one test performs that needs the room.
-  it('stays inside the frame at EVERY dirty-set size', { timeout: BENCH_TIMEOUT_MS }, () => {
-    const participants = map.filter(
-      el =>
-        el.role !== undefined &&
-        el.role !== WARDLEY_ROLE.map &&
-        el.role !== WARDLEY_ROLE.inertia &&
-        el.role !== WARDLEY_ROLE.changeArrow
-    );
-    const fullPass = () =>
-      medianMs(() => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES));
-
-    /**
-     * The baseline is bracketed rather than taken once at the top.
-     *
-     * This suite runs beside 96 other files and the machine's load moves under
-     * it, so a ratio between a figure measured at the start and one measured
-     * half a second later measures the load and not the code — that is the
-     * flake this replaces. One measurement on each side of the loop is enough
-     * to be contemporaneous with all five points; measuring it INSIDE the loop
-     * would be more contemporaneous still and would put 130 full passes under a
-     * wall-clock assertion, which is a different way of being wrong.
-     */
-    const before = fullPass();
-    const points: { size: number; ms: number }[] = [];
-    for (const fraction of [0.02, 0.1, 0.3, 0.6, 1]) {
-      const size = Math.max(1, Math.round(participants.length * fraction));
-      const lasso = new Set(participants.slice(0, size).map(el => el.id));
-      points.push({
-        size,
-        ms: medianMs(() =>
-          evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
-            dirty: lasso,
-            previous,
-          })
-        ),
-      });
-    }
-    const full = Math.max(before, fullPass());
-
-    for (const { size, ms } of points) {
-      console.info(
-        `[bench] lasso drag, |dirty|=${size} of ${participants.length} participants: ` +
-          `${ms.toFixed(3)} ms (full ${full.toFixed(3)} ms, budget ${FRAME_BUDGET_MS} ms)`
+  it(
+    'stays inside the frame at EVERY dirty-set size',
+    { timeout: BENCH_TIMEOUT_MS },
+    () => {
+      const participants = map.filter(
+        el =>
+          el.role !== undefined &&
+          el.role !== WARDLEY_ROLE.map &&
+          el.role !== WARDLEY_ROLE.inertia &&
+          el.role !== WARDLEY_ROLE.changeArrow
       );
-      expect(ms).toBeLessThan(FRAME_BUDGET_MS);
-      // Never several times the price of the thing it is avoiding. The bound is
-      // 3× and not 2×, and the number is not a taste: measured beside the other
-      // 96 files of the suite, the SAME full pass reads 2.7 ms and 5.2 ms
-      // within one test, so the noise floor here is a factor of two and a 2×
-      // bound is a coin toss. The regression this guard exists for was measured
-      // at EIGHT times the sweep; 3× still catches it, and the budget
-      // assertion above — the one a user feels — stays exact.
-      expect(ms).toBeLessThan(full * 3 + 2);
+      const fullPass = () =>
+        medianMs(() => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES));
+
+      /**
+       * The baseline is bracketed rather than taken once at the top.
+       *
+       * This suite runs beside 96 other files and the machine's load moves under
+       * it, so a ratio between a figure measured at the start and one measured
+       * half a second later measures the load and not the code — that is the
+       * flake this replaces. One measurement on each side of the loop is enough
+       * to be contemporaneous with all five points; measuring it INSIDE the loop
+       * would be more contemporaneous still and would put 130 full passes under a
+       * wall-clock assertion, which is a different way of being wrong.
+       */
+      const before = fullPass();
+      const points: { size: number; ms: number }[] = [];
+      for (const fraction of [0.02, 0.1, 0.3, 0.6, 1]) {
+        const size = Math.max(1, Math.round(participants.length * fraction));
+        const lasso = new Set(participants.slice(0, size).map(el => el.id));
+        points.push({
+          size,
+          ms: medianMs(() =>
+            evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES, {
+              dirty: lasso,
+              previous,
+            })
+          ),
+        });
+      }
+      const full = Math.max(before, fullPass());
+
+      for (const { size, ms } of points) {
+        console.info(
+          `[bench] lasso drag, |dirty|=${size} of ${participants.length} participants: ` +
+            `${ms.toFixed(3)} ms (full ${full.toFixed(3)} ms, budget ${FRAME_BUDGET_MS} ms)`
+        );
+        expect(ms).toBeLessThan(FRAME_BUDGET_MS);
+        // Never several times the price of the thing it is avoiding. The bound is
+        // 3× and not 2×, and the number is not a taste: measured beside the other
+        // 96 files of the suite, the SAME full pass reads 2.7 ms and 5.2 ms
+        // within one test, so the noise floor here is a factor of two and a 2×
+        // bound is a coin toss. The regression this guard exists for was measured
+        // at EIGHT times the sweep; 3× still catches it, and the budget
+        // assertion above — the one a user feels — stays exact.
+        expect(ms).toBeLessThan(full * 3 + 2);
+      }
+      // Six medianMs measurements in one test — the most expensive case in the
+      // file, and the one that has been timing out under load since before this
+      // slice. The BUDGET assertions above are untouched; only the wall-clock
+      // allowance for taking the samples is.
     }
-    // Six medianMs measurements in one test — the most expensive case in the
-    // file, and the one that has been timing out under load since before this
-    // slice. The BUDGET assertions above are untouched; only the wall-clock
-    // allowance for taking the samples is.
-  });
+  );
 });
 
 /**
@@ -684,46 +706,50 @@ describe('a drag on a dense map re-judges only what moved', () => {
  * asserted so that whoever crosses it meets a failing test, not a paragraph.
  */
 describe('the budget horizon, recorded for the next slice', () => {
-  it('grows QUADRATICALLY, and says where that puts the wall', () => {
-    // Both sizes measured here, in the same test, on the same machine: an
-    // absolute millisecond count at 1000 elements is a statement about the CI
-    // runner's mood, while the RATIO between two sizes is a statement about the
-    // engine. Doubling the elements must cost about four times, never eight —
-    // that would mean a lost hoist or a third nested loop.
-    // Both maps are BUILT OUTSIDE the timer, like every other measurement in
-    // this file. The generator is linear and the evaluation quadratic, so a
-    // build left inside the closure dominates the small point and drags the
-    // measured ratio down towards ×2 — it made the shape look better than it
-    // is, and the extrapolated wall ~60 % more pessimistic than it is.
-    const smallMap = referenceMap(500, 'wardley.strict');
-    const bigMap = referenceMap(1000, 'wardley.strict');
-    // Interleaved, for the reason `pairedMedianMs` documents: the RATIO is the
-    // only claim about the engine here, and measuring the two sizes one after
-    // the other lets a runner that gets busy in between decide it.
-    const [small, big] = pairedMedianMs(
-      () => evaluateRules(WARDLEY_RULES, smallMap, WARDLEY_PROFILES),
-      () => evaluateRules(WARDLEY_RULES, bigMap, WARDLEY_PROFILES),
-      7,
-      2
-    );
-    const ratio = big / small;
-    // Where this puts the 16 ms wall, extrapolated from the measured curve.
-    const wall = Math.round(1000 * Math.sqrt(FRAME_BUDGET_MS / big));
+  it(
+    'grows QUADRATICALLY, and says where that puts the wall',
+    () => {
+      // Both sizes measured here, in the same test, on the same machine: an
+      // absolute millisecond count at 1000 elements is a statement about the CI
+      // runner's mood, while the RATIO between two sizes is a statement about the
+      // engine. Doubling the elements must cost about four times, never eight —
+      // that would mean a lost hoist or a third nested loop.
+      // Both maps are BUILT OUTSIDE the timer, like every other measurement in
+      // this file. The generator is linear and the evaluation quadratic, so a
+      // build left inside the closure dominates the small point and drags the
+      // measured ratio down towards ×2 — it made the shape look better than it
+      // is, and the extrapolated wall ~60 % more pessimistic than it is.
+      const smallMap = referenceMap(500, 'wardley.strict');
+      const bigMap = referenceMap(1000, 'wardley.strict');
+      // Interleaved, for the reason `pairedMedianMs` documents: the RATIO is the
+      // only claim about the engine here, and measuring the two sizes one after
+      // the other lets a runner that gets busy in between decide it.
+      const [small, big] = pairedMedianMs(
+        () => evaluateRules(WARDLEY_RULES, smallMap, WARDLEY_PROFILES),
+        () => evaluateRules(WARDLEY_RULES, bigMap, WARDLEY_PROFILES),
+        7,
+        2
+      );
+      const ratio = big / small;
+      // Where this puts the 16 ms wall, extrapolated from the measured curve.
+      const wall = Math.round(1000 * Math.sqrt(FRAME_BUDGET_MS / big));
 
-    console.info(
-      `[bench] SCALE 500 → 1000 elements: ${small.toFixed(3)} → ${big.toFixed(3)} ms ` +
-        `(×${ratio.toFixed(2)}, quadratic ≈ ×4) — the ${FRAME_BUDGET_MS} ms wall ` +
-        `is around ${wall} elements TODAY, and moves down with every rule added. ` +
-        `See the note above this suite before adding a second pair-wise family.`
-    );
+      console.info(
+        `[bench] SCALE 500 → 1000 elements: ${small.toFixed(3)} → ${big.toFixed(3)} ms ` +
+          `(×${ratio.toFixed(2)}, quadratic ≈ ×4) — the ${FRAME_BUDGET_MS} ms wall ` +
+          `is around ${wall} elements TODAY, and moves down with every rule added. ` +
+          `See the note above this suite before adding a second pair-wise family.`
+      );
 
-    // Quadratic, not worse. Generous against a noisy runner in both
-    // directions; the SHAPE is the claim, and the only part of this that is a
-    // statement about the engine rather than about the machine — `wall` moves
-    // by a factor of four between an idle runner and a loaded one, so it is
-    // logged and never asserted.
-    expect(ratio).toBeLessThan(8);
-  }, BENCH_TIMEOUT_MS);
+      // Quadratic, not worse. Generous against a noisy runner in both
+      // directions; the SHAPE is the claim, and the only part of this that is a
+      // statement about the engine rather than about the machine — `wall` moves
+      // by a factor of four between an idle runner and a loaded one, so it is
+      // logged and never asserted.
+      expect(ratio).toBeLessThan(8);
+    },
+    BENCH_TIMEOUT_MS
+  );
 
   it('has exactly ONE pair-wise rule — the second one is the trigger', () => {
     // The enforceable half of the note above. Every `no-overlap` rule is
@@ -795,7 +821,12 @@ describe('W4 is priced by the relations, not by the pairs', () => {
     const yOf = (i: number) => (i % 2 === 0 ? low : high);
     for (let i = 0; i < size; i++) {
       elements.push(
-        element(doc, `n-${i}`, [20 + i * 7, yOf(i), 18, 18], WARDLEY_ROLE.component)
+        element(
+          doc,
+          `n-${i}`,
+          [20 + i * 7, yOf(i), 18, 18],
+          WARDLEY_ROLE.component
+        )
       );
       if (i === 0) continue;
       // The consumer is the one sitting lower: exactly what W4 refuses.
@@ -824,8 +855,16 @@ describe('W4 is priced by the relations, not by the pairs', () => {
   it('stays a small fraction of the frame at twice the reference map', () => {
     const small = referenceMap(MAP_SIZE, 'wardley.strict');
     const big = referenceMap(MAP_SIZE * 2, 'wardley.strict');
-    const oneWay = medianMs(() => evaluateRules(w4, small, WARDLEY_PROFILES), 7, 2);
-    const twice = medianMs(() => evaluateRules(w4, big, WARDLEY_PROFILES), 7, 2);
+    const oneWay = medianMs(
+      () => evaluateRules(w4, small, WARDLEY_PROFILES),
+      7,
+      2
+    );
+    const twice = medianMs(
+      () => evaluateRules(w4, big, WARDLEY_PROFILES),
+      7,
+      2
+    );
 
     console.info(
       `[bench] W4 alone, ${MAP_SIZE} → ${MAP_SIZE * 2} elements ` +
@@ -862,9 +901,7 @@ describe('a rule switched off costs nothing', () => {
   const map = referenceMap(MAP_SIZE);
 
   it('never walks the surface', () => {
-    const ms = medianMs(() =>
-      evaluateRules(WARDLEY_RULES, map, [OFF_PROFILE])
-    );
+    const ms = medianMs(() => evaluateRules(WARDLEY_RULES, map, [OFF_PROFILE]));
 
     console.info(
       `[bench] every rule off, same ${MAP_SIZE}-element map: ${ms.toFixed(4)} ms`

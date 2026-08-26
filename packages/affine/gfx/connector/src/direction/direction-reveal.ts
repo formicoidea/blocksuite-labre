@@ -104,7 +104,10 @@ function median(
 ): { at: IVec; from: IVec; to: IVec } | null {
   let total = 0;
   for (let i = 1; i < path.length; i++) {
-    total += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    total += Math.hypot(
+      path[i][0] - path[i - 1][0],
+      path[i][1] - path[i - 1][1]
+    );
   }
   // A path of zero length is a link drawn on a single point: no middle, no
   // angle, nothing to say.
@@ -167,7 +170,8 @@ function directionOfRole(
 ): EdgeDirectionDef | undefined {
   for (const defs of vocabularies) {
     const def = defs[roleId];
-    if (def !== undefined) return def.kind === 'edge' ? def.direction : undefined;
+    if (def !== undefined)
+      return def.kind === 'edge' ? def.direction : undefined;
   }
   return undefined;
 }
@@ -263,7 +267,9 @@ export class EdgeDirectionManager extends InteractivityExtension {
         const option = this.gfx.tool.currentToolOption$.value as {
           options?: { role?: string };
         };
-        this._syncArmed(armed === 'connector' ? option?.options?.role : undefined);
+        this._syncArmed(
+          armed === 'connector' ? option?.options?.role : undefined
+        );
       })
     );
   }
@@ -334,7 +340,10 @@ export class EdgeDirectionManager extends InteractivityExtension {
     }
 
     const current = this.revealed$.peek();
-    if (ids.length === current.length && ids.every((id, i) => id === current[i])) {
+    if (
+      ids.length === current.length &&
+      ids.every((id, i) => id === current[i])
+    ) {
       return;
     }
     this.revealed$.value = ids;

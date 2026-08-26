@@ -14,7 +14,10 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { coreDomainCommandIcons, coreDomainCommands } from './commands';
 import { CoreDomainRendererExtension } from './core-domain/element-renderer';
-import { CoreDomainInteraction, CoreDomainView } from './core-domain/element-view';
+import {
+  CoreDomainInteraction,
+  CoreDomainView,
+} from './core-domain/element-view';
 import { coreDomainToolbarExtension } from './core-domain/toolbar-config';
 import { coreDomainEffects } from './effects';
 import { CORE_DOMAIN_NUDGES } from './nudges';

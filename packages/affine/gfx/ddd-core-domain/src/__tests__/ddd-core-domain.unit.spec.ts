@@ -14,9 +14,9 @@ import { coreDomainTemplateCategory } from '../templates';
 describe('core domain template category', () => {
   it('catalogues the chart background', () => {
     expect(coreDomainTemplateCategory.name).toBe('Core Domain Chart');
-    const names = (coreDomainTemplateCategory.templates as { name?: string }[]).map(
-      t => t.name
-    );
+    const names = (
+      coreDomainTemplateCategory.templates as { name?: string }[]
+    ).map(t => t.name);
     expect(names).toContain('Core Domain Chart');
   });
 });

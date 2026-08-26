@@ -1,8 +1,5 @@
 import { getShapeName, type ShapeProps } from '@labre/affine-model';
-import type {
-  LastProps,
-  LastPropsKey,
-} from '@labre/affine-shared/services';
+import type { LastProps, LastPropsKey } from '@labre/affine-shared/services';
 import { NodePropsSchema } from '@labre/affine-shared/utils';
 
 const LastPropsSchema = NodePropsSchema;

@@ -1,8 +1,4 @@
-import {
-  type BlockComponent,
-  type Command,
-  TextSelection,
-} from '@labre/std';
+import { type BlockComponent, type Command, TextSelection } from '@labre/std';
 
 /**
  * Focus the end of the block

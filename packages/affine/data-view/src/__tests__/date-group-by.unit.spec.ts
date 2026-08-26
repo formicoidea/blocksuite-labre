@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { dateGroupByConfigs, groupByMatchers } from '../core/group-by/define.js';
+import {
+  dateGroupByConfigs,
+  groupByMatchers,
+} from '../core/group-by/define.js';
 import { createGroupByMatcher } from '../core/group-by/matcher.js';
 import type { GroupInfo } from '../core/group-by/trait.js';
 import { orderGroupKeys } from '../core/group-by/trait.js';

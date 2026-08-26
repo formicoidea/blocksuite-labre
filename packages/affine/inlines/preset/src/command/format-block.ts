@@ -1,10 +1,7 @@
 import { getSelectedBlocksCommand } from '@labre/affine-shared/commands';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import type { BlockSelection, Command } from '@labre/std';
-import {
-  INLINE_ROOT_ATTR,
-  type InlineRootElement,
-} from '@labre/std/inline';
+import { INLINE_ROOT_ATTR, type InlineRootElement } from '@labre/std/inline';
 
 import { FORMAT_BLOCK_SUPPORT_FLAVOURS } from './consts.js';
 

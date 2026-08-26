@@ -2,10 +2,7 @@ import {
   CaptionedBlockComponent,
   SelectedStyle,
 } from '@labre/affine-components/caption';
-import type {
-  BookmarkBlockModel,
-  LinkPreviewData,
-} from '@labre/affine-model';
+import type { BookmarkBlockModel, LinkPreviewData } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import {
   BlockCommentManager,

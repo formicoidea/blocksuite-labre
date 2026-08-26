@@ -3,8 +3,14 @@ import type { EdgyFacetsElementModel } from '@labre/affine-model';
 import { LABEL_FONT_SIZE, VENN } from './consts';
 
 /** The three circle centres in reference coords. */
-export const CIRCLE_A = { x: VENN.cx - 0.866 * VENN.r0, y: VENN.cy - 0.5 * VENN.r0 }; // Identity
-export const CIRCLE_B = { x: VENN.cx + 0.866 * VENN.r0, y: VENN.cy - 0.5 * VENN.r0 }; // Architecture
+export const CIRCLE_A = {
+  x: VENN.cx - 0.866 * VENN.r0,
+  y: VENN.cy - 0.5 * VENN.r0,
+}; // Identity
+export const CIRCLE_B = {
+  x: VENN.cx + 0.866 * VENN.r0,
+  y: VENN.cy - 0.5 * VENN.r0,
+}; // Architecture
 export const CIRCLE_C = { x: VENN.cx, y: VENN.cy + VENN.r0 }; // Experience
 
 /** The editable label fields of the facets diagram. */
@@ -71,7 +77,9 @@ const approxTextWidth = (text: string, fontSize: number) =>
  * SAME anchors the renderer uses so they track the drawn text. Boxes are padded
  * so double-clicking is forgiving. Hidden when `showLabels` is false.
  */
-export function getEdgyLabelHits(model: EdgyFacetsElementModel): EdgyLabelHit[] {
+export function getEdgyLabelHits(
+  model: EdgyFacetsElementModel
+): EdgyLabelHit[] {
   if (!model.showLabels) return [];
 
   const pad = 6;

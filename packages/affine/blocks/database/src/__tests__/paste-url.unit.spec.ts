@@ -63,14 +63,10 @@ describe('insertUrlTextSegments', () => {
       setInlineRange: vi.fn(),
     };
 
-    insertUrlTextSegments(
-      inlineEditor,
-      { index: 3, length: 4 },
-      [
-        { text: 'see ' },
-        { text: 'https://example.com', link: 'https://example.com' },
-      ]
-    );
+    insertUrlTextSegments(inlineEditor, { index: 3, length: 4 }, [
+      { text: 'see ' },
+      { text: 'https://example.com', link: 'https://example.com' },
+    ]);
 
     expect(inlineEditor.insertText).toHaveBeenNthCalledWith(
       1,

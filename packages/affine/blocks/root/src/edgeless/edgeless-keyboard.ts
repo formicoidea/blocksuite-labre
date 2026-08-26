@@ -1,9 +1,6 @@
 import { insertLinkByQuickSearchCommand } from '@labre/affine-block-bookmark';
 import { EdgelessTextBlockComponent } from '@labre/affine-block-edgeless-text';
-import {
-  FrameTool,
-  type PresentToolOption,
-} from '@labre/affine-block-frame';
+import { FrameTool, type PresentToolOption } from '@labre/affine-block-frame';
 import {
   DefaultTool,
   EdgelessLegacySlotIdentifier,

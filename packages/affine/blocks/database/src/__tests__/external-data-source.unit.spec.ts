@@ -1,7 +1,4 @@
-import type {
-  PropertyMetaConfig,
-  TypeInstance,
-} from '@labre/data-view';
+import type { PropertyMetaConfig, TypeInstance } from '@labre/data-view';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import { describe, expect, it, vi } from 'vitest';
 

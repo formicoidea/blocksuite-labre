@@ -108,7 +108,10 @@ export function collectTranslationKeys(
 export function commandTranslationEntries(
   commands: readonly AnyCommandDescriptor[]
 ): TranslationKeyManifestEntry[] {
-  return collectTranslationKeys('command', commands.map(toCommandManifestEntry));
+  return collectTranslationKeys(
+    'command',
+    commands.map(toCommandManifestEntry)
+  );
 }
 
 /**

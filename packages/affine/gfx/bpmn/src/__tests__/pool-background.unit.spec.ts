@@ -1,4 +1,7 @@
-import { backgroundLabelHits, backgroundSize } from '@labre/affine-block-surface';
+import {
+  backgroundLabelHits,
+  backgroundSize,
+} from '@labre/affine-block-surface';
 import { describe, expect, it } from 'vitest';
 
 import { BPMN_POOL_BACKGROUND } from '../background';

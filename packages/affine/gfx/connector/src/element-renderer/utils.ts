@@ -9,11 +9,7 @@ import type {
   IVec,
   PointLocation,
 } from '@labre/global/gfx';
-import {
-  getBezierParameters,
-  getBezierTangent,
-  Vec,
-} from '@labre/global/gfx';
+import { getBezierParameters, getBezierTangent, Vec } from '@labre/global/gfx';
 
 type ConnectorEnd = 'Front' | 'Rear';
 

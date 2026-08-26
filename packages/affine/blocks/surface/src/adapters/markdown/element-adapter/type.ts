@@ -1,9 +1,6 @@
 import type { ExtensionType } from '@labre/affine/store';
 import type { MarkdownAST } from '@labre/affine-shared/adapters';
-import {
-  createIdentifier,
-  type ServiceIdentifier,
-} from '@labre/global/di';
+import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
 
 import type { ElementModelMatcher } from '../../type.js';
 

@@ -17,7 +17,9 @@ export interface LinkedDocCreationProvider {
 }
 
 export const LinkedDocCreationProvider =
-  createIdentifier<LinkedDocCreationProvider>('AffineLinkedDocCreationProvider');
+  createIdentifier<LinkedDocCreationProvider>(
+    'AffineLinkedDocCreationProvider'
+  );
 
 /**
  * Override how linked docs are created — e.g. to route creation through a host

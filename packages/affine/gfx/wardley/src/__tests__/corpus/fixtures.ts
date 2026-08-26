@@ -191,12 +191,7 @@ const needs = (
  * draws it — eight units, which is why "astride the divider" needs the map's
  * declared band to mean anything for a bar somebody dropped by eye.
  */
-const inertia = (
-  id: string,
-  x: number,
-  y: number,
-  w = 8
-): CorpusElement => ({
+const inertia = (id: string, x: number, y: number, w = 8): CorpusElement => ({
   id,
   role: WARDLEY_ROLE.inertia,
   xywh: [x - w / 2, y - 22, w, 44],
@@ -421,7 +416,10 @@ const w3NamesApart: CorpusCard = {
   elements: [
     map(),
     label('l1', 0.3, 0.5, 'ERP'),
-    { ...label('l2', 0.3, 0.5, 'Cloud'), xywh: [at(0.3, 0.5)[0] + 60, at(0.3, 0.5)[1] - 13, 120, 26] },
+    {
+      ...label('l2', 0.3, 0.5, 'Cloud'),
+      xywh: [at(0.3, 0.5)[0] + 60, at(0.3, 0.5)[1] - 13, 120, 26],
+    },
   ],
   expected: [],
 };
@@ -438,7 +436,10 @@ const w3LabelOnNode: CorpusCard = {
     map(),
     node('n1', 0.5, 0.5),
     // Starts 20 units left of the node centre: straight over it.
-    { ...label('l1', 0.5, 0.5), xywh: [at(0.5, 0.5)[0] - 20, at(0.5, 0.5)[1] - 13, 120, 26] },
+    {
+      ...label('l1', 0.5, 0.5),
+      xywh: [at(0.5, 0.5)[0] - 20, at(0.5, 0.5)[1] - 13, 120, 26],
+    },
   ],
   expected: [W3],
 };
@@ -460,7 +461,10 @@ const w3LabelOnLink: CorpusCard = {
       },
       // The words, not just the box: this is the only invalid label/link card,
       // so it is the one that has to go through the ink geometry.
-      { ...label('l1', 0.5, 0.5), xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number] },
+      {
+        ...label('l1', 0.5, 0.5),
+        xywh: [x - 60, y - 13, 120, 26] as [number, number, number, number],
+      },
     ];
   })(),
   expected: [W3],
@@ -514,7 +518,13 @@ const w4Cycle: CorpusCard = (() => {
   const low = node('n2', 0.6, 0.3);
   return {
     name: 'W4 invalid — a cycle A↔B, whose downhill half is reported',
-    elements: [map(), high, low, needs('d1', low, high), needs('d2', high, low)],
+    elements: [
+      map(),
+      high,
+      low,
+      needs('d1', low, high),
+      needs('d2', high, low),
+    ],
     expected: [W4],
     expectedIds: [`${W4}:d2+n1+n2`],
   };
@@ -589,7 +599,10 @@ const w3NamesOnTopOfEachOther: CorpusCard = {
   elements: [
     map(),
     label('l1', 0.35, 0.6),
-    { ...label('l2', 0.35, 0.6), xywh: [at(0.35, 0.6)[0] + 30, at(0.35, 0.6)[1] - 13, 120, 26] },
+    {
+      ...label('l2', 0.35, 0.6),
+      xywh: [at(0.35, 0.6)[0] + 30, at(0.35, 0.6)[1] - 13, 120, 26],
+    },
   ],
   expected: [W3],
 };
@@ -624,7 +637,14 @@ const legacyMap: CorpusCard = {
     // Same element geometry as the invalid cards, with no role anywhere: an
     // old document is never retro-validated.
     { id: 'map', xywh: [0, 0, 1600, 900] },
-    { id: 'a1', xywh: [400, 400, 300, 2], path: [[700, 400], [400, 400]] },
+    {
+      id: 'a1',
+      xywh: [400, 400, 300, 2],
+      path: [
+        [700, 400],
+        [400, 400],
+      ],
+    },
     { id: 'i1', xywh: [800, 300, 8, 44] },
     { id: 'n1', xywh: [640, 450, 18, 18] },
     { id: 'n2', xywh: [644, 450, 18, 18] },

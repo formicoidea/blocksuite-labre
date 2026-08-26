@@ -250,9 +250,7 @@ describe('polygon CRDT convergence', () => {
 
       // Peer2 removes vertex at index 2
       peer2Doc.transact(() => {
-        const vertices = peer2Shape.get('vertices') as Y.Array<
-          Y.Array<number>
-        >;
+        const vertices = peer2Shape.get('vertices') as Y.Array<Y.Array<number>>;
         vertices.delete(2, 1);
       });
 
@@ -523,7 +521,9 @@ describe('polygon CRDT convergence', () => {
       syncOneWay(doc1, doc2);
 
       // Peer2 should see the update
-      const v2Verts = (map2.get('vertices') as Y.Array<Y.Array<number>>).toJSON();
+      const v2Verts = (
+        map2.get('vertices') as Y.Array<Y.Array<number>>
+      ).toJSON();
       expect(v2Verts[0]).toEqual([0.6, 0.1]);
     });
 
@@ -568,7 +568,9 @@ describe('polygon CRDT convergence', () => {
 
       const map2 = doc2.getMap('shape');
       expect(map2.get('xywh')).toBe('[10,10,300,300]');
-      const v2Verts = (map2.get('vertices') as Y.Array<Y.Array<number>>).toJSON();
+      const v2Verts = (
+        map2.get('vertices') as Y.Array<Y.Array<number>>
+      ).toJSON();
       expect(v2Verts[1]).toEqual([0.9, 0.95]);
     });
   });
@@ -596,7 +598,10 @@ describe('polygon CRDT convergence', () => {
       for (let i = 0; i < 10; i++) {
         const angle = (Math.PI * 2 * i) / 10 - Math.PI / 2;
         const r = i % 2 === 0 ? 0.5 : 0.2;
-        starVertices.push([0.5 + r * Math.cos(angle), 0.5 + r * Math.sin(angle)]);
+        starVertices.push([
+          0.5 + r * Math.cos(angle),
+          0.5 + r * Math.sin(angle),
+        ]);
       }
 
       const peer1 = createPeerWithPolygon(starVertices);

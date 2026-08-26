@@ -22,10 +22,7 @@ import {
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
-import {
-  getBlockProps,
-  referenceToNode,
-} from '@labre/affine-shared/utils';
+import { getBlockProps, referenceToNode } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import {
   CaptionIcon,

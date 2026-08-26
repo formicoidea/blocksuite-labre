@@ -93,36 +93,36 @@
     is its own slice; until then the gap is pinned by two assertions that state
     both ends — the tag id that exists and the flat prop that does not — so it
     cannot rot into "later means never".
-  Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
-  carry the framework, the nudge id and the counts — never board content. A nudge
-  everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
-  ticks is an expectation the tool failed to make actionable. Nothing else can say
-  either, because nothing here is ever computed.
-  **Persistence.** One new optional `@field()` on the base element model,
-  `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
-  BASE class for the same reason `role`, `validationExceptions` and
-  `validationProfile` are: an element re-created from props only reaches the Y.Map
-  through declared accessors, so a per-subclass declaration would be silently
-  dropped on copy. Its default is `undefined` and is never written, so an instance
-  with nothing ticked stays byte-identical to one created before the field
-  existed: no block schema change, no version bump, no migration, and documents
-  written before and after remain mutually loadable. Unticking the last one removes
-  the KEY through `clearField` rather than leaving an empty array behind, so an
-  emptied checklist is byte-identical again too — in the document, and not merely
-  through the getter. Ids of nudges no framework declares any more are kept rather
-  than pruned: the tooling comes and goes with a flag, the decisions recorded on it
-  do not. `setNudgeChecked` enforces read-only itself, at the seam, like
-  `setProfile` and `setException` do: a disabled checkbox covers exactly one
-  caller, and `clearField` goes through `Store.transact`, which — unlike
-  `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
-  own, so unticking would genuinely delete the key from a document nobody may edit.
-  **Cost.** Measured, not asserted: registering the two Wardley check-up rules
-  beside the three real-time ones leaves both the verdict and the timing of the
-  drawing path unchanged on the 500-element reference map. The two timings are
-  measured on INTERLEAVED samples, because taken one after the other they compare
-  two moments in the runner's life as much as two rule sets — the same evaluation
-  drifts by half again between back-to-back medians, which is several times the
-  effect being looked for. That is the whole point of the second moment.
+    Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
+    carry the framework, the nudge id and the counts — never board content. A nudge
+    everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
+    ticks is an expectation the tool failed to make actionable. Nothing else can say
+    either, because nothing here is ever computed.
+    **Persistence.** One new optional `@field()` on the base element model,
+    `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
+    BASE class for the same reason `role`, `validationExceptions` and
+    `validationProfile` are: an element re-created from props only reaches the Y.Map
+    through declared accessors, so a per-subclass declaration would be silently
+    dropped on copy. Its default is `undefined` and is never written, so an instance
+    with nothing ticked stays byte-identical to one created before the field
+    existed: no block schema change, no version bump, no migration, and documents
+    written before and after remain mutually loadable. Unticking the last one removes
+    the KEY through `clearField` rather than leaving an empty array behind, so an
+    emptied checklist is byte-identical again too — in the document, and not merely
+    through the getter. Ids of nudges no framework declares any more are kept rather
+    than pruned: the tooling comes and goes with a flag, the decisions recorded on it
+    do not. `setNudgeChecked` enforces read-only itself, at the seam, like
+    `setProfile` and `setException` do: a disabled checkbox covers exactly one
+    caller, and `clearField` goes through `Store.transact`, which — unlike
+    `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
+    own, so unticking would genuinely delete the key from a document nobody may edit.
+    **Cost.** Measured, not asserted: registering the two Wardley check-up rules
+    beside the three real-time ones leaves both the verdict and the timing of the
+    drawing path unchanged on the 500-element reference map. The two timings are
+    measured on INTERLEAVED samples, because taken one after the other they compare
+    two moments in the runner's life as much as two rule sets — the same evaluation
+    drifts by half again between back-to-back medians, which is several times the
+    effect being looked for. That is the whole point of the second moment.
 - 02797b5: Surface elements can now be an **occurrence of a pivot record**: a new optional
   `pivotDocId` field on `GfxPrimitiveElementModel`, a `pivot.bind` command that
   writes it, and an injectable `PivotPropertiesProvider` the host implements to
@@ -540,10 +540,10 @@ pivotDocId?)` walks the surface and returns the occurrences; there is no index,
   - **Strict**: the pilot rule bites at `warning`, and the canvas affordance
     (PF7) appears as before. Still never blocking — strict is a level of
     attention, not a wall.
-  **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
-  board hold two independent levels: a sketch can sit next to a deliverable
-  without either dictating the other's requirements. The engine reads the profile
-  off the background a finding was measured against — an id it already recorded.
+    **The choice is per ROOT INSTANCE, not per document** (PF9.1). Two maps on one
+    board hold two independent levels: a sketch can sit next to a deliverable
+    without either dictating the other's requirements. The engine reads the profile
+    off the background a finding was measured against — an id it already recorded.
   ### What is persisted
   One optional flat string, `validationProfile`, declared as a `@field()` on the
   element base class — the same place and the same reasoning as `role` (PF1) and
@@ -608,43 +608,43 @@ pivotDocId?)` walks the surface and returns the occurrences; there is no index,
     above or to the left of its marker rather than run off the viewport. Clicking
     a marker does not select the shape underneath — the pointer pair is stopped
     there, so neither selection nor a drag starts.
-  Both markers are sized in MODEL units and scale with the board, like the
-  elements they annotate. Screen-constant annotations are right for a transient
-  snap guide and wrong here: on a hundred-component map, zoomed out, they grow
-  relative to the content until the marks are all you can see. Zoomed out far
-  enough these shrink with everything else — deliberately. The exception is the
-  click target, which keeps a 44 px screen floor as invisible padding around the
-  model-sized visual, so a badge three pixels wide is still reachable by thumb
-  (the pattern `edgeless-auto-complete` already uses on this canvas). The bubble
-  stays in screen pixels: prose rendered at quarter size is not smaller prose,
-  it is unreadable prose.
-  The bubble consumes normalised violation OBJECTS and nothing else: no rule
-  logic reached the UI, and no rule wording is hard-coded in the library. Rule
-  labels are i18n keys resolved through a new, optional host seam
-  (`TranslationExtension` / `TranslationProvider` in `@labre/affine-shared`,
-  mirroring `TelemetryExtension`). With no catalogue registered the raw key is
-  shown rather than a sentence the library invented for somebody else's rule;
-  only the bubble's own chrome — the severity chip — carries an English default.
-  Anchoring is unchanged and shared with the bracket: one badge per outermost
-  enclosing group. The bubble lists one line per RULE broken on that anchor, not
-  one per element — two components of a group both drawn off the map are two
-  violations on the signal, but repeating the same sentence twice would say
-  nothing extra.
-  `audit` violations are now excluded from the canvas affordance, as their
-  severity has always said they should be: collected for reporting, invisible to
-  the drawing user. They still reach `violations# @labre/affine-shared
-  untouched, for a host panel.
-  Escape is taken only within the editor host, never on `document`: with a bubble
-  open it dismisses the bubble instead of clearing the canvas selection, and a
-  library has no business making that call for the whole page.
-  Nothing here touches evaluation, the violation object or the 16 ms budget, and
-  nothing is written to the document — the "first seen" timestamps that drive the
-  flash are session state, rebuilt on every reload, so a document records which
-  rules it breaks and never when you happened to look. No clock runs without a
-  violation: the fade's animation frames stop by themselves once every mark has
-  settled, the single timer that wakes the badge for the handover is armed only
-  while a bracket is still up, and the element-tracking subscription only exists
-  while something is flagged.
+    Both markers are sized in MODEL units and scale with the board, like the
+    elements they annotate. Screen-constant annotations are right for a transient
+    snap guide and wrong here: on a hundred-component map, zoomed out, they grow
+    relative to the content until the marks are all you can see. Zoomed out far
+    enough these shrink with everything else — deliberately. The exception is the
+    click target, which keeps a 44 px screen floor as invisible padding around the
+    model-sized visual, so a badge three pixels wide is still reachable by thumb
+    (the pattern `edgeless-auto-complete` already uses on this canvas). The bubble
+    stays in screen pixels: prose rendered at quarter size is not smaller prose,
+    it is unreadable prose.
+    The bubble consumes normalised violation OBJECTS and nothing else: no rule
+    logic reached the UI, and no rule wording is hard-coded in the library. Rule
+    labels are i18n keys resolved through a new, optional host seam
+    (`TranslationExtension` / `TranslationProvider` in `@labre/affine-shared`,
+    mirroring `TelemetryExtension`). With no catalogue registered the raw key is
+    shown rather than a sentence the library invented for somebody else's rule;
+    only the bubble's own chrome — the severity chip — carries an English default.
+    Anchoring is unchanged and shared with the bracket: one badge per outermost
+    enclosing group. The bubble lists one line per RULE broken on that anchor, not
+    one per element — two components of a group both drawn off the map are two
+    violations on the signal, but repeating the same sentence twice would say
+    nothing extra.
+    `audit` violations are now excluded from the canvas affordance, as their
+    severity has always said they should be: collected for reporting, invisible to
+    the drawing user. They still reach `violations# @labre/affine-shared
+untouched, for a host panel.
+Escape is taken only within the editor host, never on `document`: with a bubble
+    open it dismisses the bubble instead of clearing the canvas selection, and a
+    library has no business making that call for the whole page.
+    Nothing here touches evaluation, the violation object or the 16 ms budget, and
+    nothing is written to the document — the "first seen" timestamps that drive the
+    flash are session state, rebuilt on every reload, so a document records which
+    rules it breaks and never when you happened to look. No clock runs without a
+    violation: the fade's animation frames stop by themselves once every mark has
+    settled, the single timer that wakes the badge for the handover is armed only
+    while a bracket is still up, and the element-tracking subscription only exists
+    while something is flagged.
 
 ### Patch Changes
 

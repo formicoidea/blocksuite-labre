@@ -20,9 +20,7 @@ import { BPMN_POOL_BACKGROUND } from './background';
  * drives it directly with a canvas stub.
  */
 export const bpmnPool: ElementRenderer<BpmnPoolElementModel> =
-  createFrameworkBackgroundRenderer<BpmnPoolElementModel>(
-    BPMN_POOL_BACKGROUND
-  );
+  createFrameworkBackgroundRenderer<BpmnPoolElementModel>(BPMN_POOL_BACKGROUND);
 
 export const BpmnPoolRendererExtension = ElementRendererExtension(
   BPMN_POOL_BACKGROUND.type,

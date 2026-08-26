@@ -256,17 +256,21 @@ export const wardleyToolbarConfig = {
       tooltip: 'Generate the legend (components present)',
       icon: wardleyLegendIcon,
       run(ctx) {
-        const models = ctx.getSurfaceModelsByType(WardleyBackgroundElementModel);
+        const models = ctx.getSurfaceModelsByType(
+          WardleyBackgroundElementModel
+        );
         const bg = models[0];
         if (!bg) return;
         createWardleyLegend(ctx.std, bg);
-        ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
-          framework: 'wardley',
-          element: 'legend',
-          page: 'whiteboard editor',
-          segment: 'element toolbar',
-          module: 'wardley toolbar',
-        });
+        ctx.std
+          .getOptional(TelemetryProvider)
+          ?.track('FrameworkLegendCreated', {
+            framework: 'wardley',
+            element: 'legend',
+            page: 'whiteboard editor',
+            segment: 'element toolbar',
+            module: 'wardley toolbar',
+          });
       },
     },
   ],

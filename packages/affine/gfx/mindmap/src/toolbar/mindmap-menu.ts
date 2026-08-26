@@ -350,50 +350,50 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
       this.variant === 'mindmap'
         ? html`
             ${repeat(this.mindMaps, mindMap => {
-          const isDraggingMindMap = draggingElement?.data?.type !== 'text';
-          const draggingEle = draggingElement?.data as ToolbarMindmapItem;
-          const isBeingDragged =
-            isDraggingMindMap && draggingEle?.style === mindMap.style;
-          const showNext = dragOut && !cancelled;
-          const isActive = this._style$.value === mindMap.style;
-          return html`
-            <div class="mindmap-item" data-is-active=${isActive}>
-              ${isBeingDragged
-                ? html`<button
-                    style="transform: translateY(${showNext ? 0 : 64}px)"
-                    class="next"
+              const isDraggingMindMap = draggingElement?.data?.type !== 'text';
+              const draggingEle = draggingElement?.data as ToolbarMindmapItem;
+              const isBeingDragged =
+                isDraggingMindMap && draggingEle?.style === mindMap.style;
+              const showNext = dragOut && !cancelled;
+              const isActive = this._style$.value === mindMap.style;
+              return html`
+                <div class="mindmap-item" data-is-active=${isActive}>
+                  ${isBeingDragged
+                    ? html`<button
+                        style="transform: translateY(${showNext ? 0 : 64}px)"
+                        class="next"
+                      >
+                        ${mindMap.icon}
+                      </button>`
+                    : nothing}
+                  <button
+                    style="opacity: ${isBeingDragged ? 0 : 1}"
+                    @mousedown=${(e: MouseEvent) => {
+                      this.draggableController.onMouseDown(e, {
+                        preview: mindMap.icon,
+                        data: mindMap,
+                        standardWidth: 350,
+                      });
+                    }}
+                    @touchstart=${(e: TouchEvent) => {
+                      this.draggableController.onTouchStart(e, {
+                        preview: mindMap.icon,
+                        data: mindMap,
+                        standardWidth: 350,
+                      });
+                    }}
+                    @click=${() => this.onActiveStyleChange?.(mindMap.style)}
                   >
                     ${mindMap.icon}
-                  </button>`
-                : nothing}
-              <button
-                style="opacity: ${isBeingDragged ? 0 : 1}"
-                @mousedown=${(e: MouseEvent) => {
-                  this.draggableController.onMouseDown(e, {
-                    preview: mindMap.icon,
-                    data: mindMap,
-                    standardWidth: 350,
-                  });
-                }}
-                @touchstart=${(e: TouchEvent) => {
-                  this.draggableController.onTouchStart(e, {
-                    preview: mindMap.icon,
-                    data: mindMap,
-                    standardWidth: 350,
-                  });
-                }}
-                @click=${() => this.onActiveStyleChange?.(mindMap.style)}
-              >
-                ${mindMap.icon}
-              </button>
-              <affine-tooltip tip-position="top" .offset=${12}>
-                <affine-tooltip-content-with-shortcut
-                  data-tip="${'Mind Map'}"
-                  data-shortcup="${'M'}"
-                ></affine-tooltip-content-with-shortcut>
-              </affine-tooltip>
-            </div>
-          `;
+                  </button>
+                  <affine-tooltip tip-position="top" .offset=${12}>
+                    <affine-tooltip-content-with-shortcut
+                      data-tip="${'Mind Map'}"
+                      data-shortcup="${'M'}"
+                    ></affine-tooltip-content-with-shortcut>
+                  </affine-tooltip>
+                </div>
+              `;
             })}
             ${this.std.store
               .get(FeatureFlagService)

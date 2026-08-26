@@ -46,7 +46,9 @@ interface Snapshot {
 
 const elementsOf = (category: TemplateCategory) =>
   (category.templates as { content: unknown }[]).flatMap(template =>
-    Object.values((template.content as Snapshot).blocks.children[0].props.elements)
+    Object.values(
+      (template.content as Snapshot).blocks.children[0].props.elements
+    )
   );
 
 describe('estuarine role vocabulary', () => {

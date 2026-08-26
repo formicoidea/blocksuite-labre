@@ -178,7 +178,12 @@ describe('the tags field', () => {
     // What a client of another vintage — or a bad host script — could write.
     surface.store.transact(() => {
       el.tags!.set('wardley:junk', 'not-an-array' as unknown as string[]);
-      el.tags!.set('wardley:mixed', [DATA, 42, '', null] as unknown as string[]);
+      el.tags!.set('wardley:mixed', [
+        DATA,
+        42,
+        '',
+        null,
+      ] as unknown as string[]);
     });
 
     expect(readElementTags(el)).toEqual({

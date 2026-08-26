@@ -171,7 +171,10 @@ describe('the violation markers and their detail bubble', () => {
       violation => violation.severity !== 'audit'
     );
     validation.timeline.clear();
-    validation.timeline.sync(shown, performance.now() - VIOLATION_EMPHASIS_MS - 1);
+    validation.timeline.sync(
+      shown,
+      performance.now() - VIOLATION_EMPHASIS_MS - 1
+    );
     widget()?.requestUpdate();
     await settle();
   };
@@ -273,9 +276,9 @@ describe('the violation markers and their detail bubble', () => {
 
         const badge = badges()[0] as HTMLElement;
         // Visual shrinks, target does not: still reachable by thumb.
-        expect(parseFloat((badgeDots()[0] as HTMLElement).style.width)).toBeLessThan(
-          24
-        );
+        expect(
+          parseFloat((badgeDots()[0] as HTMLElement).style.width)
+        ).toBeLessThan(24);
         expect(parseFloat(badge.style.width)).toBeGreaterThanOrEqual(44);
         expect(parseFloat(badge.style.height)).toBeGreaterThanOrEqual(44);
 
@@ -630,7 +633,10 @@ describe('the violation markers and their detail bubble', () => {
       // violation we are trying to look at.
       const { viewport } = service;
       const { height, zoom } = viewport;
-      viewport.setCenter(3000, 3000 + height / (2 * zoom) - (height - 30) / zoom);
+      viewport.setCenter(
+        3000,
+        3000 + height / (2 * zoom) - (height - 30) / zoom
+      );
       await settle();
       await age();
 
@@ -737,7 +743,8 @@ describe('the violation markers and their detail bubble', () => {
       mount([
         TranslationExtension({
           t: key =>
-            key === 'com.labre.wardley.validation.change-arrow-against-evolution'
+            key ===
+            'com.labre.wardley.validation.change-arrow-against-evolution'
               ? 'Cette flèche remonte le sens de l’évolution'
               : undefined,
         }),
@@ -756,9 +763,7 @@ describe('the violation markers and their detail bubble', () => {
       const text = bubble()?.textContent ?? '';
       // The HOST's wording wins over the framework's own, key by key.
       expect(text).toContain('Cette flèche remonte le sens de l’évolution');
-      expect(text).not.toContain(
-        'This change arrow points against evolution.'
-      );
+      expect(text).not.toContain('This change arrow points against evolution.');
       // The catalogue does not know the SUGGESTION key, so that line falls
       // back to the framework's own wording — and never to a raw dotted key,
       // because this rule ships one.

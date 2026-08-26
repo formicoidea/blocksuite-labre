@@ -74,7 +74,6 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
     this.setEdgelessTool(DefaultTool);
     const menu = this.createPopper(this.menuTag, this);
     (menu.element as unknown as { edgeless: unknown }).edgeless = this.edgeless;
-
   }
 
   override render() {

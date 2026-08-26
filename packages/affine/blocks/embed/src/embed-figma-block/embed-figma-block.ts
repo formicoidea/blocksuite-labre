@@ -1,8 +1,5 @@
 import { OpenIcon } from '@labre/affine-components/icons';
-import type {
-  EmbedFigmaModel,
-  EmbedFigmaStyles,
-} from '@labre/affine-model';
+import type { EmbedFigmaModel, EmbedFigmaStyles } from '@labre/affine-model';
 import { BlockSelection } from '@labre/std';
 import { html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';

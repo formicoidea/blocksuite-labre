@@ -45,7 +45,8 @@ export type TagValueId = string;
  * Lower-kebab, case-sensitive, no unicode, no dots. Hyphenated framework ids
  * are legal, so `cynefin-estuarine:domain` is well formed.
  */
-const ID_PATTERN = /^[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)?$/;
+const ID_PATTERN =
+  /^[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)?$/;
 
 export type TagValueDef = {
   /** `'<tagId>/<local>'`, e.g. `'wardley:nature/data'`. */
@@ -229,7 +230,12 @@ export function buildUniverseRegistry(
     code: UniverseDefIssue['code'],
     message: string,
     id?: string
-  ) => issues.push(id === undefined ? { severity, code, message } : { severity, code, id, message });
+  ) =>
+    issues.push(
+      id === undefined
+        ? { severity, code, message }
+        : { severity, code, id, message }
+    );
 
   for (const pack of packs) {
     if (pack?.formatVersion !== 1) {
@@ -288,7 +294,7 @@ export function buildUniverseRegistry(
     .sort(
       (a, b) =>
         (a.order ?? 0) - (b.order ?? 0) ||
-        (drafts.get(a.id)!.rank - drafts.get(b.id)!.rank) ||
+        drafts.get(a.id)!.rank - drafts.get(b.id)!.rank ||
         a.id.localeCompare(b.id)
     );
   // Keyed by plain `string`, not by `QualifiedId`: a lookup comes from a
@@ -357,7 +363,7 @@ function mergeTagDef(
       'error',
       'duplicate-conflict',
       `Tag "${def.id}": pack "${pack.packId}" declares ${
-        incomingOpen ? "an open value list" : 'a closed value list'
+        incomingOpen ? 'an open value list' : 'a closed value list'
       } but the opposite was declared first and stands.`,
       def.id
     );
@@ -425,8 +431,7 @@ const appliesToOf = (def: TagDef): Set<RoleId> | '*' =>
 function finishDraft(draft: Draft): TagDef {
   return {
     ...draft.def,
-    values:
-      draft.values === 'open' ? 'open' : [...draft.values.values()],
+    values: draft.values === 'open' ? 'open' : [...draft.values.values()],
     appliesTo: draft.appliesTo === '*' ? '*' : [...draft.appliesTo],
   };
 }

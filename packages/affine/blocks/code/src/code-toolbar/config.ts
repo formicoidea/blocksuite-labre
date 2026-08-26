@@ -111,16 +111,15 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
               const std = blockComponent.std;
               const mode =
                 std.getOptional(DocModeProvider)?.getEditorMode() ?? 'page';
-              std.getOptional(TelemetryProvider)?.track(
-                'codeBlockToggleCollapse',
-                {
+              std
+                .getOptional(TelemetryProvider)
+                ?.track('codeBlockToggleCollapse', {
                   page: mode,
                   segment: 'code block',
                   module: 'code toolbar container',
                   control: 'collapse button',
                   type: collapsed ? 'collapse' : 'expand',
-                }
-              );
+                });
             },
             render: item => {
               const collapsed = blockComponent.collapsed$.value;

@@ -6,4 +6,3 @@ __snapshots__/
 tsconfig.tsbuildinfo
 .coverage/
 **/test-results/
-packages/

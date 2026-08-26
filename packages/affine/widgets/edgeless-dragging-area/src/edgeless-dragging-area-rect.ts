@@ -1,7 +1,4 @@
-import {
-  DefaultModeDragType,
-  DefaultTool,
-} from '@labre/affine-block-surface';
+import { DefaultModeDragType, DefaultTool } from '@labre/affine-block-surface';
 import type { RootBlockModel } from '@labre/affine-model';
 import { WidgetComponent, WidgetViewExtension } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';

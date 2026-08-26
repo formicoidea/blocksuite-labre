@@ -72,7 +72,9 @@ describe('Unzip', () => {
   test('leaves a name fflate already decoded from its UTF-8 flag alone', async () => {
     const unzip = new Unzip();
     // fflate sets the UTF-8 flag itself for a non-ASCII name.
-    const archive = fflate.zipSync({ '中文文档.md': fflate.strToU8('# hello') });
+    const archive = fflate.zipSync({
+      '中文文档.md': fflate.strToU8('# hello'),
+    });
     await unzip.load(new Blob([archive], { type: 'application/zip' }));
 
     const entries = [...unzip];

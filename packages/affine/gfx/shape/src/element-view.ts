@@ -96,7 +96,10 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
   private _isDraggingVertex = false;
 
   /** Bezier handle being dragged (null = none). */
-  private _pendingBezierHandle: { vertexIndex: number; handleIndex: number } | null = null;
+  private _pendingBezierHandle: {
+    vertexIndex: number;
+    handleIndex: number;
+  } | null = null;
   private _isDraggingBezierHandle = false;
   private _bezierDragStartModelCoord: [number, number] | null = null;
 
@@ -187,10 +190,7 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
       }
 
       // 'B' key toggles Bezier smoothing on the hovered vertex
-      if (
-        (evt.key === 'b' || evt.key === 'B') &&
-        this._vertexEditingOverlay
-      ) {
+      if ((evt.key === 'b' || evt.key === 'B') && this._vertexEditingOverlay) {
         const idx = this._vertexEditingOverlay.hoveredVertexIndex;
         if (idx >= 0) {
           evt.preventDefault();
@@ -237,7 +237,8 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
         const verts = this.model.vertices;
         if (verts && this._pendingVertexIndex < verts.length) {
           this._isDraggingVertex = true;
-          this._vertexEditingOverlay!.activeVertexIndex = this._pendingVertexIndex;
+          this._vertexEditingOverlay!.activeVertexIndex =
+            this._pendingVertexIndex;
 
           this.model.stash('xywh');
           this.model.stash('vertices');
@@ -268,8 +269,10 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
       // Bezier handle drag
       if (this._pendingBezierHandle) {
         this._isDraggingBezierHandle = true;
-        this._vertexEditingOverlay!.activeBezierHandleIndex = this._pendingBezierHandle.vertexIndex;
-        this._vertexEditingOverlay!.activeBezierHandleType = this._pendingBezierHandle.handleIndex;
+        this._vertexEditingOverlay!.activeBezierHandleIndex =
+          this._pendingBezierHandle.vertexIndex;
+        this._vertexEditingOverlay!.activeBezierHandleType =
+          this._pendingBezierHandle.handleIndex;
 
         this.model.stash('xywh');
         this.model.stash('vertices');
@@ -278,9 +281,12 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
         const [startMX, startMY] = this.gfx.viewport.toModelCoord(e.x, e.y);
         this._pointerStartModelCoord = [startMX, startMY];
 
-        const cp = this._vertexEditingOverlay!.getBezierControlPoints(this._pendingBezierHandle.vertexIndex);
+        const cp = this._vertexEditingOverlay!.getBezierControlPoints(
+          this._pendingBezierHandle.vertexIndex
+        );
         if (cp) {
-          const pt = this._pendingBezierHandle.handleIndex === 0 ? cp.cp1 : cp.cp2;
+          const pt =
+            this._pendingBezierHandle.handleIndex === 0 ? cp.cp1 : cp.cp2;
           const bound = Bound.deserialize(this.model.xywh);
           this._bezierDragStartModelCoord = rotatePoint(
             pt,
@@ -301,7 +307,11 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
       const dy = curMY - this._pointerStartModelCoord[1];
 
       // Bezier handle drag
-      if (this._isDraggingBezierHandle && this._pendingBezierHandle && this._bezierDragStartModelCoord) {
+      if (
+        this._isDraggingBezierHandle &&
+        this._pendingBezierHandle &&
+        this._bezierDragStartModelCoord
+      ) {
         this._vertexEditingOverlay!.moveBezierHandle(
           this._pendingBezierHandle.vertexIndex,
           this._pendingBezierHandle.handleIndex,
@@ -362,7 +372,11 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
       }
     });
 
-    this._dragHandlerDisposers = [dragstartDisposer, dragmoveDisposer, dragendDisposer];
+    this._dragHandlerDisposers = [
+      dragstartDisposer,
+      dragmoveDisposer,
+      dragendDisposer,
+    ];
   }
 
   /**
@@ -437,7 +451,7 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
     // Record which vertex (if any) the pointer pressed on.  The registered
     // dragstart handler (added in _enterVertexEditingMode) reads
     // _pendingVertexIndex to decide whether to enter vertex-drag mode.
-    this.on('pointerdown', (e) => {
+    this.on('pointerdown', e => {
       if (!this._vertexEditingOverlay?.isEditing) {
         // Outside editing mode no vertex drag is possible.
         this._pendingVertexIndex = -1;
@@ -445,8 +459,10 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
       }
 
       const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
-      this._pendingVertexIndex =
-        this._vertexEditingOverlay.hitTestVertex(mx, my);
+      this._pendingVertexIndex = this._vertexEditingOverlay.hitTestVertex(
+        mx,
+        my
+      );
 
       // If no vertex hit, check bezier handle hit
       if (this._pendingVertexIndex < 0) {
@@ -458,7 +474,7 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
     });
 
     // Listen for pointer move to update hover state on the overlay
-    this.on('pointermove', (e) => {
+    this.on('pointermove', e => {
       if (!this._vertexEditingOverlay) return;
 
       const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
@@ -490,7 +506,7 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
     });
 
     // Click on edge midpoint to insert a new vertex (in editing mode)
-    this.on('click', (e) => {
+    this.on('click', e => {
       if (!this._vertexEditingOverlay) return;
       if (!this._vertexEditingOverlay.isEditing) return;
 
@@ -511,7 +527,8 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
         this.model.stash('vertices');
         this.model.stash('smoothFlags');
         this.model.stash('controlPoints');
-        const newIdx = this._vertexEditingOverlay.insertVertexAtMidpoint(midIdx);
+        const newIdx =
+          this._vertexEditingOverlay.insertVertexAtMidpoint(midIdx);
         this.model.pop('controlPoints');
         this.model.pop('xywh');
         this.model.pop('vertices');

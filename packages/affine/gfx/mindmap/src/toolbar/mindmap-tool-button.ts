@@ -4,10 +4,7 @@ import {
 } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
 import { TextTool } from '@labre/affine-gfx-text';
-import type {
-  MindmapElementModel,
-  MindmapStyle,
-} from '@labre/affine-model';
+import type { MindmapElementModel, MindmapStyle } from '@labre/affine-model';
 import {
   EditPropsStore,
   ViewportElementProvider,
@@ -185,7 +182,6 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
         });
       },
     });
-
   }
 
   initDragController() {
@@ -267,33 +263,33 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
             if (gfx.selection.editing) return;
 
             if (this.readyToDrop) {
-            // change the style
-            const activeIndex = this.mindmaps.findIndex(
-              m => m.style === this._style$.value
-            );
-            const nextIndex = (activeIndex + 1) % this.mindmaps.length;
-            const next = this.mindmaps[nextIndex];
-            this.edgeless.std.get(EditPropsStore).recordLastProps('mindmap', {
-              style: next.style,
-            });
-            const tool = this.draggableTools.find(t => t.name === 'mindmap');
-            this.draggableController.updateElementInfo({
-              data: tool,
-              preview: next.icon,
-            });
-            return;
-          }
-          this.setEdgelessTool(EmptyTool);
-          const icon = this.mindmapElement;
-          const { x, y } = gfx.tool.lastMouseViewPos$.peek();
-          const { viewport } = this.edgeless.std.get(ViewportElementProvider);
-          const { left, top } = viewport;
-          const clientPos = { x: x + left, y: y + top };
-          this.draggableController.dragAndMoveTo(icon, clientPos);
+              // change the style
+              const activeIndex = this.mindmaps.findIndex(
+                m => m.style === this._style$.value
+              );
+              const nextIndex = (activeIndex + 1) % this.mindmaps.length;
+              const next = this.mindmaps[nextIndex];
+              this.edgeless.std.get(EditPropsStore).recordLastProps('mindmap', {
+                style: next.style,
+              });
+              const tool = this.draggableTools.find(t => t.name === 'mindmap');
+              this.draggableController.updateElementInfo({
+                data: tool,
+                preview: next.icon,
+              });
+              return;
+            }
+            this.setEdgelessTool(EmptyTool);
+            const icon = this.mindmapElement;
+            const { x, y } = gfx.tool.lastMouseViewPos$.peek();
+            const { viewport } = this.edgeless.std.get(ViewportElementProvider);
+            const { left, top } = viewport;
+            const clientPos = { x: x + left, y: y + top };
+            this.draggableController.dragAndMoveTo(icon, clientPos);
+          },
         },
-      },
-      { global: true }
-    );
+        { global: true }
+      );
     }
 
     // since there is not a tool called mindmap, we need to cancel the drag when the tool is changed
@@ -317,7 +313,11 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
     return html`<edgeless-toolbar-button
       class="edgeless-mindmap-button"
       ?withHover=${true}
-      .tooltip=${popper ? '' : this.variant === 'mindmap' ? 'Mind Map' : 'Others'}
+      .tooltip=${popper
+        ? ''
+        : this.variant === 'mindmap'
+          ? 'Mind Map'
+          : 'Others'}
       .tooltipOffset=${4}
       @click=${this._toggleMenu}
       style="width: 100%; height: 100%; display: inline-block"

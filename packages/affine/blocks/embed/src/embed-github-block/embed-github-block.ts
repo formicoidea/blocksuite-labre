@@ -1,8 +1,5 @@
 import { LoadingIcon, OpenIcon } from '@labre/affine-components/icons';
-import type {
-  EmbedGithubModel,
-  EmbedGithubStyles,
-} from '@labre/affine-model';
+import type { EmbedGithubModel, EmbedGithubStyles } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import { ThemeProvider } from '@labre/affine-shared/services';
 import { BlockSelection, isGfxBlockComponent } from '@labre/std';

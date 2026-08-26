@@ -232,7 +232,8 @@ export function pickStylePropsForKey<K extends keyof NodeProps>(
   props: Record<string, unknown>
 ): Partial<NodeProps[K]> | null {
   const keySchema = OptionalNodePropsSchema._def.innerType.shape[key];
-  const inner = keySchema instanceof ZodOptional ? keySchema.unwrap() : keySchema;
+  const inner =
+    keySchema instanceof ZodOptional ? keySchema.unwrap() : keySchema;
   if (!(inner instanceof ZodObject)) return null;
 
   const picked: Record<string, unknown> = {};
@@ -245,7 +246,5 @@ export function pickStylePropsForKey<K extends keyof NodeProps>(
     }
   }
 
-  return Object.keys(picked).length
-    ? (picked as Partial<NodeProps[K]>)
-    : null;
+  return Object.keys(picked).length ? (picked as Partial<NodeProps[K]>) : null;
 }

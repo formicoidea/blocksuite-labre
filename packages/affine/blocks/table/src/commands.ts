@@ -1,7 +1,4 @@
-import {
-  type TableBlockModel,
-  TableModelFlavour,
-} from '@labre/affine-model';
+import { type TableBlockModel, TableModelFlavour } from '@labre/affine-model';
 import type { Command } from '@labre/std';
 import { type BlockModel } from '@labre/store';
 

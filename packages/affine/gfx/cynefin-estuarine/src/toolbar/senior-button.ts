@@ -65,7 +65,6 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
     this.setEdgelessTool(DefaultTool);
     const menu = this.createPopper('edgeless-cynefin-estuarine-menu', this);
     menu.element.edgeless = this.edgeless;
-
   }
 
   override render() {

@@ -6,11 +6,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { CONTEXT_MAP_AUTO_LEGEND } from '../legend';
-import {
-  CM_PATTERN_ROLE,
-  CONTEXT_MAP_ROLE,
-  CONTEXT_MAP_ROLES,
-} from '../roles';
+import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from '../roles';
 
 /**
  * The board's automatic legend is a TABLE over the shared presets. What is worth

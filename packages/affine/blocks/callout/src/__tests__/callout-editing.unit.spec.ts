@@ -92,7 +92,9 @@ function authorCallout(lines: string[]) {
   const paragraphOf = (id: string) =>
     store.getBlock(id)?.model as ParagraphBlockModel | undefined;
   const linesNow = () =>
-    callout().children.map(child => (child as ParagraphBlockModel).props.text.toString());
+    callout().children.map(child =>
+      (child as ParagraphBlockModel).props.text.toString()
+    );
 
   return {
     store,
@@ -178,9 +180,9 @@ describe('Enter inside a callout', () => {
     );
 
     expect(linesNow()).toEqual(['done', '']);
-    expect(
-      (callout().children[1] as ParagraphBlockModel).props.type
-    ).toBe('text');
+    expect((callout().children[1] as ParagraphBlockModel).props.type).toBe(
+      'text'
+    );
   });
 
   it('gives an empty callout its first paragraph', () => {

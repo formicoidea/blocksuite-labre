@@ -65,7 +65,8 @@ describe('auto-complete on something that is neither shape nor note', () => {
   /** Collects anything the click throws past the handler, as the browser sees it. */
   const recordUncaught = () => {
     const errors: string[] = [];
-    const onError = (e: ErrorEvent) => errors.push(String(e.error ?? e.message));
+    const onError = (e: ErrorEvent) =>
+      errors.push(String(e.error ?? e.message));
     window.addEventListener('error', onError);
     return {
       errors,
@@ -91,7 +92,11 @@ describe('auto-complete on something that is neither shape nor note', () => {
     key('c');
     await wait();
     const node = service.surface.getElementsByType('wardleyNode')[0];
-    return { node, group: node.group!, label: service.surface.getElementsByType('text')[0] };
+    return {
+      node,
+      group: node.group!,
+      label: service.surface.getElementsByType('text')[0],
+    };
   };
 
   beforeEach(async () => {

@@ -22,6 +22,7 @@
   bench asserts the numeric half: a board carrying a finding per element re-judges
   in the same time as a clean one.
   **What hosts get.**
+
   1. `AuditExtension(service)` injects an `AuditService`:
 
      ```ts
@@ -42,46 +43,47 @@
 
   3. Three telemetry events — `MapAuditStarted`, `MapAuditCompleted`,
      `MapAuditInterrupted` — carrying counts and ids only.
-  **A new switch axis: `OPTIONAL_CAPABILITIES`.** `ai-audit` gates the command,
-  with the same contract as a block flag (missing key = enabled, disabling removes
-  tooling only) but on its **own list**, because `OPTIONAL_BLOCKS` answers "does
-  this block or framework exist for this user" and every entry there names
-  something a document can contain. A capability names none. Hosts still pass one
-  object: `LabreFlags = BlockFlags & CapabilityFlags`, and the two key spaces are
-  disjoint, so a host that only ever spoke `BlockFlags` keeps compiling and
-  behaving identically.
-  Nothing here is persisted — criteria are code, findings are session state — so
-  switching `ai-audit` off cannot lose data even in principle.
-  **The request is isolated on the way out.** `requestAudit` hands the provider a
-  `structuredClone` of the request, not the caller's objects. This is the outbound
-  half of "a provider is not believed", symmetric with the finding normalisation:
-  some facts are not fresh objects — an axis `forward` vector came straight from a
-  module constant the engine multiplies against — so a provider writing into its
-  own input could flip an axis convention and turn correct arrows into violations
-  on the canvas. The clone closes the whole class, at a cost the seam already
-  claims (the request must be serializable).
-  **Two audits at once: the newest wins.** An audit is a network call and takes
-  seconds, so a user asking again while the first is in flight is ordinary. Runs
-  carry a generation; a run superseded by a newer one publishes nothing and
-  reports `MapAuditInterrupted` with `reason: 'superseded'` rather than a
-  completion whose `findingCount` describes findings nobody will see.
-  **Degradation is the default path.** No noop provider is registered. With none
-  injected (the standalone playground, every unit suite), `map.audit` is still
-  enumerable but refuses cleanly with `status: 'unavailable'` — not a throw, not a
-  console error — and levels 1 and 2 are untouched. A registered provider may also
-  _declare_ itself unavailable (assistant behind an app-side feature flag, quota
-  exhausted, no model configured); that is passed through rather than folded into
-  `complete`. A provider that throws becomes `status: 'error'`; an abort, whatever
-  shape it arrives in, becomes `status: 'aborted'` and **keeps the findings already
-  produced**.
-  **Host panels must tolerate stale element ids.** `AuditFinding.elementIds` is
-  checked for type and not validated against the surface: the board moves on while
-  an audit is in flight, so an id naming a departed element is stale rather than
-  wrong, and a lookup per id would be paid on every finding to say so.
-  **`map.audit` carries no read-only guard, deliberately.** Unlike `pivot.bind`,
-  it writes nothing: reviewing a map you have been given and cannot change is not
-  an edge case for an audit, it is the case. A test asserts it runs to completion
-  against a read-only store that throws on any write.
+     **A new switch axis: `OPTIONAL_CAPABILITIES`.** `ai-audit` gates the command,
+     with the same contract as a block flag (missing key = enabled, disabling removes
+     tooling only) but on its **own list**, because `OPTIONAL_BLOCKS` answers "does
+     this block or framework exist for this user" and every entry there names
+     something a document can contain. A capability names none. Hosts still pass one
+     object: `LabreFlags = BlockFlags & CapabilityFlags`, and the two key spaces are
+     disjoint, so a host that only ever spoke `BlockFlags` keeps compiling and
+     behaving identically.
+     Nothing here is persisted — criteria are code, findings are session state — so
+     switching `ai-audit` off cannot lose data even in principle.
+     **The request is isolated on the way out.** `requestAudit` hands the provider a
+     `structuredClone` of the request, not the caller's objects. This is the outbound
+     half of "a provider is not believed", symmetric with the finding normalisation:
+     some facts are not fresh objects — an axis `forward` vector came straight from a
+     module constant the engine multiplies against — so a provider writing into its
+     own input could flip an axis convention and turn correct arrows into violations
+     on the canvas. The clone closes the whole class, at a cost the seam already
+     claims (the request must be serializable).
+     **Two audits at once: the newest wins.** An audit is a network call and takes
+     seconds, so a user asking again while the first is in flight is ordinary. Runs
+     carry a generation; a run superseded by a newer one publishes nothing and
+     reports `MapAuditInterrupted` with `reason: 'superseded'` rather than a
+     completion whose `findingCount` describes findings nobody will see.
+     **Degradation is the default path.** No noop provider is registered. With none
+     injected (the standalone playground, every unit suite), `map.audit` is still
+     enumerable but refuses cleanly with `status: 'unavailable'` — not a throw, not a
+     console error — and levels 1 and 2 are untouched. A registered provider may also
+     _declare_ itself unavailable (assistant behind an app-side feature flag, quota
+     exhausted, no model configured); that is passed through rather than folded into
+     `complete`. A provider that throws becomes `status: 'error'`; an abort, whatever
+     shape it arrives in, becomes `status: 'aborted'` and **keeps the findings already
+     produced**.
+     **Host panels must tolerate stale element ids.** `AuditFinding.elementIds` is
+     checked for type and not validated against the surface: the board moves on while
+     an audit is in flight, so an id naming a departed element is stale rather than
+     wrong, and a lookup per id would be paid on every finding to say so.
+     **`map.audit` carries no read-only guard, deliberately.** Unlike `pivot.bind`,
+     it writes nothing: reviewing a map you have been given and cannot change is not
+     an edge case for an audit, it is the case. A test asserts it runs to completion
+     against a read-only store that throws on any write.
+
 - 612c859: One command registry behind every surface (PF3)
 
   Every framework artefact is now declared exactly once, as a `CommandDescriptor`
@@ -261,36 +263,36 @@
     is its own slice; until then the gap is pinned by two assertions that state
     both ends — the tag id that exists and the flat prop that does not — so it
     cannot rot into "later means never".
-  Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
-  carry the framework, the nudge id and the counts — never board content. A nudge
-  everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
-  ticks is an expectation the tool failed to make actionable. Nothing else can say
-  either, because nothing here is ever computed.
-  **Persistence.** One new optional `@field()` on the base element model,
-  `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
-  BASE class for the same reason `role`, `validationExceptions` and
-  `validationProfile` are: an element re-created from props only reaches the Y.Map
-  through declared accessors, so a per-subclass declaration would be silently
-  dropped on copy. Its default is `undefined` and is never written, so an instance
-  with nothing ticked stays byte-identical to one created before the field
-  existed: no block schema change, no version bump, no migration, and documents
-  written before and after remain mutually loadable. Unticking the last one removes
-  the KEY through `clearField` rather than leaving an empty array behind, so an
-  emptied checklist is byte-identical again too — in the document, and not merely
-  through the getter. Ids of nudges no framework declares any more are kept rather
-  than pruned: the tooling comes and goes with a flag, the decisions recorded on it
-  do not. `setNudgeChecked` enforces read-only itself, at the seam, like
-  `setProfile` and `setException` do: a disabled checkbox covers exactly one
-  caller, and `clearField` goes through `Store.transact`, which — unlike
-  `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
-  own, so unticking would genuinely delete the key from a document nobody may edit.
-  **Cost.** Measured, not asserted: registering the two Wardley check-up rules
-  beside the three real-time ones leaves both the verdict and the timing of the
-  drawing path unchanged on the 500-element reference map. The two timings are
-  measured on INTERLEAVED samples, because taken one after the other they compare
-  two moments in the runner's life as much as two rule sets — the same evaluation
-  drifts by half again between back-to-back medians, which is several times the
-  effect being looked for. That is the whole point of the second moment.
+    Two new telemetry events, `MapQualityNudgeToggled` and `MapQualityCheckupRun`,
+    carry the framework, the nudge id and the counts — never board content. A nudge
+    everybody ticks immediately is a reminder nobody needed; a nudge nobody ever
+    ticks is an expectation the tool failed to make actionable. Nothing else can say
+    either, because nothing here is ever computed.
+    **Persistence.** One new optional `@field()` on the base element model,
+    `qualityChecklist: string[]` — the ids ticked on the instance. Declared on the
+    BASE class for the same reason `role`, `validationExceptions` and
+    `validationProfile` are: an element re-created from props only reaches the Y.Map
+    through declared accessors, so a per-subclass declaration would be silently
+    dropped on copy. Its default is `undefined` and is never written, so an instance
+    with nothing ticked stays byte-identical to one created before the field
+    existed: no block schema change, no version bump, no migration, and documents
+    written before and after remain mutually loadable. Unticking the last one removes
+    the KEY through `clearField` rather than leaving an empty array behind, so an
+    emptied checklist is byte-identical again too — in the document, and not merely
+    through the getter. Ids of nudges no framework declares any more are kept rather
+    than pruned: the tooling comes and goes with a flag, the decisions recorded on it
+    do not. `setNudgeChecked` enforces read-only itself, at the seam, like
+    `setProfile` and `setException` do: a disabled checkbox covers exactly one
+    caller, and `clearField` goes through `Store.transact`, which — unlike
+    `addBlock` / `updateBlock` / `deleteBlock` — carries no read-only guard of its
+    own, so unticking would genuinely delete the key from a document nobody may edit.
+    **Cost.** Measured, not asserted: registering the two Wardley check-up rules
+    beside the three real-time ones leaves both the verdict and the timing of the
+    drawing path unchanged on the 500-element reference map. The two timings are
+    measured on INTERLEAVED samples, because taken one after the other they compare
+    two moments in the runner's life as much as two rule sets — the same evaluation
+    drifts by half again between back-to-back medians, which is several times the
+    effect being looked for. That is the whole point of the second moment.
 - 02797b5: Surface elements can now be an **occurrence of a pivot record**: a new optional
   `pivotDocId` field on `GfxPrimitiveElementModel`, a `pivot.bind` command that
   writes it, and an injectable `PivotPropertiesProvider` the host implements to

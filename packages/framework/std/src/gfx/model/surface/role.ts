@@ -177,7 +177,10 @@ let _vocabularyId = 1;
 export function RoleVocabularyExtension(defs: RoleDefs): ExtensionType {
   return {
     setup: di => {
-      di.addImpl(RoleVocabularyIdentifier(`RoleVocabulary-${_vocabularyId++}`), () => defs);
+      di.addImpl(
+        RoleVocabularyIdentifier(`RoleVocabulary-${_vocabularyId++}`),
+        () => defs
+      );
     },
   };
 }

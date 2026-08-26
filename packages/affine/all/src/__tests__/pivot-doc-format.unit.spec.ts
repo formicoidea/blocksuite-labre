@@ -39,8 +39,10 @@ function createEditor(id: string) {
     blobCRUD: collection.blobSync,
     middlewares: [],
     docCRUD: {
-      create: (docId: string) => collection.createDoc(docId).getStore({ id: docId }),
-      get: (docId: string) => collection.getDoc(docId)?.getStore({ id: docId }) ?? null,
+      create: (docId: string) =>
+        collection.createDoc(docId).getStore({ id: docId }),
+      get: (docId: string) =>
+        collection.getDoc(docId)?.getStore({ id: docId }) ?? null,
       delete: (docId: string) => collection.removeDoc(docId),
     },
   });

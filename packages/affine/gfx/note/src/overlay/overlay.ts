@@ -1,7 +1,4 @@
-import {
-  getSurfaceComponent,
-  ToolOverlay,
-} from '@labre/affine-block-surface';
+import { getSurfaceComponent, ToolOverlay } from '@labre/affine-block-surface';
 import { type Color, DefaultTheme } from '@labre/affine-model';
 import { ThemeProvider } from '@labre/affine-shared/services';
 import type { XYWH } from '@labre/global/gfx';

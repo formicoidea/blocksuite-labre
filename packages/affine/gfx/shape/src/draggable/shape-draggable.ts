@@ -3,11 +3,7 @@ import {
   DefaultTool,
   EdgelessCRUDIdentifier,
 } from '@labre/affine-block-surface';
-import {
-  getShapeRadius,
-  getShapeType,
-  ShapeType,
-} from '@labre/affine-model';
+import { getShapeRadius, getShapeType, ShapeType } from '@labre/affine-model';
 import {
   EditPropsStore,
   TelemetryProvider,

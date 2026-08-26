@@ -4,10 +4,7 @@ import {
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
 import type { LineDetailType } from '@labre/affine-components/edgeless-line-styles-panel';
-import {
-  createTextActions,
-  normalizeTextBound,
-} from '@labre/affine-gfx-text';
+import { createTextActions, normalizeTextBound } from '@labre/affine-gfx-text';
 import {
   ConnectorElementModel,
   type ConnectorElementProps,
@@ -302,9 +299,7 @@ export const connectorToolbarConfig = {
           when: ctx =>
             !ctx
               .getSurfaceModelsByType(ConnectorElementModel)
-              .some(model =>
-                asTypedEdge(roleVocabularies(ctx.std), model)
-              ),
+              .some(model => asTypedEdge(roleVocabularies(ctx.std), model)),
           run(ctx) {
             const models = ctx.getSurfaceModelsByType(ConnectorElementModel);
             if (!models.length) return;

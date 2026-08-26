@@ -73,7 +73,9 @@ function context(
         };
 
   return {
-    std: { getOptional: (id: unknown) => (id === ValidationManager ? manager : null) },
+    std: {
+      getOptional: (id: unknown) => (id === ValidationManager ? manager : null),
+    },
     getSurfaceModels: () => models,
   } as unknown as ToolbarContext;
 }
@@ -110,9 +112,9 @@ describe('when the validation entry stands up', () => {
   it('does not, on a multi-selection', () => {
     // A profile is one decision about one instance; two maps on two levels
     // have no honest "current" value to show.
-    expect(
-      stands(context([element(), element()], [SKETCH, STRICT]))
-    ).toBe(false);
+    expect(stands(context([element(), element()], [SKETCH, STRICT]))).toBe(
+      false
+    );
   });
 
   it('does not, on something that is not a surface element', () => {
@@ -128,9 +130,7 @@ describe('the entry is generic', () => {
     // The stub answers `profilesFor` for ANY element, of any type, carrying any
     // role — and the entry stands up. Nothing in the config names a framework,
     // a shape type or a role: swap Wardley for BPMN and this is unchanged.
-    expect(stands(context([element()], [SKETCH, STRICT]))).toBe(
-      true
-    );
+    expect(stands(context([element()], [SKETCH, STRICT]))).toBe(true);
   });
 
   it('places itself after a framework’s own per-instance toggles', () => {
@@ -224,9 +224,7 @@ type ExceptionManagerStub = {
   revocableExceptionsOn: (
     element: GfxPrimitiveElementModel
   ) => AnchoredException[];
-  revokeExceptionsOn: (
-    element: GfxPrimitiveElementModel
-  ) => RevokedException[];
+  revokeExceptionsOn: (element: GfxPrimitiveElementModel) => RevokedException[];
 };
 
 /**

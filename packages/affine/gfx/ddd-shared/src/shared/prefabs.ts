@@ -104,7 +104,15 @@ function addShape(
   h: number,
   opts: ShapeOpts
 ): string {
-  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label, role } = opts;
+  const {
+    shapeType = 'rect',
+    fill,
+    stroke = NO_STROKE,
+    strokeWidth = 0,
+    radius = 0,
+    label,
+    role,
+  } = opts;
   return surface.addElement({
     type: 'shape',
     // `undefined` writes nothing: a neutral artefact keeps no `role` key.
@@ -181,14 +189,28 @@ export function addSticky(
     role?: string;
   }
 ): string {
-  const { fill, text, label, shapeType = 'rect', size = STICKY_SIZE, role } = opts;
+  const {
+    fill,
+    text,
+    label,
+    shapeType = 'rect',
+    size = STICKY_SIZE,
+    role,
+  } = opts;
   const half = size / 2;
   const radius = shapeType === 'rect' ? STICKY_RADIUS : 0;
-  const shadow = addShape(surface, cx - half + SHADOW_OFFSET, cy - half + SHADOW_OFFSET, size, size, {
-    shapeType,
-    fill: SHADOW_COLOR,
-    radius,
-  });
+  const shadow = addShape(
+    surface,
+    cx - half + SHADOW_OFFSET,
+    cy - half + SHADOW_OFFSET,
+    size,
+    size,
+    {
+      shapeType,
+      fill: SHADOW_COLOR,
+      radius,
+    }
+  );
   const face = addShape(surface, cx - half, cy - half, size, size, {
     shapeType,
     fill,
@@ -254,7 +276,17 @@ export function addDot(
     role,
   });
   if (!label) return dot;
-  const lbl = addText(surface, cx + d / 2 + 6, cy - LABEL_FONT_SIZE / 2, 170, label, LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE, 'left');
+  const lbl = addText(
+    surface,
+    cx + d / 2 + 6,
+    cy - LABEL_FONT_SIZE / 2,
+    170,
+    label,
+    LABEL_COLOR,
+    LABEL_FONT,
+    LABEL_FONT_SIZE,
+    'left'
+  );
   return groupIds(std, [dot, lbl]);
 }
 
@@ -267,7 +299,17 @@ export function addLabel(
   align: 'left' | 'center' = 'center',
   color = LABEL_COLOR
 ): string {
-  return addText(surface, cx, cy, 200, label, color, LABEL_FONT, LABEL_FONT_SIZE, align);
+  return addText(
+    surface,
+    cx,
+    cy,
+    200,
+    label,
+    color,
+    LABEL_FONT,
+    LABEL_FONT_SIZE,
+    align
+  );
 }
 
 /** A relationship connector (the single connector unit reused for all patterns). */
@@ -286,7 +328,13 @@ export function addConnector(
     role?: string;
   } = {}
 ): string {
-  const { rearArrow = false, dashed = false, stroke = LABEL_COLOR, strokeWidth = 2, role } = opts;
+  const {
+    rearArrow = false,
+    dashed = false,
+    stroke = LABEL_COLOR,
+    strokeWidth = 2,
+    role,
+  } = opts;
   return surface.addElement({
     type: 'connector',
     role,
@@ -325,10 +373,31 @@ export function addMarker(
     radius: 4,
     role,
   });
-  const glyph = addText(surface, cx - s / 2, cy - 9, s, letter, '#1f2328', LABEL_FONT, 15);
+  const glyph = addText(
+    surface,
+    cx - s / 2,
+    cy - 9,
+    s,
+    letter,
+    '#1f2328',
+    LABEL_FONT,
+    15
+  );
   const ids = [box, glyph];
   if (label) {
-    ids.push(addText(surface, cx + s / 2 + 6, cy - LABEL_FONT_SIZE / 2, 150, label, LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE, 'left'));
+    ids.push(
+      addText(
+        surface,
+        cx + s / 2 + 6,
+        cy - LABEL_FONT_SIZE / 2,
+        150,
+        label,
+        LABEL_COLOR,
+        LABEL_FONT,
+        LABEL_FONT_SIZE,
+        'left'
+      )
+    );
   }
   return groupIds(std, ids);
 }
@@ -356,7 +425,16 @@ export function addCloud(
     xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
   });
   if (!label) return cloud;
-  const lbl = addText(surface, cx - w / 2 + 12, cy - LABEL_FONT_SIZE / 2, w - 24, label, '#3d3d3d', LABEL_FONT, LABEL_FONT_SIZE);
+  const lbl = addText(
+    surface,
+    cx - w / 2 + 12,
+    cy - LABEL_FONT_SIZE / 2,
+    w - 24,
+    label,
+    '#3d3d3d',
+    LABEL_FONT,
+    LABEL_FONT_SIZE
+  );
   return groupIds(std, [cloud, lbl]);
 }
 
@@ -382,11 +460,24 @@ export function addRelationship(
     strokeWidth: 1,
     radius: 4,
   });
-  const tagText = addText(surface, cx - 26, cy - 36, 52, preset.abbrev, LABEL_COLOR, LABEL_FONT, 13);
+  const tagText = addText(
+    surface,
+    cx - 26,
+    cy - 36,
+    52,
+    preset.abbrev,
+    LABEL_COLOR,
+    LABEL_FONT,
+    13
+  );
   const ids = [conn, tag, tagText];
   if (preset.upDown) {
-    ids.push(addText(surface, cx - 150, cy - 30, 24, 'U', LABEL_COLOR, LABEL_FONT, 13));
-    ids.push(addText(surface, cx + 126, cy - 30, 24, 'D', LABEL_COLOR, LABEL_FONT, 13));
+    ids.push(
+      addText(surface, cx - 150, cy - 30, 24, 'U', LABEL_COLOR, LABEL_FONT, 13)
+    );
+    ids.push(
+      addText(surface, cx + 126, cy - 30, 24, 'D', LABEL_COLOR, LABEL_FONT, 13)
+    );
   }
   return groupIds(std, ids);
 }
@@ -473,31 +564,107 @@ export function addLegend(
     }),
   ];
   let cy = y + PAD;
-  ids.push(addText(surface, x + PAD, cy, W - PAD * 2, opts.title, LABEL_COLOR, LABEL_FONT, 18, 'left', true));
+  ids.push(
+    addText(
+      surface,
+      x + PAD,
+      cy,
+      W - PAD * 2,
+      opts.title,
+      LABEL_COLOR,
+      LABEL_FONT,
+      18,
+      'left',
+      true
+    )
+  );
   cy += TITLE_H;
   for (const sec of opts.sections) {
     if (sec.title) {
-      ids.push(addText(surface, x + PAD, cy, W - PAD * 2, sec.title, LABEL_COLOR, LABEL_FONT, 14, 'left', true));
+      ids.push(
+        addText(
+          surface,
+          x + PAD,
+          cy,
+          W - PAD * 2,
+          sec.title,
+          LABEL_COLOR,
+          LABEL_FONT,
+          14,
+          'left',
+          true
+        )
+      );
       cy += SUB_H;
     }
     for (const row of sec.rows) {
       const sx = x + PAD;
       const midY = cy + ROW_H / 2;
       if (row.swatch === 'dot') {
-        ids.push(addShape(surface, sx, midY - SW / 2, SW, SW, { shapeType: 'ellipse', fill: row.color, stroke: '#1f2328', strokeWidth: 1 }));
+        ids.push(
+          addShape(surface, sx, midY - SW / 2, SW, SW, {
+            shapeType: 'ellipse',
+            fill: row.color,
+            stroke: '#1f2328',
+            strokeWidth: 1,
+          })
+        );
       } else if (row.swatch === 'square') {
-        ids.push(addShape(surface, sx, midY - SW / 2, SW, SW, { fill: row.color, stroke: '#1f2328', strokeWidth: 1, radius: 3 }));
-        if (row.letter) ids.push(addText(surface, sx, midY - 8, SW, row.letter, '#1f2328', LABEL_FONT, 11));
+        ids.push(
+          addShape(surface, sx, midY - SW / 2, SW, SW, {
+            fill: row.color,
+            stroke: '#1f2328',
+            strokeWidth: 1,
+            radius: 3,
+          })
+        );
+        if (row.letter)
+          ids.push(
+            addText(
+              surface,
+              sx,
+              midY - 8,
+              SW,
+              row.letter,
+              '#1f2328',
+              LABEL_FONT,
+              11
+            )
+          );
       } else if (row.dashed) {
         // Two 6-unit segments with a 4-unit gap: the same 16 units as a solid
         // bar, read as a dash.
         const seg = 6;
-        ids.push(addShape(surface, sx, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
-        ids.push(addShape(surface, sx + SW - seg, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
+        ids.push(
+          addShape(surface, sx, midY - 2, seg, 4, {
+            fill: row.color,
+            radius: 1,
+          })
+        );
+        ids.push(
+          addShape(surface, sx + SW - seg, midY - 2, seg, 4, {
+            fill: row.color,
+            radius: 1,
+          })
+        );
       } else {
-        ids.push(addShape(surface, sx, midY - 2, SW, 4, { fill: row.color, radius: 1 }));
+        ids.push(
+          addShape(surface, sx, midY - 2, SW, 4, { fill: row.color, radius: 1 })
+        );
       }
-      ids.push(addText(surface, sx + SW + 10, midY - LABEL_FONT_SIZE / 2, W - PAD * 2 - SW - 10, row.label, LABEL_COLOR, LABEL_FONT, 13, 'left'));
+      ids.push(
+        addText(
+          surface,
+          sx + SW + 10,
+          midY - LABEL_FONT_SIZE / 2,
+          W - PAD * 2 - SW - 10,
+          row.label,
+          LABEL_COLOR,
+          LABEL_FONT,
+          13,
+          'left'
+        )
+      );
       cy += ROW_H;
     }
   }

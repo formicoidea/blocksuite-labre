@@ -1,7 +1,4 @@
-import {
-  createIdentifier,
-  type ServiceIdentifier,
-} from '@labre/global/di';
+import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
 import type {
   GfxLocalElementModel,
   GfxPrimitiveElementModel,

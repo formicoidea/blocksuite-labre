@@ -209,7 +209,13 @@ describe('the Core Domain Chart paints what it always painted', () => {
     const { rects } = render(
       chart({ deserializedXYWH: [0, 0, 2 * W - 114, 2 * H - 74] })
     );
-    expect(rects[2]).toEqual({ x: 820, y: 36, w: 800, h: 720, fill: '#4d990099' });
+    expect(rects[2]).toEqual({
+      x: 820,
+      y: 36,
+      w: 800,
+      h: 720,
+      fill: '#4d990099',
+    });
   });
 });
 

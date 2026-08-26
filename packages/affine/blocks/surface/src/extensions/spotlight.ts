@@ -24,9 +24,8 @@ import type { SurfaceBlockModel } from '../surface-model.js';
  * The fading uses `element.opacity`, a `@local()` field — no CRDT write, no
  * undo entry, no sync.
  */
-export const SpotlightHostIdentifier = createIdentifier<string>(
-  'SpotlightHost'
-);
+export const SpotlightHostIdentifier =
+  createIdentifier<string>('SpotlightHost');
 
 export function SpotlightHostExtension(elementType: string): ExtensionType {
   return {
@@ -94,7 +93,9 @@ export class SpotlightManager extends InteractivityExtension {
   }
 
   private get _hostTypes(): string[] {
-    return Array.from(this.std.provider.getAll(SpotlightHostIdentifier).values());
+    return Array.from(
+      this.std.provider.getAll(SpotlightHostIdentifier).values()
+    );
   }
 
   private get _surface(): SurfaceBlockModel | null {

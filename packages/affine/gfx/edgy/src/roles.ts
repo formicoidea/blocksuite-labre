@@ -174,7 +174,8 @@ export const EDGY_PAIR_TO_VERB: Readonly<Record<string, string>> =
   );
 
 /** i18n key stem of a role id: `edgy:is-part-of` → `com.labre.edgy.role.is-part-of`. */
-const roleKey = (id: RoleId) => `com.labre.edgy.role.${id.slice('edgy:'.length)}`;
+const roleKey = (id: RoleId) =>
+  `com.labre.edgy.role.${id.slice('edgy:'.length)}`;
 
 const ELEMENT_DEFS: readonly RoleDef[] = [
   // The root of every artefact a board is made of. A rule written here covers

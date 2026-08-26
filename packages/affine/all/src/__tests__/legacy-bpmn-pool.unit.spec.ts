@@ -141,7 +141,9 @@ describe('a BPMN pool written before the primitive', () => {
 
   test('is byte-identical to what a pool created TODAY writes', () => {
     const { collection } = createEditor();
-    const store = collection.createDoc('doc:fresh').getStore({ id: 'doc:fresh' });
+    const store = collection
+      .createDoc('doc:fresh')
+      .getStore({ id: 'doc:fresh' });
     let surfaceId = '';
     store.load(() => {
       const rootId = store.addBlock('affine:page', { title: new Text('BPMN') });
@@ -159,7 +161,14 @@ describe('a BPMN pool written before the primitive', () => {
     // field of its own: the four keys below are the four a pool has always
     // written, with the same defaults, and no fifth has appeared.
     expect(Object.keys(persisted).sort()).toEqual(
-      ['type', 'name', 'resizeEnabled', 'rotate', 'xywh', ...FRAMEWORK_KEYS].sort()
+      [
+        'type',
+        'name',
+        'resizeEnabled',
+        'rotate',
+        'xywh',
+        ...FRAMEWORK_KEYS,
+      ].sort()
     );
     expect(persisted.name).toBe('Pool');
     expect(persisted.resizeEnabled).toBe(true);

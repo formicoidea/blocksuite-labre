@@ -1,8 +1,5 @@
 import { isFrameBlock } from '@labre/affine-block-frame';
-import {
-  getSurfaceComponent,
-  isNoteBlock,
-} from '@labre/affine-block-surface';
+import { getSurfaceComponent, isNoteBlock } from '@labre/affine-block-surface';
 import type {
   EdgelessTextBlockModel,
   EmbedSyncedDocModel,

@@ -15,6 +15,5 @@ export const NoopTelemetryService: TelemetryService = {
   track: () => {},
 };
 
-export const NoopTelemetryExtension: ExtensionType = TelemetryExtension(
-  NoopTelemetryService
-);
+export const NoopTelemetryExtension: ExtensionType =
+  TelemetryExtension(NoopTelemetryService);

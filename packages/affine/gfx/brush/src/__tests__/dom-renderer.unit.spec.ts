@@ -120,7 +120,11 @@ describe.each([
   it('draws nothing for a degenerate stroke', () => {
     const host = document.createElement('div');
 
-    render(makeStroke({ deserializedXYWH: [0, 0, 0, 0] }), host, makeRenderer());
+    render(
+      makeStroke({ deserializedXYWH: [0, 0, 0, 0] }),
+      host,
+      makeRenderer()
+    );
     expect(host.querySelector('svg')).toBeNull();
 
     render(makeStroke({ commands: '' }), host, makeRenderer());

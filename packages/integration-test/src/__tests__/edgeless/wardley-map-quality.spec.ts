@@ -424,9 +424,9 @@ describe('map quality', () => {
 
       const { snapshot, surface } = await roundTrip();
       expect(JSON.stringify(snapshot)).toContain('qualityChecklist');
-      expect(
-        checkedNudges(surface.getElementsByType('wardley')[0])
-      ).toEqual([NUDGE]);
+      expect(checkedNudges(surface.getElementsByType('wardley')[0])).toEqual([
+        NUDGE,
+      ]);
       expect(checkedNudges(model(map))).toEqual([NUDGE]);
     });
 
@@ -587,7 +587,10 @@ describe('map quality', () => {
       // A rule whose family does not exist: `RULE_FAMILIES[family]` is
       // `undefined`, so dispatching it throws — the closest thing to "a
       // third-party family blows up" this suite can stage honestly.
-      const broken = { ...PROBES[0], family: 'nope' } as unknown as ValidationRule;
+      const broken = {
+        ...PROBES[0],
+        family: 'nope',
+      } as unknown as ValidationRule;
       const original = validation.checkupRulesFor.bind(validation);
       validation.checkupRulesFor = () => [broken];
       await validation.runCheckup(model(map));
@@ -661,7 +664,9 @@ describe('map quality', () => {
         'map-quality-remark',
         'map-quality-realtime',
       ]) {
-        expect(widgetRoot()?.querySelector(`[data-testid="${gone}"]`)).toBeNull();
+        expect(
+          widgetRoot()?.querySelector(`[data-testid="${gone}"]`)
+        ).toBeNull();
       }
     });
   });
@@ -780,9 +785,7 @@ describe('map quality', () => {
       const command = service.std.provider
         .getAll(
           // Resolved through the same registry every other surface reads.
-          (
-            await import('@labre/affine/std')
-          ).CommandDescriptorIdentifier
+          (await import('@labre/affine/std')).CommandDescriptorIdentifier
         )
         .values();
       const entry = [...command].find(c => c.id === 'validation.mapQuality');

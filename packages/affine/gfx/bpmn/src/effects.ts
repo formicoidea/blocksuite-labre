@@ -3,7 +3,10 @@ import { EdgelessBpmnSeniorButton } from './toolbar/bpmn-senior-button';
 
 export function effects() {
   customElements.define('edgeless-bpmn-menu', EdgelessBpmnMenu);
-  customElements.define('edgeless-bpmn-senior-button', EdgelessBpmnSeniorButton);
+  customElements.define(
+    'edgeless-bpmn-senior-button',
+    EdgelessBpmnSeniorButton
+  );
 }
 
 declare global {

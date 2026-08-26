@@ -16,7 +16,12 @@ import {
   refScale,
   VENN,
 } from './consts';
-import { CIRCLE_A, CIRCLE_B, CIRCLE_C, facetLabelAnchors } from './label-layout';
+import {
+  CIRCLE_A,
+  CIRCLE_B,
+  CIRCLE_C,
+  facetLabelAnchors,
+} from './label-layout';
 
 type Pt = { x: number; y: number };
 
@@ -39,7 +44,10 @@ export const edgy: ElementRenderer<EdgyFacetsElementModel> = (
   const cx = w / 2;
   const cy = h / 2;
   ctx.setTransform(
-    matrix.translateSelf(cx, cy).rotateSelf(model.rotate).translateSelf(-cx, -cy)
+    matrix
+      .translateSelf(cx, cy)
+      .rotateSelf(model.rotate)
+      .translateSelf(-cx, -cy)
   );
 
   // Uniform fit of the reference design, centered (letterboxed) — or, when
@@ -215,4 +223,7 @@ export const edgy: ElementRenderer<EdgyFacetsElementModel> = (
   }
 };
 
-export const EdgyFacetsRendererExtension = ElementRendererExtension('edgy', edgy);
+export const EdgyFacetsRendererExtension = ElementRendererExtension(
+  'edgy',
+  edgy
+);

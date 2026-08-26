@@ -44,7 +44,8 @@ export const EDGY_NUDGES: readonly QualityNudge[] = [
     id: 'edgy.q3-readable-relations',
     framework: 'edgy',
     labelKey: 'com.labre.edgy.quality.readable-relations',
-    fallback: 'Relations read correctly (the source is the subject of the verb).',
+    fallback:
+      'Relations read correctly (the source is the subject of the verb).',
     order: 3,
   },
   {

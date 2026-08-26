@@ -142,7 +142,8 @@ const aclConformistExclusive: ValidationRule = {
   messageKey: 'com.labre.ddd-context-map.validation.acl-conformist',
   messageFallback:
     'These two contexts are related by both a Conformist and an Anticorruption Layer.',
-  suggestionKey: 'com.labre.ddd-context-map.validation.acl-conformist.suggestion',
+  suggestionKey:
+    'com.labre.ddd-context-map.validation.acl-conformist.suggestion',
   suggestionFallback:
     'Conforming means taking the upstream model as it is; an ACL means refusing to. Keep the one the team actually does.',
   version: 1,
@@ -177,7 +178,8 @@ const patternOnCustomerSupplier: ValidationRule = {
   family: 'relation-endpoints',
   severity: 'warning',
   roles: CONTEXT_MAP_ROLES,
-  messageKey: 'com.labre.ddd-context-map.validation.pattern-on-customer-supplier',
+  messageKey:
+    'com.labre.ddd-context-map.validation.pattern-on-customer-supplier',
   messageFallback:
     'This Customer/Supplier relationship carries a second pattern that contradicts it.',
   suggestionKey:
@@ -231,9 +233,7 @@ const aclOnCustomerSupplier: ValidationRule = {
   background: CONTEXT_MAP_BACKGROUND,
   endpoints: {
     edgeRole: CONTEXT_MAP_ROLE.relationship,
-    exclusivePairs: [
-      [CONTEXT_MAP_ROLE.customerSupplier, CONTEXT_MAP_ROLE.acl],
-    ],
+    exclusivePairs: [[CONTEXT_MAP_ROLE.customerSupplier, CONTEXT_MAP_ROLE.acl]],
   },
 };
 

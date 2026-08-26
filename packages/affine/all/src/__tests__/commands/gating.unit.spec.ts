@@ -21,8 +21,9 @@ import { getShortcutManifest } from '../../shortcuts.js';
 describe.each(FRAMEWORK_IDS)('%s toggled off', id => {
   const off = { [id]: false };
   const descriptor = FRAMEWORK_DESCRIPTORS.find(d => d.id === id)!;
-  const gatedExtension = descriptor.extensions.find(e => e.flag === id)!
-    .viewExtension;
+  const gatedExtension = descriptor.extensions.find(
+    e => e.flag === id
+  )!.viewExtension;
 
   test('disappears from the command registry', () => {
     expect(getCommands(off).some(c => c.owner === id)).toBe(false);
@@ -45,8 +46,8 @@ describe.each(FRAMEWORK_IDS)('%s toggled off', id => {
     // ADR 0009: a flag never decides whether stored content can be read.
     const renderer = descriptor.extensions.find(e => !e.flag);
     if (!renderer) return;
-    expect(
-      getInternalViewExtensions(off).map(e => e.name)
-    ).toContain(renderer.viewExtension);
+    expect(getInternalViewExtensions(off).map(e => e.name)).toContain(
+      renderer.viewExtension
+    );
   });
 });

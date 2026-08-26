@@ -94,7 +94,10 @@ describe('the EDGY auto-legend table derives from the metamodel', () => {
 
   it('names only roles the vocabulary declares', () => {
     for (const entry of entries) {
-      expect(EDGY_ROLES[entry.role], `undeclared role ${entry.role}`).toBeDefined();
+      expect(
+        EDGY_ROLES[entry.role],
+        `undeclared role ${entry.role}`
+      ).toBeDefined();
     }
   });
 });

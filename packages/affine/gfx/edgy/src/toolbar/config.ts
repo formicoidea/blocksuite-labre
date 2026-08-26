@@ -1,8 +1,5 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import {
-  createAutoLegend,
-  dddLegendIcon,
-} from '@labre/affine-gfx-ddd-shared';
+import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import {
   EdgyBoardElementModel,
   EdgyFacetsElementModel,

@@ -55,9 +55,7 @@ function getPolygonVertices(
  *
  * Returns null if the element has no Bezier curves (plain polygon).
  */
-function computeBezierAwareBound(
-  element: ShapeElementModel
-): Bound | null {
+function computeBezierAwareBound(element: ShapeElementModel): Bound | null {
   const vertices = element.vertices;
   if (!vertices || vertices.length < 2) return null;
 
@@ -244,15 +242,9 @@ function pointOnBezierGeometry(
       const t2 = t * t;
       // Cubic Bezier: B(t) = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
       const bx =
-        mt2 * mt * cx +
-        3 * mt2 * t * cp1x +
-        3 * mt * t2 * cp2x +
-        t2 * t * nx;
+        mt2 * mt * cx + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t2 * t * nx;
       const by =
-        mt2 * mt * cy +
-        3 * mt2 * t * cp1y +
-        3 * mt * t2 * cp2y +
-        t2 * t * ny;
+        mt2 * mt * cy + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t2 * t * ny;
       const dbx = px - bx;
       const dby = py - by;
       if (dbx * dbx + dby * dby <= hitDistSq) return true;
@@ -264,8 +256,7 @@ function pointOnBezierGeometry(
 
 export const polygon = {
   points(bound: IBound, element?: ShapeElementModel): IVec[] {
-    const verts =
-      element?.vertices ?? DEFAULT_POLYGON_VERTICES;
+    const verts = element?.vertices ?? DEFAULT_POLYGON_VERTICES;
     const { x, y, w, h } = bound;
     return verts.map(v => [x + v[0] * w, y + v[1] * h]);
   },
@@ -345,11 +336,7 @@ export const polygon = {
 
     // Pass 1: stroke hit-test (scaled by zoom so the threshold is constant
     // in screen pixels regardless of the current viewport zoom level).
-    let hit = pointOnPolygonStoke(
-      point,
-      points,
-      hitThreshold
-    );
+    let hit = pointOnPolygonStoke(point, points, hitThreshold);
 
     if (!hit) {
       // Pass 2: winding-number interior test.  This replaces any naïve

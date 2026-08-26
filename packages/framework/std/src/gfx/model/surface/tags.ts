@@ -106,7 +106,9 @@ function tagEntries(element: GfxPrimitiveElementModel): [string, unknown][] {
  * can produce are read ({@link isDegradedTags}); a malformed entry is skipped,
  * never thrown on. A board that cannot be read is worse than a tag that is not.
  */
-export function readElementTags(element: GfxPrimitiveElementModel): ElementTags {
+export function readElementTags(
+  element: GfxPrimitiveElementModel
+): ElementTags {
   const tags: ElementTags = {};
   for (const [tagId, values] of tagEntries(element)) {
     if (typeof tagId !== 'string' || tagId.length === 0) continue;

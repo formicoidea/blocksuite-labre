@@ -1,4 +1,7 @@
-import { createTemplateJob, EdgelessTemplatePanel } from '@labre/affine/gfx/template';
+import {
+  createTemplateJob,
+  EdgelessTemplatePanel,
+} from '@labre/affine/gfx/template';
 import type { BlockStdScope } from '@labre/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -14,7 +17,14 @@ describe('Framework template catalog', () => {
     return cleanup;
   });
 
-  const CATEGORIES = ['Wardley', 'EDGY', 'Cynefin', 'Estuarine', 'BPMN', 'Other'];
+  const CATEGORIES = [
+    'Wardley',
+    'EDGY',
+    'Cynefin',
+    'Estuarine',
+    'BPMN',
+    'Other',
+  ];
 
   test('the catalog exposes every framework + Other category, not cat stickers', async () => {
     const cats = await EdgelessTemplatePanel.templates.categories();

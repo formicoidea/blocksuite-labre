@@ -12,7 +12,7 @@ for a key.
 import { TranslationExtension } from '@labre/affine-shared/services';
 
 const HostTranslation = TranslationExtension({
-  t: key => i18n.exists(key) ? i18n.t(key) : undefined,
+  t: key => (i18n.exists(key) ? i18n.t(key) : undefined),
   language: i18n.language, // BCP-47; gates language-scoped naming conventions
 });
 ```

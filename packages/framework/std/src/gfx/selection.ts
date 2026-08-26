@@ -1,8 +1,5 @@
 import { DisposableGroup } from '@labre/global/disposable';
-import {
-  getCommonBoundWithRotation,
-  type IPoint,
-} from '@labre/global/gfx';
+import { getCommonBoundWithRotation, type IPoint } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
 import groupBy from 'lodash-es/groupBy';
 import { Subject } from 'rxjs';

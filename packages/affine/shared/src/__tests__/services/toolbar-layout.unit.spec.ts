@@ -200,7 +200,11 @@ describe('how much of the row is spent', () => {
 
     // Everything spent, still over — the caller renders it anyway. One line is
     // the invariant; fitting is only the goal.
-    expect(ids(plan)).toEqual(['shrink:read', 'collapse:lock', 'collapse:read']);
+    expect(ids(plan)).toEqual([
+      'shrink:read',
+      'collapse:lock',
+      'collapse:read',
+    ]);
   });
 
   test('a step that would free nothing is not spent', () => {
@@ -237,10 +241,12 @@ describe('whether a new width is worth a new plan', () => {
   test('the threshold is the last width that is still tremor', () => {
     const room = 320;
 
-    expect(toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS)).toBe(false);
-    expect(
-      toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS + 0.5)
-    ).toBe(true);
+    expect(toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS)).toBe(
+      false
+    );
+    expect(toolbarRoomChanged(room, room + TOOLBAR_ROOM_HYSTERESIS + 0.5)).toBe(
+      true
+    );
   });
 
   test('a room that really moved is a change', () => {

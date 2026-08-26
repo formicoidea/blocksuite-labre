@@ -1,8 +1,4 @@
-import {
-  type BlockComponent,
-  BlockSelection,
-  type Command,
-} from '@labre/std';
+import { type BlockComponent, BlockSelection, type Command } from '@labre/std';
 
 export const selectBlocksBetween: Command<{
   focusBlock?: BlockComponent;

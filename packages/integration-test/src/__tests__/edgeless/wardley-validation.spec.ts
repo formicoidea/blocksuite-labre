@@ -154,10 +154,9 @@ describe('wardley validation on the canvas', () => {
 
   /** Where the overlay would actually draw, given the current violations. */
   const markBounds = () =>
-    resolveViolationAnchors(
-      validation.violations$.value,
-      service.surface
-    ).map(anchor => anchor.bound);
+    resolveViolationAnchors(validation.violations$.value, service.surface).map(
+      anchor => anchor.bound
+    );
 
   /** Past the manager's re-evaluation debounce. */
   const settle = () => wait(250);
@@ -190,8 +189,7 @@ describe('wardley validation on the canvas', () => {
       ruleId: 'wardley.change-arrow-against-evolution',
       elementIds: [id],
       severity: 'warning',
-      messageKey:
-        'com.labre.wardley.validation.change-arrow-against-evolution',
+      messageKey: 'com.labre.wardley.validation.change-arrow-against-evolution',
     });
   });
 

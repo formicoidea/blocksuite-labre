@@ -41,7 +41,12 @@ export const STICKY_RADIUS = 6;
  * says how big.
  */
 export const ES_STICKIES = [
-  { kind: 'domainEvent', label: 'Domain event', fill: '#F5963B', text: '#5a3000' },
+  {
+    kind: 'domainEvent',
+    label: 'Domain event',
+    fill: '#F5963B',
+    text: '#5a3000',
+  },
   { kind: 'command', label: 'Command', fill: '#5BA3DB', text: '#06304d' },
   // Placed after the command, in the order the grammar reads: an actor issues a
   // command, a command lands on an aggregate, an aggregate raises an event.
@@ -50,11 +55,20 @@ export const ES_STICKIES = [
   { kind: 'constraint', label: 'Constraint', fill: '#FFD84D', text: '#5a4b00' },
   { kind: 'policy', label: 'Policy', fill: '#C9A8E0', text: '#3d1f57' },
   { kind: 'readModel', label: 'Read model', fill: '#7ED38A', text: '#14502a' },
-  { kind: 'system', label: 'External system', fill: '#F6A6C0', text: '#5e1230' },
+  {
+    kind: 'system',
+    label: 'External system',
+    fill: '#F6A6C0',
+    text: '#5e1230',
+  },
 ] as const;
 
 /** Hotspot — neon-pink diamond. */
-export const ES_HOTSPOT = { label: 'Hotspot', fill: '#FF1E8E', text: '#ffffff' };
+export const ES_HOTSPOT = {
+  label: 'Hotspot',
+  fill: '#FF1E8E',
+  text: '#ffffff',
+};
 
 /** Context Map bounded-context bubble. */
 export const CM_BUBBLE = {
@@ -73,15 +87,69 @@ export const CM_BUBBLE = {
  * Ways, Big Ball of Mud).
  */
 export const CM_RELATIONSHIPS = [
-  { kind: 'partnership', label: 'Partnership', abbrev: 'PS', upDown: false, dashed: false },
-  { kind: 'sharedKernel', label: 'Shared Kernel', abbrev: 'SK', upDown: false, dashed: false },
-  { kind: 'customerSupplier', label: 'Customer / Supplier', abbrev: 'C/S', upDown: true, dashed: false },
-  { kind: 'conformist', label: 'Conformist', abbrev: 'CF', upDown: true, dashed: false },
-  { kind: 'acl', label: 'Anticorruption Layer', abbrev: 'ACL', upDown: true, dashed: false },
-  { kind: 'ohs', label: 'Open Host Service', abbrev: 'OHS', upDown: true, dashed: false },
-  { kind: 'publishedLanguage', label: 'Published Language', abbrev: 'PL', upDown: true, dashed: false },
-  { kind: 'separateWays', label: 'Separate Ways', abbrev: 'SW', upDown: false, dashed: true },
-  { kind: 'bbom', label: 'Big Ball of Mud', abbrev: 'BBoM', upDown: false, dashed: true },
+  {
+    kind: 'partnership',
+    label: 'Partnership',
+    abbrev: 'PS',
+    upDown: false,
+    dashed: false,
+  },
+  {
+    kind: 'sharedKernel',
+    label: 'Shared Kernel',
+    abbrev: 'SK',
+    upDown: false,
+    dashed: false,
+  },
+  {
+    kind: 'customerSupplier',
+    label: 'Customer / Supplier',
+    abbrev: 'C/S',
+    upDown: true,
+    dashed: false,
+  },
+  {
+    kind: 'conformist',
+    label: 'Conformist',
+    abbrev: 'CF',
+    upDown: true,
+    dashed: false,
+  },
+  {
+    kind: 'acl',
+    label: 'Anticorruption Layer',
+    abbrev: 'ACL',
+    upDown: true,
+    dashed: false,
+  },
+  {
+    kind: 'ohs',
+    label: 'Open Host Service',
+    abbrev: 'OHS',
+    upDown: true,
+    dashed: false,
+  },
+  {
+    kind: 'publishedLanguage',
+    label: 'Published Language',
+    abbrev: 'PL',
+    upDown: true,
+    dashed: false,
+  },
+  {
+    kind: 'separateWays',
+    label: 'Separate Ways',
+    abbrev: 'SW',
+    upDown: false,
+    dashed: true,
+  },
+  {
+    kind: 'bbom',
+    label: 'Big Ball of Mud',
+    abbrev: 'BBoM',
+    upDown: false,
+    dashed: true,
+  },
 ] as const;
 
 /**
@@ -97,7 +165,10 @@ function buildCloud(): number[][] {
   for (let i = 0; i < N; i++) {
     const t = (i / N) * Math.PI * 2;
     const r = 0.4 + 0.05 * Math.sin(6 * t) + 0.03 * Math.sin(3 * t + 0.8);
-    pts.push([clamp(0.5 + r * Math.cos(t)), clamp(0.5 + r * 0.6 * Math.sin(t))]);
+    pts.push([
+      clamp(0.5 + r * Math.cos(t)),
+      clamp(0.5 + r * 0.6 * Math.sin(t)),
+    ]);
   }
   return pts;
 }
@@ -106,7 +177,12 @@ export const CLOUD = { w: 180, h: 120, fill: '#f0eef6', stroke: '#6d6e71' };
 
 /** Team Topologies interaction modes (placeable markers + Notation legend). */
 export const TEAM_TOPOLOGIES = [
-  { kind: 'collaboration', label: 'Collaboration', letter: 'C', fill: '#99ff99' },
+  {
+    kind: 'collaboration',
+    label: 'Collaboration',
+    letter: 'C',
+    fill: '#99ff99',
+  },
   { kind: 'xaas', label: 'X-as-a-Service', letter: 'X', fill: '#66b2ff' },
   { kind: 'facilitating', label: 'Facilitating', letter: 'F', fill: '#ffd84d' },
 ] as const;

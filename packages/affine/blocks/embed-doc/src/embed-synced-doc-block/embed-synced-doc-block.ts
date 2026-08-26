@@ -1,7 +1,4 @@
-import {
-  EmbedBlockComponent,
-  isEmptyDoc,
-} from '@labre/affine-block-embed';
+import { EmbedBlockComponent, isEmptyDoc } from '@labre/affine-block-embed';
 import { Peekable } from '@labre/affine-components/peek';
 import { ViewExtensionManagerIdentifier } from '@labre/affine-ext-loader';
 import {

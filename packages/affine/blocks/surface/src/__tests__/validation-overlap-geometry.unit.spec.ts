@@ -2,7 +2,10 @@ import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel, RoleDefs } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import { evaluateRules, type ValidationRule } from '../extensions/validation.js';
+import {
+  evaluateRules,
+  type ValidationRule,
+} from '../extensions/validation.js';
 
 /**
  * What `no-overlap` MEASURES, as an engine contract (PF5.13, calibrated
@@ -101,9 +104,9 @@ describe('a `text` role is measured by its ink', () => {
 
   it('follows the alignment, because the renderer does', () => {
     // Same box, same word, three places for the ink to be.
-    expect(raised(RULE, [text('t1', 0, 'abc', 'right'), link('d1', 15)])).toEqual(
-      []
-    );
+    expect(
+      raised(RULE, [text('t1', 0, 'abc', 'right'), link('d1', 15)])
+    ).toEqual([]);
     expect(
       raised(RULE, [text('t1', 0, 'abc', 'right'), link('d1', 185)])
     ).toEqual(['d1+t1']);
@@ -116,24 +119,22 @@ describe('a `text` role is measured by its ink', () => {
     // `utility` is seven NARROW letters: drawn 41 units at font 18, where an
     // average advance reads 63 and puts a ghost 22 units past the last one.
     // A link on that white paper is the PO's first capture with another word.
-    const narrow = element(
-      't1',
-      [400, 100, 200, 20],
-      'test:text',
-      { text: 'utility', fontSize: 18, textAlign: 'left' }
-    );
+    const narrow = element('t1', [400, 100, 200, 20], 'test:text', {
+      text: 'utility',
+      fontSize: 18,
+      textAlign: 'left',
+    });
     expect(raised(RULE, [narrow, link('d1', 455)])).toEqual([]);
     // ...and the letters themselves are still letters.
     expect(raised(RULE, [narrow, link('d1', 420)])).toEqual(['d1+t1']);
 
     // The other end of the same table: `W` is three times an `i`, so a word of
     // them must not read like a word of anything else.
-    const wide = element(
-      't2',
-      [400, 100, 200, 20],
-      'test:text',
-      { text: 'WWWW', fontSize: 18, textAlign: 'left' }
-    );
+    const wide = element('t2', [400, 100, 200, 20], 'test:text', {
+      text: 'WWWW',
+      fontSize: 18,
+      textAlign: 'left',
+    });
     expect(raised(RULE, [wide, link('d1', 455)])).toEqual(['d1+t2']);
   });
 
@@ -186,12 +187,12 @@ describe('a `text` role is measured by its ink', () => {
     // words are at the other end of the box, so narrowing would be a MISS —
     // and this family's rotated failure mode is a warning too many, never a
     // miss. Both ends of the box therefore report.
-    const flipped = element(
-      't1',
-      [400, 100, 200, 20],
-      'test:text',
-      { text: 'abc', fontSize: 18, textAlign: 'left', rotate: 180 }
-    );
+    const flipped = element('t1', [400, 100, 200, 20], 'test:text', {
+      text: 'abc',
+      fontSize: 18,
+      textAlign: 'left',
+      rotate: 180,
+    });
 
     expect(raised(RULE, [flipped, link('d1', 585)])).toEqual(['d1+t1']);
     expect(raised(RULE, [flipped, link('d1', 410)])).toEqual(['d1+t1']);
@@ -201,12 +202,11 @@ describe('a `text` role is measured by its ink', () => {
     // No ink at all: a zero-width box is still a vertical LINE, and a wider box
     // contains it — so an emptied label would go on being reported for exactly
     // as long as it went on existing.
-    const emptied = element(
-      't1',
-      [400, 100, 120, 20],
-      'test:text',
-      { text: '', fontSize: 18, textAlign: 'left' }
-    );
+    const emptied = element('t1', [400, 100, 120, 20], 'test:text', {
+      text: '',
+      fontSize: 18,
+      textAlign: 'left',
+    });
 
     expect(raised(RULE, [emptied, node('n1', 380, 120)])).toEqual([]);
     expect(raised(RULE, [emptied, link('d1', 410)])).toEqual([]);

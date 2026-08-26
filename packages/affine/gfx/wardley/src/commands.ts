@@ -10,11 +10,7 @@ import {
   createWardleyNode,
   createWardleyPipeline,
 } from './actions';
-import {
-  WARDLEY_ROLE,
-  WARDLEY_ROLES,
-  type WardleyRoleId,
-} from './roles';
+import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
   wardleyAnchorIcon,
   wardleyArrowIcon,

@@ -59,7 +59,9 @@ describe('the Wardley corpus', () => {
       const invalid = WARDLEY_CORPUS.filter(card =>
         card.expected.includes(rule.id)
       );
-      expect(invalid.length, `no invalid card for ${rule.id}`).toBeGreaterThan(0);
+      expect(invalid.length, `no invalid card for ${rule.id}`).toBeGreaterThan(
+        0
+      );
     }
     const valid = WARDLEY_CORPUS.filter(card => card.expected.length === 0);
     expect(valid.length).toBeGreaterThanOrEqual(WARDLEY_RULES.length * 2);
@@ -70,7 +72,9 @@ describe('the Wardley corpus', () => {
     // never catches an over-eager rule. One card has to be a real map.
     const crowded = WARDLEY_CORPUS.filter(card => card.expected.length > 2);
     expect(crowded.length).toBeGreaterThan(0);
-    expect(Math.max(...crowded.map(c => c.elements.length))).toBeGreaterThan(15);
+    expect(Math.max(...crowded.map(c => c.elements.length))).toBeGreaterThan(
+      15
+    );
   });
 
   for (const card of WARDLEY_CORPUS) {

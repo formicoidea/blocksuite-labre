@@ -1,9 +1,6 @@
 import { type Container, createIdentifier } from '@labre/global/di';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
-import {
-  type GfxController,
-  GfxControllerIdentifier,
-} from '@labre/std/gfx';
+import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import { Extension } from '@labre/store';
 
 import type { RoughCanvas } from '../utils/rough/canvas.js';

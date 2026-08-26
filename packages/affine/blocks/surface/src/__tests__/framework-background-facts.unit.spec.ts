@@ -146,7 +146,10 @@ describe('a transition as the BAND it really is', () => {
   });
 
   it('follows the instance, position included', () => {
-    const moved = backgroundTransitionBands(banded, new Bound(1000, 500, 800, 450));
+    const moved = backgroundTransitionBands(
+      banded,
+      new Bound(1000, 500, 800, 450)
+    );
     const origin = backgroundTransitionBands(banded, new Bound(0, 0, 800, 450));
 
     expect(moved.x[0].min).toBeCloseTo(origin.x[0].min + 1000, 6);
@@ -253,12 +256,13 @@ describe('the transitions an instance actually shows', () => {
   });
 
   it('drops the bands of an instance whose graduations are hidden', () => {
-    expect(backgroundTransitionBands(gated, bound, { showColumns: true }).x)
-      .toHaveLength(3);
+    expect(
+      backgroundTransitionBands(gated, bound, { showColumns: true }).x
+    ).toHaveLength(3);
     // Hidden: the same silence as a frame that declares no transition at all.
-    expect(backgroundTransitionBands(gated, bound, { showColumns: false })).toEqual(
-      { x: [], y: [] }
-    );
+    expect(
+      backgroundTransitionBands(gated, bound, { showColumns: false })
+    ).toEqual({ x: [], y: [] });
   });
 
   it('gates only the plot axis the graduations run across', () => {
@@ -286,10 +290,12 @@ describe('the transitions an instance actually shows', () => {
     // absent prop is not the user hiding anything. A model that has never heard
     // of the toggle keeps the rule it has always had.
     expect(backgroundTransitionsShown(gated, 'x', {})).toBe(true);
-    expect(backgroundTransitionsShown(gated, 'x', { showColumns: undefined })).toBe(
-      true
-    );
-    expect(backgroundTransitionBands(gated, bound, { other: 1 }).x).toHaveLength(3);
+    expect(
+      backgroundTransitionsShown(gated, 'x', { showColumns: undefined })
+    ).toBe(true);
+    expect(
+      backgroundTransitionBands(gated, bound, { other: 1 }).x
+    ).toHaveLength(3);
   });
 
   it('leaves a framework that declares no toggle exactly as it was', () => {
@@ -298,9 +304,9 @@ describe('the transitions an instance actually shows', () => {
     // frontiers whatever any instance says.
     const banded: FrameworkBackgroundDef = { ...def, transitionBandWidth: 0.1 };
 
-    expect(backgroundTransitionsShown(banded, 'x', { showColumns: false })).toBe(
-      true
-    );
+    expect(
+      backgroundTransitionsShown(banded, 'x', { showColumns: false })
+    ).toBe(true);
     expect(
       backgroundTransitionBands(banded, bound, { showColumns: false }).x
     ).toHaveLength(3);

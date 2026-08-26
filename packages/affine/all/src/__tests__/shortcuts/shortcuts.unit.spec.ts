@@ -127,7 +127,10 @@ describe('coreCommands bindings', () => {
 describe('buildCommandRegistry', () => {
   const core = [command('undo', 'core')];
   const groups = [
-    { owner: 'wardley' as const, commands: [command('wardley.addNode', 'wardley')] },
+    {
+      owner: 'wardley' as const,
+      commands: [command('wardley.addNode', 'wardley')],
+    },
   ];
 
   test('includes an enabled framework’s commands', () => {

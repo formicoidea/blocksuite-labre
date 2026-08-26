@@ -7,7 +7,11 @@ import {
 } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
 import type { Bound } from '@labre/global/gfx';
-import { LifeCycleWatcher, type BlockStdScope, type FrameworkId } from '@labre/std';
+import {
+  LifeCycleWatcher,
+  type BlockStdScope,
+  type FrameworkId,
+} from '@labre/std';
 import type { RoleDefs, RoleId, SurfaceBlockModel } from '@labre/std/gfx';
 import {
   GfxControllerIdentifier,
@@ -23,7 +27,10 @@ import { effect, signal } from '@preact/signals-core';
 // `validation.ts` states: `index.js` also re-exports the RENDERER, and a
 // reading is a one-way read of pure declaration data that must never pull a
 // canvas in.
-import { backgroundPlot, type FrameworkBackgroundDef } from '../framework-background/def.js';
+import {
+  backgroundPlot,
+  type FrameworkBackgroundDef,
+} from '../framework-background/def.js';
 import { backgroundTransitionBands } from '../framework-background/facts.js';
 
 /**
@@ -680,9 +687,7 @@ export interface ReadingValueFlow {
  * to keep in step with ADR 0010, and an element with no typed edge yields an
  * empty list — which the panel renders as no section at all.
  */
-export function readValueFlows(
-  reading: ElementReading
-): ReadingValueFlow[] {
+export function readValueFlows(reading: ElementReading): ReadingValueFlow[] {
   const subject = reading.name || reading.elementId;
   return reading.relations.map(relation => {
     const other = relation.otherName || relation.otherId;
@@ -990,8 +995,9 @@ export interface PivotRecordPicker {
   pick(std: BlockStdScope, elementId: string): Promise<string | null>;
 }
 
-export const PivotRecordPickerProvider =
-  createIdentifier<PivotRecordPicker>('LabrePivotRecordPicker');
+export const PivotRecordPickerProvider = createIdentifier<PivotRecordPicker>(
+  'LabrePivotRecordPicker'
+);
 
 export function PivotRecordPickerExtension(
   picker: PivotRecordPicker
