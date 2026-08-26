@@ -2,6 +2,7 @@ import type { MindMapView } from '@labre/affine/gfx/mindmap';
 import { mountShapeTextEditor } from '@labre/affine/gfx/shape';
 import {
   LayoutType,
+  MINDMAP_NODE_MAX_WIDTH,
   type MindmapElementModel,
   type ShapeElementModel,
 } from '@labre/affine-model';
@@ -53,6 +54,9 @@ describe('mindmap', () => {
     await wait();
 
     const rootNode = mindmap.tree.element as ShapeElementModel;
+    // Every mind map style caps its nodes, so the growth below is bounded.
+    expect(rootNode.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
+
     mountShapeTextEditor(rootNode, root);
     await wait();
 
@@ -83,6 +87,7 @@ describe('mindmap', () => {
     await wait();
 
     expect(rootNode.w).toBeGreaterThan(initialWidth);
+    expect(rootNode.w).toBeLessThanOrEqual(MINDMAP_NODE_MAX_WIDTH);
 
     container!.dispatchEvent(
       new CompositionEvent('compositionend', {
@@ -91,6 +96,86 @@ describe('mindmap', () => {
       })
     );
     await wait();
+  });
+
+  test('a node wraps at its max width instead of stretching', async () => {
+    const mindmapId = gfx.surface!.addElement({
+      type: 'mindmap',
+      children: {
+        text: 'abcdefghijklmnopqrstuvwxyz'.repeat(20),
+        children: [{ text: 'leaf1' }],
+      },
+    });
+    const mindmap = gfx.getElementById(mindmapId) as MindmapElementModel;
+    const root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    doc.captureSync();
+    await wait();
+
+    const rootNode = mindmap.tree.element as ShapeElementModel;
+    expect(rootNode.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
+
+    mountShapeTextEditor(rootNode, root);
+    await wait();
+
+    const shapeEditor = root.querySelector('edgeless-shape-text-editor') as
+      | (HTMLElement & { richText?: HTMLElement })
+      | null;
+    const richText = shapeEditor?.richText;
+    expect(richText).toBeTruthy();
+
+    // The editor box is capped…
+    expect(richText!.clientWidth).toBeLessThanOrEqual(MINDMAP_NODE_MAX_WIDTH);
+    // …the text wraps inside it rather than running off to the right…
+    expect(richText!.scrollWidth).toBeLessThanOrEqual(
+      richText!.clientWidth + 1
+    );
+    // …and the measure written back to the model respects the cap too.
+    expect(rootNode.w).toBeLessThanOrEqual(MINDMAP_NODE_MAX_WIDTH);
+  });
+
+  test('a mind map written before nodes had a max width still loads', async () => {
+    const mindmapId = gfx.surface!.addElement({
+      type: 'mindmap',
+      children: {
+        text: 'abcdefghijklmnopqrstuvwxyz'.repeat(20),
+        children: [{ text: 'leaf1' }],
+      },
+    });
+    const mindmap = gfx.getElementById(mindmapId) as MindmapElementModel;
+
+    doc.captureSync();
+    await wait();
+
+    const rootNode = mindmap.tree.element as ShapeElementModel;
+
+    // Rewind the element to what a client from before this change stored: the
+    // mind map styles carried no `maxWidth`, so the key was simply absent.
+    // `maxWidth` itself is not new — `ShapeElementModel` has always declared
+    // it — which is why an older client reads a document written by this one.
+    const legacyXYWH = '[0,0,900,60]';
+    window.doc.transact(() => {
+      rootNode.yMap.delete('maxWidth');
+      rootNode.yMap.set('xywh', legacyXYWH);
+    });
+    await wait();
+
+    expect(rootNode.yMap.has('maxWidth')).toBe(false);
+    // The absent key reads back as the field default, so nothing caps the node
+    expect(rootNode.maxWidth).toBe(false);
+    // …and opening the document runs no layout, so the stored geometry — and
+    // with it the painted node — is exactly what the old client left.
+    expect(rootNode.xywh).toBe(legacyXYWH);
+
+    // The first layout of the session is what adopts the cap. That is a
+    // deliberate change of rendering for long nodes: they wrap from now on.
+    mindmap.layout();
+    await wait();
+
+    expect(rootNode.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
+    expect(rootNode.w).toBeLessThanOrEqual(
+      MINDMAP_NODE_MAX_WIDTH + rootNode.padding[1] * 2
+    );
   });
 
   test('delete the root node should remove all children', async () => {
