@@ -119,6 +119,9 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     pkg: '@labre/affine-gfx-ddd-event-storming',
     dir: 'affine/gfx/ddd-event-storming',
     extensions: [
+      // always-on: placed Event Storming boards must paint even with the button
+      // off, and their role vocabulary must stay readable
+      { viewExtension: 'DddEventStormingRenderViewExtension' },
       {
         flag: 'ddd-event-storming',
         viewExtension: 'DddEventStormingViewExtension',

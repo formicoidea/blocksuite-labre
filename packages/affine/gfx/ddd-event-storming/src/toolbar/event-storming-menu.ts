@@ -9,7 +9,7 @@ import { css } from 'lit';
  * helper — is gone with the duplication it carried (`docs/adr/0008`).
  *
  * The DDD palettes keep their tighter gap: they carry more buttons than the
- * other frameworks (Context Map: 12).
+ * other frameworks (Event Storming: 11, Context Map: 13).
  */
 export class EdgelessDddEventStormingMenu extends EdgelessCommandMenu {
   static override styles = [

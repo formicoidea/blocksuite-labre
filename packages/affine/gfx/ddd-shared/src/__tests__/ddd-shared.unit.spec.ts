@@ -18,6 +18,31 @@ import {
 
 const HEX = /^#([0-9a-f]{6}|[0-9a-f]{8})$/i;
 
+/**
+ * CIE76 colour distance, so a palette claim like "these two yellows are
+ * distinguishable" is measured rather than asserted by eye. Roughly: under 2 is
+ * invisible, around 10 is a clear difference, over 30 is another colour.
+ */
+function deltaE(a: string, b: string): number {
+  const lab = (hex: string): [number, number, number] => {
+    const linear = (channel: number) => {
+      const c = channel / 255;
+      return c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
+    };
+    const [r, g, bl] = [1, 3, 5].map(i =>
+      linear(parseInt(hex.substr(i, 2), 16))
+    );
+    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const x = f((r * 0.4124 + g * 0.3576 + bl * 0.1805) / 0.95047);
+    const y = f(r * 0.2126 + g * 0.7152 + bl * 0.0722);
+    const z = f((r * 0.0193 + g * 0.1192 + bl * 0.9505) / 1.08883);
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+  };
+  const [l1, a1, b1] = lab(a);
+  const [l2, a2, b2] = lab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+}
+
 describe('ddd shared presets', () => {
   it('every Event Storming sticky has hex fill + text colours', () => {
     for (const s of ES_STICKIES) {
@@ -26,6 +51,27 @@ describe('ddd shared presets', () => {
       expect(s.label.length).toBeGreaterThan(0);
     }
     expect(ES_HOTSPOT.fill).toMatch(HEX);
+  });
+
+  it('carries the aggregate sticky, without which the ES grammar is unsayable', () => {
+    // `Command → Aggregate → Domain event` is the canonical sentence, and it
+    // could not be drawn at all until WS5 added this preset.
+    const aggregate = ES_STICKIES.find(s => s.kind === 'aggregate');
+    expect(aggregate?.label).toBe('Aggregate');
+    expect(aggregate?.fill).toMatch(HEX);
+  });
+
+  it('keeps the three yellows apart', () => {
+    // The plan's indicative `#FDF0A0` measured ΔE 3.5 from the actor — two
+    // stickies nobody could tell apart. The palette is a LADDER: constraint
+    // saturated, actor light, aggregate palest. See `consts.ts`.
+    const fill = (kind: string) =>
+      ES_STICKIES.find(s => s.kind === kind)!.fill;
+    const aggregate = fill('aggregate');
+    expect(deltaE(aggregate, fill('actor'))).toBeGreaterThan(12);
+    expect(deltaE(aggregate, fill('constraint'))).toBeGreaterThan(30);
+    // ...and still visible on the white board it is stuck to.
+    expect(deltaE(aggregate, '#ffffff')).toBeGreaterThan(15);
   });
 
   it('exposes the nine context-map relationship patterns', () => {

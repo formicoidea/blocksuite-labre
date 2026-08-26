@@ -33,7 +33,9 @@ describe('command registry invariants', () => {
       edgy: 7,
       'cynefin-estuarine': 3,
       bpmn: 6,
-      'ddd-event-storming': 9,
+      // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
+      // aggregate sticky (`ddd-event-storming.addAggregate`).
+      'ddd-event-storming': 11,
       'ddd-core-domain': 10,
       // 13 since WS2 added the board (`ddd-context-map.addBoard`).
       'ddd-context-map': 13,
@@ -54,7 +56,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(73);
+    expect(commands).toHaveLength(75);
   });
 
   /**

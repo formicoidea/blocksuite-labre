@@ -48,7 +48,10 @@ import {
   DddCoreDomainRenderViewExtension,
   DddCoreDomainViewExtension,
 } from '@labre/affine-gfx-ddd-core-domain/view';
-import { DddEventStormingViewExtension } from '@labre/affine-gfx-ddd-event-storming/view';
+import {
+  DddEventStormingRenderViewExtension,
+  DddEventStormingViewExtension,
+} from '@labre/affine-gfx-ddd-event-storming/view';
 import {
   EdgyRenderViewExtension,
   EdgyViewExtension,
@@ -148,6 +151,7 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('bpmn') ? [BpmnViewExtension] : []),
     DddCoreDomainRenderViewExtension,
     DddContextMapRenderViewExtension,
+    DddEventStormingRenderViewExtension,
     ...(on('ddd-event-storming') ? [DddEventStormingViewExtension] : []),
     ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),
     ...(on('ddd-context-map') ? [DddContextMapViewExtension] : []),

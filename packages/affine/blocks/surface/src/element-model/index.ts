@@ -10,6 +10,7 @@ import {
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
+  EventStormingBoardElementModel,
   GroupElementModel,
   HighlighterElementModel,
   MindmapElementModel,
@@ -38,6 +39,7 @@ export const elementsCtorMap = {
   estuarine: EstuarineElementModel,
   coreDomain: CoreDomainChartElementModel,
   contextMap: ContextMapBoardElementModel,
+  eventStorming: EventStormingBoardElementModel,
   bpmnNode: BpmnNodeElementModel,
   bpmnPool: BpmnPoolElementModel,
 };
@@ -54,6 +56,7 @@ export {
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
+  EventStormingBoardElementModel,
   GroupElementModel,
   HighlighterElementModel,
   MindmapElementModel,
@@ -81,6 +84,7 @@ export enum CanvasElementType {
   ESTUARINE = 'estuarine',
   COREDOMAIN = 'coreDomain',
   CONTEXTMAP = 'contextMap',
+  EVENTSTORMING = 'eventStorming',
   BPMNNODE = 'bpmnNode',
   BPMNPOOL = 'bpmnPool',
 }
@@ -102,6 +106,7 @@ export type ElementModelMap = {
   ['estuarine']: EstuarineElementModel;
   ['coreDomain']: CoreDomainChartElementModel;
   ['contextMap']: ContextMapBoardElementModel;
+  ['eventStorming']: EventStormingBoardElementModel;
   ['bpmnNode']: BpmnNodeElementModel;
   ['bpmnPool']: BpmnPoolElementModel;
 };

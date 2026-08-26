@@ -7,6 +7,7 @@ import type { BrushElementModel } from './brush/index.js';
 import type { ConnectorElementModel } from './connector/index.js';
 import type { ContextMapBoardElementModel } from './context-map/index.js';
 import type { CoreDomainChartElementModel } from './core-domain/index.js';
+import type { EventStormingBoardElementModel } from './event-storming/index.js';
 import type {
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
@@ -32,6 +33,7 @@ export * from './core-domain/index.js';
 export * from './cynefin/index.js';
 export * from './edgy/index.js';
 export * from './estuarine/index.js';
+export * from './event-storming/index.js';
 export * from './framework-background/index.js';
 export * from './group/index.js';
 export * from './highlighter/index.js';
@@ -59,6 +61,7 @@ export type SurfaceElementModelMap = {
   estuarine: EstuarineElementModel;
   coreDomain: CoreDomainChartElementModel;
   contextMap: ContextMapBoardElementModel;
+  eventStorming: EventStormingBoardElementModel;
 };
 
 export type SurfaceTextModelMap = {
