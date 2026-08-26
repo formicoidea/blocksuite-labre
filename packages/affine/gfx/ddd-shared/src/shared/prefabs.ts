@@ -71,6 +71,14 @@ export function groupIds(std: BlockStdScope, ids: string[]): string {
 interface ShapeOpts {
   shapeType?: 'rect' | 'ellipse' | 'diamond';
   fill: string;
+  /**
+   * Semantic role (`<framework>:<role>`) stamped on the shape, so a validation
+   * rule can recognise it. `undefined` writes NOTHING — no `role` key is
+   * persisted and the artefact stays a neutral drawing, which is what every
+   * caller that does not pass one keeps getting and what every DDD artefact
+   * created before this parameter existed already is.
+   */
+  role?: string;
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
@@ -96,9 +104,11 @@ function addShape(
   h: number,
   opts: ShapeOpts
 ): string {
-  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label } = opts;
+  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label, role } = opts;
   return surface.addElement({
     type: 'shape',
+    // `undefined` writes nothing: a neutral artefact keeps no `role` key.
+    role,
     shapeType,
     filled: true,
     fillColor: fill,
@@ -157,9 +167,21 @@ export function addSticky(
   std: BlockStdScope,
   cx: number,
   cy: number,
-  opts: { fill: string; text: string; label: string; shapeType?: 'rect' | 'diamond'; size?: number }
+  opts: {
+    fill: string;
+    text: string;
+    label: string;
+    shapeType?: 'rect' | 'diamond';
+    size?: number;
+    /**
+     * Stamped on the FACE, never on the shadow: the face is the artefact — it
+     * is what carries the words, what a connector attaches to and what the
+     * grammar rules read. The shadow is ink.
+     */
+    role?: string;
+  }
 ): string {
-  const { fill, text, label, shapeType = 'rect', size = STICKY_SIZE } = opts;
+  const { fill, text, label, shapeType = 'rect', size = STICKY_SIZE, role } = opts;
   const half = size / 2;
   const radius = shapeType === 'rect' ? STICKY_RADIUS : 0;
   const shadow = addShape(surface, cx - half + SHADOW_OFFSET, cy - half + SHADOW_OFFSET, size, size, {
@@ -171,6 +193,7 @@ export function addSticky(
     shapeType,
     fill,
     radius,
+    role,
     label: {
       text: label,
       color: text,
@@ -191,7 +214,8 @@ export function addBubble(
   surface: Surface,
   cx: number,
   cy: number,
-  label: string
+  label: string,
+  role?: string
 ): string {
   const { w, h, radius, fill, stroke, text } = CM_BUBBLE;
   return addShape(surface, cx - w / 2, cy - h / 2, w, h, {
@@ -199,6 +223,7 @@ export function addBubble(
     stroke,
     strokeWidth: 1.5,
     radius,
+    role,
     label: {
       text: label,
       color: text,
@@ -216,7 +241,9 @@ export function addDot(
   cx: number,
   cy: number,
   fill: string,
-  label?: string
+  label?: string,
+  /** Stamped on the ELLIPSE, never on the group: the dot is the artefact. */
+  role?: string
 ): string {
   const d = DOT_SIZE;
   const dot = addShape(surface, cx - d / 2, cy - d / 2, d, d, {
@@ -224,6 +251,7 @@ export function addDot(
     fill,
     stroke: '#1f2328',
     strokeWidth: 1.5,
+    role,
   });
   if (!label) return dot;
   const lbl = addText(surface, cx + d / 2 + 6, cy - LABEL_FONT_SIZE / 2, 170, label, LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE, 'left');
@@ -249,11 +277,19 @@ export function addConnector(
   y1: number,
   x2: number,
   y2: number,
-  opts: { rearArrow?: boolean; dashed?: boolean; stroke?: string; strokeWidth?: number } = {}
+  opts: {
+    rearArrow?: boolean;
+    dashed?: boolean;
+    stroke?: string;
+    strokeWidth?: number;
+    /** Edge role; `undefined` leaves the connector a neutral line. */
+    role?: string;
+  } = {}
 ): string {
-  const { rearArrow = false, dashed = false, stroke = LABEL_COLOR, strokeWidth = 2 } = opts;
+  const { rearArrow = false, dashed = false, stroke = LABEL_COLOR, strokeWidth = 2, role } = opts;
   return surface.addElement({
     type: 'connector',
+    role,
     mode: ConnectorMode.Straight,
     stroke,
     strokeWidth,

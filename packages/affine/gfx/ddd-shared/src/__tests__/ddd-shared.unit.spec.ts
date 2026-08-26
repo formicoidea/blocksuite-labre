@@ -9,7 +9,12 @@ import {
   ES_HOTSPOT,
   ES_STICKIES,
 } from '../shared/consts';
-import { addBubble, addSticky } from '../shared/prefabs';
+import {
+  addBubble,
+  addConnector,
+  addDot,
+  addSticky,
+} from '../shared/prefabs';
 
 const HEX = /^#([0-9a-f]{6}|[0-9a-f]{8})$/i;
 
@@ -84,5 +89,70 @@ describe('prefab text fit defaults', () => {
     expect(added).toHaveLength(1);
     expect(added[0].textFitMode).toBe(TextFitMode.Overflow);
     expect(materialize(added[0].text as Y.Text)).toBe('Bounded Context');
+  });
+});
+
+/**
+ * The optional `role` parameter (WS2 / WS5). Two properties, and the second one
+ * is the compatibility promise: a caller that passes nothing must produce
+ * exactly the element it produced before the parameter existed.
+ */
+describe('prefabs stamp a role only when asked', () => {
+  const surfaceStub = () => {
+    const added: Record<string, unknown>[] = [];
+    let n = 0;
+    return {
+      added,
+      surface: {
+        addElement: vi.fn((props: Record<string, unknown>) => {
+          added.push(props);
+          return `el-${n++}`;
+        }),
+      } as never,
+    };
+  };
+  const stdStub = () =>
+    ({
+      command: { exec: () => [null, { groupId: 'group-1' }] },
+    }) as unknown as BlockStdScope;
+
+  it('puts a sticky role on the FACE and never on the shadow', () => {
+    const { surface, added } = surfaceStub();
+    addSticky(surface, stdStub(), 0, 0, {
+      fill: '#fef08a',
+      text: '#1f2328',
+      label: 'Domain event',
+      role: 'es:domain-event',
+    });
+
+    const [shadow, face] = added;
+    expect(shadow.role).toBeUndefined();
+    expect(face.role).toBe('es:domain-event');
+  });
+
+  it('puts a bubble role on the pill', () => {
+    const { surface, added } = surfaceStub();
+    addBubble(surface, 0, 0, 'Billing', 'context-map:context');
+    expect(added[0].role).toBe('context-map:context');
+  });
+
+  it('puts a dot role on the ellipse', () => {
+    const { surface, added } = surfaceStub();
+    addDot(surface, stdStub(), 0, 0, '#9933ff', undefined, 'core-domain:big-bet');
+    expect(added[0].role).toBe('core-domain:big-bet');
+  });
+
+  it('puts a connector role on the connector', () => {
+    const { surface, added } = surfaceStub();
+    addConnector(surface, 0, 0, 10, 10, { role: 'es:flow' });
+    expect(added[0].role).toBe('es:flow');
+  });
+
+  it('writes no role key at all when none is passed', () => {
+    const { surface, added } = surfaceStub();
+    addBubble(surface, 0, 0, 'Billing');
+    addConnector(surface, 0, 0, 10, 10);
+    addDot(surface, stdStub(), 0, 0, '#9933ff');
+    for (const props of added) expect(props.role).toBeUndefined();
   });
 });
