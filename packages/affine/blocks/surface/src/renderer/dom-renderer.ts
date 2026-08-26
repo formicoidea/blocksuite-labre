@@ -298,7 +298,10 @@ export class DomRenderer {
       viewportBounds,
       zoom
     );
-    Object.assign(domElement.style, geometricStyles);
+    const zIndexStyle = {
+      'z-index': this.layerManager.getZIndex(elementModel),
+    };
+    Object.assign(domElement.style, geometricStyles, zIndexStyle);
     Object.assign(domElement.style, PLACEHOLDER_RESET_STYLES);
 
     // Clear classes specific to shapes, if applicable
@@ -335,7 +338,10 @@ export class DomRenderer {
       zoom
     );
     const opacityStyle = getOpacity(elementModel);
-    Object.assign(domElement.style, geometricStyles, opacityStyle);
+    const zIndexStyle = {
+      'z-index': this.layerManager.getZIndex(elementModel),
+    };
+    Object.assign(domElement.style, geometricStyles, opacityStyle, zIndexStyle);
 
     this._renderElement(elementModel, domElement);
   }
@@ -348,30 +354,37 @@ export class DomRenderer {
     this._disposables.add(
       surfaceModel.elementAdded.subscribe(payload => {
         this._markElementDirty(payload.id, UpdateType.ELEMENT_ADDED);
+        this._markViewportDirty();
         this.refresh();
       })
     );
     this._disposables.add(
       surfaceModel.elementRemoved.subscribe(payload => {
         this._markElementDirty(payload.id, UpdateType.ELEMENT_REMOVED);
+        this._markViewportDirty();
         this.refresh();
       })
     );
     this._disposables.add(
       surfaceModel.localElementAdded.subscribe(payload => {
         this._markElementDirty(payload.id, UpdateType.ELEMENT_ADDED);
+        this._markViewportDirty();
         this.refresh();
       })
     );
     this._disposables.add(
       surfaceModel.localElementDeleted.subscribe(payload => {
         this._markElementDirty(payload.id, UpdateType.ELEMENT_REMOVED);
+        this._markViewportDirty();
         this.refresh();
       })
     );
     this._disposables.add(
       surfaceModel.localElementUpdated.subscribe(payload => {
         this._markElementDirty(payload.model.id, UpdateType.ELEMENT_UPDATED);
+        if (payload.props['index'] || payload.props['groupId']) {
+          this._markViewportDirty();
+        }
         this.refresh();
       })
     );
@@ -381,6 +394,9 @@ export class DomRenderer {
         // ignore externalXYWH update cause it's updated by the renderer
         if (payload.props['externalXYWH']) return;
         this._markElementDirty(payload.id, UpdateType.ELEMENT_UPDATED);
+        if (payload.props['index'] || payload.props['childIds']) {
+          this._markViewportDirty();
+        }
         this.refresh();
       })
     );

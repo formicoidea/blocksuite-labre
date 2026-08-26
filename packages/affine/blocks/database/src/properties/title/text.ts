@@ -4,10 +4,7 @@ import {
   ParseDocUrlProvider,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
-import {
-  getViewportElement,
-  isValidUrl,
-} from '@labre/affine-shared/utils';
+import { getViewportElement } from '@labre/affine-shared/utils';
 import { BaseCellRenderer } from '@labre/data-view';
 import { IS_MAC } from '@labre/global/env';
 import { LinkedPageIcon } from '@blocksuite/icons/lit';
@@ -20,6 +17,7 @@ import { html } from 'lit/static-html.js';
 import { EditorHostKey } from '../../context/host-context.js';
 import type { DatabaseBlockComponent } from '../../database-block.js';
 import { getSingleDocIdFromText } from '../../utils/title-doc.js';
+import { analyzeTextForUrlPaste, insertUrlTextSegments } from '../paste-url.js';
 import {
   headerAreaIconStyle,
   titleCellStyle,
@@ -95,7 +93,11 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
   private readonly _onPaste = (e: ClipboardEvent) => {
     const inlineEditor = this.inlineEditor;
     const inlineRange = inlineEditor?.getInlineRange();
-    if (!inlineRange) return;
+    if (!inlineEditor || !inlineRange) return;
+    // The cell owns the paste: stop it before the document clipboard sees it,
+    // whichever branch below ends up handling the payload.
+    e.preventDefault();
+    e.stopPropagation();
     if (e.clipboardData) {
       try {
         const getDeltas = (snapshot: BlockSnapshot): DeltaInsert[] => {
@@ -121,14 +123,15 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
       ?.getData('text/plain')
       ?.replace(/\r?\n|\r/g, '\n');
     if (!text) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (isValidUrl(text)) {
+    const { segments, singleUrl } = analyzeTextForUrlPaste(text);
+    if (singleUrl) {
       const std = this.std;
-      const result = std?.getOptional(ParseDocUrlProvider)?.parseDocUrl(text);
+      const result = std
+        ?.getOptional(ParseDocUrlProvider)
+        ?.parseDocUrl(singleUrl);
       if (result) {
         const text = ' ';
-        inlineEditor?.insertText(inlineRange, text, {
+        inlineEditor.insertText(inlineRange, text, {
           reference: {
             type: 'LinkedPage',
             pageId: result.docId,
@@ -139,7 +142,7 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
             },
           },
         });
-        inlineEditor?.setInlineRange({
+        inlineEditor.setInlineRange({
           index: inlineRange.index + text.length,
           length: 0,
         });
@@ -151,22 +154,10 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
           segment: 'database',
           parentFlavour: 'affine:database',
         });
-      } else {
-        inlineEditor?.insertText(inlineRange, text, {
-          link: text,
-        });
-        inlineEditor?.setInlineRange({
-          index: inlineRange.index + text.length,
-          length: 0,
-        });
+        return;
       }
-    } else {
-      inlineEditor?.insertText(inlineRange, text);
-      inlineEditor?.setInlineRange({
-        index: inlineRange.index + text.length,
-        length: 0,
-      });
     }
+    insertUrlTextSegments(inlineEditor, inlineRange, segments);
   };
 
   insertDelta = (delta: DeltaInsert) => {
@@ -240,7 +231,10 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
           this.disposables.addFromEvent(
             this.richText.value,
             'paste',
-            this._onPaste
+            this._onPaste,
+            // Capture: the cell must claim the paste before the rich text's own
+            // handler turns it into a document paste.
+            true
           );
           const inlineEditor = this.inlineEditor;
           if (inlineEditor) {

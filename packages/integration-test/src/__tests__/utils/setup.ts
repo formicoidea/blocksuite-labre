@@ -136,6 +136,26 @@ export function createPainterWorker() {
   return worker;
 }
 
+/**
+ * Forget where the last edgeless left its viewport.
+ *
+ * On dispose the edgeless root persists `{ centerX, centerY, zoom }` under
+ * `blocksuite:<store id>:edgelessViewport` in `localStorage`, and restores it
+ * on mount (`edgeless-root-block.ts`). That is the right behaviour for a real
+ * doc — a user finds the board where they left it — but every spec here builds
+ * its doc with the same id (`doc:home`) and `isolate: false` shares one browser
+ * page, hence one `localStorage`, across every spec file. The last viewport of
+ * one spec therefore became the initial viewport of the next: a spec that had
+ * panned away left the following spec looking at empty space, and elements
+ * created at the origin were culled before any renderer could paint them.
+ * Whether a spec passed depended on which specs ran before it.
+ */
+function forgetPersistedViewport() {
+  Object.keys(localStorage)
+    .filter(key => key.endsWith(':edgelessViewport'))
+    .forEach(key => localStorage.removeItem(key));
+}
+
 type SetupEditorOptions = {
   extensions?: ExtensionType[];
   enableDomRenderer?: boolean;
@@ -156,6 +176,8 @@ export async function setupEditor(
   const extensions: ExtensionType[] = extensionsInput ?? [];
   const options: SetupEditorOptions = optionsInput ?? {};
   const enableDomRenderer = options?.enableDomRenderer ?? false;
+
+  forgetPersistedViewport();
 
   const collection = new TestWorkspace(createCollectionOptions());
   collection.storeExtensions = storeExtensions;

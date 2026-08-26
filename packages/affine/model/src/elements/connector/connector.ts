@@ -223,6 +223,10 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
       h = bounds.h;
     }
 
+    if (path.length === 0) {
+      return 0.5;
+    }
+
     point[0] = Vec.clamp(point[0], x, x + w);
     point[1] = Vec.clamp(point[1], y, y + h);
 
@@ -272,6 +276,10 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
       y = bounds.y;
       w = bounds.w;
       h = bounds.h;
+    }
+
+    if (path.length === 0) {
+      return [x + w / 2, y + h / 2];
     }
 
     if (mode === ConnectorMode.Orthogonal) {

@@ -11,7 +11,11 @@ import {
   GfxCompatibleBlockModel,
   type GfxCompatibleProps,
 } from '../gfx/model/gfx-block-model.js';
-import { TestShapeElement } from './test-gfx-element.js';
+import {
+  TestGroupElement,
+  TestPaddedElement,
+  TestShapeElement,
+} from './test-gfx-element.js';
 
 export const RootBlockSchema = defineBlockSchema({
   flavour: 'test:page',
@@ -91,6 +95,8 @@ export class SurfaceBlockModel extends BaseSurfaceModel {
   override _init() {
     this._extendElement({
       testShape: TestShapeElement,
+      testPadded: TestPaddedElement,
+      testGroup: TestGroupElement,
     });
     super._init();
   }

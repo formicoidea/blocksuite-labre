@@ -51,6 +51,7 @@ const flatTableSchema = defineBlockSchema({
     textCols: {} as Record<string, Text>,
     rows: {} as Record<string, { color: string }>,
     labels: [] as Array<string>,
+    optional: undefined as string | undefined,
   }),
   metadata: {
     role: 'content',
@@ -494,6 +495,16 @@ describe('flat', () => {
     expect(model.props.textCols$.value.a.toDelta()).toEqual([
       { insert: 'test' },
     ]);
+
+    onChange.mockClear();
+    expect(model.props).not.toHaveProperty('optional');
+    expect(model.props).toHaveProperty('optional$');
+    model.props.optional$.value = 'test';
+    expect(model.props.optional).toBe('test');
+    expect(model.props.optional$.value).toBe('test');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(expect.anything(), 'optional', true);
+    expect(yBlock.get('prop:optional')).toBe('test');
   });
 
   test('stash and pop', () => {
@@ -535,5 +546,73 @@ describe('flat', () => {
     expect(yBlock.get('prop:cols.a.color')).toBe('blue');
     expect(onColUpdated).toHaveBeenCalledTimes(2);
     expect(onChange).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('flat data document compatibility', () => {
+  // Builds the Y.Doc exactly as a flat block was stored before optional props
+  // got their own signals: every prop with a defined default is written, the
+  // prop whose default is `undefined` is absent.
+  const createLegacyYDoc = () => {
+    const yDoc = new Y.Doc();
+    const yBlock = yDoc.getMap('yBlock') as YBlock;
+    yBlock.set('sys:id', '0');
+    yBlock.set('sys:flavour', 'flat-table');
+    yBlock.set('sys:version', 1);
+    yBlock.set('sys:children', new Y.Array());
+    yBlock.set('prop:title', new Y.Text('hello'));
+    yBlock.set('prop:cols.internal.color', 'white');
+    yBlock.set('prop:labels', Y.Array.from(['a', 'b']));
+    return { yDoc, yBlock };
+  };
+
+  test('loading a document stored before the change does not rewrite it', () => {
+    const doc = createTestDoc();
+    const { yDoc, yBlock } = createLegacyYDoc();
+
+    const keysBefore = Array.from(yBlock.keys()).sort();
+    const stateBefore = Y.encodeStateVector(yDoc);
+    const jsonBefore = JSON.stringify(yBlock.toJSON());
+
+    const block = new Block(doc.schema, yBlock, doc);
+    const model = block.model as FlatTableModel;
+
+    // Opening the document appends no operation to the Y.Doc.
+    expect(Y.encodeStateVector(yDoc)).toEqual(stateBefore);
+    expect(Array.from(yBlock.keys()).sort()).toEqual(keysBefore);
+    expect(JSON.stringify(yBlock.toJSON())).toBe(jsonBefore);
+    // A prop whose default is `undefined` is still never written to the Y.Map.
+    expect(yBlock.has('prop:optional')).toBe(false);
+
+    // ...and it reads back as it was stored.
+    expect(model.props.title.toString()).toBe('hello');
+    expect(model.props.cols).toEqual({ internal: { color: 'white' } });
+    expect(model.props.labels).toEqual(['a', 'b']);
+    expect(model.props.optional).toBeUndefined();
+    expect(model.props.optional$.value).toBeUndefined();
+  });
+
+  test('a document stored before the change round-trips unchanged', () => {
+    const doc = createTestDoc();
+    const { yDoc, yBlock } = createLegacyYDoc();
+    const update = Y.encodeStateAsUpdate(yDoc);
+
+    // Load it, mutate an unrelated prop, and encode again.
+    const roundTripDoc = new Y.Doc();
+    Y.applyUpdate(roundTripDoc, update);
+    const roundTripBlock = roundTripDoc.getMap('yBlock') as YBlock;
+    const model = new Block(doc.schema, roundTripBlock, doc)
+      .model as FlatTableModel;
+
+    expect(roundTripBlock.toJSON()).toEqual(yBlock.toJSON());
+
+    model.props.optional$.value = 'set';
+    expect(roundTripBlock.get('prop:optional')).toBe('set');
+
+    // Only the prop that was actually assigned is added; everything the legacy
+    // document already carried keeps its stored shape.
+    delete (model.props as Record<string, unknown>).optional;
+    expect(roundTripBlock.has('prop:optional')).toBe(false);
+    expect(roundTripBlock.toJSON()).toEqual(yBlock.toJSON());
   });
 });

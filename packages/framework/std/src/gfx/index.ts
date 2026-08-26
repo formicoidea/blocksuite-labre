@@ -5,6 +5,8 @@ export {
   SortOrder,
 } from '../utils/layer.js';
 export {
+  batchAddChildren,
+  batchRemoveChildren,
   canSafeAddToContainer,
   descendantElementsImpl,
   getTopElements,
@@ -123,6 +125,7 @@ export {
   type SurfaceBlockProps,
   type SurfaceMiddleware,
 } from './model/surface/surface-model.js';
+export { measureOperation } from './perf.js';
 export { GfxSelectionManager } from './selection.js';
 export {
   SurfaceMiddlewareBuilder,

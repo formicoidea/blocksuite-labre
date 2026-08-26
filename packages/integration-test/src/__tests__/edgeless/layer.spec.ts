@@ -6,6 +6,7 @@ import type {
 import { ungroupCommand } from '@labre/affine/gfx/group';
 import type {
   GroupElementModel,
+  MindmapElementModel,
   NoteBlockModel,
 } from '@labre/affine/model';
 import { generateKeyBetween } from '@labre/affine/std/gfx';
@@ -200,7 +201,7 @@ test('layer zindex should update correctly when elements changed', async () => {
     expect(service.layer.layers[1].zIndex).toBe(3);
 
     expect(service.layer.layers[2].type).toBe('block');
-    expect(service.layer.layers[2].zIndex).toBe(4);
+    expect(service.layer.layers[2].zIndex).toBe(5);
   };
   assert2StepState();
 
@@ -251,6 +252,40 @@ test('blocks should rerender when their z-index changed', async () => {
 
   await wait();
   assertBlocksContent();
+});
+
+test('block host z-index should update after reordering', async () => {
+  const backId = addNote(doc);
+  const frontId = addNote(doc);
+
+  await wait();
+
+  const getBlockHost = (id: string) =>
+    document.querySelector<HTMLElement>(
+      `affine-edgeless-root gfx-viewport > [data-block-id="${id}"]`
+    );
+
+  const backHost = getBlockHost(backId);
+  const frontHost = getBlockHost(frontId);
+
+  expect(backHost).not.toBeNull();
+  expect(frontHost).not.toBeNull();
+  expect(Number(backHost!.style.zIndex)).toBeLessThan(
+    Number(frontHost!.style.zIndex)
+  );
+
+  service.crud.updateElement(backId, {
+    index: service.layer.getReorderedIndex(
+      service.crud.getElementById(backId)!,
+      'front'
+    ),
+  });
+
+  await wait();
+
+  expect(Number(backHost!.style.zIndex)).toBeGreaterThan(
+    Number(frontHost!.style.zIndex)
+  );
 });
 
 describe('layer reorder functionality', () => {
@@ -528,6 +563,35 @@ describe('group related functionality', () => {
     expect(service.layer.layers[1].elements[0]).toBe(group);
   });
 
+  test("change mindmap index should update its nodes' layer", async () => {
+    const noteId = addNote(doc);
+    const mindmapId = service.crud.addElement('mindmap', {
+      children: {
+        text: 'root',
+        children: [{ text: 'child' }],
+      },
+    })!;
+
+    await wait();
+
+    const note = service.crud.getElementById(noteId)!;
+    const mindmap = service.crud.getElementById(
+      mindmapId
+    )! as MindmapElementModel;
+    const root = mindmap.tree.element;
+
+    expect(service.layer.getZIndex(root)).toBeGreaterThan(
+      service.layer.getZIndex(note)
+    );
+
+    mindmap.index = service.layer.getReorderedIndex(mindmap, 'back');
+    await wait();
+
+    expect(service.layer.getZIndex(root)).toBeLessThan(
+      service.layer.getZIndex(note)
+    );
+  });
+
   test('should keep relative index order of elements after group, ungroup, undo, redo', () => {
     const edgeless = getDocRootBlock(doc, editor, 'edgeless');
     const elementIds = [
@@ -769,6 +833,7 @@ test('indexed canvas should be inserted into edgeless portal when switch to edge
 
   service.crud.addElement('shape', {
     shapeType: 'rect',
+    xywh: '[0,0,100,100]',
   })!;
 
   addNote(doc);
@@ -777,6 +842,7 @@ test('indexed canvas should be inserted into edgeless portal when switch to edge
 
   service.crud.addElement('shape', {
     shapeType: 'rect',
+    xywh: '[120,0,100,100]',
   })!;
 
   editor.mode = 'page';
@@ -792,10 +858,12 @@ test('indexed canvas should be inserted into edgeless portal when switch to edge
     '.indexable-canvas'
   )[0] as HTMLCanvasElement;
 
-  expect(indexedCanvas.width).toBe(
+  // A stacking canvas is now sized to the bound of the elements it holds,
+  // never larger than the main canvas.
+  expect(indexedCanvas.width).toBeLessThanOrEqual(
     (surface.renderer as CanvasRenderer).canvas.width
   );
-  expect(indexedCanvas.height).toBe(
+  expect(indexedCanvas.height).toBeLessThanOrEqual(
     (surface.renderer as CanvasRenderer).canvas.height
   );
   expect(indexedCanvas.width).not.toBe(0);

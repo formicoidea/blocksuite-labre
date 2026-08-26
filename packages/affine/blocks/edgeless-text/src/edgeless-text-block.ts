@@ -43,6 +43,15 @@ export class EdgelessTextBlockComponent extends GfxBlockComponent<EdgelessTextBl
       font-weight: var(--edgeless-text-font-weight);
       text-align: var(--edgeless-text-text-align);
     }
+
+    /*
+     * Locking a text block is meant to stop accidental edits, not to stop
+     * navigation, so links stay reachable inside otherwise inert content.
+     */
+    .edgeless-text-block-container .locked-content a[href] {
+      pointer-events: auto;
+      cursor: pointer;
+    }
   `;
 
   private readonly _resizeObserver = new ResizeObserver(() => {
@@ -304,6 +313,7 @@ export class EdgelessTextBlockComponent extends GfxBlockComponent<EdgelessTextBl
         style=${styleMap(containerStyle)}
       >
         <div
+          class=${!editing && this.model.isLocked() ? 'locked-content' : ''}
           style=${styleMap({
             pointerEvents: editing ? 'auto' : 'none',
             userSelect: editing ? 'auto' : 'none',

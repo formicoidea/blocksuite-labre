@@ -29,7 +29,10 @@ import {
 } from '@labre/affine-model';
 import { ToolbarRegistryIdentifier } from '@labre/affine-shared/services';
 import type { SelectedRect } from '@labre/affine-shared/types';
-import { handleNativeRangeAtPoint } from '@labre/affine-shared/utils';
+import {
+  handleNativeRangeAtPoint,
+  toClientCoord,
+} from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import type { Bound, IVec } from '@labre/global/gfx';
 import { Vec } from '@labre/global/gfx';
@@ -365,7 +368,12 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
   ) {
     if (!this.canShowAutoComplete) return;
 
-    const position = this.gfx.viewport.toModelCoord(e.clientX, e.clientY);
+    // `clientX`/`clientY` are window coordinates: read them as such, or the
+    // panel opens at the viewport's own offset away from the pointer.
+    const position = this.gfx.viewport.toModelCoordFromClientCoord([
+      e.clientX,
+      e.clientY,
+    ]);
     const autoCompletePanel = new EdgelessAutoCompletePanel(
       position,
       this.edgeless,
@@ -405,7 +413,12 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
       if (!model) {
         return;
       }
-      const [x, y] = this.gfx.viewport.toViewCoord(
+      // `handleNativeRangeAtPoint` hands the point to
+      // `document.caretRangeFromPoint`, which speaks client coordinates: the
+      // viewport's own offset in the window has to be there, or the caret is
+      // placed by that offset away from the note that was just created.
+      const [x, y] = toClientCoord(
+        this.gfx.viewport,
         bound.center[0],
         bound.y + DEFAULT_NOTE_HEIGHT / 2
       );

@@ -31,6 +31,13 @@ function updateTransform(element: GfxBlockComponent) {
   element.style.transform = element.getCSSTransform();
 }
 
+function updateZIndex(element: GfxBlockComponent) {
+  const zIndex = element.toZIndex();
+  if (element.style.zIndex !== zIndex) {
+    element.style.zIndex = zIndex;
+  }
+}
+
 function updateBlockVisibility(view: GfxBlockComponent) {
   if (view.transformState$.value === 'active') {
     view.style.visibility = 'visible';
@@ -58,7 +65,16 @@ function handleGfxConnection(instance: GfxBlockComponent) {
     instance.store.slots.blockUpdated.subscribe(({ type, id }) => {
       if (id === instance.model.id && type === 'update') {
         updateTransform(instance);
+        updateZIndex(instance);
       }
+    })
+  );
+
+  // A reorder changes no property of this block, only the layer it sits in,
+  // so the stacking has to be read back from the layer manager.
+  instance.disposables.add(
+    instance.gfx.layer.slots.layerUpdated.subscribe(() => {
+      updateZIndex(instance);
     })
   );
 
@@ -66,6 +82,7 @@ function handleGfxConnection(instance: GfxBlockComponent) {
     effect(() => {
       updateBlockVisibility(instance);
       updateTransform(instance);
+      updateZIndex(instance);
     })
   );
 }
@@ -107,15 +124,19 @@ export abstract class GfxBlockComponent<
 
   getCSSTransform() {
     const viewport = this.gfx.viewport;
-    const { translateX, translateY, zoom } = viewport;
+    const { translateX, translateY, zoom, viewScale } = viewport;
     const bound = Bound.deserialize(this.model.xywh);
 
-    const scaledX = bound.x * zoom;
-    const scaledY = bound.y * zoom;
+    // An outer container may scale the whole editor (`viewScale`). The block
+    // is placed inside that container, so the placement has to be stated in
+    // the container's already scaled space, otherwise the container applies
+    // its scale a second time and the block drifts away from the canvas.
+    const scaledX = (bound.x * zoom) / viewScale;
+    const scaledY = (bound.y * zoom) / viewScale;
     const deltaX = scaledX - bound.x;
     const deltaY = scaledY - bound.y;
 
-    return `translate(${translateX + deltaX}px, ${translateY + deltaY}px) scale(${zoom})`;
+    return `translate(${translateX / viewScale + deltaX}px, ${translateY / viewScale + deltaY}px) scale(${zoom / viewScale})`;
   }
 
   getRenderingRect() {
@@ -219,18 +240,11 @@ export function toGfxBlockComponent<
       handleGfxConnection(this);
     }
 
-    // eslint-disable-next-line sonarjs/no-identical-functions
     getCSSTransform() {
-      const viewport = this.gfx.viewport;
-      const { translateX, translateY, zoom } = viewport;
-      const bound = Bound.deserialize(this.model.xywh);
-
-      const scaledX = bound.x * zoom;
-      const scaledY = bound.y * zoom;
-      const deltaX = scaledX - bound.x;
-      const deltaY = scaledY - bound.y;
-
-      return `translate(${translateX + deltaX}px, ${translateY + deltaY}px) scale(${zoom})`;
+      // A converted block is placed exactly like a native one.
+      return GfxBlockComponent.prototype.getCSSTransform.call(
+        this as unknown as GfxBlockComponent
+      );
     }
 
     // eslint-disable-next-line sonarjs/no-identical-functions

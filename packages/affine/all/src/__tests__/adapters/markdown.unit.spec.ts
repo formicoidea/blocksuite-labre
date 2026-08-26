@@ -16,14 +16,101 @@ import type {
   SliceSnapshot,
   TransformerMiddleware,
 } from '@labre/store';
-import { AssetsManager, MemoryBlobCRUD } from '@labre/store';
+import { AssetsManager, MemoryBlobCRUD, Schema } from '@labre/store';
+import { TestWorkspace } from '@labre/store/test';
+import { MarkdownTransformer } from '@labre/affine-widget-linked-doc';
 import { describe, expect, test } from 'vitest';
 
+import { AffineSchemas } from '../../schemas.js';
 import { createJob } from '../utils/create-job.js';
 import { getProvider } from '../utils/get-provider.js';
 import { nanoidReplacement } from '../utils/nanoid-replacement.js';
+import { testStoreExtensions } from '../utils/store.js';
 
 const provider = getProvider();
+
+describe('markdown frontmatter', () => {
+  const importDoc = async (markdown: string, fileName = 'fallback-title') => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const docId = await MarkdownTransformer.importMarkdownToDoc({
+      collection,
+      schema,
+      markdown,
+      fileName,
+      extensions: testStoreExtensions,
+    });
+    expect(docId).toBeTruthy();
+    return { collection, docId: docId! };
+  };
+
+  const exportDocToMarkdown = async (collection: TestWorkspace, id: string) => {
+    const doc = collection.getDoc(id)!.getStore({ id });
+    const job = doc.getTransformer();
+    const snapshot = job.docToSnapshot(doc)!;
+    const adapter = new MarkdownAdapter(job, doc.provider);
+    const result = await adapter.fromDocSnapshot({
+      snapshot,
+      assets: job.assetsManager,
+    });
+    return result.file;
+  };
+
+  test('imports frontmatter metadata into doc meta', async () => {
+    const { collection, docId } = await importDoc(`---
+title: Web developer
+created: 2018-04-12T09:51:00
+updated: 2018-04-12T10:00:00
+tags: [a, b]
+favorite: true
+---
+Hello world
+`);
+
+    const meta = collection.meta.getDocMeta(docId);
+    expect(meta?.title).toBe('Web developer');
+    expect(meta?.createDate).toBe(Date.parse('2018-04-12T09:51:00'));
+    expect(meta?.updatedDate).toBe(Date.parse('2018-04-12T10:00:00'));
+    expect(meta?.favorite).toBe(true);
+    expect(meta?.tags).toEqual(['a', 'b']);
+  });
+
+  test('keeps the frontmatter out of the content on a round trip', async () => {
+    const { collection, docId } = await importDoc(`---
+title: Web developer
+tags: [a, b]
+---
+Hello world
+`);
+
+    // The metadata went to doc meta, so it is gone from the exported markdown;
+    // the content itself comes back unchanged.
+    const exported = await exportDocToMarkdown(collection, docId);
+    expect(exported).not.toContain('---');
+    expect(exported).not.toContain('tags:');
+    expect(exported.trim().endsWith('Hello world')).toBe(true);
+  });
+
+  test('falls back to the file name without a frontmatter title', async () => {
+    const { collection, docId } = await importDoc(
+      'Hello world\n',
+      'fallback-title'
+    );
+    expect(collection.meta.getDocMeta(docId)?.title).toBe('fallback-title');
+  });
+
+  test('leaves a leading horizontal rule in the content', async () => {
+    const { collection, docId } = await importDoc('---\n\nHello world\n');
+    // The divider survives the round trip (remark writes it as `***`), and no
+    // metadata was invented out of it.
+    const exported = await exportDocToMarkdown(collection, docId);
+    expect(exported).toContain('***');
+    expect(collection.meta.getDocMeta(docId)?.title).toBe('fallback-title');
+  });
+});
 
 describe('snapshot to markdown', () => {
   test('code', async () => {
@@ -2738,6 +2825,114 @@ Text in details callout with new line
 });
 
 describe('markdown to snapshot', () => {
+  describe('inline html', () => {
+    const textOf = (snapshot: BlockSnapshot) =>
+      snapshot.children[0]?.props.text;
+
+    test.each([
+      ['#00afde', 'blue'],
+      ['rgb(0 175 222 / 100%)', 'blue'],
+      ['#c83030', 'red'],
+      ['red', 'red'],
+      ['hsl(0, 100%, 50%)', 'red'],
+      ['#db7123', 'orange'],
+      ['#ac7400', 'yellow'],
+      ['#9bda91', 'green'],
+      ['#0e4841', 'teal'],
+      ['#7c3aed', 'purple'],
+      ['#7a7a7a', 'grey'],
+      // Default body text and background colors are left alone, so pasted text
+      // keeps following the reader's theme instead of being pinned to one.
+      ['rgb(26, 26, 26)', null],
+      ['#333', null],
+      ['#fff', null],
+      // A translucent colour was picked against the source background.
+      ['rgba(0, 175, 222, 0.5)', null],
+    ])('maps the html color %s conservatively', async (color, mapped) => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: `<span style="color: ${color};">Hello</span>`,
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          mapped
+            ? {
+                insert: 'Hello',
+                attributes: {
+                  color: `var(--affine-v2-text-highlight-fg-${mapped})`,
+                },
+              }
+            : { insert: 'Hello' },
+        ],
+      });
+    });
+
+    test('keeps the surrounding text and the inline formatting', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: 'before <span style="color: #c83030;">red <strong>and bold</strong></span> after',
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          { insert: 'before ' },
+          {
+            insert: 'red ',
+            attributes: { color: 'var(--affine-v2-text-highlight-fg-red)' },
+          },
+          {
+            insert: 'and bold',
+            attributes: {
+              bold: true,
+              color: 'var(--affine-v2-text-highlight-fg-red)',
+            },
+          },
+          { insert: ' after' },
+        ],
+      });
+    });
+
+    // Only a balanced run of inline tags is handed to the HTML converter; an
+    // unclosed one still reaches the reader verbatim, as it always has.
+    test('leaves an unclosed inline tag as literal text', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: 'before <span style="color: #c83030;">red',
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          { insert: 'before ' },
+          { insert: '<span style="color: #c83030;">' },
+          { insert: 'red' },
+        ],
+      });
+    });
+
+    // Markdown has no colour of its own: the import reads a colour out of
+    // inline HTML, but the export writes plain markdown and the text comes
+    // back uncoloured. Asserted so the asymmetry stays deliberate.
+    test('exports back to markdown without the colour', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const snapshot = await mdAdapter.toBlockSnapshot({
+        file: '<span style="color: #c83030;">Hello</span>',
+      });
+      const markdown = await mdAdapter.fromBlockSnapshot({
+        snapshot: snapshot.children[0],
+      });
+      expect(markdown.file).toBe('Hello\n');
+
+      const roundTripped = await mdAdapter.toBlockSnapshot({
+        file: markdown.file,
+      });
+      expect(textOf(roundTripped)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [{ insert: 'Hello' }],
+      });
+    });
+  });
+
   describe('code', () => {
     test('markdown code block', async () => {
       const markdown = '```python\nimport this\n```\n';

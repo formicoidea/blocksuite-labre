@@ -155,4 +155,35 @@ describe('Connector rendering with DOM renderer', () => {
     );
     expect(connectorElement).toBeNull();
   });
+
+  test('keeps the same svg node when a connector is redrawn', async () => {
+    const surfaceView = getSurface(window.doc, window.editor);
+    const surfaceModel = surfaceView.model;
+
+    const connectorId = surfaceModel.addElement({
+      type: 'connector',
+      source: { position: [50, 50] },
+      target: { position: [150, 150] },
+      stroke: '#000000',
+      strokeWidth: 2,
+    });
+
+    await wait(100);
+
+    const host = surfaceView.renderRoot.querySelector<HTMLElement>(
+      `[data-element-id="${connectorId}"]`
+    )!;
+    const svg = host.querySelector('svg');
+    const path = host.querySelector('svg > path');
+    expect(svg).not.toBeNull();
+
+    surfaceModel.updateElement(connectorId, { strokeWidth: 6 });
+    await wait(100);
+
+    // Retained: the renderer overwrites the attributes instead of allocating
+    // a new subtree on every frame.
+    expect(host.querySelector('svg')).toBe(svg);
+    expect(host.querySelector('svg > path')).toBe(path);
+    expect(path!.getAttribute('stroke-width')).toBe('6');
+  });
 });

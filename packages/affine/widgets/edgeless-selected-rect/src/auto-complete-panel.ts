@@ -41,6 +41,9 @@ import {
 import {
   captureEventTarget,
   matchModels,
+  overlayScale,
+  overlayViewportSize,
+  toOverlayCoord,
 } from '@labre/affine-shared/utils';
 import type { XYWH } from '@labre/global/gfx';
 import {
@@ -409,11 +412,19 @@ export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
 
   private _getPanelPosition() {
     const { viewport } = this.gfx;
-    const { boundingClientRect: viewportRect, zoom } = viewport;
-    const result = this._getTargetXYWH(PANEL_WIDTH / zoom, PANEL_HEIGHT / zoom);
+    // The panel is appended to the edgeless container, so its `left`/`top`
+    // live in that container's space — already scaled by the host, the way a
+    // gfx block's placement is. Both the panel's own size and the edges it is
+    // kept away from have to be stated there too, or the clamp fires against
+    // screen pixels the panel is not measured in.
+    const scale = overlayScale(viewport);
+    const result = this._getTargetXYWH(
+      PANEL_WIDTH / scale,
+      PANEL_HEIGHT / scale
+    );
     const pos = result ? result.xywh.slice(0, 2) : this.position;
-    const coord = viewport.toViewCoord(pos[0], pos[1]);
-    const { width, height } = viewportRect;
+    const coord = toOverlayCoord(viewport, pos[0], pos[1]);
+    const [width, height] = overlayViewportSize(viewport);
 
     coord[0] = clamp(coord[0], 20, width - 20 - PANEL_WIDTH);
     coord[1] = clamp(coord[1], 20, height - 20 - PANEL_HEIGHT);

@@ -153,6 +153,10 @@ export class PointerEventWatcher {
 
   private _lastShowedBlock: { id: string; el: BlockComponent } | null = null;
 
+  private _lastPointerHitBlockId: string | null = null;
+
+  private _lastPointerHitBlockElement: Element | null = null;
+
   /**
    * When pointer move on block, should show drag handle
    * And update hover block id and path
@@ -169,6 +173,7 @@ export class PointerEventWatcher {
       point
     );
     if (!closestBlock) {
+      this._lastPointerHitBlockId = null;
       this.widget.anchorBlockId.value = null;
       return;
     }
@@ -237,18 +242,39 @@ export class PointerEventWatcher {
 
       const state = ctx.get('pointerState');
 
-      // When pointer is moving, should do nothing
-      if (state.delta.x !== 0 && state.delta.y !== 0) return;
-
       const { target } = state.raw;
       const element = captureEventTarget(target);
       // When pointer not on block or on dragging, should do nothing
-      if (!element) return;
+      if (!element) {
+        this._lastPointerHitBlockId = null;
+        this._lastPointerHitBlockElement = null;
+        return;
+      }
 
       // When pointer on drag handle, should do nothing
       if (element.closest('.affine-drag-handle-container')) return;
 
       if (!this.widget.rootComponent) return;
+
+      const hitBlock = element.closest(`[${BLOCK_ID_ATTR}]`);
+      const hitBlockId = hitBlock?.getAttribute(BLOCK_ID_ATTR) ?? null;
+
+      // Pointer moves arrive by the hundred. The note lookup below walks the
+      // tree and measures, so it is worth doing only when the pointer has
+      // actually left the block it was already on. This replaces a guard that
+      // skipped diagonal moves only, which cost the same work on every
+      // straight move and skipped the update on every diagonal one.
+      if (
+        hitBlockId &&
+        this.widget.isBlockDragHandleVisible &&
+        hitBlockId === this._lastPointerHitBlockId &&
+        hitBlock === this._lastPointerHitBlockElement &&
+        isBlockIdEqual(this.widget.anchorBlockId.peek(), hitBlockId)
+      ) {
+        return;
+      }
+      this._lastPointerHitBlockId = hitBlockId;
+      this._lastPointerHitBlockElement = hitBlock;
 
       // When pointer out of note block hover area or inside database, should hide drag handle
       const point = new Point(state.raw.x, state.raw.y);
@@ -354,6 +380,8 @@ export class PointerEventWatcher {
   reset() {
     this._lastHoveredBlockId = null;
     this._lastShowedBlock = null;
+    this._lastPointerHitBlockId = null;
+    this._lastPointerHitBlockElement = null;
   }
 
   watch() {

@@ -58,4 +58,16 @@ export const filterMatcher = {
     }
     return allFilter.find(v => v.name === name);
   },
+  /**
+   * A stored filter names its function, not the type it was built for, so a
+   * name shared by two types (`is` on a string and `is` on a date, say) is
+   * ambiguous on read. Every candidate is returned and the caller picks the
+   * one whose arguments actually fit the row.
+   */
+  getFiltersByName: (name?: string) => {
+    if (!name) {
+      return [];
+    }
+    return allFilter.filter(v => v.name === name);
+  },
 };

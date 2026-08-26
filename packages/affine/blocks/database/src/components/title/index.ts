@@ -176,7 +176,10 @@ export class DatabaseTitle extends SignalWatcher(
   private readonly isFocus$ = signal(false);
 
   private onPressEnterKey() {
-    this.dataViewLogic.addRow?.('start');
+    // Enter commits the title and leaves the field. It used to prepend a row,
+    // which silently created an empty record every time the user validated a
+    // title they had just typed.
+    this.input.blur();
   }
 
   get readonly$() {

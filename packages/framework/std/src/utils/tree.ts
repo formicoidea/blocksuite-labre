@@ -8,6 +8,15 @@ import {
 import type { GfxGroupModel, GfxModel } from '../gfx/model/model.js';
 
 /**
+ * A container that can take a whole batch at once. Optional: the batch helpers
+ * below fall back to the one-at-a-time interface when it is absent.
+ */
+type BatchGroupContainer = GfxGroupCompatibleInterface & {
+  addChildren?: (elements: GfxModel[]) => void;
+  removeChildren?: (elements: GfxModel[]) => void;
+};
+
+/**
  * Get the top elements from the list of elements, which are in some tree structures.
  *
  * For example: a list `[G1, E1, G2, E2, E3, E4, G4, E5, E6]`,
@@ -26,19 +35,81 @@ import type { GfxGroupModel, GfxModel } from '../gfx/model/model.js';
  * The result should be `[G1, G4, E6]`
  */
 export function getTopElements(elements: GfxModel[]): GfxModel[] {
-  const results = new Set(elements);
+  const uniqueElements = [...new Set(elements)];
+  const selected = new Set(uniqueElements);
+  const topElements: GfxModel[] = [];
 
-  elements = [...new Set(elements)];
+  // Walk each element UP to the root instead of asking every pair whether one
+  // contains the other: the pairwise form walked the whole subtree of every
+  // group for every other element in the list, which is what made a large
+  // selection expensive.
+  for (const element of uniqueElements) {
+    let ancestor = element.group;
+    let hasSelectedAncestor = false;
 
-  elements.forEach(e1 => {
-    elements.forEach(e2 => {
-      if (isGfxGroupCompatibleModel(e1) && e1.hasDescendant(e2)) {
-        results.delete(e2);
+    while (ancestor) {
+      if (selected.has(ancestor as GfxModel)) {
+        hasSelectedAncestor = true;
+        break;
       }
-    });
-  });
+      ancestor = ancestor.group;
+    }
 
-  return [...results];
+    if (!hasSelectedAncestor) {
+      topElements.push(element);
+    }
+  }
+
+  return topElements;
+}
+
+/**
+ * Add several children to a container in one go.
+ *
+ * A container that knows how to take a batch (`addChildren`) gets the whole
+ * list, so it can write them within a single transaction; anything else falls
+ * back to one `addChild` per element, which is exactly what the caller would
+ * have written by hand.
+ */
+export function batchAddChildren(
+  container: GfxGroupCompatibleInterface,
+  elements: GfxModel[]
+) {
+  const uniqueElements = [...new Set(elements)];
+  if (uniqueElements.length === 0) return;
+
+  const batchContainer = container as BatchGroupContainer;
+  if (batchContainer.addChildren) {
+    batchContainer.addChildren(uniqueElements);
+    return;
+  }
+
+  uniqueElements.forEach(element => {
+    container.addChild(element);
+  });
+}
+
+/**
+ * Remove several children from a container in one go. See
+ * {@link batchAddChildren}.
+ */
+export function batchRemoveChildren(
+  container: GfxGroupCompatibleInterface,
+  elements: GfxModel[]
+) {
+  const uniqueElements = [...new Set(elements)];
+  if (uniqueElements.length === 0) return;
+
+  const batchContainer = container as BatchGroupContainer;
+  if (batchContainer.removeChildren) {
+    batchContainer.removeChildren(uniqueElements);
+    return;
+  }
+
+  uniqueElements.forEach(element => {
+    // oxlint-disable-next-line unicorn/prefer-dom-node-remove
+    container.removeChild(element);
+  });
 }
 
 function traverse(

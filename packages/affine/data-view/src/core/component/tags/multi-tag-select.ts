@@ -69,7 +69,21 @@ export type TagManagerOptions = {
   options: ReadonlySignal<SelectTag[]>;
   onOptionsChange: (options: SelectTag[]) => void;
   onComplete?: () => void;
+  initialDraftText?: string;
 };
+
+// Parent elements that can hand over a tag draft typed in the table.
+const TABLE_CELL_HOST_SELECTOR =
+  'dv-table-view-cell-container, affine-database-virtual-cell-container';
+
+export function consumeTagDraftFromTableCellHost(
+  fromElement: Element
+): string | undefined {
+  const host = fromElement.closest(TABLE_CELL_HOST_SELECTOR) as {
+    consumeTagDraft?: () => string | undefined;
+  } | null;
+  return host?.consumeTagDraft?.();
+}
 
 class TagManager {
   changeTag = (option: Partial<SelectTag>) => {
@@ -427,6 +441,15 @@ export class MultiTagSelect extends SignalWatcher(
     );
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    const draft = this.initialDraftText;
+    if (draft != null && draft !== '') {
+      this.tagManager.text$.value = draft;
+      this.initialDraftText = undefined;
+    }
+  }
+
   protected override firstUpdated() {
     const disposables = this.disposables;
     this.classList.add(tagSelectContainerStyle);
@@ -471,6 +494,9 @@ export class MultiTagSelect extends SignalWatcher(
 
   @property({ attribute: false })
   accessor value!: ReadonlySignal<string[]>;
+
+  @property({ attribute: false })
+  accessor initialDraftText: string | undefined;
 }
 
 declare global {
@@ -481,6 +507,9 @@ declare global {
 
 const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   const tagManager = new TagManager(ops);
+  if (ops.initialDraftText) {
+    tagManager.text$.value = ops.initialDraftText;
+  }
   const onInput = (e: InputEvent) => {
     tagManager.text$.value = (e.target as HTMLInputElement).value;
   };
@@ -582,6 +611,7 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   component.onChange = ops.onChange;
   component.options = ops.options;
   component.onOptionsChange = ops.onOptionsChange;
+  component.initialDraftText = ops.initialDraftText;
   component.onComplete = () => {
     ops.onComplete?.();
     remove();

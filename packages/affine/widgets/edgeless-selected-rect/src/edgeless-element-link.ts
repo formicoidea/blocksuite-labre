@@ -1,6 +1,10 @@
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import type { RootBlockModel } from '@labre/affine-model';
-import { requestThrottledConnectedFrame } from '@labre/affine-shared/utils';
+import {
+  overlayScale,
+  requestThrottledConnectedFrame,
+  toOverlayCoord,
+} from '@labre/affine-shared/utils';
 import { WidgetComponent } from '@labre/std';
 import {
   GfxControllerIdentifier,
@@ -81,12 +85,13 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
     }
     const bound = el.elementBound;
     const { viewport } = this.gfx;
-    const [left, top] = viewport.toViewCoord(bound.x, bound.y);
+    const [left, top] = toOverlayCoord(viewport, bound.x, bound.y);
+    const scale = overlayScale(viewport);
     this._rect = {
       left,
       top,
-      width: bound.w * viewport.zoom,
-      height: bound.h * viewport.zoom,
+      width: bound.w * scale,
+      height: bound.h * scale,
     };
   }, this);
 

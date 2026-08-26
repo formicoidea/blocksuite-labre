@@ -9,6 +9,10 @@ import { BrushElementRendererExtension } from './element-renderer';
 import { EraserTool } from './eraser-tool';
 import { HighlighterTool } from './highlighter-tool';
 import {
+  BrushDomRendererExtension,
+  HighlighterDomRendererExtension,
+} from './renderer';
+import {
   brushToolbarExtension,
   highlighterToolbarExtension,
 } from './toolbar/configs';
@@ -26,6 +30,11 @@ export class BrushRenderViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     context.register(BrushElementRendererExtension);
+    // DOM variants of the same two strokes. The canvas renderer for the
+    // highlighter still ships with `@labre/affine-gfx-shape`; both providers
+    // are always-on, so the pair stays complete whatever the `brush` flag says.
+    context.register(BrushDomRendererExtension);
+    context.register(HighlighterDomRendererExtension);
     context.register(brushToolbarExtension);
     context.register(highlighterToolbarExtension);
   }

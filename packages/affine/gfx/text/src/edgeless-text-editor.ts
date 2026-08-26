@@ -9,7 +9,11 @@ import {
 import { DefaultTheme, TextElementModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
 import { ThemeProvider } from '@labre/affine-shared/services';
-import { getSelectedRect } from '@labre/affine-shared/utils';
+import {
+  getSelectedRect,
+  overlayScale,
+  toOverlayCoord,
+} from '@labre/affine-shared/utils';
 import { Bound, toRadian, Vec } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
 import {
@@ -418,13 +422,17 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
     const lineHeight = getLineHeight(fontFamily, fontSize, fontWeight);
     const rect = getSelectedRect([this.element]);
 
-    const { translateX, translateY, zoom } = this.gfx.viewport;
+    const viewport = this.gfx.viewport;
     const [visualX, visualY] = this.getVisualPosition(this.element);
     const containerOffset = this.getContainerOffset();
+    // The editor is mounted inside the container the host may have scaled, so
+    // it is placed and scaled the way a gfx block is, not in screen pixels.
+    // Panning the viewport and reaching the element are one and the same
+    // translation, which is what `toOverlayCoord` answers.
+    const [x, y] = toOverlayCoord(viewport, visualX, visualY);
     const transformOperation = [
-      `translate(${translateX}px, ${translateY}px)`,
-      `translate(${visualX * zoom}px, ${visualY * zoom}px)`,
-      `scale(${zoom})`,
+      `translate(${x}px, ${y}px)`,
+      `scale(${overlayScale(viewport)})`,
       `rotate(${rotate}deg)`,
       `translate(${containerOffset})`,
     ];

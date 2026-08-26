@@ -157,10 +157,13 @@ export class AffineLink extends WithDisposable(ShadowlessElement) {
   }
 
   override render() {
+    // No `text-decoration` here on purpose: this object is the OVERRIDE handed
+    // to `affineTextStyles`, and it is spread last, so any decoration it names
+    // would silently erase the one computed from `strike` / `underline`.
+    // A plain link still shows none — `affineTextStyles` defaults to 'none'.
     const linkStyle = {
       color: 'var(--affine-link-color)',
       fill: 'var(--affine-link-color)',
-      'text-decoration': 'none',
       cursor: 'pointer',
     };
 

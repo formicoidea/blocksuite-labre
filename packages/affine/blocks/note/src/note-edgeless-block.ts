@@ -221,6 +221,19 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
     }
   }
 
+  /**
+   * A note carries its own `scale` on top of the viewport zoom. That scale
+   * belongs to the host element's transform, not to an inner wrapper: the
+   * element is laid out from the *unscaled* bound (see `getRenderingRect`), so
+   * scaling only the content would leave the element's box — the thing hit
+   * tests, the selection rect and the toolbar anchor read — out of step with
+   * what is painted at any scale other than 100%.
+   */
+  override getCSSTransform() {
+    const extraScale = this.model.props.edgeless?.scale ?? 1;
+    return `${super.getCSSTransform()} scale(${extraScale})`;
+  }
+
   override getRenderingRect() {
     const { xywh, edgeless } = this.model.props;
     const { collapse, scale = 1 } = edgeless;
@@ -255,7 +268,6 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
 
     const style = {
       borderRadius: borderRadius + 'px',
-      transform: `scale(${scale})`,
     };
 
     const extra = this._editing ? ACTIVE_NOTE_EXTRA_PADDING : 0;
@@ -454,6 +466,26 @@ export const EdgelessNoteInteraction =
                     return;
                   }
 
+                  // A click landing on the note title belongs to the title:
+                  // routing it through the children container below would
+                  // clamp it into the first paragraph instead.
+                  const titleRect = view
+                    .querySelector('edgeless-page-block-title')
+                    ?.getBoundingClientRect();
+
+                  if (
+                    titleRect &&
+                    new Bound(
+                      titleRect.x,
+                      titleRect.y,
+                      titleRect.width,
+                      titleRect.height
+                    ).isPointInBound([e.clientX, e.clientY])
+                  ) {
+                    handleNativeRangeAtPoint(e.clientX, e.clientY);
+                    return;
+                  }
+
                   if (model.children.length === 0) {
                     const blockId = std.store.addBlock(
                       'affine:paragraph',
@@ -489,6 +521,11 @@ export const EdgelessNoteInteraction =
                   }
                 })
                 .catch(console.error);
+            } else if (multiSelect && alreadySelected && editing) {
+              // Shift-clicking inside a note being edited extends the text
+              // range; the default multi-select would drop the editing state
+              // and take the range with it.
+              return;
             } else {
               context.default(context);
             }

@@ -1,5 +1,5 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import { getSelectedRect } from '@labre/affine-shared/utils';
+import { getSelectedRect, toOverlayCoord } from '@labre/affine-shared/utils';
 import { type IVec, Rect } from '@labre/global/gfx';
 import {
   GfxControllerIdentifier,
@@ -14,6 +14,17 @@ import {
 } from '../config.js';
 import type { AffineDragHandleWidget } from '../drag-handle.js';
 
+type HoveredElemArea = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+  padding: number;
+  containerWidth: number;
+};
+
 /**
  * Used to control the drag handle visibility in edgeless mode
  *
@@ -21,6 +32,41 @@ import type { AffineDragHandleWidget } from '../drag-handle.js';
  * 2. Multiple selection is not supported
  */
 export class EdgelessWatcher {
+  private _pendingHoveredElemArea: HoveredElemArea | null = null;
+
+  private _lastAppliedHoveredElemArea: HoveredElemArea | null = null;
+
+  private _showDragHandleRafId: number | null = null;
+
+  private _surfaceElementUpdatedRafId: number | null = null;
+
+  private readonly _isAreaEqual = (
+    left: HoveredElemArea | null,
+    right: HoveredElemArea | null
+  ) => {
+    if (!left || !right) return false;
+    return (
+      left.left === right.left &&
+      left.top === right.top &&
+      left.right === right.right &&
+      left.bottom === right.bottom &&
+      left.width === right.width &&
+      left.height === right.height &&
+      left.padding === right.padding &&
+      left.containerWidth === right.containerWidth
+    );
+  };
+
+  private readonly _scheduleShowDragHandleFromSurfaceUpdate = () => {
+    if (this._surfaceElementUpdatedRafId !== null) return;
+
+    this._surfaceElementUpdatedRafId = requestAnimationFrame(() => {
+      this._surfaceElementUpdatedRafId = null;
+      if (!this.widget.isGfxDragHandleVisible) return;
+      this._showDragHandle();
+    });
+  };
+
   private readonly _handleEdgelessToolUpdated = (
     newTool: ToolOptionWithType
   ) => {
@@ -42,47 +88,128 @@ export class EdgelessWatcher {
       this.widget.scale.value = zoom;
     }
 
+    // `||`, not `&&`: a pan along a single axis moves the centre just as much
+    // as a diagonal one does.
     if (
-      this.widget.center[0] !== center[0] &&
+      this.widget.center[0] !== center[0] ||
       this.widget.center[1] !== center[1]
     ) {
       this.widget.center = [...center];
     }
 
     if (this.widget.isGfxDragHandleVisible) {
-      this._showDragHandle();
-      this._updateDragHoverRectTopLevelBlock();
+      // Measured once and read twice: this runs on every frame of a pan or a
+      // zoom, and measuring means a layout read per selected element.
+      const area = this.hoveredElemArea;
+      this._showDragHandle(area);
+      this._updateDragHoverRectTopLevelBlock(area);
     } else if (this.widget.activeDragHandle) {
       this.widget.hide();
     }
   };
 
-  private readonly _showDragHandle = () => {
-    if (!this.widget.anchorBlockId) return;
+  private readonly _flushShowDragHandle = () => {
+    this._showDragHandleRafId = null;
+
+    // `anchorBlockId` is a signal, so the object itself is always truthy: its
+    // value is what says whether anything is anchored.
+    if (!this.widget.anchorBlockId.peek()) return;
 
     const container = this.widget.dragHandleContainer;
     const grabber = this.widget.dragHandleGrabber;
     if (!container || !grabber) return;
 
-    const area = this.hoveredElemArea;
+    const area = this._pendingHoveredElemArea ?? this.hoveredElemArea;
+    this._pendingHoveredElemArea = null;
     if (!area) return;
 
-    container.style.transition = 'none';
-    container.style.paddingTop = `0px`;
-    container.style.paddingBottom = `0px`;
-    container.style.left = `${area.left}px`;
-    container.style.top = `${area.top}px`;
-    container.style.display = 'flex';
+    if (
+      this.widget.isGfxDragHandleVisible &&
+      this._isAreaEqual(this._lastAppliedHoveredElemArea, area)
+    ) {
+      return;
+    }
+
+    // Every write below invalidates style, so each one happens only when it
+    // actually changes something.
+    if (container.style.transition !== 'none') {
+      container.style.transition = 'none';
+    }
+    if (container.style.paddingTop !== '0px') {
+      container.style.paddingTop = '0px';
+    }
+    if (container.style.paddingBottom !== '0px') {
+      container.style.paddingBottom = '0px';
+    }
+    const nextLeft = `${area.left}px`;
+    if (container.style.left !== nextLeft) {
+      container.style.left = nextLeft;
+    }
+    const nextTop = `${area.top}px`;
+    if (container.style.top !== nextTop) {
+      container.style.top = nextTop;
+    }
+    if (container.style.display !== 'flex') {
+      container.style.display = 'flex';
+    }
 
     this.widget.handleAnchorModelDisposables();
 
     this.widget.activeDragHandle = 'gfx';
+    this._lastAppliedHoveredElemArea = { ...area };
   };
 
-  private readonly _updateDragHoverRectTopLevelBlock = () => {
+  private readonly _showDragHandle = (area?: HoveredElemArea | null) => {
+    this._pendingHoveredElemArea = area ?? this.hoveredElemArea;
+    if (!this._pendingHoveredElemArea) {
+      return;
+    }
+    if (
+      this.widget.isGfxDragHandleVisible &&
+      this._showDragHandleRafId === null &&
+      this._isAreaEqual(
+        this._lastAppliedHoveredElemArea,
+        this._pendingHoveredElemArea
+      )
+    ) {
+      return;
+    }
+    if (this._showDragHandleRafId !== null) {
+      return;
+    }
+    this._showDragHandleRafId = requestAnimationFrame(
+      this._flushShowDragHandle
+    );
+  };
+
+  private readonly _updateDragHoverRectTopLevelBlock = (
+    area?: HoveredElemArea | null
+  ) => {
     if (!this.widget.dragHoverRect) return;
 
-    this.widget.dragHoverRect = this.hoveredElemAreaRect;
+    const nextArea = area ?? this.hoveredElemArea;
+    if (!nextArea) {
+      this.widget.dragHoverRect = null;
+      return;
+    }
+
+    const nextRect = new Rect(
+      nextArea.left,
+      nextArea.top,
+      nextArea.right,
+      nextArea.bottom
+    );
+    const prevRect = this.widget.dragHoverRect;
+    if (
+      prevRect.left === nextRect.left &&
+      prevRect.top === nextRect.top &&
+      prevRect.width === nextRect.width &&
+      prevRect.height === nextRect.height
+    ) {
+      return;
+    }
+
+    this.widget.dragHoverRect = nextRect;
   };
 
   get gfx() {
@@ -123,15 +250,22 @@ export class EdgelessWatcher {
     return new Rect(area.left, area.top, area.right, area.bottom);
   }
 
-  get hoveredElemArea() {
+  get hoveredElemArea(): HoveredElemArea | null {
     const edgelessElement = this.widget.anchorEdgelessElement.peek();
 
     if (!edgelessElement) return null;
 
     const { viewport } = this.gfx;
     const rect = getSelectedRect([edgelessElement]);
-    let [left, top] = viewport.toViewCoord(rect.left, rect.top);
-    const scale = this.widget.scale.peek();
+    // The handle is drawn inside the container the host may have scaled, so
+    // the area it hugs is stated in that container's space, the way a gfx
+    // block states its own placement.
+    const { viewScale } = viewport;
+    let [left, top] = toOverlayCoord(viewport, rect.left, rect.top);
+    // The widget's scale tracks the viewport zoom
+    // (see `_handleEdgelessViewPortUpdated`); dividing it by `viewScale` is
+    // what `overlayScale` does for every other overlay.
+    const scale = this.widget.scale.peek() / viewScale;
     const width = rect.width * scale;
     const height = rect.height * scale;
 
@@ -140,7 +274,7 @@ export class EdgelessWatcher {
     const padding = HOVER_AREA_RECT_PADDING_TOP_LEVEL * scale;
 
     const containerWidth = DRAG_HANDLE_CONTAINER_WIDTH_TOP_LEVEL * scale;
-    const offsetLeft = DRAG_HANDLE_CONTAINER_OFFSET_LEFT_TOP_LEVEL;
+    const offsetLeft = DRAG_HANDLE_CONTAINER_OFFSET_LEFT_TOP_LEVEL / viewScale;
 
     left -= containerWidth + offsetLeft;
     right += padding;
@@ -173,6 +307,19 @@ export class EdgelessWatcher {
     disposables.add(
       viewport.viewportUpdated.subscribe(this._handleEdgelessViewPortUpdated)
     );
+
+    disposables.add(() => {
+      if (this._showDragHandleRafId !== null) {
+        cancelAnimationFrame(this._showDragHandleRafId);
+        this._showDragHandleRafId = null;
+      }
+      if (this._surfaceElementUpdatedRafId !== null) {
+        cancelAnimationFrame(this._surfaceElementUpdatedRafId);
+        this._surfaceElementUpdatedRafId = null;
+      }
+      this._pendingHoveredElemArea = null;
+      this._lastAppliedHoveredElemArea = null;
+    });
 
     disposables.add(
       selection.slots.updated.subscribe(() => {
@@ -224,11 +371,9 @@ export class EdgelessWatcher {
 
     if (surface) {
       disposables.add(
-        surface.elementUpdated.subscribe(() => {
-          if (this.widget.isGfxDragHandleVisible) {
-            this._showDragHandle();
-          }
-        })
+        surface.elementUpdated.subscribe(
+          this._scheduleShowDragHandleFromSurfaceUpdate
+        )
       );
     }
   }

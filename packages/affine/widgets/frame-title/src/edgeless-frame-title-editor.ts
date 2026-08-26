@@ -1,5 +1,6 @@
 import { FrameBlockModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
+import { toOverlayCoord } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
 import { type BlockComponent, ShadowlessElement } from '@labre/std';
@@ -126,7 +127,9 @@ export class EdgelessFrameTitleEditor extends WithDisposable(
 
     const viewport = this.gfx.viewport;
     const bound = Bound.deserialize(this.frameModel.xywh);
-    const [x, y] = viewport.toViewCoord(bound.x, bound.y);
+    // The editor is mounted inside the container the host may have scaled, so
+    // it is placed the way the title it replaces is, not in screen pixels.
+    const [x, y] = toOverlayCoord(viewport, bound.x, bound.y);
     const isInner = this.gfx.grid.has(
       this.frameModel.elementBound,
       true,

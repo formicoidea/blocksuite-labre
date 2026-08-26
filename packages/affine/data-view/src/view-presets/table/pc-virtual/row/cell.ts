@@ -179,6 +179,18 @@ export class DatabaseCellContainer extends SignalWatcher(
       },
     });
   }
+  private _tagDraft: string | undefined;
+
+  setTagDraft(value: string) {
+    this._tagDraft = value;
+  }
+
+  consumeTagDraft(): string | undefined {
+    const value = this._tagDraft;
+    this._tagDraft = undefined;
+    return value;
+  }
+
   isEditing$ = signal(false);
 
   rowIndex$ = computed(() => {

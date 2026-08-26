@@ -11,7 +11,11 @@ import {
 } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
 import { ThemeProvider } from '@labre/affine-shared/services';
-import { getSelectedRect } from '@labre/affine-shared/utils';
+import {
+  getSelectedRect,
+  overlayScale,
+  toOverlayCoord,
+} from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, toRadian, Vec } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
@@ -22,7 +26,7 @@ import {
   stdContext,
 } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
-import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
+import { InlineEditor, RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { consume } from '@lit/context';
 import { html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
@@ -73,6 +77,8 @@ export function mountShapeTextEditor(
 }
 
 export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
+  private _compositionUpdateRaf: number | null = null;
+
   private _keeping = false;
 
   private _lastXYWH = '';
@@ -151,6 +157,8 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
   }
 
   private _unmount() {
+    this._cancelScheduledElementWHUpdate();
+
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
 
@@ -174,6 +182,119 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
     });
   }
 
+  private _cancelScheduledElementWHUpdate() {
+    if (this._compositionUpdateRaf !== null) {
+      cancelAnimationFrame(this._compositionUpdateRaf);
+      this._compositionUpdateRaf = null;
+    }
+  }
+
+  /**
+   * While an IME composition is in progress the text is only in the DOM, not
+   * yet in the model, so `renderComplete` never fires and the shape keeps the
+   * size it had before the user started composing — the preedit string spills
+   * out of it. Remeasure once per frame instead, and once more when the
+   * composition ends.
+   */
+  private _scheduleElementWHUpdate(flush = false) {
+    if (flush) {
+      this._cancelScheduledElementWHUpdate();
+      this._updateElementWH();
+      return;
+    }
+
+    if (this._compositionUpdateRaf !== null) {
+      return;
+    }
+
+    this._compositionUpdateRaf = requestAnimationFrame(() => {
+      this._compositionUpdateRaf = null;
+      this._updateElementWH();
+    });
+  }
+
+  private _getInlineEditorContentRect() {
+    if (!this.inlineEditorContainer) {
+      return null;
+    }
+
+    const textNodes = InlineEditor.getTextNodesFromElement(
+      this.inlineEditorContainer
+    );
+    const firstText = textNodes[0];
+    const lastText = textNodes.at(-1);
+
+    if (!firstText || !lastText) {
+      return null;
+    }
+
+    const range = this.ownerDocument.createRange();
+    range.setStart(firstText, 0);
+    range.setEnd(lastText, lastText.length);
+    const rect = range.getBoundingClientRect();
+
+    return rect.width > 0 || rect.height > 0 ? rect : null;
+  }
+
+  /**
+   * The size the shape should take, measured on the editor DOM.
+   *
+   * Without a numeric `maxWidth` the editor box *is* the text box, so its own
+   * offset size is the whole measure. Every framework shape (Wardley, EDGY,
+   * DDD, Cynefin) is in that case, and takes exactly the path it took before
+   * mind map nodes gained a maximum width.
+   *
+   * With a numeric `maxWidth` the box is capped by CSS and wraps, so
+   * `offsetWidth` alone no longer describes the text: a preedit string the
+   * browser has not reflowed yet extends past the box it is painted in. Take
+   * the widest measure available, then clamp it back to `maxWidth` so the
+   * shape never grows past the cap.
+   */
+  private _measureEditorSize(textResizing: TextResizing) {
+    const containerWidth = this.richText.offsetWidth;
+    const containerHeight = this.richText.offsetHeight;
+    const maxWidth = this.element.maxWidth;
+
+    if (
+      typeof maxWidth !== 'number' ||
+      textResizing !== TextResizing.AUTO_WIDTH_AND_HEIGHT
+    ) {
+      return { containerWidth, containerHeight };
+    }
+
+    const [verticalPadding, horizontalPadding] = this.element.padding;
+    const bcr = this.richText.getBoundingClientRect();
+    const contentRect = this._getInlineEditorContentRect();
+    const rangeRect = this.inlineEditor
+      ?.getNativeRange()
+      ?.getBoundingClientRect();
+
+    const contentRectWidth =
+      contentRect != null ? contentRect.width + horizontalPadding * 2 : 0;
+    const contentRectHeight =
+      contentRect != null ? contentRect.height + verticalPadding * 2 : 0;
+    const rangeWidth =
+      rangeRect != null
+        ? Math.max(0, rangeRect.right - bcr.left + horizontalPadding)
+        : 0;
+    const rangeHeight =
+      rangeRect != null
+        ? Math.max(0, rangeRect.bottom - bcr.top + verticalPadding)
+        : 0;
+
+    return {
+      containerWidth: Math.min(
+        Math.max(containerWidth, contentRectWidth, rangeWidth),
+        maxWidth
+      ),
+      containerHeight: Math.max(
+        containerHeight,
+        contentRectHeight,
+        rangeHeight
+      ),
+    };
+  }
+
   private _updateElementWH() {
     if (this.element.textFitMode !== TextFitMode.Grow) {
       // Fixed shape bounds: typing never resizes the shape. Contained mode
@@ -189,9 +310,9 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
     }
 
     const bcr = this.richText.getBoundingClientRect();
-    const containerHeight = this.richText.offsetHeight;
-    const containerWidth = this.richText.offsetWidth;
     const textResizing = this.element.textResizing;
+    const { containerWidth, containerHeight } =
+      this._measureEditorSize(textResizing);
 
     if (
       (containerHeight !== this.element.h &&
@@ -229,7 +350,11 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       if (this.isMindMapNode) {
         const mindmap = this.element.group as MindmapElementModel;
 
-        mindmap.layout();
+        // Re-place the nodes, but without re-applying the style: that would
+        // fit the node back to the text the *model* holds and undo the size
+        // just measured from the editor. The full layout runs again when the
+        // editor is unmounted.
+        mindmap.layout(mindmap.tree, { applyStyle: false });
       }
 
       this.richText.style.minHeight = `${containerHeight}px`;
@@ -296,6 +421,21 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
             this._unmount();
           }
         );
+
+        this.disposables.addFromEvent(
+          this.inlineEditorContainer,
+          'compositionupdate',
+          () => {
+            this._scheduleElementWHUpdate();
+          }
+        );
+        this.disposables.addFromEvent(
+          this.inlineEditorContainer,
+          'compositionend',
+          () => {
+            this._scheduleElementWHUpdate(true);
+          }
+        );
       })
       .catch(console.error);
 
@@ -331,7 +471,9 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
     const [verticalPadding, horiPadding] = this.element.padding;
     const textResizing = this.element.textResizing;
     const viewport = this.gfx.viewport;
-    const zoom = viewport.zoom;
+    // The editor is mounted inside the container the host may have scaled, so
+    // it is placed and scaled the way a gfx block is, not in screen pixels.
+    const scale = overlayScale(viewport);
     const rect = getSelectedRect([this.element]);
     const rotate = this.element.rotate;
     const [leftTopX, leftTopY] = Vec.rotWith(
@@ -339,10 +481,15 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       [rect.left + rect.width / 2, rect.top + rect.height / 2],
       toRadian(rotate)
     );
-    const [x, y] = this.gfx.viewport.toViewCoord(leftTopX, leftTopY);
+    const [x, y] = toOverlayCoord(viewport, leftTopX, leftTopY);
     const fixedBounds = this.element.textFitMode !== TextFitMode.Grow;
     const autoWidth =
       !fixedBounds && textResizing === TextResizing.AUTO_WIDTH_AND_HEIGHT;
+    // A shape that grows up to a maximum width wraps instead of running off:
+    // `max-content` keeps the intrinsic width the box wants, `max-width` caps
+    // it, and the wrapping rules below break the overflowing line.
+    const constrainedAutoWidth =
+      autoWidth && typeof this.element.maxWidth === 'number';
     const color = this.std
       .get(ThemeProvider)
       .generateColorProperty(this.element.color, '#000000');
@@ -351,21 +498,24 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       position: 'absolute',
       left: x + 'px',
       top: y + 'px',
-      width: autoWidth ? 'fit-content' : rect.width + 'px',
+      width: constrainedAutoWidth
+        ? 'max-content'
+        : autoWidth
+          ? 'fit-content'
+          : rect.width + 'px',
       // override rich-text style (height: 100%)
       height: 'initial',
       minHeight: autoWidth ? '1em' : `${rect.height}px`,
-      maxWidth:
-        autoWidth && this.element.maxWidth
-          ? `${this.element.maxWidth}px`
-          : undefined,
+      maxWidth: constrainedAutoWidth
+        ? `${this.element.maxWidth}px`
+        : undefined,
       boxSizing: 'border-box',
       fontSize: effectiveShapeFontSize(this.element) + 'px',
       fontFamily: TextUtils.wrapFontFamily(this.element.fontFamily),
       fontWeight: this.element.fontWeight,
       lineHeight: 'normal',
       outline: 'none',
-      transform: `scale(${zoom}, ${zoom}) rotate(${rotate}deg)`,
+      transform: `scale(${scale}, ${scale}) rotate(${rotate}deg)`,
       transformOrigin: 'top left',
       color,
       padding: `${verticalPadding}px ${horiPadding}px`,
@@ -387,9 +537,15 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
 
     return html` <style>
         edgeless-shape-text-editor v-text [data-v-text] {
-          overflow-wrap: ${autoWidth ? 'normal' : 'anywhere'};
-          word-break: ${autoWidth ? 'normal' : 'break-word'} !important;
-          white-space: ${autoWidth ? 'pre' : 'pre-wrap'} !important;
+          overflow-wrap: ${autoWidth && !constrainedAutoWidth
+            ? 'normal'
+            : 'anywhere'};
+          word-break: ${autoWidth && !constrainedAutoWidth
+            ? 'normal'
+            : 'break-word'} !important;
+          white-space: ${autoWidth && !constrainedAutoWidth
+            ? 'pre'
+            : 'pre-wrap'} !important;
         }
 
         edgeless-shape-text-editor .inline-editor {

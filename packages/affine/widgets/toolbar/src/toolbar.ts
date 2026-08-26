@@ -134,7 +134,19 @@ export class AffineToolbarWidget extends WidgetComponent {
   }
 
   setReferenceElementWithBlocks(blocks: BlockComponent[]) {
-    const getClientRects = () => blocks.map(e => e.getBoundingClientRect());
+    // A single position pass asks for the rects twice — once for the common
+    // bound, once for the inline middleware — and the pass runs on every
+    // scroll frame. One measure per frame is enough.
+    let cachedClientRects: DOMRect[] | null = null;
+    const getClientRects = () => {
+      if (!cachedClientRects) {
+        cachedClientRects = blocks.map(e => e.getBoundingClientRect());
+        requestAnimationFrame(() => {
+          cachedClientRects = null;
+        });
+      }
+      return cachedClientRects;
+    };
 
     this.referenceElement$.value = blocks.length
       ? () => ({
@@ -150,10 +162,14 @@ export class AffineToolbarWidget extends WidgetComponent {
   }
 
   setReferenceElementWithElements(gfx: GfxController, elements: GfxModel[]) {
+    // Measured once per selection change, not on every anchor read: floating-ui
+    // calls `getBoundingClientRect` on each frame of a pan or a zoom, and the
+    // surface bound of a group walks all of its children.
+    const surfaceBounds = getCommonBoundWithRotation(elements);
+
     const getBoundingClientRect = () => {
-      const bounds = getCommonBoundWithRotation(elements);
       const { x: offsetX, y: offsetY } = this.getBoundingClientRect();
-      const [x, y, w, h] = gfx.viewport.toViewBound(bounds).toXYWH();
+      const [x, y, w, h] = gfx.viewport.toViewBound(surfaceBounds).toXYWH();
       const rect = new DOMRect(x + offsetX, y + offsetY, w, h);
       return rect;
     };

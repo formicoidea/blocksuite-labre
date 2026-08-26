@@ -1,5 +1,6 @@
 import type { BaseTextAttributes } from '@labre/store';
 
+import { INLINE_ROOT_ATTR } from '../consts.js';
 import type { InlineEditor } from '../inline-editor.js';
 import type { InlineRange } from '../types.js';
 import {
@@ -16,43 +17,115 @@ export class EventService<TextAttributes extends BaseTextAttributes> {
 
   private _isComposing = false;
 
+  private readonly _getClosestInlineRoot = (node: Node): Element | null => {
+    const el = node instanceof Element ? node : node.parentElement;
+    return el?.closest(`[${INLINE_ROOT_ATTR}]`) ?? null;
+  };
+
+  private readonly _containsNode = (rootElement: Element, node: Node) =>
+    node === rootElement || rootElement.contains(node);
+
   private readonly _isRangeCompletelyInRoot = (range: Range) => {
     if (range.commonAncestorContainer.ownerDocument !== document) return false;
 
     const rootElement = this.editor.rootElement;
     if (!rootElement) return false;
 
-    const rootRange = document.createRange();
-    rootRange.selectNode(rootElement);
-
-    if (
-      range.startContainer.compareDocumentPosition(range.endContainer) &
-      Node.DOCUMENT_POSITION_FOLLOWING
-    ) {
-      return (
-        rootRange.comparePoint(range.startContainer, range.startOffset) >= 0 &&
-        rootRange.comparePoint(range.endContainer, range.endOffset) <= 0
-      );
-    } else {
-      return (
-        rootRange.comparePoint(range.endContainer, range.startOffset) >= 0 &&
-        rootRange.comparePoint(range.startContainer, range.endOffset) <= 0
-      );
-    }
+    // Avoid `Range.comparePoint` here — Firefox and Chrome have subtle
+    // differences around selection points in `contenteditable` and around
+    // comment marker nodes.
+    return (
+      this._containsNode(rootElement, range.startContainer) &&
+      this._containsNode(rootElement, range.endContainer)
+    );
   };
 
-  private readonly _onBeforeInput = (event: InputEvent) => {
+  private readonly _onBeforeInput = async (event: InputEvent) => {
     const range = this.editor.rangeService.getNativeRange();
-    if (
-      this.editor.isReadonly ||
-      this._isComposing ||
-      !range ||
-      !this._isRangeCompletelyInRoot(range)
-    )
-      return;
+    if (this.editor.isReadonly || !range) return;
+
+    const rootElement = this.editor.rootElement;
+    if (!rootElement) return;
+
+    const startInRoot = this._containsNode(rootElement, range.startContainer);
+    const endInRoot = this._containsNode(rootElement, range.endContainer);
+
+    // Not this inline editor.
+    if (!startInRoot && !endInRoot) return;
+
+    // If the selection spans into another inline editor, let the range binding
+    // handle it.
+    if (startInRoot !== endInRoot) {
+      const otherNode = startInRoot ? range.endContainer : range.startContainer;
+      const otherRoot = this._getClosestInlineRoot(otherNode);
+      if (otherRoot && otherRoot !== rootElement) return;
+    }
+
+    if (this._isComposing) return;
+
+    // Always prevent native DOM mutations inside the inline editor. Browsers
+    // (notably Firefox) may remove Lit marker comment nodes during native
+    // edits, which crashes subsequent Lit updates with
+    // `ChildPart has no parentNode`.
+    event.preventDefault();
 
     let inlineRange = this.editor.toInlineRange(range);
-    if (!inlineRange) return;
+    if (!inlineRange) {
+      // Some browsers may report selection points on non-text nodes inside
+      // `contenteditable`. Prefer the target range if available.
+      try {
+        const targetRanges = event.getTargetRanges();
+        if (targetRanges.length > 0) {
+          const staticRange = targetRanges[0];
+          const targetRange = document.createRange();
+          targetRange.setStart(
+            staticRange.startContainer,
+            staticRange.startOffset
+          );
+          targetRange.setEnd(staticRange.endContainer, staticRange.endOffset);
+          inlineRange = this.editor.toInlineRange(targetRange);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!inlineRange && startInRoot !== endInRoot) {
+      // Clamp a partially-outside selection to this editor so native editing
+      // won't touch Lit marker nodes.
+      const pointRange = document.createRange();
+      if (startInRoot) {
+        pointRange.setStart(range.startContainer, range.startOffset);
+        pointRange.setEnd(range.startContainer, range.startOffset);
+        const startPoint = this.editor.toInlineRange(pointRange);
+        if (startPoint) {
+          inlineRange = {
+            index: startPoint.index,
+            length: this.editor.yTextLength - startPoint.index,
+          };
+        }
+      } else {
+        pointRange.setStart(range.endContainer, range.endOffset);
+        pointRange.setEnd(range.endContainer, range.endOffset);
+        const endPoint = this.editor.toInlineRange(pointRange);
+        if (endPoint) {
+          inlineRange = {
+            index: 0,
+            length: endPoint.index,
+          };
+        }
+      }
+    }
+
+    if (!inlineRange) {
+      // Try to recover from an unexpected DOM/selection state by rebuilding the
+      // editor DOM and retrying the range conversion.
+      this.editor.rerenderWholeEditor();
+      await this.editor.waitForUpdate();
+      const newRange = this.editor.rangeService.getNativeRange();
+      inlineRange = newRange ? this.editor.toInlineRange(newRange) : null;
+      if (!inlineRange) return;
+    }
 
     let ifHandleTargetRange = true;
 
@@ -92,15 +165,17 @@ export class EventService<TextAttributes extends BaseTextAttributes> {
         range.setEnd(staticRange.endContainer, staticRange.endOffset);
         const targetInlineRange = this.editor.toInlineRange(range);
 
-        if (!isMaybeInlineRangeEqual(inlineRange, targetInlineRange)) {
+        // Ignore an un-resolvable target range to avoid swallowing the input.
+        if (
+          targetInlineRange &&
+          !isMaybeInlineRangeEqual(inlineRange, targetInlineRange)
+        ) {
           inlineRange = targetInlineRange;
         }
       }
     }
 
     if (!inlineRange) return;
-
-    event.preventDefault();
 
     const ctx: BeforeinputHookCtx<TextAttributes> = {
       inlineEditor: this.editor,
@@ -346,11 +421,9 @@ export class EventService<TextAttributes extends BaseTextAttributes> {
       return;
     }
 
-    this.editor.disposables.addFromEvent(
-      eventSource,
-      'beforeinput',
-      this._onBeforeInput
-    );
+    this.editor.disposables.addFromEvent(eventSource, 'beforeinput', e => {
+      this._onBeforeInput(e).catch(console.error);
+    });
     this.editor.disposables.addFromEvent(
       eventSource,
       'compositionstart',

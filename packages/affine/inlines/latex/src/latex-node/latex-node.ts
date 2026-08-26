@@ -15,7 +15,7 @@ import {
 import type { DeltaInsert } from '@labre/store';
 import { signal } from '@preact/signals-core';
 import katex from 'katex';
-import { css, html, render } from 'lit';
+import { css, html, type PropertyValues, render } from 'lit';
 import { property } from 'lit/decorators.js';
 
 export class AffineLatexNode extends SignalWatcher(
@@ -84,6 +84,8 @@ export class AffineLatexNode extends SignalWatcher(
   `;
 
   private _editorAbortController: AbortController | null = null;
+
+  private _isEditorOpen = false;
 
   readonly latex$ = signal('');
 
@@ -174,6 +176,29 @@ export class AffineLatexNode extends SignalWatcher(
     return result;
   }
 
+  /**
+   * The delta is the source of truth: when it changes underneath us (undo, a
+   * remote edit, a paste replacing the node) the signals must follow it,
+   * otherwise the node keeps painting the equation it was first created with.
+   * While the editor is open the user is the source of truth instead, so the
+   * in-flight draft is left alone.
+   */
+  protected override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    if (!changedProperties.has('delta') || this._isEditorOpen) {
+      return;
+    }
+
+    const latex = this.deltaLatex;
+    if (this.latex$.peek() !== latex) {
+      this.latex$.value = latex;
+    }
+    if (this.latexEditorSignal.peek() !== latex) {
+      this.latexEditorSignal.value = latex;
+    }
+  }
+
   override render() {
     return html`<span class="affine-latex" data-selected=${this.selected}
       ><div class="latex-container"></div>
@@ -212,9 +237,11 @@ export class AffineLatexNode extends SignalWatcher(
       },
     });
 
+    this._isEditorOpen = true;
     this._editorAbortController.signal.addEventListener(
       'abort',
       () => {
+        this._isEditorOpen = false;
         portal.remove();
         const latex = this.latexEditorSignal.peek();
         this.latex$.value = latex;

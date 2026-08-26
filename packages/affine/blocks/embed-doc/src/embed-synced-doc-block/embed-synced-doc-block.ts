@@ -44,6 +44,7 @@ import { guard } from 'lit/directives/guard.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
+import { isDocTrashed } from '../common/doc-trashed.js';
 import type { EmbedSyncedDocCard } from './components/embed-synced-doc-card.js';
 import { blockStyles } from './styles.js';
 
@@ -55,6 +56,12 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
 
   // Caches total bounds, includes all blocks and elements.
   private _cachedBounds: Bound | null = null;
+
+  /** Whether the nested editor has been rendered at least once. */
+  private _hasRenderedSyncedView = false;
+
+  /** Whether the fit effect below has already been installed. */
+  private _hasInitedFitEffect = false;
 
   private readonly _initEdgelessFitEffect = () => {
     const fitToContent = () => {
@@ -357,10 +364,14 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
   };
 
   refreshData = () => {
-    this._load().catch(e => {
-      console.error(e);
-      this._error = true;
-    });
+    this._load()
+      .then(() => {
+        this._isEmptySyncedDoc = isEmptyDoc(this.syncedDoc, this.editorMode);
+      })
+      .catch(e => {
+        console.error(e);
+        this._error = true;
+      });
   };
 
   title$ = computed(() => {
@@ -445,7 +456,7 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
     this._cycle = false;
 
     const syncedDoc = this.syncedDoc;
-    if (!syncedDoc) {
+    if (!syncedDoc || isDocTrashed(syncedDoc)) {
       this._deleted = true;
       this._loading = false;
       return;
@@ -521,6 +532,7 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
     this.disposables.add(
       this.store.workspace.slots.docListUpdated.subscribe(() => {
         this._setDocUpdatedAt();
+        this.refreshData();
       })
     );
 
@@ -552,8 +564,6 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
         this._selectBlock();
       }
     });
-
-    this._initEdgelessFitEffect();
   }
 
   override renderBlock() {
@@ -581,12 +591,24 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
       );
     }
 
+    this._hasRenderedSyncedView = true;
+
     return this._renderSyncedView();
   }
 
   override updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
     this.syncedDocCard?.requestUpdate();
+
+    // The fit effect reads the nested viewport's cached bounding rect, which
+    // only the viewport's own resize observer invalidates. Installing it here,
+    // after the nested editor has rendered and registered that observer, is
+    // what keeps the first resize after a zoom change from fitting to a stale
+    // size.
+    if (!this._hasInitedFitEffect && this._hasRenderedSyncedView) {
+      this._hasInitedFitEffect = true;
+      this._initEdgelessFitEffect();
+    }
   }
 
   @state()

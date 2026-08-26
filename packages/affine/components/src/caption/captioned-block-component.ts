@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@labre/affine-shared/services';
+import { watch } from '@labre/global/lit';
 import { BlockComponent, type BlockService } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 import { html, nothing } from 'lit';
@@ -59,7 +60,7 @@ export class CaptionedBlockComponent<
         : nothing}
       ${this.selectedStyle === SelectedStyle.Background
         ? html`<affine-block-selection
-            .selected=${this.selected$.value}
+            .selected=${watch(this.selected$)}
           ></affine-block-selection>`
         : null}
       ${this.useZeroWidth && !this.store.readonly

@@ -4,6 +4,7 @@ import {
   LayoutType,
   NoteDisplayMode,
 } from '@labre/affine/model';
+import { ungroupCommand } from '@labre/affine/gfx/group';
 import type { MindmapElementModel } from '@labre/affine-model';
 import { beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
@@ -207,6 +208,70 @@ describe('group', () => {
     expect(group.y).toBe(0);
     expect(group.w).toBe(0);
     expect(group.h).toBe(0);
+  });
+
+  test('one undo after an ungroup puts the whole group back', async () => {
+    const childIds = [1, 2, 3].map(
+      () => service.crud.addElement('shape', { shapeType: 'rect' })!
+    );
+    const children = new Y.Map<boolean>();
+    childIds.forEach(id => children.set(id, true));
+    const groupId = service.crud.addElement('group', { children })!;
+    doc.captureSync();
+    await wait();
+
+    service.std.command.exec(ungroupCommand, {
+      group: service.crud.getElementById(groupId) as GroupElementModel,
+    });
+    await wait();
+
+    expect(service.crud.getElementById(groupId)).toBeNull();
+    childIds.forEach(id => {
+      expect(service.crud.getElementById(id)!.group).toBeNull();
+    });
+
+    // A single undo, not one per child. The ungroup used to open a transaction
+    // per child; the undo manager happened to merge them within its capture
+    // window, so the group came back whole by luck rather than by design. It
+    // is now one transaction, and this guards that.
+    doc.undo();
+    await wait();
+
+    const group = service.crud.getElementById(groupId) as GroupElementModel;
+    expect(group).not.toBeNull();
+    expect([...group.childIds].sort()).toEqual([...childIds].sort());
+  });
+
+  test('ungrouped children stay in the slot the group occupied', async () => {
+    const below = service.crud.addElement('shape', { shapeType: 'rect' })!;
+    const first = service.crud.addElement('shape', { shapeType: 'rect' })!;
+    const second = service.crud.addElement('shape', { shapeType: 'rect' })!;
+    const children = new Y.Map<boolean>();
+    children.set(first, true);
+    children.set(second, true);
+    const groupId = service.crud.addElement('group', { children })!;
+    // Created last, so it sits above the group in the stack.
+    const above = service.crud.addElement('shape', { shapeType: 'rect' })!;
+    doc.captureSync();
+    await wait();
+
+    service.std.command.exec(ungroupCommand, {
+      group: service.crud.getElementById(groupId) as GroupElementModel,
+    });
+    await wait();
+
+    const model = (id: string) => service.crud.getElementById(id)!;
+    const compare = (a: string, b: string) =>
+      service.layer.compare(model(a), model(b));
+
+    // The children used to be re-indexed with `layer.generateIndex()`, which
+    // put every one of them on top of the whole board.
+    expect(compare(below, first)).toBeLessThan(0);
+    expect(compare(below, second)).toBeLessThan(0);
+    expect(compare(first, above)).toBeLessThan(0);
+    expect(compare(second, above)).toBeLessThan(0);
+    // And they keep their relative order.
+    expect(compare(first, second)).toBeLessThan(0);
   });
 
   test('descendant of group should not contain itself', () => {
