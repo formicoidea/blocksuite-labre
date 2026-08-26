@@ -1,13 +1,25 @@
-import { SpotlightHostExtension } from '@labre/affine-block-surface';
+import {
+  QualityNudgeExtension,
+  SpotlightHostExtension,
+  ValidationProfileExtension,
+  ValidationRuleExtension,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
+import { ToolbarModuleExtension } from '@labre/affine-shared/services';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { CommandExtension } from '@labre/std';
+import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
+import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { edgyCommandIcons, edgyCommands } from './commands';
 import { effects } from './effects';
+import { EDGY_NUDGES } from './nudges';
+import { EDGY_PROFILES } from './profiles';
+import { EDGY_ROLES } from './roles';
+import { EDGY_RULES } from './rules';
 import { edgyTemplateCategory } from './templates';
 import { EdgyBoardRendererExtension } from './board-renderer';
 import { EdgyBoardInteraction, EdgyBoardView } from './board-view';
@@ -40,6 +52,13 @@ export class EdgyRenderViewExtension extends ViewExtensionProvider {
     context.register(EdgyBoardRendererExtension);
     context.register(EdgyNodeView);
     context.register(EdgyNodeRendererExtension);
+    // The role VOCABULARY, always on. A role is written in the document, not in
+    // the tooling: the direction reveal of a typed relation, the inversion
+    // command and the toolbar entry that must not lie about one all read this,
+    // and they have to keep working on a board drawn while the flag was on and
+    // opened while it is off (`docs/adr/0009`, `docs/adr/0010`). The rules that
+    // JUDGE those roles stay in the flag-gated extension below.
+    context.register(RoleVocabularyExtension(EDGY_ROLES));
     if (this.isEdgeless(context.scope)) {
       context.register(EdgyInteraction);
       context.register(EdgyBoardInteraction);
@@ -54,8 +73,11 @@ export class EdgyRenderViewExtension extends ViewExtensionProvider {
 }
 
 /**
- * EDGY creation tooling — flag-gated (`edgy`): the senior toolbar button and
- * its templates category.
+ * EDGY creation tooling — flag-gated (`edgy`): the senior toolbar button, its
+ * templates category, and the validation rules, profiles and quality checklist.
+ * All of it is tooling: a board drawn while the flag was on keeps rendering when
+ * it goes off, it just stops being checked — and the profile it was put on stays
+ * written, unread, until the flag comes back (`docs/adr/0009`).
  */
 export class EdgyViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgy-gfx';
@@ -70,6 +92,30 @@ export class EdgyViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
+      context.register(ValidationRuleExtension(EDGY_RULES));
+      context.register(ValidationProfileExtension(EDGY_PROFILES));
+      // Work quality (WS1): the four expectations no algorithm can decide —
+      // including the two the PO deliberately kept out of `rules.ts` on
+      // 26/08/2026 (see `./nudges.ts`).
+      context.register(QualityNudgeExtension(EDGY_NUDGES));
+      // The Validation dropdown on a selected background's contextual toolbar.
+      // A SECOND module on the same element, through the `custom:` flavour slot
+      // (the pattern `gfx/wardley` uses on its map): the rendering toolbars are
+      // registered always-on because a stored board must keep its toggles,
+      // while choosing how hard to check it is tooling and belongs here. The
+      // config itself names no framework — it reads roles and profiles — so
+      // BOTH EDGY frames register the very same object.
+      for (const flavour of [
+        'custom:affine:surface:edgy',
+        'custom:affine:surface:edgyBoard',
+      ]) {
+        context.register(
+          ToolbarModuleExtension({
+            id: BlockFlavourIdentifier(flavour),
+            config: validationToolbarConfig,
+          })
+        );
+      }
       context.register(edgySeniorTool);
       // The seven EDGY commands: the sub-menu renders them, Settings ›
       // Shortcuts finally lists them, and a host override on an id binds.
