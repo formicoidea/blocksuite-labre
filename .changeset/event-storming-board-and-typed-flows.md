@@ -14,7 +14,11 @@ running left to right. Nothing else is graduated, on purpose. How high a sticky
 sits on the wall means nothing, and drawing lanes to suggest it did would invent
 a meaning the framework does not have; swimlanes are deliberately left for a
 later release rather than half-shipped. The board is created from a new first
-entry in the Event Storming palette.
+entry in the Event Storming palette. The axis is drawn **heavy, and labelled
+big**: the word "Time" is set large enough to be read at the zoom where a whole
+3200-wide Big Picture fits on screen, which is the zoom a Big Picture is
+actually looked at. It is the only thing the board declares, and it should not
+be the smallest thing on it.
 
 The palette also gains the **Aggregate**, the pale-yellow sticky a command lands
 on and the thing that raises the event. Without it the canonical sentence —

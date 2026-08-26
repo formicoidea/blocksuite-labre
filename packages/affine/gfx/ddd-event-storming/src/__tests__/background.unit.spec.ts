@@ -52,11 +52,29 @@ describe('the event storming board declaration', () => {
     expect(time.arrowSize!).toBeLessThan(
       backgroundSize(EVENT_STORMING_BACKGROUND).width / 50
     );
-    // And the word keeps clear of the thickened trait, inside the bottom
-    // margin the geometry reserves for it.
+  });
+
+  it('writes the word Time as big as the trait it names', () => {
+    // PO recette, 26/08/2026: 18 → 64. Chart-label size was right for a
+    // graduation and wrong for the only thing this board declares — at the zoom
+    // where a whole Big Picture fits on screen the word disappeared exactly
+    // like the hairline trait did before it was drawn at six.
+    const [time] = EVENT_STORMING_BACKGROUND.axes!;
+    const size = time.title!.style.size;
+    expect(size).toBe(64);
+
+    // And it still has to FIT, which is the half of the decision that moves
+    // numbers: the renderer draws on an `alphabetic` baseline, so `dy` is the
+    // foot of the word. Both clearances are derived from the size rather than
+    // restated, so resizing the title again fails here rather than on a canvas.
     const dy = time.title!.anchor.dy!;
-    expect(dy).toBeGreaterThan(time.stroke.width / 2 + 16);
-    expect(dy).toBeLessThan(EVENT_STORMING_BACKGROUND.geometry.margin.bottom);
+    // Above the baseline: half the trait, plus the cap height (~0.73em).
+    expect(dy).toBeGreaterThan(time.stroke.width / 2 + size * 0.73);
+    // Below it: the descender (~0.25em) stays inside the paper the geometry
+    // reserves, so the word touches neither the trait nor the card edge.
+    expect(dy + size * 0.25).toBeLessThan(
+      EVENT_STORMING_BACKGROUND.geometry.margin.bottom
+    );
   });
 
   it('declares no zones and no variant — swimlanes are cut from v1', () => {
