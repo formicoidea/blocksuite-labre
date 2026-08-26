@@ -2,6 +2,7 @@ export * from './audit-service';
 export * from './auto-clear-selection-service';
 export * from './block-meta-service';
 export * from './citation-service';
+export * from './command-usage-service';
 export * from './comment-service';
 export * from './doc-display-meta-service';
 export * from './doc-mode-service';
