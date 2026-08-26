@@ -19,6 +19,7 @@ import {
   NODE_STROKE_WIDTH,
   OUTCOME_RADIUS,
 } from './node/consts';
+import { EDGY_ROLE } from './roles';
 import { edgyDynamicTemplate } from './templates';
 
 /**
@@ -50,10 +51,20 @@ function finish(gfx: GfxController, id: string) {
   // Keep the palette open (native sub-menu behaviour).
 }
 
-/** Shared props for an EDGY node shape. */
+/**
+ * Shared props for an EDGY node shape.
+ *
+ * The `role` is the PERSISTED KIND and nothing more: somebody picking "Object"
+ * in the palette has said "this is an object", not "this is a Channel". The
+ * twelve official elements are named by the metamodel template, which knows
+ * which of them it is drawing; a base element created here specialises
+ * `edgy:element` through its kind and is judged by every rule written on the
+ * root — the overlap rule — and by none written on a leaf.
+ */
 const baseShapeProps = (kind: EdgyBoxKind | 'people') => ({
   type: 'edgyNode' as const,
   kind,
+  role: EDGY_ROLE[kind],
   filled: true,
   fillColor: NODE_FILL,
   strokeColor: NODE_STROKE,
@@ -88,6 +99,9 @@ export function createEdgyFacets(std: BlockStdScope) {
   const id = gfx.surface.addElement({
     type: 'edgy',
     cropToCircles: true,
+    // The frame: what makes this an EDGY board rather than three circles, and
+    // what a finding is attributed to.
+    role: EDGY_ROLE.facets,
     xywh: new Bound(
       centerX - width / 2,
       centerY - height / 2,
@@ -130,6 +144,9 @@ export function createEdgyBoard(std: BlockStdScope) {
   const { centerX, centerY } = gfx.viewport;
   const id = gfx.surface.addElement({
     type: 'edgyBoard',
+    // The blank board is a frame too: the same rules apply to what is drawn on
+    // it, and the same map-wide arbitration has to have somewhere to live.
+    role: EDGY_ROLE.board,
     xywh: new Bound(
       centerX - BOARD_W / 2,
       centerY - BOARD_H / 2,

@@ -16,6 +16,12 @@ import {
 
 import { CROP, CROP_LABELED } from '../consts';
 import {
+  EDGY_DYNAMIC_NODES,
+  EDGY_DYNAMIC_RELATIONS,
+  type EdgyElementName,
+} from '../metamodel';
+import { EDGY_ROLE, EDGY_VERB_ROLE } from '../roles';
+import {
   ACTIVITY_VERTICES,
   INNER_FONT_SIZE,
   NODE_FILL,
@@ -66,14 +72,22 @@ function rect(
   return el;
 }
 
-/** An EDGY node (kind drives the native shape): outcome/object box, people, activity chevron. */
+/**
+ * An EDGY node (kind drives the native shape): outcome/object box, people,
+ * activity chevron.
+ *
+ * `role` is optional and writes NOTHING when absent: the illustrative templates
+ * (journey, blueprint, org chart) stay neutral drawings the engine never looks
+ * at, exactly as they were before roles existed. Only the EDGY dynamic template
+ * — the one that IS the metamodel — stamps its elements.
+ */
 function enode(
   kind: 'outcome' | 'object' | 'people' | 'activity',
   x: number,
   y: number,
   w: number,
   h: number,
-  opts: { fill?: string; text?: string; textColor?: string; fontSize?: number } = {}
+  opts: { fill?: string; text?: string; textColor?: string; fontSize?: number; role?: string } = {}
 ) {
   const el: Record<string, unknown> = {
     type: 'edgyNode',
@@ -89,6 +103,8 @@ function enode(
     xywh: `[${x},${y},${w},${h}]`,
   };
   if (kind === 'activity') el.vertices = ACTIVITY_VERTICES;
+  // `undefined` writes nothing: a neutral node keeps no `role` key.
+  if (opts.role !== undefined) el.role = opts.role;
   if (opts.text != null) {
     el.text = surfaceText(opts.text);
     el.color = opts.textColor ?? NODE_STROKE;
@@ -268,83 +284,16 @@ function orgChart(): SurfaceElementsJSON {
 export const DYN_SCALE = 4.8;
 
 /**
- * The 24 canonical EDGY relations (source, target, verb, label position along
- * the link) — exported for the unit tests. 7 per facet + 3 between the
- * intersections. The optional 4th member mirrors the reference diagram's
- * placements: verbs of intersection-outgoing links sit near the far element
- * (`labelOffset.distance` ≈ .75), short peer links keep the middle.
+ * The metamodel itself — the 12 elements and the 24 relations — now lives in
+ * `../metamodel.ts`, so the role vocabulary can DERIVE from it without this
+ * module and that one importing each other. Re-exported here under the names
+ * they have always had: nothing that reads them had to change.
  */
-export const EDGY_DYNAMIC_RELATIONS: [string, string, string, number?][] = [
-  // Identity
-  ['content', 'purpose', 'expresses'],
-  ['content', 'story', 'conveys', 0.75],
-  ['story', 'purpose', 'contextualises', 0.8],
-  ['organisation', 'purpose', 'pursues', 0.8],
-  ['organisation', 'story', 'authors', 0.6],
-  ['brand', 'purpose', 'represents', 0.8],
-  ['brand', 'story', 'evokes', 0.65],
-  // Architecture
-  ['organisation', 'process', 'performs', 0.8],
-  ['process', 'capability', 'realises', 0.75],
-  ['process', 'asset', 'requires'],
-  ['capability', 'asset', 'requires', 0.75],
-  ['organisation', 'capability', 'has', 0.6],
-  ['product', 'capability', 'requires', 0.75],
-  ['process', 'product', 'creates', 0.65],
-  // Experience
-  ['task', 'journey', 'is part of', 0.6],
-  ['task', 'channel', 'uses', 0.6],
-  ['journey', 'channel', 'traverses', 0.6],
-  ['product', 'task', 'serves', 0.9],
-  ['product', 'journey', 'features in', 0.8],
-  ['brand', 'task', 'supports', 0.8],
-  ['brand', 'journey', 'appears in', 0.9],
-  // Intersections
-  ['organisation', 'brand', 'builds', 0.85],
-  ['organisation', 'product', 'makes', 0.65],
-  ['product', 'brand', 'embodies', 0.8],
-];
-
-/**
- * The 12 elements, centred coordinates in REFERENCE coords (the fixed space
- * of consts.ts — the same space as `VENN`), laid out like the reference
- * "elements & relations" diagram: aligned top row, Story/Capability flanks,
- * Brand/Product astride the white centre, Task/Journey/Channel triangle.
- * Exported (with {@link dynToModel}) for the containment test.
- */
-/** Official pastel fills per facet (the `pictograms/Shape-*.svg` colors). */
-const PASTEL = {
-  identity: '#80ffb7',
-  architecture: '#a6c0ff',
-  experience: '#ff99bd',
-  organisation: '#80eaff',
-  brand: '#ffd580',
-  product: '#e599ff',
-} as const;
-
-export const EDGY_DYNAMIC_NODES: Record<
-  string,
-  {
-    kind: 'outcome' | 'object' | 'activity';
-    cx: number;
-    cy: number;
-    w?: number;
-    fill: string;
-  }
-> = {
-  content: { kind: 'object', cx: 237.5, cy: 100, fill: PASTEL.identity },
-  purpose: { kind: 'outcome', cx: 282.5, cy: 100, fill: PASTEL.identity },
-  organisation: { kind: 'object', cx: 340, cy: 100, w: 175, fill: PASTEL.organisation },
-  process: { kind: 'activity', cx: 397.5, cy: 100, fill: PASTEL.architecture },
-  asset: { kind: 'object', cx: 442.5, cy: 100, fill: PASTEL.architecture },
-  story: { kind: 'activity', cx: 255, cy: 152.5, fill: PASTEL.identity },
-  capability: { kind: 'outcome', cx: 425, cy: 152.5, w: 150, fill: PASTEL.architecture },
-  brand: { kind: 'object', cx: 280, cy: 195, fill: PASTEL.brand },
-  product: { kind: 'object', cx: 400, cy: 195, fill: PASTEL.product },
-  task: { kind: 'outcome', cx: 310, cy: 257.5, fill: PASTEL.experience },
-  journey: { kind: 'activity', cx: 370, cy: 257.5, fill: PASTEL.experience },
-  channel: { kind: 'object', cx: 340, cy: 297.5, fill: PASTEL.experience },
-};
+export {
+  EDGY_DYNAMIC_NODES,
+  EDGY_DYNAMIC_RELATIONS,
+  type EdgyElementName,
+} from '../metamodel';
 
 /**
  * Reference coords → template model coords: the background element sits at
@@ -362,12 +311,15 @@ function dynamic(): SurfaceElementsJSON {
       showLabels: false,
       showPictos: false,
       cropToCircles: true,
+      // The frame a finding is attributed to. Stamped here and nowhere else in
+      // this template: the background is what makes the board an EDGY board.
+      role: EDGY_ROLE.facets,
       xywh: `[0,0,${CROP.w * DYN_SCALE},${CROP.h * DYN_SCALE}]`,
     },
   };
   for (const [key, { kind, cx, cy, w, fill }] of Object.entries(
     EDGY_DYNAMIC_NODES
-  )) {
+  ) as [EdgyElementName, (typeof EDGY_DYNAMIC_NODES)[EdgyElementName]][]) {
     const nw = w ?? NODE_SIZE[kind].w;
     const nh = NODE_SIZE[kind].h;
     const [mx, my] = dynToModel(cx, cy);
@@ -375,6 +327,9 @@ function dynamic(): SurfaceElementsJSON {
     out[key] = enode(kind, mx - nw / 2, my - nh / 2, nw, nh, {
       text: name,
       fill,
+      // The OFFICIAL element, not just its kind: this template IS the
+      // metamodel, so its Purpose is a Purpose and not merely an outcome.
+      role: EDGY_ROLE[key],
     });
   }
   EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb, t], i) => {
@@ -388,6 +343,11 @@ function dynamic(): SurfaceElementsJSON {
       rearEndpointStyle: PointStyle.None,
       source: { id: src },
       target: { id: dst },
+      // The verb, as a ROLE — one per canonical verb, derived from this very
+      // table (`../roles.ts`). Source is the subject and target the object
+      // (`docs/adr/0010` tier 1), which is exactly how the row above reads, so
+      // `edgy.non-canonical-link` finds all 24 of these sentences legal.
+      role: EDGY_VERB_ROLE[verb],
       // Native connector label: the verb travels with the link. The x/y are
       // re-centred on the path at the first layout, but the w/h ARE the label
       // box — size it to the verb so the text lays out on one line. The
@@ -420,7 +380,7 @@ export const edgyTemplateCategory: TemplateCategory = {
     tpl('Customer journey', `<svg ${ATTRS} fill="none"><path d="M20 24 H110 L122 40 L110 56 H20 Z" fill="#f3a3c0"/><rect x="26" y="30" width="22" height="20" fill="none" stroke="#fff"/><rect x="54" y="30" width="22" height="20" fill="none" stroke="#fff"/><rect x="82" y="30" width="22" height="20" fill="none" stroke="#fff"/></svg>`, journey()),
     tpl('Service blueprint', `<svg ${ATTRS} fill="none"><rect x="8" y="14" width="119" height="16" fill="#fbd5e0"/><rect x="8" y="32" width="119" height="34" fill="#d4e9f8"/><rect x="20" y="18" width="22" height="9" fill="#f5246e" opacity="0.5"/><rect x="20" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/><rect x="60" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/></svg>`, blueprint()),
     tpl('Organisation chart', `<svg ${ATTRS} fill="none"><rect x="52" y="12" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="14" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="52" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="90" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><path d="M68 26 V32 M30 32 H106 M30 32 V38 M68 32 V38 M106 32 V38" stroke="#262626"/></svg>`, orgChart()),
-    tpl('Facets diagram', `<svg ${ATTRS}><circle cx="55" cy="34" r="18" fill="#00ea4e" opacity="0.9"/><circle cx="80" cy="34" r="18" fill="#034cee" opacity="0.9"/><circle cx="67" cy="54" r="18" fill="#ff0056" opacity="0.9"/></svg>`, single({ type: 'edgy', cropToCircles: true, xywh: `[0,0,${CROP_LABELED.w * 1.5},${CROP_LABELED.h * 1.5}]` })),
+    tpl('Facets diagram', `<svg ${ATTRS}><circle cx="55" cy="34" r="18" fill="#00ea4e" opacity="0.9"/><circle cx="80" cy="34" r="18" fill="#034cee" opacity="0.9"/><circle cx="67" cy="54" r="18" fill="#ff0056" opacity="0.9"/></svg>`, single({ type: 'edgy', cropToCircles: true, role: EDGY_ROLE.facets, xywh: `[0,0,${CROP_LABELED.w * 1.5},${CROP_LABELED.h * 1.5}]` })),
     edgyDynamicTemplate,
     tpl('People', `<svg ${ATTRS} fill="#262626"><circle cx="67" cy="32" r="9" fill="none" stroke="#262626" stroke-width="2.4"/><path d="M50 60 a17 17 0 0 1 34 0" fill="none" stroke="#262626" stroke-width="2.4"/></svg>`, { n: enode('people', 0, 0, 64, 64), l: label(-28, 70, 120, 24, 'People', { fontSize: 16 }) }),
     tpl('Outcome', `<svg ${ATTRS} fill="none"><rect x="20" y="24" width="95" height="34" rx="6" stroke="#262626" stroke-width="2"/></svg>`, single(enode('outcome', 0, 0, 130, 80, { text: 'Outcome' }))),

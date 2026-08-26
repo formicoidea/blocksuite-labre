@@ -6,6 +6,7 @@ import { VENN } from '../consts';
 import { edgyBoard } from '../board-renderer';
 import { edgy } from '../element-renderer';
 import { NODE_SIZE } from '../node/consts';
+import { EDGY_ROLE, EDGY_VERB_ROLE } from '../roles';
 import {
   DYN_SCALE,
   dynToModel,
@@ -105,6 +106,73 @@ describe('EDGY dynamic template', () => {
     expect(verbs.sort()).toEqual(
       EDGY_DYNAMIC_RELATIONS.map(([, , verb]) => verb).sort()
     );
+  });
+
+  it('stamps the background, the twelve elements and the verbs with their roles', () => {
+    const bg = byType('edgy')[0];
+    expect(bg.role).toBe(EDGY_ROLE.facets);
+
+    for (const key of Object.keys(EDGY_DYNAMIC_NODES)) {
+      expect(elements[key].role, `${key} carries no role`).toBe(
+        EDGY_ROLE[key as keyof typeof EDGY_DYNAMIC_NODES]
+      );
+    }
+
+    EDGY_DYNAMIC_RELATIONS.forEach(([, , verb], i) => {
+      expect(elements[`rel${i}`].role).toBe(EDGY_VERB_ROLE[verb]);
+    });
+    // The verb ALSO stays a visible label: the role is what the engine reads,
+    // the text is what the reader reads.
+    expect(byType('connector').every(el => el.text !== undefined)).toBe(true);
+  });
+
+  it('leaves the illustrative templates neutral (no role, never evaluated)', () => {
+    for (const name of [
+      'Customer journey',
+      'Service blueprint',
+      'Organisation chart',
+      'Facets overview',
+    ]) {
+      const template = edgyTemplateCategory.templates.find(
+        t => (t as { name: string }).name === name
+      )!;
+      const els = (
+        template.content as unknown as {
+          blocks: { children: { props: { elements: ElementsJSON } }[] };
+        }
+      ).blocks.children[0].props.elements;
+      for (const [key, el] of Object.entries(els)) {
+        expect(el.role, `${name}/${key} should stay neutral`).toBeUndefined();
+      }
+    }
+  });
+
+  it('lays the twelve stamped nodes out with no overlap at all', () => {
+    // `edgy.overlapping-artefacts` only sees ROLE-carrying elements, so the
+    // dynamic template is the one factory layout it can judge. Its closest pair
+    // must clear the rule's 4-unit penetration threshold with room to spare.
+    const boxes = Object.entries(EDGY_DYNAMIC_NODES).map(([key, node]) => {
+      const nw = node.w ?? NODE_SIZE[node.kind].w;
+      const nh = NODE_SIZE[node.kind].h;
+      const [mx, my] = dynToModel(node.cx, node.cy);
+      return { key, x: mx - nw / 2, y: my - nh / 2, w: nw, h: nh };
+    });
+
+    let worst = -Infinity;
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        // Penetration depth, the same min(overlapX, overlapY) the engine uses:
+        // negative means the two boxes are apart along at least one axis.
+        const depth = Math.min(
+          Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x),
+          Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+        );
+        worst = Math.max(worst, depth);
+      }
+    }
+    expect(worst).toBeLessThanOrEqual(0);
   });
 
   it('places every node fully inside its Venn zone', () => {
