@@ -63,6 +63,52 @@ export const POOL_NAME_COLOR = '#262626';
 export const POOL_FONT_FAMILY = 'Inter, sans-serif';
 
 /**
+ * Lane (couloir) name size — two units under the participant's own.
+ *
+ * The pool names WHO does the work and the lane names which part of them does
+ * it: a subdivision reads as a subdivision when its label is quieter than the
+ * one it sits under. Two units is the smallest difference that survives being
+ * zoomed out, which is the size the distinction has to hold at.
+ */
+export const POOL_LANE_NAME_FONT_SIZE = 13;
+
+/**
+ * How close to an internal lane boundary a pointer has to be, in MODEL units,
+ * for the gesture to be a separator drag rather than a click on the pool.
+ *
+ * Symmetric, so the zone is 12 units wide. Model units and not view pixels on
+ * purpose: the grab zone then scales with the drawing, exactly like the lane it
+ * belongs to, and a pool zoomed out to a thumbnail does not become a strip of
+ * overlapping hit zones with no lane left between them.
+ */
+export const POOL_LANE_GRAB = 6;
+
+/**
+ * The smallest a lane may be dragged to, in model units of a pool at its
+ * REFERENCE height ({@link POOL_REF_HEIGHT}).
+ *
+ * A floor and not a minimum height: sizes are weights, so this is converted to
+ * a weight against the pool's current total before it is applied. 24 units is
+ * about one line of a lane name plus its inset — below that the band cannot
+ * show what it is, and a lane nothing can be put in and nothing can be read off
+ * is one the user did not mean to make.
+ */
+export const POOL_LANE_MIN_HEIGHT = 24;
+
+/**
+ * The corner of a lane that opens its name for editing on a double click, in
+ * model units — measured from the lane's top-left, where the primitive draws
+ * the name (8 in, baseline 18 down).
+ *
+ * Generously bigger than the words: an unnamed lane has no glyphs to aim at, so
+ * a box the size of the text would be unhittable exactly when it is needed. The
+ * view widens it further, to a 44-pixel touch target, whenever the board is
+ * zoomed out far enough that these units are smaller than a fingertip.
+ */
+export const POOL_LANE_NAME_HIT_WIDTH = 180;
+export const POOL_LANE_NAME_HIT_HEIGHT = 30;
+
+/**
  * The size a fresh pool is created at. Unlike a map, a pool is NOT grown to
  * cover the ones already on the board: pools sit side by side, one per
  * participant, and a second lane that matched the first one's height would

@@ -1,3 +1,12 @@
+import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import {
+  backgroundInstanceZones,
+  backgroundPlot,
+} from '@labre/affine/blocks/surface';
+// Straight off the framework package, as the connector and template specs
+// already reach for theirs: `@labre/affine` re-exports the blocks, not the
+// framework modules.
+import { BPMN_POOL_BACKGROUND } from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
   type BpmnPoolElementModel,
@@ -5,10 +14,15 @@ import {
   ConnectorMode,
   ShapeElementModel,
 } from '@labre/affine/model';
+import {
+  type AnyCommandDescriptor,
+  getRegisteredCommands,
+  runCommand,
+} from '@labre/affine/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
-import { getSurface } from '../utils/edgeless.js';
+import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 describe('BPMN framework elements', () => {
@@ -84,5 +98,161 @@ describe('BPMN framework elements', () => {
     expect(connector.path.length).toBeGreaterThan(0);
     expect(connector.source.id).toBe(startId);
     expect(connector.target.id).toBe(taskId);
+  });
+});
+
+/**
+ * Lanes (couloirs) end to end (B4).
+ *
+ * The unit suite owns what the three operations write. This one owns what only
+ * a real editor can answer: that the registered commands reach them, that the
+ * partition they build is the one the audit reads elements against, and that
+ * the whole thing comes back off in one press of ctrl+z.
+ */
+describe('BPMN pool lanes', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  const command = (id: string): AnyCommandDescriptor => {
+    const found = getRegisteredCommands(edgeless.std).find(c => c.id === id);
+    expect(found, id).toBeDefined();
+    return found!;
+  };
+
+  /** Invoke through the bottleneck, exactly as the contextual toolbar does. */
+  const invoke = async (id: string) => {
+    runCommand(edgeless.std, command(id), {
+      surface: 'contextual-toolbar',
+      source: 'toolbar:general',
+    });
+    await wait();
+  };
+
+  const addPool = (xywh = '[0,0,600,400]') => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const id = surface.addElement({
+      type: 'bpmnPool',
+      role: 'bpmn:pool',
+      xywh,
+    });
+    const pool = surface.getElementById(id) as BpmnPoolElementModel;
+    // Selecting is what makes the lane commands available at all: they are
+    // `availability: 'selection'`, because a lane divides a pool that exists.
+    edgeless.gfx.selection.set({ elements: [id], editing: false });
+    return pool;
+  };
+
+  test('a fresh pool writes no `lanes` key at all', () => {
+    const pool = addPool();
+    // The whole of the compatibility promise, stated on a live document: a pool
+    // that has no lane is byte-identical to one authored before the field
+    // existed. No migration, no schema version bump.
+    expect(pool.lanes).toBeUndefined();
+    expect(pool.yMap.has('lanes')).toBe(false);
+    expect(pool.serialize()).not.toHaveProperty('lanes');
+  });
+
+  test('the commands divide the pool, and the audit reads the division', async () => {
+    const pool = addPool();
+
+    await invoke('bpmn.addLane');
+    await invoke('bpmn.addLane');
+
+    const lanes = pool.lanes!;
+    expect(lanes).toHaveLength(2);
+    // Two lanes of equal weight: the second took the average of the first.
+    expect(lanes[0].size).toBe(lanes[1].size);
+
+    // Rename the top one through the same path the in-place editor uses.
+    const surface = getSurface(window.doc, window.editor).model;
+    surface.updateElement(pool.id, {
+      lanes: lanes.map((lane, i) =>
+        i === 0 ? { ...lane, name: 'Front office' } : lane
+      ),
+    });
+    await wait();
+    expect(pool.lanes?.[0].name).toBe('Front office');
+    expect(pool.lanes?.[1].name).toBeUndefined();
+
+    // A task dropped in the LOWER half of the pool's plot.
+    const [px, py, pw, ph] = pool.deserializedXYWH;
+    const plot = backgroundPlot(BPMN_POOL_BACKGROUND, pw, ph);
+    const taskId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: 'bpmn:task',
+      shapeType: 'rect',
+      xywh: `[${px + plot.x0 + 40},${py + plot.y0 + plot.height * 0.7},120,72]`,
+    });
+    const task = surface.getElementById(taskId) as BpmnNodeElementModel;
+
+    // The SAME answer the audit computes: the element's centre, as ratios of
+    // the plot, against the rectangles `backgroundInstanceZones` resolves.
+    const zones = backgroundInstanceZones(
+      BPMN_POOL_BACKGROUND,
+      pool as unknown as Readonly<Record<string, unknown>>
+    );
+    expect(zones.map(zone => zone.id)).toEqual([
+      `lane:${lanes[0].id}`,
+      `lane:${lanes[1].id}`,
+    ]);
+    expect(zones[0].name).toBe('Front office');
+
+    const bound = task.elementBound;
+    const at = [
+      (bound.x + bound.w / 2 - px - plot.x0) / plot.width,
+      (bound.y + bound.h / 2 - py - plot.y0) / plot.height,
+    ] as const;
+    const containing = zones.filter(
+      zone =>
+        at[0] >= zone.rect.x &&
+        at[0] <= zone.rect.x + zone.rect.w &&
+        at[1] >= zone.rect.y &&
+        at[1] <= zone.rect.y + zone.rect.h
+    );
+    expect(containing.map(zone => zone.id)).toEqual([`lane:${lanes[1].id}`]);
+  });
+
+  test('removing the last lane takes the prop back out of the document', async () => {
+    const pool = addPool();
+
+    await invoke('bpmn.addLane');
+    expect(pool.lanes).toHaveLength(1);
+
+    await invoke('bpmn.removeLane');
+    // Not `[]` — the KEY goes, so the pool returns to its pre-lane bytes.
+    expect(pool.lanes).toBeUndefined();
+    expect(pool.yMap.has('lanes')).toBe(false);
+  });
+
+  test('a lane is one undo step, and undoing it leaves no trace', async () => {
+    const pool = addPool();
+
+    await invoke('bpmn.addLane');
+    await invoke('bpmn.addLane');
+    expect(pool.lanes).toHaveLength(2);
+
+    window.doc.undo();
+    await wait();
+    expect(pool.lanes).toHaveLength(1);
+
+    window.doc.undo();
+    await wait();
+    // All the way back to a pool that never had a lane — the key included.
+    expect(pool.lanes).toBeUndefined();
+    expect(pool.yMap.has('lanes')).toBe(false);
+  });
+
+  test('the lane commands withdraw when no pool is selected', () => {
+    addPool();
+    edgeless.gfx.selection.clear();
+
+    expect(command('bpmn.addLane').when?.(edgeless.std)).toBe(false);
+    expect(command('bpmn.removeLane').when?.(edgeless.std)).toBe(false);
   });
 });

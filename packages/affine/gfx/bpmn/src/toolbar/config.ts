@@ -4,9 +4,16 @@ import {
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
-import { BlockFlavourIdentifier } from '@labre/std';
+import {
+  BlockFlavourIdentifier,
+  getRegisteredCommands,
+  runCommand,
+} from '@labre/std';
 import { html, type TemplateResult } from 'lit';
+
+import { bpmnLaneAddIcon, bpmnLaneRemoveIcon } from './icons.js';
 
 const ResizeIcon = html`<svg
   width="24"
@@ -56,6 +63,51 @@ function booleanToggle(
   };
 }
 
+/**
+ * A toolbar entry that INVOKES a registered command instead of restating what
+ * it does — the shape `docs/adr/0010` M3 introduced for the typed-edge
+ * inversion, and the reason a lane gesture has one behaviour, one availability
+ * rule and one telemetry emission whether it is reached from here, from the
+ * palette, from Settings › Shortcuts or from the agent.
+ *
+ * `generate` rather than a static entry because the i18n seam needs `std`:
+ * `translateKey` is what reaches the host's catalogue, and a hard-coded English
+ * tooltip would be the one wording a host could not override.
+ */
+function commandAction(
+  id: string,
+  commandId: string,
+  labelKey: string,
+  labelFallback: string,
+  icon: TemplateResult
+) {
+  return {
+    id,
+    when: (ctx: ToolbarContext) => {
+      const command = findCommand(ctx, commandId);
+      return command !== undefined && (command.when?.(ctx.std) ?? true);
+    },
+    generate: (ctx: ToolbarContext) => {
+      const label = translateKey(ctx.std, labelKey, labelFallback);
+      return {
+        icon,
+        tooltip: label,
+        run: (runCtx: ToolbarContext) => {
+          const command = findCommand(runCtx, commandId);
+          if (!command) return;
+          runCommand(runCtx.std, command, {
+            surface: 'contextual-toolbar',
+            source: 'toolbar:general',
+          });
+        },
+      };
+    },
+  };
+}
+
+const findCommand = (ctx: ToolbarContext, id: string) =>
+  getRegisteredCommands(ctx.std).find(candidate => candidate.id === id);
+
 export const bpmnPoolToolbarConfig = {
   actions: [
     booleanToggle(
@@ -63,6 +115,24 @@ export const bpmnPoolToolbarConfig = {
       'Enable / lock resizing',
       ResizeIcon,
       'resizeEnabled'
+    ),
+    // The two lane gestures, next to the resize toggle: everything on this row
+    // is about the SHAPE of the pool rather than about what is drawn in it.
+    // Add before remove, because that is the order they can be used in — a pool
+    // has no lane to remove until one has been added.
+    commandAction(
+      'b.add-lane',
+      'bpmn.addLane',
+      'com.labre.commands.bpmn.addLane',
+      'Add lane',
+      bpmnLaneAddIcon
+    ),
+    commandAction(
+      'b.remove-lane',
+      'bpmn.removeLane',
+      'com.labre.commands.bpmn.removeLane',
+      'Remove lane',
+      bpmnLaneRemoveIcon
     ),
   ],
   when: ctx => ctx.getSurfaceModelsByType(BpmnPoolElementModel).length > 0,
