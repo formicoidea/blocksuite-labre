@@ -73,6 +73,9 @@ const unescape = (literal: string) => literal.replaceAll("\\'", "'");
 
 /** Keys the manifest derives from an exported table — nothing is restated. */
 const CHROME_TABLE_PREFIXES = [
+  // Walked out of `getCommands()`, with the sidepanel's own `humanizeCategory`
+  // as the fallback — nothing is restated, so there is nothing to confirm.
+  'com.labre.catalogue.category.',
   'com.labre.validation.severity.',
   'com.labre.validation.state.exempted.',
   'com.labre.reading.relations.consumers',

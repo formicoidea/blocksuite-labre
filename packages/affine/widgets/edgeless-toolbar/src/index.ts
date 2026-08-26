@@ -1,3 +1,7 @@
+export * from './catalogue/artefact-catalogue-default';
+export * from './catalogue/artefact-catalogue-widget';
+export * from './catalogue/catalogue-groups';
+export * from './catalogue/chord-format';
 export * from './config';
 export * from './context';
 export * from './create-popper';

@@ -11,6 +11,10 @@ import { eventStormingTranslationEntries } from '@labre/affine-gfx-ddd-event-sto
 import { edgyTranslationEntries } from '@labre/affine-gfx-edgy';
 import { wardleyTranslationEntries } from '@labre/affine-gfx-wardley';
 import {
+  CATALOGUE_CATEGORY_KEY_PREFIX,
+  humanizeCategory,
+} from '@labre/affine-widget-edgeless-toolbar';
+import {
   collectTranslationKeys,
   commandTranslationEntries,
   type FrameworkId,
@@ -118,6 +122,32 @@ const chromeTableEntries = (): TranslationKeyManifestEntry[] =>
   );
 
 /**
+ * The artefact catalogue's group headers — one key per `category` any command
+ * declares, with the sidepanel's own humanised fallback.
+ *
+ * DERIVED, not restated: the categories are walked out of `getCommands()`, so a
+ * framework that invents a category gets its header key in the manifest by
+ * construction — which is the whole point on the eve of a BPMN pack that will
+ * declare several. The fallback comes from `humanizeCategory`, the very
+ * function the panel renders with, so the two cannot drift.
+ *
+ * Flag-independent like the rest of the manifest: `getCommands()` with no flags
+ * enumerates every command, so a catalogue built once covers a framework
+ * switched on later.
+ */
+const catalogueCategoryEntries = (): TranslationKeyManifestEntry[] => {
+  const categories = new Set<string>();
+  for (const command of getCommands()) {
+    if (command.category) categories.add(command.category);
+  }
+  return [...categories].map(category => ({
+    key: `${CATALOGUE_CATEGORY_KEY_PREFIX}${category}`,
+    fallback: humanizeCategory(category),
+    source: 'chrome' as const,
+  }));
+};
+
+/**
  * Chrome wordings: the `translateKey(std, key, fallback)` literals of the
  * library's own panels and toolbars. Restated data, guarded against drift AND
  * against going dead by the manifest unit test.
@@ -146,6 +176,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
     'com.labre.catalogue.open.description',
     'This framework offers more than the menu can show.',
   ],
+  // Artefact catalogue sidepanel
+  ['com.labre.catalogue.title', 'Artefacts'],
+  ['com.labre.catalogue.close', 'Close'],
+  ['com.labre.catalogue.other', 'Other'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
   // Reading panel
@@ -213,6 +247,7 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
     collectTranslationKeys('framework', FRAMEWORK_DESCRIPTORS),
     ...FRAMEWORK_TRANSLATION_GROUPS.map(group => group.entries),
     chromeTableEntries(),
+    catalogueCategoryEntries(),
     CHROME_KEYS.map(([key, fallback]) => ({
       key,
       fallback,
