@@ -6,6 +6,7 @@ export const eventStormingSeniorTool = SeniorToolExtension(
   'ddd-event-storming',
   ({ block }) => ({
     name: 'Event Storming',
+    labelKey: 'com.labre.framework.ddd-event-storming',
     content: html`<edgeless-ddd-event-storming-senior-button
       .edgeless=${block}
     ></edgeless-ddd-event-storming-senior-button>`,

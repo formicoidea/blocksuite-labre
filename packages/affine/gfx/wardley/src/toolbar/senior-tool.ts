@@ -4,6 +4,7 @@ import { html } from 'lit';
 export const wardleySeniorTool = SeniorToolExtension('wardley', ({ block }) => {
   return {
     name: 'Wardley map',
+    labelKey: 'com.labre.framework.wardley',
     content: html`<edgeless-wardley-senior-button
       .edgeless=${block}
     ></edgeless-wardley-senior-button>`,

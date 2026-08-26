@@ -21,6 +21,13 @@ export interface SeniorTool {
    * Used to show in nav-button's tooltip
    */
   name: string;
+  /**
+   * i18n key resolved through the house `TranslationProvider` seam, so a
+   * framework's button reads in the user's language. `name` remains the
+   * fallback and stays required: the core tools (note, shape, template…) have
+   * no framework descriptor and therefore no key to declare.
+   */
+  labelKey?: string;
   content: TemplateResult;
   enable?: boolean;
   /**

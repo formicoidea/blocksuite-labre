@@ -4,6 +4,7 @@ import { html } from 'lit';
 export const edgySeniorTool = SeniorToolExtension('edgy', ({ block }) => {
   return {
     name: 'EDGY',
+    labelKey: 'com.labre.framework.edgy',
     content: html`<edgeless-edgy-senior-button
       .edgeless=${block}
     ></edgeless-edgy-senior-button>`,
