@@ -140,6 +140,12 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.validation.map-quality.section', 'Map quality'],
   ['com.labre.validation.map-quality.checklist.yours', 'To be checked by you:'],
   ['com.labre.validation.map-quality.close', 'Close'],
+  // Senior sub-menu, past the fourteen-slot cap
+  ['com.labre.catalogue.open', 'More artefacts…'],
+  [
+    'com.labre.catalogue.open.description',
+    'This framework offers more than the menu can show.',
+  ],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
   // Reading panel

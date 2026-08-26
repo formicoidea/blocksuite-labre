@@ -304,6 +304,12 @@ export type CommandTelemetryReporter = (report: {
 export const CommandTelemetryIdentifier =
   createIdentifier<CommandTelemetryReporter>('CommandTelemetry');
 
+/** What a {@link CommandUsageStore} knows about one command. */
+export interface CommandUsageStats {
+  count: number;
+  lastUsedAt: number;
+}
+
 /**
  * Per-user recency and frequency, measured at the same bottleneck telemetry is
  * emitted from — and deliberately NOT the same thing.
@@ -319,14 +325,14 @@ export const CommandTelemetryIdentifier =
  *
  * ADR 0008 listed this as an open question ("needs a host-side usage store; the
  * registry only needs to accept an injected comparator"). This identifier is
- * the measurement half of that answer; ranking is a later tranche and lives
- * nowhere yet.
+ * the measurement half of that answer; the selection half is
+ * {@link selectSeniorMenuCommands}.
  */
 export interface CommandUsageStore {
   /** One invocation happened. Called by {@link runCommand}, best-effort. */
   record(command: AnyCommandDescriptor, invocation: CommandInvocation): void;
   /** `undefined` when the command was never invoked by this user. */
-  statsOf(commandId: string): { count: number; lastUsedAt: number } | undefined;
+  statsOf(commandId: string): CommandUsageStats | undefined;
 }
 
 export const CommandUsageIdentifier =
@@ -562,7 +568,10 @@ export function CommandExtension(
         );
       });
       if (icons) {
-        di.addImpl(CommandIconsIdentifier(`CommandIcons-${_commandId++}`), icons);
+        di.addImpl(
+          CommandIconsIdentifier(`CommandIcons-${_commandId++}`),
+          icons
+        );
       }
       ShortcutExtension(commands.map(toShortcutDescriptor)).setup(di);
     },
@@ -589,6 +598,113 @@ export function getCommandsForSurface(
   return getRegisteredCommands(std)
     .filter(c => c.owner === owner && c.surfaces.includes(surface))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+/**
+ * The senior sub-menu's hard cap: 14 buttons in one row of the popover. The
+ * registry test asserts no owner DECLARES more than this; the ranking below is
+ * what happens when an owner's whole catalogue outgrows it.
+ */
+export const SENIOR_MENU_CAP = 14;
+
+/** How many of them survive once an owner overflows: 4 most-used + 3 most-recent. */
+export const SENIOR_MENU_RANKED_SLOTS = 7;
+
+const MOST_USED_SLOTS = 4;
+const MOST_RECENT_SLOTS = 3;
+
+/**
+ * Which of an owner's commands the senior sub-menu actually shows.
+ *
+ * Pure — no `std`, no DOM, no store — because this is the arbitration between
+ * a framework's whole toolbox and fourteen buttons, and an arbitration nobody
+ * can run in a unit test is a design review in disguise (`docs/adr/0008`,
+ * amendment of 2026-08-26).
+ *
+ * Below the cap nothing is arbitrated: the sub-menu IS the framework's
+ * `'senior-menu'` surface, authored order and all. Past it the sub-menu becomes
+ * a shortcut to the seven commands THIS user reaches for, and the catalogue
+ * sidepanel becomes the place the other artefacts live — which is why the
+ * ranking reads the `'catalogue'` surface rather than the menu one: a command
+ * its author left out of the fourteen but the user invokes constantly has
+ * earned a slot, and a menu that could only ever demote would never learn that.
+ *
+ * The seven are chosen on two axes because one is not enough — frequency alone
+ * never surfaces what the user picked up yesterday, recency alone reshuffles
+ * every click. They are then laid out in **authored order**, not in rank order:
+ * a menu whose buttons swap places under the cursor is the dark pattern this
+ * whole feature exists to avoid, so what the ranking decides is membership,
+ * never position.
+ *
+ * With no usage recorded at all, both axes collapse to authored order and the
+ * result is the first seven — a deterministic cold start, not an empty menu.
+ *
+ * @param menu the owner's `'senior-menu'` commands, already order-sorted
+ * @param catalogue the owner's whole `'catalogue'` surface, already order-sorted
+ * @param statsOf per-user measure; `undefined` for a command never invoked
+ */
+export function selectSeniorMenuCommands(
+  menu: AnyCommandDescriptor[],
+  catalogue: AnyCommandDescriptor[],
+  statsOf: (id: string) => CommandUsageStats | undefined
+): { commands: AnyCommandDescriptor[]; overflow: boolean } {
+  if (catalogue.length <= SENIOR_MENU_CAP) {
+    return { commands: menu, overflow: false };
+  }
+
+  const authored = new Map(catalogue.map((command, index) => [command, index]));
+  const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
+  // One read per command per selection: the store answers from storage, and the
+  // two axes would otherwise ask it the same question twice.
+  const stats = new Map(catalogue.map(c => [c, statsOf(c.id)]));
+
+  const rankBy = (
+    primary: (used: CommandUsageStats) => number,
+    secondary: (used: CommandUsageStats) => number
+  ) =>
+    [...catalogue].sort((a, b) => {
+      const left = stats.get(a);
+      const right = stats.get(b);
+      // A command nobody ever invoked ranks after every command somebody did,
+      // on either axis — it has no measure, not a low one.
+      if (!left || !right) {
+        return left ? -1 : right ? 1 : order(a) - order(b);
+      }
+      return (
+        primary(right) - primary(left) ||
+        secondary(right) - secondary(left) ||
+        order(a) - order(b)
+      );
+    });
+
+  const mostUsed = rankBy(
+    used => used.count,
+    used => used.lastUsedAt
+  );
+  const mostRecent = rankBy(
+    used => used.lastUsedAt,
+    used => used.count
+  );
+
+  const chosen = new Set<AnyCommandDescriptor>();
+  for (const command of mostUsed.slice(0, MOST_USED_SLOTS)) chosen.add(command);
+  for (const command of mostRecent.slice(0, MOST_RECENT_SLOTS)) {
+    chosen.add(command);
+  }
+  // A command that is both most-used and most-recent takes ONE slot, and the
+  // gap it leaves goes back to frequency rather than to the fourth most recent:
+  // of the two measures, the one a user notices moving is recency.
+  for (const command of mostUsed) {
+    if (chosen.size >= SENIOR_MENU_RANKED_SLOTS) break;
+    chosen.add(command);
+  }
+
+  return {
+    commands: [...chosen]
+      .slice(0, SENIOR_MENU_RANKED_SLOTS)
+      .sort((a, b) => order(a) - order(b)),
+    overflow: true,
+  };
 }
 
 /** Resolve an `iconKey` through the registered icon tables. */

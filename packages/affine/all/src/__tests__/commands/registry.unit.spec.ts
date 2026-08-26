@@ -104,9 +104,7 @@ describe('command registry invariants', () => {
   /** The one numeric cap, and it is a UI one: 14 slots in the sub-menu. */
   test('no owner exceeds 14 senior-menu slots', () => {
     for (const id of FRAMEWORK_IDS) {
-      const slots = byOwner(id).filter(c =>
-        c.surfaces.includes('senior-menu')
-      );
+      const slots = byOwner(id).filter(c => c.surfaces.includes('senior-menu'));
       expect(slots.length, `${id} sub-menu`).toBeLessThanOrEqual(14);
     }
   });
@@ -224,14 +222,33 @@ describe('menu and manifest enumerate the same source', () => {
     expect(menu).toHaveLength(13);
   });
 
-  test('every framework offers its whole toolbox to the sub-menu', () => {
+  /**
+   * The catalogue is the TOTAL surface, and the sub-menu a selection out of it
+   * — which is what the amendment of 2026-08-26 makes structural rather than
+   * incidental: `selectSeniorMenuCommands` ranks the catalogue, so a command a
+   * framework kept out of the fourteen can still be promoted by a user who
+   * reaches for it. A command missing from the catalogue is unreachable the
+   * moment its framework overflows, whatever its menu membership says.
+   */
+  test('every framework command is in the catalogue, and the sub-menu is a subset', () => {
     for (const id of FRAMEWORK_IDS as readonly FrameworkId[]) {
       const owned = byOwner(id);
       expect(owned.length, `${id} declares no command`).toBeGreaterThan(0);
       expect(
-        owned.every(c => c.surfaces.includes('senior-menu')),
-        id
+        owned.every(c => c.surfaces.includes('catalogue')),
+        `${id} keeps a command out of its catalogue`
       ).toBe(true);
+
+      const catalogue = new Set(
+        owned.filter(c => c.surfaces.includes('catalogue')).map(c => c.id)
+      );
+      const menu = owned
+        .filter(c => c.surfaces.includes('senior-menu'))
+        .map(c => c.id);
+      expect(
+        menu.filter(commandId => !catalogue.has(commandId)),
+        `${id} sub-menu entries absent from its catalogue`
+      ).toEqual([]);
     }
   });
 });

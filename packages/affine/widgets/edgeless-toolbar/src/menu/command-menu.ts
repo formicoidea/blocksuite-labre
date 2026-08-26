@@ -1,12 +1,18 @@
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  ArtefactCatalogueProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import {
   type CommandDescriptor,
   type CommandOwner,
+  CommandUsageIdentifier,
   getCommandIcon,
   getCommandsForSurface,
   runCommand,
+  selectSeniorMenuCommands,
 } from '@labre/std';
-import { css, type CSSResultGroup, html, LitElement } from 'lit';
+import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
+import { css, type CSSResultGroup, html, LitElement, nothing } from 'lit';
 
 import { EdgelessToolbarToolMixin } from '../mixins/tool.mixin.js';
 
@@ -54,8 +60,26 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
   /** Which framework's commands this popover shows. */
   protected abstract owner: CommandOwner;
 
+  /**
+   * The buttons, and whether the owner outgrew the fourteen slots.
+   *
+   * Recomputed per render on purpose: it opens with the popover, not with a
+   * frame, and the usage measure it reads is the whole point — a list cached
+   * across openings would show the user yesterday's ranking of what they did
+   * this morning.
+   */
+  private get _selection() {
+    const std = this.edgeless.std;
+    const usage = std.getOptional(CommandUsageIdentifier);
+    return selectSeniorMenuCommands(
+      getCommandsForSurface(std, this.owner, 'senior-menu'),
+      getCommandsForSurface(std, this.owner, 'catalogue'),
+      id => usage?.statsOf(id)
+    );
+  }
+
   get commands(): CommandDescriptor[] {
-    return getCommandsForSurface(this.edgeless.std, this.owner, 'senior-menu');
+    return this._selection.commands;
   }
 
   private _invoke(command: CommandDescriptor) {
@@ -100,20 +124,56 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
       >`;
   }
 
+  /**
+   * The way out of a menu that no longer shows everything.
+   *
+   * It appears only past the cap, and only when something answers
+   * {@link ArtefactCatalogueProvider}: a button that opens nothing is a dead
+   * control, and the seven ranked slots are only defensible as a *shortcut* to a
+   * catalogue the user can still reach in full.
+   */
+  private _renderCatalogueButton() {
+    const std = this.edgeless.std;
+    const catalogue = std.getOptional(ArtefactCatalogueProvider);
+    if (!catalogue) return nothing;
+
+    const label = translateKey(
+      std,
+      'com.labre.catalogue.open',
+      'More artefacts…'
+    );
+    return html`<edgeless-tool-icon-button
+      .tooltip=${html`${label}<span
+          style="display:block;max-width:220px;margin-top:2px;opacity:0.75;font-size:11px;line-height:1.35;white-space:normal"
+          >${translateKey(
+            std,
+            'com.labre.catalogue.open.description',
+            'This framework offers more than the menu can show.'
+          )}</span
+        >`}
+      @click=${() => catalogue.open(this.owner)}
+    >
+      ${MoreHorizontalIcon()}
+    </edgeless-tool-icon-button>`;
+  }
+
   override render() {
     const std = this.edgeless.std;
+    const { commands, overflow } = this._selection;
     return html`
       <edgeless-slide-menu>
         <div class="menu-content">
           <div class="button-group-container">
-            ${this.commands.map(
-              command => html`<edgeless-tool-icon-button
-                .tooltip=${this._tooltip(command)}
-                @click=${() => this._invoke(command)}
-              >
-                ${getCommandIcon(std, command.iconKey)}
-              </edgeless-tool-icon-button>`
+            ${commands.map(
+              command =>
+                html`<edgeless-tool-icon-button
+                  .tooltip=${this._tooltip(command)}
+                  @click=${() => this._invoke(command)}
+                >
+                  ${getCommandIcon(std, command.iconKey)}
+                </edgeless-tool-icon-button>`
             )}
+            ${overflow ? this._renderCatalogueButton() : nothing}
           </div>
         </div>
       </edgeless-slide-menu>
