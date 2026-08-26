@@ -1,5 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
@@ -77,7 +78,9 @@ export class EdgelessEdgySeniorButton extends EdgelessToolbarToolMixin(
   override render() {
     return html`<edgeless-toolbar-button
       class="edgy-button"
-      .tooltip=${this.popper ? '' : 'EDGY'}
+      .tooltip=${this.popper
+        ? ''
+        : translateKey(this.edgeless.std, 'com.labre.framework.edgy', 'EDGY')}
       .tooltipOffset=${4}
       .active=${!!this.popper}
       @click=${this._toggleMenu}

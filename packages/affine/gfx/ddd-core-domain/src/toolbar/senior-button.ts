@@ -6,5 +6,6 @@ import {
 export class EdgelessDddCoreDomainSeniorButton extends DddSeniorButtonBase {
   protected override menuTag = 'edgeless-ddd-core-domain-menu' as const;
   protected override label = 'Core Domain Chart';
+  protected override labelKey = 'com.labre.framework.ddd-core-domain';
   protected override icon = coreDomainToolbarIcon;
 }
