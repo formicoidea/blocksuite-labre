@@ -111,6 +111,23 @@ describe('command registry invariants', () => {
     }
   });
 
+  /**
+   * PF10, and the same 14 as above rather than a second budget: a framework's
+   * configurable shortcuts are the ones a senior slot can also reach, so the
+   * chord pattern (framework prefix + artefact letter) stays sufficient. The
+   * engine (`framework/std/src/extension/shortcut.ts`) enforces nothing here —
+   * this is a curation convention, and a test is the only place it can live.
+   * Beyond 14, a framework binds by host override, not by default.
+   */
+  test('no framework ships more than 14 default-bound shortcuts', () => {
+    for (const id of FRAMEWORK_IDS) {
+      const bound = byOwner(id).filter(
+        c => c.defaultKeys.mac.length > 0 || c.defaultKeys.other.length > 0
+      );
+      expect(bound.length, `${id} default bindings`).toBeLessThanOrEqual(14);
+    }
+  });
+
   test('every chord uses its framework’s prefix, with unique second keys', () => {
     for (const descriptor of FRAMEWORK_DESCRIPTORS) {
       const chords = byOwner(descriptor.id)
