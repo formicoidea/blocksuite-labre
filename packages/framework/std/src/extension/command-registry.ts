@@ -255,6 +255,13 @@ export interface FrameworkDescriptor {
   id: FrameworkId;
   /** Replaces the raw English `SeniorTool.name`. */
   labelKey: string;
+  /**
+   * The English wording behind {@link labelKey} — what a standalone editor
+   * shows and what every restatement of the name (senior button, tooltip)
+   * must agree with. Carried HERE so the manifest knows the fallback and the
+   * drift check can hold the restatements to it.
+   */
+  labelFallback: string;
   iconKey: string;
   order?: number;
   /** First keystroke of this framework's chords — allocated, not ad hoc. */
