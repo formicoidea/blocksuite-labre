@@ -31,7 +31,7 @@ import {
  * the day the cloud earns a role its row lands here in one line.
  */
 export const CONTEXT_MAP_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Légende',
+  title: 'Legend',
   width: 290,
   roles: CONTEXT_MAP_ROLES,
   sections: [

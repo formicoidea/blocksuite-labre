@@ -1,9 +1,14 @@
-import { CD_SUBDOMAINS } from '@labre/affine-gfx-ddd-shared';
+import { CD_SUBDOMAINS, TEAM_TOPOLOGIES } from '@labre/affine-gfx-ddd-shared';
 import { roleIsA } from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { coreDomainCommands } from '../commands';
-import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES, subdomainRole } from '../roles';
+import {
+  CORE_DOMAIN_ROLE,
+  CORE_DOMAIN_ROLES,
+  markerRole,
+  subdomainRole,
+} from '../roles';
 
 type Added = Record<string, unknown>;
 
@@ -100,14 +105,38 @@ describe('the Core Domain role vocabulary', () => {
     ).toBe(false);
   });
 
-  it('keeps the chart and the movement out of the sub-domain family', () => {
+  it('makes the three markers one family of their own', () => {
+    for (const preset of TEAM_TOPOLOGIES) {
+      const role = markerRole(preset.kind);
+      expect(CORE_DOMAIN_ROLES[role]?.kind).toBe('node');
+      // Named and coloured by the preset the palette draws with, not restated.
+      expect(CORE_DOMAIN_ROLES[role]?.labelFallback).toBe(preset.label);
+      expect(roleIsA(role, CORE_DOMAIN_ROLE.marker, CORE_DOMAIN_ROLES)).toBe(
+        true
+      );
+    }
+  });
+
+  it('keeps the chart, the movement and the markers out of the sub-domain family', () => {
     // A rule written on `core-domain:subdomain` must never match the frame it
-    // measures against, nor the arrow between two of them.
-    for (const role of [CORE_DOMAIN_ROLE.chart, CORE_DOMAIN_ROLE.movement]) {
+    // measures against, nor the arrow between two of them — nor an annotation
+    // parked beside one. `core-domain.overlapping-artefacts` pairs
+    // `[subdomain, subdomain]`, and a marker put against the dot it comments on
+    // is a marker doing its job, not two dots hiding each other.
+    for (const role of [
+      CORE_DOMAIN_ROLE.chart,
+      CORE_DOMAIN_ROLE.movement,
+      CORE_DOMAIN_ROLE.marker,
+      ...TEAM_TOPOLOGIES.map(preset => markerRole(preset.kind)),
+    ]) {
       expect(
         roleIsA(role, CORE_DOMAIN_ROLE.subdomain, CORE_DOMAIN_ROLES)
       ).toBe(false);
     }
+    // And the other way round: the marker family owns no sub-domain either.
+    expect(
+      roleIsA(CORE_DOMAIN_ROLE.bcCurrent, CORE_DOMAIN_ROLE.marker, CORE_DOMAIN_ROLES)
+    ).toBe(false);
   });
 
   it('states the verb and the gesture of the movement edge (ADR 0010)', () => {
@@ -150,6 +179,21 @@ describe('what the creation sites stamp', () => {
       const dot = added.find(p => p.shapeType === 'ellipse');
       expect(dot?.role).toBe(subdomainRole(preset.kind));
       // The name beside it is a name, not an artefact.
+      for (const text of added.filter(p => p.type === 'text')) {
+        expect(text.role).toBeUndefined();
+      }
+    }
+  });
+
+  it('stamps each marker role on the SQUARE, never on its letter or caption', () => {
+    for (const preset of TEAM_TOPOLOGIES) {
+      const { std, added } = fakeStd();
+      const id = `add${preset.kind[0].toUpperCase()}${preset.kind.slice(1)}`;
+      run(id, std);
+
+      const square = added.find(p => p.type === 'shape');
+      expect(square?.role, preset.kind).toBe(markerRole(preset.kind));
+      // The letter inside it and the name beside it are glyph and caption.
       for (const text of added.filter(p => p.type === 'text')) {
         expect(text.role).toBeUndefined();
       }

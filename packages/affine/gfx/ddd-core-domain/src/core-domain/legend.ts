@@ -3,6 +3,7 @@ import {
   CD_SUBDOMAINS,
   MOVEMENT_COLOR,
   roleLabel,
+  TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
 
 import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
@@ -16,23 +17,26 @@ import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
  * restated — which also keeps this table and `core-domain.off-legend-colour`
  * naming the same five colours by construction.
  *
- * ## What changed, and what is missing
+ * ## What changed
  *
  * The chart's legend button predates roles: until now it scanned the perimeter
- * for FILL COLOURS, which is why it could list a Team Topologies marker and why
- * it fell back to the full notation when it recognised nothing. Detection is now
- * by role, like every other reader of the board, with two consequences worth
- * stating:
+ * for FILL COLOURS, which is why it fell back to the full notation when it
+ * recognised nothing. Detection is now by role, like every other reader of the
+ * board, with one consequence worth stating: a chart on which nothing is
+ * recognised yields a legend box with a title and no rows, rather than the whole
+ * notation. That is Wardley's behaviour and the honest one — a legend lists what
+ * is drawn, not what could have been.
  *
- * - the **Team Topologies markers** carry no role — `addMarker` stamps none —
- *   so they are no longer listed. The day they earn one their section lands here
- *   in three lines, derived from `TEAM_TOPOLOGIES` like everything else;
- * - a chart on which nothing is recognised now yields a legend box with a title
- *   and no rows, rather than the whole notation. That is Wardley's behaviour and
- *   the honest one: a legend lists what is drawn, not what could have been.
+ * The **Team Topologies markers** were the casualty of that change for one
+ * release: `addMarker` stamped no role, so a chart covered in them produced a
+ * legend that mentioned none (PO recette, 26/08/2026). They now carry
+ * `core-domain:marker-*` and their section is here, derived from
+ * `TEAM_TOPOLOGIES` like everything else — swatch, letter and colour from the
+ * preset the palette draws with, wording from the vocabulary that names the
+ * role.
  */
 export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Légende',
+  title: 'Legend',
   roles: CORE_DOMAIN_ROLES,
   sections: [
     {
@@ -40,6 +44,22 @@ export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
       entries: CD_SUBDOMAINS.map(preset => ({
         role: CORE_DOMAIN_ROLE[preset.kind],
         row: { swatch: 'dot' as const, color: preset.fill, label: preset.label },
+      })),
+    },
+    {
+      // The letter is what identifies a marker on the chart — the squares are
+      // three colours a reader has no key to — so the legend shows the same
+      // square with the same letter in it, which is what `LegendRow.letter`
+      // exists for.
+      title: 'Team interaction modes',
+      entries: TEAM_TOPOLOGIES.map(preset => ({
+        role: CORE_DOMAIN_ROLE[preset.kind],
+        row: {
+          swatch: 'square' as const,
+          color: preset.fill,
+          letter: preset.letter,
+          label: roleLabel(CORE_DOMAIN_ROLES, CORE_DOMAIN_ROLE[preset.kind]),
+        },
       })),
     },
     {

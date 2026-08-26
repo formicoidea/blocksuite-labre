@@ -156,7 +156,7 @@ const SPECS: Spec[] = [
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
         addLegend(surface, std, cx - 140, cy - 210, {
-          title: 'Légende',
+          title: 'Legend',
           sections: legendSections(),
           width: 290,
         })

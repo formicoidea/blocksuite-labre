@@ -10,7 +10,7 @@ import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import { svg, type TemplateResult } from 'lit';
 
 import { activateMovement, createCoreDomainChart } from './actions';
-import { subdomainRole } from './roles';
+import { markerRole, subdomainRole } from './roles';
 
 /**
  * The Core Domain Chart palette as commands: the background, the five
@@ -84,6 +84,11 @@ const SPECS: Spec[] = [
             fill: preset.fill,
             letter: preset.letter,
             label: preset.label,
+            // The square IS the marker, so the role rides on it and not on the
+            // group that also holds its caption — the same call as the dot.
+            // Without this the automatic legend, which detects by role and only
+            // by role, could not see the markers at all.
+            role: markerRole(preset.kind),
           })
         ),
     })

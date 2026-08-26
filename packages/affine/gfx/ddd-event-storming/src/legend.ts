@@ -23,7 +23,7 @@ import { ES_ROLE, ES_STICKY_ROLE, EVENT_STORMING_ROLES } from './roles';
  * its own preset (a diamond, not a square) rather than in the table.
  */
 export const EVENT_STORMING_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Légende',
+  title: 'Legend',
   roles: EVENT_STORMING_ROLES,
   sections: [
     {

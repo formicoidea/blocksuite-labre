@@ -13,6 +13,7 @@ import {
   addBubble,
   addConnector,
   addDot,
+  addMarker,
   addSticky,
 } from '../shared/prefabs';
 
@@ -188,6 +189,21 @@ describe('prefabs stamp a role only when asked', () => {
     expect(added[0].role).toBe('core-domain:big-bet');
   });
 
+  it('puts a marker role on the SQUARE, never on its letter or caption', () => {
+    const { surface, added } = surfaceStub();
+    addMarker(surface, stdStub(), 0, 0, {
+      fill: '#66b2ff',
+      letter: 'X',
+      label: 'X-as-a-Service',
+      role: 'core-domain:marker-xaas',
+    });
+
+    const [square, ...rest] = added;
+    expect(square.role).toBe('core-domain:marker-xaas');
+    // The letter inside it and the name beside it are a glyph and a caption.
+    for (const props of rest) expect(props.role).toBeUndefined();
+  });
+
   it('puts a connector role on the connector', () => {
     const { surface, added } = surfaceStub();
     addConnector(surface, 0, 0, 10, 10, { role: 'es:flow' });
@@ -199,6 +215,7 @@ describe('prefabs stamp a role only when asked', () => {
     addBubble(surface, 0, 0, 'Billing');
     addConnector(surface, 0, 0, 10, 10);
     addDot(surface, stdStub(), 0, 0, '#9933ff');
+    addMarker(surface, stdStub(), 0, 0, { fill: '#99ff99', letter: 'C' });
     for (const props of added) expect(props.role).toBeUndefined();
   });
 });

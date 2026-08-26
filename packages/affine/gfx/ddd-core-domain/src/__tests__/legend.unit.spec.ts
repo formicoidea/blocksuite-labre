@@ -16,7 +16,13 @@ import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
  * sanctions.
  */
 describe('the Core Domain auto-legend table derives from the presets', () => {
-  const [subdomains, movement] = CORE_DOMAIN_AUTO_LEGEND.sections;
+  const [subdomains, markers, movement] = CORE_DOMAIN_AUTO_LEGEND.sections;
+
+  it('titles the box in English', () => {
+    // PO recette, 26/08/2026. Identifiers and fallback wordings are English in
+    // this library; the box used to be the one that was not.
+    expect(CORE_DOMAIN_AUTO_LEGEND.title).toBe('Legend');
+  });
 
   it('has one dot entry per sub-domain preset, in the presets’ own order', () => {
     expect(subdomains.entries.map(e => e.role)).toEqual(
@@ -50,19 +56,26 @@ describe('the Core Domain auto-legend table derives from the presets', () => {
   });
 
   /**
-   * The Team Topologies markers carry no role — `addMarker` stamps none — and
-   * detection is by role only, so they dropped out of the legend when it stopped
-   * scanning fill colours. Frozen here so the omission reads as the consequence
-   * of a decision, and so the day the markers earn a role this test is what
-   * fails and asks for their section back.
+   * The markers were missing for one release: detection is by role only and
+   * `addMarker` stamped none, so a chart covered in them produced a legend that
+   * mentioned none (PO recette, 26/08/2026). Now that they carry a role, the
+   * row has to show what identifies a marker on the chart — the LETTER, not
+   * just a coloured square a reader has no key to.
    */
-  it('says nothing about the Team Topologies markers, which carry no role', () => {
-    const labels = CORE_DOMAIN_AUTO_LEGEND.sections.flatMap(s =>
-      s.entries.map(e => e.row.label)
+  it('shows each Team Topologies marker as its own square, letter included', () => {
+    expect(markers.entries.map(e => e.role)).toEqual(
+      TEAM_TOPOLOGIES.map(preset => CORE_DOMAIN_ROLE[preset.kind])
     );
-    for (const marker of TEAM_TOPOLOGIES) {
-      expect(labels).not.toContain(marker.label);
-    }
+    expect(markers.entries.map(e => e.row.color)).toEqual(
+      TEAM_TOPOLOGIES.map(preset => preset.fill)
+    );
+    expect(markers.entries.map(e => e.row.letter)).toEqual(['C', 'X', 'F']);
+    expect(markers.entries.every(e => e.row.swatch === 'square')).toBe(true);
+    // Wording from the vocabulary that names the role, which is itself derived
+    // from the preset: one source, read twice.
+    expect(markers.entries.map(e => e.row.label)).toEqual(
+      TEAM_TOPOLOGIES.map(preset => preset.label)
+    );
   });
 });
 
@@ -72,8 +85,23 @@ describe('what a drawn chart puts in its legend', () => {
       new Set([CORE_DOMAIN_ROLE.bigBet, CORE_DOMAIN_ROLE.bcCurrent]),
       CORE_DOMAIN_AUTO_LEGEND
     );
+    // No marker on the chart, so no marker section — sub-title included.
     expect(sections.map(s => s.rows.map(r => r.label))).toEqual([
       ['Big-bet sub-domain', 'Bounded context'],
+    ]);
+  });
+
+  it('lists a marker once one is on the chart, and only the ones that are', () => {
+    const sections = autoLegendSections(
+      new Set([CORE_DOMAIN_ROLE.bigBet, CORE_DOMAIN_ROLE.xaas]),
+      CORE_DOMAIN_AUTO_LEGEND
+    );
+    expect(sections.map(s => s.title)).toEqual([
+      'Sub-domains',
+      'Team interaction modes',
+    ]);
+    expect(sections[1].rows).toEqual([
+      { swatch: 'square', color: '#66b2ff', letter: 'X', label: 'X-as-a-Service' },
     ]);
   });
 

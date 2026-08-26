@@ -23,23 +23,37 @@ What each board lists:
 - **Event Storming** — one row per sticky kind stuck to the board, in its own
   colour, hotspot included, plus a Flow row once an arc has been drawn;
 - **Core Domain Chart** — one row per sub-domain kind placed, in its own colour,
-  plus the red dashed Movement over time.
+  one row per Team Topologies marker used, square and letter included, plus the
+  red dashed Movement over time.
 
 The legend reads the artefacts' **semantic roles**, not their shapes and not
 their fill colours. That is what makes it agree with the validation rules — both
 read the same field — and it is what keeps a restyled sticky in the legend and an
 orange rectangle somebody drew to think with out of it.
 
-Two consequences on the Core Domain Chart, whose legend button already existed
-and used to scan fill colours. Its **Team Topologies markers are no longer
-listed**: they carry no role, and a colour is not an identity. And a chart the
-tool recognises nothing on — every chart drawn before roles existed — now yields
-a framed, titled legend with no rows instead of the whole notation; a legend
-lists what is drawn, not what could have been. The five sub-domain colours it
-does list are the same five the palette draws with, by construction.
+One consequence on the Core Domain Chart, whose legend button already existed and
+used to scan fill colours: a chart the tool recognises nothing on — every chart
+drawn before roles existed — now yields a framed, titled legend with no rows
+instead of the whole notation; a legend lists what is drawn, not what could have
+been. The five sub-domain colours it does list are the same five the palette
+draws with, by construction, and so are the three marker colours.
 
-The **Context Map palette keeps its own Legend entry**, which is unchanged and
-still lays out the full notation, cloud included. The two gestures answer two
+Reading by role is also what finally lets the chart list its **Team Topologies
+markers** honestly. Collaboration, X-as-a-Service and Facilitating are now
+artefacts the tool recognises rather than three coloured squares, so a chart with
+a marker on it gets a "Team interaction modes" section naming the ones actually
+used — with the same letter in the same coloured square the chart draws — and a
+chart with none is not told about modes it did not use. Being recognised costs
+them nothing else: a marker is an annotation, not a sub-domain, so the overlap
+and legend-colour checks written on sub-domains still leave it alone, including
+when it is parked right against the dot it comments on.
+
+Every legend box is now titled **"Legend"**. The three DDD tools shipped with a
+French title on an otherwise English notation; the boxes are elements written
+into the document, so existing ones keep whatever title they were drawn with.
+
+The **Context Map palette keeps its own Legend entry**, which still lays out the
+full notation, cloud included. The two gestures answer two
 different questions — "what does this notation mean" and "what did we actually
 draw here" — so that module deliberately has both. The cloud is the one artefact
 the automatic legend cannot mention: it carries no role, on purpose, because a

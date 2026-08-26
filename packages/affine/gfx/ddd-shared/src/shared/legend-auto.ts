@@ -54,7 +54,12 @@ export interface AutoLegendSectionSpec {
 }
 
 export interface AutoLegendSpec {
-  /** Box title. The three DDD tools have always said "Légende". */
+  /**
+   * Box title. The three DDD tools all say "Legend" (PO recette, 26/08/2026:
+   * the boxes used to be titled in French, which was the one label in the
+   * library that was — identifiers and fallback wordings are English here, and
+   * the day a host ships a locale pack it translates a key, not a leftover).
+   */
   title: string;
   width?: number;
   /**

@@ -24,7 +24,7 @@ const ROLES: RoleDefs = {
 };
 
 const SPEC: AutoLegendSpec = {
-  title: 'Légende',
+  title: 'Legend',
   roles: ROLES,
   sections: [
     {
@@ -132,7 +132,7 @@ describe('autoLegendSections', () => {
 
   it('resolves a specialisation: a parent entry appears for a child role', () => {
     const parentSpec: AutoLegendSpec = {
-      title: 'Légende',
+      title: 'Legend',
       roles: ROLES,
       sections: [
         {
@@ -184,7 +184,7 @@ describe('createAutoLegend', () => {
     createAutoLegend(std, BG, SPEC);
 
     expect(added).toHaveLength(2); // frame + title, nothing else
-    expect(added[1].text).toBe('Légende');
+    expect(added[1].text).toBe('Legend');
     const H = 16 * 2 + 32;
     expect(added[0].xywh).toBe(new Bound(50, 800 - 56 - H, 260, H).serialize());
   });

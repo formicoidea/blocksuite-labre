@@ -301,21 +301,29 @@ export function addConnector(
   });
 }
 
-/** A Team Topologies interaction-mode marker: a coloured square + centred letter. */
+/**
+ * A Team Topologies interaction-mode marker: a coloured square + centred letter.
+ *
+ * The role rides on the SQUARE, never on the group — the same call as
+ * {@link addDot}: the square is the artefact, the letter is its glyph and the
+ * word beside it is a caption. `undefined` writes nothing, so a caller that
+ * passes none keeps producing the neutral drawing it always did.
+ */
 export function addMarker(
   surface: Surface,
   std: BlockStdScope,
   cx: number,
   cy: number,
-  opts: { fill: string; letter: string; label?: string }
+  opts: { fill: string; letter: string; label?: string; role?: string }
 ): string {
-  const { fill, letter, label } = opts;
+  const { fill, letter, label, role } = opts;
   const s = MARKER_SIZE;
   const box = addShape(surface, cx - s / 2, cy - s / 2, s, s, {
     fill,
     stroke: '#1f2328',
     strokeWidth: 1.5,
     radius: 4,
+    role,
   });
   const glyph = addText(surface, cx - s / 2, cy - 9, s, letter, '#1f2328', LABEL_FONT, 15);
   const ids = [box, glyph];
@@ -442,7 +450,7 @@ export function measureLegend(
 }
 
 /**
- * A boxed legend: a bordered container with a bold "Légende" title and bold
+ * A boxed legend: a bordered container with a bold "Legend" title and bold
  * section sub-titles, each row a swatch (dot / square+letter / line) + label.
  * Shared by the Core Domain and Context Map tools. Returns the grouped id.
  */
