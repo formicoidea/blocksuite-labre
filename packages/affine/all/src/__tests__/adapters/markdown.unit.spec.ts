@@ -2738,6 +2738,102 @@ Text in details callout with new line
 });
 
 describe('markdown to snapshot', () => {
+  describe('inline html', () => {
+    const textOf = (snapshot: BlockSnapshot) =>
+      snapshot.children[0]?.props.text;
+
+    test.each([
+      ['#00afde', 'blue'],
+      ['#c83030', 'red'],
+      ['#db7123', 'orange'],
+      ['#ac7400', 'yellow'],
+      ['#9bda91', 'green'],
+      ['#0e4841', 'teal'],
+      ['#7c3aed', 'purple'],
+      ['#7a7a7a', 'grey'],
+    ])('imports the html color %s as the %s highlight', async (color, name) => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: `<span style="color: ${color};">Hello</span>`,
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          {
+            insert: 'Hello',
+            attributes: {
+              color: `var(--affine-v2-text-highlight-fg-${name})`,
+            },
+          },
+        ],
+      });
+    });
+
+    test('keeps the surrounding text and the inline formatting', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: 'before <span style="color: #c83030;">red <strong>and bold</strong></span> after',
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          { insert: 'before ' },
+          {
+            insert: 'red ',
+            attributes: { color: 'var(--affine-v2-text-highlight-fg-red)' },
+          },
+          {
+            insert: 'and bold',
+            attributes: {
+              bold: true,
+              color: 'var(--affine-v2-text-highlight-fg-red)',
+            },
+          },
+          { insert: ' after' },
+        ],
+      });
+    });
+
+    // Only a balanced run of inline tags is handed to the HTML converter; an
+    // unclosed one still reaches the reader verbatim, as it always has.
+    test('leaves an unclosed inline tag as literal text', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const rawBlockSnapshot = await mdAdapter.toBlockSnapshot({
+        file: 'before <span style="color: #c83030;">red',
+      });
+      expect(textOf(rawBlockSnapshot)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [
+          { insert: 'before ' },
+          { insert: '<span style="color: #c83030;">' },
+          { insert: 'red' },
+        ],
+      });
+    });
+
+    // Markdown has no colour of its own: the import reads a colour out of
+    // inline HTML, but the export writes plain markdown and the text comes
+    // back uncoloured. Asserted so the asymmetry stays deliberate.
+    test('exports back to markdown without the colour', async () => {
+      const mdAdapter = new MarkdownAdapter(createJob(), provider);
+      const snapshot = await mdAdapter.toBlockSnapshot({
+        file: '<span style="color: #c83030;">Hello</span>',
+      });
+      const markdown = await mdAdapter.fromBlockSnapshot({
+        snapshot: snapshot.children[0],
+      });
+      expect(markdown.file).toBe('Hello\n');
+
+      const roundTripped = await mdAdapter.toBlockSnapshot({
+        file: markdown.file,
+      });
+      expect(textOf(roundTripped)).toEqual({
+        '$blocksuite:internal:text$': true,
+        delta: [{ insert: 'Hello' }],
+      });
+    });
+  });
+
   describe('code', () => {
     test('markdown code block', async () => {
       const markdown = '```python\nimport this\n```\n';
