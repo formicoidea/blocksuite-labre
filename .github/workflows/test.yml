@@ -51,7 +51,10 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # Advisory only: the `highest` strategy drifts with the npm registry over
+      # time, so a red dedupe check must never mask the typecheck below.
       - name: Check dedupe
+        continue-on-error: true
         run: yarn dedupe --check
 
       - name: Run build
