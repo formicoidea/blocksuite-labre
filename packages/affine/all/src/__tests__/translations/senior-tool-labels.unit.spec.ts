@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,6 +29,27 @@ describe('senior-tool label keys', () => {
         'utf8'
       );
       expect(source).toContain(`labelKey: '${labelKey}',`);
+    }
+  );
+
+  test.each(FRAMEWORK_DESCRIPTORS)(
+    '$id routes its senior-button tooltip through $labelKey',
+    ({ dir, labelKey }) => {
+      const toolbarDir = join(
+        ROOT,
+        'packages',
+        ...dir.split('/'),
+        'src',
+        'toolbar'
+      );
+      const buttonFile = readdirSync(toolbarDir).find(f =>
+        f.endsWith('senior-button.ts')
+      );
+      expect(buttonFile).toBeDefined();
+      const source = readFileSync(join(toolbarDir, buttonFile!), 'utf8');
+      // Either the button calls translateKey itself, or (DDD) it declares the
+      // key on the shared base, which resolves it — no raw English tooltip.
+      expect(source).toContain(`'${labelKey}'`);
     }
   );
 });

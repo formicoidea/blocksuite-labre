@@ -1,5 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
@@ -85,7 +86,13 @@ export class EdgelessWardleySeniorButton extends EdgelessToolbarToolMixin(
   override render() {
     return html`<edgeless-toolbar-button
       class="wardley-button"
-      .tooltip=${this.popper ? '' : 'Wardley map'}
+      .tooltip=${this.popper
+        ? ''
+        : translateKey(
+            this.edgeless.std,
+            'com.labre.framework.wardley',
+            'Wardley map'
+          )}
       .tooltipOffset=${4}
       .active=${!!this.popper}
       @click=${this._toggleMenu}

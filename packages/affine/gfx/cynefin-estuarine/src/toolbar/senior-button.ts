@@ -1,5 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
@@ -70,7 +71,13 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
   override render() {
     return html`<edgeless-toolbar-button
       class="ce-button"
-      .tooltip=${this.popper ? '' : 'Cynefin / Estuarine'}
+      .tooltip=${this.popper
+        ? ''
+        : translateKey(
+            this.edgeless.std,
+            'com.labre.framework.cynefin-estuarine',
+            'Cynefin / Estuarine'
+          )}
       .tooltipOffset=${4}
       .active=${!!this.popper}
       @click=${this._toggleMenu}

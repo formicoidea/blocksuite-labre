@@ -1,5 +1,6 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement, type TemplateResult } from 'lit';
@@ -59,6 +60,9 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
 
   protected abstract label: string;
 
+  /** i18n key resolved through the host catalogue; `label` is the fallback. */
+  protected abstract labelKey: string;
+
   protected abstract icon: TemplateResult;
 
   private _toggleMenu() {
@@ -76,7 +80,9 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
   override render() {
     return html`<edgeless-toolbar-button
       class="ddd-button"
-      .tooltip=${this.popper ? '' : this.label}
+      .tooltip=${this.popper
+        ? ''
+        : translateKey(this.edgeless.std, this.labelKey, this.label)}
       .tooltipOffset=${4}
       .active=${!!this.popper}
       @click=${this._toggleMenu}
