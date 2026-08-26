@@ -388,10 +388,57 @@ export interface LegendRow {
   color: string;
   letter?: string;
   label: string;
+  /**
+   * `line` swatches only: draw the sample as two short segments rather than one
+   * bar, so a dashed pattern (Separate Ways, Big Ball of Mud, a Core Domain
+   * movement) reads in the legend the way it reads on the board. A legend that
+   * showed a solid bar for a dashed link would be telling a small lie about the
+   * notation it documents.
+   */
+  dashed?: boolean;
 }
 export interface LegendSection {
   title?: string;
   rows: LegendRow[];
+}
+
+/**
+ * The legend box's geometry, in one place because two callers need it: the one
+ * that DRAWS the box and the one that has to know how tall it will be before
+ * drawing it (see {@link measureLegend}).
+ */
+const LEGEND_METRICS = {
+  DEFAULT_W: 260,
+  PAD: 16,
+  TITLE_H: 32,
+  SUB_H: 26,
+  ROW_H: 28,
+  /** Swatch side (a `line` swatch is this long). */
+  SW: 16,
+} as const;
+
+/**
+ * How big the box {@link addLegend} would draw for these sections is — without
+ * drawing it. The auto-legend needs the height to drop the box bottom-left of a
+ * background, and measuring is the only honest way to get it: the box grows with
+ * the number of sub-titles and rows, which is exactly what the detection pass
+ * decides.
+ */
+export function measureLegend(
+  sections: readonly LegendSection[],
+  width?: number
+): { width: number; height: number } {
+  const { DEFAULT_W, PAD, TITLE_H, SUB_H, ROW_H } = LEGEND_METRICS;
+  let subs = 0;
+  let rows = 0;
+  for (const s of sections) {
+    if (s.title) subs++;
+    rows += s.rows.length;
+  }
+  return {
+    width: width ?? DEFAULT_W,
+    height: PAD * 2 + TITLE_H + subs * SUB_H + rows * ROW_H,
+  };
 }
 
 /**
@@ -406,19 +453,8 @@ export function addLegend(
   y: number,
   opts: { title: string; sections: LegendSection[]; width?: number }
 ): string {
-  const W = opts.width ?? 260;
-  const PAD = 16;
-  const TITLE_H = 32;
-  const SUB_H = 26;
-  const ROW_H = 28;
-  const SW = 16;
-  let subs = 0;
-  let rows = 0;
-  for (const s of opts.sections) {
-    if (s.title) subs++;
-    rows += s.rows.length;
-  }
-  const H = PAD * 2 + TITLE_H + subs * SUB_H + rows * ROW_H;
+  const { PAD, TITLE_H, SUB_H, ROW_H, SW } = LEGEND_METRICS;
+  const { width: W, height: H } = measureLegend(opts.sections, opts.width);
 
   const ids: string[] = [
     addShape(surface, x, y, W, H, {
@@ -444,6 +480,12 @@ export function addLegend(
       } else if (row.swatch === 'square') {
         ids.push(addShape(surface, sx, midY - SW / 2, SW, SW, { fill: row.color, stroke: '#1f2328', strokeWidth: 1, radius: 3 }));
         if (row.letter) ids.push(addText(surface, sx, midY - 8, SW, row.letter, '#1f2328', LABEL_FONT, 11));
+      } else if (row.dashed) {
+        // Two 6-unit segments with a 4-unit gap: the same 16 units as a solid
+        // bar, read as a dash.
+        const seg = 6;
+        ids.push(addShape(surface, sx, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
+        ids.push(addShape(surface, sx + SW - seg, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
       } else {
         ids.push(addShape(surface, sx, midY - 2, SW, 4, { fill: row.color, radius: 1 }));
       }
