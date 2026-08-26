@@ -6,6 +6,13 @@ on:
       - trimed-lib
   pull_request:
   workflow_dispatch:
+  # Post-merge safety net for blocksuite-labre-main (the default branch, which
+  # schedule runs against): merges land without their own CI run — two PRs green
+  # in isolation can still break main (semantic conflict, e.g. PR #129) — and a
+  # per-push run would cost one full suite per merge. One nightly run bounds
+  # detection to 24h instead.
+  schedule:
+    - cron: '0 3 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

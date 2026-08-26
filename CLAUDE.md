@@ -36,7 +36,9 @@ in the script) and expect occasional cold-start retries.
   contract in its README. See `docs/adr/0003`.
 - `packages/affine/gfx/wardley/`, `gfx/edgy/` — the business framework
   modules (canonical examples for new frameworks, e.g. cynefin).
-- Branch model: `trimed-lib` is the main branch; feature branches off it.
+- Branch model: `blocksuite-labre-main` is the main branch (and the repo
+  default); feature branches off it. `trimed-lib` is the historical main,
+  dormant since June 2026.
 
 ## Conventions
 
