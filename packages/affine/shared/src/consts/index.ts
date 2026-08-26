@@ -20,6 +20,17 @@ export const PAGE_HEADER_HEIGHT = 53;
 
 export const EMBED_CARD_MIN_WIDTH = 450;
 
+/**
+ * The smallest a thing you TAP may be, in CSS pixels.
+ *
+ * 44 is the figure both platform guidelines settle on (WCAG 2.2's target-size
+ * criterion asks for 24, which is a floor for a mouse, not a finger). Labre's
+ * boards are worked on a tablet in a workshop as often as on a laptop, so any
+ * list a user picks from — the artefact catalogue's rows are the first — sizes
+ * its rows from here rather than from whatever looked right in a screenshot.
+ */
+export const TOUCH_TARGET_MIN_PX = 44;
+
 export const EMBED_CARD_WIDTH: Record<EmbedCardStyle, number> = {
   horizontal: 752,
   horizontalThin: 752,

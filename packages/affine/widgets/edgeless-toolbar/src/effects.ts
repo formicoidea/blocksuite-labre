@@ -1,6 +1,10 @@
 import { EdgelessToolIconButton } from './button/tool-icon-button';
 import { EdgelessToolbarButton } from './button/toolbar-button';
 import {
+  EDGELESS_ARTEFACT_CATALOGUE_WIDGET,
+  EdgelessArtefactCatalogueWidget,
+} from './catalogue/artefact-catalogue-widget';
+import {
   EDGELESS_TOOLBAR_WIDGET,
   EdgelessToolbarWidget,
 } from './edgeless-toolbar';
@@ -11,6 +15,10 @@ import { EdgelessFontWeightAndStylePanel } from './panel/font-weight-and-style-p
 
 export function effects() {
   customElements.define(EDGELESS_TOOLBAR_WIDGET, EdgelessToolbarWidget);
+  customElements.define(
+    EDGELESS_ARTEFACT_CATALOGUE_WIDGET,
+    EdgelessArtefactCatalogueWidget
+  );
   customElements.define('edgeless-toolbar-button', EdgelessToolbarButton);
   customElements.define('edgeless-tool-icon-button', EdgelessToolIconButton);
   customElements.define(
@@ -24,6 +32,7 @@ export function effects() {
 
 declare global {
   interface HTMLElementTagNameMap {
+    'edgeless-artefact-catalogue-widget': EdgelessArtefactCatalogueWidget;
     'edgeless-tool-icon-button': EdgelessToolIconButton;
     'edgeless-toolbar-button': EdgelessToolbarButton;
     'edgeless-toolbar-widget': EdgelessToolbarWidget;
