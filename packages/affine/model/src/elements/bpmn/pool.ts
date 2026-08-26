@@ -1,55 +1,33 @@
-import type { IVec, SerializedXYWH } from '@labre/global/gfx';
-import {
-  Bound,
-  getPointsFromBoundWithRotation,
-  linePolygonIntersects,
-  pointInPolygon,
-  polygonNearestPoint,
-} from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
-import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+import type { SerializedXYWH } from '@labre/global/gfx';
+import { field } from '@labre/std/gfx';
 
-export type BpmnPoolProps = BaseElementProps & {
+import type { FrameworkBackgroundProps } from '../framework-background/index.js';
+import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
+
+export type BpmnPoolProps = FrameworkBackgroundProps & {
   /** The participant name shown in the left band — edited inline on dblclick. */
   name?: string;
-  /** When false the resize handles are hidden — toggled from the toolbar. */
-  resizeEnabled?: boolean;
 };
 
 /**
  * A BPMN "pool": a participant container drawn as a rounded-rect frame with a
- * vertical name band on the left. It is a background element (like the wardley
- * / cynefin backgrounds): the user drops flow-object nodes on top of it. Lanes
- * are deliberately out of scope for v1.
+ * vertical name band on the left. It is a framework background like every other
+ * one in the library — the user drops flow-object nodes on top of it, and a
+ * connector never snaps to it. Lanes are deliberately out of scope for v1.
  *
- * Mirrors the other framework background elements.
+ * The geometry of a passive canvas comes from
+ * {@link FrameworkBackgroundElementModel}: this class used to restate all five
+ * of those overrides verbatim, which is exactly the kind of copy that drifts.
+ * Nothing about the DOCUMENT changes — the persisted type is still `bpmnPool`
+ * and the four fields below are the four it has always written, in the same
+ * order, with the same defaults.
+ *
+ * What it LOOKS like is declared, not coded: see `BPMN_POOL_BACKGROUND` in
+ * `@labre/affine-gfx-bpmn`.
  */
-export class BpmnPoolElementModel extends GfxPrimitiveElementModel<BpmnPoolProps> {
+export class BpmnPoolElementModel extends FrameworkBackgroundElementModel<BpmnPoolProps> {
   get type() {
     return 'bpmnPool';
-  }
-
-  override get connectable() {
-    return false;
-  }
-
-  override containsBound(bounds: Bound): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return points.some(point => bounds.containsPoint(point));
-  }
-
-  override getLineIntersections(start: IVec, end: IVec) {
-    const points = getPointsFromBoundWithRotation(this);
-    return linePolygonIntersects(start, end, points);
-  }
-
-  override getNearestPoint(point: IVec): IVec {
-    return polygonNearestPoint(Bound.deserialize(this.xywh).points, point) as IVec;
-  }
-
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
   }
 
   @field('Pool')

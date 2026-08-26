@@ -43,14 +43,36 @@ export const NODE_LABEL: Record<BpmnNodeKind, string> = {
   gatewayExclusive: '',
 };
 
-/** Pool (background container) defaults. */
+/**
+ * Pool (background container) defaults — read by the `BPMN_POOL_BACKGROUND`
+ * declaration (`background.ts`), which is the only thing that draws a pool.
+ */
 export const POOL_BAND_WIDTH = 28;
 export const POOL_FRAME_COLOR = '#262626';
+/**
+ * The card. The same white every framework background paints — it is what
+ * `DEFAULT_BACKGROUND_SURFACE` gives a declaration that names no fill, and what
+ * the Wardley map, the Core Domain Chart and the Context Map board all declare.
+ */
+export const POOL_CARD_FILL = '#ffffff';
 export const POOL_BAND_FILL = '#f4f4f5';
 export const POOL_FRAME_WIDTH = 1.5;
+export const POOL_CORNER_RADIUS = 6;
 export const POOL_NAME_FONT_SIZE = 15;
 export const POOL_NAME_COLOR = '#262626';
 export const POOL_FONT_FAMILY = 'Inter, sans-serif';
+
+/**
+ * The size a fresh pool is created at. Unlike a map, a pool is NOT grown to
+ * cover the ones already on the board: pools sit side by side, one per
+ * participant, and a second lane that matched the first one's height would
+ * claim room the process has not asked for.
+ *
+ * `actions.ts` and the templates still write these two numbers themselves; the
+ * declaration names them so there is somewhere for them to converge.
+ */
+export const POOL_REF_WIDTH = 560;
+export const POOL_REF_HEIGHT = 200;
 
 /** Sequence-flow connector preset. */
 export const SEQUENCE_STROKE = '#262626';

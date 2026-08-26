@@ -65,6 +65,18 @@ export interface BackgroundTextStyle {
   weight?: number;
   /** Named consumer: Estuarine's `e` / `t` letters are `italic 700`. */
   italic?: boolean;
+  /**
+   * Where the anchor sits on the glyphs. `alphabetic` — the default, and what
+   * every text meant before this existed — puts it on the BASELINE, so the
+   * words hang above the anchor; `middle` centres them on it.
+   *
+   * Named consumer: the BPMN pool, whose participant name is centred ACROSS the
+   * band it is written in. A baseline anchor there would push the name against
+   * the frame instead of down the middle of the band — the one case where the
+   * two conventions are visibly different, because the room the text is given
+   * is the width of the glyphs and nothing more.
+   */
+  baseline?: 'alphabetic' | 'middle';
 }
 
 /** Where a piece of text sits: a plot ratio plus a fixed model-unit offset. */
@@ -234,6 +246,40 @@ export interface BackgroundSurfaceDef {
   border?: { color: BackgroundColor; width: number; radius?: number };
 }
 
+/**
+ * A filled strip of FIXED width, painted over one margin of the card.
+ *
+ * The width of a band IS the margin it covers
+ * ({@link BackgroundGeometry.margin}), never a second number: the margin is
+ * already the room the plot gives up to the furniture, and letting a
+ * declaration state a different width would be two numbers that must agree and
+ * one day will not. An element narrower than its own margin clamps the band to
+ * the element, which is the only case where the two can disagree.
+ *
+ * A band is part of the CARD, not a layer over it: it is painted over the
+ * card's fill and under its border, so the frame keeps outlining the whole
+ * element. Its {@link label} is a text like any other, drawn with the rest of
+ * them, and anchored in plot ratios — the plot edge is the band's inner edge,
+ * so `x: 0` with a negative `dx` walks back INTO the band.
+ *
+ * Named consumer: the BPMN pool, a lane whose participant name is written up a
+ * filled band along its left edge, with a {@link divider} between that band and
+ * the flow area.
+ *
+ * Only `'left'` for now — same philosophy as the wash direction
+ * ({@link BackgroundWashDef.stops}): the union grows the day a framework asks
+ * for a top or a right band, not in anticipation of one.
+ */
+export interface BackgroundSideBandDef {
+  side: 'left';
+  /** Tint over the whole strip. Absent means the card shows through. */
+  fill?: BackgroundColor;
+  /** The line between the band and the plot. Absent means none. */
+  divider?: BackgroundStroke;
+  /** The words written in the band — the band's own label. */
+  label?: BackgroundTextDef;
+}
+
 /** Everything that dresses the frame: the card, the fills, the colour code. */
 export interface BackgroundChromeDef {
   /** Font family every text inherits unless it names its own. */
@@ -243,6 +289,11 @@ export interface BackgroundChromeDef {
    * a plain white rectangle with no border.
    */
   surface?: BackgroundSurfaceDef;
+  /**
+   * Filled strips over the margins, painted WITH the card — over its fill, under
+   * its border — in declaration order.
+   */
+  sideBands?: readonly BackgroundSideBandDef[];
   /** Washes over the plot, painted in declaration order, under the zones. */
   washes?: readonly BackgroundWashDef[];
   /** The colour code: names a palette entry `@name` can resolve to. */

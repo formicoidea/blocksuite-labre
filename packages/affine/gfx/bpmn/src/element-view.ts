@@ -1,15 +1,17 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import type { BpmnPoolElementModel } from '@labre/affine-model';
 import type { PointerEventState } from '@labre/std';
-import {
-  GfxElementModelView,
-  GfxViewInteractionExtension,
-} from '@labre/std/gfx';
+import { GfxElementModelView } from '@labre/std/gfx';
 
 /**
  * View for a BPMN pool. A double-click edits the participant name in place
  * (single field — the whole pool is the hit target). Mirrors the inline label
  * editor used by the EDGY / Wardley backgrounds.
+ *
+ * Deliberately NOT driven by the declaration's label hit test (`backgroundLabelHits`,
+ * which Wardley uses): a pool has exactly ONE editable word, and the whole lane
+ * is its target. Asking the user to find the 28-unit band to rename a
+ * participant would be a regression dressed up as consistency.
  */
 export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
   static override type: string = 'bpmnPool';
@@ -95,22 +97,3 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
     }
   }
 }
-
-/**
- * Resize gating: the resize handles are hidden unless `model.resizeEnabled` is
- * true (toggled from the toolbar). Moving / selecting stays available.
- */
-export const BpmnPoolInteraction = GfxViewInteractionExtension<BpmnPoolView>(
-  BpmnPoolView.type,
-  {
-    handleResize({ model }) {
-      return {
-        beforeResize({ set }) {
-          if (!model.resizeEnabled) {
-            set({ allowedHandlers: [] });
-          }
-        },
-      };
-    },
-  }
-);

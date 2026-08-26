@@ -124,12 +124,13 @@ const approxTextWidth = (text: string, fontSize: number) =>
 const HIT_PAD = 6;
 
 /**
- * Every text of a declaration, in PAINTING ORDER: zone labels, then each axis'
- * title followed by its end labels.
+ * Every text of a declaration, in PAINTING ORDER: the side-band labels, the
+ * zone labels, then each axis' title followed by its end labels.
  *
  * One walk, used by both the renderer and the hit tester, so a label can never
  * be drawn in one place and clicked in another.
  *
+ * The bands lead because a band is part of the card, which is painted first.
  * Two gates are INHERITED here rather than restated by every framework: a zone's
  * variants reach its label, and an axis' visibility reaches its title. Both are
  * overridden by a text that names its own.
@@ -138,6 +139,9 @@ export function backgroundTexts(
   def: FrameworkBackgroundDef
 ): BackgroundTextDef[] {
   const texts: BackgroundTextDef[] = [];
+  for (const band of def.chrome?.sideBands ?? []) {
+    if (band.label) texts.push(band.label);
+  }
   for (const zone of def.zones ?? []) {
     if (!zone.label) continue;
     texts.push(
