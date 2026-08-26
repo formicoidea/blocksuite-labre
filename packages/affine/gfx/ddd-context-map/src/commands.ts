@@ -2,7 +2,6 @@ import {
   addBubble,
   addCloud,
   addLegend,
-  addRelationship,
   CLOUD,
   CM_BUBBLE,
   CM_RELATIONSHIPS,
@@ -11,12 +10,25 @@ import {
   placeDddElement,
 } from '@labre/affine-gfx-ddd-shared';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
 
+import {
+  activateContextMapRelationship,
+  createContextMapBoard,
+} from './actions';
+import { CONTEXT_MAP_ROLE } from './roles';
+
 /**
- * The Context Map palette as commands: the bounded-context bubble, the cloud,
- * the nine relationship patterns and the notation legend (`docs/adr/0008`).
+ * The Context Map palette as commands: the board, the bounded-context bubble,
+ * the cloud, the nine relationship patterns and the notation legend
+ * (`docs/adr/0008`).
+ *
+ * Two entries changed shape in WS2 and neither changed its telemetry: the
+ * bubble now carries the `context-map:context` role, and the nine patterns arm
+ * the connector tool instead of dropping a drawing.
  */
+const boardSwatch = svg`<svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4.5" width="19" height="15" rx="2" fill="#ffffff" stroke="currentColor" stroke-width="1.6"/><rect x="5.5" y="8" width="6" height="3.5" rx="1.75" fill="#e6f0fa" stroke="#2f6fb0" stroke-width="1.1"/><rect x="13" y="13" width="6" height="3.5" rx="1.75" fill="#e6f0fa" stroke="#2f6fb0" stroke-width="1.1"/><path d="M11.5 10.5 L13.5 13.8" stroke="currentColor" stroke-width="1.2"/></svg>`;
 const bubbleSwatch = svg`<svg viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="10" rx="5" fill="#e6f0fa" stroke="#2f6fb0" stroke-width="1.6"/></svg>`;
 const cloudSwatch = svg`<svg viewBox="0 0 24 24" fill="none"><path d="M6 17 C3 17 2 14 4.5 12.5 C4 9 8 8 9.5 10 C11 6.5 16 7.5 16 11 C19 10.5 20.5 14 18 16 C18 17 16.5 17 15 17 Z" fill="#f0eef6" stroke="#6d6e71" stroke-width="1.4"/></svg>`;
 const legendSwatch = svg`<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="9" r="1.6" fill="currentColor"/><circle cx="7" cy="14" r="1.6" fill="currentColor"/><path d="M11 9 H18 M11 14 H18" stroke="currentColor" stroke-width="1.4"/></svg>`;
@@ -78,6 +90,16 @@ interface Spec {
 
 const SPECS: Spec[] = [
   {
+    id: 'addBoard',
+    label: 'Context Map board',
+    iconKey: 'ddd-context-map.board',
+    // A NEW telemetry value, and the only one in this file: every other entry
+    // below keeps the `element` string it has emitted since ADR 0008.
+    element: 'board',
+    icon: boardSwatch,
+    run: std => createContextMapBoard(std.get(GfxControllerIdentifier)),
+  },
+  {
     id: 'addBoundedContext',
     label: 'Bounded Context',
     iconKey: 'ddd-context-map.bubble',
@@ -85,7 +107,10 @@ const SPECS: Spec[] = [
     icon: bubbleSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        addBubble(surface, cx, cy, 'Bounded Context')
+        // The role is what makes a bubble a bounded CONTEXT rather than a blue
+        // pill: every rule in `rules.ts` reads it, and a pill drawn before WS2
+        // carries none and is never evaluated (promesse #71).
+        addBubble(surface, cx, cy, 'Bounded Context', CONTEXT_MAP_ROLE.context)
       ),
   },
   {
@@ -106,9 +131,15 @@ const SPECS: Spec[] = [
       iconKey: `ddd-context-map.relationship.${preset.kind}`,
       element: `relationship:${preset.kind}`,
       icon: relationSwatch(preset.dashed, preset.upDown),
+      // No longer a placement: the nine patterns arm the connector tool and the
+      // user DRAWS the relation between two contexts. See
+      // `activateContextMapRelationship` for why the free-floating group had to
+      // go. The telemetry `element` value is untouched.
       run: std =>
-        placeDddElement(std, (surface, cx, cy) =>
-          addRelationship(surface, std, cx, cy, preset)
+        activateContextMapRelationship(
+          std.get(GfxControllerIdentifier),
+          preset.kind,
+          { upDown: preset.upDown, dashed: preset.dashed }
         ),
     })
   ),

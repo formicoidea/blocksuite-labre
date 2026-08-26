@@ -154,6 +154,9 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     pkg: '@labre/affine-gfx-ddd-context-map',
     dir: 'affine/gfx/ddd-context-map',
     extensions: [
+      // always-on: placed Context Map boards must paint even with the button
+      // off, and their role vocabulary must stay readable
+      { viewExtension: 'DddContextMapRenderViewExtension' },
       { flag: 'ddd-context-map', viewExtension: 'DddContextMapViewExtension' },
     ],
     shortcuts: true,

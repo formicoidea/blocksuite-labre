@@ -35,7 +35,8 @@ describe('command registry invariants', () => {
       bpmn: 6,
       'ddd-event-storming': 9,
       'ddd-core-domain': 10,
-      'ddd-context-map': 12,
+      // 13 since WS2 added the board (`ddd-context-map.addBoard`).
+      'ddd-context-map': 13,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -53,7 +54,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(72);
+    expect(commands).toHaveLength(73);
   });
 
   /**
