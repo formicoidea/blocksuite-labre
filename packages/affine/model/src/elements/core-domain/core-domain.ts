@@ -1,21 +1,27 @@
-import type { IVec, SerializedXYWH } from '@labre/global/gfx';
-import {
-  Bound,
-  getPointsFromBoundWithRotation,
-  linePolygonIntersects,
-  pointInPolygon,
-  polygonNearestPoint,
-} from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
-import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+import type { SerializedXYWH } from '@labre/global/gfx';
+import { field } from '@labre/std/gfx';
 
-export type CoreDomainChartProps = BaseElementProps & {
-  /** When false the resize handles are hidden — toggled from the toolbar. */
-  resizeEnabled?: boolean;
+import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
+import type { FrameworkBackgroundProps } from '../framework-background/index.js';
+
+/**
+ * Which READING of the chart this instance is turned to.
+ *
+ * `classic` is the DDD Crew chart everybody knows — Generic / Supporting / Core
+ * over Complexity × Business differentiation. `migration` keeps the very same
+ * frame and names its four quadrants after the migration conversation instead
+ * (low-hanging fruit, risk-seeking, risk-averse, last toothpaste), which is why
+ * it is a variant of one background and not a second element type.
+ */
+export type CoreDomainVariant = 'classic' | 'migration';
+
+export type CoreDomainChartProps = FrameworkBackgroundProps & {
   /** When false the translucent Core / Supporting / Generic zone bands are hidden. */
   showZones?: boolean;
   /** When false the axis titles, Low/High ticks and zone names are hidden. */
   showLabels?: boolean;
+  /** Which reading of the chart is drawn. */
+  variant?: CoreDomainVariant;
 };
 
 /**
@@ -24,37 +30,20 @@ export type CoreDomainChartProps = BaseElementProps & {
  * Generic / Supporting / Core zone bands. The user places sub-domain dots,
  * movement arrows and the Notation legend on top of it.
  *
- * Mirrors the Wardley / EDGY / Cynefin backgrounds: extends
- * {@link GfxPrimitiveElementModel} so it inherits selection, move, copy/paste,
- * duplicate, align and undo/redo. Authored in a fixed reference space and scaled
- * uniformly to the element bounds by the renderer.
+ * An INSTANCE of the framework-background primitive
+ * ({@link FrameworkBackgroundElementModel}): the geometry and the passive-canvas
+ * behaviour come from the primitive — which declares the very same
+ * `connectable` getter and the very same four geometry overrides this class
+ * used to spell out — and what the chart LOOKS like comes from the
+ * `CORE_DOMAIN_BACKGROUND` declaration in `@labre/affine-gfx-ddd-core-domain`.
+ *
+ * The fields below are the persisted document and are NOT the primitive's
+ * business: the base swap adds no field, renames none and changes no default,
+ * so a chart authored before it is byte-identical to one authored after.
  */
-export class CoreDomainChartElementModel extends GfxPrimitiveElementModel<CoreDomainChartProps> {
+export class CoreDomainChartElementModel extends FrameworkBackgroundElementModel<CoreDomainChartProps> {
   get type() {
     return 'coreDomain';
-  }
-
-  override get connectable() {
-    return false;
-  }
-
-  override containsBound(bounds: Bound): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return points.some(point => bounds.containsPoint(point));
-  }
-
-  override getLineIntersections(start: IVec, end: IVec) {
-    const points = getPointsFromBoundWithRotation(this);
-    return linePolygonIntersects(start, end, points);
-  }
-
-  override getNearestPoint(point: IVec): IVec {
-    return polygonNearestPoint(Bound.deserialize(this.xywh).points, point) as IVec;
-  }
-
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
   }
 
   @field(true)
@@ -65,6 +54,15 @@ export class CoreDomainChartElementModel extends GfxPrimitiveElementModel<CoreDo
 
   @field(true)
   accessor showLabels: boolean = true;
+
+  /**
+   * A HARD default, on the Wardley `variant` pattern: `classic` is written into
+   * the Y.Map at creation and is also what an older chart — which carries no
+   * such key at all — reads back as. Both roads lead to the chart the user has
+   * always seen, so the field ships with no migration and no backfill.
+   */
+  @field('classic' as CoreDomainVariant)
+  accessor variant: CoreDomainVariant = 'classic';
 
   @field(0)
   accessor rotate: number = 0;
