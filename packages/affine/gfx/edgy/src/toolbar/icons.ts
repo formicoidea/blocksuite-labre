@@ -52,6 +52,20 @@ export const edgyObjectIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24
   <rect x="3.5" y="6.5" width="17" height="11" stroke="currentColor" stroke-width="1.6"/>
 </svg>`;
 
+/**
+ * Relation — a bare line between two ends, with the label riding on it.
+ *
+ * No arrowhead, exactly like the 24 relations of the metamodel template: EDGY
+ * draws its links as plain lines and lets the verb say which way the sentence
+ * runs. The little box in the middle IS the verb the tool writes there.
+ */
+export const edgyRelationIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3.5 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
+  <circle cx="3.8" cy="12" r="1.6" fill="currentColor"/>
+  <circle cx="20.2" cy="12" r="1.6" fill="currentColor"/>
+  <rect x="8" y="8.6" width="8" height="6.8" rx="1.4" fill="var(--affine-background-primary-color, #fff)" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
 /** Activity — right-pointing chevron. */
 export const edgyActivityIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M3.5 6.5 H15 L20.5 12 L15 17.5 H3.5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>

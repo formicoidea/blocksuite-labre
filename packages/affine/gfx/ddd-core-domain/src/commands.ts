@@ -1,5 +1,4 @@
 import {
-  addConnector,
   addDot,
   addMarker,
   CD_SUBDOMAINS,
@@ -7,11 +6,11 @@ import {
   placeDddElement,
   TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
-import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import { svg, type TemplateResult } from 'lit';
 
-import { REF_H, REF_W } from './core-domain/consts';
+import { activateMovement, createCoreDomainChart } from './actions';
+import { markerRole, subdomainRole } from './roles';
 
 /**
  * The Core Domain Chart palette as commands: the background, the five
@@ -45,15 +44,7 @@ const SPECS: Spec[] = [
     icon: chartSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        surface.addElement({
-          type: 'coreDomain',
-          xywh: new Bound(
-            cx - REF_W / 2,
-            cy - REF_H / 2,
-            REF_W,
-            REF_H
-          ).serialize(),
-        })
+        createCoreDomainChart(surface, cx, cy)
       ),
   },
   ...CD_SUBDOMAINS.map(
@@ -65,7 +56,18 @@ const SPECS: Spec[] = [
       icon: dotSwatch(preset.fill),
       run: std =>
         placeDddElement(std, (surface, cx, cy) =>
-          addDot(surface, std, cx, cy, preset.fill, preset.label)
+          addDot(
+            surface,
+            std,
+            cx,
+            cy,
+            preset.fill,
+            preset.label,
+            // The dot IS the sub-domain: the role rides on the ellipse, so a
+            // rule about where a sub-domain sits measures the artefact and not
+            // the group that also holds its name.
+            subdomainRole(preset.kind)
+          )
         ),
     })
   ),
@@ -82,6 +84,11 @@ const SPECS: Spec[] = [
             fill: preset.fill,
             letter: preset.letter,
             label: preset.label,
+            // The square IS the marker, so the role rides on it and not on the
+            // group that also holds its caption — the same call as the dot.
+            // Without this the automatic legend, which detects by role and only
+            // by role, could not see the markers at all.
+            role: markerRole(preset.kind),
           })
         ),
     })
@@ -90,16 +97,13 @@ const SPECS: Spec[] = [
     id: 'addMovement',
     label: 'Movement over time',
     iconKey: 'ddd-core-domain.movement',
+    // Historical telemetry value, unchanged by the gesture becoming a drag.
     element: 'movement',
     icon: movementSwatch,
-    run: std =>
-      placeDddElement(std, (surface, cx, cy) =>
-        addConnector(surface, cx - 80, cy + 60, cx + 80, cy - 60, {
-          rearArrow: true,
-          dashed: true,
-          stroke: MOVEMENT_COLOR,
-        })
-      ),
+    // No longer a free arrow dropped at the viewport centre: the movement is a
+    // typed edge, so the user draws it from the current position to the future
+    // one and the pair they drew IS the statement (`docs/adr/0010`).
+    run: activateMovement,
   },
 ];
 

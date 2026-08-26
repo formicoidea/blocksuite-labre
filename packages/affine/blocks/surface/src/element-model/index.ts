@@ -3,12 +3,14 @@ import {
   BpmnPoolElementModel,
   BrushElementModel,
   ConnectorElementModel,
+  ContextMapBoardElementModel,
   CoreDomainChartElementModel,
   CynefinElementModel,
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
+  EventStormingBoardElementModel,
   GroupElementModel,
   HighlighterElementModel,
   MindmapElementModel,
@@ -36,6 +38,8 @@ export const elementsCtorMap = {
   cynefin: CynefinElementModel,
   estuarine: EstuarineElementModel,
   coreDomain: CoreDomainChartElementModel,
+  contextMap: ContextMapBoardElementModel,
+  eventStorming: EventStormingBoardElementModel,
   bpmnNode: BpmnNodeElementModel,
   bpmnPool: BpmnPoolElementModel,
 };
@@ -45,12 +49,14 @@ export {
   BpmnPoolElementModel,
   BrushElementModel,
   ConnectorElementModel,
+  ContextMapBoardElementModel,
   CoreDomainChartElementModel,
   CynefinElementModel,
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
   EdgyNodeElementModel,
   EstuarineElementModel,
+  EventStormingBoardElementModel,
   GroupElementModel,
   HighlighterElementModel,
   MindmapElementModel,
@@ -77,6 +83,8 @@ export enum CanvasElementType {
   CYNEFIN = 'cynefin',
   ESTUARINE = 'estuarine',
   COREDOMAIN = 'coreDomain',
+  CONTEXTMAP = 'contextMap',
+  EVENTSTORMING = 'eventStorming',
   BPMNNODE = 'bpmnNode',
   BPMNPOOL = 'bpmnPool',
 }
@@ -97,6 +105,8 @@ export type ElementModelMap = {
   ['cynefin']: CynefinElementModel;
   ['estuarine']: EstuarineElementModel;
   ['coreDomain']: CoreDomainChartElementModel;
+  ['contextMap']: ContextMapBoardElementModel;
+  ['eventStorming']: EventStormingBoardElementModel;
   ['bpmnNode']: BpmnNodeElementModel;
   ['bpmnPool']: BpmnPoolElementModel;
 };

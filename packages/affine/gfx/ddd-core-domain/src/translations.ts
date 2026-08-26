@@ -1,21 +1,35 @@
 import {
+  collectTranslationKeys,
   commandTranslationEntries,
+  mergeTranslationEntries,
   type TranslationKeyManifestEntry,
 } from '@labre/std';
 
 import { coreDomainCommands } from './commands.js';
+import { CORE_DOMAIN_BACKGROUND } from './core-domain/background.js';
+import { CORE_DOMAIN_NUDGES } from './nudges.js';
+import { CORE_DOMAIN_PROFILES } from './profiles.js';
+import { CORE_DOMAIN_ROLES } from './roles.js';
+import { CORE_DOMAIN_RULES } from './rules.js';
 
 /**
- * THIS framework's contribution to the translation-key manifest.
+ * THIS framework's contribution to the translation-key manifest — every
+ * `com.labre.*` key the Core Domain Chart can hand to `TranslationProvider.t`,
+ * derived from the very declarations the editor registers.
  *
- * Its command labels and descriptions are built from a TEMPLATE, so the
- * concrete keys exist nowhere but in the declarations themselves and the
- * core manifest could not restate them even if it wanted to. The
- * contribution therefore ships WITH the framework: in the bundled
- * distribution `@formicoidea/labre-framework-ddd-core-domain` carries it, and a host
- * composes it into its catalogue exactly as it already composes
- * `coreDomainCommands` into the command registry. See
- * `packages/affine/all/src/translations.ts`.
+ * It lives HERE, not in `@labre/affine/translations`, because the bundled
+ * distribution splits the library along exactly this line:
+ * `@formicoidea/labre-core` is the editor MINUS the frameworks, and a host that
+ * installs `@formicoidea/labre-framework-ddd-core-domain` composes this export
+ * into the catalogue it builds — the same sentence that already holds for
+ * `coreDomainCommands`.
  */
 export const coreDomainTranslationEntries: TranslationKeyManifestEntry[] =
-  commandTranslationEntries(coreDomainCommands);
+  mergeTranslationEntries(
+    commandTranslationEntries(coreDomainCommands),
+    collectTranslationKeys('role', CORE_DOMAIN_ROLES),
+    collectTranslationKeys('background', CORE_DOMAIN_BACKGROUND),
+    collectTranslationKeys('rule', CORE_DOMAIN_RULES),
+    collectTranslationKeys('nudge', CORE_DOMAIN_NUDGES),
+    collectTranslationKeys('profile', CORE_DOMAIN_PROFILES)
+  );

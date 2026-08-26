@@ -15,10 +15,37 @@ export const STICKY_FONT = 'blocksuite:surface:Kalam';
 export const STICKY_FONT_SIZE = 20;
 export const STICKY_RADIUS = 6;
 
-/** Event Storming sticky palette — DDD Crew / Brandolini colour code. */
+/**
+ * Event Storming sticky palette — DDD Crew / Brandolini colour code.
+ *
+ * ## The aggregate (WS5)
+ *
+ * Brandolini's notation has a pale-yellow sticky for the AGGREGATE — the thing a
+ * command lands on and the thing that raises the event — and without it the
+ * canonical sentence `Command → Aggregate → Domain event` cannot be drawn at
+ * all, let alone checked. It was missing here until WS5.
+ *
+ * Its colour is the one judgement call in this table. The plan's indicative
+ * `#FDF0A0` measures **ΔE 3.5** from the actor's `#FFF1A8` — two stickies
+ * nobody could tell apart on a wall, which is exactly the failure the notation
+ * already has and the tool should not inherit. `#FAF2C9` is the same pale
+ * yellow taken two steps towards cream: ΔE 16.3 from the actor, 50.2 from the
+ * constraint, and still 21.7 from the white board it sits on, so it reads as
+ * "pale" rather than as "blank". The three yellows are then a LADDER — the
+ * constraint saturated, the actor light, the aggregate palest — which is how a
+ * reader tells them apart at a glance without a legend.
+ *
+ * Size carries the rest of the distinction, as it does on a real wall: the
+ * aggregate is created at 160 against the standard 120 (see
+ * `ddd-event-storming/src/commands.ts`). The palette says which; the format
+ * says how big.
+ */
 export const ES_STICKIES = [
   { kind: 'domainEvent', label: 'Domain event', fill: '#F5963B', text: '#5a3000' },
   { kind: 'command', label: 'Command', fill: '#5BA3DB', text: '#06304d' },
+  // Placed after the command, in the order the grammar reads: an actor issues a
+  // command, a command lands on an aggregate, an aggregate raises an event.
+  { kind: 'aggregate', label: 'Aggregate', fill: '#FAF2C9', text: '#5a4b00' },
   { kind: 'actor', label: 'Actor', fill: '#FFF1A8', text: '#5a4b00' },
   { kind: 'constraint', label: 'Constraint', fill: '#FFD84D', text: '#5a4b00' },
   { kind: 'policy', label: 'Policy', fill: '#C9A8E0', text: '#3d1f57' },

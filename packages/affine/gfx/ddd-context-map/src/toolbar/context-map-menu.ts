@@ -5,7 +5,7 @@ import { css } from 'lit';
 /**
  * Context Map palette, rendered from `contextMapCommands` for the
  * `senior-menu` surface (`docs/adr/0008`). Keeps the DDD palettes' tighter gap
- * — it is the widest one, at 12 buttons.
+ * — it is the widest one, at 13 buttons.
  */
 export class EdgelessDddContextMapMenu extends EdgelessCommandMenu {
   static override styles = [

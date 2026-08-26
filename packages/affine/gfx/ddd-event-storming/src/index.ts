@@ -1,6 +1,20 @@
 export { eventStormingCommandIcons, eventStormingCommands } from './commands.js';
+export { EVENT_STORMING_BACKGROUND } from './background.js';
+export { EVENT_STORMING_NUDGES } from './nudges.js';
+export { EVENT_STORMING_PROFILES } from './profiles.js';
+export {
+  ES_ROLE,
+  ES_STICKY_ROLE,
+  EVENT_STORMING_ROLES,
+  type EventStormingRoleId,
+  type EventStormingStickyKind,
+} from './roles.js';
+export { ES_FLOW_MATRIX, EVENT_STORMING_RULES } from './rules.js';
 export { eventStormingTranslationEntries } from './translations.js';
 export { eventStormingTemplateCategory } from './templates.js';
 export { eventStormingSeniorTool } from './toolbar/senior-tool.js';
 export { EdgelessDddEventStormingSeniorButton } from './toolbar/senior-button.js';
-export { DddEventStormingViewExtension } from './view.js';
+export {
+  DddEventStormingRenderViewExtension,
+  DddEventStormingViewExtension,
+} from './view.js';

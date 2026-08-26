@@ -18,6 +18,7 @@
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
     "@labre/affine-gfx-connector": "workspace:*",
+    "@labre/affine-gfx-ddd-shared": "workspace:*",
     "@labre/affine-gfx-group": "workspace:*",
     "@labre/affine-gfx-pointer": "workspace:*",
     "@labre/affine-gfx-shape": "workspace:*",
@@ -28,7 +29,9 @@
     "@labre/global": "workspace:*",
     "@labre/std": "workspace:*",
     "@labre/store": "workspace:*",
-    "lit": "^3.2.0"
+    "@preact/signals-core": "^1.8.0",
+    "lit": "^3.2.0",
+    "yjs": "^13.6.21"
   },
   "exports": {
     ".": "./src/index.ts",

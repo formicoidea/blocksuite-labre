@@ -20,6 +20,7 @@ import { effect, signal } from '@preact/signals-core';
 // re-exports the RENDERER, which would pull a canvas into the evaluation path
 // and make a cycle out of what is a one-way read of pure declaration data.
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
+import { backgroundPlot } from '../framework-background/def.js';
 import {
   backgroundAxisFact,
   type BackgroundTransitionBand,
@@ -27,6 +28,7 @@ import {
   backgroundTransitionVisibleProps,
 } from '../framework-background/facts.js';
 import type { BackgroundModelLike } from '../framework-background/labels.js';
+import { backgroundInVariant } from '../framework-background/labels.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
@@ -88,6 +90,13 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  * - `relative-order-along-axis` — the two elements a TYPED EDGE links must sit
  *   in the order that edge states, along one axis of the frame. The first
  *   family whose subject is a RELATION rather than an element or a proximity.
+ * - `relation-endpoints` — WHAT a typed edge is allowed to run between, and how
+ *   many times. The grammar of a framework's relations, read off the roles at
+ *   the two ends rather than off the geometry: the same relation between the
+ *   same two artefacts is right or wrong wherever they happen to be drawn.
+ * - `element-in-zone` — the subject must sit inside (or outside) named ZONES of
+ *   the frame it is on. `element-in-background` asks whether an artefact is on
+ *   the map at all; this one asks whether it is in the right REGION of it.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -95,6 +104,8 @@ export type RuleFamily =
   | 'attachment'
   | 'no-overlap'
   | 'relative-order-along-axis'
+  | 'relation-endpoints'
+  | 'element-in-zone'
   | 'tone-convention'
   | 'majority-fact';
 
@@ -340,6 +351,145 @@ export interface RelativeOrderDef {
 }
 
 /**
+ * One sanctioned sentence of a framework's relation grammar: `source` _edge_
+ * `target`, all three named by ROLE.
+ *
+ * Read exactly the way `docs/adr/0010` says an edge is read — the source is the
+ * subject of the verb, the target its object — so a triplet is a sentence a
+ * practitioner would say out loud: an actor issues a command, a command lands on
+ * an aggregate, an aggregate raises an event. Each side matches by
+ * {@link roleIsA}, so a triplet written on a parent role covers every
+ * specialisation of it for free.
+ */
+export interface EndpointTriplet {
+  source: RoleId;
+  edge: RoleId;
+  target: RoleId;
+}
+
+/**
+ * `relation-endpoints` configuration — the grammar of a framework's relations.
+ *
+ * Where `relative-order-along-axis` asks whether the two ends of a relation are
+ * in the right PLACE, this family asks whether they are the right THINGS. It
+ * reads the persisted `source → target` pair and the roles the two ends carry,
+ * and nothing else: no coordinate takes part, so the verdict survives every
+ * layout of the same document.
+ *
+ * ## Four ways of failing, four sentences
+ *
+ * A relation can be wrong in ways the user fixes with four different gestures —
+ * re-point an end, delete a loop, delete a copy, choose between two patterns —
+ * so each mode carries its own {@link RuleMessage} and falls back to the rule's
+ * own words when a framework declares none. Same precedent as
+ * {@link AttachmentDef.offBoundary}, for the same reason: one sentence covering
+ * four mistakes describes none of them.
+ */
+export interface RelationEndpointsDef {
+  /**
+   * The EDGE role whose ends are read. An element matching it (or specialising
+   * it) is one subject of the rule; every other edge on the board is none of
+   * its business — a free connector somebody drew to point at something is not
+   * a claim about the model.
+   */
+  edgeRole: RoleId;
+  /**
+   * The sanctioned sentences. Absent means the shape of the relation is not
+   * judged at all, which is what a rule that only forbids loops or duplicates
+   * declares.
+   *
+   * ## The alphabet, and why an unknown end is SILENCE
+   *
+   * The roles cited by the triplets — every `source` and every `target` — form
+   * the alphabet this rule speaks. An edge with an end OUTSIDE that alphabet is
+   * not evaluated at all: not the matrix, not the loop, not the duplicate.
+   *
+   * A hard requirement, and the one that makes the family shippable. A flow
+   * drawn onto an Event Storming hotspot, or onto a plain rectangle somebody
+   * dropped on the board to think with, is a DRAFT — the user is saying "there
+   * is something here", and a tool that answered "that arc is forbidden" would
+   * be indicting the act of sketching. The frameworks' own grammars are written
+   * on a handful of artefacts each; everything else on the canvas has to stay
+   * outside the conversation (PRD principle 8).
+   */
+  allowed?: readonly EndpointTriplet[];
+  /**
+   * Pairs of edge roles that may not BOTH be drawn between the same two
+   * elements. The node pair is unordered — two contexts related twice are
+   * related twice whichever end each relation starts from — and so is the role
+   * pair: `[acl, conformist]` and `[conformist, acl]` are one requirement.
+   *
+   * The Context Mapping case: a downstream context protecting itself with an
+   * anti-corruption layer is not simultaneously conforming to its upstream. Both
+   * relations are legitimate on their own; together they are a contradiction,
+   * and only the pair can say so.
+   */
+  exclusivePairs?: readonly (readonly [RoleId, RoleId])[];
+  /**
+   * Whether an edge whose two ends are the SAME element is a finding.
+   *
+   * Absent, a self-loop is silence — total silence, even when the matrix says
+   * nothing about it. A loop is either a deliberate notation (a process that
+   * feeds itself) or a hand that dropped the second end on the first, and a
+   * framework that has not decided which has not asked to be told about it.
+   */
+  forbidSelfLoop?: boolean;
+  /** Whether the SAME relation drawn twice between the same ordered pair is a finding. */
+  forbidDuplicate?: boolean;
+  /** Words for an edge whose sentence is not in {@link allowed}. */
+  offMatrix?: RuleMessage;
+  /** Words for an edge that loops back onto its own source. */
+  selfLoop?: RuleMessage;
+  /** Words for the second copy of a relation that already exists. */
+  duplicate?: RuleMessage;
+  /** Words for two relations of {@link exclusivePairs} drawn between one pair. */
+  exclusive?: RuleMessage;
+}
+
+/**
+ * `element-in-zone` configuration — the artefact is on the map, but is it in the
+ * right REGION of it?
+ *
+ * `element-in-background` frames a subject against the whole card; this frames
+ * it against the named zones the declaration already carries — the four
+ * quadrants of a Core Domain Chart, the phases of a Wardley map — so a rule can
+ * say "an outsourced subdomain has no business in the Core quadrant" without a
+ * single coordinate being restated anywhere.
+ *
+ * The zone rectangles come from the DECLARATION (ratios of the plot) resolved
+ * against the bounds of the instance the subject actually sits on, so the
+ * verdict survives the map being moved and resized, exactly like every other
+ * geometry in this engine.
+ */
+export interface ElementInZoneDef {
+  /**
+   * The zones this rule is about, by their id in
+   * {@link FrameworkBackgroundDef.zones}. An id the frame does not declare is a
+   * typo in the data: the rule warns once and evaluates NOTHING rather than
+   * quietly measuring against the zones it happened to recognise — a smaller
+   * union is a different rule, and nobody would see the difference.
+   */
+  zoneIds: readonly string[];
+  /**
+   * `'inside'` — the subject belongs in one of those zones and is indicted
+   * anywhere else on the map; `'outside'` — the zones are forbidden ground.
+   */
+  expect: 'inside' | 'outside';
+  /**
+   * WHAT of the subject is measured. `'center'` (the default) reads the centre
+   * of its bounds — where the eye puts the artefact, and the only honest answer
+   * for something bigger than a cell. `'extent'` reads the whole box: `inside`
+   * then asks for full containment in ONE cited zone and `outside` for no shared
+   * area at all.
+   *
+   * Containment is tested zone by zone rather than against their union: a
+   * subject straddling two adjacent cited zones is precisely the ambiguous case
+   * a strict rule wants to hear about, and a union test would swallow it.
+   */
+  measure?: 'center' | 'extent';
+}
+
+/**
  * A rule is declarative, versioned data owned by its framework (PRD principle
  * 5) — never a subclass, never a closure. It is comparable, serializable and
  * can be shipped by a host.
@@ -407,6 +557,10 @@ export interface ValidationRule extends RuleMessage {
   overlap?: readonly OverlapPair[];
   /** `relative-order-along-axis` only. */
   relativeOrder?: RelativeOrderDef;
+  /** `relation-endpoints` only. */
+  endpoints?: RelationEndpointsDef;
+  /** `element-in-zone` only. */
+  inZone?: ElementInZoneDef;
   /**
    * `no-overlap` only: how DEEP a collision has to be, in model units, before
    * it is worth reporting. Absent or `0` means any shared area at all.
@@ -821,16 +975,27 @@ export function backgroundElementIds(
  * Same question `evaluateElementInBackground` answers inline, asked by the
  * families whose subjects normally ARE on the map — an inertia bar, an arrow, a
  * pair of overlapping labels. Ties go to the smaller id so a persisted
- * arbitration never depends on the order a `Y.Map` was rebuilt in.
+ * arbitration never depends on the order a `Y.Map` was rebuilt in — on BOTH
+ * halves of the question: a small chart dropped on a big one contains the same
+ * artefact twice, and returning whichever of the two the walk met first would
+ * have made the promise above true only of the near miss. Same walk and same
+ * tie-break as {@link containingBackground}, which asks the containment half
+ * alone.
  */
 function attributeBackground(
   bound: Bound,
   backgrounds: readonly BackgroundInstance[]
 ): BackgroundInstance | null {
+  let containing: BackgroundInstance | null = null;
   let nearest: BackgroundInstance | null = null;
   let nearestDistance = Infinity;
   for (const background of backgrounds) {
-    if (background.bound.contains(bound)) return background;
+    if (background.bound.contains(bound)) {
+      if (containing === null || background.id < containing.id) {
+        containing = background;
+      }
+      continue;
+    }
     const distance = gapSquared(background.bound, bound);
     if (
       distance < nearestDistance ||
@@ -842,7 +1007,7 @@ function attributeBackground(
       nearest = background;
     }
   }
-  return nearest;
+  return containing ?? nearest;
 }
 
 /**
@@ -2177,7 +2342,8 @@ function evaluateMajorityFact(
 }
 
 /**
- * The two ids a typed edge BINDS, or `null`.
+ * The two ids a typed edge points at, or `null` — the EXTRACTION alone, with no
+ * opinion on what the pair means.
  *
  * Duck-typed exactly like {@link elementPath}, and for the same reason: the
  * engine knows roles and geometry, and must not import a connector model. An
@@ -2187,16 +2353,29 @@ function evaluateMajorityFact(
  * tool over empty canvas produces such an edge at any time, and a palette
  * sample of a stroke style is one by construction. An edge that relates nothing
  * is never evaluated.
+ *
+ * Whether a SELF-LOOP is one of the answers is a policy, and each family states
+ * its own on top of this: see {@link boundEnds} and {@link endpointIds}.
  */
-function boundEnds(el: unknown): [string, string] | null {
+function rawEndpointIds(el: unknown): [string, string] | null {
   const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
   const source = edge.source?.id;
   const target = edge.target?.id;
   if (typeof source !== 'string' || typeof target !== 'string') return null;
-  // A self-loop states nothing about an order: it is one element, compared with
-  // itself, and no move can ever resolve it.
-  if (source === target) return null;
   return [source, target];
+}
+
+/**
+ * The two ids a typed edge BINDS, self-loops excluded.
+ *
+ * A self-loop states nothing about an ORDER: it is one element, compared with
+ * itself, and no move can ever resolve the finding — so the families that read
+ * a layout treat it exactly like an edge that relates nothing.
+ */
+function boundEnds(el: unknown): [string, string] | null {
+  const ends = rawEndpointIds(el);
+  if (ends === null || ends[0] === ends[1]) return null;
+  return ends;
 }
 
 /**
@@ -2303,6 +2482,541 @@ function evaluateRelativeOrder(
 }
 
 /**
+ * The two ids a typed edge points at, SELF-LOOP INCLUDED — the one difference
+ * with {@link boundEnds}, and the reason this family reads the raw pair.
+ *
+ * `boundEnds` answers `null` for an edge whose two ends are the same element,
+ * because an order rule genuinely has nothing to say about one: it would be
+ * comparing an element with itself and no move could ever resolve the finding.
+ * A GRAMMAR rule is the opposite case — a loop is a sentence about the same
+ * artefact twice, which is exactly what {@link RelationEndpointsDef.forbidSelfLoop}
+ * exists to arbitrate. Folding the loop into the null here would make that flag
+ * unreachable, silently.
+ */
+const endpointIds = rawEndpointIds;
+
+/**
+ * The roles the sanctioned sentences speak of — the ALPHABET of the rule. See
+ * {@link RelationEndpointsDef.allowed} for why an end outside it is silence.
+ */
+function endpointAlphabet(allowed: readonly EndpointTriplet[]): RoleId[] {
+  const roles: RoleId[] = [];
+  for (const triplet of allowed) {
+    for (const role of [triplet.source, triplet.target]) {
+      if (!roles.includes(role)) roles.push(role);
+    }
+  }
+  return roles;
+}
+
+/** One relation this family has read, kept for the pair-wise pass. */
+interface DrawnRelation {
+  id: string;
+  role: RoleId;
+  sourceId: string;
+  targetId: string;
+  /** The three elements the finding names, sorted — see {@link Violation.elementIds}. */
+  ids: string[];
+  frameId?: string;
+}
+
+/** The elements a finding names, deduplicated and sorted. */
+function namedElements(ids: readonly string[]): string[] {
+  return Array.from(new Set(ids)).sort();
+}
+
+/**
+ * "Does this relation say something the framework's grammar allows?"
+ *
+ * The second family whose subject is a RELATION, and the first that reads
+ * nothing but MEANING: no axis, no coordinate, no distance. For every element
+ * carrying the declared edge role it reads the persisted `source → target` pair
+ * and the roles at the two ends, and confronts the sentence with the ones the
+ * framework sanctions — an actor issues a command, a command lands on an
+ * aggregate. A relation drawn upside-down on a Wardley map is a layout mistake;
+ * a relation drawn between the wrong two artefacts is a modelling one, and no
+ * amount of dragging fixes it.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **an edge carrying no role, or another role** — proportionality (PRD
+ *   principle 8): a free connector is not a claim;
+ * - **an edge with a free end** — it relates nothing;
+ * - **an end whose element is gone** — a dangling id says nothing about a model;
+ * - **an end OUTSIDE the alphabet of {@link RelationEndpointsDef.allowed}** —
+ *   the hard requirement of this family. A flow onto a hotspot, onto a neutral
+ *   shape, onto an artefact of another framework: the user is sketching, and a
+ *   grammar that indicted the sketch would be switched off within a day (see
+ *   {@link RelationEndpointsDef.allowed});
+ * - **a self-loop, unless the framework asked** — see
+ *   {@link RelationEndpointsDef.forbidSelfLoop}. Silence here is TOTAL: a loop
+ *   the framework tolerates is not then judged against the matrix, where it
+ *   would fail for a reason nobody meant.
+ *
+ * ## One finding per edge, at most
+ *
+ * An edge already indicted for the sentence it says is not indicted again for
+ * saying it twice: the duplicate and exclusivity passes only see relations that
+ * got through the matrix. Two badges on one link, for one gesture to fix, is
+ * pedantry the canvas cannot afford.
+ *
+ * ## The frame
+ *
+ * {@link ValidationRule.backgroundRole} is optional here and buys ATTRIBUTION
+ * only — the map a finding is written against, so the map-wide arbitration has
+ * somewhere to live (the `no-overlap` pattern). No background DECLARATION is
+ * required: this family reads no fact off the frame, and demanding one would be
+ * asking a framework to declare geometry its grammar never consults.
+ *
+ * ## Cost
+ *
+ * Linear in the elements plus linear in the EDGES: one indexing pass, one pass
+ * over the edges, then one pass over the node pairs that actually carry more
+ * than one relation — which on any real board is a handful. There is no
+ * pair-wise sweep over the nodes: the rule is about relations somebody drew,
+ * never about every couple that could have had one.
+ *
+ * An {@link IncrementalContext} is deliberately NOT honoured, exactly like
+ * `relative-order-along-axis`: a dirty set names the elements that moved, and
+ * this family's verdict does not depend on where anything is. Re-reading every
+ * edge is the cost of the linear pass it already was.
+ */
+function evaluateRelationEndpoints(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const endpoints = rule.endpoints;
+  if (endpoints === undefined) return [];
+
+  const byId = new Map<string, GfxPrimitiveElementModel>();
+  const edges: { el: GfxPrimitiveElementModel; role: RoleId }[] = [];
+  for (const el of elements) {
+    byId.set(el.id, el);
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, endpoints.edgeRole, rule.roles)) {
+      edges.push({ el, role: el.role });
+    }
+  }
+  if (edges.length === 0) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  // An EMPTY matrix is a matrix that says nothing, which is the same claim as
+  // declaring none — the reading `allowed`'s own header gives it — so it is
+  // normalised to `undefined` here rather than left to mean an empty alphabet.
+  // Left as one it would silence the rule WHOLE, self-loops and duplicates
+  // included, since every end is outside an alphabet of no roles: exactly the
+  // opposite of what a framework that lists no sentence and forbids loops
+  // asked for. A matrix says nothing about the other three verdicts; it never
+  // switches them off.
+  const allowed =
+    endpoints.allowed === undefined || endpoints.allowed.length === 0
+      ? undefined
+      : endpoints.allowed;
+  const alphabet = allowed === undefined ? null : endpointAlphabet(allowed);
+
+  // `roleIsA` walks a parent chain, and the two questions below ask it about
+  // the same handful of roles once per edge on the board — a Context Mapping
+  // board draws one vocabulary a hundred times over. Memoised for the duration
+  // of THIS pass and no longer: the precedent is `evaluateNoOverlap`, which
+  // precomputes each subject's slot memberships once instead of re-asking per
+  // couple.
+  const spoken = new Map<RoleId, boolean>();
+  const speaks = (role: RoleId | undefined): boolean => {
+    if (alphabet === null) return true;
+    if (role === undefined) return false;
+    const memo = spoken.get(role);
+    if (memo !== undefined) return memo;
+    const answer = alphabet.some(known => roleIsA(role, known, rule.roles));
+    spoken.set(role, answer);
+    return answer;
+  };
+
+  // Keyed by the whole triplet of roles, joined by NUL — which no vocabulary
+  // contains — so no two sentences can ever fold into one answer.
+  const sanctioned = new Map<string, boolean>();
+  const inMatrix = (
+    edgeRole: RoleId,
+    sourceRole: RoleId | undefined,
+    targetRole: RoleId | undefined
+  ): boolean => {
+    const key = `${edgeRole}\u0000${sourceRole}\u0000${targetRole}`;
+    const memo = sanctioned.get(key);
+    if (memo !== undefined) return memo;
+    const answer = allowed!.some(
+      triplet =>
+        roleIsA(edgeRole, triplet.edge, rule.roles) &&
+        roleIsA(sourceRole, triplet.source, rule.roles) &&
+        roleIsA(targetRole, triplet.target, rule.roles)
+    );
+    sanctioned.set(key, answer);
+    return answer;
+  };
+
+  const exclusivePairs = endpoints.exclusivePairs ?? [];
+  // Hoisted above the walk: the pair bookkeeping is a `DrawnRelation`, a sorted
+  // id list and a map entry PER EDGE, and a rule that judges sentences only
+  // would have allocated all three just to drop them. This runs on the gesture
+  // path, inside the 16 ms the drawing has.
+  const needsPairs = endpoints.forbidDuplicate === true || exclusivePairs.length > 0;
+
+  const violations: Violation[] = [];
+  // Every relation drawn between one UNORDERED pair of elements, which is the
+  // grain both the duplicate and the exclusivity questions are asked at. Filled
+  // in the same pass that judges the sentences, walked once afterwards.
+  const between = new Map<string, DrawnRelation[]>();
+
+  for (const { el: edge, role } of edges) {
+    const ends = endpointIds(edge);
+    if (ends === null) continue;
+    const [sourceId, targetId] = ends;
+    const source = byId.get(sourceId);
+    const target = byId.get(targetId);
+    if (source === undefined || target === undefined) continue;
+    // Outside the grammar entirely: the user is sketching.
+    if (!speaks(source.role) || !speaks(target.role)) continue;
+
+    // A node, not the edge's own box: the box of a diagonal link spans both
+    // ends and would attribute a relation to whichever map its corner grazes.
+    const frameId = attributeBackground(source.elementBound, backgrounds)?.id;
+
+    if (sourceId === targetId) {
+      if (endpoints.forbidSelfLoop) {
+        violations.push(
+          raise(
+            rule,
+            namedElements([edge.id, sourceId, targetId]),
+            frameId,
+            endpoints.selfLoop ?? rule
+          )
+        );
+      }
+      continue;
+    }
+
+    if (allowed !== undefined && !inMatrix(role, source.role, target.role)) {
+      violations.push(
+        raise(
+          rule,
+          namedElements([edge.id, sourceId, targetId]),
+          frameId,
+          endpoints.offMatrix ?? rule
+        )
+      );
+      continue;
+    }
+
+    if (!needsPairs) continue;
+
+    const key =
+      sourceId < targetId
+        ? `${sourceId} ${targetId}`
+        : `${targetId} ${sourceId}`;
+    const drawn = between.get(key);
+    const relation: DrawnRelation = {
+      id: edge.id,
+      role,
+      sourceId,
+      targetId,
+      ids: namedElements([edge.id, sourceId, targetId]),
+      ...(frameId !== undefined ? { frameId } : {}),
+    };
+    if (drawn === undefined) between.set(key, [relation]);
+    else drawn.push(relation);
+  }
+
+  if (!needsPairs) return violations;
+
+  // Sorted, so a board holding several offending pairs always reports them the
+  // same way whichever order the surface happened to be walked in.
+  for (const key of [...between.keys()].sort()) {
+    const drawn = between.get(key)!;
+    if (drawn.length < 2) continue;
+    // By edge id, so the relation that keeps its innocence is the same one on
+    // every peer and after every reload — never the one a Y.Map rebuild
+    // happened to yield first.
+    const relations = [...drawn].sort((a, b) => (a.id < b.id ? -1 : 1));
+
+    if (endpoints.forbidDuplicate) {
+      const seen = new Set<string>();
+      for (const relation of relations) {
+        // Same role AND same ordered pair: A → B and B → A are two different
+        // sentences, and a framework that wants them exclusive says so in
+        // `exclusivePairs`.
+        const sentence = `${relation.role} ${relation.sourceId} ${relation.targetId}`;
+        // The FIRST one is not a duplicate of anything; every copy after it is.
+        if (seen.has(sentence)) {
+          violations.push(
+            raise(
+              rule,
+              relation.ids,
+              relation.frameId,
+              endpoints.duplicate ?? rule
+            )
+          );
+        }
+        seen.add(sentence);
+      }
+    }
+
+    // Two declared pairs can both cover the same two relations (a pair written
+    // on a parent role and one on its specialisation): one situation, one
+    // finding.
+    const reported = new Set<string>();
+    for (const [first, second] of exclusivePairs) {
+      for (let i = 0; i < relations.length; i++) {
+        for (let j = i + 1; j < relations.length; j++) {
+          const a = relations[i];
+          const b = relations[j];
+          const matched =
+            (roleIsA(a.role, first, rule.roles) &&
+              roleIsA(b.role, second, rule.roles)) ||
+            (roleIsA(a.role, second, rule.roles) &&
+              roleIsA(b.role, first, rule.roles));
+          if (!matched) continue;
+          const couple = `${a.id} ${b.id}`;
+          if (reported.has(couple)) continue;
+          reported.add(couple);
+          // BOTH relations and both ends: either link is a legitimate
+          // resolution, so neither may be left out of the finding, and the pair
+          // of artefacts is what makes the two of them one situation.
+          //
+          // The frame is the SMALLER of the two the relations were attributed
+          // to — the house tie-break, and it has to be one: each relation is
+          // attributed by its OWN source node, so two links drawn from opposite
+          // ends can name two frames, and taking the first one's would write a
+          // map-wide arbitration wherever the surface happened to be walked.
+          const frameId =
+            b.frameId !== undefined &&
+            (a.frameId === undefined || b.frameId < a.frameId)
+              ? b.frameId
+              : a.frameId;
+          violations.push(
+            raise(
+              rule,
+              namedElements([a.id, b.id, a.sourceId, a.targetId]),
+              frameId,
+              endpoints.exclusive ?? rule
+            )
+          );
+        }
+      }
+    }
+  }
+
+  return violations;
+}
+
+/** One zone of one INSTANCE of a frame, in model coordinates. */
+interface ZoneRegion {
+  id: string;
+  bound: Bound;
+}
+
+/**
+ * The cited zones of one instance, as model-space rectangles.
+ *
+ * Ratios are of the PLOT — the element box minus the declared margin — so this
+ * is the same resolution `backgroundBoundaryCoords` does for transitions, and
+ * the reason a rule never restates a coordinate the declaration already owns.
+ * In the rule's OWN citation order, so `boundaryId` names the first zone the
+ * rule itself mentions rather than the first one the declaration happens to
+ * list.
+ *
+ * ## Resolved against the INSTANCE, variants included
+ *
+ * A variant is a second reading of the same frame, and a zone that belongs to
+ * the other reading is not drawn on this instance at all: it is not a region of
+ * it either, and measuring against a quadrant nobody can see would indict an
+ * artefact for sitting where the chart shows nothing. Same gate the renderer and
+ * the label walk pass through, read off the same props.
+ *
+ * Silence, not {@link warnOnce}: a rule citing a zone the declaration does not
+ * declare is a broken RULE and says so, but a rule citing a zone this INSTANCE
+ * does not read is a perfectly good rule looking at a frame turned to its other
+ * page.
+ */
+function zoneRegions(
+  def: FrameworkBackgroundDef,
+  zoneIds: readonly string[],
+  frame: BackgroundInstance
+): ZoneRegion[] {
+  const bound = frame.bound;
+  const plot = backgroundPlot(def, bound.w, bound.h);
+  const regions: ZoneRegion[] = [];
+  for (const id of zoneIds) {
+    const zone = (def.zones ?? []).find(candidate => candidate.id === id);
+    if (zone === undefined) continue;
+    if (!backgroundInVariant(def, zone.variants, frame.props)) continue;
+    regions.push({
+      id,
+      bound: new Bound(
+        bound.x + plot.x0 + zone.rect.x * plot.width,
+        bound.y + plot.y0 + zone.rect.y * plot.height,
+        zone.rect.w * plot.width,
+        zone.rect.h * plot.height
+      ),
+    });
+  }
+  return regions;
+}
+
+/**
+ * The instance a subject is judged against: the one that CONTAINS it.
+ *
+ * Not `attributeBackground`, and the difference is the point: "which zone is
+ * this in" only means something for an artefact that is ON the map. An element
+ * next to the card is outside every zone of it, which under `expect: 'inside'`
+ * would make it a finding of THIS rule — a second, worse-worded version of
+ * `element-in-background`, raised on artefacts the framework may perfectly well
+ * allow off the frame. Off every frame is silence here, and whether that is
+ * itself a mistake is a different rule's question.
+ *
+ * Ties go to the smaller id, never to the order a `Y.Map` was rebuilt in: the
+ * answer decides where a persisted arbitration is written.
+ */
+function containingBackground(
+  bound: Bound,
+  backgrounds: readonly BackgroundInstance[]
+): BackgroundInstance | null {
+  let found: BackgroundInstance | null = null;
+  for (const background of backgrounds) {
+    if (!background.bound.contains(bound)) continue;
+    if (found === null || background.id < found.id) found = background;
+  }
+  return found;
+}
+
+/**
+ * "Is this artefact in the region it belongs in?" — the zone half of
+ * `element-in-background`.
+ *
+ * The zones are the frame's own declared ones, named by id: a rule says
+ * `zoneIds: ['core'], expect: 'outside'` and the geometry comes from the
+ * declaration the renderer paints from. Nothing is restated, so a framework
+ * that redraws its quadrants moves its rules with them.
+ *
+ * ## Not gated on the tint
+ *
+ * A zone is SEMANTIC; its `fillVisibleProp` only decides whether it is
+ * coloured in. A user who switched the tints off to print a clean chart has not
+ * told the tool that the Core quadrant stopped being the Core quadrant — the
+ * labels, the axes and the whole point of the chart are still there.
+ *
+ * A deliberate contrast with `attachment`, which DOES read the instance's props
+ * before judging a transition, and the two are not in tension: a transition is a
+ * LINE, and a line the user has hidden is a line they cannot aim at, so the
+ * gesture the finding asks for would point at nothing. A quadrant is a REGION of
+ * a frame of reference that is still fully on screen. Judge the drawing that is
+ * on the canvas — and a hidden tint does not take a quadrant off it.
+ */
+function evaluateElementInZone(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const inZone = rule.inZone;
+  const def = rule.background;
+  if (subjectRole === undefined || inZone === undefined || def === undefined) {
+    return [];
+  }
+  if (inZone.zoneIds.length === 0) return [];
+
+  const declared = new Set((def.zones ?? []).map(zone => zone.id));
+  const unknown = inZone.zoneIds.filter(id => !declared.has(id));
+  if (unknown.length > 0) {
+    // Measuring against the zones it happened to recognise would be a DIFFERENT
+    // rule — a narrower union, a shorter list of forbidden ground — and nothing
+    // on the canvas would show the difference.
+    warnOnce(
+      `element-in-zone rule "${rule.id}" names zone(s) its background does ` +
+        `not declare (${unknown.join(', ')}) — the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const backgrounds = backgroundsOf(rule, elements);
+  // No frame on the board, no zones to be in: an artefact on blank canvas is a
+  // sketch.
+  if (backgrounds.length === 0) return [];
+
+  // Zones are a function of the frame's bounds AND of the reading it is turned
+  // to, and a board carries units of frames against hundreds of subjects:
+  // resolved once per frame, per variant. Both halves are in the key, so the
+  // entry can never outlive the reading it was built for — an id alone would be
+  // right only for as long as nobody moved this map out of one evaluation.
+  const regionsOf = new Map<string, ZoneRegion[]>();
+  const extent = inZone.measure === 'extent';
+
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+
+    const bound = el.elementBound;
+    const frame = containingBackground(bound, backgrounds);
+    if (frame === null) continue;
+
+    // Keyed by the frame AND the reading it is turned to, joined by NUL — which
+    // no id and no variant name contains — so the two halves can never fold
+    // into one entry.
+    const variant =
+      def.variantProp === undefined
+        ? ''
+        : String(frame.props[def.variantProp]);
+    const key = `${frame.id}\u0000${variant}`;
+    let regions = regionsOf.get(key);
+    if (regions === undefined) {
+      regions = zoneRegions(def, inZone.zoneIds, frame);
+      regionsOf.set(key, regions);
+    }
+    // Every cited zone belongs to the frame's OTHER reading: this instance has
+    // no such region, so there is nothing to be inside or outside of. Under
+    // `expect: 'inside'` the alternative would be indicting every subject on a
+    // frame that simply shows another page.
+    if (regions.length === 0) continue;
+
+    const centre = centreOf(bound);
+    // `inside` asks for the subject to be WHOLLY in one zone; `outside` for it
+    // to share no area with any. The border belongs to the zone in both
+    // readings, so two neighbours never disagree about an artefact on their
+    // frontier.
+    const occupies = (region: ZoneRegion) =>
+      extent ? region.bound.contains(bound) : region.bound.containsPoint(centre);
+    const touches = (region: ZoneRegion) =>
+      extent
+        ? boundsOverlap(region.bound, bound)
+        : region.bound.containsPoint(centre);
+
+    if (inZone.expect === 'inside') {
+      if (regions.some(occupies)) continue;
+      // The zone the subject missed: the nearest one, which is the one the user
+      // was aiming at and the only one a suggestion can point back to.
+      let nearest: ZoneRegion | undefined;
+      let distance = Infinity;
+      for (const region of regions) {
+        const gap = gapSquared(region.bound, bound);
+        if (gap < distance) {
+          distance = gap;
+          nearest = region;
+        }
+      }
+      const violation = raise(rule, [el.id], frame.id);
+      if (nearest !== undefined) violation.boundaryId = nearest.id;
+      violations.push(violation);
+      continue;
+    }
+
+    const trespassed = regions.find(touches);
+    if (trespassed === undefined) continue;
+    const violation = raise(rule, [el.id], frame.id);
+    violation.boundaryId = trespassed.id;
+    violations.push(violation);
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -2334,6 +3048,8 @@ const RULE_FAMILIES: Record<
   'tone-convention': evaluateToneConvention,
   'majority-fact': evaluateMajorityFact,
   'relative-order-along-axis': evaluateRelativeOrder,
+  'relation-endpoints': evaluateRelationEndpoints,
+  'element-in-zone': evaluateElementInZone,
 };
 
 /** A rule the drawing path evaluates. `moment` absent means `'realtime'`. */
@@ -2724,6 +3440,121 @@ export function ValidationProfileExtension(
   };
 }
 
+/**
+ * A framework declaring that a ROLE is one of its root instances — with no rule
+ * to derive it from.
+ *
+ * ## Why this exists
+ *
+ * Until now, "is this element a framework's frame" was read off the registered
+ * rules: a rule names the role of the background it measures against, so the
+ * answer came for free and no framework had to say the same thing twice. It is
+ * still the answer for every framework that ships a rule, and this declaration
+ * changes none of it.
+ *
+ * What it fixes is the framework that ships NONE. Estuarine has nudges and a
+ * quality panel and nothing the tool can compute — a map's constraints are
+ * negotiated, not measured — so under the derived-only gate its background was a
+ * root instance of nothing, its checklist was offered on no element, and the
+ * only way to give it one would have been to invent a rule that never fires.
+ * Data claiming an effect it does not have is the one thing this engine has
+ * refused everywhere else (see the Wardley `blocking-overridable` note); so the
+ * gate gets a second, explicit source instead.
+ *
+ * Registered from the FLAG-GATED view extension, beside the rules and the
+ * nudges: being a root instance is what the tooling is offered ON, so it goes
+ * off with the tooling and the ids already written on the element go unread
+ * until the flag comes back.
+ */
+export interface ValidationFrameworkDef {
+  /** Owning framework, `estuarine`. */
+  framework: string;
+  /** The role its background carries — the same thing a rule's `backgroundRole` names. */
+  backgroundRole: RoleId;
+  /** The framework's role vocabulary, for the inheritance walk. */
+  roles: RoleDefs;
+}
+
+/** A framework declares its root instances here, when no rule already does. */
+export const ValidationFrameworkIdentifier =
+  createIdentifier<ValidationFrameworkDef>('ValidationFramework');
+
+/**
+ * Register a framework's root-instance declaration.
+ *
+ * ```ts
+ * context.register(
+ *   ValidationFrameworkExtension([
+ *     { framework: 'estuarine', backgroundRole: 'estuarine:map', roles: ESTUARINE_ROLES },
+ *   ])
+ * );
+ * ```
+ *
+ * Keyed by framework AND role, so a framework with two kinds of board declares
+ * both and neither silently replaces the other.
+ */
+export function ValidationFrameworkExtension(
+  defs: readonly ValidationFrameworkDef[]
+): ExtensionType {
+  return {
+    setup: di => {
+      for (const def of defs) {
+        di.addImpl(
+          ValidationFrameworkIdentifier(`${def.framework}|${def.backgroundRole}`),
+          () => def
+        );
+      }
+    },
+  };
+}
+
+/** Shared answer for "this element is nobody's frame", allocated once. */
+const EMPTY_FRAMEWORKS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * The frameworks `role` is a ROOT INSTANCE of — the one test that decides
+ * whether an element is somebody's frame, and the only one.
+ *
+ * TWO sources, and they answer the same question:
+ *
+ * - a registered RULE naming this role as the background it measures against.
+ *   A rule that frames against a role is a framework saying "this is my map",
+ *   with no second registry to keep in step;
+ * - a registered {@link ValidationFrameworkDef}, for the framework whose whole
+ *   contribution is nudges and which therefore has no rule to be derived from.
+ *
+ * Pure, and exported, because every per-instance surface downstream — the
+ * profile picker, the nudge checklist, the check-up — is built on this answer,
+ * and a function taking its inputs is testable without a DI container, a
+ * surface or an editor.
+ *
+ * Empty for a neutral element, and for a background authored before its role
+ * existed: no role, no framework, no tooling.
+ */
+export function frameworksOfRole(
+  role: RoleId | undefined,
+  rules: readonly ValidationRule[],
+  frameworkDefs: readonly ValidationFrameworkDef[] = []
+): ReadonlySet<string> {
+  if (role === undefined) return EMPTY_FRAMEWORKS;
+
+  const frameworks = new Set<string>();
+  for (const rule of rules) {
+    if (rule.backgroundRole === undefined) continue;
+    if (roleIsA(role, rule.backgroundRole, rule.roles)) {
+      frameworks.add(rule.framework);
+    }
+  }
+  for (const def of frameworkDefs) {
+    if (roleIsA(role, def.backgroundRole, def.roles)) {
+      frameworks.add(def.framework);
+    }
+  }
+  // One shared answer for "this element is nobody's frame": the common case by
+  // far, on every element of every board that carries no framework.
+  return frameworks.size === 0 ? EMPTY_FRAMEWORKS : frameworks;
+}
+
 /** Recompute delay, so a drag re-evaluates once instead of once per frame. */
 const VALIDATION_DELAY_MS = 120;
 
@@ -2819,9 +3650,6 @@ export function touchesVerdict(
   }
   return false;
 }
-
-/** Shared answer for "this element is nobody's frame", allocated once. */
-const EMPTY_FRAMEWORKS: ReadonlySet<string> = new Set<string>();
 
 /**
  * Owns the evaluation and the reactive violation list. No-op until a framework
@@ -2998,6 +3826,20 @@ export class ValidationManager extends InteractivityExtension {
     return this._nudges;
   }
 
+  private _frameworks: readonly ValidationFrameworkDef[] | null = null;
+
+  /**
+   * Registered root-instance declarations, resolved once. Empty when every
+   * framework derives its frames from its rules, which is all of them but the
+   * ones that ship no rule at all — see {@link ValidationFrameworkDef}.
+   */
+  private get _activeFrameworks(): readonly ValidationFrameworkDef[] {
+    this._frameworks ??= Array.from(
+      this.std.provider.getAll(ValidationFrameworkIdentifier).values()
+    );
+    return this._frameworks;
+  }
+
   private _profiles: readonly ValidationProfile[] | null = null;
 
   /**
@@ -3022,9 +3864,18 @@ export class ValidationManager extends InteractivityExtension {
   }
 
   override mounted() {
-    // Flag off (no rule registered) => never subscribe, never evaluate.
-    // The cost of validation on a board with no framework enabled is this
-    // single length check, once.
+    // No rule registered => never subscribe, never evaluate. The cost of
+    // validation on a board where nothing can be evaluated is this single
+    // length check, once.
+    //
+    // Deliberately about the RULES alone, and not about the root-instance
+    // declarations that also feed `frameworksOf`: what the subscriptions drive
+    // is the evaluation, and a framework that registers no rule has nothing to
+    // evaluate however many frames it declares. Its tooling reaches the user
+    // through getters nobody subscribes to — `nudgesFor` for the Map quality
+    // popup, `profilesFor` for the toolbar dropdown — which are called on the
+    // element in hand at the moment of the gesture, and answer the same thing
+    // whether or not this method ever ran.
     if (this._activeRules.length === 0) return;
 
     // The surface is a SIGNAL, not a fact: it can legitimately be null at
@@ -3158,15 +4009,13 @@ export class ValidationManager extends InteractivityExtension {
   }
 
   /**
-   * The profiles selectable on `element`, i.e. those of every framework that
-   * measures against a background carrying this element's ROLE.
+   * The profiles selectable on `element`, i.e. those of every framework it is a
+   * ROOT INSTANCE of ({@link frameworksOf}).
    *
-   * Derived from the registered rules rather than from a second registry: a
-   * rule already names the role of the frame it measures against
-   * (`backgroundRole`), which is the only thing that makes an element a root
-   * instance in the engine's eyes. So the answer is gated for free — flag off,
-   * no rule, no profile offered — and a framework that ships profiles but no
-   * rule offers nothing to choose between, correctly.
+   * Gated for free: flag off, nothing registered, no framework, no profile
+   * offered. A framework that ships profiles and is a root instance of nothing —
+   * neither a rule framing against the role nor a declaration naming it —
+   * offers nothing to choose between, correctly.
    *
    * Empty for a neutral element, and for a background authored before its role
    * existed: no role, no framework, no profile.
@@ -3183,31 +4032,26 @@ export class ValidationManager extends InteractivityExtension {
   }
 
   /**
-   * The frameworks `element` is a ROOT INSTANCE of, i.e. those with a registered
-   * rule measuring against a background carrying this element's role.
+   * The frameworks `element` is a ROOT INSTANCE of — those with a registered
+   * rule measuring against a background carrying this element's role, and those
+   * that declared the role outright ({@link ValidationFrameworkDef}).
    *
    * The one test that decides whether an element is a framework's frame, and the
-   * only one: it is derived from the registered rules rather than from a second
-   * registry, so it is gated for free — flag off, no rule, no framework — and
-   * every per-instance surface (the profile picker, the nudge checklist, the
-   * check-up) agrees about what a root instance is without any of them saying so
-   * twice.
+   * only one: every per-instance surface (the profile picker, the nudge
+   * checklist, the check-up) agrees about what a root instance is without any of
+   * them saying so twice. Both sources are registered from the flag-gated view
+   * extension, so it stays gated for free — flag off, nothing registered, no
+   * framework.
    *
    * Empty for a neutral element, and for a background authored before its role
    * existed.
    */
   frameworksOf(element: GfxPrimitiveElementModel): ReadonlySet<string> {
-    const role = element.role;
-    if (role === undefined) return EMPTY_FRAMEWORKS;
-
-    const frameworks = new Set<string>();
-    for (const rule of this._activeRules) {
-      if (rule.backgroundRole === undefined) continue;
-      if (roleIsA(role, rule.backgroundRole, rule.roles)) {
-        frameworks.add(rule.framework);
-      }
-    }
-    return frameworks;
+    return frameworksOfRole(
+      element.role,
+      this._activeRules,
+      this._activeFrameworks
+    );
   }
 
   /**

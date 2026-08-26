@@ -40,12 +40,18 @@ import {
   CynefinEstuarineViewExtension,
 } from '@labre/affine-gfx-cynefin-estuarine/view';
 import { DddTemplatesViewExtension } from '@labre/affine-gfx-ddd-aggregate/view';
-import { DddContextMapViewExtension } from '@labre/affine-gfx-ddd-context-map/view';
+import {
+  DddContextMapRenderViewExtension,
+  DddContextMapViewExtension,
+} from '@labre/affine-gfx-ddd-context-map/view';
 import {
   DddCoreDomainRenderViewExtension,
   DddCoreDomainViewExtension,
 } from '@labre/affine-gfx-ddd-core-domain/view';
-import { DddEventStormingViewExtension } from '@labre/affine-gfx-ddd-event-storming/view';
+import {
+  DddEventStormingRenderViewExtension,
+  DddEventStormingViewExtension,
+} from '@labre/affine-gfx-ddd-event-storming/view';
 import {
   EdgyRenderViewExtension,
   EdgyViewExtension,
@@ -144,6 +150,8 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     BpmnRenderViewExtension,
     ...(on('bpmn') ? [BpmnViewExtension] : []),
     DddCoreDomainRenderViewExtension,
+    DddContextMapRenderViewExtension,
+    DddEventStormingRenderViewExtension,
     ...(on('ddd-event-storming') ? [DddEventStormingViewExtension] : []),
     ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),
     ...(on('ddd-context-map') ? [DddContextMapViewExtension] : []),

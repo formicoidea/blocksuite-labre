@@ -1,8 +1,11 @@
 /**
  * Visual constants for the Estuarine framework map, reproduced from the official
  * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed reference
- * space and scaled uniformly to the element bounds by the renderer. The e axis
- * is vertical & double-headed (energy), the t axis horizontal & single-headed
+ * space; the renderer reads every coordinate below as a RATIO of it and maps it
+ * onto the element's real width and height independently, so a stretched map
+ * gets a longer time axis and a taller energy axis rather than the same drawing
+ * letterboxed (see `EstuarineFit` in `./element-renderer.ts`). The e axis is
+ * vertical & double-headed (energy), the t axis horizontal & single-headed
  * (time only flows one way).
  */
 

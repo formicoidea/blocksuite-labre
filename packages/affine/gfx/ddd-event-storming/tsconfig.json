@@ -9,6 +9,7 @@
   "references": [
     { "path": "../../blocks/surface" },
     { "path": "../../ext-loader" },
+    { "path": "../connector" },
     { "path": "../ddd-shared" },
     { "path": "../group" },
     { "path": "../pointer" },

@@ -11,6 +11,22 @@ import { backgroundPlot, backgroundPoint } from './def.js';
 export type BackgroundModelLike = Record<string, unknown>;
 
 /**
+ * Complain once per distinct problem.
+ *
+ * Same shape and same reason as the validation engine's own `warnOnce`: these
+ * primitives run on the PAINT path, once per piece of the declaration per
+ * frame, so a bare `console.warn` about a broken declaration would fill the
+ * console at the refresh rate while somebody drags the frame.
+ */
+const warned = new Set<string>();
+
+function warnOnce(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[framework-background] ${reason}`);
+}
+
+/**
  * The words a label actually says.
  *
  * The user's own text wins over the vocabulary, and the vocabulary over the
@@ -49,6 +65,37 @@ export function backgroundVisible(
   return visibleProp === undefined ? true : Boolean(model[visibleProp]);
 }
 
+/**
+ * Whether a piece of the declaration belongs to the variant this INSTANCE is
+ * currently reading — the one gate washes, zones and texts all pass through.
+ *
+ * A variant is a second reading of the same frame (a Core Domain Chart read for
+ * migration rather than for investment), so it is declared once, on the piece
+ * that belongs to it, and selected by a single model prop. Declaring `variants`
+ * with no {@link FrameworkBackgroundDef.variantProp} is a broken declaration and
+ * paints nothing: there is no prop to be one of them. It also says so out loud,
+ * once — a piece that is invisible everywhere with no diagnostic is the kind of
+ * authoring mistake somebody spends an afternoon on.
+ *
+ * Absent means every variant, which is what everything meant before variants
+ * existed.
+ */
+export function backgroundInVariant(
+  def: FrameworkBackgroundDef,
+  variants: readonly string[] | undefined,
+  model: BackgroundModelLike
+): boolean {
+  if (variants === undefined) return true;
+  if (def.variantProp === undefined) {
+    warnOnce(
+      `background "${def.type}" declares variants (${variants.join(', ')}) ` +
+        `with no variantProp to select them — the piece is never painted.`
+    );
+    return false;
+  }
+  return variants.includes(String(model[def.variantProp]));
+}
+
 /** A label's clickable box in element-local coordinates (axis-aligned, padded). */
 export interface BackgroundLabelHit {
   /** The declaration id of the text. */
@@ -82,13 +129,22 @@ const HIT_PAD = 6;
  *
  * One walk, used by both the renderer and the hit tester, so a label can never
  * be drawn in one place and clicked in another.
+ *
+ * Two gates are INHERITED here rather than restated by every framework: a zone's
+ * variants reach its label, and an axis' visibility reaches its title. Both are
+ * overridden by a text that names its own.
  */
 export function backgroundTexts(
   def: FrameworkBackgroundDef
 ): BackgroundTextDef[] {
   const texts: BackgroundTextDef[] = [];
   for (const zone of def.zones ?? []) {
-    if (zone.label) texts.push(zone.label);
+    if (!zone.label) continue;
+    texts.push(
+      zone.variants === undefined || zone.label.variants !== undefined
+        ? zone.label
+        : { ...zone.label, variants: zone.variants }
+    );
   }
   for (const axis of def.axes ?? []) {
     // The title shares the axis' visibility; the end labels have their own.
@@ -124,6 +180,10 @@ export function backgroundLabelHits(
 
   for (const text of backgroundTexts(def)) {
     if (text.prop === undefined) continue;
+    // A label the instance's variant does not paint is not there to be
+    // double-clicked either: an editor opening on invisible words would offer
+    // to rename something the user cannot see.
+    if (!backgroundInVariant(def, text.variants, model)) continue;
     if (!backgroundVisible(text.visibleProp, model)) continue;
 
     const words = backgroundLabelText(text, model, translation);

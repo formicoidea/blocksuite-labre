@@ -71,6 +71,14 @@ export function groupIds(std: BlockStdScope, ids: string[]): string {
 interface ShapeOpts {
   shapeType?: 'rect' | 'ellipse' | 'diamond';
   fill: string;
+  /**
+   * Semantic role (`<framework>:<role>`) stamped on the shape, so a validation
+   * rule can recognise it. `undefined` writes NOTHING — no `role` key is
+   * persisted and the artefact stays a neutral drawing, which is what every
+   * caller that does not pass one keeps getting and what every DDD artefact
+   * created before this parameter existed already is.
+   */
+  role?: string;
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
@@ -96,9 +104,11 @@ function addShape(
   h: number,
   opts: ShapeOpts
 ): string {
-  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label } = opts;
+  const { shapeType = 'rect', fill, stroke = NO_STROKE, strokeWidth = 0, radius = 0, label, role } = opts;
   return surface.addElement({
     type: 'shape',
+    // `undefined` writes nothing: a neutral artefact keeps no `role` key.
+    role,
     shapeType,
     filled: true,
     fillColor: fill,
@@ -157,9 +167,21 @@ export function addSticky(
   std: BlockStdScope,
   cx: number,
   cy: number,
-  opts: { fill: string; text: string; label: string; shapeType?: 'rect' | 'diamond'; size?: number }
+  opts: {
+    fill: string;
+    text: string;
+    label: string;
+    shapeType?: 'rect' | 'diamond';
+    size?: number;
+    /**
+     * Stamped on the FACE, never on the shadow: the face is the artefact — it
+     * is what carries the words, what a connector attaches to and what the
+     * grammar rules read. The shadow is ink.
+     */
+    role?: string;
+  }
 ): string {
-  const { fill, text, label, shapeType = 'rect', size = STICKY_SIZE } = opts;
+  const { fill, text, label, shapeType = 'rect', size = STICKY_SIZE, role } = opts;
   const half = size / 2;
   const radius = shapeType === 'rect' ? STICKY_RADIUS : 0;
   const shadow = addShape(surface, cx - half + SHADOW_OFFSET, cy - half + SHADOW_OFFSET, size, size, {
@@ -171,6 +193,7 @@ export function addSticky(
     shapeType,
     fill,
     radius,
+    role,
     label: {
       text: label,
       color: text,
@@ -191,7 +214,8 @@ export function addBubble(
   surface: Surface,
   cx: number,
   cy: number,
-  label: string
+  label: string,
+  role?: string
 ): string {
   const { w, h, radius, fill, stroke, text } = CM_BUBBLE;
   return addShape(surface, cx - w / 2, cy - h / 2, w, h, {
@@ -199,6 +223,7 @@ export function addBubble(
     stroke,
     strokeWidth: 1.5,
     radius,
+    role,
     label: {
       text: label,
       color: text,
@@ -216,7 +241,9 @@ export function addDot(
   cx: number,
   cy: number,
   fill: string,
-  label?: string
+  label?: string,
+  /** Stamped on the ELLIPSE, never on the group: the dot is the artefact. */
+  role?: string
 ): string {
   const d = DOT_SIZE;
   const dot = addShape(surface, cx - d / 2, cy - d / 2, d, d, {
@@ -224,6 +251,7 @@ export function addDot(
     fill,
     stroke: '#1f2328',
     strokeWidth: 1.5,
+    role,
   });
   if (!label) return dot;
   const lbl = addText(surface, cx + d / 2 + 6, cy - LABEL_FONT_SIZE / 2, 170, label, LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE, 'left');
@@ -249,11 +277,19 @@ export function addConnector(
   y1: number,
   x2: number,
   y2: number,
-  opts: { rearArrow?: boolean; dashed?: boolean; stroke?: string; strokeWidth?: number } = {}
+  opts: {
+    rearArrow?: boolean;
+    dashed?: boolean;
+    stroke?: string;
+    strokeWidth?: number;
+    /** Edge role; `undefined` leaves the connector a neutral line. */
+    role?: string;
+  } = {}
 ): string {
-  const { rearArrow = false, dashed = false, stroke = LABEL_COLOR, strokeWidth = 2 } = opts;
+  const { rearArrow = false, dashed = false, stroke = LABEL_COLOR, strokeWidth = 2, role } = opts;
   return surface.addElement({
     type: 'connector',
+    role,
     mode: ConnectorMode.Straight,
     stroke,
     strokeWidth,
@@ -265,21 +301,29 @@ export function addConnector(
   });
 }
 
-/** A Team Topologies interaction-mode marker: a coloured square + centred letter. */
+/**
+ * A Team Topologies interaction-mode marker: a coloured square + centred letter.
+ *
+ * The role rides on the SQUARE, never on the group — the same call as
+ * {@link addDot}: the square is the artefact, the letter is its glyph and the
+ * word beside it is a caption. `undefined` writes nothing, so a caller that
+ * passes none keeps producing the neutral drawing it always did.
+ */
 export function addMarker(
   surface: Surface,
   std: BlockStdScope,
   cx: number,
   cy: number,
-  opts: { fill: string; letter: string; label?: string }
+  opts: { fill: string; letter: string; label?: string; role?: string }
 ): string {
-  const { fill, letter, label } = opts;
+  const { fill, letter, label, role } = opts;
   const s = MARKER_SIZE;
   const box = addShape(surface, cx - s / 2, cy - s / 2, s, s, {
     fill,
     stroke: '#1f2328',
     strokeWidth: 1.5,
     radius: 4,
+    role,
   });
   const glyph = addText(surface, cx - s / 2, cy - 9, s, letter, '#1f2328', LABEL_FONT, 15);
   const ids = [box, glyph];
@@ -352,6 +396,14 @@ export interface LegendRow {
   color: string;
   letter?: string;
   label: string;
+  /**
+   * `line` swatches only: draw the sample as two short segments rather than one
+   * bar, so a dashed pattern (Separate Ways, Big Ball of Mud, a Core Domain
+   * movement) reads in the legend the way it reads on the board. A legend that
+   * showed a solid bar for a dashed link would be telling a small lie about the
+   * notation it documents.
+   */
+  dashed?: boolean;
 }
 export interface LegendSection {
   title?: string;
@@ -359,7 +411,46 @@ export interface LegendSection {
 }
 
 /**
- * A boxed legend: a bordered container with a bold "Légende" title and bold
+ * The legend box's geometry, in one place because two callers need it: the one
+ * that DRAWS the box and the one that has to know how tall it will be before
+ * drawing it (see {@link measureLegend}).
+ */
+const LEGEND_METRICS = {
+  DEFAULT_W: 260,
+  PAD: 16,
+  TITLE_H: 32,
+  SUB_H: 26,
+  ROW_H: 28,
+  /** Swatch side (a `line` swatch is this long). */
+  SW: 16,
+} as const;
+
+/**
+ * How big the box {@link addLegend} would draw for these sections is — without
+ * drawing it. The auto-legend needs the height to drop the box bottom-left of a
+ * background, and measuring is the only honest way to get it: the box grows with
+ * the number of sub-titles and rows, which is exactly what the detection pass
+ * decides.
+ */
+export function measureLegend(
+  sections: readonly LegendSection[],
+  width?: number
+): { width: number; height: number } {
+  const { DEFAULT_W, PAD, TITLE_H, SUB_H, ROW_H } = LEGEND_METRICS;
+  let subs = 0;
+  let rows = 0;
+  for (const s of sections) {
+    if (s.title) subs++;
+    rows += s.rows.length;
+  }
+  return {
+    width: width ?? DEFAULT_W,
+    height: PAD * 2 + TITLE_H + subs * SUB_H + rows * ROW_H,
+  };
+}
+
+/**
+ * A boxed legend: a bordered container with a bold "Legend" title and bold
  * section sub-titles, each row a swatch (dot / square+letter / line) + label.
  * Shared by the Core Domain and Context Map tools. Returns the grouped id.
  */
@@ -370,19 +461,8 @@ export function addLegend(
   y: number,
   opts: { title: string; sections: LegendSection[]; width?: number }
 ): string {
-  const W = opts.width ?? 260;
-  const PAD = 16;
-  const TITLE_H = 32;
-  const SUB_H = 26;
-  const ROW_H = 28;
-  const SW = 16;
-  let subs = 0;
-  let rows = 0;
-  for (const s of opts.sections) {
-    if (s.title) subs++;
-    rows += s.rows.length;
-  }
-  const H = PAD * 2 + TITLE_H + subs * SUB_H + rows * ROW_H;
+  const { PAD, TITLE_H, SUB_H, ROW_H, SW } = LEGEND_METRICS;
+  const { width: W, height: H } = measureLegend(opts.sections, opts.width);
 
   const ids: string[] = [
     addShape(surface, x, y, W, H, {
@@ -408,6 +488,12 @@ export function addLegend(
       } else if (row.swatch === 'square') {
         ids.push(addShape(surface, sx, midY - SW / 2, SW, SW, { fill: row.color, stroke: '#1f2328', strokeWidth: 1, radius: 3 }));
         if (row.letter) ids.push(addText(surface, sx, midY - 8, SW, row.letter, '#1f2328', LABEL_FONT, 11));
+      } else if (row.dashed) {
+        // Two 6-unit segments with a 4-unit gap: the same 16 units as a solid
+        // bar, read as a dash.
+        const seg = 6;
+        ids.push(addShape(surface, sx, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
+        ids.push(addShape(surface, sx + SW - seg, midY - 2, seg, 4, { fill: row.color, radius: 1 }));
       } else {
         ids.push(addShape(surface, sx, midY - 2, SW, 4, { fill: row.color, radius: 1 }));
       }

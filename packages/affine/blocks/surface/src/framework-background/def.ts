@@ -101,6 +101,18 @@ export interface BackgroundTextDef extends BackgroundLabelSource {
   id: string;
   anchor: BackgroundAnchor;
   style: BackgroundTextStyle;
+  /**
+   * Only drawn when {@link FrameworkBackgroundDef.variantProp} reads one of
+   * these — the same semantics a wash already has
+   * ({@link BackgroundWashDef.variants}), and the reason a variant is a
+   * DECLARATION and not a second background.
+   *
+   * Absent means every variant, which is what every text meant before this
+   * existed. Distinct from {@link visibleProp}, and the two compose: a variant
+   * says which chart this text belongs to, a visible prop says whether the user
+   * has switched it off in the chart it does belong to.
+   */
+  variants?: readonly string[];
   /** Defaults to `left` for horizontal text and `center` for vertical. */
   align?: 'left' | 'center' | 'right';
   /** Drawn rotated -90°, reading bottom-to-top. */
@@ -175,6 +187,19 @@ export interface BackgroundZoneDef {
   id: string;
   /** The zone rectangle, in plot ratios. */
   rect: { x: Ratio; y: Ratio; w: Ratio; h: Ratio };
+  /**
+   * The variants this zone exists in, same semantics as
+   * {@link BackgroundWashDef.variants}: only drawn when
+   * {@link FrameworkBackgroundDef.variantProp} reads one of them, and absent
+   * means all of them.
+   *
+   * Unlike {@link fillVisibleProp}, which gates the TINT alone, this gates the
+   * zone as a whole — its {@link label} included, unless that label names its
+   * own variants. A quadrant that is not part of this reading of the chart has
+   * no name to be written on the canvas either, and the same precedent already
+   * holds one layer up: an axis' title shares the axis' visibility.
+   */
+  variants?: readonly string[];
   /** Tint painted under everything but the card. */
   fill?: BackgroundColor;
   /** Model prop gating the tint (not the label). */

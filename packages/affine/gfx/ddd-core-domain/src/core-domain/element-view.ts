@@ -1,8 +1,8 @@
+import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
 import type { CoreDomainChartElementModel } from '@labre/affine-model';
-import {
-  GfxElementModelView,
-  GfxViewInteractionExtension,
-} from '@labre/std/gfx';
+import { GfxElementModelView } from '@labre/std/gfx';
+
+import { CORE_DOMAIN_BACKGROUND } from './background';
 
 /**
  * View for the Core Domain Chart background. Registering it ensures
@@ -12,18 +12,12 @@ export class CoreDomainView extends GfxElementModelView<CoreDomainChartElementMo
   static override type: string = 'coreDomain';
 }
 
-/** Resize gating: handles hidden unless `model.resizeEnabled` (toolbar toggle). */
-export const CoreDomainInteraction = GfxViewInteractionExtension<CoreDomainView>(
-  CoreDomainView.type,
-  {
-    handleResize({ model }) {
-      return {
-        beforeResize({ set }) {
-          if (!model.resizeEnabled) {
-            set({ allowedHandlers: [] });
-          }
-        },
-      };
-    },
-  }
+/**
+ * Resize gating, driven by the declaration: the handles are offered while
+ * `model.resizeEnabled` says so (the toolbar toggle), and an element carrying no
+ * such prop falls back to `geometry.resizable` — the same behaviour the
+ * hand-written extension had, minus the hand.
+ */
+export const CoreDomainInteraction = FrameworkBackgroundInteractionExtension(
+  CORE_DOMAIN_BACKGROUND
 );

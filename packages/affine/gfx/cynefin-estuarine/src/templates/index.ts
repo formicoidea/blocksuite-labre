@@ -16,6 +16,7 @@ import {
   REF_H as EST_H,
   REF_W as EST_W,
 } from '../estuarine/consts';
+import { ESTUARINE_ROLE } from '../estuarine/roles';
 
 function sticky(x: number, y: number, text: string) {
   return {
@@ -40,6 +41,9 @@ function sticky(x: number, y: number, text: string) {
 function hexagon(x: number, y: number) {
   return {
     type: 'shape',
+    // Same role the toolbox stamps (`actions.ts`): a template must produce the
+    // map a user would have drawn by hand, roles included.
+    role: ESTUARINE_ROLE.constraint,
     shapeType: 'polygon',
     vertices: HEX_VERTICES,
     filled: true,
@@ -70,8 +74,15 @@ function tpl(name: string, preview: string, elements: SurfaceElementsJSON): Temp
 
 const ATTRS = 'width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"';
 
+// Cynefin's background carries NO role, deliberately and for good: the
+// framework is out of the validation perimeter (PO, 26/08/2026). See
+// `estuarine/roles.ts`.
 const cynefinBg = (xywh: string) => ({ type: 'cynefin', xywh });
-const estuarineBg = (xywh: string) => ({ type: 'estuarine', xywh });
+const estuarineBg = (xywh: string) => ({
+  type: 'estuarine',
+  role: ESTUARINE_ROLE.map,
+  xywh,
+});
 
 export const cynefinTemplateCategory: TemplateCategory = {
   name: 'Cynefin',

@@ -13,6 +13,7 @@ import {
   REF_H as EST_H,
   REF_W as EST_W,
 } from './estuarine/consts';
+import { ESTUARINE_ROLE } from './estuarine/roles';
 
 /**
  * Creation actions for the Cynefin / Estuarine toolbox — lifted out of
@@ -56,6 +57,10 @@ export function createEstuarineMap(std: BlockStdScope) {
   const { centerX, centerY } = gfx.viewport;
   const id = gfx.surface.addElement({
     type: 'estuarine',
+    // The map is this framework's ROOT INSTANCE: the role is what makes the
+    // Map quality checklist reachable on it (WS4). Cynefin's background gets
+    // none, on purpose — see `estuarine/roles.ts`.
+    role: ESTUARINE_ROLE.map,
     xywh: new Bound(
       centerX - width / 2,
       centerY - height / 2,
@@ -72,6 +77,9 @@ export function createConstraintHexagon(std: BlockStdScope) {
   const { centerX: cx, centerY: cy } = gfx.viewport;
   const id = gfx.surface.addElement({
     type: 'shape',
+    // A hexagon is a plain polygon on the canvas: nothing about its geometry
+    // says "constraint". The role is the only place that does.
+    role: ESTUARINE_ROLE.constraint,
     shapeType: 'polygon',
     vertices: HEX_VERTICES,
     filled: true,

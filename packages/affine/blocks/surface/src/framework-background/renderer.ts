@@ -21,6 +21,7 @@ import {
 } from './def.js';
 import type { BackgroundModelLike } from './labels.js';
 import {
+  backgroundInVariant,
   backgroundLabelText,
   backgroundTexts,
   backgroundVisible,
@@ -123,6 +124,11 @@ export function createFrameworkBackgroundRenderer<
     const props = model as unknown as BackgroundModelLike;
     const visible = (prop: string | undefined) =>
       backgroundVisible(prop, props);
+    // Which READING of the frame this instance is showing. Washes, zones and
+    // texts all name the variants they belong to, and a declaration that names
+    // none belongs to every one of them.
+    const inVariant = (variants: readonly string[] | undefined) =>
+      backgroundInVariant(def, variants, props);
 
     // The host's catalogue, resolved once per paint. Absent in a bare unit
     // test (the renderer is called with three arguments) and absent in a host
@@ -206,10 +212,8 @@ export function createFrameworkBackgroundRenderer<
     // ── 2. Washes over the plot ─────────────────────────────────────────
     const washes = def.chrome?.washes;
     if (washes?.length) {
-      const variant =
-        def.variantProp === undefined ? undefined : props[def.variantProp];
       for (const wash of washes) {
-        if (wash.variants && !wash.variants.includes(String(variant))) continue;
+        if (!inVariant(wash.variants)) continue;
         if (!visible(wash.visibleProp)) continue;
 
         const gradient = ctx.createLinearGradient(x0, 0, x1, 0);
@@ -225,6 +229,7 @@ export function createFrameworkBackgroundRenderer<
     // ── 3. Zone tints ───────────────────────────────────────────────────
     for (const zone of def.zones ?? []) {
       if (!zone.fill) continue;
+      if (!inVariant(zone.variants)) continue;
       if (!visible(zone.fillVisibleProp)) continue;
       ctx.fillStyle = color(zone.fill);
       ctx.fillRect(
@@ -267,6 +272,7 @@ export function createFrameworkBackgroundRenderer<
 
     // ── 6. Every text, in declaration order ─────────────────────────────
     for (const text of texts) {
+      if (!inVariant(text.variants)) continue;
       if (!visible(text.visibleProp)) continue;
       const [tx, ty] = backgroundPoint(text.anchor, plot);
       drawText(

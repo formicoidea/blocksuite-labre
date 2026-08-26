@@ -430,3 +430,202 @@ describe('i18n', () => {
     expect(renamed.text).toBe('Mine');
   });
 });
+
+/**
+ * VARIANTS: two readings of one frame, declared once.
+ *
+ * A Core Domain Chart read for migration keeps its axes, its card and its
+ * palette and swaps four quadrants for four others — so the alternative is
+ * DATA on the pieces that belong to it, selected by one model prop, and never
+ * a second background element with a second renderer to keep in step.
+ *
+ * The washes have worked this way since they landed; the cases below are the
+ * zones and the texts joining them.
+ */
+const TWO_READINGS: FrameworkBackgroundDef = {
+  type: 'variants',
+  geometry: {
+    width: 400,
+    height: 200,
+    lockAspectRatio: false,
+    resizable: true,
+    margin: { top: 0, right: 0, bottom: 0, left: 0 },
+  },
+  variantProp: 'variant',
+  chrome: {
+    palette: { ink: '#111111', classic: '#eeeeee', migration: '#ddccbb' },
+    washes: [
+      {
+        id: 'migrationWash',
+        variants: ['migration'],
+        color: '#ddccbb',
+        stops: [
+          [0, 0.5],
+          [1, 0],
+        ],
+      },
+    ],
+  },
+  zones: [
+    {
+      id: 'always',
+      rect: { x: 0, y: 0, w: 0.25, h: 1 },
+      fill: '@ink',
+      label: {
+        id: 'alwaysName',
+        fallback: 'Always',
+        anchor: { x: 0, y: 1 },
+        style: { size: 12, color: '@ink' },
+      },
+    },
+    {
+      id: 'core',
+      rect: { x: 0.25, y: 0, w: 0.25, h: 1 },
+      variants: ['classic'],
+      fill: '@classic',
+      label: {
+        id: 'coreName',
+        fallback: 'Core',
+        anchor: { x: 0.25, y: 1 },
+        style: { size: 12, color: '@ink' },
+      },
+    },
+    {
+      id: 'lastToothpaste',
+      rect: { x: 0.5, y: 0, w: 0.5, h: 1 },
+      variants: ['migration'],
+      fill: '@migration',
+      label: {
+        id: 'toothpasteName',
+        prop: 'toothpasteName',
+        fallback: 'Last toothpaste',
+        anchor: { x: 0.5, y: 1 },
+        style: { size: 12, color: '@ink' },
+      },
+    },
+  ],
+  axes: [
+    {
+      id: 'complexity',
+      orientation: 'vertical',
+      at: 0,
+      stroke: { color: '@ink', width: 1 },
+      title: {
+        id: 'complexityTitle',
+        fallback: 'Complexity',
+        anchor: { x: 0, y: 0 },
+        style: { size: 10, color: '@ink' },
+      },
+      endLabels: [
+        {
+          id: 'migrationOnly',
+          variants: ['migration'],
+          fallback: 'Risk',
+          anchor: { x: 0, y: 0.5 },
+          style: { size: 10, color: '@ink' },
+        },
+      ],
+    },
+  ],
+};
+
+describe('a declaration with two readings of the same frame', () => {
+  const said = (variant?: string) =>
+    paint(TWO_READINGS, variant === undefined ? {} : { variant }).texts.map(
+      t => t.text
+    );
+  const tints = (variant?: string) =>
+    paint(TWO_READINGS, variant === undefined ? {} : { variant }).rects.map(
+      r => r.fill
+    );
+
+  it('paints the zones of the variant the instance reads, and no others', () => {
+    // The unrestricted zone is in every reading; the other two are one each.
+    expect(tints('classic')).toEqual(['#111111', '#eeeeee']);
+    expect(tints('migration')).toEqual(['#111111', '#ddccbb']);
+  });
+
+  it('takes the zone NAME with the zone', () => {
+    // A quadrant that is not part of this reading has no name to be written on
+    // the canvas either — the same inheritance an axis' title already has.
+    expect(said('classic')).toContain('Core');
+    expect(said('classic')).not.toContain('Last toothpaste');
+    expect(said('migration')).toContain('Last toothpaste');
+    expect(said('migration')).not.toContain('Core');
+  });
+
+  it('lets a text name its own variants, wherever it sits', () => {
+    // An end label belongs to no zone and still says which reading it is for.
+    expect(said('migration')).toContain('Risk');
+    expect(said('classic')).not.toContain('Risk');
+  });
+
+  it('paints what belongs to every reading, whatever the variant says', () => {
+    for (const variant of ['classic', 'migration', undefined, 'nonsense']) {
+      expect(said(variant)).toContain('Always');
+      expect(said(variant)).toContain('Complexity');
+    }
+  });
+
+  it('paints nothing variant-bound while the instance names no variant', () => {
+    // An element created before the prop existed carries none: it reads as the
+    // pieces that belong to every variant, and nothing else — the same answer
+    // the washes have always given.
+    expect(tints()).toEqual(['#111111']);
+    expect(paint(TWO_READINGS).gradients).toEqual([]);
+    expect(paint(TWO_READINGS, { variant: 'migration' }).gradients).toEqual([1]);
+  });
+
+  it('says out loud, once, that no prop can ever select a variant', () => {
+    // A declaration naming variants with no `variantProp` paints that piece
+    // NOWHERE, in every instance, for ever — the kind of authoring mistake
+    // somebody spends an afternoon looking for. Same convention the validation
+    // engine already follows for a rule citing a zone that does not exist.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const broken: FrameworkBackgroundDef = {
+      type: 'no-prop',
+      geometry: {
+        width: 400,
+        height: 200,
+        lockAspectRatio: false,
+        resizable: true,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+      zones: [
+        { id: 'always', rect: { x: 0, y: 0, w: 0.5, h: 1 }, fill: '#111111' },
+        {
+          id: 'orphan',
+          rect: { x: 0.5, y: 0, w: 0.5, h: 1 },
+          variants: ['migration'],
+          fill: '#ddccbb',
+        },
+      ],
+    };
+
+    expect(paint(broken, { variant: 'migration' }).rects.map(r => r.fill)).toEqual([
+      '#111111',
+    ]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('variantProp'));
+
+    // Painted again, the console stays quiet: this runs once per piece per
+    // frame of a drag.
+    paint(broken, { variant: 'migration' });
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    warn.mockRestore();
+  });
+
+  it('stops offering a hidden label for in-place editing', () => {
+    // An editor opening on words the variant does not paint would offer to
+    // rename something the user cannot see.
+    expect(
+      backgroundLabelHits(TWO_READINGS, { variant: 'migration' }, 400, 200).map(
+        h => h.id
+      )
+    ).toEqual(['toothpasteName']);
+    expect(
+      backgroundLabelHits(TWO_READINGS, { variant: 'classic' }, 400, 200)
+    ).toEqual([]);
+  });
+});
