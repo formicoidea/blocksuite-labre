@@ -2244,7 +2244,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-block-table@workspace:packages/affine/blocks/table"
   dependencies:
-    "@atlaskit/pragmatic-drag-and-drop": "npm:^2.0.0"
     "@blocksuite/icons": "npm:^2.2.12"
     "@emotion/css": "npm:^11.13.5"
     "@floating-ui/dom": "npm:^1.6.13"
