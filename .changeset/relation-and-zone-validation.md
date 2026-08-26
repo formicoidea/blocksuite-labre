@@ -43,4 +43,5 @@ Finally, a background's zones and texts can name the `variants` they belong to,
 exactly as its washes already could — one declaration, two readings of the same
 frame, selected by one model prop. A zone takes its own label with it, and a
 label the current variant does not paint is no longer offered for in-place
-editing.
+editing. `element-in-zone` reads the same reading: a quadrant this instance does
+not show is not ground an artefact can be judged against.

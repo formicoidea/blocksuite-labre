@@ -576,6 +576,46 @@ describe('a declaration with two readings of the same frame', () => {
     expect(paint(TWO_READINGS, { variant: 'migration' }).gradients).toEqual([1]);
   });
 
+  it('says out loud, once, that no prop can ever select a variant', () => {
+    // A declaration naming variants with no `variantProp` paints that piece
+    // NOWHERE, in every instance, for ever — the kind of authoring mistake
+    // somebody spends an afternoon looking for. Same convention the validation
+    // engine already follows for a rule citing a zone that does not exist.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const broken: FrameworkBackgroundDef = {
+      type: 'no-prop',
+      geometry: {
+        width: 400,
+        height: 200,
+        lockAspectRatio: false,
+        resizable: true,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+      zones: [
+        { id: 'always', rect: { x: 0, y: 0, w: 0.5, h: 1 }, fill: '#111111' },
+        {
+          id: 'orphan',
+          rect: { x: 0.5, y: 0, w: 0.5, h: 1 },
+          variants: ['migration'],
+          fill: '#ddccbb',
+        },
+      ],
+    };
+
+    expect(paint(broken, { variant: 'migration' }).rects.map(r => r.fill)).toEqual([
+      '#111111',
+    ]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('variantProp'));
+
+    // Painted again, the console stays quiet: this runs once per piece per
+    // frame of a drag.
+    paint(broken, { variant: 'migration' });
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    warn.mockRestore();
+  });
+
   it('stops offering a hidden label for in-place editing', () => {
     // An editor opening on words the variant does not paint would offer to
     // rename something the user cannot see.

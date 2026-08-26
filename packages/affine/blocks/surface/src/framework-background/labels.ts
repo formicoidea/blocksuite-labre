@@ -11,6 +11,22 @@ import { backgroundPlot, backgroundPoint } from './def.js';
 export type BackgroundModelLike = Record<string, unknown>;
 
 /**
+ * Complain once per distinct problem.
+ *
+ * Same shape and same reason as the validation engine's own `warnOnce`: these
+ * primitives run on the PAINT path, once per piece of the declaration per
+ * frame, so a bare `console.warn` about a broken declaration would fill the
+ * console at the refresh rate while somebody drags the frame.
+ */
+const warned = new Set<string>();
+
+function warnOnce(reason: string): void {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(`[framework-background] ${reason}`);
+}
+
+/**
  * The words a label actually says.
  *
  * The user's own text wins over the vocabulary, and the vocabulary over the
@@ -57,7 +73,9 @@ export function backgroundVisible(
  * migration rather than for investment), so it is declared once, on the piece
  * that belongs to it, and selected by a single model prop. Declaring `variants`
  * with no {@link FrameworkBackgroundDef.variantProp} is a broken declaration and
- * paints nothing: there is no prop to be one of them.
+ * paints nothing: there is no prop to be one of them. It also says so out loud,
+ * once — a piece that is invisible everywhere with no diagnostic is the kind of
+ * authoring mistake somebody spends an afternoon on.
  *
  * Absent means every variant, which is what everything meant before variants
  * existed.
@@ -68,9 +86,14 @@ export function backgroundInVariant(
   model: BackgroundModelLike
 ): boolean {
   if (variants === undefined) return true;
-  const current =
-    def.variantProp === undefined ? undefined : model[def.variantProp];
-  return variants.includes(String(current));
+  if (def.variantProp === undefined) {
+    warnOnce(
+      `background "${def.type}" declares variants (${variants.join(', ')}) ` +
+        `with no variantProp to select them — the piece is never painted.`
+    );
+    return false;
+  }
+  return variants.includes(String(model[def.variantProp]));
 }
 
 /** A label's clickable box in element-local coordinates (axis-aligned, padded). */

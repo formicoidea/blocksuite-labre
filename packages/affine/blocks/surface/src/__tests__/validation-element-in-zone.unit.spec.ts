@@ -226,6 +226,101 @@ describe('what is measured: the centre or the whole extent', () => {
   });
 });
 
+/**
+ * VARIANTS: the same frame, read two ways.
+ *
+ * A zone belonging to the other reading is not painted on this instance, so it
+ * is not a region of it either — the renderer and the label walk pass through
+ * the same gate, and a rule measuring against a quadrant nobody can see would
+ * be indicting an artefact for sitting where the chart shows nothing.
+ */
+const TWO_READINGS: FrameworkBackgroundDef = {
+  ...CHART,
+  variantProp: 'reading',
+  zones: [
+    { id: 'generic', rect: { x: 0, y: 0, w: 0.5, h: 0.5 } },
+    // Top right in the investment reading; bottom right in the migration one.
+    {
+      id: 'core',
+      rect: { x: 0.5, y: 0, w: 0.5, h: 0.5 },
+      variants: ['investment'],
+    },
+    {
+      id: 'lastToothpaste',
+      rect: { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
+      variants: ['migration'],
+    },
+  ],
+};
+
+describe('a frame turned to one of its two readings', () => {
+  const RULE_TR: ValidationRule = {
+    ...RULE,
+    id: 'test.outsourced-core-variant',
+    background: TWO_READINGS,
+  };
+  /** Bottom right: the Last toothpaste quadrant of the migration reading. */
+  const inToothpaste = (id: string) => dot(id, [600, 700, 100, 100]);
+
+  it('measures against a zone the instance actually reads', () => {
+    expect(
+      ids(RULE_TR, [chart('c', [0, 0, 1000, 1000], { reading: 'investment' }), inCore('d1')])
+    ).toEqual(['d1']);
+  });
+
+  it('says nothing about a zone belonging to the OTHER reading', () => {
+    // The Core quadrant is not on this chart: the user is looking at the
+    // migration page, where that ground is not Core ground.
+    expect(
+      ids(RULE_TR, [chart('c', [0, 0, 1000, 1000], { reading: 'migration' }), inCore('d1')])
+    ).toEqual([]);
+  });
+
+  it('does not turn `inside` into "everything is wrong" when no cited zone is read', () => {
+    // Every cited zone gone means there is nothing to be inside OF. Indicting
+    // every subject on the frame would be the family answering a question the
+    // instance never asked.
+    expect(
+      ids(inside(RULE_TR), [
+        chart('c', [0, 0, 1000, 1000], { reading: 'migration' }),
+        inCore('d1'),
+        inGeneric('d2'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('keeps the zones that are read and drops only the others', () => {
+    // Both quadrants cited, one reading: the surviving one still judges, so the
+    // gate is per zone and not all-or-nothing.
+    const both: ValidationRule = {
+      ...RULE_TR,
+      id: 'test.either-right-hand-quadrant',
+      inZone: { zoneIds: ['core', 'lastToothpaste'], expect: 'outside' },
+    };
+    const migration = chart('c', [0, 0, 1000, 1000], { reading: 'migration' });
+
+    expect(ids(both, [migration, inCore('d1')])).toEqual([]);
+    expect(ids(both, [migration, inToothpaste('d2')])).toEqual(['d2']);
+  });
+
+  it('reads each instance on its own page', () => {
+    // Two charts on one board, turned to different readings: the regions are
+    // resolved per instance, so one cannot serve the other's.
+    const near = chart('c1', [0, 0, 1000, 1000], { reading: 'investment' });
+    const far = chart('c2', [4000, 0, 1000, 1000], { reading: 'migration' });
+
+    expect(
+      ids(RULE_TR, [near, far, inCore('d1'), dot('d2', [4600, 200, 100, 100])])
+    ).toEqual(['d1']);
+  });
+
+  it('reads an instance that names no variant as the pieces every reading has', () => {
+    // An element created before the prop existed carries none — the same answer
+    // the renderer gives it.
+    expect(ids(RULE_TR, [chart('c'), inCore('d1')])).toEqual([]);
+  });
+});
+
 describe('what the family stays silent about', () => {
   it('a subject off every frame — that is another rule’s question', () => {
     // Outside the card, a subject is outside every zone of it, which under

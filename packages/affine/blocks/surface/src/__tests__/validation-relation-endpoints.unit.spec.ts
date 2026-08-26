@@ -246,6 +246,29 @@ describe('the sentences a framework sanctions', () => {
     ).toEqual({ e1: 'bg1', e2: 'bg2' });
   });
 
+  it('attributes it to the SMALLER id when two frames contain the source', () => {
+    // A framework's own chart dropped on a big canvas frame contains the same
+    // artefact twice, and the finding carries a map-wide arbitration: taking
+    // whichever of the two the walk met first would have made where that
+    // arbitration lives depend on the order a `Y.Map` was rebuilt in.
+    const outer = element('bg-a', [0, 0, 1000, 1000], { role: 'test:frame' });
+    const inner = element('bg-z', [0, 0, 400, 400], { role: 'test:frame' });
+    const board = (...frames: GfxPrimitiveElementModel[]) => [
+      ...frames,
+      node('g', 'test:aggregate'),
+      node('c', 'test:command'),
+      edge('e1', 'g', 'c', 'test:flow'),
+    ];
+
+    expect(evaluateRules([GRAMMAR], board(inner, outer))[0].backgroundId).toBe(
+      'bg-a'
+    );
+    // ...and the very same answer from the other end of the walk.
+    expect(evaluateRules([GRAMMAR], board(outer, inner))[0].backgroundId).toBe(
+      'bg-a'
+    );
+  });
+
   it('needs no frame on the board at all', () => {
     // The frame buys attribution, never the verdict: a grammar mistake is a
     // grammar mistake on blank canvas too.
@@ -479,6 +502,34 @@ describe('two relations that may not coexist', () => {
     ).toEqual([]);
   });
 
+  it('writes the finding on ONE frame when the two ends sit on two', () => {
+    // Each relation is attributed by its OWN source node, so a couple drawn
+    // across two maps carries two frames — and the finding carries a map-wide
+    // arbitration, which has to land somewhere a reload will find it again.
+    // The smaller id, the house tie-break, whichever end each link starts from
+    // and whichever order the surface was walked in.
+    const framed: ValidationRule = { ...PAIRS, backgroundRole: 'test:frame' };
+    const straddling = (first: string, second: string) => [
+      element('bg-a', [0, 0, 1000, 1000], { role: 'test:frame' }),
+      element('bg-z', [40000, 0, 1000, 1000], { role: 'test:frame' }),
+      node('x', 'test:command'),
+      node('y', 'test:aggregate', [40050, 50]),
+      // `e1` sorts first and starts from the node on the LATER frame, which is
+      // exactly the case reading the first relation's frame gets wrong.
+      edge('e1', 'y', 'x', first),
+      edge('e2', 'x', 'y', second),
+    ];
+
+    expect(
+      evaluateRules([framed], straddling('test:conformist', 'test:acl'))[0]
+        .backgroundId
+    ).toBe('bg-a');
+    expect(
+      evaluateRules([framed], straddling('test:acl', 'test:conformist'))[0]
+        .backgroundId
+    ).toBe('bg-a');
+  });
+
   it('reports one finding for one situation, however many pairs cover it', () => {
     // A pair written on a parent role and one on its specialisation are two
     // declarations of the same requirement, not two findings.
@@ -496,6 +547,63 @@ describe('two relations that may not coexist', () => {
     expect(
       evaluateRules([twice], between('test:acl', 'test:conformist'))
     ).toHaveLength(1);
+  });
+});
+
+describe('a matrix that sanctions nothing', () => {
+  /**
+   * `allowed: []` is a matrix that says NOTHING about the shape of a relation,
+   * which is the same claim as declaring none — and emphatically not "no end is
+   * in the alphabet, so the rule never speaks". Read the second way it would
+   * silence the loop and the duplicate too, and a framework that forbids both
+   * and lists no sentence would ship a rule that can never fire.
+   */
+  const LOOPS_ONLY: ValidationRule = {
+    ...GRAMMAR,
+    id: 'test.loops-only',
+    endpoints: {
+      ...GRAMMAR.endpoints!,
+      allowed: [],
+      forbidSelfLoop: true,
+      forbidDuplicate: true,
+    },
+  };
+
+  it('judges no sentence — every relation is off nobody’s matrix', () => {
+    expect(
+      ids(LOOPS_ONLY, [
+        frame(),
+        node('g', 'test:aggregate'),
+        node('c', 'test:command'),
+        // Backwards under the real grammar, and none of an empty one's business.
+        edge('e1', 'g', 'c', 'test:flow'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('still forbids the loop', () => {
+    const [violation] = evaluateRules(
+      [LOOPS_ONLY],
+      [frame(), node('c', 'test:command'), edge('e1', 'c', 'c', 'test:flow')]
+    );
+
+    expect(violation.messageKey).toBe('com.labre.test.self-loop');
+  });
+
+  it('still forbids the copy', () => {
+    const violations = evaluateRules(
+      [LOOPS_ONLY],
+      [
+        frame(),
+        node('c', 'test:command'),
+        node('g', 'test:aggregate'),
+        edge('e1', 'c', 'g', 'test:flow'),
+        edge('e2', 'c', 'g', 'test:flow'),
+      ]
+    );
+
+    expect(violations.map(v => v.elementIds.join('+'))).toEqual(['c+e2+g']);
+    expect(violations[0].messageKey).toBe('com.labre.test.duplicate');
   });
 });
 

@@ -28,6 +28,7 @@ import {
   backgroundTransitionVisibleProps,
 } from '../framework-background/facts.js';
 import type { BackgroundModelLike } from '../framework-background/labels.js';
+import { backgroundInVariant } from '../framework-background/labels.js';
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import { Overlay, OverlayIdentifier } from '../renderer/overlay.js';
 import type { RoughCanvas } from '../utils/rough/canvas.js';
@@ -974,16 +975,27 @@ export function backgroundElementIds(
  * Same question `evaluateElementInBackground` answers inline, asked by the
  * families whose subjects normally ARE on the map — an inertia bar, an arrow, a
  * pair of overlapping labels. Ties go to the smaller id so a persisted
- * arbitration never depends on the order a `Y.Map` was rebuilt in.
+ * arbitration never depends on the order a `Y.Map` was rebuilt in — on BOTH
+ * halves of the question: a small chart dropped on a big one contains the same
+ * artefact twice, and returning whichever of the two the walk met first would
+ * have made the promise above true only of the near miss. Same walk and same
+ * tie-break as {@link containingBackground}, which asks the containment half
+ * alone.
  */
 function attributeBackground(
   bound: Bound,
   backgrounds: readonly BackgroundInstance[]
 ): BackgroundInstance | null {
+  let containing: BackgroundInstance | null = null;
   let nearest: BackgroundInstance | null = null;
   let nearestDistance = Infinity;
   for (const background of backgrounds) {
-    if (background.bound.contains(bound)) return background;
+    if (background.bound.contains(bound)) {
+      if (containing === null || background.id < containing.id) {
+        containing = background;
+      }
+      continue;
+    }
     const distance = gapSquared(background.bound, bound);
     if (
       distance < nearestDistance ||
@@ -995,7 +1007,7 @@ function attributeBackground(
       nearest = background;
     }
   }
-  return nearest;
+  return containing ?? nearest;
 }
 
 /**
@@ -2330,7 +2342,8 @@ function evaluateMajorityFact(
 }
 
 /**
- * The two ids a typed edge BINDS, or `null`.
+ * The two ids a typed edge points at, or `null` — the EXTRACTION alone, with no
+ * opinion on what the pair means.
  *
  * Duck-typed exactly like {@link elementPath}, and for the same reason: the
  * engine knows roles and geometry, and must not import a connector model. An
@@ -2340,16 +2353,29 @@ function evaluateMajorityFact(
  * tool over empty canvas produces such an edge at any time, and a palette
  * sample of a stroke style is one by construction. An edge that relates nothing
  * is never evaluated.
+ *
+ * Whether a SELF-LOOP is one of the answers is a policy, and each family states
+ * its own on top of this: see {@link boundEnds} and {@link endpointIds}.
  */
-function boundEnds(el: unknown): [string, string] | null {
+function rawEndpointIds(el: unknown): [string, string] | null {
   const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
   const source = edge.source?.id;
   const target = edge.target?.id;
   if (typeof source !== 'string' || typeof target !== 'string') return null;
-  // A self-loop states nothing about an order: it is one element, compared with
-  // itself, and no move can ever resolve it.
-  if (source === target) return null;
   return [source, target];
+}
+
+/**
+ * The two ids a typed edge BINDS, self-loops excluded.
+ *
+ * A self-loop states nothing about an ORDER: it is one element, compared with
+ * itself, and no move can ever resolve the finding — so the families that read
+ * a layout treat it exactly like an edge that relates nothing.
+ */
+function boundEnds(el: unknown): [string, string] | null {
+  const ends = rawEndpointIds(el);
+  if (ends === null || ends[0] === ends[1]) return null;
+  return ends;
 }
 
 /**
@@ -2457,7 +2483,7 @@ function evaluateRelativeOrder(
 
 /**
  * The two ids a typed edge points at, SELF-LOOP INCLUDED — the one difference
- * with {@link boundEnds}, and the reason this family does not reuse it.
+ * with {@link boundEnds}, and the reason this family reads the raw pair.
  *
  * `boundEnds` answers `null` for an edge whose two ends are the same element,
  * because an order rule genuinely has nothing to say about one: it would be
@@ -2467,13 +2493,7 @@ function evaluateRelativeOrder(
  * exists to arbitrate. Folding the loop into the null here would make that flag
  * unreachable, silently.
  */
-function endpointIds(el: unknown): [string, string] | null {
-  const edge = el as { source?: { id?: unknown }; target?: { id?: unknown } };
-  const source = edge.source?.id;
-  const target = edge.target?.id;
-  if (typeof source !== 'string' || typeof target !== 'string') return null;
-  return [source, target];
-}
+const endpointIds = rawEndpointIds;
 
 /**
  * The roles the sanctioned sentences speak of — the ALPHABET of the rule. See
@@ -2581,12 +2601,64 @@ function evaluateRelationEndpoints(
   if (edges.length === 0) return [];
 
   const backgrounds = backgroundsOf(rule, elements);
-  const allowed = endpoints.allowed;
+  // An EMPTY matrix is a matrix that says nothing, which is the same claim as
+  // declaring none — the reading `allowed`'s own header gives it — so it is
+  // normalised to `undefined` here rather than left to mean an empty alphabet.
+  // Left as one it would silence the rule WHOLE, self-loops and duplicates
+  // included, since every end is outside an alphabet of no roles: exactly the
+  // opposite of what a framework that lists no sentence and forbids loops
+  // asked for. A matrix says nothing about the other three verdicts; it never
+  // switches them off.
+  const allowed =
+    endpoints.allowed === undefined || endpoints.allowed.length === 0
+      ? undefined
+      : endpoints.allowed;
   const alphabet = allowed === undefined ? null : endpointAlphabet(allowed);
-  const speaks = (role: RoleId | undefined): boolean =>
-    alphabet === null ||
-    (role !== undefined &&
-      alphabet.some(known => roleIsA(role, known, rule.roles)));
+
+  // `roleIsA` walks a parent chain, and the two questions below ask it about
+  // the same handful of roles once per edge on the board — a Context Mapping
+  // board draws one vocabulary a hundred times over. Memoised for the duration
+  // of THIS pass and no longer: the precedent is `evaluateNoOverlap`, which
+  // precomputes each subject's slot memberships once instead of re-asking per
+  // couple.
+  const spoken = new Map<RoleId, boolean>();
+  const speaks = (role: RoleId | undefined): boolean => {
+    if (alphabet === null) return true;
+    if (role === undefined) return false;
+    const memo = spoken.get(role);
+    if (memo !== undefined) return memo;
+    const answer = alphabet.some(known => roleIsA(role, known, rule.roles));
+    spoken.set(role, answer);
+    return answer;
+  };
+
+  // Keyed by the whole triplet of roles, joined by NUL — which no vocabulary
+  // contains — so no two sentences can ever fold into one answer.
+  const sanctioned = new Map<string, boolean>();
+  const inMatrix = (
+    edgeRole: RoleId,
+    sourceRole: RoleId | undefined,
+    targetRole: RoleId | undefined
+  ): boolean => {
+    const key = `${edgeRole}\u0000${sourceRole}\u0000${targetRole}`;
+    const memo = sanctioned.get(key);
+    if (memo !== undefined) return memo;
+    const answer = allowed!.some(
+      triplet =>
+        roleIsA(edgeRole, triplet.edge, rule.roles) &&
+        roleIsA(sourceRole, triplet.source, rule.roles) &&
+        roleIsA(targetRole, triplet.target, rule.roles)
+    );
+    sanctioned.set(key, answer);
+    return answer;
+  };
+
+  const exclusivePairs = endpoints.exclusivePairs ?? [];
+  // Hoisted above the walk: the pair bookkeeping is a `DrawnRelation`, a sorted
+  // id list and a map entry PER EDGE, and a rule that judges sentences only
+  // would have allocated all three just to drop them. This runs on the gesture
+  // path, inside the 16 ms the drawing has.
+  const needsPairs = endpoints.forbidDuplicate === true || exclusivePairs.length > 0;
 
   const violations: Violation[] = [];
   // Every relation drawn between one UNORDERED pair of elements, which is the
@@ -2607,27 +2679,34 @@ function evaluateRelationEndpoints(
     // A node, not the edge's own box: the box of a diagonal link spans both
     // ends and would attribute a relation to whichever map its corner grazes.
     const frameId = attributeBackground(source.elementBound, backgrounds)?.id;
-    const ids = namedElements([edge.id, sourceId, targetId]);
 
     if (sourceId === targetId) {
       if (endpoints.forbidSelfLoop) {
-        violations.push(raise(rule, ids, frameId, endpoints.selfLoop ?? rule));
+        violations.push(
+          raise(
+            rule,
+            namedElements([edge.id, sourceId, targetId]),
+            frameId,
+            endpoints.selfLoop ?? rule
+          )
+        );
       }
       continue;
     }
 
-    if (
-      allowed !== undefined &&
-      !allowed.some(
-        triplet =>
-          roleIsA(role, triplet.edge, rule.roles) &&
-          roleIsA(source.role, triplet.source, rule.roles) &&
-          roleIsA(target.role, triplet.target, rule.roles)
-      )
-    ) {
-      violations.push(raise(rule, ids, frameId, endpoints.offMatrix ?? rule));
+    if (allowed !== undefined && !inMatrix(role, source.role, target.role)) {
+      violations.push(
+        raise(
+          rule,
+          namedElements([edge.id, sourceId, targetId]),
+          frameId,
+          endpoints.offMatrix ?? rule
+        )
+      );
       continue;
     }
+
+    if (!needsPairs) continue;
 
     const key =
       sourceId < targetId
@@ -2639,17 +2718,14 @@ function evaluateRelationEndpoints(
       role,
       sourceId,
       targetId,
-      ids,
+      ids: namedElements([edge.id, sourceId, targetId]),
       ...(frameId !== undefined ? { frameId } : {}),
     };
     if (drawn === undefined) between.set(key, [relation]);
     else drawn.push(relation);
   }
 
-  const exclusivePairs = endpoints.exclusivePairs ?? [];
-  if (!endpoints.forbidDuplicate && exclusivePairs.length === 0) {
-    return violations;
-  }
+  if (!needsPairs) return violations;
 
   // Sorted, so a board holding several offending pairs always reports them the
   // same way whichever order the surface happened to be walked in.
@@ -2704,11 +2780,22 @@ function evaluateRelationEndpoints(
           // BOTH relations and both ends: either link is a legitimate
           // resolution, so neither may be left out of the finding, and the pair
           // of artefacts is what makes the two of them one situation.
+          //
+          // The frame is the SMALLER of the two the relations were attributed
+          // to — the house tie-break, and it has to be one: each relation is
+          // attributed by its OWN source node, so two links drawn from opposite
+          // ends can name two frames, and taking the first one's would write a
+          // map-wide arbitration wherever the surface happened to be walked.
+          const frameId =
+            b.frameId !== undefined &&
+            (a.frameId === undefined || b.frameId < a.frameId)
+              ? b.frameId
+              : a.frameId;
           violations.push(
             raise(
               rule,
               namedElements([a.id, b.id, a.sourceId, a.targetId]),
-              a.frameId,
+              frameId,
               endpoints.exclusive ?? rule
             )
           );
@@ -2735,17 +2822,32 @@ interface ZoneRegion {
  * In the rule's OWN citation order, so `boundaryId` names the first zone the
  * rule itself mentions rather than the first one the declaration happens to
  * list.
+ *
+ * ## Resolved against the INSTANCE, variants included
+ *
+ * A variant is a second reading of the same frame, and a zone that belongs to
+ * the other reading is not drawn on this instance at all: it is not a region of
+ * it either, and measuring against a quadrant nobody can see would indict an
+ * artefact for sitting where the chart shows nothing. Same gate the renderer and
+ * the label walk pass through, read off the same props.
+ *
+ * Silence, not {@link warnOnce}: a rule citing a zone the declaration does not
+ * declare is a broken RULE and says so, but a rule citing a zone this INSTANCE
+ * does not read is a perfectly good rule looking at a frame turned to its other
+ * page.
  */
 function zoneRegions(
   def: FrameworkBackgroundDef,
   zoneIds: readonly string[],
-  bound: Bound
+  frame: BackgroundInstance
 ): ZoneRegion[] {
+  const bound = frame.bound;
   const plot = backgroundPlot(def, bound.w, bound.h);
   const regions: ZoneRegion[] = [];
   for (const id of zoneIds) {
     const zone = (def.zones ?? []).find(candidate => candidate.id === id);
     if (zone === undefined) continue;
+    if (!backgroundInVariant(def, zone.variants, frame.props)) continue;
     regions.push({
       id,
       bound: new Bound(
@@ -2838,8 +2940,11 @@ function evaluateElementInZone(
   // sketch.
   if (backgrounds.length === 0) return [];
 
-  // Zones are a function of the frame's bounds, and a board carries units of
-  // frames against hundreds of subjects: resolved once per frame.
+  // Zones are a function of the frame's bounds AND of the reading it is turned
+  // to, and a board carries units of frames against hundreds of subjects:
+  // resolved once per frame, per variant. Both halves are in the key, so the
+  // entry can never outlive the reading it was built for — an id alone would be
+  // right only for as long as nobody moved this map out of one evaluation.
   const regionsOf = new Map<string, ZoneRegion[]>();
   const extent = inZone.measure === 'extent';
 
@@ -2852,11 +2957,24 @@ function evaluateElementInZone(
     const frame = containingBackground(bound, backgrounds);
     if (frame === null) continue;
 
-    let regions = regionsOf.get(frame.id);
+    // Keyed by the frame AND the reading it is turned to, joined by NUL — which
+    // no id and no variant name contains — so the two halves can never fold
+    // into one entry.
+    const variant =
+      def.variantProp === undefined
+        ? ''
+        : String(frame.props[def.variantProp]);
+    const key = `${frame.id}\u0000${variant}`;
+    let regions = regionsOf.get(key);
     if (regions === undefined) {
-      regions = zoneRegions(def, inZone.zoneIds, frame.bound);
-      regionsOf.set(frame.id, regions);
+      regions = zoneRegions(def, inZone.zoneIds, frame);
+      regionsOf.set(key, regions);
     }
+    // Every cited zone belongs to the frame's OTHER reading: this instance has
+    // no such region, so there is nothing to be inside or outside of. Under
+    // `expect: 'inside'` the alternative would be indicting every subject on a
+    // frame that simply shows another page.
+    if (regions.length === 0) continue;
 
     const centre = centreOf(bound);
     // `inside` asks for the subject to be WHOLLY in one zone; `outside` for it
