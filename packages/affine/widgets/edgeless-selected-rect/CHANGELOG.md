@@ -1,5 +1,204 @@
 # @labre/affine-widget-edgeless-selected-rect
 
+## 0.32.0
+
+### Patch Changes
+
+- 9453013: Selection, handles and remote cursors follow their element inside a scaled editor
+
+  An editor embedded in a host that scales it — a synced edgeless doc opened
+  inside another document — paints its blocks in the container's already scaled
+  space. The overlays drawn over those blocks were instead placed in real screen
+  pixels, so the container scaled them a second time: the selection rectangle, the
+  resize and element handles, the link chip, the remote cursors and the shape text
+  editor all drifted away from the shapes they belong to, and further away with
+  every scroll and zoom.
+
+  Every one of them now states its placement the way a block states its own, so
+  they sit on their element again. A standalone editor, where the host applies no
+  scale, is unaffected.
+
+- 695471f: The auto-complete arrow only appears on what the click can actually complete
+
+  Clicking an auto-complete arrow on a Wardley map threw
+  `TypeError: Cannot read properties of undefined (reading 'background')` and left
+  the canvas untouched. The arrow was being offered on a **group**: a Wardley
+  component is a `wardleyNode` plus its text label bundled together, and selecting
+  it on the canvas selects that group, not the node. `createEdgelessElement` then
+  took "not a shape" to mean "therefore a note" and read `current.props.background`
+  — a surface element has no `props` bag at all.
+
+  **Two levels, so the crash cannot come back by another door.**
+  `createEdgelessElement` now recognises the two things it can clone — a shape
+  (subclasses included: Wardley, EDGY and BPMN nodes all pass) and a note block —
+  and returns `null` for anything else instead of reading a `props` bag on faith.
+  The caller already treated a falsy id as "nothing to complete".
+
+  **And the arrows now agree with the click.** The render guard hung on a stale
+  hover flag rather than on the predicate the click handlers use, so any selected
+  element grew arrows as soon as the pointer left it — a group, a free text label,
+  a framework background, or the first element of a multi-selection. It is now the
+  same single predicate throughout: exactly one element selected, it is the one the
+  widget holds, and it is a shape or a note. The dead hover flag and the pointer
+  tracking that fed it are gone.
+
+  Nothing changes for a shape (four arrows, click clones it and draws the
+  connector), a note (two arrows, click adds a note), a mindmap node (its sub- and
+  sibling-node buttons), or the drag-out gesture that opens the shape picker. A
+  lone Wardley node — selected by entering the group — is a shape, and completes
+  into a properly typed Wardley clone rather than a plain rectangle.
+
+- 0ddfd47: fix(edgeless): a readonly board refuses element moves, resizes and tool arming
+
+  Surface-element writes go through `store.transact`. `SurfaceBlockModel` does
+  throw on readonly, but that is an exception raised at the bottom of a gesture:
+  several paths never reach it, and the ones that do surface an uncaught error on
+  `window` instead of a clean refusal.
+
+  What actually changes on a readonly board:
+
+  - **The mouse no longer moves anything.** `DefaultTool.dragStart` went straight
+    to `handleElementMove`, which writes `xywh` through a `@field()` accessor —
+    raw `store.transact`, no crud, no exception. A drag on a readonly board wrote
+    into the Yjs document exactly as on an editable one. The refusal sits in
+    `InteractivityManager.handleElementMove` / `handleElementResize` /
+    `handleElementRotate` / `requestElementClone` — the layer that actually
+    writes, so no gesture entry point can go round it. Panning, rubber-band
+    selection and plain selection stay available; moving content, alt-drag
+    cloning and resizing do not.
+  - **`edgeless-selected-rect` drops its 8 resize handles.** The gate existed but
+    only ran on selection change, so a board switched to readonly while something
+    was selected kept its handles — and dragging one wrote.
+  - **Creation tools refuse to arm** (`p`, `Shift-p`, `c`, `t`, `n`, `f`, `e`,
+    `s`). They call `surface.addElement` / `store.addBlock` directly and raised
+    uncaught `BlockSuiteError`s on ordinary keystrokes. The whitelist lives on
+    `ToolController.setTool`, the single bottleneck every entry point goes
+    through — keyboard managers, the toolbar and its mixins, senior buttons —
+    because `s` is bound by `shape-draggable.ts` straight onto the mixin and
+    never reaches the edgeless keyboard manager. Selection, pan and the
+    presentation navigator still switch.
+  - **`createGroupFromSelectedCommand` / `ungroupCommand`** refuse **before**
+    their `removeChild` calls, which used to run even though the follow-up
+    `addElement` would refuse — orphaning the selection out of its parent group,
+    or dissolving the group outright on `Shift+Mod+G`. This is the one
+    destructive bug of the set.
+  - **Mindmap keyboard writes**: node text overwrite on letter-typing (both the
+    wrapped hotkeys and the generic keyDown listener), `addNode` on Enter/Tab,
+    arrow-key element moves (arrow **navigation** stays), Backspace/Delete.
+  - **`ValidationManager.setException` / `setProfile` / `revokeExceptionsOn`**
+    return empty/`false`; every caller gates its `track` on those returns, so a
+    write that never happened is never reported.
+  - **`applyLastStyle`**: no targets, so the command's `when` fails and the
+    keystroke falls through to the `redo-windows` alias that shares Mod+Y on
+    Windows.
+
+  `EdgelessCRUDExtension` (`addElement` / `updateElement` / `deleteElements` /
+  `removeElement`) and `EdgelessRootService.removeElement` / `reorderElement` now
+  refuse with a `console.error` instead of letting the model throw — the same
+  contract as `store.updateBlock` / `deleteBlock` / `moveBlocks`. That is a change
+  of failure MODE, not a new refusal: the surface model already said no.
+
+  `framework/store` and `sync` are untouched.
+
+- 5a16359: Auto-complete puts the caret in the note it just created, and its panel where it was clicked
+
+  Completing a shape into a note asked the browser to place the caret at a point
+  measured from the editor's own top left corner, while the browser reads such a
+  point from the window's. Wherever the editor is not flush against the window —
+  a sidebar, a header, a panel — the caret was dropped that far away from the new
+  note, and typing went nowhere. The panel of shape and note choices was opened
+  from the pointer with the same mismatch, in the opposite direction.
+
+  Both now speak the coordinates the browser does. The panel also states its own
+  position, and the edges it keeps away from, in the space of the container an
+  embedding host may have scaled, so it stays on screen there too.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [ff5f060]
+- Updated dependencies [913da26]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [aa08529]
+- Updated dependencies [6417a2f]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [9fe5773]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [89b90e9]
+- Updated dependencies [463989f]
+- Updated dependencies [f7f23b2]
+- Updated dependencies [751ac44]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [b93b43c]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [630633b]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [be100e3]
+- Updated dependencies [ff3a5f7]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [86e7562]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [dc5261e]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [3e1665b]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [1c37478]
+- Updated dependencies [b684b4c]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [3ac3587]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b940cf]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [184c412]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [c2735aa]
+- Updated dependencies [346b5d9]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [061729e]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/affine-block-note@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-gfx-shape@0.32.0
+  - @labre/affine-gfx-connector@0.32.0
+  - @labre/affine-block-surface@0.32.0
+  - @labre/affine-gfx-text@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-block-frame@0.32.0
+  - @labre/affine-inline-reference@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

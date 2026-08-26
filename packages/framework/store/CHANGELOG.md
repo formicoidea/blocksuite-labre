@@ -1,5 +1,61 @@
 # @labre/store
 
+## 0.32.0
+
+### Patch Changes
+
+- a2b7c44: A card shows when the doc it points to is in the trash
+
+  A doc the host has moved to its trash stays in the workspace: it still loads
+  and still syncs. Linked-doc and synced-doc cards took that at face value and
+  kept showing the title, the preview and the content of a doc the reader can no
+  longer find anywhere — only a doc removed from the workspace outright read as
+  deleted.
+
+  Doc metadata now carries an optional `trash` flag, set by the host alongside
+  its own trash, and both cards read it: a trashed target renders the same
+  deleted card as a missing one, and a synced card stops embedding its content.
+  The flag is optional and stored key by key, so documents written before it
+  load unchanged and older readers ignore it.
+
+  Both cards also refresh themselves when the doc list changes, instead of only
+  refreshing the "updated at" date, so trashing or restoring a doc updates the
+  cards pointing at it without a reload — and a synced card recomputes whether
+  its target is empty after each refresh.
+
+- 54488cd: An optional prop on a flat block answers before it is ever filled in
+  A flat block's props each get a companion signal (`title# @labre/store
+, `cols# @labre/store
+  , …) built
+  from what the document actually stores. A prop declared with `undefined` as its
+  default is, by design, never written to the document, so it had no entry to be
+  built from: `model.props.foo# @labre/store
+ was simply missing until something assigned
+  `model.props.foo`a value. Anything that wanted to observe such a prop — or set
+  it through its signal — from the moment the block loaded hit`undefined` instead
+  of a signal.
+  Optional props now get their signal at load time, holding `undefined` until the
+  prop is given a value, and assigning through it writes to the document like any
+  other prop. What is stored is unchanged: a prop with an `undefined` default is
+  still never written, and defaults that do have a value are still applied at the
+  same point, so documents written before this change load and round-trip
+  byte-for-byte identically.
+- 025d6f5: The first child of a block no longer reports the last one as its previous sibling
+
+  `DocCRUD.getPrev` read the previous sibling as `children.at(index - 1)`. For the
+  first child that is `at(-1)`, which JavaScript resolves from the end of the
+  array: the first child answered the _last_ child of the same parent instead of
+  nothing. The sibling walk therefore closed into a ring rather than stopping, so
+  anything built on it could loop or reach past the start of a block's children.
+
+  The first child now answers `null`. `getNext` was already correct — `at(length)`
+  is simply out of range — and is left as it is.
+
+- Updated dependencies [5ac0c68]
+- Updated dependencies [5edd916]
+  - @labre/global@0.32.0
+  - @labre/sync@0.32.0
+
 ## 0.31.0
 
 ### Minor Changes

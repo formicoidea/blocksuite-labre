@@ -1,5 +1,127 @@
 # @labre/affine-widget-drag-handle
 
+## 0.32.0
+
+### Patch Changes
+
+- c5c07b9: A board opens and pans with less work
+
+  Opening an editor downloaded every canvas font before anything else, even the
+  faces no document on screen asks for. The fonts a board paints with on its
+  first frame are now fetched straight away and the rest arrive a few seconds
+  later, four at a time, while the browser is idle. The same face registered
+  twice is now registered once. Nothing observable changes: the canvas is still
+  repainted once every font is in.
+
+  Panning or zooming an edgeless board recomputed the drag handle's position
+  twice per frame and rewrote six inline styles each time, whether or not the
+  handle had moved. The position is now measured once, applied at most once per
+  frame, and written only where it actually differs.
+
+  Hovering in page mode ran a note lookup on every straight pointer move and
+  skipped it on every diagonal one — a guard that had the test inverted. The
+  lookup now runs when the pointer actually reaches a different block, so the
+  handle also follows a diagonal move.
+
+- 463989f: Inline title editors and the drag handle follow their element inside a scaled editor
+
+  An editor embedded in a host that scales it — a synced edgeless doc opened
+  inside another document — paints its elements in the container's already
+  scaled space. The text editor mounted on a canvas text, on a group title and
+  on a frame title, and the drag handle's hover area, were instead placed in
+  real screen pixels, so the container scaled them a second time: clicking a
+  title opened its editor somewhere else on the board, and the handle appeared
+  away from the block it drags.
+
+  Each of them now states its placement the way the element it sits on states
+  its own. A standalone editor, where the host applies no scale, is unaffected.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [913da26]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [6417a2f]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [9fe5773]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [89b90e9]
+- Updated dependencies [f7f23b2]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [c4c9b9e]
+- Updated dependencies [cef3b1a]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [630633b]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [86e7562]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [3e1665b]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [1c37478]
+- Updated dependencies [b684b4c]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [4668921]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [3ac3587]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b940cf]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [184c412]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [c2735aa]
+- Updated dependencies [346b5d9]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [061729e]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-block-note@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-block-surface@0.32.0
+  - @labre/affine-block-callout@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-block-embed@0.32.0
+  - @labre/affine-block-list@0.32.0
+  - @labre/affine-block-paragraph@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

@@ -1,5 +1,88 @@
 # @labre/affine-block-latex
 
+## 0.32.0
+
+### Patch Changes
+
+- 865abd4: A wide equation can be scrolled through again
+
+  An equation block centred its rendered formula in a box that scrolls
+  sideways, so a long equation was shrunk to its own width and the part that
+  overflowed sat outside the scrollable area — you could see it was cut off but
+  never reach it. The formula now takes the full width of the block; short
+  equations stay centred exactly as before.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [913da26]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [6417a2f]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [9fe5773]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [3b30d8f]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [b684b4c]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5a61fb2]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-block-note@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-inline-latex@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-widget-slash-menu@0.32.0
+  - @labre/affine-rich-text@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

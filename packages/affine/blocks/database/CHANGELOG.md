@@ -1,5 +1,134 @@
 # @labre/affine-block-database
 
+## 0.32.0
+
+### Patch Changes
+
+- 8ded589: A database can now be read as a month
+
+  Until now a database offered two shapes: a table and a kanban board. Neither
+  of them answers the question a transformation roadmap asks first — what is
+  happening in March? A calendar view now sits beside them: pick it from the
+  slash menu ("Calendar View"), from the view switcher, or convert an existing
+  table or kanban into one and keep its filters and sort.
+
+  The view maps one date property to the grid and, optionally, a second one to
+  close a range, so a workstream that runs from the 4th to the 19th is drawn as
+  a single bar across the weeks it spans rather than as a dot on its start day.
+  Cards can be dragged from one day to another (a range keeps its length), a
+  range can be stretched by its edges, and clicking an empty day creates a row
+  already dated. Months are navigated with the arrows or the "Today" button.
+
+  Hosts can feed the same grid from outside the document by registering a
+  `CalendarExternalSourceProvider`; the editor ships none, so a standalone
+  playground simply shows the database's own rows.
+
+- acbec17: A link pasted into a database cell no longer swallows the sentence around it
+
+  Pasting into a title or rich-text cell was all-or-nothing: if the whole
+  clipboard happened to parse as a URL the entire paste became one link,
+  otherwise nothing was linked at all. So `docs:https://example.com` arrived as
+  flat text with a dead address in it, and `(https://example.com).` became a link
+  that quietly included the closing bracket and the full stop.
+
+  The paste is now read segment by segment: prose stays prose, addresses become
+  links, and the punctuation hugging an address stays outside it. A paste that is
+  nothing but a single address still resolves to a linked doc when it points at
+  one, exactly as before. Title cells also claim the paste before the document
+  clipboard sees it, so a paste there can no longer leak into the page.
+
+- 9bf1d3e: Enter on a database title no longer leaves a phantom record behind
+
+  Validating the title of a database with Enter — the one gesture everybody makes
+  after typing a name — prepended a row to the table. The user got a title and an
+  empty record they never asked for, at the top of their data, and the field kept
+  the caret so nothing signalled what had happened.
+
+  Enter now does what it looks like it does: it commits the title and leaves the
+  field. Adding a record stays where it belongs, on the "+" affordances of the
+  view. An Enter that only confirms an IME composition is still ignored, as
+  before.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [f832f27]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [6417a2f]
+- Updated dependencies [9ffab42]
+- Updated dependencies [c6eac56]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [6264dfc]
+- Updated dependencies [c2e1020]
+- Updated dependencies [463989f]
+- Updated dependencies [ceb2761]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [d8eb24a]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [fc52023]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [9cf65a2]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5a61fb2]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/affine-widget-drag-handle@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/data-view@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-inline-preset@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-widget-slash-menu@0.32.0
+  - @labre/affine-inline-reference@0.32.0
+  - @labre/affine-rich-text@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes

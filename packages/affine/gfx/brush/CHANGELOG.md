@@ -1,5 +1,194 @@
 # @labre/affine-gfx-brush
 
+## 0.32.0
+
+### Minor Changes
+
+- 521accb: feat(blocks): flags gate tooling only — a disabled framework stays visible in documents
+
+  Block flags used to decide whether a block was registered at all. A document
+  containing a block or framework whose flag was off degraded on load: the schema
+  was missing, the block and its whole subtree silently disappeared from the
+  model, and snapshot export / copy-paste broke for the entire document.
+
+  The contract is now reversed (see `docs/adr/0009`):
+
+  - **Content is never gated.** `getAffineSchemas` and
+    `getInternalStoreExtensions` register everything unconditionally. Every
+    document opens, renders, round-trips and saves identically whatever the flags
+    say — no deletion, no downgrade, no schema-validation failure on load. Both
+    keep their `flags` parameter (now ignored) so existing calls compile
+    unchanged.
+  - **Only tooling is gated.** A flag removes the framework's senior toolbar
+    button, its submenus, its Templates-panel category and its keyboard
+    shortcuts. Turning a framework off no longer touches what is already drawn:
+    elements keep painting, stay selectable and stay editable, and an OFF → ON
+    cycle requires no re-entry of anything.
+  - Brush, Wardley, EDGY, BPMN and Cynefin/Estuarine now expose two view
+    extensions — an always-registered `…RenderViewExtension` and a flag-gated
+    `…ViewExtension` — mirroring what Mindmap and DDD Core Domain already did.
+
+  Consequence accepted: the bundle now always carries every framework's renderer,
+  so a framework can no longer ship fully "dark" behind a flag.
+
+  **BREAKING — published framework descriptors.** The four split framework
+  bundles (`@formicoidea/labre-framework-{wardley,edgy,bpmn,cynefin}`) change the
+  shape of their exported descriptor:
+
+  ```diff
+    export const wardleyFramework = {
+      flag: 'wardley',
+      telemetry: 'wardley',
+  -   viewExtension: WardleyViewExtension,
+  +   extensions: [
+  +     { viewExtension: WardleyRenderViewExtension },
+  +     { flag: 'wardley', viewExtension: WardleyViewExtension },
+  +   ],
+    } as const;
+  ```
+
+  `flag` and `telemetry` are unchanged. **`viewExtension` is removed** and is
+  deliberately not aliased: no single extension has the old
+  `flags[flag] ? register(viewExtension) : skip` semantics any more — aliasing it
+  to the gated extension would leave the renderer unregistered even with the flag
+  ON, and aliasing it to a composite would drop rendering with the flag OFF.
+
+  Host migration — register every entry in `extensions`, applying `flag` only
+  where present:
+
+  ```ts
+  const exts = wardleyFramework.extensions
+    .filter(e => !e.flag || flags[e.flag] !== false)
+    .map(e => e.viewExtension);
+  ```
+
+  `@formicoidea/labre-framework-ddd-core-domain` already shipped this list shape;
+  the three single-extension DDD bundles keep the original shape untouched.
+
+  Known residual: block view extensions (`database`, `code`, `image`, `frame`, …)
+  still bundle renderer and tooling together, so a disabled _block_ renders as
+  nothing. Its data is now safe in every case and comes back untouched when the
+  flag is re-enabled.
+
+### Patch Changes
+
+- d797f9a: Pen and highlighter strokes paint in the DOM, and every canvas element stacks where its layer says
+
+  The DOM renderer knew how to paint shapes and connectors but not brush or
+  highlighter strokes, so a board rendered through it lost every pen mark. Both
+  strokes now have a DOM renderer of their own, drawing the same path the canvas
+  renderer draws.
+
+  Stacking was decided twice and disagreed. Each element renderer set its own
+  `z-index` while a canvas layer only ever reserved a single CSS index, however
+  many elements it held — so a shape and the note stacked just above it could
+  claim the same value and overlap the wrong way round. A canvas layer now
+  reserves one index per element, exactly like a block layer, and the `z-index`
+  is written once, by the DOM renderer, for every element it paints.
+
+- 5edd916: A big board stays responsive: the canvas redraws only what changed
+
+  Every element event repainted the whole surface, and every stacking canvas was
+  allocated at full viewport size however little of it a layer occupied — on a
+  1440x900 screen at device pixel ratio 2 that is about 20 MB of pixel buffer per
+  layer, whether the layer held one shape or a hundred. Editing a large map spent
+  most of its frame budget in redraws nothing on screen could tell apart.
+
+  A stacking canvas is now sized to the bound of the elements it actually holds,
+  clipped to the viewport, and canvases freed by a layer change are pooled for
+  reuse instead of being thrown away. A change to one element marks only the
+  layer it lives in, so a pan, a zoom or a single edit no longer forces a full
+  repaint. During a drag a layer's canvas is allowed to grow but never to shrink,
+  so the dragged element does not flicker at the edge of its own canvas; the full
+  redraw comes once, when the drag ends.
+
+  The DOM renderers for brush, highlighter, shape and connector now keep the
+  nodes they already built and overwrite their attributes, instead of rebuilding
+  the whole SVG subtree on every frame — a hundred redraws of one stroke now
+  allocate two nodes in total instead of two hundred.
+
+  Alongside: a block host re-reads its stacking order when the layers change, so
+  a reorder shows immediately; sending a mindmap node backwards moves the whole
+  mindmap once rather than each selected node in turn; and a connector whose path
+  is momentarily empty answers its geometry questions instead of throwing.
+
+- Updated dependencies [832c793]
+- Updated dependencies [c5c07b9]
+- Updated dependencies [a2b7c44]
+- Updated dependencies [ff5f060]
+- Updated dependencies [1b59f3c]
+- Updated dependencies [41ab595]
+- Updated dependencies [0bfc872]
+- Updated dependencies [8ded589]
+- Updated dependencies [9e23b5b]
+- Updated dependencies [a3aa598]
+- Updated dependencies [90a9168]
+- Updated dependencies [6417a2f]
+- Updated dependencies [d797f9a]
+- Updated dependencies [9fde974]
+- Updated dependencies [d360f72]
+- Updated dependencies [50ab9ae]
+- Updated dependencies [89b90e9]
+- Updated dependencies [f7f23b2]
+- Updated dependencies [751ac44]
+- Updated dependencies [54488cd]
+- Updated dependencies [9453013]
+- Updated dependencies [b746d6b]
+- Updated dependencies [5ac0c68]
+- Updated dependencies [630633b]
+- Updated dependencies [1fa46c1]
+- Updated dependencies [0473dcb]
+- Updated dependencies [5b6e9bb]
+- Updated dependencies [86e7562]
+- Updated dependencies [492bac6]
+- Updated dependencies [72b334c]
+- Updated dependencies [30580db]
+- Updated dependencies [08e9b24]
+- Updated dependencies [5076cb8]
+- Updated dependencies [3c5c97e]
+- Updated dependencies [7c10406]
+- Updated dependencies [02797b5]
+- Updated dependencies [413fe7b]
+- Updated dependencies [724ed1c]
+- Updated dependencies [c7612da]
+- Updated dependencies [3e1665b]
+- Updated dependencies [0ddfd47]
+- Updated dependencies [3639562]
+- Updated dependencies [5d16745]
+- Updated dependencies [1c37478]
+- Updated dependencies [48e90f4]
+- Updated dependencies [5edd916]
+- Updated dependencies [5a16359]
+- Updated dependencies [025d6f5]
+- Updated dependencies [b1ed4ef]
+- Updated dependencies [985a92f]
+- Updated dependencies [b889326]
+- Updated dependencies [1efc6d5]
+- Updated dependencies [4162e4a]
+- Updated dependencies [3ac3587]
+- Updated dependencies [fad4c08]
+- Updated dependencies [7b940cf]
+- Updated dependencies [7b66d8d]
+- Updated dependencies [184c412]
+- Updated dependencies [4bb44ef]
+- Updated dependencies [30061cb]
+- Updated dependencies [c2735aa]
+- Updated dependencies [346b5d9]
+- Updated dependencies [77b0100]
+- Updated dependencies [8d33c60]
+- Updated dependencies [061729e]
+- Updated dependencies [7a3458a]
+  - @labre/std@0.32.0
+  - @labre/affine-shared@0.32.0
+  - @labre/store@0.32.0
+  - @labre/affine-components@0.32.0
+  - @labre/affine-model@0.32.0
+  - @labre/affine-block-surface@0.32.0
+  - @labre/global@0.32.0
+  - @labre/affine-widget-edgeless-toolbar@0.32.0
+  - @labre/affine-rich-text@0.32.0
+  - @labre/affine-ext-loader@0.32.0
+
 ## 0.31.0
 
 ### Patch Changes
