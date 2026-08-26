@@ -116,7 +116,7 @@ describe('the Core Domain Chart declaration', () => {
       'generic',
       'supporting-low-diff',
       'core',
-      'supporting-high-complexity',
+      'supporting-low-complexity',
     ]);
     expect(migration.map(z => z.id)).toEqual([
       'last-toothpaste',

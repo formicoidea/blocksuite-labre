@@ -134,10 +134,10 @@ function zoneLabel(
  * why `core-domain.outsourced-core` falls silent on a migration chart instead of
  * measuring against a quadrant nobody can see.
  *
- * NOTE on the ids: they are the plan's, and `supporting-high-complexity` names
- * the bottom-right quadrant — high differentiation, LOW complexity, since the
- * complexity axis runs upwards. Flagged for the PO rather than silently
- * renamed: no rule cites it, so the id is free to be corrected in one line.
+ * NOTE on the ids: `supporting-low-complexity` names the bottom-right quadrant
+ * — high differentiation, LOW complexity, since the complexity axis runs
+ * upwards. (The plan first named it `supporting-high-complexity`, factually
+ * inverted; corrected at the merge recette of 26/08/2026 — no rule cites it.)
  */
 const CLASSIC_ZONES: FrameworkBackgroundDef['zones'] = [
   {
@@ -174,7 +174,7 @@ const CLASSIC_ZONES: FrameworkBackgroundDef['zones'] = [
   {
     // The template tints this one and writes nothing on it, so neither does the
     // declaration: an invented name would be prose nobody asked for.
-    id: 'supporting-high-complexity',
+    id: 'supporting-low-complexity',
     variants: ['classic'],
     rect: { x: rx(440), y: ry(390), w: rw(400), h: rh(360) },
     fill: '@zoneSupporting',
