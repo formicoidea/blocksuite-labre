@@ -290,7 +290,9 @@ export const popViewOptions = (
                   `,
                   select: () => {
                     const id = view.manager.currentViewId$.value;
-                    if (!id) {
+                    // Re-picking the current layout would reset the view to the
+                    // defaults of its own type, dropping widths and filters.
+                    if (!id || meta.type === view.type) {
                       return;
                     }
                     view.manager.viewChangeType(id, meta.type);
