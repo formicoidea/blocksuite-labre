@@ -133,9 +133,12 @@ describe('EDGY dynamic template', () => {
       'Organisation chart',
       'Facets overview',
     ]) {
-      const template = edgyTemplateCategory.templates.find(
-        t => (t as { name: string }).name === name
-      )!;
+      // `TemplateCategory.templates` is a union with a lazy loader; this
+      // category is the eager arm, and the cast is the same one the Event
+      // Storming spec already uses to read a category's names.
+      const template = (
+        edgyTemplateCategory.templates as { name: string; content: unknown }[]
+      ).find(t => t.name === name)!;
       const els = (
         template.content as unknown as {
           blocks: { children: { props: { elements: ElementsJSON } }[] };
