@@ -8,6 +8,7 @@ import {
   POOL_FONT_FAMILY,
   POOL_FRAME_COLOR,
   POOL_FRAME_WIDTH,
+  POOL_LANE_BAND_WIDTH,
   POOL_LANE_NAME_FONT_SIZE,
   POOL_NAME_COLOR,
   POOL_NAME_FONT_SIZE,
@@ -56,6 +57,11 @@ import { BPMN_ROLE } from './roles';
  * Which is also why the lanes are not zones: a `zones` entry is part of the
  * framework and identical on every element of it, and no two pools have the
  * same lanes.
+ *
+ * Each lane wears its own title band inside the pool's — a narrower strip, no
+ * fill, one divider, the name turned on its side, exactly as BPMN 2.0 draws it.
+ * The strip is CHROME inside the lane and not a smaller lane: a task dropped on
+ * a lane's title band is in that lane, because in BPMN the band belongs to it.
  */
 
 /** The colour code: every colour named once, never repeated as a hex. */
@@ -96,9 +102,22 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
     // different KIND of line rather than the same frame continued.
     divider: { color: '@frame', width: POOL_FRAME_WIDTH },
     label: {
-      // No `dx` / `dy`: the primitive's defaults (8 in, 18 down) are tuned for
-      // exactly this size of baseline-anchored name, and restating them here
-      // would be two numbers that must agree.
+      // The BAND placement: a title strip at the lane's leading edge with the
+      // name turned on its side, which is how BPMN 2.0 draws a lane and how
+      // bpmn.io, Camunda and Visio all render one. The corner placement this
+      // used to declare put the name across the lane's top-left instead; the
+      // PO's visual recette (2026-08-26) settled it against the corner on
+      // notation rather than taste — a reader who knows BPMN reads a strip as a
+      // lane title and a floating corner word as a note.
+      //
+      // No fill: the strip is the participant band's subordinate, and a second
+      // grey gutter beside it would leave the flow area looking inset twice.
+      band: {
+        width: POOL_LANE_BAND_WIDTH,
+        // The frame's own line again, as the band divider is: every rule on a
+        // pool is the same stroke, so the lanes read as the frame continued.
+        divider: { color: '@frame', width: POOL_FRAME_WIDTH },
+      },
       style: {
         size: POOL_LANE_NAME_FONT_SIZE,
         color: '@name',

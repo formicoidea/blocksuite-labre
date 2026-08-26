@@ -1,36 +1,37 @@
-import {
-  backgroundInstanceZones,
-  backgroundPlot,
-  EdgelessCRUDIdentifier,
-} from '@labre/affine-block-surface';
+import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnPoolElementModel } from '@labre/affine-model';
 import type { PointerEventState } from '@labre/std';
 import { GfxElementModelView } from '@labre/std/gfx';
 
 import { bpmnLanesOf, renameBpmnLane } from './actions.js';
-import { BPMN_POOL_BACKGROUND } from './background.js';
+import { POOL_LANE_MIN_HEIGHT } from './consts.js';
 import {
-  POOL_LANE_GRAB,
-  POOL_LANE_MIN_HEIGHT,
-  POOL_LANE_NAME_HIT_HEIGHT,
-  POOL_LANE_NAME_HIT_WIDTH,
-} from './consts.js';
+  bpmnLaneBoundaryAt,
+  bpmnPoolBands,
+  bpmnPoolTargetAt,
+} from './pool-hit.js';
 
 /**
  * View for a BPMN pool. Three direct gestures live here:
  *
- * - **dblclick on the pool** edits the participant name in place. The whole
- *   pool is the target, deliberately NOT the declaration's label hit test
- *   (`backgroundLabelHits`, which Wardley uses): a participant has exactly one
- *   name, and asking the user to find the 28-unit band to change it would be a
- *   regression dressed up as consistency;
- * - **dblclick in a lane's name corner** edits THAT lane's name instead. A lane
- *   name is not in the declaration's hit-test walk — it is a function of the
- *   model, not of the declaration (see the renderer's note on why the two must
- *   not be able to disagree) — so the box is computed here from the very
- *   metrics the renderer draws with;
+ * - **dblclick in the pool's own title band** — the left margin strip the
+ *   participant name is written up — edits that name in place;
+ * - **dblclick in a lane's title band** edits THAT lane's name instead. A lane
+ *   name is not in the declaration's hit-test walk (`backgroundLabelHits`,
+ *   which Wardley uses): it is a function of the MODEL, not of the declaration,
+ *   so the box comes from `backgroundInstanceZoneBand` — the very rectangle the
+ *   renderer paints the name in, rather than a second set of metrics that would
+ *   one day disagree with it;
  * - **drag on an internal lane boundary** moves the separator, taking from one
  *   lane and giving to the other.
+ *
+ * Both renames are ZONED to their band (PO recette, 2026-08-26). The whole pool
+ * used to open the participant editor, which was right while a pool had one
+ * name; with a name per lane it would mean a double-click in the middle of the
+ * flow area renames the participant — neither of the two things the user could
+ * have meant, and the kind of write nobody notices until it is in a
+ * deliverable. A double-click on open canvas inside the pool now does nothing,
+ * and the `text` cursor over either band is what says where the names are.
  *
  * ## How the separator drag takes the gesture
  *
@@ -86,15 +87,21 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
   override onCreated(): void {
     super.onCreated();
     this.on('dblclick', e => this._onDblClick(e));
-    this.on('pointermove', e => this._updateGrab(e));
-    this.on('pointerdown', e => this._updateGrab(e));
-    this.on('pointerleave', () => this._disarm());
+    this.on('pointermove', e => this._updateHover(e));
+    this.on('pointerdown', e => this._updateHover(e));
+    this.on('pointerleave', () => this._leave());
   }
 
   override onDestroyed(): void {
     this._closeEditor();
-    this._disarm();
+    this._leave();
     super.onDestroyed();
+  }
+
+  /** Hand the cursor back on the way out; nothing here owns it for long. */
+  private _leave(): void {
+    this._disarm();
+    if (!this._drag) this.gfx.cursor$.value = 'default';
   }
 
   /* ── Lane geometry ─────────────────────────────────────────────────── */
@@ -107,123 +114,77 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
   }
 
   /**
-   * The lane bands of this pool, in element-local model units.
+   * The boxes the gestures below aim at, all of them delegated to `pool-hit.ts`.
    *
-   * Read through `backgroundInstanceZones` and never recomputed: the renderer
-   * paints from that function, the audit reports from it, and a hit box derived
-   * any other way would be a fourth reading of the same partition — including
-   * its dropping of malformed rows, which is exactly the reading the user sees.
+   * That module is pure, so every answer here can be asserted without an
+   * editor, a viewport or a canvas; and it derives each box from
+   * `backgroundInstanceZones` / `backgroundInstanceZoneBand`, the same two
+   * functions the renderer paints from and the audit reports from. The view
+   * supplies the pointer and the zoom and nothing else.
    */
-  private _bands(): {
-    plot: ReturnType<typeof backgroundPlot>;
-    bands: { top: number; height: number }[];
-  } | null {
-    const [, , w, h] = this.model.deserializedXYWH;
-    const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h);
-    if (!(plot.width > 0) || !(plot.height > 0)) return null;
-
-    const zones = backgroundInstanceZones(
-      BPMN_POOL_BACKGROUND,
-      this.model as unknown as Readonly<Record<string, unknown>>
-    );
-    if (zones.length === 0) return null;
-
-    return {
-      plot,
-      bands: zones.map(zone => ({
-        top: plot.y0 + zone.rect.y * plot.height,
-        height: zone.rect.h * plot.height,
-      })),
-    };
+  private _bands() {
+    return bpmnPoolBands(this.model);
   }
 
-  /**
-   * The INTERNAL boundary the point is on, as the index of the lane BELOW it —
-   * so `i` separates lane `i - 1` from lane `i`. `null` for anywhere else.
-   *
-   * Internal only: the outer edges belong to the plot, and dragging one would
-   * be a resize of the pool, which the handles already do.
-   */
   private _boundaryAt(local: readonly [number, number]): number | null {
-    const geometry = this._bands();
-    if (!geometry) return null;
-    const { plot, bands } = geometry;
-
-    // The band on the left is the participant's name, not the flow area: a
-    // separator does not run through it, so neither does its grab zone.
-    if (local[0] < plot.x0 || local[0] > plot.x1) return null;
-
-    for (let i = 1; i < bands.length; i++) {
-      if (Math.abs(local[1] - bands[i].top) <= POOL_LANE_GRAB) return i;
-    }
-    return null;
+    return bpmnLaneBoundaryAt(this.model, local);
   }
 
-  /** The lane whose NAME corner the point is in, or `null`. */
-  private _nameBoxAt(local: readonly [number, number]): number | null {
-    const geometry = this._bands();
-    if (!geometry) return null;
-    const { plot, bands } = geometry;
-
-    // 44 view pixels is the touch-target floor, converted to model units so the
-    // box is at least that big however far out the board is zoomed; the fixed
-    // model-unit metrics win once the pool is drawn large enough for them to.
-    const zoom = this.gfx.viewport.zoom || 1;
-    const minTouch = 44 / zoom;
-    const width = Math.min(
-      plot.width,
-      Math.max(POOL_LANE_NAME_HIT_WIDTH, minTouch)
-    );
-
-    if (local[0] < plot.x0 || local[0] > plot.x0 + width) return null;
-
-    for (let i = 0; i < bands.length; i++) {
-      const height = Math.min(
-        bands[i].height,
-        Math.max(POOL_LANE_NAME_HIT_HEIGHT, minTouch)
-      );
-      if (local[1] >= bands[i].top && local[1] <= bands[i].top + height) {
-        return i;
-      }
-    }
-    return null;
+  /** Which name this point aims at, if any — lane strip first, see `pool-hit`. */
+  private _targetAt(local: readonly [number, number]) {
+    return bpmnPoolTargetAt(this.model, local, this.gfx.viewport.zoom);
   }
 
   private get _editable(): boolean {
     return !this.gfx.std.store.readonly && !this.model.isLocked();
   }
 
-  /* ── Separator drag ────────────────────────────────────────────────── */
+  /* ── Hover: what this point would do ───────────────────────────────── */
 
-  private _updateGrab(e: PointerEventState): void {
-    if (
-      !this._editable ||
-      !this.gfx.selection.selectedIds.includes(this.model.id)
-    ) {
-      this._disarm();
-      return;
+  /**
+   * One pass over the pointer, deciding both the cursor and whether a
+   * separator drag is armed.
+   *
+   * The order is the order the gestures win in. A separator sits INSIDE a lane
+   * title band at every lane boundary, so the two overlap and something has to
+   * give: the separator takes it, because it is a twelve-unit strip the user
+   * has to aim at deliberately, while the title band is the whole leading edge
+   * and has plenty left over. It is also already gated on the pool being
+   * selected, so on an unselected pool the band wins uncontested.
+   */
+  private _updateHover(e: PointerEventState): void {
+    const local = this._localPoint(e);
+    const selected = this.gfx.selection.selectedIds.includes(this.model.id);
+
+    if (this._editable && selected) {
+      const index = this._boundaryAt(local);
+      if (index !== null) {
+        // Reasserted on every move rather than only on arrival: the cursor is a
+        // signal shared with the resize handles and the tools, and whoever set
+        // it last wins — so the one that is still true says so again.
+        this.gfx.cursor$.value = 'ns-resize';
+        if (this._armed?.index !== index) {
+          this._disarm();
+          this._armed = {
+            index,
+            disposers: [
+              this.on('dragstart', evt => this._onDragStart(evt)),
+              this.on('dragmove', evt => this._onDragMove(evt)),
+              this.on('dragend', () => this._onDragEnd()),
+            ],
+          };
+        }
+        return;
+      }
     }
-
-    const index = this._boundaryAt(this._localPoint(e));
-    if (index === null) {
-      this._disarm();
-      return;
-    }
-    // Reasserted on every move rather than only on arrival: the cursor is a
-    // signal shared with the resize handles and the tools, and whoever set it
-    // last wins — so the one that is still true says so again.
-    this.gfx.cursor$.value = 'ns-resize';
-    if (this._armed?.index === index) return;
-
     this._disarm();
-    this._armed = {
-      index,
-      disposers: [
-        this.on('dragstart', evt => this._onDragStart(evt)),
-        this.on('dragmove', evt => this._onDragMove(evt)),
-        this.on('dragend', () => this._onDragEnd()),
-      ],
-    };
+
+    // A title band announces itself, selected or not: finding out that a name
+    // can be changed should not cost a click first. Gated on `_editable` all
+    // the same — an I-beam over a locked pool would promise an editor that
+    // refuses to open, which is the sort of small lie the recette is against.
+    const overTitle = this._editable && this._targetAt(local) !== null;
+    this.gfx.cursor$.value = overTitle ? 'text' : 'default';
   }
 
   private _disarm(): void {
@@ -233,7 +194,6 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
     if (!this._armed) return;
     this._armed.disposers.forEach(dispose => dispose());
     this._armed = null;
-    this.gfx.cursor$.value = 'default';
   }
 
   private _onDragStart(_: PointerEventState): void {
@@ -309,14 +269,28 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
 
   /* ── In-place naming ───────────────────────────────────────────────── */
 
+  /**
+   * A double-click renames whatever TITLE BAND it landed in, and nothing
+   * otherwise (PO recette, 2026-08-26).
+   *
+   * The whole pool used to open the participant editor. That was right while a
+   * pool had one name; now that every lane carries one it would mean a
+   * double-click in the middle of the flow area renames the participant — not
+   * one of the things the user could have meant, and the kind of write nobody
+   * notices until it is in a deliverable. A double-click on open canvas inside
+   * the pool now does nothing, which is the honest answer.
+   */
   private _onDblClick(e: PointerEventState): void {
     if (!this._editable) return;
 
-    const laneIndex = this._nameBoxAt(this._localPoint(e));
-    if (laneIndex !== null) {
-      const lane = bpmnLanesOf(this.model)[laneIndex];
+    const target = this._targetAt(this._localPoint(e));
+    if (target === null) return;
+
+    if (target.kind === 'lane') {
+      const { index } = target;
+      const lane = bpmnLanesOf(this.model)[index];
       this._openEditor(e, lane?.name ?? '', value =>
-        renameBpmnLane(this.gfx.std, this.model, laneIndex, value)
+        renameBpmnLane(this.gfx.std, this.model, index, value)
       );
       return;
     }

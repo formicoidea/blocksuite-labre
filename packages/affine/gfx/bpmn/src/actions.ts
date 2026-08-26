@@ -218,12 +218,27 @@ function writeLanes(
  *
  * ## One lane, not two
  *
- * Adding the FIRST lane creates ONE lane, covering the whole pool. It is
- * tempting to seed two — a pool with a single band looks exactly like a pool
- * with none, give or take the name slot — but seeding two would invent a
- * subdivision the user did not ask for and then make them delete half of it.
- * One lane is the honest reading of "add a lane": the pool now has a lane, it
- * happens to be all of it, and the second click gives them the second one.
+ * Adding the FIRST lane creates ONE lane, covering the whole pool. Seeding two
+ * would invent a subdivision the user did not ask for and then make them delete
+ * half of it. One lane is the honest reading of "add a lane": the pool now has
+ * a lane, it happens to be all of it, and the second click gives them the
+ * second one.
+ *
+ * Since the lane title band (PO recette, 2026-08-26) that first click is also
+ * VISIBLE: a named strip appears down the leading edge of a pool that had none.
+ * Before it, a single lane was indistinguishable from no lane at all, and the
+ * gesture looked broken until the second click.
+ *
+ * ## `Lane N` is DOCUMENT DATA, not vocabulary
+ *
+ * The default name is a plain persisted string, exactly like the pool's own
+ * `'Pool'` default: it is written into the document by this action and is the
+ * user's to rewrite from that moment on. It is deliberately NOT a `labelKey`
+ * through the translation seam — a host that ships a French catalogue must not
+ * silently retitle a lane an author named, and a name that changed language
+ * when the reader's locale did would be a document that says different things
+ * to different people. `N` is the count AFTER this lane, so the first is
+ * `Lane 1`.
  */
 export function addBpmnLane(std: BlockStdScope): void {
   const pools = bpmnPoolsForLaneEdit(std);
@@ -243,10 +258,10 @@ export function addBpmnLane(std: BlockStdScope): void {
     const size = lanes.length
       ? lanes.reduce((sum, lane) => sum + lane.size, 0) / lanes.length
       : 1;
-    // No `name` key at all rather than `name: undefined`: an unnamed lane is a
-    // band and nothing else, and a key holding undefined would ship in every
-    // snapshot for no reader.
-    writeLanes(std, model, [...lanes, { id: generateElementId(), size }]);
+    writeLanes(std, model, [
+      ...lanes,
+      { id: generateElementId(), name: `Lane ${lanes.length + 1}`, size },
+    ]);
   }
 }
 

@@ -73,6 +73,22 @@ export const POOL_FONT_FAMILY = 'Inter, sans-serif';
 export const POOL_LANE_NAME_FONT_SIZE = 13;
 
 /**
+ * Width of a lane's own title band, in model units — the strip immediately
+ * inside the participant band, with the lane name turned on its side.
+ *
+ * Four units narrower than {@link POOL_BAND_WIDTH}, and for the same reason the
+ * font is two points smaller: the two strips sit side by side, so the
+ * subordinate one has to say so. Identical widths read as a single 56-unit
+ * gutter rather than as a participant containing lanes, which is exactly the
+ * relationship the picture has to carry.
+ *
+ * NO fill, divider only — what bpmn.io, Camunda and Visio all draw. A second
+ * grey strip beside the pool's own would double the furniture and leave the
+ * flow area looking inset by two margins.
+ */
+export const POOL_LANE_BAND_WIDTH = 24;
+
+/**
  * How close to an internal lane boundary a pointer has to be, in MODEL units,
  * for the gesture to be a separator drag rather than a click on the pool.
  *
@@ -95,18 +111,11 @@ export const POOL_LANE_GRAB = 6;
  */
 export const POOL_LANE_MIN_HEIGHT = 24;
 
-/**
- * The corner of a lane that opens its name for editing on a double click, in
- * model units — measured from the lane's top-left, where the primitive draws
- * the name (8 in, baseline 18 down).
- *
- * Generously bigger than the words: an unnamed lane has no glyphs to aim at, so
- * a box the size of the text would be unhittable exactly when it is needed. The
- * view widens it further, to a 44-pixel touch target, whenever the board is
- * zoomed out far enough that these units are smaller than a fingertip.
- */
-export const POOL_LANE_NAME_HIT_WIDTH = 180;
-export const POOL_LANE_NAME_HIT_HEIGHT = 30;
+// The lane-name hit box used to be a corner box declared here
+// (`POOL_LANE_NAME_HIT_WIDTH` / `_HEIGHT`). Since the PO's recette moved the
+// name into a title band, the target IS that band: `element-view.ts` reads it
+// from `backgroundInstanceZoneBand`, so there is nothing left to declare and
+// nothing left that can drift away from what is painted.
 
 /**
  * The size a fresh pool is created at. Unlike a map, a pool is NOT grown to

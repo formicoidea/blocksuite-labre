@@ -1,5 +1,6 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
+  backgroundInstanceZoneBand,
   backgroundInstanceZones,
   backgroundPlot,
 } from '@labre/affine/blocks/surface';
@@ -167,6 +168,9 @@ describe('BPMN pool lanes', () => {
     expect(lanes).toHaveLength(2);
     // Two lanes of equal weight: the second took the average of the first.
     expect(lanes[0].size).toBe(lanes[1].size);
+    // Named on creation (PO recette, 2026-08-26) — which is what makes the
+    // first click visible: a titled band appears on a pool that had none.
+    expect(lanes.map(lane => lane.name)).toEqual(['Lane 1', 'Lane 2']);
 
     // Rename the top one through the same path the in-place editor uses.
     const surface = getSurface(window.doc, window.editor).model;
@@ -177,7 +181,9 @@ describe('BPMN pool lanes', () => {
     });
     await wait();
     expect(pool.lanes?.[0].name).toBe('Front office');
-    expect(pool.lanes?.[1].name).toBeUndefined();
+    // …and the other keeps the name it was created with: renaming one lane is
+    // one lane's business.
+    expect(pool.lanes?.[1].name).toBe('Lane 2');
 
     // A task dropped in the LOWER half of the pool's plot.
     const [px, py, pw, ph] = pool.deserializedXYWH;
@@ -216,6 +222,65 @@ describe('BPMN pool lanes', () => {
         at[1] <= zone.rect.y + zone.rect.h
     );
     expect(containing.map(zone => zone.id)).toEqual([`lane:${lanes[1].id}`]);
+  });
+
+  test('a lane’s title band belongs to the lane, not to a gutter', () => {
+    const pool = addPool();
+    const surface = getSurface(window.doc, window.editor).model;
+    surface.updateElement(pool.id, {
+      lanes: [
+        { id: 'top', name: 'Front office', size: 1 },
+        { id: 'bottom', name: 'Back office', size: 1 },
+      ],
+    });
+
+    const [px, py, pw, ph] = pool.deserializedXYWH;
+    const plot = backgroundPlot(BPMN_POOL_BACKGROUND, pw, ph);
+    const zones = backgroundInstanceZones(
+      BPMN_POOL_BACKGROUND,
+      pool as unknown as Readonly<Record<string, unknown>>
+    );
+
+    // The strip is CHROME inside the lane, so the zone rects still cover the
+    // whole plot: an element sitting ON a title band is in that lane, which is
+    // what BPMN means by the band belonging to it.
+    expect(zones.map(zone => zone.rect)).toEqual([
+      { x: 0, y: 0, w: 1, h: 0.5 },
+      { x: 0, y: 0.5, w: 1, h: 0.5 },
+    ]);
+
+    const strip = backgroundInstanceZoneBand(
+      BPMN_POOL_BACKGROUND,
+      zones[1],
+      plot
+    );
+    expect(strip).not.toBeNull();
+
+    // A small node whose centre lands squarely on the lower lane's strip.
+    const cx = px + strip!.x + strip!.w / 2;
+    const cy = py + strip!.y + strip!.h / 2;
+    const nodeId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: 'bpmn:task',
+      shapeType: 'rect',
+      xywh: `[${cx - 10},${cy - 10},20,20]`,
+    });
+    const bound = (surface.getElementById(nodeId) as BpmnNodeElementModel)
+      .elementBound;
+    const at = [
+      (bound.x + bound.w / 2 - px - plot.x0) / plot.width,
+      (bound.y + bound.h / 2 - py - plot.y0) / plot.height,
+    ] as const;
+
+    const containing = zones.filter(
+      zone =>
+        at[0] >= zone.rect.x &&
+        at[0] <= zone.rect.x + zone.rect.w &&
+        at[1] >= zone.rect.y &&
+        at[1] <= zone.rect.y + zone.rect.h
+    );
+    expect(containing.map(zone => zone.id)).toEqual(['lane:bottom']);
   });
 
   test('removing the last lane takes the prop back out of the document', async () => {
