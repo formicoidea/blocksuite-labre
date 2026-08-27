@@ -91,7 +91,12 @@ function fakeNode(
   id: string,
   kind: C4NodeKind,
   bound: Box,
-  options: { text?: string; role?: string } = {}
+  options: {
+    text?: string;
+    role?: string;
+    technology?: string;
+    description?: string;
+  } = {}
 ) {
   const node = Object.create(C4NodeElementModel.prototype) as Record<
     string,
@@ -105,6 +110,11 @@ function fakeNode(
       enumerable: true,
     },
     text: { value: options.text, enumerable: true },
+    // Own properties, so the `@field()` accessors (which reach for a Y.Map this
+    // detached object has none of) are shadowed. `undefined` is the honest
+    // stand-in for a field a document never wrote.
+    technology: { value: options.technology, enumerable: true },
+    description: { value: options.description, enumerable: true },
     elementBound: { value: new Bound(...bound) },
   });
   return node as unknown as C4NodeElementModel;
@@ -175,7 +185,12 @@ function composedBoard(): C4ExportBoard {
   });
 
   const nodes = [
-    fakeNode('n-customer', 'person', [900, 300, 60, 60], { text: 'Customer' }),
+    // A description on a PERSON: mermaid's `Person` has no `techn` slot at all,
+    // so the sentence is the third argument here and the fourth on a container.
+    fakeNode('n-customer', 'person', [900, 300, 60, 60], {
+      text: 'Customer',
+      description: 'A customer of the bank.',
+    }),
     fakeNode('n-auditor', 'person-ext', [1000, 300, 60, 60], {
       text: 'External auditor',
     }),
@@ -185,14 +200,22 @@ function composedBoard(): C4ExportBoard {
     fakeNode('n-mainframe', 'system-ext', [1100, 600, 60, 60], {
       text: 'Mainframe Banking System',
     }),
+    // Both fields set — the enriched case the whole change request is about.
     fakeNode('n-webapp', 'container', [200, 500, 80, 60], {
       text: 'Web Application',
+      technology: 'Java and Spring MVC',
+      description: 'Delivers the static content and the banking SPA.',
     }),
     fakeNode('n-spa', 'browser', [350, 500, 80, 60], {
       text: 'Single-Page App',
     }),
     fakeNode('n-mobile', 'mobile', [500, 500, 80, 60], { text: 'Mobile App' }),
-    fakeNode('n-db', 'database', [200, 560, 80, 50], { text: 'Database' }),
+    // A description and NO technology, on a macro that has a slot for both: the
+    // one case that has to write an explicit empty `""` to hold the slot open.
+    fakeNode('n-db', 'database', [200, 560, 80, 50], {
+      text: 'Database',
+      description: 'Stores user registration information.',
+    }),
     fakeNode('n-signin', 'component', [200, 250, 80, 60], {
       text: 'Sign In Controller',
     }),
@@ -273,15 +296,15 @@ function composedBoard(): C4ExportBoard {
 /** The document the fixture above must serialize to, byte for byte. */
 const COMPOSED = `C4Component
   title Internet banking
-  Person(customer, "Customer")
+  Person(customer, "Customer", "A customer of the bank.")
   Person_Ext(external_auditor, "External auditor")
   System(internet_banking_system, "Internet Banking System")
   System_Ext(mainframe_banking_system, "Mainframe Banking System")
   System_Boundary(internet_banking_system_2, "Internet banking system") {
-    Container(web_application, "Web Application")
+    Container(web_application, "Web Application", "Java and Spring MVC", "Delivers the static content and the banking SPA.")
     Container(single_page_app, "Single-Page App", "web browser")
     Container(mobile_app, "Mobile App", "mobile app")
-    ContainerDb(database, "Database")
+    ContainerDb(database, "Database", "", "Stores user registration information.")
     Container_Boundary(api_application, "API application") {
       Component(sign_in_controller, "Sign In Controller")
       Component(security_component, "Security Component")
@@ -331,6 +354,102 @@ describe('a whole C4 board, as mermaid', () => {
     const firstRel = source.indexOf('  Rel(');
     const lastElement = source.lastIndexOf('Component(');
     expect(firstRel).toBeGreaterThan(lastElement);
+  });
+});
+
+/* ── Technology and description ───────────────────────────────────────── */
+
+/**
+ * The two optional fields, and mermaid's POSITIONAL argument lists.
+ *
+ * The whole risk here is one thing: a later argument written without the
+ * earlier one. `Container(alias, label, techn, descr)` read with a description
+ * in the third slot renders that sentence as the technology — a wrong statement
+ * in a file somebody is about to paste into a renderer, and one nothing
+ * downstream can detect.
+ */
+describe('what a node says about itself', () => {
+  const oneNode = (
+    kind: C4NodeKind,
+    options: { technology?: string; description?: string }
+  ) =>
+    exportC4Mermaid(
+      surface({
+        boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
+        nodes: [
+          fakeNode('n', kind, [700, 400, 60, 60], { text: 'X', ...options }),
+        ],
+      })
+    );
+
+  it('writes neither when the author stated neither', () => {
+    expect(oneNode('container', {})).toContain('Container(x, "X")\n');
+    expect(oneNode('system', {})).toContain('System(x, "X")\n');
+    expect(oneNode('person', {})).toContain('Person(x, "X")\n');
+  });
+
+  it('writes the technology in the slot the macro has for it', () => {
+    expect(oneNode('container', { technology: 'Java' })).toContain(
+      'Container(x, "X", "Java")'
+    );
+    expect(oneNode('component', { technology: 'Spring MVC' })).toContain(
+      'Component(x, "X", "Spring MVC")'
+    );
+    expect(oneNode('database', { technology: 'PostgreSQL' })).toContain(
+      'ContainerDb(x, "X", "PostgreSQL")'
+    );
+  });
+
+  it('holds the technology slot open when only a description was stated', () => {
+    // The empty `""` is the point: without it the sentence would be read as the
+    // technology by mermaid's own grammar.
+    expect(oneNode('container', { description: 'Does things.' })).toContain(
+      'Container(x, "X", "", "Does things.")'
+    );
+  });
+
+  it('puts a description third on the macros that have no technology', () => {
+    // `Person` and `System` take `descr` in the third slot — there is no `techn`
+    // to hold open, and an empty one would BE the description.
+    expect(oneNode('person', { description: 'A customer.' })).toContain(
+      'Person(x, "X", "A customer.")'
+    );
+    expect(
+      oneNode('system-ext', { description: 'Somebody else’s.' })
+    ).toContain('System_Ext(x, "X", "Somebody else’s.")');
+    // …and a technology typed on one of them is drawn on the canvas and simply
+    // has nowhere to go here. Documented rather than invented a slot for.
+    expect(oneNode('person', { technology: 'ignored' })).toContain(
+      'Person(x, "X")\n'
+    );
+  });
+
+  it('lets the author’s technology win over the picture’s default', () => {
+    // `mobile` and `browser` carry a default `techn` because their picture means
+    // something the macro cannot otherwise say. An author who typed "Flutter"
+    // has said it better.
+    expect(oneNode('mobile', {})).toContain('Container(x, "X", "mobile app")');
+    expect(oneNode('mobile', { technology: 'Flutter' })).toContain(
+      'Container(x, "X", "Flutter")'
+    );
+    expect(oneNode('browser', { technology: 'React' })).toContain(
+      'Container(x, "X", "React")'
+    );
+  });
+
+  it('sanitizes both fields exactly as it sanitizes a label', () => {
+    // A quote ENDS a quoted argument in this grammar, `%%` opens a comment
+    // wherever it appears, and a macro call is one line.
+    const source = oneNode('container', {
+      technology: 'a "quoted"\ntechnology',
+      description: 'a %%commented%% one\ttoo',
+    });
+    expect(source).toContain(
+      `Container(x, "X", "a 'quoted' technology", "a %commented% one too")`
+    );
+    expect(
+      source.split('\n').filter(line => line.includes('Container('))
+    ).toHaveLength(1);
   });
 });
 

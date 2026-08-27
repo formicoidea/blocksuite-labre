@@ -2237,6 +2237,7 @@ __metadata:
   resolution: "@labre/affine-gfx-c4@workspace:packages/affine/gfx/c4"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-ddd-shared": "workspace:*"
