@@ -109,6 +109,8 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   following typed edges. The first family that builds a graph rather than
  *   walking elements, and the only one that is not local to one element or one
  *   relation.
+ * - `label-presence` — the subject must be NAMED. The first family that reads
+ *   an element's words rather than its geometry, its role or its relations.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -123,7 +125,8 @@ export type RuleFamily =
   | 'edge-degree'
   | 'role-count'
   | 'edge-locality'
-  | 'reachability';
+  | 'reachability'
+  | 'label-presence';
 
 /**
  * WHEN a rule is evaluated (PF5.14).
@@ -569,6 +572,46 @@ export interface EdgeDegreeDef {
    */
   eitherMin?: number;
   /**
+   * A FORBIDDEN ZONE: the shape of degree a subject may not have, declared as
+   * the bounds it must NOT all satisfy at once.
+   *
+   * The inverse polarity of every bound above. `minIn`/`maxIn`/`minOut`/`maxOut`
+   * here read exactly as they do there — `minIn: 2` means "two or more arrive" —
+   * but the rule fires when the node matches ALL of the ones supplied, instead of
+   * when it misses one.
+   *
+   * ## Why the inverse cannot be written with the bounds
+   *
+   * Two shapes want it, and neither is expressible as a floor or a ceiling:
+   *
+   * - an artefact that MERGES and SPLITS at once — `{ minIn: 2, minOut: 2 }`.
+   *   Both halves are individually fine and their conjunction is ambiguous, so
+   *   the rule is about the pair and about nothing else;
+   * - an artefact that does NEITHER — `{ maxIn: 1, maxOut: 1 }`. A ceiling on
+   *   each side alone forbids the legitimate split and the legitimate merge; only
+   *   their conjunction describes the artefact that decides nothing.
+   *
+   * The second one is the same requirement {@link eitherMin} states from the
+   * other side, and a framework may write it either way — `eitherMin: 2` and
+   * `forbidPattern: { maxIn: 1, maxOut: 1 }` are the same set of nodes. Both are
+   * offered because a rule reads best when its data says what its sentence says,
+   * and the two sentences a notation actually writes are "a gateway must branch"
+   * and "a gateway that does nothing is superfluous".
+   *
+   * ## Words, and the empty pattern
+   *
+   * The pattern carries its OWN message rather than a slot beside the others: a
+   * forbidden zone is not a bound that failed, and its sentence never reads like
+   * one. A pattern supplying no bound at all is satisfied by every node, which
+   * would indict the whole board — it warns once and is not evaluated.
+   */
+  forbidPattern?: RuleMessage & {
+    minIn?: number;
+    maxIn?: number;
+    minOut?: number;
+    maxOut?: number;
+  };
+  /**
    * Words for each bound, when a rule declaring more than one wants to say
    * something other than its own message.
    *
@@ -613,6 +656,29 @@ export interface RoleCountDef {
    * vocabulary grows.
    */
   subject: RoleId;
+  /**
+   * Count only the elements whose role IS {@link subject}, without descending
+   * into its specialisations.
+   *
+   * The default — `roleIsA`, the reading every other role test in this engine
+   * uses — is right whenever the requirement is about the FAMILY: "one
+   * beginning" means one beginning of any kind, and a vocabulary that grows a
+   * new variant inherits the rule for free.
+   *
+   * It is wrong when the requirement is about the PLAIN member of a family, as
+   * distinct from its qualified siblings: "at most one UNQUALIFIED beginning per
+   * frame" is a statement about the artefact that carries no qualifier, and
+   * several qualified ones beside it are exactly what the notation is for. Under
+   * the descending reading that rule cannot be written at all — every variant
+   * would count towards a bound meant for the plain one alone.
+   *
+   * Applies to the SUBJECT only. {@link ifPresent} keeps descending, and
+   * deliberately: a guard asks "is there one of these at all", which is a
+   * question about the family whatever the bound beside it counts. A framework
+   * needing the exact reading on both sides has not turned up yet, and inventing
+   * a second flag for it would be data nobody can read.
+   */
+  exact?: boolean;
   /** Fewest subjects one instance of the frame must carry. */
   min?: number;
   /** Most subjects one instance of the frame may carry. */
@@ -729,6 +795,42 @@ export interface ReachabilityDef {
    * traversal, and a board carrying no such element says nothing at all.
    */
   implicitRoots?: boolean;
+}
+
+/**
+ * `label-presence` configuration — the first brick of the PRD's *étiquetage*
+ * family, and the first family in this engine that reads an element's WORDS.
+ *
+ * "This step has no name." Every other family asks about geometry, roles or
+ * relations; this one asks whether the artefact says what it is. An unnamed box
+ * in the middle of a diagram is the one defect a reader cannot work around —
+ * they can infer a missing arrow from the layout, and they can infer nothing at
+ * all from an empty rectangle.
+ *
+ * ## Where the words come from
+ *
+ * The element's own `text`, read duck-typed exactly as {@link textInkBound}
+ * already reads it — the one property every artefact-bearing element model
+ * carries (a `Y.Text` on a shape, a connector label, a free text) and the only
+ * one the engine can read without importing a model. See {@link elementLabel}
+ * for what counts as empty.
+ *
+ * A framework whose artefacts are named by a SEPARATE element beside them — a
+ * text element sitting next to a node, the way a Wardley label does — is not
+ * asking this question, and this family cannot answer it: it reads the subject's
+ * own words and nothing else. That is a different family (a proximity between
+ * two roles), not a flag on this one.
+ */
+export interface LabelPresenceDef {
+  /**
+   * The subject must carry a label. Written as a literal rather than a boolean
+   * because it is a DISCRIMINANT and not a switch: `present: false` would mean
+   * "this artefact must stay unnamed", which no notation asks for. The field
+   * exists so the questions this family grows next — a maximum length, a
+   * pattern, a name that must match the zone it sits in — arrive as siblings
+   * beside it rather than as a second family.
+   */
+  present: true;
 }
 
 /**
@@ -873,6 +975,8 @@ export interface ValidationRule extends RuleMessage {
   locality?: EdgeLocalityDef;
   /** `reachability` only. */
   reachability?: ReachabilityDef;
+  /** `label-presence` only: the subjects are named by {@link appliesTo}. */
+  label?: LabelPresenceDef;
 }
 
 /**
@@ -3605,12 +3709,37 @@ function evaluateEdgeDegree(
   if (subjectRole === undefined || degree === undefined) return [];
 
   const { minIn, maxIn, minOut, maxOut, eitherMin } = degree;
+  // A pattern satisfied by every node — one supplying no bound at all — would
+  // indict the whole board, which is the loudest possible way for a typo in the
+  // data to be wrong. Dropped rather than honoured, and said once.
+  const pattern = degree.forbidPattern;
+  const patternBounds =
+    pattern === undefined
+      ? null
+      : (
+          [
+            ['in', '>=', pattern.minIn],
+            ['in', '<=', pattern.maxIn],
+            ['out', '>=', pattern.minOut],
+            ['out', '<=', pattern.maxOut],
+          ] as const
+        ).filter(([, , value]) => value !== undefined);
+  if (patternBounds !== null && patternBounds.length === 0) {
+    warnOnce(
+      `edge-degree rule "${rule.id}" declares a forbidden pattern with no ` +
+        `bound in it, which every node matches — the pattern is dropped.`
+    );
+  }
+  const forbidden =
+    patternBounds !== null && patternBounds.length > 0 ? patternBounds : null;
+
   if (
     minIn === undefined &&
     maxIn === undefined &&
     minOut === undefined &&
     maxOut === undefined &&
-    eitherMin === undefined
+    eitherMin === undefined &&
+    forbidden === null
   ) {
     warnOnce(
       `edge-degree rule "${rule.id}" declares no bound at all — the rule is ` +
@@ -3673,7 +3802,18 @@ function evaluateEdgeDegree(
                   subject.in < eitherMin &&
                   subject.out < eitherMin
                 ? (degree.neither ?? rule)
-                : null;
+                : // LAST of all, for the same reason: a bound that failed names
+                  // what is missing, and a forbidden zone names a shape. When
+                  // both have something to say, the missing thing is the more
+                  // actionable half.
+                  forbidden !== null &&
+                    forbidden.every(([side, test, value]) =>
+                      test === '>='
+                        ? subject[side] >= value!
+                        : subject[side] <= value!
+                    )
+                  ? (pattern ?? rule)
+                  : null;
     if (words === null) continue;
 
     backgrounds ??= backgroundsOf(rule, elements);
@@ -3754,7 +3894,10 @@ function evaluateRoleCount(
   for (const el of elements) {
     // Cheapest possible exit for a neutral element: no role, no evaluation.
     if (el.role === undefined) continue;
-    const counts = roleIsA(el.role, count.subject, rule.roles);
+    const counts =
+      count.exact === true
+        ? el.role === count.subject
+        : roleIsA(el.role, count.subject, rule.roles);
     // Not `else if`: nothing forbids a vocabulary where the guard role and the
     // counted role overlap, and an element that is both must arm the frame AND
     // be counted in it. Two independent questions about one element.
@@ -4031,6 +4174,102 @@ function evaluateReachability(
 }
 
 /**
+ * Zero-width characters: present in the string, absent from the page.
+ *
+ * A name made of one of these is a name nobody can read, and a user who pasted
+ * one has an artefact that LOOKS unnamed and validates as named — the worst of
+ * both, and impossible to debug from the canvas. `trim()` does not remove them
+ * (they are not `WhiteSpace` in the spec), so they are stripped first.
+ */
+const INVISIBLE_CHARS = /[​-‍⁠﻿]/g;
+
+/**
+ * The words an element carries, or `''` — the EXTRACTION alone, with no opinion
+ * on whether having none is a mistake.
+ *
+ * Duck-typed on `text`, exactly like {@link elementPath} and
+ * {@link rawEndpointIds} are on their own properties, and for the same reason:
+ * the engine knows roles and geometry and must not import an element model. That
+ * one property is what a shape's `Y.Text`, a connector's label and a free text
+ * element all expose, and `String()` is what turns any of them into the content
+ * — the same conversion {@link textInkBound} has always relied on.
+ *
+ * NFC first, for the reason that function gives: the same name typed here and
+ * pasted from elsewhere can arrive as the same glyphs in a different number of
+ * code points. Then the invisibles, then the whitespace. What is left is what a
+ * reader would see.
+ */
+function elementLabel(el: unknown): string {
+  const text = (el as { text?: unknown }).text;
+  if (text == null) return '';
+  return String(text).normalize('NFC').replace(INVISIBLE_CHARS, '').trim();
+}
+
+/**
+ * "Does this artefact say what it is?"
+ *
+ * The first family that reads an element's WORDS. Every other one asks about
+ * geometry, roles or relations, all of which a reader can partly infer from the
+ * drawing; a box with nothing written in it is the one defect nothing recovers.
+ *
+ * ## What counts as absent
+ *
+ * No `text` at all, an empty one, one that is only whitespace, and one that is
+ * only invisible code points — see {@link elementLabel}. Anything a reader would
+ * see is a label, however short: judging the QUALITY of a name is not this
+ * family's business and probably nobody's.
+ *
+ * ## Silence
+ *
+ * The usual proportionality: an element with no role is not a subject, and a
+ * board carrying no subject raises nothing. There is no frame requirement —
+ * {@link ValidationRule.backgroundRole} buys attribution only, the `no-overlap`
+ * pattern, so a rule may name a frame to give its findings somewhere to be
+ * waived and need not.
+ *
+ * ## The moment, and why a framework should think about it
+ *
+ * Naming is the one property a user changes by TYPING, one character at a time.
+ * `text` is verdict-bearing only for a framework that registers a real-time rule
+ * of this family — {@link verdictPropsOf} adds it then and only then — so a rule
+ * declared `'on-demand'` costs the drawing path nothing at all, and a real-time
+ * one wakes the debounced evaluation on every keystroke in every shape on the
+ * board. Both are supported; the second is a choice a framework should make
+ * deliberately.
+ *
+ * ## Cost
+ *
+ * One pass, one `text` read per subject. Linear, and paid only by the elements
+ * carrying the subject role.
+ */
+function evaluateLabelPresence(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const label = rule.label;
+  if (subjectRole === undefined || label === undefined) return [];
+  if (label.present !== true) return [];
+
+  // Only resolved when something is actually wrong — a named board pays nothing
+  // for the frames it never has to name.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+    if (elementLabel(el) !== '') continue;
+
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(el.elementBound, backgrounds)?.id;
+    violations.push(raise(rule, [el.id], frameId));
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -4068,6 +4307,7 @@ const RULE_FAMILIES: Record<
   'role-count': evaluateRoleCount,
   'edge-locality': evaluateEdgeLocality,
   reachability: evaluateReachability,
+  'label-presence': evaluateLabelPresence,
 };
 
 /** A rule the drawing path evaluates. `moment` absent means `'realtime'`. */
@@ -4625,12 +4865,27 @@ export const VERDICT_PROPS = [
  * knows: `backgroundTransitionVisibleProps` reads the prop each framework
  * writes beside the line it gates. A framework whose background declares no
  * toggle contributes nothing and the set is the constant.
+ *
+ * ## `text`, and why it is not in the constant
+ *
+ * `label-presence` is the one family whose verdict turns on an element's words,
+ * and words are what a user changes by TYPING. Watched unconditionally, every
+ * keystroke in every shape on the board would wake the debounced evaluation —
+ * a cost paid by every document, for a question most of them never ask.
+ *
+ * So it is added exactly when a REAL-TIME rule of that family is registered.
+ * The moment filter is deliberate and mirrors {@link backgroundElementIds}: an
+ * on-demand rule is never evaluated on the gesture path, so waking that path for
+ * it would hand back precisely what declaring the second moment bought — and a
+ * framework that wants its naming checked while the user types says so by
+ * declaring the rule real-time, which is the one place that decision belongs.
  */
 export function verdictPropsOf(
   rules: readonly ValidationRule[]
 ): ReadonlySet<string> {
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
+    if (rule.family === 'label-presence' && isRealtime(rule)) props.add('text');
     if (rule.background === undefined) continue;
     for (const prop of backgroundTransitionVisibleProps(rule.background)) {
       props.add(prop);

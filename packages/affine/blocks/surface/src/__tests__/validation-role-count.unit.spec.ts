@@ -310,6 +310,99 @@ describe('when a role-count rule stays silent', () => {
 });
 
 /**
+ * `exact`: count the PLAIN member of a family, not the family.
+ *
+ * The descending reading is right whenever the requirement is about the family —
+ * "one beginning" means one beginning of any kind. It is wrong when the
+ * requirement is about the unqualified artefact as distinct from its qualified
+ * siblings, and under it that rule cannot be written at all.
+ */
+describe('counting a role without its specialisations', () => {
+  /** "At most one UNQUALIFIED beginning per pool." */
+  const ONE_PLAIN: ValidationRule = {
+    ...ONE_START,
+    id: 'test.one-plain-event',
+    roleCount: { subject: 'test:event', exact: true, max: 1 },
+  };
+
+  it('says nothing about qualified siblings beside the plain one', () => {
+    // Exactly the population the descending reading would indict: one plain
+    // beginning and two qualified ones is the notation working.
+    expect(
+      ids(ONE_PLAIN, [
+        pool('pool'),
+        node('plain', 'test:event', INSIDE),
+        node('t1', 'test:timer-event', [400, 100]),
+        node('t2', 'test:timer-event', [600, 100]),
+      ])
+    ).toEqual([]);
+  });
+
+  it('still indicts two PLAIN ones', () => {
+    expect(
+      ids(ONE_PLAIN, [
+        pool('pool'),
+        node('a', 'test:event', INSIDE),
+        node('b', 'test:event', [400, 100]),
+      ])
+    ).toEqual(['pool']);
+  });
+
+  it('is what the descending reading cannot say', () => {
+    // The same board, the same bound, the default reading: every variant counts
+    // towards a maximum meant for the plain artefact alone.
+    const descending: ValidationRule = {
+      ...ONE_PLAIN,
+      id: 'test.one-event-descending',
+      roleCount: { subject: 'test:event', max: 1 },
+    };
+    const board = [
+      pool('pool'),
+      node('plain', 'test:event', INSIDE),
+      node('t1', 'test:timer-event', [400, 100]),
+    ];
+
+    expect(ids(descending, board)).toEqual(['pool']);
+    expect(ids(ONE_PLAIN, board)).toEqual([]);
+  });
+
+  it('leaves the GUARD descending', () => {
+    // Deliberately asymmetric: a guard asks "is there one of these at all",
+    // which is a question about the family whatever the bound beside it counts.
+    // A qualified end arms a rule whose subject is counted exactly.
+    const guarded: ValidationRule = {
+      ...ONE_PLAIN,
+      id: 'test.plain-start-if-end',
+      roleCount: {
+        subject: 'test:start',
+        exact: true,
+        ifPresent: 'test:end',
+        min: 1,
+      },
+    };
+
+    expect(
+      ids(guarded, [pool('pool'), node('e', 'test:terminate-end', INSIDE)])
+    ).toEqual(['pool']);
+  });
+
+  it('is the descending reading when absent or false', () => {
+    const off: ValidationRule = {
+      ...ONE_PLAIN,
+      id: 'test.one-event-exact-false',
+      roleCount: { subject: 'test:event', exact: false, max: 1 },
+    };
+    const board = [
+      pool('pool'),
+      node('plain', 'test:event', INSIDE),
+      node('t1', 'test:timer-event', [400, 100]),
+    ];
+
+    expect(ids(off, board)).toEqual(['pool']);
+  });
+});
+
+/**
  * `ifPresent`: a bound that only applies while the frame holds something else.
  *
  * Whole families of artefact are optional on their own and normative in PAIRS. A

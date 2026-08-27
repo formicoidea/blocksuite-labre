@@ -516,3 +516,199 @@ describe('the disjunction beside the four conjunctive bounds', () => {
     expect(found[0].messageKey).toBe('com.labre.test.gateway-both.too-few-out');
   });
 });
+
+/**
+ * `forbidPattern`: the shape of degree a subject may not have.
+ *
+ * The inverse polarity of every other bound — it fires when the node matches ALL
+ * the bounds supplied, instead of when it misses one — and two shapes want
+ * exactly that. An artefact that merges AND splits at once is ambiguous, though
+ * each half alone is fine; an artefact that does NEITHER is superfluous, though
+ * a ceiling on either side alone would forbid the legitimate case.
+ */
+describe('a forbidden shape of degree', () => {
+  const base = {
+    framework: 'test',
+    family: 'edge-degree',
+    severity: 'warning',
+    appliesTo: 'test:gateway',
+    roles: ROLES,
+    version: 1,
+    backgroundRole: 'test:frame',
+  } as const;
+
+  /** "A gateway does not merge and split at the same time." */
+  const JOIN_FORK: ValidationRule = {
+    ...base,
+    id: 'test.gateway-join-fork',
+    messageKey: 'com.labre.test.gateway-join-fork',
+    degree: {
+      edgeRole: 'test:flow',
+      forbidPattern: {
+        minIn: 2,
+        minOut: 2,
+        messageKey: 'com.labre.test.gateway-join-fork.pattern',
+      },
+    },
+  };
+
+  /** "A gateway that decides nothing is superfluous." */
+  const SUPERFLUOUS: ValidationRule = {
+    ...base,
+    id: 'test.gateway-superfluous',
+    messageKey: 'com.labre.test.gateway-superfluous',
+    degree: {
+      edgeRole: 'test:flow',
+      forbidPattern: {
+        maxIn: 1,
+        maxOut: 1,
+        messageKey: 'com.labre.test.gateway-superfluous.pattern',
+      },
+    },
+  };
+
+  const wired = (into: number, outOf: number) => {
+    const board: GfxPrimitiveElementModel[] = [
+      frame(),
+      node('g', 'test:gateway'),
+    ];
+    for (let i = 0; i < into; i++) {
+      board.push(node(`in-${i}`, 'test:task'), edge(`fi-${i}`, `in-${i}`, 'g'));
+    }
+    for (let i = 0; i < outOf; i++) {
+      board.push(
+        node(`out-${i}`, 'test:task'),
+        edge(`fo-${i}`, 'g', `out-${i}`)
+      );
+    }
+    return board;
+  };
+
+  it('indicts a gateway that merges AND splits', () => {
+    const found = run(JOIN_FORK, wired(2, 2));
+
+    expect(found.map(violation => violation.elementIds)).toEqual([['g']]);
+    expect(found[0].messageKey).toBe(
+      'com.labre.test.gateway-join-fork.pattern'
+    );
+  });
+
+  it('says nothing about a gateway that only merges', () => {
+    // Half the pattern is not the pattern: the bounds are a conjunction.
+    expect(ids(JOIN_FORK, wired(2, 1))).toEqual([]);
+  });
+
+  it('says nothing about a gateway that only splits', () => {
+    expect(ids(JOIN_FORK, wired(1, 2))).toEqual([]);
+  });
+
+  it('indicts a gateway that decides nothing', () => {
+    const found = run(SUPERFLUOUS, wired(1, 1));
+
+    expect(found[0].messageKey).toBe(
+      'com.labre.test.gateway-superfluous.pattern'
+    );
+  });
+
+  it('says nothing about the branching gateways a ceiling would forbid', () => {
+    // The whole reason the conjunction is needed: `maxIn: 1` alone indicts the
+    // merge, `maxOut: 1` alone indicts the split.
+    expect(ids(SUPERFLUOUS, wired(2, 1))).toEqual([]);
+    expect(ids(SUPERFLUOUS, wired(1, 2))).toEqual([]);
+  });
+
+  it('agrees with the disjunction that says the same thing', () => {
+    // `eitherMin: 2` and `forbidPattern: { maxIn: 1, maxOut: 1 }` describe the
+    // same set of nodes, from the two sides. A framework picks the one whose
+    // data reads like its sentence.
+    const disjunctive: ValidationRule = {
+      ...base,
+      id: 'test.gateway-disjunctive',
+      messageKey: 'com.labre.test.gateway-disjunctive',
+      degree: { edgeRole: 'test:flow', eitherMin: 2 },
+    };
+
+    for (const [into, outOf] of [
+      [0, 0],
+      [1, 1],
+      [2, 1],
+      [1, 2],
+      [3, 3],
+    ] as const) {
+      const board = wired(into, outOf);
+      expect(ids(SUPERFLUOUS, board)).toEqual(ids(disjunctive, board));
+    }
+  });
+
+  it('composes with a bound of the opposite polarity', () => {
+    const both: ValidationRule = {
+      ...base,
+      id: 'test.gateway-pattern-and-bound',
+      messageKey: 'com.labre.test.gateway-pattern-and-bound',
+      degree: {
+        edgeRole: 'test:flow',
+        minIn: 1,
+        forbidPattern: {
+          minIn: 2,
+          minOut: 2,
+          messageKey: 'com.labre.test.gateway-pattern-and-bound.pattern',
+        },
+        tooFewIn: {
+          messageKey: 'com.labre.test.gateway-pattern-and-bound.too-few-in',
+        },
+      },
+    };
+
+    // Nothing arrives: the BOUND speaks, and it names the side to act on.
+    expect(run(both, wired(0, 3))[0].messageKey).toBe(
+      'com.labre.test.gateway-pattern-and-bound.too-few-in'
+    );
+    // Two in, two out: the bound is satisfied and the pattern is matched.
+    expect(run(both, wired(2, 2))[0].messageKey).toBe(
+      'com.labre.test.gateway-pattern-and-bound.pattern'
+    );
+    // ...and a gateway that is simply fine.
+    expect(ids(both, wired(1, 3))).toEqual([]);
+  });
+
+  it('falls back to the rule’s own words when the pattern declares none', () => {
+    const bare: ValidationRule = {
+      ...base,
+      id: 'test.gateway-bare-pattern',
+      messageKey: 'com.labre.test.gateway-bare-pattern',
+      degree: {
+        edgeRole: 'test:flow',
+        forbidPattern: { maxIn: 1, maxOut: 1, messageKey: '' },
+      },
+    };
+
+    // An empty key is what a framework writing no words of its own leaves —
+    // `raise` carries `words.messageKey` through either way, so the assertion
+    // here is that the pattern is READ, not that the key is invented.
+    expect(run(bare, wired(1, 1))[0].messageKey).toBe('');
+  });
+
+  it('drops a pattern with no bound in it, and warns', () => {
+    // Every node matches an empty conjunction, so honouring it would indict the
+    // whole board — the loudest possible way for a typo to be wrong.
+    const empty: ValidationRule = {
+      ...base,
+      id: 'test.gateway-empty-pattern',
+      messageKey: 'com.labre.test.gateway-empty-pattern',
+      degree: {
+        edgeRole: 'test:flow',
+        forbidPattern: { messageKey: 'com.labre.test.never' },
+      },
+    };
+
+    expect(ids(empty, wired(1, 1))).toEqual([]);
+  });
+
+  it('covers a specialisation of the subject role', () => {
+    const board = wired(2, 2).map(el =>
+      el.id === 'g' ? node('g', 'test:exclusive-gateway') : el
+    );
+
+    expect(ids(JOIN_FORK, board)).toEqual(['g']);
+  });
+});
