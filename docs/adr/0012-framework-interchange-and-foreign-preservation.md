@@ -297,15 +297,28 @@ no round-trip)" is a different sentence from "import a BPMN process", and a
 single "Import…" entry that hides the difference would earn a support ticket per
 user.
 
-A third possibility is worth naming so nobody rediscovers it as a bug:
-**a semantic format can still be partial by absence.** Mermaid has no Wardley
-diagram type, so a mermaid → Wardley import can recover the graph — components
-and dependencies — and cannot recover what mermaid never wrote: the visibility
-and maturity coordinates that _are_ a Wardley map. That import is semantic (it
-reads a model) and lossy at the source (the model is missing an axis). It
-belongs in the semantic tier, and the chantier that builds it owes the user an
-explicit answer to "where do the coordinates come from" — laid out, or authored
-afterwards. Flagged here so that answer is designed rather than defaulted.
+A third case is worth naming so nobody rediscovers it as a bug: **a semantic
+capability may target a format version that has not stabilized yet, and it must
+then say which version it read.** Mermaid → Wardley is that case. It targets
+mermaid's **experimental Wardley diagram type**, which carries the visibility and
+maturity coordinates natively — so the capability is squarely semantic, takes the
+full contract, and needs no invented axis. Two consequences the implementing
+chantier owes an answer to, rather than defaulting one:
+
+- **Until that type stabilizes upstream, the OWM DSL route is the reference
+  Wardley import.** It is the one whose vocabulary is settled, and it is what a
+  user should be pointed at when both are offered.
+- **A mermaid file predating the type** — plain `graph` / `flowchart` syntax —
+  is the documented fallback, not a second tier. Such an import recovers the
+  graph (components and dependencies) and cannot recover coordinates the file
+  never carried. The chantier must answer "where do the coordinates come from"
+  explicitly — laid out on import, or authored afterwards — and the report must
+  say which of the two happened. **An invented axis presented as read from the
+  file is forbidden**, here as everywhere else in this ADR.
+
+The general rule behind the case: **a capability records the format version it
+read**, and where a format is in motion the tier is decided by what the targeted
+version carries, not by what the oldest file in the wild happens to lack.
 
 ### P3 — Parsers live in the lib; the editor and labre-mcp are both callers
 
@@ -366,19 +379,26 @@ cheap to check.
 The PO's named matrix, as the initial roadmap. **Not all of it is v1** — this
 ADR builds the seam and the BPMN import chantier is the first row that moves.
 
-| framework   | format      | direction    | tier       | status                                                                                                                                             |
-| ----------- | ----------- | ------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **BPMN**    | `.bpmn` XML | Labre → file | semantic   | **shipped** (PR #149) — to be re-declared as a registry capability                                                                                 |
-| **BPMN**    | `.bpmn` XML | file → Labre | semantic   | **next chantier** — the worked example D1–D6 specifies                                                                                             |
-| **BPMN**    | SVG         | file → Labre | visual     | roadmap — recognition only, no round-trip                                                                                                          |
-| **Wardley** | OWM DSL     | Labre → file | semantic   | **exists in labre-mcp, outside the lib** — to be **migrated** onto a lib exporter                                                                  |
-| **Wardley** | OWM DSL     | file → Labre | semantic   | roadmap — `component` / `anchor` / `evolve` / `pipeline` and the `[visibility, maturity]` pair map onto the Wardley element models almost directly |
-| **Wardley** | mermaid     | file → Labre | semantic\* | roadmap — \*partial by absence: graph structure only, no coordinates (P2)                                                                          |
-| **Wardley** | SVG         | file → Labre | visual     | roadmap — recognition only                                                                                                                         |
-| **C4**      | mermaid     | Labre → file | semantic   | **in flight**, parallel chantier — lands **on this registry**, not beside it                                                                       |
+| framework   | format      | direction    | tier     | status                                                                                                                                                                                                                       |
+| ----------- | ----------- | ------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BPMN**    | `.bpmn` XML | Labre → file | semantic | **shipped** (PR #149) — to be re-declared as a registry capability                                                                                                                                                           |
+| **BPMN**    | `.bpmn` XML | file → Labre | semantic | **next chantier** — the worked example D1–D6 specifies                                                                                                                                                                       |
+| **BPMN**    | SVG         | file → Labre | visual   | roadmap — recognition only, no round-trip                                                                                                                                                                                    |
+| **Wardley** | OWM DSL     | Labre → file | semantic | **exists in labre-mcp, outside the lib** — to be **migrated** onto a lib exporter                                                                                                                                            |
+| **Wardley** | OWM DSL     | file → Labre | semantic | roadmap, and the **reference Wardley import** — `component` / `anchor` / `evolve` / `pipeline` and the `[visibility, maturity]` pair map onto the Wardley element models almost directly                                     |
+| **Wardley** | mermaid     | file → Labre | semantic | roadmap — **awaits mermaid's experimental wardley type** (coordinates carried natively once stabilized; OWM DSL is the reference route until then, and a pre-type mermaid file falls back to graph-without-coordinates — P2) |
+| **Wardley** | SVG         | file → Labre | visual   | roadmap — recognition only                                                                                                                                                                                                   |
+| **C4**      | mermaid     | Labre → file | semantic | **in flight**, parallel chantier — lands **on this registry**, not beside it                                                                                                                                                 |
 
-Two notes the chantiers should not have to rediscover:
+Three notes the chantiers should not have to rediscover:
 
+- **Two of these rows wait on the same upstream.** Mermaid's Wardley diagram type
+  and its C4 family are both experimental, and both are on this roadmap. The
+  registry is what makes that survivable: a capability is a declaration plus a
+  pure function, so a format that moves upstream costs a re-pinned golden corpus
+  in one package rather than a change to the seam. Neither row is a reason to
+  delay the seam, and neither should be shipped without recording which version
+  of the syntax it was written against (P2).
 - **C4 → mermaid is the registry's first new consumer and its first test.** It is
   being written now. It should declare an `InterchangeCapability` rather than a
   bespoke command, so that the second exporter costs a table row instead of a
@@ -583,10 +603,13 @@ because the symmetric-sounding alternative is wrong in both directions.
   `(0, 0)`. Relative positions, sizes and routings are exact. The offset is a
   viewport fact, not a model fact, and the picture is the shape.
 
-A format with **no** geometry at all — OWM DSL, mermaid — inverts the first
-bullet rather than contradicting it: there is nothing to be authoritative, so the
-importer lays out and says so in the report. It never claims a position it
-invented came from the file.
+A format that carries **coordinates but no pixels** — OWM DSL, and mermaid's
+Wardley type — satisfies the first bullet through its own axes rather than
+through a `dc:Bounds`: the pair _is_ the authoritative position, and the importer
+projects it onto the plot instead of laying anything out. A source carrying **no**
+position at all inverts the bullet rather than contradicting it: there is nothing
+to be authoritative, so the importer lays out and says so in the report. It never
+claims a position it invented came from the file.
 
 ### D5 — Quarantine: the four cases where preservation ≠ re-emission
 
