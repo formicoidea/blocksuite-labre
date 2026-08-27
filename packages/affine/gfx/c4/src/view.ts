@@ -12,7 +12,7 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background';
 import { c4CommandIcons, c4Commands } from './commands';
-import { effects } from './effects';
+import { effects, renderEffects } from './effects';
 import {
   C4BoardRendererExtension,
   C4BoundaryRendererExtension,
@@ -28,6 +28,7 @@ import {
   c4BoardToolingToolbarExtension,
   c4BoundaryValidationToolbarExtension,
 } from './toolbar/config';
+import { c4NodeToolbarExtension } from './toolbar/node-config';
 import { c4SeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -43,6 +44,13 @@ import { c4SeniorTool } from './toolbar/senior-tool';
  */
 export class C4RenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-c4-render-gfx';
+
+  override effect(): void {
+    super.effect();
+    // The Details popover's own element. Defined by the ALWAYS-ON half because
+    // the popover is: editing a stored node's technology is not tooling.
+    renderEffects();
+  }
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
@@ -73,6 +81,11 @@ export class C4RenderViewExtension extends ViewExtensionProvider {
       // handles usable with the C4 button switched off. The legend button is a
       // second module, registered by the flag-gated half below.
       context.register(c4BoardToolbarExtension);
+      // The selected NODE's row: the Details popover carrying its technology
+      // and its description. Always-on for the same reason — those two are
+      // element data, and a stored diagram must stay editable with the C4
+      // button switched off (`docs/adr/0009`).
+      context.register(c4NodeToolbarExtension);
     }
   }
 }

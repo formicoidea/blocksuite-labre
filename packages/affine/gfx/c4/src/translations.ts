@@ -10,6 +10,7 @@ import { c4Commands } from './commands.js';
 import { C4_PROFILES } from './profiles.js';
 import { C4_ROLES } from './roles.js';
 import { C4_RULES } from './rules.js';
+import { C4_NODE_CHROME_KEYS } from './toolbar/node-config.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -41,5 +42,14 @@ export const c4TranslationEntries: TranslationKeyManifestEntry[] =
     // named. `mergeTranslationEntries` keeps the FIRST occurrence, which is what
     // makes each key report the source it actually comes from.
     collectTranslationKeys('rule', C4_RULES),
-    collectTranslationKeys('profile', C4_PROFILES)
+    collectTranslationKeys('profile', C4_PROFILES),
+    // The node toolbar's own wordings. Composed from the table the toolbar
+    // declares beside the call that renders them, never restated here: a
+    // wording written twice is a wording that drifts, and the manifest spec's
+    // drift check would then be comparing this file against itself.
+    C4_NODE_CHROME_KEYS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    }))
   );

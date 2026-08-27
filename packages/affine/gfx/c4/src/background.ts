@@ -20,6 +20,8 @@ import {
   BOUNDARY_REF_HEIGHT,
   BOUNDARY_REF_WIDTH,
   BOUNDARY_STROKE,
+  BOUNDARY_TYPE_FONT_SIZE,
+  BOUNDARY_TYPE_STEP,
   BOUNDARY_WIDTH,
   FONT_FAMILY,
 } from './consts';
@@ -144,16 +146,27 @@ export const C4_BOARD_BACKGROUND: FrameworkBackgroundDef = {
  * and a board at a glance, so it belongs where the rest of the frame is
  * declared, in data a reviewer can read.
  *
- * ## The variant
+ * ## The variant, and the bracket line it decides
  *
- * `variantProp` is deliberately NOT declared. A variant gates pieces of the
- * declaration by matching a model prop, and `variant` is OPTIONAL on the
- * element — an unstated one reads as the string `"undefined"`, matches no
- * variant and would paint NOTHING at all. Since the two variants are the same
- * dashed rectangle and differ only in the wording a fresh boundary is NAMED
- * with, that wording lives at the creation site instead (`BOUNDARY_LABEL` in
- * `consts.ts`), and this file simply draws whatever `name` says. Laziest wiring
- * that cannot paint a blank frame.
+ * The stencil writes TWO lines in that corner: the author's name, and under it
+ * the level — `[Software System]` or `[Container]`. The second is derived from
+ * the variant and is therefore VOCABULARY, declared with a `labelKey` and no
+ * `prop`: it is translatable through the host's catalogue, and it is not offered
+ * to the in-place editor, because what kind of boundary this is was said by
+ * picking the tool rather than by typing.
+ *
+ * `variantProp` names {@link C4BoundaryElementModel.variantOrDefault} rather
+ * than `variant` itself, and that is the whole trick. `variant` is OPTIONAL: an
+ * unstated one stringifies to `"undefined"`, matches no declared variant and
+ * would paint NOTHING — which is exactly why this declaration used to declare no
+ * `variantProp` at all and let the creation site's default NAME carry the
+ * distinction. The derived getter applies the documented default (`'system'`)
+ * before the gate sees it, so every boundary — including every one already on
+ * disk, which stored nothing — reads as a real variant and gets its line.
+ *
+ * The default NAME still lives at the creation site (`BOUNDARY_LABEL` in
+ * `consts.ts`) and is still the author's from that moment on: renaming a
+ * boundary never contradicts its variant, and never silences its bracket line.
  */
 export const C4_BOUNDARY_BACKGROUND: FrameworkBackgroundDef = {
   type: 'c4Boundary',
@@ -172,6 +185,10 @@ export const C4_BOUNDARY_BACKGROUND: FrameworkBackgroundDef = {
       left: BOUNDARY_MARGIN,
     },
   },
+  // The level this instance encloses, with the optional field's documented
+  // default already applied — see the note above on why it is the DERIVED
+  // getter and not `variant` itself.
+  variantProp: 'variantOrDefault',
   zones: [
     {
       id: 'name',
@@ -181,8 +198,13 @@ export const C4_BOUNDARY_BACKGROUND: FrameworkBackgroundDef = {
         prop: 'name',
         // Bottom-left INSIDE the plot — the corner C4 writes a boundary's name
         // in, and the one corner of a frame that is least likely to have an
-        // element sitting in it.
-        anchor: { x: 0, y: 1, dy: -BOUNDARY_NAME_INSET },
+        // element sitting in it. It sits one bracket-line step up, because the
+        // line below it is the level.
+        anchor: {
+          x: 0,
+          y: 1,
+          dy: -(BOUNDARY_NAME_INSET + BOUNDARY_TYPE_STEP),
+        },
         style: {
           size: BOUNDARY_NAME_FONT_SIZE,
           weight: 600,
@@ -190,6 +212,28 @@ export const C4_BOUNDARY_BACKGROUND: FrameworkBackgroundDef = {
         },
       },
     },
+    // …and the bracket line under it, one zone per variant. Two zones rather
+    // than one label with two wordings because a zone carries exactly one
+    // label, and the gate that picks between them is the zone's own `variants`
+    // — which `backgroundTexts` propagates onto the label it carries.
+    ...(['system', 'container'] as const).map(variant => ({
+      id: `type-${variant}`,
+      variants: [variant],
+      rect: { x: 0, y: 0, w: 1, h: 1 },
+      label: {
+        id: `type-${variant}`,
+        // NO `prop`: this is vocabulary, so it is translatable and it is not
+        // offered to the in-place editor. The fallback is the stencil's own
+        // wording, brackets included.
+        labelKey: `com.labre.c4.boundary.type.${variant}`,
+        fallback: variant === 'system' ? '[Software System]' : '[Container]',
+        anchor: { x: 0, y: 1, dy: -BOUNDARY_NAME_INSET },
+        style: {
+          size: BOUNDARY_TYPE_FONT_SIZE,
+          color: '@name',
+        },
+      },
+    })),
   ],
   chrome: {
     fontFamily: FONT_FAMILY,

@@ -21,6 +21,7 @@ import {
   NODE_LABEL,
   NODE_PALETTE,
   NODE_SIZE,
+  PERSON_BODY_TOP,
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
 } from '../consts';
@@ -306,21 +307,53 @@ describe('what a c4 command actually creates', () => {
     }
   });
 
-  it('leaves the three glyph-bodied silhouettes unfilled and unstroked', () => {
-    // A head over a block and a cylinder are not native shapes: the renderer
-    // paints the body, so the shape underneath must paint nothing. The bezel of
-    // a phone and the chrome band of a browser go OVER a real filled box.
-    const glyphBodied = ['c4.addPerson', 'c4.addPersonExt', 'c4.addDatabase'];
+  it('leaves the five glyph-bodied silhouettes unfilled and unstroked', () => {
+    // A head fused into a body, a cylinder, a phone and a browser window are not
+    // native shapes: the renderer paints their body, so the shape underneath
+    // must paint nothing. The two devices joined the list with the PO's recette
+    // — the stencil paints their OUTER rectangle in the darker colour and insets
+    // a lighter screen in it, which leaves a native rect nothing to contribute.
+    const glyphBodied = [
+      'c4.addPerson',
+      'c4.addPersonExt',
+      'c4.addDatabase',
+      'c4.addMobile',
+      'c4.addBrowser',
+    ];
     for (const id of glyphBodied) {
       const props = created(byId.get(id)!);
       expect(props.filled, id).toBe(false);
       expect(props.strokeStyle, id).toBe(StrokeStyle.None);
     }
-    for (const id of ['c4.addMobile', 'c4.addBrowser', 'c4.addSystem']) {
+    // The four boxed levels are real filled rectangles, and square-cornered:
+    // that is all the stencil draws them as.
+    for (const id of [
+      'c4.addSystem',
+      'c4.addSystemExt',
+      'c4.addContainer',
+      'c4.addComponent',
+    ]) {
       const props = created(byId.get(id)!);
       expect(props.filled, id).toBe(true);
       expect(props.strokeStyle, id).toBe(StrokeStyle.Solid);
+      expect(props.radius, id).toBe(0);
     }
+  });
+
+  it('opens every node top-aligned, so the three tiers stack under the name', () => {
+    // The title is the native inner text and the type line and description are
+    // painted under wherever it landed, so top-aligning the one is what puts the
+    // STACK where the reference stencil puts it. The person's padding also
+    // clears its HEAD: its words are laid out in the body, not the silhouette.
+    const person = created(byId.get('c4.addPerson')!);
+    const system = created(byId.get('c4.addSystem')!);
+    for (const props of [person, system]) {
+      expect(props.textVerticalAlign).toBe('top');
+    }
+    const [personTop] = person.padding as [number, number];
+    const [systemTop] = system.padding as [number, number];
+    expect(personTop).toBeGreaterThan(NODE_SIZE.person.h * PERSON_BODY_TOP);
+    expect(systemTop).toBeLessThan(NODE_SIZE.system.h / 2);
   });
 
   it('creates the board and the two boundaries with their frame roles', () => {
