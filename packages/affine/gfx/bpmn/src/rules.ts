@@ -7,7 +7,12 @@ import { BPMN_POOL_BACKGROUND } from './background.js';
 import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
 
 /**
- * BPMN validation rules — the descriptive profile, as DATA (B6 of the pack).
+ * BPMN validation rules — the descriptive profile, as DATA (backlog item B6).
+ *
+ * NOTE ON NUMBERING: that "B6" is the BACKLOG item this file delivers. The
+ * **B1**–**B21** headings below are RULE numbers, a different space entirely,
+ * and the two collide on one token. Every in-file cross-reference means the rule
+ * number; the backlog item is named nowhere else.
  *
  * DATA owned by the framework, versioned per rule: the engine
  * (`@labre/affine-block-surface`) knows how to evaluate a FAMILY, never a
@@ -109,8 +114,10 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * - "an Artifact MUST NOT be the source or target of a Sequence Flow" (p.65) and
  *   "a Sequence Flow connects Events, Activities and Gateways" (p.95) — a
  *   sequence flow dropped on a text annotation or a data object goes unjudged;
- * - "a Message Flow MUST NOT connect to a Gateway" (p.152) — a gateway is named
- *   by no message sentence, so it is outside B2's alphabet.
+ * - the Message Flow Connection Rules table (p.41–42), which lists what a
+ *   message may run between and then says "Thus, Lane, Gateway, Data Object,
+ *   Group, and Text Annotation are not listed in the table" — a gateway is
+ *   named by no message sentence, so it is outside B2's alphabet.
  *
  * Reported to the engine author rather than worked around here: a triplet
  * written to widen an alphabet without meaning what it says would be exactly the
@@ -207,9 +214,9 @@ const sequenceFlowEndpoints: ValidationRule = {
   // declared where the family reads it — naming one of the three indicted
   // elements here would be data that lies.
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.sequence-flow-endpoints',
+  messageKey: 'com.labre.bpmn.validation.sequence-flow-endpoints',
   messageFallback: 'This sequence flow does not chain two steps of a process.',
-  suggestionKey: 'com.labre.bpmn.rule.sequence-flow-endpoints.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.sequence-flow-endpoints.suggestion',
   suggestionFallback:
     'A sequence flow runs between events, activities and gateways of one process — between pools, send a message flow instead.',
   version: 1,
@@ -230,9 +237,10 @@ const sequenceFlowEndpoints: ValidationRule = {
     // opposite of the Context Mapping one where the same pattern twice is a
     // claim made twice.
     selfLoop: {
-      messageKey: 'com.labre.bpmn.rule.sequence-flow-self-loop',
+      messageKey: 'com.labre.bpmn.validation.sequence-flow-self-loop',
       messageFallback: 'This sequence flow loops back onto the step it leaves.',
-      suggestionKey: 'com.labre.bpmn.rule.sequence-flow-self-loop.suggestion',
+      suggestionKey:
+        'com.labre.bpmn.validation.sequence-flow-self-loop.suggestion',
       suggestionFallback:
         'BPMN does not forbid this, but a descriptive diagram reads better when what decides to repeat a step is drawn: send the flow back through a gateway, or mark the activity as a loop.',
     },
@@ -250,7 +258,9 @@ const sequenceFlowEndpoints: ValidationRule = {
  * notation, and the direction is the whole rule — the triplets are read
  * `source → target`, so encoding it needs nothing but the table:
  *
- * - an **activity** both sends and receives (p.152);
+ * - an **activity** both sends and receives (p.152, the Activity's own Message
+ *   Flow Connections; the table at p.41–42 is what says which artefacts may be
+ *   an end at all);
  * - an **end event** only SENDS. A message end event throws on the way out, and
  *   nothing arrives at an end because the instance is over (p.248);
  * - a **start event** only RECEIVES. A message start event is a participant being
@@ -262,9 +272,11 @@ const sequenceFlowEndpoints: ValidationRule = {
  *
  * ## What it is silent about
  *
- * A message flow onto a GATEWAY, which p.152 forbids outright. A gateway is
- * named by no sentence above, so it is outside the alphabet — see the file
- * header, where this is recorded as an engine limit rather than a decision.
+ * A message flow onto a GATEWAY, which the Message Flow Connection Rules table
+ * excludes outright (p.41–42: "Thus, Lane, Gateway, Data Object, Group, and Text
+ * Annotation are not listed in the table"). A gateway is named by no sentence
+ * above, so it is outside the alphabet — see the file header, where this is
+ * recorded as an engine limit rather than a decision.
  * Text annotations and data elements are outside it too, for the ordinary
  * reason: they are not endpoints of a message.
  *
@@ -281,10 +293,10 @@ const messageFlowEndpoints: ValidationRule = {
   family: 'relation-endpoints',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.message-flow-endpoints',
+  messageKey: 'com.labre.bpmn.validation.message-flow-endpoints',
   messageFallback:
     'This message flow runs out of something that only receives, or into something that only sends.',
-  suggestionKey: 'com.labre.bpmn.rule.message-flow-endpoints.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.message-flow-endpoints.suggestion',
   suggestionFallback:
     'A message leaves an activity or an end event, and arrives at an activity or a start event: a start event is woken up by a message and has none to send, and an end event is where the instance stops.',
   version: 1,
@@ -356,10 +368,10 @@ const associationEndpoints: ValidationRule = {
   family: 'relation-endpoints',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.association-endpoints',
+  messageKey: 'com.labre.bpmn.validation.association-endpoints',
   messageFallback:
     'This association does not tie a note or a document to the work.',
-  suggestionKey: 'com.labre.bpmn.rule.association-endpoints.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.association-endpoints.suggestion',
   suggestionFallback:
     'An association attaches a text annotation to what it comments on, or a data object to the step that reads or produces it. To chain two steps, draw a sequence flow instead.',
   version: 1,
@@ -469,10 +481,10 @@ const untypedFlow: ValidationRule = {
   // The rule's own words are never read: `flagNeutral` is the only verdict it
   // can reach, and it carries its own. Declared all the same, because the shape
   // requires them and a rule with no sentence at all is a rule nobody can review.
-  messageKey: 'com.labre.bpmn.rule.untyped-flow',
+  messageKey: 'com.labre.bpmn.validation.untyped-flow',
   messageFallback:
     'This link between two steps says nothing the model records.',
-  suggestionKey: 'com.labre.bpmn.rule.untyped-flow.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.untyped-flow.suggestion',
   suggestionFallback:
     'Draw a sequence flow to order two steps of one process, or a message flow to send something between two participants. A plain connector is drawn on the diagram and absent from the model.',
   version: 1,
@@ -483,9 +495,10 @@ const untypedFlow: ValidationRule = {
     // so the two can never disagree about what "a step" is.
     allowed: BPMN_SEQUENCE_MATRIX,
     flagNeutral: {
-      messageKey: 'com.labre.bpmn.rule.untyped-flow.neutral',
+      messageKey: 'com.labre.bpmn.validation.untyped-flow.neutral',
       messageFallback: 'These two steps are joined by an untyped link.',
-      suggestionKey: 'com.labre.bpmn.rule.untyped-flow.neutral.suggestion',
+      suggestionKey:
+        'com.labre.bpmn.validation.untyped-flow.neutral.suggestion',
       suggestionFallback:
         'The diagram shows an arrow and the process holds none — nothing follows anything here. Draw it again with the sequence flow tool, or with the message flow tool if it crosses between participants.',
     },
@@ -525,10 +538,10 @@ const duplicateSequenceFlow: ValidationRule = {
   family: 'relation-endpoints',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.duplicate-sequence-flow',
+  messageKey: 'com.labre.bpmn.validation.duplicate-sequence-flow',
   messageFallback:
     'This sequence flow is already drawn between these two steps.',
-  suggestionKey: 'com.labre.bpmn.rule.duplicate-sequence-flow.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.duplicate-sequence-flow.suggestion',
   suggestionFallback:
     'Delete the copy. Two routes to the same step leave from different places — draw the second one out of a gateway, so the diagram says what decides between them.',
   version: 1,
@@ -541,11 +554,11 @@ const duplicateSequenceFlow: ValidationRule = {
     allowed: BPMN_SEQUENCE_MATRIX,
     forbidDuplicate: true,
     duplicate: {
-      messageKey: 'com.labre.bpmn.rule.duplicate-sequence-flow.copy',
+      messageKey: 'com.labre.bpmn.validation.duplicate-sequence-flow.copy',
       messageFallback:
         'These two steps are already joined by a sequence flow going the same way.',
       suggestionKey:
-        'com.labre.bpmn.rule.duplicate-sequence-flow.copy.suggestion',
+        'com.labre.bpmn.validation.duplicate-sequence-flow.copy.suggestion',
       suggestionFallback:
         'The second arrow adds nothing a reader can act on. Delete it — or, if the two routes are genuinely different, send one of them through a gateway.',
     },
@@ -576,9 +589,9 @@ const startEventNoInflow: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.startEvent,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.start-event-no-inflow',
+  messageKey: 'com.labre.bpmn.validation.start-event-no-inflow',
   messageFallback: 'A sequence flow arrives at this start event.',
-  suggestionKey: 'com.labre.bpmn.rule.start-event-no-inflow.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.start-event-no-inflow.suggestion',
   suggestionFallback:
     'A start event is where the process wakes up — nothing flows into it. Reverse the arrow, or make this step a task if something really does happen before it.',
   version: 1,
@@ -611,9 +624,9 @@ const startEventMustExit: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.startEvent,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.start-event-must-exit',
+  messageKey: 'com.labre.bpmn.validation.start-event-must-exit',
   messageFallback: 'Nothing follows this start event.',
-  suggestionKey: 'com.labre.bpmn.rule.start-event-must-exit.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.start-event-must-exit.suggestion',
   suggestionFallback:
     'Draw the sequence flow out of it to the first thing the process does — until then the diagram says the participant wakes up and stops.',
   version: 1,
@@ -643,9 +656,9 @@ const endEventNoOutflow: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.endEvent,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.end-event-no-outflow',
+  messageKey: 'com.labre.bpmn.validation.end-event-no-outflow',
   messageFallback: 'A sequence flow leaves this end event.',
-  suggestionKey: 'com.labre.bpmn.rule.end-event-no-outflow.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.end-event-no-outflow.suggestion',
   suggestionFallback:
     'An end event is where the process stops — nothing leaves it. Reverse the arrow, or make this step a task if the process really does carry on.',
   version: 1,
@@ -672,9 +685,10 @@ const endEventMustBeReached: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.endEvent,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.end-event-must-be-reached',
+  messageKey: 'com.labre.bpmn.validation.end-event-must-be-reached',
   messageFallback: 'Nothing leads to this end event.',
-  suggestionKey: 'com.labre.bpmn.rule.end-event-must-be-reached.suggestion',
+  suggestionKey:
+    'com.labre.bpmn.validation.end-event-must-be-reached.suggestion',
   suggestionFallback:
     'Draw the sequence flow into it from the last step of that path — an outcome nothing reaches is an outcome the process cannot produce.',
   version: 1,
@@ -716,9 +730,9 @@ const activityDeadEnd: ValidationRule = {
   severity: 'audit',
   appliesTo: BPMN_ROLE.activity,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.activity-dead-end',
+  messageKey: 'com.labre.bpmn.validation.activity-dead-end',
   messageFallback: 'Nothing follows this step, so the path simply ends here.',
-  suggestionKey: 'com.labre.bpmn.rule.activity-dead-end.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.activity-dead-end.suggestion',
   suggestionFallback:
     'BPMN allows a path to end at a step. With end events in play elsewhere on the diagram, a step that leads nowhere is usually an omission — draw the flow on, or add the end event that says this outcome was reached.',
   version: 1,
@@ -732,8 +746,8 @@ const activityDeadEnd: ValidationRule = {
 /**
  * **B11** — a sequence flow stays inside its pool.
  *
- * Half of what a swimlane diagram MEANS, and normative: "a Sequence Flow MUST
- * NOT cross a Pool boundary" (p.119). A pool is one participant and a sequence
+ * Half of what a swimlane diagram MEANS, and normative: "…nor can Sequence
+ * Flows cross a Pool boundary" (p.40, restated p.502). A pool is one participant and a sequence
  * flow is one participant's own order of work: a token never crosses from one
  * participant to another, because a participant cannot run another's steps. What
  * crosses is a message, and B12 is its half.
@@ -765,9 +779,10 @@ const sequenceFlowStaysHome: ValidationRule = {
   family: 'edge-locality',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.sequence-flow-stays-home',
+  messageKey: 'com.labre.bpmn.validation.sequence-flow-stays-home',
   messageFallback: 'This sequence flow crosses from one pool into another.',
-  suggestionKey: 'com.labre.bpmn.rule.sequence-flow-stays-home.suggestion',
+  suggestionKey:
+    'com.labre.bpmn.validation.sequence-flow-stays-home.suggestion',
   suggestionFallback:
     'A sequence flow chains steps of the same participant — between pools, send a message flow instead, or move the step into the pool that performs it.',
   version: 1,
@@ -808,9 +823,10 @@ const messageFlowCrossesPools: ValidationRule = {
   family: 'edge-locality',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.message-flow-crosses-pools',
+  messageKey: 'com.labre.bpmn.validation.message-flow-crosses-pools',
   messageFallback: 'This message flow stays inside one pool.',
-  suggestionKey: 'com.labre.bpmn.rule.message-flow-crosses-pools.suggestion',
+  suggestionKey:
+    'com.labre.bpmn.validation.message-flow-crosses-pools.suggestion',
   suggestionFallback:
     'A message is what one participant sends to another — inside a single pool, the two steps belong to one process, so draw a sequence flow instead.',
   version: 1,
@@ -842,15 +858,22 @@ const messageFlowCrossesPools: ValidationRule = {
  *
  * ## `implicitRoots`, and the spec-legal diagram it protects
  *
- * A Process is NOT required to contain a Start Event (p.238); drawn without one,
- * every flow object with no incoming sequence flow is an implicit parallel start
- * and the process instantiates on all of them at once (p.245). Without
- * {@link ReachabilityDef.implicitRoots} the traversal has nowhere to
- * leave from on such a diagram — the family answers total silence for zero roots,
- * which is safe — but a MIXED pool, one explicit start plus a parallel branch
- * that has none, would have the whole branch reported unreachable. The field is
- * declared today and honoured by `claude/bpmn-engine-v2`; until it lands the rule
- * reports a SUPERSET of the corrected answer, never a different one.
+ * A Process is NOT required to contain a Start Event (p.238), and p.245 says
+ * what happens then: "When a Start Event is not used, then all Flow Objects that
+ * do not have an incoming Sequence Flow SHALL be the start of a separate
+ * parallel path."
+ *
+ * ## The mixed case is OUR widening, not the spec's
+ *
+ * p.245's clause is CONDITIONAL — it speaks about a process with no start event
+ * at all — and the engine seeds in-degree-zero subjects as roots
+ * unconditionally. So a pool holding one explicit start PLUS a dangling branch
+ * stays silent, where p.245 does not obviously sanction it. That is a deliberate
+ * widening on our side, and it is the quieter direction: the alternative lights
+ * up a whole branch of a diagram somebody is still drawing, because one marker
+ * elsewhere on the board lifted the zero-root gate. The sketch primes (PRD
+ * principle 3). What survives either way is the only real defect — a ring nothing
+ * enters, where every step is pointed at and no walk reaches any of them.
  *
  * ## `on-demand`, and why that is a property of the rule
  *
@@ -874,9 +897,9 @@ const unreachableStep: ValidationRule = {
   family: 'reachability',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.unreachable-step',
+  messageKey: 'com.labre.bpmn.validation.unreachable-step',
   messageFallback: 'Nothing leads to this step from any start event.',
-  suggestionKey: 'com.labre.bpmn.rule.unreachable-step.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.unreachable-step.suggestion',
   suggestionFallback:
     'Follow the sequence flows back from here: somewhere the chain stops, or an arrow points the wrong way. Join it to the process, or delete it if it no longer happens.',
   version: 1,
@@ -898,21 +921,28 @@ const unreachableStep: ValidationRule = {
 /**
  * **B14** — a process that says where it ends says where it begins.
  *
- * The first half of the PAIRING, and the correction that took the naive version
- * of this rule out of the pack. A pool needs NEITHER event: a Process is not
- * required to contain a Start Event (p.238), an End Event is optional (p.246),
- * and a black-box participant in a collaboration is conformant with nothing
- * drawn inside it at all. An unconditional "every pool holds a start event"
- * fires on all three, which is the tool inventing a requirement the notation
- * does not have.
+ * A verbatim normative MUST, guard included:
  *
- * What IS a requirement is the pair. A diagram that draws its outcome and not its
- * trigger leaves the reader unable to say what has to happen for that outcome to
- * be produced — and a process modelled with explicit end events and implicit
- * starts is not a style, it is half a model.
+ * > "If there is an End Event, then there MUST be at least one Start Event."
+ * > — p.238
  *
- * So the bound is conditional: at least one start event, **and only when the pool
- * already holds an end event** ({@link RoleCountDef.ifPresent}).
+ * The conditional is the SPEC'S, not a reading of ours, and that is the whole
+ * shape of the rule: a pool needs NEITHER event — a Process is not required to
+ * contain a Start Event (p.238), an End Event is optional (p.246), and a
+ * black-box participant in a collaboration is conformant with nothing drawn
+ * inside it at all. An unconditional "every pool holds a start event" fires on
+ * all three, which is the tool inventing a requirement the notation does not
+ * have; it is what took the naive version of this rule out of the pack.
+ *
+ * So the bound is conditional exactly as the sentence is: at least one start
+ * event, **and only when the pool already holds an end event**
+ * ({@link RoleCountDef.ifPresent}). What it protects the reader from is a
+ * diagram that draws its outcome and not its trigger — half a model, and
+ * unreadable as to what has to happen for that outcome to be produced.
+ *
+ * One of the four rules that would sit at `blocking-overridable` the day a
+ * gesture refusal lands (see `profiles.ts`): the spec states it, and there is no
+ * reading under which the author is right.
  *
  * ## Why the finding lands on the POOL
  *
@@ -934,10 +964,10 @@ const poolEndWithoutStart: ValidationRule = {
   family: 'role-count',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.pool-end-without-start',
+  messageKey: 'com.labre.bpmn.validation.pool-end-without-start',
   messageFallback:
     'This pool says where its process ends, and not where it begins.',
-  suggestionKey: 'com.labre.bpmn.rule.pool-end-without-start.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.pool-end-without-start.suggestion',
   suggestionFallback:
     'Draw the start event that wakes this participant up — a message start if somebody else triggers it, a timer start if the clock does. A pool with no events at all is fine; one with only an ending is half a model.',
   version: 1,
@@ -957,12 +987,18 @@ const poolEndWithoutStart: ValidationRule = {
 /**
  * **B15** — and a process that says where it begins says where it ends.
  *
- * The mirror, and the one a reader misses more often: a pool whose process trails
- * off has no visible outcome, so nobody can say what "done" is for that
- * participant. Drawing the end event is how a diagram commits to an outcome.
+ * The mirror, and a verbatim MUST of its own:
  *
- * Conditional in the same way and for the same reason (p.238 / p.246): the
- * requirement is the pairing, so a pool holding no start event either is silent.
+ * > "If there is a Start Event, then there MUST be at least one End Event."
+ * > — p.246
+ *
+ * The one a reader misses more often: a pool whose process trails off has no
+ * visible outcome, so nobody can say what "done" is for that participant.
+ * Drawing the end event is how a diagram commits to one.
+ *
+ * Conditional in the same way and for the same reason: the requirement is the
+ * pairing, so a pool holding no start event either is silent. Also on the
+ * `blocking-overridable` list for the day refusal lands.
  * `min: 1` and no maximum — several ends is how a process says it has several
  * outcomes, and a descriptive diagram drawing "order shipped" and "order
  * cancelled" separately is saying something true.
@@ -975,10 +1011,10 @@ const poolStartWithoutEnd: ValidationRule = {
   family: 'role-count',
   severity: 'warning',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.pool-start-without-end',
+  messageKey: 'com.labre.bpmn.validation.pool-start-without-end',
   messageFallback:
     'This pool says where its process begins, and not where it ends.',
-  suggestionKey: 'com.labre.bpmn.rule.pool-start-without-end.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.pool-start-without-end.suggestion',
   suggestionFallback:
     'Draw the end event that closes the process for this participant, so the reader can see what being done means here. Several outcomes take several end events.',
   version: 1,
@@ -1015,10 +1051,25 @@ const poolStartWithoutEnd: ValidationRule = {
  * severities on one symbol for one gesture to fix. This rule keeps the
  * spec-backed reading and the higher severity of the two.
  *
+ * ## The sentence covers TWO shapes, because the pattern does
+ *
+ * `maxIn: 1` includes `in == 0`, so the zone also contains the gateway somebody
+ * has just dropped from the toolbar and not yet connected. An earlier wording
+ * said "takes one flow in and puts one flow out", which is a claim about a
+ * board that in that case has no such flows on it — data describing a shape the
+ * diagram does not have, which is the one thing this file refuses everywhere
+ * else. The message is therefore the PREDICATE — neither splits nor merges —
+ * which is true of the 1/1 diamond and of the naked one alike, and the
+ * suggestion names the three gestures that resolve either.
+ *
  * `warning` and not louder, despite the MUST: p.288's instantiating parallel
- * gateway is a real, conformant exception with one incoming flow, and this
- * declaration cannot tell it apart from a mistake. The severity is set to what
- * the rule can honestly claim.
+ * gateway is a real, conformant exception — "If the Gateway does not have an
+ * incoming Sequence Flow, and there is no Start Event for the Process, then the
+ * Gateway's divergence behavior SHALL be performed when the Process is
+ * instantiated" — so it has ZERO incoming flows, not one. The predicate copes
+ * either way (such a gateway diverges, so `out >= 2` and `maxOut: 1` fails), but
+ * the severity is set to what the rule can honestly claim about a shape it
+ * cannot tell apart from a mistake.
  */
 const gatewayMustBranch: ValidationRule = {
   id: 'bpmn.gateway-must-branch',
@@ -1027,10 +1078,9 @@ const gatewayMustBranch: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.gateway,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.gateway-must-branch',
-  messageFallback:
-    'This gateway has one flow in and one flow out, so it neither splits nor merges.',
-  suggestionKey: 'com.labre.bpmn.rule.gateway-must-branch.suggestion',
+  messageKey: 'com.labre.bpmn.validation.gateway-must-branch',
+  messageFallback: 'This gateway neither splits nor merges.',
+  suggestionKey: 'com.labre.bpmn.validation.gateway-must-branch.suggestion',
   suggestionFallback:
     'A gateway is a fork or a join: draw the second branch out of it, bring the second path into it, or delete it and let the sequence flow run straight through.',
   version: 1,
@@ -1044,10 +1094,11 @@ const gatewayMustBranch: ValidationRule = {
     forbidPattern: {
       maxIn: 1,
       maxOut: 1,
-      messageKey: 'com.labre.bpmn.rule.gateway-must-branch.idle',
+      messageKey: 'com.labre.bpmn.validation.gateway-must-branch.idle',
       messageFallback:
-        'This gateway takes one flow in and puts one flow out, so it decides nothing.',
-      suggestionKey: 'com.labre.bpmn.rule.gateway-must-branch.idle.suggestion',
+        'This gateway neither splits nor merges, so it decides nothing.',
+      suggestionKey:
+        'com.labre.bpmn.validation.gateway-must-branch.idle.suggestion',
       suggestionFallback:
         'Draw the second branch out of it, bring the second path into it, or delete it and let the sequence flow run straight through.',
     },
@@ -1076,9 +1127,9 @@ const gatewayJoinAndFork: ValidationRule = {
   severity: 'warning',
   appliesTo: BPMN_ROLE.gateway,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.gateway-join-and-fork',
+  messageKey: 'com.labre.bpmn.validation.gateway-join-and-fork',
   messageFallback: 'This gateway both merges paths and splits them.',
-  suggestionKey: 'com.labre.bpmn.rule.gateway-join-and-fork.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.gateway-join-and-fork.suggestion',
   suggestionFallback:
     'A reader cannot tell whether it waits for the incoming paths or races them. Split it in two — a gateway that joins, a sequence flow, then a gateway that forks.',
   version: 1,
@@ -1088,10 +1139,10 @@ const gatewayJoinAndFork: ValidationRule = {
     forbidPattern: {
       minIn: 2,
       minOut: 2,
-      messageKey: 'com.labre.bpmn.rule.gateway-join-and-fork.both',
+      messageKey: 'com.labre.bpmn.validation.gateway-join-and-fork.both',
       messageFallback: 'This gateway both merges paths and splits them.',
       suggestionKey:
-        'com.labre.bpmn.rule.gateway-join-and-fork.both.suggestion',
+        'com.labre.bpmn.validation.gateway-join-and-fork.both.suggestion',
       suggestionFallback:
         'A reader cannot tell whether it waits for the incoming paths or races them. Split it in two — a gateway that joins, a sequence flow, then a gateway that forks.',
     },
@@ -1119,7 +1170,7 @@ const gatewayJoinAndFork: ValidationRule = {
  * behaviour: flagging an END EVENT that several paths converge on. That is not a
  * shorthand, it is the notation working — one outcome reached by several routes
  * is precisely what an end event is for, and every descriptive diagram in the
- * corpus draws one. A start event cannot have an incoming flow at all (B7), so
+ * corpus draws one. A start event cannot have an incoming flow at all (B6), so
  * there is nothing left for the wider role to catch.
  */
 const fakeJoin: ValidationRule = {
@@ -1129,9 +1180,9 @@ const fakeJoin: ValidationRule = {
   severity: 'audit',
   appliesTo: BPMN_ROLE.activity,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.fake-join',
+  messageKey: 'com.labre.bpmn.validation.fake-join',
   messageFallback: 'Several paths arrive at this step without a gateway.',
-  suggestionKey: 'com.labre.bpmn.rule.fake-join.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.fake-join.suggestion',
   suggestionFallback:
     'BPMN allows it, and the step runs once per path that reaches it. If it is meant to WAIT for the others instead, bring the paths into a joining gateway and let one flow out of it.',
   version: 1,
@@ -1140,9 +1191,9 @@ const fakeJoin: ValidationRule = {
     edgeRole: BPMN_ROLE.sequenceFlow,
     forbidPattern: {
       minIn: 2,
-      messageKey: 'com.labre.bpmn.rule.fake-join.merge',
+      messageKey: 'com.labre.bpmn.validation.fake-join.merge',
       messageFallback: 'Several paths arrive at this step without a gateway.',
-      suggestionKey: 'com.labre.bpmn.rule.fake-join.merge.suggestion',
+      suggestionKey: 'com.labre.bpmn.validation.fake-join.merge.suggestion',
       suggestionFallback:
         'BPMN allows it, and the step runs once per path that reaches it. If it is meant to WAIT for the others instead, bring the paths into a joining gateway and let one flow out of it.',
     },
@@ -1164,7 +1215,7 @@ const fakeJoin: ValidationRule = {
  * outside the panel precisely because the gap is ours and not the author's.
  *
  * Activities only, for {@link fakeJoin}'s reasons read the other way: an end
- * event cannot have an outgoing flow at all (B9), and a start event with two
+ * event cannot have an outgoing flow at all (B8), and a start event with two
  * would be the same nuance on a symbol nobody splits from.
  */
 const implicitSplit: ValidationRule = {
@@ -1174,9 +1225,9 @@ const implicitSplit: ValidationRule = {
   severity: 'audit',
   appliesTo: BPMN_ROLE.activity,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.implicit-split',
+  messageKey: 'com.labre.bpmn.validation.implicit-split',
   messageFallback: 'Several paths leave this step without a gateway.',
-  suggestionKey: 'com.labre.bpmn.rule.implicit-split.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.implicit-split.suggestion',
   suggestionFallback:
     'As drawn, every path runs. If the process chooses between them, put an exclusive gateway after the step and name what it decides on.',
   version: 1,
@@ -1185,9 +1236,9 @@ const implicitSplit: ValidationRule = {
     edgeRole: BPMN_ROLE.sequenceFlow,
     forbidPattern: {
       minOut: 2,
-      messageKey: 'com.labre.bpmn.rule.implicit-split.fork',
+      messageKey: 'com.labre.bpmn.validation.implicit-split.fork',
       messageFallback: 'Several paths leave this step without a gateway.',
-      suggestionKey: 'com.labre.bpmn.rule.implicit-split.fork.suggestion',
+      suggestionKey: 'com.labre.bpmn.validation.implicit-split.fork.suggestion',
       suggestionFallback:
         'As drawn, every path runs. If the process chooses between them, put an exclusive gateway after the step and name what it decides on.',
     },
@@ -1223,9 +1274,9 @@ const singleBlankStart: ValidationRule = {
   family: 'role-count',
   severity: 'audit',
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.single-blank-start',
+  messageKey: 'com.labre.bpmn.validation.single-blank-start',
   messageFallback: 'This pool holds more than one untyped start event.',
-  suggestionKey: 'com.labre.bpmn.rule.single-blank-start.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.single-blank-start.suggestion',
   suggestionFallback:
     'Two plain circles say the process starts here twice, without saying on which two occasions. Give each start its trigger — a message start, a timer start — or keep one.',
   version: 1,
@@ -1269,9 +1320,9 @@ const unlabeledStep: ValidationRule = {
   severity: 'audit',
   appliesTo: BPMN_ROLE.flowObject,
   roles: BPMN_ROLES,
-  messageKey: 'com.labre.bpmn.rule.unlabeled-step',
+  messageKey: 'com.labre.bpmn.validation.unlabeled-step',
   messageFallback: 'This step has no name.',
-  suggestionKey: 'com.labre.bpmn.rule.unlabeled-step.suggestion',
+  suggestionKey: 'com.labre.bpmn.validation.unlabeled-step.suggestion',
   suggestionFallback:
     'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3". An unnamed gateway is worse still: the whole content of a decision is the question it asks.',
   version: 1,

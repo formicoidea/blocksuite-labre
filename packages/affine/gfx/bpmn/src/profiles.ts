@@ -1,7 +1,8 @@
 import type { ValidationProfile } from '@labre/affine-block-surface';
 
 /**
- * BPMN validation profiles (B6).
+ * BPMN validation profiles (backlog item B6 — not the rule of that number; see
+ * the numbering note in `rules.ts`).
  *
  * DATA owned by the framework, like its rules and its roles. A profile is chosen
  * per POOL — the framework's root instance — and the choice rides on the pool
@@ -21,8 +22,8 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * pack draws), ANALYTIC (every event type, every gateway, the full flow
  * semantics) and COMMON EXECUTABLE (what an engine can run: data mappings,
  * expressions, message correlation). Only the first is meaningful against the
- * twelve rules that exist, because the other two are levels of requirement about
- * artefacts this pack does not yet draw.
+ * twenty-one rules that exist, because the other two are levels of requirement
+ * about artefacts this pack does not yet draw.
  *
  * They arrive as PROFILES and not as engine work when they arrive: a level of
  * requirement is a table of severities per rule id, so `bpmn.analytic` is an
@@ -95,7 +96,8 @@ const sketch: ValidationProfile = {
  * Every rule at the severity its own declaration carries, spelled out rather
  * than left absent, so the answer is readable in one place. That is the point of
  * a profile table: a reviewer asking "what does this level actually require"
- * reads twelve lines instead of twelve files, and a rule added later cannot join
+ * reads twenty-one lines instead of twenty-one files, and a rule added later
+ * cannot join
  * a level silently — it arrives with its own severity until somebody writes it
  * down here.
  *
@@ -103,10 +105,17 @@ const sketch: ValidationProfile = {
  *
  * Nothing in this library implements refusal — no gesture is declined anywhere —
  * so declaring the level would be data claiming an effect that does not exist
- * (the `wardley/rules.ts:30` promise, kept). `bpmn.start-event-no-inflow` and
- * `bpmn.end-event-no-outflow` are the two a BPMN trainer would put there: both
- * say the process runs backwards, and neither has a reading in which the author
- * is right. They move in one line each, here, the day the gesture refusal lands.
+ * (the `wardley/rules.ts:30` promise, kept). FOUR rules would sit there the day
+ * a gesture refusal lands, and each moves in one line, here:
+ *
+ * - `bpmn.start-event-no-inflow` and `bpmn.end-event-no-outflow` (p.244 / p.248)
+ *   — both say the process runs backwards, and neither has a reading in which
+ *   the author is right;
+ * - `bpmn.pool-end-without-start` and `bpmn.pool-start-without-end` — verbatim
+ *   normative MUSTs, guard included: "If there is an End Event, then there MUST
+ *   be at least one Start Event" (p.238) and its mirror (p.246). The pack argued
+ *   the pairing into existence before somebody read the pages; the specification
+ *   simply states it.
  *
  * ## The five that do not move
  *

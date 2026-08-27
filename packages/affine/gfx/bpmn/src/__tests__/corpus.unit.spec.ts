@@ -154,19 +154,6 @@ const evaluate = (elements: GfxPrimitiveElementModel[]) =>
 const checkup = (elements: GfxPrimitiveElementModel[]) =>
   evaluateCheckup(BPMN_RULES, elements, BPMN_PROFILES);
 
-/**
- * An alias for {@link evaluate}, kept for the blocks below.
- *
- * Those eight rules were authored a review cycle ahead of the engine and ran
- * against their own array, because two of them were WRONG without the def field
- * they name — an engine with no `ifPresent` reads the pair as the unconditional
- * "every pool holds a start event" the specification review removed.
- * `claude/bpmn-engine-v2` (#145) landed every field, so they are part of the
- * pack like everything else. The alias is what makes that a one-line diff
- * instead of a rewrite: the boards did not change, only what evaluates them.
- */
-const pending = evaluate;
-
 /** `[ruleId, …elementIds]` per finding, sorted — everything a board reports. */
 const said = (violations: readonly Violation[]) =>
   violations.map(v => [v.ruleId, ...v.elementIds].join(' ')).sort();
@@ -379,7 +366,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
   });
 
   it('catches a start event nothing comes out of', () => {
-    // p.244, the other half of B5: a participant that wakes up and stops.
+    // p.244, the other half of B6: a participant that wakes up and stops.
     const board = [
       pool('pool', [0, 0, 800, 300]),
       start('start', 100, 150),
@@ -657,9 +644,11 @@ describe('what the corpus stays silent about', () => {
   });
 
   it('says nothing about a message flow dropped on a gateway or an annotation', () => {
-    // p.152 — "a Message Flow MUST NOT connect to a Gateway". Same limit: no
-    // message sentence names a gateway, so a gateway end is outside B2's
-    // alphabet. The annotation is outside it for the ordinary reason.
+    // The Message Flow Connection Rules table, p.41-42: it lists what a message
+    // may run between and then says "Thus, Lane, Gateway, Data Object, Group,
+    // and Text Annotation are not listed in the table". Same limit either way —
+    // no message SENTENCE names a gateway, so a gateway end is outside B2's
+    // alphabet, and the annotation is outside it for the ordinary reason.
     const board = [
       pool('buyer', [0, 0, 800, 300]),
       pool('seller', [0, 400, 800, 300]),
@@ -864,19 +853,19 @@ describe('scenario · the profile decides how hard the pack bites', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The three rules waiting on `claude/bpmn-engine-v2`.
+// The conditional, forbidden-shape and naming rules.
 // ---------------------------------------------------------------------------
 
-describe('pending · the paired existence rules', () => {
+describe('a pool that draws one half of the pair', () => {
   /**
    * The pairing is what the specification requires, not the events themselves: a
    * Process need contain no Start Event (p.238) and an End Event is optional
    * (p.246), so only a pool that draws ONE of the two is half a model.
    *
-   * The cases below are the ones whose answer is the SAME with and without
-   * `RoleCountDef.ifPresent`, so they hold today and keep holding once
-   * `claude/bpmn-engine-v2` lands. The case that distinguishes the two — a pool
-   * with neither event — is the `skip` at the bottom.
+   * The four combinations, and the third of them is the one that matters: a pool
+   * holding NEITHER event must stay silent, which is what
+   * {@link RoleCountDef.ifPresent} buys and what an unconditional `min: 1` gets
+   * wrong.
    */
   const poolHolding = (...inside: GfxPrimitiveElementModel[]) => [
     pool('pool', [0, 0, 800, 300]),
@@ -889,7 +878,7 @@ describe('pending · the paired existence rules', () => {
       end('done', 600, 150),
       flow('f1', 'first', 'done')
     );
-    const violations = pending(board);
+    const violations = evaluate(board);
     expect(said(violations)).toEqual(['bpmn.pool-end-without-start pool']);
     // The finding lands ON the frame, which is what puts the bracket on the pool
     // and what makes an arbitration cover this participant and no other.
@@ -903,10 +892,10 @@ describe('pending · the paired existence rules', () => {
       task('first', 300, 150),
       flow('f1', 'start', 'first')
     );
-    expect(told(pending(board))).toEqual(['bpmn.pool-start-without-end pool']);
+    expect(told(evaluate(board))).toEqual(['bpmn.pool-start-without-end pool']);
     // `first` leads nowhere, which is how the pool comes to have no end event
     // at all — the panel remarks on it, the canvas says the one thing.
-    expect(said(pending(board))).toContain('bpmn.activity-dead-end first');
+    expect(said(evaluate(board))).toContain('bpmn.activity-dead-end first');
   });
 
   it('says nothing about a pool holding both', () => {
@@ -917,7 +906,7 @@ describe('pending · the paired existence rules', () => {
       flow('f1', 'start', 'first'),
       flow('f2', 'first', 'done')
     );
-    expect(said(pending(board))).toEqual([]);
+    expect(said(evaluate(board))).toEqual([]);
   });
 
   it('counts the message and timer starts as starts', () => {
@@ -930,25 +919,26 @@ describe('pending · the paired existence rules', () => {
       flow('f1', 'woken', 'first'),
       flow('f2', 'first', 'stopped')
     );
-    expect(said(pending(board))).toEqual([]);
+    expect(said(evaluate(board))).toEqual([]);
   });
 
   it('says nothing about a pool holding NEITHER event', () => {
     // A black-box participant in a collaboration is conformant with nothing
-    // inside it (p.238 / p.246). Until `RoleCountDef.ifPresent` is honoured the
-    // engine reads `{ subject, min: 1 }` unconditionally and indicts this board
-    // twice — which is exactly why these two rules are NOT registered yet.
+    // inside it (p.238 / p.246), and both MUSTs are guarded on the other half
+    // being there. Without the guard the engine reads `{ subject, min: 1 }`
+    // unconditionally and indicts this board TWICE — which is why the pack held
+    // these two out of registration until the field existed.
     const board = poolHolding(
       task('first', 250, 150),
       task('second', 500, 150),
       flow('f1', 'first', 'second'),
       flow('f2', 'second', 'first')
     );
-    expect(said(pending(board))).toEqual([]);
+    expect(said(evaluate(board))).toEqual([]);
   });
 });
 
-describe('pending · the gateways, as forbidden zones', () => {
+describe('the gateways, as forbidden zones', () => {
   /**
    * Both gateway rules need `EdgeDegreeDef.forbidPattern` — a bag of bounds that
    * is a finding only when they ALL hold at once. Every half of every pattern
@@ -956,8 +946,8 @@ describe('pending · the gateways, as forbidden zones', () => {
    * four independent bounds cannot express either rule: `minIn: 2` alone indicts
    * every merge on every diagram.
    *
-   * Until the field lands, both declare no bound the engine recognises: it warns
-   * once and evaluates nothing.
+   * The pattern carries its own words, so each finding says which SHAPE the
+   * board has rather than which bound it missed.
    */
   const withGateway = (...extra: GfxPrimitiveElementModel[]) => [
     pool('pool', [0, 0, 900, 300]),
@@ -976,7 +966,30 @@ describe('pending · the gateways, as forbidden zones', () => {
       flow('f2', 'decide', 'only'),
       flow('f3', 'only', 'done')
     );
-    expect(said(pending(board))).toEqual(['bpmn.gateway-must-branch decide']);
+    expect(said(evaluate(board))).toEqual(['bpmn.gateway-must-branch decide']);
+  });
+
+  it('indicts a gateway with nothing attached to it at all, and says so', () => {
+    // `maxIn: 1` includes `in == 0`, so the zone also holds the diamond somebody
+    // has just dropped from the toolbar. The rule is RIGHT to fire — a gateway
+    // that decides nothing decides nothing whether or not anything reaches it —
+    // but the sentence has to be true of this board too, and an earlier wording
+    // ("takes one flow in and puts one flow out") described flows that are not
+    // there. Both messages now state the PREDICATE, so they hold at 0/0 and at
+    // 1/1 alike.
+    const board = [...onePool(), gateway('lonely', 400, 250)];
+    const violations = evaluate(board);
+    expect(said(violations)).toEqual(['bpmn.gateway-must-branch lonely']);
+    for (const text of [
+      violations[0].messageFallback,
+      violations[0].suggestionFallback,
+    ]) {
+      expect(text).toBeTruthy();
+      expect(text).not.toMatch(/one flow in|takes one flow/);
+    }
+    expect(violations[0].messageFallback).toBe(
+      'This gateway neither splits nor merges, so it decides nothing.'
+    );
   });
 
   it('says nothing about a gateway that splits', () => {
@@ -988,7 +1001,7 @@ describe('pending · the gateways, as forbidden zones', () => {
       flow('f4', 'yes', 'done'),
       flow('f5', 'no', 'done')
     );
-    expect(said(pending(board))).toEqual([]);
+    expect(said(evaluate(board))).toEqual([]);
   });
 
   it('indicts a gateway that merges AND splits', () => {
@@ -1011,16 +1024,15 @@ describe('pending · the gateways, as forbidden zones', () => {
       flow('f5', 'yes', 'done'),
       flow('f6', 'no', 'done'),
     ];
-    expect(said(pending(board))).toEqual(['bpmn.gateway-join-and-fork both']);
+    expect(said(evaluate(board))).toEqual(['bpmn.gateway-join-and-fork both']);
   });
 });
 
-describe('pending · the panel-only nuances', () => {
+describe('the panel-only nuances', () => {
   /**
    * Four `audit` rules, every one of them quieter than the bpmnlint level for
-   * the same shape, and every one of them waiting on a def field. They never
-   * reach the canvas: `audit` is collected for the conformance panel and shown
-   * to no drawing user.
+   * the same shape. They never reach the canvas: `audit` is collected for the
+   * conformance panel and shown to no drawing user.
    */
   it('remarks on several paths arriving at one step', () => {
     // p.151 sanctions the uncontrolled merge and defines its token semantics,
@@ -1035,7 +1047,7 @@ describe('pending · the panel-only nuances', () => {
       flow('f2', 'b-start', 'merge-here'),
       flow('f3', 'merge-here', 'done'),
     ];
-    const violations = pending(board);
+    const violations = evaluate(board);
     expect(said(violations)).toEqual(['bpmn.fake-join merge-here']);
     expect(violations[0].severity).toBe('audit');
   });
@@ -1051,7 +1063,7 @@ describe('pending · the panel-only nuances', () => {
       flow('f2', 'split-here', 'a-done'),
       flow('f3', 'split-here', 'b-done'),
     ];
-    expect(said(pending(board))).toEqual(['bpmn.implicit-split split-here']);
+    expect(said(evaluate(board))).toEqual(['bpmn.implicit-split split-here']);
   });
 
   it('remarks on two indistinguishable blank starts', () => {
@@ -1073,7 +1085,7 @@ describe('pending · the panel-only nuances', () => {
       flow('f3', 'work-a', 'done'),
       flow('f4', 'work-b', 'done'),
     ];
-    expect(said(pending(twoBlank))).toEqual(['bpmn.single-blank-start pool']);
+    expect(said(evaluate(twoBlank))).toEqual(['bpmn.single-blank-start pool']);
 
     // ...and a message start beside a timer start is the diagram this rule
     // exists to PERMIT: two triggers, two symbols, no ambiguity.
@@ -1089,7 +1101,7 @@ describe('pending · the panel-only nuances', () => {
       flow('f3', 'work-a', 'done'),
       flow('f4', 'work-b', 'done'),
     ];
-    expect(said(pending(twoTyped))).toEqual([]);
+    expect(said(evaluate(twoTyped))).toEqual([]);
   });
 
   it('remarks on a step nobody has named', () => {
@@ -1114,13 +1126,14 @@ describe('pending · the panel-only nuances', () => {
   });
 });
 
-describe('pending · implicit roots on the reachability sweep', () => {
+describe('implicit roots on the reachability sweep', () => {
   it('treats an in-degree-zero step as a parallel start', () => {
-    // A Process may start without a Start Event, and then every flow object with
-    // no incoming sequence flow instantiates it (p.238 / p.245). Declared today
-    // as `ReachabilityDef.implicitRoots`; ignored by the engine as it stands,
-    // which makes the rule report a SUPERSET of the corrected answer — never a
-    // different one, which is why B12 ships while the two role-count rules wait.
+    // p.238 does not require a Start Event, and p.245 then makes every flow
+    // object with no incoming sequence flow the start of a parallel path. NOTE:
+    // this board is the MIXED case — one marked start AND an unmarked branch —
+    // which p.245's conditional clause does not itself sanction. The engine
+    // seeds in-degree-zero subjects unconditionally, and B13's comment owns that
+    // widening: it is the quieter direction, and the sketch primes.
     const board = [
       pool('pool', [0, 0, 900, 300]),
       start('start', 100, 100),
@@ -1158,9 +1171,9 @@ describe('congruence · one board, one answer to "which pool is this on"', () =>
   const pools = [buyer, seller] as unknown as BpmnPoolElementModel[];
 
   it('credits a start event to the pool the fact query names', () => {
-    // Each pool already holds an end event, so the paired rule is armed on both
-    // — which makes the assertion read the same before and after
-    // `RoleCountDef.ifPresent` lands.
+    // Each pool already holds an end event, so the guarded MUST is ARMED on
+    // both — without that, `ifPresent` would leave the whole rule silent and the
+    // probe would prove nothing.
     const ends = [end('buyer-done', 700, 250), end('seller-done', 700, 650)];
     for (const [cx, cy, expected] of [
       [BAND + 20, 20, 'buyer'],
@@ -1175,7 +1188,7 @@ describe('congruence · one board, one answer to "which pool is this on"', () =>
       );
       // …and the rule, answered by the engine's own containment walk: the pool
       // that is NOT credited is the one indicted for holding no start event.
-      const indicted = pending([buyer, seller, ...ends, event])
+      const indicted = evaluate([buyer, seller, ...ends, event])
         .filter(v => v.ruleId === 'bpmn.pool-end-without-start')
         .map(v => v.elementIds.join(''));
       expect(indicted, `${cx},${cy}`).toEqual([

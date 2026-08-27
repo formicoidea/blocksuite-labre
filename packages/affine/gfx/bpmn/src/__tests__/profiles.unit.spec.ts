@@ -128,11 +128,13 @@ describe('what the framework ships as rules', () => {
       expect(rule.framework).toBe('bpmn');
       expect(rule.id.startsWith('bpmn.')).toBe(true);
       expect(rule.version).toBe(1);
-      expect(rule.messageKey).toMatch(/^com\.labre\.bpmn\.rule\./);
+      expect(rule.messageKey).toMatch(/^com\.labre\.bpmn\.validation\./);
       // A framework fallback, so a host with no catalogue reads a sentence
       // rather than a dotted key — the framework owns the word, not the engine.
       expect(rule.messageFallback, rule.id).toBeTruthy();
-      expect(rule.suggestionKey, rule.id).toMatch(/^com\.labre\.bpmn\.rule\./);
+      expect(rule.suggestionKey, rule.id).toMatch(
+        /^com\.labre\.bpmn\.validation\./
+      );
       expect(rule.suggestionFallback, rule.id).toBeTruthy();
       // Every rule names the pool, so every finding lands on a participant and
       // a map-wide arbitration has somewhere to live.
@@ -213,7 +215,9 @@ describe('what the framework ships as rules', () => {
       expect(pattern, id).toBeDefined();
       // The pattern carries its OWN words: a forbidden zone is not a bound that
       // failed, and its sentence never reads like one.
-      expect(pattern?.messageKey, id).toMatch(/^com\.labre\.bpmn\.rule\./);
+      expect(pattern?.messageKey, id).toMatch(
+        /^com\.labre\.bpmn\.validation\./
+      );
       expect(pattern?.messageFallback, id).toBeTruthy();
     }
 
