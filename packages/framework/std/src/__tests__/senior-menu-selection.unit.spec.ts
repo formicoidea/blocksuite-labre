@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
   SENIOR_MENU_CAP,
   SENIOR_MENU_RANKED_SLOTS,
+  rankCommandsByUsage,
   selectSeniorMenuCommands,
   type AnyCommandDescriptor,
   type CommandUsageStats,
@@ -243,5 +244,53 @@ describe('past the cap, seven slots ranked on two axes', () => {
       'cmd.7',
       'cmd.8',
     ]);
+  });
+});
+
+describe('rankCommandsByUsage (the catalogue head section)', () => {
+  test('no usage at all yields nothing — the section is absent, not padded', () => {
+    expect(rankCommandsByUsage(catalogueOf(16), never)).toEqual([]);
+  });
+
+  test('only commands that carry a measure appear, in pick order', () => {
+    const stats = statsFrom({
+      'cmd.9': { count: 5, lastUsedAt: 100 },
+      'cmd.3': { count: 4, lastUsedAt: 400 },
+      'cmd.12': { count: 1, lastUsedAt: 900 },
+    });
+    // Frequency ranks first (9, 3, 12 fills slot 3 and 4 stops for lack of
+    // used commands), the recency additions after — 12 is already in. Never
+    // re-sorted by authored order: "most-reached-for first" IS the message.
+    expect(idsOf(rankCommandsByUsage(catalogueOf(16), stats))).toEqual([
+      'cmd.9',
+      'cmd.3',
+      'cmd.12',
+    ]);
+  });
+
+  test('a recency-only pick joins after the frequency ranks', () => {
+    const stats = statsFrom({
+      'cmd.1': { count: 9, lastUsedAt: 10 },
+      'cmd.2': { count: 8, lastUsedAt: 20 },
+      'cmd.3': { count: 7, lastUsedAt: 30 },
+      'cmd.4': { count: 6, lastUsedAt: 40 },
+      'cmd.15': { count: 1, lastUsedAt: 999 },
+    });
+    expect(idsOf(rankCommandsByUsage(catalogueOf(16), stats))).toEqual([
+      'cmd.1',
+      'cmd.2',
+      'cmd.3',
+      'cmd.4',
+      'cmd.15',
+    ]);
+  });
+
+  test('caps at the ranked slot count even when more were used', () => {
+    const table: Record<string, CommandUsageStats> = {};
+    for (let index = 0; index < 12; index++) {
+      table[`cmd.${index}`] = { count: 12 - index, lastUsedAt: index };
+    }
+    const ranked = rankCommandsByUsage(catalogueOf(16), statsFrom(table));
+    expect(ranked).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 });

@@ -661,6 +661,28 @@ export function selectSeniorMenuCommands(
 
   const authored = new Map(catalogue.map((command, index) => [command, index]));
   const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
+
+  return {
+    commands: pickByUsage(catalogue, statsOf).sort(
+      (a, b) => order(a) - order(b)
+    ),
+    overflow: true,
+  };
+}
+
+/**
+ * The shared arbitration: {@link MOST_USED_SLOTS} by frequency plus
+ * {@link MOST_RECENT_SLOTS} by recency, deduplicated, frequency backfilling the
+ * slot a double pick frees — of the two measures, the one a user notices
+ * moving is recency. Returned in PICK order (the frequency ranks first, the
+ * recency additions after); each consumer imposes its own display order.
+ */
+function pickByUsage(
+  catalogue: AnyCommandDescriptor[],
+  statsOf: (id: string) => CommandUsageStats | undefined
+): AnyCommandDescriptor[] {
+  const authored = new Map(catalogue.map((command, index) => [command, index]));
+  const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
   // One read per command per selection: the store answers from storage, and the
   // two axes would otherwise ask it the same question twice.
   const stats = new Map(catalogue.map(c => [c, statsOf(c.id)]));
@@ -698,20 +720,37 @@ export function selectSeniorMenuCommands(
   for (const command of mostRecent.slice(0, MOST_RECENT_SLOTS)) {
     chosen.add(command);
   }
-  // A command that is both most-used and most-recent takes ONE slot, and the
-  // gap it leaves goes back to frequency rather than to the fourth most recent:
-  // of the two measures, the one a user notices moving is recency.
   for (const command of mostUsed) {
     if (chosen.size >= SENIOR_MENU_RANKED_SLOTS) break;
     chosen.add(command);
   }
 
-  return {
-    commands: [...chosen]
-      .slice(0, SENIOR_MENU_RANKED_SLOTS)
-      .sort((a, b) => order(a) - order(b)),
-    overflow: true,
-  };
+  return [...chosen].slice(0, SENIOR_MENU_RANKED_SLOTS);
+}
+
+/**
+ * The commands a user actually reaches for, for surfaces that lead with them —
+ * the catalogue sidepanel's "recent & frequent" head section (PO recette,
+ * 27/08/2026).
+ *
+ * Same arbitration as the senior sub-menu ({@link pickByUsage}) — one ranking,
+ * two consumers, never two opinions — with two deliberate differences:
+ *
+ * - only commands that CARRY a measure are returned. The sub-menu backfills
+ *   with authored order because it must always show something; a "recently
+ *   used" section padded with the never-used would be a label that lies, so
+ *   with no usage at all this returns `[]` and the section is simply absent.
+ * - the PICK order is kept (frequency ranks, then the recency additions),
+ *   not re-sorted by authored order: the section's whole message is "yours,
+ *   most-reached-for first", and it only recomposes when the panel reopens.
+ */
+export function rankCommandsByUsage(
+  catalogue: AnyCommandDescriptor[],
+  statsOf: (id: string) => CommandUsageStats | undefined
+): AnyCommandDescriptor[] {
+  return pickByUsage(catalogue, statsOf).filter(
+    command => statsOf(command.id) !== undefined
+  );
 }
 
 /** Resolve an `iconKey` through the registered icon tables. */
