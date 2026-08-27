@@ -6,6 +6,7 @@ import {
   type TemplateCategory,
 } from '@labre/affine-gfx-template';
 import {
+  type BpmnNodeKind,
   ConnectorMode,
   FontFamily,
   PointStyle,
@@ -29,7 +30,19 @@ import {
 } from '../consts';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
-type NodeKind = 'startEvent' | 'endEvent' | 'task' | 'gatewayExclusive';
+/**
+ * The kinds the shipped cards draw — the four basics, and no more.
+ *
+ * `Extract` rather than a hand-written union: the names are now CHECKED against
+ * the model's own {@link BpmnNodeKind}, so this can no longer drift away from
+ * it, while the cards stay honest about the four they actually lay out. The
+ * descriptive profile's twelve other kinds have no template yet; when they get
+ * one, it is this line that widens.
+ */
+type NodeKind = Extract<
+  BpmnNodeKind,
+  'startEvent' | 'endEvent' | 'task' | 'gatewayExclusive'
+>;
 
 /** One BPMN flow-object node, as a surface-element JSON entry. */
 function node(kind: NodeKind, x: number, y: number, text?: string) {

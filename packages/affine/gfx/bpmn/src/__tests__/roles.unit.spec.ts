@@ -1,5 +1,5 @@
 import { asTypedEdge, edgeVerbOf } from '@labre/affine-gfx-connector';
-import { ConnectorElementModel } from '@labre/affine-model';
+import { type BpmnNodeKind, ConnectorElementModel } from '@labre/affine-model';
 import { findRoleDef, isTypedEdgeRole, roleIsA } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
@@ -14,24 +14,44 @@ import { BPMN_ROLE, BPMN_ROLE_OF_KIND, BPMN_ROLES } from '../roles';
 
 const vocabularies = [BPMN_ROLES];
 
+/** The parents nothing is ever stamped with. */
+const FAMILIES = [
+  BPMN_ROLE.event,
+  BPMN_ROLE.activity,
+  BPMN_ROLE.gateway,
+  BPMN_ROLE.data,
+] as const;
+
 describe('BPMN role vocabulary', () => {
-  it('declares the three families, their leaves, the pool and the two flows', () => {
-    // 3 parents + 4 leaves + 1 pool + 2 flows.
-    expect(Object.keys(BPMN_ROLES)).toHaveLength(10);
+  it('declares the four families, their leaves, the pool and the three flows', () => {
+    // 22 node roles + 3 edges.
+    expect(Object.keys(BPMN_ROLES)).toHaveLength(25);
     for (const id of [
-      BPMN_ROLE.event,
+      ...FAMILIES,
       BPMN_ROLE.startEvent,
+      BPMN_ROLE.startEventMessage,
+      BPMN_ROLE.startEventTimer,
       BPMN_ROLE.endEvent,
-      BPMN_ROLE.activity,
+      BPMN_ROLE.endEventMessage,
+      BPMN_ROLE.endEventTerminate,
       BPMN_ROLE.task,
-      BPMN_ROLE.gateway,
+      BPMN_ROLE.taskUser,
+      BPMN_ROLE.taskService,
+      BPMN_ROLE.subProcess,
+      BPMN_ROLE.callActivity,
       BPMN_ROLE.gatewayExclusive,
+      BPMN_ROLE.gatewayParallel,
+      BPMN_ROLE.dataObject,
+      BPMN_ROLE.dataStore,
+      BPMN_ROLE.textAnnotation,
+      BPMN_ROLE.group,
       BPMN_ROLE.pool,
     ]) {
       expect(BPMN_ROLES[id]?.kind, id).toBe('node');
     }
     expect(BPMN_ROLES[BPMN_ROLE.sequenceFlow].kind).toBe('edge');
     expect(BPMN_ROLES[BPMN_ROLE.messageFlow].kind).toBe('edge');
+    expect(BPMN_ROLES[BPMN_ROLE.association].kind).toBe('edge');
   });
 
   it('namespaces every role, keys it by its own id and kebab-cases it', () => {
@@ -49,18 +69,19 @@ describe('BPMN role vocabulary', () => {
       [BPMN_ROLE.startEvent, BPMN_ROLE.event],
       [BPMN_ROLE.endEvent, BPMN_ROLE.event],
       [BPMN_ROLE.task, BPMN_ROLE.activity],
+      [BPMN_ROLE.subProcess, BPMN_ROLE.activity],
+      [BPMN_ROLE.callActivity, BPMN_ROLE.activity],
       [BPMN_ROLE.gatewayExclusive, BPMN_ROLE.gateway],
+      [BPMN_ROLE.gatewayParallel, BPMN_ROLE.gateway],
+      [BPMN_ROLE.dataObject, BPMN_ROLE.data],
+      [BPMN_ROLE.dataStore, BPMN_ROLE.data],
     ] as const;
 
     for (const [leaf, family] of chains) {
       expect(BPMN_ROLES[leaf].parent).toBe(family);
       expect(roleIsA(leaf, family, BPMN_ROLES), leaf).toBe(true);
       // A rule written on one family must never fall on another's leaves.
-      for (const other of [
-        BPMN_ROLE.event,
-        BPMN_ROLE.activity,
-        BPMN_ROLE.gateway,
-      ]) {
+      for (const other of FAMILIES) {
         if (other === family) continue;
         expect(roleIsA(leaf, other, BPMN_ROLES), `${leaf} → ${other}`).toBe(
           false
@@ -70,42 +91,174 @@ describe('BPMN role vocabulary', () => {
       expect(roleIsA(family, leaf, BPMN_ROLES)).toBe(false);
     }
 
-    // The three families are roots: BPMN's own taxonomy stops there.
-    for (const family of [
-      BPMN_ROLE.event,
-      BPMN_ROLE.activity,
-      BPMN_ROLE.gateway,
-    ]) {
+    // The four families are roots: BPMN's own taxonomy stops there.
+    for (const family of FAMILIES) {
       expect(BPMN_ROLES[family].parent, family).toBeUndefined();
     }
   });
 
-  it('keeps the pool OUT of every flow-object subtree', () => {
-    // The frame, not an artefact — the same call `wardley:map` makes.
-    expect(BPMN_ROLES[BPMN_ROLE.pool].parent).toBeUndefined();
-    for (const family of [
-      BPMN_ROLE.event,
-      BPMN_ROLE.activity,
-      BPMN_ROLE.gateway,
-    ]) {
-      expect(roleIsA(BPMN_ROLE.pool, family, BPMN_ROLES), family).toBe(false);
-      expect(roleIsA(family, BPMN_ROLE.pool, BPMN_ROLES), family).toBe(false);
+  /**
+   * The descriptive profile is what made the tree three deep on two branches.
+   * Walking it here rather than restating the `parent` fields is the point: a
+   * rule written about "an event" has to keep catching a message start, and the
+   * only thing that proves it is `roleIsA` saying so through two hops.
+   */
+  it('walks a specialised leaf through its middle to its family', () => {
+    const chains = [
+      [BPMN_ROLE.startEventMessage, BPMN_ROLE.startEvent, BPMN_ROLE.event],
+      [BPMN_ROLE.startEventTimer, BPMN_ROLE.startEvent, BPMN_ROLE.event],
+      [BPMN_ROLE.endEventMessage, BPMN_ROLE.endEvent, BPMN_ROLE.event],
+      [BPMN_ROLE.endEventTerminate, BPMN_ROLE.endEvent, BPMN_ROLE.event],
+      [BPMN_ROLE.taskUser, BPMN_ROLE.task, BPMN_ROLE.activity],
+      [BPMN_ROLE.taskService, BPMN_ROLE.task, BPMN_ROLE.activity],
+    ] as const;
+
+    for (const [leaf, middle, family] of chains) {
+      expect(BPMN_ROLES[leaf].parent, leaf).toBe(middle);
+      expect(roleIsA(leaf, middle, BPMN_ROLES), `${leaf} → ${middle}`).toBe(
+        true
+      );
+      expect(roleIsA(leaf, family, BPMN_ROLES), `${leaf} → ${family}`).toBe(
+        true
+      );
+      // Only its own family, and never the other way round.
+      for (const other of FAMILIES) {
+        if (other === family) continue;
+        expect(roleIsA(leaf, other, BPMN_ROLES), `${leaf} → ${other}`).toBe(
+          false
+        );
+      }
+      expect(roleIsA(middle, leaf, BPMN_ROLES)).toBe(false);
+      expect(roleIsA(family, leaf, BPMN_ROLES)).toBe(false);
+    }
+
+    // A message start is NOT a message end, and a user task is not a service
+    // one: siblings share a parent and nothing else.
+    expect(
+      roleIsA(BPMN_ROLE.startEventMessage, BPMN_ROLE.endEvent, BPMN_ROLES)
+    ).toBe(false);
+    expect(roleIsA(BPMN_ROLE.taskUser, BPMN_ROLE.taskService, BPMN_ROLES)).toBe(
+      false
+    );
+    // ...and a sub-process is an activity without being a task: it stands for a
+    // whole process, so "every task is one unit of work" stays true.
+    expect(roleIsA(BPMN_ROLE.subProcess, BPMN_ROLE.task, BPMN_ROLES)).toBe(
+      false
+    );
+    expect(roleIsA(BPMN_ROLE.callActivity, BPMN_ROLE.task, BPMN_ROLES)).toBe(
+      false
+    );
+  });
+
+  it('keeps the pool and the two artifacts OUT of every artefact subtree', () => {
+    // The frame, not an artefact — the same call `wardley:map` makes. And the
+    // two artifacts: what the author drew ON the picture rather than in it,
+    // which no rule about the work may fall on.
+    const outsiders = [
+      BPMN_ROLE.pool,
+      BPMN_ROLE.textAnnotation,
+      BPMN_ROLE.group,
+    ];
+    for (const outsider of outsiders) {
+      expect(BPMN_ROLES[outsider].parent, outsider).toBeUndefined();
+      for (const family of FAMILIES) {
+        expect(roleIsA(outsider, family, BPMN_ROLES), family).toBe(false);
+        expect(roleIsA(family, outsider, BPMN_ROLES), family).toBe(false);
+      }
+    }
+    // None of the three is any of the others, in either direction.
+    for (const a of outsiders) {
+      for (const b of outsiders) {
+        if (a === b) continue;
+        expect(roleIsA(a, b, BPMN_ROLES), `${a} → ${b}`).toBe(false);
+      }
     }
   });
 
-  it('gives every EDGE role a verb and a gesture, and every node role none', () => {
+  /**
+   * The group is the one artefact BPMN 2.0.2 §10.4 exempts from every
+   * connection and containment constraint there is: it cannot be attached to a
+   * sequence or message flow, it is not bounded by the pool or lane it
+   * overlaps, and it may straddle several pools at once.
+   *
+   * A vocabulary cannot enforce that on its own — but it can refrain from
+   * making it false, which a `parent` anywhere in this tree would have done by
+   * inheritance. Pinned here because the exemption is the entire reason the
+   * role is a root, and a later "tidy-up" filing it under the pool or the
+   * artifacts would look harmless and would not be.
+   */
+  it('leaves the group a root, so nothing it overlaps can claim it', () => {
+    const group = BPMN_ROLES[BPMN_ROLE.group];
+    expect(group.kind).toBe('node');
+    expect(group.parent).toBeUndefined();
+    expect(group.labelFallback).toBeTruthy();
+    // Not under the frame it straddles, nor under the notes it sits beside.
+    expect(roleIsA(BPMN_ROLE.group, BPMN_ROLE.pool, BPMN_ROLES)).toBe(false);
+    expect(roleIsA(BPMN_ROLE.group, BPMN_ROLE.textAnnotation, BPMN_ROLES)).toBe(
+      false
+    );
+    // And nothing else is a group: it has no children to inherit the exemption.
     for (const def of Object.values(BPMN_ROLES)) {
-      if (def.kind === 'edge') {
-        // Tier 1 of `docs/adr/0010`: an edge role names a relation with a verb,
-        // `source` is its subject and `target` its object.
-        expect(def.direction?.verbKey, def.id).toMatch(/^com\.labre\./);
-        expect(def.direction?.verbFallback, def.id).toBeTruthy();
-        expect(def.direction?.gestureHintKey, def.id).toMatch(/^com\.labre\./);
-        expect(def.direction?.gestureHintFallback, def.id).toBeTruthy();
-      } else {
-        expect(def.direction, def.id).toBeUndefined();
+      if (def.id === BPMN_ROLE.group) continue;
+      expect(roleIsA(def.id, BPMN_ROLE.group, BPMN_ROLES), def.id).toBe(false);
+    }
+  });
+
+  it('keeps data OUT of the flow objects, in both directions', () => {
+    // The paperwork is not the work: a rule about what a process DOES must
+    // never reach a data object, and a rule about data must never reach a task.
+    for (const datum of [
+      BPMN_ROLE.data,
+      BPMN_ROLE.dataObject,
+      BPMN_ROLE.dataStore,
+    ]) {
+      for (const family of [
+        BPMN_ROLE.event,
+        BPMN_ROLE.activity,
+        BPMN_ROLE.gateway,
+      ]) {
+        expect(roleIsA(datum, family, BPMN_ROLES), `${datum} → ${family}`).toBe(
+          false
+        );
       }
     }
+    expect(roleIsA(BPMN_ROLE.task, BPMN_ROLE.data, BPMN_ROLES)).toBe(false);
+  });
+
+  it('gives every DIRECTED edge role a verb and a gesture, and every node role none', () => {
+    for (const def of Object.values(BPMN_ROLES)) {
+      if (def.kind !== 'edge') {
+        expect(def.direction, def.id).toBeUndefined();
+        continue;
+      }
+      // The association names no relation and therefore has no verb — see
+      // below. Every other edge role is tier 1 of `docs/adr/0010`: a relation
+      // with a verb, `source` its subject and `target` its object.
+      if (def.id === BPMN_ROLE.association) continue;
+      expect(def.direction?.verbKey, def.id).toMatch(/^com\.labre\./);
+      expect(def.direction?.verbFallback, def.id).toBeTruthy();
+      expect(def.direction?.gestureHintKey, def.id).toMatch(/^com\.labre\./);
+      expect(def.direction?.gestureHintFallback, def.id).toBeTruthy();
+    }
+  });
+
+  /**
+   * The association is the one edge in this vocabulary with NO direction, and
+   * that absence is a declaration rather than an oversight — "this note is
+   * about that task" reads identically from either end.
+   */
+  it('declares the association as an edge with no verb at all', () => {
+    const association = BPMN_ROLES[BPMN_ROLE.association];
+    expect(association.kind).toBe('edge');
+    expect(association.direction).toBeUndefined();
+    expect(association.parent).toBeUndefined();
+    // It is still a typed edge — the predicate reads `kind`, so a stored
+    // association is recognised as one — it simply has no sentence to reveal
+    // and no direction to be wrong about.
+    expect(isTypedEdgeRole(vocabularies, BPMN_ROLE.association)).toBe(true);
+    expect(
+      roleIsA(BPMN_ROLE.association, BPMN_ROLE.sequenceFlow, BPMN_ROLES)
+    ).toBe(false);
   });
 
   it('says the sequence flow is followed, and the message flow is sent', () => {
@@ -132,34 +285,68 @@ describe('BPMN role vocabulary', () => {
 });
 
 describe('the kind → role bridge', () => {
-  it('gives each of the four legacy kinds a declared role', () => {
-    const kinds = [
-      'startEvent',
-      'endEvent',
-      'task',
-      'gatewayExclusive',
-    ] as const;
-    // Total, and total over EXACTLY those four: `kind` keeps driving the
-    // renderer, so a fifth one arriving without a meaning would paint something
-    // the tool could not read.
-    expect(Object.keys(BPMN_ROLE_OF_KIND).sort()).toEqual([...kinds].sort());
-    for (const kind of kinds) {
+  /** Every kind the model declares, in the order the notation groups them. */
+  const KINDS = [
+    'startEvent',
+    'startEventMessage',
+    'startEventTimer',
+    'endEvent',
+    'endEventMessage',
+    'endEventTerminate',
+    'task',
+    'taskUser',
+    'taskService',
+    'subProcess',
+    'callActivity',
+    'gatewayExclusive',
+    'gatewayParallel',
+    'dataObject',
+    'dataStore',
+    'textAnnotation',
+    'group',
+  ] as const satisfies readonly BpmnNodeKind[];
+
+  it('gives each of the seventeen kinds a declared role', () => {
+    // Total, and total over EXACTLY those seventeen: `kind` keeps driving the
+    // renderer, so one arriving without a meaning would paint something the
+    // tool could not read.
+    expect(Object.keys(BPMN_ROLE_OF_KIND).sort()).toEqual([...KINDS].sort());
+    for (const kind of KINDS) {
       const id = BPMN_ROLE_OF_KIND[kind];
       expect(BPMN_ROLES[id], `${kind} → ${id}`).toBeDefined();
       expect(BPMN_ROLES[id].kind).toBe('node');
     }
   });
 
-  it('maps each kind to its own leaf, never to a family', () => {
+  it('maps each kind to a distinct role, and the four originals to the ones they always meant', () => {
+    // The bytes already in documents. These four mappings are frozen: changing
+    // one would silently re-mean every process drawn before today.
     expect(BPMN_ROLE_OF_KIND.startEvent).toBe(BPMN_ROLE.startEvent);
     expect(BPMN_ROLE_OF_KIND.endEvent).toBe(BPMN_ROLE.endEvent);
     expect(BPMN_ROLE_OF_KIND.task).toBe(BPMN_ROLE.task);
     expect(BPMN_ROLE_OF_KIND.gatewayExclusive).toBe(BPMN_ROLE.gatewayExclusive);
-    // Nothing is ever stamped with a family role: the palette always says which
-    // event, which activity, which gateway.
+    // No two kinds share a role: the palette entry a user picked is always
+    // recoverable from what was written down.
+    const ids = Object.values(BPMN_ROLE_OF_KIND);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('never stamps a family role, nor the pool, nor an edge', () => {
+    // The palette always says WHICH event, which activity, which gateway, which
+    // datum — the families exist to be written about, never to be written down.
     for (const id of Object.values(BPMN_ROLE_OF_KIND)) {
-      expect(BPMN_ROLES[id].parent, id).toBeDefined();
+      expect(FAMILIES, id).not.toContain(id);
+      expect(id).not.toBe(BPMN_ROLE.pool);
+      expect(BPMN_ROLES[id].kind, id).toBe('node');
     }
+    // A stamped role is not necessarily a LEAF — `bpmn:start-event` is stamped
+    // by the plain start event and specialised by the message and timer ones,
+    // which is exactly the shape the descriptive profile needed. What must hold
+    // is that each stamped role means one artefact and no wider set: only
+    // `bpmn:text-annotation` is both a root and a leaf, and it is a family of
+    // one on purpose.
+    expect(BPMN_ROLES[BPMN_ROLE.startEvent].parent).toBe(BPMN_ROLE.event);
+    expect(BPMN_ROLES[BPMN_ROLE.textAnnotation].parent).toBeUndefined();
   });
 });
 

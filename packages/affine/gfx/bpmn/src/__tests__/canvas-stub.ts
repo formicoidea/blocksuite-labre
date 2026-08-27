@@ -50,9 +50,18 @@ export interface RecordedText {
   vertical: boolean;
 }
 
+/** A circular or elliptical arc, as the node glyphs draw them. */
+export interface Curve {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}
+
 export function recordingCtx() {
   const segments: Segment[] = [];
   const arcs: number[][] = [];
+  const curves: Curve[] = [];
   const rects: FilledRect[] = [];
   const texts: RecordedText[] = [];
   const dashes: number[][] = [];
@@ -92,6 +101,26 @@ export function recordingCtx() {
     }),
     arcTo: vi.fn((...args: number[]) => {
       arcs.push(args);
+    }),
+    // The node glyphs draw circles and ellipses (clock rim, terminate disc,
+    // gear, cylinder lid). Recorded as CENTRE + RADII, which is what a test
+    // about "is this thing round and where" wants to read.
+    //
+    // Both THROW on a negative radius, exactly as Canvas2D does — it raises
+    // `IndexSizeError` rather than clamping or no-opping, and since the surface
+    // render loop wraps no renderer in a `try`, one such throw aborts the rest
+    // of the frame and leaves the save stack unbalanced. A stub that quietly
+    // accepted -0.5 would let a renderer pass its tests and blank a real
+    // canvas, so this one refuses the same way the browser does.
+    arc: vi.fn((x: number, y: number, r: number) => {
+      if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
+      curves.push({ x, y, rx: r, ry: r });
+    }),
+    ellipse: vi.fn((x: number, y: number, rx: number, ry: number) => {
+      if (rx < 0 || ry < 0) {
+        throw new Error(`IndexSizeError: negative radii ${rx}, ${ry}`);
+      }
+      curves.push({ x, y, rx, ry });
     }),
     fill: vi.fn(() => {
       ops.push('fill');
@@ -150,6 +179,7 @@ export function recordingCtx() {
   return {
     ctx: ctx as unknown as CanvasRenderingContext2D,
     segments,
+    curves,
     rects,
     texts,
     dashes,

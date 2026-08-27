@@ -57,9 +57,12 @@ describe('the vocabulary states the convention', () => {
     expect(isTypedEdgeRole(vocabularies, WARDLEY_ROLE.changeArrow)).toBe(true);
     expect(isTypedEdgeRole(vocabularies, WARDLEY_ROLE.component)).toBe(false);
     // A neutral element, and a role no loaded framework declares: neither
-    // claims anything about its two ends.
+    // claims anything about its two ends. The stranger is DELIBERATELY
+    // fictional — naming another framework's real edge here would make this
+    // test a statement about which vocabularies the fixture happens to load,
+    // and it would start failing the day someone loads that one.
     expect(isTypedEdgeRole(vocabularies, undefined)).toBe(false);
-    expect(isTypedEdgeRole(vocabularies, 'bpmn:sequence-flow')).toBe(false);
+    expect(isTypedEdgeRole(vocabularies, 'nowhere:made-up-edge')).toBe(false);
   });
 });
 

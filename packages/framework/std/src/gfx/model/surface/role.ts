@@ -106,9 +106,11 @@ export interface RoleDef {
 export type RoleDefs = Readonly<Record<RoleId, RoleDef>>;
 
 /**
- * Deepest specialisation chain {@link roleIsA} walks. Real vocabularies are
- * one or two levels deep; the bound exists so a malformed `parent` cycle
- * cannot hang the caller. Chains longer than this are NOT supported.
+ * Deepest specialisation chain {@link roleIsA} walks. Real vocabularies run two
+ * or three levels deep — BPMN's descriptive profile is three on two branches
+ * (`bpmn:message-start-event` → `bpmn:start-event` → `bpmn:event`) — and the
+ * bound is far above them, so that a malformed `parent` cycle cannot hang the
+ * caller. Chains longer than this are NOT supported.
  */
 const MAX_ROLE_DEPTH = 32;
 
