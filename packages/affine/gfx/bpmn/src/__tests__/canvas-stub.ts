@@ -50,9 +50,18 @@ export interface RecordedText {
   vertical: boolean;
 }
 
+/** A circular or elliptical arc, as the node glyphs draw them. */
+export interface Curve {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}
+
 export function recordingCtx() {
   const segments: Segment[] = [];
   const arcs: number[][] = [];
+  const curves: Curve[] = [];
   const rects: FilledRect[] = [];
   const texts: RecordedText[] = [];
   const dashes: number[][] = [];
@@ -92,6 +101,15 @@ export function recordingCtx() {
     }),
     arcTo: vi.fn((...args: number[]) => {
       arcs.push(args);
+    }),
+    // The node glyphs draw circles and ellipses (clock rim, terminate disc,
+    // gear, cylinder lid). Recorded as CENTRE + RADII, which is what a test
+    // about "is this thing round and where" wants to read.
+    arc: vi.fn((x: number, y: number, r: number) => {
+      curves.push({ x, y, rx: r, ry: r });
+    }),
+    ellipse: vi.fn((x: number, y: number, rx: number, ry: number) => {
+      curves.push({ x, y, rx, ry });
     }),
     fill: vi.fn(() => {
       ops.push('fill');
@@ -150,6 +168,7 @@ export function recordingCtx() {
   return {
     ctx: ctx as unknown as CanvasRenderingContext2D,
     segments,
+    curves,
     rects,
     texts,
     dashes,
