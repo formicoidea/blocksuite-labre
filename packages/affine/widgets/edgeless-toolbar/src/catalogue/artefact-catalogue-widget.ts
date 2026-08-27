@@ -309,6 +309,29 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
   };
 
   /**
+   * A wheel OVER THE PANEL scrolls the panel, never the board.
+   *
+   * Same bug and same fix as the violation bubble (PR #103, PO 02/08):
+   * `EdgelessRootBlock` takes `wheel` off the event dispatcher on the editor
+   * host and `preventDefault()`s unconditionally before panning — so a wheel
+   * over the catalogue's overflowing list panned the canvas instead of
+   * scrolling the twenty artefacts under the pointer (PO recette, 27/08/2026).
+   * One CAPTURE-phase listener on the host stops the event before the
+   * dispatcher sees it; no `preventDefault`, because the default action IS the
+   * panel scrolling.
+   *
+   * Narrower than the bubble's freeze, deliberately: the bubble owns the wheel
+   * everywhere while open (a reading gesture); the catalogue only claims the
+   * wheel over its own box — `composedPath` gate — and the canvas to its right
+   * keeps panning, because furnishing a diagram means looking around it.
+   */
+  private readonly _onHostWheel = (event: WheelEvent) => {
+    if (!this.catalogueOpen) return;
+    if (!event.composedPath().includes(this)) return;
+    event.stopPropagation();
+  };
+
+  /**
    * Idempotent, and called from both `firstUpdated` and a later
    * `connectedCallback`: `WithDisposable` throws the group away on disconnect
    * while lit runs `firstUpdated` exactly once.
@@ -317,6 +340,7 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
     const host = this.std.host;
     host.addEventListener('keydown', this._onHostKeydown, true);
+    host.addEventListener('wheel', this._onHostWheel, true);
     this._disposables.add(() => {
       document.removeEventListener(
         'pointerdown',
@@ -324,6 +348,7 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
         true
       );
       host.removeEventListener('keydown', this._onHostKeydown, true);
+      host.removeEventListener('wheel', this._onHostWheel, true);
     });
   }
 
@@ -403,20 +428,23 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
   }
 
   /**
-   * Run the command, then close.
+   * Run the command. The panel STAYS OPEN.
    *
    * `runCommand` is the one bottleneck (ADR 0008): the telemetry and the usage
    * measure are emitted there, and `surface: 'catalogue'` is what makes this
-   * panel distinguishable from the sub-menu in the numbers. Closing afterwards
-   * is the PO's default — one tap, and back to the canvas the artefact landed
-   * on.
+   * panel distinguishable from the sub-menu in the numbers.
+   *
+   * Staying open is the PO's call (recette, 27/08/2026), reversing the first
+   * default: a catalogue is where a user furnishes a diagram, and furnishing is
+   * several artefacts in a row — closing after each one turned that into
+   * open-click-reopen. The exits are unchanged and all one gesture: ×, Escape,
+   * or a click on the canvas.
    */
   private _invoke(command: AnyCommandDescriptor) {
     runCommand(this.std, command, {
       surface: 'catalogue',
       source: 'toolbar:general',
     });
-    this.closePanel();
   }
 
   private _groupLabel(group: CatalogueGroup): string {

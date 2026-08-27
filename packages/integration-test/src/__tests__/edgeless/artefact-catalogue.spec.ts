@@ -130,7 +130,7 @@ describe('artefact catalogue sidepanel', () => {
     }
   });
 
-  test('one tap creates the artefact and puts the panel away', async () => {
+  test('a tap creates the artefact and the panel STAYS for the next one', async () => {
     await open();
     const before = armedTool();
 
@@ -140,13 +140,33 @@ describe('artefact catalogue sidepanel', () => {
     expect(row).toBeDefined();
     clickElement(row!);
     await settle();
+    clickElement(row!);
+    await settle();
 
+    // Furnishing is several artefacts in a row (PO recette, 27/08/2026): the
+    // first default — close on insert — turned that into open-click-reopen.
     expect(edgeless.surface.model.getElementsByType('wardleyNode').length).toBe(
-      1
+      2
     );
-    // Back to the canvas the artefact landed on — the PO's default.
-    expect(panel()).toBeNull();
+    expect(panel()).not.toBeNull();
     expect(armedTool()).toBe(before);
+  });
+
+  test('a wheel over the panel never pans the board', async () => {
+    await open();
+    const { viewport } = edgeless.gfx;
+    const centerBefore = [viewport.centerX, viewport.centerY];
+
+    // Dispatched from INSIDE the panel, as a real wheel would compose: the
+    // widget's capture listener on the host must stop it before the edgeless
+    // dispatcher pans (same mechanism as the violation bubble, PR #103).
+    panel()!.dispatchEvent(
+      new WheelEvent('wheel', { deltaY: 240, bubbles: true, composed: true })
+    );
+    await settle();
+
+    expect([viewport.centerX, viewport.centerY]).toEqual(centerBefore);
+    expect(panel()).not.toBeNull();
   });
 
   test('the close button closes, and arms nothing', async () => {
