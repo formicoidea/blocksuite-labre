@@ -1,5 +1,8 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
-import { ArtefactCatalogueProvider } from '@labre/affine/shared/services';
+import {
+  ArtefactCatalogueProvider,
+  COMMAND_USAGE_KEY,
+} from '@labre/affine/shared/services';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine/shared/consts';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -150,6 +153,40 @@ describe('artefact catalogue sidepanel', () => {
     );
     expect(panel()).not.toBeNull();
     expect(armedTool()).toBe(before);
+  });
+
+  test('the head section lists what was used, and only once something was', async () => {
+    // A previous test in this FILE may have fed the store — the panel's whole
+    // point is that the measure persists. Start this scenario from silence.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    await open();
+    expect(
+      widgetRoot()?.querySelector('[data-testid="artefact-catalogue-ranked"]')
+    ).toBeNull();
+
+    const row = entries().find(
+      entry => entry.dataset.commandId === 'wardley.addInertia'
+    );
+    expect(row).toBeDefined();
+    clickElement(row!);
+    await settle();
+    catalogue().close();
+    await open();
+
+    const head = widgetRoot()?.querySelector<HTMLElement>(
+      '[data-testid="artefact-catalogue-ranked"]'
+    );
+    expect(head).not.toBeNull();
+    const headIds = Array.from(
+      head!.querySelectorAll<HTMLElement>(ENTRY),
+      entry => entry.dataset.commandId
+    );
+    expect(headIds).toEqual(['wardley.addInertia']);
+    // The same row still sits in its category below — the head is a shortcut,
+    // not a re-filing.
+    expect(
+      entries().filter(e => e.dataset.commandId === 'wardley.addInertia').length
+    ).toBe(2);
   });
 
   test('a wheel over the panel never pans the board', async () => {

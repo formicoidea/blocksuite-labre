@@ -7,9 +7,11 @@ import {
   type AnyCommandDescriptor,
   type CommandOwner,
   getCommandIcon,
+  CommandUsageIdentifier,
   getCommandsForSurface,
   isCommandAvailable,
   normalizeLegacyCombo,
+  rankCommandsByUsage,
   runCommand,
   ShortcutOverrideIdentifier,
   WidgetComponent,
@@ -487,7 +489,23 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     const owner = this._owner;
     if (owner === null) return nothing;
 
-    const groups = groupCommandsByCategory(this._commands(owner));
+    const commands = this._commands(owner);
+    const groups = groupCommandsByCategory(commands);
+    // The head section: what THIS user reaches for, most-reached-for first —
+    // the sub-menu's arbitration re-consumed whole (PO recette, 27/08/2026).
+    // Absent entirely until something has been used: a "recent" list padded
+    // with the never-used would be a label that lies. The rows repeat below in
+    // their categories on purpose, the way every launcher does it — the head
+    // is a shortcut, not a re-filing.
+    const usage = this.std.getOptional(CommandUsageIdentifier);
+    const ranked = usage
+      ? rankCommandsByUsage(commands, id => usage.statsOf(id))
+      : [];
+    const rankedLabel = translateKey(
+      this.std,
+      'com.labre.catalogue.ranked',
+      'Recent & frequent'
+    );
     // A framework's own name, through the same key the senior button uses. The
     // fallback is the owner id respelled — the library invents no framework
     // prose, and a host with a catalogue always wins.
@@ -533,6 +551,17 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
         class="artefact-catalogue-body"
         data-testid="artefact-catalogue-body"
       >
+        ${ranked.length
+          ? html`<div
+              class="artefact-catalogue-group"
+              data-testid="artefact-catalogue-ranked"
+              role="group"
+              aria-label=${rankedLabel}
+            >
+              <div class="artefact-catalogue-group-label">${rankedLabel}</div>
+              ${ranked.map(command => this._renderEntry(command))}
+            </div>`
+          : nothing}
         ${groups.map(
           group =>
             html`<div

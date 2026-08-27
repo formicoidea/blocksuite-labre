@@ -180,6 +180,7 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.catalogue.title', 'Artefacts'],
   ['com.labre.catalogue.close', 'Close'],
   ['com.labre.catalogue.other', 'Other'],
+  ['com.labre.catalogue.ranked', 'Recent & frequent'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
   // Reading panel
