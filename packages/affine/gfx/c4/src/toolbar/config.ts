@@ -2,17 +2,15 @@ import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { C4BoardElementModel } from '@labre/affine-model';
 import {
+  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
-  translateKey,
 } from '@labre/affine-shared/services';
-import {
-  BlockFlavourIdentifier,
-  getRegisteredCommands,
-  runCommand,
-} from '@labre/std';
-import { html, type TemplateResult } from 'lit';
+import { BlockFlavourIdentifier } from '@labre/std';
+import { html } from 'lit';
+
+import { createC4Legend } from '../actions';
 
 const ResizeIcon = html`<svg
   width="24"
@@ -28,77 +26,40 @@ const ResizeIcon = html`<svg
   <path d="M5 5l6 6M19 19l-6-6" />
 </svg>`;
 
-const findCommand = (ctx: ToolbarContext, id: string) =>
-  getRegisteredCommands(ctx.std).find(candidate => candidate.id === id);
-
 /**
- * A toolbar entry that INVOKES a registered command instead of restating what
- * it does — the shape `docs/adr/0010` M3 introduced, and the reason the legend
- * has one behaviour, one availability rule and one telemetry emission whether
- * it is reached from here, from the catalogue, from the palette, from
- * Settings › Shortcuts or from the agent. The BPMN pool's row is built the same
- * way; this is that helper, not a variant of it.
- *
- * `generate` rather than a static entry because the i18n seam needs `std`:
- * `translateKey` is what reaches the host's catalogue, and a hard-coded English
- * tooltip would be the one wording a host could not override.
- */
-function commandAction(
-  id: string,
-  commandId: string,
-  labelKey: string,
-  labelFallback: string,
-  icon: TemplateResult
-) {
-  return {
-    id,
-    when: (ctx: ToolbarContext) => {
-      const command = findCommand(ctx, commandId);
-      return command !== undefined && (command.when?.(ctx.std) ?? true);
-    },
-    generate: (ctx: ToolbarContext) => {
-      const label = translateKey(ctx.std, labelKey, labelFallback);
-      return {
-        icon,
-        tooltip: label,
-        run: (runCtx: ToolbarContext) => {
-          const command = findCommand(runCtx, commandId);
-          if (!command) return;
-          runCommand(runCtx.std, command, {
-            surface: 'contextual-toolbar',
-            source: 'toolbar:general',
-          });
-        },
-      };
-    },
-  };
-}
-
-/**
- * The selected C4 board's contextual toolbar: the resize toggle and the
+ * The selected C4 board's contextual toolbar: the resize toggle, and the
  * automatic legend of what is actually drawn on the board.
  *
- * The MODULE is registered always-on ({@link C4RenderViewExtension}), because a
- * stored board must keep its resize toggle with the C4 button switched off
- * (`docs/adr/0009`). The legend COMMAND is not: it is registered by the
- * flag-gated half like every other C4 command, so with the flag off this row is
- * the resize toggle alone.
+ * ## The legend is a BUTTON, not a command — PO arbitration, 27/08/2026
  *
- * That is a deliberate difference from the Context Map board, whose legend
- * button survives its flag by calling `createAutoLegend` directly and tracking
- * its own event. Both readings of `docs/adr/0009` are defensible — a legend is
- * real editable elements, and it is also a gesture that CREATES them — and the
- * tie is broken by the seam: a command's owner gates it on both sides at once
- * (`isBlockEnabled` decides what a host ENUMERATES, `CommandExtension` what
- * BINDS, and a unit test asserts the two agree), so a legend registered
- * always-on under `owner: 'c4'` would be bindable while absent from every
- * manifest. Declaring it as a command is what buys the rest: one behaviour, one
- * availability rule, and `FrameworkLegendCreated` emitted by the central
- * reporter instead of by a hand-written `track()` here.
+ * Every other C4 gesture is a registered `CommandDescriptor`, which is the
+ * bottleneck `docs/adr/0008` asks for: one behaviour, one availability rule, one
+ * telemetry emission, reachable from the sub-menu, the catalogue, the palette,
+ * Settings › Shortcuts and the agent. The legend is the arbitrated exception.
+ * The PO's call is that generating one belongs to a board you have SELECTED and
+ * to nothing else: it is not an artefact to pick off a palette, and an entry in
+ * a catalogue of things C4 draws would offer it to a user with no board in front
+ * of them. So there is no `c4.legend` command, this button is the only way to
+ * reach it, and the telemetry it owes is emitted by hand below.
  *
- * The entry asks the registry for the command and hides itself when it is not
- * there — the same `when` guard every `commandAction` carries — so nothing on
- * this row can be clicked into a no-op.
+ * That is the same shape — and the same exception — the Context Map board makes
+ * (`ddd-context-map/src/toolbar/board-config.ts`), down to the payload, so the
+ * two frameworks' legends stay comparable on one dashboard. The cost is the one
+ * the bottleneck exists to avoid and is accepted knowingly: this `track()` call
+ * is a second emitter, and it is on whoever edits it to keep the wire values
+ * matching what `reportCommandTelemetry` would have sent.
+ *
+ * ## Two modules on one element, and why
+ *
+ * The resize toggle is registered ALWAYS-ON, because a stored board must stay
+ * usable with the C4 button switched off (`docs/adr/0009`). The legend button is
+ * a SECOND module on the same element, through the `custom:` flavour slot, and
+ * it is registered by the flag-gated half — which is exactly where it sat while
+ * it was a command, and the arbitration changed nothing about that. It is also
+ * the shape BPMN, Wardley and the Context Map already use to hang the Validation
+ * dropdown off a background whose base row is always-on: `renderToolbar`
+ * collects the entries of every module contributing to the element, so the user
+ * sees one row either way.
  *
  * There is no rename entry, and there is nothing missing: both C4 frames edit
  * their one word in place on a double-click (`element-view.ts`), which is the
@@ -134,13 +95,6 @@ export const c4BoardToolbarConfig = {
         }
       },
     },
-    commandAction(
-      'b.legend',
-      'c4.legend',
-      'com.labre.commands.c4.legend',
-      'Generate the legend',
-      dddLegendIcon
-    ),
   ],
   when: (ctx: ToolbarContext) =>
     ctx.getSurfaceModelsByType(C4BoardElementModel).length > 0,
@@ -149,4 +103,43 @@ export const c4BoardToolbarConfig = {
 export const c4BoardToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:c4Board'),
   config: c4BoardToolbarConfig,
+});
+
+/**
+ * The legend button — the flag-gated half of the row (see the note above).
+ *
+ * `b.` sorts it after the resize toggle, so the two modules render as the one
+ * row a user sees rather than in registration order.
+ */
+export const c4LegendToolbarConfig = {
+  actions: [
+    {
+      id: 'b.legend',
+      tooltip: 'Generate the legend (notation present)',
+      icon: dddLegendIcon,
+      run(ctx: ToolbarContext) {
+        createC4Legend(ctx.std);
+        ctx.std
+          .getOptional(TelemetryProvider)
+          ?.track('FrameworkLegendCreated', {
+            // The WIRE values, and they are the ones `reportCommandTelemetry`
+            // would have sent for a `kind: 'legend'` command — `framework` from
+            // the descriptor's `telemetryKey`, `element: 'legend'` as Wardley
+            // and the Context Map both emit, so the three are one metric.
+            framework: 'c4',
+            element: 'legend',
+            page: 'whiteboard editor',
+            segment: 'element toolbar',
+            module: 'c4 toolbar',
+          });
+      },
+    },
+  ],
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(C4BoardElementModel).length > 0,
+} as const satisfies ToolbarModuleConfig;
+
+export const c4LegendToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:c4Board'),
+  config: c4LegendToolbarConfig,
 });

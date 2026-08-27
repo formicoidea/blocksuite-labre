@@ -43,8 +43,11 @@ as on one where it is on.
 Selecting a board offers its own row: lock or unlock resizing, and **generate a
 legend** of the notation actually used on it. The legend lists what is drawn and
 nothing else — a board of cylinders lists a database and not a container — and
-it arrives as real, editable elements you can move and rewrite. Renaming a board
-or a boundary is unchanged: double-click the words.
+it arrives as real, editable elements you can move and rewrite. It is reached
+from that button and from nowhere else: generating a legend is something you do
+to a board you are looking at, not an artefact to pick off a palette, so it is
+deliberately absent from the catalogue and from Settings › Shortcuts. Renaming a
+board or a boundary is unchanged: double-click the words.
 
 With the C4 tooling switched off, a stored board keeps painting, stays
 selectable and keeps its resize toggle; the legend button goes with the rest of
