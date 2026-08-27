@@ -1,13 +1,10 @@
-import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import type { TemplateResult } from 'lit';
 
 import {
   activateC4Relationship,
-  c4BoardsSelected,
   createC4Board,
   createC4Boundary,
-  createC4Legend,
   createC4Node,
 } from './actions';
 import { C4_TOOLBOX_ICONS } from './toolbar/icons';
@@ -17,13 +14,19 @@ import { C4_TOOLBOX_ICONS } from './toolbar/icons';
  * senior sub-menu, the artefact catalogue, the palette, Settings › Shortcuts
  * and the agent (`docs/adr/0008`).
  *
- * ## Thirteen, against fourteen slots
+ * ## Thirteen, and thirteen only
  *
  * The pack draws nine elements, two boundaries, one board and one connecting
  * object: thirteen entries against a sub-menu that holds fourteen. C4 is
  * therefore the LAST framework that fits — nothing is arbitrated, nothing
  * overflows, and the sub-menu is exactly this list in exactly this order
  * (`selectSeniorMenuCommands` returns the menu untouched below the cap).
+ *
+ * The board's automatic LEGEND is deliberately not among them, and is not a
+ * command at all: it is reached from the selected board's contextual toolbar and
+ * from nowhere else (PO arbitration, 27/08/2026 — the same call the Context Map
+ * board makes). See `toolbar/config.ts` for what that costs and why it is the
+ * arbitrated exception to the command bottleneck.
  *
  * That does not make the ORDER free, and it is why the declarations lead with
  * the canonical core rather than by family. The day a fourteenth artefact lands
@@ -191,7 +194,7 @@ const SPECS: Spec[] = [
   },
 ];
 
-const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
+export const c4Commands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   id: `c4.${spec.id}`,
   owner: 'c4',
   kind: spec.kind,
@@ -212,58 +215,6 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   telemetry: { framework: 'c4', element: spec.element },
 }));
 
-/**
- * The LEGEND — the one C4 command that is not a toolbox slot.
- *
- * It acts on a SELECTION (a board), so it declines `'senior-menu'` exactly as
- * BPMN's lane gestures do: a permanently greyed entry in the sub-menu of a
- * framework you have drawn nothing with yet is furniture, not an affordance. It
- * keeps `'catalogue'`, which is the registry's own invariant rather than a
- * category claim, and joins `'contextual-toolbar'`, whose entry is declared by
- * the board's `ToolbarModuleConfig` and INVOKES this — one behaviour, one
- * availability rule, one telemetry emission (`docs/adr/0008`, `docs/adr/0010`
- * M3).
- *
- * Declaring it as a command rather than as a toolbar-only action is what makes
- * its telemetry free and correct: `kind: 'legend'` is the one `CommandKind` the
- * central reporter maps to `FrameworkLegendCreated`, so the event is emitted by
- * `runCommand` with the historical wire values, and the button below is spared
- * a hand-written `track()` call — which is what Wardley and the Context Map
- * still carry, and the one place their legends can drift from everybody else's.
- */
-const legendCommand: CommandDescriptor = {
-  id: 'c4.legend',
-  owner: 'c4',
-  kind: 'legend',
-  labelKey: 'com.labre.commands.c4.legend',
-  labelFallback: 'Generate the legend',
-  descriptionKey: 'com.labre.commands.c4.legend.description',
-  descriptionFallback:
-    'Draw a legend of the notation actually used on the selected board.',
-  // Filed with the board, which is the selection that offers it.
-  category: 'diagrams',
-  iconKey: 'c4.legend',
-  surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
-  order: SPECS.length,
-  scope: 'edgeless',
-  defaultKeys: { mac: [], other: [] },
-  availability: 'selection',
-  run: createC4Legend,
-  telemetry: { framework: 'c4', element: 'legend' },
-  // Narrows `'selection'`, never contradicts it: a selection holding no board
-  // has nothing to describe. The read-only test rides in `c4BoardsSelected` —
-  // a legend is real elements, and drawing them is a write.
-  when: std => c4BoardsSelected(std).length > 0,
-};
-
-export const c4Commands: CommandDescriptor[] = [
-  ...toolboxCommands,
-  legendCommand,
-];
-
 export const c4CommandIcons: Record<string, TemplateResult> = {
   ...C4_TOOLBOX_ICONS,
-  // The gesture the three DDD boards already have, so it takes their glyph
-  // rather than a lookalike: one icon for one gesture.
-  'c4.legend': dddLegendIcon,
 };

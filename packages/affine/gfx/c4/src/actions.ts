@@ -231,6 +231,12 @@ export function c4BoardsSelected(std: BlockStdScope): C4BoardElementModel[] {
  * background, and two of them would put two boxes on top of whatever sits in
  * that corner. Everything about the gesture — the scan, the placement, the box —
  * is `createAutoLegend`'s; C4 contributes {@link C4_AUTO_LEGEND}, a table.
+ *
+ * The one action in this file with no command behind it: the legend is reached
+ * from the selected board's contextual toolbar and from nowhere else (PO
+ * arbitration, 27/08/2026 — see `toolbar/config.ts`). Kept here beside its
+ * siblings all the same, because it is the same kind of thing — a gesture that
+ * writes elements — and because a unit test can drive it without a toolbar.
  */
 export function createC4Legend(std: BlockStdScope): void {
   const board = c4BoardsSelected(std)[0];

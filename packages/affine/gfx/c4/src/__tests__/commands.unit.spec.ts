@@ -25,6 +25,7 @@ import {
 } from '../consts';
 import { C4_AUTO_LEGEND } from '../legend';
 import { C4_ROLE, C4_ROLE_OF_KIND } from '../roles';
+import { c4BoardToolbarConfig, c4LegendToolbarConfig } from '../toolbar/config';
 
 /** Every kind the model declares, read off a table that is total over it. */
 const ALL_KINDS = Object.keys(NODE_SIZE) as C4NodeKind[];
@@ -87,15 +88,15 @@ function armed(command: CommandDescriptor) {
 }
 
 describe('the c4 command inventory', () => {
-  const byId = new Map(c4Commands.map(c => [c.id, c]));
   const toolbox = c4Commands.filter(c => c.surfaces.includes('senior-menu'));
 
-  it('declares fourteen commands, every one of them in the catalogue', () => {
-    // Thirteen toolbox entries — nine elements, two boundaries, the board and
-    // the relationship — plus the legend, which acts on a selected board rather
-    // than drawing an artefact.
-    expect(c4Commands).toHaveLength(14);
-    expect(new Set(c4Commands.map(c => c.id)).size).toBe(14);
+  it('declares thirteen commands, every one of them in the catalogue', () => {
+    // Nine elements, two boundaries, the board and the relationship — and
+    // nothing else. The board's automatic legend is deliberately NOT a command
+    // (PO arbitration, 27/08/2026): it is a button on the selected board's row
+    // and is reachable from nowhere else. See `toolbar/config.ts`.
+    expect(c4Commands).toHaveLength(13);
+    expect(new Set(c4Commands.map(c => c.id)).size).toBe(13);
     for (const command of c4Commands) {
       expect(command.owner, command.id).toBe('c4');
       expect(command.scope, command.id).toBe('edgeless');
@@ -128,9 +129,10 @@ describe('the c4 command inventory', () => {
     expect(drawn.sort()).toEqual([...ALL_KINDS].sort());
   });
 
-  it('fills thirteen of the fourteen senior slots, in author order', () => {
+  it('puts all thirteen on the senior row, in author order', () => {
     // C4 is the last framework that FITS: thirteen against a cap of fourteen,
-    // so nothing is arbitrated and the sub-menu is this list exactly.
+    // so nothing is arbitrated and the sub-menu is this list exactly. Every
+    // command is a senior slot, because every one of them DRAWS something.
     expect(toolbox.map(c => c.id)).toEqual([
       // The seven a C4 diagram cannot be drawn without…
       'c4.addPerson',
@@ -150,6 +152,7 @@ describe('the c4 command inventory', () => {
       'c4.addSystemExt',
     ]);
     expect(toolbox).toHaveLength(13);
+    expect(toolbox).toHaveLength(c4Commands.length);
     expect(toolbox.length).toBeLessThanOrEqual(SENIOR_MENU_CAP);
   });
 
@@ -174,21 +177,22 @@ describe('the c4 command inventory', () => {
     expect(groups.reduce((n, group) => n + group.commands.length, 0)).toBe(
       c4Commands.length
     );
-    // The legend is filed with the board that offers it, after it.
+    // The board is alone in its section: the legend that used to sit beside it
+    // is not a command at all any more.
     expect(
       groups
         .find(group => group.category === 'diagrams')!
         .commands.map(c => c.id)
-    ).toEqual(['c4.addBoard', 'c4.legend']);
+    ).toEqual(['c4.addBoard']);
   });
 
   /**
    * The COLD START that is not one YET, and the reason the order above is what
    * it is.
    *
-   * Fourteen entries against a cap of fourteen: `selectSeniorMenuCommands`
-   * arbitrates nothing and hands back the whole menu. The day a fourteenth
-   * ARTEFACT lands the catalogue overflows, the ranking kicks in, and a user
+   * Thirteen entries against a cap of fourteen: `selectSeniorMenuCommands`
+   * arbitrates nothing and hands back the whole menu. The day a FIFTEENTH
+   * artefact lands the catalogue overflows, the ranking kicks in, and a user
    * with no history meets the first seven of this list — which is why they are
    * the four levels, the relationship, the board and the database rather than
    * seven ways to draw a box. BPMN learned that in a live recette (#144); this
@@ -218,22 +222,35 @@ describe('the c4 command inventory', () => {
     ]);
   });
 
-  it('keeps the legend off the sub-menu and on the board’s toolbar', () => {
-    const legend = byId.get('c4.legend')!;
-    // A legend acts on a selection, so a permanently greyed sub-menu button
-    // would be furniture. `kind: 'legend'` is what earns it
-    // `FrameworkLegendCreated` from the central reporter, with no hand-written
-    // `track()` anywhere in this package.
-    expect(legend.kind).toBe('legend');
-    expect(legend.availability).toBe('selection');
-    expect(legend.surfaces).toEqual([
-      'catalogue',
-      'contextual-toolbar',
-      'palette',
-      'agent',
+  /**
+   * The PO arbitration of 27/08/2026, pinned so a well-meaning refactor cannot
+   * quietly promote the legend back into the registry.
+   *
+   * Generating a legend belongs to a board you have SELECTED and to nothing
+   * else: it is not an artefact to pick off a palette, and a catalogue entry
+   * would offer it to a user with no board in front of them. So there is no
+   * command, no catalogue row, no palette entry and no bindable shortcut — one
+   * button, on one row.
+   */
+  it('makes the legend a toolbar button and never a command', () => {
+    expect(c4Commands.find(c => c.id === 'c4.legend')).toBeUndefined();
+    expect(c4Commands.some(c => c.kind === 'legend')).toBe(false);
+    expect(
+      c4Commands.some(c => c.surfaces.includes('contextual-toolbar'))
+    ).toBe(false);
+    expect(c4CommandIcons['c4.legend']).toBeUndefined();
+
+    // …and it is on the row, which is the only place it can be reached from.
+    const legend = c4LegendToolbarConfig.actions.find(
+      action => action.id === 'b.legend'
+    );
+    expect(legend).toBeDefined();
+    expect(typeof legend!.run).toBe('function');
+    // `b.` sorts it after the resize toggle, so the two modules render as the
+    // one row a user sees rather than in registration order.
+    expect(c4BoardToolbarConfig.actions.map(action => action.id)).toEqual([
+      'a.toggle-resize',
     ]);
-    expect(legend.telemetry).toEqual({ framework: 'c4', element: 'legend' });
-    expect(typeof legend.when).toBe('function');
   });
 });
 

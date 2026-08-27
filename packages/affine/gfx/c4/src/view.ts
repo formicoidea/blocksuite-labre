@@ -17,7 +17,10 @@ import { C4BoardView, C4BoundaryView } from './element-view';
 import { C4NodeRendererExtension } from './node/node-renderer';
 import { C4NodeView } from './node/node-view';
 import { C4_ROLES } from './roles';
-import { c4BoardToolbarExtension } from './toolbar/config';
+import {
+  c4BoardToolbarExtension,
+  c4LegendToolbarExtension,
+} from './toolbar/config';
 import { c4SeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -58,11 +61,10 @@ export class C4RenderViewExtension extends ViewExtensionProvider {
       context.register(
         FrameworkBackgroundInteractionExtension(C4_BOUNDARY_BACKGROUND)
       );
-      // The selected board's own row. Always-on for the reason `docs/adr/0009`
-      // gives — a stored board must keep its resize toggle with the C4 button
-      // switched off. The legend entry on that row invokes a flag-gated
-      // command and asks the registry for it, so with the flag off it hides
-      // rather than becoming a button that does nothing (`toolbar/config.ts`).
+      // The selected board's own row — the resize toggle half of it. Always-on
+      // for the reason `docs/adr/0009` gives: a stored board must keep its
+      // handles usable with the C4 button switched off. The legend button is a
+      // second module, registered by the flag-gated half below.
       context.register(c4BoardToolbarExtension);
     }
   }
@@ -70,12 +72,12 @@ export class C4RenderViewExtension extends ViewExtensionProvider {
 
 /**
  * C4 creation tooling — flag-gated (`c4`): the senior toolbar button, its
- * sub-menu and the thirteen commands behind them, plus the legend command the
- * board's always-on toolbar invokes.
+ * sub-menu, the thirteen commands behind them, and the board's legend button.
  *
  * All of it is tooling in the sense `docs/adr/0009` means: a diagram drawn while
  * the flag was on keeps painting, stays selectable and keeps its contextual
- * toolbar when it goes off — only the ways to add new elements go away.
+ * toolbar when it goes off — only the ways to add new elements go away, the
+ * legend included, since generating one CREATES elements.
  */
 export class C4ViewExtension extends ViewExtensionProvider {
   override name = 'affine-c4-gfx';
@@ -91,6 +93,11 @@ export class C4ViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(c4SeniorTool);
       context.register(CommandExtension(c4Commands, c4CommandIcons));
+      // The legend button on a selected board's row. A SECOND module on the
+      // same element, through the `custom:` flavour slot — the shape wardley,
+      // bpmn and the context map all use to hang a flag-gated entry off a row
+      // whose base is always-on (`toolbar/config.ts`).
+      context.register(c4LegendToolbarExtension);
     }
   }
 }
