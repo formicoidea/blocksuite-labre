@@ -32,6 +32,12 @@ describe('artefact catalogue sidepanel', () => {
   let edgeless!: EdgelessRootBlockComponent;
 
   beforeEach(async () => {
+    // The usage store persists across spec FILES sharing this browser page —
+    // any earlier spec that ran a wardley command would summon the "Recent &
+    // frequent" head section here and its duplicated rows would shift every
+    // count below. Each scenario starts from silence and feeds the store
+    // itself when usage is its subject.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
     const cleanup = await setupEditor('edgeless');
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
     return cleanup;
@@ -156,9 +162,6 @@ describe('artefact catalogue sidepanel', () => {
   });
 
   test('the head section lists what was used, and only once something was', async () => {
-    // A previous test in this FILE may have fed the store — the panel's whole
-    // point is that the measure persists. Start this scenario from silence.
-    localStorage.removeItem(COMMAND_USAGE_KEY);
     await open();
     expect(
       widgetRoot()?.querySelector('[data-testid="artefact-catalogue-ranked"]')
