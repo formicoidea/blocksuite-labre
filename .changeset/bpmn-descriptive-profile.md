@@ -41,10 +41,14 @@ for exactly this — the message and timer starts under `bpmn:start-event`, the
 user and service tasks under `bpmn:task`, the parallel gateway under
 `bpmn:gateway` — so everything already written about "an event" or "an activity"
 keeps applying, unchanged, to artefacts that did not exist when it was written.
-Two families are new: **`bpmn:data`**, because the paperwork is not the work and
-a rule about what a process DOES must never reach a data store; and
-**`bpmn:association`**, the one edge in this library with no verb at all, since
-"this note is about that task" reads the same from either end.
+
+Two of them sit outside every family that existed. **`bpmn:data`** is a new
+family of its own — the paperwork is not the work, and a rule about what a
+process DOES must never reach a data store. **`bpmn:text-annotation`** is a
+family of one, parent-less and childless, because commentary is never evidence.
+And one new edge role, **`bpmn:association`**, is the only one in this library
+with no verb at all: "this note is about that task" reads the same from either
+end, so it has no direction to be wrong about and none to fix.
 
 **Nothing already drawn changes.** The new artefacts are new VALUES of the field
 every BPMN node already carries — no schema change, no migration, no backfill. A
