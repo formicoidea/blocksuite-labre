@@ -93,10 +93,19 @@ const ALL_KINDS = [
   'dataObject',
   'dataStore',
   'textAnnotation',
+  'group',
 ] as const satisfies readonly BpmnNodeKind[];
 
-/** The three kinds the notation draws bare — a plain shape and nothing on it. */
-const UNDECORATED = ['startEvent', 'endEvent', 'task'] as const;
+/**
+ * The kinds this renderer must not touch — a plain shape and nothing on it.
+ *
+ * `group` is here for a different reason from the other three. They carry no
+ * marker in the notation at all; the group has a distinctive look — dashed,
+ * rounded, unfilled — but every part of it is a native shape property, so the
+ * glyph layer has nothing left to add. A stroke drawn here would be one the
+ * shape toolbar could not edit.
+ */
+const UNDECORATED = ['startEvent', 'endEvent', 'task', 'group'] as const;
 
 describe('the BPMN node glyph layer', () => {
   it('draws on every decorated kind and on no other', () => {

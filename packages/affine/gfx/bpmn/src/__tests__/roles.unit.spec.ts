@@ -24,8 +24,8 @@ const FAMILIES = [
 
 describe('BPMN role vocabulary', () => {
   it('declares the four families, their leaves, the pool and the three flows', () => {
-    // 21 node roles + 3 edges.
-    expect(Object.keys(BPMN_ROLES)).toHaveLength(24);
+    // 22 node roles + 3 edges.
+    expect(Object.keys(BPMN_ROLES)).toHaveLength(25);
     for (const id of [
       ...FAMILIES,
       BPMN_ROLE.startEvent,
@@ -44,6 +44,7 @@ describe('BPMN role vocabulary', () => {
       BPMN_ROLE.dataObject,
       BPMN_ROLE.dataStore,
       BPMN_ROLE.textAnnotation,
+      BPMN_ROLE.group,
       BPMN_ROLE.pool,
     ]) {
       expect(BPMN_ROLES[id]?.kind, id).toBe('node');
@@ -149,20 +150,58 @@ describe('BPMN role vocabulary', () => {
     );
   });
 
-  it('keeps the pool and the annotation OUT of every artefact subtree', () => {
+  it('keeps the pool and the two artifacts OUT of every artefact subtree', () => {
     // The frame, not an artefact — the same call `wardley:map` makes. And the
-    // annotation: commentary, which no rule about the work may fall on.
-    for (const outsider of [BPMN_ROLE.pool, BPMN_ROLE.textAnnotation]) {
+    // two artifacts: what the author drew ON the picture rather than in it,
+    // which no rule about the work may fall on.
+    const outsiders = [
+      BPMN_ROLE.pool,
+      BPMN_ROLE.textAnnotation,
+      BPMN_ROLE.group,
+    ];
+    for (const outsider of outsiders) {
       expect(BPMN_ROLES[outsider].parent, outsider).toBeUndefined();
       for (const family of FAMILIES) {
         expect(roleIsA(outsider, family, BPMN_ROLES), family).toBe(false);
         expect(roleIsA(family, outsider, BPMN_ROLES), family).toBe(false);
       }
     }
-    // The two are not each other either.
-    expect(roleIsA(BPMN_ROLE.textAnnotation, BPMN_ROLE.pool, BPMN_ROLES)).toBe(
+    // None of the three is any of the others, in either direction.
+    for (const a of outsiders) {
+      for (const b of outsiders) {
+        if (a === b) continue;
+        expect(roleIsA(a, b, BPMN_ROLES), `${a} → ${b}`).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * The group is the one artefact BPMN 2.0.2 §10.4 exempts from every
+   * connection and containment constraint there is: it cannot be attached to a
+   * sequence or message flow, it is not bounded by the pool or lane it
+   * overlaps, and it may straddle several pools at once.
+   *
+   * A vocabulary cannot enforce that on its own — but it can refrain from
+   * making it false, which a `parent` anywhere in this tree would have done by
+   * inheritance. Pinned here because the exemption is the entire reason the
+   * role is a root, and a later "tidy-up" filing it under the pool or the
+   * artifacts would look harmless and would not be.
+   */
+  it('leaves the group a root, so nothing it overlaps can claim it', () => {
+    const group = BPMN_ROLES[BPMN_ROLE.group];
+    expect(group.kind).toBe('node');
+    expect(group.parent).toBeUndefined();
+    expect(group.labelFallback).toBeTruthy();
+    // Not under the frame it straddles, nor under the notes it sits beside.
+    expect(roleIsA(BPMN_ROLE.group, BPMN_ROLE.pool, BPMN_ROLES)).toBe(false);
+    expect(roleIsA(BPMN_ROLE.group, BPMN_ROLE.textAnnotation, BPMN_ROLES)).toBe(
       false
     );
+    // And nothing else is a group: it has no children to inherit the exemption.
+    for (const def of Object.values(BPMN_ROLES)) {
+      if (def.id === BPMN_ROLE.group) continue;
+      expect(roleIsA(def.id, BPMN_ROLE.group, BPMN_ROLES), def.id).toBe(false);
+    }
   });
 
   it('keeps data OUT of the flow objects, in both directions', () => {
@@ -264,10 +303,11 @@ describe('the kind → role bridge', () => {
     'dataObject',
     'dataStore',
     'textAnnotation',
+    'group',
   ] as const satisfies readonly BpmnNodeKind[];
 
-  it('gives each of the sixteen kinds a declared role', () => {
-    // Total, and total over EXACTLY those sixteen: `kind` keeps driving the
+  it('gives each of the seventeen kinds a declared role', () => {
+    // Total, and total over EXACTLY those seventeen: `kind` keeps driving the
     // renderer, so one arriving without a meaning would paint something the
     // tool could not read.
     expect(Object.keys(BPMN_ROLE_OF_KIND).sort()).toEqual([...KINDS].sort());

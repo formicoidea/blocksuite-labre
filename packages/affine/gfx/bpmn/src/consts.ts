@@ -33,6 +33,24 @@ export const CALL_ACTIVITY_WIDTH = END_WIDTH;
 /** Task corner radius (absolute px — a lightly rounded rectangle). */
 export const TASK_RADIUS = 10;
 
+/**
+ * The group's corner radius — twice a task's, because it is drawn at three
+ * times the size and a 10-unit corner on a 300-unit box reads as a square one.
+ */
+export const GROUP_RADIUS = 20;
+
+/**
+ * The group's dashed border.
+ *
+ * Grey and not the flow objects' near-black: a group is furniture drawn AROUND
+ * the work, and it is the one artefact on the canvas guaranteed to overlap
+ * several others. At the neutral stroke it out-shouts everything it encloses,
+ * which is the exact opposite of what a lasso is for. Every tool that draws
+ * BPMN makes the same call; the spec prescribes the dash and says nothing about
+ * the colour.
+ */
+export const GROUP_STROKE = '#8e8d91';
+
 /** Inner-text font for the task label. */
 export const INNER_FONT_SIZE = 18;
 
@@ -53,6 +71,10 @@ export const INNER_FONT_SIZE = 18;
  *
  * These three are ~1.2–1.4× bpmn.io's normative pixel sizes, which is the ratio
  * this pack's event and task already sit at against the same reference.
+ *
+ * `group` is on no scale at all: it is a LASSO, so it has to be born big enough
+ * to have something in it. 300×200 holds two tasks and the arrow between them,
+ * which is the smallest thing anybody draws a group around.
  */
 export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
   startEvent: { w: 56, h: 56 },
@@ -71,6 +93,7 @@ export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
   dataObject: { w: 48, h: 64 },
   dataStore: { w: 56, h: 56 },
   textAnnotation: { w: 140, h: 48 },
+  group: { w: 300, h: 200 },
 };
 
 /**
@@ -104,6 +127,10 @@ export const NODE_LABEL: Record<BpmnNodeKind, string> = {
   dataStore: '',
   // The one artefact that IS its text.
   textAnnotation: 'Annotation',
+  // The group's label is a CategoryValue in the spec. A plain editable string
+  // is the v1 of that: it names the lasso, and it is drawn top-left rather than
+  // centred so it does not float over whatever the group encloses.
+  group: 'Group',
 };
 
 /**

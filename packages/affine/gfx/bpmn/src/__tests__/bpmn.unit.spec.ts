@@ -1,4 +1,9 @@
-import type { BpmnNodeKind } from '@labre/affine-model';
+import {
+  type BpmnNodeKind,
+  StrokeStyle,
+  TextAlign,
+  TextVerticalAlign,
+} from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
 import { NODE_PRESETS } from '../actions';
@@ -7,6 +12,8 @@ import {
   EVENT_END,
   EVENT_START,
   END_WIDTH,
+  GROUP_RADIUS,
+  GROUP_STROKE,
   NEUTRAL_STROKE,
   NODE_LABEL,
   NODE_SIZE,
@@ -38,6 +45,7 @@ const KINDS = [
   'dataObject',
   'dataStore',
   'textAnnotation',
+  'group',
 ] as const satisfies readonly BpmnNodeKind[];
 
 const EVENTS = KINDS.filter(
@@ -56,7 +64,7 @@ describe('bpmn style-C constants', () => {
     // The three tables are TOTAL over the union, and this is what proves it at
     // runtime as well as at compile time: a kind added to the model and
     // forgotten in one of them would paint at zero size or with no shape.
-    expect(KINDS).toHaveLength(16);
+    expect(KINDS).toHaveLength(17);
     for (const kind of KINDS) {
       expect(NODE_SIZE[kind].w, kind).toBeGreaterThan(0);
       expect(NODE_SIZE[kind].h, kind).toBeGreaterThan(0);
@@ -107,6 +115,50 @@ describe('bpmn style-C constants', () => {
     );
   });
 
+  /**
+   * The group is the cheapest artefact in the profile: a dashed, rounded,
+   * unfilled rectangle is entirely expressible as a native shape's own
+   * properties, so it costs no glyph code at all.
+   *
+   * `filled: false` is the load-bearing one and not a matter of taste. An
+   * unfilled shape is hit near its border and on its label only, which is what
+   * makes a 300x200 lasso safe to draw over the work: it never steals a click
+   * from what it encloses. A filled group would swallow the whole process.
+   */
+  it('draws the group as a dashed hollow rectangle, with no glyph', () => {
+    const group = NODE_PRESETS.group;
+    expect(group.shapeType).toBe('rect');
+    expect(group.strokeStyle).toBe(StrokeStyle.Dash);
+    expect(group.hollow).toBe(true);
+    expect(group.glyphBody).toBeUndefined();
+    // A wide corner: 10 units on a 300-unit box reads as a square one.
+    expect(group.radius).toBe(GROUP_RADIUS);
+    expect(GROUP_RADIUS).toBeGreaterThan(TASK_RADIUS);
+    // Quieter than the flow objects it is drawn around.
+    expect(group.stroke).toBe(GROUP_STROKE);
+    expect(GROUP_STROKE).not.toBe(NEUTRAL_STROKE);
+    // Born big enough to have something in it — it is a lasso, not a node.
+    expect(NODE_SIZE.group.w).toBeGreaterThan(NODE_SIZE.task.w * 2);
+    expect(NODE_SIZE.group.h).toBeGreaterThan(NODE_SIZE.task.h * 2);
+    // Its label names a REGION, so it sits in the corner rather than floating
+    // over whatever the group encloses.
+    expect(group.textAlign).toBe(TextAlign.Left);
+    expect(group.textVerticalAlign).toBe(TextVerticalAlign.Top);
+    expect(NODE_LABEL.group).toBeTruthy();
+  });
+
+  it('leaves every other kind centred and solid-bordered', () => {
+    // The group is the only artefact that departs from either default, and the
+    // creation site only writes the keys a preset actually asks for.
+    for (const kind of KINDS) {
+      if (kind === 'group') continue;
+      expect(NODE_PRESETS[kind].textAlign, kind).toBeUndefined();
+      expect(NODE_PRESETS[kind].textVerticalAlign, kind).toBeUndefined();
+      expect(NODE_PRESETS[kind].strokeStyle, kind).toBeUndefined();
+      expect(NODE_PRESETS[kind].hollow, kind).toBeUndefined();
+    }
+  });
+
   it('hands the three artifact silhouettes to the glyph, and nothing else', () => {
     const glyphBodied = KINDS.filter(k => NODE_PRESETS[k].glyphBody);
     expect(glyphBodied).toEqual(['dataObject', 'dataStore', 'textAnnotation']);
@@ -125,7 +177,9 @@ describe('bpmn style-C constants', () => {
     expect(NODE_LABEL.task).toBe('Task');
     expect(NODE_LABEL.textAnnotation).toBeTruthy();
     const labelled = KINDS.filter(k => NODE_LABEL[k] !== '');
-    expect(labelled.sort()).toEqual([...ACTIVITIES, 'textAnnotation'].sort());
+    expect(labelled.sort()).toEqual(
+      [...ACTIVITIES, 'textAnnotation', 'group'].sort()
+    );
   });
 
   it('accents events only: green thin start, red thick end, neutral task/gateway', () => {

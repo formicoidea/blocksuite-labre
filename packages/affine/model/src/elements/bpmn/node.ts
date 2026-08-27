@@ -14,7 +14,17 @@ import { ShapeElementModel } from '../shape/index.js';
  *  - gateways (diamond) — `gatewayExclusive` (X) and `gatewayParallel` (+);
  *  - data & artifacts   — `dataObject`, `dataStore` and `textAnnotation`, whose
  *    silhouettes (folded page, cylinder, open bracket) are drawn by the glyph
- *    over a native rect with its own stroke and fill turned off.
+ *    over a native rect with its own stroke and fill turned off;
+ *  - `group`            — a dashed rounded rectangle drawn AROUND things.
+ *
+ * `group` is the odd one and deliberately so. Every other kind is a node the
+ * process is made of; a group is a lasso somebody drew round part of it. The
+ * spec (BPMN 2.0.2 §10.4) exempts it from every connection and containment
+ * constraint there is — it cannot be attached to a sequence or message flow, it
+ * is not bounded by the pool or lane it overlaps, and it may straddle several
+ * pools at once. Nothing here has to enforce that, because a group is unfilled:
+ * it is hit near its border and on its label, so it never steals a click from
+ * what it encloses, and what it encloses never becomes its content.
  *
  * ## Compatibility
  *
@@ -49,7 +59,8 @@ export type BpmnNodeKind =
   // Data and artifacts.
   | 'dataObject'
   | 'dataStore'
-  | 'textAnnotation';
+  | 'textAnnotation'
+  | 'group';
 
 /**
  * A BPMN flow-object node. Extends {@link ShapeElementModel} (a native shape)

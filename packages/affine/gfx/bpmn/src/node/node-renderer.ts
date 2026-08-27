@@ -24,6 +24,9 @@ import {
  *  - gateway   — the X (exclusive) or the `+` (parallel);
  *  - data      — folded page, cylinder, open bracket.
  *
+ * The `group` is the one artefact of the profile this file does NOT touch: its
+ * dashed, rounded, unfilled rectangle is entirely a native shape's own doing.
+ *
  * The last three are different in kind from the rest: their silhouette is not a
  * native shape, so the glyph draws the BODY too — fill and outline — and the
  * native rect underneath is created unfilled and unstroked (see `NODE_PRESETS`
@@ -44,8 +47,16 @@ import {
  */
 
 /**
- * The three artefacts BPMN draws BARE — a plain native shape with nothing on
- * it. Everything else in the union is decorated here.
+ * The artefacts BPMN draws BARE — a plain native shape with nothing on it.
+ * Everything else in the union is decorated here.
+ *
+ * `group` is bare for a different reason from the other three. They are
+ * undecorated because the notation puts no marker on them; the group has a
+ * distinctive look — a dashed, rounded, unfilled rectangle — and it is here
+ * because that look is expressible as a native shape's own properties
+ * (`strokeStyle: dash`, `radius`, `filled: false`). Drawing it by hand would
+ * have meant re-implementing dashes the shape renderer already does, and losing
+ * the editability that comes free with them.
  *
  * Written as the short list rather than the long one, so that the glyph kinds
  * are DERIVED from the model's union instead of restated beside it: a kind
@@ -59,6 +70,7 @@ const UNDECORATED_KINDS = {
   startEvent: true,
   endEvent: true,
   task: true,
+  group: true,
 } as const;
 
 type BpmnUndecoratedKind = keyof typeof UNDECORATED_KINDS;
