@@ -43,14 +43,39 @@ describe('C4 role vocabulary', () => {
   });
 
   /**
-   * The i18n keys are DELIBERATELY absent until C4 has a framework identity —
-   * see the note in `roles.ts`. Pinned rather than left implicit, because the
-   * day the tooling slice adds them this test is what has to be updated, and
-   * updating it means putting the entries in the manifest at the same time.
+   * The reverse of what the model slice pinned.
+   *
+   * That slice shipped the vocabulary with NO i18n keys, on purpose: a key the
+   * translation manifest cannot name is a key a host meets and cannot
+   * translate, and the manifest could not name one until C4 had a framework
+   * identity to contribute under. The tooling slice gives it one, so every def
+   * now carries its key — and `c4TranslationEntries` is what puts them in the
+   * manifest, which
+   * `packages/affine/all/src/__tests__/translations/manifest.unit.spec.ts`
+   * checks in both directions.
    */
-  it('declares no i18n key while no manifest can name one', () => {
+  it('names every role through the translation seam', () => {
     for (const [id, def] of Object.entries(C4_ROLES)) {
-      expect(def.labelKey, id).toBeUndefined();
+      expect(def.labelKey, id).toBe(
+        `com.labre.c4.role.${id.slice('c4:'.length)}`
+      );
+    }
+  });
+
+  /**
+   * The relationship's `direction` block — tier 2 of `docs/adr/0010`, and the
+   * other half of what the model slice deferred for want of a key to declare.
+   * The verb is what the hover reveal reads back on a drawn arrow, with the
+   * `c4` flag on or off.
+   */
+  it('gives the relationship a verb, and gives one to nothing else', () => {
+    const direction = C4_ROLES[C4_ROLE.relationship].direction;
+    expect(direction?.verbFallback).toBe('uses');
+    expect(direction?.verbKey).toBe('com.labre.c4.role.relationship.verb');
+    expect(direction?.gestureHintFallback).toBeTruthy();
+    for (const [id, def] of Object.entries(C4_ROLES)) {
+      if (id === C4_ROLE.relationship) continue;
+      // A node role names no relation, so it has no direction to declare.
       expect(def.direction, id).toBeUndefined();
     }
   });

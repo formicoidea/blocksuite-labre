@@ -82,6 +82,7 @@ export const OPTIONAL_BLOCKS = [
   'edgy',
   'cynefin-estuarine',
   'bpmn',
+  'c4',
   'ddd-event-storming',
   'ddd-core-domain',
   'ddd-context-map',

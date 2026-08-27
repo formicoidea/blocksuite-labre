@@ -16,11 +16,16 @@
   "dependencies": {
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-gfx-connector": "workspace:*",
+    "@labre/affine-gfx-ddd-shared": "workspace:*",
+    "@labre/affine-gfx-pointer": "workspace:*",
     "@labre/affine-gfx-shape": "workspace:*",
     "@labre/affine-model": "workspace:*",
     "@labre/affine-shared": "workspace:*",
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*",
     "@labre/global": "workspace:*",
-    "@labre/std": "workspace:*"
+    "@labre/std": "workspace:*",
+    "lit": "^3.2.0"
   },
   "exports": {
     ".": "./src/index.ts",

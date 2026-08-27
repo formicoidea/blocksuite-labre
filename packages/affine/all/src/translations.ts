@@ -4,6 +4,7 @@ import {
   SEVERITY_FALLBACK,
 } from '@labre/affine-block-surface';
 import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
+import { c4TranslationEntries } from '@labre/affine-gfx-c4';
 import { cynefinEstuarineTranslationEntries } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapTranslationEntries } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain';
@@ -91,6 +92,7 @@ const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
   { owner: 'edgy', entries: edgyTranslationEntries },
   { owner: 'cynefin-estuarine', entries: cynefinEstuarineTranslationEntries },
   { owner: 'bpmn', entries: bpmnTranslationEntries },
+  { owner: 'c4', entries: c4TranslationEntries },
   { owner: 'ddd-event-storming', entries: eventStormingTranslationEntries },
   { owner: 'ddd-core-domain', entries: coreDomainTranslationEntries },
   { owner: 'ddd-context-map', entries: contextMapTranslationEntries },
