@@ -2232,6 +2232,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@labre/affine-gfx-c4@workspace:*, @labre/affine-gfx-c4@workspace:packages/affine/gfx/c4":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-c4@workspace:packages/affine/gfx/c4"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@labre/affine-gfx-connector@workspace:*, @labre/affine-gfx-connector@workspace:packages/affine/gfx/connector":
   version: 0.0.0-use.local
   resolution: "@labre/affine-gfx-connector@workspace:packages/affine/gfx/connector"
@@ -3410,6 +3424,7 @@ __metadata:
     "@labre/affine-fragment-outline": "workspace:*"
     "@labre/affine-gfx-bpmn": "workspace:*"
     "@labre/affine-gfx-brush": "workspace:*"
+    "@labre/affine-gfx-c4": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-cynefin-estuarine": "workspace:*"
     "@labre/affine-gfx-ddd-aggregate": "workspace:*"
