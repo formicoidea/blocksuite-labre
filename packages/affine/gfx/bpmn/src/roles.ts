@@ -21,13 +21,21 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * parallel gateway all arrived as LEAVES, and everything already written about
  * "an event" or "an activity" stayed written.
  *
- * The tree is now three levels deep on two branches — `bpmn:message-start-event`
- * is a `bpmn:start-event` is a `bpmn:event`, and `bpmn:user-task` is a
- * `bpmn:task` is a `bpmn:activity` — which `roleIsA` walks for free.
+ * The tree is FOUR levels deep on two branches — `bpmn:message-start-event` is a
+ * `bpmn:start-event` is a `bpmn:event` is a `bpmn:flow-object`, and
+ * `bpmn:user-task` is a `bpmn:task` is a `bpmn:activity` is a
+ * `bpmn:flow-object` — which `roleIsA` walks for free.
+ *
+ * `bpmn:flow-object` arrived with the rules, for the reason its own block gives:
+ * a sequence flow chains flow objects and a step must be reachable from the
+ * start, and both sentences are about events, activities and gateways at once.
+ * It is the one word BPMN itself uses, so the rules say it once instead of
+ * enumerating three families and forgetting the fourth.
  *
  * The **pool** is parent-less on purpose, the same call `wardley:map` makes: it
  * is the FRAME the flow objects are drawn in, and a rule written on the artefacts
- * must never fall on the lane they sit in. `bpmn:data` is a family of its own for
+ * must never fall on the lane they sit in — nor, therefore, under
+ * `bpmn:flow-object`. `bpmn:data` is a family of its own for
  * the same reason inverted: a data object is not a flow object, it is never
  * executed, and a rule about the WORK must not fall on the paperwork. And the
  * two artifacts — `bpmn:text-annotation` and `bpmn:group` — are parent-less AND
@@ -46,6 +54,8 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
 
 /** Every role this framework declares. */
 export type BpmnRole =
+  // The umbrella the three flow-object families sit under.
+  | 'flow-object'
   // Events.
   | 'event'
   | 'start-event'
@@ -90,6 +100,7 @@ export type BpmnRoleId = `bpmn:${BpmnRole}`;
  * what the BPMN spec calls the thing).
  */
 type BpmnRoleKey =
+  | 'flowObject'
   | 'event'
   | 'startEvent'
   | 'startEventMessage'
@@ -118,6 +129,9 @@ type BpmnRoleKey =
 
 /** Role ids, keyed by the `kind` used at the creation sites. */
 export const BPMN_ROLE = {
+  // The umbrella over the three families that ARE the process: events,
+  // activities and gateways. Never stamped, like the three families under it.
+  flowObject: 'bpmn:flow-object',
   // Events: the family, the two starts and the two ends, and the leaves the
   // descriptive profile draws under each.
   event: 'bpmn:event',
@@ -177,12 +191,46 @@ const roleKey = (id: RoleId) =>
   `com.labre.bpmn.role.${id.slice('bpmn:'.length)}`;
 
 const FLOW_OBJECT_DEFS: readonly RoleDef[] = [
-  // The three parents. None of them is ever STAMPED on an element — the palette
+  /**
+   * The FLOW OBJECT — the one word BPMN itself uses for "a thing the process
+   * does", and the parent of the three families under it.
+   *
+   * Never stamped, like the three families it covers: no palette entry writes
+   * `bpmn:flow-object` and none ever will. It exists so a rule can say the thing
+   * the notation says. A sequence flow chains flow objects; a step must be
+   * reachable from the start; both sentences are about events, activities AND
+   * gateways at once, and without this role each of them would have to enumerate
+   * the three — three triplets where BPMN has one word, and a fourth family
+   * (nobody has asked for one) silently missing from every rule that forgot to
+   * grow its list.
+   *
+   * ## What it deliberately does NOT cover
+   *
+   * `bpmn:data`, `bpmn:text-annotation` and `bpmn:pool` stay outside, each for
+   * the reason its own block gives: the paperwork is not the work, commentary is
+   * never evidence, and the frame is not an artefact drawn in it. That
+   * exclusion is the whole value of the word — "a sequence flow chains flow
+   * objects" is only worth saying because a data object is not one.
+   *
+   * Pure static data, and nothing is written to a document: an element carries
+   * the role its palette entry stamped (`bpmn:task`), and the walk from it up to
+   * `bpmn:flow-object` happens in `roleIsA`, at evaluation time, out of this
+   * table. A process drawn yesterday gains the parent the moment it is opened,
+   * with no migration and nothing backfilled.
+   */
+  {
+    id: BPMN_ROLE.flowObject,
+    kind: 'node',
+    labelKey: roleKey(BPMN_ROLE.flowObject),
+    labelFallback: 'Flow object',
+  },
+  // The three families. None of them is ever STAMPED on an element — the palette
   // always says which event, which activity, which gateway — and that is the
   // point: they exist so a rule can be written once about "an event" and stay
   // written when the full pack adds the message and timer ones under them.
   {
     id: BPMN_ROLE.event,
+    parent: BPMN_ROLE.flowObject,
     kind: 'node',
     labelKey: roleKey(BPMN_ROLE.event),
     labelFallback: 'Event',
@@ -235,6 +283,7 @@ const FLOW_OBJECT_DEFS: readonly RoleDef[] = [
   },
   {
     id: BPMN_ROLE.activity,
+    parent: BPMN_ROLE.flowObject,
     kind: 'node',
     labelKey: roleKey(BPMN_ROLE.activity),
     labelFallback: 'Activity',
@@ -284,6 +333,7 @@ const FLOW_OBJECT_DEFS: readonly RoleDef[] = [
   },
   {
     id: BPMN_ROLE.gateway,
+    parent: BPMN_ROLE.flowObject,
     kind: 'node',
     labelKey: roleKey(BPMN_ROLE.gateway),
     labelFallback: 'Gateway',

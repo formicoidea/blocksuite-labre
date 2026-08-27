@@ -97,6 +97,20 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  * - `element-in-zone` — the subject must sit inside (or outside) named ZONES of
  *   the frame it is on. `element-in-background` asks whether an artefact is on
  *   the map at all; this one asks whether it is in the right REGION of it.
+ * - `edge-degree` — how many typed edges of one role may arrive at, and leave,
+ *   one node. The first family whose subject is a node but whose evidence is
+ *   its RELATIONS: nothing about where it is drawn takes part.
+ * - `role-count` — how many subjects of one role one INSTANCE of the frame must
+ *   carry. Existence and uniqueness, counted per frame and reported ON it.
+ * - `edge-locality` — a typed edge must stay inside one instance of the frame,
+ *   or must cross between two. Where `relation-endpoints` asks what a relation
+ *   runs between, this asks which FRAMES its two ends belong to.
+ * - `reachability` — every subject must be reachable from a declared root by
+ *   following typed edges. The first family that builds a graph rather than
+ *   walking elements, and the only one that is not local to one element or one
+ *   relation.
+ * - `label-presence` — the subject must be NAMED. The first family that reads
+ *   an element's words rather than its geometry, its role or its relations.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -107,7 +121,12 @@ export type RuleFamily =
   | 'relation-endpoints'
   | 'element-in-zone'
   | 'tone-convention'
-  | 'majority-fact';
+  | 'majority-fact'
+  | 'edge-degree'
+  | 'role-count'
+  | 'edge-locality'
+  | 'reachability'
+  | 'label-presence';
 
 /**
  * WHEN a rule is evaluated (PF5.14).
@@ -444,6 +463,404 @@ export interface RelationEndpointsDef {
   duplicate?: RuleMessage;
   /** Words for two relations of {@link exclusivePairs} drawn between one pair. */
   exclusive?: RuleMessage;
+  /**
+   * Words for a NEUTRAL connector drawn between two artefacts of this rule's
+   * own vocabulary — and, by being present at all, the request to look for one.
+   * Absent, a role-less link is invisible to this family, which is what every
+   * rule written before this field means.
+   *
+   * ## The gap this closes
+   *
+   * A framework's edge tool stamps a role. Quick-connect and auto-complete do
+   * not: releasing the canvas' own link gesture between two artefacts produces a
+   * connector carrying NO role, so it says nothing to any of the four verdicts
+   * above — the grammar reads it as absent, and the user reads it as drawn. A
+   * process whose steps are joined by such links looks connected and validates
+   * as if nobody had joined anything.
+   *
+   * ## Why BOTH ends must be artefacts this grammar could have related
+   *
+   * The same proportionality that makes {@link allowed}'s alphabet a hard
+   * requirement, applied one level up. A plain connector from an artefact to a
+   * sticky note, to a legend glyph, to a shape somebody dropped on the board, is
+   * an annotation and none of the framework's business — pointing at things is
+   * what a whiteboard is for. A plain connector between two artefacts this
+   * rule's own sentences run between is the only case where the user can be
+   * presumed to have meant a typed relation and reached for the wrong gesture.
+   *
+   * "Could have related" is read off {@link allowed}'s own ALPHABET when the
+   * rule declares a matrix: the roles its triplets name as a source or a target,
+   * matched with {@link roleIsA} so a specialisation counts. That is the
+   * tightest honest reading, and it excludes — with nothing for an author to
+   * remember — every role a framework declares for something that is not an
+   * endpoint of anything: the background role, a legend glyph, a lane. Presuming
+   * somebody meant to draw a typed relation onto a POOL is exactly the
+   * over-firing this test exists to prevent.
+   *
+   * A rule declaring NO matrix has no alphabet to read, so it falls back to
+   * membership in its own {@link ValidationRule.roles} — never to a prefix match
+   * on the `framework:` half of the role id. The namespace is a naming
+   * CONVENTION (`role.ts` says so, and types the id as a bare string); the
+   * vocabulary is DATA the framework hands the engine. Reading the data cannot
+   * be wrong about a framework that spells its own prefix differently, and it
+   * keeps this file free of string surgery on ids it does not own.
+   *
+   * `roles` stays purely the dictionary the inheritance walk reads either way.
+   * It is never overloaded into a filter, so an author never has to shrink the
+   * vocabulary a rule's other clauses depend on in order to change what this
+   * one flags.
+   */
+  flagNeutral?: RuleMessage;
+}
+
+/**
+ * `edge-degree` configuration — the CARDINALITY of a framework's relations, read
+ * at a node.
+ *
+ * "A start event has no incoming sequence flow"; "a task has at least one".
+ * Where {@link RelationEndpointsDef} judges one relation against the roles at
+ * its ends, this judges one NODE against how many relations reach it — the other
+ * half of a relation grammar, and the half no per-edge rule can express, because
+ * the mistake is a COUNT and nothing is wrong with any single link.
+ *
+ * ## Read off the persisted ends, never off the geometry
+ *
+ * Same reading as `docs/adr/0010`: an edge's `source` is the subject of its
+ * verb and its `target` the object, so "incoming" and "outgoing" are properties
+ * of the document and not of which way somebody dragged. Nothing here consults a
+ * coordinate, so the verdict survives every layout of the same process.
+ */
+export interface EdgeDegreeDef {
+  /**
+   * The EDGE role being counted. An element matching it (or specialising it)
+   * counts; every other link on the board is none of this rule's business — a
+   * message flow arriving at a task says nothing about how many sequence flows
+   * do.
+   */
+  edgeRole: RoleId;
+  /** Fewest edges of that role that may ARRIVE at the subject. */
+  minIn?: number;
+  /** Most edges of that role that may ARRIVE at the subject. */
+  maxIn?: number;
+  /** Fewest edges of that role that may LEAVE the subject. */
+  minOut?: number;
+  /** Most edges of that role that may LEAVE the subject. */
+  maxOut?: number;
+  /**
+   * A DISJUNCTIVE floor: the subject must reach this count on at least ONE
+   * side. The finding falls only when BOTH the incoming and the outgoing count
+   * are short of it.
+   *
+   * ## Why a fifth bound rather than two of the four
+   *
+   * The four above are conjunctive — declare `minIn` and `minOut` together and
+   * the subject has to satisfy both — and there is a whole class of normative
+   * shape that says the opposite: an artefact must do one thing OR the other,
+   * and doing either is enough. A branching artefact that neither splits nor
+   * merges is the canonical one: it takes one thing in, puts one thing out and
+   * decides nothing, which is a node somebody drew and then never gave a job.
+   * `minIn: 2` would indict every split, `minOut: 2` every merge; the
+   * requirement is genuinely "at least one of the two", and no conjunction of
+   * per-direction bounds expresses it.
+   *
+   * ## Composition
+   *
+   * Orthogonal to the four, and evaluated after them: a rule may cap one side
+   * with `maxIn` and still ask for two on either side, and each bound keeps its
+   * own sentence. Absent — the case for every rule written before it existed —
+   * nothing is asked and nothing is counted.
+   */
+  eitherMin?: number;
+  /**
+   * A FORBIDDEN ZONE: the shape of degree a subject may not have, declared as
+   * the bounds it must NOT all satisfy at once.
+   *
+   * The inverse polarity of every bound above. `minIn`/`maxIn`/`minOut`/`maxOut`
+   * here read exactly as they do there — `minIn: 2` means "two or more arrive" —
+   * but the rule fires when the node matches ALL of the ones supplied, instead of
+   * when it misses one.
+   *
+   * ## Why the inverse cannot be written with the bounds
+   *
+   * Two shapes want it, and neither is expressible as a floor or a ceiling:
+   *
+   * - an artefact that MERGES and SPLITS at once — `{ minIn: 2, minOut: 2 }`.
+   *   Both halves are individually fine and their conjunction is ambiguous, so
+   *   the rule is about the pair and about nothing else;
+   * - an artefact that does NEITHER — `{ maxIn: 1, maxOut: 1 }`. A ceiling on
+   *   each side alone forbids the legitimate split and the legitimate merge; only
+   *   their conjunction describes the artefact that decides nothing.
+   *
+   * The second one is the same requirement {@link eitherMin} states from the
+   * other side, and a framework may write it either way — `eitherMin: 2` and
+   * `forbidPattern: { maxIn: 1, maxOut: 1 }` are the same set of nodes. Both are
+   * offered because a rule reads best when its data says what its sentence says,
+   * and the two sentences a notation actually writes are "a gateway must branch"
+   * and "a gateway that does nothing is superfluous".
+   *
+   * ## A pattern of ONE bound is legal, and always redundant
+   *
+   * `{ minIn: 2 }` fires on `in >= 2`, which is what `maxIn: 1` already says, and
+   * `{ maxIn: 1 }` alone is `minIn: 2`. Coherent under the rule above and left
+   * legal rather than warned about — the conjunction of one is still a
+   * conjunction, and a framework mid-edit should not be shouted at. But a
+   * one-bound pattern is never the reason to reach for this field: write the
+   * plain inverse bound, which carries a per-direction sentence naming the side
+   * the user has to act on.
+   *
+   * ## Words, and the empty pattern
+   *
+   * The pattern carries its OWN message rather than a slot beside the others: a
+   * forbidden zone is not a bound that failed, and its sentence never reads like
+   * one. `RuleMessage` is intersected rather than optional, so the type system
+   * requires that sentence — this is the one bound with no `?? rule` fallback,
+   * because it is the one that can never borrow the rule's own words honestly.
+   *
+   * A pattern supplying no bound at all is satisfied by every node, which would
+   * indict the whole board — it warns once and is not evaluated.
+   */
+  forbidPattern?: RuleMessage & {
+    minIn?: number;
+    maxIn?: number;
+    minOut?: number;
+    maxOut?: number;
+  };
+  /**
+   * Words for each bound, when a rule declaring more than one wants to say
+   * something other than its own message.
+   *
+   * The {@link AttachmentDef.offBoundary} precedent, for the same reason: "a
+   * start event begins the process" covers both "something points at it" and
+   * "nothing leaves it", and the two are fixed by opposite gestures. A rule
+   * declaring a single bound needs none — its own message is the only thing it
+   * can be saying.
+   */
+  tooFewIn?: RuleMessage;
+  /** Words for {@link maxIn}. */
+  tooManyIn?: RuleMessage;
+  /** Words for {@link minOut}. */
+  tooFewOut?: RuleMessage;
+  /** Words for {@link maxOut}. */
+  tooManyOut?: RuleMessage;
+  /**
+   * Words for {@link eitherMin} — the one bound whose sentence is genuinely
+   * about NEITHER side, and therefore the one a per-direction message could
+   * never carry.
+   */
+  neither?: RuleMessage;
+}
+
+/**
+ * `role-count` configuration — existence and uniqueness, counted per INSTANCE of
+ * the frame.
+ *
+ * "A pool holds exactly one start event." The subject of the finding is not any
+ * one element — no start event is wrong, there are simply none or three — so the
+ * finding is raised ON THE FRAME, exactly like {@link MajorityDef}'s remark
+ * about a map. That is what puts the bracket on the pool, and what makes the
+ * `map` exemption scope reach it: `raise` stamps the frame as the finding's own
+ * {@link Violation.backgroundId}, so an arbitration made on one pool covers that
+ * pool and no other on the board.
+ */
+export interface RoleCountDef {
+  /**
+   * The role being counted, matched by {@link roleIsA} — a rule counting
+   * `bpmn:start-event` counts its message and timer variants too, which is the
+   * only reading under which "one start event" stays one requirement as the
+   * vocabulary grows.
+   */
+  subject: RoleId;
+  /**
+   * Count only the elements whose role IS {@link subject}, without descending
+   * into its specialisations.
+   *
+   * The default — `roleIsA`, the reading every other role test in this engine
+   * uses — is right whenever the requirement is about the FAMILY: "one
+   * beginning" means one beginning of any kind, and a vocabulary that grows a
+   * new variant inherits the rule for free.
+   *
+   * It is wrong when the requirement is about the PLAIN member of a family, as
+   * distinct from its qualified siblings: "at most one UNQUALIFIED beginning per
+   * frame" is a statement about the artefact that carries no qualifier, and
+   * several qualified ones beside it are exactly what the notation is for. Under
+   * the descending reading that rule cannot be written at all — every variant
+   * would count towards a bound meant for the plain one alone.
+   *
+   * Applies to the SUBJECT only. {@link ifPresent} keeps descending, and
+   * deliberately: a guard asks "is there one of these at all", which is a
+   * question about the family whatever the bound beside it counts. A framework
+   * needing the exact reading on both sides has not turned up yet, and inventing
+   * a second flag for it would be data nobody can read.
+   */
+  exact?: boolean;
+  /** Fewest subjects one instance of the frame must carry. */
+  min?: number;
+  /** Most subjects one instance of the frame may carry. */
+  max?: number;
+  /**
+   * A GUARD: the bounds apply to a frame only while that frame also holds at
+   * least one element whose role is (or specialises) this one. A frame holding
+   * none is not judged at all — not "judged and found compliant", not walked.
+   *
+   * ## Why a notation needs this, and why it is not `min` with a different face
+   *
+   * Whole families of artefact are OPTIONAL on their own and NORMATIVE in
+   * pairs. A sketch may legitimately show neither a beginning nor an end; what
+   * it may not show is one without the other, because a reader who sees where
+   * the work finishes will look for where it starts, and finding nothing is a
+   * question the drawing cannot answer.
+   *
+   * An unconditional `min: 1` would state the wrong thing twice over: it would
+   * indict the perfectly legitimate sketch that declares neither, and it would
+   * be doing so in the name of a requirement the notation does not make. The
+   * PAIRING is the requirement, and a pairing is exactly a bound plus a guard.
+   *
+   * Two rules, mirrored, then say the whole of it — "if there is an end there
+   * must be a start", "if there is a start there must be an end" — and each is
+   * one line of data. That is the shape this field is for.
+   *
+   * ## Same attribution as the subject
+   *
+   * The guard element must be IN the frame, on the same containment-only
+   * reading {@link evaluateRoleCount} uses for the subjects it counts: an
+   * artefact floating beside a pool no more arms a requirement about that pool
+   * than it satisfies one. Absent, the bounds apply to every instance, which is
+   * what every rule written before this field means.
+   */
+  ifPresent?: RoleId;
+  /** Words for {@link min} — see {@link EdgeDegreeDef.tooFewIn}. */
+  tooFew?: RuleMessage;
+  /** Words for {@link max}. */
+  tooMany?: RuleMessage;
+}
+
+/**
+ * `edge-locality` configuration — a relation constrained relative to the frame
+ * instances its two ends sit on.
+ *
+ * The canonical pair a swimlane notation is built on, and both halves of it are
+ * one declaration away from each other: a sequence flow stays inside one pool
+ * (`same-background`), a message flow only exists BETWEEN pools
+ * (`cross-background`). Neither is expressible by {@link RelationEndpointsDef}:
+ * the two ends carry exactly the same roles in the legal case and the illegal
+ * one, and the only thing that differs is which frame each of them is drawn on.
+ */
+export interface EdgeLocalityDef {
+  /** The EDGE role being constrained, matched by {@link roleIsA}. */
+  edgeRole: RoleId;
+  /**
+   * `'same-background'` — the two ends must belong to ONE instance, and two
+   * different ones are the finding; `'cross-background'` — the two ends must
+   * belong to different instances, and one instance is the finding.
+   */
+  mode: 'same-background' | 'cross-background';
+}
+
+/**
+ * `reachability` configuration — every subject must be reachable from a declared
+ * ROOT by following typed edges.
+ *
+ * The orphan question, and the first one in this engine that no amount of
+ * looking at an element or at a relation can answer: a task with a perfectly
+ * good sequence flow on either side is still unreachable if the chain it belongs
+ * to never starts anywhere. Only the graph knows.
+ */
+export interface ReachabilityDef {
+  /**
+   * Where the traversal STARTS. Every element whose role is (or specialises)
+   * this one is a root, and a board carrying none silences the rule whole — see
+   * {@link evaluateReachability}, and {@link implicitRoots} for the second kind
+   * of root a notation with an optional start marker needs.
+   */
+  rootRole: RoleId;
+  /** The role whose elements must be reachable. */
+  subjectRole: RoleId;
+  /** The edge role that is FOLLOWED, source → target, and only that way. */
+  edgeRole: RoleId;
+  /**
+   * Also treat every SUBJECT that nothing points at as a root — in-degree zero
+   * along {@link edgeRole}.
+   *
+   * ## What this changes, and what it is for
+   *
+   * A notation where the explicit start marker is OPTIONAL has a second, silent
+   * way of saying "the work begins here": draw the artefact and point nothing at
+   * it. Two branches of a process running side by side, only one of them given a
+   * start marker, are both perfectly well-formed — and a traversal that only
+   * left from the marker would report the whole of the second branch as
+   * unreachable, which is a wall of brackets over a drawing that is right.
+   *
+   * ## What is left, exactly
+   *
+   * A subject fires when it has an incoming counted edge — so it is not an
+   * implicit root — and no root ever reaches it. Two shapes satisfy that, and
+   * the second one is easy to forget:
+   *
+   * 1. a RING entered from nowhere: artefacts pointing round at each other, each
+   *    with an incoming edge and none of them reachable from outside. The real
+   *    defect, and the one this reading exists to keep visible — work that can
+   *    never begin;
+   * 2. a subject fed ONLY by an edge the walk can never leave from: one whose
+   *    `source` is a dangling id, or an element whose role is neither
+   *    {@link rootRole} nor {@link subjectRole}. The edge disqualifies the
+   *    subject as an implicit root, and its source is never enqueued, so nothing
+   *    reaches it.
+   *
+   * The second shape is a BROKEN or FOREIGN edge, which is
+   * `relation-endpoints`' subject rather than this family's, and this family
+   * reports the consequence rather than the cause. It behaves identically with
+   * the flag off — it is inherited, not introduced here — so a framework that
+   * finds the report confusing wants a `relation-endpoints` rule beside this
+   * one, not a change to this flag.
+   *
+   * ## The zero-root gate still holds
+   *
+   * "No root on the board" becomes "no root of EITHER kind", and it is still
+   * total silence. In practice a board with any subject at all has an implicit
+   * root unless every subject is pointed at, so the gate stops being the thing
+   * that saves a blank sketch and becomes the thing that saves a board where the
+   * question genuinely does not arise.
+   *
+   * Absent or `false` is the original reading: only the declared role starts a
+   * traversal, and a board carrying no such element says nothing at all.
+   */
+  implicitRoots?: boolean;
+}
+
+/**
+ * `label-presence` configuration — the first brick of the PRD's *étiquetage*
+ * family, and the first family in this engine that reads an element's WORDS.
+ *
+ * "This step has no name." Every other family asks about geometry, roles or
+ * relations; this one asks whether the artefact says what it is. An unnamed box
+ * in the middle of a diagram is the one defect a reader cannot work around —
+ * they can infer a missing arrow from the layout, and they can infer nothing at
+ * all from an empty rectangle.
+ *
+ * ## Where the words come from
+ *
+ * The element's own `text`, read duck-typed exactly as {@link textInkBound}
+ * already reads it — the one property every artefact-bearing element model
+ * carries (a `Y.Text` on a shape, a connector label, a free text) and the only
+ * one the engine can read without importing a model. See {@link elementLabel}
+ * for what counts as empty.
+ *
+ * A framework whose artefacts are named by a SEPARATE element beside them — a
+ * text element sitting next to a node, the way a Wardley label does — is not
+ * asking this question, and this family cannot answer it: it reads the subject's
+ * own words and nothing else. That is a different family (a proximity between
+ * two roles), not a flag on this one.
+ */
+export interface LabelPresenceDef {
+  /**
+   * The subject must carry a label. Written as a literal rather than a boolean
+   * because it is a DISCRIMINANT and not a switch: `present: false` would mean
+   * "this artefact must stay unnamed", which no notation asks for. The field
+   * exists so the questions this family grows next — a maximum length, a
+   * pattern, a name that must match the zone it sits in — arrive as siblings
+   * beside it rather than as a second family.
+   */
+  present: true;
 }
 
 /**
@@ -580,6 +997,16 @@ export interface ValidationRule extends RuleMessage {
   tone?: ToneConventionDef;
   /** `majority-fact` only. */
   majority?: MajorityDef;
+  /** `edge-degree` only: the subject nodes are named by {@link appliesTo}. */
+  degree?: EdgeDegreeDef;
+  /** `role-count` only: the frames are named by {@link backgroundRole}. */
+  roleCount?: RoleCountDef;
+  /** `edge-locality` only: the frames are named by {@link backgroundRole}. */
+  locality?: EdgeLocalityDef;
+  /** `reachability` only. */
+  reachability?: ReachabilityDef;
+  /** `label-presence` only: the subjects are named by {@link appliesTo}. */
+  label?: LabelPresenceDef;
 }
 
 /**
@@ -1009,6 +1436,130 @@ function attributeBackground(
     }
   }
   return containing ?? nearest;
+}
+
+/**
+ * The PLOT of one instance, in model coordinates — the element box minus the
+ * declared margin, i.e. the region the frame actually draws its content in.
+ *
+ * A rule that carries no {@link ValidationRule.background} declaration has no
+ * margin to subtract and the whole element box is its plot. That is the honest
+ * answer rather than a refusal: `backgroundRole` alone is a complete declaration
+ * for a family that only needs to know WHICH frame something is on, and
+ * demanding a geometry declaration to count elements inside a box would be
+ * asking a framework to declare axes its rule never reads (the same argument
+ * `relation-endpoints` makes about its own optional frame).
+ *
+ * ## The degenerate plot
+ *
+ * `backgroundPlot` subtracts the declared margins with no guard, so a frame
+ * dragged narrower than `margin.left + margin.right` yields a NEGATIVE extent —
+ * and a `Bound` of negative width contains no point at all, anywhere. Left
+ * alone, a membership family would then tally zero for a frame the user can see
+ * holding something, and a `min` rule would answer "this frame holds none" while
+ * pointing at one that visibly does. A false accusation whose only remedy —
+ * widen the frame — is nowhere in the sentence.
+ *
+ * So a plot that has collapsed falls back to the element box: the same answer
+ * this function already gives a rule that declares no geometry at all, and the
+ * one reading under which the artefact the user is looking at still counts.
+ * Silence would be defensible too; being wrong in the accusing direction is not.
+ */
+function plotOf(
+  def: FrameworkBackgroundDef | undefined,
+  frame: BackgroundInstance
+): Bound {
+  const bound = frame.bound;
+  if (def === undefined) return bound;
+  const plot = backgroundPlot(def, bound.w, bound.h);
+  if (!(plot.width > 0) || !(plot.height > 0)) return bound;
+  return new Bound(
+    bound.x + plot.x0,
+    bound.y + plot.y0,
+    plot.width,
+    plot.height
+  );
+}
+
+/**
+ * The instance an element BELONGS TO: the one whose plot contains its centre,
+ * and nothing else.
+ *
+ * ## The deliberate divergence from {@link attributeBackground}
+ *
+ * `attributeBackground` answers "which map is this finding about", and falls
+ * back to the NEAREST frame when none contains the subject — which is right for
+ * a finding that has already been raised and needs somewhere to be waived.
+ *
+ * This answers a different question: "is this artefact IN that frame". A
+ * nearest-fallback here would be a bug with a plausible face — a start event
+ * floating just outside a pool would satisfy "this pool has a start event", and
+ * a sequence flow from inside the pool to that floating task would read as
+ * staying inside it. Membership has to mean membership, or the two families
+ * built on it certify drawings that show the opposite of what they claim.
+ *
+ * The CENTRE, and the plot rather than the element box: the centre is where the
+ * eye puts an artefact (the reading {@link ElementInZoneDef.measure} already
+ * defaults to) and the plot is the region the frame draws in, so an artefact
+ * lying on the pool's own title band is not counted as being in the pool. Same
+ * resolution the audit uses to place an element, so a board never reads two
+ * different answers to "which frame is this on".
+ *
+ * Ties go to the smaller id, never to the order a `Y.Map` was rebuilt in — the
+ * invariant every attribution in this file holds, and it matters here for the
+ * same reason: the answer decides which frame a persisted arbitration is
+ * written on.
+ */
+function plotContaining(
+  centre: Point,
+  frames: readonly { instance: BackgroundInstance; plot: Bound }[]
+): BackgroundInstance | null {
+  let found: BackgroundInstance | null = null;
+  for (const frame of frames) {
+    if (!frame.plot.containsPoint(centre)) continue;
+    if (found === null || frame.instance.id < found.id) found = frame.instance;
+  }
+  return found;
+}
+
+/**
+ * Every instance of the rule's frame, each with its plot resolved once.
+ *
+ * A board carries units of frames and hundreds of subjects, so the margin
+ * arithmetic is done per FRAME and never per subject.
+ */
+function framePlots(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): { instance: BackgroundInstance; plot: Bound }[] {
+  return backgroundsOf(rule, elements).map(instance => ({
+    instance,
+    plot: plotOf(rule.background, instance),
+  }));
+}
+
+/**
+ * Whether a rule whose whole question is asked ABOUT a frame forgot to name one
+ * — and, if so, says so once.
+ *
+ * `backgroundsOf` answers `[]` both for "this rule names no frame role" and for
+ * "this board carries no such frame", and the second is a legitimate silence
+ * every family in this file honours: a sketch drawn before the frame is a
+ * sketch. The first is a typo in the data, and left undistinguished it produces
+ * a rule that never fires and never says why — the failure the missing-bound
+ * warnings a few lines below exist to prevent, under a comment saying it is the
+ * worst thing declarative data can do.
+ *
+ * The two are distinguishable statically, so they are distinguished here, before
+ * a single element is walked.
+ */
+function missingFrameRole(rule: ValidationRule, family: string): boolean {
+  if (rule.backgroundRole !== undefined) return false;
+  warnOnce(
+    `${family} rule "${rule.id}" names no frame role, and its whole question ` +
+      `is asked about a frame — the rule is not evaluated.`
+  );
+  return true;
 }
 
 /**
@@ -2518,6 +3069,37 @@ function endpointAlphabet(allowed: readonly EndpointTriplet[]): RoleId[] {
   return roles;
 }
 
+/**
+ * Whether `role` is one the rule's own framework DECLARES.
+ *
+ * The FALLBACK half of {@link RelationEndpointsDef.flagNeutral}'s vocabulary
+ * test — used on its own only by a rule that declares no matrix, and composed
+ * with the grammar's own alphabet when there is one (see the call site).
+ *
+ * A membership test on the vocabulary the rule already carries, and deliberately
+ * not a prefix match on the `framework:` half of the id: the namespace is a
+ * naming convention (`role.ts` types a role id as a bare string and says as
+ * much), while the vocabulary is data the framework hands the engine. Reading
+ * the data cannot be wrong about a framework that spells its own prefix
+ * differently — `ddd-context-map` roles are `context-map:` — and it keeps this
+ * file free of string surgery on ids it does not own.
+ *
+ * `roleIsA` against every declared role would give the same answer at a higher
+ * price: a role outside the vocabulary has no parent chain to walk here, since
+ * the walk reads `rule.roles`, so it can only ever match itself.
+ *
+ * `Object.hasOwn`, and never a bare index: `role` comes off a `Y.Map`, so it is
+ * whatever a peer or an importer wrote, and an element persisted with
+ * `role: 'toString'` would answer "declared" against a bag containing no such
+ * entry. The same threat model {@link elementExceptions} guards with its
+ * `Array.isArray`. Every other read of a role bag in this file goes through
+ * `roleIsA`, which writes `defs[current]?.parent` and terminates harmlessly on
+ * a prototype hit; this is the only place that tests for the PRESENCE of a key.
+ */
+function declaresRole(rule: ValidationRule, role: RoleId | undefined): boolean {
+  return role !== undefined && Object.hasOwn(rule.roles, role);
+}
+
 /** One relation this family has read, kept for the pair-wise pass. */
 interface DrawnRelation {
   id: string;
@@ -2549,7 +3131,10 @@ function namedElements(ids: readonly string[]): string[] {
  * ## What it stays silent about, and why each one matters
  *
  * - **an edge carrying no role, or another role** — proportionality (PRD
- *   principle 8): a free connector is not a claim;
+ *   principle 8): a free connector is not a claim. Unless the rule declares
+ *   {@link RelationEndpointsDef.flagNeutral}, which asks for exactly one kind of
+ *   role-less link back: one drawn between two artefacts of this framework's own
+ *   vocabulary, i.e. a relation the user drew and the model does not contain;
  * - **an edge with a free end** — it relates nothing;
  * - **an end whose element is gone** — a dangling id says nothing about a model;
  * - **an end OUTSIDE the alphabet of {@link RelationEndpointsDef.allowed}** —
@@ -2599,15 +3184,26 @@ function evaluateRelationEndpoints(
 
   const byId = new Map<string, GfxPrimitiveElementModel>();
   const edges: { el: GfxPrimitiveElementModel; role: RoleId }[] = [];
+  // Role-less connectors, kept only when the rule asked to hear about them —
+  // and only the ones that are connectors at all, which the persisted pair is
+  // the duck-typed proof of. A board is mostly neutral elements, and a rule
+  // declaring no `flagNeutral` must not allocate one entry per rectangle.
+  const neutral: GfxPrimitiveElementModel[] = [];
   for (const el of elements) {
     byId.set(el.id, el);
-    // Cheapest possible exit for a neutral element: no role, no evaluation.
-    if (el.role === undefined) continue;
+    // Cheapest possible exit for a neutral element: no role, no evaluation…
+    if (el.role === undefined) {
+      // …unless the rule is precisely about the links that carry none.
+      if (endpoints.flagNeutral !== undefined && rawEndpointIds(el) !== null) {
+        neutral.push(el);
+      }
+      continue;
+    }
     if (roleIsA(el.role, endpoints.edgeRole, rule.roles)) {
       edges.push({ el, role: el.role });
     }
   }
-  if (edges.length === 0) return [];
+  if (edges.length === 0 && neutral.length === 0) return [];
 
   const backgrounds = backgroundsOf(rule, elements);
   // An EMPTY matrix is a matrix that says nothing, which is the same claim as
@@ -2733,6 +3329,56 @@ function evaluateRelationEndpoints(
     };
     if (drawn === undefined) between.set(key, [relation]);
     else drawn.push(relation);
+  }
+
+  // Which roles a role-less link may be flagged BETWEEN.
+  //
+  // The rule's own ALPHABET when it declares a matrix — the roles its grammar
+  // actually has endpoints for, which is the tightest honest reading and gets
+  // `roleIsA` inheritance and the memo above for free. It also excludes, by
+  // construction and with nothing for an author to remember, the roles a
+  // framework declares for things that are not endpoints of anything: a
+  // background role, a legend glyph, a lane. Presuming somebody meant to draw a
+  // typed relation onto a POOL is exactly the over-firing this test exists to
+  // prevent.
+  //
+  // `speaks` cannot do the job alone, and the reason is worth stating: with no
+  // matrix it answers `true` for everything, `undefined` included, because
+  // "outside the alphabet" has no meaning when there is no alphabet. A
+  // matrix-less rule therefore falls back to membership in the vocabulary
+  // ({@link declaresRole}), which stays purely the dictionary `roleIsA` walks —
+  // the bag is NOT overloaded into a filter, so an author never has to shrink
+  // their inheritance dictionary in order to change what gets flagged.
+  const inVocabulary = (role: RoleId | undefined): boolean =>
+    alphabet === null ? declaresRole(rule, role) : speaks(role);
+
+  // The NEUTRAL pass: a link carrying no role at all, drawn between two
+  // artefacts this rule's grammar could have related. See
+  // {@link RelationEndpointsDef.flagNeutral} — the gesture that produces one is
+  // quick-connect, which stamps nothing, so the user has drawn a relation the
+  // model does not contain.
+  //
+  // The edge is judged on WHAT it joins and never against the matrix: the matrix
+  // says which sentences are legal, and this edge says no sentence at all. A
+  // self-loop is skipped for the same reason `boundEnds` skips one everywhere
+  // else — a link from an artefact to itself is not evidence that a typed
+  // relation was meant.
+  for (const el of neutral) {
+    const ends = boundEnds(el);
+    if (ends === null) continue;
+    const [sourceId, targetId] = ends;
+    const source = byId.get(sourceId);
+    const target = byId.get(targetId);
+    if (source === undefined || target === undefined) continue;
+    if (!inVocabulary(source.role) || !inVocabulary(target.role)) continue;
+    violations.push(
+      raise(
+        rule,
+        namedElements([el.id, sourceId, targetId]),
+        attributeBackground(source.elementBound, backgrounds)?.id,
+        endpoints.flagNeutral
+      )
+    );
   }
 
   if (!needsPairs) return violations;
@@ -3027,6 +3673,677 @@ function evaluateElementInZone(
 }
 
 /**
+ * "How many relations reach this node?" — the cardinality half of a grammar.
+ *
+ * One pass to count, one pass to judge. For every element carrying the declared
+ * edge role, the persisted `source → target` pair adds one OUT to its source and
+ * one IN to its target; then every subject node is confronted with the bounds
+ * its rule declares.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **an edge with a free end** — it relates nothing, so it is not evidence of a
+ *   node being connected. A link the user has grabbed and not yet dropped must
+ *   not make a start event legal for the length of the gesture;
+ * - **an end that is not a subject of this rule** — nothing to say about it;
+ * - **a rule declaring no bound at all** — it asks nothing. It warns once, since
+ *   data that can never fire and never says why is the worst thing declarative
+ *   data can do.
+ *
+ * ## An end whose element is GONE, and why this family keeps the other half
+ *
+ * A dangling id counts against nobody, but the edge is not dropped: the node at
+ * the surviving end really does have one relation leaving it, and no gesture the
+ * user makes on THAT node changes the fact. This family counts the ends, never
+ * the survivors.
+ *
+ * A deliberate divergence from the three families whose subject is the RELATION
+ * — `relative-order-along-axis`, `relation-endpoints`, `edge-locality` — which
+ * drop such an edge whole, because a sentence with a missing half is not a
+ * sentence anybody can be told about. A COUNT has no such problem, and neither
+ * does the traversal in {@link evaluateReachability}, which follows the arc to
+ * an element that is not there and simply never reaches anything by it. Two
+ * different questions, two different readings of the same broken pair.
+ *
+ * A SELF-LOOP counts on both sides: the node genuinely has one edge leaving and
+ * one arriving, and that is what the document says. Whether a loop is legitimate
+ * at all is `relation-endpoints`' question, asked with its own flag, and a
+ * count that quietly ignored loops would let one launder a node past a `maxOut`.
+ *
+ * ## One finding per node
+ *
+ * The bounds are tested in a fixed order — in, then out; fewest, then most; and
+ * {@link EdgeDegreeDef.eitherMin} LAST — and the first one that fails is the
+ * finding. Five badges on one symbol for one situation is pedantry the canvas
+ * cannot afford; the same argument `relation-endpoints` makes about not
+ * indicting an edge twice.
+ *
+ * The disjunction goes last on purpose. A per-direction bound names the side the
+ * user has to act on, and "nothing arrives here" is a more useful sentence than
+ * "neither side has enough"; the disjunction only speaks when the four
+ * conjunctive bounds have nothing to say. It is orthogonal to them, not a
+ * substitute: a rule may cap one side and still ask for two on either.
+ *
+ * ## Cost
+ *
+ * Linear in the elements plus linear in the EDGES, with one hash lookup per end.
+ * No pair-wise sweep and no closure: the rule is about the relations somebody
+ * drew, never about the ones they could have drawn.
+ */
+function evaluateEdgeDegree(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const degree = rule.degree;
+  if (subjectRole === undefined || degree === undefined) return [];
+
+  const { minIn, maxIn, minOut, maxOut, eitherMin } = degree;
+  // A pattern satisfied by every node — one supplying no bound at all — would
+  // indict the whole board, which is the loudest possible way for a typo in the
+  // data to be wrong. Dropped rather than honoured, and said once.
+  const pattern = degree.forbidPattern;
+  const patternBounds =
+    pattern === undefined
+      ? null
+      : (
+          [
+            ['in', '>=', pattern.minIn],
+            ['in', '<=', pattern.maxIn],
+            ['out', '>=', pattern.minOut],
+            ['out', '<=', pattern.maxOut],
+          ] as const
+        ).filter(([, , value]) => value !== undefined);
+  if (patternBounds !== null && patternBounds.length === 0) {
+    warnOnce(
+      `edge-degree rule "${rule.id}" declares a forbidden pattern with no ` +
+        `bound in it, which every node matches — the pattern is dropped.`
+    );
+  }
+  const forbidden =
+    patternBounds !== null && patternBounds.length > 0 ? patternBounds : null;
+
+  if (
+    minIn === undefined &&
+    maxIn === undefined &&
+    minOut === undefined &&
+    maxOut === undefined &&
+    eitherMin === undefined &&
+    forbidden === null
+  ) {
+    warnOnce(
+      `edge-degree rule "${rule.id}" declares no bound at all — the rule is ` +
+        `not evaluated.`
+    );
+    return [];
+  }
+
+  interface Subject {
+    el: GfxPrimitiveElementModel;
+    in: number;
+    out: number;
+  }
+  // In the surface's own walk order, so a board reports its offending nodes the
+  // same way every other element-local family does.
+  const subjects: Subject[] = [];
+  const bySubjectId = new Map<string, Subject>();
+  const edges: GfxPrimitiveElementModel[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, subjectRole, rule.roles)) {
+      const subject: Subject = { el, in: 0, out: 0 };
+      subjects.push(subject);
+      bySubjectId.set(el.id, subject);
+    }
+    if (roleIsA(el.role, degree.edgeRole, rule.roles)) edges.push(el);
+  }
+  if (subjects.length === 0) return [];
+
+  for (const edge of edges) {
+    const ends = rawEndpointIds(edge);
+    if (ends === null) continue;
+    const source = bySubjectId.get(ends[0]);
+    if (source !== undefined) source.out += 1;
+    const target = bySubjectId.get(ends[1]);
+    if (target !== undefined) target.in += 1;
+  }
+
+  // Only resolved when something is actually wrong: a conformant board is the
+  // common case and must not pay for the frames it never names.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const violations: Violation[] = [];
+  for (const subject of subjects) {
+    const words =
+      minIn !== undefined && subject.in < minIn
+        ? (degree.tooFewIn ?? rule)
+        : maxIn !== undefined && subject.in > maxIn
+          ? (degree.tooManyIn ?? rule)
+          : minOut !== undefined && subject.out < minOut
+            ? (degree.tooFewOut ?? rule)
+            : maxOut !== undefined && subject.out > maxOut
+              ? (degree.tooManyOut ?? rule)
+              : // LAST, and deliberately: a per-direction bound names the side
+                // the user has to act on, which is a more useful sentence than
+                // "neither side". The disjunction only speaks when the four
+                // above have nothing to say.
+                eitherMin !== undefined &&
+                  subject.in < eitherMin &&
+                  subject.out < eitherMin
+                ? (degree.neither ?? rule)
+                : // LAST of all, for the same reason: a bound that failed names
+                  // what is missing, and a forbidden zone names a shape. When
+                  // both have something to say, the missing thing is the more
+                  // actionable half.
+                  forbidden !== null &&
+                    forbidden.every(([side, test, value]) =>
+                      test === '>='
+                        ? subject[side] >= value!
+                        : subject[side] <= value!
+                    )
+                  ? (pattern ?? rule)
+                  : null;
+    if (words === null) continue;
+
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(
+      subject.el.elementBound,
+      backgrounds
+    )?.id;
+    violations.push(raise(rule, [subject.el.id], frameId, words));
+  }
+  return violations;
+}
+
+/**
+ * "How many of these does one frame hold?" — existence and uniqueness.
+ *
+ * The tally is per INSTANCE and anchored ON it, exactly like
+ * {@link evaluateMajorityFact}: a board carrying three pools holds three
+ * independent answers, the bracket lands on the pool the answer is about, and
+ * the `map` exemption scope therefore covers that pool and no other.
+ *
+ * ## Containment, and only containment
+ *
+ * A subject belongs to the frame whose plot contains its CENTRE
+ * ({@link plotContaining}) — deliberately not `attributeBackground`'s
+ * nearest-fallback, which would let a start event floating beside a pool satisfy
+ * "this pool has a start event". A subject inside no frame at all is counted by
+ * nobody, and whether that is itself a mistake is `element-in-background`'s
+ * question.
+ *
+ * ## Silence
+ *
+ * - **no frame on the board** — nothing to count into. An artefact on blank
+ *   canvas is a sketch, and a process sketched before its pool was drawn must
+ *   not light up;
+ * - **a rule declaring neither bound** — it asks nothing, and warns once;
+ * - **a frame the GUARD has not armed** — see {@link RoleCountDef.ifPresent}.
+ *   Not judged, rather than judged and found compliant: a conditional
+ *   requirement says nothing at all about the case its condition excludes.
+ *
+ * An EMPTY frame is not silence: a pool holding no start event is precisely what
+ * `min` is for, so every instance gets an entry before the walk, not when a
+ * subject happens to land on it. The guard is what turns that back into silence
+ * for a notation where the artefact is optional on its own.
+ *
+ * ## Cost
+ *
+ * One pass over the elements, one plot per frame, one containment test per
+ * subject per frame — the frames are counted in units, so this is constant per
+ * element in practice, like every other attribution in this file.
+ */
+function evaluateRoleCount(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const count = rule.roleCount;
+  if (count === undefined) return [];
+  if (missingFrameRole(rule, 'role-count')) return [];
+  const { min, max } = count;
+  if (min === undefined && max === undefined) {
+    warnOnce(
+      `role-count rule "${rule.id}" declares neither a minimum nor a maximum ` +
+        `— the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const frames = framePlots(rule, elements);
+  // No frame on the board: nothing for the count to be about.
+  if (frames.length === 0) return [];
+
+  const tally = new Map<string, number>();
+  for (const frame of frames) tally.set(frame.instance.id, 0);
+  // The frames the GUARD has armed. Left null by a rule that declares none, so
+  // an unguarded rule allocates nothing and reads nothing extra per element.
+  const guard = count.ifPresent;
+  const armed = guard === undefined ? null : new Set<string>();
+
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    const counts =
+      count.exact === true
+        ? el.role === count.subject
+        : roleIsA(el.role, count.subject, rule.roles);
+    // Not `else if`: nothing forbids a vocabulary where the guard role and the
+    // counted role overlap, and an element that is both must arm the frame AND
+    // be counted in it. Two independent questions about one element.
+    const arms = guard !== undefined && roleIsA(el.role, guard, rule.roles);
+    if (!counts && !arms) continue;
+
+    // Resolved once for both questions: the containment walk is the expensive
+    // half, and an element that is subject and guard at once must not pay twice.
+    const frame = plotContaining(centreOf(el.elementBound), frames);
+    // Off every frame: it neither counts towards a requirement nor arms one.
+    // An artefact floating beside a pool is a draft, on both readings.
+    if (frame === null) continue;
+    if (counts) tally.set(frame.id, (tally.get(frame.id) ?? 0) + 1);
+    if (arms) armed!.add(frame.id);
+  }
+
+  const violations: Violation[] = [];
+  // Sorted, so a board with several offending frames always reports them the
+  // same way whichever order the surface happened to be walked in.
+  for (const id of [...tally.keys()].sort()) {
+    // A frame the guard has not armed is not judged at all — not walked, not
+    // found compliant. That is the difference between "this notation requires
+    // one" and "this notation requires one WHEN the other is there".
+    if (armed !== null && !armed.has(id)) continue;
+    const held = tally.get(id)!;
+    const words =
+      min !== undefined && held < min
+        ? (count.tooFew ?? rule)
+        : max !== undefined && held > max
+          ? (count.tooMany ?? rule)
+          : null;
+    if (words === null) continue;
+    violations.push(raise(rule, [id], id, words));
+  }
+  return violations;
+}
+
+/**
+ * "Does this relation stay inside one frame, or cross between two?"
+ *
+ * The third family whose subject is a RELATION, and the only one that reads the
+ * frames rather than the roles: a sequence flow belongs to one pool, a message
+ * flow exists only between two. The two ends carry the same roles in the legal
+ * case and the illegal one, so nothing but the attribution can tell them apart.
+ *
+ * Each END is attributed on its own, by the centre of ITS element and never by
+ * the edge's box — the box of a link between two pools spans both of them and
+ * would answer whichever question was asked of it.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **no frame on the board** — a process sketched before anybody drew a pool is
+ *   a sketch, and this is the family a poolless board would otherwise light up
+ *   from end to end;
+ * - **an edge with a free end, or an end whose element is gone** — it relates
+ *   nothing;
+ * - **a self-loop** — one element compared with itself is always in its own
+ *   frame, so it says nothing about locality either way; whether a loop is legal
+ *   at all is `relation-endpoints`' question ({@link boundEnds});
+ * - **an end inside NO frame** — the decisive one, and it is the same
+ *   proportionality {@link RelationEndpointsDef.allowed}'s alphabet applies: a
+ *   task dropped beside the pool is a draft, and a tool that answered "that flow
+ *   leaves the pool" would be indicting the act of sketching.
+ *
+ * ## The finding names the edge AND its two ends
+ *
+ * The `relative-order-along-axis` and `relation-endpoints` precedent, for the
+ * same reason: the finding has two honest resolutions — move the artefact into
+ * the frame it belongs to, or re-point the link — and the second is only
+ * reachable from the edge. It is attributed to the SOURCE's frame, like every
+ * other relation finding in this file.
+ *
+ * ## Cost
+ *
+ * Linear in the elements plus linear in the edges, with the plots resolved once
+ * per frame.
+ */
+function evaluateEdgeLocality(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const locality = rule.locality;
+  if (locality === undefined) return [];
+  if (missingFrameRole(rule, 'edge-locality')) return [];
+
+  const frames = framePlots(rule, elements);
+  // No frame on the board, no locality to be in or out of.
+  if (frames.length === 0) return [];
+
+  const byId = new Map<string, GfxPrimitiveElementModel>();
+  const edges: GfxPrimitiveElementModel[] = [];
+  for (const el of elements) {
+    byId.set(el.id, el);
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, locality.edgeRole, rule.roles)) edges.push(el);
+  }
+  if (edges.length === 0) return [];
+
+  const same = locality.mode === 'same-background';
+
+  const violations: Violation[] = [];
+  for (const edge of edges) {
+    const ends = boundEnds(edge);
+    if (ends === null) continue;
+    const [sourceId, targetId] = ends;
+    const source = byId.get(sourceId);
+    const target = byId.get(targetId);
+    if (source === undefined || target === undefined) continue;
+
+    const sourceFrame = plotContaining(centreOf(source.elementBound), frames);
+    if (sourceFrame === null) continue;
+    const targetFrame = plotContaining(centreOf(target.elementBound), frames);
+    if (targetFrame === null) continue;
+
+    // Conformant when the two ends agree with the mode: one instance for
+    // `same-background`, two for `cross-background`.
+    const together = sourceFrame.id === targetFrame.id;
+    if (together === same) continue;
+
+    violations.push(
+      raise(rule, namedElements([edge.id, sourceId, targetId]), sourceFrame.id)
+    );
+  }
+  return violations;
+}
+
+/**
+ * "Can you get here from the start?" — the orphan question.
+ *
+ * The first family that builds a GRAPH. Every element carrying the declared edge
+ * role contributes one directed arc, `source → target`, read off the persisted
+ * pair and never off the geometry; a breadth-first walk leaves from every root
+ * at once; and every subject the walk never reached is a finding.
+ *
+ * ## Silence when there is no root
+ *
+ * TOTAL, and it is the load-bearing decision of this family. A process with no
+ * start event has every one of its tasks unreachable, so the rule would answer
+ * an empty board with one finding per artefact on it — a wall of brackets whose
+ * single real cause is a missing start event, which is `role-count`'s question
+ * and is already asked once, on the frame. One mistake, one sentence.
+ *
+ * A root is seeded into the visited set, which is also what makes "a root is
+ * never its own orphan" fall out rather than needing a second test.
+ *
+ * ## Two readings of "root"
+ *
+ * {@link ReachabilityDef.implicitRoots} adds the subjects nothing points at to
+ * the set the walk leaves from — the second, silent way a notation with an
+ * optional start marker says "the work begins here". Under it the gate above
+ * means "no root of EITHER kind", and what is left is every subject that has an
+ * incoming counted edge and that no root reaches: a ring entered from nowhere,
+ * and a subject fed only by an edge whose own source the walk never leaves from
+ * (a dangling id, or an element outside both roles). See that field for why the
+ * second one is reported here and fixed elsewhere.
+ *
+ * The two readings share every line but the seeding, deliberately: the answer to
+ * "can you get here" must not depend on which one a framework picked — including
+ * for that second shape, which behaves identically either way.
+ *
+ * ## Direction, and the arcs it does not add
+ *
+ * The walk follows arcs FORWARD only. "Reachable from the start" is a statement
+ * about the direction the process runs in; a task that only points BACK at the
+ * chain is exactly the mistake this exists to find, and an undirected walk would
+ * certify it. An edge with a free end, or an end whose element is gone, adds no
+ * arc — it connects nothing.
+ *
+ * ## Cost, and the incremental story
+ *
+ * O(V + E): one indexing pass, one adjacency build, one traversal that visits
+ * each node and each arc at most once.
+ *
+ * An {@link IncrementalContext} is deliberately NOT honoured, and could not
+ * usefully be: reachability is a GLOBAL property, so re-pointing a single edge
+ * can orphan or rescue an arbitrary number of nodes nowhere near it, and any
+ * dirty edge invalidates the whole answer. A framework that finds the traversal
+ * too expensive for the drawing path declares its rule `'on-demand'` — the
+ * moment is the rule's to choose ({@link ValidationMoment}), and this family
+ * stays agnostic about which one it is evaluated at.
+ */
+function evaluateReachability(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const def = rule.reachability;
+  if (def === undefined) return [];
+
+  const subjects: GfxPrimitiveElementModel[] = [];
+  const edges: GfxPrimitiveElementModel[] = [];
+  // Seeded with the roots, which is what makes a root that is also a subject
+  // reachable by definition rather than by a second test.
+  const visited = new Set<string>();
+  const queue: string[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, def.rootRole, rule.roles)) {
+      if (!visited.has(el.id)) {
+        visited.add(el.id);
+        queue.push(el.id);
+      }
+    }
+    if (roleIsA(el.role, def.subjectRole, rule.roles)) subjects.push(el);
+    if (roleIsA(el.role, def.edgeRole, rule.roles)) edges.push(el);
+  }
+  if (subjects.length === 0) return [];
+
+  const implicit = def.implicitRoots === true;
+  // Under the declared-roots-only reading the gate is answerable before a
+  // single arc is built, which is the cheapest exit this family has. The
+  // implicit reading cannot take it: whether there is a root at all is a fact
+  // about the ARCS, so it has to wait for them.
+  if (!implicit && queue.length === 0) return [];
+
+  const next = new Map<string, string[]>();
+  // Every element some arc points AT — tracked only for the implicit reading,
+  // which is the only one that needs an in-degree. A board on the declared
+  // reading allocates nothing.
+  const pointedAt = implicit ? new Set<string>() : null;
+  for (const edge of edges) {
+    const ends = rawEndpointIds(edge);
+    if (ends === null) continue;
+    const outgoing = next.get(ends[0]);
+    if (outgoing === undefined) next.set(ends[0], [ends[1]]);
+    else outgoing.push(ends[1]);
+    pointedAt?.add(ends[1]);
+  }
+
+  if (pointedAt !== null) {
+    // A subject nothing points at IS a beginning — see
+    // {@link ReachabilityDef.implicitRoots}. In the surface's walk order, and
+    // through the same `visited` guard the declared roots use, so a subject
+    // that is also a declared root is seeded exactly once.
+    //
+    // A SELF-LOOP disqualifies its own node, and rightly: something does point
+    // at it. A ring of one is the smallest instance of the only defect this
+    // reading still reports.
+    for (const el of subjects) {
+      if (pointedAt.has(el.id) || visited.has(el.id)) continue;
+      visited.add(el.id);
+      queue.push(el.id);
+    }
+  }
+
+  // THE GATE: no root of EITHER kind on the board, so nothing is unreachable —
+  // see above. Under the implicit reading a board reaches this only when every
+  // one of its subjects is pointed at, i.e. when they all sit in rings entered
+  // from nowhere, and the question genuinely does not arise.
+  if (queue.length === 0) return [];
+
+  // Breadth-first from every root at once. `head` walks the queue instead of
+  // `shift()`ing it: a shift is O(n) on a real array, which would turn an
+  // O(V + E) traversal quadratic on the one board big enough to notice.
+  for (let head = 0; head < queue.length; head++) {
+    const outgoing = next.get(queue[head]);
+    if (outgoing === undefined) continue;
+    for (const id of outgoing) {
+      if (visited.has(id)) continue;
+      visited.add(id);
+      queue.push(id);
+    }
+  }
+
+  // Only resolved when something is actually wrong — the conformant board pays
+  // nothing for the frames it never names.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const violations: Violation[] = [];
+  for (const el of subjects) {
+    if (visited.has(el.id)) continue;
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(el.elementBound, backgrounds)?.id;
+    violations.push(raise(rule, [el.id], frameId));
+  }
+  return violations;
+}
+
+/**
+ * Zero-width characters: present in the string, absent from the page.
+ *
+ * A name made of one of these is a name nobody can read, and a user who pasted
+ * one has an artefact that LOOKS unnamed and validates as named — the worst of
+ * both, and impossible to debug from the canvas. `trim()` does not remove them
+ * (they are not `WhiteSpace` in the spec), so they are stripped first.
+ *
+ * ESCAPED, never written as the characters themselves. A class holding the raw
+ * code points is invisible in every diff, review UI and editor — which makes it
+ * the one constant in this file that can be silently changed by a linter, a
+ * paste or a codemod that strips zero-width characters, with nothing on screen
+ * to show it happened. The escapes are: zero-width space, zero-width
+ * non-joiner, zero-width joiner, word joiner, and the byte-order mark.
+ */
+const INVISIBLE_CHARS = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+/**
+ * Whether a non-string value knows how to render ITSELF as text, as opposed to
+ * inheriting `Object.prototype.toString` and answering `'[object Object]'`.
+ *
+ * The duck-typed test for "this is a text-bearing model": a `Y.Text` overrides
+ * `toString`, and so does every wrapper the canvas could plausibly store in that
+ * slot. A plain object does not, and neither does a number.
+ *
+ * An ARRAY is excluded even though it overrides `toString`, and that is the case
+ * worth spelling out: a raw delta list is the shape a text most plausibly
+ * degrades into, and `String([{ insert: 'x' }])` is `'[object Object]'` all over
+ * again. A list of runs is not a name; a model that can render one is.
+ */
+function rendersAsText(value: unknown): boolean {
+  if (typeof value !== 'object' || Array.isArray(value)) return false;
+  const own = (value as { toString?: unknown }).toString;
+  return typeof own === 'function' && own !== Object.prototype.toString;
+}
+
+/**
+ * The words an element carries, or `''` — the EXTRACTION alone, with no opinion
+ * on whether having none is a mistake.
+ *
+ * Duck-typed on `text`, exactly like {@link elementPath} and
+ * {@link rawEndpointIds} are on their own properties, and for the same reason:
+ * the engine knows roles and geometry and must not import an element model. That
+ * one property is what a shape's `Y.Text`, a connector's label and a free text
+ * element all expose, and `String()` is what turns any of them into the content
+ * — the same conversion {@link textInkBound} has always relied on.
+ *
+ * NFC first, for the reason that function gives: the same name typed here and
+ * pasted from elsewhere can arrive as the same glyphs in a different number of
+ * code points. Then the invisibles, then the whitespace. What is left is what a
+ * reader would see.
+ *
+ * ## What is not a name
+ *
+ * A value that is neither a string nor something that knows how to render itself
+ * as one. `String({})` is `'[object Object]'` — eleven visible characters, which
+ * would make an artefact carrying a malformed `text` read as NAMED, and named
+ * with a word the user can neither see nor delete.
+ *
+ * `text` comes off a `Y.Map`, so it is whatever a peer or an importer wrote —
+ * the same threat model {@link elementExceptions} guards with its `Array.isArray`
+ * and {@link declaresRole} with its `Object.hasOwn`. The test is for an own
+ * `toString`, which a `Y.Text` has and a plain object does not: it accepts every
+ * shape the canvas actually stores without this file importing one of them.
+ */
+function elementLabel(el: unknown): string {
+  const text = (el as { text?: unknown }).text;
+  if (text == null) return '';
+  if (typeof text !== 'string' && !rendersAsText(text)) return '';
+  return String(text).normalize('NFC').replace(INVISIBLE_CHARS, '').trim();
+}
+
+/**
+ * "Does this artefact say what it is?"
+ *
+ * The first family that reads an element's WORDS. Every other one asks about
+ * geometry, roles or relations, all of which a reader can partly infer from the
+ * drawing; a box with nothing written in it is the one defect nothing recovers.
+ *
+ * ## What counts as absent
+ *
+ * No `text` at all, an empty one, one that is only whitespace, and one that is
+ * only invisible code points — see {@link elementLabel}. Anything a reader would
+ * see is a label, however short: judging the QUALITY of a name is not this
+ * family's business and probably nobody's.
+ *
+ * ## Silence
+ *
+ * The usual proportionality: an element with no role is not a subject, and a
+ * board carrying no subject raises nothing. There is no frame requirement —
+ * {@link ValidationRule.backgroundRole} buys attribution only, the `no-overlap`
+ * pattern, so a rule may name a frame to give its findings somewhere to be
+ * waived and need not.
+ *
+ * ## The moment, and why a framework should think about it
+ *
+ * Naming is the one property a user changes by TYPING, one character at a time.
+ * `text` is verdict-bearing only for a framework that registers a real-time rule
+ * of this family — {@link verdictPropsOf} adds it then and only then — so a rule
+ * declared `'on-demand'` costs the drawing path nothing at all, and a real-time
+ * one wakes the debounced evaluation on every keystroke in every shape on the
+ * board. Both are supported; the second is a choice a framework should make
+ * deliberately.
+ *
+ * ## Cost
+ *
+ * One pass, one `text` read per subject. Linear, and paid only by the elements
+ * carrying the subject role.
+ */
+function evaluateLabelPresence(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const label = rule.label;
+  if (subjectRole === undefined || label === undefined) return [];
+  if (label.present !== true) return [];
+
+  // Only resolved when something is actually wrong — a named board pays nothing
+  // for the frames it never has to name.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+    if (elementLabel(el) !== '') continue;
+
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(el.elementBound, backgrounds)?.id;
+    violations.push(raise(rule, [el.id], frameId));
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -3060,6 +4377,11 @@ const RULE_FAMILIES: Record<
   'relative-order-along-axis': evaluateRelativeOrder,
   'relation-endpoints': evaluateRelationEndpoints,
   'element-in-zone': evaluateElementInZone,
+  'edge-degree': evaluateEdgeDegree,
+  'role-count': evaluateRoleCount,
+  'edge-locality': evaluateEdgeLocality,
+  reachability: evaluateReachability,
+  'label-presence': evaluateLabelPresence,
 };
 
 /** A rule the drawing path evaluates. `moment` absent means `'realtime'`. */
@@ -3617,12 +4939,27 @@ export const VERDICT_PROPS = [
  * knows: `backgroundTransitionVisibleProps` reads the prop each framework
  * writes beside the line it gates. A framework whose background declares no
  * toggle contributes nothing and the set is the constant.
+ *
+ * ## `text`, and why it is not in the constant
+ *
+ * `label-presence` is the one family whose verdict turns on an element's words,
+ * and words are what a user changes by TYPING. Watched unconditionally, every
+ * keystroke in every shape on the board would wake the debounced evaluation —
+ * a cost paid by every document, for a question most of them never ask.
+ *
+ * So it is added exactly when a REAL-TIME rule of that family is registered.
+ * The moment filter is deliberate and mirrors {@link backgroundElementIds}: an
+ * on-demand rule is never evaluated on the gesture path, so waking that path for
+ * it would hand back precisely what declaring the second moment bought — and a
+ * framework that wants its naming checked while the user types says so by
+ * declaring the rule real-time, which is the one place that decision belongs.
  */
 export function verdictPropsOf(
   rules: readonly ValidationRule[]
 ): ReadonlySet<string> {
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
+    if (rule.family === 'label-presence' && isRealtime(rule)) props.add('text');
     if (rule.background === undefined) continue;
     for (const prop of backgroundTransitionVisibleProps(rule.background)) {
       props.add(prop);
