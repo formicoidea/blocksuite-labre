@@ -7,11 +7,9 @@ import {
   interchangeCapabilities,
   interchangeCapabilityId,
   InterchangeExtension,
-  type InterchangeExportContext,
-  type InterchangeExportResult,
+  type InterchangeExporter,
   InterchangeIdentifier,
-  type InterchangeImportContext,
-  type InterchangeImportResult,
+  type InterchangeImporter,
 } from '../extensions/interchange.js';
 
 /**
@@ -24,21 +22,28 @@ import {
 
 /* ── Stubs ────────────────────────────────────────────────────────────── */
 
-const exporter = (
-  elements: readonly GfxPrimitiveElementModel[],
-  context: InterchangeExportContext
-): InterchangeExportResult => ({
+const exporter: InterchangeExporter = (elements, context) => ({
   text: `${context.name ?? 'untitled'}:${elements.length}`,
   filename: `${context.name ?? 'untitled'}.txt`,
   mime: 'text/plain',
 });
 
-const importer = (
-  source: string,
-  _context: InterchangeImportContext
-): InterchangeImportResult => ({
+const importer: InterchangeImporter = source => ({
   elements: source.split(',').map(type => ({ type })),
-  report: { mapped: 1, carried: 0, quarantined: 0, warnings: [] },
+  report: {
+    mapped: 1,
+    carried: 2,
+    quarantined: 1,
+    notes: [
+      {
+        kind: 'quarantined',
+        sourceId: 'Activity_1',
+        element: 'subProcess',
+        message: 'An expanded sub-process is drawn collapsed.',
+      },
+    ],
+    sourceVersion: '2.0',
+  },
 });
 
 function capability(
@@ -47,13 +52,14 @@ function capability(
   direction: 'import' | 'export',
   tier: 'semantic' | 'visual' = 'semantic'
 ): InterchangeCapability {
-  return {
+  const base = {
     id: interchangeCapabilityId(framework, formatId, direction),
     framework,
-    format: { id: formatId, tier, extensions: [`.${formatId}`] },
-    direction,
-    run: direction === 'export' ? exporter : importer,
+    format: { id: formatId, tier, extensions: [`.${formatId}`] as [string] },
   };
+  return direction === 'export'
+    ? { ...base, direction, run: exporter }
+    : { ...base, direction, run: importer };
 }
 
 const BPMN_OUT = capability('bpmn', 'bpmn', 'export');
@@ -137,6 +143,17 @@ describe('registration and lookup', () => {
       interchangeCapabilities(mount(BPMN_OUT), { framework: 'c4' })
     ).toEqual([]);
   });
+
+  it('hands back exporters already typed when asked for exporters', () => {
+    // No cast, no second narrowing: the overload is what makes a query useful
+    // to a menu that intends to CALL what it found.
+    const [found] = interchangeCapabilities(mount(...ALL), {
+      direction: 'export',
+      framework: 'bpmn',
+    });
+
+    expect(found.run([], { name: 'board' }).mime).toBe('text/plain');
+  });
 });
 
 describe('the triple is unique, and it is the id', () => {
@@ -148,13 +165,32 @@ describe('the triple is unique, and it is the id', () => {
 
   it('refuses a second capability under the same id', () => {
     // Same triple, different function: silently keeping one of the two would
-    // make "what can Labre write" depend on registration order.
+    // make "what can Labre write" depend on registration order. The matcher is
+    // the DI container's own words, so this cannot pass by hitting the id guard.
+    //
+    // Spelled out rather than spread from `BPMN_OUT`: the union is discriminated
+    // now, so `{...capability, run}` is not a thing TypeScript will let anybody
+    // write — which is M2 doing its job on this very file.
     const rival: InterchangeCapability = {
-      ...BPMN_OUT,
+      id: BPMN_OUT.id,
+      framework: BPMN_OUT.framework,
+      format: BPMN_OUT.format,
+      direction: 'export',
       run: () => ({ text: 'other', filename: 'other.bpmn', mime: 'text/xml' }),
     };
 
-    expect(() => mount(BPMN_OUT, rival)).toThrow();
+    expect(() => mount(BPMN_OUT, rival)).toThrow(/already exists/);
+  });
+
+  it('refuses a part that contains the separator', () => {
+    // `('a', 'b:c')` and `('a:b', 'c')` mint one key, and each id agrees with
+    // its own triple — so only this check can tell them apart, and without it
+    // the two surface as an opaque DI collision.
+    const sneaky = capability('wardley', 'owm:v2', 'export');
+    expect(() => mount(sneaky)).toThrow(/separates the parts/);
+
+    const sneakier = capability('wardley:owm', 'v2', 'export');
+    expect(() => mount(sneakier)).toThrow(/separates the parts/);
   });
 
   it('accepts the same format twice when the framework or direction differs', () => {
@@ -170,27 +206,66 @@ describe('a resolved capability is a pure function', () => {
     const found = provider.get(InterchangeIdentifier('bpmn:bpmn:export'));
     const elements = [{ id: 'a' }, { id: 'b' }] as GfxPrimitiveElementModel[];
 
-    const result = (found.run as typeof exporter)(elements, { name: 'board' });
+    // `direction` narrows the union, so `run` is an exporter with no cast.
+    if (found.direction !== 'export') throw new Error('expected an exporter');
+    const result = found.run(elements, { name: 'board' });
 
     expect(result).toEqual({
       text: 'board:2',
       filename: 'board.txt',
       mime: 'text/plain',
     });
+    // Nothing was lost, so the channel is absent rather than empty — a caller
+    // may ask `if (result.warnings)` and mean it.
+    expect(result.warnings).toBeUndefined();
   });
 
   it('runs an importer off the container and gets serialized props back', () => {
     const provider = mount(...ALL);
     const found = provider.get(InterchangeIdentifier('wardley:owm:import'));
 
-    const result = (found.run as typeof importer)('wardley,wardleyNode', {});
+    if (found.direction !== 'import') throw new Error('expected an importer');
+    const result = found.run('wardley,wardleyNode', {});
 
     // PROPS, not models — the caller does the writing (P3).
     expect(result.elements).toEqual([
       { type: 'wardley' },
       { type: 'wardleyNode' },
     ]);
-    expect(result.report.mapped).toBe(1);
+  });
+});
+
+describe('the report says which, not only how many', () => {
+  it('carries a note per item, naming the source element', () => {
+    // D1's third column is a list. Counts are the headline a UI renders without
+    // walking anything; the note is what a user can act on.
+    const { report } = importer('a', {});
+
+    expect([report.mapped, report.carried, report.quarantined]).toEqual([
+      1, 2, 1,
+    ]);
+    expect(report.notes).toEqual([
+      {
+        kind: 'quarantined',
+        sourceId: 'Activity_1',
+        element: 'subProcess',
+        message: 'An expanded sub-process is drawn collapsed.',
+      },
+    ]);
+  });
+
+  it('records the format version it read', () => {
+    // P2 as amended: a capability may target a format still in motion, and the
+    // report is where it says which version it actually understood.
+    expect(importer('a', {}).report.sourceVersion).toBe('2.0');
+  });
+
+  it('does not derive the notes from the counts, or the counts from the notes', () => {
+    // Two carried fragments and no note about either is a legal report: an
+    // import may carry a hundred things and have three worth naming.
+    const { report } = importer('a', {});
+    expect(report.carried).toBe(2);
+    expect(report.notes.filter(note => note.kind === 'carried')).toEqual([]);
   });
 });
 

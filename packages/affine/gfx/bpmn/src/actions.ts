@@ -45,8 +45,12 @@ import {
   START_WIDTH,
   TASK_RADIUS,
 } from './consts';
-import { type BpmnExportBoard, exportBpmnXml } from './export.js';
-import { bpmnBoardFrom, bpmnSafeFilename } from './interchange.js';
+import type { BpmnExportBoard } from './export.js';
+import {
+  BPMN_XML_EXPORT,
+  bpmnBoardFrom,
+  bpmnSafeFilename,
+} from './interchange.js';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
 
 /**
@@ -555,22 +559,26 @@ export function bpmnExportFilename(std: BlockStdScope): string {
 /**
  * Serialize the whole board as BPMN 2.0 XML and hand it to the browser.
  *
- * The three steps are deliberately three: read the surface, serialize (a pure
- * function with no `std` in sight — `export.ts`), download. Only the first and
- * the last know what an editor is, which is what makes the interesting half
- * testable without one.
+ * Three steps, and only the first and the last know what an editor is: read the
+ * surface, run the DECLARED capability (`docs/adr/0012`), download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `BPMN_XML_EXPORT.run`, so the
+ * command and the registry cannot describe the same board differently. There is
+ * one door; the registry is the label on it.
+ *
+ * A plain import rather than a DI lookup: the capability is a pure function and
+ * a value, resolving it through the container would buy nothing here, and P3 is
+ * explicit that the registry is the editor's view of these functions, not a
+ * gate in front of them.
  */
 export function exportBpmnXmlFile(std: BlockStdScope): void {
-  const board = bpmnBoardOf(std);
-  const name = bpmnExportFilename(std);
-  const xml = exportBpmnXml(board, { name });
-  // `application/xml` and not `text/xml`: the file is not meant to be read as
-  // text by whatever opens it, and `.bpmn` is the extension every BPMN tool
-  // watches for.
-  downloadBlob(
-    new Blob([xml], { type: 'application/xml;charset=utf-8' }),
-    `${name}.bpmn`
-  );
+  const elements = gfxOf(std).surface?.elementModels ?? [];
+  const { text, filename, mime } = BPMN_XML_EXPORT.run(elements, {
+    name: bpmnExportFilename(std),
+  });
+  // The charset is the browser's business, not the format's: `mime` is what
+  // `.bpmn` IS, and this is how a blob is told to carry it.
+  downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
 }
 
 /**

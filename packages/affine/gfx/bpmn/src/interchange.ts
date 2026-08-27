@@ -1,7 +1,7 @@
 import type {
   InterchangeCapability,
-  InterchangeExportContext,
-  InterchangeExportResult,
+  InterchangeExportCapability,
+  InterchangeExporter,
   InterchangeFormat,
 } from '@labre/affine-block-surface';
 import { interchangeCapabilityId } from '@labre/affine-block-surface';
@@ -12,7 +12,7 @@ import {
 } from '@labre/affine-model';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
-import { type BpmnExportBoard, exportBpmnXml } from './export.js';
+import { type BpmnExportBoard, exportBpmnXmlWithWarnings } from './export.js';
 
 /**
  * BPMN's entries in the interchange registry (`docs/adr/0012`, P1).
@@ -22,8 +22,8 @@ import { type BpmnExportBoard, exportBpmnXml } from './export.js';
  * cannot yet read one, and the registry now says exactly that instead of
  * leaving a reader to infer a symmetry nobody implemented.
  *
- * Everything here is pure. {@link exportBpmnXml} was already a pure function
- * with no `std` in sight, and this file adds no editor to it: it only picks the
+ * Everything here is pure. The serializer was already a pure function with no
+ * `std` in sight, and this file adds no editor to it: it only picks the
  * artefacts the serializer speaks about out of a surface's elements, which is
  * the half of `bpmnBoardOf` that never needed a `BlockStdScope`.
  */
@@ -38,11 +38,14 @@ import { type BpmnExportBoard, exportBpmnXml } from './export.js';
  * text by whatever opens it, and `.bpmn` is the extension every BPMN tool
  * watches for.
  */
+export const BPMN_XML_EXTENSION = '.bpmn';
+export const BPMN_XML_MIME = 'application/xml';
+
 export const BPMN_XML_FORMAT: InterchangeFormat = {
   id: 'bpmn',
   tier: 'semantic',
-  extensions: ['.bpmn'],
-  mime: 'application/xml',
+  extensions: [BPMN_XML_EXTENSION],
+  mime: BPMN_XML_MIME,
 };
 
 /* ── Pure board helpers ───────────────────────────────────────────────── */
@@ -102,25 +105,31 @@ export function bpmnSafeFilename(raw: string | undefined): string {
  * The board as a BPMN 2.0 interchange document.
  *
  * A thin adapter and nothing else: it splits the surface into the three lists
- * {@link exportBpmnXml} takes and names the file. The XML is the shipped
- * function's, byte for byte — `bpmn.exportXml` and this capability are two
- * doors onto one serializer, and `interchange.unit.spec.ts` pins that they
- * cannot drift apart.
+ * {@link exportBpmnXmlWithWarnings} takes, names the file, and passes the
+ * writer's losses straight through. There is no second door — `bpmn.exportXml`
+ * calls THIS, so the command and the registry cannot produce different bytes,
+ * different filenames or different warnings: there is nowhere for them to
+ * differ.
+ *
+ * `warnings` is omitted rather than empty when the board came out whole, so a
+ * caller can ask `if (result.warnings)` and mean it.
  */
-const runBpmnXmlExport = (
-  elements: readonly GfxPrimitiveElementModel[],
-  context: InterchangeExportContext
-): InterchangeExportResult => {
+const runBpmnXmlExport: InterchangeExporter = (elements, context) => {
   const name = bpmnSafeFilename(context.name);
+  const { text, warnings } = exportBpmnXmlWithWarnings(
+    bpmnBoardFrom(elements),
+    { name }
+  );
   return {
-    text: exportBpmnXml(bpmnBoardFrom(elements), { name }),
-    filename: `${name}${BPMN_XML_FORMAT.extensions[0]}`,
-    mime: BPMN_XML_FORMAT.mime!,
+    text,
+    filename: `${name}${BPMN_XML_EXTENSION}`,
+    mime: BPMN_XML_MIME,
+    ...(warnings.length > 0 ? { warnings } : {}),
   };
 };
 
 /** `bpmn:bpmn:export` — the registry's first capability. */
-export const BPMN_XML_EXPORT: InterchangeCapability = {
+export const BPMN_XML_EXPORT: InterchangeExportCapability = {
   id: interchangeCapabilityId('bpmn', BPMN_XML_FORMAT.id, 'export'),
   framework: 'bpmn',
   format: BPMN_XML_FORMAT,

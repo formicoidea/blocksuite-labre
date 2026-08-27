@@ -255,6 +255,123 @@ the import command; it does not touch one element the last import created, nor
 one byte of `interchange` those elements carry. Content stays unconditional,
 which is the whole of 0009.
 
+#### Divergences accepted at implementation (PR #159)
+
+The registry above is a sketch and the sketch was wrong in four places. PR #159
+built it, the divergences were reviewed on their merits and accepted, and they
+are recorded HERE rather than in a merged pull request, because the next
+capability author will read this file and not that thread. **The signatures
+below are the ones that exist**; the block above is kept for the reasoning it
+carries, not as an API.
+
+**1. An exporter takes the surface's elements, not a `FrameworkBoard`.**
+
+```ts
+type InterchangeExporter = (
+  elements: readonly GfxPrimitiveElementModel[],
+  context: InterchangeExportContext
+) => InterchangeExportResult;
+```
+
+There is no `FrameworkBoard` and there cannot be a useful one: BPMN's board is
+`{pools, nodes, connectors}`, a Wardley board is nothing like it, and a type
+covering both is either `unknown` or a union that grows a member per framework.
+The capability is handed the surface's elements in document order and picks out
+what it speaks about itself — `bpmnBoardFrom` is that step for BPMN. The
+framework-shaped split lives inside the framework; the registry's signature
+stays framework-agnostic. Document order is still the caller's, and still
+matters, for the reason the sketch gave.
+
+**2. An export result carries the file's envelope, not a three-way report.**
+
+```ts
+interface InterchangeExportResult {
+  text: string;
+  filename: string;
+  mime: string;
+  warnings?: readonly string[];
+}
+```
+
+`mapped / carried / quarantined` classifies foreign matter against Labre's
+vocabulary, and an exporter reads nothing foreign — the classification is the
+**importer's alone**. What an export does have is a **loss channel**: a board
+can hold sentences the format cannot write down, and the person who clicked
+Export is the one entitled to hear about it. BPMN populates it with three, each
+of which existed as a code comment before this PR: flow objects drawn outside
+every pool (in the file, undrawn by any tool, because a participant-less process
+has no shape on a collaboration plane); message flows on a poolless board
+(dropped, never demoted to a sequence flow); and typed arrows with an end that is
+loose or attached to something that is not a BPMN artefact. `filename` and `mime`
+are here so that one place decides what a `.bpmn` download is called and what
+content type it carries.
+
+**3. The report says WHICH, not only how many.**
+
+```ts
+interface InterchangeReport {
+  mapped: number;
+  carried: number;
+  quarantined: number;
+  notes: readonly InterchangeNote[];
+  sourceVersion?: string;
+}
+
+interface InterchangeNote {
+  kind:
+    | 'carried'
+    | 'quarantined'
+    | 'substituted-id'
+    | 'invented-layout'
+    | 'warning';
+  elementId?: string;
+  sourceId?: string;
+  element?: string;
+  message: string;
+}
+```
+
+Three integers and a bag of strings would have silently narrowed five sentences
+of this ADR: D1's quarantined column is _listed_ in the report, D3 _records the
+substitution_ of an id it could not keep and the lane disagreement it resolved,
+D4 _names_ a shape that arrived with no diagram and says so when it laid one
+out, D5 surfaces `mustUnderstand` _by name_, and the Consequences promise a
+product surface rather than a log line. The five `kind`s are those cases and are
+meant to stay closed. `sourceVersion` is where P2's amended _"a capability
+records the format version it read"_ actually lands — nothing else in the
+registry had room for it. The counts remain, because a UI wants a headline it can
+render without walking a list; neither derives from the other.
+
+**4. A capability is a union discriminated on `direction`, and its id cannot
+lie.**
+
+```ts
+type InterchangeCapability =
+  | (InterchangeCapabilityBase & {
+      direction: 'export';
+      run: InterchangeExporter;
+    })
+  | (InterchangeCapabilityBase & {
+      direction: 'import';
+      run: InterchangeImporter;
+    });
+```
+
+`run: InterchangeImporter | InterchangeExporter` made every call site cast and
+made "declared as an import, implemented as an export" undetectable — no runtime
+check can tell two functions apart by looking, so the type system is the only
+place that lie can be caught. What runtime CAN check, `InterchangeExtension`
+now does: it refuses a capability whose `id` is not `interchangeCapabilityId()`
+of its own three fields, and refuses a `framework` or `format.id` containing the
+`:` that separates them (`('a','b:c')` and `('a:b','c')` mint one key, and each
+id agrees with its own triple). Both fire at container setup, never mid-session.
+The DI container already refused a collision; these refuse a lie.
+
+One thing this ADR asked for that #159 did **not** ship, deliberately:
+`GfxPrimitiveElementModel.interchange` (D2). It is a persisted field on every
+surface element — the red zone twice over — and belongs to its own PR under
+human review, which is where it is being done.
+
 ### P2 — Two format tiers, and they promise different things
 
 The tier is declared on the format, and it is the single most load-bearing field
