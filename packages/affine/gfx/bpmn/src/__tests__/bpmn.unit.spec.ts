@@ -6,7 +6,13 @@ import {
   TextAlign,
   TextVerticalAlign,
 } from '@labre/affine-model';
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
+import {
+  type BlockStdScope,
+  type CommandDescriptor,
+  SENIOR_MENU_RANKED_SLOTS,
+  selectSeniorMenuCommands,
+} from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
@@ -285,20 +291,22 @@ describe('the bpmn command inventory', () => {
     // catalogue by usage, and this list is the COLD START every user meets —
     // the fourteen a host reading the manifest sees, too.
     expect(seniorIds).toEqual([
+      // The seven the cold start opens on, in the order they are declared…
       'bpmn.addStartEvent',
       'bpmn.addEndEvent',
       'bpmn.addTask',
+      'bpmn.addExclusiveGateway',
+      'bpmn.sequenceFlowTool',
+      'bpmn.addPool',
+      'bpmn.messageFlowTool',
+      // …and the seven more the row holds once a user has a history.
       'bpmn.addUserTask',
       'bpmn.addServiceTask',
       'bpmn.addSubProcess',
       'bpmn.addCallActivity',
-      'bpmn.addExclusiveGateway',
       'bpmn.addParallelGateway',
-      'bpmn.sequenceFlowTool',
-      'bpmn.messageFlowTool',
       'bpmn.addDataObject',
       'bpmn.addTextAnnotation',
-      'bpmn.addPool',
     ]);
     expect(seniorIds).toHaveLength(14);
     // The nine kept out are reachable everywhere else — nothing is orphaned.
@@ -309,29 +317,106 @@ describe('the bpmn command inventory', () => {
     }
   });
 
-  it('groups the catalogue into seven sections, in reading order', () => {
-    // First-met order IS the panel's header order (`groupCommandsByCategory`),
-    // so the sections have to be declared contiguously — a category split in
-    // two would silently merge into whichever half came first.
-    const order = [...bpmnCommands].sort(
-      (a, b) => (a.order ?? 0) - (b.order ?? 0)
+  /** What the panel actually renders: the registry, grouped the panel's way. */
+  const catalogueGroups = () =>
+    groupCommandsByCategory(
+      [...bpmnCommands].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     );
-    const sections: string[] = [];
-    for (const command of order) {
-      const category = command.category!;
-      if (sections.at(-1) !== category) sections.push(category);
-    }
-    expect(sections).toEqual([
+
+  it('groups the catalogue into seven sections, in first-encounter order', () => {
+    // The GROUPED view, not raw declaration contiguity. The declarations
+    // interleave categories ON PURPOSE — the first seven are the drawable core
+    // rather than one family — so "each category is declared in one run" is no
+    // longer true and is no longer what matters. What matters is what
+    // `groupCommandsByCategory` builds out of them, which is exactly what the
+    // sidepanel draws: a header per category, in the order the category is
+    // first met, and one group each.
+    const groups = catalogueGroups();
+    expect(groups.map(group => group.category)).toEqual([
       'events',
       'activities',
       'gateways',
       'flows',
+      'swimlanes',
       'data',
       'annotations',
-      'swimlanes',
     ]);
-    // Contiguous: each section appears once, so nothing is split.
-    expect(new Set(sections).size).toBe(sections.length);
+    // One group per category — no split, and no trailing uncategorised group.
+    expect(new Set(groups.map(g => g.category)).size).toBe(groups.length);
+    expect(groups.every(group => group.category !== null)).toBe(true);
+    // Every command lands in exactly one of them.
+    expect(groups.reduce((n, group) => n + group.commands.length, 0)).toBe(
+      bpmnCommands.length
+    );
+  });
+
+  it('reads each section in author order, plain artefact before variant', () => {
+    // The other half of the interleaving: a category's entries keep the order
+    // they were declared in, so the events section opens on the plain start and
+    // end rather than burying them under their own triggered variants.
+    const ids = (category: string) =>
+      catalogueGroups()
+        .find(group => group.category === category)!
+        .commands.map(command => command.id);
+
+    expect(ids('events')).toEqual([
+      'bpmn.addStartEvent',
+      'bpmn.addEndEvent',
+      'bpmn.addMessageStartEvent',
+      'bpmn.addTimerStartEvent',
+      'bpmn.addMessageEndEvent',
+      'bpmn.addTerminateEndEvent',
+    ]);
+    expect(ids('flows')).toEqual([
+      'bpmn.sequenceFlowTool',
+      'bpmn.messageFlowTool',
+      'bpmn.associationTool',
+    ]);
+    // The pool, then the two gestures that divide it — filed together even
+    // though eleven declarations separate them.
+    expect(ids('swimlanes')).toEqual([
+      'bpmn.addPool',
+      'bpmn.addLane',
+      'bpmn.removeLane',
+    ]);
+  });
+
+  /**
+   * The COLD START: what a user who has invoked nothing meets on first contact.
+   *
+   * A live recette caught this list reading Start, Message start, Timer start,
+   * End, Message end, Terminate end, Task — seven buttons, six of them events,
+   * no gateway, no sequence flow, no pool. Nothing to connect anything with.
+   * Past the cap the ranking falls back to the first seven of the catalogue, so
+   * the fix was the declaration order and this is the pin that keeps it fixed.
+   */
+  it('opens on seven artefacts that can draw a process between them', () => {
+    const catalogue = [...bpmnCommands]
+      .filter(c => c.surfaces.includes('catalogue'))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const menu = catalogue.filter(c => c.surfaces.includes('senior-menu'));
+
+    // `() => undefined` IS the cold start: no command has ever been invoked, so
+    // both ranking axes collapse to authored order.
+    const { commands, overflow } = selectSeniorMenuCommands(
+      menu,
+      catalogue,
+      () => undefined
+    );
+
+    expect(overflow, 'bpmn no longer overflows — re-read this test').toBe(true);
+    expect(commands.map(command => command.id)).toEqual([
+      'bpmn.addStartEvent',
+      'bpmn.addEndEvent',
+      'bpmn.addTask',
+      'bpmn.addExclusiveGateway',
+      'bpmn.sequenceFlowTool',
+      'bpmn.addPool',
+      'bpmn.messageFlowTool',
+    ]);
+    // A start, an end, a task, a branch, the arrow between them, the frame they
+    // sit in, and the one arrow allowed to leave it. That is a process.
+    expect(commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 
   it('arms a dashed, circle-to-arrow connector for the message flow', () => {

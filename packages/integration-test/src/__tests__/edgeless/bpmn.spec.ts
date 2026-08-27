@@ -51,6 +51,8 @@ import { setupEditor } from '../utils/setup.js';
 type BpmnMenuElement = HTMLElement & {
   edgeless: EdgelessRootBlockComponent;
   updateComplete: Promise<unknown>;
+  /** `EdgelessCommandMenu`'s own selection — what `render()` maps to buttons. */
+  commands: AnyCommandDescriptor[];
 };
 
 describe('BPMN framework elements', () => {
@@ -398,6 +400,33 @@ describe('the BPMN toolbox past fourteen', () => {
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
+  test('the seven a first-time user meets can draw a process between them', async () => {
+    // The recette regression, on the real popover. `beforeEach` clears the
+    // usage store, so this IS a first contact: both ranking axes collapse to
+    // authored order and the row is the first seven of the catalogue.
+    //
+    // It used to read Start, Message start, Timer start, End, Message end,
+    // Terminate end, Task — six events and a rectangle, with nothing to connect
+    // them. Now it is a start, an end, a task, a branch, the arrow between them,
+    // the frame they sit in, and the one arrow allowed to leave it.
+    //
+    // Asserted on `menu.commands` — the mounted component's own selection,
+    // which `render()` maps one-to-one onto the buttons. The buttons themselves
+    // carry an icon and a `.tooltip` property and no label in the DOM, so there
+    // is nothing text-shaped to read off them; the ranked-slot count above is
+    // what ties this list to what is painted.
+    expect(menu.commands.map(command => command.id)).toEqual([
+      'bpmn.addStartEvent',
+      'bpmn.addEndEvent',
+      'bpmn.addTask',
+      'bpmn.addExclusiveGateway',
+      'bpmn.sequenceFlowTool',
+      'bpmn.addPool',
+      'bpmn.messageFlowTool',
+    ]);
+    expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  });
+
   test('the last button opens the catalogue on BPMN, in its sections', async () => {
     buttons().at(-1)!.click();
     await wait(0);
@@ -409,10 +438,10 @@ describe('the BPMN toolbox past fourteen', () => {
     expect(panel).not.toBeNull();
     expect(panel!.dataset.owner).toBe('bpmn');
 
-    // The seven sections BPMN declares, in the order it declares them — the
-    // panel never sorts headers alphabetically. `swimlanes` is last because
-    // the pool and its two lane gestures are what you reach for around a
-    // process rather than inside one.
+    // The seven sections BPMN declares, in the order each is FIRST met — the
+    // panel never sorts headers alphabetically. `swimlanes` sits fifth and not
+    // last because the pool is one of the seven a user meets on a blank board,
+    // and the section follows the earliest command filed under it.
     const groups = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-group"]'
@@ -423,14 +452,14 @@ describe('the BPMN toolbox past fourteen', () => {
       'activities',
       'gateways',
       'flows',
+      'swimlanes',
       'data',
       'annotations',
-      'swimlanes',
     ]);
     // …and every header reads as a phrase, not as a raw key: with no host
     // catalogue registered, `humanizeCategory` is what the panel falls back to.
     expect(groups[0].textContent).toContain('Events');
-    expect(groups.at(-1)!.textContent).toContain('Swimlanes');
+    expect(groups.at(-1)!.textContent).toContain('Annotations');
 
     // 21 rows, not 23: the panel filters on availability, and the two lane
     // gestures need a selected pool. Everything that can be drawn from a blank

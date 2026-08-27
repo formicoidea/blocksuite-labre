@@ -50,17 +50,22 @@ import {
  * exactly this day (`selectSeniorMenuCommands`), and past the cap the sub-menu
  * becomes the seven commands THIS user reaches for plus "More artefacts…".
  *
- * What a framework still owes is a sensible COLD START — the fourteen it would
- * put in the row if it had to choose, which is what the ranking falls back to
- * and what a host reading the manifest sees. Ours is: one of each family,
- * plus the variants an architect reaches for hourly (the user and service
- * tasks, the sub-process, the call activity, the parallel gateway, the message
- * flow, the data object, the annotation). What stays out is the TRIGGER
- * variants of start and end — a plain event is the honest first draft, and the
- * envelope or the clock is a refinement — the data store, and the two things
- * you reach for only once something is already drawn: the association and the
- * group. All 23 are in the catalogue, all 23 are bindable from Settings ›
- * Shortcuts, and none of them is unreachable.
+ * What a framework still owes is a sensible COLD START, and it owes it twice:
+ *
+ * - the FOURTEEN it nominates for the row (`senior`) — one of each family plus
+ *   the variants an architect reaches for hourly (the user and service tasks,
+ *   the sub-process, the call activity, the parallel gateway, the message flow,
+ *   the data object, the annotation). What stays out is the TRIGGER variants of
+ *   start and end — a plain event is the honest first draft, and the envelope or
+ *   the clock is a refinement — the data store, and the two things you reach for
+ *   only once something is already drawn: the association and the group;
+ * - the SEVEN a user with no history actually meets, which is the first seven of
+ *   the catalogue in declaration order. That is a different list from the
+ *   fourteen, and it is the one that gets seen first — see the note on {@link
+ *   SPECS} for why the declarations lead with the core rather than by family.
+ *
+ * All 23 are in the catalogue, all 23 are bindable from Settings › Shortcuts,
+ * and none of them is unreachable.
  */
 interface Spec {
   id: string;
@@ -88,8 +93,34 @@ interface Spec {
   run: (std: BlockStdScope) => void;
 }
 
+/**
+ * Declaration order is DISPLAY order, and past the cap it is also the COLD
+ * START — which is why it leads with the canonical core rather than with the
+ * events.
+ *
+ * `selectSeniorMenuCommands` falls back to the first seven of the catalogue for
+ * a user who has invoked nothing yet, so an order grouped strictly by family
+ * spent all seven on events: start, three of its variants, two ends, task. A
+ * first contact with BPMN with no gateway, no sequence flow and no pool — every
+ * button drawing a circle, and nothing to connect them with. Caught in a live
+ * recette, and it is pure data.
+ *
+ * The first seven are therefore the seven artefacts a process cannot be drawn
+ * without: start, end, task, exclusive gateway, sequence flow, pool, message
+ * flow. Everything else follows in family blocks. Nothing about position
+ * STABILITY changes — author order is still the position law, and usage only
+ * ever changes membership, never where a button sits (`docs/adr/0008`,
+ * amendment of 2026-08-26).
+ *
+ * The catalogue reads off the same order, so its headers now appear in
+ * first-encounter order — events, activities, gateways, flows, swimlanes, data,
+ * annotations — and the entries inside each keep author order. Both are better
+ * reading than the strict grouping was: swimlanes climbs to where a pool
+ * belongs, and the events section opens on the plain start and end rather than
+ * burying them under their own variants.
+ */
 const SPECS: Spec[] = [
-  /* ── Events ─────────────────────────────────────────────────────────── */
+  /* ── The core: a drawable process, from the first click ─────────────── */
   {
     id: 'addStartEvent',
     label: 'Start event',
@@ -99,26 +130,6 @@ const SPECS: Spec[] = [
     senior: true,
     element: 'node:startEvent',
     run: std => createBpmnNode(std, 'startEvent'),
-  },
-  {
-    id: 'addMessageStartEvent',
-    label: 'Message start event',
-    iconKey: 'bpmn.start.message',
-    kind: 'artefact',
-    category: 'events',
-    senior: false,
-    element: 'node:startEventMessage',
-    run: std => createBpmnNode(std, 'startEventMessage'),
-  },
-  {
-    id: 'addTimerStartEvent',
-    label: 'Timer start event',
-    iconKey: 'bpmn.start.timer',
-    kind: 'artefact',
-    category: 'events',
-    senior: false,
-    element: 'node:startEventTimer',
-    run: std => createBpmnNode(std, 'startEventTimer'),
   },
   {
     id: 'addEndEvent',
@@ -131,27 +142,6 @@ const SPECS: Spec[] = [
     run: std => createBpmnNode(std, 'endEvent'),
   },
   {
-    id: 'addMessageEndEvent',
-    label: 'Message end event',
-    iconKey: 'bpmn.end.message',
-    kind: 'artefact',
-    category: 'events',
-    senior: false,
-    element: 'node:endEventMessage',
-    run: std => createBpmnNode(std, 'endEventMessage'),
-  },
-  {
-    id: 'addTerminateEndEvent',
-    label: 'Terminate end event',
-    iconKey: 'bpmn.end.terminate',
-    kind: 'artefact',
-    category: 'events',
-    senior: false,
-    element: 'node:endEventTerminate',
-    run: std => createBpmnNode(std, 'endEventTerminate'),
-  },
-  /* ── Activities ─────────────────────────────────────────────────────── */
-  {
     id: 'addTask',
     label: 'Task',
     iconKey: 'bpmn.task',
@@ -161,6 +151,50 @@ const SPECS: Spec[] = [
     element: 'node:task',
     run: std => createBpmnNode(std, 'task'),
   },
+  {
+    id: 'addExclusiveGateway',
+    label: 'Exclusive gateway',
+    iconKey: 'bpmn.gateway',
+    kind: 'artefact',
+    category: 'gateways',
+    senior: true,
+    element: 'node:gatewayExclusive',
+    run: std => createBpmnNode(std, 'gatewayExclusive'),
+  },
+  {
+    id: 'sequenceFlowTool',
+    label: 'Sequence flow',
+    iconKey: 'bpmn.sequence',
+    kind: 'tool',
+    category: 'flows',
+    senior: true,
+    element: 'connector:sequence',
+    run: activateBpmnSequenceFlow,
+  },
+  {
+    id: 'addPool',
+    label: 'Pool',
+    iconKey: 'bpmn.pool',
+    kind: 'artefact',
+    category: 'swimlanes',
+    senior: true,
+    element: 'pool',
+    run: createBpmnPool,
+  },
+  {
+    // Seventh, and the last of the cold start: the moment there are two
+    // participants there is a message between them, and it is the one arrow a
+    // sequence flow may never stand in for.
+    id: 'messageFlowTool',
+    label: 'Message flow',
+    iconKey: 'bpmn.message',
+    kind: 'tool',
+    category: 'flows',
+    senior: true,
+    element: 'connector:message',
+    run: activateBpmnMessageFlow,
+  },
+  /* ── Activities: the typed tasks and the two that stand for a process ─ */
   {
     id: 'addUserTask',
     label: 'User task',
@@ -201,17 +235,7 @@ const SPECS: Spec[] = [
     element: 'node:callActivity',
     run: std => createBpmnNode(std, 'callActivity'),
   },
-  /* ── Gateways ───────────────────────────────────────────────────────── */
-  {
-    id: 'addExclusiveGateway',
-    label: 'Exclusive gateway',
-    iconKey: 'bpmn.gateway',
-    kind: 'artefact',
-    category: 'gateways',
-    senior: true,
-    element: 'node:gatewayExclusive',
-    run: std => createBpmnNode(std, 'gatewayExclusive'),
-  },
+  /* ── The other gateway ──────────────────────────────────────────────── */
   {
     // `addParallelGateway`, matching the word order of the sibling that already
     // shipped (`addExclusiveGateway`) — a command id is a value a host override
@@ -225,27 +249,49 @@ const SPECS: Spec[] = [
     element: 'node:gatewayParallel',
     run: std => createBpmnNode(std, 'gatewayParallel'),
   },
-  /* ── Connecting objects ─────────────────────────────────────────────── */
+  /* ── Event variants: what TRIGGERS a start, what an end does on the way
+       out. Refinements of the two plain events above, so they follow them. ─ */
   {
-    id: 'sequenceFlowTool',
-    label: 'Sequence flow',
-    iconKey: 'bpmn.sequence',
-    kind: 'tool',
-    category: 'flows',
-    senior: true,
-    element: 'connector:sequence',
-    run: activateBpmnSequenceFlow,
+    id: 'addMessageStartEvent',
+    label: 'Message start event',
+    iconKey: 'bpmn.start.message',
+    kind: 'artefact',
+    category: 'events',
+    senior: false,
+    element: 'node:startEventMessage',
+    run: std => createBpmnNode(std, 'startEventMessage'),
   },
   {
-    id: 'messageFlowTool',
-    label: 'Message flow',
-    iconKey: 'bpmn.message',
-    kind: 'tool',
-    category: 'flows',
-    senior: true,
-    element: 'connector:message',
-    run: activateBpmnMessageFlow,
+    id: 'addTimerStartEvent',
+    label: 'Timer start event',
+    iconKey: 'bpmn.start.timer',
+    kind: 'artefact',
+    category: 'events',
+    senior: false,
+    element: 'node:startEventTimer',
+    run: std => createBpmnNode(std, 'startEventTimer'),
   },
+  {
+    id: 'addMessageEndEvent',
+    label: 'Message end event',
+    iconKey: 'bpmn.end.message',
+    kind: 'artefact',
+    category: 'events',
+    senior: false,
+    element: 'node:endEventMessage',
+    run: std => createBpmnNode(std, 'endEventMessage'),
+  },
+  {
+    id: 'addTerminateEndEvent',
+    label: 'Terminate end event',
+    iconKey: 'bpmn.end.terminate',
+    kind: 'artefact',
+    category: 'events',
+    senior: false,
+    element: 'node:endEventTerminate',
+    run: std => createBpmnNode(std, 'endEventTerminate'),
+  },
+  /* ── The last connecting object ─────────────────────────────────────── */
   {
     id: 'associationTool',
     label: 'Association',
@@ -277,7 +323,7 @@ const SPECS: Spec[] = [
     element: 'node:dataStore',
     run: std => createBpmnNode(std, 'dataStore'),
   },
-  /* ── Artifacts ──────────────────────────────────────────────────────── */
+  /* ── Artifacts: what an author writes ON the picture ────────────────── */
   {
     id: 'addTextAnnotation',
     label: 'Text annotation',
@@ -304,17 +350,6 @@ const SPECS: Spec[] = [
     senior: false,
     element: 'node:group',
     run: std => createBpmnNode(std, 'group'),
-  },
-  /* ── Swimlanes ──────────────────────────────────────────────────────── */
-  {
-    id: 'addPool',
-    label: 'Pool',
-    iconKey: 'bpmn.pool',
-    kind: 'artefact',
-    category: 'swimlanes',
-    senior: true,
-    element: 'pool',
-    run: createBpmnPool,
   },
 ];
 
@@ -377,9 +412,10 @@ const laneCommands: CommandDescriptor[] = [
     descriptionFallback:
       'Divide the selected pool into lanes; the new one takes an equal share.',
     iconKey: 'bpmn.lane-add',
-    // Ranked after the toolbox entries, so the catalogue reads "here is what
-    // BPMN draws" before "here is what you do to it" — and, since the pool is
-    // the last of them, the two land directly under it in the same section.
+    // Ranked after every toolbox entry, so the catalogue reads "here is what
+    // BPMN draws" before "here is what you do to it". They still land in the
+    // `swimlanes` section beside the pool — a section is where a command is
+    // FILED, and `order` only decides where it sits inside it.
     order: SPECS.length,
     run: addBpmnLane,
     telemetry: { framework: 'bpmn', element: 'pool:lane-add' },
