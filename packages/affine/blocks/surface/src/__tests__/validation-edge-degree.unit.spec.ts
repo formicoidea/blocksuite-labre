@@ -29,6 +29,19 @@ const ROLES: RoleDefs = {
     labelKey: 'test.start',
   },
   'test:task': { id: 'test:task', kind: 'node', labelKey: 'test.task' },
+  // A branching artefact, and one specialisation of it: the subject of the
+  // disjunctive bound.
+  'test:gateway': {
+    id: 'test:gateway',
+    kind: 'node',
+    labelKey: 'test.gateway',
+  },
+  'test:exclusive-gateway': {
+    id: 'test:exclusive-gateway',
+    parent: 'test:gateway',
+    kind: 'node',
+    labelKey: 'test.exclusive-gateway',
+  },
   'test:flow': { id: 'test:flow', kind: 'edge', labelKey: 'test.flow' },
   // An edge specialising the counted one — a conditional flow is still a flow.
   'test:conditional-flow': {
@@ -320,5 +333,186 @@ describe('the vocabulary an edge-degree rule speaks', () => {
 
   it('says nothing on a board carrying no subject at all', () => {
     expect(ids(START_DEGREE, [frame(), node('task', 'test:task')])).toEqual([]);
+  });
+});
+
+/**
+ * `eitherMin`: the bound that asks for one thing OR the other.
+ *
+ * The four per-direction bounds are conjunctive — declare two and the subject
+ * must satisfy both — and a whole class of normative shape says the opposite. A
+ * branching artefact must either split or merge; doing either is enough, and
+ * doing neither is a node somebody drew and never gave a job to. `minIn: 2`
+ * would indict every split and `minOut: 2` every merge, so no conjunction of the
+ * four expresses it.
+ */
+describe('a bound satisfied by either side', () => {
+  /** "A gateway either splits or merges." */
+  const BRANCHES: ValidationRule = {
+    id: 'test.gateway-branches',
+    framework: 'test',
+    family: 'edge-degree',
+    severity: 'warning',
+    appliesTo: 'test:gateway',
+    roles: ROLES,
+    messageKey: 'com.labre.test.gateway-branches',
+    version: 1,
+    backgroundRole: 'test:frame',
+    degree: {
+      edgeRole: 'test:flow',
+      eitherMin: 2,
+      neither: { messageKey: 'com.labre.test.gateway-branches.neither' },
+    },
+  };
+
+  /** A gateway wired with `into` flows arriving and `outOf` flows leaving. */
+  const wired = (into: number, outOf: number) => {
+    const board: GfxPrimitiveElementModel[] = [
+      frame(),
+      node('g', 'test:gateway'),
+    ];
+    for (let i = 0; i < into; i++) {
+      board.push(node(`in-${i}`, 'test:task'), edge(`fi-${i}`, `in-${i}`, 'g'));
+    }
+    for (let i = 0; i < outOf; i++) {
+      board.push(
+        node(`out-${i}`, 'test:task'),
+        edge(`fo-${i}`, 'g', `out-${i}`)
+      );
+    }
+    return board;
+  };
+
+  it('indicts a gateway that neither splits nor merges', () => {
+    // One in, one out: the artefact decides nothing.
+    const found = run(BRANCHES, wired(1, 1));
+
+    expect(found.map(violation => violation.elementIds)).toEqual([['g']]);
+    expect(found[0].messageKey).toBe('com.labre.test.gateway-branches.neither');
+  });
+
+  it('says nothing about a gateway that MERGES', () => {
+    expect(ids(BRANCHES, wired(2, 0))).toEqual([]);
+  });
+
+  it('says nothing about a gateway that SPLITS', () => {
+    expect(ids(BRANCHES, wired(0, 2))).toEqual([]);
+  });
+
+  it('says nothing when one side alone clears the bound', () => {
+    // Three in, one out is a merge with a continuation, and legal: the bound is
+    // reached on a side, which is all it asks.
+    expect(ids(BRANCHES, wired(3, 1))).toEqual([]);
+  });
+
+  it('indicts a gateway nothing is wired to at all', () => {
+    expect(ids(BRANCHES, wired(0, 0))).toEqual(['g']);
+  });
+
+  it('falls back to the rule’s own words when it declares none', () => {
+    const bare: ValidationRule = {
+      ...BRANCHES,
+      degree: { edgeRole: 'test:flow', eitherMin: 2 },
+    };
+
+    expect(run(bare, wired(1, 1))[0].messageKey).toBe(
+      'com.labre.test.gateway-branches'
+    );
+  });
+
+  it('covers a specialisation of the subject role', () => {
+    const board = wired(1, 1).map(el =>
+      el.id === 'g' ? node('g', 'test:exclusive-gateway') : el
+    );
+
+    expect(ids(BRANCHES, board)).toEqual(['g']);
+  });
+
+  it('is on its own enough to make the rule evaluable', () => {
+    // The "no bound at all" warning must not fire for a rule whose only bound
+    // is the disjunction.
+    expect(ids(BRANCHES, wired(2, 2))).toEqual([]);
+  });
+});
+
+describe('the disjunction beside the four conjunctive bounds', () => {
+  /** A gateway that must branch, and may not take more than two in. */
+  const CAPPED: ValidationRule = {
+    id: 'test.gateway-capped',
+    framework: 'test',
+    family: 'edge-degree',
+    severity: 'warning',
+    appliesTo: 'test:gateway',
+    roles: ROLES,
+    messageKey: 'com.labre.test.gateway-capped',
+    version: 1,
+    backgroundRole: 'test:frame',
+    degree: {
+      edgeRole: 'test:flow',
+      maxIn: 2,
+      eitherMin: 2,
+      tooManyIn: { messageKey: 'com.labre.test.gateway-capped.too-many-in' },
+      neither: { messageKey: 'com.labre.test.gateway-capped.neither' },
+    },
+  };
+
+  const wired = (into: number, outOf: number) => {
+    const board: GfxPrimitiveElementModel[] = [
+      frame(),
+      node('g', 'test:gateway'),
+    ];
+    for (let i = 0; i < into; i++) {
+      board.push(node(`in-${i}`, 'test:task'), edge(`fi-${i}`, `in-${i}`, 'g'));
+    }
+    for (let i = 0; i < outOf; i++) {
+      board.push(
+        node(`out-${i}`, 'test:task'),
+        edge(`fo-${i}`, 'g', `out-${i}`)
+      );
+    }
+    return board;
+  };
+
+  it('lets both bounds be satisfied at once', () => {
+    expect(ids(CAPPED, wired(2, 1))).toEqual([]);
+  });
+
+  it('still enforces the per-direction cap on a gateway that branches', () => {
+    // Three in clears the disjunction and breaks the cap: the conjunctive bound
+    // is not switched off by the disjunctive one being met.
+    const found = run(CAPPED, wired(3, 0));
+
+    expect(found[0].messageKey).toBe(
+      'com.labre.test.gateway-capped.too-many-in'
+    );
+  });
+
+  it('reports ONE finding for a gateway that breaks the disjunction', () => {
+    const found = run(CAPPED, wired(1, 1));
+
+    expect(found).toHaveLength(1);
+    expect(found[0].messageKey).toBe('com.labre.test.gateway-capped.neither');
+  });
+
+  it('prefers the per-direction sentence when both bounds fail', () => {
+    // One in, nothing out: `minOut: 1` fails AND the disjunction fails. The
+    // finding names the side the user has to act on — "nothing leaves here" is
+    // actionable, "neither side has enough" is a puzzle — and there is exactly
+    // one of it.
+    const both: ValidationRule = {
+      ...CAPPED,
+      id: 'test.gateway-both',
+      degree: {
+        edgeRole: 'test:flow',
+        minOut: 1,
+        eitherMin: 2,
+        tooFewOut: { messageKey: 'com.labre.test.gateway-both.too-few-out' },
+        neither: { messageKey: 'com.labre.test.gateway-both.neither' },
+      },
+    };
+    const found = run(both, wired(1, 0));
+
+    expect(found).toHaveLength(1);
+    expect(found[0].messageKey).toBe('com.labre.test.gateway-both.too-few-out');
   });
 });

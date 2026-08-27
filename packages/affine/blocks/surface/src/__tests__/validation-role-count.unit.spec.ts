@@ -30,6 +30,27 @@ const ROLES: RoleDefs = {
     labelKey: 'test.timer-event',
   },
   'test:task': { id: 'test:task', kind: 'node', labelKey: 'test.task' },
+  // The pair the GUARD is about: each is optional on its own, and only their
+  // pairing is normative. Both specialise `test:event`, so the rules above keep
+  // counting them.
+  'test:start': {
+    id: 'test:start',
+    parent: 'test:event',
+    kind: 'node',
+    labelKey: 'test.start',
+  },
+  'test:end': {
+    id: 'test:end',
+    parent: 'test:event',
+    kind: 'node',
+    labelKey: 'test.end',
+  },
+  'test:terminate-end': {
+    id: 'test:terminate-end',
+    parent: 'test:end',
+    kind: 'node',
+    labelKey: 'test.terminate-end',
+  },
 };
 
 /**
@@ -284,6 +305,159 @@ describe('when a role-count rule stays silent', () => {
 
     expect(
       ids(noDef, [pool('pool'), node('start', 'test:event', [20, 100])])
+    ).toEqual([]);
+  });
+});
+
+/**
+ * `ifPresent`: a bound that only applies while the frame holds something else.
+ *
+ * Whole families of artefact are optional on their own and normative in PAIRS. A
+ * sketch may legitimately show neither a beginning nor an end; what it may not
+ * show is one without the other. An unconditional `min: 1` would state the wrong
+ * thing twice — indicting the legitimate sketch, in the name of a requirement
+ * the notation does not make — so the pairing is written as a bound plus a
+ * guard, and the two directions are two rules.
+ */
+describe('a bound armed by another artefact', () => {
+  /** "If the pool shows where the work ENDS, it must show where it starts." */
+  const START_IF_END: ValidationRule = {
+    ...ONE_START,
+    id: 'test.start-if-end',
+    messageKey: 'com.labre.test.start-if-end',
+    roleCount: {
+      subject: 'test:start',
+      ifPresent: 'test:end',
+      min: 1,
+      tooFew: { messageKey: 'com.labre.test.start-if-end.too-few' },
+    },
+  };
+
+  it('says nothing about a pool holding NEITHER', () => {
+    // The legitimate sketch, and the whole reason the guard exists: an
+    // unconditional `min: 1` would indict this board.
+    expect(
+      ids(START_IF_END, [pool('pool'), node('t', 'test:task', INSIDE)])
+    ).toEqual([]);
+  });
+
+  it('indicts a pool holding an end and no start', () => {
+    const found = run(START_IF_END, [
+      pool('pool'),
+      node('end', 'test:end', INSIDE),
+    ]);
+
+    expect(found.map(violation => violation.elementIds)).toEqual([['pool']]);
+    expect(found[0].messageKey).toBe('com.labre.test.start-if-end.too-few');
+  });
+
+  it('says nothing about a pool holding both', () => {
+    expect(
+      ids(START_IF_END, [
+        pool('pool'),
+        node('start', 'test:start', INSIDE),
+        node('end', 'test:end', [400, 200]),
+      ])
+    ).toEqual([]);
+  });
+
+  it('says nothing about a pool holding only a start', () => {
+    // The other direction is a DIFFERENT rule's business, mirrored. This one
+    // has nothing to say, because nothing armed it.
+    expect(
+      ids(START_IF_END, [pool('pool'), node('start', 'test:start', INSIDE)])
+    ).toEqual([]);
+  });
+
+  it('arms each pool on its own', () => {
+    // One pool holds an end and no start; the other holds neither. Only the
+    // first is judged — the guard is per instance, like the tally it gates.
+    expect(
+      ids(START_IF_END, [
+        pool('left'),
+        pool('right', [2000, 0]),
+        node('end', 'test:end', INSIDE),
+      ])
+    ).toEqual(['left']);
+  });
+
+  it('is armed by a specialisation of the guard role', () => {
+    expect(
+      ids(START_IF_END, [pool('pool'), node('e', 'test:terminate-end', INSIDE)])
+    ).toEqual(['pool']);
+  });
+
+  it('is NOT armed by a guard element floating beside the pool', () => {
+    // Containment only, on the same reading the subjects are counted with: an
+    // artefact off the frame no more arms a requirement about it than it
+    // satisfies one.
+    expect(
+      ids(START_IF_END, [pool('pool'), node('end', 'test:end', [1200, 100])])
+    ).toEqual([]);
+  });
+
+  it('is NOT armed by a guard element on the pool’s title band', () => {
+    expect(
+      ids(START_IF_END, [pool('pool'), node('end', 'test:end', [20, 100])])
+    ).toEqual([]);
+  });
+
+  it('mirrors, so the two directions are two rules', () => {
+    const END_IF_START: ValidationRule = {
+      ...START_IF_END,
+      id: 'test.end-if-start',
+      roleCount: { subject: 'test:end', ifPresent: 'test:start', min: 1 },
+    };
+    const startOnly = [pool('pool'), node('start', 'test:start', INSIDE)];
+
+    expect(ids(START_IF_END, startOnly)).toEqual([]);
+    expect(ids(END_IF_START, startOnly)).toEqual(['pool']);
+  });
+
+  it('gates a MAXIMUM as readily as a minimum', () => {
+    const atMostOne: ValidationRule = {
+      ...START_IF_END,
+      id: 'test.one-start-if-end',
+      roleCount: { subject: 'test:start', ifPresent: 'test:end', max: 1 },
+    };
+    const twoStarts = [
+      node('a', 'test:start', INSIDE),
+      node('b', 'test:start', [400, 200]),
+    ];
+
+    // Two starts and no end: nothing armed the bound.
+    expect(ids(atMostOne, [pool('pool'), ...twoStarts])).toEqual([]);
+    // ...and the same two starts, with an end to arm it.
+    expect(
+      ids(atMostOne, [
+        pool('pool'),
+        ...twoStarts,
+        node('end', 'test:end', [700, 200]),
+      ])
+    ).toEqual(['pool']);
+  });
+
+  it('counts an element that is both subject and guard on both readings', () => {
+    // Nothing forbids a vocabulary where the two roles overlap. A rule counting
+    // `test:event` guarded by `test:event` is armed by its own subject, so a
+    // pool holding one is armed and compliant, and a pool holding none is
+    // neither armed nor judged.
+    const selfGuarded: ValidationRule = {
+      ...START_IF_END,
+      id: 'test.self-guarded',
+      roleCount: { subject: 'test:event', ifPresent: 'test:event', min: 2 },
+    };
+
+    expect(ids(selfGuarded, [pool('pool')])).toEqual([]);
+    expect(
+      ids(selfGuarded, [pool('pool'), node('one', 'test:event', INSIDE)])
+    ).toEqual(['pool']);
+    expect(
+      ids(selfGuarded, [
+        pool('pool'),
+        node('one', 'test:event', INSIDE),
+        node('two', 'test:event', [400, 200]),
+      ])
     ).toEqual([]);
   });
 });

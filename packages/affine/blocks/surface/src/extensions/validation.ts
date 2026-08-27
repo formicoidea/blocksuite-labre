@@ -544,6 +544,31 @@ export interface EdgeDegreeDef {
   /** Most edges of that role that may LEAVE the subject. */
   maxOut?: number;
   /**
+   * A DISJUNCTIVE floor: the subject must reach this count on at least ONE
+   * side. The finding falls only when BOTH the incoming and the outgoing count
+   * are short of it.
+   *
+   * ## Why a fifth bound rather than two of the four
+   *
+   * The four above are conjunctive — declare `minIn` and `minOut` together and
+   * the subject has to satisfy both — and there is a whole class of normative
+   * shape that says the opposite: an artefact must do one thing OR the other,
+   * and doing either is enough. A branching artefact that neither splits nor
+   * merges is the canonical one: it takes one thing in, puts one thing out and
+   * decides nothing, which is a node somebody drew and then never gave a job.
+   * `minIn: 2` would indict every split, `minOut: 2` every merge; the
+   * requirement is genuinely "at least one of the two", and no conjunction of
+   * per-direction bounds expresses it.
+   *
+   * ## Composition
+   *
+   * Orthogonal to the four, and evaluated after them: a rule may cap one side
+   * with `maxIn` and still ask for two on either side, and each bound keeps its
+   * own sentence. Absent — the case for every rule written before it existed —
+   * nothing is asked and nothing is counted.
+   */
+  eitherMin?: number;
+  /**
    * Words for each bound, when a rule declaring more than one wants to say
    * something other than its own message.
    *
@@ -560,6 +585,12 @@ export interface EdgeDegreeDef {
   tooFewOut?: RuleMessage;
   /** Words for {@link maxOut}. */
   tooManyOut?: RuleMessage;
+  /**
+   * Words for {@link eitherMin} — the one bound whose sentence is genuinely
+   * about NEITHER side, and therefore the one a per-direction message could
+   * never carry.
+   */
+  neither?: RuleMessage;
 }
 
 /**
@@ -586,6 +617,37 @@ export interface RoleCountDef {
   min?: number;
   /** Most subjects one instance of the frame may carry. */
   max?: number;
+  /**
+   * A GUARD: the bounds apply to a frame only while that frame also holds at
+   * least one element whose role is (or specialises) this one. A frame holding
+   * none is not judged at all — not "judged and found compliant", not walked.
+   *
+   * ## Why a notation needs this, and why it is not `min` with a different face
+   *
+   * Whole families of artefact are OPTIONAL on their own and NORMATIVE in
+   * pairs. A sketch may legitimately show neither a beginning nor an end; what
+   * it may not show is one without the other, because a reader who sees where
+   * the work finishes will look for where it starts, and finding nothing is a
+   * question the drawing cannot answer.
+   *
+   * An unconditional `min: 1` would state the wrong thing twice over: it would
+   * indict the perfectly legitimate sketch that declares neither, and it would
+   * be doing so in the name of a requirement the notation does not make. The
+   * PAIRING is the requirement, and a pairing is exactly a bound plus a guard.
+   *
+   * Two rules, mirrored, then say the whole of it — "if there is an end there
+   * must be a start", "if there is a start there must be an end" — and each is
+   * one line of data. That is the shape this field is for.
+   *
+   * ## Same attribution as the subject
+   *
+   * The guard element must be IN the frame, on the same containment-only
+   * reading {@link evaluateRoleCount} uses for the subjects it counts: an
+   * artefact floating beside a pool no more arms a requirement about that pool
+   * than it satisfies one. Absent, the bounds apply to every instance, which is
+   * what every rule written before this field means.
+   */
+  ifPresent?: RoleId;
   /** Words for {@link min} — see {@link EdgeDegreeDef.tooFewIn}. */
   tooFew?: RuleMessage;
   /** Words for {@link max}. */
@@ -627,13 +689,46 @@ export interface ReachabilityDef {
   /**
    * Where the traversal STARTS. Every element whose role is (or specialises)
    * this one is a root, and a board carrying none silences the rule whole — see
-   * {@link evaluateReachability}.
+   * {@link evaluateReachability}, and {@link implicitRoots} for the second kind
+   * of root a notation with an optional start marker needs.
    */
   rootRole: RoleId;
   /** The role whose elements must be reachable. */
   subjectRole: RoleId;
   /** The edge role that is FOLLOWED, source → target, and only that way. */
   edgeRole: RoleId;
+  /**
+   * Also treat every SUBJECT that nothing points at as a root — in-degree zero
+   * along {@link edgeRole}.
+   *
+   * ## What this changes, and what it is for
+   *
+   * A notation where the explicit start marker is OPTIONAL has a second, silent
+   * way of saying "the work begins here": draw the artefact and point nothing at
+   * it. Two branches of a process running side by side, only one of them given a
+   * start marker, are both perfectly well-formed — and a traversal that only
+   * left from the marker would report the whole of the second branch as
+   * unreachable, which is a wall of brackets over a drawing that is right.
+   *
+   * With this on, the only findings left are the subjects reachable SOLELY
+   * through a cycle that no root feeds: a ring of artefacts pointing round at
+   * each other, entered from nowhere. Nothing points at any of them from
+   * outside, yet every one has an incoming edge, so neither reading catches it
+   * except this one. That is the real defect — work that can never begin — and
+   * it is the only thing this rule then says.
+   *
+   * ## The zero-root gate still holds
+   *
+   * "No root on the board" becomes "no root of EITHER kind", and it is still
+   * total silence. In practice a board with any subject at all has an implicit
+   * root unless every subject is in such a ring, so the gate stops being the
+   * thing that saves a blank sketch and becomes the thing that saves a board
+   * where the question genuinely does not arise.
+   *
+   * Absent or `false` is the original reading: only the declared role starts a
+   * traversal, and a board carrying no such element says nothing at all.
+   */
+  implicitRoots?: boolean;
 }
 
 /**
@@ -3483,10 +3578,17 @@ function evaluateElementInZone(
  *
  * ## One finding per node
  *
- * The bounds are tested in a fixed order — in, then out; fewest, then most — and
- * the first one that fails is the finding. Four badges on one symbol for one
- * situation is pedantry the canvas cannot afford; the same argument
- * `relation-endpoints` makes about not indicting an edge twice.
+ * The bounds are tested in a fixed order — in, then out; fewest, then most; and
+ * {@link EdgeDegreeDef.eitherMin} LAST — and the first one that fails is the
+ * finding. Five badges on one symbol for one situation is pedantry the canvas
+ * cannot afford; the same argument `relation-endpoints` makes about not
+ * indicting an edge twice.
+ *
+ * The disjunction goes last on purpose. A per-direction bound names the side the
+ * user has to act on, and "nothing arrives here" is a more useful sentence than
+ * "neither side has enough"; the disjunction only speaks when the four
+ * conjunctive bounds have nothing to say. It is orthogonal to them, not a
+ * substitute: a rule may cap one side and still ask for two on either.
  *
  * ## Cost
  *
@@ -3502,12 +3604,13 @@ function evaluateEdgeDegree(
   const degree = rule.degree;
   if (subjectRole === undefined || degree === undefined) return [];
 
-  const { minIn, maxIn, minOut, maxOut } = degree;
+  const { minIn, maxIn, minOut, maxOut, eitherMin } = degree;
   if (
     minIn === undefined &&
     maxIn === undefined &&
     minOut === undefined &&
-    maxOut === undefined
+    maxOut === undefined &&
+    eitherMin === undefined
   ) {
     warnOnce(
       `edge-degree rule "${rule.id}" declares no bound at all — the rule is ` +
@@ -3562,7 +3665,15 @@ function evaluateEdgeDegree(
             ? (degree.tooFewOut ?? rule)
             : maxOut !== undefined && subject.out > maxOut
               ? (degree.tooManyOut ?? rule)
-              : null;
+              : // LAST, and deliberately: a per-direction bound names the side
+                // the user has to act on, which is a more useful sentence than
+                // "neither side". The disjunction only speaks when the four
+                // above have nothing to say.
+                eitherMin !== undefined &&
+                  subject.in < eitherMin &&
+                  subject.out < eitherMin
+                ? (degree.neither ?? rule)
+                : null;
     if (words === null) continue;
 
     backgrounds ??= backgroundsOf(rule, elements);
@@ -3597,11 +3708,15 @@ function evaluateEdgeDegree(
  * - **no frame on the board** — nothing to count into. An artefact on blank
  *   canvas is a sketch, and a process sketched before its pool was drawn must
  *   not light up;
- * - **a rule declaring neither bound** — it asks nothing, and warns once.
+ * - **a rule declaring neither bound** — it asks nothing, and warns once;
+ * - **a frame the GUARD has not armed** — see {@link RoleCountDef.ifPresent}.
+ *   Not judged, rather than judged and found compliant: a conditional
+ *   requirement says nothing at all about the case its condition excludes.
  *
  * An EMPTY frame is not silence: a pool holding no start event is precisely what
  * `min` is for, so every instance gets an entry before the walk, not when a
- * subject happens to land on it.
+ * subject happens to land on it. The guard is what turns that back into silence
+ * for a notation where the artefact is optional on its own.
  *
  * ## Cost
  *
@@ -3631,20 +3746,39 @@ function evaluateRoleCount(
 
   const tally = new Map<string, number>();
   for (const frame of frames) tally.set(frame.instance.id, 0);
+  // The frames the GUARD has armed. Left null by a rule that declares none, so
+  // an unguarded rule allocates nothing and reads nothing extra per element.
+  const guard = count.ifPresent;
+  const armed = guard === undefined ? null : new Set<string>();
 
   for (const el of elements) {
     // Cheapest possible exit for a neutral element: no role, no evaluation.
     if (el.role === undefined) continue;
-    if (!roleIsA(el.role, count.subject, rule.roles)) continue;
+    const counts = roleIsA(el.role, count.subject, rule.roles);
+    // Not `else if`: nothing forbids a vocabulary where the guard role and the
+    // counted role overlap, and an element that is both must arm the frame AND
+    // be counted in it. Two independent questions about one element.
+    const arms = guard !== undefined && roleIsA(el.role, guard, rule.roles);
+    if (!counts && !arms) continue;
+
+    // Resolved once for both questions: the containment walk is the expensive
+    // half, and an element that is subject and guard at once must not pay twice.
     const frame = plotContaining(centreOf(el.elementBound), frames);
+    // Off every frame: it neither counts towards a requirement nor arms one.
+    // An artefact floating beside a pool is a draft, on both readings.
     if (frame === null) continue;
-    tally.set(frame.id, (tally.get(frame.id) ?? 0) + 1);
+    if (counts) tally.set(frame.id, (tally.get(frame.id) ?? 0) + 1);
+    if (arms) armed!.add(frame.id);
   }
 
   const violations: Violation[] = [];
   // Sorted, so a board with several offending frames always reports them the
   // same way whichever order the surface happened to be walked in.
   for (const id of [...tally.keys()].sort()) {
+    // A frame the guard has not armed is not judged at all — not walked, not
+    // found compliant. That is the difference between "this notation requires
+    // one" and "this notation requires one WHEN the other is there".
+    if (armed !== null && !armed.has(id)) continue;
     const held = tally.get(id)!;
     const words =
       min !== undefined && held < min
@@ -3767,6 +3901,17 @@ function evaluateEdgeLocality(
  * A root is seeded into the visited set, which is also what makes "a root is
  * never its own orphan" fall out rather than needing a second test.
  *
+ * ## Two readings of "root"
+ *
+ * {@link ReachabilityDef.implicitRoots} adds the subjects nothing points at to
+ * the set the walk leaves from — the second, silent way a notation with an
+ * optional start marker says "the work begins here". Under it the gate above
+ * means "no root of EITHER kind", and the only findings left are the subjects
+ * reachable solely through a ring entered from nowhere.
+ *
+ * The two readings share every line but the seeding, deliberately: the answer to
+ * "can you get here" must not depend on which one a framework picked.
+ *
  * ## Direction, and the arcs it does not add
  *
  * The walk follows arcs FORWARD only. "Reachable from the start" is a statement
@@ -3813,18 +3958,50 @@ function evaluateReachability(
     if (roleIsA(el.role, def.subjectRole, rule.roles)) subjects.push(el);
     if (roleIsA(el.role, def.edgeRole, rule.roles)) edges.push(el);
   }
-  // THE GATE: no root on the board, so nothing is unreachable — see above.
-  if (queue.length === 0) return [];
   if (subjects.length === 0) return [];
 
+  const implicit = def.implicitRoots === true;
+  // Under the declared-roots-only reading the gate is answerable before a
+  // single arc is built, which is the cheapest exit this family has. The
+  // implicit reading cannot take it: whether there is a root at all is a fact
+  // about the ARCS, so it has to wait for them.
+  if (!implicit && queue.length === 0) return [];
+
   const next = new Map<string, string[]>();
+  // Every element some arc points AT — tracked only for the implicit reading,
+  // which is the only one that needs an in-degree. A board on the declared
+  // reading allocates nothing.
+  const pointedAt = implicit ? new Set<string>() : null;
   for (const edge of edges) {
     const ends = rawEndpointIds(edge);
     if (ends === null) continue;
     const outgoing = next.get(ends[0]);
     if (outgoing === undefined) next.set(ends[0], [ends[1]]);
     else outgoing.push(ends[1]);
+    pointedAt?.add(ends[1]);
   }
+
+  if (pointedAt !== null) {
+    // A subject nothing points at IS a beginning — see
+    // {@link ReachabilityDef.implicitRoots}. In the surface's walk order, and
+    // through the same `visited` guard the declared roots use, so a subject
+    // that is also a declared root is seeded exactly once.
+    //
+    // A SELF-LOOP disqualifies its own node, and rightly: something does point
+    // at it. A ring of one is the smallest instance of the only defect this
+    // reading still reports.
+    for (const el of subjects) {
+      if (pointedAt.has(el.id) || visited.has(el.id)) continue;
+      visited.add(el.id);
+      queue.push(el.id);
+    }
+  }
+
+  // THE GATE: no root of EITHER kind on the board, so nothing is unreachable —
+  // see above. Under the implicit reading a board reaches this only when every
+  // one of its subjects is pointed at, i.e. when they all sit in rings entered
+  // from nowhere, and the question genuinely does not arise.
+  if (queue.length === 0) return [];
 
   // Breadth-first from every root at once. `head` walks the queue instead of
   // `shift()`ing it: a shift is O(n) on a real array, which would turn an
