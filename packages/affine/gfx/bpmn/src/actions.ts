@@ -6,6 +6,7 @@ import {
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   type BpmnLane,
+  type BpmnNodeKind,
   BpmnPoolElementModel,
   ConnectorMode,
   FontFamily,
@@ -20,6 +21,7 @@ import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
+  CALL_ACTIVITY_WIDTH,
   END_WIDTH,
   EVENT_END,
   EVENT_START,
@@ -42,24 +44,115 @@ import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
  * command registry. Telemetry is emitted once, by `runCommand`.
  */
 
-export type BpmnNodeKind =
-  | 'startEvent'
-  | 'endEvent'
-  | 'task'
-  | 'gatewayExclusive';
+/**
+ * The native shape and accent a kind is born with (style C).
+ *
+ * `glyphBody` is the one non-obvious field: the three data/artifact shapes have
+ * a silhouette a native rect cannot make — a folded page, a cylinder, an open
+ * bracket — so for those the renderer's glyph paints the BODY as well as the
+ * decoration, and the native shape is created unfilled and unstroked. It still
+ * earns its keep: it is what carries the inner text, the selection bounds, the
+ * resize handles and the connector anchors.
+ */
+export interface BpmnNodePreset {
+  shapeType: 'ellipse' | 'rect' | 'diamond';
+  stroke: string;
+  width: number;
+  /** Corner radius, `rect` only. Absent means a square corner. */
+  radius?: number;
+  /** The glyph draws the body; the native shape paints nothing. */
+  glyphBody?: true;
+}
 
 /** Per-kind native shape + accent presets (style C). */
-const NODE_PRESETS: Record<
-  BpmnNodeKind,
-  { shapeType: 'ellipse' | 'rect' | 'diamond'; stroke: string; width: number }
-> = {
+export const NODE_PRESETS: Record<BpmnNodeKind, BpmnNodePreset> = {
+  // Events: one ellipse, and the ring weight says start or end. The message and
+  // timer variants keep their family's ring exactly — a message START is a thin
+  // green ring with an envelope in it, and a message END the thick red one.
   startEvent: { shapeType: 'ellipse', stroke: EVENT_START, width: START_WIDTH },
+  startEventMessage: {
+    shapeType: 'ellipse',
+    stroke: EVENT_START,
+    width: START_WIDTH,
+  },
+  startEventTimer: {
+    shapeType: 'ellipse',
+    stroke: EVENT_START,
+    width: START_WIDTH,
+  },
   endEvent: { shapeType: 'ellipse', stroke: EVENT_END, width: END_WIDTH },
-  task: { shapeType: 'rect', stroke: NEUTRAL_STROKE, width: NODE_STROKE_WIDTH },
+  endEventMessage: {
+    shapeType: 'ellipse',
+    stroke: EVENT_END,
+    width: END_WIDTH,
+  },
+  endEventTerminate: {
+    shapeType: 'ellipse',
+    stroke: EVENT_END,
+    width: END_WIDTH,
+  },
+  // Activities: the same rounded rectangle, and a marker tells them apart —
+  // except the call activity, whose thick border IS the distinction (it carries
+  // the same `+` as the sub-process).
+  task: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    radius: TASK_RADIUS,
+  },
+  taskUser: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    radius: TASK_RADIUS,
+  },
+  taskService: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    radius: TASK_RADIUS,
+  },
+  subProcess: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    radius: TASK_RADIUS,
+  },
+  callActivity: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: CALL_ACTIVITY_WIDTH,
+    radius: TASK_RADIUS,
+  },
+  // Gateways: one diamond, one marker each.
   gatewayExclusive: {
     shapeType: 'diamond',
     stroke: NEUTRAL_STROKE,
     width: NODE_STROKE_WIDTH,
+  },
+  gatewayParallel: {
+    shapeType: 'diamond',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+  },
+  // Data and artifacts: body drawn by the glyph (see {@link BpmnNodePreset}).
+  dataObject: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    glyphBody: true,
+  },
+  dataStore: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    glyphBody: true,
+  },
+  textAnnotation: {
+    shapeType: 'rect',
+    stroke: NEUTRAL_STROKE,
+    width: NODE_STROKE_WIDTH,
+    glyphBody: true,
   },
 };
 
@@ -90,13 +183,18 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
     // MEANS — see the table in `./roles.ts`.
     role: BPMN_ROLE_OF_KIND[kind],
     shapeType: preset.shapeType,
-    filled: true,
+    // A glyph-bodied artefact paints nothing natively: the folded page, the
+    // cylinder and the bracket are drawn by the renderer, which reads
+    // `fillColor` / `strokeColor` off this same model — so both stay editable
+    // from the shape toolbar exactly like every other node's.
+    filled: !preset.glyphBody,
     fillColor: NODE_FILL,
     strokeColor: preset.stroke,
     strokeWidth: preset.width,
+    strokeStyle: preset.glyphBody ? StrokeStyle.None : StrokeStyle.Solid,
     shapeStyle: ShapeStyle.General,
     roughness: 0,
-    radius: kind === 'task' ? TASK_RADIUS : 0,
+    radius: preset.radius ?? 0,
     text: NODE_LABEL[kind] || undefined,
     color: NEUTRAL_STROKE,
     fontFamily: FontFamily.Inter,

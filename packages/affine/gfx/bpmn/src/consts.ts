@@ -21,26 +21,89 @@ export const START_WIDTH = 2;
 export const END_WIDTH = 4;
 export const NODE_STROKE_WIDTH = 2;
 
+/**
+ * The call activity's border, which the spec draws THICK — it is the one way to
+ * tell it from the sub-process, since both carry the same `+` marker. Same
+ * weight as the end-event ring, and for the same reason: this is the heaviest
+ * line the notation uses, and it is spent on "this one stands for a whole
+ * process defined somewhere else".
+ */
+export const CALL_ACTIVITY_WIDTH = END_WIDTH;
+
 /** Task corner radius (absolute px — a lightly rounded rectangle). */
 export const TASK_RADIUS = 10;
 
 /** Inner-text font for the task label. */
 export const INNER_FONT_SIZE = 18;
 
-/** Default node sizes (model units) per kind. */
+/**
+ * Default node sizes (model units) per kind.
+ *
+ * Three sizes carry the whole scale: the 56-unit event, the 120×72 task and the
+ * 72-unit gateway. Everything the descriptive profile adds takes one of them —
+ * a message start is a start event, a user task is a task — except the three
+ * data/artifact shapes, which have no sibling to inherit from:
+ *
+ *  - `dataObject` is a PORTRAIT page (3:4), 64 tall so it stands beside a
+ *    56-unit event without looking like a shrunken task;
+ *  - `dataStore` is the event's own diameter, which is what a cylinder needs to
+ *    read as one rather than as a squashed ellipse;
+ *  - `textAnnotation` is wider than a task and shorter — it holds a sentence,
+ *    not a verb phrase.
+ *
+ * These three are ~1.2–1.4× bpmn.io's normative pixel sizes, which is the ratio
+ * this pack's event and task already sit at against the same reference.
+ */
 export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
   startEvent: { w: 56, h: 56 },
+  startEventMessage: { w: 56, h: 56 },
+  startEventTimer: { w: 56, h: 56 },
   endEvent: { w: 56, h: 56 },
+  endEventMessage: { w: 56, h: 56 },
+  endEventTerminate: { w: 56, h: 56 },
   task: { w: 120, h: 72 },
+  taskUser: { w: 120, h: 72 },
+  taskService: { w: 120, h: 72 },
+  subProcess: { w: 120, h: 72 },
+  callActivity: { w: 120, h: 72 },
   gatewayExclusive: { w: 72, h: 72 },
+  gatewayParallel: { w: 72, h: 72 },
+  dataObject: { w: 48, h: 64 },
+  dataStore: { w: 56, h: 56 },
+  textAnnotation: { w: 140, h: 48 },
 };
 
-/** Default inner text per kind (only the task carries a label). */
+/**
+ * Default inner text per kind.
+ *
+ * The activities carry one, because a rectangle with nothing written in it says
+ * nothing at all. Events and gateways do not: their meaning is the glyph, and
+ * BPMN puts whatever name they have OUTSIDE the symbol.
+ *
+ * `dataObject` and `dataStore` are empty for the same reason plus one of our
+ * own: the spec puts their name under the shape, the native inner text can only
+ * go inside it, and inside is where the folded page and the cylinder already
+ * are. The user can still type — the text simply overflows, which is the
+ * honest failure rather than a label painted over the glyph.
+ */
 export const NODE_LABEL: Record<BpmnNodeKind, string> = {
   startEvent: '',
+  startEventMessage: '',
+  startEventTimer: '',
   endEvent: '',
+  endEventMessage: '',
+  endEventTerminate: '',
   task: 'Task',
+  taskUser: 'User task',
+  taskService: 'Service task',
+  subProcess: 'Sub-process',
+  callActivity: 'Call activity',
   gatewayExclusive: '',
+  gatewayParallel: '',
+  dataObject: '',
+  dataStore: '',
+  // The one artefact that IS its text.
+  textAnnotation: 'Annotation',
 };
 
 /**
