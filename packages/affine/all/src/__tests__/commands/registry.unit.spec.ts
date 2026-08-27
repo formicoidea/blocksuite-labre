@@ -44,8 +44,9 @@ describe('command registry invariants', () => {
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
       'ddd-core-domain': 10,
-      // 13 since WS2 added the board (`ddd-context-map.addBoard`).
-      'ddd-context-map': 13,
+      // 12 since the PO's recette (27/08/2026) removed the palette's static
+      // Legend entry — the board's contextual auto-legend is THE legend.
+      'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -63,7 +64,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(78);
+    expect(commands).toHaveLength(77);
   });
 
   /**

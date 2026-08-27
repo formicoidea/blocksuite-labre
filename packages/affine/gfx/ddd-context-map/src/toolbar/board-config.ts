@@ -34,10 +34,10 @@ const ResizeIcon = html`<svg
  * legend is real editable elements, so generating one is authoring a document,
  * not tooling that a flag may take away.
  *
- * The palette's own Legend entry is untouched and still lists the FULL notation,
- * cloud included. The two gestures answer two different questions — "what does
- * this notation mean" and "what did we actually draw here" — so the module has
- * two, on purpose.
+ * This is THE legend of the module. The palette used to also offer a static,
+ * full-notation one; the PO's recette (27/08/2026) removed it — two legends were
+ * two answers to one question, and the honest answer is what is actually drawn.
+ * Same single-gesture shape as Core Domain Chart.
  */
 export const contextMapBoardToolbarConfig = {
   actions: [
