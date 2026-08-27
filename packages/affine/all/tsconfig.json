@@ -36,6 +36,7 @@
     { "path": "../fragments/outline" },
     { "path": "../gfx/bpmn" },
     { "path": "../gfx/brush" },
+    { "path": "../gfx/c4" },
     { "path": "../gfx/connector" },
     { "path": "../gfx/cynefin-estuarine" },
     { "path": "../gfx/ddd-aggregate" },

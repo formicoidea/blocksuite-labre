@@ -263,7 +263,9 @@ export function createFrameworkBackgroundRenderer<
     if (border) {
       ctx.strokeStyle = color(border.color);
       ctx.lineWidth = border.width;
+      if (border.dash?.length) ctx.setLineDash([...border.dash]);
       ctx.stroke();
+      if (border.dash?.length) ctx.setLineDash([]);
     }
 
     // ── 2. Washes over the plot ─────────────────────────────────────────
