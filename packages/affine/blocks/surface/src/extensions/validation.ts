@@ -598,12 +598,26 @@ export interface EdgeDegreeDef {
    * and the two sentences a notation actually writes are "a gateway must branch"
    * and "a gateway that does nothing is superfluous".
    *
+   * ## A pattern of ONE bound is legal, and always redundant
+   *
+   * `{ minIn: 2 }` fires on `in >= 2`, which is what `maxIn: 1` already says, and
+   * `{ maxIn: 1 }` alone is `minIn: 2`. Coherent under the rule above and left
+   * legal rather than warned about — the conjunction of one is still a
+   * conjunction, and a framework mid-edit should not be shouted at. But a
+   * one-bound pattern is never the reason to reach for this field: write the
+   * plain inverse bound, which carries a per-direction sentence naming the side
+   * the user has to act on.
+   *
    * ## Words, and the empty pattern
    *
    * The pattern carries its OWN message rather than a slot beside the others: a
    * forbidden zone is not a bound that failed, and its sentence never reads like
-   * one. A pattern supplying no bound at all is satisfied by every node, which
-   * would indict the whole board — it warns once and is not evaluated.
+   * one. `RuleMessage` is intersected rather than optional, so the type system
+   * requires that sentence — this is the one bound with no `?? rule` fallback,
+   * because it is the one that can never borrow the rule's own words honestly.
+   *
+   * A pattern supplying no bound at all is satisfied by every node, which would
+   * indict the whole board — it warns once and is not evaluated.
    */
   forbidPattern?: RuleMessage & {
     minIn?: number;
@@ -776,20 +790,36 @@ export interface ReachabilityDef {
    * left from the marker would report the whole of the second branch as
    * unreachable, which is a wall of brackets over a drawing that is right.
    *
-   * With this on, the only findings left are the subjects reachable SOLELY
-   * through a cycle that no root feeds: a ring of artefacts pointing round at
-   * each other, entered from nowhere. Nothing points at any of them from
-   * outside, yet every one has an incoming edge, so neither reading catches it
-   * except this one. That is the real defect — work that can never begin — and
-   * it is the only thing this rule then says.
+   * ## What is left, exactly
+   *
+   * A subject fires when it has an incoming counted edge — so it is not an
+   * implicit root — and no root ever reaches it. Two shapes satisfy that, and
+   * the second one is easy to forget:
+   *
+   * 1. a RING entered from nowhere: artefacts pointing round at each other, each
+   *    with an incoming edge and none of them reachable from outside. The real
+   *    defect, and the one this reading exists to keep visible — work that can
+   *    never begin;
+   * 2. a subject fed ONLY by an edge the walk can never leave from: one whose
+   *    `source` is a dangling id, or an element whose role is neither
+   *    {@link rootRole} nor {@link subjectRole}. The edge disqualifies the
+   *    subject as an implicit root, and its source is never enqueued, so nothing
+   *    reaches it.
+   *
+   * The second shape is a BROKEN or FOREIGN edge, which is
+   * `relation-endpoints`' subject rather than this family's, and this family
+   * reports the consequence rather than the cause. It behaves identically with
+   * the flag off — it is inherited, not introduced here — so a framework that
+   * finds the report confusing wants a `relation-endpoints` rule beside this
+   * one, not a change to this flag.
    *
    * ## The zero-root gate still holds
    *
    * "No root on the board" becomes "no root of EITHER kind", and it is still
    * total silence. In practice a board with any subject at all has an implicit
-   * root unless every subject is in such a ring, so the gate stops being the
-   * thing that saves a blank sketch and becomes the thing that saves a board
-   * where the question genuinely does not arise.
+   * root unless every subject is pointed at, so the gate stops being the thing
+   * that saves a blank sketch and becomes the thing that saves a board where the
+   * question genuinely does not arise.
    *
    * Absent or `false` is the original reading: only the declared role starts a
    * traversal, and a board carrying no such element says nothing at all.
@@ -4049,11 +4079,15 @@ function evaluateEdgeLocality(
  * {@link ReachabilityDef.implicitRoots} adds the subjects nothing points at to
  * the set the walk leaves from — the second, silent way a notation with an
  * optional start marker says "the work begins here". Under it the gate above
- * means "no root of EITHER kind", and the only findings left are the subjects
- * reachable solely through a ring entered from nowhere.
+ * means "no root of EITHER kind", and what is left is every subject that has an
+ * incoming counted edge and that no root reaches: a ring entered from nowhere,
+ * and a subject fed only by an edge whose own source the walk never leaves from
+ * (a dangling id, or an element outside both roles). See that field for why the
+ * second one is reported here and fixed elsewhere.
  *
  * The two readings share every line but the seeding, deliberately: the answer to
- * "can you get here" must not depend on which one a framework picked.
+ * "can you get here" must not depend on which one a framework picked — including
+ * for that second shape, which behaves identically either way.
  *
  * ## Direction, and the arcs it does not add
  *
@@ -4180,8 +4214,34 @@ function evaluateReachability(
  * one has an artefact that LOOKS unnamed and validates as named — the worst of
  * both, and impossible to debug from the canvas. `trim()` does not remove them
  * (they are not `WhiteSpace` in the spec), so they are stripped first.
+ *
+ * ESCAPED, never written as the characters themselves. A class holding the raw
+ * code points is invisible in every diff, review UI and editor — which makes it
+ * the one constant in this file that can be silently changed by a linter, a
+ * paste or a codemod that strips zero-width characters, with nothing on screen
+ * to show it happened. The escapes are: zero-width space, zero-width
+ * non-joiner, zero-width joiner, word joiner, and the byte-order mark.
  */
-const INVISIBLE_CHARS = /[​-‍⁠﻿]/g;
+const INVISIBLE_CHARS = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+/**
+ * Whether a non-string value knows how to render ITSELF as text, as opposed to
+ * inheriting `Object.prototype.toString` and answering `'[object Object]'`.
+ *
+ * The duck-typed test for "this is a text-bearing model": a `Y.Text` overrides
+ * `toString`, and so does every wrapper the canvas could plausibly store in that
+ * slot. A plain object does not, and neither does a number.
+ *
+ * An ARRAY is excluded even though it overrides `toString`, and that is the case
+ * worth spelling out: a raw delta list is the shape a text most plausibly
+ * degrades into, and `String([{ insert: 'x' }])` is `'[object Object]'` all over
+ * again. A list of runs is not a name; a model that can render one is.
+ */
+function rendersAsText(value: unknown): boolean {
+  if (typeof value !== 'object' || Array.isArray(value)) return false;
+  const own = (value as { toString?: unknown }).toString;
+  return typeof own === 'function' && own !== Object.prototype.toString;
+}
 
 /**
  * The words an element carries, or `''` — the EXTRACTION alone, with no opinion
@@ -4198,10 +4258,24 @@ const INVISIBLE_CHARS = /[​-‍⁠﻿]/g;
  * pasted from elsewhere can arrive as the same glyphs in a different number of
  * code points. Then the invisibles, then the whitespace. What is left is what a
  * reader would see.
+ *
+ * ## What is not a name
+ *
+ * A value that is neither a string nor something that knows how to render itself
+ * as one. `String({})` is `'[object Object]'` — eleven visible characters, which
+ * would make an artefact carrying a malformed `text` read as NAMED, and named
+ * with a word the user can neither see nor delete.
+ *
+ * `text` comes off a `Y.Map`, so it is whatever a peer or an importer wrote —
+ * the same threat model {@link elementExceptions} guards with its `Array.isArray`
+ * and {@link declaresRole} with its `Object.hasOwn`. The test is for an own
+ * `toString`, which a `Y.Text` has and a plain object does not: it accepts every
+ * shape the canvas actually stores without this file importing one of them.
  */
 function elementLabel(el: unknown): string {
   const text = (el as { text?: unknown }).text;
   if (text == null) return '';
+  if (typeof text !== 'string' && !rendersAsText(text)) return '';
   return String(text).normalize('NFC').replace(INVISIBLE_CHARS, '').trim();
 }
 
