@@ -15,6 +15,7 @@ import {
   StrokeStyle,
   TextAlign,
   TextFitMode,
+  TextVerticalAlign,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
@@ -34,8 +35,10 @@ import {
   NODE_RADIUS,
   NODE_SIZE,
   NODE_STROKE_WIDTH,
+  PERSON_BODY_TOP,
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
+  TITLE_TOP_MARGIN,
 } from './consts';
 import { type C4ExportBoard, exportC4Mermaid } from './export';
 import { C4_AUTO_LEGEND } from './legend';
@@ -52,16 +55,26 @@ import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
  * The kinds whose GLYPH draws the body, so the native shape underneath paints
  * nothing at all.
  *
- * Three of nine, and the renderer is the authority on which — a person is a head
- * over a rounded block and a database is a cylinder, neither of which a native
- * rect can be. `mobile` and `browser` are deliberately NOT here: their bezel and
- * their chrome band are painted OVER a native body, so the box under them is a
- * real filled rectangle. Same call BPMN makes for `dataObject` / `dataStore`.
+ * Five of nine, and the renderer is the authority on which. A person is a head
+ * fused into a rounded body and a database is a cylinder, neither of which a
+ * native rect can be. `mobile` and `browser` joined them with the PO's recette
+ * of 27/08/2026: the reference stencil paints their OUTER rectangle in the
+ * node's darker colour — the bezel — and insets a lighter SCREEN in it, which is
+ * the reverse of a band painted over a body, so there is nothing left for a
+ * native rect to contribute. Same call BPMN makes for `dataObject` /
+ * `dataStore`.
+ *
+ * They stay hit-testable across their whole area all the same:
+ * `C4NodeElementModel.includesPoint` forces the interior test regardless of
+ * `filled` — which is the fix for the PO's second report, that these nodes could
+ * not be double-clicked into their text editor.
  */
 const GLYPH_BODY_KINDS: ReadonlySet<C4NodeKind> = new Set<C4NodeKind>([
   'person',
   'person-ext',
   'database',
+  'mobile',
+  'browser',
 ]);
 
 const gfxOf = (std: BlockStdScope) => std.get(GfxControllerIdentifier);
@@ -83,6 +96,11 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
   const { centerX: cx, centerY: cy } = gfx.viewport;
   const paint = NODE_PALETTE[kind];
   const glyphBody = GLYPH_BODY_KINDS.has(kind);
+  // A person's words are laid out in its BODY, not in the silhouette: the head
+  // stands clear above, and a title padded from the element's own top edge would
+  // be written across it. Every other kind's body IS its box.
+  const bodyTop =
+    kind === 'person' || kind === 'person-ext' ? h * PERSON_BODY_TOP : 0;
 
   const id = surface.addElement({
     type: 'c4Node',
@@ -104,9 +122,10 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     strokeStyle: glyphBody ? StrokeStyle.None : StrokeStyle.Solid,
     shapeStyle: ShapeStyle.General,
     roughness: 0,
-    // The rounded corner of the stencil's boxes. Harmless on a glyph-bodied
-    // kind, whose native shape is invisible.
-    radius: NODE_RADIUS,
+    // Per kind, and mostly ZERO: the stencil draws the boxed levels as plain
+    // square-cornered rectangles, and rounds only the two devices. Harmless on a
+    // glyph-bodied kind, whose native shape is invisible.
+    radius: NODE_RADIUS[kind],
     // Every kind carries words, unlike BPMN: the box is the same box at three of
     // the four levels, so a C4 element with nothing written in it says nothing.
     text: NODE_LABEL[kind],
@@ -114,6 +133,20 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     fontFamily: FontFamily.Inter,
     fontSize: INNER_FONT_SIZE,
     textAlign: TextAlign.Center,
+    // TOP-aligned, with the stencil's own top margin under the element's edge.
+    //
+    // The title is the native inner text and the two tiers under it are painted
+    // by the renderer, hung off wherever the title landed — so top-aligning the
+    // one is what puts the STACK where the reference model puts it (the name at
+    // roughly three-tenths of the height, the type line under it, the sentence
+    // under that). A centred title would push both tiers into the bottom third.
+    //
+    // A creation-time default like every other value here: the author can move
+    // the title from the shape toolbar afterwards and the tiers follow it, and a
+    // node drawn before this change keeps its centred title and simply carries
+    // its tiers lower. Nothing needs migrating.
+    textVerticalAlign: TextVerticalAlign.Top,
+    padding: [bodyTop + (h - bodyTop) * TITLE_TOP_MARGIN, INNER_FONT_SIZE / 2],
     // The stencil's sizes are normative: a long name overflows rather than
     // deforming the element out of its row.
     textFitMode: TextFitMode.Overflow,
