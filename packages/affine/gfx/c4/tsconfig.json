@@ -9,9 +9,13 @@
   "references": [
     { "path": "../../blocks/surface" },
     { "path": "../../ext-loader" },
+    { "path": "../connector" },
+    { "path": "../ddd-shared" },
+    { "path": "../pointer" },
     { "path": "../shape" },
     { "path": "../../model" },
     { "path": "../../shared" },
+    { "path": "../../widgets/edgeless-toolbar" },
     { "path": "../../../framework/global" },
     { "path": "../../../framework/std" }
   ]

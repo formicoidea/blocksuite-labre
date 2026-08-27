@@ -34,7 +34,10 @@ import {
   BrushRenderViewExtension,
   BrushViewExtension,
 } from '@labre/affine-gfx-brush/view';
-import { C4RenderViewExtension } from '@labre/affine-gfx-c4/view';
+import {
+  C4RenderViewExtension,
+  C4ViewExtension,
+} from '@labre/affine-gfx-c4/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
 import {
   CynefinEstuarineRenderViewExtension,
@@ -155,11 +158,8 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('cynefin-estuarine') ? [CynefinEstuarineViewExtension] : []),
     BpmnRenderViewExtension,
     ...(on('bpmn') ? [BpmnViewExtension] : []),
-    // The C4 pack ships its RENDER half only for now: models, roles and
-    // rendering. Its creation tooling — senior button, commands, templates and
-    // the flag gating them — lands in the next slice, and this registration
-    // stays unconditional whatever that flag ends up saying (`docs/adr/0009`).
     C4RenderViewExtension,
+    ...(on('c4') ? [C4ViewExtension] : []),
     DddCoreDomainRenderViewExtension,
     DddContextMapRenderViewExtension,
     DddEventStormingRenderViewExtension,

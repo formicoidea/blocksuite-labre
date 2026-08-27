@@ -55,6 +55,12 @@ describe('command registry invariants', () => {
       // is exactly what an empty board has none of) and is reached from the
       // catalogue and the palette.
       bpmn: 25,
+      // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
+      // board and the relationship tool) plus `c4.legend`, which acts on a
+      // selected board. Thirteen senior slots against a cap of fourteen makes
+      // C4 the last framework that FITS — the sub-menu is its author order,
+      // untouched, and the ranking never runs.
+      c4: 14,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -79,7 +85,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(94);
+    expect(commands).toHaveLength(108);
   });
 
   /**
@@ -194,6 +200,7 @@ describe('command registry invariants', () => {
       edgy: 'edgy',
       'cynefin-estuarine': 'cynefin',
       bpmn: 'bpmn',
+      c4: 'c4',
       'ddd-event-storming': 'event-storming',
       'ddd-core-domain': 'core-domain',
       'ddd-context-map': 'context-map',

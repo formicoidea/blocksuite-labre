@@ -21,3 +21,12 @@ export {
   type C4Role,
   type C4RoleId,
 } from './roles.js';
+// The toolbox, for the host that composes the command registry and the
+// translation-key manifest out of the frameworks it installed (see
+// `packages/affine/all/src/{commands,translations}.ts`).
+export { c4CommandIcons, c4Commands } from './commands.js';
+export { c4TranslationEntries } from './translations.js';
+// The legend TABLE — what the board's automatic legend can say. Exported for
+// the same reason the two background declarations are: it answers "what does
+// this framework document about itself" without a canvas.
+export { C4_AUTO_LEGEND } from './legend.js';
