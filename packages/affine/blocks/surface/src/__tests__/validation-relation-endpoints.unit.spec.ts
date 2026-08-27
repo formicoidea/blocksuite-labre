@@ -663,3 +663,149 @@ describe('a profile that switches the rule off', () => {
     expect(evaluateRules([GRAMMAR], surface)).toHaveLength(1);
   });
 });
+
+/**
+ * `flagNeutral`: the link the framework's own tool did not draw.
+ *
+ * Quick-connect and auto-complete produce a connector carrying NO role, so
+ * before this the grammar read it as absent while the user read it as drawn — a
+ * board that looks connected and validates as if nobody had joined anything.
+ *
+ * The whole capability is one condition: BOTH ends must be artefacts of this
+ * rule's own vocabulary. Anything else is somebody pointing at something, which
+ * is what a whiteboard is for.
+ */
+describe('a neutral link between two artefacts of the framework', () => {
+  const WITH_NEUTRAL: ValidationRule = {
+    ...GRAMMAR,
+    id: 'test.neutral-link',
+    endpoints: {
+      ...GRAMMAR.endpoints!,
+      flagNeutral: { messageKey: 'com.labre.test.neutral-link' },
+    },
+  };
+
+  /** A connector carrying no role, as quick-connect leaves one. */
+  const plain = (
+    id: string,
+    sourceId: string | null,
+    targetId: string | null
+  ) =>
+    element(id, [0, 0, 100, 100], {
+      source: sourceId === null ? { position: [10, 10] } : { id: sourceId },
+      target: targetId === null ? { position: [90, 90] } : { id: targetId },
+    });
+
+  it('is invisible to a rule that did not ask for it', () => {
+    // Every rule written before the field existed means exactly this.
+    expect(
+      ids(GRAMMAR, [
+        frame(),
+        node('a', 'test:actor'),
+        node('c', 'test:command'),
+        plain('link', 'a', 'c'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('is a finding for a rule that did', () => {
+    const found = evaluateRules(
+      [WITH_NEUTRAL],
+      [
+        frame(),
+        node('a', 'test:actor'),
+        node('c', 'test:command'),
+        plain('link', 'a', 'c'),
+      ]
+    );
+
+    expect(found.map(v => v.elementIds.join('+'))).toEqual(['a+c+link']);
+    expect(found[0].messageKey).toBe('com.labre.test.neutral-link');
+  });
+
+  it('is attributed to the frame its source sits on', () => {
+    expect(
+      evaluateRules(
+        [WITH_NEUTRAL],
+        [
+          frame('board'),
+          node('a', 'test:actor'),
+          node('c', 'test:command'),
+          plain('link', 'a', 'c'),
+        ]
+      )[0].backgroundId
+    ).toBe('board');
+  });
+
+  it('says nothing when one end is outside the vocabulary', () => {
+    // A plain link to a sticky note, a legend glyph, a rectangle somebody
+    // dropped on the board: an annotation, and none of the framework's
+    // business.
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        element('note', [200, 200, 40, 40]),
+        plain('link', 'a', 'note'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('says nothing about a neutral link with a free end', () => {
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        plain('link', 'a', null),
+      ])
+    ).toEqual([]);
+  });
+
+  it('says nothing about an end whose element is gone', () => {
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        plain('link', 'a', 'deleted'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('says nothing about a neutral link looping onto one artefact', () => {
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        plain('link', 'a', 'a'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('still judges the TYPED edges beside it', () => {
+    // The neutral pass is an addition, never a replacement: the grammar keeps
+    // saying what it said about the links that do carry a role.
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        node('g', 'test:aggregate'),
+        node('c', 'test:command'),
+        edge('e1', 'a', 'g', 'test:flow'),
+        plain('link', 'a', 'c'),
+      ]).sort()
+    ).toEqual(['a+c+link', 'a+e1+g']);
+  });
+
+  it('reports a neutral link on a board carrying no typed edge at all', () => {
+    // The early exit used to be "no typed edge, nothing to say" — which is
+    // exactly the board this capability is about.
+    expect(
+      ids(WITH_NEUTRAL, [
+        frame(),
+        node('a', 'test:actor'),
+        node('c', 'test:command'),
+        plain('link', 'a', 'c'),
+      ])
+    ).toEqual(['a+c+link']);
+  });
+});
