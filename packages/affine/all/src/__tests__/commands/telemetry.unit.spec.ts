@@ -215,10 +215,14 @@ describe('one emission per invocation, with the historical values', () => {
    * `FrameworkLegendCreated` — a telemetry change, not a refactor, so it does
    * not happen here.
    */
-  test('the context-map legend keeps reporting FrameworkElementAdded', () => {
-    const [{ event, payload }] = emit('ddd-context-map.addLegend', fromMenu);
-    expect(event).toBe('FrameworkElementAdded');
-    expect(payload.element).toBe('legend');
+  test('the context-map legend left the palette, and its command with it', () => {
+    // PO recette (27/08/2026): the ONE legend is the board's contextual
+    // auto-legend (`FrameworkLegendCreated`). The palette entry that used to
+    // emit `FrameworkElementAdded`/`legend` is deliberately gone — this pins
+    // the removal so a re-added duplicate has to explain itself here.
+    expect(
+      getCommands().find(c => c.id === 'ddd-context-map.addLegend')
+    ).toBeUndefined();
   });
 
   /** ADR 0008: cynefin-estuarine emitted nothing at all before PF3. */

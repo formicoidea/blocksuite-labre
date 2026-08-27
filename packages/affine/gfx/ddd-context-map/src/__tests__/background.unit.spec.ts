@@ -51,7 +51,7 @@ describe('the context map board declaration', () => {
 
 describe('the palette entry that creates it', () => {
   it('adds exactly one command, first in the sub-menu', () => {
-    expect(contextMapCommands).toHaveLength(13);
+    expect(contextMapCommands).toHaveLength(12);
     expect(contextMapCommands[0].id).toBe('ddd-context-map.addBoard');
     expect(contextMapCommands[0].telemetry).toEqual({
       framework: 'ddd-context-map',
@@ -76,7 +76,9 @@ describe('the palette entry that creates it', () => {
       'relationship:publishedLanguage',
       'relationship:separateWays',
       'relationship:bbom',
-      'legend',
+      // `legend` is gone from this list because the palette entry is gone (PO
+      // recette, 27/08/2026) — not because a value was renamed. The board's
+      // contextual auto-legend emits `FrameworkLegendCreated`, unchanged.
     ]);
   });
 });
