@@ -24,6 +24,9 @@ import {
  *  - gateway   — the X (exclusive) or the `+` (parallel);
  *  - data      — folded page, cylinder, open bracket.
  *
+ * The `group` is the one artefact of the profile this file does NOT touch: its
+ * dashed, rounded, unfilled rectangle is entirely a native shape's own doing.
+ *
  * The last three are different in kind from the rest: their silhouette is not a
  * native shape, so the glyph draws the BODY too — fill and outline — and the
  * native rect underneath is created unfilled and unstroked (see `NODE_PRESETS`
@@ -43,22 +46,40 @@ import {
  * Mirrors the EDGY node renderer.
  */
 
-/** Kinds the renderer decorates. Everything else is a plain native shape. */
-const GLYPH_KINDS: ReadonlySet<BpmnNodeKind> = new Set<BpmnNodeKind>([
-  'startEventMessage',
-  'startEventTimer',
-  'endEventMessage',
-  'endEventTerminate',
-  'taskUser',
-  'taskService',
-  'subProcess',
-  'callActivity',
-  'gatewayExclusive',
-  'gatewayParallel',
-  'dataObject',
-  'dataStore',
-  'textAnnotation',
-]);
+/**
+ * The artefacts BPMN draws BARE — a plain native shape with nothing on it.
+ * Everything else in the union is decorated here.
+ *
+ * `group` is bare for a different reason from the other three. They are
+ * undecorated because the notation puts no marker on them; the group has a
+ * distinctive look — a dashed, rounded, unfilled rectangle — and it is here
+ * because that look is expressible as a native shape's own properties
+ * (`strokeStyle: dash`, `radius`, `filled: false`). Drawing it by hand would
+ * have meant re-implementing dashes the shape renderer already does, and losing
+ * the editability that comes free with them.
+ *
+ * Written as the short list rather than the long one, so that the glyph kinds
+ * are DERIVED from the model's union instead of restated beside it: a kind
+ * added to `BpmnNodeKind` is a glyph kind by default, and the exhaustiveness
+ * check at the bottom of this file then refuses to compile until it is drawn.
+ * The alternative — a hand-maintained set of the thirteen decorated kinds — is
+ * the one per-kind table in this pack that could not be made compile-total, and
+ * a kind missing from it paints the WRONG picture rather than none.
+ */
+const UNDECORATED_KINDS = {
+  startEvent: true,
+  endEvent: true,
+  task: true,
+  group: true,
+} as const;
+
+type BpmnUndecoratedKind = keyof typeof UNDECORATED_KINDS;
+
+/** Every kind this file has to paint a marker for. */
+type BpmnGlyphKind = Exclude<BpmnNodeKind, BpmnUndecoratedKind>;
+
+const isUndecorated = (kind: BpmnNodeKind): kind is BpmnUndecoratedKind =>
+  Object.hasOwn(UNDECORATED_KINDS, kind);
 
 const TAU = Math.PI * 2;
 
@@ -84,8 +105,8 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
   // Native shape (fill / stroke / inner text / theme handled natively).
   shapeRenderer(model, ctx, matrix, renderer, rc, bound);
 
-  const kind = model.kind;
-  if (!GLYPH_KINDS.has(kind)) return;
+  const kind: BpmnNodeKind = model.kind;
+  if (isUndecorated(kind)) return;
 
   const color = renderer.getColorValue(
     model.strokeColor,
@@ -93,8 +114,22 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
     true
   );
   const strokeWidth = model.strokeWidth || 1;
-  /** The smaller half-extent, the unit every glyph is sized against. */
-  const unit = Math.min(w, h);
+  /**
+   * The smaller half-extent, the unit every glyph is sized against — and the
+   * floor under every radius derived from it.
+   *
+   * An element can be dragged to nothing: the resize manager takes the absolute
+   * value of the dragged extents but sets no minimum size. `arc` and `ellipse`
+   * THROW on a negative radius (`IndexSizeError`) rather than clamping, and the
+   * surface render loop wraps no renderer in a `try`, so one such throw aborts
+   * the rest of the frame with an unbalanced save stack. Clamping at the source
+   * covers every arc in this file at once; the two radii that do not come from
+   * here — the data store's, which subtract the stroke first — are clamped
+   * where they are computed. Same guard, same reason, as the native ellipse
+   * renderer's (`gfx/shape/src/element-renderer/shape/ellipse.ts`), the one
+   * native shape that draws a real ellipse and the one that already does this.
+   */
+  const unit = Math.max(0, Math.min(w, h));
 
   ctx.setTransform(glyphMatrix);
   ctx.strokeStyle = color;
@@ -274,8 +309,12 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
 
   if (kind === 'dataStore') {
     // A cylinder: an elliptical lid, two straight sides and a bulging floor.
-    const rx = (x1 - x0) / 2;
-    const ry = (y1 - y0) * 0.16;
+    // Clamped: both subtract the stroke width first, so both go NEGATIVE on an
+    // element dragged narrower (or shorter) than its own border — and a
+    // negative radius is the one thing `ellipse` throws on. See the note on
+    // `unit` above.
+    const rx = Math.max(0, (x1 - x0) / 2);
+    const ry = Math.max(0, (y1 - y0) * 0.16);
     const mx = (x0 + x1) / 2;
     const top = y0 + ry;
     const bottom = y1 - ry;
@@ -297,16 +336,34 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
     return;
   }
 
-  // `textAnnotation`: an open bracket down the leading edge and nothing else —
-  // no fill, no closing edge. A note is attached to the picture, not framed in
-  // it, and the three missing sides are what say so.
-  const arm = Math.min(w * 0.18, h * 0.35);
-  ctx.beginPath();
-  ctx.moveTo(x0 + arm, y0);
-  ctx.lineTo(x0, y0);
-  ctx.lineTo(x0, y1);
-  ctx.lineTo(x0 + arm, y1);
-  ctx.stroke();
+  if (kind === 'textAnnotation') {
+    // An open bracket down the leading edge and nothing else — no fill, no
+    // closing edge. A note is attached to the picture, not framed in it, and
+    // the three missing sides are what say so.
+    const arm = Math.min(w * 0.18, h * 0.35);
+    ctx.beginPath();
+    ctx.moveTo(x0 + arm, y0);
+    ctx.lineTo(x0, y0);
+    ctx.lineTo(x0, y1);
+    ctx.lineTo(x0 + arm, y1);
+    ctx.stroke();
+    return;
+  }
+
+  /**
+   * Every glyph kind is drawn above, and this is what keeps that true: `kind`
+   * is narrowed to `never` here only if the branches are exhaustive over
+   * {@link BpmnGlyphKind}, so a kind added to the model's union without a
+   * marker of its own stops the build.
+   *
+   * Which is the whole point of closing the last branch rather than letting it
+   * fall through. A renderer that silently paints an annotation bracket on
+   * somebody's new artefact is worse than one that does not paint it at all:
+   * the first is a wrong picture nobody is told about, the second is a missing
+   * one everybody can see.
+   */
+  const unhandled: never = kind;
+  void unhandled;
 };
 
 export const BpmnNodeRendererExtension = ElementRendererExtension(

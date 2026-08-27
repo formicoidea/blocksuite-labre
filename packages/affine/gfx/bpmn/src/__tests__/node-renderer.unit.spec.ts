@@ -26,12 +26,15 @@ const STROKE = '#262626';
 const FILL = '#ffffff';
 
 /** The model fields the glyph layer reads, and nothing else. */
-function nodeModel(kind: BpmnNodeKind, rotate = 0): BpmnNodeElementModel {
-  const { w, h } = NODE_SIZE[kind];
+function nodeModel(
+  kind: BpmnNodeKind,
+  rotate = 0,
+  size: { w: number; h: number } = NODE_SIZE[kind]
+): BpmnNodeElementModel {
   return {
     kind,
     rotate,
-    deserializedXYWH: [0, 0, w, h],
+    deserializedXYWH: [0, 0, size.w, size.h],
     strokeColor: STROKE,
     fillColor: FILL,
     strokeWidth: 2,
@@ -59,9 +62,9 @@ beforeEach(() => {
 });
 
 /** Draw one kind and hand back what the canvas saw. */
-function draw(kind: BpmnNodeKind, rotate = 0) {
+function draw(kind: BpmnNodeKind, rotate = 0, size?: { w: number; h: number }) {
   bpmnNode(
-    nodeModel(kind, rotate),
+    nodeModel(kind, rotate, size),
     rec.ctx,
     stubMatrix(),
     rendererStub,
@@ -90,10 +93,19 @@ const ALL_KINDS = [
   'dataObject',
   'dataStore',
   'textAnnotation',
+  'group',
 ] as const satisfies readonly BpmnNodeKind[];
 
-/** The three kinds the notation draws bare — a plain shape and nothing on it. */
-const UNDECORATED = ['startEvent', 'endEvent', 'task'] as const;
+/**
+ * The kinds this renderer must not touch — a plain shape and nothing on it.
+ *
+ * `group` is here for a different reason from the other three. They carry no
+ * marker in the notation at all; the group has a distinctive look — dashed,
+ * rounded, unfilled — but every part of it is a native shape property, so the
+ * glyph layer has nothing left to add. A stroke drawn here would be one the
+ * shape toolbar could not edit.
+ */
+const UNDECORATED = ['startEvent', 'endEvent', 'task', 'group'] as const;
 
 describe('the BPMN node glyph layer', () => {
   it('draws on every decorated kind and on no other', () => {
@@ -106,6 +118,41 @@ describe('the BPMN node glyph layer', () => {
       // An undecorated kind must not even touch the transform: it returns
       // before the glyph frame is set up.
       if (!expected) expect(ops, kind).toHaveLength(0);
+    }
+  });
+
+  /**
+   * An element can be dragged to nothing. The resize manager takes the absolute
+   * value of the dragged extents but sets NO minimum size, so every glyph here
+   * has to survive a node smaller than its own border — and `arc` / `ellipse`
+   * throw `IndexSizeError` on a negative radius rather than clamping. Since the
+   * surface render loop wraps no renderer in a `try`, one such throw does not
+   * lose a shape: it aborts the rest of the frame and leaves the save stack
+   * unbalanced.
+   *
+   * The stub throws the same way the browser does, so this is the real
+   * invariant and not a paraphrase of it. `1x1` is the case that used to fail:
+   * the data store's radii subtract the stroke width first, and a 2-unit stroke
+   * on a 1-unit box is -0.5.
+   */
+  it('survives every degenerate size without asking for a negative radius', () => {
+    const sizes = [
+      { w: 1, h: 1 },
+      { w: 2, h: 2 },
+      { w: 1, h: 40 },
+      { w: 40, h: 1 },
+      { w: 0, h: 0 },
+    ];
+    for (const kind of ALL_KINDS) {
+      for (const size of sizes) {
+        rec = recordingCtx();
+        const where = `${kind} ${size.w}x${size.h}`;
+        expect(() => draw(kind, 0, size), where).not.toThrow();
+        for (const curve of rec.curves) {
+          expect(curve.rx, where).toBeGreaterThanOrEqual(0);
+          expect(curve.ry, where).toBeGreaterThanOrEqual(0);
+        }
+      }
     }
   });
 

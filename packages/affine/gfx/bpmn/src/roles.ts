@@ -37,10 +37,13 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * must never fall on the lane they sit in — nor, therefore, under
  * `bpmn:flow-object`. `bpmn:data` is a family of its own for
  * the same reason inverted: a data object is not a flow object, it is never
- * executed, and a rule about the WORK must not fall on the paperwork. And
- * `bpmn:text-annotation` is parent-less AND childless — a note the author wrote
- * on the picture, which belongs to no family because it says nothing the process
- * does.
+ * executed, and a rule about the WORK must not fall on the paperwork. And the
+ * two artifacts — `bpmn:text-annotation` and `bpmn:group` — are parent-less AND
+ * childless, because they are what the author drew ON the picture rather than
+ * IN it: a note and a lasso, neither of which says anything the process does.
+ * The group's isolation is the spec's own (BPMN 2.0.2 §10.4 exempts it from
+ * every connection and containment constraint there is), and the tree is where
+ * that exemption is written down.
  *
  * ## Compatibility
  *
@@ -76,8 +79,9 @@ export type BpmnRole =
   | 'data'
   | 'data-object'
   | 'data-store'
-  // The lone artifact.
+  // The two artifacts.
   | 'text-annotation'
+  | 'group'
   // The frame.
   | 'pool'
   // Connecting objects.
@@ -117,6 +121,7 @@ type BpmnRoleKey =
   | 'dataObject'
   | 'dataStore'
   | 'textAnnotation'
+  | 'group'
   | 'pool'
   | 'sequenceFlow'
   | 'messageFlow'
@@ -155,8 +160,9 @@ export const BPMN_ROLE = {
   data: 'bpmn:data',
   dataObject: 'bpmn:data-object',
   dataStore: 'bpmn:data-store',
-  // The lone artifact: a note on the picture.
+  // The two artifacts: a note on the picture, and a lasso round part of it.
   textAnnotation: 'bpmn:text-annotation',
+  group: 'bpmn:group',
   // The frame.
   pool: 'bpmn:pool',
   // The connecting objects.
@@ -384,20 +390,38 @@ const DATA_DEFS: readonly RoleDef[] = [
 ];
 
 /**
- * The text annotation: a note the author wrote ON the picture.
+ * The two artifacts — what the author drew ON the picture rather than IN it.
  *
- * Parent-less and childless. It is not a flow object, not data and not a frame
- * — it is commentary, and the one thing every rule in this framework must agree
- * on is that commentary is never evidence. Declared all the same, so a reader
- * (and the audit) can tell an annotation from an unnamed rectangle somebody
- * left behind.
+ * Both parent-less and childless, and not siblings of each other either: they
+ * are not flow objects, not data and not frames, and the one thing every rule
+ * in this framework must agree on is that commentary is never evidence.
+ * Declared all the same, so a reader (and the audit) can tell an annotation
+ * from an unnamed rectangle somebody left behind.
+ *
+ * The GROUP is parent-less for a second reason, which is the spec's own: BPMN
+ * 2.0.2 §10.4 exempts it from every connection and containment constraint there
+ * is. It cannot be attached to a sequence or message flow, it is not bounded by
+ * the pool or lane it overlaps, and it may straddle several pools at once. A
+ * role under `bpmn:pool` or under any flow-object family would have made all
+ * three of those false by inheritance — the tree is where that exemption is
+ * written down.
+ *
+ * It is deliberately NOT the parent of the annotation, nor a child of it: one
+ * says something about a region, the other says something about a thing, and a
+ * rule about either must not fall on the other.
  */
-const ANNOTATION_DEFS: readonly RoleDef[] = [
+const ARTIFACT_DEFS: readonly RoleDef[] = [
   {
     id: BPMN_ROLE.textAnnotation,
     kind: 'node',
     labelKey: roleKey(BPMN_ROLE.textAnnotation),
     labelFallback: 'Text annotation',
+  },
+  {
+    id: BPMN_ROLE.group,
+    kind: 'node',
+    labelKey: roleKey(BPMN_ROLE.group),
+    labelFallback: 'Group',
   },
 ];
 
@@ -499,7 +523,7 @@ const FLOW_DEFS: readonly RoleDef[] = [
 const DEFS: readonly RoleDef[] = [
   ...FLOW_OBJECT_DEFS,
   ...DATA_DEFS,
-  ...ANNOTATION_DEFS,
+  ...ARTIFACT_DEFS,
   ...POOL_DEFS,
   ...FLOW_DEFS,
 ];
@@ -538,4 +562,5 @@ export const BPMN_ROLE_OF_KIND: Record<BpmnNodeKind, RoleId> = {
   dataObject: BPMN_ROLE.dataObject,
   dataStore: BPMN_ROLE.dataStore,
   textAnnotation: BPMN_ROLE.textAnnotation,
+  group: BPMN_ROLE.group,
 };

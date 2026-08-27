@@ -13,7 +13,9 @@ import {
   PointStyle,
   ShapeStyle,
   StrokeStyle,
+  TextAlign,
   TextFitMode,
+  TextVerticalAlign,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
@@ -24,6 +26,8 @@ import {
   CALL_ACTIVITY_WIDTH,
   END_WIDTH,
   EVENT_END,
+  GROUP_RADIUS,
+  GROUP_STROKE,
   EVENT_START,
   INNER_FONT_SIZE,
   NEUTRAL_STROKE,
@@ -60,8 +64,23 @@ export interface BpmnNodePreset {
   width: number;
   /** Corner radius, `rect` only. Absent means a square corner. */
   radius?: number;
+  /** Border style. Absent means a solid line, which is what BPMN mostly draws. */
+  strokeStyle?: StrokeStyle;
+  /**
+   * No fill — an OUTLINE, not a body. It also decides what the artefact does to
+   * a click: an unfilled shape is hit near its border and on its label only, so
+   * the group never steals a click from the work it encloses.
+   */
+  hollow?: true;
   /** The glyph draws the body; the native shape paints nothing. */
   glyphBody?: true;
+  /**
+   * Where the inner text sits. Absent means centred, which is what every
+   * artefact whose label names the artefact itself wants. The group is the
+   * exception: its label names a region, so it goes in the corner of it.
+   */
+  textAlign?: TextAlign;
+  textVerticalAlign?: TextVerticalAlign;
 }
 
 /** Per-kind native shape + accent presets (style C). */
@@ -154,6 +173,19 @@ export const NODE_PRESETS: Record<BpmnNodeKind, BpmnNodePreset> = {
     width: NODE_STROKE_WIDTH,
     glyphBody: true,
   },
+  // The group: a dashed grey outline round part of the picture. Entirely a
+  // native shape — no glyph, nothing for the renderer to do — because the
+  // notation asks for exactly what `strokeStyle: dash` already draws.
+  group: {
+    shapeType: 'rect',
+    stroke: GROUP_STROKE,
+    width: NODE_STROKE_WIDTH,
+    radius: GROUP_RADIUS,
+    strokeStyle: StrokeStyle.Dash,
+    hollow: true,
+    textAlign: TextAlign.Left,
+    textVerticalAlign: TextVerticalAlign.Top,
+  },
 };
 
 const gfxOf = (std: BlockStdScope) => std.get(GfxControllerIdentifier);
@@ -186,12 +218,15 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
     // A glyph-bodied artefact paints nothing natively: the folded page, the
     // cylinder and the bracket are drawn by the renderer, which reads
     // `fillColor` / `strokeColor` off this same model — so both stay editable
-    // from the shape toolbar exactly like every other node's.
-    filled: !preset.glyphBody,
+    // from the shape toolbar exactly like every other node's. A `hollow` one
+    // paints natively and simply has no body: the group is an outline.
+    filled: !preset.glyphBody && !preset.hollow,
     fillColor: NODE_FILL,
     strokeColor: preset.stroke,
     strokeWidth: preset.width,
-    strokeStyle: preset.glyphBody ? StrokeStyle.None : StrokeStyle.Solid,
+    strokeStyle: preset.glyphBody
+      ? StrokeStyle.None
+      : (preset.strokeStyle ?? StrokeStyle.Solid),
     shapeStyle: ShapeStyle.General,
     roughness: 0,
     radius: preset.radius ?? 0,
@@ -199,7 +234,14 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
     color: NEUTRAL_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: INNER_FONT_SIZE,
-    textAlign: 'center',
+    textAlign: preset.textAlign ?? TextAlign.Center,
+    // Spread, never a defaulted key: the model's own default is already
+    // `Center`, so writing it here would put a new key in the Y.Map of every
+    // artefact that does not ask for one — the same avoidable payload change
+    // review caught on `strokeStyle`.
+    ...(preset.textVerticalAlign
+      ? { textVerticalAlign: preset.textVerticalAlign }
+      : {}),
     // BPMN symbols have normative sizes: a long label overflows rather
     // than deforming the node
     textFitMode: TextFitMode.Overflow,
