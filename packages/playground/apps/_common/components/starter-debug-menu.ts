@@ -609,7 +609,7 @@ export class StarterDebugMenu extends ShadowlessElement {
    * sub-menu.
    *
    * It opens on BPMN, the first shipped framework whose catalogue outgrew the
-   * fourteen senior slots (22 commands since the descriptive-profile pack), so
+   * fourteen senior slots (23 commands since the descriptive-profile pack), so
    * the panel this shortcut shows is the one the "More artefacts…" button in
    * the BPMN sub-menu opens too. Until then this needed a throwaway fake
    * framework (`demo-overflow`), which went with the pack that made it moot.

@@ -500,12 +500,18 @@ describe('the BPMN toolbox past fourteen', () => {
     });
     await wait();
 
-    // The tool is armed with the role, so the connector is BORN carrying it —
-    // the guarantee `docs/adr/0010` asks for and the rules PR relies on.
+    // What the command actually does: it arms the native connector tool, and
+    // the role travels in that tool's options (`ConnectorTool` writes
+    // `role: this.activatedOption.role` onto every connector it creates, so an
+    // edge drawn with this tool is BORN carrying it — the guarantee
+    // `docs/adr/0010` asks for and the rules PR relies on).
     expect(edgeless.gfx.tool.currentToolName$.peek()).toBe('connector');
 
-    // Draw one the way the connector tool does: the last-recorded props are the
-    // defaults a new connector picks up, and the role rides on the tool.
+    // Below is the SHAPE of what that produces, assembled by hand: the props the
+    // command recorded, plus the role the tool would have written. It checks the
+    // preset the command arms and that a connector so built binds and routes —
+    // NOT `ConnectorTool`'s own write, which is that tool's contract and is
+    // covered where the tool lives.
     const from = surface.addElement({
       type: 'bpmnNode',
       kind: 'taskUser',

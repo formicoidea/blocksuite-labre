@@ -121,16 +121,30 @@ export const bpmnGroupIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24"
   <rect x="3.5" y="5.5" width="17" height="13" rx="4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3.4 2.6"/>
 </svg>`;
 
-/** Message flow — dashed line, open circle at the source, open head at the target. */
+/**
+ * Message flow — dashed line, disc at the source, open head at the target.
+ *
+ * The source terminator is drawn FILLED because that is what the canvas paints:
+ * `renderCircle` fills with the connector's `fillColor` before stroking it. The
+ * norm asks for a hollow ring, and the shared connector renderer is where that
+ * would be fixed; until then an icon promising a ring would be advertising a
+ * shape the tool does not draw.
+ */
 export const bpmnMessageIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="4.6" cy="12" r="2.1" stroke="currentColor" stroke-width="1.4"/>
+  <circle cx="4.8" cy="12" r="2.2" fill="currentColor"/>
   <path d="M7.4 12 H17.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 2.6"/>
   <path d="M15.6 8.6 L20 12 L15.6 15.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-/** Association — a dashed line with no head at either end. */
+/**
+ * Association — a dashed line with no head at either end.
+ *
+ * Same weight as the message flow's line, because on canvas it IS the same
+ * weight: both are `strokeWidth: 2`. A thinner icon would hint at a distinction
+ * the tool cannot draw (`ASSOCIATION_WIDTH` in `../consts.ts` says why).
+ */
 export const bpmnAssociationIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M3.5 17 L20.5 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="2.4 2.4"/>
+  <path d="M3.5 17 L20.5 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.4 2.4"/>
 </svg>`;
 
 /** Pool — rectangle with a left name band. */

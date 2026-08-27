@@ -55,12 +55,13 @@ type NodeKind = Extract<
 /**
  * One BPMN flow-object node, as a surface-element JSON entry.
  *
- * Every kind {@link NodeKind} admits paints its own body natively — an ellipse,
- * a rounded rect, a diamond. The three GLYPH-BODIED kinds (`dataObject`,
+ * Every kind that {@link NodeKind} admits paints its own body natively, as an
+ * ellipse, a rounded rect or a diamond. The GLYPH-BODIED kinds (`dataObject`,
  * `dataStore`, `textAnnotation`) do not: they are created unfilled and
  * unstroked and the renderer draws their silhouette, so a card that spelled one
- * out here would insert an invisible rectangle. When they earn a card, this
- * helper reads `NODE_PRESETS` instead of branching.
+ * out here would insert an invisible rectangle. `group` is out for a neighbouring
+ * reason — it is `hollow`, and the branches below all fill. When any of them
+ * earns a card, this helper reads `NODE_PRESETS` instead of branching.
  */
 function node(kind: NodeKind, x: number, y: number, text?: string) {
   const { w, h } = NODE_SIZE[kind];
@@ -206,7 +207,10 @@ const previews = {
   pool: `<svg ${PREVIEW_ATTRS} fill="none"><rect x="14" y="20" width="107" height="40" rx="3" stroke="#262626" stroke-width="2"/><path d="M30 20 V60" stroke="#262626" stroke-width="1.8"/><rect x="14" y="20" width="16" height="40" fill="#f4f4f5"/><path d="M30 20 V60" stroke="#262626" stroke-width="1.8"/></svg>`,
   // Two participants stacked, and the dashed line between them is the whole
   // point of the card: a message flow is the one arrow that crosses a pool.
-  messageExchange: `<svg ${PREVIEW_ATTRS} fill="none"><rect x="14" y="8" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="8" width="11" height="27" fill="#f4f4f5"/><path d="M25 8 V35" stroke="#262626" stroke-width="1.4"/><rect x="14" y="45" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="45" width="11" height="27" fill="#f4f4f5"/><path d="M25 45 V72" stroke="#262626" stroke-width="1.4"/><circle cx="36" cy="21.5" r="4.5" stroke="#43a06b" stroke-width="1.6"/><rect x="52" y="14" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="52" y="51" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><path d="M45 21.5 H52" stroke="#262626" stroke-width="1.4"/><circle cx="67" cy="31.5" r="2" stroke="#262626" stroke-width="1.2"/><path d="M67 34 V48" stroke="#262626" stroke-width="1.4" stroke-dasharray="3 2.4"/><path d="M64 46 L67 50 L70 46" stroke="#262626" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  // Its source terminator is a FILLED disc, matching what `renderCircle`
+  // actually paints rather than the hollow ring the norm asks for — a preview
+  // has one job, which is to look like what lands on the board.
+  messageExchange: `<svg ${PREVIEW_ATTRS} fill="none"><rect x="14" y="8" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="8" width="11" height="27" fill="#f4f4f5"/><path d="M25 8 V35" stroke="#262626" stroke-width="1.4"/><rect x="14" y="45" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="45" width="11" height="27" fill="#f4f4f5"/><path d="M25 45 V72" stroke="#262626" stroke-width="1.4"/><circle cx="36" cy="21.5" r="4.5" stroke="#43a06b" stroke-width="1.6"/><rect x="52" y="14" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="52" y="51" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><path d="M45 21.5 H52" stroke="#262626" stroke-width="1.4"/><circle cx="67" cy="31.5" r="2.2" fill="#262626"/><path d="M67 34 V48" stroke="#262626" stroke-width="1.4" stroke-dasharray="3 2.4"/><path d="M64 46 L67 50 L70 46" stroke="#262626" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
 
 /**

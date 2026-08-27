@@ -245,7 +245,7 @@ describe('bpmn style-C constants', () => {
  *
  * BPMN is the first shipped framework whose CATALOGUE outgrows the fourteen
  * senior slots, so two things that used to be the same list are now two lists,
- * and both of them are pinned here: what the framework offers (22), and the
+ * and both of them are pinned here: what the framework offers (23), and the
  * fourteen it opens with before this user has reached for anything.
  */
 describe('the bpmn command inventory', () => {

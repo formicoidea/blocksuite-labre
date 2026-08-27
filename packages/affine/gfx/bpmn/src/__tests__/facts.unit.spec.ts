@@ -279,18 +279,35 @@ describe('BPMN typed-flow facts', () => {
   });
 
   /**
-   * Every shipped file that WRITES one edge role, `roles.ts` — which declares
-   * it — excluded.
+   * Every shipped file that WRITES one edge role.
    *
    * Pinned as a set rather than left open: `docs/adr/0010` says the role on a
    * connector is the statement its author made, so the list of places that can
    * put one there is part of the contract. A file joining this list is a new
    * layer deciding what an author meant, and that is a review, not a diff.
+   *
+   * ## Both spellings, because a stamp site can use either
+   *
+   * The named constant AND the literal id. Matching only `BPMN_ROLE.messageFlow`
+   * would let a serializer, an import path or a host adapter that writes
+   * `'bpmn:message-flow'` straight past a pin whose doc comment claims to be
+   * exhaustive — a hole an adversarial review proved with a one-line probe.
+   *
+   * ## Two files are excluded, and neither of them stamps
+   *
+   * `roles.ts` DECLARES the vocabulary — it is where the id is minted, so it
+   * necessarily names it. `rules.ts` SPEAKS it: a rule says something ABOUT
+   * edges carrying a role, which means naming the role to select on it, and
+   * selecting is the opposite of stamping. Every other file that types the id
+   * is putting it on an element, which is exactly what this pin is for.
    */
-  const stampSites = (roleExpression: string) =>
+  const stampSites = (roleId: string, roleExpression: string) =>
     tsFilesUnder(SRC)
-      .filter(file => !file.endsWith('roles.ts'))
-      .filter(file => readFileSync(file, 'utf8').includes(roleExpression))
+      .filter(file => !file.endsWith('roles.ts') && !file.endsWith('rules.ts'))
+      .filter(file => {
+        const src = readFileSync(file, 'utf8');
+        return src.includes(roleExpression) || src.includes(roleId);
+      })
       .map(file => file.slice(SRC.length + 1).replaceAll('\\', '/'))
       .sort();
 
@@ -311,7 +328,7 @@ describe('BPMN typed-flow facts', () => {
       BPMN_ROLE.messageFlow
     );
 
-    expect(stampSites('BPMN_ROLE.messageFlow')).toEqual([
+    expect(stampSites(BPMN_ROLE.messageFlow, 'BPMN_ROLE.messageFlow')).toEqual([
       // `activateBpmnMessageFlow` arms the connector tool with the role, so the
       // edge is born with it rather than acquiring one afterwards.
       'actions.ts',
@@ -337,7 +354,9 @@ describe('BPMN typed-flow facts', () => {
 
     // No template card draws one yet — an association is what an author adds to
     // a picture they have already made, not something a preset can guess.
-    expect(stampSites('BPMN_ROLE.association')).toEqual(['actions.ts']);
+    expect(stampSites(BPMN_ROLE.association, 'BPMN_ROLE.association')).toEqual([
+      'actions.ts',
+    ]);
   });
 });
 
