@@ -1,6 +1,5 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { EmptyTool } from '@labre/affine/gfx/pointer';
-import { ArtefactCatalogueProvider } from '@labre/affine/shared/services';
 import {
   type AnyCommandDescriptor,
   CommandExtension,
@@ -66,7 +65,11 @@ const mountWithToolbarContext = (menu: TestOverflowMenu) => {
   const hostElement = document.createElement('div');
   new ContextProvider(hostElement, {
     context: edgelessToolbarSlotsContext,
-    initialValue: { resize: new Subject<void>() },
+    // Typed as the slot the toolbar actually declares — `{ w, h }` — and never
+    // as `void`: nothing ever fires it, but the context it is handed to is
+    // typed, so a `Subject<void>` here is a compile error rather than a
+    // shortcut.
+    initialValue: { resize: new Subject<{ w: number; h: number }>() },
   });
   hostElement.append(menu);
   document.body.append(hostElement);
