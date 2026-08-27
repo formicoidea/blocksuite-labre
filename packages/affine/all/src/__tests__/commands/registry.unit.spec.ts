@@ -48,10 +48,13 @@ describe('command registry invariants', () => {
       // the pool's "⋮" menu, and what it serializes is every BPMN artefact on
       // the surface.
       bpmn: 24,
-      // 13: nine elements, two boundaries, the board and the relationship tool.
-      // Thirteen against a cap of fourteen makes C4 the last framework that
-      // FITS — every command is a senior slot, the sub-menu is its author order
-      // untouched, and the ranking never runs.
+      // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
+      // board and the relationship tool) plus `c4.exportMermaid`, whose subject
+      // is a SELECTED board and which declines the sub-menu. Fourteen against a
+      // cap of fourteen — which `selectSeniorMenuCommands` measures on the
+      // CATALOGUE — makes C4 the last framework that FITS, to the entry: the
+      // sub-menu is its thirteen artefacts in author order, and the ranking
+      // never runs. A fifteenth of anything tips it over.
       //
       // The board's automatic legend is NOT among them and is not a command at
       // all: the PO's arbitration of 27/08/2026 is that generating one belongs
@@ -60,7 +63,7 @@ describe('command registry invariants', () => {
       // palette and Settings › Shortcuts. It emits `FrameworkLegendCreated` by
       // hand, exactly as the Context Map's legend does
       // (`gfx/c4/src/toolbar/config.ts`).
-      c4: 13,
+      c4: 14,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -85,7 +88,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(106);
+    expect(commands).toHaveLength(107);
   });
 
   /**

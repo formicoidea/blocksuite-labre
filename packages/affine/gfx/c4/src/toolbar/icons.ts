@@ -124,6 +124,27 @@ export const c4ContainerBoundaryIcon = svg`<svg width="24" height="24" viewBox="
   <rect x="6.5" y="8" width="11" height="8" rx="1.6" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.4 1.8"/>
 </svg>`;
 
+/* ── The gesture that takes a board away ───────────────────────────────── */
+
+/**
+ * Export as mermaid — a sheet with a page-corner fold and an arrow leaving it.
+ *
+ * Deliberately the SAME drawing as `bpmnExportXmlIcon`, down to the path data:
+ * it is the same gesture (take this board away as a file), and one gesture takes
+ * one glyph across the library. What it is not is a mermaid logo — the file
+ * format is what the menu LINE says, and a brand mark in a monochrome outline
+ * row would be the one icon nobody could recolour.
+ *
+ * Redrawn here rather than imported because BPMN's icons are that package's
+ * private module: a cross-framework import for one path would tie the C4 pack's
+ * build to BPMN's, and the two are meant to ship separately.
+ */
+export const c4ExportMermaidIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13.5 3.5 18.5 8.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 20.5v-6M13.5 18l2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 /**
  * Every command glyph, keyed by its `iconKey`.
  *
@@ -132,9 +153,13 @@ export const c4ContainerBoundaryIcon = svg`<svg width="24" height="24" viewBox="
  * and this record does not hold renders as nothing — which is what the icon
  * coverage test in `__tests__/commands.unit.spec.ts` exists to catch.
  *
- * The legend's glyph is deliberately NOT here: it is `dddLegendIcon`, the one
- * the three DDD boards already use for the very same gesture, and it is added
- * to this record in `commands.ts` rather than redrawn.
+ * {@link c4ExportMermaidIcon} is deliberately NOT here and is added to
+ * `c4CommandIcons` in `commands.ts` instead: this record is the TOOLBOX — the
+ * thirteen glyphs of things C4 DRAWS — and an export draws nothing.
+ *
+ * The legend's glyph is in neither, because the legend is no longer a command at
+ * all: it is `dddLegendIcon`, referenced straight from `config.ts` by the button
+ * that is now the only way to reach it (PO arbitration, 27/08/2026).
  */
 export const C4_TOOLBOX_ICONS = {
   'c4.person': c4PersonIcon,

@@ -29,6 +29,20 @@ export {
   C4_RELATIONSHIP_MATRIX,
   C4_RULES,
 } from './rules.js';
+// The half of the export that needs an editor, kept apart from the half that
+// does not — same split BPMN's index makes for the same reason.
+export { c4BoardsForExport, c4ExportBoardOf } from './actions.js';
+// The export itself: a PURE function over element models — models in, mermaid
+// out — so a host can export a board it never rendered, and a rule or a test can
+// call it with plain stubs.
+export {
+  type C4ExportBoard,
+  C4_MERMAID_OF_KIND,
+  type C4MermaidMapping,
+  exportC4Mermaid,
+  toMermaidAlias,
+  toMermaidText,
+} from './export.js';
 // The toolbox, for the host that composes the command registry and the
 // translation-key manifest out of the frameworks it installed (see
 // `packages/affine/all/src/{commands,translations}.ts`).
