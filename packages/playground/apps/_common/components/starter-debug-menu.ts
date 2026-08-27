@@ -606,9 +606,13 @@ export class StarterDebugMenu extends ShadowlessElement {
 
   /**
    * Open/close the artefact catalogue sidepanel without going through a senior
-   * sub-menu: the "More artefacts…" button only shows once a framework's
-   * catalogue exceeds 14 commands, which today only the throwaway
-   * `demo-overflow` framework does (see `../demo-overflow.ts`).
+   * sub-menu.
+   *
+   * It opens on BPMN, the first shipped framework whose catalogue outgrew the
+   * fourteen senior slots (22 commands since the descriptive-profile pack), so
+   * the panel this shortcut shows is the one the "More artefacts…" button in
+   * the BPMN sub-menu opens too. Until then this needed a throwaway fake
+   * framework (`demo-overflow`), which went with the pack that made it moot.
    */
   private _toggleCatalogue() {
     const host = this.editor.host;
@@ -621,8 +625,7 @@ export class StarterDebugMenu extends ShadowlessElement {
     if (widget?.catalogueOpen) {
       provider.close();
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      provider.open('demo-overflow' as any);
+      provider.open('bpmn');
     }
   }
 

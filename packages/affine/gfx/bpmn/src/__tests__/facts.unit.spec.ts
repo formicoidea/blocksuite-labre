@@ -278,26 +278,66 @@ describe('BPMN typed-flow facts', () => {
     expect(asTypedEdge(vocabularies, plain)).toBeNull();
   });
 
-  it('declares the message flow with its own verb and stamps it nowhere', () => {
-    // RESERVED (see `roles.ts`): the vocabulary carries it so a document written
-    // by the full pack reads correctly, and no creation site writes it yet. Both
-    // halves are locked — the day a tool stamps it, this test says so, and the
-    // rules session learns that a second flow verb is now in play.
+  /**
+   * Every shipped file that WRITES one edge role, `roles.ts` — which declares
+   * it — excluded.
+   *
+   * Pinned as a set rather than left open: `docs/adr/0010` says the role on a
+   * connector is the statement its author made, so the list of places that can
+   * put one there is part of the contract. A file joining this list is a new
+   * layer deciding what an author meant, and that is a review, not a diff.
+   */
+  const stampSites = (roleExpression: string) =>
+    tsFilesUnder(SRC)
+      .filter(file => !file.endsWith('roles.ts'))
+      .filter(file => readFileSync(file, 'utf8').includes(roleExpression))
+      .map(file => file.slice(SRC.length + 1).replaceAll('\\', '/'))
+      .sort();
+
+  it('declares the message flow with its own verb, and stamps it from the tool', () => {
+    // Reserved by the lean pack and CLAIMED by the descriptive-profile one: the
+    // vocabulary carried this id before anything wrote it, precisely so the day
+    // a tool started writing it — today — the id would already be the right
+    // one. Its verb is its own, so a second flow sentence is now in play and
+    // the rules session has to account for it.
     const def = BPMN_ROLES[BPMN_ROLE.messageFlow];
     expect(def.kind).toBe('edge');
     expect(def.direction?.verbFallback).toBe('sends a message to');
     expect(def.parent).toBeUndefined();
 
-    // The kind → role bridge every node creation site goes through.
+    // It is still not a NODE role: the kind → role bridge every node creation
+    // site goes through must never answer with a connecting object.
     expect(Object.values(BPMN_ROLE_OF_KIND)).not.toContain(
       BPMN_ROLE.messageFlow
     );
 
-    // And the source itself: `roles.ts` declares it, nothing else mentions it.
-    const mentions = tsFilesUnder(SRC)
-      .filter(file => !file.endsWith('roles.ts'))
-      .filter(file => readFileSync(file, 'utf8').includes('messageFlow'));
-    expect(mentions).toEqual([]);
+    expect(stampSites('BPMN_ROLE.messageFlow')).toEqual([
+      // `activateBpmnMessageFlow` arms the connector tool with the role, so the
+      // edge is born with it rather than acquiring one afterwards.
+      'actions.ts',
+      // …and the "Message exchange" card, which ships one already stamped.
+      'templates/index.ts',
+    ]);
+  });
+
+  it('declares the association WITHOUT a direction, and stamps it from the tool', () => {
+    // The one edge role in this vocabulary that names no relation: "this note
+    // is about that task" reads identically from either end, so there is no
+    // verb, no gesture hint and nothing for "reverse direction" to offer. That
+    // absence is the declaration, which is why it is asserted rather than
+    // assumed (`docs/adr/0010` tier 2, and the role's own doc comment).
+    const def = BPMN_ROLES[BPMN_ROLE.association];
+    expect(def.kind).toBe('edge');
+    expect(def.direction).toBeUndefined();
+    expect(def.parent).toBeUndefined();
+
+    expect(Object.values(BPMN_ROLE_OF_KIND)).not.toContain(
+      BPMN_ROLE.association
+    );
+
+    // No template card draws one yet — an association is what an author adds to
+    // a picture they have already made, not something a preset can guess.
+    expect(stampSites('BPMN_ROLE.association')).toEqual(['actions.ts']);
   });
 });
 

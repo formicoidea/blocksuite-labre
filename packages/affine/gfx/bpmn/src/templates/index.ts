@@ -19,6 +19,8 @@ import {
   EVENT_END,
   EVENT_START,
   INNER_FONT_SIZE,
+  MESSAGE_STROKE,
+  MESSAGE_WIDTH,
   NEUTRAL_STROKE,
   NODE_FILL,
   NODE_SIZE,
@@ -31,20 +33,35 @@ import {
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
 /**
- * The kinds the shipped cards draw — the four basics, and no more.
+ * The kinds the shipped cards draw — and no more.
  *
- * `Extract` rather than a hand-written union: the names are now CHECKED against
- * the model's own {@link BpmnNodeKind}, so this can no longer drift away from
- * it, while the cards stay honest about the four they actually lay out. The
- * descriptive profile's twelve other kinds have no template yet; when they get
- * one, it is this line that widens.
+ * `Extract` rather than a hand-written union: the names are CHECKED against the
+ * model's own {@link BpmnNodeKind}, so this can never drift away from it, while
+ * the cards stay honest about the ones they actually lay out. The two typed
+ * tasks joined it with the "Message exchange" card; the descriptive profile's
+ * remaining kinds have no template yet, and when they get one it is this line
+ * that widens again.
  */
 type NodeKind = Extract<
   BpmnNodeKind,
-  'startEvent' | 'endEvent' | 'task' | 'gatewayExclusive'
+  | 'startEvent'
+  | 'endEvent'
+  | 'task'
+  | 'taskUser'
+  | 'taskService'
+  | 'gatewayExclusive'
 >;
 
-/** One BPMN flow-object node, as a surface-element JSON entry. */
+/**
+ * One BPMN flow-object node, as a surface-element JSON entry.
+ *
+ * Every kind {@link NodeKind} admits paints its own body natively — an ellipse,
+ * a rounded rect, a diamond. The three GLYPH-BODIED kinds (`dataObject`,
+ * `dataStore`, `textAnnotation`) do not: they are created unfilled and
+ * unstroked and the renderer draws their silhouette, so a card that spelled one
+ * out here would insert an invisible rectangle. When they earn a card, this
+ * helper reads `NODE_PRESETS` instead of branching.
+ */
 function node(kind: NodeKind, x: number, y: number, text?: string) {
   const { w, h } = NODE_SIZE[kind];
   const base: Record<string, unknown> = {
@@ -124,6 +141,31 @@ function seq(source: string, target: string) {
 }
 
 /**
+ * A message-flow connector; ids are remapped on insert.
+ *
+ * The same shape as {@link seq} and the same claim — both ends are BOUND, so
+ * the arrow relates two named things — but a different sentence: "sends a
+ * message to", from the participant that sends to the one that receives
+ * (`docs/adr/0010`). Its style is the one `activateBpmnMessageFlow` arms the
+ * connector tool with, so a message flow dropped from this card and one drawn
+ * by hand are indistinguishable in the document.
+ */
+function msg(source: string, target: string) {
+  return {
+    type: 'connector',
+    role: BPMN_ROLE.messageFlow,
+    mode: ConnectorMode.Orthogonal,
+    stroke: MESSAGE_STROKE,
+    strokeWidth: MESSAGE_WIDTH,
+    strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.Circle,
+    rearEndpointStyle: PointStyle.Arrow,
+    source: { id: source, position: [0.5, 0.5] },
+    target: { id: target, position: [0.5, 0.5] },
+  };
+}
+
+/**
  * A standalone (free) sequence-flow arrow for the prefab card.
  *
  * NEUTRAL on purpose (`docs/adr/0010` § Compatibility, and the same call the
@@ -162,9 +204,15 @@ const previews = {
   gateway: `<svg ${PREVIEW_ATTRS} fill="none"><path d="M67 16 L92 40 L67 64 L42 40 Z" stroke="#262626" stroke-width="2.4" stroke-linejoin="round"/><path d="M58 31 L76 49 M76 31 L58 49" stroke="#262626" stroke-width="2.2" stroke-linecap="round"/></svg>`,
   sequence: `<svg ${PREVIEW_ATTRS} fill="none"><path d="M24 40 H96" stroke="#262626" stroke-width="2.4" stroke-linecap="round"/><path d="M94 33 L108 40 L94 47 Z" fill="#262626"/></svg>`,
   pool: `<svg ${PREVIEW_ATTRS} fill="none"><rect x="14" y="20" width="107" height="40" rx="3" stroke="#262626" stroke-width="2"/><path d="M30 20 V60" stroke="#262626" stroke-width="1.8"/><rect x="14" y="20" width="16" height="40" fill="#f4f4f5"/><path d="M30 20 V60" stroke="#262626" stroke-width="1.8"/></svg>`,
+  // Two participants stacked, and the dashed line between them is the whole
+  // point of the card: a message flow is the one arrow that crosses a pool.
+  messageExchange: `<svg ${PREVIEW_ATTRS} fill="none"><rect x="14" y="8" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="8" width="11" height="27" fill="#f4f4f5"/><path d="M25 8 V35" stroke="#262626" stroke-width="1.4"/><rect x="14" y="45" width="107" height="27" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="14" y="45" width="11" height="27" fill="#f4f4f5"/><path d="M25 45 V72" stroke="#262626" stroke-width="1.4"/><circle cx="36" cy="21.5" r="4.5" stroke="#43a06b" stroke-width="1.6"/><rect x="52" y="14" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><rect x="52" y="51" width="30" height="15" rx="3" stroke="#262626" stroke-width="1.6"/><path d="M45 21.5 H52" stroke="#262626" stroke-width="1.4"/><circle cx="67" cy="31.5" r="2" stroke="#262626" stroke-width="1.2"/><path d="M67 34 V48" stroke="#262626" stroke-width="1.4" stroke-dasharray="3 2.4"/><path d="M64 46 L67 50 L70 46" stroke="#262626" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
 
-/** The lean BPMN basics: a simple worked process + every prefab the menu makes. */
+/**
+ * The BPMN basics: two worked scenes — a process end to end and a two-party
+ * message exchange — plus a prefab for each of the lean artefacts.
+ */
 function bpmnTemplates(): Template[] {
   const process: SurfaceElementsJSON = {
     pool: pool(0, 0, 640, 200, 'Process'),
@@ -182,6 +230,30 @@ function bpmnTemplates(): Template[] {
     c6: seq('task3', 'end'),
   };
 
+  /**
+   * Two participants, and the one arrow that is allowed to cross between them.
+   *
+   * The card exists because the message flow is the piece of BPMN people get
+   * wrong first: a sequence flow may never leave its pool, and the thing that
+   * does leave is a different statement with a different line. Laying the two
+   * pools out one above the other and drawing both flows once is the shortest
+   * way to show that — the solid arrow stays home, the dashed one crosses.
+   *
+   * Stacked vertically with a 40-unit gutter, so the message flow is a straight
+   * orthogonal drop between two tasks that already line up.
+   */
+  const messageExchange: SurfaceElementsJSON = {
+    customer: pool(0, 0, 640, 200, 'Customer'),
+    supplier: pool(0, 240, 640, 200, 'Supplier'),
+    start: node('startEvent', 40, 72),
+    ask: node('taskUser', 140, 64, 'Place order'),
+    answer: node('taskService', 140, 304, 'Confirm order'),
+    // Inside the first participant: what happens, and in what order.
+    inside: seq('start', 'ask'),
+    // Across the two: who told whom.
+    across: msg('ask', 'answer'),
+  };
+
   const t = (
     name: string,
     preview: string,
@@ -195,6 +267,7 @@ function bpmnTemplates(): Template[] {
 
   return [
     t('Simple process', previews.process, process),
+    t('Message exchange', previews.messageExchange, messageExchange),
     t('Start event', previews.startEvent, single(node('startEvent', 0, 0))),
     t('End event', previews.endEvent, single(node('endEvent', 0, 0))),
     t('Task', previews.task, single(node('task', 0, 0))),
