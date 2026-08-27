@@ -28,6 +28,16 @@ permits, and two conventions that say so out loud. The self-loop check left
 `bpmn.sequence-flow-endpoints` and became `bpmn.sequence-flow-self-loop`: the
 endpoints matrix is BPMN 2.0.2 p.95 and the no-self-loop habit is ours, so one
 rule could not have declared either honestly. Same wording, same severity, same
-i18n keys, one new rule id in the profiles. The other five frameworks' rules are
-annotated too — mostly `recommendation` naming the method, with the readability
-nudges declared as the Labre conventions they always were.
+i18n keys, one new rule id in the profiles.
+
+That new id is the one thing this change does not carry over: user exceptions
+are persisted per rule id, so an exception granted on a self-looping flow under
+`bpmn.sequence-flow-endpoints` no longer matches and the finding returns. No
+migration ships, because BPMN landed days ago and these packages are
+unpublished, so the set of affected documents is empty — but the same rename
+after publication would need a migration or an alias, and should not lean on
+this precedent.
+
+The other five frameworks' rules are annotated too — mostly `recommendation`
+naming the method, with the readability nudges declared as the Labre
+conventions they always were.

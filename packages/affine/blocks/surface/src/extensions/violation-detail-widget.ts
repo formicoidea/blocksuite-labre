@@ -681,12 +681,19 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
    */
   private _estimateBubbleHeight(entries: readonly Violation[]): number {
     const padding = 24;
-    // Message, optional hint, severity chip, the provenance line and the action
-    // row underneath it.
-    const perEntry = 118;
+    // Message, optional hint, severity chip and the action row underneath it.
+    const perEntry = 100;
+    // ...plus one line for each entry that will actually SHOW a provenance,
+    // asked the same way the render asks it. A framework whose rules declare
+    // none must not have the bubble reserve room for a line it never draws.
+    const provenanceLine = 18;
+    const validation = this.std.getOptional(ValidationManager);
+    const cited = entries.filter(
+      entry => validation?.ruleOf(entry.ruleId)?.provenance !== undefined
+    ).length;
     return Math.min(
       BUBBLE_MAX_HEIGHT,
-      padding + Math.max(1, entries.length) * perEntry
+      padding + Math.max(1, entries.length) * perEntry + cited * provenanceLine
     );
   }
 

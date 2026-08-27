@@ -294,6 +294,14 @@ describe('what the framework ships as rules', () => {
       // Loosely pinned on purpose: a citation is prose, and the format that
       // reads best differs between a page, a clause and a table. What must be
       // there is a LOCATOR.
+      //
+      // KNOWN LIMIT, and it has already bitten once: this asserts a locator is
+      // PRESENT, never that it RESOLVES. The first draft of
+      // `association-endpoints` cited "§8.3.13" for Association and Text
+      // Annotation — a real clause, but the one that defines Sequence Flow —
+      // and this line was perfectly happy with it. Only reading the
+      // specification catches that class of mistake; review is the control, not
+      // this regex.
       expect(reference, rule.id).toMatch(/p\.\d|§/);
       expect(reference, rule.id).toContain('BPMN 2.0.2');
     }

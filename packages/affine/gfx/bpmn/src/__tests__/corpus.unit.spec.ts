@@ -29,7 +29,7 @@ import { BPMN_RULES, BPMN_SEQUENCE_MATRIX } from '../rules';
  *
  * - the VALID corpus, where a correct process must raise NOTHING at the
  *   descriptive level. A rule that fires on a good diagram is a rule the user
- *   switches off, and then all twenty-one are gone;
+ *   switches off, and then all twenty-two are gone;
  * - the INVALID corpus, where each board carries exactly ONE mistake and the
  *   rule that catches it is named, with the elements it indicts spelled out. One
  *   mistake, one sentence, on the symbols the user has to touch.
@@ -164,7 +164,7 @@ const said = (violations: readonly Violation[]) =>
  * canvas.
  *
  * The "one mistake, one sentence" promise is about brackets on a board, so the
- * invalid corpus asserts this one. Five of the twenty-one rules are `audit` by
+ * invalid corpus asserts this one. Five of the twenty-two rules are `audit` by
  * declaration — they report shapes the specification sanctions, or a diagram
  * that is merely unfinished — and holding a board to "raises exactly one finding
  * of any kind" would have meant either deleting them or bending every fixture

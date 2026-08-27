@@ -215,6 +215,30 @@ export const BPMN_SEQUENCE_MATRIX: readonly EndpointTriplet[] = [
  * `labre-convention`, it would have disowned p.95. So the clause became
  * {@link sequenceFlowSelfLoop}, B1a — the same split, for the same reason, that
  * already separated {@link duplicateSequenceFlow} from this rule.
+ *
+ * ## Which leaves this rule with NO reachable finding at all, deliberately
+ *
+ * Said out loud, because a file this careful about recording its own silences
+ * should not leave the reader to derive this one. `evaluateRelationEndpoints`
+ * has four raise sites — off-matrix, self-loop, duplicate, exclusive-pair — and
+ * B1 can reach none of them:
+ *
+ * - the ALPHABET GATE runs first and admits only roles the triplets name. The
+ *   matrix is one sentence over `bpmn:flow-object`, so the alphabet is
+ *   `{flow-object}`, so anything that survives the gate is a flow object at both
+ *   ends — and `inMatrix` is then unconditionally true. The off-matrix branch
+ *   cannot fire for the same reason it exists;
+ * - `forbidSelfLoop`, `forbidDuplicate`, `exclusivePairs` and `flagNeutral` are
+ *   all absent, so the other three sites are never even consulted.
+ *
+ * That is not a defect and not dead data. The rule is the DECLARED SENTENCE and
+ * its citation — the one place the grammar of a sequence flow is written down as
+ * data — and the alphabet it publishes is consumed by the two rules that do
+ * fire: {@link sequenceFlowSelfLoop} and {@link untypedFlow} both read
+ * {@link BPMN_SEQUENCE_MATRIX}, so none of the three can ever disagree about
+ * what "a step" is. A profile line that can raise nothing is the price of
+ * keeping the sentence and its page in one reviewable object; the alternative is
+ * a matrix inlined at two call sites with the citation attached to neither.
  */
 const sequenceFlowEndpoints: ValidationRule = {
   id: 'bpmn.sequence-flow-endpoints',
@@ -278,15 +302,35 @@ const sequenceFlowEndpoints: ValidationRule = {
  *
  * The composition is the one {@link duplicateSequenceFlow} already proves: two
  * `relation-endpoints` rules, same `edgeRole`, same alphabet, one flag each.
- * `evaluateRelationEndpoints` reports at most one finding per edge PER RULE, so
- * a self-loop is indicted here and nowhere else — B1's matrix cannot fire on
- * it, because a flow object linked to a flow object is on the matrix whichever
- * end you read.
+ * What actually makes them safe to compose is the ALPHABET GATE, not the order
+ * of the checks inside the walk: the gate drops any edge whose ends are outside
+ * the triplets' roles BEFORE either the self-loop test or the matrix test is
+ * reached, so an off-alphabet self-loop — a link looped onto a group, an
+ * annotation, a data object, a pool — was silence before the split and is
+ * silence after it. Past the gate, the self-loop test comes first and
+ * `continue`s, and B1 declares no `forbidSelfLoop`, so exactly one of the two
+ * rules can indict a given loop. (An earlier draft of this comment said only
+ * "the self-loop is judged before the matrix": true, but it is the gate that
+ * carries the argument.)
  *
  * It carries no `selfLoop` block: with the matrix unreachable, the rule's OWN
  * message is the self-loop message, and the family falls back to it. The two
- * i18n keys are the ones the clause shipped with, unchanged — a split that
- * renamed a user-visible key would be a migration, and this is not one.
+ * i18n keys are the ones the clause shipped with, unchanged.
+ *
+ * ## What the split DID rename, and why that was acceptable exactly once
+ *
+ * The `ruleId`. And a rule id is not only a code identifier: user exceptions
+ * ({@link ValidationRule} arbitrations, PF8) are persisted on the element in
+ * `validationExceptions` and keyed BY rule id, so a document where somebody had
+ * excused a self-loop under `bpmn.sequence-flow-endpoints` sees that finding
+ * come back under this id, its arbitration orphaned.
+ *
+ * That was acceptable here for one reason only: the BPMN pack shipped days
+ * before this change and the packages are unpublished, so the set of affected
+ * documents is empty in practice. It would NOT be acceptable after publication,
+ * and nothing about this precedent should be read as saying otherwise —
+ * renaming a rule id orphans stored exceptions, and past publication that costs
+ * either a migration or an alias in `hasException`.
  */
 const sequenceFlowSelfLoop: ValidationRule = {
   id: 'bpmn.sequence-flow-self-loop',
@@ -450,10 +494,15 @@ const associationEndpoints: ValidationRule = {
   suggestionFallback:
     'An association attaches a text annotation to what it comments on, or a data object to the step that reads or produces it. To chain two steps, draw a sequence flow instead.',
   version: 1,
+  // The clause is read off the specification's own table of contents, not
+  // guessed from the shape of a neighbouring one: §8.3.1 Artifacts is where
+  // "BPMN provides three standard Artifacts: Associations, Groups, and Text
+  // Annotations" is written. §8.3.13 — which an earlier draft of this line
+  // cited — is Sequence Flow, and clause 8.3 runs to 8.3.14.
   provenance: {
     source: 'standard',
     reference:
-      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.222 — Data Associations; Association and Text Annotation, §8.3.13',
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) §8.3.1 Artifacts, p.65–66 — Association and Text Annotation; p.222 — Data Associations',
   },
   backgroundRole: BPMN_ROLE.pool,
   endpoints: {
@@ -545,8 +594,9 @@ const associationEndpoints: ValidationRule = {
  *
  * Nothing else in the declaration fires. The matrix is the same single sentence
  * B1 sanctions, so no typed sequence flow can be off it; `forbidSelfLoop` and
- * `forbidDuplicate` are absent, so loops and copies are B1's business and are
- * never reported twice. This rule raises exactly one kind of finding.
+ * `forbidDuplicate` are absent, so loops are B1a's business and copies are B5's,
+ * and neither is ever reported twice. This rule raises exactly one kind of
+ * finding.
  *
  * No page: the specification has nothing to say about a connector the notation
  * does not contain. This is a rule about OUR canvas, and it exists because our
