@@ -34,24 +34,40 @@ export const ArtefactCatalogueProvider =
   createIdentifier<ArtefactCatalogueService>('AffineArtefactCatalogue');
 
 /**
- * Host override seam: replace the library's sidepanel with the host's own.
+ * Host override seam: replace the library's sidepanel with the host's own —
+ * or switch the catalogue off entirely.
  *
- * This is where a host that already owns a sidebar — a right-hand inspector, a
- * docked panel, a mobile sheet — takes the catalogue over. It registers this
- * extension, its implementation answers {@link ArtefactCatalogueProvider}, and
- * the library's widget is then never asked to open: the sub-menu's "More
- * artefacts…" entry resolves ONE service, and `di.override` decides which.
+ * **Replace** — a host that already owns a sidebar (a right-hand inspector, a
+ * docked panel, a mobile sheet) registers this extension, its implementation
+ * answers {@link ArtefactCatalogueProvider}, and the library's widget is then
+ * never asked to open: the sub-menu's "More artefacts…" entry resolves ONE
+ * service, and `di.override` decides which. The host's own UI draws itself
+ * from the registry (`getCommandsForSurface(std, owner, 'catalogue')`,
+ * `getCommandIcon`) and creates through the one bottleneck
+ * (`runCommand(std, command, { surface: 'catalogue', … })`), so telemetry and
+ * the usage measure keep flowing wherever the pixels live.
+ *
+ * **Disable** — pass `null`. The provider then answers nothing, and every
+ * consumer reads that the honest way: the sub-menu's "More artefacts…" button
+ * is not rendered (a control that opens nothing is a lie), and the library's
+ * panel never opens. This is a cold-assembly switch, like the framework flags:
+ * decided when the editor is put together, not toggled mid-session.
  *
  * Mirrors `CommandUsageExtension` / `KeymapOverrideExtension`: `di.override`,
  * so a host registering after the library's own extensions always wins,
  * whatever the registration order turns out to be.
  */
 export function ArtefactCatalogueExtension(
-  service: ArtefactCatalogueService
+  service: ArtefactCatalogueService | null
 ): ExtensionType {
   return {
     setup: di => {
-      di.override(ArtefactCatalogueProvider, () => service);
+      // `null` rides through the factory on purpose: `getOptional` then
+      // reports the catalogue as absent, which is the whole disable story.
+      di.override(
+        ArtefactCatalogueProvider,
+        () => service as ArtefactCatalogueService
+      );
     },
   };
 }
