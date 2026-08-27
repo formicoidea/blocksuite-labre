@@ -369,6 +369,22 @@ export interface BpmnExportOptions {
   name?: string;
 }
 
+/**
+ * The document, plus what writing it could not say.
+ *
+ * Three things the board can hold have no honest place in a `.bpmn` file, and
+ * until now each of them was documented in a code comment and silent to the
+ * person who clicked Export. A warning is one line, in the user's words, and it
+ * names the fix rather than the mechanism. Nothing here is an error: the file
+ * is valid and the export succeeded — these are the sentences the format
+ * refused to carry.
+ */
+export interface BpmnExportOutcome {
+  text: string;
+  /** Empty when the board came out whole, which is the usual case. */
+  warnings: string[];
+}
+
 /* ── The plan ─────────────────────────────────────────────────────────── */
 
 /**
@@ -622,6 +638,22 @@ export function exportBpmnXml(
   board: BpmnExportBoard,
   options: BpmnExportOptions = {}
 ): string {
+  return exportBpmnXmlWithWarnings(board, options).text;
+}
+
+/**
+ * The same serialization, with the loss channel attached — see
+ * {@link BpmnExportOutcome}.
+ *
+ * {@link exportBpmnXml} is the thin wrapper over it, kept because a caller that
+ * only wants the bytes should not have to reach past a report to get them, and
+ * because #149's forty-six tests and the live integration spec pin that
+ * signature. The interchange capability calls THIS one.
+ */
+export function exportBpmnXmlWithWarnings(
+  board: BpmnExportBoard,
+  options: BpmnExportOptions = {}
+): BpmnExportOutcome {
   const minter = new IdMinter();
   const pools = board.pools;
 
@@ -741,25 +773,43 @@ export function exportBpmnXml(
 
   const edges: PlannedEdge[] = [];
 
+  /** Typed arrows the format had no way to write down. See below for each. */
+  let unwritableEdges = 0;
+  /** Message flows dropped for want of a collaboration. */
+  let droppedMessageFlows = 0;
+
   for (const connector of board.connectors) {
     const element = EDGE_ELEMENT[String(connector.role ?? '')];
-    // A NEUTRAL connector states nothing (`docs/adr/0010`): not a flow.
+    // A NEUTRAL connector states nothing (`docs/adr/0010`): not a flow. NOT
+    // counted as a loss — there was nothing to lose, which is the whole point
+    // of the neutral state.
     if (!element) continue;
 
     const ends = endsOf(connector);
-    if (!ends) continue;
+    // A free end. `sourceRef` and `targetRef` are required on every flow, so
+    // there is no such thing as half an arrow in this format.
+    if (!ends) {
+      unwritableEdges++;
+      continue;
+    }
 
     const source = byModelId.get(ends.source);
     const target = byModelId.get(ends.target);
     // An end attached to something that is not a BPMN artefact — a sticky note,
     // a plain rectangle — has no id in this document to point at.
-    if (!source || !target) continue;
+    if (!source || !target) {
+      unwritableEdges++;
+      continue;
+    }
 
     // A message flow belongs to the collaboration, and there is no
     // collaboration without a pool. On a poolless board it has nowhere in the
     // interchange format to go, so it is dropped rather than demoted to a
     // sequence flow, which would say something else entirely.
-    if (element === 'messageFlow' && !hasCollaboration) continue;
+    if (element === 'messageFlow' && !hasCollaboration) {
+      droppedMessageFlows++;
+      continue;
+    }
 
     edges.push({
       model: connector,
@@ -991,7 +1041,55 @@ export function exportBpmnXml(
     [...roots, diagram]
   );
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${serializeElement(definitions, '')}\n`;
+  /* ── What the format refused to carry ────────────────────────────── */
+
+  const warnings: string[] = [];
+
+  // Flow objects drawn beside the pools. They are in the file and correct for
+  // any tool that reads the MODEL, and a collaboration plane has no shape to
+  // draw a participant-less process in, so bpmn-js imports them and renders
+  // nothing. Found by the live recette; silent to the user until now.
+  //
+  // `orphanProcess >= 0` is load-bearing and not defensive: unminted it is
+  // `-1`, which is exactly {@link COLLABORATION}, and the artifacts filed there
+  // are the ones that ARE drawn.
+  const undrawn =
+    hasCollaboration && orphanProcess >= 0
+      ? planned.filter(node => node.scope === orphanProcess).length
+      : 0;
+  if (undrawn > 0) {
+    warnings.push(
+      `${undrawn} ${undrawn === 1 ? 'artefact is' : 'artefacts are'} drawn ` +
+        `outside every pool. ${undrawn === 1 ? 'It is' : 'They are'} in the ` +
+        `file, but most BPMN tools will not draw ${undrawn === 1 ? 'it' : 'them'}: ` +
+        `only a pool has a shape to hold ${undrawn === 1 ? 'it' : 'them'}. ` +
+        `Draw ${undrawn === 1 ? 'it' : 'them'} inside a pool to make ` +
+        `${undrawn === 1 ? 'it' : 'them'} visible.`
+    );
+  }
+
+  if (droppedMessageFlows > 0) {
+    warnings.push(
+      `${droppedMessageFlows} message ${droppedMessageFlows === 1 ? 'flow was' : 'flows were'} ` +
+        `left out: a message flow runs between participants, and this board ` +
+        `has no pool. Draw the pools it runs between, or say "is followed by" ` +
+        `instead.`
+    );
+  }
+
+  if (unwritableEdges > 0) {
+    warnings.push(
+      `${unwritableEdges} ${unwritableEdges === 1 ? 'arrow was' : 'arrows were'} ` +
+        `left out: BPMN requires both ends of a flow to be named, and ` +
+        `${unwritableEdges === 1 ? 'this one has' : 'these have'} an end that ` +
+        `is loose or attached to something that is not a BPMN artefact.`
+    );
+  }
+
+  return {
+    text: `<?xml version="1.0" encoding="UTF-8"?>\n${serializeElement(definitions, '')}\n`,
+    warnings,
+  };
 }
 
 function boundsAttrs(bound: Rect, dx: number, dy: number): Attrs {

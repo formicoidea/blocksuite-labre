@@ -6,10 +6,8 @@ import {
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   type BpmnLane,
-  BpmnNodeElementModel,
   type BpmnNodeKind,
   BpmnPoolElementModel,
-  ConnectorElementModel,
   ConnectorMode,
   FontFamily,
   PointStyle,
@@ -47,7 +45,12 @@ import {
   START_WIDTH,
   TASK_RADIUS,
 } from './consts';
-import { type BpmnExportBoard, exportBpmnXml } from './export.js';
+import type { BpmnExportBoard } from './export.js';
+import {
+  BPMN_XML_EXPORT,
+  bpmnBoardFrom,
+  bpmnSafeFilename,
+} from './interchange.js';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
 
 /**
@@ -530,73 +533,52 @@ export function bpmnPoolsSelected(std: BlockStdScope): BpmnPoolElementModel[] {
 /**
  * Everything on the surface the exporter speaks about, in document order.
  *
- * Document order matters twice and both times it is the same convention:
- * `bpmnPoolOf` gives a centre inside two overlapping pools to the FIRST one,
- * and the audit's `attribute()` does the same. Sorting here would make the
- * export disagree with the badge the user can see.
+ * The half that needs an editor, and only that half: reading the surface. The
+ * picking is {@link bpmnBoardFrom}, which the interchange capability calls with
+ * the same elements and no `std` at all (`docs/adr/0012`, P3).
  */
 export function bpmnBoardOf(std: BlockStdScope): BpmnExportBoard {
-  const elements = gfxOf(std).surface?.elementModels ?? [];
-  const pools: BpmnPoolElementModel[] = [];
-  const nodes: BpmnNodeElementModel[] = [];
-  const connectors: ConnectorElementModel[] = [];
-
-  for (const element of elements) {
-    if (element instanceof BpmnPoolElementModel) pools.push(element);
-    else if (element instanceof BpmnNodeElementModel) nodes.push(element);
-    else if (element instanceof ConnectorElementModel) connectors.push(element);
-  }
-
-  return { pools, nodes, connectors };
+  return bpmnBoardFrom(gfxOf(std).surface?.elementModels ?? []);
 }
 
 /**
  * What the downloaded file is called, minus the extension.
  *
  * The document's own title first — a board is what the file is OF — then the
- * name of the pool whose toolbar launched the export, then a last resort. Every
- * character a file system reserves becomes `-`, whitespace runs collapse, and
- * the result is capped: `Untitled` is a better download than one a browser
- * silently refuses.
- *
- * The trailing `[. ]` trim is the Windows tail case and it is not decorative: a
- * board called "Order to cash." would otherwise download as
- * `Order to cash..bpmn`, and Windows strips trailing dots and spaces from a
- * name anyway — so the extension is what would get eaten. Trimmed AFTER the
- * cap, because the cap can create one.
+ * name of the pool whose toolbar launched the export, then a last resort. Which
+ * of the three it is, is the only thing this function decides; making the
+ * answer safe to write to disk is {@link bpmnSafeFilename}, so the command and
+ * the interchange capability cannot name the same board differently.
  */
 export function bpmnExportFilename(std: BlockStdScope): string {
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
   const pool = bpmnPoolsSelected(std)[0]?.name;
-  const raw = (title || pool || 'process').trim();
-  const safe = raw
-    .replaceAll(/[\\/:*?"<>|]/g, '-')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
-    .replace(/[. ]+$/, '');
-  return safe || 'process';
+  return bpmnSafeFilename(title || pool);
 }
 
 /**
  * Serialize the whole board as BPMN 2.0 XML and hand it to the browser.
  *
- * The three steps are deliberately three: read the surface, serialize (a pure
- * function with no `std` in sight — `export.ts`), download. Only the first and
- * the last know what an editor is, which is what makes the interesting half
- * testable without one.
+ * Three steps, and only the first and the last know what an editor is: read the
+ * surface, run the DECLARED capability (`docs/adr/0012`), download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `BPMN_XML_EXPORT.run`, so the
+ * command and the registry cannot describe the same board differently. There is
+ * one door; the registry is the label on it.
+ *
+ * A plain import rather than a DI lookup: the capability is a pure function and
+ * a value, resolving it through the container would buy nothing here, and P3 is
+ * explicit that the registry is the editor's view of these functions, not a
+ * gate in front of them.
  */
 export function exportBpmnXmlFile(std: BlockStdScope): void {
-  const board = bpmnBoardOf(std);
-  const name = bpmnExportFilename(std);
-  const xml = exportBpmnXml(board, { name });
-  // `application/xml` and not `text/xml`: the file is not meant to be read as
-  // text by whatever opens it, and `.bpmn` is the extension every BPMN tool
-  // watches for.
-  downloadBlob(
-    new Blob([xml], { type: 'application/xml;charset=utf-8' }),
-    `${name}.bpmn`
-  );
+  const elements = gfxOf(std).surface?.elementModels ?? [];
+  const { text, filename, mime } = BPMN_XML_EXPORT.run(elements, {
+    name: bpmnExportFilename(std),
+  });
+  // The charset is the browser's business, not the format's: `mime` is what
+  // `.bpmn` IS, and this is how a blob is told to carry it.
+  downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
 }
 
 /**

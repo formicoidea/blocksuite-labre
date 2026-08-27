@@ -1,5 +1,6 @@
 import {
   FrameworkBackgroundInteractionExtension,
+  InterchangeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
   validationToolbarConfig,
@@ -16,6 +17,7 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
+import { BPMN_INTERCHANGE } from './interchange';
 import { BPMN_PROFILES } from './profiles';
 import { BPMN_ROLES } from './roles';
 import { BPMN_RULES } from './rules';
@@ -62,10 +64,11 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
 
 /**
  * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button, its
- * templates category, and the validation rules and profiles. Both halves are
- * tooling: a process drawn while the flag was on keeps rendering when it goes
- * off, it just stops being checked — and the profile its pool was put on stays
- * written, unread, until the flag comes back (`docs/adr/0009`).
+ * templates category, the validation rules and profiles, and the interchange
+ * capabilities. All of it is tooling: a process drawn while the flag was on
+ * keeps rendering when it goes off, it just stops being checked — the profile
+ * its pool was put on stays written, unread, until the flag comes back, and so
+ * does anything an import wrote (`docs/adr/0009`, `docs/adr/0012`).
  */
 export class BpmnViewExtension extends ViewExtensionProvider {
   override name = 'affine-bpmn-gfx';
@@ -82,6 +85,11 @@ export class BpmnViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(BPMN_RULES));
       context.register(ValidationProfileExtension(BPMN_PROFILES));
+      // Reading and writing `.bpmn` files, declared rather than assumed
+      // (`docs/adr/0012`). Tooling like the rest of this class: with the flag
+      // off there is nothing to export WITH, while a board a past import wrote
+      // keeps every element and every byte it was given (`docs/adr/0009`).
+      context.register(InterchangeExtension(BPMN_INTERCHANGE));
       // The Validation dropdown on a selected pool's contextual toolbar. A
       // SECOND module on the same element, through the `custom:` flavour slot,
       // exactly as wardley and the context map register it on theirs:
