@@ -6,7 +6,9 @@ import {
 } from '@labre/std';
 
 import { bpmnCommands } from './commands.js';
+import { BPMN_PROFILES } from './profiles.js';
 import { BPMN_ROLES } from './roles.js';
+import { BPMN_RULES, BPMN_RULES_PENDING_ENGINE_V2 } from './rules.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -25,5 +27,14 @@ import { BPMN_ROLES } from './roles.js';
 export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(bpmnCommands),
-    collectTranslationKeys('role', BPMN_ROLES)
+    collectTranslationKeys('role', BPMN_ROLES),
+    // Both arrays: the three rules waiting on `claude/bpmn-engine-v2` carry
+    // wordings a host translates once, and a catalogue that gained them only on
+    // the day they were registered would be a catalogue with a hole in it for
+    // exactly one release.
+    collectTranslationKeys('rule', [
+      ...BPMN_RULES,
+      ...BPMN_RULES_PENDING_ENGINE_V2,
+    ]),
+    collectTranslationKeys('profile', BPMN_PROFILES)
   );

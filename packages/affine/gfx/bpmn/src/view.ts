@@ -1,4 +1,8 @@
-import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
+import {
+  FrameworkBackgroundInteractionExtension,
+  ValidationProfileExtension,
+  ValidationRuleExtension,
+} from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -10,7 +14,9 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
+import { BPMN_PROFILES } from './profiles';
 import { BPMN_ROLES } from './roles';
+import { BPMN_RULES } from './rules';
 import { bpmnTemplateCategory } from './templates';
 import { BpmnPoolRendererExtension } from './element-renderer';
 import { BpmnPoolView } from './element-view';
@@ -53,8 +59,11 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
 }
 
 /**
- * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button and
- * its templates category.
+ * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button, its
+ * templates category, and the validation rules and profiles. Both halves are
+ * tooling: a process drawn while the flag was on keeps rendering when it goes
+ * off, it just stops being checked — and the profile its pool was put on stays
+ * written, unread, until the flag comes back (`docs/adr/0009`).
  */
 export class BpmnViewExtension extends ViewExtensionProvider {
   override name = 'affine-bpmn-gfx';
@@ -69,6 +78,8 @@ export class BpmnViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
+      context.register(ValidationRuleExtension(BPMN_RULES));
+      context.register(ValidationProfileExtension(BPMN_PROFILES));
       context.register(bpmnSeniorTool);
       context.register(CommandExtension(bpmnCommands, bpmnCommandIcons));
     }

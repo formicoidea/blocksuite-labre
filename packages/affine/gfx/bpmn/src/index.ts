@@ -7,6 +7,9 @@ export { bpmnCommandIcons, bpmnCommands } from './commands';
 // Where an artefact sits, without a `BlockStdScope`: the same pool and lane
 // attribution the audit computes, answerable by a rule, a host or a test.
 export { bpmnLaneOf, bpmnPoolOf } from './facts.js';
+// The levels of requirement, and the rules they arbitrate: DATA a host can read,
+// ship and reason about without an editor.
+export { BPMN_PROFILES } from './profiles.js';
 export {
   BPMN_ROLE,
   BPMN_ROLE_OF_KIND,
@@ -14,4 +17,9 @@ export {
   type BpmnRole,
   type BpmnRoleId,
 } from './roles.js';
+export {
+  BPMN_RULES,
+  BPMN_RULES_PENDING_ENGINE_V2,
+  BPMN_SEQUENCE_MATRIX,
+} from './rules.js';
 export { bpmnTranslationEntries } from './translations.js';

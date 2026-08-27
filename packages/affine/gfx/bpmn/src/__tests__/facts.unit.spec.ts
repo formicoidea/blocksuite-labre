@@ -281,8 +281,14 @@ describe('BPMN typed-flow facts', () => {
   it('declares the message flow with its own verb and stamps it nowhere', () => {
     // RESERVED (see `roles.ts`): the vocabulary carries it so a document written
     // by the full pack reads correctly, and no creation site writes it yet. Both
-    // halves are locked — the day a tool stamps it, this test says so, and the
-    // rules session learns that a second flow verb is now in play.
+    // halves are locked — the day a tool stamps it, this test says so.
+    //
+    // `rules.ts` now SPEAKS it, which is the one mention that is not a creation
+    // site: `bpmn.message-flow-endpoints` and `bpmn.message-flow-crosses-pools`
+    // are written about the role, not with it, so they judge a message flow the
+    // day a tool stamps one and say nothing until then. That is exactly the
+    // order this vocabulary was declared in — the id first, the rules on top of
+    // it, the tool last — so the exclusion is widened rather than dropped.
     const def = BPMN_ROLES[BPMN_ROLE.messageFlow];
     expect(def.kind).toBe('edge');
     expect(def.direction?.verbFallback).toBe('sends a message to');
@@ -293,9 +299,11 @@ describe('BPMN typed-flow facts', () => {
       BPMN_ROLE.messageFlow
     );
 
-    // And the source itself: `roles.ts` declares it, nothing else mentions it.
+    // And the source itself: `roles.ts` declares it, `rules.ts` writes rules
+    // about it, and nothing else mentions it — no palette entry, no command, no
+    // action, no template.
     const mentions = tsFilesUnder(SRC)
-      .filter(file => !file.endsWith('roles.ts'))
+      .filter(file => !file.endsWith('roles.ts') && !file.endsWith('rules.ts'))
       .filter(file => readFileSync(file, 'utf8').includes('messageFlow'));
     expect(mentions).toEqual([]);
   });
