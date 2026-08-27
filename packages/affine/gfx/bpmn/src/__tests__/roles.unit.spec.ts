@@ -22,12 +22,23 @@ const FAMILIES = [
   BPMN_ROLE.data,
 ] as const;
 
+/**
+ * The three families that ARE the process, and the word BPMN uses for them.
+ * `bpmn:data` is deliberately not one: the paperwork is not the work.
+ */
+const FLOW_OBJECT_FAMILIES = [
+  BPMN_ROLE.event,
+  BPMN_ROLE.activity,
+  BPMN_ROLE.gateway,
+] as const;
+
 describe('BPMN role vocabulary', () => {
   it('declares the four families, their leaves, the pool and the three flows', () => {
-    // 22 node roles + 3 edges.
-    expect(Object.keys(BPMN_ROLES)).toHaveLength(25);
+    // 23 node roles (22 + the flow-object umbrella) + 3 edges.
+    expect(Object.keys(BPMN_ROLES)).toHaveLength(26);
     for (const id of [
       ...FAMILIES,
+      BPMN_ROLE.flowObject,
       BPMN_ROLE.startEvent,
       BPMN_ROLE.startEventMessage,
       BPMN_ROLE.startEventTimer,
@@ -91,10 +102,73 @@ describe('BPMN role vocabulary', () => {
       expect(roleIsA(family, leaf, BPMN_ROLES)).toBe(false);
     }
 
-    // The four families are roots: BPMN's own taxonomy stops there.
-    for (const family of FAMILIES) {
-      expect(BPMN_ROLES[family].parent, family).toBeUndefined();
+    // Data is a root: the paperwork hangs off nothing. The three flow-object
+    // families are not — they hang off the word BPMN uses for them, and the
+    // walk from a leaf to it is checked below.
+    expect(BPMN_ROLES[BPMN_ROLE.data].parent).toBeUndefined();
+    for (const family of FLOW_OBJECT_FAMILIES) {
+      expect(BPMN_ROLES[family].parent, family).toBe(BPMN_ROLE.flowObject);
     }
+    expect(BPMN_ROLES[BPMN_ROLE.flowObject].parent).toBeUndefined();
+  });
+
+  /**
+   * The walk the rules are written on: a leaf reaches `bpmn:flow-object` through
+   * its family, so `bpmn.sequence-flow-endpoints` says "a flow object" once
+   * where it would otherwise enumerate three — and keeps saying it if a fourth
+   * family ever lands.
+   */
+  it('walks every stamped flow object up to the word BPMN uses for it', () => {
+    const stamped = [
+      BPMN_ROLE.startEvent,
+      BPMN_ROLE.startEventMessage,
+      BPMN_ROLE.startEventTimer,
+      BPMN_ROLE.endEvent,
+      BPMN_ROLE.endEventMessage,
+      BPMN_ROLE.endEventTerminate,
+      BPMN_ROLE.task,
+      BPMN_ROLE.taskUser,
+      BPMN_ROLE.taskService,
+      BPMN_ROLE.subProcess,
+      BPMN_ROLE.callActivity,
+      BPMN_ROLE.gatewayExclusive,
+      BPMN_ROLE.gatewayParallel,
+    ] as const;
+
+    for (const leaf of stamped) {
+      expect(roleIsA(leaf, BPMN_ROLE.flowObject, BPMN_ROLES), leaf).toBe(true);
+    }
+    for (const family of FLOW_OBJECT_FAMILIES) {
+      expect(roleIsA(family, BPMN_ROLE.flowObject, BPMN_ROLES), family).toBe(
+        true
+      );
+    }
+    // ...and it only reads one way: "a flow object" is not "a task".
+    expect(roleIsA(BPMN_ROLE.flowObject, BPMN_ROLE.task, BPMN_ROLES)).toBe(
+      false
+    );
+  });
+
+  it('keeps the paperwork, the commentary and the frame OUT of the flow objects', () => {
+    // The exclusion is the whole value of the word: "a sequence flow chains
+    // flow objects" is only worth saying because a data object is not one.
+    for (const outsider of [
+      BPMN_ROLE.data,
+      BPMN_ROLE.dataObject,
+      BPMN_ROLE.dataStore,
+      BPMN_ROLE.textAnnotation,
+      BPMN_ROLE.pool,
+    ]) {
+      expect(
+        roleIsA(outsider, BPMN_ROLE.flowObject, BPMN_ROLES),
+        outsider
+      ).toBe(false);
+    }
+    // Nor is the umbrella ever stamped: the palette always says which event,
+    // which activity, which gateway.
+    expect(Object.values(BPMN_ROLE_OF_KIND)).not.toContain(
+      BPMN_ROLE.flowObject
+    );
   });
 
   /**

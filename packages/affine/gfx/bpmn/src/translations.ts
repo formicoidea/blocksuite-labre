@@ -6,7 +6,9 @@ import {
 } from '@labre/std';
 
 import { bpmnCommands } from './commands.js';
+import { BPMN_PROFILES } from './profiles.js';
 import { BPMN_ROLES } from './roles.js';
+import { BPMN_RULES } from './rules.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -25,5 +27,7 @@ import { BPMN_ROLES } from './roles.js';
 export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(bpmnCommands),
-    collectTranslationKeys('role', BPMN_ROLES)
+    collectTranslationKeys('role', BPMN_ROLES),
+    collectTranslationKeys('rule', BPMN_RULES),
+    collectTranslationKeys('profile', BPMN_PROFILES)
   );
