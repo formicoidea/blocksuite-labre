@@ -1,11 +1,7 @@
 import type {
-  EdgeDegreeDef,
   EndpointTriplet,
-  ReachabilityDef,
-  RoleCountDef,
   ValidationRule,
 } from '@labre/affine-block-surface';
-import type { RoleId } from '@labre/std/gfx';
 
 import { BPMN_POOL_BACKGROUND } from './background.js';
 import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
@@ -64,7 +60,7 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  *   required to contain a Start Event, and a flow object with no incoming
  *   sequence flow is then a legitimate parallel start (p.245). We sided with the
  *   specification — that decision is what
- *   {@link PendingReachabilityDef.implicitRoots} implements, and adopting the
+ *   {@link ReachabilityDef.implicitRoots} implements, and adopting the
  *   linter's rule would have meant shipping the two in contradiction.
  * - **any overlap / readability rule.** The engine's pair-wise budget is pinned
  *   by the Wardley bench, which asserts that `wardley.overlapping-artefacts` is
@@ -122,178 +118,35 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * silence explicitly (`corpus.unit.spec.ts`), so it stays a known limit rather
  * than an assumption.
  *
- * ## Fields this file writes ahead of the engine
+ * ## The engine fields this pack asked for, and now uses
  *
- * {@link PendingRoleCountDef}, {@link PendingEdgeDegreeDef} and
- * {@link PendingReachabilityDef} declare three fields that `claude/bpmn-engine-v2`
- * adds. They are ordinary sub-types of the engine's own defs — no cast, no
- * augmentation, nothing in `validation.ts` touched — so the data is authored and
- * reviewable today and starts working the day that branch lands. The two rules
- * that would be WRONG without their field are held out of {@link BPMN_RULES} in
- * {@link BPMN_RULES_PENDING_ENGINE_V2}; registering them is one line.
+ * Six of the rules below were authored against defs that did not exist when they
+ * were written, and `claude/bpmn-engine-v2` (#145) landed all six:
+ * `RoleCountDef.ifPresent` and `.exact`, `EdgeDegreeDef.forbidPattern` and
+ * `.eitherMin`, `ReachabilityDef.implicitRoots`, and the `label-presence`
+ * family. Every one of the twenty-one rules is registered and live.
+ *
+ * Two of them are worth knowing about at the call site:
+ *
+ * - `forbidPattern` carries its OWN {@link RuleMessage} inside the pattern
+ *   rather than in a slot beside the other bounds, because a forbidden zone is
+ *   not a bound that failed and its sentence never reads like one;
+ * - `label-presence` reads the subject's OWN `text`. A framework whose artefacts
+ *   are named by a separate element beside them is asking a different question,
+ *   and this family cannot answer it. BPMN names its steps in place, so it can.
  */
 
 /**
- * `RoleCountDef.ifPresent` — the bounds apply only when the frame also holds at
- * least one element of this role.
+ * `eitherMin` was also shipped, and this pack deliberately does not use it.
  *
- * The field the paired existence rules cannot be written without. Per the spec a
- * pool needs NEITHER a start nor an end event: a Process is not required to
- * contain either (p.238), an End Event is optional (p.246), and a pool drawn as
- * a black box in a collaboration is conformant with nothing inside it at all. It
- * is the PAIRING that is normative — a process that says where it begins and not
- * where it stops leaves the reader with no outcome — so the requirement is
- * conditional by nature and no unconditional `min` can express it.
- *
- * Added by `claude/bpmn-engine-v2`.
+ * It and `forbidPattern: { maxIn: 1, maxOut: 1 }` select exactly the same set of
+ * nodes — the engine ships a test asserting they agree across the whole degree
+ * space — so {@link gatewayMustBranch} could be written either way. It is
+ * written as a forbidden zone because that is what its SENTENCE says: "this
+ * gateway neither splits nor merges" describes a shape the diagram has, not a
+ * count it is missing, and the data reads best when it says what the message
+ * says. Nothing is wrong with the other reading; a rule simply has to pick one.
  */
-interface PendingRoleCountDef extends RoleCountDef {
-  ifPresent: RoleId;
-}
-
-/** The four bounds of {@link EdgeDegreeDef}, as a bag. */
-type DegreeBounds = Pick<
-  EdgeDegreeDef,
-  'minIn' | 'maxIn' | 'minOut' | 'maxOut'
->;
-
-/**
- * `EdgeDegreeDef.forbidPattern` — a FORBIDDEN ZONE: the subject is a finding
- * when EVERY bound in the bag holds at once.
- *
- * The four bounds the family has today are a conjunction of REQUIREMENTS, each
- * of which fires on its own. Four of the rules below need the opposite reading:
- * a shape is wrong only when several counts hold TOGETHER, and each of them
- * alone is perfectly ordinary. "A gateway that both merges and splits" is
- * `minIn: 2` and `minOut: 2` at the same time; every gateway on a real diagram
- * satisfies one of the two.
- *
- * ## It also subsumes the disjunction, which is why no `eitherMin` is asked for
- *
- * "A Gateway MUST have either multiple incoming or multiple outgoing Sequence
- * Flows" (p.289) reads as a forbidden zone with no negation at all:
- * `{ maxIn: 1, maxOut: 1 }` — at most one in AND at most one out — is exactly
- * the set of gateways that neither merge nor split. One field instead of two,
- * and the field is the more general one.
- *
- * Added by `claude/bpmn-engine-v2`.
- */
-interface PendingForbidPatternDef extends EdgeDegreeDef {
-  forbidPattern: DegreeBounds;
-}
-
-/**
- * `RoleCountDef.exact` — count elements carrying the subject role ITSELF, with
- * no `roleIsA` descent into its specialisations.
- *
- * The default is the descent, and it is right for every existence rule here: "a
- * pool holds a start event" must stay one requirement when a message start and a
- * timer start land under it. {@link singleBlankStart} needs the other reading and
- * cannot fake it: its whole point is that TYPED starts are distinguishable from
- * one another and untyped ones are not, so it counts the blank ones and must not
- * see the triggers.
- *
- * Added by `claude/bpmn-engine-v2`.
- */
-interface PendingExactRoleCountDef extends RoleCountDef {
-  exact: true;
-}
-
-/**
- * The `label-presence` family — "does this artefact carry a name at all".
- *
- * A new family, so it is a string the engine's own `RuleFamily` union does not
- * contain yet, and this file must not edit that union. Cast ONCE, here, with the
- * reason written down: the alternative is a copy of `ValidationRule` in a
- * framework package, which would be a far larger lie than one string.
- *
- * Added by `claude/bpmn-engine-v2`.
- */
-const LABEL_PRESENCE_FAMILY = 'label-presence' as ValidationRule['family'];
-
-/**
- * `ReachabilityDef.implicitRoots` — a subject with NO incoming typed edge is
- * seeded as a root of the traversal.
- *
- * A Process may start without a Start Event, in which case every flow object
- * with no incoming sequence flow is an implicit parallel start (p.238, p.245).
- * Without this, a pool drawn that way has every one of its steps reported
- * unreachable — one wall of brackets for a shape the spec allows.
- *
- * Added by `claude/bpmn-engine-v2`. Declared today because it only ever makes
- * the rule QUIETER: an engine that ignores it reports a superset of what the
- * corrected one reports, so nothing is silently mis-judged in the meantime.
- */
-interface PendingReachabilityDef extends ReachabilityDef {
-  implicitRoots: true;
-}
-
-/**
- * The pending defs are declared as NAMED CONSTS rather than inline in their
- * rule, and that is a TypeScript necessity rather than a style: an object
- * literal written straight into `ValidationRule.reachability` is checked against
- * that property's declared type and its extra key is rejected as excess, whereas
- * a const of the sub-type is assignable to the super-type like any other value.
- * No cast, no `any`, and the day the engine gains the fields these four consts
- * fold back inline with nothing else changing.
- */
-const REACHES_EVERY_STEP: PendingReachabilityDef = {
-  rootRole: BPMN_ROLE.startEvent,
-  subjectRole: BPMN_ROLE.flowObject,
-  edgeRole: BPMN_ROLE.sequenceFlow,
-  // p.238 / p.245 — see {@link unreachableStep}. Honoured by
-  // `claude/bpmn-engine-v2`; ignored before it, which only ever makes the rule
-  // louder, never wrong in the other direction.
-  implicitRoots: true,
-};
-
-/** p.238 / p.246 — the pairing, not the events. See {@link poolEndWithoutStart}. */
-const START_IF_END: PendingRoleCountDef = {
-  // Matched by `roleIsA`, so the message and timer starts count. "One start
-  // event" stays one requirement as the vocabulary grows.
-  subject: BPMN_ROLE.startEvent,
-  min: 1,
-  ifPresent: BPMN_ROLE.endEvent,
-};
-
-/** The mirror. See {@link poolStartWithoutEnd}. */
-const END_IF_START: PendingRoleCountDef = {
-  subject: BPMN_ROLE.endEvent,
-  min: 1,
-  ifPresent: BPMN_ROLE.startEvent,
-};
-
-/** p.289 — neither merges nor splits. See {@link gatewayMustBranch}. */
-const NEITHER_MERGES_NOR_SPLITS: PendingForbidPatternDef = {
-  edgeRole: BPMN_ROLE.sequenceFlow,
-  forbidPattern: { maxIn: 1, maxOut: 1 },
-};
-
-/** Merging AND splitting at one diamond. See {@link gatewayJoinAndFork}. */
-const MERGES_AND_SPLITS: PendingForbidPatternDef = {
-  edgeRole: BPMN_ROLE.sequenceFlow,
-  forbidPattern: { minIn: 2, minOut: 2 },
-};
-
-/** More than one flow arriving at a step. See {@link fakeJoin}. */
-const MERGES_WITHOUT_A_GATEWAY: PendingForbidPatternDef = {
-  edgeRole: BPMN_ROLE.sequenceFlow,
-  forbidPattern: { minIn: 2 },
-};
-
-/** More than one flow leaving a step. See {@link implicitSplit}. */
-const SPLITS_WITHOUT_A_GATEWAY: PendingForbidPatternDef = {
-  edgeRole: BPMN_ROLE.sequenceFlow,
-  forbidPattern: { minOut: 2 },
-};
-
-/** At most one BLANK start per pool — the triggers do not count. See {@link singleBlankStart}. */
-const ONE_BLANK_START: PendingExactRoleCountDef = {
-  subject: BPMN_ROLE.startEvent,
-  max: 1,
-  exact: true,
-};
-
 /**
  * The one sanctioned sentence of a sequence flow: a flow object is followed by a
  * flow object (p.95 — "a Sequence Flow connects Events, Activities and
@@ -992,7 +845,7 @@ const messageFlowCrossesPools: ValidationRule = {
  * A Process is NOT required to contain a Start Event (p.238); drawn without one,
  * every flow object with no incoming sequence flow is an implicit parallel start
  * and the process instantiates on all of them at once (p.245). Without
- * {@link PendingReachabilityDef.implicitRoots} the traversal has nowhere to
+ * {@link ReachabilityDef.implicitRoots} the traversal has nowhere to
  * leave from on such a diagram — the family answers total silence for zero roots,
  * which is safe — but a MIXED pool, one explicit start plus a parallel branch
  * that has none, would have the whole branch reported unreachable. The field is
@@ -1032,7 +885,14 @@ const unreachableStep: ValidationRule = {
   // diagram rather than one the tool asks while they draw. See the header.
   moment: 'on-demand',
   backgroundRole: BPMN_ROLE.pool,
-  reachability: REACHES_EVERY_STEP,
+  reachability: {
+    rootRole: BPMN_ROLE.startEvent,
+    subjectRole: BPMN_ROLE.flowObject,
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    // p.238 / p.245 — see the header. A step nothing points at IS a beginning,
+    // whether or not anybody drew the circle.
+    implicitRoots: true,
+  },
 };
 
 /**
@@ -1052,7 +912,7 @@ const unreachableStep: ValidationRule = {
  * starts is not a style, it is half a model.
  *
  * So the bound is conditional: at least one start event, **and only when the pool
- * already holds an end event** ({@link PendingRoleCountDef.ifPresent}).
+ * already holds an end event** ({@link RoleCountDef.ifPresent}).
  *
  * ## Why the finding lands on the POOL
  *
@@ -1083,7 +943,15 @@ const poolEndWithoutStart: ValidationRule = {
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
-  roleCount: START_IF_END,
+  roleCount: {
+    // Matched by `roleIsA`, so the message and timer starts count. "One start
+    // event" stays one requirement as the vocabulary grows.
+    subject: BPMN_ROLE.startEvent,
+    min: 1,
+    // The guard, and the whole rule: a pool holding no end event is not judged
+    // at all. p.238 / p.246.
+    ifPresent: BPMN_ROLE.endEvent,
+  },
 };
 
 /**
@@ -1116,7 +984,11 @@ const poolStartWithoutEnd: ValidationRule = {
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
-  roleCount: END_IF_START,
+  roleCount: {
+    subject: BPMN_ROLE.endEvent,
+    min: 1,
+    ifPresent: BPMN_ROLE.startEvent,
+  },
 };
 
 /**
@@ -1131,7 +1003,7 @@ const poolStartWithoutEnd: ValidationRule = {
  * Expressed as a FORBIDDEN ZONE rather than as a disjunction:
  * `{ maxIn: 1, maxOut: 1 }` is exactly the set of gateways that neither merge
  * nor split, and it needs no new operator — see
- * {@link PendingForbidPatternDef}. The four independent bounds the family has
+ * {@link EdgeDegreeDef.forbidPattern}. The four ordinary bounds the family has
  * today cannot say it: `minIn: 2` alone indicts every split, `minOut: 2` alone
  * indicts every merge, and both together indict everything.
  *
@@ -1163,7 +1035,23 @@ const gatewayMustBranch: ValidationRule = {
     'A gateway is a fork or a join: draw the second branch out of it, bring the second path into it, or delete it and let the sequence flow run straight through.',
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
-  degree: NEITHER_MERGES_NOR_SPLITS,
+  degree: {
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    // p.289, as a forbidden zone: at most one in AND at most one out is
+    // exactly the set of gateways that neither merge nor split. The pattern
+    // carries its own words, because a shape the diagram HAS never reads like
+    // a bound it is missing.
+    forbidPattern: {
+      maxIn: 1,
+      maxOut: 1,
+      messageKey: 'com.labre.bpmn.rule.gateway-must-branch.idle',
+      messageFallback:
+        'This gateway takes one flow in and puts one flow out, so it decides nothing.',
+      suggestionKey: 'com.labre.bpmn.rule.gateway-must-branch.idle.suggestion',
+      suggestionFallback:
+        'Draw the second branch out of it, bring the second path into it, or delete it and let the sequence flow run straight through.',
+    },
+  },
 };
 
 /**
@@ -1179,7 +1067,7 @@ const gatewayMustBranch: ValidationRule = {
  * The forbidden zone is `{ minIn: 2, minOut: 2 }`, and both halves are ordinary
  * on their own: every merge satisfies the first, every split the second. Only
  * the conjunction is the mistake, which is precisely what
- * {@link PendingForbidPatternDef} exists for.
+ * {@link EdgeDegreeDef.forbidPattern} exists for.
  */
 const gatewayJoinAndFork: ValidationRule = {
   id: 'bpmn.gateway-join-and-fork',
@@ -1195,7 +1083,19 @@ const gatewayJoinAndFork: ValidationRule = {
     'A reader cannot tell whether it waits for the incoming paths or races them. Split it in two — a gateway that joins, a sequence flow, then a gateway that forks.',
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
-  degree: MERGES_AND_SPLITS,
+  degree: {
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    forbidPattern: {
+      minIn: 2,
+      minOut: 2,
+      messageKey: 'com.labre.bpmn.rule.gateway-join-and-fork.both',
+      messageFallback: 'This gateway both merges paths and splits them.',
+      suggestionKey:
+        'com.labre.bpmn.rule.gateway-join-and-fork.both.suggestion',
+      suggestionFallback:
+        'A reader cannot tell whether it waits for the incoming paths or races them. Split it in two — a gateway that joins, a sequence flow, then a gateway that forks.',
+    },
+  },
 };
 
 /**
@@ -1236,7 +1136,17 @@ const fakeJoin: ValidationRule = {
     'BPMN allows it, and the step runs once per path that reaches it. If it is meant to WAIT for the others instead, bring the paths into a joining gateway and let one flow out of it.',
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
-  degree: MERGES_WITHOUT_A_GATEWAY,
+  degree: {
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    forbidPattern: {
+      minIn: 2,
+      messageKey: 'com.labre.bpmn.rule.fake-join.merge',
+      messageFallback: 'Several paths arrive at this step without a gateway.',
+      suggestionKey: 'com.labre.bpmn.rule.fake-join.merge.suggestion',
+      suggestionFallback:
+        'BPMN allows it, and the step runs once per path that reaches it. If it is meant to WAIT for the others instead, bring the paths into a joining gateway and let one flow out of it.',
+    },
+  },
 };
 
 /**
@@ -1271,7 +1181,17 @@ const implicitSplit: ValidationRule = {
     'As drawn, every path runs. If the process chooses between them, put an exclusive gateway after the step and name what it decides on.',
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
-  degree: SPLITS_WITHOUT_A_GATEWAY,
+  degree: {
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    forbidPattern: {
+      minOut: 2,
+      messageKey: 'com.labre.bpmn.rule.implicit-split.fork',
+      messageFallback: 'Several paths leave this step without a gateway.',
+      suggestionKey: 'com.labre.bpmn.rule.implicit-split.fork.suggestion',
+      suggestionFallback:
+        'As drawn, every path runs. If the process chooses between them, put an exclusive gateway after the step and name what it decides on.',
+    },
+  },
 };
 
 /**
@@ -1291,7 +1211,7 @@ const implicitSplit: ValidationRule = {
  * the ones that DO NOT count, because being typed is what makes them
  * distinguishable. `max: 1` with the descent on would indict the pool that draws
  * a message start beside a timer start — the one diagram this rule exists to
- * permit. See {@link PendingExactRoleCountDef}.
+ * permit. See {@link RoleCountDef.exact}.
  *
  * `audit`: the diagram is ambiguous rather than wrong, and the fix is often to
  * TYPE one of the two starts, which is a modelling decision only the author can
@@ -1311,7 +1231,13 @@ const singleBlankStart: ValidationRule = {
   version: 1,
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
-  roleCount: ONE_BLANK_START,
+  roleCount: {
+    subject: BPMN_ROLE.startEvent,
+    max: 1,
+    // No `roleIsA` descent: the TYPED starts are exactly the ones that must not
+    // count, because being typed is what makes them tellable apart.
+    exact: true,
+  },
 };
 
 /**
@@ -1333,12 +1259,13 @@ const singleBlankStart: ValidationRule = {
  * Written on `bpmn:flow-object`: an unnamed gateway is worse than an unnamed
  * task, since the whole content of a decision is the question it asks.
  *
- * Needs the `label-presence` family — see {@link LABEL_PRESENCE_FAMILY}.
+ * The `label-presence` family reads the subject's OWN `text`, which is where
+ * BPMN puts the name of a step — so this rule can be asked at all.
  */
 const unlabeledStep: ValidationRule = {
   id: 'bpmn.unlabeled-step',
   framework: 'bpmn',
-  family: LABEL_PRESENCE_FAMILY,
+  family: 'label-presence',
   severity: 'audit',
   appliesTo: BPMN_ROLE.flowObject,
   roles: BPMN_ROLES,
@@ -1348,13 +1275,25 @@ const unlabeledStep: ValidationRule = {
   suggestionFallback:
     'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3". An unnamed gateway is worse still: the whole content of a decision is the question it asks.',
   version: 1,
+  // Explicitly on-demand, and it stays explicit: `moment: undefined` means
+  // REALTIME, and the engine watches `text` for exactly this family when a
+  // real-time rule of it is registered. Dropping this line would hand the
+  // drawing path a debounced re-evaluation per keystroke, which is the cost the
+  // second moment exists to refuse.
   moment: 'on-demand',
   backgroundRole: BPMN_ROLE.pool,
+  label: { present: true },
 };
 
 /**
- * The rules the pack REGISTERS today. Thirteen, every one of them correct
- * against the specification with the engine as it stands.
+ * The pack, whole: twenty-one rules, all registered, all live.
+ *
+ * Eight of them were authored ahead of the engine and sat in a held-out array
+ * for one review cycle, because two would have been actively WRONG meanwhile —
+ * an engine with no `ifPresent` reads B14/B15 as the unconditional "every pool
+ * holds a start event" the specification review removed, which fires on a
+ * conformant black-box pool. `claude/bpmn-engine-v2` (#145) landed every field
+ * they asked for, so the array is gone and the split with it.
  */
 export const BPMN_RULES: readonly ValidationRule[] = [
   // Connection: what a link may run between, and how many times.
@@ -1363,56 +1302,26 @@ export const BPMN_RULES: readonly ValidationRule[] = [
   associationEndpoints,
   untypedFlow,
   duplicateSequenceFlow,
-  // Degree: how many links reach one symbol.
+  // Degree: how many links reach one symbol, and which shapes of degree are
+  // forbidden outright.
   startEventNoInflow,
   startEventMustExit,
   endEventNoOutflow,
   endEventMustBeReached,
   activityDeadEnd,
-  // Locality: which pool each end sits in.
-  sequenceFlowStaysHome,
-  messageFlowCrossesPools,
-  // Topology: what the graph as a whole says.
-  unreachableStep,
-];
-
-/**
- * The eight rules whose DEF FIELD (or whole FAMILY) does not exist yet —
- * authored, reviewable, and deliberately not registered until
- * `claude/bpmn-engine-v2` lands.
- *
- * ## Why they are held out rather than shipped inert
- *
- * Most of them WOULD be inert: an `edge-degree` rule declaring no bound the
- * engine recognises warns once and evaluates nothing, and a rule naming an
- * unknown family would not resolve to an evaluator at all. The two `ifPresent`
- * rules would NOT be. An engine that ignores that field reads
- * `{ subject: start-event, min: 1 }` — precisely the unconditional rule the
- * specification review removed, firing on the black-box pool and on the pool
- * somebody has not started filling in.
- *
- * One array rather than two, and this is the reason: a reviewer reading
- * {@link BPMN_RULES} must be able to take "everything here works" literally, and
- * a reviewer reading this one must not have to work out which entries are merely
- * quiet and which are actively wrong. The boundary is "needs engine-v2", which is
- * a fact about each rule; "would be wrong meanwhile" is a fact about the engine,
- * and it changes on the day the branch lands.
- *
- * Registering them is one line: spread this array into {@link BPMN_RULES}. The
- * profiles already spell all twenty-one ids out, and the corpus already pins the
- * cases whose answer holds in both worlds.
- */
-export const BPMN_RULES_PENDING_ENGINE_V2: readonly ValidationRule[] = [
-  // `RoleCountDef.ifPresent`.
-  poolEndWithoutStart,
-  poolStartWithoutEnd,
-  // `RoleCountDef.exact`.
-  singleBlankStart,
-  // `EdgeDegreeDef.forbidPattern`.
   gatewayMustBranch,
   gatewayJoinAndFork,
   fakeJoin,
   implicitSplit,
-  // The `label-presence` family.
+  // Locality: which pool each end sits in.
+  sequenceFlowStaysHome,
+  messageFlowCrossesPools,
+  // Existence: what one pool must contain, and how many of it.
+  poolEndWithoutStart,
+  poolStartWithoutEnd,
+  singleBlankStart,
+  // Topology: what the graph as a whole says.
+  unreachableStep,
+  // Naming: whether the symbol says anything at all.
   unlabeledStep,
 ];

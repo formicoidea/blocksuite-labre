@@ -29,15 +29,13 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * entry in the array at the bottom of this file plus whatever new rules the new
  * artefacts bring. Nothing in the pipework has to learn a third word.
  *
- * ## Both tables spell out TWENTY-ONE ids, and the pack registers thirteen
+ * ## Both tables spell out all TWENTY-ONE ids
  *
- * Eight rules are authored and held out of registration until the def fields —
- * or, for one of them, the whole family — they need land
- * (`BPMN_RULES_PENDING_ENGINE_V2` in `rules.ts`). A profile is an
- * override table keyed by rule id, so an entry for a rule nobody has registered
- * is inert — and having it written down is what keeps registering those three a
- * one-line change instead of a one-line change plus two edits here that somebody
- * would discover missing from a user's board.
+ * Every severity a user can get is either the one its rule declares or one of
+ * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
+ * also what let eight of these rules wait a review cycle for the engine fields
+ * they needed and then arrive already governed, rather than arriving and
+ * quietly keeping their own severity at a level nobody had chosen.
  */
 
 /**
@@ -79,8 +77,6 @@ const sketch: ValidationProfile = {
     'bpmn.sequence-flow-stays-home': 'audit',
     'bpmn.message-flow-crosses-pools': 'audit',
     'bpmn.unreachable-step': 'audit',
-    // Authored, not registered yet — see `BPMN_RULES_PENDING_ENGINE_V2`. Written
-    // down now so that registering them stays the one line it should be.
     'bpmn.pool-end-without-start': 'audit',
     'bpmn.pool-start-without-end': 'audit',
     'bpmn.single-blank-start': 'audit',
@@ -158,7 +154,6 @@ const descriptive: ValidationProfile = {
     'bpmn.sequence-flow-stays-home': 'warning',
     'bpmn.message-flow-crosses-pools': 'warning',
     'bpmn.unreachable-step': 'warning',
-    // Authored, not registered yet — see `BPMN_RULES_PENDING_ENGINE_V2`.
     'bpmn.pool-end-without-start': 'warning',
     'bpmn.pool-start-without-end': 'warning',
     'bpmn.single-blank-start': 'audit',

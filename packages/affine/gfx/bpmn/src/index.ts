@@ -17,9 +17,5 @@ export {
   type BpmnRole,
   type BpmnRoleId,
 } from './roles.js';
-export {
-  BPMN_RULES,
-  BPMN_RULES_PENDING_ENGINE_V2,
-  BPMN_SEQUENCE_MATRIX,
-} from './rules.js';
+export { BPMN_RULES, BPMN_SEQUENCE_MATRIX } from './rules.js';
 export { bpmnTranslationEntries } from './translations.js';

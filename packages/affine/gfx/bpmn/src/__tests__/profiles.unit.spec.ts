@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { BPMN_PROFILES } from '../profiles';
-import { BPMN_RULES, BPMN_RULES_PENDING_ENGINE_V2 } from '../rules';
+import { BPMN_RULES } from '../rules';
 
-/** Every rule the pack has authored — registered or waiting on the engine. */
-const ALL_RULES = [...BPMN_RULES, ...BPMN_RULES_PENDING_ENGINE_V2];
+/**
+ * The whole pack, and it is now one array: `claude/bpmn-engine-v2` (#145)
+ * landed every def field the eight held-out rules were authored against, so the
+ * `BPMN_RULES_PENDING_ENGINE_V2` staging array is gone.
+ */
+const ALL_RULES = BPMN_RULES;
 
 /**
  * The two levels of requirement, as DATA — the same spec `ddd-context-map` ships
@@ -32,15 +36,13 @@ describe('BPMN validation profiles', () => {
     expect(defaults[0].id).toBe('bpmn.sketch');
   });
 
-  it('spells out every rule in every profile, registered or not', () => {
-    // Twenty-one authored, thirteen registered. A profile is an override table
-    // keyed by rule id, so the eight waiting on `claude/bpmn-engine-v2` are
-    // inert entries — and having them written down is what keeps registering
-    // those eight a one-line change.
+  it('spells out every rule in every profile', () => {
+    // Twenty-one, all registered. Every severity a user can get is either the
+    // one its rule declares or one of these lines — nothing is raised
+    // implicitly (PF9.4), and a rule shipped later cannot join a level in
+    // silence.
     const ruleIds = ALL_RULES.map(rule => rule.id).sort();
     expect(ruleIds).toHaveLength(21);
-    expect(BPMN_RULES).toHaveLength(13);
-    expect(BPMN_RULES_PENDING_ENGINE_V2).toHaveLength(8);
     for (const profile of BPMN_PROFILES) {
       expect(profile.framework).toBe('bpmn');
       expect(profile.labelKey).toMatch(/^com\.labre\./);
@@ -149,8 +151,6 @@ describe('what the framework ships as rules', () => {
     expect([...byFamily.keys()].sort()).toEqual([
       'edge-degree',
       'edge-locality',
-      // `claude/bpmn-engine-v2` adds this one; `bpmn.unlabeled-step` is the
-      // only rule that names it, and it is not registered until it exists.
       'label-presence',
       'reachability',
       'relation-endpoints',
@@ -162,23 +162,21 @@ describe('what the framework ships as rules', () => {
     expect(byFamily.get('role-count')).toHaveLength(3);
     expect(byFamily.get('reachability')).toHaveLength(1);
     expect(byFamily.get('label-presence')).toEqual(['bpmn.unlabeled-step']);
-    // Every family a REGISTERED rule names is one the engine can evaluate.
-    for (const rule of BPMN_RULES) {
-      expect(rule.family, rule.id).not.toBe('label-presence');
-    }
   });
 
   /**
-   * The eight rules whose def field — or, for one of them, whose whole family
-   * — `claude/bpmn-engine-v2` adds. Held out of
-   * registration on purpose: an engine that ignores `ifPresent` reads the two
-   * existence rules as the UNCONDITIONAL "every pool holds a start event" the
-   * specification review removed, which would fire on a black-box pool (p.238 /
-   * p.246). Shipping data that is wrong today on the promise of a future branch
-   * is how a false positive reaches a user.
+   * The eight rules that were authored a review cycle ahead of the engine, now
+   * that `claude/bpmn-engine-v2` (#145) has landed every def field they name.
+   *
+   * Pinned as a group because the reason they waited is worth keeping: two of
+   * them would have been actively WRONG in the meantime. An engine with no
+   * `ifPresent` reads the pair as the UNCONDITIONAL "every pool holds a start
+   * event" the specification review removed — a finding on a conformant
+   * black-box pool (p.238 / p.246). A rule whose data is wrong until a future
+   * branch lands is a false positive with a release date.
    */
-  it('holds the eight engine-v2 rules out of the registered pack', () => {
-    expect(BPMN_RULES_PENDING_ENGINE_V2.map(rule => rule.id)).toEqual([
+  it('registers the eight rules that were authored ahead of the engine', () => {
+    const late = [
       'bpmn.pool-end-without-start',
       'bpmn.pool-start-without-end',
       'bpmn.single-blank-start',
@@ -187,11 +185,38 @@ describe('what the framework ships as rules', () => {
       'bpmn.fake-join',
       'bpmn.implicit-split',
       'bpmn.unlabeled-step',
-    ]);
+    ];
     const registered = new Set(BPMN_RULES.map(rule => rule.id));
-    for (const rule of BPMN_RULES_PENDING_ENGINE_V2) {
-      expect(registered.has(rule.id), rule.id).toBe(false);
+    for (const id of late) expect(registered.has(id), id).toBe(true);
+
+    // ...each one still carrying the field it waited for, so a revert of the
+    // engine work cannot leave the rule silently meaning something else.
+    const byId = new Map(BPMN_RULES.map(rule => [rule.id, rule]));
+    expect(byId.get('bpmn.pool-end-without-start')?.roleCount?.ifPresent).toBe(
+      'bpmn:end-event'
+    );
+    expect(byId.get('bpmn.pool-start-without-end')?.roleCount?.ifPresent).toBe(
+      'bpmn:start-event'
+    );
+    expect(byId.get('bpmn.single-blank-start')?.roleCount?.exact).toBe(true);
+    expect(byId.get('bpmn.unreachable-step')?.reachability?.implicitRoots).toBe(
+      true
+    );
+    expect(byId.get('bpmn.unlabeled-step')?.label?.present).toBe(true);
+    for (const id of [
+      'bpmn.gateway-must-branch',
+      'bpmn.gateway-join-and-fork',
+      'bpmn.fake-join',
+      'bpmn.implicit-split',
+    ]) {
+      const pattern = byId.get(id)?.degree?.forbidPattern;
+      expect(pattern, id).toBeDefined();
+      // The pattern carries its OWN words: a forbidden zone is not a bound that
+      // failed, and its sentence never reads like one.
+      expect(pattern?.messageKey, id).toMatch(/^com\.labre\.bpmn\.rule\./);
+      expect(pattern?.messageFallback, id).toBeTruthy();
     }
+
     // ...and the unconditional existence rules the review removed are gone for
     // good: a pool needs NEITHER event, only the pairing is normative.
     for (const id of ['bpmn.pool-without-start', 'bpmn.pool-without-end']) {

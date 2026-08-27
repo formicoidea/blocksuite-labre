@@ -7,14 +7,14 @@ import {
 } from '@labre/affine-block-surface';
 import type { BpmnPoolElementModel } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
-import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
+import { type GfxPrimitiveElementModel, roleIsA } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import { BPMN_POOL_BACKGROUND } from '../background';
 import { bpmnPoolOf } from '../facts';
 import { BPMN_PROFILES } from '../profiles';
-import { BPMN_ROLE } from '../roles';
-import { BPMN_RULES, BPMN_RULES_PENDING_ENGINE_V2 } from '../rules';
+import { BPMN_ROLE, BPMN_ROLES } from '../roles';
+import { BPMN_RULES, BPMN_SEQUENCE_MATRIX } from '../rules';
 
 /**
  * The BPMN REFERENCE CORPUS — whole processes, judged the way a user's board is
@@ -29,7 +29,7 @@ import { BPMN_RULES, BPMN_RULES_PENDING_ENGINE_V2 } from '../rules';
  *
  * - the VALID corpus, where a correct process must raise NOTHING at the
  *   descriptive level. A rule that fires on a good diagram is a rule the user
- *   switches off, and then all thirteen are gone;
+ *   switches off, and then all twenty-one are gone;
  * - the INVALID corpus, where each board carries exactly ONE mistake and the
  *   rule that catches it is named, with the elements it indicts spelled out. One
  *   mistake, one sentence, on the symbols the user has to touch.
@@ -65,7 +65,16 @@ function element(
   } as unknown as GfxPrimitiveElementModel;
 }
 
-/** A node centred on `(cx, cy)` — how a reader places a symbol. */
+/**
+ * A node centred on `(cx, cy)` — how a reader places a symbol — and NAMED.
+ *
+ * The name is the id, which is enough for `label-presence`: the family reads the
+ * subject's own `text` and asks only whether there is one. Naming every node by
+ * default is what keeps the corpus honest now that B21 is live — a board of
+ * unnamed rectangles is a diagram nobody has finished, and every diagram here
+ * claims to be finished. The one case that needs a nameless step builds it with
+ * {@link element} directly.
+ */
 const node = (
   id: string,
   role: string,
@@ -74,7 +83,7 @@ const node = (
   w = 100,
   h = 60
 ): GfxPrimitiveElementModel =>
-  element(id, role, [cx - w / 2, cy - h / 2, w, h]);
+  element(id, role, [cx - w / 2, cy - h / 2, w, h], { text: id });
 
 const start = (id: string, cx: number, cy: number) =>
   node(id, BPMN_ROLE.startEvent, cx, cy, 40, 40);
@@ -146,20 +155,37 @@ const checkup = (elements: GfxPrimitiveElementModel[]) =>
   evaluateCheckup(BPMN_RULES, elements, BPMN_PROFILES);
 
 /**
- * The eight rules waiting on `claude/bpmn-engine-v2`, run on their own.
+ * An alias for {@link evaluate}, kept for the blocks below.
  *
- * They are not in {@link BPMN_RULES} — an engine that ignores `ifPresent` reads
- * the two existence rules as the unconditional version the specification review
- * removed — so the corpus exercises them here, on the cases whose answer is the
- * same before and after the field lands. The cases where it is not are `skip`ped
- * below, each naming the branch.
+ * Those eight rules were authored a review cycle ahead of the engine and ran
+ * against their own array, because two of them were WRONG without the def field
+ * they name — an engine with no `ifPresent` reads the pair as the unconditional
+ * "every pool holds a start event" the specification review removed.
+ * `claude/bpmn-engine-v2` (#145) landed every field, so they are part of the
+ * pack like everything else. The alias is what makes that a one-line diff
+ * instead of a rewrite: the boards did not change, only what evaluates them.
  */
-const pending = (elements: GfxPrimitiveElementModel[]) =>
-  evaluateRules(BPMN_RULES_PENDING_ENGINE_V2, elements, BPMN_PROFILES);
+const pending = evaluate;
 
-/** `[ruleId, …elementIds]` per finding, sorted — what a board actually says. */
+/** `[ruleId, …elementIds]` per finding, sorted — everything a board reports. */
 const said = (violations: readonly Violation[]) =>
   violations.map(v => [v.ruleId, ...v.elementIds].join(' ')).sort();
+
+/**
+ * What the DRAWING USER is actually told: the same list minus the `audit`
+ * findings, which are collected for the conformance panel and never reach the
+ * canvas.
+ *
+ * The "one mistake, one sentence" promise is about brackets on a board, so the
+ * invalid corpus asserts this one. Five of the twenty-one rules are `audit` by
+ * declaration — they report shapes the specification sanctions, or a diagram
+ * that is merely unfinished — and holding a board to "raises exactly one finding
+ * of any kind" would have meant either deleting them or bending every fixture
+ * around remarks the user will never see. The remarks are still asserted, on the
+ * boards that are ABOUT them, with {@link said}.
+ */
+const told = (violations: readonly Violation[]) =>
+  said(violations.filter(v => v.severity !== 'audit'));
 
 // ---------------------------------------------------------------------------
 // The VALID corpus: three processes that must raise nothing at all.
@@ -290,9 +316,14 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // Both participants are complete, so nothing else has anything to say: the
     // only thing wrong is that a token would have to change participant.
     const board = [...twoPools(), flow('cross', 'order', 'ship')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.sequence-flow-stays-home cross order ship',
     ]);
+    // The crossing flow also gives `order` a second exit and `ship` a second
+    // entrance, which p.151 allows and the panel remarks on. Neither reaches
+    // the canvas, and neither is what this board is about.
+    expect(said(evaluate(board))).toContain('bpmn.implicit-split order');
+    expect(said(evaluate(board))).toContain('bpmn.fake-join ship');
   });
 
   it('catches a message flow that never leaves its pool', () => {
@@ -300,14 +331,14 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // sequence flow. The grammar is happy — an activity may message an activity
     // — and only the frames the two ends sit in tell the two cases apart.
     const board = [...onePool(), message('m1', 'first', 'second')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.message-flow-crosses-pools first m1 second',
     ]);
   });
 
   it('catches a sequence flow arriving at a start event', () => {
     const board = [...onePool(), flow('back', 'second', 'start')];
-    expect(said(evaluate(board))).toEqual(['bpmn.start-event-no-inflow start']);
+    expect(told(evaluate(board))).toEqual(['bpmn.start-event-no-inflow start']);
   });
 
   it('catches a sequence flow leaving an end event', () => {
@@ -325,7 +356,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
       flow('f3', 'done', 'after'),
       flow('f4', 'after', 'really-done'),
     ];
-    expect(said(evaluate(board))).toEqual(['bpmn.end-event-no-outflow done']);
+    expect(told(evaluate(board))).toEqual(['bpmn.end-event-no-outflow done']);
   });
 
   it('remarks on a task nothing follows, without raising its voice', () => {
@@ -358,7 +389,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
       flow('f1', 'start', 'first'),
       flow('f2', 'first', 'done'),
     ];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.start-event-must-exit orphan-start',
     ]);
   });
@@ -366,7 +397,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
   it('catches an end event nothing leads to', () => {
     // p.248: an outcome the process has no path to.
     const board = [...onePool(), end('never', 660, 250)];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.end-event-must-be-reached never',
     ]);
   });
@@ -381,24 +412,44 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
       data('ledger', 500, 250),
       association('a1', 'form', 'ledger'),
     ];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.association-endpoints a1 form ledger',
     ]);
   });
 
-  it('catches an island no start event reaches — but only on a check-up', () => {
-    // The island points BACK into the chain, so every degree count is satisfied
-    // and only the graph knows. Forward-only traversal is what makes it a
-    // finding at all.
+  it('catches a ring the process can never enter — but only on a check-up', () => {
+    // The defect `implicitRoots` leaves standing, and the only one it leaves:
+    // every step in the ring is pointed at, so none of them is an implicit
+    // start; nothing outside points in, so no walk reaches it. The work can
+    // never begin there. Forward-only traversal is what makes it a finding.
     const board = [
       ...onePool(),
-      task('island', 460, 250),
-      flow('back', 'island', 'first'),
+      task('ring-a', 300, 250),
+      task('ring-b', 500, 250),
+      flow('r1', 'ring-a', 'ring-b'),
+      flow('r2', 'ring-b', 'ring-a'),
     ];
     // Nothing on the drawing path: the rule is `on-demand`, so `evaluateRules`
     // skips it before touching a single element.
-    expect(said(evaluate(board))).toEqual([]);
-    expect(said(checkup(board))).toEqual(['bpmn.unreachable-step island']);
+    expect(told(evaluate(board))).toEqual([]);
+    expect(said(checkup(board))).toEqual([
+      'bpmn.unreachable-step ring-a',
+      'bpmn.unreachable-step ring-b',
+    ]);
+  });
+
+  it('says nothing about a branch that simply has no start event drawn', () => {
+    // The case `ReachabilityDef.implicitRoots` exists for, and the reason
+    // bpmnlint's `no-implicit-start` is not adopted: p.238 does not require a
+    // Start Event, and p.245 makes a step nothing points at an implicit
+    // parallel start. Before the flag, one marked start anywhere on the board
+    // lifted the zero-root gate and the unmarked branch lit up end to end.
+    const board = [
+      ...onePool(),
+      task('parallel', 300, 250),
+      flow('p1', 'parallel', 'done'),
+    ];
+    expect(said(checkup(board))).toEqual([]);
   });
 
   it('catches two steps joined by an untyped link', () => {
@@ -406,7 +457,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // the model holds nothing. The link is drawn ALONGSIDE the real flow, so
     // nothing else about the board is wrong.
     const board = [...onePool(), plain('quick', 'first', 'second')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.untyped-flow first quick second',
     ]);
   });
@@ -430,7 +481,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
       flow('f5', 'reject', 'done'),
       association('a1', 'decide', 'form'),
     ];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.association-endpoints a1 decide form',
     ]);
   });
@@ -440,14 +491,14 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // roles are in the rule's alphabet, so the sentence is judged and refused
     // rather than waved through as a sketch.
     const board = [...twoPools(), message('m1', 'seller-start', 'order')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.message-flow-endpoints m1 order seller-start',
     ]);
   });
 
   it('catches a sequence flow looping back onto its own step', () => {
     const board = [...onePool(), flow('loop', 'first', 'first')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.sequence-flow-endpoints first loop',
     ]);
   });
@@ -457,7 +508,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // innocence and every copy after it is the finding — by edge id, so the
     // same board reports the same one on every peer and after every reload.
     const board = [...onePool(), flow('f2-again', 'first', 'second')];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.duplicate-sequence-flow f2-again first second',
     ]);
   });
@@ -467,7 +518,7 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     // and neither is a copy of the other. The `back` flow arrives at a task, so
     // it is not B6's business either.
     const board = [...onePool(), flow('back', 'second', 'first')];
-    expect(said(evaluate(board))).toEqual([]);
+    expect(told(evaluate(board))).toEqual([]);
   });
 });
 
@@ -541,7 +592,68 @@ describe('what the corpus stays silent about', () => {
       flow('to-note', 'first', 'note'),
       flow('to-data', 'second', 'form'),
     ];
-    expect(said(evaluate(board))).toEqual([]);
+    expect(told(evaluate(board))).toEqual([]);
+    // No finding of the endpoints rule at all — not a quieter one, none.
+    expect(said(evaluate(board)).join(' ')).not.toContain(
+      'bpmn.sequence-flow-endpoints'
+    );
+  });
+
+  /**
+   * The GROUP, and the one case where the alphabet limit and the specification
+   * agree rather than diverging.
+   *
+   * `bpmn:group` is in the vocabulary — it is a declared role with a label, not
+   * an unnamed rectangle — so the obvious guess is that the endpoints rule
+   * speaks about it. It does not: the alphabet is read off the sanctioned
+   * TRIPLETS, and B1's single sentence names `bpmn:flow-object`. A group is a
+   * parent-less artifact, `roleIsA` says no, and the link is silence.
+   *
+   * Here that is the RIGHT answer and not a limit we are living with. BPMN 2.0.2
+   * §10.4 exempts a Group from every connection and containment constraint there
+   * is — it is a lasso drawn round a region, and the region it circles keeps
+   * whatever relations it had. `roles.ts` says so where the role is declared;
+   * this is the same statement, asserted against the engine.
+   *
+   * Contrast p.65 (an Artifact must not be a sequence flow endpoint), which is
+   * the same silence and IS a limit — for a text annotation, the spec forbids
+   * what we cannot say. Two roles, one mechanism, opposite verdicts on whether
+   * the silence is correct. Pinned separately for exactly that reason.
+   */
+  it('says nothing about a sequence flow attached to a group, and should not', () => {
+    const board = [
+      ...onePool(),
+      node('phase-one', BPMN_ROLE.group, 300, 250, 240, 90),
+      flow('into-group', 'first', 'phase-one'),
+      flow('out-of-group', 'phase-one', 'second'),
+    ];
+    expect(told(evaluate(board))).toEqual([]);
+    expect(said(evaluate(board)).join(' ')).not.toContain(
+      'bpmn.sequence-flow-endpoints'
+    );
+    // The mechanism, spelled out so a reader does not have to infer it: the
+    // group is DECLARED, and still outside the alphabet, because the alphabet
+    // is the triplets and not the vocabulary.
+    expect(BPMN_ROLES[BPMN_ROLE.group]).toBeDefined();
+    expect(roleIsA(BPMN_ROLE.group, BPMN_ROLE.flowObject, BPMN_ROLES)).toBe(
+      false
+    );
+    expect(BPMN_SEQUENCE_MATRIX.map(t => [t.source, t.target])).toEqual([
+      [BPMN_ROLE.flowObject, BPMN_ROLE.flowObject],
+    ]);
+  });
+
+  it('says nothing about a plain connector dropped on a group either', () => {
+    // `flagNeutral` reads the same alphabet, so the lasso is not somewhere a
+    // typed relation can be presumed to have been meant — which is the whole
+    // point of reading the triplets rather than the vocabulary.
+    const board = [
+      ...onePool(),
+      node('phase-one', BPMN_ROLE.group, 300, 250, 240, 90),
+      plain('lasso-link', 'first', 'phase-one'),
+    ];
+    expect(told(evaluate(board))).toEqual([]);
+    expect(said(evaluate(board)).join(' ')).not.toContain('bpmn.untyped-flow');
   });
 
   it('says nothing about a message flow dropped on a gateway or an annotation', () => {
@@ -553,11 +665,16 @@ describe('what the corpus stays silent about', () => {
       pool('seller', [0, 400, 800, 300]),
       start('buyer-start', 100, 150),
       gateway('decide', 300, 150),
-      task('order', 500, 150),
+      // The gateway genuinely SPLITS, so B16 has nothing to say about it — this
+      // board is about the message flow the grammar cannot judge.
+      task('order', 500, 90),
+      task('cancel', 500, 210),
       end('buyer-done', 700, 150),
       flow('b1', 'buyer-start', 'decide'),
       flow('b2', 'decide', 'order'),
-      flow('b3', 'order', 'buyer-done'),
+      flow('b3', 'decide', 'cancel'),
+      flow('b4', 'order', 'buyer-done'),
+      flow('b5', 'cancel', 'buyer-done'),
       // The note lives in the buyer's pool, so the message drawn at it still
       // CROSSES — this case is about the grammar staying quiet, and a locality
       // finding would be a second sentence about a different mistake.
@@ -566,9 +683,12 @@ describe('what the corpus stays silent about', () => {
       message('m1', 'ship', 'decide'),
       message('m2', 'ship', 'note'),
     ];
-    // `ship` is a dead end, which the panel remarks on; neither message flow is
-    // judged at all.
-    expect(said(evaluate(board))).toEqual(['bpmn.activity-dead-end ship']);
+    // Neither message flow is judged at all. `ship` is a dead end, which the
+    // panel remarks on and which is not this board's subject.
+    expect(told(evaluate(board))).toEqual([]);
+    expect(said(evaluate(board)).join(' ')).not.toContain(
+      'bpmn.message-flow-endpoints'
+    );
   });
 
   it('says nothing about a step drawn beside the pool rather than in it', () => {
@@ -580,9 +700,13 @@ describe('what the corpus stays silent about', () => {
       task('outside', 300, 900),
       flow('out', 'second', 'outside'),
     ];
-    // `outside` is a dead end, which IS a mistake — but the locality rule says
-    // nothing, which is the point of the case.
-    expect(said(evaluate(board))).toEqual(['bpmn.activity-dead-end outside']);
+    // `outside` is a dead end and `second` now splits, both of which the panel
+    // remarks on — but the LOCALITY rule says nothing, which is the point.
+    expect(told(evaluate(board))).toEqual([]);
+    expect(said(evaluate(board)).join(' ')).not.toContain(
+      'bpmn.sequence-flow-stays-home'
+    );
+    expect(said(evaluate(board))).toContain('bpmn.activity-dead-end outside');
   });
 });
 
@@ -606,6 +730,7 @@ describe('scenario · an exception granted, and taken back', () => {
 
     const before = evaluate(board);
     expect(said(before)).toEqual(['bpmn.activity-dead-end forgotten']);
+    expect(told(before)).toEqual([]);
     expect(before[0].exemption).toBeUndefined();
 
     // The user's arbitration: "this one is deliberate."
@@ -636,7 +761,7 @@ describe('scenario · an exception granted, and taken back', () => {
       flow('cross-back', 'ship', 'order'),
     ];
     const buyer = board[0];
-    expect(said(evaluate(board))).toEqual([
+    expect(told(evaluate(board))).toEqual([
       'bpmn.sequence-flow-stays-home cross order ship',
       'bpmn.sequence-flow-stays-home cross-back order ship',
     ]);
@@ -652,6 +777,7 @@ describe('scenario · an exception granted, and taken back', () => {
 
     revokeException(buyer, 'bpmn.sequence-flow-stays-home');
     for (const violation of evaluate(board)) {
+      if (violation.ruleId !== 'bpmn.sequence-flow-stays-home') continue;
       expect(violation.exemption, violation.elementIds[0]).toBeUndefined();
     }
   });
@@ -659,22 +785,36 @@ describe('scenario · an exception granted, and taken back', () => {
 
 describe('scenario · the profile decides how hard the pack bites', () => {
   /** One board, two mistakes in two families, so the demotion is visible. */
+  /**
+   * One board, two mistakes, in two different families — and DELIBERATELY
+   * neither of them a degree mistake.
+   *
+   * A profile scenario has to show the same findings moving between levels, so
+   * every finding on this board must be one the profile actually moves. The two
+   * chosen are carried by links the degree family does not count: a role-less
+   * connector is invisible to it, and a message flow is a different edge role.
+   * That keeps the board free of the `audit` remarks that would otherwise ride
+   * along and make "every finding is at warning" false for a reason that has
+   * nothing to do with profiles.
+   */
   const messyBoard = (profile: string | null) => [
     pool('pool', [0, 0, 800, 300], profile),
     start('start', 100, 150),
     task('first', 280, 150),
+    task('second', 460, 150),
     end('done', 660, 150),
     flow('f1', 'start', 'first'),
-    flow('f2', 'first', 'done'),
-    // A flow back into the start event (degree), and a step that follows
-    // itself (grammar).
-    flow('back', 'first', 'start'),
-    flow('loop', 'first', 'first'),
+    flow('f2', 'first', 'second'),
+    flow('f3', 'second', 'done'),
+    // Quick-connect between two steps (grammar)…
+    plain('quick', 'first', 'second'),
+    // …and a message that never leaves the pool (locality).
+    message('m1', 'first', 'second'),
   ];
 
   const MESSY = [
-    'bpmn.sequence-flow-endpoints first loop',
-    'bpmn.start-event-no-inflow start',
+    'bpmn.message-flow-crosses-pools first m1 second',
+    'bpmn.untyped-flow first quick second',
   ];
 
   it('holds every finding at warning on bpmn.descriptive', () => {
@@ -763,7 +903,10 @@ describe('pending · the paired existence rules', () => {
       task('first', 300, 150),
       flow('f1', 'start', 'first')
     );
-    expect(said(pending(board))).toEqual(['bpmn.pool-start-without-end pool']);
+    expect(told(pending(board))).toEqual(['bpmn.pool-start-without-end pool']);
+    // `first` leads nowhere, which is how the pool comes to have no end event
+    // at all — the panel remarks on it, the canvas says the one thing.
+    expect(said(pending(board))).toContain('bpmn.activity-dead-end first');
   });
 
   it('says nothing about a pool holding both', () => {
@@ -790,7 +933,7 @@ describe('pending · the paired existence rules', () => {
     expect(said(pending(board))).toEqual([]);
   });
 
-  it.skip('says nothing about a pool holding NEITHER event — needs claude/bpmn-engine-v2', () => {
+  it('says nothing about a pool holding NEITHER event', () => {
     // A black-box participant in a collaboration is conformant with nothing
     // inside it (p.238 / p.246). Until `RoleCountDef.ifPresent` is honoured the
     // engine reads `{ subject, min: 1 }` unconditionally and indicts this board
@@ -825,7 +968,7 @@ describe('pending · the gateways, as forbidden zones', () => {
     ...extra,
   ];
 
-  it.skip('indicts a gateway with one flow in and one out — needs claude/bpmn-engine-v2', () => {
+  it('indicts a gateway with one flow in and one out', () => {
     // p.289, read as the forbidden zone `{ maxIn: 1, maxOut: 1 }` — which is
     // also, exactly, the "superfluous gateway" nudge. One predicate, one rule.
     const board = withGateway(
@@ -836,7 +979,7 @@ describe('pending · the gateways, as forbidden zones', () => {
     expect(said(pending(board))).toEqual(['bpmn.gateway-must-branch decide']);
   });
 
-  it.skip('says nothing about a gateway that splits — needs claude/bpmn-engine-v2', () => {
+  it('says nothing about a gateway that splits', () => {
     const board = withGateway(
       task('yes', 550, 90),
       task('no', 550, 210),
@@ -848,13 +991,15 @@ describe('pending · the gateways, as forbidden zones', () => {
     expect(said(pending(board))).toEqual([]);
   });
 
-  it.skip('indicts a gateway that merges AND splits — needs claude/bpmn-engine-v2', () => {
+  it('indicts a gateway that merges AND splits', () => {
     // bpmnlint's `no-gateway-join-fork`: a reader cannot tell whether the
     // diamond waits for both incoming paths or races them.
     const board = [
       pool('pool', [0, 0, 900, 300]),
-      start('a-start', 100, 90),
-      start('b-start', 100, 210),
+      // TYPED starts, so the two-blank-starts remark does not ride along on a
+      // board that is about the gateway.
+      node('a-start', BPMN_ROLE.startEventMessage, 100, 90, 40, 40),
+      node('b-start', BPMN_ROLE.startEventTimer, 100, 210, 40, 40),
       gateway('both', 400, 150),
       task('yes', 620, 90),
       task('no', 620, 210),
@@ -877,13 +1022,13 @@ describe('pending · the panel-only nuances', () => {
    * reach the canvas: `audit` is collected for the conformance panel and shown
    * to no drawing user.
    */
-  it.skip('remarks on several paths arriving at one step — needs claude/bpmn-engine-v2', () => {
+  it('remarks on several paths arriving at one step', () => {
     // p.151 sanctions the uncontrolled merge and defines its token semantics,
     // so this is a question the diagram no longer asks out loud, not a mistake.
     const board = [
       pool('pool', [0, 0, 900, 300]),
-      start('a-start', 100, 90),
-      start('b-start', 100, 210),
+      node('a-start', BPMN_ROLE.startEventMessage, 100, 90, 40, 40),
+      node('b-start', BPMN_ROLE.startEventTimer, 100, 210, 40, 40),
       task('merge-here', 450, 150),
       end('done', 800, 150),
       flow('f1', 'a-start', 'merge-here'),
@@ -895,7 +1040,7 @@ describe('pending · the panel-only nuances', () => {
     expect(violations[0].severity).toBe('audit');
   });
 
-  it.skip('remarks on several paths leaving one step — needs claude/bpmn-engine-v2', () => {
+  it('remarks on several paths leaving one step', () => {
     const board = [
       pool('pool', [0, 0, 900, 300]),
       start('start', 100, 150),
@@ -909,19 +1054,24 @@ describe('pending · the panel-only nuances', () => {
     expect(said(pending(board))).toEqual(['bpmn.implicit-split split-here']);
   });
 
-  it.skip('remarks on two indistinguishable blank starts — needs claude/bpmn-engine-v2', () => {
+  it('remarks on two indistinguishable blank starts', () => {
     // bpmnlint's `single-blank-start-event`. `RoleCountDef.exact` is what makes
     // the TYPED starts not count: being typed is what makes them tellable
     // apart, which is the whole content of the rule.
+    // Each start leads to its OWN step and the two paths meet at the end event,
+    // which no degree rule is written on — so the board says exactly the one
+    // thing this case is about.
     const twoBlank = [
       pool('pool', [0, 0, 900, 300]),
       start('one', 100, 90),
       start('two', 100, 210),
-      task('work', 450, 150),
+      task('work-a', 450, 90),
+      task('work-b', 450, 210),
       end('done', 800, 150),
-      flow('f1', 'one', 'work'),
-      flow('f2', 'two', 'work'),
-      flow('f3', 'work', 'done'),
+      flow('f1', 'one', 'work-a'),
+      flow('f2', 'two', 'work-b'),
+      flow('f3', 'work-a', 'done'),
+      flow('f4', 'work-b', 'done'),
     ];
     expect(said(pending(twoBlank))).toEqual(['bpmn.single-blank-start pool']);
 
@@ -931,16 +1081,18 @@ describe('pending · the panel-only nuances', () => {
       pool('pool', [0, 0, 900, 300]),
       node('by-message', BPMN_ROLE.startEventMessage, 100, 90, 40, 40),
       node('by-timer', BPMN_ROLE.startEventTimer, 100, 210, 40, 40),
-      task('work', 450, 150),
+      task('work-a', 450, 90),
+      task('work-b', 450, 210),
       end('done', 800, 150),
-      flow('f1', 'by-message', 'work'),
-      flow('f2', 'by-timer', 'work'),
-      flow('f3', 'work', 'done'),
+      flow('f1', 'by-message', 'work-a'),
+      flow('f2', 'by-timer', 'work-b'),
+      flow('f3', 'work-a', 'done'),
+      flow('f4', 'work-b', 'done'),
     ];
     expect(said(pending(twoTyped))).toEqual([]);
   });
 
-  it.skip('remarks on a step nobody has named — needs the label-presence family', () => {
+  it('remarks on a step nobody has named', () => {
     // bpmnlint makes `label-required` an ERROR. Ours is `audit` AND
     // `on-demand`: a task is created unnamed, so a realtime rule would bracket
     // every symbol the moment it appears. "Three steps are unnamed" belongs to
@@ -953,17 +1105,17 @@ describe('pending · the panel-only nuances', () => {
       flow('f1', 'start', 'nameless'),
       flow('f2', 'nameless', 'done'),
     ];
-    expect(said(evaluateRules(BPMN_RULES_PENDING_ENGINE_V2, board))).toEqual(
-      []
-    );
-    expect(said(evaluateCheckup(BPMN_RULES_PENDING_ENGINE_V2, board))).toEqual([
-      'bpmn.unlabeled-step nameless',
-    ]);
+    // Nothing on the drawing path: `moment: 'on-demand'` takes the rule out of
+    // `evaluateRules` before a single element is touched, which is also what
+    // keeps `text` off the watched props — typing into a task never
+    // re-evaluates the surface.
+    expect(said(evaluate(board))).toEqual([]);
+    expect(said(checkup(board))).toEqual(['bpmn.unlabeled-step nameless']);
   });
 });
 
 describe('pending · implicit roots on the reachability sweep', () => {
-  it.skip('treats an in-degree-zero step as a parallel start — needs claude/bpmn-engine-v2', () => {
+  it('treats an in-degree-zero step as a parallel start', () => {
     // A Process may start without a Start Event, and then every flow object with
     // no incoming sequence flow instantiates it (p.238 / p.245). Declared today
     // as `ReachabilityDef.implicitRoots`; ignored by the engine as it stands,

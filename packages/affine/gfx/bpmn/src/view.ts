@@ -2,13 +2,15 @@ import {
   FrameworkBackgroundInteractionExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  validationToolbarConfig,
 } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { CommandExtension } from '@labre/std';
+import { ToolbarModuleExtension } from '@labre/affine-shared/services';
+import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { BPMN_POOL_BACKGROUND } from './background';
@@ -80,6 +82,20 @@ export class BpmnViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(BPMN_RULES));
       context.register(ValidationProfileExtension(BPMN_PROFILES));
+      // The Validation dropdown on a selected pool's contextual toolbar. A
+      // SECOND module on the same element, through the `custom:` flavour slot,
+      // exactly as wardley and the context map register it on theirs:
+      // `bpmnPoolToolbarExtension` is registered always-on because a stored pool
+      // must keep its lanes and its resize toggle, while choosing how hard to
+      // check the process is tooling and belongs here. The config names no
+      // framework — it reads roles and profiles — so it is the very same object
+      // the other two register.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier('custom:affine:surface:bpmnPool'),
+          config: validationToolbarConfig,
+        })
+      );
       context.register(bpmnSeniorTool);
       context.register(CommandExtension(bpmnCommands, bpmnCommandIcons));
     }
