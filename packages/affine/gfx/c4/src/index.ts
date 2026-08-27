@@ -46,6 +46,9 @@ export {
   type C4TierElement,
   c4TierText,
 } from './component.js';
+// The levels of requirement, and the rules they arbitrate: DATA a host can
+// read, ship and reason about without an editor.
+export { C4_PROFILES } from './profiles.js';
 export {
   C4_ROLE,
   C4_ROLE_OF_KIND,
@@ -67,6 +70,11 @@ export {
   toMermaidAlias,
   toMermaidText,
 } from './export.js';
+export {
+  C4_ELEMENT_MATRIX,
+  C4_RELATIONSHIP_MATRIX,
+  C4_RULES,
+} from './rules.js';
 // The toolbox, for the host that composes the command registry and the
 // translation-key manifest out of the frameworks it installed (see
 // `packages/affine/all/src/{commands,translations}.ts`).

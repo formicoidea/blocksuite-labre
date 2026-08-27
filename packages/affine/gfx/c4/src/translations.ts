@@ -7,7 +7,9 @@ import {
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
 import { c4Commands } from './commands.js';
+import { C4_PROFILES } from './profiles.js';
 import { C4_ROLES } from './roles.js';
+import { C4_RULES } from './rules.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -32,5 +34,12 @@ export const c4TranslationEntries: TranslationKeyManifestEntry[] =
     collectTranslationKeys('background', [
       C4_BOARD_BACKGROUND,
       C4_BOUNDARY_BACKGROUND,
-    ])
+    ]),
+    // AFTER the two above, and the order is load-bearing: a rule carries its
+    // framework's `roles` and, for `c4.person-in-boundary`, the boundary's own
+    // declaration, so walking the rules reaches keys those two lists already
+    // named. `mergeTranslationEntries` keeps the FIRST occurrence, which is what
+    // makes each key report the source it actually comes from.
+    collectTranslationKeys('rule', C4_RULES),
+    collectTranslationKeys('profile', C4_PROFILES)
   );
