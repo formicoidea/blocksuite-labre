@@ -37,12 +37,12 @@ describe('BPMN validation profiles', () => {
   });
 
   it('spells out every rule in every profile', () => {
-    // Twenty-one, all registered. Every severity a user can get is either the
+    // Twenty-two, all registered. Every severity a user can get is either the
     // one its rule declares or one of these lines — nothing is raised
     // implicitly (PF9.4), and a rule shipped later cannot join a level in
     // silence.
     const ruleIds = ALL_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(21);
+    expect(ruleIds).toHaveLength(22);
     for (const profile of BPMN_PROFILES) {
       expect(profile.framework).toBe('bpmn');
       expect(profile.labelKey).toMatch(/^com\.labre\./);
@@ -59,7 +59,7 @@ describe('BPMN validation profiles', () => {
   it('holds every rule at its authored severity on the descriptive profile', () => {
     // The descriptive profile does not RE-DECIDE anything: it is the rules at
     // the severity each of them declares, written down in one place so a
-    // reviewer can read the level instead of reading twenty-one files.
+    // reviewer can read the level instead of reading twenty-two files.
     const descriptive = BPMN_PROFILES[1];
     for (const rule of ALL_RULES) {
       expect(descriptive.rules[rule.id], rule.id).toBe(rule.severity);
@@ -158,7 +158,7 @@ describe('what the framework ships as rules', () => {
       'relation-endpoints',
       'role-count',
     ]);
-    expect(byFamily.get('relation-endpoints')).toHaveLength(5);
+    expect(byFamily.get('relation-endpoints')).toHaveLength(6);
     expect(byFamily.get('edge-degree')).toHaveLength(9);
     expect(byFamily.get('edge-locality')).toHaveLength(2);
     expect(byFamily.get('role-count')).toHaveLength(3);
@@ -253,6 +253,104 @@ describe('what the framework ships as rules', () => {
       ].filter(bound => bound !== undefined);
       expect(bounds.length, id).toBeLessThanOrEqual(1);
     }
+  });
+
+  /**
+   * Provenance, and the reason it is a TOTALITY test rather than a spot check.
+   *
+   * The field is optional on the engine's side — a framework that says nothing
+   * about its authority is a framework that says nothing — but for BPMN a rule
+   * arriving without one is the bug this pack exists to avoid: an architecture
+   * review asked that a Labre convention never present itself as a norm
+   * violation, and a rule with no declared provenance shows no line at all,
+   * which is precisely the state the review found.
+   */
+  it('declares where every rule gets its authority', () => {
+    for (const rule of ALL_RULES) {
+      expect(rule.provenance, rule.id).toBeDefined();
+      expect(
+        ['standard', 'recommendation', 'labre-convention'],
+        rule.id
+      ).toContain(rule.provenance!.source);
+    }
+    // `organization` is reserved for the org profiles the PRD names, and no
+    // framework declares one yet. Pinned so the day one does is a decision.
+    expect(
+      ALL_RULES.filter(rule => rule.provenance?.source === 'organization')
+    ).toEqual([]);
+  });
+
+  it('cites a page or a clause for every rule it calls a standard', () => {
+    // The whole value of `standard` is that the user can go and check. A rule
+    // claiming the OMG's authority without saying where is a claim nobody can
+    // verify, which is worse than claiming none.
+    const standards = ALL_RULES.filter(
+      rule => rule.provenance?.source === 'standard'
+    );
+    expect(standards.length).toBeGreaterThan(0);
+    for (const rule of standards) {
+      const reference = rule.provenance!.reference;
+      expect(reference, rule.id).toBeTruthy();
+      // Loosely pinned on purpose: a citation is prose, and the format that
+      // reads best differs between a page, a clause and a table. What must be
+      // there is a LOCATOR.
+      expect(reference, rule.id).toMatch(/p\.\d|§/);
+      expect(reference, rule.id).toContain('BPMN 2.0.2');
+    }
+  });
+
+  it('names the source of every recommendation, and owns every convention', () => {
+    for (const rule of ALL_RULES) {
+      const { source, reference } = rule.provenance!;
+      if (source === 'standard') continue;
+      // A recommendation names the linter or the sentence the specification
+      // merely permits; a convention says out loud that it is ours. Either way
+      // the user is told what they are being asked to believe.
+      expect(reference, rule.id).toBeTruthy();
+      if (source === 'labre-convention') {
+        expect(reference, rule.id).toMatch(/Labre/);
+      }
+    }
+    // The two, and only the two: the self-loop and the untyped connector. Both
+    // are house style, and neither is dressed as anything else.
+    expect(
+      ALL_RULES.filter(
+        rule => rule.provenance?.source === 'labre-convention'
+      ).map(rule => rule.id)
+    ).toEqual(['bpmn.sequence-flow-self-loop', 'bpmn.untyped-flow']);
+  });
+
+  /**
+   * The split that the provenance field forced, pinned end to end.
+   *
+   * B1's matrix is p.95 and its self-loop clause was ours, so one rule could
+   * not have declared either honestly — and the clause that FIRES was the house
+   * style, so a `standard` label would have shown an OMG page under a finding
+   * the OMG does not make. The two are separate objects now, and the assertions
+   * below are what stops them from being folded back together.
+   */
+  it('keeps the standard endpoints rule and the house self-loop apart', () => {
+    const byId = new Map(ALL_RULES.map(rule => [rule.id, rule]));
+    const endpoints = byId.get('bpmn.sequence-flow-endpoints')!;
+    const selfLoop = byId.get('bpmn.sequence-flow-self-loop')!;
+
+    expect(endpoints.provenance?.source).toBe('standard');
+    expect(selfLoop.provenance?.source).toBe('labre-convention');
+
+    // The clause lives on exactly one of them...
+    expect(endpoints.endpoints?.forbidSelfLoop).toBeUndefined();
+    expect(selfLoop.endpoints?.forbidSelfLoop).toBe(true);
+    // ...and both judge the same alphabet, so they can never disagree about
+    // what "a step" is, nor indict a link the other waves through.
+    expect(selfLoop.endpoints?.allowed).toBe(endpoints.endpoints?.allowed);
+    expect(selfLoop.endpoints?.edgeRole).toBe(endpoints.endpoints?.edgeRole);
+
+    // The wording the clause shipped with, unchanged: a split that renamed a
+    // user-visible key would be a migration, and this is not one.
+    expect(selfLoop.messageKey).toBe(
+      'com.labre.bpmn.validation.sequence-flow-self-loop'
+    );
+    expect(selfLoop.endpoints?.selfLoop).toBeUndefined();
   });
 
   it('keeps the graph sweep and the naming check off the drawing path', () => {

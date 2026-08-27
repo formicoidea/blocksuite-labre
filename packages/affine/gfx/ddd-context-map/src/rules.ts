@@ -85,6 +85,11 @@ const relationshipEndpoints: ValidationRule = {
   suggestionFallback:
     'A context map relates bounded contexts — re-point the loose end onto one, or delete the link.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Context Mapping (DDD) — the relationship grammar of the notation',
+  },
   backgroundRole: CONTEXT_MAP_ROLE.board,
   background: CONTEXT_MAP_BACKGROUND,
   endpoints: {
@@ -147,6 +152,11 @@ const aclConformistExclusive: ValidationRule = {
   suggestionFallback:
     'Conforming means taking the upstream model as it is; an ACL means refusing to. Keep the one the team actually does.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Context Mapping (DDD) — the pattern canon: an anticorruption layer and a conformist are opposite answers',
+  },
   backgroundRole: CONTEXT_MAP_ROLE.board,
   background: CONTEXT_MAP_BACKGROUND,
   endpoints: {
@@ -187,6 +197,11 @@ const patternOnCustomerSupplier: ValidationRule = {
   suggestionFallback:
     'Customer/Supplier means the downstream needs are negotiated into the upstream backlog. Conformist says they are not; Open Host Service says the upstream serves everyone the same way. Keep one.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Context Mapping (DDD) — Customer/Supplier is a relationship of negotiation',
+  },
   backgroundRole: CONTEXT_MAP_ROLE.board,
   background: CONTEXT_MAP_BACKGROUND,
   endpoints: {
@@ -229,6 +244,11 @@ const aclOnCustomerSupplier: ValidationRule = {
   suggestionFallback:
     'Legitimate while a model is being retired — worth asking whether the negotiation still works if it is not.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — the notation forbids nothing here; a tool cannot tell the two readings apart',
+  },
   backgroundRole: CONTEXT_MAP_ROLE.board,
   background: CONTEXT_MAP_BACKGROUND,
   endpoints: {
@@ -260,6 +280,11 @@ const contextOffBoard: ValidationRule = {
   suggestionFallback:
     'Drag it onto the board, or grow the board to take it in.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — membership on this canvas, not a Context Mapping rule',
+  },
   backgroundRole: CONTEXT_MAP_ROLE.board,
   background: CONTEXT_MAP_BACKGROUND,
 };

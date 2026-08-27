@@ -28,8 +28,22 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * the PO supplied. They are not decoration: three rules in the first draft of
  * this pack fired on diagrams the specification explicitly sanctions, and the
  * only thing that caught them was reading the normative text rather than the
- * folklore. A rule with no citation here is a rule about a LABRE convention, and
- * says so in its own comment — there is exactly one (`forbidSelfLoop`).
+ * folklore.
+ *
+ * ## And every rule now DECLARES where its authority comes from
+ *
+ * The citations above used to live in these comments alone, which meant the UI
+ * could not tell a conformance defect from a house style: a Labre convention
+ * presented to an architect as a norm violation is the finding an external
+ * review will not forgive. {@link ValidationRule.provenance} promotes the
+ * distinction to data — `standard` for a normative MUST with its page,
+ * `recommendation` for a SHOULD or an industry linter, `labre-convention` for
+ * ours — and the violation bubble says which.
+ *
+ * Two rules here are `labre-convention` and neither pretends otherwise:
+ * {@link sequenceFlowSelfLoop} and {@link untypedFlow}. The first exists as a
+ * separate rule BECAUSE of this field: it was a clause of B1, whose matrix is
+ * p.95, and one rule cannot honestly declare two provenances — see B1a.
  *
  * ## Why BPMN is the framework that needed five families
  *
@@ -131,7 +145,7 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * were written, and `claude/bpmn-engine-v2` (#145) landed all six:
  * `RoleCountDef.ifPresent` and `.exact`, `EdgeDegreeDef.forbidPattern` and
  * `.eitherMin`, `ReachabilityDef.implicitRoots`, and the `label-presence`
- * family. Every one of the twenty-one rules is registered and live.
+ * family. Every one of the rules below is registered and live.
  *
  * Two of them are worth knowing about at the call site:
  *
@@ -177,8 +191,7 @@ export const BPMN_SEQUENCE_MATRIX: readonly EndpointTriplet[] = [
 ];
 
 /**
- * **B1** — a sequence flow chains steps of the same process, and never a step
- * onto itself.
+ * **B1** — a sequence flow chains steps of the same process.
  *
  * The base grammar (p.95). Its matrix holds ONE sentence, and
  * `bpmn:flow-object` is therefore the whole alphabet of the rule — which makes
@@ -192,18 +205,16 @@ export const BPMN_SEQUENCE_MATRIX: readonly EndpointTriplet[] = [
  * (p.95), but neither is named by the sentence above, so a flow dropped on one is
  * outside the conversation. See the file header; the corpus pins it.
  *
- * ## The self-loop is a LABRE convention, not a conformance requirement
+ * ## The self-loop LEFT this rule, and the provenance field is why
  *
- * The single clause of this rule that fires today, and the only rule in this file
- * with no page behind it. The specification contains no normative prohibition on
- * a Sequence Flow whose source and target are the same flow object; the "no
- * self-loop" habit comes from the BPMN 1.x loop idiom, which 2.0 replaced with
- * activity loop MARKERS and standard loop characteristics.
- *
- * We keep it, at `warning`, because on a DESCRIPTIVE diagram a step drawn as
- * following itself tells the reader nothing about what decides to repeat it —
- * and the notation that does is one gateway away. It is our house style, said
- * out loud, and the message says so rather than implying the spec forbids it.
+ * Until the provenance work it also carried `forbidSelfLoop`, and that clause
+ * was the only one of the two that could ever fire — which made the rule's
+ * authority a genuine mix: a matrix out of p.95 whose sentence is unreachable,
+ * plus a house style with no page behind it. Declared `standard`, it would have
+ * shown an OMG citation under a finding the OMG does not make; declared
+ * `labre-convention`, it would have disowned p.95. So the clause became
+ * {@link sequenceFlowSelfLoop}, B1a — the same split, for the same reason, that
+ * already separated {@link duplicateSequenceFlow} from this rule.
  */
 const sequenceFlowEndpoints: ValidationRule = {
   id: 'bpmn.sequence-flow-endpoints',
@@ -220,6 +231,11 @@ const sequenceFlowEndpoints: ValidationRule = {
   suggestionFallback:
     'A sequence flow runs between events, activities and gateways of one process — between pools, send a message flow instead.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.95 — a Sequence Flow connects Events, Activities and Gateways',
+  },
   // Not a frame the rule measures against — a sentence is right or wrong
   // wherever it is drawn — but the pool a finding is ATTRIBUTED to, so the
   // arbitration "ignore this rule on this participant" has somewhere to live.
@@ -229,21 +245,75 @@ const sequenceFlowEndpoints: ValidationRule = {
   endpoints: {
     edgeRole: BPMN_ROLE.sequenceFlow,
     allowed: BPMN_SEQUENCE_MATRIX,
+    // Deliberately NOT `forbidDuplicate`, and no longer `forbidSelfLoop`. Two
+    // sequence flows between the same two steps is how a hand draws a process
+    // it is still thinking about, and on a descriptive diagram it is read by
+    // following arrows rather than by counting them — the Event Storming call,
+    // for the same reason, and the opposite of the Context Mapping one where
+    // the same pattern twice is a claim made twice.
+  },
+};
+
+/**
+ * **B1a** — and never a step onto itself. A LABRE convention, said out loud.
+ *
+ * The specification contains no normative prohibition on a Sequence Flow whose
+ * source and target are the same flow object; the "no self-loop" habit comes
+ * from the BPMN 1.x loop idiom, which 2.0 replaced with activity loop MARKERS
+ * and standard loop characteristics. There is no page to cite, and this rule
+ * says so in data ({@link ValidationRule.provenance}) rather than only in the
+ * apologetic clause of its own suggestion.
+ *
+ * We keep it, at `warning`, because on a DESCRIPTIVE diagram a step drawn as
+ * following itself tells the reader nothing about what decides to repeat it —
+ * and the notation that does is one gateway away.
+ *
+ * ## Why it is a rule of its own, and not a clause of B1
+ *
+ * Because provenance describes THE RULE. B1's matrix is p.95 and this is our
+ * house style, so one object holding both could not declare either honestly —
+ * and the half that fires is this one, so the bubble would have shown an OMG
+ * page under a finding the OMG does not make. That is precisely the
+ * "conventions presented as norm violations" the architecture review flagged.
+ *
+ * The composition is the one {@link duplicateSequenceFlow} already proves: two
+ * `relation-endpoints` rules, same `edgeRole`, same alphabet, one flag each.
+ * `evaluateRelationEndpoints` reports at most one finding per edge PER RULE, so
+ * a self-loop is indicted here and nowhere else — B1's matrix cannot fire on
+ * it, because a flow object linked to a flow object is on the matrix whichever
+ * end you read.
+ *
+ * It carries no `selfLoop` block: with the matrix unreachable, the rule's OWN
+ * message is the self-loop message, and the family falls back to it. The two
+ * i18n keys are the ones the clause shipped with, unchanged — a split that
+ * renamed a user-visible key would be a migration, and this is not one.
+ */
+const sequenceFlowSelfLoop: ValidationRule = {
+  id: 'bpmn.sequence-flow-self-loop',
+  framework: 'bpmn',
+  family: 'relation-endpoints',
+  severity: 'warning',
+  roles: BPMN_ROLES,
+  messageKey: 'com.labre.bpmn.validation.sequence-flow-self-loop',
+  messageFallback: 'This sequence flow loops back onto the step it leaves.',
+  suggestionKey: 'com.labre.bpmn.validation.sequence-flow-self-loop.suggestion',
+  suggestionFallback:
+    'BPMN does not forbid this, but a descriptive diagram reads better when what decides to repeat a step is drawn: send the flow back through a gateway, or mark the activity as a loop.',
+  version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre house style — BPMN 2.0.2 states no prohibition; the 1.x loop idiom was replaced by activity loop markers',
+  },
+  backgroundRole: BPMN_ROLE.pool,
+  endpoints: {
+    edgeRole: BPMN_ROLE.sequenceFlow,
+    // The alphabet, and only the alphabet: the matrix cannot fire here (B1 owns
+    // the sentence) and is present so that a flow onto an annotation, a
+    // document or a pool stays outside the conversation. Same table B1
+    // sanctions, so the two can never disagree about what "a step" is.
+    allowed: BPMN_SEQUENCE_MATRIX,
     forbidSelfLoop: true,
-    // Deliberately NOT `forbidDuplicate`. Two sequence flows between the same
-    // two steps is how a hand draws a process it is still thinking about, and on
-    // a descriptive diagram it is read by following arrows rather than by
-    // counting them — the Event Storming call, for the same reason, and the
-    // opposite of the Context Mapping one where the same pattern twice is a
-    // claim made twice.
-    selfLoop: {
-      messageKey: 'com.labre.bpmn.validation.sequence-flow-self-loop',
-      messageFallback: 'This sequence flow loops back onto the step it leaves.',
-      suggestionKey:
-        'com.labre.bpmn.validation.sequence-flow-self-loop.suggestion',
-      suggestionFallback:
-        'BPMN does not forbid this, but a descriptive diagram reads better when what decides to repeat a step is drawn: send the flow back through a gateway, or mark the activity as a loop.',
-    },
   },
 };
 
@@ -300,6 +370,11 @@ const messageFlowEndpoints: ValidationRule = {
   suggestionFallback:
     'A message leaves an activity or an end event, and arrives at an activity or a start event: a start event is woken up by a message and has none to send, and an end event is where the instance stops.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.41–42 (Message Flow Connection Rules), p.152, p.245, p.248',
+  },
   backgroundRole: BPMN_ROLE.pool,
   endpoints: {
     edgeRole: BPMN_ROLE.messageFlow,
@@ -375,6 +450,11 @@ const associationEndpoints: ValidationRule = {
   suggestionFallback:
     'An association attaches a text annotation to what it comments on, or a data object to the step that reads or produces it. To chain two steps, draw a sequence flow instead.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.222 — Data Associations; Association and Text Annotation, §8.3.13',
+  },
   backgroundRole: BPMN_ROLE.pool,
   endpoints: {
     edgeRole: BPMN_ROLE.association,
@@ -488,6 +568,13 @@ const untypedFlow: ValidationRule = {
   suggestionFallback:
     'Draw a sequence flow to order two steps of one process, or a message flow to send something between two participants. A plain connector is drawn on the diagram and absent from the model.',
   version: 1,
+  // No page, and none is possible: the specification has nothing to say about a
+  // connector the notation does not contain. This is a rule about OUR canvas.
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — a role-less connector is a gesture of this canvas, not an artefact of the notation',
+  },
   backgroundRole: BPMN_ROLE.pool,
   endpoints: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -545,6 +632,13 @@ const duplicateSequenceFlow: ValidationRule = {
   suggestionFallback:
     'Delete the copy. Two routes to the same step leave from different places — draw the second one out of a gateway, so the diagram says what decides between them.',
   version: 1,
+  // An industry rule with a normative-LOOKING level in every linter a BPMN user
+  // has met, and no normative sentence behind it: bpmnlint raises it at ERROR,
+  // the specification does not forbid the shape.
+  provenance: {
+    source: 'recommendation',
+    reference: 'bpmnlint no-duplicate-sequence-flows (raised at ERROR there)',
+  },
   backgroundRole: BPMN_ROLE.pool,
   endpoints: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -595,6 +689,11 @@ const startEventNoInflow: ValidationRule = {
   suggestionFallback:
     'A start event is where the process wakes up — nothing flows into it. Reverse the arrow, or make this step a task if something really does happen before it.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.244 — a Start Event MUST NOT be a target of a Sequence Flow',
+  },
   // Attribution only, so an arbitration made on one participant covers that
   // participant. The count itself reads no geometry whatsoever.
   backgroundRole: BPMN_ROLE.pool,
@@ -630,6 +729,11 @@ const startEventMustExit: ValidationRule = {
   suggestionFallback:
     'Draw the sequence flow out of it to the first thing the process does — until then the diagram says the participant wakes up and stops.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.244 — a Start Event MUST be a source of a Sequence Flow',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -662,6 +766,11 @@ const endEventNoOutflow: ValidationRule = {
   suggestionFallback:
     'An end event is where the process stops — nothing leaves it. Reverse the arrow, or make this step a task if the process really does carry on.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.248 — an End Event MUST NOT be a source of a Sequence Flow',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -692,6 +801,11 @@ const endEventMustBeReached: ValidationRule = {
   suggestionFallback:
     'Draw the sequence flow into it from the last step of that path — an outcome nothing reaches is an outcome the process cannot produce.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.248 — an End Event MUST be a target of a Sequence Flow',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -736,6 +850,15 @@ const activityDeadEnd: ValidationRule = {
   suggestionFallback:
     'BPMN allows a path to end at a step. With end events in play elsewhere on the diagram, a step that leads nowhere is usually an omission — draw the flow on, or add the end event that says this outcome was reached.',
   version: 1,
+  // NOT `standard`, and the page is cited for the opposite reason from
+  // everywhere else in this file: p.151 SANCTIONS the shape. The nudge is ours,
+  // so the citation names what the specification permits rather than what it
+  // requires — an architect must never read this as a conformance defect.
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Descriptive-reading nudge — OMG BPMN 2.0.2 p.151 expressly sanctions a path ending at an Activity',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -786,6 +909,11 @@ const sequenceFlowStaysHome: ValidationRule = {
   suggestionFallback:
     'A sequence flow chains steps of the same participant — between pools, send a message flow instead, or move the step into the pool that performs it.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.40, restated p.502 — Sequence Flows cannot cross a Pool boundary',
+  },
   backgroundRole: BPMN_ROLE.pool,
   // The declaration, so "inside the pool" means inside its FLOW AREA — the
   // participant name band is not part of it. Same plot `bpmnPoolOf` reads.
@@ -830,6 +958,15 @@ const messageFlowCrossesPools: ValidationRule = {
   suggestionFallback:
     'A message is what one participant sends to another — inside a single pool, the two steps belong to one process, so draw a sequence flow instead.',
   version: 1,
+  // Standard, with one deliberate SOFTENING recorded in the comment above: the
+  // MUST also condemns an end outside any pool, and we stay silent there. The
+  // provenance describes the authority the rule DOES exercise; the divergence
+  // is quieter than the norm, never louder.
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.119 — a Message Flow MUST connect two separate Pools',
+  },
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
   locality: {
@@ -903,6 +1040,14 @@ const unreachableStep: ValidationRule = {
   suggestionFallback:
     'Follow the sequence flows back from here: somewhere the chain stops, or an arrow points the wrong way. Join it to the process, or delete it if it no longer happens.',
   version: 1,
+  // The specification governs how the roots are seeded (p.238 / p.245, which is
+  // what `implicitRoots` implements) and requires no reachability of anybody.
+  // Flagging what the walk never reaches is best practice, not conformance.
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Best practice — OMG BPMN 2.0.2 p.238 / p.245 govern the implicit roots; the specification requires no reachability',
+  },
   // The graph sweep stays out of the 16 ms the drawing has: the family cannot be
   // made incremental, and the question is one somebody asks about a finished
   // diagram rather than one the tool asks while they draw. See the header.
@@ -971,6 +1116,11 @@ const poolEndWithoutStart: ValidationRule = {
   suggestionFallback:
     'Draw the start event that wakes this participant up — a message start if somebody else triggers it, a timer start if the clock does. A pool with no events at all is fine; one with only an ending is half a model.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.238 — "If there is an End Event, then there MUST be at least one Start Event"',
+  },
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
   roleCount: {
@@ -1018,6 +1168,11 @@ const poolStartWithoutEnd: ValidationRule = {
   suggestionFallback:
     'Draw the end event that closes the process for this participant, so the reader can see what being done means here. Several outcomes take several end events.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.246 — "If there is a Start Event, then there MUST be at least one End Event"',
+  },
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
   roleCount: {
@@ -1084,6 +1239,11 @@ const gatewayMustBranch: ValidationRule = {
   suggestionFallback:
     'A gateway is a fork or a join: draw the second branch out of it, bring the second path into it, or delete it and let the sequence flow run straight through.',
   version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG BPMN 2.0.2 (ISO/IEC 19510) p.289 — a Gateway MUST have either multiple incoming or multiple outgoing Sequence Flows',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -1133,6 +1293,14 @@ const gatewayJoinAndFork: ValidationRule = {
   suggestionFallback:
     'A reader cannot tell whether it waits for the incoming paths or races them. Split it in two — a gateway that joins, a sequence flow, then a gateway that forks.',
   version: 1,
+  // NOT p.289, which is B16's sentence and is satisfied here twice over — a
+  // gateway with two in and two out both merges and splits. BPMN 2.0 permits
+  // the mixed gateway; it is the READER who cannot resolve it. So the authority
+  // is the linter's, and the citation says so rather than borrowing a page.
+  provenance: {
+    source: 'recommendation',
+    reference: 'bpmnlint no-gateway-join-fork (raised at ERROR there)',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -1186,6 +1354,11 @@ const fakeJoin: ValidationRule = {
   suggestionFallback:
     'BPMN allows it, and the step runs once per path that reaches it. If it is meant to WAIT for the others instead, bring the paths into a joining gateway and let one flow out of it.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Industry linter practice (bpmnlint), softened — OMG BPMN 2.0.2 p.151 defines the token semantics and sanctions the shape',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -1231,6 +1404,11 @@ const implicitSplit: ValidationRule = {
   suggestionFallback:
     'As drawn, every path runs. If the process chooses between them, put an exclusive gateway after the step and name what it decides on.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'bpmnlint no-implicit-split, made stricter — OMG BPMN 2.0.2 p.151 sanctions the shape',
+  },
   backgroundRole: BPMN_ROLE.pool,
   degree: {
     edgeRole: BPMN_ROLE.sequenceFlow,
@@ -1280,6 +1458,12 @@ const singleBlankStart: ValidationRule = {
   suggestionFallback:
     'Two plain circles say the process starts here twice, without saying on which two occasions. Give each start its trigger — a message start, a timer start — or keep one.',
   version: 1,
+  // Several starts in one pool is LEGAL (p.238 permits them); the linter's rule
+  // is about telling them apart, which is readability and not conformance.
+  provenance: {
+    source: 'recommendation',
+    reference: 'bpmnlint single-blank-start-event (raised at ERROR there)',
+  },
   backgroundRole: BPMN_ROLE.pool,
   background: BPMN_POOL_BACKGROUND,
   roleCount: {
@@ -1326,6 +1510,12 @@ const unlabeledStep: ValidationRule = {
   suggestionFallback:
     'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3". An unnamed gateway is worse still: the whole content of a decision is the question it asks.',
   version: 1,
+  // A name is nowhere required by the specification: an unnamed step is a
+  // diagram that is not done, never one that is wrong.
+  provenance: {
+    source: 'recommendation',
+    reference: 'bpmnlint label-required, softened to an on-demand audit',
+  },
   // Explicitly on-demand, and it stays explicit: `moment: undefined` means
   // REALTIME, and the engine watches `text` for exactly this family when a
   // real-time rule of it is registered. Dropping this line would hand the
@@ -1337,7 +1527,7 @@ const unlabeledStep: ValidationRule = {
 };
 
 /**
- * The pack, whole: twenty-one rules, all registered, all live.
+ * The pack, whole: twenty-two rules, all registered, all live.
  *
  * Eight of them were authored ahead of the engine and sat in a held-out array
  * for one review cycle, because two would have been actively WRONG meanwhile —
@@ -1345,10 +1535,22 @@ const unlabeledStep: ValidationRule = {
  * holds a start event" the specification review removed, which fires on a
  * conformant black-box pool. `claude/bpmn-engine-v2` (#145) landed every field
  * they asked for, so the array is gone and the split with it.
+ *
+ * The twenty-second is B1a, and it is not a new REQUIREMENT: the no-self-loop
+ * clause left B1 so that each of the two could declare its own provenance
+ * honestly. Nothing new fires, nothing new is said, and the two i18n keys are
+ * the ones the clause already shipped.
+ *
+ * Every one of the twenty-two declares {@link ValidationRule.provenance}:
+ * twelve `standard`, each with its page; eight `recommendation`, each naming a
+ * linter or the sentence the specification merely permits; two
+ * `labre-convention`. Nothing here is `organization` — that source is reserved
+ * for the org profiles the PRD names, and no framework declares one yet.
  */
 export const BPMN_RULES: readonly ValidationRule[] = [
   // Connection: what a link may run between, and how many times.
   sequenceFlowEndpoints,
+  sequenceFlowSelfLoop,
   messageFlowEndpoints,
   associationEndpoints,
   untypedFlow,

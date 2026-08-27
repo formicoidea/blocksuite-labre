@@ -22,7 +22,7 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * pack draws), ANALYTIC (every event type, every gateway, the full flow
  * semantics) and COMMON EXECUTABLE (what an engine can run: data mappings,
  * expressions, message correlation). Only the first is meaningful against the
- * twenty-one rules that exist, because the other two are levels of requirement
+ * twenty-two rules that exist, because the other two are levels of requirement
  * about artefacts this pack does not yet draw.
  *
  * They arrive as PROFILES and not as engine work when they arrive: a level of
@@ -30,7 +30,7 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * entry in the array at the bottom of this file plus whatever new rules the new
  * artefacts bring. Nothing in the pipework has to learn a third word.
  *
- * ## Both tables spell out all TWENTY-ONE ids
+ * ## Both tables spell out all TWENTY-TWO ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
@@ -66,6 +66,7 @@ const sketch: ValidationProfile = {
   isDefault: true,
   rules: {
     'bpmn.sequence-flow-endpoints': 'audit',
+    'bpmn.sequence-flow-self-loop': 'audit',
     'bpmn.message-flow-endpoints': 'audit',
     'bpmn.association-endpoints': 'audit',
     'bpmn.untyped-flow': 'audit',
@@ -96,7 +97,7 @@ const sketch: ValidationProfile = {
  * Every rule at the severity its own declaration carries, spelled out rather
  * than left absent, so the answer is readable in one place. That is the point of
  * a profile table: a reviewer asking "what does this level actually require"
- * reads twenty-one lines instead of twenty-one files, and a rule added later
+ * reads twenty-two lines instead of twenty-two files, and a rule added later
  * cannot join
  * a level silently — it arrives with its own severity until somebody writes it
  * down here.
@@ -139,9 +140,17 @@ const sketch: ValidationProfile = {
  *
  * The exact `context-map.acl-on-customer-supplier` shape, one layer over: a
  * judgement the diagram cannot make on the author's behalf, so it is collected
- * and never interrupts. Every other rule here reads a normative sentence of the
- * standard, and those are not judgement calls — a message flow inside one pool is
- * a sentence BPMN does not have.
+ * and never interrupts.
+ *
+ * ## Which line is which, now that a rule says so itself
+ *
+ * Every rule declares {@link ValidationRule.provenance}, so the question this
+ * table used to answer only in prose — is this a conformance defect or a
+ * suggestion — is readable off the rule. Twelve of them read a normative
+ * sentence of the standard, and those are not judgement calls: a message flow
+ * inside one pool is a sentence BPMN does not have. The other ten are a linter's
+ * rule, a reading nudge, or our own house style, and the bubble now says which
+ * before the user decides how much to care.
  */
 const descriptive: ValidationProfile = {
   id: 'bpmn.descriptive',
@@ -150,6 +159,11 @@ const descriptive: ValidationProfile = {
   fallback: 'Descriptive',
   rules: {
     'bpmn.sequence-flow-endpoints': 'warning',
+    // A LABRE convention (see B1a), and the one line of this table where that
+    // is worth knowing: an organisation that does not share the house style
+    // switches it off here without touching p.95, which is the whole point of
+    // having split it out of the endpoints rule.
+    'bpmn.sequence-flow-self-loop': 'warning',
     'bpmn.message-flow-endpoints': 'warning',
     'bpmn.association-endpoints': 'warning',
     'bpmn.untyped-flow': 'warning',

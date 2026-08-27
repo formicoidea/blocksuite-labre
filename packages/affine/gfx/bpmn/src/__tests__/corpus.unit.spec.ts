@@ -484,10 +484,19 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
   });
 
   it('catches a sequence flow looping back onto its own step', () => {
+    // B1a, and its OWN rule since the provenance work: the self-loop is a Labre
+    // convention and B1's matrix is p.95, so one object could not have declared
+    // both honestly. The finding is unchanged — same wording, same keys, same
+    // severity — only the id it is raised under.
     const board = [...onePool(), flow('loop', 'first', 'first')];
     expect(told(evaluate(board))).toEqual([
-      'bpmn.sequence-flow-endpoints first loop',
+      'bpmn.sequence-flow-self-loop first loop',
     ]);
+    // And exactly once: B1 cannot also indict it, because a flow object linked
+    // to a flow object is ON its matrix whichever end you read.
+    expect(said(evaluate(board)).join(' ')).not.toContain(
+      'bpmn.sequence-flow-endpoints'
+    );
   });
 
   it('catches the same flow drawn twice between the same two steps', () => {

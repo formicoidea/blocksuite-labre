@@ -1,5 +1,6 @@
 import {
   EXEMPTION_FALLBACK,
+  PROVENANCE_FALLBACK,
   RELATION_SIDE_FALLBACK,
   SEVERITY_FALLBACK,
 } from '@labre/affine-block-surface';
@@ -109,6 +110,11 @@ const CHROME_TABLES: readonly [
 ][] = [
   ['com.labre.validation.severity.', SEVERITY_FALLBACK],
   ['com.labre.validation.state.exempted.', EXEMPTION_FALLBACK],
+  // The four kinds of authority a rule can claim. `organization` is enumerated
+  // with the rest although nothing declares it yet: the table is the TYPE, and
+  // a host building a catalogue must not have to come back for a fourth word
+  // the day the first org profile ships.
+  ['com.labre.validation.provenance.', PROVENANCE_FALLBACK],
   ['com.labre.reading.relations.', RELATION_SIDE_FALLBACK],
 ];
 
