@@ -101,6 +101,49 @@ export type ValidationException = {
 };
 
 /**
+ * Verbatim foreign matter one interchange import kept on one element, for one
+ * format (ADR 0012 § D2).
+ *
+ * Document DATA in the same sense {@link ValidationException} is: it records
+ * what a file actually said, so it outlives the tab, the framework flag and the
+ * client version that imported it. Deliberately format-agnostic — the base
+ * model stores fragments and attributes, and never learns what they mean.
+ *
+ * Every member is optional and absent rather than empty: an importer writes the
+ * ones it has, and a reader that finds none of them has an element that met an
+ * import and carried nothing.
+ */
+export type ForeignInterchange = {
+  /**
+   * The element's id in the SOURCE file, verbatim. The surface element keeps
+   * its own nanoid — surface identity is Labre's and never the file's — and an
+   * export prefers this id back when it is still usable, which is what makes
+   * the id map a fixed point after one cycle (ADR 0012 § D3).
+   */
+  id?: string;
+  /**
+   * The source element's name, when the element itself was CARRIED rather than
+   * mapped, e.g. `bpmn:boundaryEvent`.
+   */
+  element?: string;
+  /** Attributes the importer does not model — foreign-namespaced and standard alike. */
+  attrs?: Record<string, string>;
+  /**
+   * Child fragments, serialized: extension subtrees, unmodelled children, and
+   * whole carried elements that were children of this one.
+   */
+  children?: string[];
+  /** Diagram-interchange fragments describing anything in {@link children}. */
+  di?: string[];
+  /**
+   * Fragments kept but deliberately NOT re-emitted, each with the reason
+   * (ADR 0012 § D5). Preserved so a reader can see what was dropped and why;
+   * never a place the exporter reads for output.
+   */
+  quarantined?: { fragment: string; reason: string }[];
+};
+
+/**
  * Republish a nested-`Y.Map` field change as an element-level change.
  *
  * `syncElementFromY` observes the element's OWN `Y.Map` only, so mutating a
@@ -721,6 +764,70 @@ export abstract class GfxPrimitiveElementModel<
    */
   @field()
   accessor qualityChecklist: string[] | undefined = undefined;
+
+  /**
+   * Verbatim foreign matter from an interchange import, keyed by FORMAT id
+   * (`bpmn`, `owm`, …) — never by framework, because a `.bpmn` and an OWM file
+   * make different promises about the same element (ADR 0012 § D2).
+   *
+   * This field is dumb storage, and that is the whole design. ADR 0012 sorts
+   * every node of an imported file into three states — **mapped** (there is a
+   * Labre artefact, re-emitted from the drawing), **carried** (no artefact,
+   * kept verbatim here, re-emitted in place) and **quarantined** (kept, but
+   * re-emitting it would contradict the document, so it is not). That contract
+   * lives entirely in the importers and exporters; the base model neither
+   * classifies, validates, dereferences nor re-emits anything, and knows no
+   * format. No renderer, hit-test, layout or `@derive` / `@convert` chain reads
+   * it, so nothing here can move, resize or restyle an element.
+   *
+   * Declared on the BASE class for the same reason as {@link role} and
+   * {@link validationExceptions}, and for one more: a BPMN `sequenceFlow`
+   * carrying a `conditionExpression` is a plain **connector**, and
+   * `ConnectorElementModel` is shared plumbing that will never be a BPMN class.
+   * An element re-created from props (paste, duplicate, alt-drag clone,
+   * template insertion) only reaches the Y.Map through keys that have a
+   * declared accessor, so a payload declared per subclass would be silently
+   * dropped on copy — the exact loss `docs/spikes/us-1-8-unknown-props-preservation.md`
+   * exists to prevent. Declaring it, rather than leaning on that spike's
+   * verbatim fallback for undeclared keys, is what makes it a contract: a field
+   * nothing declares is a field nothing can test, strip or find.
+   *
+   * `undefined` = this element never met an import, and no key is written for
+   * it, so it stays byte-identical to one created before the field existed:
+   * optional field, no schema version bump, no migration. An import writes no
+   * key for a visual-tier capability, and none for an element that carried
+   * nothing. Clearing goes through {@link clearField}, which removes the key
+   * rather than leaving a tombstone.
+   *
+   * Flat JSON on purpose — a value a Yjs update can encode is the contract
+   * enforced by `_assignElementProp`, and the whole payload is ONE Y.Map entry,
+   * written once at import and never mutated afterwards. Two peers writing it
+   * concurrently therefore resolve last-write-wins on the whole blob, which is
+   * `lanes`' trade (ADR 0007): nobody edits this value, so the window is the
+   * import itself.
+   *
+   * ## Writing it, for the importer
+   *
+   * - **Write the whole blob in one assignment**, the way an import already
+   *   produces it. Never read-modify-write it key by key: the Y.Map entry is the
+   *   entire `Record`, so a partial update is still a last-write-wins overwrite
+   *   of everything, and two of them racing lose a whole format's payload rather
+   *   than merging.
+   * - **Write no key at all** when there is nothing to carry — an element the
+   *   import mapped cleanly, or any visual-tier capability, which by contract
+   *   writes none (ADR 0012 P2). Absent and empty are NOT equivalent here:
+   *   `{}` costs every element a Y.Map entry and makes P2's "writes no
+   *   `interchange` key" untestable.
+   * - **Removing it is {@link clearField}**, never an assignment to `undefined`
+   *   — the former deletes the key, the latter can leave a tombstone.
+   * - **Nothing caps the size of this value** (ADR 0012, open question 3). A
+   *   pathological file would produce a document that is mostly foreign matter;
+   *   a cap that dropped data would contradict D2, so the only honest cap is a
+   *   refusal at import time. That is the importer's call, not the model's.
+   */
+  @field()
+  accessor interchange: Record<string, ForeignInterchange> | undefined =
+    undefined;
 
   @field()
   accessor lockedBySelf: boolean | undefined = false;

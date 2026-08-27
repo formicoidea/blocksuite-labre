@@ -82,6 +82,7 @@ export {
 } from './model/surface/decorators/index.js';
 export {
   type BaseElementProps,
+  type ForeignInterchange,
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
   type SerializedElement,
