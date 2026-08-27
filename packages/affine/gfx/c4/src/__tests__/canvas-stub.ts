@@ -165,6 +165,23 @@ export function recordingCtx() {
         vertical: rotated,
       });
     }),
+    /**
+     * A deterministic text metric, so a wrap is a fact a test can assert.
+     *
+     * Half an em per character is roughly Inter's average advance and — much
+     * more to the point — it is a pure function of the string and the font size,
+     * which the real `measureText` is not: it depends on the fonts the machine
+     * running the suite happens to have installed. A renderer that wraps on
+     * measurement can only be tested against a measurement somebody decided.
+     *
+     * The font size is read out of `ctx.font`, which the renderer sets before
+     * every tier, so two tiers at different sizes measure differently here just
+     * as they do on a canvas.
+     */
+    measureText: vi.fn((text: string) => {
+      const size = Number.parseFloat(ctx.font) || 10;
+      return { width: text.length * size * 0.5 } as TextMetrics;
+    }),
     createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
   };
 
