@@ -103,6 +103,11 @@ const nonCanonicalLink: ValidationRule = {
   suggestionFallback:
     'Read the link out loud — source, verb, target. Reverse it, re-point an end, or use the verb EDGY gives these two elements.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'EDGY (Enterprise Design) — the 24 relations its metamodel sanctions',
+  },
   // Not a frame the rule measures against — a sentence is right or wrong
   // wherever it is written — but the facets diagram or board a finding is
   // ATTRIBUTED to, so the arbitration "ignore this rule on the whole board" has
@@ -153,6 +158,11 @@ const overlappingArtefacts: ValidationRule = {
   suggestionFallback:
     'Move one of them aside — on a facets diagram, where an element sits is what says which facet it belongs to.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre readability convention — no EDGY rule speaks of overlapping ink',
+  },
   backgroundRole: EDGY_ROLE.background,
   overlap: [[EDGY_ROLE.element, EDGY_ROLE.element]],
   minPenetration: 4,

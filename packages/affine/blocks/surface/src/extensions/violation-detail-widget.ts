@@ -21,6 +21,7 @@ import {
   anchorEmphasis,
   distinctByRule,
   type ExemptionScope,
+  type ProvenanceSource,
   resolveViolationAnchors,
   touchesVerdict,
   userFacingViolations,
@@ -91,6 +92,31 @@ export const EXEMPTION_FALLBACK: Record<ExemptionScope, string> = {
 };
 
 /**
+ * What the bubble calls each kind of authority a rule can claim
+ * ({@link RuleProvenance}).
+ *
+ * The one wording in this file that changes what a finding MEANS rather than
+ * how it looks: "Standard" tells an architect the diagram breaks a published
+ * specification, "Labre convention" tells them it does not. An external review
+ * of the BPMN pack asked for exactly this line, because a house style shown
+ * without it reads as a norm violation — and a tool that cannot be trusted on
+ * that distinction is a tool an architect stops believing.
+ *
+ * The word only; the CITATION beside it is the rule's own `reference`, rendered
+ * verbatim and never translated (a page number is the same in every language).
+ *
+ * Exported for the same reason {@link SEVERITY_FALLBACK} is: the manifest walks
+ * this table under `com.labre.validation.provenance.` instead of restating four
+ * wordings a source scan could not check behind a template key.
+ */
+export const PROVENANCE_FALLBACK: Record<ProvenanceSource, string> = {
+  standard: 'Standard',
+  recommendation: 'Recommendation',
+  'labre-convention': 'Labre convention',
+  organization: 'Organisation rule',
+};
+
+/**
  * The PERSISTENT half of the PF7 affordance, and the restitution behind it.
  *
  * `ValidationOverlay` flashes a bracket when a violation appears and fades it
@@ -152,11 +178,20 @@ export const EXEMPTION_FALLBACK: Record<ExemptionScope, string> = {
  *
  * ## What it knows
  *
- * Nothing about rules. It consumes normalised {@link Violation} objects off
- * `ValidationManager.violations$` and resolves their `messageKey` through the
- * host's catalogue ({@link translateKey}), falling back to the raw key. No rule
- * logic, no hard-coded rule wording — the library must not put words in a
- * framework's mouth.
+ * No rule LOGIC, and no hard-coded rule wording — the library must not put
+ * words in a framework's mouth. It consumes normalised {@link Violation}
+ * objects off `ValidationManager.violations$` and resolves their `messageKey`
+ * through the host's catalogue ({@link translateKey}), falling back to the raw
+ * key.
+ *
+ * The one thing it reads off the RULE rather than off the finding is
+ * {@link ValidationRule.provenance} — whether the sentence above it restates a
+ * published standard, a linter's recommendation, or a Labre house style. It is
+ * looked up by `ruleId` through {@link ValidationManager.ruleOf}, the same path
+ * this widget already walks to name a finding's framework when it reports an
+ * exception, and it is still declared data rather than logic: the widget
+ * chooses the LABEL for a source it is handed, and prints the citation
+ * verbatim.
  */
 export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
@@ -285,6 +320,22 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       color: var(--affine-text-secondary-color);
       font-size: 13px;
       overflow-wrap: anywhere;
+    }
+
+    /* Where the rule's authority comes from. Discreet on purpose: it is
+       context for the sentence above it, not a second finding — one line,
+       secondary colour, below the suggestion and above the way out. */
+    .violation-provenance {
+      margin-top: 6px;
+      color: var(--affine-text-secondary-color);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    /* The LABEL carries the weight, because it is the word that decides how
+       much an architect has to care. The citation beside it stays plain. */
+    .violation-provenance-source {
+      font-weight: 600;
     }
 
     /* "No rule is a wall": the way out is on the message, one click away, and
@@ -632,9 +683,17 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     const padding = 24;
     // Message, optional hint, severity chip and the action row underneath it.
     const perEntry = 100;
+    // ...plus one line for each entry that will actually SHOW a provenance,
+    // asked the same way the render asks it. A framework whose rules declare
+    // none must not have the bubble reserve room for a line it never draws.
+    const provenanceLine = 18;
+    const validation = this.std.getOptional(ValidationManager);
+    const cited = entries.filter(
+      entry => validation?.ruleOf(entry.ruleId)?.provenance !== undefined
+    ).length;
     return Math.min(
       BUBBLE_MAX_HEIGHT,
-      padding + Math.max(1, entries.length) * perEntry
+      padding + Math.max(1, entries.length) * perEntry + cited * provenanceLine
     );
   }
 
@@ -644,6 +703,45 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
       `com.labre.validation.severity.${severity}`,
       SEVERITY_FALLBACK[severity]
     );
+  }
+
+  /**
+   * The one line saying where the rule behind a finding gets its authority.
+   *
+   * Resolved through {@link ValidationManager.ruleOf}, which is the path this
+   * widget already uses to name a finding's framework when it reports an
+   * exception — the bubble consumes normalised {@link Violation}s and knows
+   * nothing about rules, so the manager is the only place a rule can come from.
+   *
+   * Rendered ONLY when the rule declares one. A rule that says nothing about
+   * its provenance gets no line and no invented one: the library must not put
+   * an authority in a framework's mouth any more than it puts words there
+   * (see {@link translateKey}). That is also why the fallback is chrome-only —
+   * the LABEL is ours, the citation is the framework's, and the citation is
+   * printed exactly as declared rather than translated.
+   */
+  private _renderProvenance(ruleId: string) {
+    const provenance = this.std
+      .getOptional(ValidationManager)
+      ?.ruleOf(ruleId)?.provenance;
+    if (provenance === undefined) return nothing;
+
+    const { source, reference } = provenance;
+    const label = translateKey(
+      this.std,
+      `com.labre.validation.provenance.${source}`,
+      PROVENANCE_FALLBACK[source]
+    );
+
+    return html`<div
+      class="violation-provenance"
+      data-testid="violation-provenance"
+      data-provenance=${source}
+    >
+      <span class="violation-provenance-source">${label}</span>${reference
+        ? html` — ${reference}`
+        : nothing}
+    </div>`;
   }
 
   /**
@@ -780,6 +878,7 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
             )}
           </div>`
         : nothing}
+      ${this._renderProvenance(entry.ruleId)}
       <div class="violation-actions">
         ${exemption
           ? action(
