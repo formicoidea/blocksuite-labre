@@ -252,4 +252,17 @@ describe('when an edge-locality rule stays silent', () => {
 
     expect(ids(SAME, [...twoPools(), free])).toEqual([]);
   });
+
+  it('evaluates nothing, and warns, for a rule naming no frame role', () => {
+    // The whole question is asked about a frame, so a rule that names none is
+    // a typo in the data — and would otherwise be indistinguishable from a
+    // board that simply carries no pool.
+    const frameless: ValidationRule = {
+      ...SAME,
+      id: 'test.no-frame-role',
+      backgroundRole: undefined,
+    };
+
+    expect(ids(frameless, [...twoPools(), edge('f', 'n1', 's1')])).toEqual([]);
+  });
 });

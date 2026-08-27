@@ -475,23 +475,37 @@ export interface RelationEndpointsDef {
    * process whose steps are joined by such links looks connected and validates
    * as if nobody had joined anything.
    *
-   * ## Why BOTH ends must be in the vocabulary
+   * ## Why BOTH ends must be artefacts this grammar could have related
    *
    * The same proportionality that makes {@link allowed}'s alphabet a hard
    * requirement, applied one level up. A plain connector from an artefact to a
    * sticky note, to a legend glyph, to a shape somebody dropped on the board, is
    * an annotation and none of the framework's business — pointing at things is
-   * what a whiteboard is for. A plain connector between two artefacts of ONE
-   * declared vocabulary is the only case where the user can be presumed to have
-   * meant the framework's own relation and reached for the wrong gesture.
+   * what a whiteboard is for. A plain connector between two artefacts this
+   * rule's own sentences run between is the only case where the user can be
+   * presumed to have meant a typed relation and reached for the wrong gesture.
    *
-   * Membership is tested against the rule's own {@link ValidationRule.roles} —
-   * the vocabulary it already carries for the inheritance walk — and never
-   * against the `framework:` prefix of the role id. The namespace is a naming
+   * "Could have related" is read off {@link allowed}'s own ALPHABET when the
+   * rule declares a matrix: the roles its triplets name as a source or a target,
+   * matched with {@link roleIsA} so a specialisation counts. That is the
+   * tightest honest reading, and it excludes — with nothing for an author to
+   * remember — every role a framework declares for something that is not an
+   * endpoint of anything: the background role, a legend glyph, a lane. Presuming
+   * somebody meant to draw a typed relation onto a POOL is exactly the
+   * over-firing this test exists to prevent.
+   *
+   * A rule declaring NO matrix has no alphabet to read, so it falls back to
+   * membership in its own {@link ValidationRule.roles} — never to a prefix match
+   * on the `framework:` half of the role id. The namespace is a naming
    * CONVENTION (`role.ts` says so, and types the id as a bare string); the
    * vocabulary is DATA the framework hands the engine. Reading the data cannot
    * be wrong about a framework that spells its own prefix differently, and it
    * keeps this file free of string surgery on ids it does not own.
+   *
+   * `roles` stays purely the dictionary the inheritance walk reads either way.
+   * It is never overloaded into a filter, so an author never has to shrink the
+   * vocabulary a rule's other clauses depend on in order to change what this
+   * one flags.
    */
   flagNeutral?: RuleMessage;
 }
@@ -1206,6 +1220,21 @@ function attributeBackground(
  * demanding a geometry declaration to count elements inside a box would be
  * asking a framework to declare axes its rule never reads (the same argument
  * `relation-endpoints` makes about its own optional frame).
+ *
+ * ## The degenerate plot
+ *
+ * `backgroundPlot` subtracts the declared margins with no guard, so a frame
+ * dragged narrower than `margin.left + margin.right` yields a NEGATIVE extent —
+ * and a `Bound` of negative width contains no point at all, anywhere. Left
+ * alone, a membership family would then tally zero for a frame the user can see
+ * holding something, and a `min` rule would answer "this frame holds none" while
+ * pointing at one that visibly does. A false accusation whose only remedy —
+ * widen the frame — is nowhere in the sentence.
+ *
+ * So a plot that has collapsed falls back to the element box: the same answer
+ * this function already gives a rule that declares no geometry at all, and the
+ * one reading under which the artefact the user is looking at still counts.
+ * Silence would be defensible too; being wrong in the accusing direction is not.
  */
 function plotOf(
   def: FrameworkBackgroundDef | undefined,
@@ -1214,6 +1243,7 @@ function plotOf(
   const bound = frame.bound;
   if (def === undefined) return bound;
   const plot = backgroundPlot(def, bound.w, bound.h);
+  if (!(plot.width > 0) || !(plot.height > 0)) return bound;
   return new Bound(
     bound.x + plot.x0,
     bound.y + plot.y0,
@@ -1277,6 +1307,30 @@ function framePlots(
     instance,
     plot: plotOf(rule.background, instance),
   }));
+}
+
+/**
+ * Whether a rule whose whole question is asked ABOUT a frame forgot to name one
+ * — and, if so, says so once.
+ *
+ * `backgroundsOf` answers `[]` both for "this rule names no frame role" and for
+ * "this board carries no such frame", and the second is a legitimate silence
+ * every family in this file honours: a sketch drawn before the frame is a
+ * sketch. The first is a typo in the data, and left undistinguished it produces
+ * a rule that never fires and never says why — the failure the missing-bound
+ * warnings a few lines below exist to prevent, under a comment saying it is the
+ * worst thing declarative data can do.
+ *
+ * The two are distinguishable statically, so they are distinguished here, before
+ * a single element is walked.
+ */
+function missingFrameRole(rule: ValidationRule, family: string): boolean {
+  if (rule.backgroundRole !== undefined) return false;
+  warnOnce(
+    `${family} rule "${rule.id}" names no frame role, and its whole question ` +
+      `is asked about a frame — the rule is not evaluated.`
+  );
+  return true;
 }
 
 /**
@@ -2789,6 +2843,10 @@ function endpointAlphabet(allowed: readonly EndpointTriplet[]): RoleId[] {
 /**
  * Whether `role` is one the rule's own framework DECLARES.
  *
+ * The FALLBACK half of {@link RelationEndpointsDef.flagNeutral}'s vocabulary
+ * test — used on its own only by a rule that declares no matrix, and composed
+ * with the grammar's own alphabet when there is one (see the call site).
+ *
  * A membership test on the vocabulary the rule already carries, and deliberately
  * not a prefix match on the `framework:` half of the id: the namespace is a
  * naming convention (`role.ts` types a role id as a bare string and says as
@@ -2800,9 +2858,17 @@ function endpointAlphabet(allowed: readonly EndpointTriplet[]): RoleId[] {
  * `roleIsA` against every declared role would give the same answer at a higher
  * price: a role outside the vocabulary has no parent chain to walk here, since
  * the walk reads `rule.roles`, so it can only ever match itself.
+ *
+ * `Object.hasOwn`, and never a bare index: `role` comes off a `Y.Map`, so it is
+ * whatever a peer or an importer wrote, and an element persisted with
+ * `role: 'toString'` would answer "declared" against a bag containing no such
+ * entry. The same threat model {@link elementExceptions} guards with its
+ * `Array.isArray`. Every other read of a role bag in this file goes through
+ * `roleIsA`, which writes `defs[current]?.parent` and terminates harmlessly on
+ * a prototype hit; this is the only place that tests for the PRESENCE of a key.
  */
 function declaresRole(rule: ValidationRule, role: RoleId | undefined): boolean {
-  return role !== undefined && rule.roles[role] !== undefined;
+  return role !== undefined && Object.hasOwn(rule.roles, role);
 }
 
 /** One relation this family has read, kept for the pair-wise pass. */
@@ -3036,17 +3102,38 @@ function evaluateRelationEndpoints(
     else drawn.push(relation);
   }
 
+  // Which roles a role-less link may be flagged BETWEEN.
+  //
+  // The rule's own ALPHABET when it declares a matrix — the roles its grammar
+  // actually has endpoints for, which is the tightest honest reading and gets
+  // `roleIsA` inheritance and the memo above for free. It also excludes, by
+  // construction and with nothing for an author to remember, the roles a
+  // framework declares for things that are not endpoints of anything: a
+  // background role, a legend glyph, a lane. Presuming somebody meant to draw a
+  // typed relation onto a POOL is exactly the over-firing this test exists to
+  // prevent.
+  //
+  // `speaks` cannot do the job alone, and the reason is worth stating: with no
+  // matrix it answers `true` for everything, `undefined` included, because
+  // "outside the alphabet" has no meaning when there is no alphabet. A
+  // matrix-less rule therefore falls back to membership in the vocabulary
+  // ({@link declaresRole}), which stays purely the dictionary `roleIsA` walks —
+  // the bag is NOT overloaded into a filter, so an author never has to shrink
+  // their inheritance dictionary in order to change what gets flagged.
+  const inVocabulary = (role: RoleId | undefined): boolean =>
+    alphabet === null ? declaresRole(rule, role) : speaks(role);
+
   // The NEUTRAL pass: a link carrying no role at all, drawn between two
-  // artefacts of this framework's own vocabulary. See
+  // artefacts this rule's grammar could have related. See
   // {@link RelationEndpointsDef.flagNeutral} — the gesture that produces one is
   // quick-connect, which stamps nothing, so the user has drawn a relation the
   // model does not contain.
   //
-  // Judged on membership in the rule's own `roles`, not on the matrix: the
-  // matrix is about which sentences are legal, and this edge says no sentence
-  // at all. A self-loop is skipped for the same reason `boundEnds` skips one
-  // everywhere else — a link from an artefact to itself is not evidence that a
-  // typed relation was meant.
+  // The edge is judged on WHAT it joins and never against the matrix: the matrix
+  // says which sentences are legal, and this edge says no sentence at all. A
+  // self-loop is skipped for the same reason `boundEnds` skips one everywhere
+  // else — a link from an artefact to itself is not evidence that a typed
+  // relation was meant.
   for (const el of neutral) {
     const ends = boundEnds(el);
     if (ends === null) continue;
@@ -3054,9 +3141,7 @@ function evaluateRelationEndpoints(
     const source = byId.get(sourceId);
     const target = byId.get(targetId);
     if (source === undefined || target === undefined) continue;
-    if (!declaresRole(rule, source.role) || !declaresRole(rule, target.role)) {
-      continue;
-    }
+    if (!inVocabulary(source.role) || !inVocabulary(target.role)) continue;
     violations.push(
       raise(
         rule,
@@ -3371,11 +3456,25 @@ function evaluateElementInZone(
  * - **an edge with a free end** — it relates nothing, so it is not evidence of a
  *   node being connected. A link the user has grabbed and not yet dropped must
  *   not make a start event legal for the length of the gesture;
- * - **an end whose element is gone** — a dangling id counts against nobody;
  * - **an end that is not a subject of this rule** — nothing to say about it;
  * - **a rule declaring no bound at all** — it asks nothing. It warns once, since
  *   data that can never fire and never says why is the worst thing declarative
  *   data can do.
+ *
+ * ## An end whose element is GONE, and why this family keeps the other half
+ *
+ * A dangling id counts against nobody, but the edge is not dropped: the node at
+ * the surviving end really does have one relation leaving it, and no gesture the
+ * user makes on THAT node changes the fact. This family counts the ends, never
+ * the survivors.
+ *
+ * A deliberate divergence from the three families whose subject is the RELATION
+ * — `relative-order-along-axis`, `relation-endpoints`, `edge-locality` — which
+ * drop such an edge whole, because a sentence with a missing half is not a
+ * sentence anybody can be told about. A COUNT has no such problem, and neither
+ * does the traversal in {@link evaluateReachability}, which follows the arc to
+ * an element that is not there and simply never reaches anything by it. Two
+ * different questions, two different readings of the same broken pair.
  *
  * A SELF-LOOP counts on both sides: the node genuinely has one edge leaving and
  * one arriving, and that is what the document says. Whether a loop is legitimate
@@ -3516,6 +3615,7 @@ function evaluateRoleCount(
 ): Violation[] {
   const count = rule.roleCount;
   if (count === undefined) return [];
+  if (missingFrameRole(rule, 'role-count')) return [];
   const { min, max } = count;
   if (min === undefined && max === undefined) {
     warnOnce(
@@ -3604,6 +3704,7 @@ function evaluateEdgeLocality(
 ): Violation[] {
   const locality = rule.locality;
   if (locality === undefined) return [];
+  if (missingFrameRole(rule, 'edge-locality')) return [];
 
   const frames = framePlots(rule, elements);
   // No frame on the board, no locality to be in or out of.

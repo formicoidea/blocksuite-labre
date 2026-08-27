@@ -250,6 +250,32 @@ describe('when a role-count rule stays silent', () => {
     expect(ids(bare, [pool('pool')])).toEqual([]);
   });
 
+  it('evaluates nothing, and warns, for a rule naming no frame role', () => {
+    // `backgroundsOf` answers `[]` both for "this rule names no frame" and for
+    // "this board carries none", and the second is a legitimate silence. A rule
+    // that never fires and never says why is not.
+    const frameless: ValidationRule = {
+      ...ONE_START,
+      id: 'test.no-frame-role',
+      backgroundRole: undefined,
+    };
+
+    expect(ids(frameless, [pool('pool')])).toEqual([]);
+  });
+
+  it('counts against the element box when the plot has COLLAPSED', () => {
+    // A pool dragged narrower than its own margins yields a negative-extent
+    // plot, which contains no point anywhere. Left alone the tally would read
+    // zero and `min: 1` would answer "this pool holds no start event" while
+    // pointing at one that visibly holds one — a false accusation whose only
+    // remedy, widen the pool, is nowhere in the sentence.
+    const narrow = element('pool', [0, 0, 80, 400], { role: 'test:pool' });
+
+    expect(
+      ids(ONE_START, [narrow, node('start', 'test:event', [30, 100])])
+    ).toEqual([]);
+  });
+
   it('measures against the element box when the rule declares no geometry', () => {
     // `backgroundRole` alone is a complete declaration for a family that only
     // asks which frame something is on — so the title band is plot like the

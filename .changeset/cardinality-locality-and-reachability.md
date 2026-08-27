@@ -38,10 +38,11 @@ cause.
 auto-complete draw a connector carrying no role, so a framework's grammar read
 it as absent while the user read it as drawn — a board that looks joined up and
 validates as if nobody had joined anything. A rule can now ask for exactly one
-kind of role-less link back: one drawn between two artefacts of its own
-vocabulary. A plain link to a note, to a legend glyph, to a rectangle somebody
-dropped on the board to think with, stays what it always was — somebody
-pointing at something, and none of the framework's business.
+kind of role-less link back: one drawn between two artefacts its own sanctioned
+sentences could have related. A plain link to a note, to a legend glyph, to the
+frame the artefacts are drawn on, to a rectangle somebody dropped on the board
+to think with, stays what it always was — somebody pointing at something, and
+none of the framework's business.
 
 Every family is linear in the elements and the relations, `reachability` is
 `O(V + E)`, and none of them adds a pair-wise sweep: the 16 ms drawing budget

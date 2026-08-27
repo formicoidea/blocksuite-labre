@@ -229,9 +229,13 @@ describe('what an edge-degree rule refuses to count', () => {
     ).toEqual(['start']);
   });
 
-  it('does not count a flow whose other end is gone', () => {
-    // A dangling id is still a pair, and the node at THIS end really does have
-    // an edge leaving it — the family counts the ends, never the survivors.
+  it('counts the end that survives when the other one is gone', () => {
+    // The empty result IS the count: `minOut: 1` is satisfied, so the edge was
+    // read. A dangling id counts against nobody, but the node at THIS end really
+    // does have a relation leaving it and no gesture on that node changes it —
+    // the family counts the ends, never the survivors. Deliberately unlike the
+    // three families whose subject is the RELATION, which drop such an edge
+    // whole because half a sentence is not a sentence.
     expect(
       ids(START_DEGREE, [
         frame(),
