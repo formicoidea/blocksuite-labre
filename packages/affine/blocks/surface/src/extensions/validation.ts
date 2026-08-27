@@ -907,6 +907,67 @@ export interface ElementInZoneDef {
 }
 
 /**
+ * WHERE a rule's authority comes from.
+ *
+ * - `standard` — the rule restates a normative sentence of a published
+ *   specification. The tool is reporting a conformance defect.
+ * - `recommendation` — a SHOULD of the specification, or an industry linter's
+ *   rule (bpmnlint, and its equivalents elsewhere). Widely agreed practice; not
+ *   a conformance defect.
+ * - `labre-convention` — a house style of this editor, and nothing else. No
+ *   norm speaks of it, and the rule must never let a user believe one does.
+ * - `organization` — a level of requirement an ORGANISATION adds on top, which
+ *   the PRD names as future org profiles. Reserved: nothing declares it today.
+ */
+export type ProvenanceSource =
+  | 'standard'
+  | 'recommendation'
+  | 'labre-convention'
+  | 'organization';
+
+/**
+ * Where a rule's authority comes from, as DATA rather than as prose buried in
+ * its message.
+ *
+ * A Labre convention presented as a norm violation is the one thing an
+ * architecture review will not forgive, and until now the distinction lived
+ * only in each rule's wording and in the comment above it — invisible to the
+ * UI, unqueryable by a host, unassertable by a test. Promoting it to a field is
+ * the same move the platform already made for severity and for moment: a rule
+ * says once, in its own declaration, what kind of thing it is.
+ *
+ * ## Purely descriptive
+ *
+ * **No evaluator reads it.** Not one of the fourteen family functions branches
+ * on it, `evaluateRules` and `evaluateCheckup` never look at it, and a rule
+ * declaring it evaluates identically to the same rule with the field removed
+ * ({@link ValidationRule.provenance} is pinned inert by a test). It exists for
+ * the violation bubble, for a conformance report, and for a host that wants to
+ * separate "your diagram breaks the standard" from "we suggest".
+ *
+ * ## One rule, one provenance
+ *
+ * The field describes THE RULE, so a rule whose clauses would answer
+ * differently is a rule that should be two — BPMN's sequence-flow endpoints
+ * (p.95, standard) and its no-self-loop house style split for exactly that
+ * reason, rather than declaring one provenance that is wrong half the time.
+ */
+export interface RuleProvenance {
+  /** Where this rule's authority comes from. */
+  source: ProvenanceSource;
+  /**
+   * Human-readable citation — e.g. `'OMG BPMN 2.0.2 (ISO/IEC 19510) p.244'` or
+   * `'bpmnlint no-duplicate-sequence-flows'`.
+   *
+   * Prose, deliberately, and displayed VERBATIM: a page number, a clause, a
+   * linter rule name and a book chapter have nothing in common but being
+   * readable, and a schema that tried to model all four would model none of
+   * them. It is never translated — a citation is the same in every language.
+   */
+  reference?: string;
+}
+
+/**
  * A rule is declarative, versioned data owned by its framework (PRD principle
  * 5) — never a subclass, never a closure. It is comparable, serializable and
  * can be shipped by a host.
@@ -942,6 +1003,15 @@ export interface ValidationRule extends RuleMessage {
   roles: RoleDefs;
   /** Bumped when the rule's meaning changes, so a host can pin behaviour. */
   version: number;
+  /**
+   * Where this rule's authority comes from — see {@link RuleProvenance}.
+   *
+   * Optional, framework-agnostic and purely DESCRIPTIVE: the engine's
+   * evaluators never read it, so declaring it changes no verdict, no severity
+   * and no message. A rule that omits it simply says nothing about its
+   * authority, exactly as every rule did before the field existed.
+   */
+  provenance?: RuleProvenance;
   /**
    * The ROLE of the framework's background (`wardley:map`), i.e. the frame the
    * subject roles are measured against.

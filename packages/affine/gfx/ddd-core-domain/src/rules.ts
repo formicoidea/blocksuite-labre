@@ -63,6 +63,11 @@ const outsourcedCore: ValidationRule = {
   suggestionFallback:
     'The core is what the organisation must own — move it out of the Core quadrant, or reclassify it as a big bet.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Core Domain Charts (DDD) — the one question the chart exists to ask',
+  },
   backgroundRole: CORE_DOMAIN_ROLE.chart,
   // The frame's own declaration, carried as data exactly like `roles` is: it is
   // where the Core quadrant's rectangle is written, and the engine reads it
@@ -112,6 +117,10 @@ const malformedMovement: ValidationRule = {
   suggestionFallback:
     'A movement reads "is moving to" — draw it from the context where it stands today to the future position, or reverse it.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference: 'Core Domain Charts (DDD) — the grammar of the movement arrow',
+  },
   backgroundRole: CORE_DOMAIN_ROLE.chart,
   endpoints: {
     edgeRole: CORE_DOMAIN_ROLE.movement,
@@ -159,6 +168,11 @@ const overlappingArtefacts: ValidationRule = {
     'com.labre.core-domain.validation.overlapping-artefacts.suggestion',
   suggestionFallback: 'Move one of them aside.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre readability convention — no Core Domain Chart rule speaks of overlapping ink',
+  },
   // Not a frame the rule measures against — an overlap is an overlap wherever
   // it happens — but the chart a finding is ATTRIBUTED to, so the arbitration
   // "ignore this rule on the whole chart" has one chart to be written on.
@@ -198,6 +212,11 @@ const offLegendColour: ValidationRule = {
   suggestionFallback:
     'The chart reads by its notation — put the dot back on one of the five legend colours, or add the new one to the legend.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — the legend this toolbar inserts declares the palette',
+  },
   backgroundRole: CORE_DOMAIN_ROLE.chart,
   background: CORE_DOMAIN_BACKGROUND,
   tone: { palette: CORE_DOMAIN_LEGEND_TONES },
