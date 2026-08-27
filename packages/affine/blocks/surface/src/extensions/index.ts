@@ -6,6 +6,7 @@ export * from './edit-props-middleware-builder';
 export * from './editor-anchored-panel';
 export * from './element-renderer';
 export * from './export-manager';
+export * from './interchange';
 export * from './legacy-slot-extension';
 export * from './map-quality';
 export * from './map-quality-widget';

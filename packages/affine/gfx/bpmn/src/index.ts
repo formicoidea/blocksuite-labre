@@ -20,6 +20,16 @@ export {
   exportBpmnXml,
   toNcName,
 } from './export.js';
+// BPMN's entries in the interchange registry (`docs/adr/0012`) — one today,
+// `.bpmn` OUT. Exported whole so a host can ask what BPMN can read and write
+// without mounting an editor, and call it without one either.
+export {
+  BPMN_INTERCHANGE,
+  BPMN_XML_EXPORT,
+  BPMN_XML_FORMAT,
+  bpmnBoardFrom,
+  bpmnSafeFilename,
+} from './interchange.js';
 // Where an artefact sits, without a `BlockStdScope`: the same pool and lane
 // attribution the audit computes, answerable by a rule, a host or a test.
 export { bpmnLaneOf, bpmnPoolOf } from './facts.js';
