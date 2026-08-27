@@ -805,6 +805,25 @@ export abstract class GfxPrimitiveElementModel<
    * concurrently therefore resolve last-write-wins on the whole blob, which is
    * `lanes`' trade (ADR 0007): nobody edits this value, so the window is the
    * import itself.
+   *
+   * ## Writing it, for the importer
+   *
+   * - **Write the whole blob in one assignment**, the way an import already
+   *   produces it. Never read-modify-write it key by key: the Y.Map entry is the
+   *   entire `Record`, so a partial update is still a last-write-wins overwrite
+   *   of everything, and two of them racing lose a whole format's payload rather
+   *   than merging.
+   * - **Write no key at all** when there is nothing to carry — an element the
+   *   import mapped cleanly, or any visual-tier capability, which by contract
+   *   writes none (ADR 0012 P2). Absent and empty are NOT equivalent here:
+   *   `{}` costs every element a Y.Map entry and makes P2's "writes no
+   *   `interchange` key" untestable.
+   * - **Removing it is {@link clearField}**, never an assignment to `undefined`
+   *   — the former deletes the key, the latter can leave a tombstone.
+   * - **Nothing caps the size of this value** (ADR 0012, open question 3). A
+   *   pathological file would produce a document that is mostly foreign matter;
+   *   a cap that dropped data would contradict D2, so the only honest cap is a
+   *   refusal at import time. That is the importer's call, not the model's.
    */
   @field()
   accessor interchange: Record<string, ForeignInterchange> | undefined =

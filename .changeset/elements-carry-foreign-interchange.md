@@ -1,5 +1,5 @@
 ---
-'@labre/std': patch
+'@labre/std': minor
 ---
 
 feat(std): elements can carry a sealed foreign-interchange payload per format — the ADR 0012 field

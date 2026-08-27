@@ -40,8 +40,13 @@ const extensions = [RootBlockSchemaExtension, SurfaceBlockSchemaExtension];
 
 /**
  * One payload exercising every member of {@link ForeignInterchange} at once, so
- * a member quietly dropped from the type — or a shape Yjs turns out to refuse —
- * fails a test rather than a user's import.
+ * a shape Yjs turns out to refuse fails here rather than in a user's import.
+ *
+ * The TYPE is locked by `yarn build`, not by this suite: esbuild strips the
+ * annotation, so dropping a member from `ForeignInterchange` leaves all of these
+ * tests green and fails `tsc` on this literal instead. `carries every member the
+ * type declares` below adds the runtime half, so the two together fail whichever
+ * way a member goes missing.
  */
 const BPMN_PAYLOAD: ForeignInterchange = {
   id: 'Activity_0x7f2a',
@@ -93,12 +98,39 @@ describe('the interchange field', () => {
     )!;
 
     expect(el.interchange).toBeUndefined();
-    // `@field().init()` returns early on an `undefined` default, so nothing
-    // lands in the shared document. This is the assertion the whole
-    // no-migration claim rests on: a board full of drawn elements costs zero
-    // bytes for a feature it never used.
+    // The assertion the whole no-migration claim rests on: a board full of drawn
+    // elements costs zero bytes for a feature it never used.
+    //
+    // Two INDEPENDENT mechanisms produce it, and the stronger one is the one
+    // that is easy to miss. `@field()`'s `init` returns early on an `undefined`
+    // default (`decorators/field.ts`) — but for a field declared on the BASE
+    // class it never gets that far: the instance initializer runs before the
+    // constructor body reaches `this.yMap = yMap`, so `this.yMap` is still
+    // `undefined` and `init`'s write block is unreachable on the
+    // `_createElementFromProps` path whatever the default says. (The early
+    // return IS load-bearing for a SUBCLASS field, whose initializer runs after
+    // `super()` returns. `interchange` is not one.)
+    //
+    // So this guarantee survives an initializer typo, a refactor of the default,
+    // even a future `= {}` — which is worth knowing before judging some later
+    // change to this line safe or unsafe.
     expect(el.yMap.has('interchange')).toBe(false);
     expect(el.serialize()).not.toHaveProperty('interchange');
+  });
+
+  test('the sample payload carries every member the type declares', () => {
+    // The runtime half of the shape lock. `tsc` catches a member REMOVED from
+    // `ForeignInterchange` (the literal above stops compiling); this catches one
+    // that survives in the type but silently stops being exercised here, which
+    // is how the encodability and round-trip assertions would quietly narrow.
+    expect(Object.keys(BPMN_PAYLOAD).sort()).toEqual([
+      'attrs',
+      'children',
+      'di',
+      'element',
+      'id',
+      'quarantined',
+    ]);
   });
 
   test('an element written before the field existed opens with no payload', () => {
@@ -265,7 +297,7 @@ describe('the interchange field', () => {
     warn.mockRestore();
   });
 
-  test('a cleared element is byte-identical to one that never carried a payload', () => {
+  test('a cleared element is indistinguishable from one that never carried a payload', () => {
     const carried = surface.addElement({
       type: 'testShape',
       interchange: { bpmn: BPMN_PAYLOAD },
@@ -275,11 +307,27 @@ describe('the interchange field', () => {
 
     // Clearing leaves no tombstone: stripping an import must give back exactly
     // the document a hand-drawn board would have produced.
-    expect(
-      Object.keys(surface.getElementById(carried)!.yMap.toJSON()).sort()
-    ).toEqual(
-      Object.keys(surface.getElementById(virgin)!.yMap.toJSON()).sort()
-    );
+    //
+    // Compared on VALUES, not just on the key set — a tombstone written as
+    // `interchange: null`, or a payload blanked to `{}` rather than deleted,
+    // both keep the key set identical and would pass a keys-only assertion.
+    // `id`, `seed` and `index` necessarily differ between any two elements
+    // (identity, roughness seed, fractional z-order), so they are excluded and
+    // everything else must match exactly.
+    const identity = ({
+      id: _id,
+      seed: _seed,
+      index: _index,
+      ...rest
+    }: Record<string, unknown>) => rest;
+
+    const cleared = surface.getElementById(carried)!.yMap.toJSON();
+    const untouched = surface.getElementById(virgin)!.yMap.toJSON();
+
+    expect(identity(cleared)).toEqual(identity(untouched));
+    // Belt to that braces: the excluded three are PRESENT on both, so the
+    // exclusion cannot be hiding a missing key.
+    expect(Object.keys(cleared).sort()).toEqual(Object.keys(untouched).sort());
   });
 
   test('it is orthogonal to the other base-class fields', () => {
