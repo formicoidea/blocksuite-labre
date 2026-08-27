@@ -23,6 +23,8 @@ import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
+  ASSOCIATION_STROKE,
+  ASSOCIATION_WIDTH,
   CALL_ACTIVITY_WIDTH,
   END_WIDTH,
   EVENT_END,
@@ -30,6 +32,8 @@ import {
   GROUP_STROKE,
   EVENT_START,
   INNER_FONT_SIZE,
+  MESSAGE_STROKE,
+  MESSAGE_WIDTH,
   NEUTRAL_STROKE,
   NODE_FILL,
   NODE_LABEL,
@@ -290,6 +294,71 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
     // the role so the connector is born with it rather than acquiring one
     // afterwards.
     role: BPMN_ROLE.sequenceFlow,
+  });
+  // Keep the palette open (native sub-menu behaviour).
+}
+
+/**
+ * Arm the native connector tool, pre-styled for a BPMN message flow:
+ * orthogonal, DASHED, an open circle where the message leaves and an open
+ * arrowhead where it lands.
+ *
+ * ## The two endpoint styles, and why these two
+ *
+ * The spec's message flow starts on a small hollow circle and ends on a hollow
+ * (line-drawn) arrowhead — never the solid triangle the sequence flow uses,
+ * which is the whole visual difference between "then this happens" and "and
+ * this is what I told them". `PointStyle` offers `Circle` and `Arrow`, and they
+ * are exactly those two shapes: `Arrow` is drawn as an unfilled V
+ * (`renderRoundedPolygon(…, false)`), against `Triangle`'s filled one. The only
+ * deviation is that `Circle` is painted with the connector's `fillColor` rather
+ * than left transparent — the shape, the size and the position are the spec's.
+ */
+export function activateBpmnMessageFlow(std: BlockStdScope) {
+  std.get(EditPropsStore).recordLastProps('connector', {
+    mode: ConnectorMode.Orthogonal,
+    stroke: MESSAGE_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: MESSAGE_WIDTH,
+    frontEndpointStyle: PointStyle.Circle,
+    rearEndpointStyle: PointStyle.Arrow,
+  });
+  gfxOf(std).tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Orthogonal,
+    // A TYPED edge (`docs/adr/0010`), and the role its vocabulary already
+    // declared with the verb "sends a message to": the source is the
+    // participant that sends, the target the one that receives.
+    role: BPMN_ROLE.messageFlow,
+  });
+  // Keep the palette open (native sub-menu behaviour).
+}
+
+/**
+ * Arm the native connector tool, pre-styled for a BPMN association: dashed, and
+ * with NO endpoint marker at either end.
+ *
+ * The missing arrowheads are the point, not an omission. An association names
+ * no relation — `bpmn:association` is the one edge role in this vocabulary
+ * declared without a `direction` block — so "this note is about that task"
+ * reads identically from either end, and an arrowhead would be the picture
+ * claiming a direction the role explicitly refuses to have. See the role's own
+ * doc comment in `./roles.ts`.
+ *
+ * On the dash (there is no dotted stroke to ask for) see
+ * {@link ASSOCIATION_STROKE}'s neighbours in `./consts.ts`.
+ */
+export function activateBpmnAssociation(std: BlockStdScope) {
+  std.get(EditPropsStore).recordLastProps('connector', {
+    mode: ConnectorMode.Orthogonal,
+    stroke: ASSOCIATION_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: ASSOCIATION_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.None,
+  });
+  gfxOf(std).tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Orthogonal,
+    role: BPMN_ROLE.association,
   });
   // Keep the palette open (native sub-menu behaviour).
 }

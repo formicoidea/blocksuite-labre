@@ -222,3 +222,36 @@ export const POOL_REF_HEIGHT = 200;
 /** Sequence-flow connector preset. */
 export const SEQUENCE_STROKE = '#262626';
 export const SEQUENCE_WIDTH = 2;
+
+/**
+ * Message-flow connector preset — the dashed line that crosses between pools.
+ *
+ * Same ink and same weight as the sequence flow: what tells the two apart is
+ * the DASH and the endpoints (an open circle where the message leaves, an open
+ * arrowhead where it lands), which is exactly the distinction BPMN draws.
+ */
+export const MESSAGE_STROKE = '#262626';
+export const MESSAGE_WIDTH = 2;
+
+/**
+ * Association connector preset — the line that ties a note or a data object to
+ * the work it is about.
+ *
+ * ## Dashed, not dotted (simplification, and why it is survivable)
+ *
+ * BPMN draws a message flow DASHED and an association DOTTED. This editor's
+ * `StrokeStyle` has three members — `Solid`, `Dash`, `None` — and the dash
+ * pattern is a fixed `[12, 12]` no framework can tighten, so there is no dotted
+ * stroke to ask for. Drawing it thinner instead is not available either: a
+ * connector's `strokeWidth` is a closed enum (`2 | 4 | … | 12`) the props store
+ * validates, and 2 is already the floor.
+ *
+ * So the association ships with the message flow's own line, and carries the
+ * distinction entirely on its ENDPOINTS: a message flow always shows a circle
+ * where it leaves and an arrowhead where it lands, an association shows neither
+ * at either end. That is a difference the eye reads at a glance and, unlike the
+ * dot pattern, it is one the notation itself means — an association has no
+ * direction to point in. A rule reads the `role`, which is exact either way.
+ */
+export const ASSOCIATION_STROKE = '#262626';
+export const ASSOCIATION_WIDTH = 2;

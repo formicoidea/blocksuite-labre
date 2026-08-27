@@ -548,7 +548,8 @@ describe('the two lane commands', () => {
   it('declare themselves as selection-scoped actions', () => {
     for (const descriptor of [addLane, removeLane]) {
       expect(descriptor.kind).toBe('action');
-      expect(descriptor.category).toBe('flow');
+      // Filed with the pool they divide, not in a section of their own.
+      expect(descriptor.category).toBe('swimlanes');
       expect(descriptor.availability).toBe('selection');
       expect(descriptor.telemetry?.framework).toBe('bpmn');
       expect(descriptor.iconKey).toBeTruthy();
