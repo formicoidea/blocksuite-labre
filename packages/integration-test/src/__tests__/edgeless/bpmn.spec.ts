@@ -734,10 +734,67 @@ describe('the BPMN XML export, end to end', () => {
       flow.absolutePath.length
     );
 
-    // The plain rectangle said nothing and is nowhere in the file: one shape
-    // for the participant and one for each of the two artefacts.
+    // The plain rectangle said nothing and is nowhere in the file.
     expect(byName(doc, 'task')).toHaveLength(0);
-    expect(byName(doc, 'BPMNShape')).toHaveLength(3);
+    // Five shapes: the participant, its TWO LANES, and the two artefacts. The
+    // lanes were the gap the bpmn.io interop pass found — this count used to
+    // read 3, which is the bug written down as a pin.
+    expect(byName(doc, 'BPMNShape')).toHaveLength(5);
+    const laneShapes = byName(doc, 'BPMNShape').filter(shape =>
+      lanes.some(
+        lane => lane.getAttribute('id') === shape.getAttribute('bpmnElement')
+      )
+    );
+    expect(laneShapes).toHaveLength(2);
+    for (const shape of laneShapes) {
+      expect(shape.getAttribute('isHorizontal')).toBe('true');
+      expect(childrenNamed(shape, 'Bounds')).toHaveLength(1);
+    }
+  });
+
+  test('hostile and multi-line labels survive a REAL parser', async () => {
+    // The unit suite asserts the escaped bytes, because happy-dom's DOMParser
+    // decodes neither numeric character references nor `&apos;` in an attribute
+    // value — it cannot tell a label that was lost from one that was kept. This
+    // runs in chromium, where the round trip is the real thing.
+    //
+    // Two hazards in one board: the five reserved characters, and a newline in
+    // an ATTRIBUTE, which XML 1.0 §3.3.3 turns into a space in every conformant
+    // parser unless it was written as `&#10;`. Multi-line labels are ordinary
+    // here — it is how a task fits in its box.
+    const surface = getSurface(window.doc, window.editor).model;
+    const hostile = 'Q&A <test> "quote" \'apos\'';
+    const multiline = 'Check the\nstock';
+
+    surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      name: hostile,
+      xywh: '[0,0,600,400]',
+    });
+    surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: BPMN_ROLE_OF_KIND.task,
+      shapeType: 'rect',
+      text: multiline,
+      xywh: '[100,100,120,72]',
+    });
+    surface.addElement({
+      type: 'bpmnNode',
+      kind: 'textAnnotation',
+      role: BPMN_ROLE_OF_KIND.textAnnotation,
+      shapeType: 'rect',
+      text: hostile,
+      xywh: '[300,100,120,72]',
+    });
+    await wait();
+
+    const doc = parse(exportBpmnXml(bpmnBoardOf(edgeless.std)));
+    expect(byName(doc, 'participant')[0].getAttribute('name')).toBe(hostile);
+    // The line break came back as a line break, not as a space.
+    expect(byName(doc, 'task')[0].getAttribute('name')).toBe(multiline);
+    expect(byName(doc, 'text')[0].textContent).toBe(hostile);
   });
 
   test('the command is offered on a selected pool and exports the board', async () => {

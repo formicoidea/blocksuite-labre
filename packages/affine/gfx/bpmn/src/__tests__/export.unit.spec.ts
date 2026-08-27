@@ -13,6 +13,7 @@ import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
+import { bpmnExportFilename } from '../actions';
 import { bpmnCommands } from '../commands';
 import { POOL_BAND_WIDTH } from '../consts';
 import {
@@ -228,15 +229,73 @@ describe('a two-participant collaboration', () => {
   it('is a well-formed `definitions` in the four spec namespaces', () => {
     const root = doc.documentElement;
     expect(root.localName).toBe('definitions');
-    expect(root.namespaceURI).toBe(BPMN_NS.model);
-    // The URIs are the contract; the prefixes are not (bpmn.io writes the same
-    // two DD namespaces as `omgdi` / `omgdc`).
-    expect(attr(root, 'xmlns:bpmndi')).toBe(BPMN_NS.bpmndi);
-    expect(attr(root, 'xmlns:di')).toBe(BPMN_NS.di);
-    expect(attr(root, 'xmlns:dc')).toBe(BPMN_NS.dc);
     // The ONE attribute `definitions` requires.
     expect(attr(root, 'targetNamespace')).toBeTruthy();
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+  });
+
+  it('writes the four namespace URIs the spec defines, character for character', () => {
+    // LITERALS, and deliberately not `BPMN_NS.*`. Every other assertion in this
+    // file reads the document through those constants, which proves the output
+    // agrees with them and NOTHING about whether they are the spec's — an
+    // adversarial review swapped `di` for `dc`, and then substituted the stale
+    // `.../BPMNDI/1.0.0` erratum that this module's own doc comment warns
+    // against, and the whole suite stayed green both times.
+    //
+    // Four strings, typed out once, from §15.3.1 and Annex B. This is the line
+    // that fails if anybody edits them.
+    const root = doc.documentElement;
+    expect(root.namespaceURI).toBe(
+      'http://www.omg.org/spec/BPMN/20100524/MODEL'
+    );
+    expect(attr(root, 'xmlns:bpmn')).toBe(
+      'http://www.omg.org/spec/BPMN/20100524/MODEL'
+    );
+    expect(attr(root, 'xmlns:bpmndi')).toBe(
+      'http://www.omg.org/spec/BPMN/20100524/DI'
+    );
+    expect(attr(root, 'xmlns:di')).toBe(
+      'http://www.omg.org/spec/DD/20100524/DI'
+    );
+    expect(attr(root, 'xmlns:dc')).toBe(
+      'http://www.omg.org/spec/DD/20100524/DC'
+    );
+
+    // …and the elements really are IN them, so a declaration nobody uses would
+    // not pass either. The prefixes are not the contract (bpmn.io writes the
+    // same two DD namespaces as `omgdi` / `omgdc`); the URIs are.
+    expect(di(doc, 'BPMNDiagram')[0]?.namespaceURI).toBe(
+      'http://www.omg.org/spec/BPMN/20100524/DI'
+    );
+    expect(
+      all(doc, 'http://www.omg.org/spec/DD/20100524/DC', 'Bounds').length
+    ).toBeGreaterThan(0);
+    expect(
+      all(doc, 'http://www.omg.org/spec/DD/20100524/DI', 'waypoint').length
+    ).toBeGreaterThan(0);
+  });
+
+  it('says which end is the source, on all three kinds of flow', () => {
+    // The highest-consequence property in the module and the cheapest to lose:
+    // reversing `sourceRef`/`targetRef` on every flow leaves a well-formed
+    // document, unchanged DI, and a process that reads backwards in bpmn.io.
+    // The composed board draws start → task, task → remote, annotation → task.
+    const idOf = (surfaceId: string) => toNcName(surfaceId);
+
+    const sequence = model(doc, 'sequenceFlow')[0];
+    expect(attr(sequence, 'sourceRef')).toBe(idOf('n-startEvent'));
+    expect(attr(sequence, 'targetRef')).toBe(idOf('n-task'));
+
+    const message = model(doc, 'messageFlow')[0];
+    expect(attr(message, 'sourceRef')).toBe(idOf('n-task'));
+    expect(attr(message, 'targetRef')).toBe(idOf('n-remote'));
+
+    // An association carries no direction — `associationDirection="None"` — but
+    // the two ends are still the two ends the author drew, and a reader (or a
+    // tool laying the line out) is entitled to that.
+    const association = model(doc, 'association')[0];
+    expect(attr(association, 'sourceRef')).toBe(idOf('n-textAnnotation'));
+    expect(attr(association, 'targetRef')).toBe(idOf('n-task'));
   });
 
   it('gives every pool a participant and a process, wired to each other', () => {
@@ -432,10 +491,13 @@ describe('a two-participant collaboration', () => {
       )
     );
 
-    // Everything a reader can see on the canvas. The `dataObject` behind a
-    // reference is deliberately NOT among them — DI attaches to the reference.
+    // Everything a reader can see on the canvas — the LANES included, which is
+    // what the live recette caught: a lane with no shape is a subdivision the
+    // model knows about and no tool draws. The `dataObject` behind a reference
+    // is deliberately NOT among them: DI attaches to the reference.
     const drawable = [
       ...model(doc, 'participant'),
+      ...model(doc, 'lane'),
       ...ALL_KINDS.flatMap(kind => {
         const name = BPMN_XML_OF_KIND[kind].element;
         return model(doc, name).filter(element =>
@@ -463,6 +525,52 @@ describe('a two-participant collaboration', () => {
         2
       );
     }
+  });
+
+  it('draws each lane: a BPMNShape tiling the pool, not just a laneSet', () => {
+    // The gap the live recette found. The laneSet and its `flowNodeRef`s were
+    // already right, and bpmn.io drew the pool with NO subdivisions at all —
+    // because a lane is a DiagramElement like any other, and a tool draws what
+    // the plane describes. Without this assertion the model can be perfect and
+    // the picture wrong.
+    const laneIds = model(doc, 'lane').map(lane => attr(lane, 'id'));
+    expect(laneIds).toHaveLength(2);
+
+    const shapes = laneIds.map(id =>
+      di(doc, 'BPMNShape').find(shape => attr(shape, 'bpmnElement') === id)
+    );
+    expect(shapes.every(shape => shape !== undefined)).toBe(true);
+
+    const bounds = shapes.map(shape => {
+      const box = all(shape!, BPMN_NS.dc, 'Bounds')[0];
+      return {
+        x: Number(attr(box, 'x')),
+        y: Number(attr(box, 'y')),
+        w: Number(attr(box, 'width')),
+        h: Number(attr(box, 'height')),
+      };
+    });
+
+    // `isHorizontal` is meaningful on exactly two things — a pool and a lane.
+    for (const shape of shapes) {
+      expect(attr(shape!, 'isHorizontal')).toBe('true');
+    }
+
+    // The bands tile the pool's PLOT: they start after the participant name
+    // band, span the rest of its width, and between them cover its full height
+    // with no gap and no overlap. (Pool "Sales" is [0, 0, POOL_W, POOL_H] and
+    // the two lanes are of equal weight.)
+    for (const band of bounds) {
+      expect(band.x).toBe(BAND);
+      expect(band.w).toBe(POOL_W - BAND);
+    }
+    expect(bounds[0].y).toBe(0);
+    expect(bounds[0].h).toBe(POOL_H / 2);
+    expect(bounds[1].y).toBe(bounds[0].y + bounds[0].h);
+    expect(bounds[1].h).toBe(POOL_H / 2);
+    // …which is also bpmn-js's own convention to within our band width: it lays
+    // its lanes out 30 units right of the participant, and ours is 28.
+    expect(Math.abs(BAND - 30)).toBeLessThanOrEqual(2);
   });
 
   it('flags the pool horizontal, the sub-process collapsed, the X visible', () => {
@@ -520,6 +628,129 @@ describe('a two-participant collaboration', () => {
       '100',
       '100',
     ]);
+  });
+});
+
+/**
+ * What happens to things drawn BESIDE the pools — the second gap the live
+ * recette found.
+ *
+ * A process with no participant has no shape on a collaboration plane, so
+ * bpmn-js imports its contents and draws none of them: an annotation dropped
+ * next to the pools used to vanish. `tCollaboration` ends on `artifact*`, which
+ * is a legal and drawable home for exactly the three things that were
+ * disappearing.
+ */
+describe('a collaboration with things drawn outside every pool', () => {
+  /** One pool, plus an annotation, a group and a stray task beside it. */
+  const orphanBoard = () => {
+    const pool = fakePool('pool-a', [0, 0, POOL_W, POOL_H], { name: 'Sales' });
+    const inside = fakeNode('inside', 'task', [BAND + 20, 60, 60, 40], 'Work');
+    return board({
+      pools: [pool],
+      nodes: [
+        inside,
+        // Far to the right of the pool: outside its plot on the centre test.
+        fakeNode('note', 'textAnnotation', [900, 40, 120, 40], 'SLA 24h'),
+        fakeNode('lasso', 'group', [900, 120, 200, 120], 'Later'),
+        fakeNode('stray', 'task', [900, 300, 120, 60], 'Orphan task'),
+      ],
+      connectors: [
+        fakeConnector('link', BPMN_ROLE.association, {
+          source: 'note',
+          target: 'inside',
+        }),
+      ],
+    });
+  };
+
+  const doc = parse(exportBpmnXml(orphanBoard(), { name: 'Board' }));
+  const collaboration = model(doc, 'collaboration')[0];
+
+  it('puts orphan ARTIFACTS on the collaboration, where they are drawn', () => {
+    expect(model(doc, 'textAnnotation')[0].parentElement).toBe(collaboration);
+    expect(model(doc, 'group')[0].parentElement).toBe(collaboration);
+  });
+
+  it('puts a cross-scope association on the collaboration too', () => {
+    // Its two ends are in different scopes — an annotation beside the pools,
+    // a task inside one — so it belongs to neither, and the collaboration is
+    // the common ancestor that can legally hold it. Filing it with its source
+    // would have put it in a process that cannot draw it.
+    const association = model(doc, 'association')[0];
+    expect(association.parentElement).toBe(collaboration);
+    // And both references still resolve, by id, within the one document.
+    const ids = new Set(
+      Array.from(doc.getElementsByTagName('*')).map(e => e.getAttribute('id'))
+    );
+    expect(ids.has(attr(association, 'sourceRef'))).toBe(true);
+    expect(ids.has(attr(association, 'targetRef'))).toBe(true);
+  });
+
+  it('keeps `participant* → messageFlow* → artifact*`, as tCollaboration does', () => {
+    const order = Array.from(collaboration.children).map(c => c.localName);
+    expect(order).toEqual([
+      'participant',
+      'textAnnotation',
+      'group',
+      'association',
+    ]);
+  });
+
+  it('still needs a participant-less process for an orphan FLOW NODE', () => {
+    // The honest limit, pinned so it is a decision rather than a surprise: a
+    // task is a flow element and has no home on a collaboration. It is written
+    // correctly and any tool reading the MODEL will find it — but bpmn-js has
+    // no participant to draw it in, so it is not rendered. The alternatives are
+    // to invent a pool the author never drew or to drop the element, and the
+    // export refuses both.
+    const processes = model(doc, 'process');
+    expect(processes).toHaveLength(2);
+    const unassigned = processes.find(p => !attr(p, 'id')?.includes('pool'))!;
+    expect(Array.from(unassigned.children).map(c => attr(c, 'id'))).toEqual([
+      'stray',
+    ]);
+    // It is not referenced by any participant — that is exactly what makes it
+    // undrawable, and what the PR body documents.
+    const referenced = model(doc, 'participant').map(p =>
+      attr(p, 'processRef')
+    );
+    expect(referenced).not.toContain(attr(unassigned, 'id'));
+  });
+
+  it('mints no participant-less process when only artifacts fall outside', () => {
+    const clean = parse(
+      exportBpmnXml(
+        board({
+          pools: [fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'P' })],
+          nodes: [
+            fakeNode('in', 'task', [BAND + 20, 60, 60, 40]),
+            fakeNode('note', 'textAnnotation', [900, 40, 120, 40], 'Aside'),
+          ],
+        })
+      )
+    );
+    // One pool, one process. The annotation needed no process invented for it.
+    expect(model(clean, 'process')).toHaveLength(1);
+    expect(model(clean, 'textAnnotation')[0].parentElement?.localName).toBe(
+      'collaboration'
+    );
+  });
+
+  it('leaves an artifact drawn ON a pool in that pool’s process', () => {
+    // The rule is about what falls OUTSIDE, not about artifacts in general: an
+    // annotation drawn on a participant belongs with the work it is about.
+    const inside = parse(
+      exportBpmnXml(
+        board({
+          pools: [fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'P' })],
+          nodes: [fakeNode('note', 'textAnnotation', [BAND + 20, 60, 60, 40])],
+        })
+      )
+    );
+    expect(model(inside, 'textAnnotation')[0].parentElement?.localName).toBe(
+      'process'
+    );
   });
 });
 
@@ -644,6 +875,106 @@ describe('what the export refuses to say', () => {
   });
 });
 
+/**
+ * What a label made of hostile characters does to the file.
+ *
+ * The failure mode this guards is the worst one the module has: an unescaped
+ * `&` or `<` in a pool name produces a file that is not well-formed, the user
+ * downloads it, and NO BPMN tool can open it. Nothing else in the product
+ * breaks that visibly, and until an adversarial review deleted the escaper and
+ * watched the suite stay green, nothing here noticed.
+ */
+describe('labels that fight the format', () => {
+  const HOSTILE = 'Q&A <test> "quote" \'apos\'';
+
+  const hostileBoard = () =>
+    board({
+      pools: [fakePool('p', [0, 0, POOL_W, POOL_H], { name: HOSTILE })],
+      nodes: [
+        fakeNode('t', 'task', [BAND + 20, 60, 60, 40], HOSTILE),
+        fakeNode('n', 'textAnnotation', [BAND + 120, 60, 60, 40], HOSTILE),
+        fakeNode('g', 'group', [BAND + 220, 60, 60, 40], HOSTILE),
+      ],
+      connectors: [
+        fakeConnector('c', BPMN_ROLE.sequenceFlow, {
+          source: 't',
+          target: 'n',
+        }),
+      ],
+    });
+
+  it('escapes the reserved characters, literally, in every attribute', () => {
+    const xml = exportBpmnXml(hostileBoard(), { name: HOSTILE });
+    // The escaped form, spelled out — not "it parses", which a serializer that
+    // dropped the label entirely would also satisfy.
+    expect(xml).toContain(
+      'name="Q&amp;A &lt;test&gt; &quot;quote&quot; &apos;apos&apos;"'
+    );
+    // …and no raw reserved character survives inside a quoted value.
+    expect(xml).not.toContain('name="Q&A');
+    expect(xml).not.toContain('<test>');
+  });
+
+  it('escapes it on every carrier, not just the one that was looked at', () => {
+    // The label reaches the file through four different attributes and one
+    // element, and each of them is a separate line of code that could forget.
+    const xml = exportBpmnXml(hostileBoard(), { name: HOSTILE });
+    const escaped = 'Q&amp;A &lt;test&gt; &quot;quote&quot; &apos;apos&apos;';
+
+    // `participant/@name`, the flow node's `@name`, the collaboration's `@name`,
+    // and the group's label — which lives on `categoryValue/@value`, not on a
+    // `name` the group does not have.
+    expect(xml).toContain(
+      `<bpmn:participant id="Participant_p" name="${escaped}"`
+    );
+    expect(xml).toContain(`<bpmn:task id="t" name="${escaped}"`);
+    expect(xml).toContain(`value="${escaped}"`);
+    // …and character DATA, escaped differently and deliberately: the quotes and
+    // the apostrophe need no reference inside an element.
+    expect(xml).toContain(
+      '<bpmn:text>Q&amp;A &lt;test&gt; "quote" \'apos\'</bpmn:text>'
+    );
+    // The document still parses, which is the whole point of the exercise.
+    expect(parse(xml)).toBeTruthy();
+  });
+
+  it('keeps a MULTI-LINE label multi-line, in an attribute', () => {
+    // XML 1.0 §3.3.3: attribute-value normalization replaces a literal newline,
+    // CR or tab in an attribute value with a SPACE, in every conformant parser.
+    // Only a character reference survives it. A two-line task name is ordinary
+    // on this canvas — it is how a task fits in its box — so writing it raw
+    // loses the author's line break silently, with no warning anywhere.
+    //
+    // Asserted on the OUTPUT rather than on a round trip, because happy-dom's
+    // `DOMParser` decodes neither numeric references nor `&apos;` in attribute
+    // values — it would report the loss this test exists to prevent whether or
+    // not the loss happened. The genuine round trip runs in chromium, in
+    // `integration-test/src/__tests__/edgeless/bpmn.spec.ts`.
+    const label = 'Check the\nstock\tnow';
+    const xml = exportBpmnXml(
+      board({ nodes: [fakeNode('t', 'task', [0, 0, 60, 40], label)] })
+    );
+    expect(xml).toContain('name="Check the&#10;stock&#9;now"');
+    expect(parse(xml)).toBeTruthy();
+  });
+
+  it('keeps a multi-line annotation multi-line, in character data', () => {
+    // The other half, and the reason the two escapers are two: inside an
+    // element, whitespace is content and a newline needs no reference at all.
+    const label = 'First line\nSecond line';
+    const doc = parse(
+      exportBpmnXml(
+        board({
+          nodes: [fakeNode('n', 'textAnnotation', [0, 0, 60, 40], label)],
+        })
+      )
+    );
+    expect(model(model(doc, 'textAnnotation')[0], 'text')[0].textContent).toBe(
+      label
+    );
+  });
+});
+
 describe('ids', () => {
   it('turns a surface id into a valid NCName', () => {
     // `xsd:ID` means NCName: no leading digit, no colon, no space. Surface ids
@@ -652,6 +983,45 @@ describe('ids', () => {
     expect(toNcName('a:b c/d')).toBe('a_b_c_d');
     expect(toNcName('')).toBe('_');
     expect(toNcName('ok-id.2')).toBe('ok-id.2');
+  });
+
+  it('keeps accented letters, which NCName has always allowed', () => {
+    // Folding them to `_` was lossier than the format requires, and it showed
+    // where a human actually reads these: two ids one accent apart came out
+    // differing only by the minter's `_2` suffix in bpmn.io's properties panel.
+    expect(toNcName('tâche-1')).toBe('tâche-1');
+    expect(toNcName('Ökonomie')).toBe('Ökonomie');
+    expect(toNcName('工程')).toBe('工程');
+    // …and an accented opener is still a valid opener, so no `_` is prefixed.
+    expect(toNcName('École')).toBe('École');
+  });
+
+  it('gives two lanes with the SAME stored id two distinct xsd:IDs', () => {
+    // A hand-edited or badly-merged document can carry a repeated lane id. Two
+    // `lane` elements sharing an `id` is invalid — `xsd:ID` is unique across the
+    // whole document — so the minter has to see each band, not each distinct
+    // key.
+    const doc = parse(
+      exportBpmnXml(
+        board({
+          pools: [
+            fakePool('p', [0, 0, POOL_W, POOL_H], {
+              name: 'P',
+              lanes: [
+                { id: 'dup', name: 'One', size: 1 },
+                { id: 'dup', name: 'Two', size: 1 },
+              ],
+            }),
+          ],
+        })
+      )
+    );
+    const laneIds = model(doc, 'lane').map(lane => attr(lane, 'id'));
+    expect(laneIds).toHaveLength(2);
+    expect(new Set(laneIds).size).toBe(2);
+    // …and each still gets its own shape, pointing at its own id.
+    const drawn = di(doc, 'BPMNShape').map(s => attr(s, 'bpmnElement'));
+    for (const id of laneIds) expect(drawn).toContain(id);
   });
 
   it('keeps every id in the document distinct, however they collide', () => {
@@ -676,6 +1046,43 @@ describe('ids', () => {
     expect(new Set(ids).size).toBe(ids.length);
     // …and each is a valid NCName.
     for (const id of ids) expect(id).toMatch(/^[A-Za-z_][A-Za-z0-9_.\-]*$/);
+  });
+});
+
+describe('what the file is called', () => {
+  const named = (title?: string, poolName?: string) =>
+    bpmnExportFilename({
+      store: {
+        id: 'doc-1',
+        workspace: { meta: { getDocMeta: () => ({ title }) } },
+      },
+      get: () => ({
+        selection: {
+          selectedElements: poolName
+            ? [fakePool('p', [0, 0, POOL_W, POOL_H], { name: poolName })]
+            : [],
+        },
+      }),
+    } as unknown as BlockStdScope);
+
+  it('prefers the document title, then the pool, then a last resort', () => {
+    expect(named('Order to cash', 'Sales')).toBe('Order to cash');
+    expect(named(undefined, 'Sales')).toBe('Sales');
+    expect(named()).toBe('process');
+  });
+
+  it('replaces the characters a file system reserves', () => {
+    expect(named('a/b:c*d?e"f<g>h|i')).toBe('a-b-c-d-e-f-g-h-i');
+  });
+
+  it('trims a trailing dot, which would eat the extension', () => {
+    // Windows strips trailing dots and spaces from a name, so `Order.` +
+    // `.bpmn` is how a file arrives called `Order.bpmn`… or `Order`, depending
+    // on who is doing the stripping. Neither is what the author asked for.
+    expect(named('Order to cash.')).toBe('Order to cash');
+    expect(named('Trailing space ')).toBe('Trailing space');
+    // …and a title made of nothing else still yields a usable name.
+    expect(named('...')).toBe('process');
   });
 });
 

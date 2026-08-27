@@ -555,8 +555,15 @@ export function bpmnBoardOf(std: BlockStdScope): BpmnExportBoard {
  *
  * The document's own title first — a board is what the file is OF — then the
  * name of the pool whose toolbar launched the export, then a last resort. Every
- * character a file system reserves becomes `-`, and the result is capped:
- * `Untitled` is a better download than one a browser silently refuses.
+ * character a file system reserves becomes `-`, whitespace runs collapse, and
+ * the result is capped: `Untitled` is a better download than one a browser
+ * silently refuses.
+ *
+ * The trailing `[. ]` trim is the Windows tail case and it is not decorative: a
+ * board called "Order to cash." would otherwise download as
+ * `Order to cash..bpmn`, and Windows strips trailing dots and spaces from a
+ * name anyway — so the extension is what would get eaten. Trimmed AFTER the
+ * cap, because the cap can create one.
  */
 export function bpmnExportFilename(std: BlockStdScope): string {
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
@@ -566,7 +573,8 @@ export function bpmnExportFilename(std: BlockStdScope): string {
     .replaceAll(/[\\/:*?"<>|]/g, '-')
     .replaceAll(/\s+/g, ' ')
     .trim()
-    .slice(0, 120);
+    .slice(0, 120)
+    .replace(/[. ]+$/, '');
   return safe || 'process';
 }
 

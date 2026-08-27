@@ -1,3 +1,7 @@
+import {
+  backgroundInstanceZones,
+  backgroundPlot,
+} from '@labre/affine-block-surface';
 import type {
   BpmnLane,
   BpmnNodeElementModel,
@@ -7,8 +11,12 @@ import type {
 } from '@labre/affine-model';
 import type { Bound } from '@labre/global/gfx';
 
+import { BPMN_POOL_BACKGROUND } from './background.js';
 import { bpmnLaneOf, bpmnPoolOf } from './facts.js';
 import { BPMN_ROLE } from './roles.js';
+
+/** The namespace the pool's instance zones report under. See `facts.ts`. */
+const LANE_PREFIX = BPMN_POOL_BACKGROUND.instanceZones?.idPrefix ?? 'lane';
 
 /**
  * The board, as a BPMN 2.0 interchange document (clause 15) — semantic model
@@ -70,9 +78,18 @@ export const BPMN_NS = {
  * Where the ids this exporter mints live.
  *
  * `targetNamespace` is the ONE attribute `definitions` requires (spec §15.3.1),
- * and it has to be a URI nobody else claims: every QName reference in the file
- * — `participant/@processRef`, `group/@categoryValueRef`, every DI
- * `bpmnElement` — resolves its unprefixed local part against it.
+ * and it has to be a URI nobody else claims: it is what a second document
+ * IMPORTING this one would qualify its references with.
+ *
+ * It is deliberately NOT what the references inside this file resolve through.
+ * Several of them are typed `xsd:QName` — `participant/@processRef`,
+ * `group/@categoryValueRef`, `dataObjectReference/@dataObjectRef`, every DI
+ * `bpmnElement`, and `messageFlow` / `association` `sourceRef` / `targetRef` —
+ * and an unprefixed QName resolves against the DEFAULT namespace, which this
+ * document declares none of (see the note on {@link BPMN_NS} for why the MODEL
+ * namespace takes an explicit prefix instead). They are emitted as bare local
+ * names, which is byte for byte what bpmn.io and Camunda Modeler write, and
+ * every tool resolves them by id within the one file.
  */
 const TARGET_NAMESPACE = 'https://labre.app/bpmn';
 
@@ -198,14 +215,43 @@ const textEl = (name: string, text: string, attrs: Attrs = {}): XmlElement => ({
   text,
 });
 
-/** The five characters XML reserves, escaped for text and for attributes alike. */
-function escapeXml(value: string): string {
+/**
+ * Character DATA — the three characters that would otherwise start markup.
+ *
+ * A newline, a tab and a carriage return are left exactly as they are, which is
+ * what makes `<bpmn:text>` carry a multi-line annotation faithfully: inside an
+ * element, whitespace is content.
+ */
+function escapeText(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
+    .replaceAll('>', '&gt;');
+}
+
+/**
+ * An attribute VALUE, which needs strictly more than character data does.
+ *
+ * The quotes are the obvious half. The other half is the one that loses data
+ * silently: XML 1.0 §3.3.3 makes every conformant parser replace a literal
+ * `#xA`, `#xD` or `#x9` in an attribute value with a SPACE before anyone sees
+ * it — attribute-value normalization, and it is not optional. Only a character
+ * reference survives it.
+ *
+ * That matters here because a multi-line label is ordinary on this canvas (it
+ * is how a task fits in its box) and `name` is where nearly all of them go:
+ * every flow node, the participant, the lane, the flows, and
+ * `categoryValue/@value`. Written raw, a two-line task name comes back as one
+ * line, with no warning and no way for the author to tell. Written as `&#10;`
+ * it comes back as it went in.
+ */
+function escapeAttr(value: string): string {
+  return escapeText(value)
     .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
+    .replaceAll("'", '&apos;')
+    .replaceAll('\n', '&#10;')
+    .replaceAll('\r', '&#13;')
+    .replaceAll('\t', '&#9;');
 }
 
 /**
@@ -224,11 +270,11 @@ function num(value: number): string {
 function serializeElement(node: XmlElement, indent: string): string {
   const attrs = Object.entries(node.attrs)
     .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => ` ${key}="${escapeXml(String(value))}"`)
+    .map(([key, value]) => ` ${key}="${escapeAttr(String(value))}"`)
     .join('');
 
   if (node.text !== undefined) {
-    return `${indent}<${node.name}${attrs}>${escapeXml(node.text)}</${node.name}>`;
+    return `${indent}<${node.name}${attrs}>${escapeText(node.text)}</${node.name}>`;
   }
   if (node.children.length === 0) {
     return `${indent}<${node.name}${attrs} />`;
@@ -242,11 +288,19 @@ function serializeElement(node: XmlElement, indent: string): string {
 /* ── Ids ──────────────────────────────────────────────────────────────── */
 
 /**
- * Whether a character may open an XML `Name` — the ASCII half of NameStartChar,
- * which is all a surface id ever contains.
+ * Which characters an XML `Name` admits — a conservative but UNICODE-AWARE
+ * reading of NameStartChar / NameChar.
+ *
+ * Letters rather than `[A-Za-z]`, because NCName has always allowed them and an
+ * architect writing in French or Portuguese should not have `tâche-1` folded to
+ * `t_che-1`: two accented ids one letter apart would then differ only by the
+ * minter's `_2` suffix, in the properties panel where a human reads them. The
+ * production's exotic tail (combining marks, extenders, `·`) is deliberately
+ * not enumerated — nothing on this canvas mints one, and a character wrongly
+ * replaced by `_` is safe where a character wrongly kept is not.
  */
-const NAME_START = /[A-Za-z_]/;
-const NAME_CHAR = /[A-Za-z0-9_.\-]/;
+const NAME_START = /[\p{L}_]/u;
+const NAME_CHAR = /[\p{L}\p{N}_.\-]/u;
 
 /**
  * A surface id, as an XML NCName.
@@ -317,6 +371,21 @@ export interface BpmnExportOptions {
 
 /* ── The plan ─────────────────────────────────────────────────────────── */
 
+/**
+ * Which element an artefact is written INSIDE.
+ *
+ * A number indexes `processes`; {@link COLLABORATION} is the collaboration
+ * itself, which `tCollaboration` allows to carry artifacts directly
+ * (`participant* → messageFlow* → artifact*`).
+ *
+ * The distinction is not cosmetic and the live recette is what found it. A
+ * process with no participant cannot be DRAWN on a collaboration plane — there
+ * is no shape for it — so bpmn-js imports its contents and then renders
+ * nothing at all. An annotation dropped beside the pools used to disappear on
+ * import; as a child of the collaboration it is drawn where it was put.
+ */
+const COLLABORATION = -1;
+
 /** One node, resolved: its ids, its mapping, its box and where it sits. */
 interface PlannedNode {
   model: BpmnNodeElementModel;
@@ -330,8 +399,8 @@ interface PlannedNode {
   categoryId?: string;
   name: string;
   bound: Bound;
-  /** Index into `plan.processes`. */
-  process: number;
+  /** A `processes` index, or {@link COLLABORATION}. */
+  scope: number;
   lane: BpmnLane | null;
 }
 
@@ -342,9 +411,17 @@ interface PlannedEdge {
   name: string;
   source: PlannedNode;
   target: PlannedNode;
-  /** Index into `plan.processes`; `-1` for a message flow (it is global). */
-  process: number;
+  /** A `processes` index, or {@link COLLABORATION}. */
+  scope: number;
   waypoints: readonly (readonly [number, number])[];
+}
+
+/** One lane, resolved: its minted id and the band it is actually painted as. */
+interface PlannedLane {
+  lane: BpmnLane;
+  id: string;
+  /** The band in ABSOLUTE surface coordinates — what DI has to describe. */
+  bound: Rect;
 }
 
 interface PlannedProcess {
@@ -353,10 +430,74 @@ interface PlannedProcess {
   id: string;
   participantId?: string;
   name: string;
-  /** Absent when the pool carries no lane. */
+  /** Absent when the pool carries no lane the primitive actually paints. */
   laneSetId?: string;
-  /** Lane id in the document → its minted NCName, in top-to-bottom order. */
-  laneIds: Map<string, string>;
+  /** Top-to-bottom, and EMPTY for a pool with no lanes. */
+  lanes: PlannedLane[];
+}
+
+/** The four numbers DI needs. Structural, so a `Bound` satisfies it. */
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Each lane of a pool as an ABSOLUTE rectangle, in the order they are painted.
+ *
+ * Read off `backgroundInstanceZones` rather than off `pool.lanes` directly, for
+ * the reason {@link bpmnLaneOf} gives and one more:
+ *
+ * - the primitive is what NORMALISES the weights into rectangles and DROPS the
+ *   rows a user's typo made unusable, so a second reading of the raw prop would
+ *   place a `BPMNShape` on a band the pool does not paint;
+ * - and it makes the `laneSet` and the DI agree by construction — the lanes
+ *   this returns are the lanes written to both, so a dropped row is absent from
+ *   the file rather than present as a lane with no shape and no members.
+ *
+ * ## Where the band starts, and the 30-unit convention
+ *
+ * The x origin is the PLOT's, which is the pool's frame plus its participant
+ * name band (`POOL_BAND_WIDTH`, 28) — literally where the lane is drawn on the
+ * canvas. bpmn-js lays its own lanes out 30 units right of the participant, so
+ * the two conventions agree to within two units and a file written here reopens
+ * looking like a file bpmn.io wrote. Deriving it from the declaration rather
+ * than hard-coding the foreign 30 is deliberate: the DI must describe the
+ * picture the author is looking at, and if the band width ever changes the
+ * export follows it without anybody remembering to.
+ */
+function poolLaneBands(pool: BpmnPoolElementModel): PlannedLane[] {
+  const rows = Array.isArray(pool.lanes) ? pool.lanes : [];
+  if (rows.length === 0) return [];
+
+  const frame = pool.elementBound;
+  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, frame.w, frame.h);
+  if (!(plot.width > 0) || !(plot.height > 0)) return [];
+
+  const zones = backgroundInstanceZones(
+    BPMN_POOL_BACKGROUND,
+    pool as unknown as Readonly<Record<string, unknown>>
+  );
+
+  const bands: PlannedLane[] = [];
+  for (const zone of zones) {
+    const row = rows.find(lane => zone.id === `${LANE_PREFIX}:${lane.id}`);
+    if (!row) continue;
+    bands.push({
+      lane: row,
+      // Minted by the caller, which owns the document-wide id space.
+      id: '',
+      bound: {
+        x: frame.x + plot.x0 + zone.rect.x * plot.width,
+        y: frame.y + plot.y0 + zone.rect.y * plot.height,
+        w: zone.rect.w * plot.width,
+        h: zone.rect.h * plot.height,
+      },
+    });
+  }
+  return bands;
 }
 
 /** The text an element carries, as a plain trimmed string. */
@@ -410,6 +551,45 @@ function waypointsOf(
   ];
 }
 
+/**
+ * Which element a flow is written INSIDE.
+ *
+ * Three rules, one per kind of edge, and the middle one is the whole of what
+ * the live recette taught:
+ *
+ * - a **message flow** is the collaboration's by definition (`tCollaboration`),
+ *   and there is no message flow without one — the caller drops it first;
+ * - an **association** goes wherever BOTH its ends are, when they agree. When
+ *   they do not — an annotation beside the pools tied to a task inside one —
+ *   it belongs to neither scope, and the collaboration is the common ancestor
+ *   that can legally hold it. Filing it with its source instead would put it in
+ *   a process that cannot draw it, or in a pool the other end is not in;
+ * - a **sequence flow** is a `flowElement` and can only ever be a process's, so
+ *   it is filed with its SOURCE. A flow that crosses two pools is invalid BPMN
+ *   and a picture the author nevertheless drew: the file says so, and the
+ *   validation rules are what tell them about it. Should its source somehow be
+ *   an artifact on the collaboration — an arrow drawn out of an annotation —
+ *   it falls back to the participant-less process, because there is nowhere
+ *   else in the format for it.
+ */
+function edgeScope(
+  element: 'sequenceFlow' | 'messageFlow' | 'association',
+  source: PlannedNode,
+  target: PlannedNode,
+  ctx: { hasCollaboration: boolean; orphanProcessIndex: () => number }
+): number {
+  if (element === 'messageFlow') return COLLABORATION;
+
+  if (element === 'association') {
+    if (source.scope === target.scope) return source.scope;
+    return ctx.hasCollaboration ? COLLABORATION : source.scope;
+  }
+
+  return source.scope === COLLABORATION
+    ? ctx.orphanProcessIndex()
+    : source.scope;
+}
+
 /* ── The serializer ───────────────────────────────────────────────────── */
 
 /**
@@ -421,10 +601,13 @@ function waypointsOf(
  *
  * - **at least one pool** — a `collaboration` holding one `participant` per
  *   pool, one `process` per pool, and the message flows (which are the
- *   collaboration's, never a process's). Flow objects that fall in no pool get
- *   ONE extra participant-less process, and only if there are any: an empty
- *   process in the file is a participant a reader will look for on the canvas
- *   and not find;
+ *   collaboration's, never a process's). Things drawn OUTSIDE every pool split
+ *   in two: ARTIFACTS (annotation, group, and the associations that tie them to
+ *   anything) become children of the collaboration itself, where
+ *   `tCollaboration` allows them and where bpmn-js draws them; FLOW OBJECTS get
+ *   ONE extra participant-less process, and only if there are any. See
+ *   {@link COLLABORATION} for what the live recette found out about the
+ *   difference, and the note on the orphan process for what it still cannot fix;
  * - **no pool at all** — a single `process` and no collaboration, which is what
  *   a process drawn without swimlanes IS. The `BPMNPlane` then points at that
  *   process; with a collaboration it must point at the collaboration, or most
@@ -447,22 +630,25 @@ export function exportBpmnXml(
   const processes: PlannedProcess[] = pools.map(pool => {
     const participantId = minter.mint('Participant', pool.id);
     const id = minter.mint('Process', pool.id);
-    const lanes = Array.isArray(pool.lanes) ? pool.lanes : [];
-    // Lane ids go through the same minter as everything else: `id` is
-    // document-unique across the WHOLE file, so a lane cannot quietly take the
-    // NCName a task already has.
-    const laneIds = new Map(
-      lanes.map(lane => [lane.id, minter.mint('Lane', lane.id)] as const)
-    );
+    // The bands the pool actually PAINTS, not the raw prop — see
+    // `poolLaneBands`. Ids go through the same minter as everything else: `id`
+    // is document-unique across the WHOLE file, so a lane cannot quietly take
+    // the NCName a task already has.
+    const lanes = poolLaneBands(pool).map(band => ({
+      ...band,
+      id: minter.mint('Lane', band.lane.id),
+    }));
     return {
       pool,
       id,
       participantId,
       name: labelOf(pool.name),
       laneSetId: lanes.length > 0 ? minter.mint('LaneSet', pool.id) : undefined,
-      laneIds,
+      lanes,
     };
   });
+
+  const hasCollaboration = pools.length > 0;
 
   /**
    * The participant-less process.
@@ -473,6 +659,19 @@ export function exportBpmnXml(
    * anything: it is the process, and a `definitions` with no process at all is
    * a document about nothing (a process with zero flow elements is legal, spec
    * `tProcess`; a board that is genuinely empty exports as exactly that).
+   *
+   * ## What it cannot fix, stated rather than hidden
+   *
+   * Inside a collaboration this process has no `participant`, so the plane has
+   * no shape to draw it in and bpmn-js imports its flow objects without
+   * rendering them. That is a real limit and it is deliberate: the alternatives
+   * are to invent a pool the author never drew, or to drop the elements
+   * outright, and both of them are the export saying something the board does
+   * not. The elements are in the file, correctly, for any tool that reads the
+   * model; the fix on the canvas is to draw them in a pool.
+   *
+   * Artifacts do NOT come here when there is a collaboration — they have a
+   * legal home on the collaboration itself, and they are drawn.
    */
   let orphanProcess = -1;
   const orphanProcessIndex = () => {
@@ -480,14 +679,14 @@ export function exportBpmnXml(
       orphanProcess = processes.length;
       processes.push({
         pool: null,
-        id: minter.mint('Process', pools.length === 0 ? 'board' : 'unassigned'),
+        id: minter.mint('Process', hasCollaboration ? 'unassigned' : 'board'),
         name: '',
-        laneIds: new Map(),
+        lanes: [],
       });
     }
     return orphanProcess;
   };
-  if (pools.length === 0) orphanProcessIndex();
+  if (!hasCollaboration) orphanProcessIndex();
 
   /* ── Nodes ───────────────────────────────────────────────────────── */
 
@@ -502,13 +701,16 @@ export function exportBpmnXml(
 
     const bound = model.elementBound;
     const pool = bpmnPoolOf(pools, bound);
-    // No pool contains it — either because there are none, or because it was
-    // drawn beside them. Both land in the participant-less process, which on a
-    // poolless board is simply THE process.
-    const process =
-      pool === null
-        ? orphanProcessIndex()
-        : processes.findIndex(entry => entry.pool === pool);
+    // In a pool: that pool's process. Outside every pool: an ARTIFACT goes on
+    // the collaboration, where it is both legal and drawable; anything else
+    // goes to the participant-less process, which on a poolless board is
+    // simply THE process.
+    const scope =
+      pool !== null
+        ? processes.findIndex(entry => entry.pool === pool)
+        : hasCollaboration && mapping.slot === 'artifact'
+          ? COLLABORATION
+          : orphanProcessIndex();
 
     const name = labelOf(model.text);
     const node: PlannedNode = {
@@ -517,7 +719,7 @@ export function exportBpmnXml(
       id: minter.mint('', model.id),
       name,
       bound,
-      process,
+      scope,
       lane: pool ? bpmnLaneOf(pool, bound) : null,
     };
 
@@ -538,7 +740,6 @@ export function exportBpmnXml(
   /* ── Edges ───────────────────────────────────────────────────────── */
 
   const edges: PlannedEdge[] = [];
-  const hasCollaboration = pools.length > 0;
 
   for (const connector of board.connectors) {
     const element = EDGE_ELEMENT[String(connector.role ?? '')];
@@ -567,9 +768,10 @@ export function exportBpmnXml(
       name: labelOf(connector.text),
       source,
       target,
-      // Filed with its SOURCE: a flow that crosses two processes is a picture
-      // the author drew, and the file says so rather than dropping it.
-      process: element === 'messageFlow' ? -1 : source.process,
+      scope: edgeScope(element, source, target, {
+        hasCollaboration,
+        orphanProcessIndex,
+      }),
       waypoints: waypointsOf(connector, source, target),
     });
   }
@@ -647,6 +849,9 @@ export function exportBpmnXml(
         })
       );
     }
+    // `artifact*` last, and only what fell outside every pool: an annotation
+    // drawn ON a pool is that process's, and belongs with the work it is about.
+    children.push(...artifacts(COLLABORATION, planned, edges));
     roots.push(
       el(
         'bpmn:collaboration',
@@ -693,6 +898,27 @@ export function exportBpmnXml(
         [el('dc:Bounds', boundsAttrs(bound, dx, dy))]
       )
     );
+
+    // …and one shape per LANE, immediately after its own pool.
+    //
+    // A `laneSet` with no DI is the gap the live recette found: bpmn.io read
+    // the lanes, listed their members, and drew a pool with no subdivisions at
+    // all, because a lane is a DiagramElement like any other and a tool draws
+    // what the plane describes. `isHorizontal` says which way the band runs and
+    // is meaningful on exactly two things — a pool and a lane (§12.3.2).
+    for (const lane of process.lanes) {
+      planeElements.push(
+        el(
+          'bpmndi:BPMNShape',
+          {
+            id: minter.mint('Shape', `lane-${lane.lane.id}`),
+            bpmnElement: lane.id,
+            isHorizontal: 'true',
+          },
+          [el('dc:Bounds', boundsAttrs(lane.bound, dx, dy))]
+        )
+      );
+    }
   }
 
   for (const node of planned) {
@@ -768,7 +994,7 @@ export function exportBpmnXml(
   return `<?xml version="1.0" encoding="UTF-8"?>\n${serializeElement(definitions, '')}\n`;
 }
 
-function boundsAttrs(bound: Bound, dx: number, dy: number): Attrs {
+function boundsAttrs(bound: Rect, dx: number, dy: number): Attrs {
   return {
     x: num(bound.x + dx),
     y: num(bound.y + dy),
@@ -792,11 +1018,16 @@ function processChildren(
   planned: readonly PlannedNode[],
   edges: readonly PlannedEdge[]
 ): XmlElement[] {
-  const mine = planned.filter(node => node.process === index);
+  const mine = planned.filter(node => node.scope === index);
   const children: XmlElement[] = [];
 
   /**
-   * `laneSet` — FLAT, and only when the pool actually carries lanes.
+   * `laneSet` — FLAT, and only when the pool actually PAINTS lanes.
+   *
+   * The rows come from `poolLaneBands`, so the lanes written here are exactly
+   * the lanes the plane draws a `BPMNShape` for: a row a typo made unusable is
+   * absent from both rather than present in one as a lane with no shape and no
+   * members.
    *
    * No `childLaneSet` is ever written, because the pack draws no nested lane:
    * a pool's `lanes` prop is one list of bands over one plot, and there is no
@@ -804,23 +1035,20 @@ function processChildren(
    * and is deliberately unused; the day nested lanes ship, this is where they
    * land.
    */
-  const lanes = process.pool?.lanes;
-  if (process.laneSetId && Array.isArray(lanes) && lanes.length > 0) {
+  if (process.laneSetId && process.lanes.length > 0) {
     children.push(
       el(
         'bpmn:laneSet',
         { id: process.laneSetId },
-        lanes.map(lane =>
+        process.lanes.map(band =>
           el(
             'bpmn:lane',
-            {
-              id: process.laneIds.get(lane.id) ?? toNcName(lane.id),
-              name: lane.name || undefined,
-            },
+            { id: band.id, name: band.lane.name || undefined },
             mine
               .filter(
                 node =>
-                  node.mapping.slot === 'flowNode' && node.lane?.id === lane.id
+                  node.mapping.slot === 'flowNode' &&
+                  node.lane?.id === band.lane.id
               )
               // `flowNodeRef` is an ELEMENT whose text is the IDREF, never an
               // attribute — the one place in the format where a reference is
@@ -852,7 +1080,7 @@ function processChildren(
     }
   }
   for (const edge of edges) {
-    if (edge.process !== index || edge.element !== 'sequenceFlow') continue;
+    if (edge.scope !== index || edge.element !== 'sequenceFlow') continue;
     children.push(
       el('bpmn:sequenceFlow', {
         id: edge.id,
@@ -864,13 +1092,33 @@ function processChildren(
   }
 
   /* artifact* — annotations, groups, associations. Last, per the XSD. */
-  for (const node of mine) {
-    if (node.mapping.slot !== 'artifact') continue;
-    children.push(semanticNode(node));
+  children.push(...artifacts(index, planned, edges));
+
+  return children;
+}
+
+/**
+ * The `artifact*` tail of one scope — a process, or the collaboration.
+ *
+ * Shared between the two because `tProcess` and `tCollaboration` both end on
+ * the same `artifact*` slot with the same members, and the only thing that
+ * differs is which scope is being asked about. Writing it twice is how the two
+ * would come to disagree.
+ */
+function artifacts(
+  scope: number,
+  planned: readonly PlannedNode[],
+  edges: readonly PlannedEdge[]
+): XmlElement[] {
+  const out: XmlElement[] = [];
+
+  for (const node of planned) {
+    if (node.scope !== scope || node.mapping.slot !== 'artifact') continue;
+    out.push(semanticNode(node));
   }
   for (const edge of edges) {
-    if (edge.process !== index || edge.element !== 'association') continue;
-    children.push(
+    if (edge.scope !== scope || edge.element !== 'association') continue;
+    out.push(
       el('bpmn:association', {
         id: edge.id,
         sourceRef: edge.source.id,
@@ -883,7 +1131,7 @@ function processChildren(
     );
   }
 
-  return children;
+  return out;
 }
 
 /** One artefact, as its semantic element (plus whatever it drags along). */
