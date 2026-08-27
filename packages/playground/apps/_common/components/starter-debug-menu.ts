@@ -31,7 +31,11 @@ import {
   PlainTextAdapterFactoryIdentifier,
   titleMiddleware,
 } from '@labre/affine/shared/adapters';
-import { DocModeProvider, EditPropsStore } from '@labre/affine/shared/services';
+import {
+  ArtefactCatalogueProvider,
+  DocModeProvider,
+  EditPropsStore,
+} from '@labre/affine/shared/services';
 import {
   ColorVariables,
   FontFamilyVariables,
@@ -600,6 +604,28 @@ export class StarterDebugMenu extends ShadowlessElement {
     this._hasOffset = !this._hasOffset;
   }
 
+  /**
+   * Open/close the artefact catalogue sidepanel without going through a senior
+   * sub-menu: the "More artefacts…" button only shows once a framework's
+   * catalogue exceeds 14 commands, which today only the throwaway
+   * `demo-overflow` framework does (see `../demo-overflow.ts`).
+   */
+  private _toggleCatalogue() {
+    const host = this.editor.host;
+    if (!host) return;
+    const provider = host.std.getOptional(ArtefactCatalogueProvider);
+    if (!provider) return;
+    const widget = host.querySelector('edgeless-artefact-catalogue-widget') as
+      | (HTMLElement & { catalogueOpen?: boolean })
+      | null;
+    if (widget?.catalogueOpen) {
+      provider.close();
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      provider.open('demo-overflow' as any);
+    }
+  }
+
   private _toggleCommentPanel() {
     document.body.append(this.commentPanel);
   }
@@ -921,6 +947,12 @@ export class StarterDebugMenu extends ShadowlessElement {
           <sl-tooltip content="Switch Editor" placement="bottom" hoist>
             <sl-button size="small" @click="${this._switchEditorMode}">
               <sl-icon name="repeat"></sl-icon>
+            </sl-button>
+          </sl-tooltip>
+
+          <sl-tooltip content="Toggle Catalogue" placement="bottom" hoist>
+            <sl-button size="small" @click="${this._toggleCatalogue}">
+              <sl-icon name="layout-sidebar"></sl-icon>
             </sl-button>
           </sl-tooltip>
 

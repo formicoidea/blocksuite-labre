@@ -26,6 +26,19 @@
         box-sizing: border-box;
       }
 
+      /*
+        The debug bar is `position: fixed` at z-index 1000, and the editor's
+        own chrome (the artefact catalogue sidepanel included) lives inside the
+        editor host's stacking context (`isolation: isolate`) — no z-index in
+        the library can climb over host chrome, by design. So the host makes
+        room instead: the app starts below the bar, and the panel's header is
+        never covered.
+      */
+      #app {
+        height: 100%;
+        padding-top: 48px;
+      }
+
       doc-title {
         margin-top: 78px;
       }
