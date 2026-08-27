@@ -9,6 +9,7 @@ import {
   type BlockStdScope,
   type CommandDescriptor,
   SENIOR_MENU_CAP,
+  SENIOR_MENU_RANKED_SLOTS,
   selectSeniorMenuCommands,
 } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -90,13 +91,16 @@ function armed(command: CommandDescriptor) {
 describe('the c4 command inventory', () => {
   const toolbox = c4Commands.filter(c => c.surfaces.includes('senior-menu'));
 
-  it('declares thirteen commands, every one of them in the catalogue', () => {
-    // Nine elements, two boundaries, the board and the relationship — and
-    // nothing else. The board's automatic legend is deliberately NOT a command
-    // (PO arbitration, 27/08/2026): it is a button on the selected board's row
-    // and is reachable from nowhere else. See `toolbar/config.ts`.
-    expect(c4Commands).toHaveLength(13);
-    expect(new Set(c4Commands.map(c => c.id)).size).toBe(13);
+  it('declares fourteen commands, every one of them in the catalogue', () => {
+    // Thirteen toolbox entries — nine elements, two boundaries, the board and
+    // the relationship — plus `c4.exportMermaid`, whose subject is a SELECTED
+    // board rather than an artefact to draw.
+    //
+    // The board's automatic legend is deliberately NOT a command (PO
+    // arbitration, 27/08/2026): it is a button on the selected board's row and
+    // is reachable from nowhere else. See `toolbar/config.ts`.
+    expect(c4Commands).toHaveLength(14);
+    expect(new Set(c4Commands.map(c => c.id)).size).toBe(14);
     for (const command of c4Commands) {
       expect(command.owner, command.id).toBe('c4');
       expect(command.scope, command.id).toBe('edgeless');
@@ -129,10 +133,11 @@ describe('the c4 command inventory', () => {
     expect(drawn.sort()).toEqual([...ALL_KINDS].sort());
   });
 
-  it('puts all thirteen on the senior row, in author order', () => {
-    // C4 is the last framework that FITS: thirteen against a cap of fourteen,
-    // so nothing is arbitrated and the sub-menu is this list exactly. Every
-    // command is a senior slot, because every one of them DRAWS something.
+  it('puts all thirteen artefacts on the senior row, in author order', () => {
+    // C4 is the last framework that FITS: fourteen catalogue entries against a
+    // cap of fourteen, so nothing is arbitrated and the sub-menu is this list
+    // exactly. Thirteen of the fourteen are senior slots — every command that
+    // DRAWS something — and the fourteenth is the export, which draws nothing.
     expect(toolbox.map(c => c.id)).toEqual([
       // The seven a C4 diagram cannot be drawn without…
       'c4.addPerson',
@@ -152,7 +157,8 @@ describe('the c4 command inventory', () => {
       'c4.addSystemExt',
     ]);
     expect(toolbox).toHaveLength(13);
-    expect(toolbox).toHaveLength(c4Commands.length);
+    // The export is the one command that is not a senior slot.
+    expect(toolbox).toHaveLength(c4Commands.length - 1);
     expect(toolbox.length).toBeLessThanOrEqual(SENIOR_MENU_CAP);
   });
 
@@ -177,32 +183,41 @@ describe('the c4 command inventory', () => {
     expect(groups.reduce((n, group) => n + group.commands.length, 0)).toBe(
       c4Commands.length
     );
-    // The board is alone in its section: the legend that used to sit beside it
-    // is not a command at all any more.
+    // The export is filed with the board that offers it, after it. The legend
+    // that used to sit between them is not a command at all any more.
     expect(
       groups
         .find(group => group.category === 'diagrams')!
         .commands.map(c => c.id)
-    ).toEqual(['c4.addBoard']);
+    ).toEqual(['c4.addBoard', 'c4.exportMermaid']);
   });
 
   /**
    * The COLD START that is not one YET, and the reason the order above is what
    * it is.
    *
-   * Thirteen entries against a cap of fourteen: `selectSeniorMenuCommands`
-   * arbitrates nothing and hands back the whole menu. The day a FIFTEENTH
-   * artefact lands the catalogue overflows, the ranking kicks in, and a user
-   * with no history meets the first seven of this list — which is why they are
-   * the four levels, the relationship, the board and the database rather than
-   * seven ways to draw a box. BPMN learned that in a live recette (#144); this
-   * pin is what applies the lesson before the overflow rather than after it.
+   * The cap is measured on the CATALOGUE and not on the sub-menu
+   * (`selectSeniorMenuCommands` tests `catalogue.length`), and the catalogue is
+   * now exactly fourteen: the thirteen artefacts plus `c4.exportMermaid`, which
+   * declines the sub-menu. Fourteen against a cap of fourteen is still no
+   * overflow — the ranking arbitrates nothing and hands back the whole menu — so
+   * C4 remains the framework that FITS, with the export having spent the last
+   * slot.
+   *
+   * A FIFTEENTH entry of any kind tips it over: a deployment node, a
+   * code-level element, a second export. The ranking then kicks in and a user
+   * with no history meets the first seven of the catalogue — which is why they
+   * are the four levels, the relationship, the board and the database rather
+   * than seven ways to draw a box. BPMN learned that in a live recette (#144);
+   * the second half of this test is what applies the lesson before the overflow
+   * rather than after it, by asserting what the cold start WOULD be.
    */
-  it('does not overflow, and leads with seven that can draw a diagram', () => {
+  it('does not overflow, and would lead with seven that draw a diagram', () => {
     const catalogue = [...c4Commands]
       .filter(c => c.surfaces.includes('catalogue'))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
+    expect(catalogue).toHaveLength(SENIOR_MENU_CAP);
     const { commands, overflow } = selectSeniorMenuCommands(
       toolbox,
       catalogue,
@@ -211,15 +226,20 @@ describe('the c4 command inventory', () => {
     expect(overflow, 'c4 now overflows — re-read this test').toBe(false);
     expect(commands).toHaveLength(13);
 
-    expect(catalogue.slice(0, 7).map(c => c.id)).toEqual([
-      'c4.addPerson',
-      'c4.addSystem',
-      'c4.addContainer',
-      'c4.addComponent',
-      'c4.relationshipTool',
-      'c4.addBoard',
-      'c4.addDatabase',
-    ]);
+    // What the cold start would be the day it tips over. Four levels, the line
+    // between any two of them, the sheet they are drawn on, and the container
+    // flavour every real system has one of. That is a diagram.
+    expect(catalogue.slice(0, SENIOR_MENU_RANKED_SLOTS).map(c => c.id)).toEqual(
+      [
+        'c4.addPerson',
+        'c4.addSystem',
+        'c4.addContainer',
+        'c4.addComponent',
+        'c4.relationshipTool',
+        'c4.addBoard',
+        'c4.addDatabase',
+      ]
+    );
   });
 
   /**
@@ -235,21 +255,30 @@ describe('the c4 command inventory', () => {
   it('makes the legend a toolbar button and never a command', () => {
     expect(c4Commands.find(c => c.id === 'c4.legend')).toBeUndefined();
     expect(c4Commands.some(c => c.kind === 'legend')).toBe(false);
-    expect(
-      c4Commands.some(c => c.surfaces.includes('contextual-toolbar'))
-    ).toBe(false);
     expect(c4CommandIcons['c4.legend']).toBeUndefined();
+    // The export is the ONLY command that reaches the board's row, and it does
+    // so through the "⋮". The arbitration is about the legend, not about the
+    // row: a command may still be invoked from a contextual toolbar, and the
+    // export is the one that is.
+    expect(
+      c4Commands
+        .filter(c => c.surfaces.includes('contextual-toolbar'))
+        .map(c => c.id)
+    ).toEqual(['c4.exportMermaid']);
 
-    // …and it is on the row, which is the only place it can be reached from.
+    // …and the legend is on the row, which is the only place it can be reached
+    // from.
     const legend = c4LegendToolbarConfig.actions.find(
       action => action.id === 'b.legend'
     );
     expect(legend).toBeDefined();
     expect(typeof legend!.run).toBe('function');
     // `b.` sorts it after the resize toggle, so the two modules render as the
-    // one row a user sees rather than in registration order.
+    // one row a user sees rather than in registration order. The always-on
+    // module holds the toggle and — partitioned into the "⋮" — the export.
     expect(c4BoardToolbarConfig.actions.map(action => action.id)).toEqual([
       'a.toggle-resize',
+      'z.export-mermaid',
     ]);
   });
 });

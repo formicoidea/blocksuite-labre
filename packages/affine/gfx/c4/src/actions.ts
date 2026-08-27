@@ -3,8 +3,11 @@ import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createAutoLegend } from '@labre/affine-gfx-ddd-shared';
 import {
   C4BoardElementModel,
+  C4BoundaryElementModel,
   type C4BoundaryVariant,
+  C4NodeElementModel,
   type C4NodeKind,
+  ConnectorElementModel,
   ConnectorMode,
   FontFamily,
   PointStyle,
@@ -14,6 +17,7 @@ import {
   TextFitMode,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
+import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -33,6 +37,7 @@ import {
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
 } from './consts';
+import { type C4ExportBoard, exportC4Mermaid } from './export';
 import { C4_AUTO_LEGEND } from './legend';
 import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
 
@@ -242,4 +247,105 @@ export function createC4Legend(std: BlockStdScope): void {
   const board = c4BoardsSelected(std)[0];
   if (!board) return;
   createAutoLegend(std, board, C4_AUTO_LEGEND);
+}
+
+/* ── Export (mermaid C4) ───────────────────────────────────────────────── */
+
+/**
+ * The boards of the current selection, WITHOUT the read-only filter
+ * {@link c4BoardsSelected} applies.
+ *
+ * That one refuses a read-only document because it is about to WRITE a legend
+ * onto the canvas. An export writes nothing: it reads the board and hands the
+ * reader a file. A diagram published read-only is precisely the board somebody
+ * wants to take away, and refusing it there would be a filter copied for the
+ * shape of it rather than for the reason — the same call `bpmnPoolsSelected`
+ * makes for `bpmn.exportXml`.
+ */
+export function c4BoardsForExport(std: BlockStdScope): C4BoardElementModel[] {
+  return gfxOf(std).selection.selectedElements.filter(
+    (model): model is C4BoardElementModel =>
+      model instanceof C4BoardElementModel
+  );
+}
+
+/**
+ * Everything the exporter speaks about, in document order.
+ *
+ * Document order matters for the same reason it does in BPMN: it is the
+ * tie-break attribution breaks on — a centre inside two overlapping boundaries
+ * goes to the first — and the audit's `attribute()` breaks it the same way.
+ * Sorting here would make the export disagree with the badge the user can see.
+ *
+ * `boards` is the SELECTION and not every board on the surface: a C4 board is
+ * one level of one model, and merging three of them would produce the very
+ * picture C4 exists to stop people drawing.
+ */
+export function c4ExportBoardOf(std: BlockStdScope): C4ExportBoard {
+  const elements = gfxOf(std).surface?.elementModels ?? [];
+  const nodes: C4NodeElementModel[] = [];
+  const boundaries: C4BoundaryElementModel[] = [];
+  const connectors: ConnectorElementModel[] = [];
+
+  for (const element of elements) {
+    if (element instanceof C4NodeElementModel) nodes.push(element);
+    else if (element instanceof C4BoundaryElementModel)
+      boundaries.push(element);
+    else if (element instanceof ConnectorElementModel) connectors.push(element);
+  }
+
+  return { boards: c4BoardsForExport(std), nodes, boundaries, connectors };
+}
+
+/**
+ * What the downloaded file is called, minus the extension.
+ *
+ * The document's own title first — a board is what the file is OF — then the
+ * name of the board whose toolbar launched the export, then a last resort. Every
+ * character a file system reserves becomes `-`, whitespace runs collapse, and
+ * the result is capped: `diagram` is a better download than one a browser
+ * silently refuses.
+ *
+ * The trailing `[. ]` trim is the Windows tail case, lifted from
+ * `bpmnExportFilename` for the same reason it exists there: Windows strips
+ * trailing dots and spaces from a name, so a board called "Context." would have
+ * its EXTENSION eaten rather than its full stop.
+ */
+export function c4ExportFilename(std: BlockStdScope): string {
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  const board = c4BoardsForExport(std)[0]?.name;
+  const raw = (title || board || 'diagram').trim();
+  const safe = raw
+    .replaceAll(/[\\/:*?"<>|]/g, '-')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
+    .replace(/[. ]+$/, '');
+  return safe || 'diagram';
+}
+
+/**
+ * Serialize the selected board(s) as mermaid C4 and hand the file to the
+ * browser.
+ *
+ * The three steps are deliberately three, exactly as `exportBpmnXmlFile`'s are:
+ * read the surface, serialize (a pure function with no `std` in sight —
+ * `export.ts`), download. Only the first and the last know what an editor is,
+ * which is what makes the interesting half testable without one.
+ *
+ * A DOWNLOAD and not a clipboard copy, which is the one place this could have
+ * diverged from #149. It does not, for three reasons: `.mmd` is the extension
+ * the mermaid CLI and every editor plugin watch for; a multi-board export is
+ * several documents and a clipboard holds one thing; and the file is what a
+ * reader commits next to the code the diagram is about. `text/plain` because
+ * mermaid has no registered media type, and an invented one is a file some
+ * browsers refuse to save.
+ */
+export function exportC4MermaidFile(std: BlockStdScope): void {
+  const name = c4ExportFilename(std);
+  const source = exportC4Mermaid(c4ExportBoardOf(std));
+  downloadBlob(
+    new Blob([source], { type: 'text/plain;charset=utf-8' }),
+    `${name}.mmd`
+  );
 }
