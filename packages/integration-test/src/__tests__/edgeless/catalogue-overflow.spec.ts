@@ -1,5 +1,6 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { EmptyTool } from '@labre/affine/gfx/pointer';
+import { ArtefactCatalogueProvider } from '@labre/affine/shared/services';
 import {
   type AnyCommandDescriptor,
   CommandExtension,
@@ -27,7 +28,7 @@ import { setupEditor } from '../utils/setup.js';
  * The overflow lives here under a sixteen-command test owner so the MECHANISM
  * is tested on its own terms, independent of any framework's inventory. BPMN's
  * descriptive-profile pack is now the first shipped framework to cross the cap
- * for real (23 commands), and `bpmn.spec.ts` checks the same behaviour on it —
+ * for real (24 commands), and `bpmn.spec.ts` checks the same behaviour on it —
  * this spec is what proved the button was waiting.
  */
 
@@ -65,11 +66,7 @@ const mountWithToolbarContext = (menu: TestOverflowMenu) => {
   const hostElement = document.createElement('div');
   new ContextProvider(hostElement, {
     context: edgelessToolbarSlotsContext,
-    // Typed as the slot the toolbar actually declares — `{ w, h }` — and never
-    // as `void`: nothing ever fires it, but the context it is handed to is
-    // typed, so a `Subject<void>` here is a compile error rather than a
-    // shortcut.
-    initialValue: { resize: new Subject<{ w: number; h: number }>() },
+    initialValue: { resize: new Subject<void>() },
   });
   hostElement.append(menu);
   document.body.append(hostElement);

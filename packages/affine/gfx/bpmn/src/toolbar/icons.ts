@@ -9,6 +9,13 @@ export const bpmnToolbarIcon = svg`<svg width="100%" height="100%" viewBox="0 0 
   <rect x="20" y="20" width="24" height="16" rx="3.5" fill="#ffffff" stroke="#262626" stroke-width="2.2"/>
 </svg>`;
 
+/** Export BPMN XML — a document with an arrow leaving it. */
+export const bpmnExportXmlIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13.5 3.5 18.5 8.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 20.5v-6M13.5 18l2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 /** Start event — thin green ring. */
 export const bpmnStartIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="12" cy="12" r="8" stroke="#43a06b" stroke-width="2"/>

@@ -260,9 +260,12 @@ describe('the bpmn command inventory', () => {
     .filter(c => c.surfaces.includes('senior-menu'))
     .map(c => c.id);
 
-  it('declares twenty-three commands, every one of them in the catalogue', () => {
-    expect(bpmnCommands).toHaveLength(23);
-    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(23);
+  it('declares twenty-four commands, every one of them in the catalogue', () => {
+    // Twenty-four since `bpmn.exportXml`: 17 artefacts, 3 connecting-object
+    // tools, the pool, the two lane gestures, and the export — the first entry
+    // whose subject is the BOARD rather than an element.
+    expect(bpmnCommands).toHaveLength(24);
+    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(24);
     for (const command of bpmnCommands) {
       expect(command.owner, command.id).toBe('bpmn');
       expect(command.scope, command.id).toBe('edgeless');
@@ -372,12 +375,14 @@ describe('the bpmn command inventory', () => {
       'bpmn.messageFlowTool',
       'bpmn.associationTool',
     ]);
-    // The pool, then the two gestures that divide it — filed together even
-    // though eleven declarations separate them.
+    // The pool, then the two gestures that divide it, then the one thing you
+    // do to the finished process — filed together even though eleven
+    // declarations separate the first two.
     expect(ids('swimlanes')).toEqual([
       'bpmn.addPool',
       'bpmn.addLane',
       'bpmn.removeLane',
+      'bpmn.exportXml',
     ]);
   });
 

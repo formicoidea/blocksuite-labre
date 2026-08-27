@@ -43,7 +43,11 @@ describe('command registry invariants', () => {
       // `selectSeniorMenuCommands` ranks the whole catalogue anyway. The two
       // tests at the bottom of this file are what make that safe: everything is
       // in the catalogue, and the menu is a subset of it.
-      bpmn: 23,
+      // …and 24 since `bpmn.exportXml`, the first command in the library whose
+      // subject is the whole BOARD rather than an element: it is reached from
+      // the pool's "⋮" menu, and what it serializes is every BPMN artefact on
+      // the surface.
+      bpmn: 24,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -68,7 +72,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(92);
+    expect(commands).toHaveLength(93);
   });
 
   /**

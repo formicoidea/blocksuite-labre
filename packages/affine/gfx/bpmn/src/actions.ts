@@ -6,8 +6,10 @@ import {
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   type BpmnLane,
+  BpmnNodeElementModel,
   type BpmnNodeKind,
   BpmnPoolElementModel,
+  ConnectorElementModel,
   ConnectorMode,
   FontFamily,
   PointStyle,
@@ -18,6 +20,7 @@ import {
   TextVerticalAlign,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
+import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -44,6 +47,7 @@ import {
   START_WIDTH,
   TASK_RADIUS,
 } from './consts';
+import { type BpmnExportBoard, exportBpmnXml } from './export.js';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
 
 /**
@@ -501,6 +505,98 @@ export function removeBpmnLane(std: BlockStdScope): void {
   for (const model of withLanes) {
     writeLanes(std, model, bpmnLanesOf(model).slice(0, -1));
   }
+}
+
+/* ── Export (BPMN 2.0 XML) ────────────────────────────────────────────── */
+
+/**
+ * The pools of the current selection, WITHOUT the two filters a lane gesture
+ * applies.
+ *
+ * `bpmnPoolsForLaneEdit` refuses a read-only document and a locked pool because
+ * it is about to write to them. An export writes nothing: it reads the board
+ * and hands the reader a file. A process published read-only, or a pool an
+ * author locked precisely because it is finished, is exactly the board somebody
+ * wants to take to bpmn.io — refusing it there would be a filter copied for the
+ * shape of it rather than for the reason.
+ */
+export function bpmnPoolsSelected(std: BlockStdScope): BpmnPoolElementModel[] {
+  return gfxOf(std).selection.selectedElements.filter(
+    (model): model is BpmnPoolElementModel =>
+      model instanceof BpmnPoolElementModel
+  );
+}
+
+/**
+ * Everything on the surface the exporter speaks about, in document order.
+ *
+ * Document order matters twice and both times it is the same convention:
+ * `bpmnPoolOf` gives a centre inside two overlapping pools to the FIRST one,
+ * and the audit's `attribute()` does the same. Sorting here would make the
+ * export disagree with the badge the user can see.
+ */
+export function bpmnBoardOf(std: BlockStdScope): BpmnExportBoard {
+  const elements = gfxOf(std).surface?.elementModels ?? [];
+  const pools: BpmnPoolElementModel[] = [];
+  const nodes: BpmnNodeElementModel[] = [];
+  const connectors: ConnectorElementModel[] = [];
+
+  for (const element of elements) {
+    if (element instanceof BpmnPoolElementModel) pools.push(element);
+    else if (element instanceof BpmnNodeElementModel) nodes.push(element);
+    else if (element instanceof ConnectorElementModel) connectors.push(element);
+  }
+
+  return { pools, nodes, connectors };
+}
+
+/**
+ * What the downloaded file is called, minus the extension.
+ *
+ * The document's own title first — a board is what the file is OF — then the
+ * name of the pool whose toolbar launched the export, then a last resort. Every
+ * character a file system reserves becomes `-`, whitespace runs collapse, and
+ * the result is capped: `Untitled` is a better download than one a browser
+ * silently refuses.
+ *
+ * The trailing `[. ]` trim is the Windows tail case and it is not decorative: a
+ * board called "Order to cash." would otherwise download as
+ * `Order to cash..bpmn`, and Windows strips trailing dots and spaces from a
+ * name anyway — so the extension is what would get eaten. Trimmed AFTER the
+ * cap, because the cap can create one.
+ */
+export function bpmnExportFilename(std: BlockStdScope): string {
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  const pool = bpmnPoolsSelected(std)[0]?.name;
+  const raw = (title || pool || 'process').trim();
+  const safe = raw
+    .replaceAll(/[\\/:*?"<>|]/g, '-')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
+    .replace(/[. ]+$/, '');
+  return safe || 'process';
+}
+
+/**
+ * Serialize the whole board as BPMN 2.0 XML and hand it to the browser.
+ *
+ * The three steps are deliberately three: read the surface, serialize (a pure
+ * function with no `std` in sight — `export.ts`), download. Only the first and
+ * the last know what an editor is, which is what makes the interesting half
+ * testable without one.
+ */
+export function exportBpmnXmlFile(std: BlockStdScope): void {
+  const board = bpmnBoardOf(std);
+  const name = bpmnExportFilename(std);
+  const xml = exportBpmnXml(board, { name });
+  // `application/xml` and not `text/xml`: the file is not meant to be read as
+  // text by whatever opens it, and `.bpmn` is the extension every BPMN tool
+  // watches for.
+  downloadBlob(
+    new Blob([xml], { type: 'application/xml;charset=utf-8' }),
+    `${name}.bpmn`
+  );
 }
 
 /**
