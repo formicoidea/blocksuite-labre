@@ -14,7 +14,6 @@ import {
   StrokeStyle,
   TextFitMode,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -135,14 +134,6 @@ export function createBpmnPool(std: BlockStdScope) {
  * one node to another (endpoints attach to centers).
  */
 export function activateBpmnSequenceFlow(std: BlockStdScope) {
-  std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Orthogonal,
-    stroke: SEQUENCE_STROKE,
-    strokeStyle: StrokeStyle.Solid,
-    strokeWidth: SEQUENCE_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.Triangle,
-  });
   gfxOf(std).tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Orthogonal,
     // A TYPED edge (`docs/adr/0010`): the arrow the user is about to draw says
@@ -150,6 +141,15 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
     // the role so the connector is born with it rather than acquiring one
     // afterwards.
     role: BPMN_ROLE.sequenceFlow,
+    // The flow's look rides on the activation, never through the last-props
+    // store: the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: SEQUENCE_STROKE,
+      strokeStyle: StrokeStyle.Solid,
+      strokeWidth: SEQUENCE_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.Triangle,
+    },
   });
   // Keep the palette open (native sub-menu behaviour).
 }

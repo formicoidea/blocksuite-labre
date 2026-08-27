@@ -6,6 +6,7 @@ import {
 import {
   type Connection,
   type ConnectorElementModel,
+  type ConnectorElementProps,
   ConnectorMode,
   DEFAULT_POLYGON_VERTICES,
   GroupElementModel,
@@ -46,6 +47,26 @@ export type ConnectorToolOptions = {
    * the edge then stays neutral and no `role` key is written.
    */
   role?: string;
+  /**
+   * Look of the edges drawn while this activation lasts — a framework toolbox
+   * arms its flow's style here (e.g. solid + filled triangle for a BPMN
+   * sequence flow). Applied at creation only, where explicit props win over
+   * the user's last plain-connector props, and NEVER recorded into
+   * `EditPropsStore`: arming a typed flow must not restyle the plain
+   * connector tool (BPMN 2.0 p.40 — other connectors must not adopt a flow's
+   * line style). Left out for the plain tool, which keeps drawing with the
+   * user's own last props.
+   */
+  style?: Partial<
+    Pick<
+      ConnectorElementProps,
+      | 'stroke'
+      | 'strokeStyle'
+      | 'strokeWidth'
+      | 'frontEndpointStyle'
+      | 'rearEndpointStyle'
+    >
+  >;
 };
 
 export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
@@ -80,6 +101,10 @@ export class ConnectorTool extends BaseTool<ConnectorToolOptions> {
     this.doc.captureSync();
     const id = this.gfx.surface.addElement({
       type: CanvasElementType.CONNECTOR,
+      // The activation's own style, if any: explicit props win over the
+      // user's last plain-connector props in the edit-props middleware, so a
+      // framework look never passes through the shared store.
+      ...this.activatedOption.style,
       mode: this.activatedOption.mode,
       // `undefined` writes nothing: a neutral edge keeps no `role` key.
       role: this.activatedOption.role,

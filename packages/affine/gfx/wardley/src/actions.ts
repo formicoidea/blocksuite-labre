@@ -11,7 +11,6 @@ import {
   type WardleyBgVariant,
   type WardleyNodeKind,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 
@@ -447,25 +446,6 @@ export function activateWardleyConnector(
   gfx: GfxController,
   kind: 'link' | 'arrow'
 ) {
-  const props =
-    kind === 'arrow'
-      ? {
-          mode: ConnectorMode.Straight,
-          stroke: WARDLEY_RED,
-          strokeStyle: StrokeStyle.Dash,
-          strokeWidth: LINK_STROKE_WIDTH,
-          frontEndpointStyle: PointStyle.None,
-          rearEndpointStyle: PointStyle.Triangle,
-        }
-      : {
-          mode: ConnectorMode.Straight,
-          stroke: LINK_GREY,
-          strokeStyle: StrokeStyle.Solid,
-          strokeWidth: LINK_STROKE_WIDTH,
-          frontEndpointStyle: PointStyle.None,
-          rearEndpointStyle: PointStyle.None,
-        };
-  gfx.std.get(EditPropsStore).recordLastProps('connector', props);
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     // The value-chain link IS the "depends on" edge of a Wardley map; the
@@ -474,6 +454,24 @@ export function activateWardleyConnector(
     // specialising the other: W1 is about where an arrow points and must never
     // fall on a dependency.
     role: kind === 'link' ? WARDLEY_ROLE.dependency : WARDLEY_ROLE.changeArrow,
+    // The look rides on the activation, never through the last-props store:
+    // the plain connector tool must keep the user's own style (#144 M1).
+    style:
+      kind === 'arrow'
+        ? {
+            stroke: WARDLEY_RED,
+            strokeStyle: StrokeStyle.Dash,
+            strokeWidth: LINK_STROKE_WIDTH,
+            frontEndpointStyle: PointStyle.None,
+            rearEndpointStyle: PointStyle.Triangle,
+          }
+        : {
+            stroke: LINK_GREY,
+            strokeStyle: StrokeStyle.Solid,
+            strokeWidth: LINK_STROKE_WIDTH,
+            frontEndpointStyle: PointStyle.None,
+            rearEndpointStyle: PointStyle.None,
+          },
   });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

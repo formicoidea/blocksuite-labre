@@ -2,7 +2,6 @@ import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { LABEL_COLOR } from '@labre/affine-gfx-ddd-shared';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 
@@ -69,19 +68,20 @@ export function createEventStormingBoard(gfx: GfxController): void {
  * WS5 keeps its look and stays neutral.
  */
 export function activateEventStormingFlow(gfx: GfxController): void {
-  gfx.std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Straight,
-    stroke: LABEL_COLOR,
-    strokeStyle: StrokeStyle.Solid,
-    strokeWidth: FLOW_STROKE_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    // The arrow points at what FOLLOWS, which is the target: the role's verb is
-    // "leads to", so the source is what happens first.
-    rearEndpointStyle: PointStyle.Arrow,
-  });
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: ES_ROLE.flow,
+    // The look rides on the activation, never through the last-props store:
+    // the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: LABEL_COLOR,
+      strokeStyle: StrokeStyle.Solid,
+      strokeWidth: FLOW_STROKE_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      // The arrow points at what FOLLOWS, which is the target: the role's
+      // verb is "leads to", so the source is what happens first.
+      rearEndpointStyle: PointStyle.Arrow,
+    },
   });
   // The Event Storming palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

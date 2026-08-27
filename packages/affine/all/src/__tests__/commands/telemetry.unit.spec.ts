@@ -34,8 +34,7 @@ interface Captured {
 /**
  * The smallest `std` a command body can run against. Creation actions bail on
  * `!gfx.surface` — this test is about the emission, not the geometry — and the
- * two connector tools, which do not bail, only need `EditPropsStore
- * .recordLastProps` and `gfx.tool.setTool`.
+ * connector tools, which do not bail, only need `gfx.tool.setTool`.
  */
 function stubStd(events: Captured[]) {
   const telemetry = {
@@ -244,24 +243,27 @@ describe('one emission per invocation, with the historical values', () => {
  * every "exactly once" assertion above would be vacuously true.
  */
 describe('the stub really executes the command body', () => {
-  test('arming the wardley link tool reaches EditPropsStore and the tool controller', () => {
-    const recorded: unknown[] = [];
-    const tools: unknown[] = [];
+  test('arming the wardley link tool reaches the tool controller', () => {
+    const tools: [unknown, Record<string, unknown>][] = [];
     const std = {
       get: (identifier: unknown) =>
-        identifier === GfxControllerIdentifier
-          ? gfx
-          : { recordLastProps: (...args: unknown[]) => recorded.push(args) },
+        identifier === GfxControllerIdentifier ? gfx : undefined,
       getOptional: () => undefined,
     } as unknown as BlockStdScope;
     const gfx = {
       surface: undefined,
       std,
-      tool: { setTool: (...args: unknown[]) => tools.push(args) },
+      tool: {
+        setTool: (...args: [unknown, Record<string, unknown>]) =>
+          tools.push(args),
+      },
     };
 
     runCommand(std, byId.get('wardley.linkTool')!, fromMenu);
-    expect(recorded).toHaveLength(1);
     expect(tools).toHaveLength(1);
+    // The activation carries the link's role AND its full look — the style
+    // rides on the tool options, never through EditPropsStore (#144 M1).
+    expect(tools[0][1].role).toBe('wardley:dependency');
+    expect(tools[0][1].style).toMatchObject({ strokeStyle: 'solid' });
   });
 });

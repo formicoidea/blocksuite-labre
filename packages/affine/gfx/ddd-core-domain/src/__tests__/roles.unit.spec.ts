@@ -20,7 +20,6 @@ type Added = Record<string, unknown>;
 function fakeStd() {
   const added: Added[] = [];
   let toolOptions: Record<string, unknown> | undefined;
-  let lastProps: Record<string, unknown> | undefined;
   let n = 0;
 
   const gfx = {
@@ -42,15 +41,7 @@ function fakeStd() {
   };
 
   const std = {
-    get: (_identifier: unknown) => {
-      // Both `GfxControllerIdentifier` and `EditPropsStore` come through here;
-      // the props store is the only one with a `recordLastProps`.
-      return Object.assign(gfx, {
-        recordLastProps: (_type: string, props: Record<string, unknown>) => {
-          lastProps = props;
-        },
-      });
-    },
+    get: (_identifier: unknown) => gfx,
     getOptional: () => undefined,
     command: { exec: () => [{}, { groupId: 'group-0' }] },
   };
@@ -59,7 +50,6 @@ function fakeStd() {
     std: std as never,
     added,
     lastToolOptions: () => toolOptions,
-    lastConnectorProps: () => lastProps,
   };
 }
 
@@ -205,13 +195,15 @@ describe('what the creation sites stamp', () => {
   });
 
   it('turns the movement into a typed, pre-styled connector gesture', () => {
-    const { std, added, lastToolOptions, lastConnectorProps } = fakeStd();
+    const { std, added, lastToolOptions } = fakeStd();
     run('addMovement', std);
 
     // Nothing is dropped on the canvas any more: the user draws it.
     expect(added).toEqual([]);
     expect(lastToolOptions()?.role).toBe(CORE_DOMAIN_ROLE.movement);
-    expect(lastConnectorProps()).toMatchObject({ stroke: '#ff3333' });
+    // The look rides on the activation itself, never through the last-props
+    // store (#144 M1): the plain connector tool keeps the user's own style.
+    expect(lastToolOptions()?.style).toMatchObject({ stroke: '#ff3333' });
   });
 
   it('keeps every telemetry `element` value untouched', () => {

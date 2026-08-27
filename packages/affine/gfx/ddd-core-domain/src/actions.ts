@@ -2,7 +2,6 @@ import { backgroundSize } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { MOVEMENT_COLOR } from '@labre/affine-gfx-ddd-shared';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -54,16 +53,17 @@ export function createCoreDomainChart(
  */
 export function activateMovement(std: BlockStdScope): void {
   const gfx = std.get(GfxControllerIdentifier);
-  std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Straight,
-    stroke: MOVEMENT_COLOR,
-    strokeStyle: StrokeStyle.Dash,
-    strokeWidth: MOVEMENT_STROKE_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.Arrow,
-  });
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: CORE_DOMAIN_ROLE.movement,
+    // The look rides on the activation, never through the last-props store:
+    // the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: MOVEMENT_COLOR,
+      strokeStyle: StrokeStyle.Dash,
+      strokeWidth: MOVEMENT_STROKE_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.Arrow,
+    },
   });
 }

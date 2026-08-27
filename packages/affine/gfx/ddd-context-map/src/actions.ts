@@ -2,7 +2,6 @@ import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { LABEL_COLOR } from '@labre/affine-gfx-ddd-shared';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { GfxController } from '@labre/std/gfx';
 
@@ -78,19 +77,21 @@ export function activateContextMapRelationship(
   kind: ContextMapPatternKind,
   style: { upDown: boolean; dashed: boolean }
 ): void {
-  gfx.std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Straight,
-    stroke: LABEL_COLOR,
-    strokeStyle: style.dashed ? StrokeStyle.Dash : StrokeStyle.Solid,
-    strokeWidth: RELATIONSHIP_STROKE_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    // The arrow points at the DOWNSTREAM end, which is the target: the role's
-    // verb is "is upstream of", so the source is the upstream context.
-    rearEndpointStyle: style.upDown ? PointStyle.Arrow : PointStyle.None,
-  });
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: CM_PATTERN_ROLE[kind],
+    // The look rides on the activation, never through the last-props store:
+    // the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: LABEL_COLOR,
+      strokeStyle: style.dashed ? StrokeStyle.Dash : StrokeStyle.Solid,
+      strokeWidth: RELATIONSHIP_STROKE_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      // The arrow points at the DOWNSTREAM end, which is the target: the
+      // role's verb is "is upstream of", so the source is the upstream
+      // context.
+      rearEndpointStyle: style.upDown ? PointStyle.Arrow : PointStyle.None,
+    },
   });
   // The Context Map palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.
