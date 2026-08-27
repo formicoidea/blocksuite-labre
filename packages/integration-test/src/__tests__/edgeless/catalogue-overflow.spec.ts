@@ -28,7 +28,7 @@ import { setupEditor } from '../utils/setup.js';
  * The overflow lives here under a sixteen-command test owner so the MECHANISM
  * is tested on its own terms, independent of any framework's inventory. BPMN's
  * descriptive-profile pack is now the first shipped framework to cross the cap
- * for real (23 commands), and `bpmn.spec.ts` checks the same behaviour on it —
+ * for real (24 commands), and `bpmn.spec.ts` checks the same behaviour on it —
  * this spec is what proved the button was waiting.
  */
 

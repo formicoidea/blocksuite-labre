@@ -300,6 +300,17 @@ describe('BPMN typed-flow facts', () => {
    * edges carrying a role, which means naming the role to select on it, and
    * selecting is the opposite of stamping. Every other file that types the id
    * is putting it on an element, which is exactly what this pin is for.
+   *
+   * ## `export.ts` is in the list, and the doc comment above says why
+   *
+   * The pin was written spelling out both forms of the id precisely so that a
+   * SERIALIZER could not slip past it — and one arrived. It reads the role to
+   * choose an XML element name and writes nothing back to any model, which is
+   * the same "selecting, not stamping" `rules.ts` does; the difference is that
+   * a serializer is exactly the shape of thing the pin's author was worried
+   * about, so it is listed rather than excluded. A reviewer looking at this
+   * line is being told: an interchange file now speaks these two roles, and a
+   * rename would change what leaves the product, not just what it draws.
    */
   const stampSites = (roleId: string, roleExpression: string) =>
     tsFilesUnder(SRC)
@@ -332,6 +343,9 @@ describe('BPMN typed-flow facts', () => {
       // `activateBpmnMessageFlow` arms the connector tool with the role, so the
       // edge is born with it rather than acquiring one afterwards.
       'actions.ts',
+      // The XML export READS it, to decide that this arrow is a
+      // `bpmn:messageFlow` and belongs under the collaboration.
+      'export.ts',
       // …and the "Message exchange" card, which ships one already stamped.
       'templates/index.ts',
     ]);
@@ -356,6 +370,9 @@ describe('BPMN typed-flow facts', () => {
     // a picture they have already made, not something a preset can guess.
     expect(stampSites(BPMN_ROLE.association, 'BPMN_ROLE.association')).toEqual([
       'actions.ts',
+      // Read, not written: the export turns it into a `bpmn:association` with
+      // `associationDirection="None"` — the absence of a verb, in the file.
+      'export.ts',
     ]);
   });
 });

@@ -11,8 +11,10 @@ import {
   BPMN_POOL_BACKGROUND,
   BPMN_ROLE,
   BPMN_ROLE_OF_KIND,
+  bpmnBoardOf,
   bpmnLaneOf,
   bpmnPoolOf,
+  exportBpmnXml,
 } from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
@@ -392,11 +394,13 @@ describe('the BPMN toolbox past fourteen', () => {
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
   test('the sub-menu overflows: seven ranked slots plus More artefacts', () => {
-    // 23 declared, 14 of them nominated for the row — and past the cap the
-    // fourteen do not matter either: the catalogue is what gets ranked.
+    // 24 declared, 14 of them nominated for the row — and past the cap the
+    // fourteen do not matter either: the catalogue is what gets ranked. The
+    // twenty-fourth is `bpmn.exportXml`, which draws nothing and is therefore
+    // in the catalogue and out of the sub-menu, like the two lane gestures.
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
-    ).toHaveLength(23);
+    ).toHaveLength(24);
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
@@ -461,9 +465,9 @@ describe('the BPMN toolbox past fourteen', () => {
     expect(groups[0].textContent).toContain('Events');
     expect(groups.at(-1)!.textContent).toContain('Annotations');
 
-    // 21 rows, not 23: the panel filters on availability, and the two lane
-    // gestures need a selected pool. Everything that can be drawn from a blank
-    // board is listed.
+    // 21 rows, not 24: the panel filters on availability, and the two lane
+    // gestures and the export all need a selected pool. Everything that can be
+    // drawn from a blank board is listed.
     const entries = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-entry"]'
@@ -591,5 +595,183 @@ describe('the BPMN toolbox past fourteen', () => {
     // would be the picture claiming a direction the role refuses to have.
     expect(last.frontEndpointStyle).toBe(PointStyle.None);
     expect(last.rearEndpointStyle).toBe(PointStyle.None);
+  });
+});
+
+/**
+ * The BPMN 2.0 XML export, on a REAL document.
+ *
+ * The unit suite owns the shape of the file — every assertion about namespaces,
+ * nesting and the kind → element table lives there, on plain stubs. What only a
+ * live editor can answer is whether the serializer reads the actual model: a
+ * node's label is a `Y.Text` and not a string, a pool's bounds come off an
+ * `xywh` the surface parsed, and a connector's routing is computed by the
+ * manager rather than handed over. Those are the places a pure function tested
+ * against hand-made stubs can be right about nothing.
+ */
+describe('the BPMN XML export, end to end', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  const parse = (xml: string) => {
+    const parsed = new DOMParser().parseFromString(xml, 'application/xml');
+    expect(parsed.querySelector('parsererror')).toBeNull();
+    return parsed;
+  };
+
+  /** Elements by local name, walked by hand — see the unit spec on why. */
+  const byName = (root: Document, local: string) => {
+    const found: Element[] = [];
+    const walk = (element: Element) => {
+      if (element.localName === local) found.push(element);
+      for (const child of Array.from(element.children)) walk(child);
+    };
+    if (root.documentElement) walk(root.documentElement);
+    return found;
+  };
+
+  const childrenNamed = (element: Element, local: string) =>
+    Array.from(element.children).filter(child => child.localName === local);
+
+  test('serializes a drawn process, labels and routing included', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+
+    const poolId = surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      name: 'Sales',
+      xywh: '[0,0,600,400]',
+      lanes: [
+        { id: 'front', name: 'Front office', size: 1 },
+        { id: 'back', name: 'Back office', size: 1 },
+      ],
+    });
+    const pool = surface.getElementById(poolId) as BpmnPoolElementModel;
+
+    // Two artefacts inside the pool, one per lane, each with a REAL label —
+    // `text` is a `Y.Text`, which is the thing a hand-made stub never is.
+    const startId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'startEvent',
+      role: BPMN_ROLE_OF_KIND.startEvent,
+      shapeType: 'ellipse',
+      text: 'Order received',
+      xywh: '[100,60,56,56]',
+    });
+    const taskId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'taskUser',
+      role: BPMN_ROLE_OF_KIND.taskUser,
+      shapeType: 'rect',
+      text: 'Check the stock',
+      xywh: '[300,260,120,72]',
+    });
+    const flowId = surface.addElement({
+      type: 'connector',
+      mode: ConnectorMode.Orthogonal,
+      role: BPMN_ROLE.sequenceFlow,
+      source: { id: startId, position: [0.5, 0.5] },
+      target: { id: taskId, position: [0.5, 0.5] },
+    });
+    // …and one plain rectangle, which is not a BPMN artefact and must not
+    // become an unnamed task.
+    surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[0,0,10,10]',
+    });
+
+    // Let the connector manager route the flow: `absolutePath` is `@local()`,
+    // computed while the board is on screen, and it is what the export prefers
+    // to a straight line between two centres.
+    await wait(200);
+    const flow = surface.getElementById(flowId) as ConnectorElementModel;
+    expect(flow.absolutePath.length).toBeGreaterThanOrEqual(2);
+
+    const board = bpmnBoardOf(edgeless.std);
+    expect(board.pools).toHaveLength(1);
+    expect(board.nodes).toHaveLength(2);
+    expect(board.connectors).toHaveLength(1);
+
+    const doc = parse(exportBpmnXml(board, { name: 'Order to cash' }));
+
+    // The label came off a `Y.Text` and reached the file as characters.
+    expect(byName(doc, 'userTask').map(e => e.getAttribute('name'))).toEqual([
+      'Check the stock',
+    ]);
+    expect(byName(doc, 'startEvent')[0].getAttribute('name')).toBe(
+      'Order received'
+    );
+
+    // The participant is the pool, and the lanes are the pool's.
+    expect(byName(doc, 'participant')[0].getAttribute('name')).toBe('Sales');
+    const lanes = byName(doc, 'lane');
+    expect(lanes.map(l => l.getAttribute('name'))).toEqual([
+      'Front office',
+      'Back office',
+    ]);
+
+    // …and each artefact is referenced by the lane `bpmnLaneOf` puts it in.
+    const start = surface.getElementById(startId) as BpmnNodeElementModel;
+    const task = surface.getElementById(taskId) as BpmnNodeElementModel;
+    expect(bpmnLaneOf(pool, start.elementBound)?.id).toBe('front');
+    expect(bpmnLaneOf(pool, task.elementBound)?.id).toBe('back');
+    const refs = lanes.map(lane =>
+      childrenNamed(lane, 'flowNodeRef').map(child => child.textContent)
+    );
+    expect(refs[0]).toHaveLength(1);
+    expect(refs[1]).toHaveLength(1);
+    expect(refs[0][0]).not.toBe(refs[1][0]);
+
+    // The routing the manager computed, not a straight line between centres.
+    const edge = byName(doc, 'BPMNEdge')[0];
+    expect(childrenNamed(edge, 'waypoint')).toHaveLength(
+      flow.absolutePath.length
+    );
+
+    // The plain rectangle said nothing and is nowhere in the file: one shape
+    // for the participant and one for each of the two artefacts.
+    expect(byName(doc, 'task')).toHaveLength(0);
+    expect(byName(doc, 'BPMNShape')).toHaveLength(3);
+  });
+
+  test('the command is offered on a selected pool and exports the board', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const poolId = surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      xywh: '[0,0,600,400]',
+    });
+    surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: BPMN_ROLE_OF_KIND.task,
+      shapeType: 'rect',
+      xywh: '[100,100,120,72]',
+    });
+    await wait();
+
+    const command = getRegisteredCommands(edgeless.std).find(
+      c => c.id === 'bpmn.exportXml'
+    );
+    expect(command, 'bpmn.exportXml is not registered').toBeDefined();
+
+    // Nothing selected: the entry withdraws rather than greying.
+    edgeless.gfx.selection.clear();
+    expect(command!.when?.(edgeless.std)).toBe(false);
+
+    edgeless.gfx.selection.set({ elements: [poolId], editing: false });
+    expect(command!.when?.(edgeless.std)).toBe(true);
+
+    // And the WHOLE board is what it serializes — the selected pool decides
+    // the filename and nothing else.
+    const doc = parse(exportBpmnXml(bpmnBoardOf(edgeless.std)));
+    expect(byName(doc, 'participant')).toHaveLength(1);
+    expect(byName(doc, 'task')).toHaveLength(1);
   });
 });

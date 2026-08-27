@@ -8,8 +8,10 @@ import {
   addBpmnLane,
   bpmnLanesOf,
   bpmnPoolsForLaneEdit,
+  bpmnPoolsSelected,
   createBpmnNode,
   createBpmnPool,
+  exportBpmnXmlFile,
   removeBpmnLane,
 } from './actions';
 import {
@@ -20,6 +22,7 @@ import {
   bpmnEndIcon,
   bpmnEndMessageIcon,
   bpmnEndTerminateIcon,
+  bpmnExportXmlIcon,
   bpmnGatewayIcon,
   bpmnGatewayParallelIcon,
   bpmnGroupIcon,
@@ -443,9 +446,59 @@ const laneCommands: CommandDescriptor[] = [
   },
 ];
 
+/**
+ * The EXPORT — the first BPMN command whose subject is the whole board.
+ *
+ * ## Why it hangs off the pool's toolbar and still exports everything
+ *
+ * A pool is the only thing on the canvas that is unambiguously "this drawing is
+ * a BPMN process", so it is where a reader looks for what to do with one. What
+ * it is NOT is the scope: a BPMN document is a process, half a process is not a
+ * smaller process, and a file holding one participant of a two-participant
+ * collaboration would be a picture of a conversation with one side deleted. The
+ * selected pool decides the FILENAME and nothing else — see
+ * {@link exportBpmnXmlFile}.
+ *
+ * ## Surfaces
+ *
+ * It declines `'senior-menu'` for the same reason the lane gestures do: the
+ * sub-menu is what you reach for to DRAW something, and this draws nothing. It
+ * keeps `'catalogue'`, which is not a category claim but the registry's own
+ * invariant — the catalogue is the TOTAL surface, and a command missing from it
+ * is unreachable the moment its framework overflows the fourteen slots (pinned
+ * by `registry.unit.spec.ts`). On the row itself it sits in the "⋮" menu rather
+ * than as a button: it is the rarest thing anybody does to a pool, and the row
+ * is already three entries wide.
+ */
+const exportCommand: CommandDescriptor = {
+  id: 'bpmn.exportXml',
+  owner: 'bpmn',
+  kind: 'action',
+  labelKey: 'com.labre.commands.bpmn.exportXml',
+  labelFallback: 'Export BPMN XML',
+  descriptionKey: 'com.labre.commands.bpmn.exportXml.description',
+  descriptionFallback:
+    'Download the whole board as a BPMN 2.0 XML file, ready to open in any BPMN tool.',
+  // Filed with the pool, which is the selection that offers it.
+  category: 'swimlanes',
+  iconKey: 'bpmn.export-xml',
+  surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
+  order: SPECS.length + 2,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'selection',
+  run: exportBpmnXmlFile,
+  telemetry: { framework: 'bpmn', element: 'pool:export-xml' },
+  // A pool in the selection, and no more than that: an export READS, so unlike
+  // the lane gestures it is offered on a locked pool and on a read-only
+  // document — which is precisely the board somebody wants to take away.
+  when: std => bpmnPoolsSelected(std).length > 0,
+};
+
 export const bpmnCommands: CommandDescriptor[] = [
   ...toolboxCommands,
   ...laneCommands,
+  exportCommand,
 ];
 
 export const bpmnCommandIcons: Record<string, TemplateResult> = {
@@ -472,4 +525,5 @@ export const bpmnCommandIcons: Record<string, TemplateResult> = {
   'bpmn.pool': bpmnPoolIcon,
   'bpmn.lane-add': bpmnLaneAddIcon,
   'bpmn.lane-remove': bpmnLaneRemoveIcon,
+  'bpmn.export-xml': bpmnExportXmlIcon,
 };
