@@ -61,4 +61,23 @@ export class C4BoundaryElementModel extends FrameworkBackgroundElementModel<C4Bo
    */
   @field()
   accessor variant: C4BoundaryVariant | undefined = undefined;
+
+  /**
+   * The variant every reader of this element should use — `variant` with its
+   * documented default already applied.
+   *
+   * Derived, not stored: nothing here reaches the document, and an element that
+   * never stated a level is untouched by the existence of this getter.
+   *
+   * It is what lets the declaration gate a piece of itself on the level
+   * (`variantProp`), which a raw optional field cannot do: an unstated `variant`
+   * stringifies to `"undefined"`, matches no declared variant, and would paint
+   * NOTHING — the trap the boundary declaration used to avoid by declaring no
+   * `variantProp` at all. Reading the default here removes the trap instead of
+   * routing round it, so the frame can finally write the bracket line the
+   * stencil puts under a boundary's name.
+   */
+  get variantOrDefault(): C4BoundaryVariant {
+    return this.variant ?? 'system';
+  }
 }

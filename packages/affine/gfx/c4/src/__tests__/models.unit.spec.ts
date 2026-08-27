@@ -29,6 +29,10 @@ function detached<T>(Ctor: new (...args: never[]) => T): T {
   const element = Object.create(Ctor.prototype) as Record<string, unknown>;
   element.yMap = { doc: null };
   element._preserved = new Map<string, unknown>();
+  // The derived-value cache `x` / `y` / `w` / `h` memoise a deserialized `xywh`
+  // into. Only the geometry assertions reach it, and only through the real
+  // getters — which is the point of exercising them rather than a paraphrase.
+  element._local = new Map<string, unknown>();
   return element as unknown as T;
 }
 
@@ -87,6 +91,65 @@ describe('the C4 element models', () => {
     }
   });
 
+  /**
+   * The two fields added for the PO's third change request, on exactly the
+   * terms the boundary's `variant` is on: OPTIONAL, `undefined` by default and
+   * therefore absent from the stored props, so a node that states neither is
+   * byte-identical to one created before they existed. No schema bump, no
+   * migration, every document already on disk opens and paints as it did.
+   */
+  it('leaves technology and description absent, and writes nothing for them', () => {
+    const node = detached(C4NodeElementModel);
+    expect(node.technology).toBeUndefined();
+    expect(node.description).toBeUndefined();
+    expect(stored(node).has('technology')).toBe(false);
+    expect(stored(node).has('description')).toBe(false);
+
+    stored(node).set('technology', 'Java and Spring Boot');
+    stored(node).set('description', 'Delivers the banking functionality.');
+    expect(node.technology).toBe('Java and Spring Boot');
+    expect(node.description).toBe('Delivers the banking functionality.');
+  });
+
+  /**
+   * The PO's SECOND change request, at its root.
+   *
+   * `rect.includesPoint` skips the interior test for an unfilled shape and falls
+   * back to the stroke plus the tight box of the text run — which is what made
+   * a person, a database, a phone and a browser window (all created unfilled,
+   * their body drawn by the glyph) undraggable, unselectable and, most visibly,
+   * impossible to double-click into their own text editor anywhere but on the
+   * few characters of their label.
+   *
+   * The override says the one thing true of every C4 artefact: it is a box, and
+   * its whole area belongs to it. Asserted through the REAL geometry rather than
+   * by comparing method identities, because what broke was a point test.
+   */
+  it('is hit anywhere inside it, filled or not', () => {
+    const node = detached(C4NodeElementModel);
+    stored(node).set('xywh', '[0,0,200,100]');
+    stored(node).set('shapeType', 'rect');
+    stored(node).set('filled', false);
+
+    const options = { hitThreshold: 1, zoom: 1 };
+    // Well inside the body, far from every edge — and deliberately OUTSIDE the
+    // small central area an unfilled, untitled shape falls back to, which is the
+    // part of the box that was already hittable and would prove nothing.
+    expect(node.includesPoint(40, 25, options)).toBe(true);
+
+    // …and a plain unfilled shape is NOT hit there, which is exactly the
+    // behaviour the override changes and the bug the PO could see.
+    const plain = detached(ShapeElementModel);
+    stored(plain).set('xywh', '[0,0,200,100]');
+    stored(plain).set('shapeType', 'rect');
+    stored(plain).set('filled', false);
+    expect(plain.includesPoint(40, 25, options)).toBe(false);
+
+    // Outside is still outside: the override widens the target, it does not
+    // remove it.
+    expect(node.includesPoint(400, 50, options)).toBe(false);
+  });
+
   it('leaves the boundary variant absent, and writes nothing for it', () => {
     const boundary = detached(C4BoundaryElementModel);
     // Optional, `undefined`, and NOT in the stored props: a boundary that never
@@ -97,5 +160,25 @@ describe('the C4 element models', () => {
 
     stored(boundary).set('variant', 'container');
     expect(boundary.variant).toBe('container');
+  });
+
+  /**
+   * …and the derived reading of it, which is what the declaration gates its
+   * bracket line on.
+   *
+   * A raw optional `variant` cannot be a `variantProp`: an unstated one
+   * stringifies to `"undefined"`, matches no declared variant, and the label
+   * would be painted on NO boundary already on disk. Reading the documented
+   * default here is what lets the frame write `[Software System]` under a name
+   * the author never told it anything about.
+   */
+  it('reads an unstated boundary level as a system, without storing one', () => {
+    const boundary = detached(C4BoundaryElementModel);
+    expect(boundary.variantOrDefault).toBe('system');
+    // Derived, so asking the question wrote nothing.
+    expect(stored(boundary).has('variant')).toBe(false);
+
+    stored(boundary).set('variant', 'container');
+    expect(boundary.variantOrDefault).toBe('container');
   });
 });
