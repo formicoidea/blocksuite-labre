@@ -303,3 +303,187 @@ describe('the family is agnostic about WHEN it runs', () => {
     ).toEqual(['orphan']);
   });
 });
+
+/**
+ * `implicitRoots`: a subject nothing points at is a beginning.
+ *
+ * A notation whose explicit start marker is OPTIONAL has a second, silent way of
+ * saying where the work begins: draw the artefact and point nothing at it. Two
+ * branches running side by side, only one of them marked, are both well-formed —
+ * and the declared reading would report the whole of the unmarked branch as
+ * unreachable, a wall of brackets over a drawing that is right.
+ *
+ * What survives is the only real defect: a ring entered from nowhere. Every
+ * artefact in it has an incoming edge, so it is not an implicit root; nothing
+ * outside points into it, so no walk reaches it; and the work it describes can
+ * never begin.
+ */
+describe('the subjects nothing points at', () => {
+  const OPEN: ValidationRule = {
+    ...REACHABLE,
+    id: 'test.unreachable-step-open',
+    reachability: {
+      rootRole: 'test:start',
+      subjectRole: 'test:task',
+      edgeRole: 'test:flow',
+      implicitRoots: true,
+    },
+  };
+
+  /** u1 → u2, with nothing pointing at u1: a branch with no start marker. */
+  const unmarked = () => [
+    frame(),
+    node('u1', 'test:task'),
+    node('u2', 'test:task'),
+    edge('fu', 'u1', 'u2'),
+  ];
+
+  /** p → q → p, entered from nowhere. */
+  const ring = () => [
+    node('p', 'test:task'),
+    node('q', 'test:task'),
+    edge('f4', 'p', 'q'),
+    edge('f5', 'q', 'p'),
+  ];
+
+  it('leaves a whole start-less chain alone', () => {
+    // The declared reading says nothing here either — but only because the
+    // zero-root gate saves it, and the gate stops applying the moment ONE start
+    // marker exists anywhere on the board. This reading needs no gate.
+    expect(ids(OPEN, unmarked())).toEqual([]);
+  });
+
+  it('leaves an unmarked branch alone BESIDE a marked one', () => {
+    // The case the declared reading gets wrong: one start marker on the board
+    // lifts the gate, and the unmarked branch lights up end to end.
+    const board = [...chain(), ...unmarked().slice(1)];
+
+    expect(ids(REACHABLE, board)).toEqual(['u1', 'u2']);
+    expect(ids(OPEN, board)).toEqual([]);
+  });
+
+  it('indicts a ring entered from nowhere', () => {
+    // Every artefact in it has an incoming edge, so none is an implicit root,
+    // and nothing outside points in. The work can never begin — and this is the
+    // only defect the open reading still reports.
+    expect(ids(OPEN, [...chain(), ...ring()])).toEqual(['p', 'q']);
+  });
+
+  it('indicts a ring beside an UNMARKED branch', () => {
+    // No start marker anywhere: the branch roots itself, and the ring cannot.
+    expect(ids(OPEN, [...unmarked(), ...ring()])).toEqual(['p', 'q']);
+  });
+
+  it('says nothing about a board that is NOTHING BUT a ring', () => {
+    // The gate, at its edge. Every subject is pointed at, so there is no root of
+    // either kind, and the rule says nothing at all — the same total silence the
+    // declared reading gives a board with no start marker.
+    //
+    // Deliberate, and worth knowing before writing a rule on this flag: the
+    // finding above needs SOMETHING on the board to be a beginning. In practice
+    // a ring is drawn beside the work it belongs to, which is either case
+    // above; a document consisting solely of a ring is a fragment, and the
+    // family treats fragments the way it treats sketches.
+    expect(ids(OPEN, [frame(), ...ring()])).toEqual([]);
+  });
+
+  it('says nothing about a ring something points INTO', () => {
+    // One arc from the marked chain, and the whole ring is reachable.
+    expect(ids(OPEN, [...chain(), ...ring(), edge('f6', 'b', 'p')])).toEqual(
+      []
+    );
+  });
+
+  it('treats a SELF-LOOP as pointed at, not as a beginning', () => {
+    // Something does point at it — itself — so it is not an implicit root. A
+    // ring of one, drawn beside work that does begin somewhere.
+    expect(
+      ids(OPEN, [
+        ...chain(),
+        node('solo', 'test:task'),
+        edge('f6', 'solo', 'solo'),
+      ])
+    ).toEqual(['solo']);
+  });
+
+  it('still leaves from the DECLARED roots', () => {
+    // The second kind of root is added to the first, never substituted for it:
+    // a step reachable only through the start marker stays reachable.
+    expect(ids(OPEN, chain())).toEqual([]);
+  });
+
+  it('never indicts a subject that is also a declared root', () => {
+    // Seeded once, through the same `visited` guard: a start marker with an
+    // incoming edge is not an implicit root, and is still a root.
+    const broad: ValidationRule = {
+      ...OPEN,
+      reachability: {
+        rootRole: 'test:start',
+        subjectRole: 'test:node',
+        edgeRole: 'test:flow',
+        implicitRoots: true,
+      },
+    };
+
+    expect(
+      ids(broad, [
+        frame(),
+        node('start', 'test:start'),
+        node('a', 'test:task'),
+        edge('f1', 'a', 'start'),
+      ])
+    ).toEqual([]);
+  });
+
+  it('follows the inheritance chain on both kinds of root', () => {
+    expect(
+      ids(OPEN, [
+        frame(),
+        node('start', 'test:timer-start'),
+        node('a', 'test:task'),
+        edge('f1', 'start', 'a'),
+        ...ring(),
+      ])
+    ).toEqual(['p', 'q']);
+  });
+
+  it('says nothing when every subject sits in a ring and there is no root', () => {
+    // Zero roots of EITHER kind. The gate still holds, and the board where it
+    // now fires is one where the question genuinely does not arise.
+    const onlyRings = [frame(), ...ring()];
+    const noRoots: ValidationRule = {
+      ...OPEN,
+      id: 'test.unreachable-step-gated',
+      reachability: {
+        rootRole: 'test:start',
+        // Nothing on this board carries the subject role, so there is no
+        // implicit root either — and no subject to report.
+        subjectRole: 'test:frame',
+        edgeRole: 'test:flow',
+        implicitRoots: true,
+      },
+    };
+
+    expect(ids(noRoots, onlyRings)).toEqual([]);
+  });
+
+  it('leaves the declared reading untouched', () => {
+    // Absent or false is the original behaviour, to the finding: the flag adds
+    // a way of starting, it does not change what "reachable" means.
+    const off: ValidationRule = {
+      ...OPEN,
+      reachability: {
+        rootRole: 'test:start',
+        subjectRole: 'test:task',
+        edgeRole: 'test:flow',
+        implicitRoots: false,
+      },
+    };
+    const board = [...chain(), node('orphan', 'test:task')];
+
+    expect(ids(off, board)).toEqual(ids(REACHABLE, board));
+    // ...and an orphan nothing points at IS an implicit root, so the open
+    // reading has nothing to say about the very same board.
+    expect(ids(OPEN, board)).toEqual([]);
+  });
+});
