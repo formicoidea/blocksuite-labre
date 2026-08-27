@@ -24,10 +24,11 @@ import { setupEditor } from '../utils/setup.js';
  * button opens the catalogue sidepanel on that framework — with no code in the
  * framework beyond declaring its commands.
  *
- * No shipped framework crosses fourteen yet, so the overflow lives here under
- * a sixteen-command test owner, the same way the playground's throwaway
- * `demo-overflow` makes it observable by hand. The day BPMN's full pack lands,
- * this spec is the proof the button was already waiting for it.
+ * The overflow lives here under a sixteen-command test owner so the MECHANISM
+ * is tested on its own terms, independent of any framework's inventory. BPMN's
+ * descriptive-profile pack is now the first shipped framework to cross the cap
+ * for real (23 commands), and `bpmn.spec.ts` checks the same behaviour on it —
+ * this spec is what proved the button was waiting.
  */
 
 const OWNER = 'test-overflow' as AnyCommandDescriptor['owner'];

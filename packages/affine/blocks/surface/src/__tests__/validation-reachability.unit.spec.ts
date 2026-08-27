@@ -374,6 +374,39 @@ describe('the subjects nothing points at', () => {
     expect(ids(OPEN, [...unmarked(), ...ring()])).toEqual(['p', 'q']);
   });
 
+  it('indicts a subject fed only by an edge with a DANGLING source', () => {
+    // The second shape of the residual, and the one the prose used to omit: the
+    // edge points at `s`, so `s` is not an implicit root; its source is on no
+    // board, so nothing ever leaves from it. Neither a root nor reachable.
+    //
+    // The broken edge is `relation-endpoints`' subject; this family reports the
+    // consequence. Inherited from the declared reading, not introduced by the
+    // flag — the assertion below says so.
+    const board = [
+      ...chain(),
+      node('s', 'test:task'),
+      edge('fg', 'ghost', 's'),
+    ];
+
+    expect(ids(OPEN, board)).toEqual(['s']);
+    expect(ids(REACHABLE, board)).toEqual(['s']);
+  });
+
+  it('indicts a subject fed only by an element OUTSIDE the walk', () => {
+    // Same shape, a different cause: the source exists but carries a role that
+    // is neither the root role nor the subject role, so the walk never enqueues
+    // it and never leaves from it.
+    const board = [
+      ...chain(),
+      node('note', 'test:frame'),
+      node('s', 'test:task'),
+      edge('fn', 'note', 's'),
+    ];
+
+    expect(ids(OPEN, board)).toEqual(['s']);
+    expect(ids(REACHABLE, board)).toEqual(['s']);
+  });
+
   it('says nothing about a board that is NOTHING BUT a ring', () => {
     // The gate, at its edge. Every subject is pointed at, so there is no root of
     // either kind, and the rule says nothing at all — the same total silence the

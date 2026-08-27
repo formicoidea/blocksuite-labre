@@ -130,9 +130,45 @@ describe('reading the words an artefact carries', () => {
     // Present in the string, absent from the page. Left alone this artefact
     // LOOKS unnamed and validates as named — the worst of both, and impossible
     // to debug from the canvas. `trim()` does not remove these.
-    expect(ids(NAMED, [frame(), node('a', 'test:activity', '​﻿')])).toEqual([
-      'a',
-    ]);
+    expect(
+      ids(NAMED, [frame(), node('a', 'test:activity', '\u200B\u2060\uFEFF')])
+    ).toEqual(['a']);
+  });
+
+  it('accepts a name that merely CONTAINS an invisible character', () => {
+    // Stripping them is about what is LEFT, never about rejecting the string:
+    // a name pasted with a stray joiner in it is still a name.
+    expect(
+      ids(NAMED, [frame(), node('a', 'test:activity', 'Re\u200Bview')])
+    ).toEqual([]);
+  });
+
+  it('treats a malformed text value as no name at all', () => {
+    // `String({})` is '[object Object]' — eleven visible characters, which
+    // would make this artefact read as NAMED, and named with a word the user
+    // can neither see nor delete. `text` comes off a Y.Map, so it is whatever a
+    // peer or an importer wrote.
+    expect(
+      ids(NAMED, [
+        frame(),
+        element('w', [50, 50, 100, 40], { role: 'test:activity', text: {} }),
+      ])
+    ).toEqual(['w']);
+  });
+
+  it('treats a raw delta list as no name either', () => {
+    // The shape a text most plausibly degrades into, and the one an array
+    // overriding `toString` would otherwise sneak past: `String([{insert}])` is
+    // '[object Object]' all over again.
+    expect(
+      ids(NAMED, [
+        frame(),
+        element('w', [50, 50, 100, 40], {
+          role: 'test:activity',
+          text: [{ insert: 'Review' }],
+        }),
+      ])
+    ).toEqual(['w']);
   });
 
   it('accepts a name a reader can see, however short', () => {

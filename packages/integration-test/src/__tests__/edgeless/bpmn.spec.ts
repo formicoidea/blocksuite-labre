@@ -9,6 +9,8 @@ import {
 // framework modules.
 import {
   BPMN_POOL_BACKGROUND,
+  BPMN_ROLE,
+  BPMN_ROLE_OF_KIND,
   bpmnLaneOf,
   bpmnPoolOf,
 } from '@labre/affine-gfx-bpmn';
@@ -17,18 +19,41 @@ import {
   type BpmnPoolElementModel,
   type ConnectorElementModel,
   ConnectorMode,
+  PointStyle,
   ShapeElementModel,
+  StrokeStyle,
 } from '@labre/affine/model';
 import {
+  COMMAND_USAGE_KEY,
+  EditPropsStore,
+} from '@labre/affine/shared/services';
+import {
   type AnyCommandDescriptor,
+  getCommandsForSurface,
   getRegisteredCommands,
   runCommand,
+  SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
+import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
+import { ContextProvider } from '@lit/context';
+import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
+
+/**
+ * The BPMN sub-menu popover. Not exported by the framework package — it is a
+ * custom element `effects()` registers — so it is reached the way the senior
+ * button reaches it, by tag name.
+ */
+type BpmnMenuElement = HTMLElement & {
+  edgeless: EdgelessRootBlockComponent;
+  updateComplete: Promise<unknown>;
+  /** `EdgelessCommandMenu`'s own selection — what `render()` maps to buttons. */
+  commands: AnyCommandDescriptor[];
+};
 
 describe('BPMN framework elements', () => {
   beforeEach(async () => {
@@ -305,5 +330,266 @@ describe('BPMN pool lanes', () => {
 
     expect(command('bpmn.addLane').when?.(edgeless.std)).toBe(false);
     expect(command('bpmn.removeLane').when?.(edgeless.std)).toBe(false);
+  });
+});
+
+/**
+ * The descriptive-profile toolbox, on a real editor.
+ *
+ * BPMN is the first SHIPPED framework whose catalogue outgrows the fourteen
+ * senior slots, so what `catalogue-overflow.spec.ts` proved on a synthetic
+ * sixteen-command owner now has to hold for a framework a user actually opens:
+ * the sub-menu collapses to seven ranked buttons plus "More artefacts…", and
+ * the panel behind that button is the whole toolbox, in its sections.
+ */
+describe('the BPMN toolbox past fourteen', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+  let menu!: BpmnMenuElement;
+  let menuHost!: HTMLElement;
+
+  beforeEach(async () => {
+    // The usage measure is what the ranking reads, and it persists across
+    // tests in this file. Start from silence so the seven are the cold-start
+    // seven — the first seven in authored order — rather than whatever an
+    // earlier scenario happened to click.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    // The popover, mounted the way the senior button mounts it. Its inner
+    // slide menu consumes the toolbar's resize slot through Lit context, which
+    // a standalone mount has to provide (a subject nobody ever fires).
+    menu = document.createElement(
+      'edgeless-bpmn-menu'
+    ) as unknown as BpmnMenuElement;
+    menu.edgeless = edgeless;
+    menuHost = document.createElement('div');
+    new ContextProvider(menuHost, {
+      context: edgelessToolbarSlotsContext,
+      initialValue: { resize: new Subject<{ w: number; h: number }>() },
+    });
+    menuHost.append(menu);
+    document.body.append(menuHost);
+    await menu.updateComplete;
+    await wait(0);
+
+    return () => {
+      menuHost.remove();
+      cleanup();
+    };
+  });
+
+  const buttons = () =>
+    Array.from(
+      menu.shadowRoot?.querySelectorAll<HTMLElement>(
+        'edgeless-tool-icon-button'
+      ) ?? []
+    );
+
+  const catalogueWidget = () =>
+    edgeless.widgetComponents['edgeless-artefact-catalogue-widget'];
+
+  const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
+
+  test('the sub-menu overflows: seven ranked slots plus More artefacts', () => {
+    // 23 declared, 14 of them nominated for the row — and past the cap the
+    // fourteen do not matter either: the catalogue is what gets ranked.
+    expect(
+      getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
+    ).toHaveLength(23);
+    expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
+  });
+
+  test('the seven a first-time user meets can draw a process between them', async () => {
+    // The recette regression, on the real popover. `beforeEach` clears the
+    // usage store, so this IS a first contact: both ranking axes collapse to
+    // authored order and the row is the first seven of the catalogue.
+    //
+    // It used to read Start, Message start, Timer start, End, Message end,
+    // Terminate end, Task — six events and a rectangle, with nothing to connect
+    // them. Now it is a start, an end, a task, a branch, the arrow between them,
+    // the frame they sit in, and the one arrow allowed to leave it.
+    //
+    // Asserted on `menu.commands` — the mounted component's own selection,
+    // which `render()` maps one-to-one onto the buttons. The buttons themselves
+    // carry an icon and a `.tooltip` property and no label in the DOM, so there
+    // is nothing text-shaped to read off them; the ranked-slot count above is
+    // what ties this list to what is painted.
+    expect(menu.commands.map(command => command.id)).toEqual([
+      'bpmn.addStartEvent',
+      'bpmn.addEndEvent',
+      'bpmn.addTask',
+      'bpmn.addExclusiveGateway',
+      'bpmn.sequenceFlowTool',
+      'bpmn.addPool',
+      'bpmn.messageFlowTool',
+    ]);
+    expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  });
+
+  test('the last button opens the catalogue on BPMN, in its sections', async () => {
+    buttons().at(-1)!.click();
+    await wait(0);
+    await catalogueWidget()?.updateComplete;
+
+    const panel = catalogueRoot()?.querySelector<HTMLElement>(
+      '[data-testid="artefact-catalogue-panel"]'
+    );
+    expect(panel).not.toBeNull();
+    expect(panel!.dataset.owner).toBe('bpmn');
+
+    // The seven sections BPMN declares, in the order each is FIRST met — the
+    // panel never sorts headers alphabetically. `swimlanes` sits fifth and not
+    // last because the pool is one of the seven a user meets on a blank board,
+    // and the section follows the earliest command filed under it.
+    const groups = Array.from(
+      catalogueRoot()?.querySelectorAll<HTMLElement>(
+        '[data-testid="artefact-catalogue-group"]'
+      ) ?? []
+    );
+    expect(groups.map(group => group.dataset.category)).toEqual([
+      'events',
+      'activities',
+      'gateways',
+      'flows',
+      'swimlanes',
+      'data',
+      'annotations',
+    ]);
+    // …and every header reads as a phrase, not as a raw key: with no host
+    // catalogue registered, `humanizeCategory` is what the panel falls back to.
+    expect(groups[0].textContent).toContain('Events');
+    expect(groups.at(-1)!.textContent).toContain('Annotations');
+
+    // 21 rows, not 23: the panel filters on availability, and the two lane
+    // gestures need a selected pool. Everything that can be drawn from a blank
+    // board is listed.
+    const entries = Array.from(
+      catalogueRoot()?.querySelectorAll<HTMLElement>(
+        '[data-testid="artefact-catalogue-entry"]'
+      ) ?? []
+    );
+    expect(entries).toHaveLength(21);
+    // The ones that are in the catalogue and NOT in the fourteen are reachable
+    // here and nowhere else in the chrome — which is the whole promise.
+    const ids = entries.map(entry => entry.dataset.commandId);
+    expect(ids).toContain('bpmn.addTimerStartEvent');
+    expect(ids).toContain('bpmn.addDataStore');
+    expect(ids).toContain('bpmn.associationTool');
+    expect(ids).toContain('bpmn.addGroup');
+  });
+
+  test('every new artefact command creates the node its kind means', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const created = new Map<string, string>();
+
+    for (const descriptor of getCommandsForSurface(
+      edgeless.std,
+      'bpmn',
+      'catalogue'
+    )) {
+      const element = descriptor.telemetry?.element ?? '';
+      if (!element.startsWith('node:')) continue;
+      runCommand(edgeless.std, descriptor, {
+        surface: 'catalogue',
+        source: 'toolbar:general',
+      });
+      created.set(descriptor.id, element.slice('node:'.length));
+    }
+    await wait();
+
+    // Seventeen kinds, seventeen commands, seventeen elements — and each one
+    // carries BOTH the kind that paints it and the role that says what it means.
+    expect(created.size).toBe(17);
+    const nodes = surface.getElementsByType(
+      'bpmnNode'
+    ) as BpmnNodeElementModel[];
+    expect(nodes).toHaveLength(17);
+    for (const node of nodes) {
+      expect(node.role, node.kind).toBe(BPMN_ROLE_OF_KIND[node.kind]);
+      // The unfilled ones: the three glyph-bodied artefacts, whose silhouette
+      // the renderer draws, and the group, which is a lasso and must never
+      // paint over what it is drawn around. Going through `createBpmnNode` is
+      // what guarantees it; a hand-rolled creation site gets this wrong.
+      const unfilled = ['dataObject', 'dataStore', 'textAnnotation', 'group'];
+      expect(node.filled, node.kind).toBe(!unfilled.includes(node.kind));
+    }
+    expect(new Set(nodes.map(node => node.kind)).size).toBe(17);
+  });
+
+  test('the message-flow tool draws a dashed, role-stamped connector', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const commands = getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue');
+    const tool = commands.find(c => c.id === 'bpmn.messageFlowTool');
+    expect(tool).toBeDefined();
+
+    runCommand(edgeless.std, tool!, {
+      surface: 'catalogue',
+      source: 'toolbar:general',
+    });
+    await wait();
+
+    // What the command actually does: it arms the native connector tool, and
+    // the role travels in that tool's options (`ConnectorTool` writes
+    // `role: this.activatedOption.role` onto every connector it creates, so an
+    // edge drawn with this tool is BORN carrying it — the guarantee
+    // `docs/adr/0010` asks for and the rules PR relies on).
+    expect(edgeless.gfx.tool.currentToolName$.peek()).toBe('connector');
+
+    // Below is the SHAPE of what that produces, assembled by hand: the props the
+    // command recorded, plus the role the tool would have written. It checks the
+    // preset the command arms and that a connector so built binds and routes —
+    // NOT `ConnectorTool`'s own write, which is that tool's contract and is
+    // covered where the tool lives.
+    const from = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'taskUser',
+      role: BPMN_ROLE.taskUser,
+      shapeType: 'rect',
+      xywh: '[0,0,120,72]',
+    });
+    const to = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'taskService',
+      role: BPMN_ROLE.taskService,
+      shapeType: 'rect',
+      xywh: '[0,300,120,72]',
+    });
+    const last = edgeless.std.get(EditPropsStore).lastProps$.value.connector;
+    const flowId = surface.addElement({
+      type: 'connector',
+      ...last,
+      role: BPMN_ROLE.messageFlow,
+      source: { id: from, position: [0.5, 0.5] },
+      target: { id: to, position: [0.5, 0.5] },
+    });
+    await wait(200);
+
+    const flow = surface.getElementById(flowId) as ConnectorElementModel;
+    expect(flow.role).toBe(BPMN_ROLE.messageFlow);
+    expect(flow.strokeStyle).toBe(StrokeStyle.Dash);
+    expect(flow.frontEndpointStyle).toBe(PointStyle.Circle);
+    expect(flow.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(flow.path.length).toBeGreaterThan(0);
+  });
+
+  test('the association tool arms a headless line and no direction', async () => {
+    const tool = getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue').find(
+      c => c.id === 'bpmn.associationTool'
+    );
+    expect(tool).toBeDefined();
+
+    runCommand(edgeless.std, tool!, {
+      surface: 'catalogue',
+      source: 'toolbar:general',
+    });
+    await wait();
+
+    const last = edgeless.std.get(EditPropsStore).lastProps$.value.connector;
+    expect(last.strokeStyle).toBe(StrokeStyle.Dash);
+    // No head at either end: an association names no relation, so an arrowhead
+    // would be the picture claiming a direction the role refuses to have.
+    expect(last.frontEndpointStyle).toBe(PointStyle.None);
+    expect(last.rearEndpointStyle).toBe(PointStyle.None);
   });
 });

@@ -671,7 +671,7 @@ describe('a forbidden shape of degree', () => {
     expect(ids(both, wired(1, 3))).toEqual([]);
   });
 
-  it('falls back to the rule’s own words when the pattern declares none', () => {
+  it('carries the pattern’s own key through, even an empty one', () => {
     const bare: ValidationRule = {
       ...base,
       id: 'test.gateway-bare-pattern',
@@ -682,10 +682,47 @@ describe('a forbidden shape of degree', () => {
       },
     };
 
-    // An empty key is what a framework writing no words of its own leaves —
-    // `raise` carries `words.messageKey` through either way, so the assertion
-    // here is that the pattern is READ, not that the key is invented.
+    // The ABSENCE of a fallback, and deliberately so: this is the one bound with
+    // no `?? rule` behind it, because `RuleMessage` is intersected into the
+    // pattern rather than optional beside it — the type system already requires
+    // a framework to supply the sentence, since a forbidden zone can never
+    // borrow the rule's own words honestly.
     expect(run(bare, wired(1, 1))[0].messageKey).toBe('');
+  });
+
+  it('accepts a one-bound pattern as the plain inverse of a bound', () => {
+    // Legal, coherent, and always redundant: `{ minIn: 2 }` is `maxIn: 1` said
+    // backwards. Not warned about — a conjunction of one is still a conjunction
+    // — but never the reason to reach for this field, since the plain bound
+    // carries a sentence naming the side to act on.
+    const oneBound: ValidationRule = {
+      ...base,
+      id: 'test.gateway-one-bound-pattern',
+      messageKey: 'com.labre.test.gateway-one-bound-pattern',
+      degree: {
+        edgeRole: 'test:flow',
+        forbidPattern: {
+          minIn: 2,
+          messageKey: 'com.labre.test.gateway-one-bound-pattern.pattern',
+        },
+      },
+    };
+    const inverse: ValidationRule = {
+      ...base,
+      id: 'test.gateway-inverse-bound',
+      messageKey: 'com.labre.test.gateway-inverse-bound',
+      degree: { edgeRole: 'test:flow', maxIn: 1 },
+    };
+
+    for (const [into, outOf] of [
+      [0, 1],
+      [1, 1],
+      [2, 1],
+      [3, 0],
+    ] as const) {
+      const board = wired(into, outOf);
+      expect(ids(oneBound, board)).toEqual(ids(inverse, board));
+    }
   });
 
   it('drops a pattern with no bound in it, and warns', () => {
