@@ -10,6 +10,7 @@ import type {
   ConnectorElementModel,
 } from '@labre/affine-model';
 import type { Bound } from '@labre/global/gfx';
+import type { ForeignInterchange } from '@labre/std/gfx';
 
 import { BPMN_POOL_BACKGROUND } from './background.js';
 import { bpmnLaneOf, bpmnPoolOf } from './facts.js';
@@ -92,6 +93,17 @@ export const BPMN_NS = {
  * every tool resolves them by id within the one file.
  */
 const TARGET_NAMESPACE = 'https://labre.app/bpmn';
+
+/**
+ * The interchange format's id — the key under which foreign matter from a
+ * `.bpmn` rides on an element (`interchange.bpmn`, ADR 0012 D2), and the middle
+ * term of both capability ids.
+ *
+ * Declared here, in the module both directions already depend on, so that the
+ * writer, the reader and the registry entry cannot disagree about which key
+ * they are talking about.
+ */
+export const BPMN_FORMAT_ID = 'bpmn';
 
 const EXPORTER = 'Labre';
 
@@ -222,7 +234,7 @@ const textEl = (name: string, text: string, attrs: Attrs = {}): XmlElement => ({
  * what makes `<bpmn:text>` carry a multi-line annotation faithfully: inside an
  * element, whitespace is content.
  */
-function escapeText(value: string): string {
+export function escapeText(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -245,7 +257,7 @@ function escapeText(value: string): string {
  * line, with no warning and no way for the author to tell. Written as `&#10;`
  * it comes back as it went in.
  */
-function escapeAttr(value: string): string {
+export function escapeAttr(value: string): string {
   return escapeText(value)
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;')
@@ -324,6 +336,43 @@ export function toNcName(raw: string): string {
   return out;
 }
 
+/** Whether a string is already an NCName, and can therefore be given back. */
+export function isNcName(value: string): boolean {
+  if (value.length === 0 || !NAME_START.test(value[0])) return false;
+  for (const char of value) {
+    if (!NAME_CHAR.test(char)) return false;
+  }
+  return true;
+}
+
+/**
+ * The id a `.bpmn` import recorded for this element, verbatim (ADR 0012, D3).
+ *
+ * The read half of the round trip, and the whole of what this module knows
+ * about importing: `interchange.bpmn.id` is what the file called this thing,
+ * and giving it back is what makes the id map a FIXED POINT after one cycle —
+ * the first export renames (surface id → NCName), every export after an import
+ * gives back what it was given. The export writes nothing here, ever.
+ *
+ * Keyed by the FORMAT and not the framework, because a `.bpmn` and an OWM file
+ * make different promises about the same element. Read defensively: the value
+ * came out of a Y.Map and is whatever a peer wrote.
+ */
+function carriedBpmnId(model: {
+  interchange?: Record<string, ForeignInterchange> | undefined;
+}): string | undefined {
+  const given = model.interchange?.[BPMN_FORMAT_ID]?.id;
+  return typeof given === 'string' && given.length > 0 ? given : undefined;
+}
+
+/** The source element name an import recorded, when the element was carried. */
+function carriedBpmnElement(model: {
+  interchange?: Record<string, ForeignInterchange> | undefined;
+}): string | undefined {
+  const name = model.interchange?.[BPMN_FORMAT_ID]?.element;
+  return typeof name === 'string' && name.length > 0 ? name : undefined;
+}
+
 /**
  * Mints document-unique NCNames, and remembers what it minted.
  *
@@ -333,6 +382,28 @@ export function toNcName(raw: string): string {
  */
 class IdMinter {
   readonly #taken = new Set<string>();
+
+  /** How many ids an import gave us that could not be given back (D3). */
+  substituted = 0;
+
+  /**
+   * The id the FILE gave this element, when it can still be given back —
+   * otherwise a freshly minted one, and the substitution is counted.
+   *
+   * Two things can make a recorded id unusable, and neither is recoverable by
+   * guessing: it may not be an NCName (a hand-edited file, another format's
+   * id), or the document being written may already have claimed it. The
+   * alternative — inverting {@link toNcName} to reconstruct what we think we
+   * sent — is exactly what D3 rejects: `_7abc` has two preimages.
+   */
+  given(given: string | undefined, prefix: string, raw: string): string {
+    if (given !== undefined && isNcName(given) && !this.#taken.has(given)) {
+      this.#taken.add(given);
+      return given;
+    }
+    if (given !== undefined) this.substituted++;
+    return this.mint(prefix, raw);
+  }
 
   mint(prefix: string, raw: string): string {
     const base = toNcName(prefix ? `${prefix}_${raw}` : raw);
@@ -660,27 +731,49 @@ export function exportBpmnXmlWithWarnings(
   /* ── Processes and participants ──────────────────────────────────── */
 
   const processes: PlannedProcess[] = pools.map(pool => {
-    const participantId = minter.mint('Participant', pool.id);
-    const id = minter.mint('Process', pool.id);
+    // A pool an import minted for a file that had NO participant — a bare
+    // `process`, which is exactly what a poolless Labre board exports as. It
+    // says so on itself (`interchange.bpmn.element = 'process'`, ADR 0012 D6)
+    // and that is what tells this writer to give the poolless form back rather
+    // than invent a collaboration the author never drew.
+    const wasBareProcess = carriedBpmnElement(pool) === 'process';
+    const given = carriedBpmnId(pool);
+    // The pool's OWN element is the participant — it is what a `BPMNShape`
+    // points at and what a message flow can reference — so that is the id the
+    // file gets to keep. Everything the pool drags along is minted FROM it, so
+    // that an export after an import lands on the same ids as the export
+    // before it: the process is derived from the participant either way.
+    const participantId = wasBareProcess
+      ? undefined
+      : minter.given(given, 'Participant', pool.id);
+    const id = wasBareProcess
+      ? minter.given(given, 'Process', pool.id)
+      : minter.mint('Process', participantId!);
     // The bands the pool actually PAINTS, not the raw prop — see
-    // `poolLaneBands`. Ids go through the same minter as everything else: `id`
-    // is document-unique across the WHOLE file, so a lane cannot quietly take
-    // the NCName a task already has.
+    // `poolLaneBands`. A lane's stored id is what the file called it (an import
+    // records it verbatim), so it goes in unprefixed: `id` is document-unique
+    // across the WHOLE file and the minter is what keeps it so, but a lane that
+    // arrived as `Lane_3` must leave as `Lane_3` and not as `Lane_Lane_3`.
     const lanes = poolLaneBands(pool).map(band => ({
       ...band,
-      id: minter.mint('Lane', band.lane.id),
+      id: minter.mint('', band.lane.id),
     }));
     return {
       pool,
       id,
       participantId,
       name: labelOf(pool.name),
-      laneSetId: lanes.length > 0 ? minter.mint('LaneSet', pool.id) : undefined,
+      laneSetId:
+        lanes.length > 0
+          ? minter.mint('LaneSet', participantId ?? id)
+          : undefined,
       lanes,
     };
   });
 
-  const hasCollaboration = pools.length > 0;
+  const hasCollaboration = processes.some(
+    process => process.participantId !== undefined
+  );
 
   /**
    * The participant-less process.
@@ -705,7 +798,12 @@ export function exportBpmnXmlWithWarnings(
    * Artifacts do NOT come here when there is a collaboration — they have a
    * legal home on the collaboration itself, and they are drawn.
    */
-  let orphanProcess = -1;
+  // …unless one is already there: a pool an import minted for a bare `process`
+  // IS the participant-less process, and minting a second one beside it would
+  // write a `definitions` with two processes where the file had one.
+  let orphanProcess = processes.findIndex(
+    process => process.pool !== null && process.participantId === undefined
+  );
   const orphanProcessIndex = () => {
     if (orphanProcess < 0) {
       orphanProcess = processes.length;
@@ -748,7 +846,7 @@ export function exportBpmnXmlWithWarnings(
     const node: PlannedNode = {
       model,
       mapping,
-      id: minter.mint('', model.id),
+      id: minter.given(carriedBpmnId(model), '', model.id),
       name,
       bound,
       scope,
@@ -756,13 +854,16 @@ export function exportBpmnXmlWithWarnings(
     };
 
     // A data object needs the `dataObject` its reference points at, and a
-    // labelled group needs somewhere for its label to live.
+    // labelled group needs somewhere for its label to live. Both are minted
+    // from the id this artefact SETTLED on rather than from its surface id, so
+    // that an artefact whose id came out of a file drags the same satellites
+    // whichever export writes it — see {@link IdMinter.given}.
     if (model.kind === 'dataObject') {
-      node.dataObjectId = minter.mint('DataObject', model.id);
+      node.dataObjectId = minter.mint('DataObject', node.id);
     }
     if (model.kind === 'group' && name) {
-      node.categoryId = minter.mint('Category', model.id);
-      node.categoryValueId = minter.mint('CategoryValue', model.id);
+      node.categoryId = minter.mint('Category', node.id);
+      node.categoryValueId = minter.mint('CategoryValue', node.id);
     }
 
     planned.push(node);
@@ -814,7 +915,7 @@ export function exportBpmnXmlWithWarnings(
     edges.push({
       model: connector,
       element,
-      id: minter.mint('Flow', connector.id),
+      id: minter.given(carriedBpmnId(connector), 'Flow', connector.id),
       name: labelOf(connector.text),
       source,
       target,
@@ -932,22 +1033,28 @@ export function exportBpmnXmlWithWarnings(
   const planeElements: XmlElement[] = [];
 
   for (const process of processes) {
-    if (!process.pool || !process.participantId) continue;
+    if (!process.pool) continue;
     const bound = process.pool.elementBound;
-    planeElements.push(
-      el(
-        'bpmndi:BPMNShape',
-        {
-          id: minter.mint('Shape', process.pool.id),
-          bpmnElement: process.participantId,
-          // `isHorizontal` is meaningful on pools and lanes ONLY (§12.3.2), and
-          // a pool here always runs left to right: the plot is cut into
-          // horizontal bands, which is what a horizontal pool means.
-          isHorizontal: 'true',
-        },
-        [el('dc:Bounds', boundsAttrs(bound, dx, dy))]
-      )
-    );
+    // A pool that stands for a bare `process` has no participant, and a
+    // participant is the only thing a plane can draw a pool AS — so it gets no
+    // shape of its own. Its lanes still do: they are `DiagramElement`s like any
+    // other, and a laneSet nothing draws is the gap the recette found.
+    if (process.participantId) {
+      planeElements.push(
+        el(
+          'bpmndi:BPMNShape',
+          {
+            id: minter.mint('Shape', process.participantId),
+            bpmnElement: process.participantId,
+            // `isHorizontal` is meaningful on pools and lanes ONLY (§12.3.2), and
+            // a pool here always runs left to right: the plot is cut into
+            // horizontal bands, which is what a horizontal pool means.
+            isHorizontal: 'true',
+          },
+          [el('dc:Bounds', boundsAttrs(bound, dx, dy))]
+        )
+      );
+    }
 
     // …and one shape per LANE, immediately after its own pool.
     //
@@ -961,7 +1068,7 @@ export function exportBpmnXmlWithWarnings(
         el(
           'bpmndi:BPMNShape',
           {
-            id: minter.mint('Shape', `lane-${lane.lane.id}`),
+            id: minter.mint('Shape', lane.id),
             bpmnElement: lane.id,
             isHorizontal: 'true',
           },
@@ -973,7 +1080,7 @@ export function exportBpmnXmlWithWarnings(
 
   for (const node of planned) {
     const attrs: Attrs = {
-      id: minter.mint('Shape', node.model.id),
+      id: minter.mint('Shape', node.id),
       bpmnElement: node.id,
     };
     // The pack draws the COLLAPSED sub-process only — a task-sized box with a
@@ -1001,7 +1108,7 @@ export function exportBpmnXmlWithWarnings(
     planeElements.push(
       el(
         'bpmndi:BPMNEdge',
-        { id: minter.mint('Edge', edge.model.id), bpmnElement: edge.id },
+        { id: minter.mint('Edge', edge.id), bpmnElement: edge.id },
         edge.waypoints.map(([x, y]) =>
           el('di:waypoint', { x: num(x + dx), y: num(y + dy) })
         )
@@ -1074,6 +1181,21 @@ export function exportBpmnXmlWithWarnings(
         `left out: a message flow runs between participants, and this board ` +
         `has no pool. Draw the pools it runs between, or say "is followed by" ` +
         `instead.`
+    );
+  }
+
+  // An id a file gave us that we could not give back (ADR 0012 D3). It happens
+  // when two elements carry the same recorded id — a merged document, an
+  // import run twice — or when what was recorded is not a valid NCName. The
+  // file is correct either way; what the author loses is the continuity of one
+  // name between the document they imported and the one they are exporting.
+  if (minter.substituted > 0) {
+    warnings.push(
+      `${minter.substituted} ${minter.substituted === 1 ? 'element' : 'elements'} ` +
+        `imported from a BPMN file could not keep ` +
+        `${minter.substituted === 1 ? 'its' : 'their'} original id: ` +
+        `${minter.substituted === 1 ? 'it was' : 'they were'} already taken in ` +
+        `this file. A new id was written instead; nothing else changed.`
     );
   }
 

@@ -12,6 +12,7 @@ export { bpmnCommandIcons, bpmnCommands } from './commands';
 // models in, XML out — so a host can export a board it never rendered, and the
 // kind → element table it is built on is readable without running it.
 export {
+  BPMN_FORMAT_ID,
   BPMN_NS,
   BPMN_XML_OF_KIND,
   type BpmnExportBoard,
@@ -20,8 +21,20 @@ export {
   type BpmnXmlMapping,
   exportBpmnXml,
   exportBpmnXmlWithWarnings,
+  isNcName,
   toNcName,
 } from './export.js';
+// …and the same file, back as a board. A pure function too — text in, element
+// PROPS out, never live models — so labre-mcp reads a `.bpmn` through the one
+// implementation the editor reads it through (`docs/adr/0012`, P3).
+export {
+  BPMN_KIND_OF_XML,
+  BPMN_QUARANTINE_REASON,
+  importBpmnXml,
+} from './import.js';
+// What an artefact is BORN as, shared by the palette and the importer so a task
+// read out of a file and a task drawn by hand are one element in the document.
+export { bpmnNodeProps, type BpmnNodePreset, NODE_PRESETS } from './presets.js';
 // BPMN's entries in the interchange registry (`docs/adr/0012`) — one today,
 // `.bpmn` OUT. Exported whole so a host can ask what BPMN can read and write
 // without mounting an editor, and call it without one either.
@@ -29,6 +42,7 @@ export {
   BPMN_INTERCHANGE,
   BPMN_XML_EXPORT,
   BPMN_XML_EXTENSION,
+  BPMN_XML_IMPORT,
   BPMN_XML_FORMAT,
   BPMN_XML_MIME,
   bpmnBoardFrom,

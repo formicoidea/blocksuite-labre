@@ -16,7 +16,7 @@ import {
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import { NODE_PRESETS } from '../actions';
+import { NODE_PRESETS } from '../presets';
 import { bpmnCommands } from '../commands';
 import {
   ASSOCIATION_STROKE,

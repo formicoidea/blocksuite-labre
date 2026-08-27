@@ -346,6 +346,10 @@ describe('BPMN typed-flow facts', () => {
       // The XML export READS it, to decide that this arrow is a
       // `bpmn:messageFlow` and belongs under the collaboration.
       'export.ts',
+      // …and the import STAMPS it, from the element name and from nothing
+      // else: a `<messageFlow>` in a file is the same sentence as one drawn
+      // here, so an imported arrow carries the role a drawn one carries.
+      'import.ts',
       // …and the "Message exchange" card, which ships one already stamped.
       'templates/index.ts',
     ]);
@@ -373,6 +377,10 @@ describe('BPMN typed-flow facts', () => {
       // Read, not written: the export turns it into a `bpmn:association` with
       // `associationDirection="None"` — the absence of a verb, in the file.
       'export.ts',
+      // …and written again on the way back in, from the element name: an
+      // imported `<association>` says exactly what a drawn one says, which is
+      // nothing about direction.
+      'import.ts',
     ]);
   });
 });

@@ -15,11 +15,12 @@ import {
   bpmnLaneOf,
   bpmnPoolOf,
   exportBpmnXml,
+  importBpmnXml,
 } from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
   type BpmnPoolElementModel,
-  type ConnectorElementModel,
+  ConnectorElementModel,
   ConnectorMode,
   PointStyle,
   ShapeElementModel,
@@ -830,5 +831,187 @@ describe('the BPMN XML export, end to end', () => {
     const doc = parse(exportBpmnXml(bpmnBoardOf(edgeless.std)));
     expect(byName(doc, 'participant')).toHaveLength(1);
     expect(byName(doc, 'task')).toHaveLength(1);
+  });
+});
+
+/**
+ * The BPMN XML import, in a real browser.
+ *
+ * Two things can only be proved here. The first is the one the unit spec says
+ * out loud it cannot do: happy-dom's `DOMParser` decodes neither numeric
+ * character references nor `&apos;` in an attribute value, so a label that came
+ * back mangled and a label that came back whole look identical to it. The
+ * second is that the round trip survives the STORE — `Y.Text` labels, the
+ * persisted `interchange` payload, `surface.addElement` minting ids of its own
+ * — which no plain-object stub can stand in for.
+ */
+describe('the BPMN XML import, end to end', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  /**
+   * What the caller of an importer owes, and it is one thing: the surface mints
+   * its own ids, so a connector's endpoints arrive naming the SOURCE FILE's ids
+   * and the caller rewrites them from the map the returned array already
+   * contains (`docs/adr/0012`, D3).
+   *
+   * Written out here rather than mocked, because this IS the import command's
+   * body — the command itself is I4's — and a test that skipped it would be
+   * proving the round trip of something nobody can call.
+   */
+  const writeToSurface = (
+    elements: readonly (Record<string, unknown> & { type: string })[]
+  ) => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const bySource = new Map<string, string>();
+    const created = elements.map(props => {
+      const id = surface.addElement({ ...props });
+      const carried = props.interchange as
+        | Record<string, { id?: string }>
+        | undefined;
+      const source = carried?.bpmn?.id;
+      if (source !== undefined && !bySource.has(source)) {
+        bySource.set(source, id);
+      }
+      return id;
+    });
+    for (const id of created) {
+      const model = surface.getElementById(id);
+      if (!(model instanceof ConnectorElementModel)) continue;
+      for (const side of ['source', 'target'] as const) {
+        const end = model[side];
+        if (end?.id === undefined) continue;
+        model[side] = { ...end, id: bySource.get(end.id) ?? end.id };
+      }
+    }
+    return created;
+  };
+
+  test('a label that fights the format comes back whole through a real parser', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const hostile = 'Q&A <test> "quote" \'apos\'';
+    const multiline = 'Check the\nstock';
+
+    surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      name: hostile,
+      xywh: '[0,0,600,400]',
+    });
+    surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: BPMN_ROLE_OF_KIND.task,
+      shapeType: 'rect',
+      text: multiline,
+      xywh: '[100,100,120,72]',
+    });
+    surface.addElement({
+      type: 'bpmnNode',
+      kind: 'textAnnotation',
+      role: BPMN_ROLE_OF_KIND.textAnnotation,
+      shapeType: 'rect',
+      text: hostile,
+      xywh: '[300,100,120,72]',
+    });
+    await wait();
+
+    const { elements, report } = importBpmnXml(
+      exportBpmnXml(bpmnBoardOf(edgeless.std))
+    );
+
+    const pool = elements.find(element => element.type === 'bpmnPool');
+    expect(pool?.name).toBe(hostile);
+    const nodes = elements.filter(element => element.type === 'bpmnNode');
+    // The newline was written as `&#10;`, because XML 1.0 §3.3.3 turns a
+    // literal one into a space in every conformant parser. Chromium is a
+    // conformant parser, and this is the assertion happy-dom cannot make.
+    expect(nodes.find(node => node.kind === 'task')?.text).toBe(multiline);
+    expect(nodes.find(node => node.kind === 'textAnnotation')?.text).toBe(
+      hostile
+    );
+    // A file this library wrote carries nothing foreign, whatever its labels.
+    expect([report.carried, report.quarantined]).toEqual([0, 0]);
+  });
+
+  test('an imported board lands on the surface and exports back byte for byte', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const poolId = surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      name: 'Sales',
+      xywh: '[0,0,600,400]',
+      lanes: [
+        { id: 'front', name: 'Front office', size: 1 },
+        { id: 'back', name: 'Back office', size: 3 },
+      ],
+    });
+    const startId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'startEvent',
+      role: BPMN_ROLE_OF_KIND.startEvent,
+      shapeType: 'ellipse',
+      text: 'Order received',
+      xywh: '[100,40,56,56]',
+    });
+    const taskId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'taskUser',
+      role: BPMN_ROLE_OF_KIND.taskUser,
+      shapeType: 'rect',
+      text: 'Check the stock',
+      xywh: '[300,260,120,72]',
+    });
+    const flowId = surface.addElement({
+      type: 'connector',
+      mode: ConnectorMode.Orthogonal,
+      role: BPMN_ROLE.sequenceFlow,
+      source: { id: startId, position: [0.5, 0.5] },
+      target: { id: taskId, position: [0.5, 0.5] },
+    });
+    await wait(200);
+
+    const first = exportBpmnXml(bpmnBoardOf(edgeless.std), { name: 'Round' });
+
+    // Everything the drawing was made of goes, and the FILE comes back as a
+    // board — which is the import, run against a live store.
+    for (const id of [flowId, poolId, startId, taskId]) {
+      surface.deleteElement(id);
+    }
+    await wait();
+    expect(bpmnBoardOf(edgeless.std).nodes).toHaveLength(0);
+
+    const { elements, report } = importBpmnXml(first);
+    writeToSurface(elements);
+    await wait(200);
+
+    const board = bpmnBoardOf(edgeless.std);
+    expect(board.pools).toHaveLength(1);
+    expect(board.nodes).toHaveLength(2);
+    expect(board.connectors).toHaveLength(1);
+    // The payload went into the Y.Map through `addElement` and came back off a
+    // real accessor, which is what makes the id below the FILE's rather than a
+    // fresh one (`docs/adr/0012`, D2 and D3).
+    expect(board.pools[0].interchange?.bpmn?.id).toBe(`Participant_${poolId}`);
+    // The lanes kept their proportion: a weight is the band's drawn height, so
+    // a one-to-three split is still one to three.
+    const lanes = board.pools[0].lanes ?? [];
+    expect(lanes.map(lane => lane.name)).toEqual([
+      'Front office',
+      'Back office',
+    ]);
+    expect(lanes[1].size / lanes[0].size).toBeCloseTo(3, 5);
+    // A `Y.Text` label, written by the store and not by a stub.
+    expect(String(board.nodes[1].text)).toBe('Check the stock');
+    expect([report.carried, report.quarantined]).toEqual([0, 0]);
+
+    // …and the file it writes now is the file it read: the ADR's fixed point,
+    // with a store, a connector manager and a real parser in the loop.
+    expect(exportBpmnXml(board, { name: 'Round' })).toBe(first);
   });
 });

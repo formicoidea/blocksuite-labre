@@ -35,15 +35,23 @@ function mountEdgelessProvider(flags: BlockFlags) {
 }
 
 describe('the interchange registry is flag-gated tooling', () => {
-  test('BPMN declares its `.bpmn` export with the flag on', () => {
+  test('BPMN declares both directions of `.bpmn` with the flag on', () => {
     const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
       framework: 'bpmn',
     });
 
+    // Two rows, because the unit of declaration is the TRIPLE and a direction
+    // is never implied by its opposite. Sorted by id, so a menu built from this
+    // list comes out the same on every boot.
     expect(found.map(capability => capability.id)).toEqual([
       'bpmn:bpmn:export',
+      'bpmn:bpmn:import',
     ]);
-    expect(found[0].format.tier).toBe('semantic');
+    // Semantic in both directions, so both owe the whole preservation contract.
+    expect(found.map(capability => capability.format.tier)).toEqual([
+      'semantic',
+      'semantic',
+    ]);
   });
 
   test('it declares nothing at all with the flag off', () => {
