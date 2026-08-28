@@ -37,13 +37,29 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * - does every element earn its place on the sheet?
  *   (`c4.isolated-*`, `c4.homeless-component`)
  *
- * Where a rule is OURS rather than the checklist's, its own comment says so —
- * there are four: `c4.untyped-link` (a gesture of this canvas, which C4 never
- * anticipated), `c4.relationship-self-loop`, `c4.person-in-boundary` and
- * `c4.database-initiates`. The last three are idioms of the notation rather
- * than requirements of it; two of them stay `audit` at every level, and the
- * self-loop does not, because a loop is a mistake a reader cannot recover from
- * while the other two have honest readings.
+ * ## Where each rule's authority comes from, as DATA
+ *
+ * Every rule declares a {@link RuleProvenance}, and the split is **six
+ * `recommendation` / five `labre-convention`**. `standard` appears nowhere and
+ * never will: C4 has no published specification to cite a clause of, which is
+ * exactly why the checklist is the source — so the six that read it are
+ * `recommendation`, naming the method the way `wardley` and `ddd-context-map`
+ * name theirs.
+ *
+ * The five that are OURS say so out loud, in the field and in their own
+ * comments: `c4.untyped-link` (a gesture of this canvas C4 never anticipated),
+ * `c4.relationship-self-loop`, `c4.homeless-component` (the MEMBERSHIP is C4's;
+ * requiring it to be drawn as a rectangle round the parts is ours),
+ * `c4.database-initiates` and `c4.person-in-boundary`.
+ *
+ * That is the whole point of promoting it to a field: an architecture review
+ * asked that a Labre convention never present itself as a norm violation, and
+ * a citation the reader can weigh is how the bubble keeps that promise.
+ *
+ * Provenance and SEVERITY are orthogonal, and this pack is where that shows:
+ * three of the five conventions are promoted by `c4.strict` and two are not.
+ * What decides is whether the diagram might honestly have meant it, never where
+ * the rule came from — see `profiles.ts`.
  *
  * ## Severity: the CROQUIS primes, so nearly everything is `audit`
  *
@@ -212,6 +228,11 @@ const unlabeledRelationship: ValidationRule = {
   suggestionFallback:
     'Write what one element does with the other — "Sends the order to", "Reads the customer file from". An unlabelled arrow says only that the two are connected, which the reader could already see.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'C4 model — diagram review checklist (c4model.com): every relationship carries a label saying what it is for',
+  },
   // Explicitly on-demand, and it stays explicit: `moment: undefined` means
   // REALTIME, and the engine watches `text` for exactly this family when a
   // real-time rule of it is registered. Dropping this line would hand the
@@ -286,6 +307,11 @@ const unnamedElement: ValidationRule = {
   suggestionFallback:
     'Write the name a reader outside the room would recognise — "Personal banking customer" for a person, "API Application" for a container, "Sign In Controller" for a component. The type line under it already says what kind of thing it is, so the name is free to say which one.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'C4 model — diagram review checklist (c4model.com): every element has a name',
+  },
   // See `unlabeledRelationship`: naming is what a user does by TYPING, so the
   // check belongs to the moment somebody asks whether the diagram is done
   // rather than to every keystroke.
@@ -346,6 +372,11 @@ const untypedLink: ValidationRule = {
   suggestionFallback:
     'Draw it again with the relationship tool. A plain connector is on the diagram and absent from the model, so nothing can be said about what it means or which way round it reads.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — a role-less connector is a gesture of this canvas, not an artefact of the notation',
+  },
   backgroundRole: C4_ROLE.board,
   endpoints: {
     edgeRole: C4_ROLE.relationship,
@@ -409,6 +440,11 @@ const relationshipEndpoints: ValidationRule = {
   suggestionFallback:
     'C4 draws how software is used, so it has no arrow for two people talking to each other. Draw what they each use instead — or say it on a different board, where the model is people.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'C4 model — the model is software and the people who use it; there is no notation for two people talking to each other',
+  },
   backgroundRole: C4_ROLE.board,
   endpoints: {
     edgeRole: C4_ROLE.relationship,
@@ -480,6 +516,11 @@ const relationshipSelfLoop: ValidationRule = {
   suggestionFallback:
     'What an element does inside itself is what the next diagram down is for: zoom into it and draw the parts. On this sheet the loop tells the reader nothing.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre house style — C4 states no prohibition; what an element does inside itself is the next diagram down',
+  },
   backgroundRole: C4_ROLE.board,
   endpoints: {
     edgeRole: C4_ROLE.relationship,
@@ -546,6 +587,13 @@ function isolationRule(
     suggestionFallback:
       'Draw the relationship that puts it in the picture — what uses it, or what it uses. An element nothing touches leaves the reader unable to see why it is on the diagram.',
     version: 1,
+    // One citation for all three, because they are one requirement written on
+    // three roles the vocabulary keeps flat — see the header.
+    provenance: {
+      source: 'recommendation',
+      reference:
+        'C4 model — diagram review checklist (c4model.com): a reader can see why every element is on the diagram',
+    },
     backgroundRole: C4_ROLE.board,
     degree: {
       edgeRole: C4_ROLE.relationship,
@@ -607,6 +655,11 @@ const databaseInitiates: ValidationRule = {
   suggestionFallback:
     'Containers read from and write to a store; a store usually calls nobody, so the arrow is often drawn from the wrong end. Turn it round — unless this really is a store that pushes, in which case say so in the label.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      "Labre convention — a reading idiom; C4 says nothing about which end of a store's arrow is which",
+  },
   backgroundRole: C4_ROLE.board,
   degree: {
     edgeRole: C4_ROLE.relationship,
@@ -659,6 +712,13 @@ const homelessComponent: ValidationRule = {
   suggestionFallback:
     'A component is a part of a container, and the container is the boundary drawn round it. Move it inside the one it belongs to, or draw the boundary that says which container this is.',
   version: 1,
+  // The MEMBERSHIP is C4's ("a component is part of a container"); requiring it
+  // to be drawn as a rectangle round the parts is ours, and the rule reports
+  // the drawing. Same call `context-map.context-off-board` makes.
+  provenance: {
+    source: 'labre-convention',
+    reference: 'Labre convention — membership on this canvas, not a C4 rule',
+  },
   // The frame, and the whole question. No `background` declaration is carried:
   // `element-in-background` measures against the element BOX and reads no
   // margin, so a geometry declaration here would be data nothing reads.
@@ -715,6 +775,11 @@ const personInBoundary: ValidationRule = {
   suggestionFallback:
     'A boundary encloses the parts of one system; a person is never one of them — they are who uses it. Move them outside, and let the relationship cross the dashed line.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — C4 draws no line forbidding it; a boundary encloses parts of a system and a person is not one',
+  },
   backgroundRole: C4_ROLE.boundary,
   // The frame's own declaration, carried as data exactly like `roles` is: it is
   // where the plot and its one zone are written, and the engine resolves the

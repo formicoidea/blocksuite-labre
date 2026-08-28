@@ -70,6 +70,18 @@ export {
   toMermaidAlias,
   toMermaidText,
 } from './export.js';
+// C4's entries in the interchange registry (`docs/adr/0012`) — one today,
+// mermaid OUT. Exported whole so a host can ask what C4 can read and write
+// without mounting an editor, and call it without one either.
+export {
+  C4_INTERCHANGE,
+  C4_MERMAID_EXPORT,
+  C4_MERMAID_EXTENSION,
+  C4_MERMAID_FORMAT,
+  C4_MERMAID_MIME,
+  c4BoardFrom,
+  c4SafeFilename,
+} from './interchange.js';
 export {
   C4_ELEMENT_MATRIX,
   C4_RELATIONSHIP_MATRIX,
