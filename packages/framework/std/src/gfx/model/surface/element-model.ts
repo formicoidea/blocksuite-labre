@@ -101,6 +101,36 @@ export type ValidationException = {
 };
 
 /**
+ * A SCOPE: which part of the source document a carried fragment came off.
+ *
+ * One Labre element routinely stands for several source elements — a BPMN pool
+ * is a `participant` AND its `process`, plus a `laneSet`, every `lane`, the
+ * `BPMNShape` that draws it, and (for the first pool of a document) the
+ * `collaboration` and `definitions` themselves. Everything they carry lands in
+ * ONE payload, so an unscoped `Record<name, value>` has two defects, and the
+ * first one destroys data: two lanes carrying the same foreign attribute
+ * overwrite each other silently, and nothing records which element an attribute
+ * belonged to, so no exporter can ever put it back where it came from.
+ *
+ * A scope is therefore either of exactly two things, and they cannot collide:
+ *
+ * - **the source element's id, verbatim** — the normal case, and the one that
+ *   lets an exporter put a fragment back on the element that had it;
+ * - **an `@`-prefixed ROLE key** for a source element with no id of its own, or
+ *   one whose identity is its relation to this element rather than a name:
+ *   `@self` (the element this payload is on), `@shape` (the diagram element
+ *   that draws it), and whatever else the format needs. **`@` is not an XML
+ *   NameStartChar**, so a role key can never be mistaken for an id, whatever a
+ *   file calls its elements.
+ *
+ * The role vocabulary past `@self` and `@shape` belongs to each format's
+ * importer, which is the only thing that knows what parts a document has;
+ * `.bpmn`'s is documented in `gfx/bpmn/src/import.ts`. The base model stores
+ * strings and never learns what any of them mean.
+ */
+export type InterchangeScope = string;
+
+/**
  * Verbatim foreign matter one interchange import kept on one element, for one
  * format (ADR 0012 § D2).
  *
@@ -112,6 +142,14 @@ export type ValidationException = {
  * Every member is optional and absent rather than empty: an importer writes the
  * ones it has, and a reader that finds none of them has an element that met an
  * import and carried nothing.
+ *
+ * The three carrying members are keyed by {@link InterchangeScope}, so that
+ * what came off two different source elements stays apart. That shape is what
+ * makes the payload sufficient for re-emission, and it is the one thing here
+ * that could not be changed later: this value is persisted, so a document
+ * written under a shape that loses data cannot be repaired without the original
+ * file. One `Y.Map` entry all the same — the whole record is written once, as a
+ * blob, and never mutated.
  */
 export type ForeignInterchange = {
   /**
@@ -126,19 +164,31 @@ export type ForeignInterchange = {
    * mapped, e.g. `bpmn:boundaryEvent`.
    */
   element?: string;
-  /** Attributes the importer does not model — foreign-namespaced and standard alike. */
-  attrs?: Record<string, string>;
   /**
-   * Child fragments, serialized: extension subtrees, unmodelled children, and
-   * whole carried elements that were children of this one.
+   * Attributes the importer does not model — foreign-namespaced and standard
+   * alike — by {@link InterchangeScope}, then by attribute name.
+   *
+   * `{ 'Lane_1': { 'camunda:owner': 'alice' }, 'Lane_2': { 'camunda:owner':
+   * 'bob' } }`: two lanes of one pool, two owners, and both still here.
    */
-  children?: string[];
-  /** Diagram-interchange fragments describing anything in {@link children}. */
-  di?: string[];
+  attrs?: Record<InterchangeScope, Record<string, string>>;
+  /**
+   * Child fragments, serialized — extension subtrees, unmodelled children, and
+   * whole carried elements — by the {@link InterchangeScope} of the element
+   * they were children OF. The scope is where an exporter has to put them back.
+   */
+  children?: Record<InterchangeScope, string[]>;
+  /**
+   * Diagram-interchange fragments, by the {@link InterchangeScope} of what they
+   * draw: `@shape` for the parts of this element's own diagram element that the
+   * importer did not model, a source id for the diagram of something carried.
+   */
+  di?: Record<InterchangeScope, string[]>;
   /**
    * Fragments kept but deliberately NOT re-emitted, each with the reason
    * (ADR 0012 § D5). Preserved so a reader can see what was dropped and why;
-   * never a place the exporter reads for output.
+   * never a place the exporter reads for output — which is why this one is a
+   * flat list and needs no scope: nothing has to know where to put it back.
    */
   quarantined?: { fragment: string; reason: string }[];
 };
@@ -813,6 +863,11 @@ export abstract class GfxPrimitiveElementModel<
    *   entire `Record`, so a partial update is still a last-write-wins overwrite
    *   of everything, and two of them racing lose a whole format's payload rather
    *   than merging.
+   * - **Key what you carry by its {@link InterchangeScope}.** One Labre element
+   *   stands for several source elements, and an unscoped map lets what came off
+   *   one overwrite what came off another — a silent loss, into a persisted
+   *   value, of exactly the data this field exists to keep. The scope is also
+   *   the only record of where a fragment has to be put back.
    * - **Write no key at all** when there is nothing to carry — an element the
    *   import mapped cleanly, or any visual-tier capability, which by contract
    *   writes none (ADR 0012 P2). Absent and empty are NOT equivalent here:

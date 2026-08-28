@@ -83,6 +83,7 @@ export {
 export {
   type BaseElementProps,
   type ForeignInterchange,
+  type InterchangeScope,
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
   type SerializedElement,

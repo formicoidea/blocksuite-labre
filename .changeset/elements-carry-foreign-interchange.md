@@ -12,7 +12,13 @@ promises about the same element.
 Nothing writes it yet — this is the carrier ADR 0012 decided, landing ahead of
 the importers that will fill it. It is dumb storage on purpose: the model holds
 fragments, foreign attributes, the source file's own id and whatever an importer
-chose to quarantine, and it never learns what any of that means. The
+chose to quarantine, and it never learns what any of that means. What it carries
+is keyed by **scope** — the source element a fragment came off, named by its own
+id or by an `@`-prefixed role key like `@self` or `@shape` — because one Labre
+element routinely stands for several source elements at once, and a map keyed by
+attribute name alone lets what came off one of them overwrite what came off
+another. The scope is also the only record of where an exporter has to put a
+fragment back. The
 three-state contract an import obeys — **mapped** (there is a Labre artefact,
 re-emitted from the drawing), **carried** (kept verbatim, re-emitted in place),
 **quarantined** (kept, but re-emitting it would contradict the document) —
