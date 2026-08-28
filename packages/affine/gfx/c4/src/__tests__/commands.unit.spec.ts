@@ -75,15 +75,22 @@ function created(command: CommandDescriptor): Record<string, unknown> {
   return createdAll(command)[0] ?? {};
 }
 
-/** The same, for the one command that arms a tool instead of dropping a shape. */
+/**
+ * The same, for the one command that arms a tool instead of dropping a shape.
+ *
+ * The stub's `EditPropsStore` is a TRAP rather than a recorder: an activation
+ * that reached `recordLastProps('connector', …)` would dress the next PLAIN
+ * connector as a C4 relationship (#144 M1). The stencil's look must ride on the
+ * activation and nowhere else.
+ */
 function armed(command: CommandDescriptor) {
-  let props: Record<string, unknown> = {};
   let tool: Record<string, unknown> = {};
 
   const editProps = {
-    recordLastProps: (key: string, next: Record<string, unknown>) => {
-      expect(key).toBe('connector');
-      props = next;
+    recordLastProps: () => {
+      throw new Error(
+        'a framework activation must never record the connector last props (#144 M1)'
+      );
     },
   };
   const gfx = {
@@ -99,7 +106,7 @@ function armed(command: CommandDescriptor) {
   } as unknown as BlockStdScope;
 
   command.run(std, { surface: 'senior-menu', source: 'toolbar:general' });
-  return { props, tool };
+  return { style: (tool.style ?? {}) as Record<string, unknown>, tool };
 }
 
 describe('the c4 command inventory', () => {
@@ -458,9 +465,10 @@ describe('what a c4 command actually creates', () => {
   });
 
   it('arms a straight, dashed, filled-headed connector for the relationship', () => {
-    const { props, tool } = armed(byId.get('c4.relationshipTool')!);
-    expect(props).toEqual({
-      mode: ConnectorMode.Straight,
+    const { style, tool } = armed(byId.get('c4.relationshipTool')!);
+    // The stencil's look rides on the activation itself, never through the
+    // last-props store (#144 M1): the plain connector keeps the user's style.
+    expect(style).toEqual({
       stroke: RELATIONSHIP_STROKE,
       strokeStyle: StrokeStyle.Dash,
       strokeWidth: RELATIONSHIP_WIDTH,
@@ -469,10 +477,8 @@ describe('what a c4 command actually creates', () => {
     });
     // A TYPED edge (`docs/adr/0010`): the role is carried by the TOOL, so the
     // connector is born with it rather than acquiring one afterwards.
-    expect(tool).toEqual({
-      mode: ConnectorMode.Straight,
-      role: C4_ROLE.relationship,
-    });
+    expect(tool.mode).toBe(ConnectorMode.Straight);
+    expect(tool.role).toBe(C4_ROLE.relationship);
   });
 });
 

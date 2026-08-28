@@ -9,7 +9,6 @@ import {
   ShapeStyle,
   StrokeStyle,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -243,17 +242,18 @@ export function createEdgyPeople(std: BlockStdScope) {
  * relations as bare lines and lets the verb say which way the sentence runs.
  */
 export function activateEdgyRelation(gfx: GfxController): void {
-  gfx.std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Straight,
-    stroke: NODE_STROKE,
-    strokeStyle: StrokeStyle.Solid,
-    strokeWidth: RELATION_STROKE_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.None,
-  });
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: EDGY_ROLE.relation,
+    // The look rides on the activation, never through the last-props store:
+    // the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: NODE_STROKE,
+      strokeStyle: StrokeStyle.Solid,
+      strokeWidth: RELATION_STROKE_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.None,
+    },
   });
   // Keep the palette open (native sub-menu behaviour): it only closes on
   // re-click of the senior button, another senior tool, or Escape.

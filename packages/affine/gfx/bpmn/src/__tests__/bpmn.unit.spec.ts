@@ -40,22 +40,27 @@ import { bpmnTemplateCategory } from '../templates';
 
 /**
  * Run a connector-tool command against a stub editor and report what it armed:
- * the props it recorded as the connector's next defaults, and the options it
- * handed the tool.
+ * the `style` bag the flow draws with, and the whole options record it handed
+ * the tool.
  *
  * Two records rather than one, because they answer different questions: the
- * props are what the NEXT connector is drawn with, and the tool options are
+ * style is what the flow's own edges are drawn with, and the tool options are
  * what the connector is born CARRYING — which for a typed edge is the role, and
  * a role acquired after the fact is not the same document.
+ *
+ * The stub's `EditPropsStore` is a TRAP rather than a recorder: an activation
+ * that reached `recordLastProps('connector', …)` would dress the next PLAIN
+ * connector in this flow's costume, which BPMN 2.0 p.40 forbids (#144 M1). The
+ * look must ride on the activation and nowhere else.
  */
 function armed(command: CommandDescriptor) {
-  let props: Record<string, unknown> = {};
   let tool: Record<string, unknown> = {};
 
   const editProps = {
-    recordLastProps: (key: string, next: Record<string, unknown>) => {
-      expect(key).toBe('connector');
-      props = next;
+    recordLastProps: () => {
+      throw new Error(
+        'a framework activation must never record the connector last props (#144 M1)'
+      );
     },
   };
   const gfx = {
@@ -74,7 +79,7 @@ function armed(command: CommandDescriptor) {
   // and a spec that called the function directly would keep passing after
   // someone rewired the descriptor to a different one.
   command.run(std, { surface: 'senior-menu', source: 'toolbar:general' });
-  return { props, tool };
+  return { style: (tool.style ?? {}) as Record<string, unknown>, tool };
 }
 
 // The pool renderer has its own file: `pool-background.unit.spec.ts`, where the
@@ -535,9 +540,8 @@ describe('the bpmn command inventory', () => {
   });
 
   it('arms a dashed, circle-to-arrow connector for the message flow', () => {
-    const { props, tool } = armed(byId.get('bpmn.messageFlowTool')!);
-    expect(props).toEqual({
-      mode: ConnectorMode.Orthogonal,
+    const { style, tool } = armed(byId.get('bpmn.messageFlowTool')!);
+    expect(style).toEqual({
       stroke: MESSAGE_STROKE,
       strokeStyle: StrokeStyle.Dash,
       strokeWidth: MESSAGE_WIDTH,
@@ -548,16 +552,13 @@ describe('the bpmn command inventory', () => {
       rearEndpointStyle: PointStyle.Arrow,
     });
     // The role is carried by the TOOL, so the connector is born with it.
-    expect(tool).toEqual({
-      mode: ConnectorMode.Orthogonal,
-      role: BPMN_ROLE.messageFlow,
-    });
+    expect(tool.mode).toBe(ConnectorMode.Orthogonal);
+    expect(tool.role).toBe(BPMN_ROLE.messageFlow);
   });
 
   it('arms a dashed connector with no head at all for the association', () => {
-    const { props, tool } = armed(byId.get('bpmn.associationTool')!);
-    expect(props).toEqual({
-      mode: ConnectorMode.Orthogonal,
+    const { style, tool } = armed(byId.get('bpmn.associationTool')!);
+    expect(style).toEqual({
       stroke: ASSOCIATION_STROKE,
       // Dashed and not dotted: `StrokeStyle` has no dotted member and a
       // connector's `strokeWidth` is a closed enum whose floor is 2, so the
@@ -567,22 +568,20 @@ describe('the bpmn command inventory', () => {
       frontEndpointStyle: PointStyle.None,
       rearEndpointStyle: PointStyle.None,
     });
-    expect(tool).toEqual({
-      mode: ConnectorMode.Orthogonal,
-      // Declared WITHOUT a direction, and stamped all the same: an association
-      // names no relation, so there is nothing for either end to be wrong about.
-      role: BPMN_ROLE.association,
-    });
+    expect(tool.mode).toBe(ConnectorMode.Orthogonal);
+    // Declared WITHOUT a direction, and stamped all the same: an association
+    // names no relation, so there is nothing for either end to be wrong about.
+    expect(tool.role).toBe(BPMN_ROLE.association);
   });
 
   it('keeps the sequence flow solid, filled-headed and unchanged', () => {
     // The regression guard for the two new tools: they share one code path with
     // the flow that already shipped, and a document full of sequence flows must
     // not start drawing itself differently because a sibling arrived.
-    const { props, tool } = armed(byId.get('bpmn.sequenceFlowTool')!);
-    expect(props.strokeStyle).toBe(StrokeStyle.Solid);
-    expect(props.frontEndpointStyle).toBe(PointStyle.None);
-    expect(props.rearEndpointStyle).toBe(PointStyle.Triangle);
+    const { style, tool } = armed(byId.get('bpmn.sequenceFlowTool')!);
+    expect(style.strokeStyle).toBe(StrokeStyle.Solid);
+    expect(style.frontEndpointStyle).toBe(PointStyle.None);
+    expect(style.rearEndpointStyle).toBe(PointStyle.Triangle);
     expect(tool.role).toBe(BPMN_ROLE.sequenceFlow);
   });
 });

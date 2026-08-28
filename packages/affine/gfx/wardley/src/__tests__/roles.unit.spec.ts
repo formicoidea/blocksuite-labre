@@ -43,7 +43,19 @@ function fakeGfx() {
     selection: { set: vi.fn() },
     std: {
       getOptional: () => undefined,
-      get: () => ({ recordLastProps: vi.fn() }),
+      // KEY-SCOPED trap rather than a spy: arming a Wardley link or change
+      // arrow must not record the connector's last props, or the next PLAIN
+      // connector comes out dressed as a dependency (#144 M1). Other keys are
+      // the ordinary creation path and stay welcome.
+      get: () => ({
+        recordLastProps: (key: string) => {
+          if (key === 'connector') {
+            throw new Error(
+              'a framework activation must never record the connector last props (#144 M1)'
+            );
+          }
+        },
+      }),
       command: { exec: () => [{}, { groupId: 'group-0' }] },
     },
   };
