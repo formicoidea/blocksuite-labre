@@ -54,6 +54,19 @@ describe('the interchange registry is flag-gated tooling', () => {
     ]);
   });
 
+  test('C4 declares its mermaid export with the flag on', () => {
+    const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
+      framework: 'c4',
+    });
+
+    // One row, and the asymmetry is the point: C4 writes mermaid and cannot
+    // read it, so there is no `c4:mermaid:import` to pair this with.
+    expect(found.map(capability => capability.id)).toEqual([
+      'c4:mermaid:export',
+    ]);
+    expect(found[0].format.tier).toBe('semantic');
+  });
+
   test('it declares nothing at all with the flag off', () => {
     const provider = mountEdgelessProvider(ALL_OFF);
 

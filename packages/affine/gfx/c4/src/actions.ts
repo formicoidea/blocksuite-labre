@@ -3,21 +3,16 @@ import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createAutoLegend } from '@labre/affine-gfx-ddd-shared';
 import {
   C4BoardElementModel,
-  C4BoundaryElementModel,
   type C4BoundaryVariant,
-  C4NodeElementModel,
   type C4NodeKind,
-  ConnectorElementModel,
   ConnectorMode,
   FontFamily,
   FontStyle,
   FontWeight,
-  GroupElementModel,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
   TextAlign,
-  TextElementModel,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
@@ -26,6 +21,7 @@ import type { BlockStdScope } from '@labre/std';
 import {
   type GfxController,
   GfxControllerIdentifier,
+  type GfxPrimitiveElementModel,
   type SurfaceBlockModel,
 } from '@labre/std/gfx';
 
@@ -48,7 +44,8 @@ import {
   TITLE_FONT_SIZE,
   TYPE_FONT_SIZE,
 } from './consts';
-import { type C4ExportBoard, exportC4Mermaid } from './export';
+import type { C4ExportBoard } from './export';
+import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
 import { C4_AUTO_LEGEND } from './legend';
 import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
 import { C4_TYPE_PLACEHOLDER } from './type-line';
@@ -450,34 +447,32 @@ export function c4BoardsForExport(std: BlockStdScope): C4BoardElementModel[] {
  * picture C4 exists to stop people drawing.
  */
 export function c4ExportBoardOf(std: BlockStdScope): C4ExportBoard {
+  return c4BoardFrom(c4ExportElementsOf(std));
+}
+
+/**
+ * The elements the export speaks about, as ONE list the declared capability
+ * takes: the selected boards, then everything else on the surface in document
+ * order.
+ *
+ * The selection is expressed by which boards are IN the list — that is the
+ * capability's contract for this framework (see `interchange.ts`) — so the
+ * unselected boards are the one thing left out, and `c4BoardFrom` on the
+ * result reads back exactly what {@link c4ExportBoardOf} says.
+ *
+ * The two written tiers of every component and the groups that say whose words
+ * they are ride along untouched, for the reason the picking gives: a tier
+ * belongs to its node through the group rather than through the geometry, so
+ * both lists cross the seam whole and unfiltered.
+ */
+function c4ExportElementsOf(
+  std: BlockStdScope
+): readonly GfxPrimitiveElementModel[] {
   const elements = gfxOf(std).surface?.elementModels ?? [];
-  const nodes: C4NodeElementModel[] = [];
-  const boundaries: C4BoundaryElementModel[] = [];
-  const connectors: ConnectorElementModel[] = [];
-  // The two written tiers of every component, and the groups that say whose
-  // words they are. Collected whole and unfiltered: `component.ts` resolves
-  // them by membership, which is a question about the document rather than
-  // about the board's geometry.
-  const texts: TextElementModel[] = [];
-  const groups: GroupElementModel[] = [];
-
-  for (const element of elements) {
-    if (element instanceof C4NodeElementModel) nodes.push(element);
-    else if (element instanceof C4BoundaryElementModel)
-      boundaries.push(element);
-    else if (element instanceof ConnectorElementModel) connectors.push(element);
-    else if (element instanceof TextElementModel) texts.push(element);
-    else if (element instanceof GroupElementModel) groups.push(element);
-  }
-
-  return {
-    boards: c4BoardsForExport(std),
-    nodes,
-    boundaries,
-    connectors,
-    texts,
-    groups,
-  };
+  return [
+    ...c4BoardsForExport(std),
+    ...elements.filter(element => !(element instanceof C4BoardElementModel)),
+  ];
 }
 
 /**
@@ -489,46 +484,42 @@ export function c4ExportBoardOf(std: BlockStdScope): C4ExportBoard {
  * the result is capped: `diagram` is a better download than one a browser
  * silently refuses.
  *
- * The trailing `[. ]` trim is the Windows tail case, lifted from
- * `bpmnExportFilename` for the same reason it exists there: Windows strips
- * trailing dots and spaces from a name, so a board called "Context." would have
- * its EXTENSION eaten rather than its full stop.
+ * Which of the three it is, is the only thing this function decides; making the
+ * answer safe to write to disk is {@link c4SafeFilename}, so the command and the
+ * interchange capability cannot name the same board differently.
  */
 export function c4ExportFilename(std: BlockStdScope): string {
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
   const board = c4BoardsForExport(std)[0]?.name;
-  const raw = (title || board || 'diagram').trim();
-  const safe = raw
-    .replaceAll(/[\\/:*?"<>|]/g, '-')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
-    .replace(/[. ]+$/, '');
-  return safe || 'diagram';
+  return c4SafeFilename(title || board);
 }
 
 /**
  * Serialize the selected board(s) as mermaid C4 and hand the file to the
  * browser.
  *
- * The three steps are deliberately three, exactly as `exportBpmnXmlFile`'s are:
- * read the surface, serialize (a pure function with no `std` in sight —
- * `export.ts`), download. Only the first and the last know what an editor is,
- * which is what makes the interesting half testable without one.
+ * Three steps, and only the first and the last know what an editor is: read the
+ * surface, run the DECLARED capability (`docs/adr/0012`), download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `C4_MERMAID_EXPORT.run`, so the
+ * command and the registry cannot describe the same board differently. There is
+ * one door; the registry is the label on it.
+ *
+ * A plain import rather than a DI lookup, for the reason `exportBpmnXmlFile`
+ * gives: the capability is a pure function and a value, and P3 is explicit that
+ * the registry is the editor's view of these functions, not a gate in front of
+ * them.
  *
  * A DOWNLOAD and not a clipboard copy, which is the one place this could have
  * diverged from #149. It does not, for three reasons: `.mmd` is the extension
  * the mermaid CLI and every editor plugin watch for; a multi-board export is
  * several documents and a clipboard holds one thing; and the file is what a
- * reader commits next to the code the diagram is about. `text/plain` because
- * mermaid has no registered media type, and an invented one is a file some
- * browsers refuse to save.
+ * reader commits next to the code the diagram is about.
  */
 export function exportC4MermaidFile(std: BlockStdScope): void {
-  const name = c4ExportFilename(std);
-  const source = exportC4Mermaid(c4ExportBoardOf(std));
-  downloadBlob(
-    new Blob([source], { type: 'text/plain;charset=utf-8' }),
-    `${name}.mmd`
+  const { text, filename, mime } = C4_MERMAID_EXPORT.run(
+    c4ExportElementsOf(std),
+    { name: c4ExportFilename(std) }
   );
+  downloadBlob(new Blob([text], { type: mime }), filename);
 }
