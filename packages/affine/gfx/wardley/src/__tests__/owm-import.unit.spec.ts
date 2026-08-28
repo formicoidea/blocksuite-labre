@@ -187,6 +187,46 @@ describe('the tea-shop corpus, which came out of a real session', () => {
     ).toBe('Tea Shop moderne 2026 - chaine de valeur');
   });
 
+  it('re-emits the file’s OWN title, even under a different caller name', () => {
+    // The browser recette's finding, and the assertion shape that catches it:
+    // every fixed-point test passes the SAME name through both halves, so the
+    // two title candidates agree and the precedence between them is
+    // unobservable. Give the export a different name and it shows.
+    //
+    // In the editor `context.name` is the HOST DOCUMENT's name, so the shipped
+    // command was exporting the tea shop as "BlockSuite Playground". The file's
+    // own title wins now — D3's rule, and the same precedence
+    // `interchange.<fmt>.id` already has on every element.
+    const written = write(
+      boardFromProps(read(TEA_SHOP_OWM).elements),
+      'BlockSuite Playground'
+    );
+    expect(written).toContain('title Tea Shop moderne 2026 - chaine de valeur');
+    expect(written).not.toContain('title BlockSuite Playground');
+  });
+
+  it('says out loud that it kept the file’s title over the board’s name', () => {
+    const { warnings } = exportWardleyOwmWithWarnings(
+      boardFromProps(read(TEA_SHOP_OWM).elements),
+      { name: 'BlockSuite Playground' }
+    );
+    const said = warnings.join('\n');
+    // Both names, and — the half that matters — WHICH WAY ROUND. The inverted
+    // message this replaces named both too, so a test asserting only that they
+    // appear passes on the bug it is supposed to catch.
+    expect(said).toContain(
+      'came from a file titled "Tea Shop moderne 2026 - chaine de valeur", and that is the title written out'
+    );
+    expect(said).toContain('not "BlockSuite Playground"');
+  });
+
+  it('stays a fixed point when the caller’s name keeps changing', () => {
+    // The property the precedence buys: two exports of one imported map agree
+    // on the title whatever the document happens to be called between them.
+    const board = boardFromProps(read(TEA_SHOP_OWM).elements);
+    expect(write(board, 'One name')).toBe(write(board, 'Another name'));
+  });
+
   it('falls back to the caller’s name only when the file names nothing', () => {
     const untitled = TEA_SHOP_OWM.split('\n').slice(1).join('\n');
     const named = importWardleyOwm(untitled, { name: 'tea-shop.owm' });

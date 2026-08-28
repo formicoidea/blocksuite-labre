@@ -26,6 +26,13 @@ whenever there is a Wardley map on the board, because a Wardley component has no
 "evolution" property: where it sits on the plot **is** its coordinate, so with no
 map there is nothing to measure against.
 
+**A map you imported keeps the title its file gave it.** Export writes the
+title the `.owm` carried, not the name of the Labre document it happens to be
+sitting in — so a map you opened from a colleague's file goes back to them under
+the title they gave it. The document's name is still what the download is
+called, and it becomes the title only when the file carried none. When the two
+differ the export says so.
+
 **The import says what it cost.** A notification names what was drawn and what
 was carried — kept verbatim in the document, invisible on the canvas, because
 Labre draws no artefact for it. Everything the pack does not draw is carried and

@@ -337,13 +337,21 @@ describe('the losses reach the person who clicked Export', () => {
     expect(warnings.join('\n')).toContain('different height');
   });
 
-  it('warns when the board has been renamed since the file it came from', () => {
+  it('keeps the file’s title over the board’s name, and says it did', () => {
+    // D3's precedence: the file's title wins and the caller's name is the
+    // fallback — the same rule `interchange.<fmt>.id` has on every element.
+    // A browser recette caught this the other way round: an imported tea shop
+    // left as "BlockSuite Playground", the host document's name.
     const parts = teaShopBoard();
     parts.maps[0] = fakeMap(undefined, {
       owm: { attrs: { '@document': { title: 'The old name' } } },
     });
-    expect(write(parts, 'Tea Shop').warnings.join('\n')).toContain(
-      'was titled "The old name"'
+
+    const { text, warnings } = write(parts, 'Tea Shop');
+    expect(text).toContain('title The old name');
+    expect(text).not.toContain('title Tea Shop');
+    expect(warnings.join('\n')).toContain(
+      'came from a file titled "The old name", and that is the title written out'
     );
   });
 

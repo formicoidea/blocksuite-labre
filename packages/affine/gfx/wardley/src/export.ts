@@ -547,10 +547,25 @@ export function exportWardleyOwmWithWarnings(
     options.name !== undefined && options.name.trim().length > 0
       ? options.name
       : undefined;
-  const title = named ?? titleAttr;
+  // The FILE's title wins, and the caller's name is the fallback — D3's rule
+  // applied to the one thing this format has an identity for besides a
+  // component's name: record what we were given, never reconstruct what we
+  // think we sent. It is the same precedence `interchange.<fmt>.id` already has
+  // on every element, and it was the other way round until a browser recette
+  // caught it: a tea-shop map imported under its own title
+  // ("Tea Shop moderne 2026 …") left again as "BlockSuite Playground", because
+  // the host's document name is what the command passes as `context.name` and
+  // it was overriding the title the file actually carried.
+  //
+  // The unit suite could not see it, and that is worth saying: a fixed-point
+  // test passes the SAME `name` through both halves, so the two candidates
+  // agree in every round trip and the precedence between them is unobservable.
+  // The assertion shape that catches it is an import whose file has a title
+  // followed by an export under a DIFFERENT name.
+  const title = titleAttr ?? named;
   if (titleAttr !== undefined && named !== undefined && titleAttr !== named) {
     warnings.push(
-      `The file this map came from was titled "${titleAttr}"; it is written out as "${named}", which is what the board is called now.`
+      `This map came from a file titled "${titleAttr}", and that is the title written out — not "${named}", which is what the board is called here. Rename the map inside the file if you want the exported title to change.`
     );
   }
 
