@@ -1,8 +1,10 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { EmptyTool } from '@labre/affine/gfx/pointer';
+import { COMMAND_USAGE_KEY } from '@labre/affine/shared/services';
 import {
   type AnyCommandDescriptor,
   CommandExtension,
+  SENIOR_MENU_CAP,
   SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
 import {
@@ -20,14 +22,14 @@ import { setupEditor } from '../utils/setup.js';
 /**
  * PF6's whole promise, end to end on a real editor: the moment a framework's
  * CATALOGUE outgrows the fourteen senior slots, its sub-menu collapses to the
- * seven ranked commands PLUS a permanent "More artefacts…" button, and that
- * button opens the catalogue sidepanel on that framework — with no code in the
- * framework beyond declaring its commands.
+ * thirteen ranked commands PLUS a permanent "More artefacts…" button — fourteen
+ * buttons, exactly the cap — and that button opens the catalogue sidepanel on
+ * that framework, with no code in the framework beyond declaring its commands.
  *
- * The overflow lives here under a sixteen-command test owner so the MECHANISM
+ * The overflow lives here under a seventeen-command test owner so the MECHANISM
  * is tested on its own terms, independent of any framework's inventory. BPMN's
  * descriptive-profile pack is now the first shipped framework to cross the cap
- * for real (24 commands), and `bpmn.spec.ts` checks the same behaviour on it —
+ * for real (25 commands), and `bpmn.spec.ts` checks the same behaviour on it —
  * this spec is what proved the button was waiting.
  */
 
@@ -47,6 +49,27 @@ const COMMANDS: AnyCommandDescriptor[] = Array.from({ length: 16 }, (_, i) => ({
   availability: 'always',
   run: () => {},
 }));
+
+/**
+ * The seventeenth, and the one that is not like the others: it declines
+ * `'senior-menu'` the way `bpmn.exportXml` does — a board action, not something
+ * you draw. It exists here to be INVOKED, hard, and still stay out of the row
+ * (PO ruling of 2026-08-28).
+ */
+const BOARD_ACTION: AnyCommandDescriptor = {
+  id: 'test-overflow.export',
+  owner: OWNER,
+  kind: 'action',
+  labelKey: 'test.overflow.export',
+  labelFallback: 'Export everything',
+  category: 'beta',
+  surfaces: ['catalogue'],
+  order: 16,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'always',
+  run: () => {},
+};
 
 class TestOverflowMenu extends EdgelessCommandMenu {
   protected override owner = OWNER;
@@ -81,7 +104,13 @@ describe('the senior sub-menu past fourteen commands', () => {
   let menu!: TestOverflowMenu;
 
   beforeEach(async () => {
-    const cleanup = await setupEditor('edgeless', [CommandExtension(COMMANDS)]);
+    // The usage measure persists across tests in this file, so start from
+    // silence: the ranked thirteen must be the COLD-START thirteen unless a
+    // test says otherwise.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    const cleanup = await setupEditor('edgeless', [
+      CommandExtension([...COMMANDS, BOARD_ACTION]),
+    ]);
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
 
     // The menu popover, mounted the way a senior button mounts it. The button
@@ -107,9 +136,59 @@ describe('the senior sub-menu past fourteen commands', () => {
   const catalogueWidget = () =>
     edgeless.widgetComponents['edgeless-artefact-catalogue-widget'];
 
-  test('renders the seven ranked slots plus the More-artefacts button', () => {
-    // 16 declared, 8 rendered: the ranked slots and one way to the rest.
+  test('renders the thirteen ranked slots plus the More-artefacts button', () => {
+    // 17 declared, 14 rendered: the ranked slots and one way to the rest —
+    // and fourteen IS the cap, so the overflowed row is as wide as a row that
+    // never overflowed.
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
+    expect(buttons()).toHaveLength(SENIOR_MENU_CAP);
+  });
+
+  /**
+   * Cold start, spelled out: no usage recorded, so the row is the authored head
+   * of the NOMINATED list — no reordering, no gaps, and the board action that
+   * declines `'senior-menu'` nowhere near it.
+   */
+  test('with no usage the row is the authored head, in author order', () => {
+    expect(menu.commands.map(command => command.id)).toEqual(
+      COMMANDS.slice(0, SENIOR_MENU_RANKED_SLOTS).map(command => command.id)
+    );
+  });
+
+  /**
+   * The PO ruling of 2026-08-28, end to end. The board action is the most-used
+   * and most-recent command this owner has by a mile, and it still never
+   * reaches the row: the ranking pool is the `'senior-menu'` surface, which it
+   * declined. This is `bpmn.exportXml` in miniature — "Export BPMN" in a row of
+   * things you draw answers no question a user asked.
+   */
+  test('a heavily used board action never reaches the row', async () => {
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({ [BOARD_ACTION.id]: { c: 9999, t: Date.now() } })
+    );
+
+    const fresh = document.createElement(
+      'test-overflow-menu'
+    ) as TestOverflowMenu;
+    fresh.edgeless = edgeless;
+    const host = mountWithToolbarContext(fresh);
+    await fresh.updateComplete;
+    await wait(0);
+
+    try {
+      const ids = fresh.commands.map(command => command.id);
+      expect(ids).not.toContain(BOARD_ACTION.id);
+      // …and its usage moved nothing else either: still the cold-start row.
+      expect(ids).toEqual(
+        COMMANDS.slice(0, SENIOR_MENU_RANKED_SLOTS).map(command => command.id)
+      );
+      expect(
+        fresh.shadowRoot?.querySelectorAll('edgeless-tool-icon-button')
+      ).toHaveLength(SENIOR_MENU_CAP);
+    } finally {
+      host.remove();
+    }
   });
 
   test('the last button opens the catalogue on this very framework', async () => {
@@ -124,11 +203,13 @@ describe('the senior sub-menu past fourteen commands', () => {
     );
     expect(panel).not.toBeNull();
     expect(panel!.dataset.owner).toBe(OWNER);
+    // 17: the sixteen nominated plus the board action that declined the
+    // sub-menu — the panel is the surface where everything is reachable.
     expect(
       widget?.shadowRoot?.querySelectorAll(
         '[data-testid="artefact-catalogue-entry"]'
       ).length
-    ).toBe(16);
+    ).toBe(17);
   });
 
   test('a fourteen-command owner still shows everything and no button', async () => {

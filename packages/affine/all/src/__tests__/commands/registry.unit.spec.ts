@@ -40,9 +40,11 @@ describe('command registry invariants', () => {
       // BPMN is the first shipped framework whose CATALOGUE outgrows the
       // fourteen senior slots — seven of the twenty-three decline `senior-menu`
       // on top of the two lane gestures, and past the cap
-      // `selectSeniorMenuCommands` ranks the whole catalogue anyway. The two
-      // tests at the bottom of this file are what make that safe: everything is
-      // in the catalogue, and the menu is a subset of it.
+      // `selectSeniorMenuCommands` ranks the nominated fourteen ONLY: a
+      // declined surface is a statement, not a default usage can out-vote (PO
+      // ruling of 2026-08-28). The two tests at the bottom of this file are
+      // what make that safe: everything is in the catalogue, and the menu is a
+      // subset of it.
       // …and 24 since `bpmn.exportXml`, the first command in the library whose
       // subject is the whole BOARD rather than an element: it is reached from
       // the pool's "⋮" menu, and what it serializes is every BPMN artefact on
@@ -242,12 +244,12 @@ describe('menu and manifest enumerate the same source', () => {
   });
 
   /**
-   * The catalogue is the TOTAL surface, and the sub-menu a selection out of it
-   * — which is what the amendment of 2026-08-26 makes structural rather than
-   * incidental: `selectSeniorMenuCommands` ranks the catalogue, so a command a
-   * framework kept out of the fourteen can still be promoted by a user who
-   * reaches for it. A command missing from the catalogue is unreachable the
-   * moment its framework overflows, whatever its menu membership says.
+   * The catalogue is the TOTAL surface, and the sub-menu a selection out of it.
+   * Since the eligibility ruling of 2026-08-28 that inclusion is what makes a
+   * command reachable at all: `selectSeniorMenuCommands` ranks the NOMINATED
+   * list, so a command its framework kept out of the fourteen lives in the
+   * sidepanel and nowhere else — and one missing from the catalogue too is
+   * unreachable the moment its framework overflows.
    */
   test('every framework command is in the catalogue, and the sub-menu is a subset', () => {
     for (const id of FRAMEWORK_IDS as readonly FrameworkId[]) {

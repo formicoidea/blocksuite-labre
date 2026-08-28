@@ -882,6 +882,10 @@ ranking is not a comparator but a selection.
   opening the catalogue sidepanel (consumer 2). With no usage recorded yet, the
   authored `order` is the cold start, so a fresh install is deterministic.
 
+  > **Re-arbitrated 2026-08-28** — see the amendment below: **13 ranked slots =
+  > 7 most-recent + 6 most-used**, and the pool ranked is the `'senior-menu'`
+  > surface, not the catalogue.
+
 The 14-slot cap of _Invariants enforced by unit tests_ is unchanged; the ranked
 7 are what a framework shows once it is past that cap.
 
@@ -900,3 +904,83 @@ declared before that framework ships its first chord is dead data that reserves
 a scarce letter for nothing. It is allocated against `RESERVED_EDGELESS_KEYS`
 at the moment the first chord lands, which the existing prefix tests already
 enforce.
+
+## Amended 2026-08-28 — the sub-menu seats thirteen, and only its declarers
+
+Two PO rulings on the senior sub-menu, recorded against the arbitrage of
+2026-08-26 above.
+
+**1. Ranked membership requires the `senior-menu` surface.** The 2026-08-26
+selection ranked the CATALOGUE, on the reasoning that "a command its author left
+out of the fourteen but the user invokes constantly has earned a slot". The PO
+met the consequence in recette: `bpmn.exportXml` — a command whose subject is
+the whole BOARD, which deliberately declines `'senior-menu'` and lives in the
+pool's "⋮" and in the catalogue — was pulled into the sub-menu by its own usage,
+where "Export BPMN" in a row of things you DRAW answers no question a user
+asked. A declined surface is a statement about where a command belongs, not a
+default that usage may out-vote. `selectSeniorMenuCommands` therefore ranks the
+`'senior-menu'` surface only.
+
+What does NOT change: the overflow **trigger** still reads the catalogue (an
+owner overflows when its whole toolbox outgrows the 14, whatever it nominated),
+membership is still laid out in **author order**, and the cold start is still
+the authored head of the ranked pool. Enforced by
+`packages/framework/std/src/__tests__/senior-menu-selection.unit.spec.ts` (a
+catalogue-only command with 9999 invocations never enters the row) and end to
+end by `catalogue-overflow.spec.ts` and `bpmn.spec.ts`.
+
+`rankCommandsByUsage` — the catalogue sidepanel's _Recent & frequent_ head
+section — **keeps ranking the catalogue**, deliberately. The ruling is about the
+sub-menu; the sidepanel is the full-catalogue surface, the one place every
+command of a framework is reachable, so a board action a user really does reach
+for belongs at its head. One arbitration, two pools, and the difference is
+documented on both functions.
+
+**2. Thirteen ranked slots: 7 most-recent + 6 most-used** (was 7 = 4 most-used +
+3 most-recent). Two changes in one: the count, and the priority. Seven buttons
+out of a fourteen-wide row left it visibly half-empty for no reason a user could
+read; thirteen plus the permanent _More artefacts_ button is exactly the cap, so
+an overflowed row is as wide as one that never overflowed. And recency now leads
+because what a user reached for this morning is what they are still working on,
+while a row led by all-time workhorses takes weeks to notice a new habit.
+
+The dedup rule follows the inversion: a command that tops **both** axes consumes
+a **recent** slot, and the most-used slot it did not take goes to the next
+candidate down the frequency ranking — so a user with three double picks still
+gets six workhorses, not three. Cold start is unchanged in kind and scaled in
+size: with nothing measured, both axes collapse to authored order and the row is
+the **first thirteen of the nominated list**, in pure author order.
+
+`SENIOR_MENU_CAP` (14) and the PF10 shortcut budget (14) are untouched.
+
+**3. The sidepanel head section stays at seven — the two surfaces share the
+arbitration, not the magnitude.** Architect's ruling, on adversarial review of
+the two above, and recorded here because otherwise this surface's row count
+would have moved as an unowned side effect of a different surface's constant.
+
+`pickByUsage` capped at `SENIOR_MENU_RANKED_SLOTS`, so raising the sub-menu's
+number would have raised the _Recent & frequent_ head from ≤7 to ≤13 rows. But
+13 is argued entirely from the sub-menu's geometry — a horizontal row of ~24px
+icon buttons, 13 of them plus _More artefacts…_ making up the 14 cap. The head
+section is a vertical list of `TOUCH_TARGET_MIN_PX` (44px) rows in a panel
+`min(320px, 85vw)` wide: 13 × 44 + a section label ≈ 604px, which on a 13"
+laptop is the whole first screen, every row of it a duplicate of a row filed
+below (by design — the head is a shortcut, not a re-filing), pushing the
+categories wholly under the fold. That is worst for exactly the power user the
+section exists to serve.
+
+So the slot counts became **parameters** of `pickByUsage(pool, statsOf,
+recentSlots, usedSlots)`: the sub-menu passes (7, 6), the head section (4, 3)
+through `CATALOGUE_HEAD_RANKED_SLOTS`. This keeps "one arbitration, two
+consumers, never two opinions" intact — the split is a parameter, not a fork —
+and keeps the size the PO recette of 27/08/2026 signed off on. Recency-first
+applies to both; for a section labelled "**Recent** & frequent" that is a
+straightforward improvement. Note that the naive `.slice(0, 7)` of the
+sub-menu's pick would NOT have worked: it returns seven recency picks and zero
+frequency ones, silently deleting the "& frequent" half.
+
+Both magnitudes are now sensed by tests rather than described: `the head section
+seats seven, four of them by recency` (unit, eleven measured commands for seven
+seats) and `the head section stops at seven rows however much was used`
+(integration, on the rendered panel — the previous head-section spec exercised a
+single used command and was insensitive to any cap).

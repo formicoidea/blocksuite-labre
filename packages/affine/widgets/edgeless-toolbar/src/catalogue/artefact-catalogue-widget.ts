@@ -40,7 +40,7 @@ const PANEL_WIDTH = 'min(320px, 85vw)';
  *
  * A framework's senior sub-menu is a row of icons, and a row of icons stops
  * working somewhere around fourteen. The BPMN pack is the first framework to
- * pass that line, so the sub-menu shows the seven the ranking put first and
+ * pass that line, so the sub-menu shows the thirteen the ranking put first and
  * hands the rest to this panel: everything the owner declares on the
  * `'catalogue'` surface, grouped by the categories the framework itself
  * declared, with the label and the chord spelled out instead of guessed from a
@@ -491,12 +491,23 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
 
     const commands = this._commands(owner);
     const groups = groupCommandsByCategory(commands);
-    // The head section: what THIS user reaches for, most-reached-for first —
-    // the sub-menu's arbitration re-consumed whole (PO recette, 27/08/2026).
+    // The head section: what THIS user reaches for, latest first — the
+    // sub-menu's arbitration re-consumed whole (PO recette, 27/08/2026).
     // Absent entirely until something has been used: a "recent" list padded
     // with the never-used would be a label that lies. The rows repeat below in
     // their categories on purpose, the way every launcher does it — the head
     // is a shortcut, not a re-filing.
+    //
+    // `commands` here is the whole CATALOGUE, deliberately: the eligibility
+    // ruling of 2026-08-28 narrowed the SUB-MENU to commands that declare
+    // `'senior-menu'`, because that row is a row of things you draw. This panel
+    // is the full-catalogue surface, so a board action a user really does reach
+    // for — `bpmn.exportXml` — belongs at its head. See `rankCommandsByUsage`.
+    //
+    // Seven rows at most (`CATALOGUE_HEAD_RANKED_SLOTS`, 4 recent + 3 used),
+    // NOT the sub-menu's thirteen: at 44px a row, thirteen would be ~604px of
+    // duplicated shortcuts and would push every category below the fold on a
+    // laptop. Same arbitration, its own magnitude.
     const usage = this.std.getOptional(CommandUsageIdentifier);
     const ranked = usage
       ? rankCommandsByUsage(commands, id => usage.statsOf(id))
