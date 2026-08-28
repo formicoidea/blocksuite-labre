@@ -19,8 +19,20 @@ import { c4TranslationEntries } from '../translations';
  * silent.
  */
 
-/** The eight the review checklist itself asks for — the ones `strict` promotes. */
-const CHECKLIST = [
+/**
+ * The nine `strict` promotes.
+ *
+ * Named for what the PROFILE does, not for where the rules come from, and the
+ * two are deliberately not the same partition — a coincidence of arithmetic
+ * makes both 9/5, which is exactly why the constant must not be called
+ * `CHECKLIST`. Seven of these restate a checklist question; `c4.untyped-link`
+ * and `c4.relationship-self-loop` are OURS and are promoted anyway, because
+ * neither has a reading under which the diagram meant it. Meanwhile the three
+ * isolation rules DO come from the checklist and are not promoted, because they
+ * report unfinished work. Provenance and severity are orthogonal — see
+ * `profiles.ts`.
+ */
+const PROMOTED = [
   'c4.unlabeled-relationship',
   'c4.unnamed-person',
   'c4.unnamed-system',
@@ -28,6 +40,7 @@ const CHECKLIST = [
   'c4.unnamed-component',
   'c4.untyped-link',
   'c4.relationship-endpoints',
+  'c4.relationship-self-loop',
   'c4.homeless-component',
 ];
 
@@ -55,7 +68,7 @@ describe('C4 validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = C4_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(13);
+    expect(ruleIds).toHaveLength(14);
     for (const profile of C4_PROFILES) {
       expect(profile.framework).toBe('c4');
       expect(profile.labelKey).toMatch(/^com\.labre\.c4\.profile\./);
@@ -76,10 +89,10 @@ describe('C4 validation profiles', () => {
     }
   });
 
-  it('promotes the eight checklist rules on the strict profile', () => {
+  it('promotes the nine on the strict profile', () => {
     const [, strict] = C4_PROFILES;
-    expect(CHECKLIST).toHaveLength(8);
-    for (const id of CHECKLIST) {
+    expect(PROMOTED).toHaveLength(9);
+    for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
   });
@@ -96,7 +109,7 @@ describe('C4 validation profiles', () => {
     }
     // ...and the two lists together are the whole pack, so a rule added later
     // cannot slip past this spec by belonging to neither.
-    expect([...CHECKLIST, ...PANEL_ONLY].sort()).toEqual(
+    expect([...PROMOTED, ...PANEL_ONLY].sort()).toEqual(
       C4_RULES.map(rule => rule.id).sort()
     );
   });

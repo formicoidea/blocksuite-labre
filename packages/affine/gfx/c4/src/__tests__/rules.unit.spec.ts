@@ -18,7 +18,7 @@ import {
 import { C4_ELEMENT_MATRIX, C4_RELATIONSHIP_MATRIX, C4_RULES } from '../rules';
 
 /**
- * The thirteen C4 rules, rule by rule — and above all what each of them stays
+ * The fourteen C4 rules, rule by rule — and above all what each of them stays
  * SILENT about. Silence is the expensive half: a rule that fires on a croquis is
  * a rule the workshop switches off, and a C4 diagram is drawn as a croquis for
  * most of its life.
@@ -35,6 +35,7 @@ const UNNAMED_CONTAINER = 'c4.unnamed-container';
 const UNNAMED_COMPONENT = 'c4.unnamed-component';
 const UNTYPED_LINK = 'c4.untyped-link';
 const RELATIONSHIP_ENDPOINTS = 'c4.relationship-endpoints';
+const RELATIONSHIP_SELF_LOOP = 'c4.relationship-self-loop';
 const ISOLATED_SYSTEM = 'c4.isolated-system';
 const ISOLATED_CONTAINER = 'c4.isolated-container';
 const ISOLATED_COMPONENT = 'c4.isolated-component';
@@ -132,7 +133,7 @@ const conformant = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the thirteen rules of the pack, in reading order', () => {
+  it('ships exactly the fourteen rules of the pack, in reading order', () => {
     expect(C4_RULES.map(rule => rule.id)).toEqual([
       UNLABELED_RELATIONSHIP,
       UNNAMED_PERSON,
@@ -141,6 +142,7 @@ describe('what the framework ships', () => {
       UNNAMED_COMPONENT,
       UNTYPED_LINK,
       RELATIONSHIP_ENDPOINTS,
+      RELATIONSHIP_SELF_LOOP,
       ISOLATED_SYSTEM,
       ISOLATED_CONTAINER,
       ISOLATED_COMPONENT,
@@ -168,7 +170,7 @@ describe('what the framework ships', () => {
   });
 
   it('names a frame on every rule, so every finding can be waived somewhere', () => {
-    // Eleven measure against the BOARD — attribution only, since none of them
+    // Twelve measure against the BOARD — attribution only, since none of them
     // reads a coordinate — and the two membership rules against the BOUNDARY,
     // which is the frame their question is actually about.
     const framedBy = (role: string) =>
@@ -179,7 +181,7 @@ describe('what the framework ships', () => {
       HOMELESS_COMPONENT,
       PERSON_IN_BOUNDARY,
     ]);
-    expect(framedBy(C4_ROLE.board)).toHaveLength(11);
+    expect(framedBy(C4_ROLE.board)).toHaveLength(12);
   });
 
   it('declares no level the pipework cannot honour, and starts every rule quiet', () => {
@@ -405,17 +407,6 @@ describe('C7 · what a relationship may run between', () => {
     expect(violations[0].elementIds).toEqual(['p1', 'p2', 'r']);
   });
 
-  it('flags a relationship looping back onto its own element', () => {
-    const violations = evaluate([board(), system('a'), rel('r', 'a', 'a')]);
-    expect(idsOf(violations)).toEqual([RELATIONSHIP_ENDPOINTS]);
-    expect(violations[0].elementIds).toEqual(['a', 'r']);
-    // The loop's OWN sentence, not the rule's: a loop is a different mistake
-    // from an unsanctioned pair and is fixed by a different gesture.
-    expect(violations[0].messageKey).toBe(
-      'com.labre.c4.validation.relationship-endpoints.self-loop'
-    );
-  });
-
   it('says nothing about a person using a system', () => {
     expect(
       evaluate([board(), person('p'), system('s', 600), rel('r', 'p', 's')])
@@ -452,9 +443,93 @@ describe('C7 · what a relationship may run between', () => {
   it('says nothing about a relationship with a free end', () => {
     expect(evaluate([...conformant(), rel('r2', 'a', 'gone')])).toEqual([]);
   });
+
+  it('says nothing about a self-loop — that is C8 now', () => {
+    // C7 declares no `forbidSelfLoop` after the split, and the family
+    // `continue`s on a self-loop before reaching any matrix, so this rule has
+    // nothing to say about one.
+    expect(
+      only(
+        evaluate([board(), system('a'), rel('r', 'a', 'a')]),
+        RELATIONSHIP_ENDPOINTS
+      )
+    ).toEqual([]);
+  });
 });
 
-describe('C8–C10 · an element nothing connects', () => {
+describe('C8 · a relationship that loops onto its own element', () => {
+  it('flags the loop, and only the loop', () => {
+    const violations = evaluate([board(), system('a'), rel('r', 'a', 'a')]);
+    expect(idsOf(violations)).toEqual([RELATIONSHIP_SELF_LOOP]);
+    expect(violations[0].elementIds).toEqual(['a', 'r']);
+    // No `selfLoop` block on the split rule: with the matrix unreachable, the
+    // rule's OWN message is the self-loop message and the family falls back to
+    // it.
+    expect(violations[0].messageKey).toBe(
+      'com.labre.c4.validation.relationship-self-loop'
+    );
+  });
+
+  /**
+   * THE interaction a reviewer will ask about, pinned to what the engine
+   * actually does rather than to what reads plausibly.
+   *
+   * A person looped onto themselves is simultaneously a self-loop AND the one
+   * sentence off C7's matrix (person → person). It raises C8 **alone**:
+   * `evaluateRelationEndpoints` tests `sourceId === targetId` first and then
+   * `continue`s — the `continue` sits OUTSIDE the `forbidSelfLoop` guard — so a
+   * self-loop never reaches `inMatrix` for any rule, whatever its matrix says.
+   *
+   * That is the right answer as well as the actual one: the mistake the author
+   * made is the loop, and also telling them a person may not use a person would
+   * be answering a question they did not ask.
+   */
+  it('raises ONLY the loop when the loop is also off C7’s matrix', () => {
+    const violations = evaluate([board(), person('p'), rel('r', 'p', 'p')]);
+    expect(idsOf(violations)).toEqual([RELATIONSHIP_SELF_LOOP]);
+  });
+
+  it('says nothing about a loop on something outside the alphabet', () => {
+    // The alphabet GATE runs before the self-loop test, so a relationship
+    // looped onto a frame or a sticky note is silence — as it was before the
+    // split, and for the same reason.
+    expect(
+      evaluate([...conformant(), boundary('bd'), rel('r2', 'bd', 'bd')])
+    ).toEqual([]);
+    expect(
+      evaluate([...conformant(), sketch('note'), rel('r2', 'note', 'note')])
+    ).toEqual([]);
+  });
+
+  it('says nothing about an ordinary relationship between two elements', () => {
+    expect(only(evaluate(conformant()), RELATIONSHIP_SELF_LOOP)).toEqual([]);
+  });
+
+  it('takes the ALPHABET, never C7’s grammar', () => {
+    const byId = new Map(C4_RULES.map(rule => [rule.id, rule]));
+    const grammar = byId.get(RELATIONSHIP_ENDPOINTS);
+    const loop = byId.get(RELATIONSHIP_SELF_LOOP);
+    // The trap this suite caught twice. BPMN's split rule safely carries its
+    // sibling's matrix because BPMN's sanctions everything in its own alphabet;
+    // C4's has a genuine removal, so a second rule carrying it reports
+    // person → person again on every NON-loop relationship. Exactly one rule in
+    // this pack may hold the grammar.
+    expect(grammar?.endpoints?.allowed).toBe(C4_RELATIONSHIP_MATRIX);
+    expect(loop?.endpoints?.allowed).toBe(C4_ELEMENT_MATRIX);
+    const holders = C4_RULES.filter(
+      rule => rule.endpoints?.allowed === C4_RELATIONSHIP_MATRIX
+    );
+    expect(holders.map(rule => rule.id)).toEqual([RELATIONSHIP_ENDPOINTS]);
+    // One flag each: exactly one of the two can indict a given edge.
+    expect(grammar?.endpoints?.forbidSelfLoop).toBeUndefined();
+    expect(loop?.endpoints?.forbidSelfLoop).toBe(true);
+    // ...and the loop rule carries no `selfLoop` override, so its own words are
+    // the ones the user reads.
+    expect(loop?.endpoints?.selfLoop).toBeUndefined();
+  });
+});
+
+describe('C9–C11 · an element nothing connects', () => {
   it('flags a lone system, container and component', () => {
     expect(idsOf(evaluate([board(), system('a')]))).toEqual([ISOLATED_SYSTEM]);
     expect(idsOf(evaluate([board(), container('c')]))).toEqual([
@@ -491,7 +566,7 @@ describe('C8–C10 · an element nothing connects', () => {
   });
 });
 
-describe('C11 · a data store that calls somebody', () => {
+describe('C12 · a data store that calls somebody', () => {
   it('flags a relationship leaving a database', () => {
     const violations = evaluate([
       board(),
@@ -523,7 +598,7 @@ describe('C11 · a data store that calls somebody', () => {
   });
 });
 
-describe('C12 · a component belongs inside a boundary', () => {
+describe('C13 · a component belongs inside a boundary', () => {
   it('flags a component drawn outside every boundary', () => {
     const violations = evaluate([
       board(),
@@ -563,7 +638,7 @@ describe('C12 · a component belongs inside a boundary', () => {
   });
 });
 
-describe('C13 · a person is never inside the system', () => {
+describe('C14 · a person is never inside the system', () => {
   it('flags a person drawn inside a boundary', () => {
     const violations = evaluate([
       board(),

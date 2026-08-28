@@ -32,14 +32,17 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  *   (`c4.unlabeled-relationship`)
  * - is every relationship one a reader can follow — between two things the
  *   model has, in one direction? (`c4.relationship-endpoints`,
- *   `c4.untyped-link`)
+ *   `c4.untyped-link`, and `c4.relationship-self-loop`, which is ours)
  * - does every element earn its place on the sheet?
  *   (`c4.isolated-*`, `c4.homeless-component`)
  *
  * Where a rule is OURS rather than the checklist's, its own comment says so —
- * there are two (`c4.person-in-boundary` and `c4.database-initiates`), and both
- * are idioms of the notation rather than requirements of it, which is why both
- * stay `audit` at every level.
+ * there are four: `c4.untyped-link` (a gesture of this canvas, which C4 never
+ * anticipated), `c4.relationship-self-loop`, `c4.person-in-boundary` and
+ * `c4.database-initiates`. The last three are idioms of the notation rather
+ * than requirements of it; two of them stay `audit` at every level, and the
+ * self-loop does not, because a loop is a mistake a reader cannot recover from
+ * while the other two have honest readings.
  *
  * ## Severity: the CROQUIS primes, so nearly everything is `audit`
  *
@@ -371,21 +374,11 @@ const untypedLink: ValidationRule = {
 };
 
 /**
- * **C7** — a relationship runs between two things the model has, one way, and
- * never from an element to itself.
+ * **C7** — a relationship runs between two things the model has.
  *
  * The grammar, and it is short because C4's is: the matrix sanctions every
  * ordered pair of the four levels but person → person (see
  * {@link C4_RELATIONSHIP_MATRIX} for why that one is out).
- *
- * ## The self-loop, and what it costs a reader
- *
- * A relationship whose two ends are the same box says an element uses itself.
- * On a C4 diagram that is never information: at every level, what a thing does
- * internally is what the NEXT level down is for — a system that calls itself is
- * a container diagram waiting to be drawn, and a container that calls itself is
- * a component diagram. The arrow is the author noticing something real and
- * drawing it on the wrong sheet.
  *
  * ## Deliberately NOT `forbidDuplicate`
  *
@@ -404,6 +397,13 @@ const untypedLink: ValidationRule = {
  * board, a boundary, a sticky note, a legend glyph — is outside the alphabet,
  * and an edge with an end outside the alphabet takes the whole link out of the
  * conversation.
+ *
+ * ## The self-loop is NOT here, and that is the point
+ *
+ * It was, until {@link relationshipSelfLoop} split it out. The two clauses have
+ * different AUTHORITY — the matrix is the C4 model speaking, the loop is our
+ * house reading — and one rule cannot honestly answer "where does this come
+ * from" twice. See that rule's own comment.
  */
 const relationshipEndpoints: ValidationRule = {
   id: 'c4.relationship-endpoints',
@@ -423,16 +423,88 @@ const relationshipEndpoints: ValidationRule = {
   endpoints: {
     edgeRole: C4_ROLE.relationship,
     allowed: C4_RELATIONSHIP_MATRIX,
+    // No `forbidSelfLoop`: that clause is `c4.relationship-self-loop` now, and
+    // its absence here is what lets exactly one of the two indict a given loop.
+  },
+};
+
+/**
+ * **C8** — a relationship that loops back onto the element it leaves.
+ *
+ * OURS, not the C4 model's, and split out of {@link relationshipEndpoints} for
+ * exactly that reason. The matrix restates something C4 says — the notation has
+ * no arrow for two people talking — while nothing in the model or the review
+ * checklist forbids an element from being drawn as using itself. Shipping both
+ * under one id meant one rule answering "where does this come from" two
+ * different ways, which is the "conventions presented as norm violations" trap;
+ * the same split BPMN made between its sequence-flow grammar and its own
+ * no-self-loop house style.
+ *
+ * ## What it costs a reader, which is why we keep it at all
+ *
+ * A relationship whose two ends are the same box says an element uses itself.
+ * On a C4 diagram that is never information: at every level, what a thing does
+ * internally is what the NEXT level down is for — a system that calls itself is
+ * a container diagram waiting to be drawn, and a container that calls itself is
+ * a component diagram. The arrow is the author noticing something real and
+ * drawing it on the wrong sheet.
+ *
+ * ## Why the two rules compose safely
+ *
+ * The ALPHABET GATE, before anything else: an edge with an end outside the four
+ * element roles is dropped before either the self-loop test or the matrix test
+ * is reached, so a relationship looped onto a boundary or a sticky note is
+ * silence from both rules. Past the gate, the family tests the self-loop FIRST
+ * and `continue`s unconditionally — the `continue` sits outside the
+ * `forbidSelfLoop` guard — so a loop never reaches a matrix at all. C7 declares
+ * no `forbidSelfLoop` and therefore says nothing about a loop; this rule
+ * declares the permissive ALPHABET rather than C7's grammar, so it has no
+ * sentence to judge and no verdict but the loop.
+ *
+ * That last point is not a detail, and the test suite caught it being wrong:
+ * BPMN's split rule safely carries its sibling's matrix because BPMN's matrix
+ * sanctions everything in its own alphabet, making off-matrix unreachable.
+ * C4's does not — person → person is a genuine removal — so a second rule
+ * carrying the grammar reports it a second time on every NON-loop relationship.
+ * In this pack exactly one rule may ever hold {@link C4_RELATIONSHIP_MATRIX}.
+ *
+ * The consequence worth stating, because it is the one a reviewer will ask
+ * about: a person looped onto THEMSELVES raises this rule ALONE, not also C7,
+ * even though person → person is the one sentence off C7's matrix. The engine
+ * never asks the matrix about a self-loop. That is a deliberate reading — the
+ * mistake the author made is the loop, and telling them a person may not use a
+ * person would be answering a question they did not ask.
+ *
+ * It carries no `selfLoop` block: with the matrix unreachable here, the rule's
+ * own message IS the self-loop message and the family falls back to it.
+ */
+const relationshipSelfLoop: ValidationRule = {
+  id: 'c4.relationship-self-loop',
+  framework: 'c4',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.relationship-self-loop',
+  messageFallback: 'This relationship loops back onto the element it leaves.',
+  suggestionKey: 'com.labre.c4.validation.relationship-self-loop.suggestion',
+  suggestionFallback:
+    'What an element does inside itself is what the next diagram down is for: zoom into it and draw the parts. On this sheet the loop tells the reader nothing.',
+  version: 1,
+  backgroundRole: C4_ROLE.board,
+  endpoints: {
+    edgeRole: C4_ROLE.relationship,
+    // {@link C4_ELEMENT_MATRIX}, NOT C7's grammar — the alphabet, so that a
+    // relationship looped onto a frame or a sticky note stays outside the
+    // conversation, and permissive so that this rule judges no sentence.
+    //
+    // Carrying C7's table here would report person → person a second time: the
+    // matrix is only unreachable for the LOOPS this rule indicts, and every
+    // other relationship on the board still walks past it to the off-matrix
+    // test. That is the same trap {@link untypedLink} documents, and it is
+    // structural in C4: the grammar has a removal in it, so exactly one rule
+    // may ever carry it.
+    allowed: C4_ELEMENT_MATRIX,
     forbidSelfLoop: true,
-    selfLoop: {
-      messageKey: 'com.labre.c4.validation.relationship-endpoints.self-loop',
-      messageFallback:
-        'This relationship loops back onto the element it leaves.',
-      suggestionKey:
-        'com.labre.c4.validation.relationship-endpoints.self-loop.suggestion',
-      suggestionFallback:
-        'What an element does inside itself is what the next diagram down is for: zoom into it and draw the parts. On this sheet the loop tells the reader nothing.',
-    },
   },
 };
 
@@ -494,21 +566,21 @@ function isolationRule(
   };
 }
 
-/** **C8** — a software system nothing reaches and that reaches nothing. */
+/** **C9** — a software system nothing reaches and that reaches nothing. */
 const isolatedSystem = isolationRule(
   'system',
   C4_ROLE.system,
   'Nothing connects this software system to the rest of the diagram.'
 );
 
-/** **C9** — a container nothing reaches and that reaches nothing. */
+/** **C10** — a container nothing reaches and that reaches nothing. */
 const isolatedContainer = isolationRule(
   'container',
   C4_ROLE.container,
   'Nothing connects this container to the rest of the diagram.'
 );
 
-/** **C10** — a component nothing reaches and that reaches nothing. */
+/** **C11** — a component nothing reaches and that reaches nothing. */
 const isolatedComponent = isolationRule(
   'component',
   C4_ROLE.component,
@@ -516,7 +588,7 @@ const isolatedComponent = isolationRule(
 );
 
 /**
- * **C11** — a data store that calls somebody.
+ * **C12** — a data store that calls somebody.
  *
  * OURS, not the checklist's, and an idiom rather than a law — which is why it
  * is `audit` at both levels and says so in its own sentence.
@@ -555,7 +627,7 @@ const databaseInitiates: ValidationRule = {
 /* ── Membership: which frame does the element belong to? ───────────────── */
 
 /**
- * **C12** — a component drawn outside any boundary.
+ * **C13** — a component drawn outside any boundary.
  *
  * A component is the one level of C4 that means nothing on its own: it is a
  * part OF a container, and the container it is part of is drawn on the canvas
@@ -599,7 +671,7 @@ const homelessComponent: ValidationRule = {
 };
 
 /**
- * **C13** — a person drawn inside a boundary.
+ * **C14** — a person drawn inside a boundary.
  *
  * OURS, like {@link databaseInitiates}, and `audit` at both levels for the same
  * reason. A boundary says "these things are parts of one system, or of one
@@ -653,11 +725,15 @@ const personInBoundary: ValidationRule = {
 };
 
 /**
- * The pack, whole: thirteen rules, all registered, all live.
+ * The pack, whole: fourteen rules, all registered, all live.
  *
  * Four families, and no more than four are needed — C4 has one connecting
  * object, four flat levels and two frames, so there is no swimlane question, no
  * graph traversal and no cardinality per frame to ask about.
+ *
+ * Fourteen and not thirteen because the grammar and the self-loop are two rules:
+ * see {@link relationshipSelfLoop} for why one rule could not honestly carry
+ * both.
  */
 export const C4_RULES: readonly ValidationRule[] = [
   // Naming: does the drawing say anything at all?
@@ -669,6 +745,7 @@ export const C4_RULES: readonly ValidationRule[] = [
   // Grammar: what an arrow may run between, and whether it is an arrow at all.
   untypedLink,
   relationshipEndpoints,
+  relationshipSelfLoop,
   // Degree: does the element earn its place on the sheet?
   isolatedSystem,
   isolatedContainer,
