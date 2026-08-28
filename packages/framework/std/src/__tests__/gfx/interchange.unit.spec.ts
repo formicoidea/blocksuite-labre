@@ -51,14 +51,28 @@ const extensions = [RootBlockSchemaExtension, SurfaceBlockSchemaExtension];
 const BPMN_PAYLOAD: ForeignInterchange = {
   id: 'Activity_0x7f2a',
   element: 'bpmn:boundaryEvent',
+  // Two scopes, and the second is the whole reason the map is nested: `@self`
+  // is the element this payload rides on, `Lane_2` is a different source
+  // element that pours into the same payload. Flat, these two `camunda:owner`
+  // values would be one.
   attrs: {
-    'camunda:asyncBefore': 'true',
-    isForCompensation: 'false',
+    '@self': {
+      'camunda:asyncBefore': 'true',
+      isForCompensation: 'false',
+      'camunda:owner': 'alice',
+    },
+    Lane_2: { 'camunda:owner': 'bob' },
   },
-  children: [
-    '<bpmn:extensionElements><camunda:formData /></bpmn:extensionElements>',
-  ],
-  di: ['<bpmndi:BPMNShape id="Shape_1" bpmnElement="Activity_0x7f2a" />'],
+  children: {
+    '@self': [
+      '<bpmn:extensionElements><camunda:formData /></bpmn:extensionElements>',
+    ],
+    '@process': ['<bpmn:boundaryEvent id="Boundary_1" />'],
+  },
+  di: {
+    '@shape': ['<bpmndi:BPMNLabel />'],
+    Boundary_1: ['<bpmndi:BPMNShape id="Shape_1" bpmnElement="Boundary_1" />'],
+  },
   quarantined: [
     {
       fragment: '<bpmn:incoming>Flow_gone</bpmn:incoming>',
@@ -168,14 +182,19 @@ describe('the interchange field', () => {
         type: 'testShape',
         interchange: {
           bpmn: { id: 'Task_1' },
-          owm: { id: 'component-4', attrs: { evolution: '0.62' } },
+          owm: {
+            id: 'component-4',
+            attrs: { '@self': { evolution: '0.62' } },
+          },
         },
       })
     )!;
 
     expect(Object.keys(el.interchange!).sort()).toEqual(['bpmn', 'owm']);
     expect(el.interchange!.bpmn.id).toBe('Task_1');
-    expect(el.interchange!.owm.attrs).toEqual({ evolution: '0.62' });
+    expect(el.interchange!.owm.attrs).toEqual({
+      '@self': { evolution: '0.62' },
+    });
   });
 
   test('the payload survives the serialize / re-create round trip', () => {
@@ -206,21 +225,68 @@ describe('the interchange field', () => {
   test('the copy owns its payload — mutating one does not reach the other', () => {
     const sourceId = surface.addElement({
       type: 'testShape',
-      interchange: { bpmn: { id: 'Task_1', children: ['<a />'] } },
+      interchange: { bpmn: { id: 'Task_1', children: { '@self': ['<a />'] } } },
     });
     const { id: _id, ...props } = surface.getElementById(sourceId)!.serialize();
     const copyId = surface.addElement(props);
 
     surface.updateElement(copyId, {
-      interchange: { bpmn: { id: 'Task_2', children: ['<b />'] } },
+      interchange: { bpmn: { id: 'Task_2', children: { '@self': ['<b />'] } } },
     });
 
     expect(surface.getElementById(sourceId)!.interchange).toEqual({
-      bpmn: { id: 'Task_1', children: ['<a />'] },
+      bpmn: { id: 'Task_1', children: { '@self': ['<a />'] } },
     });
     expect(surface.getElementById(copyId)!.interchange).toEqual({
-      bpmn: { id: 'Task_2', children: ['<b />'] },
+      bpmn: { id: 'Task_2', children: { '@self': ['<b />'] } },
     });
+  });
+
+  test('two source elements carrying the SAME attribute both survive', () => {
+    // The reason `attrs` is keyed by scope and not by attribute name, and the
+    // reason that shape had to be settled before anything persisted a payload.
+    // One Labre element stands for several source elements — a BPMN pool is a
+    // participant, a process, a laneSet and every lane of it — so a flat map
+    // lets the last one written win, silently, inside a value that cannot be
+    // repaired afterwards without the original file.
+    const el = surface.getElementById(
+      surface.addElement({
+        type: 'testShape',
+        interchange: {
+          bpmn: {
+            id: 'Participant_1',
+            attrs: {
+              Lane_1: { 'camunda:owner': 'alice' },
+              Lane_2: { 'camunda:owner': 'bob' },
+            },
+          },
+        },
+      })
+    )!;
+
+    expect(el.interchange!.bpmn.attrs).toEqual({
+      Lane_1: { 'camunda:owner': 'alice' },
+      Lane_2: { 'camunda:owner': 'bob' },
+    });
+    // …and through the Y.Map, which is where the loss would actually have been.
+    expect(
+      (
+        el.yMap.get('interchange') as Record<
+          string,
+          { attrs: Record<string, Record<string, string>> }
+        >
+      ).bpmn.attrs.Lane_1['camunda:owner']
+    ).toBe('alice');
+  });
+
+  test('a role scope cannot be mistaken for a source id', () => {
+    // `@` is not an XML NameStartChar, so no `xsd:ID` in any conformant file can
+    // ever spell `@self` — which is what lets one map hold both without a
+    // second field to tell them apart.
+    const NAME_START = /[\p{L}_]/u;
+    for (const role of ['@self', '@shape', '@process']) {
+      expect(NAME_START.test(role[0])).toBe(false);
+    }
   });
 
   test('an element with no payload stays that way through a round trip', () => {
