@@ -23,11 +23,30 @@ export {
   C4_TYPE_PLACEHOLDER,
   C4_TYPE_TAKES_TECHNOLOGY,
   C4_TYPE_WORD,
+  c4MorphedTypeLine,
   c4TypeLine,
   normalizeC4TypeLine,
   technologyOfTypeLine,
   TYPE_TECHNOLOGY_PLACEHOLDER,
 } from './type-line.js';
+// What a C4 shape is BORN as, shared by the palette and — since the morph — by
+// the toolbar that says one artefact differently, so the two can never disagree
+// about what a database looks like.
+export {
+  c4MorphClears,
+  c4MorphProps,
+  c4NodeProps,
+  GLYPH_BODY_KINDS,
+} from './presets.js';
+// What an artefact may BECOME: the declared families, the spec the generic
+// morph module is registered with, and the resolution from a selected group to
+// the shape inside it. Data a host can read without an editor.
+export {
+  C4_MORPH_FAMILIES,
+  C4_MORPH_SPEC,
+  c4MorphedTitle,
+  c4NodeOfComponent,
+} from './morph.js';
 // A C4 component — the shape and its own words, grouped. Where the two written
 // tiers are placed at creation, and which of them belongs to which node. Pure,
 // so the creation site, the exporter and a host all resolve a component the

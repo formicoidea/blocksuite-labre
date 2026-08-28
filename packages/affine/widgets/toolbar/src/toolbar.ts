@@ -387,9 +387,13 @@ export class AffineToolbarWidget extends WidgetComponent {
           // Chencks if block's config exists.
           if (block) {
             const modelFlavour = block.model.flavour;
+            // `modulesFor`, not `modules.has`: the question is whether this
+            // flavour has a row AT ALL, and since a flavour may be claimed by
+            // an owner-suffixed contributor as well as by its own key, a raw
+            // variant lookup would answer "no row" for a flavour that draws one.
             const existed =
-              toolbarRegistry.modules.has(modelFlavour) ||
-              toolbarRegistry.modules.has(`custom:${modelFlavour}`);
+              toolbarRegistry.modulesFor(modelFlavour).length > 0 ||
+              toolbarRegistry.modulesFor(`custom:${modelFlavour}`).length > 0;
             if (existed) {
               flavour = modelFlavour;
             } else {
