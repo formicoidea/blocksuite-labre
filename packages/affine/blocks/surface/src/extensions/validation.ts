@@ -1101,8 +1101,13 @@ export interface ValidationRule extends RuleMessage {
  *
  * A profile is CHOSEN per root instance, on the framework's background element
  * (`GfxPrimitiveElementModel.validationProfile`) — see PF9.1. Two maps on one
- * canvas therefore hold two independent levels of requirement, and a background
- * that names none is checked against its framework's {@link isDefault} profile.
+ * canvas therefore hold two independent levels of requirement.
+ *
+ * A background that names none INHERITS the choice made on the frame it is
+ * drawn inside ({@link inheritChosenProfiles}), and falls back to its
+ * framework's {@link isDefault} profile only when it sits inside nothing that
+ * chose. That is what lets a framework offer the picker on its outer frame
+ * alone and still govern the rules it frames against an inner one.
  */
 export interface ValidationProfile {
   /** Stable id, namespaced by framework: `wardley.sketch`. */
@@ -1199,7 +1204,8 @@ function resolveProfile(
 }
 
 /**
- * The profile id each role-carrying element names, in one pass.
+ * The profile id each role-carrying element names, in one pass — then the same
+ * for the ones that name none but SIT INSIDE one that does.
  *
  * Role-carrying only: a profile is a decision about a framework's background,
  * and a neutral element cannot be one. That keeps the pass on exactly the same
@@ -1209,14 +1215,98 @@ function readChosenProfiles(
   elements: readonly GfxPrimitiveElementModel[]
 ): Map<string, string> {
   const chosen = new Map<string, string>();
+  const roleCarrying: GfxPrimitiveElementModel[] = [];
   for (const el of elements) {
     if (el.role === undefined) continue;
+    roleCarrying.push(el);
     const id = el.validationProfile;
     // Whatever a peer wrote: a client that got it wrong must not break
     // evaluation on this one.
     if (typeof id === 'string') chosen.set(el.id, id);
   }
+  // Nobody chose anything => no inheritance to compute, and not one bound read
+  // on the whole surface. The overwhelmingly common case: choosing the default
+  // profile back WRITES NOTHING (`setProfile` clears the field), so `chosen` is
+  // empty on every document whose author never left the default.
+  if (chosen.size > 0) inheritChosenProfiles(roleCarrying, chosen);
   return chosen;
+}
+
+/**
+ * A frame that named no profile inherits the one chosen on the frame it is
+ * DRAWN INSIDE — the innermost of them.
+ *
+ * ## The question this answers
+ *
+ * A profile is chosen per root instance (PF9.1), and a finding is judged by the
+ * profile of the instance it is ATTRIBUTED to ({@link applyProfiles}). Those two
+ * sentences only describe the same element while every attribution target is
+ * something the author can reach a picker on. They stop describing the same
+ * element the moment a framework frames a question against an INNER frame — a
+ * C4 boundary, a BPMN lane — and the picker is offered on the outer one alone,
+ * which is the arbitration C4's recette settled (PO, 28/08/2026: the board
+ * arbitrates the checklist, the boundary does not). Without this, raising a
+ * board to its review level would harden the eleven rules framed against the
+ * board and silently leave the two framed against a boundary at the default
+ * for ever.
+ *
+ * Inheritance is the general form of that fix and carries no framework name: an
+ * instance with no choice of its own is governed by the choice made on the
+ * frame it sits in, which is what a reader looking at the two nested rectangles
+ * already assumes. An instance that DOES name a profile keeps it — a nested
+ * frame can still be arbitrated separately the day a framework offers a picker
+ * on one.
+ *
+ * ## The arithmetic
+ *
+ * Centre-in-frame, innermost first, ties to the smaller id — the same reading
+ * {@link plotContaining}, the audit and the C4 export use to answer "which frame
+ * is this drawn on", so a board can never read two different answers to that
+ * question. The element BOX rather than the plot: a plot needs the frame's
+ * geometry declaration, which is a per-RULE datum, and this map is built once
+ * for every rule at once. The margin only matters to an artefact lying on a
+ * title band, and inheriting a level of requirement there is harmless where
+ * counting it as a member would not be.
+ *
+ * Cross-framework nesting resolves itself downstream and needs no test here:
+ * {@link resolveProfile} ignores a profile id belonging to another framework, so
+ * a frame that inherits a foreign one falls back to its own framework's default
+ * — exactly what it got before inheriting anything.
+ */
+function inheritChosenProfiles(
+  elements: readonly GfxPrimitiveElementModel[],
+  chosen: Map<string, string>
+): void {
+  const frames = elements
+    .filter(el => chosen.has(el.id))
+    .map(el => ({ id: el.id, bound: el.elementBound }));
+
+  // Read off the map BEFORE writing to it: an inherited id must never be
+  // inherited on again, or a chain of frames would depend on the walk order.
+  const inherited: [string, string][] = [];
+  for (const el of elements) {
+    if (chosen.has(el.id)) continue;
+    const centre = el.elementBound.center;
+    let inner: { id: string; bound: Bound } | null = null;
+    for (const frame of frames) {
+      if (!frame.bound.containsPoint(centre)) continue;
+      if (
+        inner === null ||
+        isInside(frame.bound, inner.bound, frame.id, inner.id)
+      ) {
+        inner = frame;
+      }
+    }
+    if (inner !== null) inherited.push([el.id, chosen.get(inner.id)!]);
+  }
+  for (const [id, profileId] of inherited) chosen.set(id, profileId);
+}
+
+/** Whether `a` is the tighter frame of the two — smaller area, then smaller id. */
+function isInside(a: Bound, b: Bound, aId: string, bId: string): boolean {
+  const areaA = a.w * a.h;
+  const areaB = b.w * b.h;
+  return areaA === areaB ? aId < bId : areaA < areaB;
 }
 
 /**

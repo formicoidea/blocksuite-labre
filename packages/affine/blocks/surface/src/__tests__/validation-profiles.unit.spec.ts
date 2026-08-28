@@ -28,6 +28,8 @@ import {
 
 const ROLES: RoleDefs = {
   'test:frame': { id: 'test:frame', kind: 'node', labelKey: 'test.frame' },
+  /** A frame drawn INSIDE another one, and the one no picker is offered on. */
+  'test:inner': { id: 'test:inner', kind: 'node', labelKey: 'test.inner' },
   'test:node': { id: 'test:node', kind: 'node', labelKey: 'test.node' },
 };
 
@@ -51,19 +53,31 @@ const UNLISTED_RULE: ValidationRule = {
   messageKey: 'com.labre.test.node-outside-frame-bis',
 };
 
+/**
+ * A rule of the same framework framed against the INNER frame — the shape C4's
+ * `c4.homeless-component` has: the finding is attributed to the boundary, and
+ * the picker that decides how hard it bites is offered on the board alone.
+ */
+const INNER_RULE: ValidationRule = {
+  ...RULE,
+  id: 'test.node-outside-inner',
+  messageKey: 'com.labre.test.node-outside-inner',
+  backgroundRole: 'test:inner',
+};
+
 const PERMISSIVE: ValidationProfile = {
   id: 'test.sketch',
   framework: 'test',
   labelKey: 'com.labre.test.profile.sketch',
   isDefault: true,
-  rules: { [RULE.id]: 'audit' },
+  rules: { [RULE.id]: 'audit', [INNER_RULE.id]: 'audit' },
 };
 
 const STRICT: ValidationProfile = {
   id: 'test.strict',
   framework: 'test',
   labelKey: 'com.labre.test.profile.strict',
-  rules: { [RULE.id]: 'warning' },
+  rules: { [RULE.id]: 'warning', [INNER_RULE.id]: 'warning' },
 };
 
 const DISABLED: ValidationProfile = {
@@ -286,6 +300,96 @@ describe('the profile is read off the instance the finding was measured against'
     );
 
     expect(violations[0].severity).toBe('audit');
+  });
+});
+
+/**
+ * PF9.1 says a profile is chosen per ROOT instance. It says nothing about the
+ * inner frames a framework may frame a question against, and C4's recette is
+ * where that gap showed: the board arbitrates the review checklist, the
+ * boundary does not (PO, 28/08/2026), while two of the fourteen C4 rules
+ * attribute their findings to the boundary. Raising the board had to harden
+ * those two as well, or the picker would silently govern twelve rules of
+ * fourteen.
+ */
+describe('a frame that names no profile inherits the one it is drawn inside', () => {
+  /** The outer frame, the one a picker is offered on. */
+  const board = (profile?: string) =>
+    element('board', [0, 0, 1000, 1000], {
+      role: 'test:frame',
+      ...(profile !== undefined ? { validationProfile: profile } : {}),
+    });
+
+  /** The inner frame a rule is framed against, and nobody can arbitrate. */
+  const boundary = (
+    id = 'inner',
+    xywh: [number, number, number, number] = [100, 100, 200, 200]
+  ) => element(id, xywh, { role: 'test:inner' });
+
+  /** Outside the inner frame, inside the outer one. */
+  const homeless = element('n1', [400, 400, 40, 40], { role: 'test:node' });
+
+  it('hardens a boundary-anchored finding when the BOARD is raised', () => {
+    const [violation] = evaluateRules(
+      [INNER_RULE],
+      [board(STRICT.id), boundary(), homeless],
+      PROFILES
+    );
+
+    // Attributed to the boundary, judged by the board's choice.
+    expect(violation.backgroundId).toBe('inner');
+    expect(violation.severity).toBe('warning');
+  });
+
+  it('leaves it at the default level while the board names none', () => {
+    const [violation] = evaluateRules(
+      [INNER_RULE],
+      [board(), boundary(), homeless],
+      PROFILES
+    );
+
+    expect(violation.backgroundId).toBe('inner');
+    expect(violation.severity).toBe('audit');
+  });
+
+  it('falls back to the default for a frame drawn inside nothing', () => {
+    const [violation] = evaluateRules(
+      [INNER_RULE],
+      [board(STRICT.id), boundary('inner', [40000, 40000, 200, 200]), homeless],
+      PROFILES
+    );
+
+    expect(violation.severity).toBe('audit');
+  });
+
+  it('takes the choice of the INNERMOST frame that made one', () => {
+    // Two nested boards, two levels of requirement: the one actually drawn
+    // round the boundary is the one that governs it.
+    const inner = element('board2', [50, 50, 400, 400], {
+      role: 'test:frame',
+      validationProfile: PERMISSIVE.id,
+    });
+    const [violation] = evaluateRules(
+      [INNER_RULE],
+      [board(STRICT.id), inner, boundary(), homeless],
+      PROFILES
+    );
+
+    expect(violation.severity).toBe('audit');
+  });
+
+  it('keeps a frame’s own choice over the one it is drawn inside', () => {
+    const arbitrated = element('inner', [100, 100, 200, 200], {
+      role: 'test:inner',
+      validationProfile: PERMISSIVE.id,
+    });
+    const [violation] = evaluateRules(
+      [INNER_RULE],
+      [board(STRICT.id), arbitrated, homeless],
+      PROFILES
+    );
+
+    expect(violation.severity).toBe('audit');
   });
 });
 

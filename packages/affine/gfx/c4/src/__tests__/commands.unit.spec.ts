@@ -139,23 +139,23 @@ describe('the c4 command inventory', () => {
     // cap of fourteen, so nothing is arbitrated and the sub-menu is this list
     // exactly. Thirteen of the fourteen are senior slots — every command that
     // DRAWS something — and the fourteenth is the export, which draws nothing.
+    // The house order for a framework that fits (PO, 28/08/2026): boards, then
+    // base components with each external variant against its plain form, then
+    // the niche ones, then what joins them and what frames them.
     expect(toolbox.map(c => c.id)).toEqual([
-      // The seven a C4 diagram cannot be drawn without…
+      'c4.addBoard',
       'c4.addPerson',
+      'c4.addPersonExt',
       'c4.addSystem',
+      'c4.addSystemExt',
       'c4.addContainer',
       'c4.addComponent',
-      'c4.relationshipTool',
-      'c4.addBoard',
       'c4.addDatabase',
-      // …then the frames drawn inside one, the remaining container flavours,
-      // and the two "somebody else owns this" variants.
-      'c4.addSystemBoundary',
-      'c4.addContainerBoundary',
       'c4.addMobile',
       'c4.addBrowser',
-      'c4.addPersonExt',
-      'c4.addSystemExt',
+      'c4.relationshipTool',
+      'c4.addSystemBoundary',
+      'c4.addContainerBoundary',
     ]);
     expect(toolbox).toHaveLength(13);
     // The export is the one command that is not a senior slot.
@@ -171,10 +171,11 @@ describe('the c4 command inventory', () => {
 
   it('groups the catalogue into four sections, in first-encounter order', () => {
     const groups = catalogueGroups();
+    // Boards first, so `diagrams` is the section the panel opens with.
     expect(groups.map(group => group.category)).toEqual([
+      'diagrams',
       'elements',
       'relations',
-      'diagrams',
       'boundaries',
     ]);
     // One group per category, no trailing uncategorised group, and every
@@ -207,13 +208,17 @@ describe('the c4 command inventory', () => {
    *
    * A FIFTEENTH entry of any kind tips it over: a deployment node, a
    * code-level element, a second export. The ranking then kicks in and a user
-   * with no history meets the first seven of the catalogue — which is why they
-   * are the four levels, the relationship, the board and the database rather
-   * than seven ways to draw a box. BPMN learned that in a live recette (#144);
-   * the second half of this test is what applies the lesson before the overflow
-   * rather than after it, by asserting what the cold start WOULD be.
+   * with no history meets the first seven of the catalogue. BPMN learned that in
+   * a live recette (#144); the second half of this test is what applies the
+   * lesson before the overflow rather than after it, by asserting what the cold
+   * start WOULD be.
+   *
+   * Those seven are no longer the four levels and the line between them: the
+   * PO's boards-first convention (28/08/2026) supersedes that reading. The
+   * catalogue now opens with the SHEET, then the two most-drawn levels with
+   * their external variants beside them, then the container and the component.
    */
-  it('does not overflow, and would lead with seven that draw a diagram', () => {
+  it('does not overflow, and would lead with the board and five levels', () => {
     const catalogue = [...c4Commands]
       .filter(c => c.surfaces.includes('catalogue'))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -227,18 +232,30 @@ describe('the c4 command inventory', () => {
     expect(overflow, 'c4 now overflows — re-read this test').toBe(false);
     expect(commands).toHaveLength(13);
 
-    // What the cold start would be the day it tips over. Four levels, the line
-    // between any two of them, the sheet they are drawn on, and the container
-    // flavour every real system has one of. That is a diagram.
+    // What the cold start would be the day it tips over: the sheet first, then
+    // the people and the systems with their external variants beside them, then
+    // the container and the component. The PO's boards-first convention
+    // (28/08/2026), not the canonical-core-first order it replaced.
+    // #167 widened the ranked slots to thirteen (seven recent + six frequent),
+    // so the would-be cold start is no longer a seven-entry head: it is the
+    // WHOLE toolbox in the PO's boards-first author order — the sheet first,
+    // the levels with their external variants beside them, the line, and the
+    // two frames last.
     expect(catalogue.slice(0, SENIOR_MENU_RANKED_SLOTS).map(c => c.id)).toEqual(
       [
+        'c4.addBoard',
         'c4.addPerson',
+        'c4.addPersonExt',
         'c4.addSystem',
+        'c4.addSystemExt',
         'c4.addContainer',
         'c4.addComponent',
-        'c4.relationshipTool',
-        'c4.addBoard',
         'c4.addDatabase',
+        'c4.addMobile',
+        'c4.addBrowser',
+        'c4.relationshipTool',
+        'c4.addSystemBoundary',
+        'c4.addContainerBoundary',
       ]
     );
   });
