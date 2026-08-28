@@ -15,6 +15,7 @@ import {
   type InterchangeReport,
 } from '../extensions/interchange.js';
 import {
+  importInterchangeFile,
   interchangeImportersByExtension,
   materializeInterchangeImport,
   reportInterchangeImport,
@@ -32,25 +33,24 @@ import {
  * thing the materializer ever knew about a format was the key its payload rides
  * under.
  *
- * `runInterchangeImportFile` is exercised end to end through BPMN's delegate
+ * The gesture is exercised end to end, dialog and all, through BPMN's delegate
  * (`gfx/bpmn/src/__tests__/import-command.unit.spec.ts`), where a real reader
- * and a real `.bpmn` file make the pipeline mean something. What is pinned HERE
- * is the one step of it that is pure arithmetic over any format's output — the
- * viewport fit — because a regression in it would otherwise be caught only in
- * the BPMN package, and the next framework to call this function would inherit
- * a bug nobody's tests were watching.
+ * and a real `.bpmn` file make it mean something. What is pinned HERE is the
+ * step that is pure arithmetic over any format's output — the viewport fit —
+ * because a regression in it would otherwise be caught only in the BPMN
+ * package, and the next framework to call this code would inherit a bug
+ * nobody's tests were watching.
  *
- * The picker is mocked and nothing else is: `openSingleFileWithSpec` is a
- * browser dialog, and there is no version of it that answers in a unit suite.
+ * **Nothing is mocked, and that is deliberate.** This file is run by the
+ * surface package's BROWSER project, which shares one chromium context across
+ * every spec in it (`isolate: false`), so which module a `vi.mock` intercepts
+ * depends on which spec imported it first — a test that passed alone here and
+ * failed in CI. {@link importInterchangeFile} takes the file as an ARGUMENT
+ * precisely so the pipeline can be proven without reaching for the bundler; the
+ * picker in front of it is one line, and the filter it builds is pinned where
+ * it can be observed for real, on the mounted input
+ * (`affine-shared/src/__tests__/utils/filesys.unit.spec.ts`).
  */
-
-const picked = vi.hoisted(() => ({ file: vi.fn() }));
-
-vi.mock('@labre/affine-shared/utils', async importOriginal => {
-  const actual =
-    await importOriginal<typeof import('@labre/affine-shared/utils')>();
-  return { ...actual, openSingleFileWithSpec: picked.file };
-});
 
 /* ── The stubs ────────────────────────────────────────────────────────── */
 
@@ -380,8 +380,11 @@ describe('running an import from a file', () => {
     run,
   });
 
+  /** A file the caller already holds — a drop, a paste, or a picker's answer. */
+  const fileOf = (name = 'process.owm') =>
+    ({ name, text: () => Promise.resolve('anything') }) as unknown as File;
+
   beforeEach(() => {
-    picked.file.mockReset();
     vi.restoreAllMocks();
   });
 
@@ -398,12 +401,8 @@ describe('running an import from a file', () => {
     // it inherits the fix and not just the code.
     const { std, surface, setViewportByBound, setTool, captureSync } =
       stubEditor();
-    picked.file.mockResolvedValue({
-      name: 'process.owm',
-      text: () => Promise.resolve('anything'),
-    });
 
-    await runInterchangeImportFile(std, capabilityOf(farFromOrigin));
+    await importInterchangeFile(std, capabilityOf(farFromOrigin), fileOf());
 
     // There has to BE a zero-area element, or the test proves nothing.
     expect(
@@ -426,10 +425,39 @@ describe('running an import from a file', () => {
     expect(setTool).toHaveBeenCalledTimes(1);
   });
 
-  it('draws nothing and asks for no file on a read-only document', async () => {
+  it('names what is wrong with a file it cannot read, and draws nothing', async () => {
+    const { std, surface, notify, setViewportByBound } = stubEditor();
+    const refused = () => {
+      // A reader's own sentence, which knows which of its refusals this was.
+      throw new Error('The root element is not a `definitions`.');
+    };
+
+    await importInterchangeFile(std, capabilityOf(refused), fileOf());
+
+    expect(surface.added).toEqual([]);
+    expect(setViewportByBound).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledTimes(1);
+    const failure = notify.mock.calls[0][0];
+    expect(failure.title).toBe('This file could not be imported');
+    expect(failure.accent).toBe('error');
+    // Shown as it is: a wording of ours would know less than the reader's.
+    expect(failure.message).toBe('The root element is not a `definitions`.');
+  });
+
+  it('draws nothing on a read-only document, whichever door is used', async () => {
     const { std, surface } = stubEditor({ readonly: true });
+
+    // The door a host uses, with the file already in hand.
+    await importInterchangeFile(std, capabilityOf(farFromOrigin), fileOf());
+    expect(surface.added).toEqual([]);
+
+    // …and the door a command uses, which must not even OPEN a dialog a
+    // read-only document could not honour. Asserted on the DOM rather than on
+    // a mocked module: the fallback picker mounts `.affine-upload-input` and
+    // waits, so its absence is the real evidence, in every environment this
+    // file runs in.
     await runInterchangeImportFile(std, capabilityOf(farFromOrigin));
-    expect(picked.file).not.toHaveBeenCalled();
+    expect(document.querySelector('.affine-upload-input')).toBeNull();
     expect(surface.added).toEqual([]);
   });
 });

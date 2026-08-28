@@ -28,12 +28,20 @@ still decided by the reader, which refuses anything that is not a BPMN
 **Under it, the import glue became the platform's rather than BPMN's.** Writing
 an imported board onto the surface, repairing the connector ends that named the
 source file's ids, fitting the drawing into view, and saying what the import
-cost were written once for BPMN and were never about BPMN. They are now four
+cost were written once for BPMN and were never about BPMN. They are now five
 functions in `@labre/affine-block-surface` — `materializeInterchangeImport`,
-`reportInterchangeImport`, `runInterchangeImportFile` and
-`interchangeImportersByExtension` — and they are the **public import API**: a
-host builds its own canvas import UI on them, and a framework's import command
+`reportInterchangeImport`, `importInterchangeFile`, `runInterchangeImportFile`
+and `interchangeImportersByExtension` — and they are the **public import API**:
+a host builds its own canvas import UI on them, and a framework's import command
 is one call. BPMN's own entry points are unchanged and behave identically.
+
+The two file-shaped entries are a pair, and a host wants the first of them:
+`importInterchangeFile(std, capability, file)` imports a `File` the caller
+ALREADY HAS — a drop, a paste, an "open with", a fetch from a document store —
+while `runInterchangeImportFile(std, capability)` is that same import with the
+picker in front of it, which is what a command wants. A drop zone must not be
+answered with a dialog, and neither should have to re-implement the id
+remapping or the viewport fit to avoid one.
 
 `interchangeImportersByExtension` answers "what could read a file called this",
 and answers with a **list**: `.svg` will be claimed by several frameworks at

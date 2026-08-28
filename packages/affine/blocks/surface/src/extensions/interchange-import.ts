@@ -40,7 +40,9 @@ import {
  *   capability, and that is the whole of its import glue;
  * - a **host** (labreapp) builds its own import surface — a drop zone, a
  *   sidepanel, a menu of everything readable — on
- *   {@link interchangeImportersByExtension} plus the same three functions;
+ *   {@link interchangeImportersByExtension} to decide WHAT can read the file it
+ *   was handed, and {@link importInterchangeFile} to run it: a drop zone
+ *   already holds the `File` and must not be answered with a dialog;
  * - **labre-mcp** calls no function here at all. It has no editor, so it calls
  *   `capability.run` directly and writes the props itself, which is exactly the
  *   purity P3 buys.
@@ -275,11 +277,8 @@ export function reportInterchangeImport(
  * Read a file the user picks with one declared capability, draw it, and say
  * what it cost.
  *
- * Four steps, and the middle one is never re-implemented: pick the file, run
- * the DECLARED capability (`docs/adr/0012`), write what it returned, report.
- * `capability.run` is the same function labre-mcp calls, so a command and the
- * registry cannot read the same file differently — one door, and the registry
- * is the label on it.
+ * Two steps, and neither is re-implemented anywhere: ask for a file, then hand
+ * it to {@link importInterchangeFile}, which is the rest of the gesture.
  *
  * ## The picker filter is the FORMAT's, not a table's
  *
@@ -291,20 +290,9 @@ export function reportInterchangeImport(
  * puts both halves into `input.accept` precisely because extensions like
  * `.bpmn` are registered with no operating system on earth.
  *
- * ## What arrives is a NEW board, never a merge
- *
- * The elements are added beside whatever is already on the surface. That is the
- * bottom row of a reader's own loss table — surface identity across a
- * re-import is lost — and it is the honest behaviour: two boards the user can
- * see and delete beats a merge that silently rewrote artefacts they had edited.
- *
- * ## Failure is an exception, and it says which one
- *
- * A reader THROWS on a file it cannot read, because the five note kinds cannot
- * say "this is not a file I can read" and a report of three zeroes would claim
- * an empty document where there was none. The sentence it throws names which of
- * its refusals it was, so it is shown as it is rather than replaced with a
- * wording of our own that knows less.
+ * The read-only guard is here as well as inside `importInterchangeFile`, and
+ * deliberately so: a dialog a document cannot honour should never open in the
+ * first place.
  */
 export async function runInterchangeImportFile(
   std: BlockStdScope,
@@ -321,6 +309,56 @@ export async function runInterchangeImportFile(
   // The user closed the picker. Not a failure, and not a notification: they
   // know what they just did.
   if (!file) return;
+
+  await importInterchangeFile(std, capability, file);
+}
+
+/**
+ * The import itself, over a file the caller ALREADY HAS: run the declared
+ * capability (`docs/adr/0012`), write what it returned, bring it into view, and
+ * say what it cost.
+ *
+ * ## Why this is separate from the picker
+ *
+ * Because a picker is one way to be handed a file and not the only one. A host
+ * drop zone has the `File` the moment somebody lets go of it; so does a paste,
+ * an "open with", and a fetch from a document store. Every one of those wants
+ * the four steps below and none of them wants a dialog — and a seam that only
+ * exists behind `showOpenFilePicker` forces each of them to re-implement the id
+ * remapping and the viewport fit, which is the duplication this whole file was
+ * written to end.
+ *
+ * It is also the honest testing seam. A test that has to intercept a MODULE to
+ * reach this code is a test coupled to the bundler; passing the file in is one
+ * argument, and it means the pipeline is proven the same way in every
+ * environment the library runs in. `capability.run` is the same function
+ * labre-mcp calls, so a command, a drop zone and the registry cannot read the
+ * same file differently — one door, and the registry is the label on it.
+ *
+ * ## What arrives is a NEW board, never a merge
+ *
+ * The elements are added beside whatever is already on the surface. That is the
+ * bottom row of a reader's own loss table — surface identity across a
+ * re-import is lost — and it is the honest behaviour: two boards the user can
+ * see and delete beats a merge that silently rewrote artefacts they had edited.
+ *
+ * ## Failure is an exception, and it says which one
+ *
+ * A reader THROWS on a file it cannot read, because the five note kinds cannot
+ * say "this is not a file I can read" and a report of three zeroes would claim
+ * an empty document where there was none. The sentence it throws names which of
+ * its refusals it was, so it is shown as it is rather than replaced with a
+ * wording of our own that knows less.
+ */
+export async function importInterchangeFile(
+  std: BlockStdScope,
+  capability: InterchangeImportCapability,
+  file: File
+): Promise<void> {
+  const gfx = std.get(GfxControllerIdentifier);
+  if (!gfx.surface || std.store.readonly) return;
+
+  const { format } = capability;
 
   let result: InterchangeImportResult;
   try {
