@@ -48,14 +48,21 @@ export type ConnectorToolOptions = {
    */
   role?: string;
   /**
-   * Look of the edges drawn while this activation lasts — a framework toolbox
-   * arms its flow's style here (e.g. solid + filled triangle for a BPMN
-   * sequence flow). Applied at creation only, where explicit props win over
-   * the user's last plain-connector props, and NEVER recorded into
-   * `EditPropsStore`: arming a typed flow must not restyle the plain
-   * connector tool (BPMN 2.0 p.40 — other connectors must not adopt a flow's
-   * line style). Left out for the plain tool, which keeps drawing with the
-   * user's own last props.
+   * The FIVE stroke-and-marker props a framework toolbox arms its flow with
+   * (e.g. solid + filled triangle for a BPMN sequence flow) — the ones the
+   * stencils actually distinguish each other by. Applied at creation only,
+   * where explicit props win over the user's last plain-connector props, and
+   * NEVER recorded into `EditPropsStore`: arming a typed flow must not restyle
+   * the plain connector tool (BPMN 2.0 p.40 — other connectors must not adopt
+   * a flow's line style). Left out for the plain tool, which keeps drawing
+   * with the user's own last props.
+   *
+   * Deliberately NOT the whole look: a connector's other styled props —
+   * `rough`, `labelStyle` and the rest — are outside this bag and still come
+   * from the user's last plain-connector props, exactly as they did before
+   * this option existed. No framework declares them today, so nothing is lost;
+   * a framework that needs one must widen this `Pick` rather than reach for
+   * the store.
    */
   style?: Partial<
     Pick<

@@ -14,9 +14,11 @@ import { getRegisteredCommands, runCommand } from '@labre/affine/std';
 // `@labre/affine` re-exports the blocks, not the framework modules.
 import { BPMN_ROLE } from '@labre/affine-gfx-bpmn';
 import { C4_ROLE } from '@labre/affine-gfx-c4';
+import { EDGELESS_TOOLBAR_WIDGET } from '@labre/affine/widgets/edgeless-toolbar';
 import type { BlockStdScope } from '@labre/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -35,6 +37,7 @@ import { setupEditor } from '../utils/setup.js';
 describe('framework flow styles never leak into the plain connector', () => {
   let service!: EdgelessRootBlockComponent['service'];
   let std!: BlockStdScope;
+  let root!: EdgelessRootBlockComponent;
 
   beforeEach(async () => {
     sessionStorage.removeItem('blocksuite:prop:record');
@@ -42,8 +45,28 @@ describe('framework flow styles never leak into the plain connector', () => {
     const edgelessRoot = getDocRootBlock(window.doc, window.editor, 'edgeless');
     service = edgelessRoot.service;
     std = edgelessRoot.std;
+    root = edgelessRoot;
     return cleanup;
   });
+
+  /**
+   * Depth-first walk through open shadow roots — the toolbar nests its quick
+   * tools a few custom elements deep, and the exact depth is the toolbar's
+   * business, not this spec's.
+   */
+  const deepQuery = <T extends Element>(
+    from: ParentNode,
+    selector: string
+  ): T | null => {
+    const direct = from.querySelector<T>(selector);
+    if (direct) return direct;
+    for (const element of from.querySelectorAll('*')) {
+      if (!element.shadowRoot) continue;
+      const found = deepQuery<T>(element.shadowRoot, selector);
+      if (found) return found;
+    }
+    return null;
+  };
 
   const addShape = () => {
     const id = service.crud.addElement('shape', {
@@ -161,6 +184,83 @@ describe('framework flow styles never leak into the plain connector', () => {
     expect(plain.strokeStyle).toBe(StrokeStyle.Solid);
     expect(plain.frontEndpointStyle).toBe(PointStyle.None);
     expect(plain.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(plain.strokeWidth).toBe(10);
+  });
+
+  /**
+   * The OTHER half of the promise, and the half nothing was guarding: the plain
+   * tool's own menu must still record. Every assertion above is about a store
+   * that does NOT move, and a store that never moves at all would satisfy all
+   * of them — deleting `recordLastProps` from `connector-tool-button.ts` used
+   * to leave five spec files green.
+   *
+   * So this one sets the style the way a user does: through the real connector
+   * tool button, whose menu `onChange` is the legitimate recording site. The
+   * width must then survive a framework activation and reappear on the next
+   * plain edge.
+   */
+  test('the plain tool still records what the user picks in its own menu', async () => {
+    const shape = addShape();
+
+    const toolbar = root.widgetComponents[
+      EDGELESS_TOOLBAR_WIDGET
+    ] as unknown as HTMLElement | undefined;
+    expect(
+      toolbar?.shadowRoot,
+      'the edgeless toolbar is not mounted'
+    ).toBeTruthy();
+
+    const button = deepQuery<HTMLElement>(
+      toolbar!.shadowRoot!,
+      'edgeless-connector-tool-button'
+    );
+    expect(
+      button,
+      'the connector quick tool is not on the toolbar'
+    ).toBeTruthy();
+
+    // Click the real button: it arms the plain tool AND opens its menu, which
+    // is where the recording callback is wired.
+    const icon = button!.shadowRoot?.querySelector<HTMLElement>(
+      'edgeless-tool-icon-button'
+    );
+    expect(icon, 'the connector button renders no icon button').toBeTruthy();
+    icon!.click();
+    await wait(50);
+
+    const menu = button!.shadowRoot?.querySelector(
+      'edgeless-connector-menu'
+    ) as { onChange?: (props: Record<string, unknown>) => void } | null;
+    expect(menu?.onChange, 'the connector menu got no onChange').toBeTypeOf(
+      'function'
+    );
+
+    // Exactly what the line-width panel emits when the user picks a width.
+    menu!.onChange!({ strokeWidth: 10 });
+    await wait(50);
+
+    // It landed in the store — this is the write the framework activations are
+    // forbidden from making, and the plain tool is required to make.
+    expect(std.get(EditPropsStore).lastProps$.value.connector.strokeWidth).toBe(
+      10
+    );
+
+    // A framework activation in between must not disturb it…
+    const command = getRegisteredCommands(std).find(
+      candidate => candidate.id === 'bpmn.sequenceFlowTool'
+    );
+    expect(command, 'bpmn.sequenceFlowTool is not registered').toBeTruthy();
+    runCommand(std, command!, {
+      surface: 'senior-menu',
+      source: 'toolbar:general',
+    });
+    const flow = draw(shape);
+    expect(flow.role).toBe(BPMN_ROLE.sequenceFlow);
+
+    // …and the width the user picked is still what the plain tool draws with.
+    service.gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
+    const plain = draw(shape);
+    expect(plain.yMap.has('role')).toBe(false);
     expect(plain.strokeWidth).toBe(10);
   });
 });

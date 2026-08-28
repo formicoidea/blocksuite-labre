@@ -26,6 +26,10 @@ import { commandTelemetryReporter } from '../../extensions/command-telemetry.js'
  */
 const byId = new Map(getCommands().map(c => [c.id, c]));
 
+/** What the connector trap throws, and the only failure the sweep rethrows. */
+const CONNECTOR_LEAK =
+  'a framework activation must never record the connector last props (#144 M1)';
+
 interface Captured {
   event: string;
   payload: Record<string, unknown>;
@@ -36,13 +40,28 @@ interface Captured {
  * `!gfx.surface` — this test is about the emission, not the geometry — and the
  * connector tools, which do not bail, only need `gfx.tool.setTool`.
  */
-function stubStd(events: Captured[]) {
+function stubStd(
+  events: Captured[],
+  onSetTool?: (tool: { toolName?: string } | undefined) => void
+) {
   const telemetry = {
     track: (event: string, payload: Record<string, unknown>) =>
       events.push({ event, payload }),
   };
   const services = {
-    recordLastProps: () => {},
+    // KEY-SCOPED trap, not a no-op recorder: a framework activation that
+    // recorded the connector's last props would dress the next PLAIN connector
+    // in its own costume (#144 M1). `shape` and `mindmap` recorders are the
+    // ordinary creation path and stay welcome.
+    //
+    // The trap only bites what actually runs, which is why the registry-wide
+    // sweep below exists: the hand-picked lists in this file reach eight
+    // commands, and the invariant is about all of them.
+    recordLastProps: (key: string) => {
+      if (key === 'connector') {
+        throw new Error(CONNECTOR_LEAK);
+      }
+    },
     lastUsedStyle$: { value: {} },
     updateElement: () => {},
   };
@@ -64,7 +83,9 @@ function stubStd(events: Captured[]) {
   const gfx = {
     surface: undefined,
     std,
-    tool: { setTool: () => {} },
+    tool: {
+      setTool: (tool?: { toolName?: string }) => onSetTool?.(tool),
+    },
     selection: { selectedElements: [], editing: false, set: () => {} },
     viewport: { centerX: 0, centerY: 0, zoom: 1 },
     doc: { captureSync: () => {} },
@@ -265,5 +286,48 @@ describe('the stub really executes the command body', () => {
     // rides on the tool options, never through EditPropsStore (#144 M1).
     expect(tools[0][1].role).toBe('wardley:dependency');
     expect(tools[0][1].style).toMatchObject({ strokeStyle: 'solid' });
+  });
+});
+
+/**
+ * Review #144 M1, swept across the WHOLE registry.
+ *
+ * Nine commands arm the native connector tool for a typed edge, and every one
+ * of them must dress its own edges through `ConnectorToolOptions.style` rather
+ * than through the shared `EditPropsStore` — a framework look written to the
+ * store comes back out on the next PLAIN connector, which BPMN 2.0 p.40
+ * forbids. Six of the nine were fixed under review #144; three more (C4's
+ * relationship, BPMN's message flow and its association) arrived afterwards
+ * and reproduced the bug verbatim. That is the whole reason this is a sweep
+ * and not another hand-written list: the tenth framework will be written by
+ * someone who never read the review.
+ *
+ * `stubStd`'s recorder is the trap; here it simply runs against everything.
+ */
+describe('no framework activation records the connector last props', () => {
+  test('every command in the registry, not a hand-picked few', () => {
+    const armedConnector = new Set<string>();
+
+    for (const command of getCommands()) {
+      const std = stubStd([], tool => {
+        if (tool?.toolName === 'connector') armedConnector.add(command.id);
+      });
+      try {
+        runCommand(std, command, fromMenu);
+      } catch (error) {
+        // The leak is the ONLY failure this sweep is about. Anything else is a
+        // command asking the deliberately minimal stub for something it does
+        // not carry — an export wanting a notifier, an import wanting a file
+        // picker — and belongs to that command's own spec, not to this one.
+        if (error instanceof Error && error.message === CONNECTOR_LEAK) {
+          throw new Error(`${command.id}: ${error.message}`);
+        }
+      }
+    }
+
+    // A sweep that reached no connector activation would pass while proving
+    // nothing, so it has to say how many it saw. Nine today, and the floor only
+    // ever moves up: frameworks get added, not removed.
+    expect(armedConnector.size).toBeGreaterThanOrEqual(9);
   });
 });
