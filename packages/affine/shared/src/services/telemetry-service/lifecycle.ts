@@ -119,11 +119,53 @@ export interface EdgeDirectionEvent extends TelemetryEvent {
   elementCount: number;
 }
 
+/**
+ * A framework element became a NEARBY kind of itself — a task said more
+ * precisely as a user task, a start event as a timer start — from its own
+ * contextual toolbar, in one atomic write.
+ *
+ * **A new event name, for the reason {@link FrameworkPromotionEvent} gives.**
+ * ADR 0003 § 2 defines the creation event as UI intent emitted at INSERTION
+ * sites, and a morph inserts nothing: no element is created, destroyed or
+ * swapped, no id changes, no geometry moves and no connector is re-pointed.
+ * Reusing `FrameworkElementAdded` would count a drawn-then-refined artefact
+ * twice and inflate "elements added per framework" permanently.
+ *
+ * Worth measuring on its own, too. The set of reachable kinds is DATA a
+ * framework declares by hand, and the only evidence that a declared family is
+ * the right family is how often it is actually crossed — a pair nobody ever
+ * morphs between did not need to be offered, and a morph users reach for
+ * constantly says the palette led them to the wrong artefact first.
+ *
+ * Ids only: the two roles, and their framework. Never a kind's board content,
+ * never the element ids, never the label anybody typed.
+ */
+export interface FrameworkElementMorphedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /**
+   * Owning framework — the declaration's own wire key, matching what
+   * `reportCommandTelemetry` sends for that framework's commands.
+   *
+   * OPTIONAL for the same reason it is on {@link FrameworkPromotionEvent}: the
+   * capability is generic, and an element type may one day declare a morph
+   * without belonging to a framework the union names. Absent rather than
+   * `'unknown'`, per the repo convention.
+   */
+  framework?: FrameworkId;
+  /** Role id the selection carried, when they all carried the same one. */
+  fromRole?: string;
+  /** Role id it now carries. */
+  toRole?: string;
+  /** How many elements the single gesture actually rewrote. */
+  elementCount: number;
+}
+
 export type FrameworkDiagramEvents = {
   FrameworkElementAdded: FrameworkElementEvent;
   FrameworkToolPicked: FrameworkElementEvent;
   FrameworkLegendCreated: FrameworkElementEvent;
   FrameworkElementPromoted: FrameworkPromotionEvent;
+  FrameworkElementMorphed: FrameworkElementMorphedEvent;
   EdgeDirectionInverted: EdgeDirectionEvent;
 };
 

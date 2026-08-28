@@ -81,6 +81,25 @@ role, and therefore belonging to no framework. Ids only: the event says which
 rung was crossed, never what the board contains, and never the `pivotDocId`
 itself.
 
+## Morphing an artefact into a nearby kind
+
+A framework element can become a NEARBY kind of itself — a task said more
+precisely as a user task — from its own contextual toolbar. Geometry,
+connections and label are untouched; `kind` and `role` are rewritten together.
+
+| Event                     | When                                            | Required props |
+| ------------------------- | ----------------------------------------------- | -------------- |
+| `FrameworkElementMorphed` | the user picks a nearby kind from the drop-down | `elementCount` |
+
+A fifth framework event and, like `FrameworkElementPromoted`, deliberately not
+a creation: a morph inserts nothing, so emitting `FrameworkElementAdded` would
+count a drawn-then-refined artefact twice and inflate "elements added per
+framework" forever. `framework`, `fromRole` and `toRole` are optional and carry
+ids only — never board content, never the element ids. A gesture that changes
+nothing emits nothing. The reachable set is a table each framework declares by
+hand, and this event is the only evidence that the table is the right one: a
+pair nobody ever crosses did not need to be offered.
+
 ## The direction of a typed edge (ADR 0010)
 
 For a connector carrying an edge role, the persisted `source → target` pair IS

@@ -11,6 +11,7 @@ export * from './interchange-import';
 export * from './legacy-slot-extension';
 export * from './map-quality';
 export * from './map-quality-widget';
+export * from './morph-toolbar';
 export * from './query';
 export * from './reading';
 export * from './reading-toolbar';

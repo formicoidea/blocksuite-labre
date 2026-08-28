@@ -239,3 +239,81 @@ export function bpmnNodeProps(
     xywh: box.xywh,
   };
 }
+
+/**
+ * The box {@link bpmnMorphProps} hands {@link bpmnNodeProps} and then throws
+ * away. Never written to a document: a morph keeps the geometry the element
+ * already has, and this exists only because the one builder takes a box.
+ */
+const DISCARDED_BOX = '[0,0,0,0]';
+
+/** What a morph must never rewrite: identity, geometry, and the user's words. */
+const NOT_A_MORPH = ['type', 'xywh', 'text'] as const;
+
+/**
+ * What a node's kind is worth to an element that ALREADY EXISTS — the same
+ * description as {@link bpmnNodeProps}, minus the three things a morph has no
+ * business touching.
+ *
+ * Derived from the creation builder rather than restated beside it, and that is
+ * the whole point of the function.
+ *
+ * ## Why a `{kind, role}` patch is not enough
+ *
+ * Because the appearance of a BPMN artefact lives in props the CREATING kind's
+ * preset wrote, and nothing else ever rewrites them. One shipped morph pair
+ * shows it today: `subProcess` and `callActivity` are the same rounded
+ * rectangle and differ only in `strokeWidth` — 2 against 4 — and that thick
+ * border IS how a reader tells "this box stands for a process defined
+ * elsewhere" from "this box stands for one defined inline". Morph between them
+ * with two keys and the call activity arrives wearing the sub-process's thin
+ * border, which is a drawing that says the wrong thing.
+ *
+ * Every other family declared in `./morph.ts` currently shares one preset
+ * across its members, so for those the full patch changes nothing — and that is
+ * the second reason to write it this way rather than to trim it. A family is
+ * DATA (`BPMN_MORPH_FAMILIES`) and grows by declaration, with no code change to
+ * prompt anyone to ask whether the presets still agree; deriving the patch from
+ * the creation builder means the answer is right in advance. It is also what
+ * guarantees that a morphed artefact and one drawn fresh from the palette are
+ * the same element — two builders would agree the day they were written and
+ * drift on the first restyle, which is the argument this file already makes for
+ * having one creation builder at all.
+ */
+export function bpmnMorphProps(kind: BpmnNodeKind): Record<string, unknown> {
+  // Widened to the plain record on the way in: `type` is required on what the
+  // creation builder returns, and `delete` may only take an optional key.
+  const props: Record<string, unknown> = {
+    ...bpmnNodeProps(kind, { xywh: DISCARDED_BOX }),
+  };
+  for (const key of NOT_A_MORPH) delete props[key];
+  return props;
+}
+
+/**
+ * Every key ANY kind's props may carry — the union over the whole pack.
+ *
+ * Computed rather than listed, so a preset that starts spreading a second
+ * conditional key is covered on the day it is added rather than on the day
+ * somebody notices.
+ */
+const EVERY_MORPH_KEY = new Set(
+  (Object.keys(NODE_PRESETS) as BpmnNodeKind[]).flatMap(kind =>
+    Object.keys(bpmnMorphProps(kind))
+  )
+);
+
+/**
+ * The fields to DELETE from an element after morphing it to `kind` — the keys
+ * some other kind writes and this one does not.
+ *
+ * A patch cannot express absence. `textVerticalAlign` is spread conditionally
+ * (see {@link bpmnNodeProps}), so morphing away from the group would leave
+ * `Top` sitting in the Y.Map and silently in force over a preset that means
+ * "centred". `clearField` removes the key, which is the same call `writeLanes`
+ * makes when a pool loses its last lane.
+ */
+export function bpmnMorphClears(kind: BpmnNodeKind): readonly string[] {
+  const present = new Set(Object.keys(bpmnMorphProps(kind)));
+  return [...EVERY_MORPH_KEY].filter(key => !present.has(key));
+}

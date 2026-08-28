@@ -1,18 +1,22 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
+  applyMorph,
   backgroundInstanceZoneBand,
   backgroundInstanceZones,
   backgroundPlot,
+  morphToolbarConfig,
 } from '@labre/affine/blocks/surface';
 // Straight off the framework package, as the connector and template specs
 // already reach for theirs: `@labre/affine` re-exports the blocks, not the
 // framework modules.
 import {
+  BPMN_MORPH_SPEC,
   BPMN_POOL_BACKGROUND,
   BPMN_ROLE,
   BPMN_ROLE_OF_KIND,
   bpmnBoardOf,
   bpmnLaneOf,
+  bpmnMorphProps,
   bpmnPoolOf,
   exportBpmnXml,
   importBpmnXml,
@@ -31,7 +35,13 @@ import {
 import {
   COMMAND_USAGE_KEY,
   EditPropsStore,
+  ToolbarContext,
+  ToolbarRegistryIdentifier,
 } from '@labre/affine/shared/services';
+import {
+  AFFINE_TOOLBAR_WIDGET,
+  type AffineToolbarWidget,
+} from '@labre/affine/widgets/toolbar';
 import {
   type AnyCommandDescriptor,
   getCommandsForSurface,
@@ -42,6 +52,7 @@ import {
 } from '@labre/affine/std';
 import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
 import { ContextProvider } from '@lit/context';
+import { render, type TemplateResult } from 'lit';
 import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -1178,5 +1189,250 @@ describe('the BPMN XML import, end to end', () => {
     }
     // …and exactly one step: what was on the board before is still there.
     expect(surface.getElementById(before)).not.toBeNull();
+  });
+});
+
+/**
+ * Morphing a node into a NEARBY kind, end to end.
+ *
+ * The unit suites own the two halves: when the generic dropdown stands up
+ * (surface) and what BPMN's own families and patches say (gfx/bpmn). What only
+ * a real editor can answer is what a user actually notices — that the box does
+ * not move, that the sequence flow attached to the node survives, that the
+ * words survive, that the border of a call activity really does thicken, and
+ * that one ctrl+z puts the artefact back.
+ */
+describe('morphing a BPMN node into a nearby kind', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  /** Draw one artefact through the registered command, as the sub-menu does. */
+  const draw = async (commandId: string) => {
+    const command = getRegisteredCommands(edgeless.std).find(
+      c => c.id === commandId
+    );
+    expect(command, commandId).toBeDefined();
+    runCommand(edgeless.std, command!, {
+      surface: 'senior-menu',
+      source: 'toolbar:general',
+    });
+    await wait();
+
+    const surface = getSurface(window.doc, window.editor).model;
+    const nodes = surface.elementModels.filter(
+      model => model.type === 'bpmnNode'
+    ) as BpmnNodeElementModel[];
+    return nodes[nodes.length - 1];
+  };
+
+  /**
+   * The toolbar context a click would carry.
+   *
+   * The registry's two signals are set here rather than waited for: they are
+   * what the toolbar widget writes when the selection changes, and driving them
+   * directly keeps this spec about the MORPH instead of about the widget's
+   * render timing. The canvas selection is set too, so the document and the
+   * context agree about what is selected.
+   */
+  const select = (...nodes: BpmnNodeElementModel[]) => {
+    edgeless.gfx.selection.set({
+      elements: nodes.map(node => node.id),
+      editing: false,
+    });
+    const registry = edgeless.std.get(ToolbarRegistryIdentifier);
+    registry.flavour$.value = 'affine:surface:bpmnNode';
+    registry.elementsMap$.value = new Map([['affine:surface:bpmnNode', nodes]]);
+    return new ToolbarContext(edgeless.std);
+  };
+
+  /**
+   * The same selection, made the way the real toolbar makes it.
+   *
+   * `select` above writes the registry's two signals itself, which is
+   * deterministic and keeps most of these cases about the MORPH. This one goes
+   * through the widget's own `updateWithSurface` — the method the selection
+   * subscription calls — so that the flavour those tests hand-write is proved
+   * to be the flavour the editor actually derives for a bpmn node. Without it,
+   * every case here would still pass against a module registered on a key the
+   * toolbar never asks for.
+   */
+  const selectThroughWidget = (...nodes: BpmnNodeElementModel[]) => {
+    edgeless.gfx.selection.set({
+      elements: nodes.map(node => node.id),
+      editing: false,
+    });
+    const widget = edgeless.widgetComponents[
+      AFFINE_TOOLBAR_WIDGET
+    ] as AffineToolbarWidget;
+    expect(widget).toBeDefined();
+
+    const ctx = new ToolbarContext(edgeless.std);
+    widget.updateWithSurface(
+      ctx,
+      true,
+      nodes.map(node => node.id)
+    );
+    return ctx;
+  };
+
+  test('the entry is registered on the node flavour', () => {
+    const registry = edgeless.std.get(ToolbarRegistryIdentifier);
+    // `affine:surface:bpmnNode` was a free slot: the toolbar merges by flavour
+    // KEY, so the shape module (bound to `affine:surface:shape`) never reaches
+    // a bpmn node however much of `ShapeElementModel` the class inherits — and
+    // nothing else had claimed this key.
+    const config = registry.getModuleBy('affine:surface:bpmnNode');
+    expect(config).toBeTruthy();
+    expect(config?.actions.map(action => action.id)).toContain('e.morph');
+  });
+
+  test('a task becomes a user task and keeps its box, its words and its wire', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const task = await draw('bpmn.addTask');
+    const end = await draw('bpmn.addEndEvent');
+
+    const connectorId = surface.addElement({
+      type: 'connector',
+      mode: ConnectorMode.Orthogonal,
+      role: BPMN_ROLE.sequenceFlow,
+      source: { id: task.id, position: [0.5, 0.5] },
+      target: { id: end.id, position: [0.5, 0.5] },
+    });
+    await wait(200);
+
+    const xywh = task.xywh;
+    const text = task.text?.toString();
+    expect(task.kind).toBe('task');
+    expect(text).toBe('Task');
+
+    applyMorph(select(task), BPMN_MORPH_SPEC, 'taskUser');
+    await wait(200);
+
+    // What changed: the two props that say what this artefact IS.
+    expect(task.kind).toBe('taskUser');
+    expect(task.role).toBe(BPMN_ROLE.taskUser);
+    // …and nothing else a user could point at. Same element, same id.
+    expect(task.xywh).toBe(xywh);
+    expect(task.text?.toString()).toBe(text);
+    expect(surface.getElementById(task.id)).toBe(task);
+
+    const connector = surface.getElementById(
+      connectorId
+    ) as ConnectorElementModel;
+    expect(connector.source.id).toBe(task.id);
+    expect(connector.path.length).toBeGreaterThan(0);
+  });
+
+  test('a sub-process becomes a call activity, and the border says so', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const node = await draw('bpmn.addSubProcess');
+    const before = node.strokeWidth;
+
+    // Put the key on the element FIRST, so the clearField path has something to
+    // clear. No BPMN preset but the group's writes `textVerticalAlign`, and the
+    // group is in no family — so without seeding it here the assertion below
+    // would pass against a `clearField` that was never called at all.
+    surface.updateElement(node.id, { textVerticalAlign: 'top' });
+    await wait();
+    expect(node.yMap.has('textVerticalAlign')).toBe(true);
+
+    applyMorph(selectThroughWidget(node), BPMN_MORPH_SPEC, 'callActivity');
+    await wait(200);
+
+    expect(node.kind).toBe('callActivity');
+    expect(node.role).toBe(BPMN_ROLE.callActivity);
+    // The hazard, on a live document: the thick border IS the distinction
+    // between these two, and a `{kind, role}` patch would have left the node
+    // looking exactly like the sub-process it no longer is.
+    expect(node.strokeWidth).not.toBe(before);
+    expect(node.strokeWidth).toBe(bpmnMorphProps('callActivity').strokeWidth);
+    // …and the key the target's preset does not write is GONE from the Y.Map,
+    // rather than left silently in force from whatever wrote it.
+    expect(node.yMap.has('textVerticalAlign')).toBe(false);
+  });
+
+  test('the dropdown draws the whole family, in order, with the current one lit', async () => {
+    const node = await draw('bpmn.addTask');
+    const ctx = selectThroughWidget(node);
+
+    const config = morphToolbarConfig(BPMN_MORPH_SPEC);
+    const action = config.actions[0] as {
+      content: (ctx: ToolbarContext) => TemplateResult | null;
+    };
+    const template = action.content(ctx);
+    expect(template).not.toBeNull();
+
+    // Rendered for real: `when` and the patch are covered by the unit suites,
+    // and a `content` that returned `null` would satisfy every one of them.
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      render(template, host);
+      await wait();
+
+      const options = Array.from(
+        host.querySelectorAll('[data-testid="element-morph-option"]')
+      );
+      // The activity family, in declaration order — which is menu order.
+      expect(options.map(el => el.getAttribute('data-value'))).toEqual([
+        'task',
+        'taskUser',
+        'taskService',
+      ]);
+      expect(options.map(el => el.getAttribute('aria-label'))).toEqual([
+        'Task',
+        'User task',
+        'Service task',
+      ]);
+      // Exactly one is lit, and it is what the selection currently is.
+      const active = options.filter(
+        el => (el as HTMLElement & { active?: boolean }).active
+      );
+      expect(active).toHaveLength(1);
+      expect(active[0].getAttribute('data-value')).toBe('task');
+
+      // …and clicking one is the gesture: same element, new kind.
+      (
+        options.find(el => el.getAttribute('data-value') === 'taskService') as
+          | HTMLElement
+          | undefined
+      )?.click();
+      await wait(200);
+      expect(node.kind).toBe('taskService');
+    } finally {
+      host.remove();
+    }
+  });
+
+  test('one undo puts the artefact back', async () => {
+    const node = await draw('bpmn.addTask');
+    window.doc.captureSync();
+
+    applyMorph(select(node), BPMN_MORPH_SPEC, 'taskService');
+    await wait(200);
+    expect(node.kind).toBe('taskService');
+
+    window.doc.undo();
+    await wait(200);
+
+    expect(node.kind).toBe('task');
+    expect(node.role).toBe(BPMN_ROLE.task);
+  });
+
+  test('an artefact with nothing to become is offered nothing', async () => {
+    const group = await draw('bpmn.addGroup');
+    const ctx = select(group);
+    const config = morphToolbarConfig(BPMN_MORPH_SPEC);
+
+    // A group is a lasso somebody drew round part of the process; there is no
+    // more precise version of it, so the dropdown never appears.
+    expect(
+      typeof config.when === 'function' ? config.when(ctx) : config.when
+    ).toBe(false);
   });
 });
