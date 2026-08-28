@@ -9,12 +9,9 @@ import { describe, expect, it } from 'vitest';
 
 import { C4_PROFILES } from '../profiles';
 import { C4_ROLE } from '../roles';
-import {
-  c4BoardToolbarExtension,
-  c4BoardToolingToolbarConfig,
-  c4BoardToolingToolbarExtension,
-  c4BoundaryValidationToolbarExtension,
-} from '../toolbar/config';
+// Namespace import: one of the pins below is about what this module does NOT
+// export, which a named import cannot express.
+import * as c4Toolbar from '../toolbar/config';
 import { C4_ELEMENT_MATRIX, C4_RELATIONSHIP_MATRIX, C4_RULES } from '../rules';
 
 /**
@@ -700,10 +697,18 @@ describe('the profile the finding is judged at', () => {
     }
   });
 
-  it('reaches the boundary rules through the boundary’s own choice', () => {
-    // The two membership rules are attributed to the BOUNDARY, so the level they
-    // are judged at is the one chosen there — which is why the validation
-    // dropdown is registered on the boundary as well as on the board.
+  it('judges a boundary-anchored finding by the BOUNDARY’s profile', () => {
+    // The mechanism, pinned at the grain this branch can actually test: a
+    // finding is judged by the profile of the frame it is ATTRIBUTED to, and the
+    // two membership rules are attributed to the boundary.
+    //
+    // The boundary carries no picker — the board alone arbitrates the checklist
+    // (PO, 28/08/2026) — so in the editor that profile arrives by INHERITANCE
+    // from the containing board (`inheritChosenProfiles`, added on
+    // `claude/c4-recette-wave2`). That engine change is not on this branch, so
+    // the profile is written directly here; the two meet at the merge, and the
+    // integration check to have then is: board on Review checklist ⇒ a homeless
+    // component reports `warning`.
     const strictBoundary = element(
       'bd',
       [200, 200, 520, 360],
@@ -736,9 +741,8 @@ describe('where the level of requirement can be chosen', () => {
    */
   it('claims each toolbar flavour exactly once', () => {
     const claims = [
-      c4BoardToolbarExtension,
-      c4BoardToolingToolbarExtension,
-      c4BoundaryValidationToolbarExtension,
+      c4Toolbar.c4BoardToolbarExtension,
+      c4Toolbar.c4BoardToolingToolbarExtension,
     ].map(extension => {
       let variant = '';
       const di = {
@@ -752,7 +756,6 @@ describe('where the level of requirement can be chosen', () => {
     expect(claims).toEqual([
       'affine:surface:c4Board',
       'custom:affine:surface:c4Board',
-      'custom:affine:surface:c4Boundary',
     ]);
     expect(new Set(claims).size).toBe(claims.length);
   });
@@ -761,14 +764,22 @@ describe('where the level of requirement can be chosen', () => {
     // `b.` after the always-on `a.toggle-resize`, `z.` last: the user sees
     // resize, legend, then the level, whatever order the modules registered in.
     expect(
-      c4BoardToolingToolbarConfig.actions.map(action => action.id)
+      c4Toolbar.c4BoardToolingToolbarConfig.actions.map(action => action.id)
     ).toEqual(['b.legend', 'z.validation']);
   });
 
-  it('gives the boundary the dropdown and nothing else', () => {
-    // Two of the thirteen rules are framed against the boundary, so the level
-    // they are judged at is chosen there — but a boundary has no legend and no
-    // resize toggle of its own on this row.
-    expect(c4BoundaryValidationToolbarExtension).toBeDefined();
+  it('gives the BOUNDARY no toolbar module at all', () => {
+    // The board alone arbitrates the checklist (PO, 28/08/2026): one diagram,
+    // one level of requirement, one place to set it. A second picker on a frame
+    // drawn INSIDE the first is a way to make a board disagree with itself.
+    //
+    // The two boundary-anchored rules — `c4.homeless-component` and
+    // `c4.person-in-boundary` — still follow that choice: their findings are
+    // attributed to the boundary, and a boundary naming no profile inherits the
+    // innermost containing frame's (`inheritChosenProfiles`, in the engine). So
+    // this is an arbitration carried by the engine, not a picker we forgot.
+    expect(
+      Object.keys(c4Toolbar).filter(name => name.includes('Boundary'))
+    ).toEqual([]);
   });
 });

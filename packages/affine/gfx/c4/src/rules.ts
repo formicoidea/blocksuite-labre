@@ -642,14 +642,19 @@ const databaseInitiates: ValidationRule = {
  * is one drawn before the role existed. That silence is what keeps this from
  * being the rule that lights a whole board up on its first minute.
  *
- * ## Where the finding lands, and why the profile picker follows it
+ * ## Where the finding lands, and which level judges it
  *
  * `element-in-background` attributes the finding to the BOUNDARY — that is the
- * frame the question is asked about — so the level of requirement this rule is
- * judged at is the one chosen on that boundary, not on the board. That is why
- * `C4ViewExtension` registers the validation dropdown on the boundary as well
- * as on the board: a rule framed against an instance the user cannot select a
- * profile on would sit at the default level for ever.
+ * frame the question is asked about — and the boundary carries no picker of its
+ * own: **the board alone arbitrates the checklist** (PO, 28/08/2026). One
+ * diagram, one level of requirement, one place to set it.
+ *
+ * The two are reconciled in the engine rather than in the toolbar:
+ * `inheritChosenProfiles` makes a frame naming no profile inherit the innermost
+ * containing frame's choice, so a boundary drawn on a board set to Review
+ * checklist is itself on Review checklist, and this rule hardens with the other
+ * eight. Nothing is declared here to make that happen — the inheritance reads
+ * the containment the diagram already shows.
  */
 const homelessComponent: ValidationRule = {
   id: 'c4.homeless-component',
@@ -697,6 +702,15 @@ const homelessComponent: ValidationRule = {
  * only a person drawn wholly within a boundary is a person the author has put
  * inside the system. A person on a board with no boundary at all is silence
  * twice over. Both are the drawing hand being left alone.
+ *
+ * ## Which level judges it
+ *
+ * The other rule framed against the boundary, and the same answer: the finding
+ * lands on the boundary, the boundary carries no picker, and it inherits the
+ * board's choice through the engine's `inheritChosenProfiles`. This one stays
+ * `audit` at both levels anyway, so the inheritance changes nothing it reports
+ * today — it is what keeps that a decision of the profile table rather than an
+ * accident of where the finding happened to be anchored.
  */
 const personInBoundary: ValidationRule = {
   id: 'c4.person-in-boundary',

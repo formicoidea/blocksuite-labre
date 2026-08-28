@@ -27,7 +27,6 @@ import { C4_RULES } from './rules';
 import {
   c4BoardToolbarExtension,
   c4BoardToolingToolbarExtension,
-  c4BoundaryValidationToolbarExtension,
 } from './toolbar/config';
 import { c4SeniorTool } from './toolbar/senior-tool';
 
@@ -112,17 +111,20 @@ export class C4ViewExtension extends ViewExtensionProvider {
       context.register(ValidationProfileExtension(C4_PROFILES));
       context.register(c4SeniorTool);
       context.register(CommandExtension(c4Commands, c4CommandIcons));
-      // The flag-gated half of a selected FRAME's row, through the `custom:`
+      // The flag-gated half of the selected BOARD's row, through the `custom:`
       // flavour slot — the shape wardley, bpmn and the context map all use to
-      // hang flag-gated entries off a row whose base is always-on. The board's
-      // module carries the legend button AND the Validation dropdown, because
-      // the slot holds exactly one module per element and both halves are gated
-      // by this one flag; the boundary's carries the dropdown alone, since two
-      // of the thirteen rules are framed against it. Both are declared in
-      // `toolbar/config.ts`, which is where every flavour claim of this
-      // framework lives.
+      // hang flag-gated entries off a row whose base is always-on. One module,
+      // carrying the legend button AND the Validation dropdown, because the slot
+      // holds exactly one module per element and both halves are gated by this
+      // one flag.
+      //
+      // There is no boundary module, and no rule of this pack goes unarbitrated
+      // for want of one: the board alone arbitrates the checklist (PO,
+      // 28/08/2026), and a boundary inherits its board's choice in the engine
+      // (`inheritChosenProfiles`), so the two boundary-anchored rules harden
+      // with the rest. See `toolbar/config.ts`, where every flavour claim of
+      // this framework lives.
       context.register(c4BoardToolingToolbarExtension);
-      context.register(c4BoundaryValidationToolbarExtension);
     }
   }
 }

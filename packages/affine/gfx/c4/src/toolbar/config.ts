@@ -270,22 +270,25 @@ export const c4BoardToolingToolbarExtension = ToolbarModuleExtension({
 });
 
 /**
- * The same dropdown on a selected BOUNDARY, and C4 is the first framework to
- * need it in two places.
+ * The BOUNDARY claims no toolbar flavour at all, and that is a decision rather
+ * than an omission.
  *
- * A profile is chosen on the instance a finding is ATTRIBUTED to, and two of the
- * thirteen rules — `c4.homeless-component` and `c4.person-in-boundary` — are
- * framed against the boundary rather than the board (`rules.ts`). Registering
- * only on the board would leave those two judged at the default level for ever
- * whatever the author chose: a picker that silently governs eleven of the
- * thirteen. `profilesFor` already recognises a boundary as a root instance,
- * precisely because a registered rule measures against it.
+ * Two of the fourteen rules — `c4.homeless-component` and
+ * `c4.person-in-boundary` — are framed against the boundary, so their findings
+ * are attributed to it. An earlier draft of this file concluded that the
+ * boundary therefore needed a picker of its own, or those two would sit at the
+ * default level whatever the author chose.
  *
- * Nothing else claims this flavour today, so the dropdown is the whole module —
- * and it lives here, beside the board's two, so that "which module owns which
- * flavour" stays answerable in one file.
+ * The PO arbitrated the other way on 28/08/2026: **the board alone arbitrates
+ * the checklist.** One diagram, one level of requirement, one place to set it —
+ * a second picker on a frame drawn INSIDE the first is a way to make a board
+ * disagree with itself, and no reader could tell which answer the diagram was
+ * being held to.
+ *
+ * The engine carries the consequence rather than the UI working around it:
+ * `inheritChosenProfiles` (`packages/affine/blocks/surface/src/extensions/validation.ts`)
+ * makes a frame that names no profile inherit the innermost containing frame's
+ * choice, so a boundary drawn on a board set to Review checklist is itself on
+ * Review checklist and the two boundary-anchored rules harden with the rest.
+ * Nothing here has to know that; the absence of a module is the whole change.
  */
-export const c4BoundaryValidationToolbarExtension = ToolbarModuleExtension({
-  id: BlockFlavourIdentifier('custom:affine:surface:c4Boundary'),
-  config: validationToolbarConfig,
-});
