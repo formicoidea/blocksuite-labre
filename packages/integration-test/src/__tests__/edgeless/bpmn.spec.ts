@@ -57,6 +57,8 @@ import { setupEditor } from '../utils/setup.js';
 type BpmnMenuElement = HTMLElement & {
   edgeless: EdgelessRootBlockComponent;
   updateComplete: Promise<unknown>;
+  /** Re-reads the usage measure: the selection is recomputed per render. */
+  requestUpdate: () => void;
   /** `EdgelessCommandMenu`'s own selection — what `render()` maps to buttons. */
   commands: AnyCommandDescriptor[];
 };
@@ -344,9 +346,10 @@ describe('BPMN pool lanes', () => {
  *
  * BPMN is the first SHIPPED framework whose catalogue outgrows the fourteen
  * senior slots, so what `catalogue-overflow.spec.ts` proved on a synthetic
- * sixteen-command owner now has to hold for a framework a user actually opens:
- * the sub-menu collapses to seven ranked buttons plus "More artefacts…", and
- * the panel behind that button is the whole toolbox, in its sections.
+ * seventeen-command owner now has to hold for a framework a user actually
+ * opens: the sub-menu collapses to thirteen ranked buttons plus "More
+ * artefacts…" — fourteen, exactly the cap — and the panel behind that button is
+ * the whole toolbox, in its sections.
  */
 describe('the BPMN toolbox past fourteen', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -355,9 +358,9 @@ describe('the BPMN toolbox past fourteen', () => {
 
   beforeEach(async () => {
     // The usage measure is what the ranking reads, and it persists across
-    // tests in this file. Start from silence so the seven are the cold-start
-    // seven — the first seven in authored order — rather than whatever an
-    // earlier scenario happened to click.
+    // tests in this file. Start from silence so the row is the cold-start
+    // thirteen — the authored head of the nominated fourteen — rather than
+    // whatever an earlier scenario happened to click.
     localStorage.removeItem(COMMAND_USAGE_KEY);
     const cleanup = await setupEditor('edgeless');
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
@@ -397,27 +400,32 @@ describe('the BPMN toolbox past fourteen', () => {
 
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
-  test('the sub-menu overflows: seven ranked slots plus More artefacts', () => {
-    // 25 declared, 14 of them nominated for the row — and past the cap the
-    // fourteen do not matter either: the catalogue is what gets ranked. The
-    // last two are `bpmn.exportXml` and `bpmn.importXml`, which draw nothing
-    // you chose and are therefore in the catalogue and out of the sub-menu,
-    // like the two lane gestures.
+  test('the sub-menu overflows: thirteen ranked slots plus More artefacts', () => {
+    // 25 declared, 14 of them nominated for the row — and the fourteen are all
+    // that gets ranked (PO ruling of 2026-08-28). `bpmn.exportXml` and
+    // `bpmn.importXml` draw nothing you chose and are therefore in the
+    // catalogue and out of the sub-menu, like the two lane gestures, however
+    // often they are invoked.
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
     ).toHaveLength(25);
+    expect(
+      getCommandsForSurface(edgeless.std, 'bpmn', 'senior-menu')
+    ).toHaveLength(14);
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
-  test('the seven a first-time user meets can draw a process between them', async () => {
+  test('the thirteen a first-time user meets open on a whole process', async () => {
     // The recette regression, on the real popover. `beforeEach` clears the
     // usage store, so this IS a first contact: both ranking axes collapse to
-    // authored order and the row is the first seven of the catalogue.
+    // authored order and the row is the authored head of the nominated
+    // fourteen.
     //
     // It used to read Start, Message start, Timer start, End, Message end,
     // Terminate end, Task — six events and a rectangle, with nothing to connect
-    // them. Now it is a start, an end, a task, a branch, the arrow between them,
-    // the frame they sit in, and the one arrow allowed to leave it.
+    // them. Now it opens on a start, an end, a task, a branch, the arrow
+    // between them, the frame they sit in, and the one arrow allowed to leave
+    // it — and, since the row seats thirteen, the six that follow.
     //
     // Asserted on `menu.commands` — the mounted component's own selection,
     // which `render()` maps one-to-one onto the buttons. The buttons themselves
@@ -432,8 +440,47 @@ describe('the BPMN toolbox past fourteen', () => {
       'bpmn.sequenceFlowTool',
       'bpmn.addPool',
       'bpmn.messageFlowTool',
+      'bpmn.addUserTask',
+      'bpmn.addServiceTask',
+      'bpmn.addSubProcess',
+      'bpmn.addCallActivity',
+      'bpmn.addParallelGateway',
+      'bpmn.addDataObject',
     ]);
     expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  });
+
+  /**
+   * The PO's own complaint, pinned on the real popover: they met "Export BPMN"
+   * in the sub-menu and asked what it was supposed to export — the whole
+   * edgeless? The command declines `'senior-menu'`, and since 2026-08-28 that
+   * declaration is final: usage ranks membership INSIDE the nominated list, it
+   * does not nominate.
+   */
+  test('exporting a hundred times never puts Export in the row', async () => {
+    const exportCommand = getCommandsForSurface(
+      edgeless.std,
+      'bpmn',
+      'catalogue'
+    ).find(c => c.id === 'bpmn.exportXml')!;
+    expect(exportCommand.surfaces).not.toContain('senior-menu');
+
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({
+        'bpmn.exportXml': { c: 100, t: Date.now() },
+        'bpmn.importXml': { c: 99, t: Date.now() },
+      })
+    );
+    menu.requestUpdate();
+    await menu.updateComplete;
+    await wait(0);
+
+    const ids = menu.commands.map(command => command.id);
+    expect(ids).not.toContain('bpmn.exportXml');
+    expect(ids).not.toContain('bpmn.importXml');
+    expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+    expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
   test('the last button opens the catalogue on BPMN, in its sections', async () => {

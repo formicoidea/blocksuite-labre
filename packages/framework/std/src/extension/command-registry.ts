@@ -614,11 +614,19 @@ export function getCommandsForSurface(
  */
 export const SENIOR_MENU_CAP = 14;
 
-/** How many of them survive once an owner overflows: 4 most-used + 3 most-recent. */
-export const SENIOR_MENU_RANKED_SLOTS = 7;
+const MOST_RECENT_SLOTS = 7;
+const MOST_USED_SLOTS = 6;
 
-const MOST_USED_SLOTS = 4;
-const MOST_RECENT_SLOTS = 3;
+/**
+ * How many buttons survive once an owner overflows: {@link MOST_RECENT_SLOTS}
+ * by recency plus {@link MOST_USED_SLOTS} by frequency — thirteen (PO
+ * re-arbitration of 2026-08-28, superseding the 4 + 3 of 2026-08-26).
+ *
+ * Thirteen and not fourteen because the permanent "More artefacts…" button is
+ * the fourteenth: an overflowed sub-menu therefore renders exactly the cap, and
+ * the row a user meets past the cap is as wide as the one they meet below it.
+ */
+export const SENIOR_MENU_RANKED_SLOTS = MOST_RECENT_SLOTS + MOST_USED_SLOTS;
 
 /**
  * Which of an owner's commands the senior sub-menu actually shows.
@@ -630,24 +638,35 @@ const MOST_RECENT_SLOTS = 3;
  *
  * Below the cap nothing is arbitrated: the sub-menu IS the framework's
  * `'senior-menu'` surface, authored order and all. Past it the sub-menu becomes
- * a shortcut to the seven commands THIS user reaches for, and the catalogue
- * sidepanel becomes the place the other artefacts live — which is why the
- * ranking reads the `'catalogue'` surface rather than the menu one: a command
- * its author left out of the fourteen but the user invokes constantly has
- * earned a slot, and a menu that could only ever demote would never learn that.
+ * a shortcut to the thirteen commands THIS user reaches for, beside one button
+ * to the catalogue sidepanel where the rest live.
  *
- * The seven are chosen on two axes because one is not enough — frequency alone
- * never surfaces what the user picked up yesterday, recency alone reshuffles
- * every click. They are then laid out in **authored order**, not in rank order:
- * a menu whose buttons swap places under the cursor is the dark pattern this
- * whole feature exists to avoid, so what the ranking decides is membership,
- * never position.
+ * **Eligibility is declared, never earned** (PO ruling of 2026-08-28). What
+ * gets ranked is the `'senior-menu'` surface — the ≤14 its author nominated —
+ * and NOT the whole catalogue. The trigger still reads the catalogue (an owner
+ * overflows when its total toolbox outgrows the cap), but a command that
+ * deliberately declines the sub-menu stays out of it however often it is
+ * invoked. `bpmn.exportXml` is the case that made the rule: its subject is the
+ * whole BOARD, it lives in the pool's "⋮" and in the catalogue, and usage alone
+ * used to drag it into a row of things you DRAW — where "Export BPMN" answers
+ * no question a user asked. A surface a command declines is a statement about
+ * where it belongs, not a default to be out-voted.
+ *
+ * The thirteen are chosen on two axes because one is not enough — frequency
+ * alone never surfaces what the user picked up yesterday, recency alone
+ * reshuffles every click. They are then laid out in **authored order**, not in
+ * rank order: a menu whose buttons swap places under the cursor is the dark
+ * pattern this whole feature exists to avoid, so what the ranking decides is
+ * membership, never position.
  *
  * With no usage recorded at all, both axes collapse to authored order and the
- * result is the first seven — a deterministic cold start, not an empty menu.
+ * result is the first thirteen of the nominated list — a deterministic cold
+ * start, not an empty menu.
  *
- * @param menu the owner's `'senior-menu'` commands, already order-sorted
+ * @param menu the owner's `'senior-menu'` commands, already order-sorted — the
+ *   ranking pool AND the authored order membership is laid out in
  * @param catalogue the owner's whole `'catalogue'` surface, already order-sorted
+ *   — read only to decide whether the owner overflows
  * @param statsOf per-user measure; `undefined` for a command never invoked
  */
 export function selectSeniorMenuCommands(
@@ -659,39 +678,46 @@ export function selectSeniorMenuCommands(
     return { commands: menu, overflow: false };
   }
 
-  const authored = new Map(catalogue.map((command, index) => [command, index]));
+  const authored = new Map(menu.map((command, index) => [command, index]));
   const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
 
   return {
-    commands: pickByUsage(catalogue, statsOf).sort(
-      (a, b) => order(a) - order(b)
-    ),
+    commands: pickByUsage(menu, statsOf).sort((a, b) => order(a) - order(b)),
     overflow: true,
   };
 }
 
 /**
- * The shared arbitration: {@link MOST_USED_SLOTS} by frequency plus
- * {@link MOST_RECENT_SLOTS} by recency, deduplicated, frequency backfilling the
- * slot a double pick frees — of the two measures, the one a user notices
- * moving is recency. Returned in PICK order (the frequency ranks first, the
- * recency additions after); each consumer imposes its own display order.
+ * The shared arbitration, over whatever pool its caller hands it:
+ * {@link MOST_RECENT_SLOTS} by recency plus {@link MOST_USED_SLOTS} by
+ * frequency, deduplicated.
+ *
+ * Recency goes FIRST since the PO's re-arbitration of 2026-08-28 (it was 4
+ * most-used + 3 most-recent): what a user reached for this morning is what they
+ * are still working on, and a row that leads with the all-time workhorses is a
+ * row that takes weeks to notice a new habit. So a command that tops BOTH axes
+ * consumes a RECENT slot, and the most-used slot it would have taken goes to
+ * the next candidate down the frequency ranking — which is what the backfill
+ * loop below does by walking `mostUsed` whole rather than only its head.
+ *
+ * Returned in PICK order (the recency ranks first, the frequency additions
+ * after); each consumer imposes its own display order.
  */
 function pickByUsage(
-  catalogue: AnyCommandDescriptor[],
+  pool: AnyCommandDescriptor[],
   statsOf: (id: string) => CommandUsageStats | undefined
 ): AnyCommandDescriptor[] {
-  const authored = new Map(catalogue.map((command, index) => [command, index]));
+  const authored = new Map(pool.map((command, index) => [command, index]));
   const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
   // One read per command per selection: the store answers from storage, and the
   // two axes would otherwise ask it the same question twice.
-  const stats = new Map(catalogue.map(c => [c, statsOf(c.id)]));
+  const stats = new Map(pool.map(c => [c, statsOf(c.id)]));
 
   const rankBy = (
     primary: (used: CommandUsageStats) => number,
     secondary: (used: CommandUsageStats) => number
   ) =>
-    [...catalogue].sort((a, b) => {
+    [...pool].sort((a, b) => {
       const left = stats.get(a);
       const right = stats.get(b);
       // A command nobody ever invoked ranks after every command somebody did,
@@ -716,10 +742,12 @@ function pickByUsage(
   );
 
   const chosen = new Set<AnyCommandDescriptor>();
-  for (const command of mostUsed.slice(0, MOST_USED_SLOTS)) chosen.add(command);
   for (const command of mostRecent.slice(0, MOST_RECENT_SLOTS)) {
     chosen.add(command);
   }
+  // The {@link MOST_USED_SLOTS} remaining slots, from the frequency ranking:
+  // walking it whole rather than its head is what makes a double pick free its
+  // most-used slot for the next candidate instead of wasting it.
   for (const command of mostUsed) {
     if (chosen.size >= SENIOR_MENU_RANKED_SLOTS) break;
     chosen.add(command);
@@ -734,15 +762,24 @@ function pickByUsage(
  * 27/08/2026).
  *
  * Same arbitration as the senior sub-menu ({@link pickByUsage}) — one ranking,
- * two consumers, never two opinions — with two deliberate differences:
+ * two consumers, never two opinions — with three deliberate differences:
  *
+ * - it ranks the CATALOGUE surface, and keeps doing so after the eligibility
+ *   ruling of 2026-08-28 narrowed the sub-menu to `'senior-menu'` declarers.
+ *   That ruling is about the sub-menu, which is a row of things you DRAW; the
+ *   sidepanel is the full-catalogue surface, the one place every command of a
+ *   framework is reachable, so a catalogue-only command like `bpmn.exportXml`
+ *   heading this section is the section working — "here is what you reach for"
+ *   over a panel that lists everything, not a board action smuggled into a
+ *   palette. Passing the menu surface here would hide a user's own habits from
+ *   the very panel built to show them.
  * - only commands that CARRY a measure are returned. The sub-menu backfills
  *   with authored order because it must always show something; a "recently
  *   used" section padded with the never-used would be a label that lies, so
  *   with no usage at all this returns `[]` and the section is simply absent.
- * - the PICK order is kept (frequency ranks, then the recency additions),
+ * - the PICK order is kept (the recency ranks, then the frequency additions),
  *   not re-sorted by authored order: the section's whole message is "yours,
- *   most-reached-for first", and it only recomposes when the panel reopens.
+ *   latest first", and it only recomposes when the panel reopens.
  */
 export function rankCommandsByUsage(
   catalogue: AnyCommandDescriptor[],

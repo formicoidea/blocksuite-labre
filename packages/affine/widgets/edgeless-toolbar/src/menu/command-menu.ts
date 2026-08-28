@@ -129,8 +129,9 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
    *
    * It appears only past the cap, and only when something answers
    * {@link ArtefactCatalogueProvider}: a button that opens nothing is a dead
-   * control, and the seven ranked slots are only defensible as a *shortcut* to a
-   * catalogue the user can still reach in full.
+   * control, and the thirteen ranked slots are only defensible as a *shortcut*
+   * to a catalogue the user can still reach in full. Thirteen plus this one is
+   * fourteen — the overflowed row is exactly as wide as the cap.
    */
   private _renderCatalogueButton() {
     const std = this.edgeless.std;

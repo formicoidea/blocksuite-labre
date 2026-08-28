@@ -251,8 +251,9 @@ describe('bpmn style-C constants', () => {
  *
  * BPMN is the first shipped framework whose CATALOGUE outgrows the fourteen
  * senior slots, so two things that used to be the same list are now two lists,
- * and both of them are pinned here: what the framework offers (23), and the
- * fourteen it opens with before this user has reached for anything.
+ * and both of them are pinned here: what the framework offers (25), and the
+ * fourteen it nominates for the sub-menu — of which a cold start opens on the
+ * first thirteen.
  */
 describe('the bpmn command inventory', () => {
   const byId = new Map(bpmnCommands.map(c => [c.id, c]));
@@ -290,11 +291,13 @@ describe('the bpmn command inventory', () => {
   });
 
   it('spends its fourteen senior slots on one of each family, plus the variants', () => {
-    // Exactly at the cap, and spelled out: past fourteen the sub-menu ranks the
-    // catalogue by usage, and this list is the COLD START every user meets —
-    // the fourteen a host reading the manifest sees, too.
+    // Exactly at the cap, and spelled out: past fourteen the sub-menu ranks
+    // THIS list by usage — nothing outside it is eligible (PO ruling of
+    // 2026-08-28) — so it is both the pool a history reorders membership in and
+    // the fourteen a host reading the manifest sees.
     expect(seniorIds).toEqual([
-      // The seven the cold start opens on, in the order they are declared…
+      // The seven a first contact draws a whole process with, in declaration
+      // order…
       'bpmn.addStartEvent',
       'bpmn.addEndEvent',
       'bpmn.addTask',
@@ -302,7 +305,8 @@ describe('the bpmn command inventory', () => {
       'bpmn.sequenceFlowTool',
       'bpmn.addPool',
       'bpmn.messageFlowTool',
-      // …and the seven more the row holds once a user has a history.
+      // …and the seven more, of which the cold start shows the first six and a
+      // user's history can promote the last.
       'bpmn.addUserTask',
       'bpmn.addServiceTask',
       'bpmn.addSubProcess',
@@ -396,12 +400,17 @@ describe('the bpmn command inventory', () => {
    * The COLD START: what a user who has invoked nothing meets on first contact.
    *
    * A live recette caught this list reading Start, Message start, Timer start,
-   * End, Message end, Terminate end, Task — seven buttons, six of them events,
-   * no gateway, no sequence flow, no pool. Nothing to connect anything with.
-   * Past the cap the ranking falls back to the first seven of the catalogue, so
-   * the fix was the declaration order and this is the pin that keeps it fixed.
+   * End, Message end, Terminate end, Task — six events and a rectangle, no
+   * gateway, no sequence flow, no pool. Nothing to connect anything with. Past
+   * the cap the ranking falls back to the authored head of the NOMINATED list,
+   * so the fix was the declaration order and this is the pin that keeps it
+   * fixed.
+   *
+   * Thirteen since the PO re-arbitration of 2026-08-28: the row seats thirteen
+   * ranked buttons plus "More artefacts…", so BPMN opens on all fourteen it
+   * nominated bar the last.
    */
-  it('opens on seven artefacts that can draw a process between them', () => {
+  it('opens on the thirteen artefacts it nominated first, in author order', () => {
     const catalogue = [...bpmnCommands]
       .filter(c => c.surfaces.includes('catalogue'))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -417,6 +426,8 @@ describe('the bpmn command inventory', () => {
 
     expect(overflow, 'bpmn no longer overflows — re-read this test').toBe(true);
     expect(commands.map(command => command.id)).toEqual([
+      // A start, an end, a task, a branch, the arrow between them, the frame
+      // they sit in, and the one arrow allowed to leave it. That is a process…
       'bpmn.addStartEvent',
       'bpmn.addEndEvent',
       'bpmn.addTask',
@@ -424,10 +435,49 @@ describe('the bpmn command inventory', () => {
       'bpmn.sequenceFlowTool',
       'bpmn.addPool',
       'bpmn.messageFlowTool',
+      // …and the six that now fit beside it.
+      'bpmn.addUserTask',
+      'bpmn.addServiceTask',
+      'bpmn.addSubProcess',
+      'bpmn.addCallActivity',
+      'bpmn.addParallelGateway',
+      'bpmn.addDataObject',
     ]);
-    // A start, an end, a task, a branch, the arrow between them, the frame they
-    // sit in, and the one arrow allowed to leave it. That is a process.
+    // Pure author order, head to tail: the fourteenth nomination
+    // (`bpmn.addTextAnnotation`) is the only one the More button covers.
     expect(commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+    expect(commands.map(c => c.id)).toEqual(
+      seniorIds.slice(0, SENIOR_MENU_RANKED_SLOTS)
+    );
+  });
+
+  /**
+   * The eligibility ruling of 2026-08-28, pinned on the framework that caused
+   * it. `bpmn.exportXml` and `bpmn.importXml` decline `'senior-menu'`: their
+   * subject is the whole BOARD, and the PO met "Export BPMN" in a row of things
+   * you DRAW because the ranking used to read the catalogue. However heavily a
+   * user exports, neither may enter the sub-menu.
+   */
+  it('never seats a board action, however often it is invoked', () => {
+    const catalogue = [...bpmnCommands]
+      .filter(c => c.surfaces.includes('catalogue'))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const menu = catalogue.filter(c => c.surfaces.includes('senior-menu'));
+
+    const heavy = new Set([
+      'bpmn.exportXml',
+      'bpmn.importXml',
+      'bpmn.addLane',
+      'bpmn.removeLane',
+    ]);
+    const { commands } = selectSeniorMenuCommands(menu, catalogue, id =>
+      heavy.has(id) ? { count: 9999, lastUsedAt: 9999 } : undefined
+    );
+
+    const ids = commands.map(command => command.id);
+    for (const id of heavy) expect(ids, id).not.toContain(id);
+    // And the row is untouched by that usage: still the cold-start thirteen.
+    expect(ids).toEqual(seniorIds.slice(0, SENIOR_MENU_RANKED_SLOTS));
   });
 
   it('arms a dashed, circle-to-arrow connector for the message flow', () => {

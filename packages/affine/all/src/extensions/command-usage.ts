@@ -11,7 +11,7 @@ import type { ExtensionType } from '@labre/store';
  *
  * `runCommand` records every invocation into whatever answers
  * `CommandUsageIdentifier`; without a default nothing would be measured at all
- * until a host wired a store, and PF6's "four most-used + three most-recent"
+ * until a host wired a store, and PF6's "seven most-recent + six most-used"
  * sub-menu would have nothing to rank in a standalone editor. A host that owns
  * a per-user database replaces this with `CommandUsageExtension(store)`, whose
  * `di.override` beats the `addImpl` below.
