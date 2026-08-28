@@ -986,7 +986,22 @@ a group's `children` would name file-level ids nothing resolves. Grouping an
 imported map is a gesture the author can make; a broken group is one they cannot
 undo.
 
-**4. This capability quarantines nothing, and that is a finding about the
+**4. D1 needs a fourth question for a format whose statements REFER to each
+other.** The three states sort each node of the file by what became of it, and
+that is complete for `.bpmn`, where a `sequenceFlow` names ids the same document
+declares and a reader can see both. The OWM DSL has no ids: a link names its two
+ends by NAME, and a name nothing declares is not a malformed line — it is a
+perfectly well-formed statement about something that is not there. Such a link
+is `mapped` by every reading of D1 (it became a connector), and the connector
+routes to an empty path and is invisible on the canvas, so a file with one typo
+in it imported as "2 drawn, 0 carried, 0 quarantined" while an arrow the user
+could see in their old tool was silently gone. The reader now sweeps every link
+end against the declared names and reports a `warning` per dangling END. No new
+state and no change to D1's three — but a capability whose format lets one
+statement refer to another owes this sweep, and the next one should not have to
+rediscover it.
+
+**5. This capability quarantines nothing, and that is a finding about the
 format.** D5's four cases all have the same shape: a carried fragment that
 contradicts something the drawing owns. Every statement the OWM DSL writes is a
 standalone line with no nesting and no cross-references, so a carried one cannot

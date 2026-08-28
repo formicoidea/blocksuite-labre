@@ -145,7 +145,28 @@ const BARE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
  * commas and its accents intact.
  */
 export function owmName(raw: string): string {
-  if (BARE_NAME.test(raw) && !OWM_KEYWORDS.has(raw)) return raw;
+  return BARE_NAME.test(raw) && !opensOnKeyword(raw) ? raw : owmQuote(raw);
+}
+
+/**
+ * Whether a bare name would be mistaken for a statement of another kind.
+ *
+ * A PREFIX test, not an equality one, because that is what the reference reader
+ * does: `LinksExtractionStrategy.canProcessLine` refuses a line whose trimmed
+ * text merely BEGINS with one of these (`element.trim().indexOf(keyword) === 0`),
+ * and `BaseStrategyRunner` claims one the same way. So `urlShortener->Cache` is
+ * not a link there, and a component genuinely called `urlShortener` silently
+ * stops being linkable unless the writer quotes it.
+ */
+function opensOnKeyword(raw: string): boolean {
+  for (const keyword of OWM_KEYWORDS) {
+    if (raw.startsWith(keyword)) return true;
+  }
+  return false;
+}
+
+/** A name in quotes, escaped as OWM's `escapeComponentNameForMapText` does. */
+export function owmQuote(raw: string): string {
   const escaped = raw
     .replaceAll('\\', '\\\\')
     .replaceAll('"', '\\"')
@@ -155,6 +176,25 @@ export function owmName(raw: string): string {
     .replaceAll('[', '\\[')
     .replaceAll(']', '\\]');
   return `"${escaped}"`;
+}
+
+/**
+ * The `X -> Y` half of an `evolve` line, with BOTH names quoted whenever
+ * either needs it.
+ *
+ * Not cosmetic, and not symmetry for its own sake — it is the only spelling the
+ * reference reader understands. `setNameWithMaturity` has two branches, and
+ * only the QUOTED one (`nameSection.startsWith('"')`) ever unquotes an override:
+ * the legacy branch splits on `->` and takes `parts[1].trim()` verbatim, so
+ * `evolve Kettle -> "Electric kettle" 0.75` gives an evolved component whose
+ * name still has the quote characters in it, and onlinewardleymaps draws them.
+ * Quoting the source name is what puts the reader in the branch that strips
+ * them off the target.
+ */
+function evolvePair(was: string, becomes: string): string {
+  const quoted = `${owmName(was)} -> ${owmName(becomes)}`;
+  if (!quoted.includes('"')) return quoted;
+  return `${owmQuote(was)} -> ${owmQuote(becomes)}`;
 }
 
 /**
@@ -498,14 +538,19 @@ export function exportWardleyOwmWithWarnings(
 
   const carried = map ? carriedOf(map) : undefined;
   const titleAttr = carried?.attrs?.[OWM_SCOPE.document]?.[OWM_TITLE_ATTR];
-  const title = options.name ?? titleAttr;
-  if (
-    titleAttr !== undefined &&
-    options.name !== undefined &&
-    titleAttr !== options.name
-  ) {
+  // A name of nothing but spaces is a name the caller does not have, and this
+  // is a PUBLIC entry point (P3: labre-mcp calls it directly, with whatever it
+  // has). `title ` with a trailing space and no title after it is not a
+  // statement any reader can do anything with — and the reference one would
+  // give the map the empty string as its name.
+  const named =
+    options.name !== undefined && options.name.trim().length > 0
+      ? options.name
+      : undefined;
+  const title = named ?? titleAttr;
+  if (titleAttr !== undefined && named !== undefined && titleAttr !== named) {
     warnings.push(
-      `The file this map came from was titled "${titleAttr}"; it is written out as "${options.name}", which is what the board is called now.`
+      `The file this map came from was titled "${titleAttr}"; it is written out as "${named}", which is what the board is called now.`
     );
   }
 
@@ -646,7 +691,7 @@ export function exportWardleyOwmWithWarnings(
       evolveLines.push(
         becomes === was
           ? `evolve ${owmName(was)} ${owmNumber(there.evolution)}${tailOf(target)}`
-          : `evolve ${owmName(was)} -> ${owmName(becomes)} ${owmNumber(there.evolution)}${tailOf(target)}`
+          : `evolve ${evolvePair(was, becomes)} ${owmNumber(there.evolution)}${tailOf(target)}`
       );
       continue;
     }
@@ -662,7 +707,12 @@ export function exportWardleyOwmWithWarnings(
     linkLines.push(`${owmName(nameOf(source))}->${owmName(nameOf(target))}`);
   }
 
-  const carriedLines = dedupe(carried?.children?.[OWM_SCOPE.document] ?? []);
+  // NOT deduplicated. Two identical lines in a file — `// same` twice, two
+  // `pioneers` blocks — are two lines the reader carried and counted as two,
+  // and collapsing them here would lose one of them against a report that said
+  // it was kept. D1's whole promise is that a carried line comes back; "unless
+  // it looked like another one" is not a clause it has.
+  const carriedLines = carried?.children?.[OWM_SCOPE.document] ?? [];
 
   /* ── Warnings the writer owes the person who clicked Export ───────── */
 
@@ -693,8 +743,12 @@ export function exportWardleyOwmWithWarnings(
     );
   }
   if (looseArrows.length > 0) {
+    // Two losses, not one, and the second is the one nobody would guess: the
+    // node an evolution arrow points AT is written by the `evolve` line rather
+    // than as a component of its own, so when the arrow cannot be written the
+    // twin has no line either and leaves the file altogether.
     warnings.push(
-      `${looseArrows.length} evolution arrow${looseArrows.length === 1 ? ' has an end' : 's have ends'} that is loose or attached to something that is not a Wardley artefact, so ${looseArrows.length === 1 ? 'it was' : 'they were'} left out.`
+      `${looseArrows.length} evolution arrow${looseArrows.length === 1 ? ' has an end' : 's have ends'} that is loose or attached to something that is not a Wardley artefact, so ${looseArrows.length === 1 ? 'it was' : 'they were'} left out — and so ${looseArrows.length === 1 ? 'was the evolved component it points at, which is written by its `evolve` line and has no line of its own' : 'were the evolved components they point at, which are written by their `evolve` lines and have no lines of their own'}.`
     );
   }
   if (movedTwins.length > 0) {
@@ -722,18 +776,6 @@ export function exportWardleyOwmWithWarnings(
 /** The value a coordinate is WRITTEN as, so a comparison agrees with the file. */
 function owmNumberValue(value: number): number {
   return Number(owmNumber(value));
-}
-
-/** Stable order, one occurrence each — the carried lines' contract. */
-function dedupe(lines: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const kept: string[] = [];
-  for (const line of lines) {
-    if (seen.has(line)) continue;
-    seen.add(line);
-    kept.push(line);
-  }
-  return kept;
 }
 
 /** The names two artefacts share, in first-seen order. */

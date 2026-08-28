@@ -212,28 +212,58 @@ describe('the senior sub-menu past fourteen commands', () => {
     ).toBe(17);
   });
 
-  test('a fourteen-command owner still shows everything and no button', async () => {
-    // The same editor, a second menu for wardley (15 declared, 14 of them
-    // nominating the row since the OWM DSL pair): AT the cap the sub-menu is
-    // still the whole nominated surface, and no More button is rendered.
-    const wardleyMenu = document.createElement(
+  /** Mount a second menu on the same editor, for another framework's owner. */
+  const mountMenuFor = async (owner: string) => {
+    const menu = document.createElement(
       'test-overflow-menu'
     ) as TestOverflowMenu;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (wardleyMenu as any).owner = 'wardley';
-    wardleyMenu.edgeless = edgeless;
-    const wardleyHost = mountWithToolbarContext(wardleyMenu);
-    await wardleyMenu.updateComplete;
+    (menu as any).owner = owner;
+    menu.edgeless = edgeless;
+    const host = mountWithToolbarContext(menu);
+    await menu.updateComplete;
     await wait(0);
+    const buttonCount =
+      menu.shadowRoot?.querySelectorAll('edgeless-tool-icon-button').length ??
+      0;
+    return { menu, host, buttonCount };
+  };
+
+  test('an under-cap owner still shows everything and no button', async () => {
+    // The below-cap path, and it USED to be demonstrated with wardley. It no
+    // longer can be: `wardley.importOwm` and `wardley.exportOwm` took that
+    // framework's catalogue to fifteen, and the trigger reads the CATALOGUE.
+    // The context map is the nearest owner still under the cap (twelve), so the
+    // property this test exists for is asserted where it still holds.
+    const { menu, host, buttonCount } = await mountMenuFor('ddd-context-map');
 
     try {
-      const count =
-        wardleyMenu.shadowRoot?.querySelectorAll('edgeless-tool-icon-button')
-          .length ?? 0;
-      expect(count).toBe(wardleyMenu.commands.length);
-      expect(wardleyMenu.commands.length).toBeLessThanOrEqual(14);
+      // No "More artefacts…" button: every button IS a command, so the two
+      // counts agree exactly.
+      expect(buttonCount).toBe(menu.commands.length);
+      expect(menu.commands.length).toBeLessThanOrEqual(SENIOR_MENU_CAP);
     } finally {
-      wardleyHost.remove();
+      host.remove();
+    }
+  });
+
+  test('wardley tipped past the cap when it learned to read a file', async () => {
+    // The other side of the same rule, pinned because it is a PRODUCT change a
+    // reader of the diff would not predict from "two new commands": Wardley's
+    // catalogue reached fifteen, so its row is now thirteen ranked buttons plus
+    // the catalogue button rather than its whole nominated surface. Nothing is
+    // unreachable — that is what the fourteenth button is for — but which
+    // thirteen a cold user meets is now an arbitration rather than the author's
+    // order in full.
+    const { menu, host, buttonCount } = await mountMenuFor('wardley');
+
+    try {
+      expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+      // Thirteen commands plus the one that opens the catalogue: an overflowed
+      // row is exactly as wide as the cap.
+      expect(buttonCount).toBe(SENIOR_MENU_CAP);
+    } finally {
+      host.remove();
     }
   });
 });

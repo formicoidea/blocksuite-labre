@@ -260,8 +260,10 @@ describe('matching a name to the artefact it names', () => {
 
 describe('the losses reach the person who clicked Export', () => {
   it('says nothing when the map came out whole', () => {
-    // The channel is ABSENT, not an empty array — a caller can ask
-    // `if (result.warnings)` and mean it.
+    // The pure writer always returns the array; it is the interchange ADAPTER
+    // that omits the field entirely so a caller can ask `if (result.warnings)`
+    // and mean it, and that omission is pinned next door in
+    // `owm-interchange.unit.spec.ts`.
     expect(write(teaShopBoard(), 'Tea Shop').warnings).toEqual([]);
   });
 

@@ -58,9 +58,21 @@ describe('command registry on the canvas', () => {
     };
     menu.edgeless = edgeless;
 
-    expect(menu.commands.map(c => c.id)).toEqual(
-      menuCommands('wardley').map(c => c.id)
-    );
+    // Wardley OVERFLOWED when the OWM pair landed, and this assertion had to
+    // stop being an equality because of it. `selectSeniorMenuCommands` triggers
+    // on the CATALOGUE (15 > the cap of 14), so the row is now the thirteen
+    // ranked slots plus "More artefacts…" rather than the whole nominated list.
+    //
+    // The property the test was written for is untouched and is what is
+    // asserted instead: every button comes from the REGISTRY's nominated
+    // surface, never from a list of the component's own. A hard-coded button
+    // list would fail this exactly as it failed the equality.
+    const nominated = menuCommands('wardley').map(c => c.id);
+    const shown = menu.commands.map(c => c.id);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.filter(id => !nominated.includes(id))).toEqual([]);
+    // …and the cold-start row is the authored head of the nomination list.
+    expect(shown).toEqual(nominated.slice(0, shown.length));
     // Every command's `iconKey` resolves through the lib-side icon registry —
     // the accessor that keeps templates out of both manifests.
     for (const command of menu.commands) {

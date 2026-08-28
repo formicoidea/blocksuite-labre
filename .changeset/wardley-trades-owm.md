@@ -1,5 +1,5 @@
 ---
-'@labre/affine-gfx-wardley': patch
+'@labre/affine-gfx-wardley': minor
 '@labre/affine': patch
 ---
 
@@ -50,6 +50,8 @@ it. The file still downloads, and it is still valid.
 
 Both notifications go through the host's notification service; a standalone
 playground registers none and degrades to silence.
+
+**The Wardley sub-menu now has a "More artefacts…" button.** Fifteen commands is one past the fourteen the row seats, so — exactly as BPMN's does — the Wardley palette becomes the thirteen artefacts you reach for most, plus one button that opens the full catalogue. Nothing became unreachable, and everything is still in the catalogue, the command palette and Settings › Shortcuts.
 
 **The serializer now lives in the library.** It used to live outside this
 repository, which meant one format with two implementations that nothing

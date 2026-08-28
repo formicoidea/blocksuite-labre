@@ -1,14 +1,18 @@
+import { Bound } from '@labre/global/gfx';
 import { describe, expect, it } from 'vitest';
 
 import {
   exportWardleyOwm,
   exportWardleyOwmWithWarnings,
+  OWM_DEFAULT_MAP_HEIGHT,
+  OWM_DEFAULT_MAP_WIDTH,
+  owmPointOf,
   WARDLEY_OWM_FORMAT_ID,
   type WardleyExportBoard,
 } from '../export';
 import { importWardleyOwm } from '../import';
 import { WARDLEY_ROLE } from '../roles';
-import { boardFromProps, teaShopBoard } from './owm-board-stub';
+import { boardFromProps, PLOT, teaShopBoard } from './owm-board-stub';
 import { KITCHEN_SINK_OWM, TEA_SHOP_OWM } from './owm-corpus';
 
 /**
@@ -125,7 +129,7 @@ describe('the tea-shop corpus, which came out of a real session', () => {
     );
   });
 
-  it('loses nothing: 57 statements mapped, none carried, none quarantined', () => {
+  it('loses nothing: 58 statements mapped, none carried, none quarantined', () => {
     // The title, 27 artefacts and 30 links. Blank lines are structure, not
     // statements — the loss table says so, and it is why an untouched file
     // reports no carried line rather than one per paragraph break.
@@ -358,12 +362,38 @@ evolve Kettle 0.75
     );
   });
 
-  it('keeps an `evolve`’s renamed twin', () => {
+  it('keeps an `evolve`’s renamed twin, and quotes BOTH names to do it', () => {
     const { elements } = read(
       'component Kettle [0.60, 0.40]\nevolve Kettle -> Electric kettle 0.75\n'
     );
+    // `evolve Kettle -> "Electric kettle" 0.75` would be the obvious spelling
+    // and it is the WRONG one: `setNameWithMaturity` only ever unquotes an
+    // override in the branch it enters when the SOURCE name is quoted. Written
+    // the obvious way, onlinewardleymaps draws a component called
+    // `"Electric kettle"`, quote characters and all.
     expect(write(boardFromProps(elements))).toContain(
-      'evolve Kettle -> "Electric kettle" 0.75'
+      'evolve "Kettle" -> "Electric kettle" 0.75'
+    );
+  });
+
+  it('reads its own renamed `evolve` back, so the rename is a fixed point', () => {
+    const once = write(
+      boardFromProps(
+        read(
+          'component Kettle [0.60, 0.40]\nevolve Kettle -> Electric kettle 0.75\n'
+        ).elements
+      )
+    );
+    expect(reread(once)).toBe(once);
+  });
+
+  it('leaves both names bare when neither needs quoting', () => {
+    // The pair is quoted TOGETHER or not at all; two bare names stay bare.
+    const { elements } = read(
+      'component Kettle [0.60, 0.40]\nevolve Kettle -> Thermos 0.75\n'
+    );
+    expect(write(boardFromProps(elements))).toContain(
+      'evolve Kettle -> Thermos 0.75'
     );
   });
 
@@ -377,6 +407,249 @@ evolve Kettle 0.75
     expect(write(boardFromProps(elements))).toBe(
       'note "Watch this one" [0.50, 0.30]\n'
     );
+  });
+});
+
+/* ── A statement that refers to one nobody made ───────────────────────── */
+
+describe('a link that names nothing', () => {
+  it('says so, per end, instead of drawing an invisible arrow in silence', () => {
+    // M1, and it is D1's hole: a link is the only statement whose meaning
+    // depends on OTHER statements. `materializeInterchangeImport` leaves an
+    // unresolvable end exactly as the file wrote it, so the connector routes to
+    // an empty path and is invisible — and before this the report said
+    // `mapped: 2, notes: []`, which claims a whole arrow was drawn.
+    const result = read('component Kettle [0.60, 0.40]\nKettle->Power\n');
+
+    expect(result.report.mapped).toBe(2);
+    const dangling = result.report.notes.filter(
+      note => note.kind === 'warning' && note.element === 'link'
+    );
+    expect(dangling).toHaveLength(1);
+    expect(dangling[0].sourceId).toBe('Power');
+    expect(dangling[0].message).toContain('invisible on the canvas');
+  });
+
+  it('names BOTH ends when both dangle', () => {
+    // One note per END, not per link: an architect fixing the file needs both
+    // names, and a link with two typos has two problems.
+    const result = read('Alpha->Beta\n');
+    expect(
+      result.report.notes
+        .filter(note => note.element === 'link')
+        .map(note => note.sourceId)
+    ).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('says so when an end names nothing at all', () => {
+    const result = read('component Kettle [0.60, 0.40]\nKettle->\n');
+    const dangling = result.report.notes.filter(
+      note => note.element === 'link'
+    );
+    expect(dangling).toHaveLength(1);
+    expect(dangling[0].message).toContain('names nothing on one of its ends');
+  });
+
+  it('stays silent when every end names something declared', () => {
+    // The other half, and the one that keeps the note from becoming noise: a
+    // whole map must not report a single dangling end.
+    expect(
+      read(TEA_SHOP_OWM).report.notes.filter(note => note.element === 'link')
+    ).toEqual([]);
+  });
+});
+
+/* ── A comment is a comment all the way to its close ──────────────────── */
+
+describe('a `/* … *\/` block', () => {
+  const BLOCKED = `component Kettle [0.60, 0.40]
+/*
+component Ghost [0.10, 0.90]
+Kettle->Ghost
+*/
+component Power [0.20, 0.80]
+`;
+
+  it('draws nothing the author commented out', () => {
+    // M2. The reference reader strips these in `Converter.stripComments` BEFORE
+    // any strategy sees the text. Carrying only the opening line and parsing
+    // the body put a component on the canvas that the file's author had
+    // switched off — a drawing nobody made, which is worse than losing one.
+    const result = read(BLOCKED);
+    const names = result.elements
+      .filter(props => props.type === 'wardleyNode')
+      .map(
+        props =>
+          (props.interchange as Record<string, { id?: string }>)[
+            WARDLEY_OWM_FORMAT_ID
+          ].id
+      );
+    expect(names).toEqual(['Kettle', 'Power']);
+    expect(result.elements.filter(props => props.type === 'connector')).toEqual(
+      []
+    );
+  });
+
+  it('carries every line of it, closing delimiter included', () => {
+    const result = read(BLOCKED);
+    const carried = (
+      result.elements[0].interchange as Record<
+        string,
+        { children?: Record<string, string[]> }
+      >
+    )[WARDLEY_OWM_FORMAT_ID].children!['@document'];
+    expect(carried).toEqual([
+      '/*',
+      'component Ghost [0.10, 0.90]',
+      'Kettle->Ghost',
+      '*/',
+    ]);
+    expect(result.report.carried).toBe(4);
+  });
+
+  it('closes a one-line block on its own line', () => {
+    const result = read('/* aside */\ncomponent Kettle [0.60, 0.40]\n');
+    expect(result.report.carried).toBe(1);
+    expect(
+      result.elements.filter(props => props.type === 'wardleyNode')
+    ).toHaveLength(1);
+  });
+});
+
+/* ── Carried lines are lines, not a set ───────────────────────────────── */
+
+describe('two carried lines that happen to read the same', () => {
+  it('both come back', () => {
+    // M3. The reader counted two and the writer wrote one, so a carried line
+    // was lost against a report that said it was kept. D1's promise has no
+    // "unless it looked like another one" clause.
+    const source = 'component Kettle [0.60, 0.40]\n// same\n// same\n';
+    const result = read(source);
+    expect(result.report.carried).toBe(2);
+
+    const written = write(boardFromProps(result.elements));
+    expect(written.split('\n').filter(line => line === '// same')).toHaveLength(
+      2
+    );
+  });
+
+  it('and the file is still a fixed point with them in it', () => {
+    const once = write(
+      boardFromProps(
+        read('component Kettle [0.60, 0.40]\n// same\n// same\n').elements
+      )
+    );
+    expect(reread(once)).toBe(once);
+  });
+});
+
+/* ── A maturity always has a decimal point ────────────────────────────── */
+
+describe('a component whose name ends in a digit', () => {
+  it('keeps its name, and its evolution, through an `evolve`', () => {
+    // M4. `[01]` looked like a harmless extra spelling for a maturity and was
+    // not: `evolve Tier 1 0.75` took `1` as the maturity and `Tier` as the
+    // name, so the line was about a component nobody declared — and the twin
+    // and its arrow then vanished on the next export. The reference regex is
+    // `/\s[0-9]?\.[0-9]+[0-9]?/`: a maturity always has a point.
+    const { elements, report } = read(
+      'component Tier 1 [0.60, 0.40]\nevolve Tier 1 0.75\n'
+    );
+    const names = elements
+      .filter(props => props.type === 'wardleyNode')
+      .map(
+        props =>
+          (props.interchange as Record<string, { id?: string }>)[
+            WARDLEY_OWM_FORMAT_ID
+          ].id
+      );
+    expect(names[0]).toBe('Tier 1');
+    // The twin exists, and its arrow points at the component that was declared.
+    expect(names).toHaveLength(2);
+    expect(report.notes).toEqual([]);
+
+    const written = write(boardFromProps(elements));
+    expect(written).toContain('component "Tier 1" [0.60, 0.40]');
+    expect(written).toContain('evolve "Tier 1" 0.75');
+  });
+});
+
+/* ── What the reference reader accepts, this one accepts ──────────────── */
+
+describe('the coordinate spellings OWM tolerates', () => {
+  it('maps a bracket written with no space before it', () => {
+    // `extractLocation` splits on a bare `[`, so the file IS positioned — only
+    // `setName` mangles the name. Mapped at the coordinates it gave.
+    const result = read('component Kettle[0.60, 0.40]\n');
+    expect(result.report.mapped).toBe(1);
+    expect(result.report.notes).toEqual([]);
+    expect(write(boardFromProps(result.elements))).toBe(
+      'component Kettle [0.60, 0.40]\n'
+    );
+  });
+
+  it('maps a pair with one number, defaulting the other as OWM does', () => {
+    // `[0.5]` → visibility 0.5, maturity 0.1 (`extractLocation`'s default).
+    const result = read('component Kettle [0.60]\n');
+    expect(result.report.mapped).toBe(1);
+    expect(write(boardFromProps(result.elements))).toBe(
+      'component Kettle [0.60, 0.10]\n'
+    );
+    // Mapped, and still declared: half a pair is half an invented axis, and D4
+    // does not care which half.
+    expect(result.report.notes.map(note => note.kind)).toEqual([
+      'invented-layout',
+    ]);
+    expect(result.report.notes[0].message).toContain('value chain only');
+  });
+
+  it('maps the readable axis of a half-unreadable pair', () => {
+    const result = read('component Kettle [nonsense, 0.40]\n');
+    expect(write(boardFromProps(result.elements))).toBe(
+      'component Kettle [0.90, 0.40]\n'
+    );
+    expect(result.report.notes[0].message).toContain('evolution axis only');
+  });
+
+  it('places a coordinate-less statement where OWM places one', () => {
+    // m1: the reference default is `{visibility: 0.9, maturity: 0.1}`, so an
+    // artefact this reader places without coordinates lands where the tool that
+    // wrote the file would have drawn it — not on a layout of our own.
+    const result = read('anchor Client\n');
+    expect(write(boardFromProps(result.elements))).toBe(
+      'anchor Client [0.90, 0.10]\n'
+    );
+  });
+});
+
+/* ── The two axes, absolutely ─────────────────────────────────────────── */
+
+describe('the axes point the way Wardley draws them', () => {
+  it('puts visibility 1.0 at the TOP of the plot and 0.0 at the bottom', () => {
+    // G1. Every other assertion in this suite is a ROUND TRIP, and a round trip
+    // is exactly the shape of test that survives a sign error: invert the y
+    // axis in both directions and all of them still pass while every imported
+    // map is drawn upside down. This one is absolute.
+    const high = owmPointOf(PLOT, 1, 0)[1];
+    const low = owmPointOf(PLOT, 0, 0)[1];
+    expect(high).toBeLessThan(low);
+
+    // …and evolution 1.0 is to the RIGHT of 0.0, which has no inversion but is
+    // the same class of mistake.
+    expect(owmPointOf(PLOT, 0, 1)[0]).toBeGreaterThan(
+      owmPointOf(PLOT, 0, 0)[0]
+    );
+  });
+
+  it('draws a high-visibility component in the upper half of the map', () => {
+    // The same claim, made against a real import rather than the projection:
+    // `[0.95, 0.05]` is near the top of the value chain and barely evolved, so
+    // it belongs in the upper-left of a 1600 × 900 map at the origin.
+    const { elements } = read('component Need [0.95, 0.05]\n');
+    const circle = elements.find(props => props.type === 'wardleyNode');
+    const [x, y] = Bound.deserialize(String(circle!.xywh)).toXYWH();
+    expect(y).toBeLessThan(OWM_DEFAULT_MAP_HEIGHT / 2);
+    expect(x).toBeLessThan(OWM_DEFAULT_MAP_WIDTH / 2);
   });
 });
 
@@ -437,13 +710,55 @@ describe('a file that is barely one', () => {
 
   it('imports a name declared twice, and says which one the links mean', () => {
     const result = read(
-      'component Twin [0.60, 0.40]\ncomponent Twin [0.30, 0.20]\nUser->Twin\n'
+      'component Twin [0.60, 0.40]\ncomponent Twin [0.30, 0.20]\ncomponent User [0.9, 0.1]\nUser->Twin\n'
     );
     expect(
       result.elements.filter(props => props.type === 'wardleyNode')
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     const warning = result.report.notes.find(note => note.kind === 'warning');
     expect(warning).toMatchObject({ sourceId: 'Twin' });
     expect(warning!.message).toContain('means the first');
+  });
+
+  it('resolves a reference to a duplicated name at the FIRST declaration', () => {
+    // G2. "First wins" is asserted for the materializer's link map; this is the
+    // other half of it, and it is a different code path — a pipeline and an
+    // `evolve` look their component's HEIGHT up by name, and a map that
+    // silently used the last declaration would draw them somewhere nobody put
+    // anything.
+    const { elements } = read(
+      'component Twin [0.80, 0.40]\ncomponent Twin [0.20, 0.40]\nevolve Twin 0.75\n'
+    );
+    const circles = elements.filter(props => props.type === 'wardleyNode');
+    // Three: the two declarations, then the evolved twin.
+    expect(circles).toHaveLength(3);
+    const yOf = (props: (typeof circles)[number]) =>
+      Bound.deserialize(String(props.xywh)).toXYWH()[1];
+    // The evolved twin sits at the FIRST declaration's height (0.80), which is
+    // above the second (0.20) rather than beside it.
+    expect(yOf(circles[2])).toBeCloseTo(yOf(circles[0]), 6);
+    expect(yOf(circles[2])).not.toBeCloseTo(yOf(circles[1]), 6);
+  });
+
+  it('never gives a minted handle back as if it were a name', () => {
+    // G3. The reader mints `evolve Kettle` as the arrow's target handle,
+    // because OWM has no id for a twin and D3 forbids inventing one that
+    // pretends otherwise. `element: 'evolve'` is what marks it as a handle, and
+    // this is the assertion that the writer honours the marker: delete the
+    // twin's label and its name has to fall back to something, and that
+    // something must not be the handle.
+    const { elements } = read(
+      'component Kettle [0.60, 0.40]\nevolve Kettle 0.75\n'
+    );
+    const board = boardFromProps(elements);
+    // The twin's label is the LAST one the reader wrote; drop it.
+    board.labels.pop();
+
+    const written = write(board);
+    expect(written).not.toContain('evolve Kettle');
+    expect(written).not.toContain('"evolve Kettle"');
+    // It comes out christened instead, which is the honest fallback — and the
+    // export says so.
+    expect(written).toContain('"Component 1"');
   });
 });

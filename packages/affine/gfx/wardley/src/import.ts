@@ -139,6 +139,8 @@ import { WARDLEY_ROLE } from './roles.js';
  * | a Labre `method` node (build / buy / outsource)                       | **lost**    | written as a plain component — OWM says a method with a decorator this writer cannot tell apart. The export warns       |
  * | the file's `title`, once the board has a name of its own              | **lost on export** | kept in the document under `attrs['@document'].title` and written back only when the caller names nothing; the export warns when the two disagree |
  * | surface identity across a re-import                                   | **lost**    | a new map beside the old one, never a merge                                                                            |
+ * | a name whose whitespace matters (`Foo&nbsp;&nbsp;&nbsp;Bar`)          | **round-trips here, at risk elsewhere** | this reader keeps a name VERBATIM and this writer gives it back verbatim, so Labre → Labre is exact. onlinewardleymaps does not: `normalizeComponentName` collapses whitespace runs before it matches a link end to a component, so a map that goes Labre → OWM → Labre may come back with its links dangling. Not sanitized here, because sanitizing would lose the author's name to protect another tool's matcher |
+ * | a top-level `market` / `ecosystem` statement                          | **round-trips here, refused elsewhere** | Labre reads and writes both. The reference `Converter` registers no strategy for either keyword, so such a line reaches `LinksExtractionStrategy`, has no `->` in it and is recorded as a PARSE ERROR — onlinewardleymaps does not merely fail to draw it. The interoperable spelling is a component carrying the decorator (`component Suppliers [0.3, 0.7] (market)`), which this pair already round-trips through the carried tail |
  *
  * `sourceVersion` reports the DIALECT, because the DSL declares no version: the
  * OnlineWardleyMaps frontend's own extraction strategies, which is what this
@@ -199,34 +201,84 @@ function readName(raw: string): { name: string; rest: string } {
   // Bare: the name runs up to the coordinate bracket, exactly as OWM's own
   // `setName` splits it. A statement that opens straight on `[` has no name.
   if (trimmed.startsWith('[')) return { name: '', rest: trimmed };
-  const at = trimmed.indexOf(' [');
-  if (at === -1) return { name: trimmed.trim(), rest: '' };
-  return { name: trimmed.slice(0, at).trim(), rest: trimmed.slice(at) };
-}
-
-/** The numbers of the leading `[...]`, plus everything after it, VERBATIM. */
-function readBracket(raw: string): {
-  numbers?: number[];
-  malformed: boolean;
-  tail: string;
-} {
-  const match = /^\s*\[([^\]]*)\]/.exec(raw);
-  if (!match) return { malformed: false, tail: raw };
-  const tail = raw.slice(match[0].length);
-  const parts = match[1]
-    .split(',')
-    .map(part => part.trim())
-    .filter(part => part.length > 0);
-  const numbers = parts.map(part => Number.parseFloat(part));
-  if (numbers.length < 2 || numbers.some(value => !Number.isFinite(value))) {
-    return { malformed: true, tail };
+  const spaced = trimmed.indexOf(' [');
+  if (spaced !== -1) {
+    return {
+      name: trimmed.slice(0, spaced).trim(),
+      rest: trimmed.slice(spaced),
+    };
   }
-  return { numbers, malformed: false, tail };
+  // `component Kettle[0.1, 0.2]`, with no space before the bracket. OWM's own
+  // `setName` splits on `' ['` and therefore keeps `Kettle[0.1, 0.2]` whole as
+  // the name, while `extractLocation` splits on a bare `[` and reads the pair
+  // anyway — so the file IS positioned, and only the name comes out wrong.
+  // Splitting on the bare bracket maps the statement the way the coordinates
+  // say it was meant, which beats both inventing a layout and keeping OWM's
+  // own mangled name.
+  const tight = trimmed.indexOf('[');
+  if (tight !== -1) {
+    return { name: trimmed.slice(0, tight).trim(), rest: trimmed.slice(tight) };
+  }
+  return { name: trimmed.trim(), rest: '' };
 }
 
-/** A maturity, the way OWM spells one: `.85`, `0.85`, `0` or `1`. */
-const MATURITY = String.raw`(?:[0-9]*\.[0-9]+|[01])`;
-/** `<anything> <maturity>[ <tail>]`, lazily, so the LAST number wins. */
+/**
+ * OWM's own defaults for an axis a statement did not give
+ * (`extractLocation`, `constants/extractionFunctions.ts`). Used rather than a
+ * layout of our own, so an artefact this reader places without coordinates
+ * lands where the tool that wrote the file would have drawn it.
+ */
+export const OWM_DEFAULT_VISIBILITY = 0.9;
+export const OWM_DEFAULT_EVOLUTION = 0.1;
+
+/** One coordinate bracket, read per AXIS, plus everything after it VERBATIM. */
+interface Bracket {
+  /** Whether the statement had a `[...]` at all. */
+  present: boolean;
+  /** `undefined` for an axis the bracket did not give a readable number for. */
+  visibility?: number;
+  evolution?: number;
+  tail: string;
+}
+
+/**
+ * Read `[v, e]` the way `extractLocation` reads one — PER AXIS.
+ *
+ * The per-axis reading is not pedantry, it is what the reference parser does:
+ * `[0.5]` is a legal pair whose second member falls back to the default, and so
+ * is `[nonsense, 0.5]`. Reading the bracket as all-or-nothing would invent a
+ * layout for a statement the file had positioned on one axis, and D4 forbids
+ * presenting an invented axis as read from the file — so the two axes are
+ * tracked separately all the way to the note.
+ */
+function readBracket(raw: string): Bracket {
+  const match = /^\s*\[([^\]]*)\]/.exec(raw);
+  if (!match) return { present: false, tail: raw };
+  const tail = raw.slice(match[0].length);
+  const [visibility, evolution] = match[1]
+    .split(',')
+    .map(part => Number.parseFloat(part.trim()))
+    .map(value => (Number.isFinite(value) ? value : undefined));
+  return { present: true, visibility, evolution, tail };
+}
+
+/**
+ * A maturity, the way OWM spells one — and it always has a decimal point.
+ *
+ * The reference regex is `/\s[0-9]?\.[0-9]+[0-9]?/` (`setNameWithMaturity`), so
+ * a bare integer is NOT a maturity there. Accepting `0` and `1` here looked
+ * harmless and was not: `evolve Tier 1 0.75` would take `1` as the maturity and
+ * `Tier` as the name, so the component the line is about is one nobody
+ * declared — the twin and its arrow then vanish on the next export. Names
+ * ending in a digit are ordinary (`Tier 1`, `Wave 0`, `Region 1`).
+ */
+const MATURITY = String.raw`[0-9]*\.[0-9]+`;
+/**
+ * `<anything> <maturity>[ <tail>]`. The `.*?` is lazy, so the FIRST
+ * maturity-shaped token ends the name and everything after it is the tail —
+ * which is the reference reader's own behaviour (`element.match(...)` returns
+ * the first hit).
+ */
 const BEFORE_MATURITY = new RegExp(String.raw`^(.*?)(\s+${MATURITY})(\s.*)?$`);
 const LEADING_MATURITY = new RegExp(String.raw`^\s*(${MATURITY})`);
 
@@ -249,7 +301,6 @@ interface NodeStatement {
   evolution: number;
   tail: string;
   invented: boolean;
-  malformed: boolean;
 }
 
 interface PipelineStatement {
@@ -266,7 +317,6 @@ interface NoteStatement {
   evolution: number;
   tail: string;
   invented: boolean;
-  malformed: boolean;
 }
 
 interface EvolveStatement {
@@ -310,13 +360,6 @@ export function importWardleyOwm(
   /** Whether a LINE of the file put it there — only that one is `mapped`. */
   let titledByFile = false;
 
-  /** Deterministic sweep for anything the file gave no position for (D4). */
-  let invented = 0;
-  const inventedPlace = () => {
-    const index = invented++;
-    return { visibility: 0.95, evolution: 0.05 + 0.1 * (index % 9) };
-  };
-
   const carry = (line: string, kind: string) => {
     carriedLines.push(line);
     carriedKinds.set(kind, (carriedKinds.get(kind) ?? 0) + 1);
@@ -331,13 +374,95 @@ export function importWardleyOwm(
     });
   };
 
+  /**
+   * Where one positioned statement goes, and what the report owes for it (D4).
+   *
+   * Three outcomes, and the middle one is the reason this is per-axis. A
+   * statement with NO bracket is laid out whole and declared. One whose bracket
+   * this reader cannot make a single number of is the same, plus a `warning`,
+   * because the file said something and we could not read it. And one that
+   * positioned ONE axis — `[0.5]`, or `[nonsense, 0.5]`, both of which the
+   * reference parser accepts and defaults the rest of — is MAPPED at the
+   * coordinate it gave, with a note naming the axis it did not. An invented
+   * axis is never presented as read from the file, and that is true of half a
+   * pair as much as of a whole one.
+   */
+  const placeOf = (
+    bracket: Bracket,
+    element: string,
+    name: string,
+    lineIndex: number
+  ): { visibility: number; evolution: number; invented: boolean } => {
+    const { visibility, evolution } = bracket;
+    const place = {
+      visibility: visibility ?? OWM_DEFAULT_VISIBILITY,
+      evolution: evolution ?? OWM_DEFAULT_EVOLUTION,
+    };
+
+    if (visibility !== undefined && evolution !== undefined) {
+      return { ...place, invented: false };
+    }
+
+    if (visibility === undefined && evolution === undefined) {
+      if (bracket.present) {
+        notes.push({
+          kind: 'warning',
+          sourceId: name,
+          element,
+          message: `line ${lineIndex + 1} declares coordinates this reader cannot make a number of, so they were not used.`,
+        });
+      }
+      inventedNote(
+        element,
+        name,
+        bracket.present
+          ? 'its coordinates were unreadable, so it was placed where a map with no coordinates places things. The file did not say where it goes.'
+          : 'the file gives it no coordinates, so it was placed where a map with no coordinates places things. The file did not say where it goes.'
+      );
+      return { ...place, invented: true };
+    }
+
+    inventedNote(
+      element,
+      name,
+      visibility === undefined
+        ? 'the file positions it on the evolution axis only, so its place on the value chain is this reader’s and not the file’s.'
+        : 'the file positions it on the value chain only, so its place on the evolution axis is this reader’s and not the file’s.'
+    );
+    return { ...place, invented: false };
+  };
+
+  /**
+   * Inside a `/* … *​/` block, where every line is a comment.
+   *
+   * The reference reader strips these in `Converter.stripComments` BEFORE any
+   * strategy sees the text, so a commented-out `component` is not a component
+   * there. Tracking the state here is what makes that true of this reader too:
+   * carrying only the opening line and then parsing the body would put an
+   * artefact on the canvas that the file's author had switched off, which is a
+   * worse failure than losing it — it is a drawing nobody made.
+   */
+  let insideBlockComment = false;
+
   for (let index = 0; index < lines.length; index += 1) {
     const raw = lines[index];
     const line = raw.trim();
+
+    if (insideBlockComment) {
+      carry(raw, 'comment');
+      if (line.includes('*/')) insideBlockComment = false;
+      continue;
+    }
     if (line.length === 0) continue;
 
-    if (line.startsWith('//') || line.startsWith('/*')) {
+    if (line.startsWith('//')) {
       carry(raw, 'comment');
+      continue;
+    }
+    if (line.startsWith('/*')) {
+      carry(raw, 'comment');
+      // A one-line block (`/* … */`) opens and closes on the same line.
+      if (!line.includes('*/', 2)) insideBlockComment = true;
       continue;
     }
 
@@ -357,38 +482,17 @@ export function importWardleyOwm(
     );
     if (keyword !== undefined) {
       const { name, rest } = readName(line.slice(keyword.length + 1));
-      const { numbers, malformed, tail } = readBracket(rest);
-      const place =
-        numbers === undefined || malformed
-          ? inventedPlace()
-          : { visibility: numbers[0], evolution: numbers[1] };
-      const statement: NodeStatement = {
+      const bracket = readBracket(rest);
+      const named = name || `${keyword} ${index + 1}`;
+      const place = placeOf(bracket, keyword, named, index);
+      nodeStatements.push({
         keyword,
-        name: name || `${keyword} ${index + 1}`,
+        name: named,
         visibility: place.visibility,
         evolution: place.evolution,
-        tail,
-        invented: numbers === undefined || malformed,
-        malformed,
-      };
-      if (malformed) {
-        notes.push({
-          kind: 'warning',
-          sourceId: statement.name,
-          element: keyword,
-          message: `line ${index + 1} declares coordinates this reader cannot make two numbers of, so they were not used.`,
-        });
-      }
-      if (statement.invented) {
-        inventedNote(
-          keyword,
-          statement.name,
-          malformed
-            ? 'its coordinates were unreadable, so it was laid out at the top of the value chain. The file did not say where it goes.'
-            : 'the file gives it no coordinates, so it was laid out at the top of the value chain. The file did not say where it goes.'
-        );
-      }
-      nodeStatements.push(statement);
+        tail: bracket.tail,
+        invented: place.invented,
+      });
       continue;
     }
 
@@ -405,20 +509,24 @@ export function importWardleyOwm(
         continue;
       }
       const { name, rest } = readName(line.slice('pipeline '.length));
-      const { numbers, malformed, tail } = readBracket(rest);
-      const usable = numbers !== undefined && !malformed;
+      const bracket = readBracket(rest);
+      // A pipeline's bracket is a SPAN, not a position, so it defaults as a
+      // span does (`setPipelineMaturity`) and only a whole one is usable: half
+      // a span is not a narrower pipeline.
+      const usable =
+        bracket.visibility !== undefined && bracket.evolution !== undefined;
+      const named = name || `pipeline ${index + 1}`;
       pipelines.push({
-        name: name || `pipeline ${index + 1}`,
-        // OWM's own defaults for a pipeline nobody gave a span.
-        from: usable ? numbers[0] : 0.2,
-        to: usable ? numbers[1] : 0.8,
-        tail,
+        name: named,
+        from: usable ? bracket.visibility! : 0.2,
+        to: usable ? bracket.evolution! : 0.8,
+        tail: bracket.tail,
         invented: !usable,
       });
       if (!usable) {
         inventedNote(
           'pipeline',
-          name || `pipeline ${index + 1}`,
+          named,
           'the file gives it no span, so it was drawn across the default one. The file did not say how wide it is.'
         );
       }
@@ -428,26 +536,15 @@ export function importWardleyOwm(
     /* `note` — a free text at a position. */
     if (line.startsWith('note ')) {
       const { name, rest } = readName(line.slice('note '.length));
-      const { numbers, malformed, tail } = readBracket(rest);
-      const place =
-        numbers === undefined || malformed
-          ? inventedPlace()
-          : { visibility: numbers[0], evolution: numbers[1] };
+      const bracket = readBracket(rest);
+      const place = placeOf(bracket, 'note', name, index);
       noteStatements.push({
         text: name,
         visibility: place.visibility,
         evolution: place.evolution,
-        tail,
-        invented: numbers === undefined || malformed,
-        malformed,
+        tail: bracket.tail,
+        invented: place.invented,
       });
-      if (numbers === undefined || malformed) {
-        inventedNote(
-          'note',
-          name,
-          'the file gives it no coordinates, so it was laid out at the top of the map.'
-        );
-      }
       continue;
     }
 
@@ -533,16 +630,59 @@ export function importWardleyOwm(
     declared.add(statement.name);
   }
 
+  /* ── A link naming something nobody declared ──────────────────────── */
+
+  /**
+   * D1's third state, applied to the one construct that can dangle.
+   *
+   * A link is the only statement in this DSL whose meaning depends on OTHER
+   * statements: it names two components by name, and a name nothing declares
+   * resolves to nothing. `materializeInterchangeImport` leaves such an endpoint
+   * exactly as the file wrote it, which keeps the DOCUMENT honest — but the
+   * connector then routes to an empty path and is INVISIBLE on the canvas. So a
+   * file with a typo in it imported as `mapped: 2, notes: []`: two artefacts
+   * drawn, one arrow silently missing, and a report claiming nothing was lost.
+   *
+   * One note per dangling END rather than per link, because a link with two of
+   * them has two problems and an architect fixing the file needs both names.
+   */
+  for (const link of links) {
+    for (const end of [link.from, link.to]) {
+      if (end.length === 0) {
+        notes.push({
+          kind: 'warning',
+          element: 'link',
+          message:
+            'a link names nothing on one of its ends, so the arrow it asks for runs to no artefact and is invisible on the canvas.',
+        });
+        continue;
+      }
+      if (declared.has(end)) continue;
+      notes.push({
+        kind: 'warning',
+        sourceId: end,
+        element: 'link',
+        message:
+          'a link names this, and no statement in the file declares it. The arrow is in the document and runs to no artefact, so it is invisible on the canvas.',
+      });
+    }
+  }
+
   /* ── Laying it out ────────────────────────────────────────────────── */
 
   const plot = owmDefaultPlot();
   const elements: SerializedElementProps[] = [];
 
   /** The place a name was declared at, for the statements that reference one. */
-  const placeOf = new Map<string, { visibility: number; evolution: number }>();
+  const declaredAt = new Map<
+    string,
+    { visibility: number; evolution: number }
+  >();
   for (const statement of nodeStatements) {
-    if (!placeOf.has(statement.name)) {
-      placeOf.set(statement.name, {
+    // FIRST wins, matching the materializer's own rule for a duplicated name
+    // and OWM's: a pipeline or an `evolve` naming it means the first one.
+    if (!declaredAt.has(statement.name)) {
+      declaredAt.set(statement.name, {
         visibility: statement.visibility,
         evolution: statement.evolution,
       });
@@ -600,7 +740,7 @@ export function importWardleyOwm(
   }
 
   for (const pipeline of pipelines) {
-    const at = placeOf.get(pipeline.name);
+    const at = declaredAt.get(pipeline.name);
     if (at === undefined) {
       inventedNote(
         'pipeline',
@@ -678,7 +818,7 @@ export function importWardleyOwm(
   /** The twin an `evolve` line draws, and the handle its arrow points at. */
   const twinHandles: string[] = [];
   for (const evolution of evolutions) {
-    const at = placeOf.get(evolution.name);
+    const at = declaredAt.get(evolution.name);
     if (at === undefined) {
       inventedNote(
         'evolve',

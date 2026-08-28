@@ -39,8 +39,24 @@ describe('command registry invariants', () => {
       // The import NOMINATES the sub-menu and the export declines it, which is
       // the PO ruling of 2026-08-28 read the way BPMN already reads it: an
       // import is where a board comes FROM, an export is what you do to one you
-      // already have. That puts Wardley at fourteen nominations against a cap
-      // of fourteen — it fits, to the entry, and a fifteenth tips it over.
+      // already have.
+      //
+      // **This is the PR that tipped Wardley past the cap**, and the number to
+      // read for it is the CATALOGUE's, not the nomination list's:
+      // `selectSeniorMenuCommands` triggers on `catalogue.length >
+      // SENIOR_MENU_CAP`, and fifteen is over fourteen. So Wardley joins BPMN
+      // as a framework whose sub-menu is thirteen ranked buttons plus "More
+      // artefacts…" rather than its whole authored row — even though only
+      // fourteen of the fifteen nominate the row at all.
+      //
+      // Nothing becomes unreachable (that is what the fourteenth button is
+      // for), and the arbitration is the one PF6 built for exactly this day.
+      // What DID change without anyone deciding it is which thirteen a Wardley
+      // user meets on a cold start: the authored head of the nomination list,
+      // not the toolbox in full. The PO has not been asked to curate that head,
+      // and whoever adds a sixteenth command owes the question rather than just
+      // this number. Pinned live in
+      // `integration-test/.../catalogue-overflow.spec.ts`.
       wardley: 15,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
@@ -327,8 +343,10 @@ describe('menu and manifest enumerate the same source', () => {
     // (`docs/adr/0012`, and BPMN's own ruling). Every other entry is in both,
     // in author order — which is what the original assertion was protecting.
     expect(menu).toEqual(manifest.filter(id => id !== 'wardley.exportOwm'));
-    // Fourteen nominations against a cap of fourteen: Wardley still fits to the
-    // entry, so `selectSeniorMenuCommands` never has to rank it.
+    // Fourteen NOMINATIONS. Not fourteen buttons: the catalogue is fifteen, so
+    // `selectSeniorMenuCommands` ranks this list down to thirteen plus the
+    // catalogue button. This assertion is about what Wardley DECLARES; what the
+    // row actually renders is pinned in the browser suite.
     expect(menu).toHaveLength(14);
   });
 

@@ -115,8 +115,16 @@ describe('artefact catalogue sidepanel', () => {
       'connectors',
       'interchange',
     ]);
-    // Every catalogue command has a row, and every row an icon and a label.
-    expect(entries()).toHaveLength(15);
+    // Fourteen of Wardley's fifteen catalogue commands, and the fifteenth is
+    // absent for a reason the panel is supposed to have: it filters on
+    // `isCommandAvailable` AND on `when`, and `wardley.exportOwm` needs a
+    // Wardley map on the board to have a plot to measure coordinates against.
+    // This board has none, so there is nothing to export and no row offering to.
+    expect(entries()).toHaveLength(14);
+    const shown = entries().map(entry => entry.dataset.commandId);
+    expect(shown).toContain('wardley.importOwm');
+    expect(shown).not.toContain('wardley.exportOwm');
+    // Every row has an icon and a label.
     for (const entry of entries()) {
       expect(entry.dataset.commandId, entry.outerHTML).toBeTruthy();
       expect(entry.textContent?.trim(), entry.dataset.commandId).toBeTruthy();
