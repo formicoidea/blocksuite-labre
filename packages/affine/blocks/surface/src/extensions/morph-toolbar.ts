@@ -348,7 +348,8 @@ function morphPatch(props: Record<string, unknown>): Record<string, unknown> {
  * wearing a border nobody asked for. No BPMN type is in that schema today, so
  * nothing is broken right now, which is exactly the kind of accident that lands
  * the day one is added. This module is generic and must not depend on which
- * types happen to be listed.
+ * types happen to be listed. (The crud now skips recording for role-carrying
+ * elements, so the bypass here is belt-and-braces — kept as the lighter write.)
  *
  * `surface.updateElement` is the same write without the memory; the read-only
  * refusal the CRUD also carries is restated in {@link morphTarget}.
