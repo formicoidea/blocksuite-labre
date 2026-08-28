@@ -78,6 +78,11 @@ const againstTimeline: ValidationRule = {
   suggestionFallback:
     'Time runs left to right: move what follows to the right of what leads to it — or, if the arc was drawn from the wrong end, reverse it.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Event Storming (Brandolini) — the frieze runs left to right in time',
+  },
   backgroundRole: ES_ROLE.board,
   background: EVENT_STORMING_BACKGROUND,
   relativeOrder: {
@@ -176,6 +181,11 @@ const forbiddenArc: ValidationRule = {
   suggestionFallback:
     'The frieze reads: an actor issues a command, the command lands on an aggregate or an external system, and that raises a domain event, which triggers a policy or feeds a read model. Re-point the arc onto the sticky that is missing.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Event Storming (Brandolini) — the flow the big-picture notation draws',
+  },
   backgroundRole: ES_ROLE.board,
   background: EVENT_STORMING_BACKGROUND,
   endpoints: {
@@ -230,6 +240,11 @@ const overlappingStickies: ValidationRule = {
     'com.labre.event-storming.validation.overlapping-stickies.suggestion',
   suggestionFallback: 'Slide one aside so both can be read.',
   version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre readability convention — no Event Storming rule speaks of overlapping ink',
+  },
   // Not a frame the rule measures against — an overlap is an overlap wherever
   // it happens — but the board a finding is ATTRIBUTED to, so the arbitration
   // "ignore this rule on the whole board" has one board to be written on.

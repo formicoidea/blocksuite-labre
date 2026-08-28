@@ -1,4 +1,5 @@
 import {
+  InterchangeExtension,
   ReadingProfileExtension,
   tagsToolbarConfig,
   validationToolbarConfig,
@@ -22,6 +23,7 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
+import { WARDLEY_INTERCHANGE } from './interchange';
 import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_NUDGES } from './nudges';
@@ -89,6 +91,15 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+      // Both directions of the OWM DSL, and the SVG fallback that reads a
+      // picture of a map (`docs/adr/0012`, P1) — ONE registration, because the
+      // unit of declaration is the capability and `WARDLEY_INTERCHANGE` is the
+      // list of them. HERE, beside the rules, because offering to read or write
+      // a file is TOOLING: turning the wardley flag off removes the three
+      // commands and leaves every element a past import created — and every
+      // byte of `interchange` they carry — exactly where it is
+      // (`docs/adr/0009`).
+      context.register(InterchangeExtension(WARDLEY_INTERCHANGE));
       // Map quality (PF13.9): the four nudges the tool cannot judge, and
       // nothing else — the on-demand check-up Wardley used to expose beside
       // them was dropped on the PO recette of 02/08/2026. The engine keeps the
@@ -150,7 +161,8 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // the flag without either side naming the other.
       context.register(ReadingProfileExtension(WARDLEY_READING));
       context.register(wardleySeniorTool);
-      // The 13 Wardley commands, ONE registration for both faces: the
+      // The Wardley commands — thirteen artefacts plus the two directions of
+      // the OWM DSL — ONE registration for both faces: the
       // enumerable registry the sub-menu renders from, and — through
       // `toShortcutDescriptor` — the edgeless chords (w+c, w+l, ...).
       // Registering here inherits both the wardley flag gating and the

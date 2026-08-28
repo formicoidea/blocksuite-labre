@@ -3,6 +3,8 @@ import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
   canonicalCombo,
   FRAMEWORK_IDS,
+  selectSeniorMenuCommands,
+  SENIOR_MENU_CAP,
   type CommandDescriptor,
   type FrameworkId,
 } from '@labre/std';
@@ -29,17 +31,86 @@ describe('command registry invariants', () => {
       [...FRAMEWORK_IDS, 'core'].map(owner => [owner, byOwner(owner).length])
     );
     expect(counts).toEqual({
-      wardley: 13,
+      // 16 since the OWM DSL pair: the thirteen-entry toolbox, plus
+      // `wardley.importOwm` and `wardley.exportOwm` — the second framework to
+      // declare an interchange capability (`docs/adr/0012`), and the one whose
+      // exporter replaces the copy that lived outside this repo.
+      //
+      // The import NOMINATES the sub-menu and the export declines it, which is
+      // the PO ruling of 2026-08-28 read the way BPMN already reads it: an
+      // import is where a board comes FROM, an export is what you do to one you
+      // already have.
+      //
+      // **This is the PR that tipped Wardley past the cap**, and the number to
+      // read for it is the CATALOGUE's, not the nomination list's:
+      // `selectSeniorMenuCommands` triggers on `catalogue.length >
+      // SENIOR_MENU_CAP`, and fifteen is over fourteen. So Wardley joins BPMN
+      // as a framework whose sub-menu is thirteen ranked buttons plus "More
+      // artefacts…" rather than its whole authored row — even though only
+      // fourteen of the fifteen nominate the row at all.
+      //
+      // Nothing becomes unreachable (that is what the fourteenth button is
+      // for), and the arbitration is the one PF6 built for exactly this day.
+      // What DID change without anyone deciding it is which thirteen a Wardley
+      // user meets on a cold start: the authored head of the nomination list,
+      // not the toolbox in full. The PO has not been asked to curate that head,
+      // and whoever adds a sixteenth command owes the question rather than just
+      // this number. Pinned live in
+      // `integration-test/.../catalogue-overflow.spec.ts`.
+      //
+      // …and 16 since `wardley.importSvg`, the visual-tier FALLBACK
+      // (`docs/adr/0012`, P2). It declines `senior-menu` — the row carries the
+      // NATIVE format, which is `wardley.importOwm` beside it — so the
+      // nomination list is untouched at fourteen and only the catalogue grew.
+      // The overflow above was already tipped by the OWM pair; this widens it
+      // by one without changing which thirteen a cold start meets.
+      wardley: 16,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
       'cynefin-estuarine': 3,
-      // 8 since B4 added the two lane gestures (`bpmn.addLane`,
-      // `bpmn.removeLane`) beside the six toolbox artefacts. They are the first
-      // BPMN commands that act on a SELECTION rather than create something, and
-      // therefore the first that decline `senior-menu` — which the catalogue
-      // test at the bottom of this file is precisely what makes safe.
-      bpmn: 8,
+      // 23 since the descriptive-profile pack: 17 artefacts, 3 connecting-object
+      // tools, the pool, and the two lane gestures (`bpmn.addLane`,
+      // `bpmn.removeLane`) that act on a SELECTION rather than create something.
+      // BPMN is the first shipped framework whose CATALOGUE outgrows the
+      // fourteen senior slots — seven of the twenty-three decline `senior-menu`
+      // on top of the two lane gestures, and past the cap
+      // `selectSeniorMenuCommands` ranks the nominated fourteen ONLY: a
+      // declined surface is a statement, not a default usage can out-vote (PO
+      // ruling of 2026-08-28). The two tests at the bottom of this file are
+      // what make that safe: everything is in the catalogue, and the menu is a
+      // subset of it.
+      // …and 24 since `bpmn.exportXml`, the first command in the library whose
+      // subject is the whole BOARD rather than an element: it is reached from
+      // the pool's "⋮" menu, and what it serializes is every BPMN artefact on
+      // the surface.
+      // 25 since `bpmn.importXml` — the other direction of the same format, and
+      // the first framework command that needs NOTHING on the board: it is
+      // `availability: 'always'`, declines the contextual toolbar (a selection
+      // is exactly what an empty board has none of) and is reached from the
+      // catalogue and the palette.
+      // …and 26 since `bpmn.importSvg`, the visual-tier FALLBACK: the same
+      // gesture through the same seam over a different declared capability, and
+      // it deliberately does NOT contest the sub-menu (see its own comment in
+      // `gfx/bpmn/src/commands.ts`) — the catalogue grew by one, the
+      // nomination pool did not.
+      bpmn: 26,
+      // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
+      // board and the relationship tool) plus `c4.exportMermaid`, whose subject
+      // is a SELECTED board and which declines the sub-menu. Fourteen against a
+      // cap of fourteen — which `selectSeniorMenuCommands` measures on the
+      // CATALOGUE — makes C4 the last framework that FITS, to the entry: the
+      // sub-menu is its thirteen artefacts in author order, and the ranking
+      // never runs. A fifteenth of anything tips it over.
+      //
+      // The board's automatic legend is NOT among them and is not a command at
+      // all: the PO's arbitration of 27/08/2026 is that generating one belongs
+      // to a board you have selected and to nothing else, so it is a button on
+      // that board's contextual toolbar and is absent from the catalogue, the
+      // palette and Settings › Shortcuts. It emits `FrameworkLegendCreated` by
+      // hand, exactly as the Context Map's legend does
+      // (`gfx/c4/src/toolbar/config.ts`).
+      c4: 14,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -64,7 +135,11 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(77);
+    // 112 since the two SVG fallback imports (`bpmn.importSvg`,
+    // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
+    // because ADR 0012 declares interchange per framework × format × direction
+    // and refuses to infer a framework from a `.svg`.
+    expect(commands).toHaveLength(112);
   });
 
   /**
@@ -107,11 +182,58 @@ describe('command registry invariants', () => {
     }
   });
 
-  /** The one numeric cap, and it is a UI one: 14 slots in the sub-menu. */
-  test('no owner exceeds 14 senior-menu slots', () => {
+  /**
+   * The one numeric cap, and it is a UI one: 14 buttons in the sub-menu's row.
+   *
+   * Two numbers, because they fail differently.
+   *
+   * What is RENDERED is the promise to the user: a row no wider than the
+   * popover. Past the cap the arbitration ranks an owner's nominations down to
+   * thirteen buttons plus "More artefacts…", so that number is safe by
+   * construction — it is asserted as documentation of the intent, and it would
+   * only ever fire if the arbitration itself were changed.
+   *
+   * What is NOMINATED is the curation budget, and it is the one a merge can
+   * quietly break: the pool feeds a row of fourteen, so it stays the size of
+   * that row plus the single over-nomination the PO authorized on 2026-08-28
+   * (`bpmn.importXml`, which took BPMN to fifteen).
+   */
+  test('no owner renders more than 14 senior-menu buttons, or nominates past its budget', () => {
     for (const id of FRAMEWORK_IDS) {
-      const slots = byOwner(id).filter(c => c.surfaces.includes('senior-menu'));
-      expect(slots.length, `${id} sub-menu`).toBeLessThanOrEqual(14);
+      const owned = byOwner(id);
+      const nominated = owned.filter(c => c.surfaces.includes('senior-menu'));
+      const catalogue = owned.filter(c => c.surfaces.includes('catalogue'));
+      // `() => undefined` is the cold start; the pick is the same size for
+      // every other usage history, which is the property being counted.
+      const { commands, overflow } = selectSeniorMenuCommands(
+        nominated,
+        catalogue,
+        () => undefined
+      );
+      // Plus the permanent "More artefacts…" button an overflowed row carries.
+      // Documentation of intent more than a trap: past the cap the arbitration
+      // returns thirteen by construction, so this branch cannot fail on its
+      // own. The ceiling below is the half with teeth.
+      expect(
+        commands.length + (overflow ? 1 : 0),
+        `${id} sub-menu`
+      ).toBeLessThanOrEqual(SENIOR_MENU_CAP);
+
+      // The CURATION budget, and the invariant that can actually be broken. A
+      // framework may nominate more than the row seats — the arbitration exists
+      // for that — but nominating freely would turn the pool into "everything,
+      // ranked", which is the failure the eligibility ruling of 2026-08-28 was
+      // written against: a row of board actions somebody happened to click a
+      // lot. So the pool stays roughly the size of the row it feeds.
+      //
+      // `+ 1` and no more: it is the single deliberate over-nomination the PO
+      // signed off on that same day — `bpmn.importXml`, because a board comes
+      // FROM a file and the sub-menu is the first thing a user opens on an
+      // empty canvas. A second one is a curation decision, not a merge, and it
+      // should fail here until somebody makes it.
+      expect(nominated.length, `${id} nominations`).toBeLessThanOrEqual(
+        SENIOR_MENU_CAP + 1
+      );
     }
   });
 
@@ -179,6 +301,7 @@ describe('command registry invariants', () => {
       edgy: 'edgy',
       'cynefin-estuarine': 'cynefin',
       bpmn: 'bpmn',
+      c4: 'c4',
       'ddd-event-storming': 'event-storming',
       'ddd-core-domain': 'core-domain',
       'ddd-context-map': 'context-map',
@@ -224,17 +347,36 @@ describe('menu and manifest enumerate the same source', () => {
     const manifest = getCommandManifest()
       .filter(e => e.owner === 'wardley')
       .map(e => e.id);
-    expect(menu).toEqual(manifest);
-    expect(menu).toHaveLength(13);
+
+    // The DECLARED source is one list, and the manifest is the whole of it —
+    // that is the drift this test was written for, and it is unchanged.
+    expect(manifest).toEqual(wardleyCommands.map(c => c.id));
+    expect(manifest).toHaveLength(16);
+
+    // The sub-menu is a proper SUBSET of it rather than the same list, and the
+    // two entries outside it are declarations rather than omissions.
+    // `wardley.exportOwm` declines the row because an export is what you do to
+    // a board you already have; `wardley.importSvg` declines it because the row
+    // carries the NATIVE format and this is the visual-tier fallback
+    // (`docs/adr/0012`, P2 — and BPMN's own ruling for both). Every other entry
+    // is in both, in author order, which is what the original assertion was
+    // protecting.
+    const DECLINE_THE_ROW = ['wardley.exportOwm', 'wardley.importSvg'];
+    expect(menu).toEqual(manifest.filter(id => !DECLINE_THE_ROW.includes(id)));
+    // Fourteen NOMINATIONS. Not fourteen buttons: the catalogue is sixteen, so
+    // `selectSeniorMenuCommands` ranks this list down to thirteen plus the
+    // catalogue button. This assertion is about what Wardley DECLARES; what the
+    // row actually renders is pinned in the browser suite.
+    expect(menu).toHaveLength(14);
   });
 
   /**
-   * The catalogue is the TOTAL surface, and the sub-menu a selection out of it
-   * — which is what the amendment of 2026-08-26 makes structural rather than
-   * incidental: `selectSeniorMenuCommands` ranks the catalogue, so a command a
-   * framework kept out of the fourteen can still be promoted by a user who
-   * reaches for it. A command missing from the catalogue is unreachable the
-   * moment its framework overflows, whatever its menu membership says.
+   * The catalogue is the TOTAL surface, and the sub-menu a selection out of it.
+   * Since the eligibility ruling of 2026-08-28 that inclusion is what makes a
+   * command reachable at all: `selectSeniorMenuCommands` ranks the NOMINATED
+   * list, so a command its framework kept out of the fourteen lives in the
+   * sidepanel and nowhere else — and one missing from the catalogue too is
+   * unreachable the moment its framework overflows.
    */
   test('every framework command is in the catalogue, and the sub-menu is a subset', () => {
     for (const id of FRAMEWORK_IDS as readonly FrameworkId[]) {

@@ -4,6 +4,7 @@ import {
   COMMAND_USAGE_KEY,
 } from '@labre/affine/shared/services';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine/shared/consts';
+import { CATALOGUE_HEAD_RANKED_SLOTS } from '@labre/affine/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -103,16 +104,33 @@ describe('artefact catalogue sidepanel', () => {
   test('the panel draws the registry: groups, in the framework order', async () => {
     await open();
 
-    // Wardley's three declared categories, in declaration order — the panel
+    // Wardley's four declared categories, in declaration order — the panel
     // never sorts the headers alphabetically (that would overrule the
-    // framework's own reading of its toolbox).
+    // framework's own reading of its toolbox). `interchange` is last and last
+    // on purpose: the two directions of the OWM DSL are what you do WITH a map,
+    // after the three sections of what you draw one with.
     expect(groups().map(group => group.dataset.category)).toEqual([
       'backgrounds',
       'nodes',
       'connectors',
+      'interchange',
     ]);
-    // Every catalogue command has a row, and every row an icon and a label.
-    expect(entries()).toHaveLength(13);
+    // Fifteen of Wardley's sixteen catalogue commands, and the sixteenth is
+    // absent for a reason the panel is supposed to have: it filters on
+    // `isCommandAvailable` AND on `when`, and `wardley.exportOwm` needs a
+    // Wardley map on the board to have a plot to measure coordinates against.
+    // This board has none, so there is nothing to export and no row offering to.
+    //
+    // Both IMPORTS are here, and that is the tier distinction made visible:
+    // neither needs anything on the board, so both render — the native OWM
+    // route and the visual-tier SVG fallback beside it, each labelled with what
+    // it promises (`docs/adr/0012`, P2).
+    expect(entries()).toHaveLength(15);
+    const shown = entries().map(entry => entry.dataset.commandId);
+    expect(shown).toContain('wardley.importOwm');
+    expect(shown).toContain('wardley.importSvg');
+    expect(shown).not.toContain('wardley.exportOwm');
+    // Every row has an icon and a label.
     for (const entry of entries()) {
       expect(entry.dataset.commandId, entry.outerHTML).toBeTruthy();
       expect(entry.textContent?.trim(), entry.dataset.commandId).toBeTruthy();
@@ -190,6 +208,51 @@ describe('artefact catalogue sidepanel', () => {
     expect(
       entries().filter(e => e.dataset.commandId === 'wardley.addInertia').length
     ).toBe(2);
+  });
+
+  /**
+   * The head section's SIZE, sensed on the rendered panel — the test above uses
+   * one used command and would pass at a cap of 7, of 13 or of 200.
+   *
+   * Seven rows, not the sub-menu's fourteen (architect's ruling of
+   * 2026-08-28): the two surfaces share the arbitration and not the magnitude,
+   * because at `TOUCH_TARGET_MIN_PX` a row fourteen of them would fill the
+   * first screen of a 320px panel with duplicates and push every category under
+   * the fold. Every wardley command is fed a measure here, so what bounds the
+   * section is the slot count and nothing else.
+   */
+  test('the head section stops at seven rows however much was used', async () => {
+    await open();
+    const all = entries().map(entry => entry.dataset.commandId!);
+    expect(all.length).toBeGreaterThan(CATALOGUE_HEAD_RANKED_SLOTS);
+
+    // Every command measured: descending counts, ascending timestamps, so the
+    // two axes disagree and the seven seats are genuinely contested.
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify(
+        Object.fromEntries(
+          all.map((id, index) => [id, { c: all.length - index, t: index }])
+        )
+      )
+    );
+    catalogue().close();
+    await open();
+
+    const head = widgetRoot()?.querySelector<HTMLElement>(
+      '[data-testid="artefact-catalogue-ranked"]'
+    );
+    expect(head).not.toBeNull();
+    const headIds = Array.from(
+      head!.querySelectorAll<HTMLElement>(ENTRY),
+      entry => entry.dataset.commandId!
+    );
+    expect(headIds).toHaveLength(CATALOGUE_HEAD_RANKED_SLOTS);
+    // Four by recency (the latest timestamps are the LAST commands) and three
+    // by frequency (the heaviest counts are the first) — both halves of a
+    // section labelled "Recent & frequent", not seven of one.
+    expect(headIds.slice(0, 4)).toEqual(all.slice(-4).reverse());
+    expect(headIds.slice(4)).toEqual(all.slice(0, 3));
   });
 
   test('a wheel over the panel never pans the board', async () => {

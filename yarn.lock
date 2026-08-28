@@ -1969,6 +1969,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/lodash-es": "npm:^4.17.12"
+    dompurify: "npm:^3.2.4"
     fractional-indexing: "npm:^3.2.0"
     html2canvas: "npm:^1.4.1"
     lit: "npm:^3.2.0"
@@ -2229,6 +2230,26 @@ __metadata:
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-c4@workspace:*, @labre/affine-gfx-c4@workspace:packages/affine/gfx/c4":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-c4@workspace:packages/affine/gfx/c4"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-connector": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
+    "@labre/affine-gfx-text": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    lit: "npm:^3.2.0"
   languageName: unknown
   linkType: soft
 
@@ -3410,6 +3431,7 @@ __metadata:
     "@labre/affine-fragment-outline": "workspace:*"
     "@labre/affine-gfx-bpmn": "workspace:*"
     "@labre/affine-gfx-brush": "workspace:*"
+    "@labre/affine-gfx-c4": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-cynefin-estuarine": "workspace:*"
     "@labre/affine-gfx-ddd-aggregate": "workspace:*"

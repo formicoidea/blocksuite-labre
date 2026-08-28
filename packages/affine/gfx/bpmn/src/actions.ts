@@ -2,65 +2,58 @@ import {
   DefaultTool,
   EdgelessCRUDIdentifier,
   generateElementId,
+  type InterchangeReport,
+  materializeInterchangeImport,
+  reportInterchangeImport,
+  runInterchangeImportFile,
+  type SerializedElementProps,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   type BpmnLane,
+  type BpmnNodeKind,
   BpmnPoolElementModel,
   ConnectorMode,
-  FontFamily,
   PointStyle,
-  ShapeStyle,
   StrokeStyle,
-  TextFitMode,
 } from '@labre/affine-model';
+import {
+  EditPropsStore,
+  NotificationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
+import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
-  END_WIDTH,
-  EVENT_END,
-  EVENT_START,
-  INNER_FONT_SIZE,
-  NEUTRAL_STROKE,
-  NODE_FILL,
+  ASSOCIATION_STROKE,
+  ASSOCIATION_WIDTH,
+  MESSAGE_STROKE,
+  MESSAGE_WIDTH,
   NODE_LABEL,
   NODE_SIZE,
-  NODE_STROKE_WIDTH,
   SEQUENCE_STROKE,
   SEQUENCE_WIDTH,
-  START_WIDTH,
-  TASK_RADIUS,
 } from './consts';
-import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
+import { BPMN_FORMAT_ID, type BpmnExportBoard } from './export.js';
+import {
+  BPMN_SVG_IMPORT,
+  BPMN_XML_EXPORT,
+  BPMN_XML_FORMAT,
+  BPMN_XML_IMPORT,
+  bpmnBoardFrom,
+  bpmnSafeFilename,
+} from './interchange.js';
+import { bpmnNodeProps } from './presets.js';
+import { BPMN_ROLE } from './roles';
 
 /**
  * Standalone creation/activation actions for the BPMN toolbox — lifted out of
  * `toolbar/bpmn-menu.ts` by PF3 so the menu becomes a pure renderer over the
  * command registry. Telemetry is emitted once, by `runCommand`.
  */
-
-export type BpmnNodeKind =
-  | 'startEvent'
-  | 'endEvent'
-  | 'task'
-  | 'gatewayExclusive';
-
-/** Per-kind native shape + accent presets (style C). */
-const NODE_PRESETS: Record<
-  BpmnNodeKind,
-  { shapeType: 'ellipse' | 'rect' | 'diamond'; stroke: string; width: number }
-> = {
-  startEvent: { shapeType: 'ellipse', stroke: EVENT_START, width: START_WIDTH },
-  endEvent: { shapeType: 'ellipse', stroke: EVENT_END, width: END_WIDTH },
-  task: { shapeType: 'rect', stroke: NEUTRAL_STROKE, width: NODE_STROKE_WIDTH },
-  gatewayExclusive: {
-    shapeType: 'diamond',
-    stroke: NEUTRAL_STROKE,
-    width: NODE_STROKE_WIDTH,
-  },
-};
 
 const gfxOf = (std: BlockStdScope) => std.get(GfxControllerIdentifier);
 
@@ -79,33 +72,18 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
 
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const preset = NODE_PRESETS[kind];
 
-  const id = surface.addElement({
-    type: 'bpmnNode',
-    kind,
-    // Semantic identity (B1): posted next to `kind`, which stays untouched and
-    // keeps driving the rendering. The role is the authority on what the node
-    // MEANS — see the table in `./roles.ts`.
-    role: BPMN_ROLE_OF_KIND[kind],
-    shapeType: preset.shapeType,
-    filled: true,
-    fillColor: NODE_FILL,
-    strokeColor: preset.stroke,
-    strokeWidth: preset.width,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    radius: kind === 'task' ? TASK_RADIUS : 0,
-    text: NODE_LABEL[kind] || undefined,
-    color: NEUTRAL_STROKE,
-    fontFamily: FontFamily.Inter,
-    fontSize: INNER_FONT_SIZE,
-    textAlign: 'center',
-    // BPMN symbols have normative sizes: a long label overflows rather
-    // than deforming the node
-    textFitMode: TextFitMode.Overflow,
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
+  // What a node IS lives in one place (`./presets.ts`), because the importer
+  // creates the same artefacts out of a `.bpmn` file and the two must not
+  // drift: a task read from a file and a task drawn here are one element type
+  // in the document, down to the stroke width. The gesture owns the BOX and
+  // nothing else.
+  const id = surface.addElement(
+    bpmnNodeProps(kind, {
+      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+      text: NODE_LABEL[kind] || undefined,
+    })
+  );
   finish(gfx, id);
 }
 
@@ -150,6 +128,71 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
       frontEndpointStyle: PointStyle.None,
       rearEndpointStyle: PointStyle.Triangle,
     },
+  });
+  // Keep the palette open (native sub-menu behaviour).
+}
+
+/**
+ * Arm the native connector tool, pre-styled for a BPMN message flow:
+ * orthogonal, DASHED, an open circle where the message leaves and an open
+ * arrowhead where it lands.
+ *
+ * ## The two endpoint styles, and why these two
+ *
+ * The spec's message flow starts on a small hollow circle and ends on a hollow
+ * (line-drawn) arrowhead — never the solid triangle the sequence flow uses,
+ * which is the whole visual difference between "then this happens" and "and
+ * this is what I told them". `PointStyle` offers `Circle` and `Arrow`, and they
+ * are exactly those two shapes: `Arrow` is drawn as an unfilled V
+ * (`renderRoundedPolygon(…, false)`), against `Triangle`'s filled one. The only
+ * deviation is that `Circle` is painted with the connector's `fillColor` rather
+ * than left transparent — the shape, the size and the position are the spec's.
+ */
+export function activateBpmnMessageFlow(std: BlockStdScope) {
+  std.get(EditPropsStore).recordLastProps('connector', {
+    mode: ConnectorMode.Orthogonal,
+    stroke: MESSAGE_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: MESSAGE_WIDTH,
+    frontEndpointStyle: PointStyle.Circle,
+    rearEndpointStyle: PointStyle.Arrow,
+  });
+  gfxOf(std).tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Orthogonal,
+    // A TYPED edge (`docs/adr/0010`), and the role its vocabulary already
+    // declared with the verb "sends a message to": the source is the
+    // participant that sends, the target the one that receives.
+    role: BPMN_ROLE.messageFlow,
+  });
+  // Keep the palette open (native sub-menu behaviour).
+}
+
+/**
+ * Arm the native connector tool, pre-styled for a BPMN association: dashed, and
+ * with NO endpoint marker at either end.
+ *
+ * The missing arrowheads are the point, not an omission. An association names
+ * no relation — `bpmn:association` is the one edge role in this vocabulary
+ * declared without a `direction` block — so "this note is about that task"
+ * reads identically from either end, and an arrowhead would be the picture
+ * claiming a direction the role explicitly refuses to have. See the role's own
+ * doc comment in `./roles.ts`.
+ *
+ * On the dash (there is no dotted stroke to ask for) see
+ * {@link ASSOCIATION_STROKE}'s neighbours in `./consts.ts`.
+ */
+export function activateBpmnAssociation(std: BlockStdScope) {
+  std.get(EditPropsStore).recordLastProps('connector', {
+    mode: ConnectorMode.Orthogonal,
+    stroke: ASSOCIATION_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: ASSOCIATION_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.None,
+  });
+  gfxOf(std).tool.setTool(ConnectorTool, {
+    mode: ConnectorMode.Orthogonal,
+    role: BPMN_ROLE.association,
   });
   // Keep the palette open (native sub-menu behaviour).
 }
@@ -292,6 +335,197 @@ export function removeBpmnLane(std: BlockStdScope): void {
   for (const model of withLanes) {
     writeLanes(std, model, bpmnLanesOf(model).slice(0, -1));
   }
+}
+
+/* ── Export (BPMN 2.0 XML) ────────────────────────────────────────────── */
+
+/**
+ * The pools of the current selection, WITHOUT the two filters a lane gesture
+ * applies.
+ *
+ * `bpmnPoolsForLaneEdit` refuses a read-only document and a locked pool because
+ * it is about to write to them. An export writes nothing: it reads the board
+ * and hands the reader a file. A process published read-only, or a pool an
+ * author locked precisely because it is finished, is exactly the board somebody
+ * wants to take to bpmn.io — refusing it there would be a filter copied for the
+ * shape of it rather than for the reason.
+ */
+export function bpmnPoolsSelected(std: BlockStdScope): BpmnPoolElementModel[] {
+  return gfxOf(std).selection.selectedElements.filter(
+    (model): model is BpmnPoolElementModel =>
+      model instanceof BpmnPoolElementModel
+  );
+}
+
+/**
+ * Everything on the surface the exporter speaks about, in document order.
+ *
+ * The half that needs an editor, and only that half: reading the surface. The
+ * picking is {@link bpmnBoardFrom}, which the interchange capability calls with
+ * the same elements and no `std` at all (`docs/adr/0012`, P3).
+ */
+export function bpmnBoardOf(std: BlockStdScope): BpmnExportBoard {
+  return bpmnBoardFrom(gfxOf(std).surface?.elementModels ?? []);
+}
+
+/**
+ * What the downloaded file is called, minus the extension.
+ *
+ * The document's own title first — a board is what the file is OF — then the
+ * name of the pool whose toolbar launched the export, then a last resort. Which
+ * of the three it is, is the only thing this function decides; making the
+ * answer safe to write to disk is {@link bpmnSafeFilename}, so the command and
+ * the interchange capability cannot name the same board differently.
+ */
+export function bpmnExportFilename(std: BlockStdScope): string {
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  const pool = bpmnPoolsSelected(std)[0]?.name;
+  return bpmnSafeFilename(title || pool);
+}
+
+/**
+ * Serialize the whole board as BPMN 2.0 XML and hand it to the browser.
+ *
+ * Three steps, and only the first and the last know what an editor is: read the
+ * surface, run the DECLARED capability (`docs/adr/0012`), download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `BPMN_XML_EXPORT.run`, so the
+ * command and the registry cannot describe the same board differently. There is
+ * one door; the registry is the label on it.
+ *
+ * A plain import rather than a DI lookup: the capability is a pure function and
+ * a value, resolving it through the container would buy nothing here, and P3 is
+ * explicit that the registry is the editor's view of these functions, not a
+ * gate in front of them.
+ */
+export function exportBpmnXmlFile(std: BlockStdScope): void {
+  const elements = gfxOf(std).surface?.elementModels ?? [];
+  const { text, filename, mime, warnings } = BPMN_XML_EXPORT.run(elements, {
+    name: bpmnExportFilename(std),
+  });
+  // The charset is the browser's business, not the format's: `mime` is what
+  // `.bpmn` IS, and this is how a blob is told to carry it.
+  downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
+
+  // The `warnings` channel, spent. The writer has been populating it since
+  // #149 and the command dropped it on the floor — a #159 review nit, and the
+  // one thing that made "an export loses things too, and the user who clicked
+  // Export is the one person entitled to be told" false in the only place a
+  // user stands. A warning is never an error: the file downloaded, and it is
+  // valid; what it could not say is what this names.
+  if (!warnings || warnings.length === 0) return;
+  notifyBpmn(std, {
+    title: translateKey(std, EXPORT_WARNINGS_KEY, EXPORT_WARNINGS_FALLBACK),
+    message: warnings.join('\n'),
+    accent: 'warning',
+  });
+}
+
+/**
+ * The one wording this file still owns: what a WRITER could not say.
+ *
+ * The import's wordings moved to the pipeline that writes them
+ * (`affine-block-surface`, `extensions/interchange-import.ts`) — one set of
+ * keys for every format, with the format's own name composed into them, so a
+ * host translates "file imported" once instead of once per format. This one
+ * stays because no other format's writer speaks through it.
+ */
+const EXPORT_WARNINGS_KEY = 'com.labre.commands.bpmn.exportXml.warnings';
+const EXPORT_WARNINGS_FALLBACK = 'What this export could not write down';
+
+/**
+ * The notification seam, or silence.
+ *
+ * `getOptional`, like every other call site in the library: the host injects a
+ * `NotificationService` (labreapp does, the standalone playground does not), and
+ * a framework that assumed one would be a framework the playground cannot run.
+ * Nothing here decides that an export said nothing because nobody was
+ * listening — the file downloaded either way.
+ */
+function notifyBpmn(
+  std: BlockStdScope,
+  options: {
+    title: string;
+    message: string;
+    accent: 'info' | 'warning' | 'error';
+  }
+): void {
+  std.getOptional(NotificationProvider)?.notify({
+    title: options.title,
+    message: options.message,
+    accent: options.accent,
+    // Long enough to read a paragraph of remarks, and still self-dismissing:
+    // an import report is not a modal, and a toast the user has to close is a
+    // toast that interrupts the next thing they were doing.
+    duration: 8000,
+  });
+}
+
+/* ── Import (BPMN 2.0 XML) ────────────────────────────────────────────── */
+
+/**
+ * Write an imported board onto the surface, and give back the ids it minted.
+ *
+ * BPMN's name for {@link materializeInterchangeImport}, which is where the two
+ * passes live and are documented (`docs/adr/0012`, D3). Nothing in them was
+ * ever about BPMN except the payload key the source ids ride under, so the
+ * function moved to the surface package when the second format asked for it and
+ * this name stayed: it is what the chromium round trip calls, and a test that
+ * proves the shipped command has to keep calling the shipped function.
+ */
+export function materializeBpmnImport(
+  std: BlockStdScope,
+  elements: readonly SerializedElementProps[]
+): string[] {
+  return materializeInterchangeImport(std, BPMN_FORMAT_ID, elements);
+}
+
+/**
+ * Say what the import did — the summary, and the remarks.
+ *
+ * BPMN's name for {@link reportInterchangeImport}, which is where the argument
+ * for a toast plus a console table lives (ADR 0012's open question 4, v1). The
+ * format is a word in the sentence now rather than a wording per format, so
+ * what a user reads is unchanged: the counts, and `BPMN` before the version the
+ * reader actually read.
+ */
+export function reportBpmnImport(
+  std: BlockStdScope,
+  report: InterchangeReport
+): void {
+  reportInterchangeImport(std, BPMN_XML_FORMAT, report);
+}
+
+/**
+ * Read a `.bpmn` file the user picks, draw it, and say what it cost.
+ *
+ * The whole gesture is {@link runInterchangeImportFile}, over the capability
+ * BPMN declares: pick the file, run the DECLARED reader, write what it
+ * returned, fit the drawing, report. `BPMN_XML_IMPORT.run` is the same function
+ * labre-mcp calls, so the command and the registry cannot read the same file
+ * differently — one door, and the registry is the label on it. The picker's
+ * filter comes off `BPMN_XML_FORMAT` rather than off the shared `FileTypes`
+ * table, which is why `.xml` is declared there: half the tools in the wild
+ * write a process under the generic extension, and what the file actually IS is
+ * decided by the reader, which throws on anything that is not a BPMN
+ * `<definitions>`.
+ */
+export async function importBpmnXmlFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, BPMN_XML_IMPORT);
+}
+
+/**
+ * Read an SVG the user picks as a SKETCH, and say what it cost.
+ *
+ * The same four steps as the `.bpmn` import, over a different declared
+ * capability — which is the whole point of the seam: a second format costs a
+ * declaration and a command, not a pipeline. What differs is the PROMISE, and
+ * the promise is made by the command's own label and description before the
+ * picker ever opens (`docs/adr/0012`, P2): recognition, best effort, no
+ * round-trip, and a level-1 sketch the author then promotes.
+ */
+export async function importBpmnSvgFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, BPMN_SVG_IMPORT);
 }
 
 /**

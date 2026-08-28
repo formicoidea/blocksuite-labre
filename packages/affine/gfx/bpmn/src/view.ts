@@ -1,16 +1,28 @@
-import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
+import {
+  FrameworkBackgroundInteractionExtension,
+  InterchangeExtension,
+  morphToolbarConfig,
+  ValidationProfileExtension,
+  ValidationRuleExtension,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { CommandExtension } from '@labre/std';
+import { ToolbarModuleExtension } from '@labre/affine-shared/services';
+import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
+import { BPMN_INTERCHANGE } from './interchange';
+import { BPMN_MORPH_SPEC } from './morph';
+import { BPMN_PROFILES } from './profiles';
 import { BPMN_ROLES } from './roles';
+import { BPMN_RULES } from './rules';
 import { bpmnTemplateCategory } from './templates';
 import { BpmnPoolRendererExtension } from './element-renderer';
 import { BpmnPoolView } from './element-view';
@@ -53,8 +65,12 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
 }
 
 /**
- * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button and
- * its templates category.
+ * BPMN creation tooling — flag-gated (`bpmn`): the senior toolbar button, its
+ * templates category, the validation rules and profiles, and the interchange
+ * capabilities. All of it is tooling: a process drawn while the flag was on
+ * keeps rendering when it goes off, it just stops being checked — the profile
+ * its pool was put on stays written, unread, until the flag comes back, and so
+ * does anything an import wrote (`docs/adr/0009`, `docs/adr/0012`).
  */
 export class BpmnViewExtension extends ViewExtensionProvider {
   override name = 'affine-bpmn-gfx';
@@ -69,6 +85,51 @@ export class BpmnViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
+      context.register(ValidationRuleExtension(BPMN_RULES));
+      context.register(ValidationProfileExtension(BPMN_PROFILES));
+      // Reading and writing `.bpmn` files, declared rather than assumed
+      // (`docs/adr/0012`). Tooling like the rest of this class: with the flag
+      // off there is nothing to export WITH, while a board a past import wrote
+      // keeps every element and every byte it was given (`docs/adr/0009`).
+      context.register(InterchangeExtension(BPMN_INTERCHANGE));
+      // The Validation dropdown on a selected pool's contextual toolbar. A
+      // SECOND module on the same element, through the `custom:` flavour slot,
+      // exactly as wardley and the context map register it on theirs:
+      // `bpmnPoolToolbarExtension` is registered always-on because a stored pool
+      // must keep its lanes and its resize toggle, while choosing how hard to
+      // check the process is tooling and belongs here. The config names no
+      // framework — it reads roles and profiles — so it is the very same object
+      // the other two register.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier('custom:affine:surface:bpmnPool'),
+          config: validationToolbarConfig,
+        })
+      );
+      // The "Change type" dropdown on a selected NODE's contextual toolbar —
+      // the generic module, parameterized by BPMN's own families table.
+      //
+      // `affine:surface:bpmnNode` is a FREE slot, and class inheritance has
+      // nothing to do with it: `renderToolbar` merges by flavour KEY — the
+      // element's own, its `custom:` twin and the `affine:surface:*` wildcards
+      // — so `shapeToolbarExtension`, which binds `affine:surface:shape`, never
+      // reaches a bpmn node however much of `ShapeElementModel` the class
+      // inherits. Nothing claimed this key before, so the registration is purely
+      // additive: it joins the wildcard entries (tags, validation) that a node
+      // already gets, and a second module claiming the same key would throw
+      // `DuplicateServiceDefinitionError` before the editor finished setting up.
+      //
+      // Registered HERE, in the flag-gated half, because a morph is TOOLING: a
+      // node drawn while the flag was on keeps its kind, its role, its glyph
+      // and its place in every rule when the flag goes off — it just stops
+      // being something the toolbar offers to say more precisely
+      // (`docs/adr/0009`).
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier('affine:surface:bpmnNode'),
+          config: morphToolbarConfig(BPMN_MORPH_SPEC),
+        })
+      );
       context.register(bpmnSeniorTool);
       context.register(CommandExtension(bpmnCommands, bpmnCommandIcons));
     }

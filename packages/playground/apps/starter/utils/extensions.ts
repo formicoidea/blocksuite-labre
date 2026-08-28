@@ -13,7 +13,6 @@ import type { ExtensionType, Store, Workspace } from '@labre/affine/store';
 import { type TestAffineEditorContainer } from '@labre/integration-test';
 import { getTestViewManager } from '@labre/integration-test/view';
 
-import { demoOverflowSpecs } from '../../_common/demo-overflow';
 import {
   mockDocModeService,
   mockEditorSetting,
@@ -60,13 +59,7 @@ export function createTestEditor(store: Store, workspace: Workspace) {
 
   const defaultExtensions = getTestCommonExtensions(editor);
   editor.pageSpecs = [...viewManager.get('page'), ...defaultExtensions];
-  editor.edgelessSpecs = [
-    ...viewManager.get('edgeless'),
-    ...defaultExtensions,
-    // ⚠️ THROWAWAY (see demo-overflow.ts): a fake >14-command framework so the
-    // PF6 overflow behaviour is observable before any real framework earns it.
-    ...demoOverflowSpecs,
-  ];
+  editor.edgelessSpecs = [...viewManager.get('edgeless'), ...defaultExtensions];
 
   editor.std
     .get(RefNodeSlotsProvider)

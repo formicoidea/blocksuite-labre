@@ -81,6 +81,43 @@ role, and therefore belonging to no framework. Ids only: the event says which
 rung was crossed, never what the board contains, and never the `pivotDocId`
 itself.
 
+## Morphing an artefact into a nearby kind
+
+A framework element can become a NEARBY kind of itself — a task said more
+precisely as a user task — from its own contextual toolbar. Geometry,
+connections and label are untouched; `kind` and `role` are rewritten together.
+
+| Event                     | When                                            | Required props |
+| ------------------------- | ----------------------------------------------- | -------------- |
+| `FrameworkElementMorphed` | the user picks a nearby kind from the drop-down | `elementCount` |
+
+A fifth framework event and, like `FrameworkElementPromoted`, deliberately not
+a creation: a morph inserts nothing, so emitting `FrameworkElementAdded` would
+count a drawn-then-refined artefact twice and inflate "elements added per
+framework" forever. `framework`, `fromRole` and `toRole` are optional and carry
+ids only — never board content, never the element ids. A gesture that changes
+nothing emits nothing. The reachable set is a table each framework declares by
+hand, and this event is the only evidence that the table is the right one: a
+pair nobody ever crosses did not need to be offered.
+
+## The level a view declares
+
+A framework VIEW can state which level it draws — a C4 board set to Context,
+Container or Component, or put back to a free sketch. The statement is
+optional, it is what the level rules read, and it renames nothing.
+
+| Event                   | When                                          | Required props       |
+| ----------------------- | --------------------------------------------- | -------------------- |
+| `FrameworkViewLevelSet` | the user picks a level for a framework's view | `framework`, `level` |
+
+A sixth framework event, and not a creation either: nothing is inserted and
+nothing is rewritten but one prop on the frame. `level` carries the framework's
+own closed vocabulary, plus `'none'` for "back to a free sketch" — the value the
+dashboard needs most, because it is the one that says the declaration was
+regretted. `previousLevel` carries the one it replaces, when there was one. Ids
+only: never the board's title, never what is drawn on it. A gesture that changes
+nothing emits nothing.
+
 ## The direction of a typed edge (ADR 0010)
 
 For a connector carrying an edge role, the persisted `source → target` pair IS

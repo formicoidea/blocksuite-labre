@@ -23,8 +23,25 @@ declare global {
   }
 }
 
+/**
+ * One filter a file dialog offers: what to call it, and the MIME types it
+ * accepts with the extensions that go with each.
+ *
+ * The table below is the CLOSED list of filters this library ships. It is not
+ * the only source of one: an interchange format declares its own extensions and
+ * mime (`docs/adr/0012`), and a picker built from a registry entry cannot be a
+ * row in a hand-maintained table — the whole point of the registry is that a
+ * framework adds a format without a second file agreeing to it. So the shape is
+ * named and {@link openSingleFileWithSpec} takes it directly; `FileTypes` keeps
+ * naming the filters that are the editor's own.
+ */
+export interface FilePickerSpec {
+  description: string;
+  accept: Record<string, string[]>;
+}
+
 // See [Common MIME types](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types)
-const FileTypes: NonNullable<OpenFilePickerOptions['types']> = [
+const FileTypes: FilePickerSpec[] = [
   {
     description: 'Images',
     accept: {
@@ -102,6 +119,14 @@ const FileTypes: NonNullable<OpenFilePickerOptions['types']> = [
 
 /**
  * See https://web.dev/patterns/files/open-one-or-multiple-files/
+ *
+ * There is no `'Bpmn'` here any more, and no row for it above. A BPMN document
+ * is not the editor's own kind of file: it is one INTERCHANGE FORMAT among the
+ * several a framework declares (`docs/adr/0012`), and its filter is built from
+ * that declaration by {@link openSingleFileWithSpec}. Keeping a second copy in
+ * this table would be a copy nobody reads and everybody has to keep in step —
+ * the format's `extensions` and `mime` are the one statement of what a `.bpmn`
+ * file is called.
  */
 type AcceptTypes =
   | 'Any'
@@ -116,6 +141,36 @@ type AcceptTypes =
 export async function openFilesWith(
   acceptType: AcceptTypes = 'Any',
   multiple: boolean = true
+): Promise<File[] | null> {
+  if (acceptType === 'Any') return openFilesWithSpec(undefined, multiple);
+
+  const fileType = FileTypes.find(i => i.description === acceptType);
+  if (!fileType) {
+    // Unreachable through the closed `AcceptTypes` union, and reported rather
+    // than thrown for the same reason it always was: the picker branch used to
+    // throw this inside its own try/catch, log it and answer `null`. A caller
+    // asking for a filter that does not exist gets no dialog, not an exception
+    // it never had to handle.
+    console.error(
+      new BlockSuiteError(
+        ErrorCode.DefaultRuntimeError,
+        `Unexpected acceptType "${acceptType}"`
+      )
+    );
+    return null;
+  }
+  return openFilesWithSpec(fileType, multiple);
+}
+
+/**
+ * The picker itself, over a filter rather than over a name in the table.
+ *
+ * `undefined` is "Any": no filter at all, which is what the dialog shows when
+ * nobody narrowed it.
+ */
+async function openFilesWithSpec(
+  spec: FilePickerSpec | undefined,
+  multiple: boolean
 ): Promise<File[] | null> {
   // Feature detection. The API needs to be supported
   // and the app not run in an iframe.
@@ -132,14 +187,8 @@ export async function openFilesWith(
   // If the File System Access API is supported…
   if (supportsFileSystemAccess && window.showOpenFilePicker) {
     try {
-      const fileType = FileTypes.find(i => i.description === acceptType);
-      if (acceptType !== 'Any' && !fileType)
-        throw new BlockSuiteError(
-          ErrorCode.DefaultRuntimeError,
-          `Unexpected acceptType "${acceptType}"`
-        );
       const pickerOpts = {
-        types: fileType ? [fileType] : undefined,
+        types: spec ? [spec] : undefined,
         multiple,
       } satisfies OpenFilePickerOptions;
       // Show the file picker, optionally allowing multiple files.
@@ -161,11 +210,21 @@ export async function openFilesWith(
     input.type = 'file';
     input.multiple = multiple;
 
-    if (acceptType !== 'Any') {
-      // For example, `accept="image/*"` or `accept="video/*,audio/*"`.
-      input.accept = Object.keys(
-        FileTypes.find(i => i.description === acceptType)?.accept ?? ''
-      ).join(',');
+    if (spec) {
+      // For example, `accept="image/*,.png,.jpg"` or `accept="video/*,.mp4"`.
+      //
+      // The EXTENSIONS as well as the MIME types, and the extensions are the
+      // half that matters for anything the OS has no type for: `.bpmn`, `.mm`
+      // and `.opml` are registered nowhere, so a filter built from
+      // `application/xml` alone greys them out in the native dialog and the
+      // file cannot be picked at all. This is the branch every browser without
+      // the File System Access API takes — Firefox and Safari — and
+      // `showOpenFilePicker` above already reads both halves of the same
+      // filter.
+      const type = spec.accept;
+      input.accept = [...Object.keys(type), ...Object.values(type).flat()].join(
+        ','
+      );
     }
     document.body.append(input);
     // The `change` event fires when the user interacts with the dialog.
@@ -190,6 +249,22 @@ export async function openSingleFileWith(
   acceptType?: AcceptTypes
 ): Promise<File | null> {
   const files = await openFilesWith(acceptType, false);
+  return files?.at(0) ?? null;
+}
+
+/**
+ * One file, filtered by a spec the caller built rather than by a name in
+ * {@link FileTypes}.
+ *
+ * What {@link openSingleFileWith} is for the editor's own dialogs, this is for
+ * anything whose filter is DECLARED somewhere else — today the interchange
+ * registry, whose formats each carry their extensions and their mime and are
+ * added by a framework, not by editing the table above.
+ */
+export async function openSingleFileWithSpec(
+  spec: FilePickerSpec
+): Promise<File | null> {
+  const files = await openFilesWithSpec(spec, false);
   return files?.at(0) ?? null;
 }
 

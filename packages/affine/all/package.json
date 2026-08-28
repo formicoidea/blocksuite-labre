@@ -43,6 +43,7 @@
     "@labre/affine-fragment-outline": "workspace:*",
     "@labre/affine-gfx-bpmn": "workspace:*",
     "@labre/affine-gfx-brush": "workspace:*",
+    "@labre/affine-gfx-c4": "workspace:*",
     "@labre/affine-gfx-connector": "workspace:*",
     "@labre/affine-gfx-cynefin-estuarine": "workspace:*",
     "@labre/affine-gfx-ddd-aggregate": "workspace:*",

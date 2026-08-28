@@ -34,6 +34,10 @@ import {
   BrushRenderViewExtension,
   BrushViewExtension,
 } from '@labre/affine-gfx-brush/view';
+import {
+  C4RenderViewExtension,
+  C4ViewExtension,
+} from '@labre/affine-gfx-c4/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
 import {
   CynefinEstuarineRenderViewExtension,
@@ -130,6 +134,13 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     // Gfx — each framework contributes an always-on `…Render…` extension
     // (element view + renderer + interaction + contextual toolbar) and a
     // flag-gated tooling extension (senior button + creation shortcuts).
+    //
+    // The eight business frameworks are registered as PAIRS, in the order their
+    // senior buttons must read left to right: no framework declares a
+    // `SeniorTool.order`, so they all share the default group and the row is
+    // sorted stably — i.e. left in registration order. The single source of that
+    // order is `FRAMEWORK_DESCRIPTORS`, and `senior-row-order.unit.spec.ts` pins
+    // the two lists together.
     PointerViewExtension,
     GfxNoteViewExtension,
     BrushRenderViewExtension,
@@ -154,11 +165,13 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('cynefin-estuarine') ? [CynefinEstuarineViewExtension] : []),
     BpmnRenderViewExtension,
     ...(on('bpmn') ? [BpmnViewExtension] : []),
-    DddCoreDomainRenderViewExtension,
-    DddContextMapRenderViewExtension,
     DddEventStormingRenderViewExtension,
     ...(on('ddd-event-storming') ? [DddEventStormingViewExtension] : []),
+    C4RenderViewExtension,
+    ...(on('c4') ? [C4ViewExtension] : []),
+    DddCoreDomainRenderViewExtension,
     ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),
+    DddContextMapRenderViewExtension,
     ...(on('ddd-context-map') ? [DddContextMapViewExtension] : []),
     ...(on('ddd-templates') ? [DddTemplatesViewExtension] : []),
 

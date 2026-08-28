@@ -4,6 +4,11 @@ import type {
   BpmnPoolElementModel,
 } from './bpmn/index.js';
 import type { BrushElementModel } from './brush/index.js';
+import type {
+  C4BoardElementModel,
+  C4BoundaryElementModel,
+  C4NodeElementModel,
+} from './c4/index.js';
 import type { ConnectorElementModel } from './connector/index.js';
 import type { ContextMapBoardElementModel } from './context-map/index.js';
 import type { CoreDomainChartElementModel } from './core-domain/index.js';
@@ -27,6 +32,7 @@ import type {
 
 export * from './bpmn/index.js';
 export * from './brush/index.js';
+export * from './c4/index.js';
 export * from './connector/index.js';
 export * from './context-map/index.js';
 export * from './core-domain/index.js';
@@ -46,6 +52,9 @@ export type SurfaceElementModelMap = {
   bpmnNode: BpmnNodeElementModel;
   bpmnPool: BpmnPoolElementModel;
   brush: BrushElementModel;
+  c4Board: C4BoardElementModel;
+  c4Boundary: C4BoundaryElementModel;
+  c4Node: C4NodeElementModel;
   highlighter: HighlighterElementModel;
   connector: ConnectorElementModel;
   group: GroupElementModel;

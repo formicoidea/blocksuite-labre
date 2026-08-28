@@ -57,9 +57,12 @@ describe('the vocabulary states the convention', () => {
     expect(isTypedEdgeRole(vocabularies, WARDLEY_ROLE.changeArrow)).toBe(true);
     expect(isTypedEdgeRole(vocabularies, WARDLEY_ROLE.component)).toBe(false);
     // A neutral element, and a role no loaded framework declares: neither
-    // claims anything about its two ends.
+    // claims anything about its two ends. The stranger is DELIBERATELY
+    // fictional — naming another framework's real edge here would make this
+    // test a statement about which vocabularies the fixture happens to load,
+    // and it would start failing the day someone loads that one.
     expect(isTypedEdgeRole(vocabularies, undefined)).toBe(false);
-    expect(isTypedEdgeRole(vocabularies, 'bpmn:sequence-flow')).toBe(false);
+    expect(isTypedEdgeRole(vocabularies, 'nowhere:made-up-edge')).toBe(false);
   });
 });
 
@@ -79,15 +82,45 @@ describe('the link tool announces its gesture (M1)', () => {
     );
   });
 
-  it('leaves every other command without a gesture hint', () => {
+  it('leaves every other TOOLBOX command without a gesture hint', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
+    //
+    // Scoped to what you DRAW with, since the OWM pair and the SVG fallback
+    // landed. An `action` whose subject is the whole map — import, export —
+    // describes what it does to a document, which is a different sentence from
+    // "which way round do I drag this": the next assertion is what keeps the
+    // two apart. Inside the population this DOES cover, the rule is unchanged
+    // and as strict as the day it was written: a tool either announces a
+    // gesture or says nothing at all.
     const noisy = wardleyCommands.filter(
       c =>
+        c.kind !== 'action' &&
         c.descriptionKey !== undefined &&
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);
+
+    // …and the visual-tier fallback is outside the SUB-MENU by declaration
+    // rather than by accident, which is the other half of why its description
+    // is proportionate: it never renders a second line in the row at all
+    // (`docs/adr/0012`, P2 — the row carries the native format).
+    const fallback = wardleyCommands.find(c => c.id === 'wardley.importSvg');
+    expect(fallback?.surfaces).not.toContain('senior-menu');
+  });
+
+  it('never lends a role’s gesture hint to a command that draws no edge', () => {
+    // The other half of the scoping above: an action may carry a description,
+    // and it may never be one of the vocabulary's gesture hints — those belong
+    // to the tool that stamps the role, and nowhere else (`docs/adr/0010`, M1).
+    const hints = new Set(
+      Object.values(WARDLEY_ROLES)
+        .map(def => def.direction?.gestureHintKey)
+        .filter(key => key !== undefined)
+    );
+    for (const command of wardleyCommands.filter(c => c.kind === 'action')) {
+      expect(hints.has(command.descriptionKey!)).toBe(false);
+    }
   });
 });
 

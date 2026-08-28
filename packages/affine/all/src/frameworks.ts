@@ -135,6 +135,25 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     shortcuts: true,
   },
   {
+    id: 'c4',
+    labelKey: 'com.labre.framework.c4',
+    labelFallback: 'C4 model',
+    iconKey: 'c4.toolbar',
+    telemetryKey: 'c4',
+    telemetrySegment: 'c4 toolbox',
+    bundle: 'framework-c4',
+    info: 'c4Framework',
+    pkg: '@labre/affine-gfx-c4',
+    dir: 'affine/gfx/c4',
+    extensions: [
+      // always-on: placed C4 boards, boundaries and elements must paint even
+      // with the button off
+      { viewExtension: 'C4RenderViewExtension' },
+      { flag: 'c4', viewExtension: 'C4ViewExtension' },
+    ],
+    shortcuts: true,
+  },
+  {
     id: 'ddd-core-domain',
     labelKey: 'com.labre.framework.ddd-core-domain',
     labelFallback: 'Core Domain Chart',

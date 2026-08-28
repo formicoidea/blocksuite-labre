@@ -9,6 +9,10 @@ import {
   createWardleyMarket,
   createWardleyNode,
   createWardleyPipeline,
+  exportOwmFile,
+  importOwmFile,
+  importWardleySvgFile,
+  wardleyMapsOnBoard,
 } from './actions';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
@@ -19,6 +23,9 @@ import {
   wardleyComponentIcon,
   wardleyEcosystemIcon,
   wardleyEvolutionGradientIcon,
+  wardleyExportOwmIcon,
+  wardleyImportOwmIcon,
+  wardleyImportSvgIcon,
   wardleyInertiaIcon,
   wardleyLinkIcon,
   wardleyMarketIcon,
@@ -223,27 +230,191 @@ function gestureOf(spec: Spec) {
   };
 }
 
-export const wardleyCommands: CommandDescriptor[] = SPECS.map(
-  (spec, order) => ({
-    id: `wardley.${spec.id}`,
-    owner: 'wardley',
-    kind: spec.kind,
-    labelKey: spec.labelKey ?? `com.labre.commands.wardley.${spec.id}`,
-    labelFallback: spec.label,
-    ...gestureOf(spec),
-    category: spec.category,
-    iconKey: spec.iconKey,
-    surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
-    order,
-    scope: 'edgeless',
-    defaultKeys: spec.key
-      ? { mac: ['w', spec.key], other: ['w', spec.key] }
-      : { mac: [], other: [] },
-    availability: 'always',
-    run: std => spec.run(std.get(GfxControllerIdentifier)),
-    telemetry: { framework: 'wardley', element: spec.element },
-  })
-);
+const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
+  id: `wardley.${spec.id}`,
+  owner: 'wardley',
+  kind: spec.kind,
+  labelKey: spec.labelKey ?? `com.labre.commands.wardley.${spec.id}`,
+  labelFallback: spec.label,
+  ...gestureOf(spec),
+  category: spec.category,
+  iconKey: spec.iconKey,
+  surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
+  order,
+  scope: 'edgeless',
+  defaultKeys: spec.key
+    ? { mac: ['w', spec.key], other: ['w', spec.key] }
+    : { mac: [], other: [] },
+  availability: 'always',
+  run: std => spec.run(std.get(GfxControllerIdentifier)),
+  telemetry: { framework: 'wardley', element: spec.element },
+}));
+
+/**
+ * The IMPORT — the first Wardley command whose subject is a whole map rather
+ * than something you draw, and the first that needs nothing on the board.
+ *
+ * ## `'senior-menu'`, per the PO decision of 2026-08-28
+ *
+ * An interpreted import lives in its framework's sub-menu. On an empty canvas
+ * the sub-menu is the first thing a user opens, and "start from the map
+ * somebody sent me" belongs in that row beside "start from a component" —
+ * asking them to find the catalogue sidepanel first is the friction the
+ * decision names. It is Wardley's fourteenth nomination, which is exactly the
+ * cap, so nothing about the sub-menu's arbitration changes and no button is
+ * pushed out of the row.
+ *
+ * No `'contextual-toolbar'`: a contextual toolbar is a statement about a
+ * SELECTION, and the moment this command is most wanted is on a board with
+ * nothing on it at all.
+ *
+ * ## `'editable'`
+ *
+ * An import needs no selection, but it WRITES, so a read-only document is one
+ * it cannot run on — and that is a precondition a catalogue has to be able to
+ * show. `'always'` would light the entry on a read-only board, do nothing when
+ * clicked, and put the same untruth into the manifest a host reads.
+ */
+const importCommand: CommandDescriptor = {
+  id: 'wardley.importOwm',
+  owner: 'wardley',
+  kind: 'action',
+  labelKey: 'com.labre.commands.wardley.importOwm',
+  labelFallback: 'Import Wardley map (OWM)',
+  descriptionKey: 'com.labre.commands.wardley.importOwm.description',
+  descriptionFallback:
+    'Open an OnlineWardleyMaps .owm file as a map. What Labre cannot draw is kept in the document, and the import says what it was.',
+  category: 'interchange',
+  iconKey: 'wardley.import-owm',
+  surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
+  order: SPECS.length,
+  scope: 'edgeless',
+  // Keyless by intent. The `w` chord already seats seven artefacts, and a
+  // framework binds past that by host override rather than by shipping a
+  // default — still bindable from Settings › Shortcuts.
+  defaultKeys: { mac: [], other: [] },
+  availability: 'editable',
+  run: std => void importOwmFile(std),
+  // `board:` and not `node:` — this one is launched with no map anywhere.
+  telemetry: { framework: 'wardley', element: 'board:import-owm' },
+};
+
+/**
+ * The EXPORT — the other direction of the same format.
+ *
+ * It declines `'senior-menu'`, and the asymmetry with the import above is the
+ * ruling BPMN already carries: the sub-menu is where a board COMES FROM, and an
+ * export is what you do to a board you already have. It keeps `'catalogue'`,
+ * which is the registry's own invariant rather than a category claim — a
+ * command missing from the catalogue is unreachable the moment its framework
+ * overflows the fourteen slots — plus the palette and the agent. No
+ * `'contextual-toolbar'` either, and that is a declaration rather than an
+ * oversight: a contextual-toolbar surface is rendered by an element's own
+ * `ToolbarModuleConfig`, and declaring one nothing invokes would put an entry
+ * in the manifest that no toolbar draws.
+ *
+ * `'always'` with a `when` on the BOARD, and the pair is deliberate. An export
+ * READS: it needs no selection, and it is offered on a locked map and on a
+ * read-only document — which is precisely the board somebody wants to take
+ * away. What it DOES need is a plot to measure coordinates against, and that is
+ * a fact about the surface rather than about the selection: a Wardley node has
+ * no `visibility` prop, so its position on the plot IS its coordinate, and with
+ * no map there is nothing to invert. `'selection'` would be BPMN's shape copied
+ * for the look of it — that command's precondition genuinely is a selected
+ * pool, and this one's is not.
+ *
+ * **v1 writes one map.** An OWM document is one map; a board holding several is
+ * written against the first in document order and the export says so out loud
+ * in its warnings.
+ */
+const exportCommand: CommandDescriptor = {
+  id: 'wardley.exportOwm',
+  owner: 'wardley',
+  kind: 'action',
+  labelKey: 'com.labre.commands.wardley.exportOwm',
+  labelFallback: 'Export Wardley map (OWM)',
+  descriptionKey: 'com.labre.commands.wardley.exportOwm.description',
+  descriptionFallback:
+    'Download the map as an OnlineWardleyMaps .owm file, ready to open in any Wardley mapping tool.',
+  category: 'interchange',
+  iconKey: 'wardley.export-owm',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  order: SPECS.length + 1,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'always',
+  run: exportOwmFile,
+  telemetry: { framework: 'wardley', element: 'board:export-owm' },
+  when: std => wardleyMapsOnBoard(std).length > 0,
+};
+
+/**
+ * The SVG FALLBACK import — the visual tier, named as such before the picker
+ * opens (`docs/adr/0012`, P2).
+ *
+ * ## Why the catalogue and not the senior row
+ *
+ * Because {@link importCommand} is already there. The sub-menu carries the
+ * framework's NATIVE format — the OWM DSL, which the ADR's roadmap calls the
+ * reference Wardley import — and that is the route a user should be pointed at:
+ * an `.owm` file carries `[visibility, evolution]` pairs, which ARE the map's
+ * meaning, so it round-trips. This one reads a picture. A fallback that
+ * outranked the real thing would be the platform offering the lossy door first,
+ * and Wardley's fourteen nominations are already exactly the cap — a fifteenth
+ * would push a button out of the row for the rarest thing anybody does to a map.
+ *
+ * So it lands one click away, in the artefact catalogue behind "More
+ * artefacts…", and keeps `'palette'` and `'agent'` so it stays findable by name
+ * and invocable by an agent.
+ *
+ * **Flagged for the PO** as a curation call rather than a technical one: it is
+ * a one-line change either way.
+ *
+ * ## The label names the tier before the file is read
+ *
+ * A map is coordinates, and this reader recovers none: it recognises circles
+ * and words. Saying so in the description is not modesty, it is the contract —
+ * "the import surface must name the tier before the file is read".
+ */
+const importSvgCommand: CommandDescriptor = {
+  id: 'wardley.importSvg',
+  owner: 'wardley',
+  kind: 'action',
+  labelKey: 'com.labre.commands.wardley.importSvg',
+  labelFallback: 'Import SVG sketch',
+  descriptionKey: 'com.labre.commands.wardley.importSvg.description',
+  descriptionFallback:
+    'Best effort: recognises shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
+  // The same section the two OWM directions are filed under, and the same one
+  // BPMN files its `.bpmn` pair under: a host that translated the header once
+  // has translated it for every framework.
+  category: 'interchange',
+  iconKey: 'wardley.import-svg',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  // Last of the three interchange entries, which is also how the section reads
+  // for somebody scanning "what can I do with a file": the native format both
+  // ways, then the best-effort reader.
+  order: SPECS.length + 2,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  // It WRITES, so a read-only document is one it cannot run on.
+  availability: 'editable',
+  run: importWardleySvgFile,
+  // `board:` and not `node:`: it is launched with nothing selected, and often
+  // with nothing on the canvas at all.
+  telemetry: { framework: 'wardley', element: 'board:import-svg' },
+};
+
+/**
+ * The Wardley registry: the thirteen toolbox entries, then the two directions
+ * of the OWM DSL and the SVG fallback (`docs/adr/0012`).
+ */
+export const wardleyCommands: CommandDescriptor[] = [
+  ...toolboxCommands,
+  importCommand,
+  exportCommand,
+  importSvgCommand,
+];
 
 /** `iconKey` → template. Never travels through either manifest (ADR 0008). */
 export const wardleyCommandIcons: Record<string, TemplateResult> = {
@@ -260,4 +431,7 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.link': wardleyLinkIcon,
   'wardley.arrow': wardleyArrowIcon,
   'wardley.inertia': wardleyInertiaIcon,
+  'wardley.import-owm': wardleyImportOwmIcon,
+  'wardley.export-owm': wardleyExportOwmIcon,
+  'wardley.import-svg': wardleyImportSvgIcon,
 };

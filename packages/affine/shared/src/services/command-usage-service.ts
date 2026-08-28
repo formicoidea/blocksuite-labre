@@ -85,8 +85,8 @@ const evictOverflow = (usage: StoredUsage): StoredUsage => {
  * The default {@link CommandUsageStore}: recency and frequency in this
  * browser's `localStorage`, per command id.
  *
- * It measures only. Nothing ranks anything yet — PF6's "four most-used + three
- * most-recent" sub-menu reads these numbers in a later tranche, and a host that
+ * It measures only. Nothing ranks anything here — PF6's "seven most-recent +
+ * six most-used" sub-menu reads these numbers, and a host that
  * wants the measure to follow the user across devices replaces the whole store
  * through {@link CommandUsageExtension}.
  */

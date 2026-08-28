@@ -62,6 +62,11 @@ const changeArrowAgainstEvolution: ValidationRule = {
   suggestionFallback:
     'Evolution runs left to right — turn the arrow towards the commodity end, or draw a dependency instead.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Wardley mapping — the evolution axis runs left to right, and a component moves with it',
+  },
   backgroundRole: WARDLEY_ROLE.map,
   // The frame's own declaration, carried as data exactly like `roles` is: it is
   // where "which way does evolution run" is written, and the engine reads it
@@ -127,6 +132,11 @@ const inertiaOffTransition: ValidationRule = {
   // 3: the carrier condition is gone and the position is judged on the bar's
   // extent — a different verdict on the same map, so a new version.
   version: 3,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention (PO, recette of 02/08/2026) — Wardley names the zone, not the rule',
+  },
   backgroundRole: WARDLEY_ROLE.map,
   background: WARDLEY_BACKGROUND,
   attachment: {
@@ -198,6 +208,11 @@ const overlappingArtefacts: ValidationRule = {
   // calibrated with a penetration threshold — the same mistakes, fewer of the
   // things that were never mistakes.
   version: 2,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre readability convention — no Wardley mapping rule speaks of overlapping ink',
+  },
   // Not a frame the rule measures against — an overlap is an overlap wherever
   // it happens — but the map a finding is ATTRIBUTED to, so the arbitration
   // "ignore this rule on the whole map" has one map to be written on.
@@ -266,6 +281,10 @@ const providerAboveConsumer: ValidationRule = {
   suggestionFallback:
     'Needs run downwards on a Wardley map: move the provider below its consumer — or, if the link was drawn the wrong way round, reverse it.',
   version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference: 'Wardley mapping — the value-chain grammar of the map',
+  },
   backgroundRole: WARDLEY_ROLE.map,
   background: WARDLEY_BACKGROUND,
   relativeOrder: {

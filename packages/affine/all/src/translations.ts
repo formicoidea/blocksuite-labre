@@ -1,9 +1,11 @@
 import {
   EXEMPTION_FALLBACK,
+  PROVENANCE_FALLBACK,
   RELATION_SIDE_FALLBACK,
   SEVERITY_FALLBACK,
 } from '@labre/affine-block-surface';
 import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
+import { c4TranslationEntries } from '@labre/affine-gfx-c4';
 import { cynefinEstuarineTranslationEntries } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapTranslationEntries } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain';
@@ -91,6 +93,7 @@ const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
   { owner: 'edgy', entries: edgyTranslationEntries },
   { owner: 'cynefin-estuarine', entries: cynefinEstuarineTranslationEntries },
   { owner: 'bpmn', entries: bpmnTranslationEntries },
+  { owner: 'c4', entries: c4TranslationEntries },
   { owner: 'ddd-event-storming', entries: eventStormingTranslationEntries },
   { owner: 'ddd-core-domain', entries: coreDomainTranslationEntries },
   { owner: 'ddd-context-map', entries: contextMapTranslationEntries },
@@ -109,6 +112,11 @@ const CHROME_TABLES: readonly [
 ][] = [
   ['com.labre.validation.severity.', SEVERITY_FALLBACK],
   ['com.labre.validation.state.exempted.', EXEMPTION_FALLBACK],
+  // The four kinds of authority a rule can claim. `organization` is enumerated
+  // with the rest although nothing declares it yet: the table is the TYPE, and
+  // a host building a catalogue must not have to come back for a fourth word
+  // the day the first org profile ships.
+  ['com.labre.validation.provenance.', PROVENANCE_FALLBACK],
   ['com.labre.reading.relations.', RELATION_SIDE_FALLBACK],
 ];
 
@@ -183,6 +191,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.catalogue.ranked', 'Recent & frequent'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
+  // Morph ("Change type") toolbar — generic chrome, like the two above: the
+  // KINDS it offers are named by each framework's own creation commands, and
+  // only the drop-down's own word lives here.
+  ['com.labre.morph.toolbar.label', 'Change type'],
   // Reading panel
   ['com.labre.reading.toolbar.label', 'Read this component'],
   ['com.labre.reading.panel.label', 'Proposed record'],
@@ -227,6 +239,47 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.record.linked', 'Linked'],
   ['com.labre.reading.record.none', 'Not linked to a record.'],
   ['com.labre.reading.drift.message', 'The board and the record disagree'],
+  // BPMN interchange: what an export could not write down. Chrome and not
+  // framework prose — these are the words the library's own notification puts
+  // around a report the writer produced, so they ship with an English default
+  // and a standalone playground reads correctly with no catalogue registered.
+  [
+    'com.labre.commands.bpmn.exportXml.warnings',
+    'What this export could not write down',
+  ],
+  // Wardley's own, and the same sentence: one key per WRITER, because an
+  // export's losses are the capability's own words and there is no generic
+  // pipeline writing them (the import's wordings below are shared precisely
+  // because there is one).
+  [
+    'com.labre.commands.wardley.exportOwm.warnings',
+    'What this export could not write down',
+  ],
+  // What an IMPORT did with the file — one set of keys for every format, not
+  // one per format. The format's own name is composed into the wording
+  // ("BPMN" + "file imported", "OWM 2.0" after the counts), which is the same
+  // compromise the three count labels below already make: the seam has no
+  // interpolation, so a proper noun and a countable noun are the largest units
+  // this library can hand over without inventing grammar. A key per format
+  // would ask a host to translate the same sentence once per reader we ship,
+  // and would leave every new format silently untranslated.
+  ['com.labre.interchange.import.done', 'file imported'],
+  ['com.labre.interchange.import.failed', 'This file could not be imported'],
+  [
+    'com.labre.interchange.import.remarks',
+    'What the import could not keep as it was',
+  ],
+  [
+    'com.labre.interchange.import.console',
+    'remarks — the full report is in the browser console.',
+  ],
+  // The three count labels of the summary line. Separate keys rather than one
+  // sentence with holes in it: the seam has no interpolation and no
+  // pluralisation (both are the host's), so a countable noun is the largest
+  // unit this library can hand over without inventing grammar.
+  ['com.labre.interchange.import.drawn', 'drawn'],
+  ['com.labre.interchange.import.carried', 'carried'],
+  ['com.labre.interchange.import.quarantined', 'quarantined'],
 ];
 
 /**

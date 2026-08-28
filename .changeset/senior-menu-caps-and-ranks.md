@@ -43,3 +43,10 @@ behind it arrives in its own release.
 thirteen artefacts, so no senior menu is past the cap and every one of them
 still shows its whole toolbox. This is the rule the BPMN full pack will be the
 first to meet.
+
+> **Superseded later in this same release** — "The senior sub-menu seats
+> thirteen". The PO re-arbitrated on 28/08/2026: the row seats **thirteen**
+> (seven most-recent + six most-used), and the ranking reads the framework's
+> **nominated `senior-menu` list** rather than its whole catalogue. The cap of
+> fourteen, the author-order position law and the deterministic cold start below
+> are unchanged.
