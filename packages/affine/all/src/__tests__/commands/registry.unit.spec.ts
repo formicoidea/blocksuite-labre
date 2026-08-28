@@ -55,6 +55,19 @@ describe('command registry invariants', () => {
       // is exactly what an empty board has none of) and is reached from the
       // catalogue and the palette.
       bpmn: 25,
+      // 13: nine elements, two boundaries, the board and the relationship tool.
+      // Thirteen against a cap of fourteen makes C4 the last framework that
+      // FITS — every command is a senior slot, the sub-menu is its author order
+      // untouched, and the ranking never runs.
+      //
+      // The board's automatic legend is NOT among them and is not a command at
+      // all: the PO's arbitration of 27/08/2026 is that generating one belongs
+      // to a board you have selected and to nothing else, so it is a button on
+      // that board's contextual toolbar and is absent from the catalogue, the
+      // palette and Settings › Shortcuts. It emits `FrameworkLegendCreated` by
+      // hand, exactly as the Context Map's legend does
+      // (`gfx/c4/src/toolbar/config.ts`).
+      c4: 13,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -79,7 +92,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(94);
+    expect(commands).toHaveLength(107);
   });
 
   /**
@@ -194,6 +207,7 @@ describe('command registry invariants', () => {
       edgy: 'edgy',
       'cynefin-estuarine': 'cynefin',
       bpmn: 'bpmn',
+      c4: 'c4',
       'ddd-event-storming': 'event-storming',
       'ddd-core-domain': 'core-domain',
       'ddd-context-map': 'context-map',

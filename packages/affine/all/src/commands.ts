@@ -6,6 +6,7 @@ import {
 } from '@labre/affine-block-root';
 import { auditCommands, mapQualityCommands } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
+import { c4Commands } from '@labre/affine-gfx-c4';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
 import { cynefinEstuarineCommands } from '@labre/affine-gfx-cynefin-estuarine';
 import { contextMapCommands } from '@labre/affine-gfx-ddd-context-map';
@@ -54,6 +55,7 @@ const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
   { owner: 'edgy', commands: edgyCommands },
   { owner: 'cynefin-estuarine', commands: cynefinEstuarineCommands },
   { owner: 'bpmn', commands: bpmnCommands },
+  { owner: 'c4', commands: c4Commands },
   { owner: 'ddd-event-storming', commands: eventStormingCommands },
   { owner: 'ddd-core-domain', commands: coreDomainCommands },
   { owner: 'ddd-context-map', commands: contextMapCommands },

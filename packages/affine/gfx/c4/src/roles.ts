@@ -92,31 +92,24 @@ const _everyRoleIsMapped: [_UnmappedC4Role] extends [never] ? true : never =
 void _everyRoleIsMapped;
 
 /**
- * ## Why no `labelKey` yet — and why that is not an oversight
+ * ## The i18n keys, and when they arrived
  *
- * Every other framework's roles carry a `com.labre.<framework>.role.<name>` key
- * beside their wording. C4's will too, and the stem is already decided; what it
- * cannot have YET is a manifest entry, and a key with no entry is precisely what
+ * The model slice shipped this vocabulary with its English wording and NO keys,
+ * deliberately: a framework contributes manifest entries through
+ * `FRAMEWORK_TRANSLATION_GROUPS`, whose `owner` must be a `FrameworkId` — which
+ * in turn must be a tooling flag key with a `FrameworkDescriptor` behind it
+ * (`frameworks.ts`: a senior button, an icon, a bundle). A key the manifest
+ * cannot name is a key a host meets and cannot translate, which
  * `packages/affine/all/src/__tests__/translations/manifest.unit.spec.ts` fails
- * the build over: a host builds its catalogue from
- * `getTranslationKeyManifest()`, so a key the manifest never names is a key the
- * host can meet and cannot translate.
+ * the build over.
  *
- * A framework contributes its entries through `FRAMEWORK_TRANSLATION_GROUPS`,
- * whose `owner` must be a `FrameworkId` — which in turn must be a tooling flag
- * key with a `FrameworkDescriptor` behind it (`frameworks.ts`: a senior button,
- * an icon, a bundle). This slice ships the MODEL and the RENDERING only and has
- * none of that, and inventing a framework identity with no tooling under it to
- * carry two dozen keys would be the tail wagging the dog.
- *
- * So the vocabulary ships with its wording and no keys, which costs exactly one
- * thing — a host cannot yet translate "Software system" — and costs nothing at
- * all in a document: an element persists the ROLE ID, never its label. The
- * tooling slice adds `labelKey` on each def, the `direction` block on the
- * relationship (whose `verbKey` is required, hence its absence here too) and the
- * `c4TranslationEntries` export that puts all of them in the manifest, in one
- * change that touches no stored data.
+ * The tooling slice gives C4 that identity, so the keys land here together with
+ * the `c4TranslationEntries` export that puts them in the manifest. Nothing in
+ * a stored document changed: an element persists the ROLE ID, never its label.
  */
+
+/** i18n key stem of a role id: `c4:person` → `com.labre.c4.role.person`. */
+const roleKey = (id: RoleId) => `com.labre.c4.role.${id.slice('c4:'.length)}`;
 
 /**
  * The four levels of the C4 model, flat — see the note at the top of this file
@@ -127,16 +120,19 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
   {
     id: C4_ROLE.person,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.person),
     labelFallback: 'Person',
   },
   {
     id: C4_ROLE.system,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.system),
     labelFallback: 'Software system',
   },
   {
     id: C4_ROLE.container,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.container),
     labelFallback: 'Container',
   },
   // The one specialisation in the pack. A data store is a container that keeps
@@ -146,11 +142,13 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
     id: C4_ROLE.database,
     parent: C4_ROLE.container,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.database),
     labelFallback: 'Database',
   },
   {
     id: C4_ROLE.component,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.component),
     labelFallback: 'Component',
   },
 ];
@@ -168,11 +166,13 @@ const FRAME_DEFS: readonly RoleDef[] = [
   {
     id: C4_ROLE.board,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.board),
     labelFallback: 'C4 diagram',
   },
   {
     id: C4_ROLE.boundary,
     kind: 'node',
+    labelKey: roleKey(C4_ROLE.boundary),
     labelFallback: 'Boundary',
   },
 ];
@@ -184,24 +184,36 @@ const FRAME_DEFS: readonly RoleDef[] = [
  * Tier 1 of that ADR is generic — `source` is the subject of the role's verb,
  * `target` its object — and it already applies: the source is the element that
  * has the need and the target the one that meets it. Tier 2 is the `direction`
- * block, which arrives with the tooling slice (see the note below and the one at
- * the top of this file). C4 asks every relationship to be READ as a sentence
- * ("Customer uses Internet Banking System"), which is exactly what the direction
- * reveal reads back, and it is why one role suffices where BPMN needs three:
- * there is one kind of line on this canvas, and its label is where the author
- * says which kind of using it is.
+ * block below. C4 asks every relationship to be READ as a sentence ("Customer
+ * uses Internet Banking System"), which is exactly what the direction reveal
+ * reads back, and it is why one role suffices where BPMN needs three: there is
+ * one kind of line on this canvas, and its LABEL is where the author says which
+ * kind of using it is.
  */
 const RELATIONSHIP_DEFS: readonly RoleDef[] = [
   {
     id: C4_ROLE.relationship,
     kind: 'edge',
+    labelKey: roleKey(C4_ROLE.relationship),
     labelFallback: 'Relationship',
-    // The `direction` block — the verb "uses", and the sentence telling a
-    // user which way to drag — lands with the relationship TOOL, for the reason
-    // the note at the top of this file gives: `EdgeDirectionDef.verbKey` is
-    // required, and this slice has nowhere to declare a key. Nothing in a
-    // document depends on it: a relationship persists its role id and its two
-    // ends, and gains its verb the day the tooling slice declares one.
+    /**
+     * The verb is **"uses"** — the one C4 falls back to when an author writes
+     * nothing on the arrow, and the reading that decides which end is which: the
+     * source is the element with the need, the target the one that meets it.
+     *
+     * It is deliberately the weakest verb in the pack. "Sends a request to",
+     * "reads from", "authenticates against" are all relationships an author
+     * writes ON the line, and the role must not claim one of them: a default
+     * that guessed would put words in the diagram's mouth every time somebody
+     * dragged an arrow and moved on.
+     */
+    direction: {
+      verbKey: `${roleKey(C4_ROLE.relationship)}.verb`,
+      verbFallback: 'uses',
+      gestureHintKey: `${roleKey(C4_ROLE.relationship)}.gesture`,
+      gestureHintFallback:
+        'Drag from the element that has the need to the one that meets it.',
+    },
   },
 ];
 
