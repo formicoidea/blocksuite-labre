@@ -40,8 +40,18 @@ export {
   importBpmnXml,
 } from './import.js';
 // What an artefact is BORN as, shared by the palette and the importer so a task
-// read out of a file and a task drawn by hand are one element in the document.
-export { bpmnNodeProps, type BpmnNodePreset, NODE_PRESETS } from './presets.js';
+// read out of a file and a task drawn by hand are one element in the document —
+// and, since the morph, by the toolbar that says one artefact more precisely.
+export {
+  bpmnMorphClears,
+  bpmnMorphProps,
+  bpmnNodeProps,
+  type BpmnNodePreset,
+  NODE_PRESETS,
+} from './presets.js';
+// What an artefact may BECOME: the declared families, and the spec the generic
+// morph module is registered with. Data a host can read without an editor.
+export { BPMN_MORPH_FAMILIES, BPMN_MORPH_SPEC } from './morph.js';
 // BPMN's entries in the interchange registry (`docs/adr/0012`) — one today,
 // `.bpmn` OUT. Exported whole so a host can ask what BPMN can read and write
 // without mounting an editor, and call it without one either.

@@ -191,6 +191,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.catalogue.ranked', 'Recent & frequent'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
+  // Morph ("Change type") toolbar — generic chrome, like the two above: the
+  // KINDS it offers are named by each framework's own creation commands, and
+  // only the drop-down's own word lives here.
+  ['com.labre.morph.toolbar.label', 'Change type'],
   // Reading panel
   ['com.labre.reading.toolbar.label', 'Read this component'],
   ['com.labre.reading.panel.label', 'Proposed record'],

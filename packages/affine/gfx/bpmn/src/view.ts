@@ -1,6 +1,7 @@
 import {
   FrameworkBackgroundInteractionExtension,
   InterchangeExtension,
+  morphToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
   validationToolbarConfig,
@@ -18,6 +19,7 @@ import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
 import { BPMN_INTERCHANGE } from './interchange';
+import { BPMN_MORPH_SPEC } from './morph';
 import { BPMN_PROFILES } from './profiles';
 import { BPMN_ROLES } from './roles';
 import { BPMN_RULES } from './rules';
@@ -102,6 +104,26 @@ export class BpmnViewExtension extends ViewExtensionProvider {
         ToolbarModuleExtension({
           id: BlockFlavourIdentifier('custom:affine:surface:bpmnPool'),
           config: validationToolbarConfig,
+        })
+      );
+      // The "Change type" dropdown on a selected NODE's contextual toolbar —
+      // the generic module, parameterized by BPMN's own families table.
+      //
+      // `affine:surface:bpmnNode` is a free slot: a bpmn node is a
+      // `ShapeElementModel`, but `shapeToolbarExtension` binds
+      // `affine:surface:shape` alone, and `renderToolbar` merges the modules of
+      // the element's own flavour with the two surface wildcards — so this row
+      // arrives beside the inherited shape entries rather than replacing them.
+      //
+      // Registered HERE, in the flag-gated half, because a morph is TOOLING: a
+      // node drawn while the flag was on keeps its kind, its role, its glyph
+      // and its place in every rule when the flag goes off — it just stops
+      // being something the toolbar offers to say more precisely
+      // (`docs/adr/0009`).
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier('affine:surface:bpmnNode'),
+          config: morphToolbarConfig(BPMN_MORPH_SPEC),
         })
       );
       context.register(bpmnSeniorTool);

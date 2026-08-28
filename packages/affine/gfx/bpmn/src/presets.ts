@@ -239,3 +239,66 @@ export function bpmnNodeProps(
     xywh: box.xywh,
   };
 }
+
+/**
+ * The box {@link bpmnMorphProps} hands {@link bpmnNodeProps} and then throws
+ * away. Never written to a document: a morph keeps the geometry the element
+ * already has, and this exists only because the one builder takes a box.
+ */
+const DISCARDED_BOX = '[0,0,0,0]';
+
+/** What a morph must never rewrite: identity, geometry, and the user's words. */
+const NOT_A_MORPH = ['type', 'xywh', 'text'] as const;
+
+/**
+ * What a node's kind is worth to an element that ALREADY EXISTS — the same
+ * description as {@link bpmnNodeProps}, minus the three things a morph has no
+ * business touching.
+ *
+ * Derived from the creation builder rather than restated beside it, and that is
+ * the whole point of the function: a `{kind, role}` patch is the obvious morph
+ * and it is wrong, because the appearance of a BPMN artefact lives in props the
+ * PREVIOUS kind's preset wrote. Morph a task to a data object with a two-key
+ * patch and the folded page arrives still filled and still stroked, because
+ * `filled` and `strokeStyle` were set when the task was drawn and nothing in
+ * the patch says otherwise. Two builders would agree the day they were written
+ * and drift on the first restyle — which is the argument this file already
+ * makes for having one creation builder at all.
+ */
+export function bpmnMorphProps(kind: BpmnNodeKind): Record<string, unknown> {
+  // Widened to the plain record on the way in: `type` is required on what the
+  // creation builder returns, and `delete` may only take an optional key.
+  const props: Record<string, unknown> = {
+    ...bpmnNodeProps(kind, { xywh: DISCARDED_BOX }),
+  };
+  for (const key of NOT_A_MORPH) delete props[key];
+  return props;
+}
+
+/**
+ * Every key ANY kind's props may carry — the union over the whole pack.
+ *
+ * Computed rather than listed, so a preset that starts spreading a second
+ * conditional key is covered on the day it is added rather than on the day
+ * somebody notices.
+ */
+const EVERY_MORPH_KEY = new Set(
+  (Object.keys(NODE_PRESETS) as BpmnNodeKind[]).flatMap(kind =>
+    Object.keys(bpmnMorphProps(kind))
+  )
+);
+
+/**
+ * The fields to DELETE from an element after morphing it to `kind` — the keys
+ * some other kind writes and this one does not.
+ *
+ * A patch cannot express absence. `textVerticalAlign` is spread conditionally
+ * (see {@link bpmnNodeProps}), so morphing away from the group would leave
+ * `Top` sitting in the Y.Map and silently in force over a preset that means
+ * "centred". `clearField` removes the key, which is the same call `writeLanes`
+ * makes when a pool loses its last lane.
+ */
+export function bpmnMorphClears(kind: BpmnNodeKind): readonly string[] {
+  const present = new Set(Object.keys(bpmnMorphProps(kind)));
+  return [...EVERY_MORPH_KEY].filter(key => !present.has(key));
+}

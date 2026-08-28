@@ -10,6 +10,7 @@ export * from './interchange';
 export * from './legacy-slot-extension';
 export * from './map-quality';
 export * from './map-quality-widget';
+export * from './morph-toolbar';
 export * from './query';
 export * from './reading';
 export * from './reading-toolbar';
