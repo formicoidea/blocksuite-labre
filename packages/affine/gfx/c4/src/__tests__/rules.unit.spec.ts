@@ -15,7 +15,7 @@ import * as c4Toolbar from '../toolbar/config';
 import { C4_ELEMENT_MATRIX, C4_RELATIONSHIP_MATRIX, C4_RULES } from '../rules';
 
 /**
- * The eleven C4 rules, rule by rule — and above all what each of them stays
+ * The fourteen C4 rules, rule by rule — and above all what each of them stays
  * SILENT about. Silence is the expensive half: a rule that fires on a croquis is
  * a rule the workshop switches off, and a C4 diagram is drawn as a croquis for
  * most of its life.
@@ -36,6 +36,16 @@ const ISOLATED_COMPONENT = 'c4.isolated-component';
 const DATABASE_INITIATES = 'c4.database-initiates';
 const HOMELESS_COMPONENT = 'c4.homeless-component';
 const PERSON_IN_BOUNDARY = 'c4.person-in-boundary';
+const SYSTEM_IN_BOUNDARY = 'c4.system-in-boundary';
+const CONTAINER_IN_CONTAINER_BOUNDARY = 'c4.container-in-container-boundary';
+const COMPONENT_LEVEL_SKIP = 'c4.component-level-skip';
+
+/** The three rules the zoom slice added, as a set to filter findings by. */
+const ZOOM_RULES = [
+  SYSTEM_IN_BOUNDARY,
+  CONTAINER_IN_CONTAINER_BOUNDARY,
+  COMPONENT_LEVEL_SKIP,
+];
 
 interface Extra {
   source?: string;
@@ -76,9 +86,33 @@ const board = (profile?: string) =>
 /** A board authored before `c4:board` existed: same card, no role. */
 const legacyBoard = () => element('bg', [0, 0, 1400, 900]);
 
-/** A boundary — the dashed rectangle a container's parts are drawn inside. */
+/**
+ * A boundary drawn BEFORE the role split: the dashed rectangle, carrying the
+ * parent role and saying nothing about which level it is at.
+ *
+ * Every boundary in every document written before this slice looks like this,
+ * which is why it stays the default fixture: the rules that were written on the
+ * parent role must go on reading it exactly as they did, and the rules written
+ * on a child must not reach it at all.
+ */
 const boundary = (id: string, x = 200, y = 200, text = 'API Application') =>
   element(id, [x, y, 520, 360], C4_ROLE.boundary, { text });
+
+/** A boundary drawn today, at the system level. */
+const systemBoundary = (
+  id: string,
+  x = 200,
+  y = 200,
+  text = 'Internet Banking System'
+) => element(id, [x, y, 520, 360], C4_ROLE['system-boundary'], { text });
+
+/** A boundary drawn today, at the container level. */
+const containerBoundary = (
+  id: string,
+  x = 200,
+  y = 200,
+  text = 'API Application'
+) => element(id, [x, y, 520, 360], C4_ROLE['container-boundary'], { text });
 
 /**
  * A C4 artefact: the SHAPE, carrying the role and — deliberately — no text at
@@ -150,7 +184,7 @@ const conformant = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the eleven rules of the pack, in reading order', () => {
+  it('ships exactly the fourteen rules of the pack, in reading order', () => {
     expect(C4_RULES.map(rule => rule.id)).toEqual([
       UNLABELED_RELATIONSHIP,
       UNNAMED_ELEMENT,
@@ -163,6 +197,9 @@ describe('what the framework ships', () => {
       DATABASE_INITIATES,
       HOMELESS_COMPONENT,
       PERSON_IN_BOUNDARY,
+      SYSTEM_IN_BOUNDARY,
+      CONTAINER_IN_CONTAINER_BOUNDARY,
+      COMPONENT_LEVEL_SKIP,
     ]);
   });
 
@@ -184,18 +221,30 @@ describe('what the framework ships', () => {
   });
 
   it('names a frame on every rule, so every finding can be waived somewhere', () => {
-    // Twelve measure against the BOARD — attribution only, since none of them
-    // reads a coordinate — and the two membership rules against the BOUNDARY,
-    // which is the frame their question is actually about.
+    // Nine measure against the BOARD — attribution only, since none of them
+    // reads a coordinate — and the five membership and zoom rules against a
+    // BOUNDARY, which is the frame their question is actually about.
     const framedBy = (role: string) =>
       C4_RULES.filter(rule => rule.backgroundRole === role)
         .map(rule => rule.id)
         .sort();
-    expect(framedBy(C4_ROLE.boundary)).toEqual([
-      HOMELESS_COMPONENT,
-      PERSON_IN_BOUNDARY,
-    ]);
+    // On the PARENT role: the three whose question is about a boundary at ANY
+    // level, and which therefore keep reading a boundary drawn before the split.
+    expect(framedBy(C4_ROLE.boundary)).toEqual(
+      [HOMELESS_COMPONENT, PERSON_IN_BOUNDARY, SYSTEM_IN_BOUNDARY].sort()
+    );
+    // On the CHILD: the two whose question only means something once the frame
+    // has said which level it is at.
+    expect(framedBy(C4_ROLE['container-boundary'])).toEqual(
+      [CONTAINER_IN_CONTAINER_BOUNDARY, COMPONENT_LEVEL_SKIP].sort()
+    );
+    // Nothing is framed on the system boundary alone: a component nested in a
+    // container boundary is inside the system boundary too, so a rule written
+    // that way would indict the conformant drawing — see `componentLevelSkip`.
+    expect(framedBy(C4_ROLE['system-boundary'])).toEqual([]);
     expect(framedBy(C4_ROLE.board)).toHaveLength(9);
+    for (const rule of C4_RULES)
+      expect(rule.backgroundRole, rule.id).toBeDefined();
   });
 
   it('declares no level the pipework cannot honour, and starts every rule quiet', () => {
@@ -269,7 +318,29 @@ describe('what the framework ships', () => {
         expect(reference, rule.id).toMatch(/C4 model/);
       }
     }
-    expect(byProvenance('recommendation')).toHaveLength(6);
+    expect(byProvenance('recommendation')).toHaveLength(9);
+  });
+
+  /**
+   * The three zoom rules cite the ABSTRACTIONS, not the review checklist, and
+   * they cite the same words.
+   *
+   * The distinction is the whole reason they are `recommendation` rather than
+   * `labre-convention`: the checklist never asks whether a boundary holds the
+   * right level, because C4 settles it one layer up, in what the model IS. A
+   * reader who opens the bubble has to be able to weigh that for themselves.
+   */
+  it('cites C4’s own abstractions for the three zoom rules', () => {
+    const zoom = C4_RULES.filter(rule => ZOOM_RULES.includes(rule.id));
+    expect(zoom).toHaveLength(3);
+    const references = new Set(zoom.map(rule => rule.provenance!.reference));
+    // ONE citation, read three ways — the same call the three isolation rules
+    // make with the checklist.
+    expect(references.size).toBe(1);
+    for (const rule of zoom) {
+      expect(rule.provenance!.source, rule.id).toBe('recommendation');
+      expect(rule.provenance!.reference, rule.id).toMatch(/abstractions/);
+    }
   });
 
   it('keeps provenance PURELY descriptive', () => {
@@ -795,6 +866,339 @@ describe('C11 · a person is never inside the system', () => {
 
   it('says nothing when the board carries no boundary', () => {
     expect(evaluate([board(), person('p', 300, 300)])).toEqual([]);
+  });
+
+  it('still reads a boundary drawn at either level', () => {
+    // Framed on the PARENT role, so the split cost it nothing: a person inside
+    // a boundary is a person inside a boundary, whichever zoom it is at.
+    for (const frame of [
+      systemBoundary('bd'),
+      containerBoundary('bd'),
+      boundary('bd'),
+    ]) {
+      expect(
+        only(
+          evaluate([board(), frame, person('p', 300, 300)]),
+          PERSON_IN_BOUNDARY
+        ),
+        String(frame.role)
+      ).toHaveLength(1);
+    }
+  });
+});
+
+/* ── The zoom rules ───────────────────────────────────────────────────── */
+
+/**
+ * The CONFORMANT nesting, and the fixture the three zoom rules are really
+ * written against: a container boundary drawn inside a system boundary, the
+ * system's containers in the outer frame, the container's components in the
+ * inner one, and the actors outside both.
+ *
+ * It is the shape of the composed board the export spec uses (`board-stub.ts`),
+ * and it is the case that breaks the obvious implementation: a component nested
+ * in a container boundary is geometrically inside the system boundary TOO, so a
+ * level-skip rule written as "a component is never inside a system boundary"
+ * would indict every component on this perfectly correct diagram. Every
+ * assertion below that says "silent" is guarding that.
+ *
+ * Geometry: system boundary x 100…900 / y 100…700; container boundary
+ * x 160…600 / y 340…640, wholly inside it.
+ */
+const zoomed = () => [
+  board(),
+  element('bd-sys', [100, 100, 800, 600], C4_ROLE['system-boundary'], {
+    text: 'Internet Banking System',
+  }),
+  element('bd-cnt', [160, 340, 440, 300], C4_ROLE['container-boundary'], {
+    text: 'API Application',
+  }),
+  // The containers of the system: inside the system boundary, outside the
+  // container one.
+  container('c-web', 620, 180),
+  database('d-store', 620, 380),
+  // The components of that container, inside it.
+  component('k-signin', 200, 380),
+  component('k-security', 380, 380),
+  // The actor and the system the sheet is about, outside every frame.
+  person('p', 1000, 200),
+  system('s', 1000, 500),
+];
+
+describe('C12 · a software system is never inside a boundary', () => {
+  it('flags a system drawn inside a system boundary', () => {
+    const violations = evaluate([
+      board(),
+      systemBoundary('bd'),
+      system('s', 300, 300),
+    ]);
+    expect(idsOf(violations)).toEqual([ISOLATED_SYSTEM, SYSTEM_IN_BOUNDARY]);
+    const zoom = only(violations, SYSTEM_IN_BOUNDARY)[0];
+    expect(zoom.elementIds).toEqual(['s']);
+    // Attributed to the frame the question is about, which is where the level
+    // of requirement is inherited from.
+    expect(zoom.backgroundId).toBe('bd');
+  });
+
+  it('flags it inside a CONTAINER boundary, and inside a pre-split one', () => {
+    // Framed on the parent role: the boundary already IS a system or a
+    // container, so a system inside one is wrong at every level — including on
+    // a boundary that never said which level it was at.
+    for (const frame of [containerBoundary('bd'), boundary('bd')]) {
+      expect(
+        only(
+          evaluate([board(), frame, system('s', 300, 300)]),
+          SYSTEM_IN_BOUNDARY
+        ),
+        String(frame.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('says nothing about a system drawn beside the boundary', () => {
+    expect(
+      only(
+        evaluate([board(), systemBoundary('bd'), system('s', 900, 620)]),
+        SYSTEM_IN_BOUNDARY
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about a system straddling the dashed line', () => {
+    // `element-in-zone` judges a subject against the frame that CONTAINS it, so
+    // half in is left alone — the same silence C11 documents.
+    expect(
+      only(
+        evaluate([board(), systemBoundary('bd'), system('s', 150, 150)]),
+        SYSTEM_IN_BOUNDARY
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about the CONTAINERS inside a system boundary', () => {
+    // What a container diagram IS. Written on `c4:system` and on nothing else.
+    expect(
+      evaluate([
+        board(),
+        systemBoundary('bd'),
+        container('c', 300, 300),
+        database('d', 460, 300),
+        rel('r', 'c', 'd'),
+      ])
+    ).toEqual([]);
+  });
+});
+
+describe('C13 · a container is never inside a container boundary', () => {
+  it('flags the zoom paradox — the boundary is that container', () => {
+    const violations = evaluate([
+      board(),
+      containerBoundary('bd'),
+      container('c', 300, 300),
+    ]);
+    expect(idsOf(violations)).toEqual([
+      CONTAINER_IN_CONTAINER_BOUNDARY,
+      ISOLATED_CONTAINER,
+    ]);
+    const zoom = only(violations, CONTAINER_IN_CONTAINER_BOUNDARY)[0];
+    expect(zoom.elementIds).toEqual(['c']);
+    expect(zoom.backgroundId).toBe('bd');
+  });
+
+  it('catches the database, the mobile app and the SPA with it', () => {
+    // `c4:database` specialises `c4:container` and the two pictures carry
+    // `c4:container` outright, so the rule reaches all of them for free.
+    expect(
+      only(
+        evaluate([board(), containerBoundary('bd'), database('d', 300, 300)]),
+        CONTAINER_IN_CONTAINER_BOUNDARY
+      )
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about a container inside a SYSTEM boundary', () => {
+    // The single most ordinary drawing in C4, and the reason this rule is
+    // framed on the child role rather than the parent.
+    expect(
+      only(
+        evaluate([board(), systemBoundary('bd'), container('c', 300, 300)]),
+        CONTAINER_IN_CONTAINER_BOUNDARY
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about a container inside a PRE-SPLIT boundary', () => {
+    // A boundary drawn before the split never said which level it was at, and
+    // guessing would mean indicting a container on the strength of a field this
+    // rule cannot see.
+    expect(
+      only(
+        evaluate([board(), boundary('bd'), container('c', 300, 300)]),
+        CONTAINER_IN_CONTAINER_BOUNDARY
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about the COMPONENTS inside a container boundary', () => {
+    // What a component diagram IS.
+    expect(
+      evaluate([
+        board(),
+        containerBoundary('bd'),
+        component('k1', 300, 300),
+        component('k2', 460, 300),
+        rel('r', 'k1', 'k2'),
+      ])
+    ).toEqual([]);
+  });
+});
+
+describe('C14 · a component whose container nobody drew', () => {
+  it('flags a component framed by a system boundary alone', () => {
+    // The level skip: the sheet jumps from the system to its components, and
+    // the reader cannot say which container this one is in. The board draws a
+    // container boundary elsewhere — this component simply is not in it.
+    const violations = evaluate([
+      board(),
+      element('bd-sys', [100, 100, 800, 600], C4_ROLE['system-boundary'], {
+        text: 'Internet Banking System',
+      }),
+      containerBoundary('bd-cnt', 160, 340),
+      component('k', 660, 180),
+    ]);
+    expect(idsOf(violations)).toEqual([
+      COMPONENT_LEVEL_SKIP,
+      ISOLATED_COMPONENT,
+    ]);
+    const skip = only(violations, COMPONENT_LEVEL_SKIP)[0];
+    expect(skip.elementIds).toEqual(['k']);
+    // Attributed to the nearest container boundary — the frame the question is
+    // about, and the one the author has to move the box into.
+    expect(skip.backgroundId).toBe('bd-cnt');
+    // ...and C10 says nothing, because the component IS framed by something.
+    expect(only(violations, HOMELESS_COMPONENT)).toEqual([]);
+  });
+
+  /**
+   * THE known limit of this rule, pinned so it stays a decision.
+   *
+   * `element-in-background` is silent on a board carrying no frame of the role
+   * it names, so a sheet with a system boundary, components inside it and NO
+   * container boundary anywhere raises nothing — the level skip that is easiest
+   * to draw is the one this rule cannot see.
+   *
+   * Closing it means the rule asking "is this component inside a SYSTEM
+   * boundary", which is the framing that indicts the conformant nesting (a
+   * component in a container boundary is inside the system boundary too — see
+   * the fixture below), so it is not available. What can see it is a BOARD that
+   * declares which of the four levels it is drawing: a system boundary on a
+   * component diagram is out of place whatever is inside it. That is slice B's
+   * question, not this family's.
+   */
+  it('cannot see the skip when no container boundary is drawn at all', () => {
+    const violations = evaluate([
+      board(),
+      systemBoundary('bd'),
+      component('k', 300, 300),
+    ]);
+    expect(idsOf(violations)).toEqual([ISOLATED_COMPONENT]);
+  });
+
+  it('says nothing about a component inside a container boundary', () => {
+    expect(
+      only(
+        evaluate([board(), containerBoundary('bd'), component('k', 300, 300)]),
+        COMPONENT_LEVEL_SKIP
+      )
+    ).toEqual([]);
+  });
+
+  /**
+   * THE compatibility pin, and the reason C10 was not simply retargeted.
+   *
+   * A board whose boundaries all carry the parent role — every C4 diagram drawn
+   * before this slice — holds no `c4:container-boundary`, so this rule has no
+   * frame of its own and `element-in-background` answers a frameless board with
+   * silence. The old document keeps exactly the findings it had.
+   */
+  it('says nothing on a board of PRE-SPLIT boundaries, inside or out', () => {
+    const inside = evaluate([
+      board(),
+      boundary('bd'),
+      component('k', 300, 300),
+    ]);
+    const outside = evaluate([
+      board(),
+      boundary('bd'),
+      component('k', 900, 600),
+    ]);
+    expect(only(inside, COMPONENT_LEVEL_SKIP)).toEqual([]);
+    expect(only(outside, COMPONENT_LEVEL_SKIP)).toEqual([]);
+    // ...and C10 reports on that board precisely what it reported before: the
+    // component outside every boundary, and nothing about the one inside.
+    expect(only(inside, HOMELESS_COMPONENT)).toEqual([]);
+    expect(only(outside, HOMELESS_COMPONENT)).toHaveLength(1);
+  });
+
+  it('says nothing on a sketch with no frame at all', () => {
+    // A component diagram whose author has not drawn any frame yet is a sketch
+    // — the silence C10 already documents, kept.
+    expect(
+      only(evaluate([board(), component('k', 900, 600)]), COMPONENT_LEVEL_SKIP)
+    ).toEqual([]);
+  });
+
+  /**
+   * The one redundancy the composition costs, pinned rather than discovered.
+   *
+   * A component drawn outside EVERY boundary on a board that has a container
+   * boundary raises both C10 and C14 — one saying it belongs to nothing, the
+   * other that no container claims it. Suppressing one would need a family that
+   * can ask "inside A but not inside B", which none of the eight expresses.
+   */
+  it('doubles up with C10 on a component outside every frame', () => {
+    const violations = evaluate([
+      board(),
+      containerBoundary('bd'),
+      component('k', 900, 620),
+    ]);
+    expect(idsOf(violations)).toEqual([
+      COMPONENT_LEVEL_SKIP,
+      HOMELESS_COMPONENT,
+      ISOLATED_COMPONENT,
+    ]);
+  });
+});
+
+describe('the conformant nesting the zoom rules must never touch', () => {
+  it('says nothing about containers in the system frame and components in the container frame', () => {
+    const violations = evaluate(zoomed());
+    expect(
+      violations.filter(violation => ZOOM_RULES.includes(violation.ruleId))
+    ).toEqual([]);
+    // The two membership rules are silent on it too: nobody is homeless and
+    // nobody has put the person inside the software.
+    expect(only(violations, HOMELESS_COMPONENT)).toEqual([]);
+    expect(only(violations, PERSON_IN_BOUNDARY)).toEqual([]);
+    // ...and the board is NOT trivially quiet — nothing is joined up yet, which
+    // is what makes the silences above worth asserting.
+    expect(violations.length).toBeGreaterThan(0);
+    for (const violation of violations) {
+      expect(violation.ruleId).toMatch(/^c4\.isolated-/);
+    }
+  });
+
+  it('flags exactly the box moved to the wrong zoom', () => {
+    // Move one component out of the container frame and into the system frame
+    // and the level skip appears — on that box alone.
+    const violations = evaluate(
+      zoomed().map(el =>
+        el.id === 'k-signin' ? component('k-signin', 660, 560) : el
+      )
+    );
+    const skips = only(violations, COMPONENT_LEVEL_SKIP);
+    expect(skips).toHaveLength(1);
+    expect(skips[0].elementIds).toEqual(['k-signin']);
   });
 });
 

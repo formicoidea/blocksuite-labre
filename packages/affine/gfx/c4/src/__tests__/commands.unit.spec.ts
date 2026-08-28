@@ -4,6 +4,7 @@ import {
   PointStyle,
   StrokeStyle,
 } from '@labre/affine-model';
+import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
 import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
 import {
   type BlockStdScope,
@@ -12,7 +13,7 @@ import {
   SENIOR_MENU_RANKED_SLOTS,
   selectSeniorMenuCommands,
 } from '@labre/std';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { GfxControllerIdentifier, roleIsA } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import { c4CommandIcons, c4Commands } from '../commands';
@@ -26,7 +27,7 @@ import {
   RELATIONSHIP_WIDTH,
 } from '../consts';
 import { C4_AUTO_LEGEND } from '../legend';
-import { C4_ROLE, C4_ROLE_OF_KIND } from '../roles';
+import { C4_ROLE, C4_ROLE_OF_KIND, C4_ROLES } from '../roles';
 import { c4BoardToolbarConfig, c4LegendToolbarConfig } from '../toolbar/config';
 
 /** Every kind the model declares, read off a table that is total over it. */
@@ -422,18 +423,38 @@ describe('what a c4 command actually creates', () => {
     // The variant is WRITTEN, and it also picks the default name — the two
     // boundaries are the same dashed rectangle, and C4 tells them apart by what
     // is written under the corner.
+    //
+    // Since the boundary role split, the same argument also picks the ROLE, and
+    // the two are asserted together on purpose: this is the one site that writes
+    // either, and a boundary whose role said "system" while its variant said
+    // "container" would paint one thing and be judged as another.
     expect(created(byId.get('c4.addSystemBoundary')!)).toMatchObject({
       type: 'c4Boundary',
-      role: C4_ROLE.boundary,
+      role: C4_ROLE['system-boundary'],
       variant: 'system',
       name: BOUNDARY_LABEL.system,
     });
     expect(created(byId.get('c4.addContainerBoundary')!)).toMatchObject({
       type: 'c4Boundary',
-      role: C4_ROLE.boundary,
+      role: C4_ROLE['container-boundary'],
       variant: 'container',
       name: BOUNDARY_LABEL.container,
     });
+    // The PARENT role is what a boundary drawn before the split carries, and
+    // this editor never writes it again.
+    for (const id of ['c4.addSystemBoundary', 'c4.addContainerBoundary']) {
+      expect(created(byId.get(id)!).role, id).not.toBe(C4_ROLE.boundary);
+      // ...and both still ARE boundaries, which is what keeps the two
+      // membership rules and the legend row written on the parent.
+      expect(
+        roleIsA(
+          created(byId.get(id)!).role as string,
+          C4_ROLE.boundary,
+          C4_ROLES
+        ),
+        id
+      ).toBe(true);
+    }
   });
 
   it('arms a straight, dashed, filled-headed connector for the relationship', () => {
@@ -488,6 +509,39 @@ describe('the c4 automatic legend', () => {
       .filter(entry => entry.exact)
       .map(entry => entry.role);
     expect(exact).toEqual([C4_ROLE.container]);
+  });
+
+  /**
+   * The boundary row survived the role split without a line of its own, and
+   * this is what proves it rather than assuming it.
+   *
+   * The entry is written on the PARENT role and asks for no `exact` match, so
+   * `autoLegendSections` reaches both children through `roleIsA`. Had the split
+   * needed a second and a third entry here, a board of container boundaries
+   * would have listed "Boundary" twice or not at all.
+   */
+  it('lists the one Boundary row for a board drawn at either level', () => {
+    const framesOf = (present: string[]) =>
+      autoLegendSections(new Set(present), C4_AUTO_LEGEND).find(
+        section => section.title === 'Frames'
+      );
+    for (const role of [
+      C4_ROLE.boundary,
+      C4_ROLE['system-boundary'],
+      C4_ROLE['container-boundary'],
+    ]) {
+      const frames = framesOf([role]);
+      expect(frames?.rows, role).toHaveLength(1);
+      expect(frames?.rows[0].label, role).toBe('Boundary');
+    }
+    // A board with both levels drawn on it still lists the row once: they are
+    // one frame of the notation, drawn twice.
+    expect(
+      framesOf([C4_ROLE['system-boundary'], C4_ROLE['container-boundary']])
+        ?.rows
+    ).toHaveLength(1);
+    // ...and a board with no boundary at all lists no Frames section.
+    expect(framesOf([C4_ROLE.system])).toBeUndefined();
   });
 
   it('reads its wordings off the vocabulary rather than restating them', () => {
