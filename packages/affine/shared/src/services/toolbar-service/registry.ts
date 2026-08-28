@@ -59,17 +59,24 @@ export function toolbarModuleFlavour(variant: string): string {
  * duplicates on.
  */
 export function toolbarModuleKey(flavour: string, owner: string): string {
-  // Dev-only, because the failure it prevents is silent: an empty owner
-  // produces `flavour#`, which is a DIFFERENT variant from `flavour` and would
-  // therefore register a second module the bare-key lookups below never see,
-  // and an owner carrying the separator makes `toolbarModuleFlavour` cut in the
-  // wrong place, filing the module under a flavour nobody draws.
-  if (process.env.NODE_ENV !== 'production') {
-    if (!owner || owner.includes(MODULE_OWNER_SEPARATOR)) {
-      throw new Error(
-        `toolbarModuleKey: owner must be non-empty and free of "${MODULE_OWNER_SEPARATOR}" (got ${JSON.stringify(owner)})`
-      );
-    }
+  // Checked ALWAYS, and deliberately not behind a `process.env.NODE_ENV` dev
+  // guard. This library is published SOURCE-FIRST, so a `process` reference is
+  // not erased by anybody's build: a host consuming raw ESM would meet
+  // `ReferenceError: process is not defined` the moment a framework registered
+  // a shared toolbar module — i.e. at editor setup, on every document. The
+  // check costs one falsy test and one `includes` on a short string, run a
+  // handful of times per editor, which is nothing next to being the only
+  // `process` reference in the shipped source.
+  //
+  // What it prevents is silent: an empty owner produces `flavour#`, which is a
+  // DIFFERENT variant from `flavour` and would therefore register a second
+  // module the bare-key lookups below never see, and an owner carrying the
+  // separator makes `toolbarModuleFlavour` cut in the wrong place, filing the
+  // module under a flavour nobody draws.
+  if (!owner || owner.includes(MODULE_OWNER_SEPARATOR)) {
+    throw new Error(
+      `toolbarModuleKey: owner must be non-empty and free of "${MODULE_OWNER_SEPARATOR}" (got ${JSON.stringify(owner)})`
+    );
   }
   return `${flavour}${MODULE_OWNER_SEPARATOR}${owner}`;
 }
