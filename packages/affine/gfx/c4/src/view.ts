@@ -1,4 +1,8 @@
-import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
+import {
+  FrameworkBackgroundInteractionExtension,
+  ValidationProfileExtension,
+  ValidationRuleExtension,
+} from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -17,10 +21,12 @@ import { C4BoardView, C4BoundaryView } from './element-view';
 import { C4NodeRendererExtension } from './node/node-renderer';
 import { C4NodeView } from './node/node-view';
 import { C4TypeLineWatcher } from './node/type-line-watcher';
+import { C4_PROFILES } from './profiles';
 import { C4_ROLES } from './roles';
+import { C4_RULES } from './rules';
 import {
   c4BoardToolbarExtension,
-  c4LegendToolbarExtension,
+  c4BoardToolingToolbarExtension,
 } from './toolbar/config';
 import { c4SeniorTool } from './toolbar/senior-tool';
 
@@ -79,12 +85,15 @@ export class C4RenderViewExtension extends ViewExtensionProvider {
 
 /**
  * C4 creation tooling — flag-gated (`c4`): the senior toolbar button, its
- * sub-menu, the thirteen commands behind them, and the board's legend button.
+ * sub-menu, the thirteen commands behind them, the board's legend button, and
+ * the validation rules and profiles.
  *
  * All of it is tooling in the sense `docs/adr/0009` means: a diagram drawn while
  * the flag was on keeps painting, stays selectable and keeps its contextual
  * toolbar when it goes off — only the ways to add new elements go away, the
- * legend included, since generating one CREATES elements.
+ * legend included since generating one CREATES elements, and the checking stops.
+ * The profile a board was put on stays written, unread, until the flag comes
+ * back.
  */
 export class C4ViewExtension extends ViewExtensionProvider {
   override name = 'affine-c4-gfx';
@@ -98,13 +107,24 @@ export class C4ViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (this.isEdgeless(context.scope)) {
+      context.register(ValidationRuleExtension(C4_RULES));
+      context.register(ValidationProfileExtension(C4_PROFILES));
       context.register(c4SeniorTool);
       context.register(CommandExtension(c4Commands, c4CommandIcons));
-      // The legend button on a selected board's row. A SECOND module on the
-      // same element, through the `custom:` flavour slot — the shape wardley,
-      // bpmn and the context map all use to hang a flag-gated entry off a row
-      // whose base is always-on (`toolbar/config.ts`).
-      context.register(c4LegendToolbarExtension);
+      // The flag-gated half of the selected BOARD's row, through the `custom:`
+      // flavour slot — the shape wardley, bpmn and the context map all use to
+      // hang flag-gated entries off a row whose base is always-on. One module,
+      // carrying the legend button AND the Validation dropdown, because the slot
+      // holds exactly one module per element and both halves are gated by this
+      // one flag.
+      //
+      // There is no boundary module, and no rule of this pack goes unarbitrated
+      // for want of one: the board alone arbitrates the checklist (PO,
+      // 28/08/2026), and a boundary inherits its board's choice in the engine
+      // (`inheritChosenProfiles`), so the two boundary-anchored rules harden
+      // with the rest. See `toolbar/config.ts`, where every flavour claim of
+      // this framework lives.
+      context.register(c4BoardToolingToolbarExtension);
     }
   }
 }

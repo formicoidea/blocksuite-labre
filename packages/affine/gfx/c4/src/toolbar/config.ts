@@ -1,4 +1,7 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { C4BoardElementModel } from '@labre/affine-model';
 import {
@@ -227,7 +230,65 @@ export const c4LegendToolbarConfig = {
     ctx.getSurfaceModelsByType(C4BoardElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
 
-export const c4LegendToolbarExtension = ToolbarModuleExtension({
+/**
+ * The board's flag-gated row, WHOLE: the legend button and the Validation
+ * dropdown, in one module.
+ *
+ * ## Why they cannot be two modules
+ *
+ * `renderToolbar` merges exactly four slots per element — `<flavour>`,
+ * `custom:<flavour>`, and the two `affine:surface:*` wildcards — and
+ * `ToolbarModuleExtension` binds by DI variant, so a second module claiming
+ * `custom:affine:surface:c4Board` throws `DuplicateServiceDefinitionError`
+ * before the editor finishes setting up. Two slots, and C4 has three things to
+ * put on a selected board: the resize toggle (always-on, `<flavour>`), the
+ * legend and the level of requirement.
+ *
+ * The last two are gated by the same flag and appear together or not at all, so
+ * one module is the honest grouping rather than a workaround: `c4` off takes
+ * away both the gesture that CREATES legend elements and the choice of how hard
+ * to check the diagram, and leaves the stored board its handles.
+ *
+ * Sorting keeps the row readable across the merge — `b.legend` from the config
+ * above, `z.validation` from {@link validationToolbarConfig} — so the user sees
+ * resize, legend, then the level, whatever order the modules were registered in.
+ */
+export const c4BoardToolingToolbarConfig: ToolbarModuleConfig = {
+  actions: [
+    ...c4LegendToolbarConfig.actions,
+    // The generic dropdown, not a C4 variant of it: the config names no
+    // framework — it reads the registered rules and profiles — so this is the
+    // very same object wardley, bpmn and the context map register.
+    ...validationToolbarConfig.actions,
+  ],
+  when: c4LegendToolbarConfig.when,
+};
+
+export const c4BoardToolingToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('custom:affine:surface:c4Board'),
-  config: c4LegendToolbarConfig,
+  config: c4BoardToolingToolbarConfig,
 });
+
+/**
+ * The BOUNDARY claims no toolbar flavour at all, and that is a decision rather
+ * than an omission.
+ *
+ * Two of the fourteen rules — `c4.homeless-component` and
+ * `c4.person-in-boundary` — are framed against the boundary, so their findings
+ * are attributed to it. An earlier draft of this file concluded that the
+ * boundary therefore needed a picker of its own, or those two would sit at the
+ * default level whatever the author chose.
+ *
+ * The PO arbitrated the other way on 28/08/2026: **the board alone arbitrates
+ * the checklist.** One diagram, one level of requirement, one place to set it —
+ * a second picker on a frame drawn INSIDE the first is a way to make a board
+ * disagree with itself, and no reader could tell which answer the diagram was
+ * being held to.
+ *
+ * The engine carries the consequence rather than the UI working around it:
+ * `inheritChosenProfiles` (`packages/affine/blocks/surface/src/extensions/validation.ts`)
+ * makes a frame that names no profile inherit the innermost containing frame's
+ * choice, so a boundary drawn on a board set to Review checklist is itself on
+ * Review checklist and the two boundary-anchored rules harden with the rest.
+ * Nothing here has to know that; the absence of a module is the whole change.
+ */
