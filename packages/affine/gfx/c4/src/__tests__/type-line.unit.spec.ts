@@ -7,6 +7,7 @@ import {
   C4_TYPE_PLACEHOLDER,
   C4_TYPE_TAKES_TECHNOLOGY,
   C4_TYPE_WORD,
+  c4MorphedTypeLine,
   c4TypeLine,
   normalizeC4TypeLine,
   technologyOfTypeLine,
@@ -245,5 +246,86 @@ describe('when an edit has committed', () => {
     ]);
     expect(moved.left).toEqual(['t-type']);
     expect([...moved.editing]).toEqual(['t-descr']);
+  });
+});
+
+/**
+ * The line when the SHAPE becomes something else.
+ *
+ * Half the caption is derived from `kind`, so a morph that rewrote the kind and
+ * left the words alone would draw a picture contradicting itself. The other
+ * half is the author's, and the whole difficulty is telling the two apart on a
+ * text element somebody may have typed anything into.
+ */
+describe('c4MorphedTypeLine — the caption follows the shape', () => {
+  it('carries an untouched prompt across to the target own prompt', () => {
+    // Not "the source prompt with the word swapped": a person is not built
+    // with a technology, so the prompt it lands on has no slot for one.
+    expect(
+      c4MorphedTypeLine('container', 'person', C4_TYPE_PLACEHOLDER.container)
+    ).toBe('[Person]');
+    expect(
+      c4MorphedTypeLine('person', 'container', C4_TYPE_PLACEHOLDER.person)
+    ).toBe('[Container: technology]');
+    // …and the placeholder never survives as a literal technology, which is
+    // what folding this branch into the one below would have produced.
+    expect(
+      c4MorphedTypeLine('container', 'person', C4_TYPE_PLACEHOLDER.container)
+    ).not.toContain(TYPE_TECHNOLOGY_PLACEHOLDER);
+  });
+
+  it('re-derives a canonical line, technology and all', () => {
+    // `[Container: React]` is what the commit hook leaves behind after every
+    // edit, so it is the shape a stated technology is actually stored in.
+    expect(
+      c4MorphedTypeLine('container', 'component', '[Container: React]')
+    ).toBe('[Component: React]');
+    expect(c4MorphedTypeLine('container', 'person', '[Container: React]')).toBe(
+      '[Person: React]'
+    );
+    // A canonical line with NO technology stays one.
+    expect(c4MorphedTypeLine('container', 'person', '[Container]')).toBe(
+      '[Person]'
+    );
+  });
+
+  it('leaves a line the author wrote exactly as they wrote it', () => {
+    // Anything that is not the source kind own derivation is theirs: prose, a
+    // line mid-edit, a bare technology typed over the whole box, a URL.
+    for (const raw of [
+      'see ADR 0042',
+      '[Container: Ja',
+      'React',
+      'https://internal/docs',
+      '',
+      '   ',
+    ]) {
+      expect(c4MorphedTypeLine('container', 'database', raw)).toBeNull();
+    }
+    // …and a caption derived for a DIFFERENT kind than the one the shape is
+    // leaving is not this morph business either.
+    expect(
+      c4MorphedTypeLine('person', 'system', '[Container: Java]')
+    ).toBeNull();
+  });
+
+  it('changes nothing inside any family the pack actually declares', () => {
+    // Every declared family shares one type word and one answer to "does this
+    // level state a technology", so the rewrite is inert today — it is
+    // insurance for a family that grows, not a behaviour anybody will see.
+    for (const [from, to] of [
+      ['person', 'person-ext'],
+      ['system', 'system-ext'],
+      ['container', 'database'],
+      ['container', 'mobile'],
+      ['database', 'browser'],
+    ] as [C4NodeKind, C4NodeKind][]) {
+      expect(c4MorphedTypeLine(from, to, C4_TYPE_PLACEHOLDER[from])).toBe(
+        C4_TYPE_PLACEHOLDER[from]
+      );
+      expect(c4MorphedTypeLine(from, to, c4TypeLine(from, 'Java'))).toBe(
+        c4TypeLine(from, 'Java')
+      );
+    }
   });
 });

@@ -3,7 +3,7 @@ import type { ToolbarContext } from '@labre/affine-shared/services';
 import type { SerializedXYWH } from '@labre/global/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { html, render, type TemplateResult } from 'lit';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applyMorph,
@@ -47,6 +47,18 @@ class OtherNode extends GfxPrimitiveElementModel {
   xywh: SerializedXYWH = '[0,0,0,0]';
   override get type() {
     return 'otherNode';
+  }
+}
+
+/**
+ * What a COMPOSITE artefact is selected as — the wrapper a click lands on,
+ * whose kind lives on a child. C4's `group` in miniature.
+ */
+class TestGroup extends GfxPrimitiveElementModel {
+  rotate = 0;
+  xywh: SerializedXYWH = '[0,0,0,0]';
+  override get type() {
+    return 'testGroup';
   }
 }
 
@@ -147,7 +159,69 @@ const SPEC: MorphSpec<Kind> = {
   label: { key: 'com.labre.test.morph.label', fallback: 'Change type' },
 };
 
+/**
+ * A composite selection: the wrapper the toolbar sees, and the element the
+ * kind actually lives on. Both are real models, so the config's `instanceof`
+ * gates are the shipped ones on either side of the indirection.
+ */
+function composite(
+  kind: Kind | undefined,
+  options: { locked?: boolean; childLocked?: boolean; orphan?: boolean } = {}
+) {
+  const child = node(kind, { locked: options.childLocked });
+  const group = Object.create(TestGroup.prototype) as GfxPrimitiveElementModel &
+    Stub & { child?: GfxPrimitiveElementModel };
+
+  const own = {
+    id: `group-${++seq}`,
+    kind: undefined,
+    surface: { updateElement: vi.fn() },
+    clearField: vi.fn(),
+    isLocked: () => options.locked === true,
+    group: null,
+    // An `orphan` wrapper is a group that is not one of ours — the plain group
+    // somebody lassoed round three shapes, or another framework's component.
+    child: options.orphan ? undefined : child,
+  };
+  for (const [key, value] of Object.entries(own)) {
+    Object.defineProperty(group, key, { value, configurable: true });
+  }
+  return { group, child };
+}
+
+/** What `afterMorph` was handed, and how far into the gesture it was called. */
+const afterMorphCalls: {
+  id: string;
+  from: Kind;
+  to: Kind;
+  checkpoints: number;
+}[] = [];
+
+/**
+ * The same declaration, made by a framework whose artefact is a COMPOSITE: the
+ * selection is the wrapper, the kind is written on the child, and the wrapper
+ * owes the change something of its own afterwards.
+ */
+const COMPOSITE_SPEC: MorphSpec<Kind> = {
+  ...SPEC,
+  modelType: TestGroup,
+  resolveTarget: model =>
+    (model as unknown as { child?: GfxPrimitiveElementModel }).child,
+  afterMorph: (model, from, to) => {
+    afterMorphCalls.push({
+      id: model.id,
+      from,
+      to,
+      // Read INSIDE the hook: the whole contract is that it runs after the
+      // one checkpoint the gesture takes and before any other, so a second
+      // `captureSync` — a second ctrl+z — would show up here.
+      checkpoints: captureSync.mock.calls.length,
+    });
+  },
+};
+
 const config = morphToolbarConfig(SPEC);
+const compositeConfig = morphToolbarConfig(COMPOSITE_SPEC);
 
 /**
  * Both gates, and they must agree: the MODULE's `when` decides whether the
@@ -481,5 +555,140 @@ describe('applyMorph — what one pick writes', () => {
     applyMorph(ctx, SPEC, 'taskUser');
 
     expect(model.surface.updateElement).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The two hooks a COMPOSITE artefact needs — the whole of what separates C4's
+ * declaration from BPMN's.
+ *
+ * `resolveTarget` is an indirection AND a gate: the patch has to land on the
+ * element the kind lives on, and every wrapper that resolves to nothing has to
+ * be refused rather than written to. `afterMorph` is the rest of what the
+ * artefact owes the change, and its one hard requirement is that it happens
+ * inside the same undo step.
+ */
+describe('morphToolbarConfig — a composite artefact', () => {
+  const compositeWhen = compositeConfig.when as (
+    ctx: ToolbarContext
+  ) => boolean;
+
+  beforeEach(() => {
+    afterMorphCalls.length = 0;
+    captureSync.mockClear();
+  });
+
+  it('writes the patch on the resolved child, never on the selection', () => {
+    const { group, child } = composite('task');
+    applyMorph(context([group]), COMPOSITE_SPEC, 'taskService');
+
+    expect(child.surface.updateElement).toHaveBeenCalledWith(child.id, {
+      kind: 'taskService',
+      role: 'test:taskService',
+      filled: false,
+    });
+    // The hazard this hook exists for: a patch on the wrapper would put `kind`
+    // and `role` on an element that means nothing, and leave the shape as it
+    // was.
+    expect(group.surface.updateElement).not.toHaveBeenCalled();
+    expect(child.clearField).toHaveBeenCalledWith('textVerticalAlign');
+    expect(group.clearField).not.toHaveBeenCalled();
+  });
+
+  it('reads the current kind through the resolution too', () => {
+    // `kindOf` is asked of the child, so the dropdown opens on what the SHAPE
+    // is — the wrapper carries no kind at all.
+    const { group } = composite('dataStore');
+    expect(compositeWhen(context([group]))).toBe(true);
+
+    const ctx = context([group]);
+    applyMorph(ctx, COMPOSITE_SPEC, 'dataObject');
+    expect(ctx.track).toHaveBeenCalledWith(
+      'FrameworkElementMorphed',
+      expect.objectContaining({
+        fromRole: 'test:dataStore',
+        toRole: 'test:dataObject',
+      })
+    );
+  });
+
+  it('refuses every wrapper the spec does not resolve', () => {
+    // A plain group, another framework's component, a group of two of ours:
+    // all of them answer `undefined`, and none of them is offered the menu…
+    const { group } = composite('task', { orphan: true });
+    expect(compositeWhen(context([group]))).toBe(false);
+
+    // …nor written to when the write is attempted directly.
+    applyMorph(context([group]), COMPOSITE_SPEC, 'taskUser');
+    expect(group.surface.updateElement).not.toHaveBeenCalled();
+  });
+
+  it('refuses a mixed selection where only some wrappers resolve', () => {
+    const mine = composite('task');
+    const theirs = composite('task', { orphan: true });
+    expect(compositeWhen(context([mine.group, theirs.group]))).toBe(false);
+  });
+
+  it('refuses a locked child under an unlocked wrapper', () => {
+    // The lock the generic guard would miss: the wrapper is free to move and
+    // the element the patch is aimed at is not.
+    const { group } = composite('task', { childLocked: true });
+    expect(compositeWhen(context([group]))).toBe(false);
+  });
+
+  it('calls afterMorph once per changed element, inside the one checkpoint', () => {
+    const first = composite('task');
+    const second = composite('taskService');
+    const unchanged = composite('taskUser');
+
+    applyMorph(
+      context([first.group, second.group, unchanged.group]),
+      COMPOSITE_SPEC,
+      'taskUser'
+    );
+
+    // One checkpoint for the whole gesture — and the hook saw it already
+    // taken, which is what makes its own writes part of the same ctrl+z.
+    expect(captureSync).toHaveBeenCalledTimes(1);
+    expect(afterMorphCalls).toEqual([
+      { id: first.group.id, from: 'task', to: 'taskUser', checkpoints: 1 },
+      {
+        id: second.group.id,
+        from: 'taskService',
+        to: 'taskUser',
+        checkpoints: 1,
+      },
+    ]);
+  });
+
+  it('hands afterMorph the SELECTED element, not the resolved one', () => {
+    // What the hook has to reach is the rest of the composite — C4's type line
+    // is a sibling of the shape, not a child of it.
+    const { group, child } = composite('task');
+    applyMorph(context([group]), COMPOSITE_SPEC, 'taskUser');
+
+    expect(afterMorphCalls.map(call => call.id)).toEqual([group.id]);
+    expect(afterMorphCalls.map(call => call.id)).not.toContain(child.id);
+  });
+
+  it('never calls afterMorph when nothing changed', () => {
+    const { group } = composite('taskUser');
+    applyMorph(context([group]), COMPOSITE_SPEC, 'taskUser');
+
+    expect(afterMorphCalls).toHaveLength(0);
+    expect(captureSync).not.toHaveBeenCalled();
+  });
+
+  it('leaves a spec that declares neither hook exactly as it was', () => {
+    // The defaults are identity and nothing: BPMN's declaration is unchanged
+    // by this feature, and this is the assertion that says so.
+    const model = node('task');
+    applyMorph(context([model]), SPEC, 'taskUser');
+
+    expect(model.surface.updateElement).toHaveBeenCalledWith(
+      model.id,
+      expect.objectContaining({ kind: 'taskUser' })
+    );
+    expect(afterMorphCalls).toHaveLength(0);
   });
 });

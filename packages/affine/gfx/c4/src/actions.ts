@@ -10,7 +10,6 @@ import {
   FontStyle,
   FontWeight,
   PointStyle,
-  ShapeStyle,
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
@@ -36,9 +35,7 @@ import {
   DESCRIPTION_PLACEHOLDER,
   NODE_LABEL,
   NODE_PALETTE,
-  NODE_RADIUS,
   NODE_SIZE,
-  NODE_STROKE_WIDTH,
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
   TITLE_FONT_SIZE,
@@ -47,7 +44,8 @@ import {
 import type { C4ExportBoard } from './export';
 import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
 import { C4_AUTO_LEGEND } from './legend';
-import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
+import { c4NodeProps } from './presets';
+import { C4_ROLE } from './roles';
 import { C4_TYPE_PLACEHOLDER } from './type-line';
 
 /**
@@ -56,32 +54,6 @@ import { C4_TYPE_PLACEHOLDER } from './type-line';
  * over the command registry, so what a button DOES lives here and telemetry is
  * emitted once, by `runCommand`.
  */
-
-/**
- * The kinds whose GLYPH draws the body, so the native shape underneath paints
- * nothing at all.
- *
- * Five of nine, and the renderer is the authority on which. A person is a head
- * fused into a rounded body and a database is a cylinder, neither of which a
- * native rect can be. `mobile` and `browser` joined them with the PO's recette
- * of 27/08/2026: the reference stencil paints their OUTER rectangle in the
- * node's darker colour — the bezel — and insets a lighter SCREEN in it, which is
- * the reverse of a band painted over a body, so there is nothing left for a
- * native rect to contribute. Same call BPMN makes for `dataObject` /
- * `dataStore`.
- *
- * They stay hit-testable across their whole area all the same:
- * `C4NodeElementModel.includesPoint` forces the interior test regardless of
- * `filled` — which is the fix for the PO's second report, that these nodes could
- * not be double-clicked into their text editor.
- */
-const GLYPH_BODY_KINDS: ReadonlySet<C4NodeKind> = new Set<C4NodeKind>([
-  'person',
-  'person-ext',
-  'database',
-  'mobile',
-  'browser',
-]);
 
 const gfxOf = (std: BlockStdScope) => std.get(GfxControllerIdentifier);
 
@@ -190,43 +162,15 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
   const x = cx - w / 2;
   const y = cy - h / 2;
   const paint = NODE_PALETTE[kind];
-  const glyphBody = GLYPH_BODY_KINDS.has(kind);
 
   const shapeId = surface.addElement({
-    type: 'c4Node',
+    // Every prop the kind is worth, from the ONE table the morph also reads
+    // (`presets.ts`) — so a component drawn here and one morphed into this kind
+    // from the toolbar are the same element, whatever either is restyled to.
+    // NO `text`: the name is the `c4:title` child below, and the shape is a
+    // body and nothing else.
+    ...c4NodeProps(kind, { xywh: new Bound(x, y, w, h).serialize() }),
     index: gfx.layer.generateIndex(),
-    kind,
-    // Semantic identity, posted next to `kind` — which stays untouched and keeps
-    // driving the rendering. The role is the authority on what the box MEANS,
-    // and it is the only thing that can say so: three of the four levels are the
-    // same rounded rectangle (see `./roles.ts`).
-    role: C4_ROLE_OF_KIND[kind],
-    shapeType: 'rect',
-    // A glyph-bodied kind paints nothing natively: the head, the block and the
-    // cylinder are drawn by the renderer, which reads `fillColor` /
-    // `strokeColor` off this same model — so both stay editable from the shape
-    // toolbar exactly like every other node's.
-    filled: !glyphBody,
-    fillColor: paint.fill,
-    strokeColor: paint.border,
-    strokeWidth: NODE_STROKE_WIDTH,
-    strokeStyle: glyphBody ? StrokeStyle.None : StrokeStyle.Solid,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    // Per kind, and mostly ZERO: the stencil draws the boxed levels as plain
-    // square-cornered rectangles, and rounds only the two devices. Harmless on a
-    // glyph-bodied kind, whose native shape is invisible.
-    radius: NODE_RADIUS[kind],
-    // NO `text`, and that is the point of this iteration: the name is the
-    // `c4:title` child below, so the shape is a body and nothing else. Its text
-    // COLOUR is still seeded — an element drawn before this change carries its
-    // name here, and the node view routes a double-click to that editor for
-    // exactly those, so the words have to stay legible.
-    color: paint.text,
-    fontFamily: FontFamily.Inter,
-    fontSize: TITLE_FONT_SIZE,
-    textAlign: TextAlign.Center,
-    xywh: new Bound(x, y, w, h).serialize(),
   });
 
   const boxes = c4TierBoxes(kind, x, y, w, h);

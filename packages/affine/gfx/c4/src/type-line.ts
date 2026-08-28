@@ -210,3 +210,58 @@ export const C4_TYPE_PLACEHOLDER = Object.fromEntries(
     ),
   ])
 ) as Record<C4NodeKind, string>;
+
+/* ── What the line becomes when the shape becomes something else ───────── */
+
+/**
+ * The type line a component should carry once its shape has morphed from `from`
+ * to `to` — or `null` when the line is the AUTHOR's and must not be touched.
+ *
+ * ## Why a morph has to ask this at all
+ *
+ * The bracketed word is derived from `kind` (see the head of this file), so a
+ * shape that becomes a component while its caption still reads `[Container]` is
+ * a picture contradicting its own words. But the caption is a canvas TEXT
+ * element an architect may have typed anything into, and rewriting that would
+ * be the morph taking away something nobody asked it to touch. So the rule is
+ * the narrowest one that fixes the contradiction:
+ *
+ * - the SOURCE kind's untouched prompt (`[Container: technology]`) becomes the
+ *   TARGET's own prompt — `[Person]` on the way to a person, not `[Person:
+ *   technology]`, because a person is not built with a technology
+ *   ({@link C4_TYPE_TAKES_TECHNOLOGY});
+ * - a line that is exactly what the source kind DERIVES — `[Container: React]`,
+ *   the form {@link normalizeC4TypeLine} leaves behind after every edit — is
+ *   re-derived for the target, technology and all: `[Component: React]`;
+ * - anything else is the author's and comes back `null`. A line reading
+ *   `see ADR 0042`, or one mid-edit, survives the morph verbatim.
+ *
+ * The placeholder is tested FIRST and not folded into the second branch, which
+ * would find it too: `technologyOfTypeLine('[Container: technology]')` is the
+ * literal word `technology`, and carrying it across would hand a person the
+ * `[Person: technology]` no stencil ever draws.
+ *
+ * ## Inert on today's families, and kept anyway
+ *
+ * Every family declared in `./morph.ts` shares one {@link C4_TYPE_WORD} — all
+ * four containers say `Container`, both people say `Person`, both systems say
+ * `Software System` — and shares its {@link C4_TYPE_TAKES_TECHNOLOGY} answer
+ * too, so on the shipped table this function returns the line it was given and
+ * nothing visibly happens. That is a property of the FAMILIES, which are data
+ * and grow by declaration, not of the notation: the moment a family gains a
+ * member that announces itself differently, the caption follows the shape
+ * without anyone being prompted to remember it should.
+ *
+ * Pure, total and `std`-free, like everything else in this file.
+ */
+export function c4MorphedTypeLine(
+  from: C4NodeKind,
+  to: C4NodeKind,
+  rawText: string | null | undefined
+): string | null {
+  const text = (rawText ?? '').trim();
+  if (!text) return null;
+  if (text === C4_TYPE_PLACEHOLDER[from]) return C4_TYPE_PLACEHOLDER[to];
+  if (text !== normalizeC4TypeLine(from, text)) return null;
+  return c4TypeLine(to, technologyOfTypeLine(text));
+}

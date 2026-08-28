@@ -61,6 +61,18 @@ import type { TemplateResult } from 'lit';
  * extension registers against its element flavour — morph is TOOLING, so the
  * flag takes the menu away and leaves every stored document loading, painting
  * and round-tripping exactly as before (`docs/adr/0009`).
+ *
+ * ## One element, or a composite of several
+ *
+ * A BPMN node is one element: what the user selects, what carries `kind` and
+ * what the patch lands on are the same object. A C4 component is not — it is a
+ * native `group` holding the shape and its three lines of words — and two
+ * optional hooks are the whole of the difference: {@link MorphSpec.resolveTarget}
+ * says which element inside the selection the kind is written on (and refuses
+ * every group that is not one of this framework's components), and
+ * {@link MorphSpec.afterMorph} writes whatever else the artefact owes the
+ * change, inside the same undo step. Both default to nothing, so a framework
+ * whose artefact is one element declares neither.
  */
 
 /** A piece of chrome's wording: the host's key, and the English behind it. */
@@ -105,8 +117,54 @@ export interface MorphSpec<K extends string = string> {
   families: readonly (readonly K[])[];
   /** Filters the selection, via `getSurfaceModelsByType`. */
   modelType: abstract new (...args: never[]) => GfxPrimitiveElementModel;
-  /** This element's current kind, or `undefined` when it carries none. */
+  /**
+   * The element the kind is actually WRITTEN on, given what the user selected.
+   *
+   * Identity by default, which is the whole of BPMN's case: a node is one
+   * element, it is what the selection holds and it is what the patch lands on.
+   *
+   * A COMPOSITE artefact is the reason this exists. A C4 component is a native
+   * `group` holding the `c4Node` shape and its three lines of words: one click
+   * selects the group, the `kind` lives on the shape, and a patch written to
+   * the group would put `kind` and `role` on a wrapper that means nothing (see
+   * `gfx/c4/src/roles.ts` on why the group is deliberately role-less). So the
+   * spec maps the selection to the element it is about, and everything
+   * downstream — {@link kindOf}, the patch, the clears — speaks about THAT.
+   *
+   * Returning `undefined` is a REFUSAL and the main gate a composite framework
+   * has: a plain group somebody drew round three shapes, a group belonging to
+   * another framework, a group holding two components — none of them resolves,
+   * so none of them is offered the menu. It is checked per element, so a
+   * selection mixing a C4 component with a Wardley one offers nothing at all.
+   */
+  resolveTarget?(
+    model: GfxPrimitiveElementModel
+  ): GfxPrimitiveElementModel | undefined;
+  /**
+   * This element's current kind, or `undefined` when it carries none.
+   *
+   * Asked of the RESOLVED element ({@link resolveTarget}), never of the
+   * selection.
+   */
   kindOf(model: GfxPrimitiveElementModel): K | undefined;
+  /**
+   * Anything else the morph owes the artefact, written in the SAME gesture.
+   *
+   * Called once per element actually changed, inside the one `captureSync`, so
+   * whatever it writes is part of the same single ctrl+z as the patch — and
+   * called with the SELECTED model, because what it has to reach is the rest of
+   * the composite rather than the shape the patch just landed on.
+   *
+   * C4 is the one caller today: a component's type line reads `[Container:
+   * Java]`, and the bracketed word is the NOTATION's — derived from `kind` —
+   * while the technology after the colon is the author's. A kind rewritten
+   * without that line rewritten with it is a picture that contradicts its own
+   * caption. Both kinds are handed over because the decision needs the one the
+   * element is leaving as much as the one it is arriving at: only a line that
+   * still says what the SOURCE kind derived may be rewritten, and a line the
+   * author typed over is theirs.
+   */
+  afterMorph?(model: GfxPrimitiveElementModel, from: K, to: K): void;
   /** The role a kind means — the `from` / `to` of the telemetry, ids only. */
   roleOf(kind: K): string;
   /**
@@ -157,9 +215,19 @@ export interface MorphSpec<K extends string = string> {
   label: MorphLabel;
 }
 
+/** One selected element, resolved to what the morph is actually about. */
+interface MorphEntry<K extends string> {
+  /** What the SELECTION holds — a node, or the group of a composite. */
+  selected: GfxPrimitiveElementModel;
+  /** Where the patch lands: the same element, unless the spec redirected it. */
+  target: GfxPrimitiveElementModel;
+  /** The kind {@link target} currently carries. */
+  kind: K;
+}
+
 /** What one selection can be morphed to, when it can be morphed at all. */
 interface MorphTarget<K extends string> {
-  models: GfxPrimitiveElementModel[];
+  entries: MorphEntry<K>[];
   /** The one family every selected element belongs to. */
   family: readonly K[];
   /** The kind shown as current — the most common one in the selection. */
@@ -187,7 +255,11 @@ function inMindmap(model: GfxPrimitiveElementModel) {
  * - the selection is non-empty and HOMOGENEOUS on the spec's model type — a
  *   selection holding a task and a connector has no current value to show;
  * - nothing in it is locked or belongs to a mindmap;
- * - every element's kind is one the spec knows;
+ * - every element RESOLVES ({@link MorphSpec.resolveTarget}) and the element it
+ *   resolves to is itself unlocked — which for a composite framework is the
+ *   whole gate: a plain group, another framework's group and a group holding
+ *   two components all resolve to nothing and are all refused here;
+ * - every resolved element's kind is one the spec knows;
  * - and they all belong to the SAME family. Mixed families means the answer
  *   would differ per element, and the simplest correct rule is to offer
  *   nothing rather than to guess which of two menus the user meant.
@@ -203,13 +275,22 @@ function morphTarget<K extends string>(
   if (models.length !== ctx.getSurfaceModels().length) return null;
   if (models.some(model => model.isLocked() || inMindmap(model))) return null;
 
-  const kinds: K[] = [];
-  for (const model of models) {
-    const kind = spec.kindOf(model);
+  const entries: MorphEntry<K>[] = [];
+  for (const selected of models) {
+    // Never `?? selected`: `undefined` is the spec REFUSING this element, and
+    // falling back to the selection would write a framework's kind onto the
+    // very wrapper the spec just declined.
+    const target = spec.resolveTarget ? spec.resolveTarget(selected) : selected;
+    // Tested on the resolved element too: a composite's shape can be locked
+    // while the group holding it is not, and the write would then be refused
+    // after the menu had already offered it.
+    if (!target || target.isLocked() || inMindmap(target)) return null;
+    const kind = spec.kindOf(target);
     if (kind === undefined) return null;
-    kinds.push(kind);
+    entries.push({ selected, target, kind });
   }
 
+  const kinds = entries.map(entry => entry.kind);
   const family = spec.families.find(candidate => candidate.includes(kinds[0]));
   if (!family) return null;
   if (!kinds.every(kind => family.includes(kind))) return null;
@@ -220,7 +301,7 @@ function morphTarget<K extends string>(
       'kind'
     ) ?? kinds[0];
 
-  return { models, family, current };
+  return { entries, family, current };
 }
 
 /**
@@ -292,7 +373,7 @@ export function applyMorph<K extends string>(
   const target = morphTarget(ctx, spec);
   if (!target || !target.family.includes(kind)) return;
 
-  const changing = target.models.filter(model => spec.kindOf(model) !== kind);
+  const changing = target.entries.filter(entry => entry.kind !== kind);
   // A gesture that changes nothing is not a morph, writes nothing and reports
   // nothing — the rule every arbitration gesture in this repo already follows.
   if (!changing.length) return;
@@ -301,9 +382,13 @@ export function applyMorph<K extends string>(
   const cleared = spec.clearOf?.(kind) ?? [];
 
   ctx.std.store.captureSync();
-  for (const model of changing) {
-    model.surface.updateElement(model.id, props);
-    for (const field of cleared) model.clearField(field);
+  for (const entry of changing) {
+    entry.target.surface.updateElement(entry.target.id, props);
+    for (const field of cleared) entry.target.clearField(field);
+    // Inside the loop and inside the one checkpoint above: whatever the rest of
+    // a composite owes this morph — C4's type line — is part of the same single
+    // ctrl+z as the kind that made it necessary.
+    spec.afterMorph?.(entry.selected, entry.kind, kind);
   }
 
   // The one DIRECT emission in this module, and the arbitrated exception is the

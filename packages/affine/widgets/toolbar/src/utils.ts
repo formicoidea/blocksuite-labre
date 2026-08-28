@@ -527,8 +527,12 @@ export function renderToolbar(
     'custom:affine:*',
   ]
     .flat()
-    .map(key => toolbarRegistry.modules.get(key))
-    .filter(module => !!module)
+    // Every module of each key, not just one: a flavour may be shared by
+    // several contributors (`custom:affine:surface:group` carries Wardley's
+    // qualification dropdown AND C4's morph), and they are told apart by the
+    // owner suffix on their DI variant — see `toolbarModuleKey`.
+    .map(key => toolbarRegistry.modulesFor(key))
+    .flat()
     .filter(module =>
       typeof module.config.when === 'function'
         ? module.config.when(context)
