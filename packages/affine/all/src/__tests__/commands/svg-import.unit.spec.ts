@@ -47,7 +47,7 @@ describe('the SVG fallback import is declared by each framework that reads one',
   test('they are catalogue, palette and agent — and NOT the senior sub-menu', () => {
     // The arbitration, pinned so that changing it is a decision rather than a
     // diff: the senior sub-menu carries a framework's NATIVE-format import
-    // (`bpmn.importXml` today, `wardley.importOwm` when it lands), and the
+    // (`bpmn.importXml` and `wardley.importOwm`, both shipped), and the
     // fallback lives one click away in the artefact catalogue behind
     // "More artefacts…".
     for (const id of SVG_IMPORTS) {

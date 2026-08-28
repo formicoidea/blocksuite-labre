@@ -38,13 +38,16 @@ function mountEdgelessProvider(flags: BlockFlags) {
  * How many capabilities the whole assembly declares, derived rather than
  * remembered — the number a merge breaks silently otherwise.
  *
- * bpmn: `.bpmn` out, `.bpmn` in, `.svg` in — 3.
- * c4:   mermaid out — 1.
- * wardley: `.svg` in — 1.
+ * bpmn:    `.bpmn` out, `.bpmn` in, `.svg` in — 3.
+ * c4:      mermaid out — 1.
+ * wardley: `.owm` out, `.owm` in, `.svg` in — 3.
  *
- * A framework that adds one adds a line here and a row to its own test below.
+ * A framework that adds one adds a TERM here and a row to its own test below —
+ * spelled as a sum per framework rather than as a total, so a merge that brings
+ * two frameworks together adds two terms instead of silently agreeing on a
+ * number that is short by one.
  */
-const DECLARED_CAPABILITIES = 3 + 1 + 1;
+const DECLARED_CAPABILITIES = 3 + 1 + 3;
 
 describe('the interchange registry is flag-gated tooling', () => {
   test('BPMN declares both directions of `.bpmn`, and the SVG fallback', () => {
@@ -71,17 +74,30 @@ describe('the interchange registry is flag-gated tooling', () => {
     ]);
   });
 
-  test('Wardley declares the SVG fallback with the flag on', () => {
+  test('Wardley declares both OWM directions and the SVG fallback', () => {
     const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
       framework: 'wardley',
     });
 
-    // One row today. The OWM DSL — the roadmap's REFERENCE Wardley import, and
-    // an export that still lives in labre-mcp — lands beside it.
+    // Three rows across TWO formats, sorted by id. The OWM pair is the row ADR
+    // 0012 records as OWED — the Wardley serializer used to live in labre-mcp,
+    // outside this repo, which is the ADR's one named violation of P3 — and the
+    // SVG row is the visual-tier fallback beside it.
     expect(found.map(capability => capability.id)).toEqual([
+      'wardley:owm:export',
+      'wardley:owm:import',
       'wardley:svg:import',
     ]);
-    expect(found[0].format.tier).toBe('visual');
+    // …and the tiers differ, which is the whole of what a user is entitled to
+    // expect (P2). A `[visibility, evolution]` pair IS a position on the two
+    // axes, so the OWM import is a translation and owes the full preservation
+    // contract; the SVG one owes recognition, and says so before the file is
+    // read.
+    expect(found.map(capability => capability.format.tier)).toEqual([
+      'semantic',
+      'semantic',
+      'visual',
+    ]);
   });
 
   test('one `.svg` is claimed by two frameworks, and neither is inferred', () => {
@@ -131,7 +147,9 @@ describe('the interchange registry is flag-gated tooling', () => {
       []
     );
     // Nothing else has slipped a capability in through an always-on extension:
-    // the registry is empty, not merely BPMN-less.
+    // the registry is empty, not merely BPMN-less. This is the assertion that
+    // catches an `InterchangeExtension` registered from a framework's RENDER
+    // view extension instead of its flag-gated one.
     expect(interchangeCapabilities(provider)).toEqual([]);
   });
 

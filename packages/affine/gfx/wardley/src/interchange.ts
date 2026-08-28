@@ -1,5 +1,7 @@
 import type {
   InterchangeCapability,
+  InterchangeExportCapability,
+  InterchangeExporter,
   InterchangeFormat,
   InterchangeImportCapability,
 } from '@labre/affine-block-surface';
@@ -11,21 +13,106 @@ import {
   SVG_SKETCH_MIME,
 } from '@labre/affine-block-surface';
 
+import {
+  exportWardleyOwmWithWarnings,
+  WARDLEY_OWM_FORMAT_ID,
+  wardleyBoardFrom,
+  wardleySafeFilename,
+} from './export.js';
+import { importWardleyOwm } from './import.js';
+
 /**
  * Wardley's entries in the interchange registry (`docs/adr/0012`, P1).
  *
- * One row today — SVG IN, the visual-tier fallback. The OWM DSL, which the
- * roadmap calls the **reference** Wardley import and which today lives outside
- * this repo in labre-mcp, is the semantic route and lands here beside this one:
- * this file is deliberately laid out as one section per FORMAT, each holding
- * its format object then its capabilities, with {@link WARDLEY_INTERCHANGE} at
- * the bottom collecting them. A format is added by adding a section, not by
- * editing one.
+ * Two formats and three rows. Both directions of the OWM DSL — the export is
+ * the row the ADR records as **owed** (a Wardley serializer exists today in
+ * labre-mcp, outside this repo, and is the one violation of P3 the ADR names;
+ * it exists here now, so that repo becomes a caller and its copy is deleted),
+ * and the import is the row the ADR calls **the reference Wardley import**,
+ * because the OWM DSL is the settled Wardley vocabulary while mermaid's Wardley
+ * diagram type is still experimental upstream. Then SVG IN, the visual-tier
+ * FALLBACK, which promises recognition and nothing else.
  *
- * Everything here is pure: a capability is a declaration plus a function of a
- * string, so labre-mcp calls the same reader the editor command calls and
- * neither needs the other (P3).
+ * The file is laid out as one section per FORMAT, each holding its format
+ * object then its capabilities, with {@link WARDLEY_INTERCHANGE} at the bottom
+ * collecting them. A format is added by adding a section, not by editing one.
+ *
+ * Everything here is pure. No half has ever had a `std` in sight, and this file
+ * adds no editor to any of them: it picks the artefacts the writer speaks about
+ * out of a surface's elements, and hands a reader's output straight back.
  */
+
+/* ── OWM (semantic) ───────────────────────────────────────────────────── */
+
+/**
+ * The OnlineWardleyMaps DSL. **Semantic** — the file carries a model, not a
+ * picture: a `[visibility, evolution]` pair IS a position on the value chain
+ * and on the evolution axis, so the whole preservation contract applies and the
+ * import needs no invented axis (P2, and D4's "a format that carries
+ * coordinates but no pixels").
+ *
+ * `text/plain`, because that is what a DSL is, and `.owm` first — it is the
+ * extension a download is given. `.wm` rides behind it: the same bytes are
+ * written under both in the wild, and a picker that refused one would refuse a
+ * valid map for the sake of a filename. What the file actually IS is decided by
+ * the reader.
+ *
+ * The two directions share the FORMAT object, deliberately. `owm` is the id
+ * under which foreign matter rides on an element (D2), so a reader and a writer
+ * that disagreed about it would write payloads the other could not find.
+ */
+export const WARDLEY_OWM_EXTENSION = '.owm';
+export const WARDLEY_OWM_MIME = 'text/plain';
+
+export const WARDLEY_OWM_FORMAT: InterchangeFormat = {
+  id: WARDLEY_OWM_FORMAT_ID,
+  tier: 'semantic',
+  extensions: [WARDLEY_OWM_EXTENSION, '.wm'],
+  mime: WARDLEY_OWM_MIME,
+};
+
+/**
+ * The board as an OWM document.
+ *
+ * A thin adapter and nothing else: it picks the Wardley artefacts out of the
+ * surface, names the file, and passes the writer's losses straight through.
+ * There is no second door — `wardley.exportOwm` calls THIS, so the command and
+ * the registry cannot produce different bytes, filenames or warnings.
+ *
+ * `warnings` is omitted rather than empty when the map came out whole, so a
+ * caller can ask `if (result.warnings)` and mean it.
+ */
+const runWardleyOwmExport: InterchangeExporter = (elements, context) => {
+  const name = wardleySafeFilename(context.name);
+  const { text, warnings } = exportWardleyOwmWithWarnings(
+    wardleyBoardFrom(elements),
+    { name }
+  );
+  return {
+    text,
+    filename: `${name}${WARDLEY_OWM_EXTENSION}`,
+    mime: WARDLEY_OWM_MIME,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+};
+
+/** `wardley:owm:export` — the row that replaces labre-mcp's own serializer. */
+export const WARDLEY_OWM_EXPORT: InterchangeExportCapability = {
+  id: interchangeCapabilityId('wardley', WARDLEY_OWM_FORMAT.id, 'export'),
+  framework: 'wardley',
+  format: WARDLEY_OWM_FORMAT,
+  direction: 'export',
+  run: runWardleyOwmExport,
+};
+
+/** `wardley:owm:import` — an `.owm` file as a map. */
+export const WARDLEY_OWM_IMPORT: InterchangeImportCapability = {
+  id: interchangeCapabilityId('wardley', WARDLEY_OWM_FORMAT.id, 'import'),
+  framework: 'wardley',
+  format: WARDLEY_OWM_FORMAT,
+  direction: 'import',
+  run: importWardleyOwm,
+};
 
 /* ── SVG (visual) ─────────────────────────────────────────────────────── */
 
@@ -63,9 +150,9 @@ export const WARDLEY_SVG_FORMAT: InterchangeFormat = {
  * editable free text — which the author then PROMOTES onto a map. In
  * particular the two axes and the evolution bands are NOT recovered: a map's
  * coordinates are its meaning, and reading them off a picture would be
- * inventing a position and presenting it as read. When the OWM route lands
- * beside this one it is the one a user should be pointed at, exactly as P2
- * says.
+ * inventing a position and presenting it as read. {@link WARDLEY_OWM_IMPORT}
+ * beside it is the route a user should be pointed at, exactly as P2 says —
+ * this one is for the picture somebody sent you from a tool that writes no OWM.
  */
 export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
   id: interchangeCapabilityId('wardley', WARDLEY_SVG_FORMAT.id, 'import'),
@@ -79,5 +166,7 @@ export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
 
 /** Everything Wardley registers, in one list the view extension hands over. */
 export const WARDLEY_INTERCHANGE: readonly InterchangeCapability[] = [
+  WARDLEY_OWM_EXPORT,
+  WARDLEY_OWM_IMPORT,
   WARDLEY_SVG_IMPORT,
 ];

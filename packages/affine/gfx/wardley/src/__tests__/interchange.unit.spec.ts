@@ -29,16 +29,27 @@ function mount() {
 }
 
 describe('the declaration', () => {
-  it('is the triple, and Wardley declares one row of it today', () => {
+  it('is the triple, and the `.svg` row is the visual one of three', () => {
     expect(WARDLEY_SVG_IMPORT.id).toBe('wardley:svg:import');
     expect(WARDLEY_SVG_IMPORT.framework).toBe('wardley');
     expect(WARDLEY_SVG_IMPORT.direction).toBe('import');
-    // One row. The OWM DSL — the roadmap's REFERENCE Wardley import, and an
-    // export that still lives in labre-mcp — lands beside this one, as its own
-    // section of the same file.
-    expect(interchangeCapabilities(mount(), { framework: 'wardley' })).toEqual([
-      WARDLEY_SVG_IMPORT,
-    ]);
+    // Narrowed on the FORMAT, because Wardley declares two of them: the OWM
+    // pair is the roadmap's reference Wardley route and has its own spec next
+    // door. What this file is about is the row beside it.
+    expect(
+      interchangeCapabilities(mount(), { framework: 'wardley', format: 'svg' })
+    ).toEqual([WARDLEY_SVG_IMPORT]);
+  });
+
+  it('is the only VISUAL row Wardley declares', () => {
+    // The tier is what a user is entitled to expect (ADR 0012, P2), and the two
+    // formats promise different things: `.owm` carries coordinates and
+    // round-trips, `.svg` carries a picture and does not. A second visual row
+    // would be a second set of guesses, and it would owe its own paragraph.
+    const visual = interchangeCapabilities(mount(), {
+      framework: 'wardley',
+    }).filter(capability => capability.format.tier === 'visual');
+    expect(visual).toEqual([WARDLEY_SVG_IMPORT]);
   });
 
   it('declares `.svg` as a VISUAL format', () => {

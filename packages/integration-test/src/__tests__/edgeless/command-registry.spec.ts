@@ -30,7 +30,19 @@ describe('command registry on the canvas', () => {
 
   test('the wardley toolbox is registered whole — the 13 that used to be menu-only included', () => {
     const ids = menuCommands('wardley').map(c => c.id);
-    expect(ids).toHaveLength(13);
+    // Fourteen since the OWM DSL pair (`docs/adr/0012`): the thirteen artefacts
+    // plus `wardley.importOwm`, which nominates the row because an import is
+    // where a board comes FROM and the sub-menu is the first thing a user opens
+    // on an empty canvas (PO decision of 2026-08-28). `wardley.exportOwm`
+    // declines it and lives in the catalogue.
+    // Still fourteen once `wardley.importSvg` landed, and that is the point of
+    // asserting it: the visual-tier fallback declines the row (the row carries
+    // the NATIVE format), so the catalogue grew to sixteen and the NOMINATION
+    // list did not move at all.
+    expect(ids).toHaveLength(14);
+    expect(ids).toContain('wardley.importOwm');
+    expect(ids).not.toContain('wardley.exportOwm');
+    expect(ids).not.toContain('wardley.importSvg');
     // The six that existed ONLY as buttons before PF3, invisible to the
     // shortcut manifest and therefore to Settings › Shortcuts.
     expect(ids).toContain('wardley.addMarket');
@@ -51,9 +63,21 @@ describe('command registry on the canvas', () => {
     };
     menu.edgeless = edgeless;
 
-    expect(menu.commands.map(c => c.id)).toEqual(
-      menuCommands('wardley').map(c => c.id)
-    );
+    // Wardley OVERFLOWED when the OWM pair landed, and this assertion had to
+    // stop being an equality because of it. `selectSeniorMenuCommands` triggers
+    // on the CATALOGUE (15 > the cap of 14), so the row is now the thirteen
+    // ranked slots plus "More artefacts…" rather than the whole nominated list.
+    //
+    // The property the test was written for is untouched and is what is
+    // asserted instead: every button comes from the REGISTRY's nominated
+    // surface, never from a list of the component's own. A hard-coded button
+    // list would fail this exactly as it failed the equality.
+    const nominated = menuCommands('wardley').map(c => c.id);
+    const shown = menu.commands.map(c => c.id);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.filter(id => !nominated.includes(id))).toEqual([]);
+    // …and the cold-start row is the authored head of the nomination list.
+    expect(shown).toEqual(nominated.slice(0, shown.length));
     // Every command's `iconKey` resolves through the lib-side icon registry —
     // the accessor that keeps templates out of both manifests.
     for (const command of menu.commands) {

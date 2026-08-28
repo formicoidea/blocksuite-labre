@@ -81,12 +81,13 @@ shipped half of and can therefore reason about honestly.
 
 ### 1. What Labre already trades, and where the code lives
 
-| framework | format  | direction  | where the code is today                            |
-| --------- | ------- | ---------- | -------------------------------------------------- |
-| BPMN      | `.bpmn` | export     | `packages/affine/gfx/bpmn/src/export.ts` — the lib |
-| Wardley   | OWM DSL | export     | **labre-mcp** — outside this repo                  |
-| C4        | mermaid | export     | in flight, parallel chantier                       |
-| _any_     | _any_   | **import** | nothing, anywhere                                  |
+| framework | format  | direction  | where the code is today                                                           |
+| --------- | ------- | ---------- | --------------------------------------------------------------------------------- |
+| BPMN      | `.bpmn` | export     | `packages/affine/gfx/bpmn/src/export.ts` — the lib                                |
+| Wardley   | OWM DSL | export     | **labre-mcp** — outside this repo                                                 |
+|           |         |            | _since PR B2: `gfx/wardley/src/export.ts`, and labre-mcp's copy is to be deleted_ |
+| C4        | mermaid | export     | in flight, parallel chantier                                                      |
+| _any_     | _any_   | **import** | nothing, anywhere                                                                 |
 
 The shipped BPMN exporter already has the shape the rest should copy, and its
 package index already states the split in a comment:
@@ -508,7 +509,7 @@ read; both commands are labelled "Import SVG sketch" with a description that
 spends its whole sentence on what this is not ("Best effort: recognizes shapes
 and text, no round-trip"). They are declared on `catalogue`, `palette` and
 `agent` and DECLINE `senior-menu`: the sub-menu carries a framework's
-native-format import (`bpmn.importXml`, and `wardley.importOwm` when it lands),
+native-format import (`bpmn.importXml`, and `wardley.importOwm`, both shipped),
 which is the route P2 already says a user should be pointed at, and the fallback
 lives one click away behind "More artefacts…". That is a curation call, flagged
 for the PO as one, and it is a one-line change either way.
@@ -577,8 +578,8 @@ ADR builds the seam and the BPMN import chantier is the first row that moves.
 | **BPMN**    | `.bpmn` XML | Labre → file | semantic | **shipped** (PR #149) — to be re-declared as a registry capability                                                                                                                                                           |
 | **BPMN**    | `.bpmn` XML | file → Labre | semantic | **next chantier** — the worked example D1–D6 specifies                                                                                                                                                                       |
 | **BPMN**    | SVG         | file → Labre | visual   | **shipped** (PR #173) — recognition only, no round-trip; `bpmn:svg:import`, over the shared parser                                                                                                                           |
-| **Wardley** | OWM DSL     | Labre → file | semantic | **exists in labre-mcp, outside the lib** — to be **migrated** onto a lib exporter                                                                                                                                            |
-| **Wardley** | OWM DSL     | file → Labre | semantic | roadmap, and the **reference Wardley import** — `component` / `anchor` / `evolve` / `pipeline` and the `[visibility, maturity]` pair map onto the Wardley element models almost directly                                     |
+| **Wardley** | OWM DSL     | Labre → file | semantic | **shipped** (PR B2) — `exportWardleyOwm`, a pure function on this registry. labre-mcp becomes a caller and deletes its own serializer; until it does, that duplicate is the last standing violation of P3                    |
+| **Wardley** | OWM DSL     | file → Labre | semantic | **shipped** (PR B2), and the **reference Wardley import** — `component` / `anchor` / `market` / `ecosystem` / `pipeline` / `note` / `evolve` and the `->` links are mapped; every other statement is carried                 |
 | **Wardley** | mermaid     | file → Labre | semantic | roadmap — **awaits mermaid's experimental wardley type** (coordinates carried natively once stabilized; OWM DSL is the reference route until then, and a pre-type mermaid file falls back to graph-without-coordinates — P2) |
 | **Wardley** | SVG         | file → Labre | visual   | **shipped** (PR #173) — recognition only; `wardley:svg:import`, the SAME parser BPMN declares, because a picture says nothing about which vocabulary it is a picture of                                                      |
 | **C4**      | mermaid     | Labre → file | semantic | **in flight**, parallel chantier — lands **on this registry**, not beside it                                                                                                                                                 |
@@ -1016,6 +1017,76 @@ cannot be made safe without re-parsing it, which a pure function of the board
 cannot do. The reader/writer pair is the trust boundary, and it is stated as one
 in `export.ts`'s `XmlFragment`.
 
+#### Divergences accepted at implementation (PR B2, the OWM DSL pair)
+
+D1–D6 were written against a format with ids, a diagram section and an XML
+tree. The OWM DSL has none of the three, and building both directions of it
+found four places where the decisions above are silent rather than wrong. They
+are recorded HERE for the reason the two sections above give — the next
+capability author reads this file and not that thread.
+
+**1. A composite artefact needs handles the file never gave it.** D3 stores the
+source id verbatim and forbids inventing one. OWM has no ids at all — the NAME
+is the identity — so the reader files each element's name under
+`interchange.owm.id`, and the materializer's endpoint map is a fold over the
+names. Two artefacts on this canvas are COMPOSITES whose own wiring has to
+resolve through that same map and which the file names nothing for: a market
+(three inner dots joined by three connectors) and the twin an `evolve` line
+draws. Each such element therefore gets a minted handle plus
+`element: 'market'` / `element: 'evolve'`, which is what marks the id as a
+handle rather than a claim about the file. The writer reads `element` before it
+reads `id` and never gives a minted one back as a name. Minting is deterministic
+and collision-checked against every declared name.
+
+**2. A name is a sibling element, so the writer has to find it — and nearest
+does not work.** BPMN carries a label on the artefact; here it is a separate
+free text carrying `wardley:label`, and "which node is this the name of" is a
+question the document does not answer. The naive rule (nearest node to the label
+box) is wrong on a real map and provably so: two components 60 units apart
+horizontally and 17 vertically — nothing on a 1530-wide plot, and exactly what
+the tea-shop corpus holds — put the lower one's centre INSIDE the upper one's
+label box. The writer instead asks how far each label is from where a label for
+THAT node would have been written, computed from the node's own half-size, and
+assigns greedily by distance with document order as the tie-break. It is the one
+heuristic in a semantic capability and it is named as one.
+
+**3. The reader draws no GROUP, and the elements it writes are ungrouped.** The
+toolbox groups a circle with its name; `templates/maps.ts`, which is the
+precedent for "coordinates in, serialized props out", does not. Neither does
+this reader, and the reason is the seam rather than taste:
+`materializeInterchangeImport` rewrites CONNECTOR endpoints and nothing else, so
+a group's `children` would name file-level ids nothing resolves. Grouping an
+imported map is a gesture the author can make; a broken group is one they cannot
+undo.
+
+**4. D1 needs a fourth question for a format whose statements REFER to each
+other.** The three states sort each node of the file by what became of it, and
+that is complete for `.bpmn`, where a `sequenceFlow` names ids the same document
+declares and a reader can see both. The OWM DSL has no ids: a link names its two
+ends by NAME, and a name nothing declares is not a malformed line — it is a
+perfectly well-formed statement about something that is not there. Such a link
+is `mapped` by every reading of D1 (it became a connector), and the connector
+routes to an empty path and is invisible on the canvas, so a file with one typo
+in it imported as "2 drawn, 0 carried, 0 quarantined" while an arrow the user
+could see in their old tool was silently gone. The reader now sweeps every link
+end against the declared names and reports a `warning` per dangling END. No new
+state and no change to D1's three — but a capability whose format lets one
+statement refer to another owes this sweep, and the next one should not have to
+rediscover it.
+
+**5. This capability quarantines nothing, and that is a finding about the
+format.** D5's four cases all have the same shape: a carried fragment that
+contradicts something the drawing owns. Every statement the OWM DSL writes is a
+standalone line with no nesting and no cross-references, so a carried one cannot
+contradict a drawn one — the reader carries `style`, `annotation`, the
+attitudes, `submap`, `url`, `size`, `accelerator`, the flow links and the
+comments, and the writer gives all of them back verbatim. The count is zero
+because the format has no such case, not because the case is unimplemented.
+`sourceVersion` follows the same honesty: the DSL declares no version, so the
+reader reports the DIALECT it read and marks a file holding nothing this library
+does not itself write, rather than claiming an authorship no byte in the file
+asserts.
+
 ## What is knowingly lost, and what is merely invisible
 
 The honesty table, for the BPMN round-trip. "Invisible" is not "lost" — the
@@ -1094,6 +1165,12 @@ audit counts it. That is correct and must be said out loud in the report:
   the duplicate stands and is the one known violation of P3 — recorded here so
   it is tracked rather than normalised. The end state is that **no serialization
   logic for any Labre framework lives outside this repo.**
+
+  _The lib exporter exists since PR B2_ (`exportWardleyOwm`, exported from
+  `@labre/affine-gfx-wardley`'s index alongside `WARDLEY_BACKGROUND`, which is
+  the plot both sides have to agree about). The cross-repo half is now the only
+  thing standing between this row and the end state, and it is a deletion.
+
 - **Export generalization happens here, not in labre-mcp.** Wardley, C4 and
   every framework after them get their exporter in `packages/affine/gfx/*`, as
   a registry capability. labre-mcp gains tools, not parsers.

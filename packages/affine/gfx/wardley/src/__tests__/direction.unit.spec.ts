@@ -82,34 +82,45 @@ describe('the link tool announces its gesture (M1)', () => {
     );
   });
 
-  it('leaves every other command without a gesture hint', () => {
+  it('leaves every other TOOLBOX command without a gesture hint', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
     //
-    // Scoped to the SUB-MENU, which is where the second line would be rendered
-    // and therefore what M1 was ever about. Inside that population the
-    // assertion is unchanged and as strict as the day it was written: a
-    // sub-menu button either announces a gesture or says nothing at all.
-    //
-    // The scope is what `wardley.importSvg` made necessary, and it is a
-    // narrowing rather than a weakening: that command is catalogue-only, and
-    // its description says what an import COSTS you ("Best effort … no
-    // round-trip", `docs/adr/0012` P2) rather than which way to drag. Reading
-    // it as a gesture hint would have forbidden a framework from ever
-    // explaining a command it does not put in the row.
+    // Scoped to what you DRAW with, since the OWM pair and the SVG fallback
+    // landed. An `action` whose subject is the whole map — import, export —
+    // describes what it does to a document, which is a different sentence from
+    // "which way round do I drag this": the next assertion is what keeps the
+    // two apart. Inside the population this DOES cover, the rule is unchanged
+    // and as strict as the day it was written: a tool either announces a
+    // gesture or says nothing at all.
     const noisy = wardleyCommands.filter(
       c =>
-        c.surfaces.includes('senior-menu') &&
+        c.kind !== 'action' &&
         c.descriptionKey !== undefined &&
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);
 
-    // …and the catalogue-only entry is out of scope by DECLARATION, not by
-    // accident: if it ever joins the row it lands back inside the assertion
-    // above and has to argue for its second line there.
+    // …and the visual-tier fallback is outside the SUB-MENU by declaration
+    // rather than by accident, which is the other half of why its description
+    // is proportionate: it never renders a second line in the row at all
+    // (`docs/adr/0012`, P2 — the row carries the native format).
     const fallback = wardleyCommands.find(c => c.id === 'wardley.importSvg');
     expect(fallback?.surfaces).not.toContain('senior-menu');
+  });
+
+  it('never lends a role’s gesture hint to a command that draws no edge', () => {
+    // The other half of the scoping above: an action may carry a description,
+    // and it may never be one of the vocabulary's gesture hints — those belong
+    // to the tool that stamps the role, and nowhere else (`docs/adr/0010`, M1).
+    const hints = new Set(
+      Object.values(WARDLEY_ROLES)
+        .map(def => def.direction?.gestureHintKey)
+        .filter(key => key !== undefined)
+    );
+    for (const command of wardleyCommands.filter(c => c.kind === 'action')) {
+      expect(hints.has(command.descriptionKey!)).toBe(false);
+    }
   });
 });
 

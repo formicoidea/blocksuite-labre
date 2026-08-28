@@ -12,16 +12,28 @@ import {
   ShapeStyle,
   StrokeStyle,
   TextFitMode,
+  WardleyBackgroundElementModel,
   type WardleyBgVariant,
   type WardleyNodeKind,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  NotificationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
+import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import type { GfxController } from '@labre/std/gfx';
+import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background';
 import { WARDLEY_SVG_IMPORT } from './interchange';
+import {
+  type WardleyExportBoard,
+  wardleyBoardFrom,
+  wardleySafeFilename,
+} from './export';
+import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
 import {
   ECOSYSTEM_LABEL,
   ECOSYSTEM_SIZE,
@@ -500,4 +512,90 @@ export function activateWardleyConnector(
   });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.
+}
+
+/* ── Interchange: the OWM DSL, out and in (`docs/adr/0012`) ───────────── */
+
+/**
+ * The one wording this file owns: what a WRITER could not say.
+ *
+ * The import's wordings live in the pipeline that writes them
+ * (`affine-block-surface`, `extensions/interchange-import.ts`) — one set of
+ * keys for every format, with the format's own name composed into them, so
+ * "OWM file imported" needs no key of its own. An export's losses are the
+ * capability's own sentences and have nowhere else to go.
+ */
+const EXPORT_WARNINGS_KEY = 'com.labre.commands.wardley.exportOwm.warnings';
+const EXPORT_WARNINGS_FALLBACK = 'What this export could not write down';
+
+/** The maps on the surface — what the export command is offered against. */
+export function wardleyMapsOnBoard(
+  std: BlockStdScope
+): WardleyBackgroundElementModel[] {
+  const surface = std.get(GfxControllerIdentifier).surface;
+  return (surface?.elementModels ?? []).filter(
+    (model): model is WardleyBackgroundElementModel =>
+      model instanceof WardleyBackgroundElementModel
+  );
+}
+
+/**
+ * Everything on the surface the exporter speaks about, in document order.
+ *
+ * The half that needs an editor, and only that half: reading the surface. The
+ * picking is {@link wardleyBoardFrom}, which the interchange capability calls
+ * with the same elements and no `std` at all (`docs/adr/0012`, P3).
+ */
+export function wardleyBoardOf(std: BlockStdScope): WardleyExportBoard {
+  return wardleyBoardFrom(
+    std.get(GfxControllerIdentifier).surface?.elementModels ?? []
+  );
+}
+
+/**
+ * Serialize the board as an OWM document and hand it to the browser.
+ *
+ * Three steps, and only the first and the last know what an editor is: read the
+ * surface, run the DECLARED capability, download what it produced. The middle
+ * step is not re-implemented here — the document, the filename and the content
+ * type all come out of `WARDLEY_OWM_EXPORT.run`, so the command and the
+ * registry cannot describe the same map differently. There is one door, and the
+ * registry is the label on it.
+ */
+export function exportOwmFile(std: BlockStdScope): void {
+  const elements =
+    std.get(GfxControllerIdentifier).surface?.elementModels ?? [];
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  const { text, filename, mime, warnings } = WARDLEY_OWM_EXPORT.run(elements, {
+    name: wardleySafeFilename(title),
+  });
+  // The charset is the browser's business, not the format's: `mime` is what an
+  // `.owm` IS, and this is how a blob is told to carry it.
+  downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
+
+  // A warning is never an error: the file downloaded, and it is valid; what it
+  // could not say is what this names. A board with two maps on it, a component
+  // with no name, an evolution arrow that also climbs the value chain — each is
+  // a sentence the format has no way to write down, and the person who clicked
+  // Export is the one entitled to hear about it.
+  if (!warnings || warnings.length === 0) return;
+  std.getOptional(NotificationProvider)?.notify({
+    title: translateKey(std, EXPORT_WARNINGS_KEY, EXPORT_WARNINGS_FALLBACK),
+    message: warnings.join('\n'),
+    accent: 'warning',
+    duration: 8000,
+  });
+}
+
+/**
+ * Read an `.owm` the user picks, draw it, and say what it cost.
+ *
+ * The whole of the import glue, and it is one line: the generic pipeline picks
+ * the file from the format's own declaration, runs the capability, mints the
+ * surface ids and repairs the link endpoints that named the file's names,
+ * brings the map into view and reports. Nothing in it is about Wardley except
+ * the capability handed to it.
+ */
+export async function importOwmFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, WARDLEY_OWM_IMPORT);
 }
