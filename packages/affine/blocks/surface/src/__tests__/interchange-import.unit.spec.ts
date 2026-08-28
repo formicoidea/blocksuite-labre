@@ -10,6 +10,7 @@ import {
   interchangeCapabilityId,
   InterchangeExtension,
   type InterchangeFormat,
+  type InterchangeImportCapability,
   type InterchangeImporter,
   type InterchangeReport,
 } from '../extensions/interchange.js';
@@ -17,6 +18,7 @@ import {
   interchangeImportersByExtension,
   materializeInterchangeImport,
   reportInterchangeImport,
+  runInterchangeImportFile,
 } from '../extensions/interchange-import.js';
 
 /**
@@ -32,9 +34,23 @@ import {
  *
  * `runInterchangeImportFile` is exercised end to end through BPMN's delegate
  * (`gfx/bpmn/src/__tests__/import-command.unit.spec.ts`), where a real reader
- * and a real `.bpmn` file make the pipeline mean something. What is here is
- * everything a stub can answer honestly.
+ * and a real `.bpmn` file make the pipeline mean something. What is pinned HERE
+ * is the one step of it that is pure arithmetic over any format's output — the
+ * viewport fit — because a regression in it would otherwise be caught only in
+ * the BPMN package, and the next framework to call this function would inherit
+ * a bug nobody's tests were watching.
+ *
+ * The picker is mocked and nothing else is: `openSingleFileWithSpec` is a
+ * browser dialog, and there is no version of it that answers in a unit suite.
  */
+
+const picked = vi.hoisted(() => ({ file: vi.fn() }));
+
+vi.mock('@labre/affine-shared/utils', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@labre/affine-shared/utils')>();
+  return { ...actual, openSingleFileWithSpec: picked.file };
+});
 
 /* ── The stubs ────────────────────────────────────────────────────────── */
 
@@ -62,6 +78,12 @@ class StubSurface {
       const connector = Object.create(ConnectorElementModel.prototype);
       Object.defineProperties(connector, {
         id: { value: id, enumerable: true },
+        // `[0, 0, 0, 0]`, and it is the POINT: a connector has no geometry of
+        // its own, its bound comes off the path the connector manager routes
+        // between its ends, and that path is computed on a later tick than the
+        // `addElement` that made it. Read synchronously — which is the only
+        // moment the pipeline has — a freshly imported connector really does
+        // answer the origin with no size.
         elementBound: { value: new Bound(0, 0, 0, 0) },
         // The two the rewrite WRITES.
         source: { value: props.source, writable: true, enumerable: true },
@@ -69,7 +91,11 @@ class StubSurface {
       });
       this.models.set(id, connector);
     } else {
-      this.models.set(id, { ...props, id });
+      this.models.set(id, {
+        ...props,
+        id,
+        elementBound: Bound.deserialize(String(props.xywh ?? '[0,0,10,10]')),
+      });
     }
     return id;
   }
@@ -79,11 +105,18 @@ class StubSurface {
   }
 }
 
-function stubEditor(options: { notify?: boolean } = {}) {
+function stubEditor(options: { notify?: boolean; readonly?: boolean } = {}) {
   const surface = new StubSurface();
   const notify = vi.fn();
+  const setViewportByBound = vi.fn();
+  const setTool = vi.fn();
+  const captureSync = vi.fn();
   const std = {
-    get: () => ({ surface }),
+    get: () => ({
+      surface,
+      viewport: { zoom: 1, centerX: 0, centerY: 0, setViewportByBound },
+      tool: { setTool },
+    }),
     // By IDENTIFIER, not blanket: `translateKey` reaches for the translation
     // seam through the same door, and a stub that answered every lookup with a
     // notification service would make every wording throw.
@@ -91,9 +124,10 @@ function stubEditor(options: { notify?: boolean } = {}) {
       identifier === NotificationProvider && options.notify !== false
         ? { notify }
         : undefined,
+    store: { readonly: options.readonly === true, captureSync },
   } as unknown as BlockStdScope;
 
-  return { std, surface, notify };
+  return { std, surface, notify, setViewportByBound, setTool, captureSync };
 }
 
 const format = (
@@ -320,6 +354,83 @@ describe('reporting an import', () => {
     expect(() =>
       reportInterchangeImport(std, format('owm'), report())
     ).not.toThrow();
+  });
+});
+
+/* ── The whole gesture, and the arithmetic in the middle of it ────────── */
+
+describe('running an import from a file', () => {
+  /** A reader that answers with a process drawn far from the origin. */
+  const farFromOrigin: InterchangeImporter = () => ({
+    elements: [
+      { ...element('shape', 'owm', 'A'), xywh: '[99932,99940,36,36]' },
+      { ...element('shape', 'owm', 'B'), xywh: '[100080,100020,100,80]' },
+      edge('owm', 'L', 'A', 'B'),
+    ],
+    report: { mapped: 3, carried: 0, quarantined: 0, notes: [] },
+  });
+
+  const capabilityOf = (
+    run: InterchangeImporter
+  ): InterchangeImportCapability => ({
+    id: interchangeCapabilityId('owm', 'owm', 'import'),
+    framework: 'owm',
+    format: { ...format('owm'), mime: 'text/plain' },
+    direction: 'import',
+    run,
+  });
+
+  beforeEach(() => {
+    picked.file.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it('fits the drawing, not the drawing plus the origin', async () => {
+    // The regression, pinned at the level the code now lives at. A connector's
+    // bound is not known on the tick that creates it and reads back as
+    // `[0, 0, 0, 0]`, so a common bound that counted it stretched from the
+    // origin to the far corner of the drawing — and a file drawn a hundred
+    // thousand units out (one drag of a process across a canvas) landed as a
+    // speck nobody could see.
+    //
+    // It has been proven in the BPMN package since #162, on a `.bpmn` file.
+    // This is the same claim about the FUNCTION, so the next framework to call
+    // it inherits the fix and not just the code.
+    const { std, surface, setViewportByBound, setTool, captureSync } =
+      stubEditor();
+    picked.file.mockResolvedValue({
+      name: 'process.owm',
+      text: () => Promise.resolve('anything'),
+    });
+
+    await runInterchangeImportFile(std, capabilityOf(farFromOrigin));
+
+    // There has to BE a zero-area element, or the test proves nothing.
+    expect(
+      surface.added.filter(props => props.type === 'connector')
+    ).toHaveLength(1);
+
+    const [bound] = setViewportByBound.mock.calls[0];
+    // Nowhere near the origin, and the size of a drawing rather than the size
+    // of the distance to it.
+    expect(bound.x).toBeGreaterThan(99_000);
+    expect(bound.y).toBeGreaterThan(99_000);
+    expect(bound.w).toBeLessThan(1_000);
+    expect(bound.h).toBeLessThan(1_000);
+    // …and it still HOLDS the drawing: nothing was cropped in the course of
+    // not including the origin.
+    expect(bound.x + bound.w).toBeGreaterThanOrEqual(100_180);
+    expect(bound.y + bound.h).toBeGreaterThanOrEqual(100_100);
+    // One undo step for the whole file, and the tool handed back.
+    expect(captureSync).toHaveBeenCalledTimes(2);
+    expect(setTool).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws nothing and asks for no file on a read-only document', async () => {
+    const { std, surface } = stubEditor({ readonly: true });
+    await runInterchangeImportFile(std, capabilityOf(farFromOrigin));
+    expect(picked.file).not.toHaveBeenCalled();
+    expect(surface.added).toEqual([]);
   });
 });
 

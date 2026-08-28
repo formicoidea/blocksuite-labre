@@ -2,7 +2,7 @@
 '@labre/affine-block-surface': patch
 '@labre/affine-gfx-bpmn': patch
 '@labre/affine-shared': patch
-'@labre/affine': patch
+'@labre/affine': minor
 ---
 
 feat(edgeless): interchange imports share one materializer, reporter and picker — and **Import BPMN XML** joins the senior sub-menu
@@ -46,3 +46,26 @@ notification composes the format's own name into a shared set of translation
 keys (`com.labre.interchange.import.*`), so a host translates "file imported"
 once rather than once per reader we ship, and a new format is never silently
 untranslated. What a BPMN user reads is unchanged, down to the version line.
+
+### Breaking for hosts: seven translation keys are renamed
+
+`@labre/affine` is a **minor** for this reason alone. A host with its own
+catalogue keeps translating the old keys into nothing, and the notification
+silently falls back to English. The migration is one-for-one — the wordings are
+identical apart from `done`, whose format name is now composed in by the library
+rather than baked into the string:
+
+| removed                                         | replacement                                | wording                                                                         |
+| ----------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `com.labre.commands.bpmn.importXml.done`        | `com.labre.interchange.import.done`        | `BPMN file imported` → `file imported` (the library prefixes the format's name) |
+| `com.labre.commands.bpmn.importXml.failed`      | `com.labre.interchange.import.failed`      | unchanged                                                                       |
+| `com.labre.commands.bpmn.importXml.remarks`     | `com.labre.interchange.import.remarks`     | unchanged                                                                       |
+| `com.labre.commands.bpmn.importXml.console`     | `com.labre.interchange.import.console`     | unchanged                                                                       |
+| `com.labre.commands.bpmn.importXml.drawn`       | `com.labre.interchange.import.drawn`       | unchanged                                                                       |
+| `com.labre.commands.bpmn.importXml.carried`     | `com.labre.interchange.import.carried`     | unchanged                                                                       |
+| `com.labre.commands.bpmn.importXml.quarantined` | `com.labre.interchange.import.quarantined` | unchanged                                                                       |
+
+`com.labre.commands.bpmn.importXml` and `…importXml.description` — the command's
+own label and description — are **not** affected; nor is
+`com.labre.commands.bpmn.exportXml.warnings`, which stays BPMN's because no
+other format's writer speaks through it.

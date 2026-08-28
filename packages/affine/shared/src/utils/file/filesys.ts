@@ -115,21 +115,18 @@ const FileTypes: FilePickerSpec[] = [
       'text/xml': ['.mm', '.opml', '.xml'],
     },
   },
-  {
-    // A BPMN 2.0 interchange document. `.xml` rides along with `.bpmn` because
-    // half the tools in the wild write the same bytes under the generic
-    // extension, and a picker that refused them would refuse a valid process
-    // for the sake of a filename. What the file actually IS gets decided by the
-    // reader, which throws on anything that is not a BPMN `<definitions>`.
-    description: 'Bpmn',
-    accept: {
-      'application/xml': ['.bpmn', '.xml'],
-    },
-  },
 ];
 
 /**
  * See https://web.dev/patterns/files/open-one-or-multiple-files/
+ *
+ * There is no `'Bpmn'` here any more, and no row for it above. A BPMN document
+ * is not the editor's own kind of file: it is one INTERCHANGE FORMAT among the
+ * several a framework declares (`docs/adr/0012`), and its filter is built from
+ * that declaration by {@link openSingleFileWithSpec}. Keeping a second copy in
+ * this table would be a copy nobody reads and everybody has to keep in step —
+ * the format's `extensions` and `mime` are the one statement of what a `.bpmn`
+ * file is called.
  */
 type AcceptTypes =
   | 'Any'
@@ -139,8 +136,7 @@ type AcceptTypes =
   | 'Markdown'
   | 'Html'
   | 'Zip'
-  | 'MindMap'
-  | 'Bpmn';
+  | 'MindMap';
 
 export async function openFilesWith(
   acceptType: AcceptTypes = 'Any',

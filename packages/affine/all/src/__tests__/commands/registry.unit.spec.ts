@@ -143,16 +143,20 @@ describe('command registry invariants', () => {
   /**
    * The one numeric cap, and it is a UI one: 14 buttons in the sub-menu's row.
    *
-   * Asserted on what is RENDERED, not on what is declared, since the PO
-   * decision of 2026-08-28 put `bpmn.importXml` in BPMN's row and took its
-   * nominations to fifteen. Nominating past the cap is what the arbitration is
-   * for: an owner whose catalogue outgrows fourteen has its nominations ranked
-   * down to thirteen buttons plus "More artefacts…", and an owner below the cap
-   * cannot nominate past it, because every nomination is also a catalogue entry
-   * (the test at the bottom of this file). What must never happen is a row
-   * wider than the popover, and that is the number this counts.
+   * Two numbers, because they fail differently.
+   *
+   * What is RENDERED is the promise to the user: a row no wider than the
+   * popover. Past the cap the arbitration ranks an owner's nominations down to
+   * thirteen buttons plus "More artefacts…", so that number is safe by
+   * construction — it is asserted as documentation of the intent, and it would
+   * only ever fire if the arbitration itself were changed.
+   *
+   * What is NOMINATED is the curation budget, and it is the one a merge can
+   * quietly break: the pool feeds a row of fourteen, so it stays the size of
+   * that row plus the single over-nomination the PO authorized on 2026-08-28
+   * (`bpmn.importXml`, which took BPMN to fifteen).
    */
-  test('no owner renders more than 14 senior-menu buttons', () => {
+  test('no owner renders more than 14 senior-menu buttons, or nominates past its budget', () => {
     for (const id of FRAMEWORK_IDS) {
       const owned = byOwner(id);
       const nominated = owned.filter(c => c.surfaces.includes('senior-menu'));
@@ -165,10 +169,29 @@ describe('command registry invariants', () => {
         () => undefined
       );
       // Plus the permanent "More artefacts…" button an overflowed row carries.
+      // Documentation of intent more than a trap: past the cap the arbitration
+      // returns thirteen by construction, so this branch cannot fail on its
+      // own. The ceiling below is the half with teeth.
       expect(
         commands.length + (overflow ? 1 : 0),
         `${id} sub-menu`
       ).toBeLessThanOrEqual(SENIOR_MENU_CAP);
+
+      // The CURATION budget, and the invariant that can actually be broken. A
+      // framework may nominate more than the row seats — the arbitration exists
+      // for that — but nominating freely would turn the pool into "everything,
+      // ranked", which is the failure the eligibility ruling of 2026-08-28 was
+      // written against: a row of board actions somebody happened to click a
+      // lot. So the pool stays roughly the size of the row it feeds.
+      //
+      // `+ 1` and no more: it is the single deliberate over-nomination the PO
+      // signed off on that same day — `bpmn.importXml`, because a board comes
+      // FROM a file and the sub-menu is the first thing a user opens on an
+      // empty canvas. A second one is a curation decision, not a merge, and it
+      // should fail here until somebody makes it.
+      expect(nominated.length, `${id} nominations`).toBeLessThanOrEqual(
+        SENIOR_MENU_CAP + 1
+      );
     }
   });
 
