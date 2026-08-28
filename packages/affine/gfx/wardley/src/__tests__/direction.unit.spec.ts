@@ -85,9 +85,24 @@ describe('the link tool announces its gesture (M1)', () => {
   it('leaves every other command without a gesture hint', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
+    //
+    // What is forbidden is a GESTURE HINT on a command that states no
+    // direction, and that is what this measures — a role's own
+    // `gestureHintKey`, read off the vocabulary. It used to measure "has a
+    // `descriptionKey` at all", which was the same set right up until
+    // `wardley.importSvg`: a command whose description says what an import
+    // costs you ("Best effort … no round-trip", `docs/adr/0012` P2) is not
+    // announcing a drag direction, and forbidding it would forbid a framework
+    // from ever explaining a command.
+    const gestureHints = new Set(
+      Object.values(WARDLEY_ROLES)
+        .map(role => role.direction?.gestureHintKey)
+        .filter((key): key is string => key !== undefined)
+    );
     const noisy = wardleyCommands.filter(
       c =>
         c.descriptionKey !== undefined &&
+        gestureHints.has(c.descriptionKey) &&
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);

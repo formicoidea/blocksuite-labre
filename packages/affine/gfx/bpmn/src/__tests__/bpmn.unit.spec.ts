@@ -265,12 +265,13 @@ describe('the bpmn command inventory', () => {
     .filter(c => c.surfaces.includes('senior-menu'))
     .map(c => c.id);
 
-  it('declares twenty-five commands, every one of them in the catalogue', () => {
-    // Twenty-five since `bpmn.importXml`: 17 artefacts, 3 connecting-object
-    // tools, the pool, the two lane gestures, and the two whose subject is the
-    // BOARD rather than an element — the same format, out and in.
-    expect(bpmnCommands).toHaveLength(25);
-    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(25);
+  it('declares twenty-six commands, every one of them in the catalogue', () => {
+    // Twenty-six since `bpmn.importSvg`: 17 artefacts, 3 connecting-object
+    // tools, the pool, the two lane gestures, and the THREE whose subject is
+    // the BOARD rather than an element — the `.bpmn` format out and in, plus
+    // the visual-tier SVG fallback (`docs/adr/0012`, P2).
+    expect(bpmnCommands).toHaveLength(26);
+    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(26);
     for (const command of bpmnCommands) {
       expect(command.owner, command.id).toBe('bpmn');
       expect(command.scope, command.id).toBe('edgeless');
@@ -404,10 +405,18 @@ describe('the bpmn command inventory', () => {
       'bpmn.addLane',
       'bpmn.removeLane',
     ]);
-    // …and the format, both ways, in one section of its own. Out before in,
-    // which is the order they shipped and the order they are used in: a board
-    // is drawn here and taken away far more often than a foreign file arrives.
-    expect(ids('interchange')).toEqual(['bpmn.exportXml', 'bpmn.importXml']);
+    // …and the format, both ways, plus the SVG fallback that arrives third
+    // because it is declared third. Out before in, which is the order they
+    // shipped and the order they are used in: a board is drawn here and taken
+    // away far more often than a foreign file arrives — and the FALLBACK reader
+    // last of the three, which is also where it belongs in a list somebody
+    // scans for "what can I do with a file": the native format first, the
+    // best-effort one after it (`docs/adr/0012`, P2).
+    expect(ids('interchange')).toEqual([
+      'bpmn.exportXml',
+      'bpmn.importXml',
+      'bpmn.importSvg',
+    ]);
   });
 
   /**
