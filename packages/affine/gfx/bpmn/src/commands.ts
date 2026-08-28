@@ -47,37 +47,47 @@ import {
  * The BPMN toolbox as commands. Like EDGY, BPMN had a menu and zero manifest
  * entries before PF3 — invisible to Settings › Shortcuts (`docs/adr/0008`).
  *
- * ## Twenty-three, and the fourteen
+ * ## Twenty-five, and the fifteen
  *
  * The descriptive-profile pack draws 17 artefacts, 3 connecting objects and 3
- * swimlane gestures, which is a catalogue of 23 against a senior sub-menu that
- * holds 14. That is not a problem to be solved: PF6 built the arbitration for
- * exactly this day (`selectSeniorMenuCommands`), and past the cap the sub-menu
- * becomes the thirteen commands THIS user reaches for plus "More artefacts…" —
- * fourteen buttons, exactly the cap.
+ * swimlane gestures; the two directions of the `.bpmn` format make 25, against a
+ * senior sub-menu that holds 14. That is not a problem to be solved: PF6 built
+ * the arbitration for exactly this day (`selectSeniorMenuCommands`), and past
+ * the cap the sub-menu becomes the thirteen commands THIS user reaches for plus
+ * "More artefacts…" — fourteen buttons, exactly the cap.
  *
  * What a framework still owes is a sensible COLD START, and it owes it twice:
  *
- * - the FOURTEEN it nominates for the row (`senior`) — one of each family plus
- *   the variants an architect reaches for hourly (the user and service tasks,
- *   the sub-process, the call activity, the parallel gateway, the message flow,
- *   the data object, the annotation). What stays out is the TRIGGER variants of
+ * - the FIFTEEN it nominates for the row — the fourteen toolbox entries flagged
+ *   `senior` below, plus `bpmn.importXml`, which carries its own nomination on
+ *   its descriptor. The toolbox fourteen are one of each family plus the
+ *   variants an architect reaches for hourly (the user and service tasks, the
+ *   sub-process, the call activity, the parallel gateway, the message flow, the
+ *   data object, the annotation). What stays out is the TRIGGER variants of
  *   start and end — a plain event is the honest first draft, and the envelope or
  *   the clock is a refinement — the data store, and the two things you reach for
  *   only once something is already drawn: the association and the group.
  *
  *   Since the eligibility ruling of 2026-08-28 this list is not merely a cold
  *   start but the whole ELIGIBLE pool: usage ranks membership inside it and can
- *   no longer promote a command from outside it, so a command left out of the
- *   fourteen lives in the catalogue sidepanel and nowhere else. That is the
- *   right home for `bpmn.exportXml` and `bpmn.importXml`, whose subject is the
- *   whole board rather than something you draw;
- * - the THIRTEEN a user with no history actually meets, which is the authored
- *   head of those fourteen. That is a different list again, and it is the one
- *   that gets seen first — see the note on {@link SPECS} for why the
- *   declarations lead with the core rather than by family.
+ *   no longer promote a command from outside it, so a command left out of it
+ *   lives in the catalogue sidepanel and nowhere else. That is the right home
+ *   for `bpmn.exportXml`, whose subject is a board you already have and which is
+ *   reached from the pool's "⋮" — it declines the row on purpose.
  *
- * All 23 are in the catalogue, all 23 are bindable from Settings › Shortcuts,
+ *   `bpmn.importXml` does NOT, since the PO decision of the same day: an import
+ *   is where a board COMES FROM, and the sub-menu is the first thing a user
+ *   opens on an empty canvas. Fifteen nominations against a cap of fourteen is
+ *   the arbitration doing its job, not an overflow — see the note on
+ *   {@link importCommand}, which is where that reversal is argued;
+ * - the THIRTEEN a user with no history actually meets, which is the authored
+ *   head of those fifteen. That is a different list again, and it is the one
+ *   that gets seen first — see the note on {@link SPECS} for why the
+ *   declarations lead with the core rather than by family. The import is the
+ *   last nomination, so it is one of the two the "More artefacts…" button covers
+ *   until somebody reaches for it.
+ *
+ * All 25 are in the catalogue, all 25 are bindable from Settings › Shortcuts,
  * and none of them is unreachable.
  */
 interface Spec {
@@ -100,9 +110,11 @@ interface Spec {
     | 'annotations'
     | 'swimlanes';
   /**
-   * In the fourteen the sub-menu may ever show. Since 2026-08-28 this is an
-   * eligibility declaration, not a starting position: usage ranks membership
-   * INSIDE this list and never promotes into it, and a cold start opens on its
+   * Nominated for the sub-menu — the fourteen TOOLBOX entries it may ever show,
+   * beside the one nomination that is not a toolbox entry at all
+   * ({@link importCommand}). Since 2026-08-28 this is an eligibility
+   * declaration, not a starting position: usage ranks membership INSIDE the
+   * nominated list and never promotes into it, and a cold start opens on its
    * first thirteen.
    */
   senior: boolean;
