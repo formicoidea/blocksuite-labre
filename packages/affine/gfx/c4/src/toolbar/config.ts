@@ -93,40 +93,6 @@ function commandMoreAction(
 
 /**
  * The selected C4 board's contextual toolbar: the resize toggle, and the
-function commandMoreAction(
-  id: string,
-  commandId: string,
-  labelKey: string,
-  labelFallback: string,
-  icon: TemplateResult
-) {
-  return {
-    id,
-    placement: ActionPlacement.More,
-    when: (ctx: ToolbarContext) => {
-      const command = findCommand(ctx, commandId);
-      return command !== undefined && (command.when?.(ctx.std) ?? true);
-    },
-    generate: (ctx: ToolbarContext) => ({
-      icon,
-      label: translateKey(ctx.std, labelKey, labelFallback),
-      run: (runCtx: ToolbarContext) => {
-        const command = findCommand(runCtx, commandId);
-        if (!command) return;
-        // The same `source` the row's own entries report: the "⋮" is a
-        // degradation of the row, not a surface of its own, and the
-        // `ElementCreationSource` union deliberately names places rather than
-        // widths (`docs/adr/0008`).
-        runCommand(runCtx.std, command, {
-          surface: 'contextual-toolbar',
-          source: 'toolbar:general',
-        });
-      },
-    }),
-  };
-}
-
-/**
  * automatic legend of what is actually drawn on the board.
  *
  * ## The legend is a BUTTON, not a command — PO arbitration, 27/08/2026
