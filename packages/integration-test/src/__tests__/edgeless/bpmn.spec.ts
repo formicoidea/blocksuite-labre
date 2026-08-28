@@ -412,15 +412,20 @@ describe('the BPMN toolbox past fourteen', () => {
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
   test('the sub-menu overflows: thirteen ranked slots plus More artefacts', () => {
-    // 25 declared, 15 of them nominated for the row — and the fifteen are all
+    // 26 declared, 15 of them nominated for the row — and the fifteen are all
     // that gets ranked (PO ruling of 2026-08-28). `bpmn.exportXml` draws
     // nothing you chose and is therefore in the catalogue and out of the
     // sub-menu, like the two lane gestures, however often it is invoked;
     // `bpmn.importXml` joined the nominations the same day (the PO decision
     // that reversed that reading for the import: a board comes FROM a file).
+    //
+    // The twenty-sixth is `bpmn.importSvg`, and the NOMINATION count is what
+    // shows it declined the row: the visual-tier fallback lives in the
+    // catalogue because the sub-menu carries the native format
+    // (`docs/adr/0012`, P2). The catalogue grew, the fifteen did not.
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
-    ).toHaveLength(25);
+    ).toHaveLength(26);
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'senior-menu')
     ).toHaveLength(15);
@@ -519,8 +524,10 @@ describe('the BPMN toolbox past fourteen', () => {
     // panel never sorts headers alphabetically. `swimlanes` sits fifth and not
     // last because the pool is one of the seven a user meets on a blank board,
     // and the section follows the earliest command filed under it;
-    // `interchange` is last because the two directions of the `.bpmn` format
-    // are what you do to a process that is already drawn.
+    // `interchange` is last because the two directions of the `.bpmn` format —
+    // and the SVG fallback that reads a picture of one — are what you do to a
+    // process rather than what you draw one with. Eight sections still: the
+    // third interchange row joined a section that already existed.
     const groups = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-group"]'
@@ -541,19 +548,25 @@ describe('the BPMN toolbox past fourteen', () => {
     expect(groups[0].textContent).toContain('Events');
     expect(groups.at(-1)!.textContent).toContain('Interchange');
 
-    // 22 rows, not 25: the panel filters on availability, and the two lane
+    // 23 rows, not 26: the panel filters on availability, and the two lane
     // gestures and the export all need a selected pool. Everything that can be
-    // done from a blank board is listed — including the IMPORT, which is the
-    // one entry here that is not a thing to draw. It declares
-    // `availability: 'editable'`, and this document is editable.
+    // done from a blank board is listed — including BOTH IMPORTS, which are the
+    // two entries here that are not things to draw. Each declares
+    // `availability: 'editable'` with no `when`, and this document is editable.
     const entries = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-entry"]'
       ) ?? []
     );
-    expect(entries).toHaveLength(22);
+    expect(entries).toHaveLength(23);
     expect(entries.map(entry => entry.dataset.commandId)).toContain(
       'bpmn.importXml'
+    );
+    // …and the SVG fallback beside it, which is the tier distinction made
+    // visible: neither import needs anything on the board, so the panel offers
+    // both, each labelled with what it promises (`docs/adr/0012`, P2).
+    expect(entries.map(entry => entry.dataset.commandId)).toContain(
+      'bpmn.importSvg'
     );
     // The ones that are in the catalogue and NOT in the fourteen are reachable
     // here and nowhere else in the chrome — which is the whole promise.
