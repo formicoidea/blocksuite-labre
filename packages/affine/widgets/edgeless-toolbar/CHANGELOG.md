@@ -1,5 +1,196 @@
 # @labre/affine-widget-edgeless-toolbar
 
+## 0.33.0
+
+### Patch Changes
+
+- a9eb4f6: Senior buttons name themselves in the user's language
+
+  The edgeless toolbar's senior-tool tooltips were the last piece of chrome that
+  could only say "Wardley map" or "Event Storming" — a raw English string carried
+  on the tool itself, invisible to the host catalogue. A senior tool can now
+  declare `labelKey` alongside its `name`, and the toolbar resolves it through
+  the same `TranslationProvider` seam every other library wording already uses.
+
+  The seven frameworks declare the key their descriptor already publishes
+  (`com.labre.framework.<id>`), so a host that built its catalogue from
+  `getTranslationKeyManifest()` translates the buttons with no new key to add.
+  `name` stays required and stays the fallback: it is what a standalone
+  playground shows, and it is all the core tools (note, shape, template…) have —
+  they own no framework identity, so they declare no key.
+
+- e42e0c0: feat(std): the senior menu caps at fourteen and ranks seven past it
+
+  A framework's senior button opens one row of buttons, and that row holds
+  **fourteen**. Until now that number was a design review: the registry test
+  refused a framework that _declared_ more than fourteen sub-menu commands, and
+  nothing said what a framework should do once its toolbox honestly outgrew them.
+  It now has an answer.
+
+  Below the cap nothing changes at all — the sub-menu is the framework's authored
+  list, whole and in the order its author wrote it. Past it, the row becomes a
+  **shortcut to the seven artefacts this user actually reaches for**: the four
+  most-used plus the three most-recent, deduplicated, with a command that tops
+  both axes taking one slot and handing the freed one back to frequency. Two axes
+  rather than one, because frequency alone never surfaces the tool picked up
+  yesterday and recency alone would reshuffle the row at every click.
+
+  The seven are then laid out **in authored order, never in rank order**. What the
+  ranking decides is membership; position stays where the framework put it,
+  because a menu whose buttons swap places under the cursor is precisely the
+  pattern this feature exists to avoid. On a fresh install, with nothing measured
+  yet, both axes collapse to authored order and the row shows the first seven — a
+  cold start that is deterministic rather than empty.
+
+  The ranking reads the framework's **whole catalogue**, not the fourteen its
+  author picked. An artefact left out of the row that a user invokes constantly
+  has earned a slot, and a selection that could only ever demote would never learn
+  that.
+
+  Beside the seven sits a permanent **More artefacts…** button, opening the
+  catalogue sidepanel on the framework's full toolbox — and it appears only when
+  something answers the new `ArtefactCatalogueProvider` seam, since a button that
+  opens nothing is a dead control. The seam ships here as an interface; the panel
+  behind it arrives in its own release.
+
+  **Nothing visible changes today.** The largest framework in the library declares
+  thirteen artefacts, so no senior menu is past the cap and every one of them
+  still shows its whole toolbox. This is the rule the BPMN full pack will be the
+  first to meet.
+
+  > **Superseded later in this same release** — "The senior sub-menu seats
+  > thirteen". The PO re-arbitrated on 28/08/2026: the row seats **thirteen**
+  > (seven most-recent + six most-used), and the ranking reads the framework's
+  > **nominated `senior-menu` list** rather than its whole catalogue. The cap of
+  > fourteen, the author-order position law and the deterministic cold start below
+  > are unchanged.
+
+- 256ee0b: feat(edgeless): the artefact catalogue sidepanel
+
+  A framework's senior sub-menu is a row of icons, and a row of icons stops
+  working somewhere around fourteen. The catalogue is where the rest go: a
+  full-height column down the left edge of the editor, listing everything the
+  framework declares on the `'catalogue'` surface — grouped by the categories the
+  framework itself declared, each artefact spelled out with its icon, its
+  translated label and its keyboard chord instead of guessed from a glyph.
+
+  It is drawn from the command registry and nothing else, so a framework that
+  adds an artefact gets a row for it with no code written here. Rows are at least
+  44px tall because these boards are worked on a tablet as often as on a laptop;
+  the list scrolls, the canvas behind it does not. One tap runs the command and
+  puts the panel away — and X, Escape and a click on the canvas all close it on
+  the first gesture, none of them touching the tool the user had armed.
+
+  `ArtefactCatalogueProvider` is the seam. The library registers its own panel as
+  the default implementation, unconditionally; a host that already owns a sidebar
+  registers `ArtefactCatalogueExtension(service)` and takes the catalogue over,
+  after which the library's widget is never asked to open.
+
+  Dormant until something opens it: no framework overflows its sub-menu yet, so
+  today nothing calls `open` — the panel is there for the BPMN pack and for the
+  hosts that want the catalogue on their own terms.
+
+- 48c3b52: The catalogue leads with what you reach for
+
+  The sidepanel now opens on a "Recent & frequent" head section (PO recette,
+  27/08/2026): the same seven-slot arbitration the senior sub-menu runs,
+  re-consumed through the new pure `rankCommandsByUsage` — one ranking, two
+  consumers, never two opinions. (Later in this same release the two axes swap
+  priority to recency-first, and the sub-menu grows to thirteen slots while this
+  section stays at seven — see "The senior sub-menu seats thirteen".)
+  Only commands that actually carry a measure appear, so a fresh install shows
+  no section rather than a "recent" label padded with the never-used; the rows
+  repeat below in their categories, the way every launcher does it.
+
+- 6a20738: The catalogue scrolls under the wheel, stays open while furnishing, and can be switched off
+
+  Three PO-recette corrections (27/08/2026). A wheel over the sidepanel now
+  scrolls the artefact list instead of panning the board behind it — the same
+  capture-phase fix the violation bubble earned in PR #103, scoped to the
+  panel's own box so the canvas beside it keeps panning. Inserting an artefact
+  no longer closes the panel: furnishing a diagram is several artefacts in a
+  row, and the exits (close button, Escape, click-away) are all still one
+  gesture. And `ArtefactCatalogueExtension(null)` is now the documented
+  cold-assembly switch-off: the provider answers nothing, the "More artefacts"
+  button is not rendered, the library panel never opens.
+
+- f09f9a3: The senior sub-menu seats thirteen — seven recent, six most-used — and only
+  commands that belong there
+
+  Two PO rulings of 28/08/2026 on a framework's senior sub-menu past the cap.
+  Both **supersede the arbitration recorded on 26/08/2026** ("the senior menu caps
+  at fourteen and ranks seven past it", earlier in this release): that entry's cap
+  of fourteen, author-order position law and deterministic cold start all stand —
+  its slot count, its 4 + 3 split and its "rank the whole catalogue" rule do not.
+
+  **Only its declarers are eligible.** The ranking used to read the whole
+  catalogue, so a command that deliberately declines the sub-menu could be dragged
+  into it by its own usage: the PO met "Export BPMN" in a row of things you DRAW
+  and rightly asked what it was supposed to export. Membership is now drawn from
+  the `senior-menu` surface alone — a declined surface is a statement about where
+  a command belongs, not a default usage may out-vote. The overflow trigger still
+  reads the catalogue, and the sidepanel's "Recent & frequent" head section still
+  ranks it too: that panel is where every command of a framework is reachable, so
+  a board action really does belong at its head.
+
+  **Thirteen slots instead of seven, recency first.** Seven buttons in a
+  fourteen-wide row left it half-empty; thirteen plus the permanent "More
+  artefacts…" button is exactly the cap. The split is inverted to seven
+  most-recent plus six most-used, because what you reached for this morning is
+  what you are still working on. A command that tops both axes takes a recent
+  slot, freeing its most-used slot for the next workhorse down. Display order
+  remains author order — the ranking decides membership, never position — and a
+  cold start still opens on the authored head, now thirteen deep.
+
+  **The sidepanel's head section stays at seven.** Both PO rulings are about the
+  sub-menu, and thirteen is argued from its geometry: a horizontal row of icon
+  buttons where thirteen plus "More artefacts…" makes the fourteen cap. None of
+  that transfers to a vertical list of 44px rows in a 320px panel, where thirteen
+  would fill a laptop's first screen with duplicated shortcuts and push every
+  category below the fold. The two surfaces share the arbitration and not its
+  magnitude: the head keeps its own split (four recent + three used), so both
+  halves of a section labelled "Recent & frequent" survive.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-components@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-rich-text@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+
 ## 0.32.0
 
 ### Patch Changes

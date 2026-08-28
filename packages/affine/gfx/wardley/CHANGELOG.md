@@ -1,5 +1,286 @@
 # @labre/affine-gfx-wardley
 
+## 0.33.0
+
+### Minor Changes
+
+- 7d49a23: feat(edgeless): a Wardley map arrives from and leaves as an OnlineWardleyMaps `.owm` file
+
+  Two new entries in the Wardley catalogue, and they are one subject in two
+  directions: **Import Wardley map (OWM)** and **Export Wardley map (OWM)**.
+
+  **Import** is in the Wardley sub-menu, because on an empty canvas that row is
+  the first thing you open and "start from the map somebody sent me" belongs in
+  it. Pick a `.owm` (or `.wm`) file and the map is on the board: the axes, every
+  component, anchor, market, ecosystem and pipeline where the file's coordinates
+  put them, every dependency drawn from the consumer to what it needs, every
+  `evolve` line drawn as an evolved twin with the red arrow that says it is
+  moving, and the notes. It needs nothing selected. It writes, so it withdraws
+  from every surface on a read-only document rather than sitting there lit and
+  doing nothing. The whole file is one undo step, and it arrives in view.
+
+  **Export** is in the catalogue, the command palette and the agent surface. It
+  downloads the whole map as an `.owm`, ready to open in any Wardley mapping tool.
+  It reads and never writes, so it is offered on a locked map and on a read-only
+  document — which is precisely the board somebody wants to take away. It appears
+  whenever there is a Wardley map on the board, because a Wardley component has no
+  "evolution" property: where it sits on the plot **is** its coordinate, so with no
+  map there is nothing to measure against.
+
+  **A map you imported keeps the title its file gave it.** Export writes the
+  title the `.owm` carried, not the name of the Labre document it happens to be
+  sitting in — so a map you opened from a colleague's file goes back to them under
+  the title they gave it. The document's name is still what the download is
+  called, and it becomes the title only when the file carried none. When the two
+  differ the export says so.
+
+  **The import says what it cost.** A notification names what was drawn and what
+  was carried — kept verbatim in the document, invisible on the canvas, because
+  Labre draws no artefact for it. Everything the pack does not draw is carried and
+  given back on the next export, in place: `style`, `size`, the evolution-axis
+  labels, `annotation`, the attitudes, `submap`, `url`, `accelerator`, the flow
+  links, a link with a `;` context, a pipeline with a `{ … }` body, and every `//`
+  comment. A modifier written on a line that IS drawn — `label [12, -8]`,
+  `(build)`, `inertia` — comes back on that very line rather than at the bottom of
+  the file.
+
+  **And it never claims a position it invented.** A statement with no coordinates —
+  `anchor Client`, which is how half the maps in the wild are written — is laid out
+  at the top of the value chain and the report says, by name, that the file did not
+  say where it goes. Unreadable coordinates get the same treatment plus a warning.
+
+  **Export warnings reach the user too.** A board with two maps on it (an `.owm`
+  holds one), an artefact with no name (a component is identified by its name), a
+  component sitting off the plot, an evolution arrow that also climbs the value
+  chain, a link with a loose end — each is a sentence the format has no way to
+  write down, and the person who clicked Export is the one entitled to hear about
+  it. The file still downloads, and it is still valid.
+
+  Both notifications go through the host's notification service; a standalone
+  playground registers none and degrades to silence.
+
+  **The Wardley sub-menu now has a "More artefacts…" button.** Fifteen commands is one past the fourteen the row seats, so — exactly as BPMN's does — the Wardley palette becomes the thirteen artefacts you reach for most, plus one button that opens the full catalogue. Nothing became unreachable, and everything is still in the catalogue, the command palette and Settings › Shortcuts.
+
+  **The serializer now lives in the library.** It used to live outside this
+  repository, which meant one format with two implementations that nothing
+  compared. `exportWardleyOwm` and `importWardleyOwm` are pure functions exported
+  from the Wardley package, so the editor command and any host tool call the same
+  one — and the round trip they make together is pinned: a map this library wrote
+  comes back byte for byte, and a map it did not settles after a single cycle.
+
+### Patch Changes
+
+- 5c39582: feat(edgeless): an SVG file imports as an editable sketch
+
+  **Somebody sent you a picture of a process, not a `.bpmn`.** Open the artefact
+  catalogue, pick **Import SVG sketch**, and the drawing arrives on the canvas as
+  elements you can move, recolour and rewrite: rectangles, ellipses, polygons,
+  brush strokes — and every `<text>` in the file as a **free-text element you can
+  double-click and edit**, which is the whole point. A label that arrived as a
+  picture of a word would be a label nobody could correct.
+
+  The entry is under **Interchange** in the catalogue sidepanel (one click away
+  via _More artefacts…_), on both the BPMN and the Wardley frameworks, and it is
+  also in the command palette and available to an agent. It is deliberately **not**
+  in the senior sub-menu: that row carries a framework's native-format import —
+  **Import BPMN XML** today — and this is the fallback for everything else.
+
+  ### It says what it is before it opens the file
+
+  "Best effort: recognises shapes and text, no round-trip." That sentence is the
+  contract (`docs/adr/0012`, P2), and it is on the button rather than in a report
+  afterwards. What lands is a **sketch you then promote**: nothing here decides
+  that a rounded rectangle in your picture was a task, or that a circle was a
+  Wardley component. An SVG carries a rendering, not a model, so there is nothing
+  to preserve and nothing is written into the document beyond the drawing itself —
+  no hidden payload, and no round-trip implied.
+
+  ### And it never drops anything quietly
+
+  The import report names every construct it could not read, **once per kind**: a
+  `scale` or `rotate` transform it ignored (the shape is imported, at its
+  untransformed position), curves it approximated by their endpoints, gradients it
+  replaced with a flat neutral, transparency it flattened, and the constructs the
+  sanitizer removed before the reader saw them — `<use>` and `<foreignObject>`,
+  which is why a drawing built out of symbol instances can arrive nearly empty and
+  now says so instead of leaving you to guess. Three hundred `<use>` instances are
+  one remark, not three hundred.
+
+  Parts of a file marked `display:none` or `visibility:hidden` are **not**
+  imported, and the report says so: they draw nothing where the file came from,
+  and SVG's initial fill is black — so importing an exporter's off-canvas
+  scaffolding "faithfully" would put a large black slab over your board.
+
+  The drawing also arrives at the **size the file displays it at**. An SVG whose
+  `viewBox` is 1000 units wide and whose `width` is 200 is a drawing at one-fifth
+  scale, and the import applies that factor to positions, sizes, stroke widths and
+  font sizes alike.
+
+  One thing worth knowing before you reach for it: a **mermaid** diagram paints
+  almost entirely through a CSS `<style>` sheet, which this reader does not apply
+  — so a mermaid SVG arrives in the initial colours, mostly black, with a remark
+  saying why.
+
+  A blank drawing imports as nothing plus a remark rather than an error. A file
+  that is not well-formed XML is refused, by name.
+
+  Both frameworks read through **one** parser, so they cannot drift into
+  recognising different pictures — and which framework's vocabulary a picture is a
+  picture _of_ stays your call, never an inference from the filename.
+
+  ### For hosts
+
+  `@labre/affine` is a **minor** because the library gains two commands and a new
+  public function, not because anything was removed. `parseSvgSketch`,
+  `SVG_SKETCH_FORMAT_ID`, `SVG_SKETCH_EXTENSION` and `SVG_SKETCH_MIME` are
+  exported from `@labre/affine-block-surface`, and each framework exports its own
+  capability (`BPMN_SVG_IMPORT`, `WARDLEY_SVG_IMPORT`) — so a host can build its
+  own drop zone on `importInterchangeFile` without going near a picker.
+
+  One thing to know if you render the command palette flat: `bpmn.importSvg` and
+  `wardley.importSvg` **share the label "Import SVG sketch"**, because they do the
+  same thing to the same file and only the framework offering it differs.
+  Disambiguate on `owner` — the ids are distinct, and so is every other field.
+
+- 1dbd735: Framework flows keep their style to themselves
+
+  Arming a typed flow tool — a BPMN sequence flow, message flow or association, a
+  Wardley link or change arrow, an EDGY relation, a Context Map pattern, an Event
+  Storming flow, a Core Domain movement, a C4 relationship — used to write the
+  flow's look into the shared "last used connector style". The next plain
+  connector then came out dressed as that flow (dash, colour, arrowheads) while
+  carrying none of its meaning; BPMN 2.0 (p.40) explicitly forbids other
+  connectors adopting a flow's line style.
+
+  The framework look now rides on the tool activation itself
+  (`ConnectorToolOptions.style`) and is applied to the drawn edge at creation
+  only. The last-props store is never touched by a framework activation, so the
+  plain connector tool keeps drawing with the user's own last style — which
+  still persists exactly as before when set from the plain tool itself.
+
+- 2ec39c0: validation rules carry their provenance — standard, recommendation or Labre convention — and the violation bubble says so
+
+  A rule now declares where its authority comes from, as data rather than as prose
+  buried in its message: `standard` with the page of the specification it reads,
+  `recommendation` for a SHOULD or an industry linter's rule, `labre-convention`
+  for a house style of this editor and nothing else. The violation bubble shows it
+  as one discreet line under the finding, with the rule's own citation printed
+  verbatim — so a convention can never reach an architect dressed as a norm
+  violation, which is what an external review of the BPMN integration asked for.
+
+  The field is purely descriptive: no evaluator reads it, and a rule that declares
+  one raises exactly the findings it raised before.
+
+  All twenty-two BPMN rules declare it — twelve `standard`, each with its page,
+  eight `recommendation` naming a linter or the sentence the standard merely
+  permits, and two conventions that say so out loud. The self-loop check left
+  `bpmn.sequence-flow-endpoints` and became `bpmn.sequence-flow-self-loop`: the
+  endpoints matrix is BPMN 2.0.2 p.95 and the no-self-loop habit is ours, so one
+  rule could not have declared either honestly. Same wording, same severity, same
+  i18n keys, one new rule id in the profiles.
+
+  That new id is the one thing this change does not carry over: user exceptions
+  are persisted per rule id, so an exception granted on a self-looping flow under
+  `bpmn.sequence-flow-endpoints` no longer matches and the finding returns. No
+  migration ships, because BPMN landed days ago and these packages are
+  unpublished, so the set of affected documents is empty — but the same rename
+  after publication would need a migration or an alias, and should not lean on
+  this precedent.
+
+  The other five frameworks' rules are annotated too — mostly `recommendation`
+  naming the method, with the readability nudges declared as the Labre
+  conventions they always were.
+
+- 7ec4478: Senior button components resolve their own label through the translation seam
+
+  The toolbar's navigation tooltips learned to translate a senior tool's
+  `labelKey`, but the seven framework senior-button components still carried
+  their label as a hard-coded English string. Each button now resolves the same
+  `com.labre.framework.<id>` key through `translateKey`, with the previous
+  English wording as fallback — so a host catalogue that already translates the
+  toolbar translates the buttons too, and a standalone playground reads exactly
+  as before.
+
+- a9eb4f6: Senior buttons name themselves in the user's language
+
+  The edgeless toolbar's senior-tool tooltips were the last piece of chrome that
+  could only say "Wardley map" or "Event Storming" — a raw English string carried
+  on the tool itself, invisible to the host catalogue. A senior tool can now
+  declare `labelKey` alongside its `name`, and the toolbar resolves it through
+  the same `TranslationProvider` seam every other library wording already uses.
+
+  The seven frameworks declare the key their descriptor already publishes
+  (`com.labre.framework.<id>`), so a host that built its catalogue from
+  `getTranslationKeyManifest()` translates the buttons with no new key to add.
+  `name` stays required and stays the fallback: it is what a standalone
+  playground shows, and it is all the core tools (note, shape, template…) have —
+  they own no framework identity, so they declare no key.
+
+- d5c6f07: The 16 ms frame budget survives a loaded runner
+
+  Test-only. The validation bench held the MEDIAN of a sweep against the
+  absolute 16 ms frame budget, and under a full parallel run the median of the
+  same 2 ms evaluation reads 17.5–19 ms — a statement about the scheduler, not
+  the engine, and an intermittent red on exactly the runs that exercise the
+  whole suite. The file's relative assertions already read their noise floor off
+  the samples they assert on; the absolute budgets now follow the same advice:
+  scaling the budget by the sweep's own inflation (median ÷ best) is
+  algebraically the same claim as holding the BEST sample against the unscaled
+  16 ms, so that is what they assert. The best sample is the engine's cost on
+  the one iteration the machine let it run — the only number of a sweep a loaded
+  runner cannot inflate, while a real regression inflates every sample, the best
+  one included. The medians are still logged, and every relative regression
+  guard (dirty-set vs full pass, the lasso's 3× bound, the quadratic-shape
+  ratio) is untouched and stays the always-on statistic where shared load
+  cancels out.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [1dbd735]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-gfx-connector@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-gfx-group@0.33.0
+  - @labre/affine-gfx-pointer@0.33.0
+  - @labre/affine-gfx-shape@0.33.0
+  - @labre/affine-gfx-template@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

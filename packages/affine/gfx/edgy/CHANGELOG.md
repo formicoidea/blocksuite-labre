@@ -1,5 +1,244 @@
 # @labre/affine-gfx-edgy
 
+## 0.33.0
+
+### Minor Changes
+
+- 6fd58e5: feat(edgeless): the two EDGY backgrounds generate the legend of what is drawn on them
+
+  Select the **facets diagram** or the **EDGY board** and its toolbar now offers
+  the same legend button the three DDD backgrounds were given: it reads what is
+  actually inside the background's perimeter and drops a legend of exactly that,
+  bottom-left, as a real editable group of elements. A board with a Purpose, a
+  Content and two relations on it gets a three-row legend; add a Journey and press
+  again.
+
+  What it lists, grouped the way EDGY reads:
+
+  - **Identity**, **Architecture** and **Experience** — one row per official
+    element of the facet present, in the pastel its zone is drawn with;
+  - **Intersections** — Organisation, Product and Brand together, each in its own
+    colour, because they are the three lenses between the facets and not facets of
+    their own;
+  - **Base elements** — People, Outcome, Object and Activity, listed only when one
+    is on the board BARE. A Content is an Object in the vocabulary, but a board
+    carrying a Content has not necessarily got a bare Object on it, and the legend
+    does not claim one;
+  - **Relations** — one row, whatever the verb. A link says "expresses" or
+    "traverses" on the link itself, where the reader is already looking; twenty-two
+    legend rows would restate the metamodel instead of documenting the drawing.
+
+  Every row is DERIVED from the metamodel: which elements exist, which zone each
+  belongs to, what colour that zone is painted. The element table now names its
+  zone instead of repeating a colour literal, so the swatch in the legend is by
+  construction the fill on the diagram, and a thirteenth element would get its
+  legend row the same way it gets its role — with no edit. Detection is by
+  **semantic role**, like every other reader of a board, so a re-coloured element
+  stays in its row and a rectangle somebody drew to think with stays out.
+
+  The twelve official elements and the four base kinds also gained the English
+  wording their roles were missing, which is what the legend prints when the host
+  ships no catalogue.
+
+  Registered always-on, next to the resize and spotlight toggles: a legend is
+  elements written into the document, not tooling a flag may take away.
+
+- 21aa9d8: An EDGY relation drawn by hand names itself
+
+  The EDGY toolbox gains a **Relation** entry. Pick it, drag from one element to
+  another, and the link is typed: it carries the verb the metamodel gives that
+  pair — as a role the validation reads, and as the visible label the template
+  already puts on its own 24 links. "Process **realises** Capability", "Journey
+  **traverses** Channel", written by the tool, not by the user.
+
+  Until now those 24 typed relations could only be born of the "EDGY dynamic"
+  template. A practitioner drawing their own board had a plain connector: no verb,
+  no role, nothing the metamodel check could read. The vocabulary was there and
+  there was no way to speak it by hand.
+
+  **One entry, not twenty-two.** The metamodel's 24 relations run between 24
+  distinct ordered pairs of elements, so the verb is entirely determined by which
+  two elements the link ends up attached to — there is exactly one thing a link
+  from a Journey to a Channel can say. Offering a list of twenty-two verbs would
+  be asking a question the method already answers.
+
+  Three things it deliberately does not do:
+
+  - **it never turns a link round.** Draw a Channel → Journey link and it is named
+    `traverses` all the same and left pointing the way it was drawn. The
+    metamodel check then reports the sentence as one EDGY does not declare, and
+    "Reverse direction" is one click away on the link's toolbar. Silently flipping
+    a deliberate gesture would be the tool overruling the user; leaving the link
+    anonymous would hide the mistake.
+  - **it never says anything about a pair the metamodel does not know**, and never
+    about a link with an end on a People node, a base Object, a plain sticky or
+    another framework's element. Outside the alphabet is outside the conversation.
+  - **it never rewrites a verb already there.** A relation is named once, on the
+    way from the generic link to the verb, and never back. Move an end while the
+    link is still anonymous and it is named again from the new pair; move an end
+    after it has a verb and the verb stays — it is the user's statement by then.
+
+  Nothing is backfilled and nothing else changes: links drawn before this release
+  keep exactly what they carry, and a plain connector stays a plain connector.
+
+- 9f91a96: EDGY boards are now checked against the metamodel
+
+  The EDGY artefacts carry a semantic role at last: the four base elements say
+  which kind they are, the twelve official elements of the metamodel say which
+  element they are, the facets diagram and the blank board say they are a frame,
+  and each of the 24 canonical relations carries a role named after its verb —
+  "expresses", "traverses", "is part of". The verb still travels with the link as
+  a visible label; the role is what the tool reads.
+
+  On top of that vocabulary, two checks appear on a selected EDGY background,
+  under the Validation dropdown the Wardley map already had:
+
+  - **a relation the metamodel does not declare** is reported, read as one
+    sentence — source, verb, target. "A journey traverses a channel" is EDGY; the
+    same link drawn the other way round is not, and the finding names all three
+    elements so either fix is one gesture away.
+  - **two artefacts on top of each other** are reported, because on a facets
+    diagram where an element sits is what says which facet it belongs to.
+
+  Both come with the Sketch / Strict profile choice — Sketch is the default and
+  says nothing on the canvas — and with a four-item work-quality checklist for
+  the things no algorithm can decide: intersection elements linked to both parent
+  facets, elements wearing their facet's colour, relations that read correctly,
+  all three facets explored.
+
+  Nothing is backfilled. A board drawn before this release carries no role on
+  anything, so it is never evaluated and never says a word; only the EDGY dynamic
+  template and the elements created from the EDGY palette are stamped. The
+  illustrative templates (customer journey, service blueprint, organisation
+  chart) stay deliberately neutral drawings.
+
+### Patch Changes
+
+- 1dbd735: Framework flows keep their style to themselves
+
+  Arming a typed flow tool — a BPMN sequence flow, message flow or association, a
+  Wardley link or change arrow, an EDGY relation, a Context Map pattern, an Event
+  Storming flow, a Core Domain movement, a C4 relationship — used to write the
+  flow's look into the shared "last used connector style". The next plain
+  connector then came out dressed as that flow (dash, colour, arrowheads) while
+  carrying none of its meaning; BPMN 2.0 (p.40) explicitly forbids other
+  connectors adopting a flow's line style.
+
+  The framework look now rides on the tool activation itself
+  (`ConnectorToolOptions.style`) and is applied to the drawn edge at creation
+  only. The last-props store is never touched by a framework activation, so the
+  plain connector tool keeps drawing with the user's own last style — which
+  still persists exactly as before when set from the plain tool itself.
+
+- 2ec39c0: validation rules carry their provenance — standard, recommendation or Labre convention — and the violation bubble says so
+
+  A rule now declares where its authority comes from, as data rather than as prose
+  buried in its message: `standard` with the page of the specification it reads,
+  `recommendation` for a SHOULD or an industry linter's rule, `labre-convention`
+  for a house style of this editor and nothing else. The violation bubble shows it
+  as one discreet line under the finding, with the rule's own citation printed
+  verbatim — so a convention can never reach an architect dressed as a norm
+  violation, which is what an external review of the BPMN integration asked for.
+
+  The field is purely descriptive: no evaluator reads it, and a rule that declares
+  one raises exactly the findings it raised before.
+
+  All twenty-two BPMN rules declare it — twelve `standard`, each with its page,
+  eight `recommendation` naming a linter or the sentence the standard merely
+  permits, and two conventions that say so out loud. The self-loop check left
+  `bpmn.sequence-flow-endpoints` and became `bpmn.sequence-flow-self-loop`: the
+  endpoints matrix is BPMN 2.0.2 p.95 and the no-self-loop habit is ours, so one
+  rule could not have declared either honestly. Same wording, same severity, same
+  i18n keys, one new rule id in the profiles.
+
+  That new id is the one thing this change does not carry over: user exceptions
+  are persisted per rule id, so an exception granted on a self-looping flow under
+  `bpmn.sequence-flow-endpoints` no longer matches and the finding returns. No
+  migration ships, because BPMN landed days ago and these packages are
+  unpublished, so the set of affected documents is empty — but the same rename
+  after publication would need a migration or an alias, and should not lean on
+  this precedent.
+
+  The other five frameworks' rules are annotated too — mostly `recommendation`
+  naming the method, with the readability nudges declared as the Labre
+  conventions they always were.
+
+- 7ec4478: Senior button components resolve their own label through the translation seam
+
+  The toolbar's navigation tooltips learned to translate a senior tool's
+  `labelKey`, but the seven framework senior-button components still carried
+  their label as a hard-coded English string. Each button now resolves the same
+  `com.labre.framework.<id>` key through `translateKey`, with the previous
+  English wording as fallback — so a host catalogue that already translates the
+  toolbar translates the buttons too, and a standalone playground reads exactly
+  as before.
+
+- a9eb4f6: Senior buttons name themselves in the user's language
+
+  The edgeless toolbar's senior-tool tooltips were the last piece of chrome that
+  could only say "Wardley map" or "Event Storming" — a raw English string carried
+  on the tool itself, invisible to the host catalogue. A senior tool can now
+  declare `labelKey` alongside its `name`, and the toolbar resolves it through
+  the same `TranslationProvider` seam every other library wording already uses.
+
+  The seven frameworks declare the key their descriptor already publishes
+  (`com.labre.framework.<id>`), so a host that built its catalogue from
+  `getTranslationKeyManifest()` translates the buttons with no new key to add.
+  `name` stays required and stays the fallback: it is what a standalone
+  playground shows, and it is all the core tools (note, shape, template…) have —
+  they own no framework identity, so they declare no key.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [cbd9471]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [1dbd735]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [7ec4478]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-components@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-gfx-ddd-shared@0.33.0
+  - @labre/affine-gfx-connector@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-gfx-group@0.33.0
+  - @labre/affine-gfx-pointer@0.33.0
+  - @labre/affine-gfx-shape@0.33.0
+  - @labre/affine-gfx-template@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

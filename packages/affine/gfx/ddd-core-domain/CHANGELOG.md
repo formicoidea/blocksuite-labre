@@ -1,5 +1,220 @@
 # @labre/affine-gfx-ddd-core-domain
 
+## 0.33.0
+
+### Minor Changes
+
+- 7136db0: A Core Domain Chart is checked, and its movements are drawn as statements
+
+  Selecting a chart now offers Validation — Sketch (the default, where every
+  finding is silent and reaches a report rather than the canvas) or Strict — and
+  Work quality, three expectations to tick: the chart has a legend, movements are
+  dated and justified, the core has been agreed by the team.
+
+  Four checks ship with it. An outsourced sub-domain plotted in the Core quadrant
+  is a strategy contradiction and says so; a movement that does not run from a
+  current position to a future one — drawn backwards, or looping onto its own
+  start — is reported with both ends named; two sub-domains drawn on top of each
+  other are flagged as unreadable; and a dot recoloured off the five legend
+  colours is recorded as an audit finding, never as a badge. Everything else stays
+  silent: a free connector, a movement onto a big bet or onto a plain shape, a dot
+  on blank canvas, and any artefact drawn before today, which carries no semantic
+  role and is never judged. No document is migrated and no chart is backfilled.
+
+  "Movement over time" is now a drag rather than an arrow dropped on the canvas:
+  picking it arms the connector tool, pre-styled dashed red, and you draw from
+  where the context stands today to where it is heading — which is what makes the
+  direction a statement the chart can read back. Arrows drawn before this change
+  keep working as drawings.
+
+  The chart's own drawing is now declared rather than coded: the same bands, the
+  same axes, the same words, to the unit. The declaration also carries a second
+  reading of the frame — a migration chart naming its four quadrants low-hanging
+  fruit, risk-seeking, risk-averse and last toothpaste — which no rule cites and
+  which has no switch in the interface yet.
+
+- cbd9471: feat(edgeless): the three DDD boards generate the legend of what is drawn on them
+
+  Select a **Context Map board**, an **Event Storming board** or a **Core Domain
+  Chart** and its toolbar now offers a legend button. Pressing it reads what is
+  actually inside the background's perimeter and drops a legend of exactly that,
+  bottom-left of the board — the same gesture a Wardley map has had for a while,
+  and the same result: a real, editable, movable group of elements, not an overlay.
+  A board with three sticky kinds on it gets a three-row legend; add a fourth kind
+  and press the button again for a legend that mentions it.
+
+  What each board lists:
+
+  - **Context Map** — the bounded context, and one row per relationship pattern
+    drawn, with its DDD Crew abbreviation and its own line style (dashed for
+    Separate Ways and Big Ball of Mud, exactly as the board draws them);
+  - **Event Storming** — one row per sticky kind stuck to the board, in its own
+    colour, hotspot included, plus a Flow row once an arc has been drawn;
+  - **Core Domain Chart** — one row per sub-domain kind placed, in its own colour,
+    one row per Team Topologies marker used, square and letter included, plus the
+    red dashed Movement over time.
+
+  The legend reads the artefacts' **semantic roles**, not their shapes and not
+  their fill colours. That is what makes it agree with the validation rules — both
+  read the same field — and it is what keeps a restyled sticky in the legend and an
+  orange rectangle somebody drew to think with out of it.
+
+  One consequence on the Core Domain Chart, whose legend button already existed and
+  used to scan fill colours: a chart the tool recognises nothing on — every chart
+  drawn before roles existed — now yields a framed, titled legend with no rows
+  instead of the whole notation; a legend lists what is drawn, not what could have
+  been. The five sub-domain colours it does list are the same five the palette
+  draws with, by construction, and so are the three marker colours.
+
+  Reading by role is also what finally lets the chart list its **Team Topologies
+  markers** honestly. Collaboration, X-as-a-Service and Facilitating are now
+  artefacts the tool recognises rather than three coloured squares, so a chart with
+  a marker on it gets a "Team interaction modes" section naming the ones actually
+  used — with the same letter in the same coloured square the chart draws — and a
+  chart with none is not told about modes it did not use. Being recognised costs
+  them nothing else: a marker is an annotation, not a sub-domain, so the overlap
+  and legend-colour checks written on sub-domains still leave it alone, including
+  when it is parked right against the dot it comments on.
+
+  Every legend box is now titled **"Legend"**. The three DDD tools shipped with a
+  French title on an otherwise English notation; the boxes are elements written
+  into the document, so existing ones keep whatever title they were drawn with.
+
+  The **Context Map palette keeps its own Legend entry**, which still lays out the
+  full notation, cloud included. The two gestures answer two
+  different questions — "what does this notation mean" and "what did we actually
+  draw here" — so that module deliberately has both. The cloud is the one artefact
+  the automatic legend cannot mention: it carries no role, on purpose, because a
+  relationship drawn onto one is a sketch the tool stays silent about.
+
+  Every legend button is available with its framework's button switched off: a
+  legend is elements written into the document, not tooling.
+
+### Patch Changes
+
+- 1dbd735: Framework flows keep their style to themselves
+
+  Arming a typed flow tool — a BPMN sequence flow, message flow or association, a
+  Wardley link or change arrow, an EDGY relation, a Context Map pattern, an Event
+  Storming flow, a Core Domain movement, a C4 relationship — used to write the
+  flow's look into the shared "last used connector style". The next plain
+  connector then came out dressed as that flow (dash, colour, arrowheads) while
+  carrying none of its meaning; BPMN 2.0 (p.40) explicitly forbids other
+  connectors adopting a flow's line style.
+
+  The framework look now rides on the tool activation itself
+  (`ConnectorToolOptions.style`) and is applied to the drawn edge at creation
+  only. The last-props store is never touched by a framework activation, so the
+  plain connector tool keeps drawing with the user's own last style — which
+  still persists exactly as before when set from the plain tool itself.
+
+- 2ec39c0: validation rules carry their provenance — standard, recommendation or Labre convention — and the violation bubble says so
+
+  A rule now declares where its authority comes from, as data rather than as prose
+  buried in its message: `standard` with the page of the specification it reads,
+  `recommendation` for a SHOULD or an industry linter's rule, `labre-convention`
+  for a house style of this editor and nothing else. The violation bubble shows it
+  as one discreet line under the finding, with the rule's own citation printed
+  verbatim — so a convention can never reach an architect dressed as a norm
+  violation, which is what an external review of the BPMN integration asked for.
+
+  The field is purely descriptive: no evaluator reads it, and a rule that declares
+  one raises exactly the findings it raised before.
+
+  All twenty-two BPMN rules declare it — twelve `standard`, each with its page,
+  eight `recommendation` naming a linter or the sentence the standard merely
+  permits, and two conventions that say so out loud. The self-loop check left
+  `bpmn.sequence-flow-endpoints` and became `bpmn.sequence-flow-self-loop`: the
+  endpoints matrix is BPMN 2.0.2 p.95 and the no-self-loop habit is ours, so one
+  rule could not have declared either honestly. Same wording, same severity, same
+  i18n keys, one new rule id in the profiles.
+
+  That new id is the one thing this change does not carry over: user exceptions
+  are persisted per rule id, so an exception granted on a self-looping flow under
+  `bpmn.sequence-flow-endpoints` no longer matches and the finding returns. No
+  migration ships, because BPMN landed days ago and these packages are
+  unpublished, so the set of affected documents is empty — but the same rename
+  after publication would need a migration or an alias, and should not lean on
+  this precedent.
+
+  The other five frameworks' rules are annotated too — mostly `recommendation`
+  naming the method, with the readability nudges declared as the Labre
+  conventions they always were.
+
+- 7ec4478: Senior button components resolve their own label through the translation seam
+
+  The toolbar's navigation tooltips learned to translate a senior tool's
+  `labelKey`, but the seven framework senior-button components still carried
+  their label as a hard-coded English string. Each button now resolves the same
+  `com.labre.framework.<id>` key through `translateKey`, with the previous
+  English wording as fallback — so a host catalogue that already translates the
+  toolbar translates the buttons too, and a standalone playground reads exactly
+  as before.
+
+- a9eb4f6: Senior buttons name themselves in the user's language
+
+  The edgeless toolbar's senior-tool tooltips were the last piece of chrome that
+  could only say "Wardley map" or "Event Storming" — a raw English string carried
+  on the tool itself, invisible to the host catalogue. A senior tool can now
+  declare `labelKey` alongside its `name`, and the toolbar resolves it through
+  the same `TranslationProvider` seam every other library wording already uses.
+
+  The seven frameworks declare the key their descriptor already publishes
+  (`com.labre.framework.<id>`), so a host that built its catalogue from
+  `getTranslationKeyManifest()` translates the buttons with no new key to add.
+  `name` stays required and stays the fallback: it is what a standalone
+  playground shows, and it is all the core tools (note, shape, template…) have —
+  they own no framework identity, so they declare no key.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [cbd9471]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [1dbd735]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [7ec4478]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-gfx-ddd-shared@0.33.0
+  - @labre/affine-gfx-connector@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-gfx-group@0.33.0
+  - @labre/affine-gfx-pointer@0.33.0
+  - @labre/affine-gfx-template@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

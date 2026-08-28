@@ -1,5 +1,54 @@
 # @labre/affine-block-edgeless-text
 
+## 0.33.0
+
+### Patch Changes
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-components@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-gfx-text@0.33.0
+  - @labre/affine-inline-preset@0.33.0
+  - @labre/affine-rich-text@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Patch Changes

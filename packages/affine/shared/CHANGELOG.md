@@ -1,5 +1,481 @@
 # @labre/affine-shared
 
+## 0.33.0
+
+### Patch Changes
+
+- 3fbf69c: feat(edgeless): a BPMN node changes into a nearby kind from its own toolbar
+
+  Realising mid-draft that the rectangle should have been a **user task** used to
+  cost a delete, a re-draw, a re-connect and a re-typed label — and every sequence
+  flow attached to the node with it. Select a BPMN node now and its contextual
+  toolbar carries a **Change type** dropdown: pick the user task, the timer start,
+  the parallel gateway, the call activity, and the element stays the same element.
+  Same box, same words, same wires, same id. What DOES change is the artefact's
+  kind, its role and its appearance: a morph resets styling to what the target
+  kind is born as, so a morphed node and one drawn fresh from the palette are the
+  same element. One ctrl+z puts it back.
+
+  What a node may become is **declared data**, not a derivation: six families —
+  the three tasks, the three starts, the three ends, the two gateways, the two
+  data artefacts, and the sub-process with the call activity. Nothing crosses
+  between them, because a task and an end event are not the same claim about a
+  process; and the text annotation and the group belong to no family at all, so
+  the dropdown never appears on them. The role tree was the tempting source and
+  the wrong one — it makes a task and a sub-process both activities, and only a
+  human knows which pairs a reader accepts as "the same artefact, said more
+  precisely".
+
+  The capability itself is generic (`morphToolbarConfig`, in the surface package)
+  and names no framework: a second framework gets the same dropdown by declaring
+  its own families, its own patch per kind and its own icons, exactly as it
+  already registers its validation rules. BPMN is the first taker, and registers
+  it from its flag-gated half — a morph is tooling, so switching the framework off
+  takes the menu away and leaves every node drawn, painted and checked as before.
+
+  Kind and role are rewritten together in one atomic write per element, so the
+  validation engine re-judges the board on its own and no rule ever sees an
+  element that is half one artefact and half another. The patch is the shipped
+  creation preset in full, which matters concretely for one pair on today's
+  table: a sub-process and a call activity are the same rounded rectangle and
+  differ only in border thickness, so a call activity really does come out with
+  the thick border that IS the distinction between them. Everywhere else the
+  members of a family already share a preset, and the full patch is kept anyway —
+  insurance for the day a family gains a member that styles itself differently,
+  and the guarantee that morph and palette can never disagree.
+
+  One new telemetry event, `FrameworkElementMorphed`, carrying the two roles, the
+  framework and how many elements one gesture rewrote — never board content. It is
+  its own event rather than a creation one for the reason `FrameworkElementPromoted`
+  is: a morph inserts nothing, and counting it as a creation would inflate
+  "elements added per framework" forever.
+
+- f929e12: a c4 board declares its level, and the view polices it
+
+  C4's levels are not only zooms of an element — they are DIAGRAM TYPES, and each
+  one is defined by what appears on it. Until now the canvas had no way to say
+  which of them a sheet was: the board's title is free text, so a board called
+  "Payments" said nothing about whether it showed the system's context, its
+  containers or its components. Every level rule had to guess the level from what
+  happened to be drawn, and the level skip that is easiest to draw — a system
+  boundary full of components with no container boundary anywhere — was invisible
+  to the whole pack, as `c4.component-level-skip` documented at length.
+
+  A C4 board now carries an optional **level**, set from a small dropdown on the
+  selected board: Free sketch (the default), then the four C's the notation is
+  named after — Context, Containers, Components, Code. It is a declared fact
+  sitting beside the title, not a rename — the author keeps whatever words they
+  wrote — and choosing Free sketch clears it again, so a board that never states
+  one is byte-identical to every C4 board drawn before today.
+
+  Two rules read it, citing C4's diagram types:
+
+  - **a context diagram** draws systems as boxes, with the people and neighbouring
+    systems around them. Containers, components and boundaries have no place on
+    one;
+  - **a container diagram** draws one system's containers inside its system
+    boundary. Components and container boundaries belong on the next sheet down.
+
+  Persons, systems, the containers themselves and the system boundary stay legal
+  throughout: C4 draws its neighbours at every level, and the rules refuse only
+  what the notation actually refuses. Two of the four levels declare no rule at
+  all — a component diagram legitimately shows everything C4 names, and a code
+  diagram is a level this pack cannot yet speak about, since the editor draws no
+  code-level artefact. Both are still an author's to declare: what a sheet may say
+  about itself is the notation's business, not this editor's. Both rules are
+  remarks on Sketch and warnings once the board is set to Review checklist, which
+  now promotes eleven of the sixteen rules — and a board that declares no level is
+  silent under both, so no diagram already drawn gains a finding.
+
+  Under it, the engine gains a generic **`view-admissibility`** family: a rule
+  names the prop a frame writes its level in, plus the roles each level value does
+  not admit. Nothing in it knows C4 — the prop name and the levels are the rule's
+  own data — so any framework whose views come in kinds can ask the same question.
+  It is the first family whose subject is the sheet rather than an artefact, it
+  walks the surface once, and a frame that declares no level costs it nothing.
+
+- 13360cd: feat(edgeless): a C4 element changes into a nearby kind from its own toolbar
+
+  Discovering, halfway through a container diagram, that the box should have been
+  the **cylinder** used to cost a delete, a re-draw, a re-connect and three tiers
+  of retyped words. Select a C4 element now and its contextual toolbar carries a
+  **Change type** dropdown: turn a container into a database, a mobile app or a
+  web app; turn a person or a software system into its external, grey twin. The
+  component stays the same component — same box, same name, same description,
+  same relationships, same ids — and one ctrl+z puts it back.
+
+  What an element may become is **declared data**: three families — the two
+  people, the two software systems, and the four containers (the plain box, the
+  cylinder, the phone and the browser window). Every member of a family lays its
+  words out identically, which is what makes the swap free of any re-layout: the
+  three tiers stay exactly where they were. Nothing crosses between the families,
+  and the **component** is deliberately in none of them — a component is a part of
+  a container, not another drawing of one, and offering that swap would invite a
+  diagram that mixes two levels of the model. Boundaries and boards are frames and
+  are never offered it either.
+
+  What changes is the shape's kind, its role and its full appearance, taken from
+  the very table the palette draws from — so a morphed database and one drawn
+  fresh from the sub-menu are the same element. That matters visibly here: a
+  container paints its body natively and a cylinder, a phone and a browser window
+  hand it to the renderer, so a two-field patch would have left a rectangle
+  painted behind the cylinder. The grey of an external element moves with it for
+  the same reason.
+
+  The component's own words follow the shape too, under one timid rule: **only
+  what the notation itself wrote is rewritten, never what you typed.** An
+  untouched container morphed to a database is renamed "Database" and captioned
+  `[Container: technology]`, because a cylinder captioned "Container" is a picture
+  contradicting itself. A container you called "Customer database", built with
+  React, keeps both — the name verbatim, and the technology carried across into
+  the new caption.
+
+  Under the hood, the generic morph module now supports **composite** artefacts: a
+  C4 element is a native group holding the shape and its three lines of words, so
+  a spec may say which element inside the selection the kind is actually written
+  on, and what else the artefact owes the change — both inside one undo step.
+  BPMN's own declaration is untouched. Registering it also lifted an invisible
+  ceiling: a toolbar flavour used to hold at most two modules, and both of the
+  group's slots were already taken (native group operations, and Wardley's
+  qualification dropdown, which is on the group for the very same reason). A
+  module may now name its owner, so several frameworks can contribute to one
+  element's row, and a morph's toolbar entry is scoped by the framework that
+  declared it so two of them on one row can never be merged into one dropdown.
+  The whole view layer is mounted in a test that fails on the collision that used
+  to be silent until the editor refused to open.
+
+- 32e4d45: feat(edgeless): a `.bpmn` file imports from the catalogue — with an honest report — and export warnings reach the user
+
+  The reader shipped in #160 and nobody could reach it. **Import BPMN XML** is the
+  door: open the BPMN catalogue, pick the entry, choose a `.bpmn` file, and the
+  process is on the canvas — pools, lanes, all seventeen artefacts, the sequence
+  flows, the message flows and the associations, laid out where the file's diagram
+  drew them, and brought into view.
+
+  It needs nothing selected, which is the point: the moment you want it most is on
+  an empty board. So it declines the pool's contextual toolbar (a contextual
+  toolbar is a statement about a selection) and the senior sub-menu (which is what
+  you reach for to draw something), and lives in the catalogue, the command
+  palette and the agent surface. It does declare one precondition — it writes, so
+  it withdraws from every surface on a read-only document rather than sitting
+  there lit and doing nothing. It is keyless by default and bindable from
+  Settings › Shortcuts like every other framework command.
+
+  The whole imported file arrives in view: the fit is computed from the shapes,
+  which is what makes a process a bpmn.io user dragged far across their canvas
+  land at a readable size rather than as a speck beside the origin.
+
+  **It is filed in a new `interchange` section, and the export moved in beside
+  it.** The two directions of one format are one subject — this board as a `.bpmn`
+  file, out and in — and the export was under `swimlanes` only because the pool's
+  "⋮" is where it is reached from and a section of one is not a section. Nothing
+  moved inside any section: a category is where a command is filed, not where it
+  sits.
+
+  **The import says what it cost.** A notification names what was drawn, what was
+  carried (kept verbatim in the document, invisible on the canvas, because Labre
+  has no artefact for it) and what was quarantined (kept, and deliberately never
+  written back, because re-emitting it would produce a file that contradicts the
+  drawing) — plus the BPMN version and the tool that wrote the file, so
+  "bpmn.io drew it differently" is answerable in one line. When there are remarks,
+  a second notification spells them out; past a handful it defers to a
+  `console.table` that always holds all of them. That is v1 of the report (ADR
+  0012's open question 4): the
+  destination is the conformity panel, where an import remark belongs beside a
+  validation finding, and the console is named as a stopgap rather than dressed up
+  as a home.
+
+  A file that is not a readable BPMN document — malformed XML, a DMN decision
+  model, a choreography — is refused with the reader's own sentence, which knows
+  which of those it was. Nothing is drawn, and nothing is half-drawn.
+
+  What arrives is a new board beside whatever was already on the surface, never a
+  merge, and the whole file is one undo step.
+
+  **And the export's warnings finally reach somebody.** The writer has been
+  recording what a board says that BPMN has no way to write down — a message flow
+  on a board with no pool, an arrow with a loose end, an artefact drawn outside
+  every pool that most tools will not render, an imported id that could not be
+  given back — and the command threw the list away. It now raises one
+  notification. The file still downloads, and it is still valid: a warning names
+  what the format could not carry, not a failure.
+
+  Both notifications go through the host's notification service. A standalone
+  playground registers none and degrades to silence — the elements are on the
+  surface either way.
+
+- b03132c: feat(std): runCommand feeds an injectable usage store
+
+  The editor now measures how recently and how often each command was invoked,
+  and exposes the seam a host needs to persist those measures itself.
+
+  `runCommand` — already the one place a command runs and the one place its
+  telemetry is emitted — records every invocation into `CommandUsageIdentifier`.
+  Every invocation, not every instrumented one: the call sits outside the
+  telemetry condition, so core actions, toggles and the self-emitting commands
+  are counted like the rest. Telemetry leaves for a dashboard; usage is local
+  state the editor reads back, and the sub-menu that will show a framework's
+  seven most relevant commands has to rank artefacts nobody thought to
+  instrument.
+
+  The default store keeps the pair of numbers in this browser's `localStorage`,
+  capped and best-effort: a browser refusing storage costs a measure, never a
+  command. A host that owns per-user state replaces it wholesale with
+  `CommandUsageExtension(store)`, so the ranking follows the user from laptop to
+  tablet instead of restarting at zero.
+
+  Measurement only — nothing ranks anything yet, and no menu changes.
+
+- 9022c92: feat(blocks): a framework background can declare zones its instances shape
+
+  Until now a background's zones were the framework's: the same four quadrants on
+  every Cynefin grid, the same four phases on every Wardley map. A framework can
+  now declare that its elements carry a partition of their OWN plot —
+  `instanceZones` names the model prop that holds it, which way the pieces stack,
+  the line drawn between two of them and the style their names are written in.
+  The named consumer is the **BPMN pool's lanes (couloirs)**, arriving in the next
+  tranche; this one is the platform capability alone, and no framework in the
+  library declares the field yet.
+
+  Sizes are relative **weights**, never lengths. A pool with lanes of `1, 2, 1`
+  gives the middle one half its height at any size, and dragging the pool taller
+  redistributes the extra space proportionally instead of leaving a gap under the
+  last band. It is the same reasoning every position in the primitive is a ratio
+  of the plot for: a background survives being stretched, and so must the
+  partition the user drew on it. A row with no finite, positive size is dropped
+  with a warning and its neighbours share the space — one band fewer, never an
+  invented one, and never a broken frame.
+
+  The dividers are painted with the zone tints they separate, under the
+  graduations and the axis lines; the names are written horizontally at the
+  top-left of each band, with the other texts. Zone names are drawn by the
+  renderer and are **not** double-clickable on the canvas: the label walk that
+  feeds the hit tester is a function of the declaration alone, and a zone is
+  created, deleted and renamed through its framework's own tooling.
+
+  The audit reports an instance's zones after the framework's, namespaced
+  (`lane:sales`) so a user-named zone cannot shadow a declared one, and carrying
+  the user's own wording in a new optional `name`. An element's `zone` fact
+  therefore now reads `lane:<id>` on a frame that partitions itself, with no
+  change to how it is resolved.
+
+  **No document changes**, and nothing on screen moves: a declaration that says
+  nothing about instance zones paints exactly the picture it painted before, down
+  to the canvas operation.
+
+- edfaba2: feat(edgeless): interchange imports share one materializer, reporter and picker — and **Import BPMN XML** joins the senior sub-menu
+
+  **Importing a `.bpmn` file no longer starts with finding the catalogue.** The
+  entry is in the BPMN sub-menu, beside the artefacts, which is the first thing a
+  user opens on an empty canvas — and an empty canvas is exactly where somebody
+  who was just sent a process is standing. The PO decision of 2026-08-28 reverses
+  the earlier reading ("the sub-menu is a row of things you draw") for the import
+  alone: a board comes _from_ a file. The export keeps the old reading — it is
+  what you do to a board you already have, and it is reached from the pool it is
+  about. The row itself is unchanged in size: BPMN's toolbox has been past the cap
+  for a while, so the sub-menu still shows thirteen ranked buttons plus **More
+  artefacts…**, and the import takes a slot only for the user who actually reaches
+  for it.
+
+  The picker now filters on what the format itself declares, which is why a
+  process saved as `.xml` — half the tools in the wild write one — can be picked
+  again where the old hard-coded filter had it greyed out. What the file _is_ is
+  still decided by the reader, which refuses anything that is not a BPMN
+  `<definitions>`.
+
+  **Under it, the import glue became the platform's rather than BPMN's.** Writing
+  an imported board onto the surface, repairing the connector ends that named the
+  source file's ids, fitting the drawing into view, and saying what the import
+  cost were written once for BPMN and were never about BPMN. They are now five
+  functions in `@labre/affine-block-surface` — `materializeInterchangeImport`,
+  `reportInterchangeImport`, `importInterchangeFile`, `runInterchangeImportFile`
+  and `interchangeImportersByExtension` — and they are the **public import API**:
+  a host builds its own canvas import UI on them, and a framework's import command
+  is one call. BPMN's own entry points are unchanged and behave identically.
+
+  The two file-shaped entries are a pair, and a host wants the first of them:
+  `importInterchangeFile(std, capability, file)` imports a `File` the caller
+  ALREADY HAS — a drop, a paste, an "open with", a fetch from a document store —
+  while `runInterchangeImportFile(std, capability)` is that same import with the
+  picker in front of it, which is what a command wants. A drop zone must not be
+  answered with a dialog, and neither should have to re-implement the id
+  remapping or the viewport fit to avoid one.
+
+  `interchangeImportersByExtension` answers "what could read a file called this",
+  and answers with a **list**: `.svg` will be claimed by several frameworks at
+  once, because which framework's vocabulary a picture is a picture _of_ is not a
+  fact about a filename, and guessing on the user's behalf is the one thing
+  `docs/adr/0012` refuses.
+
+  **One report wording for every format, instead of one per format.** The
+  notification composes the format's own name into a shared set of translation
+  keys (`com.labre.interchange.import.*`), so a host translates "file imported"
+  once rather than once per reader we ship, and a new format is never silently
+  untranslated. What a BPMN user reads is unchanged, down to the version line.
+
+  ### Breaking for hosts: seven translation keys are renamed
+
+  `@labre/affine` is a **minor** for this reason alone. A host with its own
+  catalogue keeps translating the old keys into nothing, and the notification
+  silently falls back to English. The migration is one-for-one — the wordings are
+  identical apart from `done`, whose format name is now composed in by the library
+  rather than baked into the string:
+
+  | removed                                         | replacement                                | wording                                                                         |
+  | ----------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+  | `com.labre.commands.bpmn.importXml.done`        | `com.labre.interchange.import.done`        | `BPMN file imported` → `file imported` (the library prefixes the format's name) |
+  | `com.labre.commands.bpmn.importXml.failed`      | `com.labre.interchange.import.failed`      | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.remarks`     | `com.labre.interchange.import.remarks`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.console`     | `com.labre.interchange.import.console`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.drawn`       | `com.labre.interchange.import.drawn`       | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.carried`     | `com.labre.interchange.import.carried`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.quarantined` | `com.labre.interchange.import.quarantined` | unchanged                                                                       |
+
+  `com.labre.commands.bpmn.importXml` and `…importXml.description` — the command's
+  own label and description — are **not** affected; nor is
+  `com.labre.commands.bpmn.exportXml.warnings`, which stays BPMN's because no
+  other format's writer speaks through it.
+
+- e42e0c0: feat(std): the senior menu caps at fourteen and ranks seven past it
+
+  A framework's senior button opens one row of buttons, and that row holds
+  **fourteen**. Until now that number was a design review: the registry test
+  refused a framework that _declared_ more than fourteen sub-menu commands, and
+  nothing said what a framework should do once its toolbox honestly outgrew them.
+  It now has an answer.
+
+  Below the cap nothing changes at all — the sub-menu is the framework's authored
+  list, whole and in the order its author wrote it. Past it, the row becomes a
+  **shortcut to the seven artefacts this user actually reaches for**: the four
+  most-used plus the three most-recent, deduplicated, with a command that tops
+  both axes taking one slot and handing the freed one back to frequency. Two axes
+  rather than one, because frequency alone never surfaces the tool picked up
+  yesterday and recency alone would reshuffle the row at every click.
+
+  The seven are then laid out **in authored order, never in rank order**. What the
+  ranking decides is membership; position stays where the framework put it,
+  because a menu whose buttons swap places under the cursor is precisely the
+  pattern this feature exists to avoid. On a fresh install, with nothing measured
+  yet, both axes collapse to authored order and the row shows the first seven — a
+  cold start that is deterministic rather than empty.
+
+  The ranking reads the framework's **whole catalogue**, not the fourteen its
+  author picked. An artefact left out of the row that a user invokes constantly
+  has earned a slot, and a selection that could only ever demote would never learn
+  that.
+
+  Beside the seven sits a permanent **More artefacts…** button, opening the
+  catalogue sidepanel on the framework's full toolbox — and it appears only when
+  something answers the new `ArtefactCatalogueProvider` seam, since a button that
+  opens nothing is a dead control. The seam ships here as an interface; the panel
+  behind it arrives in its own release.
+
+  **Nothing visible changes today.** The largest framework in the library declares
+  thirteen artefacts, so no senior menu is past the cap and every one of them
+  still shows its whole toolbox. This is the rule the BPMN full pack will be the
+  first to meet.
+
+  > **Superseded later in this same release** — "The senior sub-menu seats
+  > thirteen". The PO re-arbitrated on 28/08/2026: the row seats **thirteen**
+  > (seven most-recent + six most-used), and the ranking reads the framework's
+  > **nominated `senior-menu` list** rather than its whole catalogue. The cap of
+  > fourteen, the author-order position law and the deterministic cold start below
+  > are unchanged.
+
+- 256ee0b: feat(edgeless): the artefact catalogue sidepanel
+
+  A framework's senior sub-menu is a row of icons, and a row of icons stops
+  working somewhere around fourteen. The catalogue is where the rest go: a
+  full-height column down the left edge of the editor, listing everything the
+  framework declares on the `'catalogue'` surface — grouped by the categories the
+  framework itself declared, each artefact spelled out with its icon, its
+  translated label and its keyboard chord instead of guessed from a glyph.
+
+  It is drawn from the command registry and nothing else, so a framework that
+  adds an artefact gets a row for it with no code written here. Rows are at least
+  44px tall because these boards are worked on a tablet as often as on a laptop;
+  the list scrolls, the canvas behind it does not. One tap runs the command and
+  puts the panel away — and X, Escape and a click on the canvas all close it on
+  the first gesture, none of them touching the tool the user had armed.
+
+  `ArtefactCatalogueProvider` is the seam. The library registers its own panel as
+  the default implementation, unconditionally; a host that already owns a sidebar
+  registers `ArtefactCatalogueExtension(service)` and takes the catalogue over,
+  after which the library's widget is never asked to open.
+
+  Dormant until something opens it: no framework overflows its sub-menu yet, so
+  today nothing calls `open` — the panel is there for the BPMN pack and for the
+  hosts that want the catalogue on their own terms.
+
+- 6a20738: The catalogue scrolls under the wheel, stays open while furnishing, and can be switched off
+
+  Three PO-recette corrections (27/08/2026). A wheel over the sidepanel now
+  scrolls the artefact list instead of panning the board behind it — the same
+  capture-phase fix the violation bubble earned in PR #103, scoped to the
+  panel's own box so the canvas beside it keeps panning. Inserting an artefact
+  no longer closes the panel: furnishing a diagram is several artefacts in a
+  row, and the exits (close button, Escape, click-away) are all still one
+  gesture. And `ArtefactCatalogueExtension(null)` is now the documented
+  cold-assembly switch-off: the provider answers nothing, the "More artefacts"
+  button is not rendered, the library panel never opens.
+
+- f09f9a3: The senior sub-menu seats thirteen — seven recent, six most-used — and only
+  commands that belong there
+
+  Two PO rulings of 28/08/2026 on a framework's senior sub-menu past the cap.
+  Both **supersede the arbitration recorded on 26/08/2026** ("the senior menu caps
+  at fourteen and ranks seven past it", earlier in this release): that entry's cap
+  of fourteen, author-order position law and deterministic cold start all stand —
+  its slot count, its 4 + 3 split and its "rank the whole catalogue" rule do not.
+
+  **Only its declarers are eligible.** The ranking used to read the whole
+  catalogue, so a command that deliberately declines the sub-menu could be dragged
+  into it by its own usage: the PO met "Export BPMN" in a row of things you DRAW
+  and rightly asked what it was supposed to export. Membership is now drawn from
+  the `senior-menu` surface alone — a declined surface is a statement about where
+  a command belongs, not a default usage may out-vote. The overflow trigger still
+  reads the catalogue, and the sidepanel's "Recent & frequent" head section still
+  ranks it too: that panel is where every command of a framework is reachable, so
+  a board action really does belong at its head.
+
+  **Thirteen slots instead of seven, recency first.** Seven buttons in a
+  fourteen-wide row left it half-empty; thirteen plus the permanent "More
+  artefacts…" button is exactly the cap. The split is inverted to seven
+  most-recent plus six most-used, because what you reached for this morning is
+  what you are still working on. A command that tops both axes takes a recent
+  slot, freeing its most-used slot for the next workhorse down. Display order
+  remains author order — the ranking decides membership, never position — and a
+  cold start still opens on the authored head, now thirteen deep.
+
+  **The sidepanel's head section stays at seven.** Both PO rulings are about the
+  sub-menu, and thirteen is argued from its geometry: a horizontal row of icon
+  buttons where thirteen plus "More artefacts…" makes the fourteen cap. None of
+  that transfers to a vertical list of 44px rows in a 320px panel, where thirteen
+  would fill a laptop's first screen with duplicated shortcuts and push every
+  category below the fold. The two surfaces share the arbitration and not its
+  magnitude: the head keeps its own split (four recent + three used), so both
+  halves of a section labelled "Recent & frequent" survive.
+
+- Updated dependencies [f929e12]
+- Updated dependencies [c03090c]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

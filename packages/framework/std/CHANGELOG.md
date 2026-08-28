@@ -1,5 +1,167 @@
 # @labre/std
 
+## 0.33.0
+
+### Minor Changes
+
+- 5737a56: feat(std): elements can carry a sealed foreign-interchange payload per format — the ADR 0012 field
+
+  Every surface element gains one optional field, `interchange`: verbatim foreign
+  matter from an import, keyed by the FORMAT it came from (`bpmn`, `owm`, …) and
+  never by the framework, because a `.bpmn` file and an OWM file make different
+  promises about the same element.
+
+  Nothing writes it yet — this is the carrier ADR 0012 decided, landing ahead of
+  the importers that will fill it. It is dumb storage on purpose: the model holds
+  fragments, foreign attributes, the source file's own id and whatever an importer
+  chose to quarantine, and it never learns what any of that means. What it carries
+  is keyed by **scope** — the source element a fragment came off, named by its own
+  id or by an `@`-prefixed role key like `@self` or `@shape` — because one Labre
+  element routinely stands for several source elements at once, and a map keyed by
+  attribute name alone lets what came off one of them overwrite what came off
+  another. The scope is also the only record of where an exporter has to put a
+  fragment back. The
+  three-state contract an import obeys — **mapped** (there is a Labre artefact,
+  re-emitted from the drawing), **carried** (kept verbatim, re-emitted in place),
+  **quarantined** (kept, but re-emitting it would contradict the document) —
+  lives in the importers and exporters, and stays there.
+
+  Per element rather than in a table beside the document, because that is the only
+  shape that survives the day-to-day. Copy an imported task, duplicate it,
+  alt-drag it, turn it into a linked doc: the payload travels, because a copy
+  replays the element's own serialized props. Delete the task and the payload goes
+  with it, instead of leaving a row nothing will ever collect. Declared on the
+  base class rather than per subclass for the same reason and one more — a BPMN
+  sequence flow is a plain connector, and shared plumbing should not carry a
+  framework's name.
+
+  Costs nothing to a board that never met an import: the default is `undefined`
+  and no key is written, so an element stays byte-identical to one created before
+  the field existed. No schema version bump, no migration, every document on disk
+  opens unchanged.
+
+### Patch Changes
+
+- b03132c: feat(std): runCommand feeds an injectable usage store
+
+  The editor now measures how recently and how often each command was invoked,
+  and exposes the seam a host needs to persist those measures itself.
+
+  `runCommand` — already the one place a command runs and the one place its
+  telemetry is emitted — records every invocation into `CommandUsageIdentifier`.
+  Every invocation, not every instrumented one: the call sits outside the
+  telemetry condition, so core actions, toggles and the self-emitting commands
+  are counted like the rest. Telemetry leaves for a dashboard; usage is local
+  state the editor reads back, and the sub-menu that will show a framework's
+  seven most relevant commands has to rank artefacts nobody thought to
+  instrument.
+
+  The default store keeps the pair of numbers in this browser's `localStorage`,
+  capped and best-effort: a browser refusing storage costs a measure, never a
+  command. A host that owns per-user state replaces it wholesale with
+  `CommandUsageExtension(store)`, so the ranking follows the user from laptop to
+  tablet instead of restarting at zero.
+
+  Measurement only — nothing ranks anything yet, and no menu changes.
+
+- e42e0c0: feat(std): the senior menu caps at fourteen and ranks seven past it
+
+  A framework's senior button opens one row of buttons, and that row holds
+  **fourteen**. Until now that number was a design review: the registry test
+  refused a framework that _declared_ more than fourteen sub-menu commands, and
+  nothing said what a framework should do once its toolbox honestly outgrew them.
+  It now has an answer.
+
+  Below the cap nothing changes at all — the sub-menu is the framework's authored
+  list, whole and in the order its author wrote it. Past it, the row becomes a
+  **shortcut to the seven artefacts this user actually reaches for**: the four
+  most-used plus the three most-recent, deduplicated, with a command that tops
+  both axes taking one slot and handing the freed one back to frequency. Two axes
+  rather than one, because frequency alone never surfaces the tool picked up
+  yesterday and recency alone would reshuffle the row at every click.
+
+  The seven are then laid out **in authored order, never in rank order**. What the
+  ranking decides is membership; position stays where the framework put it,
+  because a menu whose buttons swap places under the cursor is precisely the
+  pattern this feature exists to avoid. On a fresh install, with nothing measured
+  yet, both axes collapse to authored order and the row shows the first seven — a
+  cold start that is deterministic rather than empty.
+
+  The ranking reads the framework's **whole catalogue**, not the fourteen its
+  author picked. An artefact left out of the row that a user invokes constantly
+  has earned a slot, and a selection that could only ever demote would never learn
+  that.
+
+  Beside the seven sits a permanent **More artefacts…** button, opening the
+  catalogue sidepanel on the framework's full toolbox — and it appears only when
+  something answers the new `ArtefactCatalogueProvider` seam, since a button that
+  opens nothing is a dead control. The seam ships here as an interface; the panel
+  behind it arrives in its own release.
+
+  **Nothing visible changes today.** The largest framework in the library declares
+  thirteen artefacts, so no senior menu is past the cap and every one of them
+  still shows its whole toolbox. This is the rule the BPMN full pack will be the
+  first to meet.
+
+  > **Superseded later in this same release** — "The senior sub-menu seats
+  > thirteen". The PO re-arbitrated on 28/08/2026: the row seats **thirteen**
+  > (seven most-recent + six most-used), and the ranking reads the framework's
+  > **nominated `senior-menu` list** rather than its whole catalogue. The cap of
+  > fourteen, the author-order position law and the deterministic cold start below
+  > are unchanged.
+
+- 48c3b52: The catalogue leads with what you reach for
+
+  The sidepanel now opens on a "Recent & frequent" head section (PO recette,
+  27/08/2026): the same seven-slot arbitration the senior sub-menu runs,
+  re-consumed through the new pure `rankCommandsByUsage` — one ranking, two
+  consumers, never two opinions. (Later in this same release the two axes swap
+  priority to recency-first, and the sub-menu grows to thirteen slots while this
+  section stays at seven — see "The senior sub-menu seats thirteen".)
+  Only commands that actually carry a measure appear, so a fresh install shows
+  no section rather than a "recent" label padded with the never-used; the rows
+  repeat below in their categories, the way every launcher does it.
+
+- f09f9a3: The senior sub-menu seats thirteen — seven recent, six most-used — and only
+  commands that belong there
+
+  Two PO rulings of 28/08/2026 on a framework's senior sub-menu past the cap.
+  Both **supersede the arbitration recorded on 26/08/2026** ("the senior menu caps
+  at fourteen and ranks seven past it", earlier in this release): that entry's cap
+  of fourteen, author-order position law and deterministic cold start all stand —
+  its slot count, its 4 + 3 split and its "rank the whole catalogue" rule do not.
+
+  **Only its declarers are eligible.** The ranking used to read the whole
+  catalogue, so a command that deliberately declines the sub-menu could be dragged
+  into it by its own usage: the PO met "Export BPMN" in a row of things you DRAW
+  and rightly asked what it was supposed to export. Membership is now drawn from
+  the `senior-menu` surface alone — a declined surface is a statement about where
+  a command belongs, not a default usage may out-vote. The overflow trigger still
+  reads the catalogue, and the sidepanel's "Recent & frequent" head section still
+  ranks it too: that panel is where every command of a framework is reachable, so
+  a board action really does belong at its head.
+
+  **Thirteen slots instead of seven, recency first.** Seven buttons in a
+  fourteen-wide row left it half-empty; thirteen plus the permanent "More
+  artefacts…" button is exactly the cap. The split is inverted to seven
+  most-recent plus six most-used, because what you reached for this morning is
+  what you are still working on. A command that tops both axes takes a recent
+  slot, freeing its most-used slot for the next workhorse down. Display order
+  remains author order — the ranking decides membership, never position — and a
+  cold start still opens on the authored head, now thirteen deep.
+
+  **The sidepanel's head section stays at seven.** Both PO rulings are about the
+  sub-menu, and thirteen is argued from its geometry: a horizontal row of icon
+  buttons where thirteen plus "More artefacts…" makes the fourteen cap. None of
+  that transfers to a vertical list of 44px rows in a 320px panel, where thirteen
+  would fill a laptop's first screen with duplicated shortcuts and push every
+  category below the fold. The two surfaces share the arbitration and not its
+  magnitude: the head keeps its own split (four recent + three used), so both
+  halves of a section labelled "Recent & frequent" survive.
+
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

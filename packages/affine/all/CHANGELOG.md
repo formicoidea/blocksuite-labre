@@ -1,5 +1,1789 @@
 # @labre/affine
 
+## 0.33.0
+
+### Minor Changes
+
+- 5c39582: feat(edgeless): an SVG file imports as an editable sketch
+
+  **Somebody sent you a picture of a process, not a `.bpmn`.** Open the artefact
+  catalogue, pick **Import SVG sketch**, and the drawing arrives on the canvas as
+  elements you can move, recolour and rewrite: rectangles, ellipses, polygons,
+  brush strokes — and every `<text>` in the file as a **free-text element you can
+  double-click and edit**, which is the whole point. A label that arrived as a
+  picture of a word would be a label nobody could correct.
+
+  The entry is under **Interchange** in the catalogue sidepanel (one click away
+  via _More artefacts…_), on both the BPMN and the Wardley frameworks, and it is
+  also in the command palette and available to an agent. It is deliberately **not**
+  in the senior sub-menu: that row carries a framework's native-format import —
+  **Import BPMN XML** today — and this is the fallback for everything else.
+
+  ### It says what it is before it opens the file
+
+  "Best effort: recognises shapes and text, no round-trip." That sentence is the
+  contract (`docs/adr/0012`, P2), and it is on the button rather than in a report
+  afterwards. What lands is a **sketch you then promote**: nothing here decides
+  that a rounded rectangle in your picture was a task, or that a circle was a
+  Wardley component. An SVG carries a rendering, not a model, so there is nothing
+  to preserve and nothing is written into the document beyond the drawing itself —
+  no hidden payload, and no round-trip implied.
+
+  ### And it never drops anything quietly
+
+  The import report names every construct it could not read, **once per kind**: a
+  `scale` or `rotate` transform it ignored (the shape is imported, at its
+  untransformed position), curves it approximated by their endpoints, gradients it
+  replaced with a flat neutral, transparency it flattened, and the constructs the
+  sanitizer removed before the reader saw them — `<use>` and `<foreignObject>`,
+  which is why a drawing built out of symbol instances can arrive nearly empty and
+  now says so instead of leaving you to guess. Three hundred `<use>` instances are
+  one remark, not three hundred.
+
+  Parts of a file marked `display:none` or `visibility:hidden` are **not**
+  imported, and the report says so: they draw nothing where the file came from,
+  and SVG's initial fill is black — so importing an exporter's off-canvas
+  scaffolding "faithfully" would put a large black slab over your board.
+
+  The drawing also arrives at the **size the file displays it at**. An SVG whose
+  `viewBox` is 1000 units wide and whose `width` is 200 is a drawing at one-fifth
+  scale, and the import applies that factor to positions, sizes, stroke widths and
+  font sizes alike.
+
+  One thing worth knowing before you reach for it: a **mermaid** diagram paints
+  almost entirely through a CSS `<style>` sheet, which this reader does not apply
+  — so a mermaid SVG arrives in the initial colours, mostly black, with a remark
+  saying why.
+
+  A blank drawing imports as nothing plus a remark rather than an error. A file
+  that is not well-formed XML is refused, by name.
+
+  Both frameworks read through **one** parser, so they cannot drift into
+  recognising different pictures — and which framework's vocabulary a picture is a
+  picture _of_ stays your call, never an inference from the filename.
+
+  ### For hosts
+
+  `@labre/affine` is a **minor** because the library gains two commands and a new
+  public function, not because anything was removed. `parseSvgSketch`,
+  `SVG_SKETCH_FORMAT_ID`, `SVG_SKETCH_EXTENSION` and `SVG_SKETCH_MIME` are
+  exported from `@labre/affine-block-surface`, and each framework exports its own
+  capability (`BPMN_SVG_IMPORT`, `WARDLEY_SVG_IMPORT`) — so a host can build its
+  own drop zone on `importInterchangeFile` without going near a picker.
+
+  One thing to know if you render the command palette flat: `bpmn.importSvg` and
+  `wardley.importSvg` **share the label "Import SVG sketch"**, because they do the
+  same thing to the same file and only the framework offering it differs.
+  Disambiguate on `owner` — the ids are distinct, and so is every other field.
+
+- 48049d6: feat(edgeless): a context map is drawn on a board, and its relationships are typed
+
+  A Context Map now has a **board** to be drawn on — a white card, deliberately
+  without axes or zones, because nothing about where a bounded context sits on the
+  sheet means anything. What the board is for is the frame: it is what tells the
+  tool which artefacts belong to the map, and it is what a per-map level of
+  requirement is written on. It is created 1400 × 900 from a new first entry in the
+  Context Map palette and can be stretched freely in either direction.
+
+  The nine **relationship patterns changed gesture**. They used to drop a little
+  drawing in mid-air — a line between two points, an abbreviation tag, two letters
+  — that looked like the notation and said nothing: the line was attached to
+  nothing, so nobody, human or machine, could tell which contexts it related, and
+  the user still had to drag both ends onto the bubbles by hand. Choosing a pattern
+  now arms the link tool, pre-styled (dashed for Separate Ways and Big Ball of Mud,
+  an arrowhead towards the downstream end for the five upstream/downstream ones),
+  and the user draws the relationship between two contexts. For the patterns that
+  have a direction the tool says which way to drag: from the upstream context to
+  the downstream one.
+
+  That is what makes the map **readable by the tool**, and five checks come with
+  it. It says so when a relationship loops back onto its own context, when the same
+  pattern is drawn twice between the same two contexts, when a context is parked
+  off the board, and — the two that are really about DDD — when a couple carries
+  both a Conformist and an Anticorruption Layer, or a Customer/Supplier plus a
+  pattern that contradicts it. An Anticorruption Layer on a Customer/Supplier is
+  reported more quietly, at every level of requirement, because it is a question
+  and not a mistake: it is legitimate while a model is being retired, and only the
+  team knows whether that is the case. Everything else stays silent — a
+  relationship drawn onto a cloud, onto a note, onto anything the model has not
+  named is somebody sketching.
+
+  Two levels of requirement ship with it, **Sketch** (the default: findings are
+  recorded, the canvas says nothing) and **Strict**, chosen per board from the
+  board's toolbar, plus a four-point quality checklist the tool cannot judge for
+  you: every relationship carries a discussed pattern, Separate Ways are
+  documented, every downstream of a Big Ball of Mud is protected, the map has a
+  legend.
+
+  **Nothing already drawn changes.** Maps made before this release carry no roles,
+  so not one of them is judged, and the old relationship drawings keep rendering
+  exactly as they are — they are simply drawings now, and the tool has nothing to
+  say about them. Redrawing one with the new tool is what makes it a statement.
+
+- 168617d: feat(edgeless): an event storming board carries a timeline, and its flows are typed
+
+  Event Storming now has a **board** to be stormed on — a wide white roll, 3200 ×
+  1400, freely stretchable in either direction — and it carries the one thing the
+  method actually has a frame of reference for: a **time axis** along the bottom,
+  running left to right. Nothing else is graduated, on purpose. How high a sticky
+  sits on the wall means nothing, and drawing lanes to suggest it did would invent
+  a meaning the framework does not have; swimlanes are deliberately left for a
+  later release rather than half-shipped. The board is created from a new first
+  entry in the Event Storming palette. The axis is drawn **heavy, and labelled
+  big**: the word "Time" is set large enough to be read at the zoom where a whole
+  3200-wide Big Picture fits on screen, which is the zoom a Big Picture is
+  actually looked at. It is the only thing the board declares, and it should not
+  be the smallest thing on it.
+
+  The palette also gains the **Aggregate**, the pale-yellow sticky a command lands
+  on and the thing that raises the event. Without it the canonical sentence —
+  command, aggregate, domain event — could not be drawn at all. It is created
+  larger than the others, as it is on a real wall, and in a paler yellow chosen so
+  that the three yellows of the notation (constraint, actor, aggregate) can be told
+  apart at a glance rather than only by position.
+
+  **Flow changed gesture.** It used to drop a little arrow in mid-air, attached to
+  nothing: it looked like the notation and said nothing, and the user still had to
+  drag both ends onto the stickies by hand. Choosing Flow now arms the link tool
+  and says which way to drag — from what happens first to what follows — and the
+  arc the user draws references the two stickies for real.
+
+  That is what makes the wall **readable by the tool**, and three checks come with
+  it. It says so when a flow runs backwards along the timeline, when an arc is not
+  one of the nine sentences Event Storming says (an actor issues a command; the
+  command lands on an aggregate or an external system; that raises a domain event;
+  the event triggers a policy or feeds a read model), and when two stickies cover
+  each other badly enough to hide a word. Everything else stays silent: an arrow
+  drawn at a **hotspot** or a constraint is somebody parking a question, not making
+  a claim, and the tool has nothing to say about it — nor about an arc onto a note,
+  onto a plain rectangle, or onto anything the model has not named. Two flows drawn
+  between the same two stickies are not reported either: a wall gets a line drawn
+  twice while three people talk at once.
+
+  There is deliberately **no check on how stickies are named**. "Order placed"
+  versus "Place order" is the first thing a facilitator corrects and the most
+  tempting rule of the lot — and reading marker-pen prose in whatever language the
+  room speaks is not something a tool can do without being wrong every fifth
+  sticky. It is a checklist item instead, beside four others the tool cannot judge
+  for you: the timeline has been read out loud and reordered, every hotspot has
+  been discussed, the actors and external systems are identified, the pivotal
+  events are marked.
+
+  Three levels of requirement ship with it, chosen per board from the board's own
+  toolbar, because Event Storming is not one activity but three. **Big Picture
+  (Sketch)** (the default) says nothing at all — a Big Picture is supposed to be
+  chaotic, and a tool arguing with that hand is judging one stage of the workshop
+  by the criteria of a later one. **Process modelling** turns on the timeline and
+  only the timeline: that stage is about ordering the frieze, and the kinds are
+  still being settled. **Software design** turns on all three.
+
+  **Nothing already drawn changes.** Walls stormed before this release carry no
+  roles, so not one of them is judged, and the old flow arrows keep rendering
+  exactly as they are — they are simply drawings now. Redrawing one with the new
+  tool is what makes it a statement.
+
+- edfaba2: feat(edgeless): interchange imports share one materializer, reporter and picker — and **Import BPMN XML** joins the senior sub-menu
+
+  **Importing a `.bpmn` file no longer starts with finding the catalogue.** The
+  entry is in the BPMN sub-menu, beside the artefacts, which is the first thing a
+  user opens on an empty canvas — and an empty canvas is exactly where somebody
+  who was just sent a process is standing. The PO decision of 2026-08-28 reverses
+  the earlier reading ("the sub-menu is a row of things you draw") for the import
+  alone: a board comes _from_ a file. The export keeps the old reading — it is
+  what you do to a board you already have, and it is reached from the pool it is
+  about. The row itself is unchanged in size: BPMN's toolbox has been past the cap
+  for a while, so the sub-menu still shows thirteen ranked buttons plus **More
+  artefacts…**, and the import takes a slot only for the user who actually reaches
+  for it.
+
+  The picker now filters on what the format itself declares, which is why a
+  process saved as `.xml` — half the tools in the wild write one — can be picked
+  again where the old hard-coded filter had it greyed out. What the file _is_ is
+  still decided by the reader, which refuses anything that is not a BPMN
+  `<definitions>`.
+
+  **Under it, the import glue became the platform's rather than BPMN's.** Writing
+  an imported board onto the surface, repairing the connector ends that named the
+  source file's ids, fitting the drawing into view, and saying what the import
+  cost were written once for BPMN and were never about BPMN. They are now five
+  functions in `@labre/affine-block-surface` — `materializeInterchangeImport`,
+  `reportInterchangeImport`, `importInterchangeFile`, `runInterchangeImportFile`
+  and `interchangeImportersByExtension` — and they are the **public import API**:
+  a host builds its own canvas import UI on them, and a framework's import command
+  is one call. BPMN's own entry points are unchanged and behave identically.
+
+  The two file-shaped entries are a pair, and a host wants the first of them:
+  `importInterchangeFile(std, capability, file)` imports a `File` the caller
+  ALREADY HAS — a drop, a paste, an "open with", a fetch from a document store —
+  while `runInterchangeImportFile(std, capability)` is that same import with the
+  picker in front of it, which is what a command wants. A drop zone must not be
+  answered with a dialog, and neither should have to re-implement the id
+  remapping or the viewport fit to avoid one.
+
+  `interchangeImportersByExtension` answers "what could read a file called this",
+  and answers with a **list**: `.svg` will be claimed by several frameworks at
+  once, because which framework's vocabulary a picture is a picture _of_ is not a
+  fact about a filename, and guessing on the user's behalf is the one thing
+  `docs/adr/0012` refuses.
+
+  **One report wording for every format, instead of one per format.** The
+  notification composes the format's own name into a shared set of translation
+  keys (`com.labre.interchange.import.*`), so a host translates "file imported"
+  once rather than once per reader we ship, and a new format is never silently
+  untranslated. What a BPMN user reads is unchanged, down to the version line.
+
+  ### Breaking for hosts: seven translation keys are renamed
+
+  `@labre/affine` is a **minor** for this reason alone. A host with its own
+  catalogue keeps translating the old keys into nothing, and the notification
+  silently falls back to English. The migration is one-for-one — the wordings are
+  identical apart from `done`, whose format name is now composed in by the library
+  rather than baked into the string:
+
+  | removed                                         | replacement                                | wording                                                                         |
+  | ----------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+  | `com.labre.commands.bpmn.importXml.done`        | `com.labre.interchange.import.done`        | `BPMN file imported` → `file imported` (the library prefixes the format's name) |
+  | `com.labre.commands.bpmn.importXml.failed`      | `com.labre.interchange.import.failed`      | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.remarks`     | `com.labre.interchange.import.remarks`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.console`     | `com.labre.interchange.import.console`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.drawn`       | `com.labre.interchange.import.drawn`       | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.carried`     | `com.labre.interchange.import.carried`     | unchanged                                                                       |
+  | `com.labre.commands.bpmn.importXml.quarantined` | `com.labre.interchange.import.quarantined` | unchanged                                                                       |
+
+  `com.labre.commands.bpmn.importXml` and `…importXml.description` — the command's
+  own label and description — are **not** affected; nor is
+  `com.labre.commands.bpmn.exportXml.warnings`, which stays BPMN's because no
+  other format's writer speaks through it.
+
+### Patch Changes
+
+- 3fbf69c: feat(edgeless): a BPMN node changes into a nearby kind from its own toolbar
+
+  Realising mid-draft that the rectangle should have been a **user task** used to
+  cost a delete, a re-draw, a re-connect and a re-typed label — and every sequence
+  flow attached to the node with it. Select a BPMN node now and its contextual
+  toolbar carries a **Change type** dropdown: pick the user task, the timer start,
+  the parallel gateway, the call activity, and the element stays the same element.
+  Same box, same words, same wires, same id. What DOES change is the artefact's
+  kind, its role and its appearance: a morph resets styling to what the target
+  kind is born as, so a morphed node and one drawn fresh from the palette are the
+  same element. One ctrl+z puts it back.
+
+  What a node may become is **declared data**, not a derivation: six families —
+  the three tasks, the three starts, the three ends, the two gateways, the two
+  data artefacts, and the sub-process with the call activity. Nothing crosses
+  between them, because a task and an end event are not the same claim about a
+  process; and the text annotation and the group belong to no family at all, so
+  the dropdown never appears on them. The role tree was the tempting source and
+  the wrong one — it makes a task and a sub-process both activities, and only a
+  human knows which pairs a reader accepts as "the same artefact, said more
+  precisely".
+
+  The capability itself is generic (`morphToolbarConfig`, in the surface package)
+  and names no framework: a second framework gets the same dropdown by declaring
+  its own families, its own patch per kind and its own icons, exactly as it
+  already registers its validation rules. BPMN is the first taker, and registers
+  it from its flag-gated half — a morph is tooling, so switching the framework off
+  takes the menu away and leaves every node drawn, painted and checked as before.
+
+  Kind and role are rewritten together in one atomic write per element, so the
+  validation engine re-judges the board on its own and no rule ever sees an
+  element that is half one artefact and half another. The patch is the shipped
+  creation preset in full, which matters concretely for one pair on today's
+  table: a sub-process and a call activity are the same rounded rectangle and
+  differ only in border thickness, so a call activity really does come out with
+  the thick border that IS the distinction between them. Everywhere else the
+  members of a family already share a preset, and the full patch is kept anyway —
+  insurance for the day a family gains a member that styles itself differently,
+  and the guarantee that morph and palette can never disagree.
+
+  One new telemetry event, `FrameworkElementMorphed`, carrying the two roles, the
+  framework and how many elements one gesture rewrote — never board content. It is
+  its own event rather than a creation one for the reason `FrameworkElementPromoted`
+  is: a morph inserts nothing, and counting it as a creation would inflate
+  "elements added per framework" forever.
+
+- 13360cd: feat(edgeless): a C4 element changes into a nearby kind from its own toolbar
+
+  Discovering, halfway through a container diagram, that the box should have been
+  the **cylinder** used to cost a delete, a re-draw, a re-connect and three tiers
+  of retyped words. Select a C4 element now and its contextual toolbar carries a
+  **Change type** dropdown: turn a container into a database, a mobile app or a
+  web app; turn a person or a software system into its external, grey twin. The
+  component stays the same component — same box, same name, same description,
+  same relationships, same ids — and one ctrl+z puts it back.
+
+  What an element may become is **declared data**: three families — the two
+  people, the two software systems, and the four containers (the plain box, the
+  cylinder, the phone and the browser window). Every member of a family lays its
+  words out identically, which is what makes the swap free of any re-layout: the
+  three tiers stay exactly where they were. Nothing crosses between the families,
+  and the **component** is deliberately in none of them — a component is a part of
+  a container, not another drawing of one, and offering that swap would invite a
+  diagram that mixes two levels of the model. Boundaries and boards are frames and
+  are never offered it either.
+
+  What changes is the shape's kind, its role and its full appearance, taken from
+  the very table the palette draws from — so a morphed database and one drawn
+  fresh from the sub-menu are the same element. That matters visibly here: a
+  container paints its body natively and a cylinder, a phone and a browser window
+  hand it to the renderer, so a two-field patch would have left a rectangle
+  painted behind the cylinder. The grey of an external element moves with it for
+  the same reason.
+
+  The component's own words follow the shape too, under one timid rule: **only
+  what the notation itself wrote is rewritten, never what you typed.** An
+  untouched container morphed to a database is renamed "Database" and captioned
+  `[Container: technology]`, because a cylinder captioned "Container" is a picture
+  contradicting itself. A container you called "Customer database", built with
+  React, keeps both — the name verbatim, and the technology carried across into
+  the new caption.
+
+  Under the hood, the generic morph module now supports **composite** artefacts: a
+  C4 element is a native group holding the shape and its three lines of words, so
+  a spec may say which element inside the selection the kind is actually written
+  on, and what else the artefact owes the change — both inside one undo step.
+  BPMN's own declaration is untouched. Registering it also lifted an invisible
+  ceiling: a toolbar flavour used to hold at most two modules, and both of the
+  group's slots were already taken (native group operations, and Wardley's
+  qualification dropdown, which is on the group for the very same reason). A
+  module may now name its owner, so several frameworks can contribute to one
+  element's row, and a morph's toolbar entry is scoped by the framework that
+  declared it so two of them on one row can never be merged into one dropdown.
+  The whole view layer is mounted in a test that fails on the collision that used
+  to be silent until the editor refused to open.
+
+- 8890efe: feat(edgeless): the senior row and the c4 catalogue follow the boards-first order, and only the board arbitrates the checklist
+
+  Three arbitrations from the second recette wave, none of which changes what a
+  document contains — all three are about the order things are met in, and about
+  which element a decision is made on.
+
+  **The senior row reads in the order the PO asked for.** Left to right: Wardley
+  Maps, EDGY, Cynefin, BPMN, Event storming, C4, Core Domain Chart, Context
+  Mapping. Only one button moved — Event storming now sits before C4 — but the
+  mechanism that decides the row was worth writing down while we were in it. No
+  framework declares a `SeniorTool.order`, so they all share the default sort
+  group; `Array.prototype.sort` is stable, so the row is exactly the registration
+  order of the flag-gated tooling extensions. That order is declared once, in
+  `FRAMEWORK_DESCRIPTORS`, and a new spec holds `view.ts` to it — along with the
+  premise it rests on, that nobody has quietly declared an `order` that would make
+  the sort start mattering. The three DDD frameworks, whose always-on and
+  flag-gated halves had drifted into two separate blocks, are paired back up like
+  every other framework, so moving one in the row moves both halves with it.
+
+  **The C4 sub-menu leads with the board.** A new house convention, decided on
+  this pack and stated where the order is declared: for a framework of fourteen
+  commands or fewer — one whose sub-menu is never arbitrated, so the author's
+  order is the only order anybody ever sees — boards come first, then the base
+  components, then the niche ones, and components of the same type stay adjacent.
+  C4 now reads: the board, then person and person (external), system and system
+  (external), container, component, then the database, the mobile app and the web
+  browser, then the relationship, the two boundaries, and the export.
+
+  This supersedes the previous order, which led with the four levels and put the
+  board sixth. That order was built to make the would-be cold start _drawable_;
+  the PO's answer is that a cold start opening with the sheet is drawable sooner,
+  and that an external variant belongs next to the plain form it varies rather
+  than in a trailing ghetto of externals. The artefact catalogue follows: its
+  first section is now Diagrams rather than Elements.
+
+  **Only the board arbitrates the level of requirement.** The Sketch / Review
+  checklist selector belongs on the C4 board and on nothing else — a boundary is
+  part of a diagram, not a diagram, and offering the picker twice invited two
+  answers to one question.
+
+  That left a real gap, because two of C4's rules — the homeless component and
+  the person drawn inside a boundary — frame their question against the
+  _boundary_, and a finding is judged by the profile of the instance it is
+  attributed to. Raising a board to its review checklist would have hardened
+  eleven rules and silently left those two at the sketch level for ever.
+
+  So the engine learned the general form of the missing sentence: **a frame that
+  names no profile inherits the one chosen on the frame it is drawn inside** — the
+  innermost of them, by the same centre-in-the-frame arithmetic the audit, the
+  membership families and the C4 export already use to answer "which frame is this
+  drawn on". A frame that _does_ name one keeps it, so a framework can still offer
+  a second picker the day it wants one. A frame drawn inside nothing still falls
+  back to its framework's default. Cross-framework nesting needs no special case:
+  a profile id belonging to another framework was already ignored, so a frame that
+  inherits a foreign one lands exactly where it landed before.
+
+  It costs nothing on a document whose author never left the default level, which
+  is most of them: choosing the default back _deletes_ the field, so the engine
+  still reads no geometry at all unless somebody has actually chosen something.
+
+- 4671780: feat(edgeless): the BPMN descriptive profile gets its toolbox
+
+  The previous release taught the pack to DRAW the descriptive conformance
+  subclass of BPMN 2.0 — seventeen artefacts, twenty-five roles, every glyph the
+  notation asks for. It shipped no way to reach them: the palette still offered the
+  four basics, and the other thirteen existed only for a document that already
+  contained one. This release is the other half. **Fifteen commands** join the
+  eight that were there, and the BPMN toolbox goes from 8 entries to **23**.
+
+  Thirteen of them create an artefact: the **message** and **timer** starts, the
+  **message** and **terminate** ends, the **user** and **service** tasks, the
+  **sub-process** and the **call activity**, the **parallel gateway**, the **data
+  object**, the **data store**, the **text annotation** and the **group**. Two arm
+  a tool:
+
+  - the **message flow** — dashed, an open circle where the message leaves and an
+    open arrowhead where it lands, which is exactly how BPMN tells it from the
+    sequence flow. Its role (`bpmn:message-flow`) was declared last release and
+    stamped by nothing; this tool is what finally writes it, so the arrow is born
+    saying "sends a message to" rather than acquiring the sentence afterwards;
+  - the **association** — dashed, and with no head at either end. That absence is
+    the point: an association names no relation, so there is no direction for
+    either end to be wrong about, and an arrowhead would be the picture claiming
+    one the vocabulary explicitly refuses.
+
+  One simplification, noted in the code: the spec draws the association DOTTED and
+  this editor has no dotted stroke (and no stroke thinner than the message flow's —
+  a connector's width is a closed enum), so the two share a line and the endpoints
+  carry the whole distinction. A message flow always shows its circle and its head;
+  an association never shows either.
+
+  **The catalogue now has sections.** All twenty-three entries used to be filed
+  under one heading called "flow", which is what a framework declares when it has
+  six things and no reason to sort them. They are now grouped as **events**,
+  **activities**, **gateways**, **flows**, **data**, **annotations** and
+  **swimlanes** — a framework naming its own sections, with a host's catalogue free
+  to translate every header.
+
+  **And BPMN is the first framework to outgrow its own sub-menu.** Twenty-three
+  entries against fourteen slots is exactly the case the senior menu was built for
+  last month: the popover now opens on the seven commands this user actually
+  reaches for, plus a permanent "More artefacts…" that opens the full catalogue
+  beside the board. Nothing is unreachable — every one of the twenty-three is in
+  the catalogue, in the command palette, bindable from Settings › Shortcuts and
+  available to the agent.
+
+  A new template card, **Message exchange**, ships with it: two participants
+  stacked, a sequence flow inside the first and a message flow crossing to the
+  second. It exists because that is the piece of BPMN people get wrong first — a
+  sequence flow may never leave its pool, and the thing that does leave is a
+  different statement drawn with a different line.
+
+- c03090c: feat(edgeless): the BPMN pack draws the whole descriptive profile
+
+  The BPMN pack knew four artefacts: a start event, an end event, a task and an
+  exclusive gateway. That is enough to draw a diagram and not enough to draw a
+  PROCESS — the moment an architect has to say what starts the thing, who does the
+  work, what the parallel branch is, or which system of record it writes to, they
+  were drawing rectangles and explaining them in a meeting. Seventeen artefacts now
+  ship: the **descriptive conformance subclass** of BPMN 2.0, which is the subset
+  the standard itself defines for people who model processes rather than execute
+  them.
+
+  What arrives: the **message** and **timer** starts and the **message** and
+  **terminate** ends; the **user** and **service** tasks, the collapsed
+  **sub-process** and the **call activity**; the **parallel gateway**; the three
+  artefacts a process needs to point at things outside itself — the **data
+  object**, the **data store** and the **text annotation**; and the **group**.
+
+  The group is the one that is not a node at all. It is a lasso: a dashed grey
+  rectangle drawn AROUND part of the picture, to say "this much of it is the
+  returns process" without claiming any of it. The spec exempts it from every
+  connection and containment rule there is — it attaches to no flow, it is not
+  bounded by the pool it overlaps, and it may straddle several at once — and it
+  behaves that way here because it has no fill: it is grabbed by its border and
+  its name, so it never steals a click from the work inside it, and the work
+  inside it never becomes its content. Its label sits in the top-left corner
+  rather than the middle, for the obvious reason.
+
+  Each is drawn the way the notation draws it, and each is drawn ON the shape it
+  already was: a message start is the same thin green ring with an envelope in it,
+  a user task the same rounded rectangle with a person in its corner, a call
+  activity the same rectangle with the border thickened to say "this stands for a
+  whole process defined somewhere else". Nothing was re-skinned, so a process drawn
+  last month sits beside one drawn today and they are the same picture.
+
+  Two deliberate simplifications against the reference rendering, both noted in the
+  code: a message END event's envelope is drawn hollow rather than solid — the
+  thick red ring already says it is an end, and it says it from further away — and
+  the timer has no hour ticks. An expanded (drilled-into) sub-process is not here
+  either: `subProcess` is the collapsed representation, the `+` box, because an
+  expanded one is a container with its own flow inside it and that is a different
+  feature.
+
+  **Fifteen roles** join the vocabulary underneath the families that were declared
+  for exactly this — the message and timer starts under `bpmn:start-event`, the
+  user and service tasks under `bpmn:task`, the parallel gateway under
+  `bpmn:gateway` — so everything already written about "an event" or "an activity"
+  keeps applying, unchanged, to artefacts that did not exist when it was written.
+
+  Two of them sit outside every family that existed. **`bpmn:data`** is a new
+  family of its own — the paperwork is not the work, and a rule about what a
+  process DOES must never reach a data store. **`bpmn:text-annotation`** and
+  **`bpmn:group`** are families of one, parent-less and childless, because
+  commentary is never evidence and a lasso is not a thing the process does — and
+  because a parent anywhere in the tree would have inherited the group exactly the
+  containment rules the spec exempts it from. And one new edge role,
+  **`bpmn:association`**, is the only one in this library
+  with no verb at all: "this note is about that task" reads the same from either
+  end, so it has no direction to be wrong about and none to fix.
+
+  **Nothing already drawn changes.** The new artefacts are new VALUES of the field
+  every BPMN node already carries — no schema change, no migration, no backfill. A
+  process authored before this release loads byte for byte and paints exactly as it
+  did.
+
+  The palette entries, shortcuts and templates for the thirteen new artefacts
+  follow in the next release; this one is the model, the vocabulary and the
+  rendering.
+
+- 766eae8: feat(edgeless): bpmn elements declare their roles and the sequence flow speaks
+
+  BPMN artefacts now carry a **semantic role** beside the `kind` they already had.
+  `kind` has not moved and still decides which glyph is painted; what it is no
+  longer is the authority on what the glyph MEANS. That authority is the role, and
+  it is what everything written about a process from now on reads — because on this
+  canvas the whole notation is drawn with three native shapes, and an ellipse is a
+  start event, an end event or somebody's doodle depending entirely on what the
+  author meant.
+
+  Ten roles ship: the three families BPMN's own taxonomy has — **event**,
+  **activity**, **gateway** — with the four artefacts of the lean pack underneath
+  them (start event, end event, task, exclusive gateway), the **pool** as the frame
+  they are drawn in, and the two connecting objects. Declaring the families now,
+  with one or two children each, is what lets the message and timer events, the
+  sub-process and the parallel gateway arrive later as leaves rather than as a
+  reshuffle: anything written about "an event" is written once and stays written.
+
+  The **sequence flow becomes a typed edge**. It says "is followed by", so its
+  source is what happens first and its target is what comes next — and the tool now
+  says so before the user draws, rather than leaving the meaning of the arrow to
+  depend on which end their finger landed on first. Hovering a sequence flow
+  reveals that sentence, and the arrow can be reversed from its toolbar, on a
+  process opened with the BPMN tooling switched off as much as on. The **message
+  flow** is declared alongside it ("sends a message to") and stamped by nothing
+  yet: it is reserved for the tool that draws it.
+
+  The shipped templates produce exactly the artefacts the palette does, so a
+  process started from a preset reads the same as a hand-drawn one — with one
+  deliberate exception, the free arrow of the "Sequence flow" card, which is
+  attached to nothing and therefore claims nothing.
+
+  **Nothing already drawn changes.** Processes made before this release carry no
+  roles, so nothing is judged and nothing is said about them; they keep rendering
+  exactly as they are. Drawing with the tools again is what makes them statements.
+
+- 82d2795: feat(edgeless): a BPMN board leaves as a `.bpmn` file
+
+  Select a pool, open the "⋮" on its toolbar, and "Export BPMN XML" downloads the
+  board as a BPMN 2.0 interchange document — the semantic model and the BPMN DI
+  diagram in one file, which is what bpmn.io, Camunda Modeler, Signavio and every
+  other BPMN tool opens. A process drawn here is no longer only a picture of a
+  process.
+
+  It exports the WHOLE board, whichever pool's toolbar launched it. A BPMN
+  document is a process, and half a process is not a smaller process: a file
+  holding one participant of a two-participant collaboration would be a picture of
+  a conversation with one side deleted. The selected pool decides the filename and
+  nothing else — the document's own title first, the pool's name if it has none.
+
+  Each lane is drawn as well as listed: the pool arrives in bpmn.io divided into
+  the bands you drew, with their names, in the same places.
+
+  What comes out follows what is drawn. One pool or more gives a `collaboration`
+  with a `participant` and a `process` each, the message flows under the
+  collaboration where the spec puts them, and one extra participant-less process
+  for anything drawn outside every pool. No pool at all gives a single `process`
+  and no collaboration, which is what a process drawn without swimlanes IS. A
+  pool's lanes become a flat `laneSet`, and each artefact is listed in the lane it
+  is drawn in — the same centre-in-the-plot arithmetic the audit and the
+  validation rules already read, so the file and the badge on the canvas can never
+  disagree.
+
+  All seventeen artefacts map: the plain, message and timer starts, the plain,
+  message and terminate ends, the task, user task, service task, sub-process, call
+  activity, exclusive and parallel gateways, data object, data store, text
+  annotation and group. The four triggered events carry the event definition the
+  spec asks for rather than becoming elements of their own; a data object arrives
+  with the `dataObjectReference` that DI attaches to; a group carries its label on
+  a `categoryValue`, which is where BPMN keeps the words a group shows.
+
+  **The export speaks only what the author stated.** A connector with no BPMN role
+  relates nothing, so it is not an untyped sequence flow — it is not a flow, and
+  it is absent. So is a plain rectangle drawn beside a pool, and so is an arrow
+  with a free end, which the format has no way to write down: `sourceRef` and
+  `targetRef` are required on every flow. Guessing here would put words in an
+  architect's mouth in a file they are about to hand to an execution engine.
+
+  Two limits worth knowing before the first import. A data association is exported
+  as a plain `association`, not as the `dataInputAssociation` / `dataOutputAssociation`
+  pair — those drag in an `ioSpecification`, a `dataInput`, a `dataOutput`, an
+  `inputSet` and an `outputSet` per arrow, which the Descriptive conformance
+  sub-class does not ask for. And a message flow drawn on a board with no pool is
+  dropped rather than demoted to a sequence flow: "sends a message to" and "is
+  followed by" are two different sentences.
+
+  Two more things worth knowing when a BPMN tool complains about a file the
+  editor was happy with. A sequence flow you drew from one pool into another is
+  exported as you drew it, filed with the process its source is in — BPMN forbids
+  a sequence flow crossing a pool boundary, so bpmn.io's linter will say so, and
+  the warning is about the board rather than about the export. And a flow object
+  left on bare canvas beside the pools goes into a process with no participant:
+  correct in the model, and undrawable on a collaboration, so bpmn.io will not
+  show it. Both are the export declining to invent a pool nobody drew. Artifacts —
+  annotations and groups — are not affected: they have a legal home on the
+  collaboration and are drawn where you put them.
+
+  The drawing is translated so its top-left sits at the origin. BPMN DI
+  coordinates are relative to the plane and the canvas lets you drag left of zero;
+  a tool that clamps at zero would otherwise fold half the process onto its own
+  edge.
+
+  Labels survive whatever is in them: `Q&A`, `<draft>` and a two-line task name
+  all come back exactly as they went in.
+
+  The serializer is a pure function — element models in, XML string out, no editor
+  anywhere near it — and is exported from the package, so a host can serialize a
+  board it never rendered.
+
+- 32e4d45: feat(edgeless): a `.bpmn` file imports from the catalogue — with an honest report — and export warnings reach the user
+
+  The reader shipped in #160 and nobody could reach it. **Import BPMN XML** is the
+  door: open the BPMN catalogue, pick the entry, choose a `.bpmn` file, and the
+  process is on the canvas — pools, lanes, all seventeen artefacts, the sequence
+  flows, the message flows and the associations, laid out where the file's diagram
+  drew them, and brought into view.
+
+  It needs nothing selected, which is the point: the moment you want it most is on
+  an empty board. So it declines the pool's contextual toolbar (a contextual
+  toolbar is a statement about a selection) and the senior sub-menu (which is what
+  you reach for to draw something), and lives in the catalogue, the command
+  palette and the agent surface. It does declare one precondition — it writes, so
+  it withdraws from every surface on a read-only document rather than sitting
+  there lit and doing nothing. It is keyless by default and bindable from
+  Settings › Shortcuts like every other framework command.
+
+  The whole imported file arrives in view: the fit is computed from the shapes,
+  which is what makes a process a bpmn.io user dragged far across their canvas
+  land at a readable size rather than as a speck beside the origin.
+
+  **It is filed in a new `interchange` section, and the export moved in beside
+  it.** The two directions of one format are one subject — this board as a `.bpmn`
+  file, out and in — and the export was under `swimlanes` only because the pool's
+  "⋮" is where it is reached from and a section of one is not a section. Nothing
+  moved inside any section: a category is where a command is filed, not where it
+  sits.
+
+  **The import says what it cost.** A notification names what was drawn, what was
+  carried (kept verbatim in the document, invisible on the canvas, because Labre
+  has no artefact for it) and what was quarantined (kept, and deliberately never
+  written back, because re-emitting it would produce a file that contradicts the
+  drawing) — plus the BPMN version and the tool that wrote the file, so
+  "bpmn.io drew it differently" is answerable in one line. When there are remarks,
+  a second notification spells them out; past a handful it defers to a
+  `console.table` that always holds all of them. That is v1 of the report (ADR
+  0012's open question 4): the
+  destination is the conformity panel, where an import remark belongs beside a
+  validation finding, and the console is named as a stopgap rather than dressed up
+  as a home.
+
+  A file that is not a readable BPMN document — malformed XML, a DMN decision
+  model, a choreography — is refused with the reader's own sentence, which knows
+  which of those it was. Nothing is drawn, and nothing is half-drawn.
+
+  What arrives is a new board beside whatever was already on the surface, never a
+  merge, and the whole file is one undo step.
+
+  **And the export's warnings finally reach somebody.** The writer has been
+  recording what a board says that BPMN has no way to write down — a message flow
+  on a board with no pool, an arrow with a loose end, an artefact drawn outside
+  every pool that most tools will not render, an imported id that could not be
+  given back — and the command threw the list away. It now raises one
+  notification. The file still downloads, and it is still valid: a warning names
+  what the format could not carry, not a failure.
+
+  Both notifications go through the host's notification service. A standalone
+  playground registers none and degrades to silence — the elements are on the
+  surface either way.
+
+- 139d77b: refactor(edgeless): the BPMN pool is a declared framework background
+
+  The pool was the last background in the library still drawn by hand: ninety
+  lines of canvas code, and a model class that restated the five geometry answers
+  every other background inherits. It is now an **instantiation of the
+  framework-background primitive**, declared as data in `background.ts` like the
+  Wardley map, the Core Domain Chart and the Event Storming board before it.
+
+  One thing changes on screen, and it was asked for: **a pool now paints an opaque
+  white card**, like every other framework background. It used to be transparent
+  — a decision taken at the red-zone review of 26/08/2026, on the ground that a
+  pool IS a map background, and a board where one framework's backdrop is
+  see-through and every other one is not reads as a bug. A pool dropped over
+  strokes already on the canvas covers them, exactly as a Wardley map dropped over
+  them always has; sending the background to the back is the answer in both cases.
+
+  Everything else is reproduced operation for operation — the frame, its rounded
+  corners, the filled name band, the divider and the participant name rotated up
+  the band — and pinned by a fidelity suite that asserts every literal the deleted
+  renderer used to emit. Three further differences are known and recorded there,
+  none of them visible: the divider is stroked before the frame instead of after
+  (same ink, same width), a `lineJoin` that had nothing to act on is no longer
+  set, and the participant name is no longer hidden on a pool narrower than twelve
+  model units — a pool narrower than one character of its own name.
+
+  The primitive gains the one concept the pool needed: **side bands**, a filled
+  strip painted over a margin, with its own divider and its own label. A band has
+  no width of its own — it IS the margin it covers — and it belongs to the card,
+  painted over the card's fill and under its border so the frame keeps outlining
+  the whole element. A text can now also declare a `middle` baseline, which is
+  what centres a name across a band rather than sitting it on a line inside one.
+
+  **Assumed behaviour change: a frame no longer adopts a pool.** Frames have
+  excluded framework backgrounds since PF2 — a backdrop the frame was drawn on top
+  of would be permanently buried behind its own child — and the pool, now one of
+  them, joins that rule. Drawing a frame over a lane groups the flow objects
+  inside it and leaves the lane where it is, which is what already happens on a
+  Wardley map, a Core Domain Chart and a Context Map board.
+
+  **No document changes.** The persisted element type is still `bpmnPool` and its
+  props are still the four it has always written (`name`, `resizeEnabled`,
+  `rotate`, `xywh`), with the same defaults, in the same order. A pool authored
+  before this change opens, round-trips and paints identically.
+
+- 6bba40c: feat(blocks): a BPMN pool carries its lanes
+
+  A pool can now be divided into lanes (couloirs). "Add lane" and "Remove lane"
+  sit on the pool's own toolbar; each lane wears a title band down its leading
+  edge, inside the participant's own, with its name turned on its side — the way
+  BPMN 2.0 draws a lane. Double-clicking a title band renames what is written in
+  it, and the separator between two lanes is dragged to give one of them more
+  room. The lanes are DATA on the pool — how many there are, what they are called
+  and how the height is shared between them — so the background primitive paints
+  them and the audit reports an element's lane the same way it reports any other
+  zone.
+
+  A new lane arrives named `Lane 1`, `Lane 2`, and so on: a plain string written
+  into the document, exactly like the pool's own `Pool` default, and yours to
+  rewrite immediately. It is what makes the first "Add lane" click visible — a
+  titled band appears on a pool that had none.
+
+  The title band is chrome INSIDE the lane, not a gutter beside it: an element
+  dropped on a lane's band is in that lane, and naming a lane does not shrink its
+  share of the pool.
+
+  Renaming is now zoned. A double-click renames the band it landed in — the
+  participant in the pool's own strip, a lane in that lane's — and does nothing
+  on open canvas. Previously a double-click anywhere on the pool renamed the
+  participant, which with a name per lane would have made the flow area a
+  rename target for the one name that is not written there. The `text` cursor
+  over either band is what says where the names are.
+
+  The framework-background primitive grew the band placement to make this
+  possible (`BackgroundInstanceZonesDef.label.band`). It is purely additive: a
+  framework that declares no band keeps the corner placement it had, unchanged
+  down to the painting operation.
+
+  Nothing changes for a pool that has none. `lanes` is an optional field with no
+  default, so no key is written until the first lane exists: a document authored
+  before this release opens and paints byte for byte as it did, with no migration
+  and no schema version bump. Removing the last lane takes the key back out
+  rather than leaving an empty array, so a pool returns to exactly the bytes it
+  had. In the other direction, a pool WITH lanes opened by an older build keeps
+  them: unknown element props are preserved verbatim (#73), so the lanes survive
+  the round trip and are still there when the newer build opens the document
+  again.
+
+  Removing a lane moves nothing. An element is in a lane because its centre falls
+  in that band, so the lane below simply grows over whatever was drawn in the one
+  that went — nothing on the canvas jumps, and the sequence flows still land
+  where they were drawn.
+
+  The band placement, the default names and the zoned renaming all come from the
+  PO's visual recette of 2026-08-26, which replaced a first pass that wrote each
+  lane name across the lane's top-left corner.
+
+- 70dffb7: feat(blocks): a `.bpmn` file becomes a board, and what Labre cannot draw travels sealed
+
+  BPMN could write a `.bpmn` and not read one. It can now read one, which is what
+  turns last release's export into an **interoperability claim** rather than a
+  download: Labre → `.bpmn` → bpmn.io → `.bpmn` → Labre, with the part of the file
+  Labre has no artefact for still in it at the end.
+
+  The reader sorts every node of the file into three states and never a fourth.
+  **Mapped** is the vocabulary the pack draws — the seventeen kinds, the pools,
+  the lanes, the three edge roles, the diagram — and it lands as ordinary,
+  editable artefacts: a task read out of a file and a task drawn from the palette
+  are the same element in the document, down to the stroke width. **Carried** is
+  everything with no artefact and a home to ride on: a `camunda:` extension, a
+  `documentation`, an `ioSpecification`, and the Analytic vocabulary the
+  descriptive profile leaves out — a boundary event, an inclusive gateway — kept
+  whole on the pool of the process they were written in, with the namespace
+  declarations without which they could never be read again. **Quarantined** is
+  the short list of things that are kept and deliberately not written back,
+  because writing them back would produce a file that contradicts the drawing: a
+  vendor colour beside a shape whose fill the author can now change, the body of
+  an expanded sub-process drawn collapsed, a nested lane set beside the flat one
+  that replaced it, an `<import>` of a document nobody resolved.
+
+  What is kept is filed under the source element it came off, so two lanes of one
+  pool that each carry a `camunda:owner` still have two owners afterwards, and a
+  flow whose end is something Labre does not draw — a boundary event's error path,
+  the commonest Analytic construct there is — is kept whole beside the event it
+  runs to rather than drawn as an arrow attached to nothing.
+
+  Nothing is dropped in silence. The import returns a **report** — three counts
+  and a list of notes naming what happened to what, by the file's own ids — and
+  the notes are precise enough to act on: which fragment was quarantined and why,
+  which shape arrived with no diagram and was placed by Labre rather than by the
+  file, which lane the file lists an artefact in when the drawing puts it in
+  another one. Where the file's `flowNodeRef` and its diagram disagree, the
+  **drawing wins**: Labre stores no lane membership, it reads it off the geometry,
+  and a second source of truth would be contradicted by the first drag.
+
+  **The round trip is a fixed point.** A board exported, read back and exported
+  again is byte-identical — every id in the second file is one the first file
+  handed over, because an import records what it was given and an export gives it
+  back. That is now pinned twice: once over plain objects, and once through a live
+  store, a connector manager and a real browser parser.
+
+  A file's own losses are written down rather than discovered: the loss table
+  lives beside the reader, and says which rows are invisible (and recoverable) and
+  which are gone.
+
+  Two things this release does not do. There is no menu entry yet — the reader is
+  a pure function and a declared registry capability (`bpmn:bpmn:import`), and the
+  file picker, the report panel and the export warnings toast are the next
+  chantier's. And the carried and quarantined payloads are written to the document
+  without yet being written back out to a `.bpmn`: the reader puts them there
+  whole, and the writer that puts them back is the other half.
+
+- a9a0a61: feat(blocks): a re-exported board gives back what the import did not understand
+
+  The previous release taught Labre to READ a `.bpmn` and to keep, verbatim and on
+  the element it came off, every part of the file it has no artefact for — a
+  boundary event, a `camunda:` extension, a vendor's namespace declaration. It
+  kept all of it in the document and wrote none of it back. A file with a boundary
+  event survived the import and was lost on the next export, which is the
+  invisible loss the whole chantier exists to prevent, delayed by one step.
+
+  This release closes the loop. **The exporter reads the payload the importer
+  wrote** and puts each piece back where it came from: an attribute onto the
+  element its scope names, a fragment inside the element it was a child of, a
+  carried flow node into the process, its `BPMNShape` back onto the plane, the
+  file's namespace declarations back onto `definitions`. `isExecutable="true"` is
+  given back instead of being downgraded to `false` on every round trip.
+
+  **Where a fragment goes is the schema's answer, not the payload's.** A scope
+  records which element a fragment was a child of and says nothing about which
+  slot of it — and `tProcess` is an `xsd:sequence`, so a carried `<auditing>`
+  written after the lane set is a document a validating parser refuses even though
+  every character of it is right. Placement is derived from the same XSD sequences
+  the exporter already writes its own children in: the base type's children first,
+  then lane sets, flow elements, artifacts, and the resource roles that follow
+  them. Carried matter lands in a legal slot, always.
+
+  **The claim is a fixed point, and it is a test.** Read a file this library did
+  not write, export it, and read it again: the carried payloads are identical, key
+  for key, and the second export is byte-identical to the first. That mirrors the
+  round-trip guarantee a Labre-drawn board already had, on matter Labre does not
+  understand — which is the harder half and the one an architect actually relies
+  on. A board that never met an import writes exactly the bytes it wrote before.
+
+  Two things the writer found and fixed on the way, both of which would have been
+  silent:
+
+  - **the file's own prefix.** bpmn.io writes BPMN's namespace as `bpmn2:` and
+    this library writes it as `bpmn:`. Fragments are stored with the prefixes the
+    file spelled them in, so a document that declares only `xmlns:bpmn` cannot
+    parse a single one of them. The reader now keeps a declaration unless the
+    prefix AND the URI are both ones the writer makes anyway;
+  - **quarantine defeated by its own leftovers.** The body of an expanded
+    sub-process is quarantined (D5); its inner shapes were then orphaned, carried
+    by the residue sweep, and would have been drawn by the writer. Quarantine now
+    takes the whole subtree's diagram with it.
+
+  **A carried element is written back at most once, and the unit is the id.** A
+  board's foreign payload travels with the element through a copy-paste — that is
+  what `interchange` is declared on the base model for — so a pool imported from a
+  `.bpmn` and then pasted holds its carried boundary event, its lane's
+  documentation and its shape twice. Written twice they are duplicate `xsd:ID`s,
+  which is the one thing no BPMN tool survives. The guard is document-wide, keyed
+  on the id a carried fragment claims rather than on its text, so it also catches
+  two different elements from two different files claiming one id: the first is
+  written, the rest are named in the export's warnings.
+
+  **Neither half of a carried attribute is trusted as markup.** A value is escaped
+  and a name is interpolated, so a name is the half that can close its own element
+  and open others — and `interchange` is ordinary collaborative document data. A
+  carried name is written only if it is a name: an NCName, or the `prefix:local`
+  pair every foreign attribute in a `.bpmn` wears.
+
+  What still does not round-trip is in the loss table, in `import.ts` and in ADR
+  0012, and five rows are new because the writer put them there — a carried shape
+  keeps the source file's coordinates and so lands beside a drawing that has since
+  moved; a declaration rebinding one of this library's own four prefixes is kept
+  in the document and out of the file, and the matter under it is then read under
+  Labre's meaning rather than the original's; a declaration scoped to anything but
+  `definitions` is not carried at all; a duplicate id keeps its first claimant;
+  and two pools disagreeing about one `definitions` attribute resolve last-wins.
+  Every one of them is named in the export's warnings rather than left to be
+  discovered. Quarantined material is never re-emitted, by design and by test.
+
+- a8325bb: feat(edgeless): a c4 component is the shape and its own text, grouped
+
+  The PO's recette rejected the mechanism the last change shipped, and it was
+  right to: an element's technology and its description were typed into a
+  "Details" popover on the toolbar and painted back onto the box by the renderer.
+  Two lines of the notation that an architect could read and never write on. On a
+  whiteboard you write on the picture.
+
+  **So a C4 element is now five elements that behave as one.** The shape, which
+  carries no text at all; a canvas text holding the NAME; one holding the type
+  line — `[Person]`, `[Container: Java and Spring MVC]`; one holding the
+  description; and a group joining the four. One click selects the whole component
+  and moves, copies or deletes it as one thing. A double-click opens the ordinary
+  in-place editor on whichever line is under the pointer — the same gesture, the
+  same editor and the same toolbar as any other words on the canvas, for all three
+  of them. There is no form left anywhere in the pack, and no second kind of text.
+
+  Double-clicking the BODY of the shape edits the name, which is what everybody's
+  hand does anyway: the gesture is routed to the name's own editor rather than
+  opening the shape's, so an element can never grow an invisible second name under
+  its real one.
+
+  **All three tiers exist from the moment you draw one**, carrying the official
+  stencil's own prompts: the kind's label as the name, `[Container: technology]`
+  under it and `description` under that. You meet three lines of stencil and
+  overwrite what you have something to say about, rather than a bare box and three
+  invisible slots somebody has to tell you about. A prompt is not a value: an
+  element whose tiers are untouched exports as `Container(alias, "Container")`,
+  not as one built with a technology called "technology". The NAME is the
+  exception and goes out verbatim — an unnamed container really is a container,
+  and saying so beats printing `?`.
+
+  **Elements are taller, because the words now need the room.** A default box goes
+  from 212.6 × 148.8 to **212.6 × 172.8**, and a person from 212.6 × 244.4 to
+  **212.6 × 268.3**. The width is untouched — every glyph is proportioned off it,
+  a person's head included. The height is no longer the stencil's textRect but the
+  sum of what the box actually holds: a margin, two lines for the name, a small
+  gap, the type line, a wider gap, two lines for the description, the same margin
+  again. Two lines for the name is what drove the growth: "Internet Banking
+  System" does not fit on one at this size, and it should not have to. Change a
+  tier's size or a gap and the footprint follows, so a box can never disagree with
+  its own contents. **Existing elements keep the size they were drawn at.**
+
+  **The type line stays half the notation's.** Which of the four levels a box is,
+  is the diagram's business — it comes from the element's kind, which is what the
+  picture paints — so the bracketed word is rewritten from the kind whenever you
+  finish editing the line, and only the TECHNOLOGY is kept. Type `Java` into a
+  container's type line and it becomes `[Container: Java]`; type
+  `[Person: Java]` and it still becomes `[Container: Java]`; clear it and it
+  becomes `[Container]`. The rewrite happens when the editor closes, never while
+  you are typing, and it is one undo away.
+
+  The reading is deliberately forgiving, because you are typing on a picture and
+  not filling in a field: a line left as `Container: Java`, as `Java`, or split
+  over two lines all state the same technology. A colon that is not the notation's
+  is left alone — an author whose technology is `https://internal/docs` gets to
+  keep it.
+
+  **The two removed model fields.** `technology` and `description` are gone from
+  the C4 node's schema: they were added in the previous change, never released,
+  and are now written on the canvas instead. Nothing in any document is migrated
+  or lost — a node that never stated one wrote no key for it, which is exactly why
+  they could be added without a schema bump and why they can be removed the same
+  way.
+
+  **The mermaid export says exactly what it said before**, byte for byte on the
+  same diagram: the name, the technology and the description all come out of the
+  words the author typed, resolved through the group and the role each text
+  carries. Which text belongs to which box is answered by the GROUP, and which of
+  a component's texts is the name by its ROLE — never by the order the elements
+  happen to sit in, so reordering, copying or regrouping cannot swap one
+  architect's technology onto another's box.
+
+  Four behaviours worth knowing, all of them pinned:
+
+  - an element drawn **before this change** keeps its name in the shape's own
+    text, which is where the previous iteration put it, and the export reads it
+    from there. Nothing is migrated or rewritten, and double-clicking such an
+    element still opens the editor its name is actually in;
+  - an **ungrouped** element — one whose group was released, or whose texts were
+    deleted — exports with no name, no technology and no description. It is still
+    a C4 element, the role being on the shape, and nothing is invented for it;
+  - a **relationship dropped on the component** rather than exactly on its shape —
+    on the group, or on one of the two lines of words — is written against the
+    shape all the same. All four parts accept a connector and all four look like
+    the same box on the canvas, so without this every such arrow would have
+    vanished from the exported file with no sign that it had;
+  - a group holding **two** C4 elements speaks for neither. That is a lasso drawn
+    round two boxes, and an arrow landing on it points at nothing in particular.
+
+  The node renderer no longer paints any text at all: the glyphs — the person, the
+  cylinder, the phone, the browser window — are untouched, and every word on a
+  component is a real element.
+
+- 280ac0c: feat(edgeless): a C4 board leaves as a mermaid diagram
+
+  Select a C4 board, open the "⋮" on its toolbar, and "Export as mermaid"
+  downloads it as a `.mmd` file in mermaid's C4 syntax — the one you paste into
+  mermaid.live, into a GitHub or GitLab markdown file, into Notion, or commit next
+  to the code the diagram is about. A C4 diagram drawn here is no longer only a
+  picture of an architecture.
+
+  It exports the SELECTED board, and this is the one place C4's export deliberately
+  does not do what BPMN's does. A BPMN document is a process and half a process is
+  not a smaller process, so that export takes the whole surface. A C4 board is one
+  LEVEL of one model — a context diagram, a container diagram, a component diagram
+  — and the whole point of drawing three of them side by side is that they are
+  three separate diagrams. Select several and you get several documents in one
+  file, each complete and each announced by a comment; mermaid renders one diagram
+  per document, so merging them would produce a file no renderer accepts.
+
+  The diagram type is read off what is actually drawn rather than asked of you: a
+  board holding a component is a `C4Component`, one holding a container, a
+  database, a mobile app or a web browser is a `C4Container`, and anything else is
+  a `C4Context`. The board's name becomes the diagram's `title`.
+
+  All nine elements map. A person and an external person become `Person` and
+  `Person_Ext`, a system and an external system `System` and `System_Ext`, a
+  container `Container`, a database `ContainerDb`, and a component `Component`. A
+  mobile app and a web browser are containers with a technology written on them —
+  `Container(…, "mobile app")` and `Container(…, "web browser")` — because neither
+  is a level of its own: they are a container with a picture.
+
+  Boundaries come out nested the way you drew them. A container boundary drawn
+  inside a system boundary is written inside it, and an element belongs to the
+  innermost boundary whose frame its centre sits in — the same centre-in-the-plot
+  arithmetic the audit and the validation rules already use, so the file and the
+  canvas can never disagree about what is inside what.
+
+  Aliases are derived from the names, so the file reads: `Rel(customer,
+single_page_app, "Uses")` rather than a line of surface ids. Two elements with
+  the same name get a counting suffix (`billing`, `billing_2`), and a name that
+  folds to nothing keeps a short placeholder.
+
+  **The export speaks only what the author stated.** A connector with no C4 role
+  relates nothing, so it is not an untyped relationship — it is not a relationship
+  at all, and it is absent. So is a box drawn with the C4 stencil and never stamped
+  with a role, an element sitting on another board, and a relationship with a free
+  end or an end on something outside the diagram, which mermaid has no way to write
+  down. Guessing here would put words in an architect's mouth.
+
+  Labels survive whatever is in them, with three exceptions the format forces: a
+  multi-line label is joined into one line (a macro call is one line), a double
+  quote becomes an apostrophe (the C4 grammar has no escape for one inside a
+  quoted argument), and a run of `%%` collapses to one `%` (it would otherwise open
+  a comment and swallow the rest of the statement). Accents, CJK and emoji all come
+  through untouched. An element or a boundary with nothing written on it is named
+  `"?"` rather than exported as a blank box.
+
+  One consequence worth knowing: the export is C4's fourteenth catalogue entry
+  against fourteen slots, so the framework still fits its sub-menu exactly — the
+  thirteen artefacts, in author order, with nothing arbitrated. It has spent the
+  last slot, and a fifteenth entry of any kind would start ranking the sub-menu by
+  what you reach for, as BPMN's already is.
+
+  The serializer is a pure function — element models in, mermaid string out, no
+  editor anywhere near it — and is exported from the package, so a host can
+  serialize a board it never rendered.
+
+- b744736: feat(edgeless): the C4 mermaid export becomes a declared interchange capability
+
+  The mermaid export joins the interchange registry as `c4:mermaid:export` —
+  framework `c4`, format `mermaid` (semantic, `.mmd`), direction export — so the
+  platform's answer to "what can Labre write, and for which framework" now
+  includes C4 without anyone reading a toolbar to find out.
+
+  Nothing about the file changes. The capability is a thin adapter over the same
+  pure serializer the command has always run: it picks the C4 artefacts out of
+  the elements it is handed — the shapes, the boundaries, the relationships, and
+  since the grouped component the written tiers and their groups too — names the
+  file, and states the content type. The `c4.exportMermaid` command now runs THIS
+  capability, so the command and the registry cannot produce different bytes,
+  filenames or content types — there is one door, and the registry is the label
+  on it.
+
+  One reading is C4's own: the selection is expressed through which boards the
+  caller puts in the element list. A C4 board is one level of one model, so every
+  board in the list becomes a document — the command passes the selected boards,
+  and a headless host that hands over the whole surface gets every board, one
+  document each.
+
+  Declared by the flag-gated view extension, like the rules and profiles: with
+  the `c4` flag off the capability is not offered, while a stored diagram keeps
+  painting (`docs/adr/0009`, `docs/adr/0012`).
+
+- ff19911: feat(edgeless): c4 nodes carry their name, type and description, and every node edits its text
+
+  Three things the PO's recette asked for, on the C4 pack.
+
+  **Every node now edits its text.** A person, a database, a mobile app and a web
+  browser are drawn by their glyph rather than by a native rectangle, so the shape
+  underneath them is created unfilled — and an unfilled shape is hit only near its
+  border and on the few characters of its own label. The body you could plainly
+  see was not a target: double-clicking it opened nothing, and dragging or
+  selecting from the middle missed too. A C4 element is a BOX and its whole area
+  belongs to it, so it now says so, whatever its fill. Nothing is stored and
+  nothing is migrated: a diagram drawn last week behaves the same way the moment
+  it is opened.
+
+  **Nodes carry three tiers, as the notation does.** The name is the shape's own
+  inner text, edited in place on a double-click. Under it the type line —
+  `[Person]`, `[Software System]`, `[Container: Java]` — whose bracketed word says
+  what the element is and can therefore never disagree with the picture; and under
+  that the author's description. How those two are edited changed again before
+  release, in the very next entry: they are canvas text you write on directly, not
+  a popover, and the model carries no field for either.
+
+  The type wording follows the official stencil, including the one entry that
+  looks like a mistake: a **database says `[Container: technology]`**, not
+  `[Database: …]`. A database is a container and the cylinder is a picture of one,
+  not a fourth level. The mermaid export still writes `ContainerDb` — a different
+  question in a different grammar. An external element says the same word as the
+  kind it is external to; what "external" changes is the colour.
+
+  **The mermaid export carries them.** `Person(alias, "name", "description")`,
+  `Container(alias, "name", "technology", "description")`, and — the case worth
+  knowing — `ContainerDb(alias, "name", "", "description")` when there is a
+  description and no technology: those arguments are positional, and a sentence
+  written in the technology's slot would be read as the technology. An author's own
+  technology now wins over the default a phone or a browser window carries. A
+  technology typed on a person is drawn on the canvas and does not survive the
+  export, because mermaid's `Person` has no slot for one.
+
+  **The glyphs are redrawn against the reference stencil**, path by path, from the
+  PO's own model file rather than from memory. The person is a circular head about
+  half the box wide, its top flush with the element, fused into a strongly rounded
+  body — one silhouette, not a disc parked over a block. The phone and the browser
+  window are no longer a band painted over a coloured box: their outer rectangle
+  is the darker colour — the bezel, the frame — with a lighter screen inset in it,
+  a home button and a speaker slot on the one, three dots and an address bar on
+  the other. The four boxed levels lose their rounded corners, because the stencil
+  draws them square. Every border is the stencil's own darker shade of its fill
+  rather than one darkened by eye, which is what makes the two devices read at all.
+
+  **Sizes change.** Seven of the nine kinds now share one footprint — 212 × 148,
+  the stencil's single repeated box at ×2 — so a row of elements lines up without
+  anybody arranging them. The two people are 212 × 244, and that is the stencil's
+  own exception rather than a preference: its person path puts the head clear
+  above a body that is itself the standard height, and its sheet shifts the person
+  down the page to make room. Squeezing that into the shared box would turn the
+  head into a flat ellipse, which is the one thing about a C4 person everybody
+  recognises. **Existing nodes keep the size they were drawn at** — this is a
+  creation-time default, like every other value here.
+
+  Boundaries and relationships pick up the stencil's own line work too: both are
+  drawn in one neutral grey at the stencil's weights and dashes, and a boundary's
+  corners are square. A boundary now writes its level under its name —
+  `[Software System]` or `[Container]` — derived from the variant, so a boundary
+  drawn before this change gets its line as well. That line is vocabulary rather
+  than the author's words: it goes through the host's catalogue like every other
+  piece of framework wording, and the in-place editor still opens on the name and
+  only the name.
+
+  One limit, stated rather than worked around: the relationship's label is drawn
+  by the connector primitive, which has no white background pill of the kind the
+  stencil puts behind "Uses [technology]". The line, its dash, its weight, its
+  grey and its filled arrowhead all match; the label sits on the diagram.
+
+- b03132c: feat(std): runCommand feeds an injectable usage store
+
+  The editor now measures how recently and how often each command was invoked,
+  and exposes the seam a host needs to persist those measures itself.
+
+  `runCommand` — already the one place a command runs and the one place its
+  telemetry is emitted — records every invocation into `CommandUsageIdentifier`.
+  Every invocation, not every instrumented one: the call sits outside the
+  telemetry condition, so core actions, toggles and the self-emitting commands
+  are counted like the rest. Telemetry leaves for a dashboard; usage is local
+  state the editor reads back, and the sub-menu that will show a framework's
+  seven most relevant commands has to rank artefacts nobody thought to
+  instrument.
+
+  The default store keeps the pair of numbers in this browser's `localStorage`,
+  capped and best-effort: a browser refusing storage costs a measure, never a
+  command. A host that owns per-user state replaces it wholesale with
+  `CommandUsageExtension(store)`, so the ranking follows the user from laptop to
+  tablet instead of restarting at zero.
+
+  Measurement only — nothing ranks anything yet, and no menu changes.
+
+- 90145f1: test(blocks): the image adapter snapshot suites stop racing the vite cache
+
+  The `image` cases of the html and markdown adapter suites failed on every cold
+  vite transform cache and passed on every warm one — the first test to pull a
+  lazily-imported chunk paid the whole transform cost against a `testTimeout` of
+  1000 ms that assumed a warm, idle machine. The package's test timeout is now
+  10 s, the same budget the other heavy view packages (`affine-components`, the
+  toolbar widgets, the gfx template) already use for the same reason. Test
+  configuration only; no runtime behaviour changes.
+
+- 9022c92: feat(blocks): a framework background can declare zones its instances shape
+
+  Until now a background's zones were the framework's: the same four quadrants on
+  every Cynefin grid, the same four phases on every Wardley map. A framework can
+  now declare that its elements carry a partition of their OWN plot —
+  `instanceZones` names the model prop that holds it, which way the pieces stack,
+  the line drawn between two of them and the style their names are written in.
+  The named consumer is the **BPMN pool's lanes (couloirs)**, arriving in the next
+  tranche; this one is the platform capability alone, and no framework in the
+  library declares the field yet.
+
+  Sizes are relative **weights**, never lengths. A pool with lanes of `1, 2, 1`
+  gives the middle one half its height at any size, and dragging the pool taller
+  redistributes the extra space proportionally instead of leaving a gap under the
+  last band. It is the same reasoning every position in the primitive is a ratio
+  of the plot for: a background survives being stretched, and so must the
+  partition the user drew on it. A row with no finite, positive size is dropped
+  with a warning and its neighbours share the space — one band fewer, never an
+  invented one, and never a broken frame.
+
+  The dividers are painted with the zone tints they separate, under the
+  graduations and the axis lines; the names are written horizontally at the
+  top-left of each band, with the other texts. Zone names are drawn by the
+  renderer and are **not** double-clickable on the canvas: the label walk that
+  feeds the hit tester is a function of the declaration alone, and a zone is
+  created, deleted and renamed through its framework's own tooling.
+
+  The audit reports an instance's zones after the framework's, namespaced
+  (`lane:sales`) so a user-named zone cannot shadow a declared one, and carrying
+  the user's own wording in a new optional `name`. An element's `zone` fact
+  therefore now reads `lane:<id>` on a frame that partitions itself, with no
+  change to how it is resolved.
+
+  **No document changes**, and nothing on screen moves: a declaration that says
+  nothing about instance zones paints exactly the picture it painted before, down
+  to the canvas operation.
+
+- b97efc6: feat(blocks): imports and exports become declared interchange capabilities; the BPMN export is the first
+
+  Reading a foreign file and writing one stop being something a toolbar happens to
+  do and become a **declared platform capability**, registered the way validation
+  rules and profiles already are. The platform can now answer a question it could
+  not ask before: what can Labre read, what can it write, and for which framework.
+
+  The unit of declaration is the **triple** — framework × format × direction — and
+  a direction is never implied by its opposite. BPMN writes a `.bpmn` and cannot
+  yet read one; the registry says exactly that instead of leaving a caller to
+  assume a symmetry nobody implemented. The triple is also the id and the DI key,
+  so a capability whose id disagrees with its own three fields is refused at
+  registration, and a second capability cannot quietly take the first one's place.
+
+  Each format declares its **tier**, and the tier is what a user is entitled to
+  expect. A `semantic` format carries a model — `.bpmn`, mermaid, the OWM DSL — so
+  an import of one is a translation and owes the full preservation contract. A
+  `visual` format carries a rendering, so an import of one is best-effort
+  recognition of shapes and promises no round-trip. A single "Import…" entry that
+  hid the difference between the two would earn a support ticket per user.
+
+  The two halves are mirror images and neither knows what an editor is. An
+  exporter takes element models and returns the document, its suggested filename
+  and its mime type. An importer takes text and returns **serialized element
+  props** — never live models: it has no surface to add them to, and the caller
+  does the writing. That is what lets the same function serve an editor command
+  and an MCP tool, and lets both be tested with plain objects and no container.
+  A capability's two halves are declared as one union, so an importer handed over
+  as an export does not compile.
+
+  **An export now says what it could not write down.** A board can hold sentences
+  BPMN has no way to express, and until now the person who clicked Export was the
+  only one not told. Three of them, each of which was a code comment: artefacts
+  drawn outside every pool are in the file but most BPMN tools will not draw them,
+  because only a pool has a shape to hold them; a message flow on a board with no
+  pool is left out rather than quietly demoted to "is followed by"; and an arrow
+  with a loose end, or an end attached to something that is not a BPMN artefact,
+  cannot be written at all, because BPMN requires both ends of a flow to be named.
+  A connector you deliberately left neutral is not one of these and says nothing —
+  it states nothing, so it loses nothing.
+
+  **An import report names things, it does not only count them.** Alongside the
+  mapped / carried / quarantined counts, a report carries a note per item worth
+  naming — which element, its id in the source file verbatim, and what happened to
+  it: kept but not re-emitted, an id we could not give back, a position the file
+  never carried, or a warning that our reading may be wrong. A tool that says "I
+  lost some things" and cannot say which has told you nothing you can act on. A
+  report also records the format version it actually read.
+
+  **The `.bpmn` export shipped in #149 is the registry's first entry**, declared
+  as `bpmn:bpmn:export`. Nothing about the file it produces changes. There is no
+  second door: "Export BPMN XML" runs the declared capability and downloads what
+  it returns, so the document, the file name and the content type all come from
+  one place and cannot drift apart.
+
+  Registering a capability is tooling, so it lives with the framework's flag: turn
+  `bpmn` off and the export is gone. What a past import wrote is content and is
+  gated by nothing — the board still opens, still paints, and keeps every byte it
+  was given.
+
+- 2ec39c0: validation rules carry their provenance — standard, recommendation or Labre convention — and the violation bubble says so
+
+  A rule now declares where its authority comes from, as data rather than as prose
+  buried in its message: `standard` with the page of the specification it reads,
+  `recommendation` for a SHOULD or an industry linter's rule, `labre-convention`
+  for a house style of this editor and nothing else. The violation bubble shows it
+  as one discreet line under the finding, with the rule's own citation printed
+  verbatim — so a convention can never reach an architect dressed as a norm
+  violation, which is what an external review of the BPMN integration asked for.
+
+  The field is purely descriptive: no evaluator reads it, and a rule that declares
+  one raises exactly the findings it raised before.
+
+  All twenty-two BPMN rules declare it — twelve `standard`, each with its page,
+  eight `recommendation` naming a linter or the sentence the standard merely
+  permits, and two conventions that say so out loud. The self-loop check left
+  `bpmn.sequence-flow-endpoints` and became `bpmn.sequence-flow-self-loop`: the
+  endpoints matrix is BPMN 2.0.2 p.95 and the no-self-loop habit is ours, so one
+  rule could not have declared either honestly. Same wording, same severity, same
+  i18n keys, one new rule id in the profiles.
+
+  That new id is the one thing this change does not carry over: user exceptions
+  are persisted per rule id, so an exception granted on a self-looping flow under
+  `bpmn.sequence-flow-endpoints` no longer matches and the finding returns. No
+  migration ships, because BPMN landed days ago and these packages are
+  unpublished, so the set of affected documents is empty — but the same rename
+  after publication would need a migration or an alias, and should not lean on
+  this precedent.
+
+  The other five frameworks' rules are annotated too — mostly `recommendation`
+  naming the method, with the readability nudges declared as the Labre
+  conventions they always were.
+
+- e42e0c0: feat(std): the senior menu caps at fourteen and ranks seven past it
+
+  A framework's senior button opens one row of buttons, and that row holds
+  **fourteen**. Until now that number was a design review: the registry test
+  refused a framework that _declared_ more than fourteen sub-menu commands, and
+  nothing said what a framework should do once its toolbox honestly outgrew them.
+  It now has an answer.
+
+  Below the cap nothing changes at all — the sub-menu is the framework's authored
+  list, whole and in the order its author wrote it. Past it, the row becomes a
+  **shortcut to the seven artefacts this user actually reaches for**: the four
+  most-used plus the three most-recent, deduplicated, with a command that tops
+  both axes taking one slot and handing the freed one back to frequency. Two axes
+  rather than one, because frequency alone never surfaces the tool picked up
+  yesterday and recency alone would reshuffle the row at every click.
+
+  The seven are then laid out **in authored order, never in rank order**. What the
+  ranking decides is membership; position stays where the framework put it,
+  because a menu whose buttons swap places under the cursor is precisely the
+  pattern this feature exists to avoid. On a fresh install, with nothing measured
+  yet, both axes collapse to authored order and the row shows the first seven — a
+  cold start that is deterministic rather than empty.
+
+  The ranking reads the framework's **whole catalogue**, not the fourteen its
+  author picked. An artefact left out of the row that a user invokes constantly
+  has earned a slot, and a selection that could only ever demote would never learn
+  that.
+
+  Beside the seven sits a permanent **More artefacts…** button, opening the
+  catalogue sidepanel on the framework's full toolbox — and it appears only when
+  something answers the new `ArtefactCatalogueProvider` seam, since a button that
+  opens nothing is a dead control. The seam ships here as an interface; the panel
+  behind it arrives in its own release.
+
+  **Nothing visible changes today.** The largest framework in the library declares
+  thirteen artefacts, so no senior menu is past the cap and every one of them
+  still shows its whole toolbox. This is the rule the BPMN full pack will be the
+  first to meet.
+
+  > **Superseded later in this same release** — "The senior sub-menu seats
+  > thirteen". The PO re-arbitrated on 28/08/2026: the row seats **thirteen**
+  > (seven most-recent + six most-used), and the ranking reads the framework's
+  > **nominated `senior-menu` list** rather than its whole catalogue. The cap of
+  > fourteen, the author-order position law and the deterministic cold start below
+  > are unchanged.
+
+- 256ee0b: feat(edgeless): the artefact catalogue sidepanel
+
+  A framework's senior sub-menu is a row of icons, and a row of icons stops
+  working somewhere around fourteen. The catalogue is where the rest go: a
+  full-height column down the left edge of the editor, listing everything the
+  framework declares on the `'catalogue'` surface — grouped by the categories the
+  framework itself declared, each artefact spelled out with its icon, its
+  translated label and its keyboard chord instead of guessed from a glyph.
+
+  It is drawn from the command registry and nothing else, so a framework that
+  adds an artefact gets a row for it with no code written here. Rows are at least
+  44px tall because these boards are worked on a tablet as often as on a laptop;
+  the list scrolls, the canvas behind it does not. One tap runs the command and
+  puts the panel away — and X, Escape and a click on the canvas all close it on
+  the first gesture, none of them touching the tool the user had armed.
+
+  `ArtefactCatalogueProvider` is the seam. The library registers its own panel as
+  the default implementation, unconditionally; a host that already owns a sidebar
+  registers `ArtefactCatalogueExtension(service)` and takes the catalogue over,
+  after which the library's widget is never asked to open.
+
+  Dormant until something opens it: no framework overflows its sub-menu yet, so
+  today nothing calls `open` — the panel is there for the BPMN pack and for the
+  hosts that want the catalogue on their own terms.
+
+- 4a3b26e: feat(edgeless): the C4 pack draws people, systems, containers and boundaries
+
+  C4 is the notation an architect reaches for when somebody asks "what IS this
+  system" — four levels, drawn one zoom at a time: the people and systems around
+  it, the containers it is made of, the components inside one of those. Until now
+  it was drawn here with rectangles and explained in a meeting. The pack now ships
+  its model, its vocabulary and its rendering.
+
+  **Nine artefacts.** A **person** and an **external person**, drawn as the
+  stencil draws them — a head over a rounded body block; a **software system** and
+  an **external system**; a **container**, and the three flavours C4 gives a
+  picture of their own: a **database** (a cylinder), a **mobile app** (a phone
+  bezel down its leading edge) and a **web app** (a browser chrome band with its
+  three dots); and a **component**.
+
+  They are drawn in C4's own colour code, which is not decoration but the
+  notation: the four levels run from the near-navy of a person through the blue of
+  a system and the lighter blue of a container to the pale wash of a component,
+  and anything outside the scope of the diagram is grey. That colour is what tells
+  a container from a component when both are rounded rectangles with words in
+  them — and it is why the pack has nine artefacts but only five element roles.
+
+  **Two frames.** The **C4 board** is a plain titled white card: no axes, no
+  zones, because a C4 diagram is a graph and a system drawn top left says nothing
+  more than one drawn bottom right. Its title is what names the level being drawn,
+  and a double-click on it renames it in place.
+
+  The **boundary** is the dashed rectangle drawn round a group of elements to say
+  "all of this is one system". It is the first background in the library that is
+  deliberately TRANSPARENT: every other one is a card you put things on, and this
+  one is drawn OVER a diagram that is already there — an opaque card would hide
+  the very thing it is pointing at. Its name sits in the bottom-left corner, where
+  C4 puts it, and renames the same way. A boundary can say which level it encloses
+  (a system boundary or a container boundary); the field is optional, and a
+  boundary that says nothing reads as the outer one.
+
+  **Eight roles** join the vocabulary: `c4:person`, `c4:system`, `c4:container`,
+  `c4:database`, `c4:component`, the two frames, and one edge —
+  `c4:relationship`, because C4 has exactly one kind of line and its label is
+  where the author says which kind of using it is. The four LEVELS are deliberately
+  flat: a container is _part of_ a system, not _a kind of_ system, so filing them
+  in a chain would make every rule about systems fall on every container. The one
+  specialisation declared is the one C4 itself draws — a database is a container,
+  so everything written about containers already reaches it.
+
+  **Nothing already drawn changes.** The three element types are new; no existing
+  model is touched, no field is renamed, and the one optional field in the pack
+  writes nothing when it is not used — so there is no schema version bump and no
+  migration.
+
+  The framework-background primitive gains one thing along the way: a background
+  may now declare its card's border DASHED. That is what the boundary is, and it
+  belongs in the declaration a reviewer can read rather than in a renderer only
+  one framework would ever have. Every existing declaration is unchanged and
+  paints the solid line it always painted.
+
+  The palette entries, shortcuts, templates and the senior toolbar button follow
+  in the next release; this one is the model, the vocabulary and the rendering.
+
+- 6882201: feat(edgeless): the C4 senior button, board and catalogue tooling
+
+  The C4 pack shipped its models and its rendering last week: a diagram drawn by
+  hand painted correctly, and there was no way to draw one. This is the toolbox.
+
+  A **C4 button** joins the edgeless toolbar, and its sub-menu holds thirteen
+  entries: the four levels of the model (person, software system, container,
+  component), the relationship that joins any two of them, the board they are
+  drawn on, the database, the system and container boundaries, the mobile app and
+  the web browser, and the two "somebody else owns this" variants of the person
+  and the system. Thirteen against a menu that holds fourteen — C4 is the last
+  framework that FITS, so nothing is ranked away and the row is exactly the list
+  above, in that order.
+
+  The order is not decorative. It leads with the seven a C4 diagram cannot be
+  drawn without, because the day a fourteenth artefact lands those seven become
+  the first thing a new user meets. BPMN learned that in a live recette, with a
+  first contact that offered six ways to draw a circle and nothing to connect
+  them.
+
+  Everything is in the **artefact catalogue** and bindable from
+  Settings › Shortcuts, filed under four headers: Elements, Relations, Diagrams
+  and Boundaries — the last of which is new to the library, because a boundary is
+  neither an element of the model nor the sheet it is drawn on.
+
+  Every element is created in the stencil's own colours and stamped with the role
+  that says what it MEANS — which is the only thing that can say so, since three
+  of the four levels are the same rounded rectangle. The person and the database
+  are created as outlines the renderer fills in, so their head-and-body and their
+  cylinder are drawn rather than approximated.
+
+  The **relationship tool** arms a straight, dashed, grey arrow with a filled
+  head: the stencil's own line, and the only kind of line C4 has. It is a typed
+  edge — its verb is "uses", the source is the element with the need — so hovering
+  it says which way it reads, on a board whose C4 button is switched off as much
+  as on one where it is on.
+
+  Selecting a board offers its own row: lock or unlock resizing, and **generate a
+  legend** of the notation actually used on it. The legend lists what is drawn and
+  nothing else — a board of cylinders lists a database and not a container — and
+  it arrives as real, editable elements you can move and rewrite. It is reached
+  from that button and from nowhere else: generating a legend is something you do
+  to a board you are looking at, not an artefact to pick off a palette, so it is
+  deliberately absent from the catalogue and from Settings › Shortcuts. Renaming a
+  board or a boundary is unchanged: double-click the words.
+
+  With the C4 tooling switched off, a stored board keeps painting, stays
+  selectable and keeps its resize toggle; the legend button goes with the rest of
+  the C4 gestures, since generating one CREATES elements.
+
+- 48c3b52: The catalogue leads with what you reach for
+
+  The sidepanel now opens on a "Recent & frequent" head section (PO recette,
+  27/08/2026): the same seven-slot arbitration the senior sub-menu runs,
+  re-consumed through the new pure `rankCommandsByUsage` — one ranking, two
+  consumers, never two opinions. (Later in this same release the two axes swap
+  priority to recency-first, and the sub-menu grows to thirteen slots while this
+  section stays at seven — see "The senior sub-menu seats thirteen".)
+  Only commands that actually carry a measure appear, so a fresh install shows
+  no section rather than a "recent" label padded with the never-used; the rows
+  repeat below in their categories, the way every launcher does it.
+
+- 2bcfef0: The context map legend lives on its board alone
+
+  The palette carried a static, full-notation Legend entry beside the board's
+  own automatic legend — two answers to one question. The PO's recette
+  (27/08/2026) removed the palette entry: the ONE legend is the contextual
+  auto-legend on the selected board, the same single gesture Core Domain Chart
+  has always had. The palette shrinks to twelve commands; the removal is pinned
+  by test so a duplicate has to explain itself.
+
+- f09f9a3: The senior sub-menu seats thirteen — seven recent, six most-used — and only
+  commands that belong there
+
+  Two PO rulings of 28/08/2026 on a framework's senior sub-menu past the cap.
+  Both **supersede the arbitration recorded on 26/08/2026** ("the senior menu caps
+  at fourteen and ranks seven past it", earlier in this release): that entry's cap
+  of fourteen, author-order position law and deterministic cold start all stand —
+  its slot count, its 4 + 3 split and its "rank the whole catalogue" rule do not.
+
+  **Only its declarers are eligible.** The ranking used to read the whole
+  catalogue, so a command that deliberately declines the sub-menu could be dragged
+  into it by its own usage: the PO met "Export BPMN" in a row of things you DRAW
+  and rightly asked what it was supposed to export. Membership is now drawn from
+  the `senior-menu` surface alone — a declined surface is a statement about where
+  a command belongs, not a default usage may out-vote. The overflow trigger still
+  reads the catalogue, and the sidepanel's "Recent & frequent" head section still
+  ranks it too: that panel is where every command of a framework is reachable, so
+  a board action really does belong at its head.
+
+  **Thirteen slots instead of seven, recency first.** Seven buttons in a
+  fourteen-wide row left it half-empty; thirteen plus the permanent "More
+  artefacts…" button is exactly the cap. The split is inverted to seven
+  most-recent plus six most-used, because what you reached for this morning is
+  what you are still working on. A command that tops both axes takes a recent
+  slot, freeing its most-used slot for the next workhorse down. Display order
+  remains author order — the ranking decides membership, never position — and a
+  cold start still opens on the authored head, now thirteen deep.
+
+  **The sidepanel's head section stays at seven.** Both PO rulings are about the
+  sub-menu, and thirteen is argued from its geometry: a horizontal row of icon
+  buttons where thirteen plus "More artefacts…" makes the fourteen cap. None of
+  that transfers to a vertical list of 44px rows in a 320px panel, where thirteen
+  would fill a laptop's first screen with duplicated shortcuts and push every
+  category below the fold. The two surfaces share the arbitration and not its
+  magnitude: the head keeps its own split (four recent + three used), so both
+  halves of a section labelled "Recent & frequent" survive.
+
+- 7d49a23: feat(edgeless): a Wardley map arrives from and leaves as an OnlineWardleyMaps `.owm` file
+
+  Two new entries in the Wardley catalogue, and they are one subject in two
+  directions: **Import Wardley map (OWM)** and **Export Wardley map (OWM)**.
+
+  **Import** is in the Wardley sub-menu, because on an empty canvas that row is
+  the first thing you open and "start from the map somebody sent me" belongs in
+  it. Pick a `.owm` (or `.wm`) file and the map is on the board: the axes, every
+  component, anchor, market, ecosystem and pipeline where the file's coordinates
+  put them, every dependency drawn from the consumer to what it needs, every
+  `evolve` line drawn as an evolved twin with the red arrow that says it is
+  moving, and the notes. It needs nothing selected. It writes, so it withdraws
+  from every surface on a read-only document rather than sitting there lit and
+  doing nothing. The whole file is one undo step, and it arrives in view.
+
+  **Export** is in the catalogue, the command palette and the agent surface. It
+  downloads the whole map as an `.owm`, ready to open in any Wardley mapping tool.
+  It reads and never writes, so it is offered on a locked map and on a read-only
+  document — which is precisely the board somebody wants to take away. It appears
+  whenever there is a Wardley map on the board, because a Wardley component has no
+  "evolution" property: where it sits on the plot **is** its coordinate, so with no
+  map there is nothing to measure against.
+
+  **A map you imported keeps the title its file gave it.** Export writes the
+  title the `.owm` carried, not the name of the Labre document it happens to be
+  sitting in — so a map you opened from a colleague's file goes back to them under
+  the title they gave it. The document's name is still what the download is
+  called, and it becomes the title only when the file carried none. When the two
+  differ the export says so.
+
+  **The import says what it cost.** A notification names what was drawn and what
+  was carried — kept verbatim in the document, invisible on the canvas, because
+  Labre draws no artefact for it. Everything the pack does not draw is carried and
+  given back on the next export, in place: `style`, `size`, the evolution-axis
+  labels, `annotation`, the attitudes, `submap`, `url`, `accelerator`, the flow
+  links, a link with a `;` context, a pipeline with a `{ … }` body, and every `//`
+  comment. A modifier written on a line that IS drawn — `label [12, -8]`,
+  `(build)`, `inertia` — comes back on that very line rather than at the bottom of
+  the file.
+
+  **And it never claims a position it invented.** A statement with no coordinates —
+  `anchor Client`, which is how half the maps in the wild are written — is laid out
+  at the top of the value chain and the report says, by name, that the file did not
+  say where it goes. Unreadable coordinates get the same treatment plus a warning.
+
+  **Export warnings reach the user too.** A board with two maps on it (an `.owm`
+  holds one), an artefact with no name (a component is identified by its name), a
+  component sitting off the plot, an evolution arrow that also climbs the value
+  chain, a link with a loose end — each is a sentence the format has no way to
+  write down, and the person who clicked Export is the one entitled to hear about
+  it. The file still downloads, and it is still valid.
+
+  Both notifications go through the host's notification service; a standalone
+  playground registers none and degrades to silence.
+
+  **The Wardley sub-menu now has a "More artefacts…" button.** Fifteen commands is one past the fourteen the row seats, so — exactly as BPMN's does — the Wardley palette becomes the thirteen artefacts you reach for most, plus one button that opens the full catalogue. Nothing became unreachable, and everything is still in the catalogue, the command palette and Settings › Shortcuts.
+
+  **The serializer now lives in the library.** It used to live outside this
+  repository, which meant one format with two implementations that nothing
+  compared. `exportWardleyOwm` and `importWardleyOwm` are pure functions exported
+  from the Wardley package, so the editor command and any host tool call the same
+  one — and the round trip they make together is pinned: a map this library wrote
+  comes back byte for byte, and a map it did not settles after a single cycle.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [4671780]
+- Updated dependencies [c03090c]
+- Updated dependencies [766eae8]
+- Updated dependencies [82d2795]
+- Updated dependencies [2b41d04]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [70dffb7]
+- Updated dependencies [a9a0a61]
+- Updated dependencies [91fdeed]
+- Updated dependencies [d892d97]
+- Updated dependencies [a8325bb]
+- Updated dependencies [f2aba60]
+- Updated dependencies [280ac0c]
+- Updated dependencies [b744736]
+- Updated dependencies [ff19911]
+- Updated dependencies [04ac693]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [cbd9471]
+- Updated dependencies [932bf35]
+- Updated dependencies [6fd58e5]
+- Updated dependencies [21aa9d8]
+- Updated dependencies [9f91a96]
+- Updated dependencies [5737a56]
+- Updated dependencies [753872b]
+- Updated dependencies [2dc39cf]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [1dbd735]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [7ec4478]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [6882201]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [2bcfef0]
+- Updated dependencies [d5c6f07]
+- Updated dependencies [e58b13e]
+- Updated dependencies [f09f9a3]
+- Updated dependencies [7d49a23]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-components@0.33.0
+  - @labre/affine-gfx-bpmn@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-gfx-c4@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/affine-widget-toolbar@0.33.0
+  - @labre/affine-gfx-wardley@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-gfx-ddd-shared@0.33.0
+  - @labre/affine-gfx-ddd-context-map@0.33.0
+  - @labre/affine-gfx-ddd-core-domain@0.33.0
+  - @labre/affine-gfx-ddd-event-storming@0.33.0
+  - @labre/affine-gfx-edgy@0.33.0
+  - @labre/affine-gfx-cynefin-estuarine@0.33.0
+  - @labre/affine-gfx-connector@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-block-attachment@0.33.0
+  - @labre/affine-block-bookmark@0.33.0
+  - @labre/affine-block-edgeless-text@0.33.0
+  - @labre/affine-block-embed@0.33.0
+  - @labre/affine-block-embed-doc@0.33.0
+  - @labre/affine-block-frame@0.33.0
+  - @labre/affine-block-image@0.33.0
+  - @labre/affine-block-note@0.33.0
+  - @labre/affine-block-root@0.33.0
+  - @labre/affine-block-surface-ref@0.33.0
+  - @labre/affine-fragment-doc-title@0.33.0
+  - @labre/affine-fragment-frame-panel@0.33.0
+  - @labre/affine-gfx-brush@0.33.0
+  - @labre/affine-gfx-ddd-aggregate@0.33.0
+  - @labre/affine-gfx-group@0.33.0
+  - @labre/affine-gfx-link@0.33.0
+  - @labre/affine-gfx-mindmap@0.33.0
+  - @labre/affine-gfx-note@0.33.0
+  - @labre/affine-gfx-pointer@0.33.0
+  - @labre/affine-gfx-shape@0.33.0
+  - @labre/affine-gfx-template@0.33.0
+  - @labre/affine-gfx-text@0.33.0
+  - @labre/affine-widget-drag-handle@0.33.0
+  - @labre/affine-widget-edgeless-auto-connect@0.33.0
+  - @labre/affine-widget-edgeless-dragging-area@0.33.0
+  - @labre/affine-widget-edgeless-selected-rect@0.33.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.33.0
+  - @labre/affine-widget-frame-title@0.33.0
+  - @labre/affine-widget-keyboard-toolbar@0.33.0
+  - @labre/affine-widget-note-slicer@0.33.0
+  - @labre/affine-widget-remote-selection@0.33.0
+  - @labre/affine-block-callout@0.33.0
+  - @labre/affine-block-code@0.33.0
+  - @labre/affine-block-data-view@0.33.0
+  - @labre/affine-block-database@0.33.0
+  - @labre/affine-block-divider@0.33.0
+  - @labre/affine-block-latex@0.33.0
+  - @labre/affine-block-list@0.33.0
+  - @labre/affine-block-paragraph@0.33.0
+  - @labre/affine-block-table@0.33.0
+  - @labre/data-view@0.33.0
+  - @labre/affine-foundation@0.33.0
+  - @labre/affine-fragment-adapter-panel@0.33.0
+  - @labre/affine-fragment-outline@0.33.0
+  - @labre/affine-inline-footnote@0.33.0
+  - @labre/affine-inline-latex@0.33.0
+  - @labre/affine-inline-link@0.33.0
+  - @labre/affine-inline-mention@0.33.0
+  - @labre/affine-inline-preset@0.33.0
+  - @labre/affine-inline-reference@0.33.0
+  - @labre/affine-rich-text@0.33.0
+  - @labre/affine-widget-linked-doc@0.33.0
+  - @labre/affine-widget-page-dragging-area@0.33.0
+  - @labre/affine-widget-slash-menu@0.33.0
+  - @labre/affine-widget-viewport-overlay@0.33.0
+  - @labre/affine-inline-comment@0.33.0
+  - @labre/affine-widget-scroll-anchoring@0.33.0
+  - @labre/affine-gfx-turbo-renderer@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+  - @labre/sync@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes

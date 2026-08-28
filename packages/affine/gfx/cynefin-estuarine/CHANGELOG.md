@@ -1,5 +1,121 @@
 # @labre/affine-gfx-cynefin-estuarine
 
+## 0.33.0
+
+### Minor Changes
+
+- 2dc39cf: An Estuarine map offers a quality checklist, and its reference lines are drawn as ghosts
+
+  The three reference curves (Liminal, Volatile, Counter-factual) are no longer
+  solid: a shown curve is now a discreet dashed ghost, so the tool's suggestion
+  stops looking like the answer and the line the group actually negotiates reads
+  as the statement. Flipping a curve back on plays a short reveal animation —
+  dashes marching along the path under a brighter stroke that fades into the
+  ghost — so a line coming back at low opacity is still seen arriving. Users who
+  have asked their system for reduced motion get the ghost with no animation.
+
+  Existing maps change appearance: curves drawn solid yesterday are ghosts today.
+  Nothing in the document changed, and the toggles mean exactly what they meant.
+
+  Selecting an Estuarine map also offers Map quality: four expectations to tick —
+  the counter-factual line negotiated by the group, the volatile zone delimited,
+  a Monitor / Research / Request strategy above the line, and every hexagon
+  typed. Estuarine ships no validation rule and, deliberately, no severity
+  profile: a dial over an empty rule set would be a control that decides nothing.
+  Maps and hexagons created from the toolbox or from a template now carry a
+  semantic role; anything drawn before today stays neutral and unjudged. Cynefin
+  contributes nothing here and is out of the validation perimeter for good.
+
+### Patch Changes
+
+- 753872b: An Estuarine map's axes follow the size it is given
+
+  Stretching an Estuarine background used to leave the drawing at its authored
+  proportions, centred, with short axes floating in empty margins: the map was
+  fitted uniformly and letterboxed. It now follows the element in both
+  directions — the time axis runs the full real width, the energy axis the full
+  real height, arrowheads land at the real ends, and the three reference curves
+  cover the whole plane, because a negotiated boundary belongs to the plane and
+  not to a picture.
+
+  What is NOT stretched: stroke widths, arrowhead triangles and every word
+  (axis letters, curve legends) keep one isotropic scale, so a map pulled
+  sideways gets no fat lines, no elongated arrowheads and no squashed type.
+
+  A map left at its authored 690 × 801 ratio — including one simply scaled up or
+  down — paints exactly what it painted before. Nothing in the document changed.
+
+  Cynefin is untouched on purpose: its background is a figurative drawing, and
+  the uniform fit is the right answer there.
+
+- 7ec4478: Senior button components resolve their own label through the translation seam
+
+  The toolbar's navigation tooltips learned to translate a senior tool's
+  `labelKey`, but the seven framework senior-button components still carried
+  their label as a hard-coded English string. Each button now resolves the same
+  `com.labre.framework.<id>` key through `translateKey`, with the previous
+  English wording as fallback — so a host catalogue that already translates the
+  toolbar translates the buttons too, and a standalone playground reads exactly
+  as before.
+
+- a9eb4f6: Senior buttons name themselves in the user's language
+
+  The edgeless toolbar's senior-tool tooltips were the last piece of chrome that
+  could only say "Wardley map" or "Event Storming" — a raw English string carried
+  on the tool itself, invisible to the host catalogue. A senior tool can now
+  declare `labelKey` alongside its `name`, and the toolbar resolves it through
+  the same `TranslationProvider` seam every other library wording already uses.
+
+  The seven frameworks declare the key their descriptor already publishes
+  (`com.labre.framework.<id>`), so a host that built its catalogue from
+  `getTranslationKeyManifest()` translates the buttons with no new key to add.
+  `name` stays required and stays the fallback: it is what a standalone
+  playground shows, and it is all the core tools (note, shape, template…) have —
+  they own no framework identity, so they declare no key.
+
+- Updated dependencies [3fbf69c]
+- Updated dependencies [f929e12]
+- Updated dependencies [13360cd]
+- Updated dependencies [5c39582]
+- Updated dependencies [8890efe]
+- Updated dependencies [c03090c]
+- Updated dependencies [32e4d45]
+- Updated dependencies [139d77b]
+- Updated dependencies [6bba40c]
+- Updated dependencies [a8325bb]
+- Updated dependencies [ff19911]
+- Updated dependencies [7aa932c]
+- Updated dependencies [b03132c]
+- Updated dependencies [48049d6]
+- Updated dependencies [7136db0]
+- Updated dependencies [932bf35]
+- Updated dependencies [5737a56]
+- Updated dependencies [168617d]
+- Updated dependencies [932bf35]
+- Updated dependencies [9022c92]
+- Updated dependencies [b97efc6]
+- Updated dependencies [edfaba2]
+- Updated dependencies [46ce0c9]
+- Updated dependencies [334bd61]
+- Updated dependencies [2ec39c0]
+- Updated dependencies [a9eb4f6]
+- Updated dependencies [e42e0c0]
+- Updated dependencies [256ee0b]
+- Updated dependencies [4a3b26e]
+- Updated dependencies [48c3b52]
+- Updated dependencies [6a20738]
+- Updated dependencies [f09f9a3]
+  - @labre/affine-block-surface@0.33.0
+  - @labre/affine-shared@0.33.0
+  - @labre/affine-model@0.33.0
+  - @labre/std@0.33.0
+  - @labre/affine-widget-edgeless-toolbar@0.33.0
+  - @labre/affine-gfx-pointer@0.33.0
+  - @labre/affine-gfx-template@0.33.0
+  - @labre/affine-ext-loader@0.33.0
+  - @labre/global@0.33.0
+  - @labre/store@0.33.0
+
 ## 0.32.0
 
 ### Minor Changes
