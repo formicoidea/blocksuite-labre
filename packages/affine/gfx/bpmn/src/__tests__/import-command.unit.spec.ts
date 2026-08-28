@@ -26,10 +26,12 @@ import { collaborationBoard } from './board-stub';
  * the result into view, and say what it cost. Three of those five are things a
  * user notices only when they are wrong.
  *
- * The picker is mocked and nothing else is: `openSingleFileWith` is a browser
- * dialog, and there is no version of it that answers in a unit suite. The
- * capability, the reader, the id remapping and the notification seam are all
- * the shipped ones.
+ * The picker is mocked and nothing else is: `openSingleFileWithSpec` is a
+ * browser dialog, and there is no version of it that answers in a unit suite.
+ * The capability, the reader, the id remapping, the generic pipeline these
+ * three commands now delegate to (`affine-block-surface`,
+ * `extensions/interchange-import.ts`) and the notification seam are all the
+ * shipped ones.
  */
 
 const picked = vi.hoisted(() => ({ file: vi.fn() }));
@@ -37,7 +39,7 @@ const picked = vi.hoisted(() => ({ file: vi.fn() }));
 vi.mock('@labre/affine-shared/utils', async importOriginal => {
   const actual =
     await importOriginal<typeof import('@labre/affine-shared/utils')>();
-  return { ...actual, openSingleFileWith: picked.file };
+  return { ...actual, openSingleFileWithSpec: picked.file };
 });
 
 /* ── The stubs ────────────────────────────────────────────────────────── */
@@ -232,11 +234,23 @@ describe('the import command', () => {
     ).toBe(false);
   });
 
-  it('takes the catalogue, the palette and the agent, and nothing else', () => {
-    // Not the senior sub-menu (it draws nothing you chose) and not the
-    // contextual toolbar — a contextual toolbar is a statement about a
-    // SELECTION, and the moment this is most wanted is on an empty board.
-    expect(descriptor!.surfaces).toEqual(['catalogue', 'palette', 'agent']);
+  it('takes the sub-menu, the catalogue, the palette and the agent', () => {
+    // `'senior-menu'` since the PO decision of 2026-08-28, which reverses the
+    // earlier "the sub-menu is a row of things you DRAW" ruling for the IMPORT
+    // only: an import is where a board comes FROM, and on an empty canvas the
+    // sub-menu is the first thing a user opens. The export keeps the old
+    // reading — it is what you do to a board you already have, reached from the
+    // pool it is about (`export.unit.spec.ts`).
+    //
+    // Still not the contextual toolbar: a contextual toolbar is a statement
+    // about a SELECTION, and the moment this is most wanted is on an empty
+    // board.
+    expect(descriptor!.surfaces).toEqual([
+      'senior-menu',
+      'catalogue',
+      'palette',
+      'agent',
+    ]);
   });
 
   it('carries a label and a description through the i18n seam', () => {
@@ -509,7 +523,15 @@ describe('running the import command', () => {
 
     await importBpmnXmlFile(std);
 
-    expect(picked.file).toHaveBeenCalledWith('Bpmn');
+    // The dialog filter is built from the FORMAT's own declaration, not from a
+    // name in the shared `FileTypes` table — which is what lets a framework add
+    // a readable format without a second file agreeing to it. `.xml` rides
+    // behind `.bpmn` because half the tools in the wild write a process under
+    // the generic extension.
+    expect(picked.file).toHaveBeenCalledWith({
+      description: 'BPMN',
+      accept: { 'application/xml': ['.bpmn', '.xml'] },
+    });
     expect(surface.added.length).toBeGreaterThan(0);
     expect(surface.added.filter(p => p.type === 'bpmnPool')).toHaveLength(2);
     // One undo step for the whole file: a boundary before the writes and one

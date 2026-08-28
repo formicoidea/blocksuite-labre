@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { openFilesWith } from '../../utils/file/filesys.js';
+import {
+  type FilePickerSpec,
+  openFilesWith,
+  openSingleFileWithSpec,
+} from '../../utils/file/filesys.js';
 
 /**
  * The FALLBACK file picker — the branch every browser without the File System
@@ -18,8 +22,8 @@ import { openFilesWith } from '../../utils/file/filesys.js';
  */
 
 /** The mounted picker's `accept`, and the cancel that lets the promise settle. */
-function acceptFor(type: Parameters<typeof openFilesWith>[0]): string {
-  const pending = openFilesWith(type, false);
+function acceptOf(open: () => Promise<unknown>): string {
+  const pending = open();
   const input = document.querySelector<HTMLInputElement>(
     '.affine-upload-input'
   );
@@ -32,9 +36,29 @@ function acceptFor(type: Parameters<typeof openFilesWith>[0]): string {
   return accept;
 }
 
+const acceptFor = (type: Parameters<typeof openFilesWith>[0]) =>
+  acceptOf(() => openFilesWith(type, false));
+
+const acceptForSpec = (spec: FilePickerSpec) =>
+  acceptOf(() => openSingleFileWithSpec(spec));
+
 describe('the fallback file picker filter', () => {
-  it('offers both the MIME type and the extensions of a BPMN file', () => {
-    const accept = acceptFor('Bpmn');
+  it('offers both the MIME type and the extensions of a declared format', () => {
+    // The filter an INTERCHANGE format builds, which is the only way a `.bpmn`
+    // file is offered now: the table's `'Bpmn'` row is gone, because a format's
+    // own `extensions` and `mime` are the one statement of what its files are
+    // called (`docs/adr/0012`).
+    //
+    // Asserted on the MOUNTED input rather than on the argument, because the
+    // failure this file exists to catch is a spec that reaches the picker and
+    // is then dropped: a dialog with no filter at all looks fine in a
+    // screenshot and greys out nothing, and every `.bpmn` on the disk stays
+    // unpickable for the opposite reason. `expect(open).toHaveBeenCalledWith`
+    // somewhere else cannot see that.
+    const accept = acceptForSpec({
+      description: 'BPMN',
+      accept: { 'application/xml': ['.bpmn', '.xml'] },
+    });
     expect(accept.split(',')).toEqual(['application/xml', '.bpmn', '.xml']);
   });
 

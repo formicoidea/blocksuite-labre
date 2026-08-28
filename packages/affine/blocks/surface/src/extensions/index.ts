@@ -7,6 +7,7 @@ export * from './editor-anchored-panel';
 export * from './element-renderer';
 export * from './export-manager';
 export * from './interchange';
+export * from './interchange-import';
 export * from './legacy-slot-extension';
 export * from './map-quality';
 export * from './map-quality-widget';

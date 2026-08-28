@@ -143,13 +143,22 @@ describe('the declaration', () => {
     expect(BPMN_XML_IMPORT.format).toBe(BPMN_XML_EXPORT.format);
   });
 
-  it('declares `.bpmn` as a semantic format', () => {
-    // Semantic, so the day an importer lands it owes the full preservation
-    // contract — mapped / carried / quarantined (ADR 0012, P2 and D1).
+  it('declares `.bpmn` as a semantic format, with `.xml` behind it', () => {
+    // Semantic, so it owes the full preservation contract — mapped / carried /
+    // quarantined (ADR 0012, P2 and D1).
+    //
+    // Two extensions, and the ORDER is the whole of the difference: the first
+    // is the one a download is given, so Labre still writes `.bpmn`, and the
+    // rest are what the picker offers and what a host indexes on. Half the
+    // tools in the wild write a process under the generic extension, and a
+    // filter that refused them would refuse a valid process for the sake of a
+    // filename — the argument the shared `FileTypes` table used to carry, now
+    // that the filter is built from this declaration
+    // (`interchange-import.ts`).
     expect(BPMN_XML_EXPORT.format).toEqual({
       id: 'bpmn',
       tier: 'semantic',
-      extensions: ['.bpmn'],
+      extensions: ['.bpmn', '.xml'],
       mime: 'application/xml',
     });
   });

@@ -48,6 +48,16 @@ import { importBpmnXml } from './import.js';
  * `application/xml` and not `text/xml`: the file is not meant to be read as
  * text by whatever opens it, and `.bpmn` is the extension every BPMN tool
  * watches for.
+ *
+ * `.xml` rides along BEHIND it, and the order is the whole of the difference:
+ * the first extension is the one a download is given, so Labre still writes
+ * `.bpmn`, and the rest are what a picker offers and what an auto-detecting
+ * host indexes on. Half the tools in the wild write the same bytes under the
+ * generic extension, and a filter that refused them would refuse a valid
+ * process for the sake of a filename — the same argument the shared `FileTypes`
+ * table made when this filter lived there, kept now that the filter is built
+ * from the format itself. What the file actually IS is decided by the reader,
+ * which throws on anything that is not a BPMN `<definitions>`.
  */
 export const BPMN_XML_EXTENSION = '.bpmn';
 export const BPMN_XML_MIME = 'application/xml';
@@ -55,7 +65,7 @@ export const BPMN_XML_MIME = 'application/xml';
 export const BPMN_XML_FORMAT: InterchangeFormat = {
   id: BPMN_FORMAT_ID,
   tier: 'semantic',
-  extensions: [BPMN_XML_EXTENSION],
+  extensions: [BPMN_XML_EXTENSION, '.xml'],
   mime: BPMN_XML_MIME,
 };
 

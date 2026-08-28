@@ -401,17 +401,18 @@ describe('the BPMN toolbox past fourteen', () => {
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
   test('the sub-menu overflows: thirteen ranked slots plus More artefacts', () => {
-    // 25 declared, 14 of them nominated for the row — and the fourteen are all
-    // that gets ranked (PO ruling of 2026-08-28). `bpmn.exportXml` and
-    // `bpmn.importXml` draw nothing you chose and are therefore in the
-    // catalogue and out of the sub-menu, like the two lane gestures, however
-    // often they are invoked.
+    // 25 declared, 15 of them nominated for the row — and the fifteen are all
+    // that gets ranked (PO ruling of 2026-08-28). `bpmn.exportXml` draws
+    // nothing you chose and is therefore in the catalogue and out of the
+    // sub-menu, like the two lane gestures, however often it is invoked;
+    // `bpmn.importXml` joined the nominations the same day (the PO decision
+    // that reversed that reading for the import: a board comes FROM a file).
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
     ).toHaveLength(25);
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'senior-menu')
-    ).toHaveLength(14);
+    ).toHaveLength(15);
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
@@ -456,6 +457,11 @@ describe('the BPMN toolbox past fourteen', () => {
    * edgeless? The command declines `'senior-menu'`, and since 2026-08-28 that
    * declaration is final: usage ranks membership INSIDE the nominated list, it
    * does not nominate.
+   *
+   * The import is the counter-example, and it is in the same test on purpose:
+   * the PO decision of that day put `bpmn.importXml` in the nominated fifteen,
+   * so ninety-nine imports DO seat it. The rule that has not moved is which of
+   * the two facts decides — the declaration, never the usage.
    */
   test('exporting a hundred times never puts Export in the row', async () => {
     const exportCommand = getCommandsForSurface(
@@ -478,7 +484,11 @@ describe('the BPMN toolbox past fourteen', () => {
 
     const ids = menu.commands.map(command => command.id);
     expect(ids).not.toContain('bpmn.exportXml');
-    expect(ids).not.toContain('bpmn.importXml');
+    // Nominated since 2026-08-28, so ninety-nine imports seat it — and it is
+    // laid out where its author put it, last, not at the head because it was
+    // used most.
+    expect(ids).toContain('bpmn.importXml');
+    expect(ids.at(-1)).toBe('bpmn.importXml');
     expect(menu.commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
