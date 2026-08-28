@@ -108,32 +108,81 @@ export const NODE_RADIUS: Record<C4NodeKind, number> = {
 /**
  * The three text tiers, at the stencil's own sizes (10 / 6 / 8) ×2.
  *
- * {@link INNER_FONT_SIZE} is the TITLE and is the native shape's own inner text,
- * so it is a creation-time property the author can change from the shape
- * toolbar. The other two are painted by the node renderer and are fixed: they
- * are notation, not typography — the type line is smaller than the name on every
- * C4 diagram ever drawn, and letting it grow past it would say the wrong thing.
+ * All three are creation-time DEFAULTS the author can change afterwards, and all
+ * three now for the same reason: since the PO's recette of 28/08/2026 a C4
+ * component is the shape and TWO CANVAS TEXT ELEMENTS, grouped — so the type
+ * line and the description are ordinary text on the canvas, with their own
+ * toolbar, rather than tiers a renderer painted and nobody could type on.
+ *
+ * {@link INNER_FONT_SIZE} is the TITLE, the native shape's own inner text. The
+ * other two seed the two text elements. The ladder 20 / 16 / 12 is the notation
+ * and not typography — the type line is smaller than the name on every C4
+ * diagram ever drawn — but it is now a ladder an author can climb off, which is
+ * the price of letting them write on the picture.
  */
 export const INNER_FONT_SIZE = 10 * STENCIL_SCALE;
 export const TYPE_FONT_SIZE = 6 * STENCIL_SCALE;
 export const DESCRIPTION_FONT_SIZE = 8 * STENCIL_SCALE;
 
 /**
- * Where the two painted tiers sit, as multiples of their OWN font size.
+ * One line box, as a multiple of its own font size — what the creation site
+ * measures a tier's HEIGHT in.
  *
- * Measured off the stencil's baselines rather than chosen: the name's baseline
- * and the type line's are 1.167em of the name apart, and the description opens
- * 2.187em of its own size below the type line — that gap is the BLANK LINE the
- * stencil leaves between the two, and it is what keeps a sentence from reading
- * as a fourth tier of the heading. Expressed as ratios so every one of them
- * survives a user changing the title's font size.
+ * The stencil states its tiers as baselines, which is the right unit for a
+ * renderer painting into a box and the wrong one for a creation site placing an
+ * element: a text element is a rectangle, and where its first baseline lands
+ * inside that rectangle is the text renderer's business, not this file's. So the
+ * stencil's baseline steps are re-read here as line boxes, which is the same
+ * geometry counted from the other end.
  */
-export const TYPE_LINE_GAP = 1;
-export const DESCRIPTION_GAP = 1.7;
-export const DESCRIPTION_LINE_HEIGHT = 1.19;
+export const TIER_LINE_HEIGHT = 1.2;
 
-/** Side inset the two painted tiers wrap inside, as a fraction of the width. */
+/**
+ * The title's own line box, as a multiple of {@link INNER_FONT_SIZE} — where
+ * the type line opens.
+ *
+ * ONE line, deliberately: the tiers are placed once, at creation, against a
+ * title that is the kind's own short label. A two-line name pushes its own text
+ * down and the author moves the tier, exactly as they would move any other text
+ * on the canvas. Guessing at wrap here would be the creation site pretending to
+ * be a layout engine.
+ */
+export const TITLE_LINE_HEIGHT = 1.2;
+
+/**
+ * The blank line the stencil leaves between the type line and the description,
+ * as a multiple of the description's own size.
+ *
+ * It is what keeps a sentence from reading as a fourth tier of the heading, and
+ * it is the one gap in the stack that is a statement rather than leading.
+ */
+export const TIER_BLANK_LINE = 0.7;
+
+/**
+ * The number of lines a fresh description box opens with.
+ *
+ * Two, which is what the stencil's own sentences run to and what fits under the
+ * type line in a 212 × 148 box without touching the bottom edge. A longer
+ * sentence wraps inside the box's width ({@link TIER_SIDE_INSET}) and grows the
+ * box downward — which grows the group with it, so the component keeps
+ * containing its own words.
+ */
+export const DESCRIPTION_LINES = 2;
+
+/** Side inset the two text tiers sit within, as a fraction of the node width. */
 export const TIER_SIDE_INSET = 0.06;
+
+/**
+ * The sentence a fresh description prompts the author with.
+ *
+ * The stencil's own placeholder, and a PROMPT rather than a value: every tier of
+ * a C4 component exists from the moment it is drawn (PO arbitration,
+ * 28/08/2026), so the author meets three lines of stencil rather than a box and
+ * two invisible slots somebody has to tell them about. The exporter compares
+ * against it to decide that nothing has been stated yet — see
+ * `C4_TYPE_PLACEHOLDER` in `type-line.ts` for the same call on the other tier.
+ */
+export const DESCRIPTION_PLACEHOLDER = 'description';
 
 /**
  * Where the person's body top edge sits, as a fraction of the whole silhouette

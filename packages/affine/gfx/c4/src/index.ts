@@ -6,6 +6,7 @@ export { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
 export {
   BOUNDARY_LABEL,
   type C4NodePaint,
+  DESCRIPTION_PLACEHOLDER,
   NODE_LABEL,
   NODE_PALETTE,
   NODE_RADIUS,
@@ -14,10 +15,36 @@ export {
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
 } from './consts.js';
-// The middle tier of an element's label, DERIVED from its kind: `[Person]`,
-// `[Container: Java]`. Pure and total over the nine kinds, so a host, a rule or
-// a reading can name an element exactly as the canvas does.
-export { C4_TYPE_WORD, c4TypeLine } from './type-line.js';
+// The middle tier of an element's label, SEMI-DERIVED: the word from the kind,
+// the technology from the author. Pure and total over the nine kinds and over
+// every string an author can type, so a host, a rule or a reading can name an
+// element exactly as the canvas does — and read the technology back out of it.
+export {
+  C4_TYPE_PLACEHOLDER,
+  C4_TYPE_TAKES_TECHNOLOGY,
+  C4_TYPE_WORD,
+  c4TypeLine,
+  normalizeC4TypeLine,
+  technologyOfTypeLine,
+  TYPE_TECHNOLOGY_PLACEHOLDER,
+} from './type-line.js';
+// A C4 component — the shape and its own words, grouped. Where the two written
+// tiers are placed at creation, and which of them belongs to which node. Pure,
+// so the creation site, the exporter and a host all resolve a component the
+// same way.
+export {
+  type C4ComponentGroup,
+  type C4ComponentTiers,
+  c4ComponentSiblings,
+  c4ComponentTiers,
+  c4StatedDescription,
+  c4StatedTechnology,
+  type C4TierBox,
+  type C4TierBoxes,
+  c4TierBoxes,
+  type C4TierElement,
+  c4TierText,
+} from './component.js';
 export {
   C4_ROLE,
   C4_ROLE_OF_KIND,

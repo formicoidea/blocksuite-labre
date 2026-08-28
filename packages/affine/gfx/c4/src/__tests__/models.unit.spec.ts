@@ -61,14 +61,6 @@ describe('the C4 element models', () => {
     expect(node.centerAnchorOnly).toBe(true);
   });
 
-  it('round-trips the node kind, and defaults to a software system', () => {
-    const node = detached(C4NodeElementModel);
-    expect(node.kind).toBe('system');
-    // What a document carries reads straight back through the field.
-    stored(node).set('kind', 'database');
-    expect(node.kind).toBe('database');
-  });
-
   it('makes both frames passive canvases with a name', () => {
     expect(C4BoardElementModel.prototype).toBeInstanceOf(
       FrameworkBackgroundElementModel
@@ -92,23 +84,32 @@ describe('the C4 element models', () => {
   });
 
   /**
-   * The two fields added for the PO's third change request, on exactly the
-   * terms the boundary's `variant` is on: OPTIONAL, `undefined` by default and
-   * therefore absent from the stored props, so a node that states neither is
-   * byte-identical to one created before they existed. No schema bump, no
-   * migration, every document already on disk opens and paints as it did.
+   * The PO's recette of 28/08/2026, seen from the document format.
+   *
+   * A C4 element's technology and its description were briefly two fields on
+   * this model, edited in a "Details" popover. The recette rejected the
+   * mechanism — an architect writes ON the picture — so both are canvas TEXT
+   * elements grouped with the shape, and the model is back to the one field it
+   * had. Asserted rather than left implicit because the absence is the point:
+   * a second place to write the same sentence is a place for it to go stale, and
+   * nothing may re-introduce one without this failing.
+   *
+   * `kind` is the whole schema, and it round-trips.
    */
-  it('leaves technology and description absent, and writes nothing for them', () => {
+  it('carries the node kind and nothing else, and defaults to a software system', () => {
     const node = detached(C4NodeElementModel);
-    expect(node.technology).toBeUndefined();
-    expect(node.description).toBeUndefined();
+    expect(node.kind).toBe('system');
+    // What a document carries reads straight back through the field.
+    stored(node).set('kind', 'database');
+    expect(node.kind).toBe('database');
+
+    // The two tiers are elements, not fields. No accessor, and nothing a
+    // document could carry for them.
+    const carrier = node as unknown as Record<string, unknown>;
+    expect('technology' in carrier).toBe(false);
+    expect('description' in carrier).toBe(false);
     expect(stored(node).has('technology')).toBe(false);
     expect(stored(node).has('description')).toBe(false);
-
-    stored(node).set('technology', 'Java and Spring Boot');
-    stored(node).set('description', 'Delivers the banking functionality.');
-    expect(node.technology).toBe('Java and Spring Boot');
-    expect(node.description).toBe('Delivers the banking functionality.');
   });
 
   /**

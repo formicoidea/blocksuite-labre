@@ -12,6 +12,13 @@ import type {
 import type { Bound } from '@labre/global/gfx';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background';
+import {
+  type C4ComponentGroup,
+  c4ComponentTiers,
+  c4StatedDescription,
+  c4StatedTechnology,
+  type C4TierElement,
+} from './component';
 import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
 
 /**
@@ -311,6 +318,23 @@ export interface C4ExportBoard {
   nodes: readonly C4NodeElementModel[];
   boundaries: readonly C4BoundaryElementModel[];
   connectors: readonly ConnectorElementModel[];
+  /**
+   * Every canvas TEXT element on the surface, and every GROUP.
+   *
+   * The two written tiers of a component — its type line and its description —
+   * are real text elements grouped with the shape since the PO's recette of
+   * 28/08/2026, so this is where the exporter reads the technology and the
+   * sentence it used to read off two model fields. `component.ts` does the
+   * resolving; both lists arrive unfiltered and in document order, exactly as
+   * the other three do.
+   *
+   * OPTIONAL, and the absence is not a degraded case: a host that hands over
+   * nodes alone gets an export of nodes alone, with every technology and every
+   * description empty. Which is also what a node whose group was released or
+   * whose words were deleted resolves to — see {@link c4ComponentTiers}.
+   */
+  texts?: readonly C4TierElement[];
+  groups?: readonly C4ComponentGroup[];
 }
 
 /* ── The plan ─────────────────────────────────────────────────────────── */
@@ -459,9 +483,18 @@ function oneBoard(
     return best;
   };
 
+  // The two written tiers are elements now, so what they say is read off the
+  // canvas rather than off the model. Unfiltered and in document order, because
+  // a tier belongs to its node through the GROUP and not through the geometry:
+  // an author who dragged a description half out of the board has still written
+  // it on that component.
+  const texts = board.texts ?? [];
+  const groups = board.groups ?? [];
+
   const plannedNodes: PlannedNode[] = nodes.map(model => {
     const name = labelOf(model.text) || UNNAMED;
     const mapping = C4_MERMAID_OF_KIND[model.kind];
+    const tiers = c4ComponentTiers(model.id, groups, texts);
     return {
       model,
       mapping,
@@ -471,8 +504,8 @@ function oneBoard(
       // `browser` carry one because their picture means something the macro has
       // no other way to say, and a container the author has typed "Flutter" on
       // is not a "mobile app" that happens to be written in Flutter.
-      techn: labelOf(model.technology) || mapping.techn || '',
-      descr: labelOf(model.description),
+      techn: labelOf(c4StatedTechnology(tiers.typeLine)) || mapping.techn || '',
+      descr: labelOf(c4StatedDescription(tiers.description)),
       parent: parentOf(model.elementBound, -1),
     };
   });
@@ -497,6 +530,41 @@ function oneBoard(
   const aliasOfModel = new Map(
     plannedNodes.map(node => [node.model.id, node.alias])
   );
+
+  /**
+   * …and so does every other part of the component it is drawn in.
+   *
+   * A C4 component is a group of four elements and every one of them is
+   * `connectable`: a native group is, and so is a canvas text. The connector
+   * tool's own search walks every connectable element whose bound holds the
+   * pointer and keeps the last one, so an arrow dragged onto a component records
+   * the id of the group, of the type line or of the description about as often
+   * as the shape's. All four look identical on the canvas — the words are drawn
+   * inside the box and the group's outline IS the box — and the difference would
+   * be silently fatal here, because a `Rel` is written by alias and only the
+   * shape has one: every relationship an author drew would be dropped from the
+   * file with no sign that it had been.
+   *
+   * So each part of a component answers for its shape. Only where the group
+   * holds exactly ONE C4 element, and not the first of several: a component
+   * grouped together with a second component is a lasso somebody drew round two
+   * boxes, and an arrow landing on it points at neither in particular. Guessing
+   * there would put a sentence in the file that nobody drew, which is the one
+   * thing this exporter refuses to do anywhere else.
+   */
+  for (const group of groups) {
+    const inside = plannedNodes.filter(node =>
+      group.childIds.includes(node.model.id)
+    );
+    if (inside.length !== 1) continue;
+    const { alias } = inside[0];
+    aliasOfModel.set(group.id, alias);
+    for (const childId of group.childIds) {
+      // Never over an element that already speaks for itself: a second C4 node
+      // is excluded above, and a shape is its own answer.
+      if (!aliasOfModel.has(childId)) aliasOfModel.set(childId, alias);
+    }
+  }
 
   const relations: string[] = [];
   for (const connector of board.connectors) {

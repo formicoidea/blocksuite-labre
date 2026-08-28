@@ -20,17 +20,11 @@ it is opened.
 
 **Nodes carry three tiers, as the notation does.** The name is the shape's own
 inner text, edited in place on a double-click. Under it the type line —
-`[Person]`, `[Software System]`, `[Container: Java]` — which is DERIVED from what
-the element is and can therefore never disagree with the picture; and under that
-the author's description, wrapped to the box and cut with an ellipsis rather
-than allowed to run out over the canvas. Technology and description are edited
-together, in a "Details" popover on the selected node's toolbar. Emptying a box
-clears the field rather than storing a blank, so an element whose technology was
-typed and then removed is byte-identical to one that never had it.
-
-Both new fields are optional and absent by default, which is what lets them ship
-with no schema version bump and no migration: a node that states neither writes
-nothing at all.
+`[Person]`, `[Software System]`, `[Container: Java]` — whose bracketed word says
+what the element is and can therefore never disagree with the picture; and under
+that the author's description. How those two are edited changed again before
+release, in the very next entry: they are canvas text you write on directly, not
+a popover, and the model carries no field for either.
 
 The type wording follows the official stencil, including the one entry that
 looks like a mistake: a **database says `[Container: technology]`**, not

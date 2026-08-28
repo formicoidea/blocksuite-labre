@@ -49,6 +49,9 @@ export type C4Role =
   | 'container'
   | 'database'
   | 'component'
+  // The two other tiers of an element's label, as canvas text.
+  | 'type-line'
+  | 'description'
   // The frames.
   | 'board'
   | 'boundary'
@@ -71,6 +74,8 @@ export const C4_ROLE = {
   container: 'c4:container',
   database: 'c4:database',
   component: 'c4:component',
+  'type-line': 'c4:type-line',
+  description: 'c4:description',
   board: 'c4:board',
   boundary: 'c4:boundary',
   relationship: 'c4:relationship',
@@ -154,6 +159,55 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
 ];
 
 /**
+ * The two written tiers of an element's label — the type line and the
+ * description — as roles on the canvas TEXT elements that carry them.
+ *
+ * ## Why the tiers have roles at all
+ *
+ * Because a C4 component is a GROUP now (PO recette, 28/08/2026): the shape, the
+ * type line and the description are three elements grouped together, and each of
+ * the two texts is edited in place exactly like any other words on the canvas.
+ * Which leaves one question — given a group of three texts and a box, WHICH text
+ * is the technology and which is the sentence? — and the platform already has an
+ * answer for "what is this element, semantically". Roles survive what the
+ * alternatives do not: a child reordered inside its group, a group ungrouped and
+ * regrouped, a tier copied to another node, a tier deleted and redrawn. Position
+ * in `children` survives none of those.
+ *
+ * `kind: 'text'`, which is the same call `wardley:label` makes and for the same
+ * reason: these are free text elements whose BOX is a creation-time default and
+ * not a statement about anything. A rule measuring one must measure its ink.
+ *
+ * ## What they are NOT
+ *
+ * Not levels of the model, not artefacts, and not a fourth thing a C4 diagram
+ * can contain. They are two halves of ONE element's label, which is why they are
+ * parent-less and why nothing in the pack maps a `kind` to them
+ * ({@link C4_ROLE_OF_KIND} stays the nine artefacts). The role stamped on the
+ * artefact stays on the SHAPE alone — the rules, the facts and the export all
+ * key on it, and a label-presence rule that fell on a type line would be asking
+ * a subtitle to have a name.
+ *
+ * The GROUP itself is deliberately role-less, for the reason `legend.ts` gives
+ * about legend glyphs: a role makes an element count as an artefact for every
+ * rule written against roles, and the wrapper round a box is not a second box.
+ */
+const TIER_DEFS: readonly RoleDef[] = [
+  {
+    id: C4_ROLE['type-line'],
+    kind: 'text',
+    labelKey: roleKey(C4_ROLE['type-line']),
+    labelFallback: 'Type line',
+  },
+  {
+    id: C4_ROLE.description,
+    kind: 'text',
+    labelKey: roleKey(C4_ROLE.description),
+    labelFallback: 'Description',
+  },
+];
+
+/**
  * The two frames: the sheet a diagram is drawn on, and the dashed rectangle
  * drawn round part of it.
  *
@@ -219,6 +273,7 @@ const RELATIONSHIP_DEFS: readonly RoleDef[] = [
 
 const DEFS: readonly RoleDef[] = [
   ...ELEMENT_DEFS,
+  ...TIER_DEFS,
   ...FRAME_DEFS,
   ...RELATIONSHIP_DEFS,
 ];

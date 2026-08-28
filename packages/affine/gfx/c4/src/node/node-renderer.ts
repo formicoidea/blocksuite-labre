@@ -9,20 +9,10 @@ import {
   DefaultTheme,
 } from '@labre/affine-model';
 
-import {
-  DESCRIPTION_FONT_SIZE,
-  DESCRIPTION_GAP,
-  DESCRIPTION_LINE_HEIGHT,
-  FONT_FAMILY,
-  NODE_RADIUS,
-  TIER_SIDE_INSET,
-  TYPE_FONT_SIZE,
-  TYPE_LINE_GAP,
-} from '../consts';
-import { c4TypeLine } from '../type-line';
+import { NODE_RADIUS } from '../consts';
 
 /**
- * Renderer for a C4 node — the glyph layer, and the two painted text tiers.
+ * Renderer for a C4 node — the glyph layer, and nothing else.
  *
  * Every path, radius and offset below is read off the PO's reference model
  * (`C4Model_default.svg`, a Visio export of the official stencil) and expressed
@@ -33,16 +23,23 @@ import { c4TypeLine } from '../type-line';
  *
  * The native shape renderer runs FIRST and owns the fill, the stroke, the theme
  * and the TITLE — the element's inner text, editable in place exactly like any
- * other shape's. This file then paints, in the element-local frame:
+ * other shape's. This file then paints, in the element-local frame, only the
+ * silhouettes a rectangle cannot be: `person` / `person-ext` (a circular head
+ * fused into a strongly rounded body), `database` (a cylinder), `mobile` (a
+ * phone: a dark bezel with a lighter screen inset in it, a speaker slot and a
+ * button) and `browser` (a window: a dark frame, a chrome band with three dots
+ * and an address bar, and a lighter screen under it). For all five the native
+ * rect is created unfilled and unstroked — the glyph IS the body.
  *
- *  - the silhouettes a rectangle cannot be. `person` / `person-ext` (a circular
- *    head fused into a strongly rounded body), `database` (a cylinder), `mobile`
- *    (a phone: a dark bezel with a lighter screen inset in it, a speaker slot
- *    and a button) and `browser` (a window: a dark frame, a chrome band with
- *    three dots and an address bar, and a lighter screen under it). For all five
- *    the native rect is created unfilled and unstroked — the glyph IS the body;
- *  - the two tiers under the title, on EVERY kind: the derived `[Type]` /
- *    `[Type: technology]` line, and the author's description under it.
+ * ## The two tiers this file no longer paints
+ *
+ * It used to paint the type line and the description under the title, off two
+ * fields on the model. It does not any more, and the difference is the PO's
+ * recette of 28/08/2026: a C4 component is the shape and its own words, GROUPED
+ * — the type line and the description are real canvas TEXT elements, created
+ * beside the shape and edited in place like any other text. Painted tiers could
+ * only ever be read, and a picture an architect cannot type on is a form waiting
+ * to be invented. `actions.ts` places them; the text renderer draws them.
  *
  * `system`, `system-ext`, `container` and `component` have no glyph at all: the
  * stencil draws them as plain SQUARE-cornered rectangles, and what tells them
@@ -186,141 +183,6 @@ function fillStrokeRect(
   if (!roundedRectPath(ctx, x, y, w, h, r)) return;
   ctx.fill();
   ctx.stroke();
-}
-
-/* ── The text tiers ────────────────────────────────────────────────────── */
-
-/**
- * Break a sentence to a width, and say so with an ellipsis when it will not fit.
- *
- * Word wrapping, with a hard fall-through for a single word longer than the box
- * (a URL, a package name): rather than overflow the element it is broken
- * mid-word, because a description that runs out over the canvas is worse than
- * one that is visibly cut. A line count of zero yields nothing at all — the
- * caller has already decided there is no room.
- */
-function wrapToWidth(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  maxLines: number
-): string[] {
-  if (maxLines <= 0 || !(maxWidth > 0)) return [];
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-
-  const lines: string[] = [];
-  let line = '';
-  const flush = () => {
-    if (line) lines.push(line);
-    line = '';
-  };
-
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (ctx.measureText(candidate).width <= maxWidth) {
-      line = candidate;
-      continue;
-    }
-    flush();
-    // One line PAST the budget before giving up, which is what tells the two
-    // cases apart: a sentence that happens to end on the last available line
-    // is complete and takes no mark, while one that had a word left over is
-    // cut and has to say so. Stopping AT the budget could not distinguish them.
-    if (lines.length > maxLines) break;
-    // A single word wider than the box: break it where it stops fitting.
-    if (ctx.measureText(word).width <= maxWidth) {
-      line = word;
-      continue;
-    }
-    let head = '';
-    for (const char of word) {
-      if (ctx.measureText(head + char).width > maxWidth) break;
-      head += char;
-    }
-    line = head || word.slice(0, 1);
-  }
-  flush();
-
-  if (lines.length <= maxLines) return lines;
-  const kept = lines.slice(0, maxLines);
-  const last = kept[maxLines - 1];
-  // Trim until the ellipsis itself fits, so the mark never causes the overflow
-  // it exists to announce.
-  let trimmed = last;
-  while (trimmed && ctx.measureText(`${trimmed}…`).width > maxWidth) {
-    trimmed = trimmed.slice(0, -1);
-  }
-  kept[maxLines - 1] = `${trimmed}…`;
-  return kept;
-}
-
-/**
- * The two tiers under the title: the derived type line, then the description.
- *
- * ## Where they are anchored, and why it is the honest answer
- *
- * The title is the NATIVE shape text. A canvas renderer cannot move it — its
- * vertical alignment is a stored property of the element, and writing to the
- * document from inside a paint would be a renderer editing the board it is
- * drawing. So the tiers are hung off where the title actually LANDED:
- * `model.textBound`, which the native text renderer sets during this very frame,
- * a few statements earlier in {@link c4Node}. That composes with any title
- * length, any font size, any wrap and any vertical alignment the author picks,
- * and it is the one anchor that cannot collide with the words above it.
- *
- * New nodes are created top-aligned with a padding (`actions.ts`) so that the
- * resulting stack sits where the stencil puts it. A node drawn before this
- * change keeps its centred title and simply carries its tiers lower — nothing
- * needs migrating, and nothing overlaps.
- *
- * Both tiers take the element's own text colour, so an author who recoloured a
- * node keeps one legible label rather than two-thirds of one.
- */
-function paintTiers(
-  model: C4NodeElementModel,
-  ctx: CanvasRenderingContext2D,
-  color: string,
-  w: number,
-  h: number,
-  titleBottom: number
-): void {
-  const inset = w * TIER_SIDE_INSET;
-  const maxWidth = w - inset * 2;
-  if (!(maxWidth > 0)) return;
-
-  const cx = w / 2;
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-
-  /* The type line — always present: it is the notation, not a field. */
-  ctx.font = `${TYPE_FONT_SIZE}px ${FONT_FAMILY}`;
-  const typeBaseline = titleBottom + TYPE_FONT_SIZE * TYPE_LINE_GAP;
-  if (typeBaseline > h) return;
-  const [typeLine] = wrapToWidth(
-    ctx,
-    c4TypeLine(model.kind, model.technology),
-    maxWidth,
-    1
-  );
-  if (typeLine) ctx.fillText(typeLine, cx, typeBaseline);
-
-  /* The description — the author's own sentence, when there is one. */
-  const description = (model.description ?? '').trim();
-  if (!description) return;
-
-  ctx.font = `${DESCRIPTION_FONT_SIZE}px ${FONT_FAMILY}`;
-  const lineHeight = DESCRIPTION_FONT_SIZE * DESCRIPTION_LINE_HEIGHT;
-  const firstBaseline = typeBaseline + DESCRIPTION_FONT_SIZE * DESCRIPTION_GAP;
-  // Everything from the first baseline down to the bottom inset is available;
-  // whatever does not fit is dropped and announced with an ellipsis.
-  const room = h - inset - firstBaseline;
-  const maxLines = Math.floor(room / lineHeight) + 1;
-  const lines = wrapToWidth(ctx, description, maxWidth, maxLines);
-  for (const [index, line] of lines.entries()) {
-    ctx.fillText(line, cx, firstBaseline + index * lineHeight);
-  }
 }
 
 /* ── The glyphs ────────────────────────────────────────────────────────── */
@@ -512,7 +374,7 @@ export const c4Node: ElementRenderer<C4NodeElementModel> = (
   rc,
   bound
 ) => {
-  const [, ey, w, h] = model.deserializedXYWH;
+  const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
   const cy = h / 2;
 
@@ -523,8 +385,7 @@ export const c4Node: ElementRenderer<C4NodeElementModel> = (
     .rotateSelf(model.rotate)
     .translateSelf(-cx, -cy);
 
-  // Native shape (fill / stroke / TITLE / theme handled natively). This is also
-  // what measures `model.textBound`, which the tiers below are hung off.
+  // Native shape: fill, stroke, theme and the TITLE, all handled natively.
   shapeRenderer(model, ctx, matrix, renderer, rc, bound);
 
   const stroke = renderer.getColorValue(
@@ -535,11 +396,6 @@ export const c4Node: ElementRenderer<C4NodeElementModel> = (
   const fill = renderer.getColorValue(
     model.fillColor,
     DefaultTheme.shapeFillColor,
-    true
-  );
-  const text = renderer.getColorValue(
-    model.color,
-    DefaultTheme.shapeTextColor,
     true
   );
   const strokeWidth = model.strokeWidth || 1;
@@ -555,22 +411,6 @@ export const c4Node: ElementRenderer<C4NodeElementModel> = (
   if (!isBare(kind)) {
     paintGlyph(kind, ctx, fill, stroke, w, h, strokeWidth / 2);
   }
-
-  /**
-   * Where the title ended, in element-local units.
-   *
-   * `textBound` is absolute (the native renderer builds it from `model.x/y`), so
-   * the element origin comes off it. It is absent on a node whose title has
-   * never been painted — a brand new element, or one whose text was cleared — in
-   * which case the tiers fall back to just under the vertical centre, which is
-   * where a single centred line would have ended.
-   */
-  const measured = model.textBound;
-  const titleBottom = measured
-    ? measured.y - ey + measured.h
-    : cy + model.fontSize * 0.6;
-
-  paintTiers(model, ctx, text, w, h, titleBottom);
 };
 
 export const C4NodeRendererExtension = ElementRendererExtension(

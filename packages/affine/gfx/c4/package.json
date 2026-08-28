@@ -15,7 +15,6 @@
   "license": "MPL-2.0",
   "dependencies": {
     "@labre/affine-block-surface": "workspace:*",
-    "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
     "@labre/affine-gfx-connector": "workspace:*",
     "@labre/affine-gfx-ddd-shared": "workspace:*",

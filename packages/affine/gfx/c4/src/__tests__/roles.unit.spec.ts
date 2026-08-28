@@ -16,9 +16,9 @@ import { C4_ROLE, C4_ROLE_OF_KIND, C4_ROLES } from '../roles';
 const ALL_KINDS = Object.keys(NODE_SIZE) as C4NodeKind[];
 
 describe('C4 role vocabulary', () => {
-  it('declares the five levels, the two frames and the one relationship', () => {
-    // 7 node roles + 1 edge.
-    expect(Object.keys(C4_ROLES)).toHaveLength(8);
+  it('declares the five levels, the two tiers, the two frames and the one relationship', () => {
+    // 7 node roles + 2 text + 1 edge.
+    expect(Object.keys(C4_ROLES)).toHaveLength(10);
     for (const id of [
       C4_ROLE.person,
       C4_ROLE.system,
@@ -31,6 +31,27 @@ describe('C4 role vocabulary', () => {
       expect(C4_ROLES[id]?.kind, id).toBe('node');
     }
     expect(C4_ROLES[C4_ROLE.relationship].kind).toBe('edge');
+  });
+
+  /**
+   * The two written tiers of a component's label, as canvas TEXT elements.
+   *
+   * `kind: 'text'` and not `'node'`, which is the same call `wardley:label`
+   * makes: a tier's BOX is a creation-time default 88% of the node wide whatever
+   * it reads, so a rule measuring one has to measure its INK. Filing them as
+   * nodes would let a geometric rule judge an element by a rectangle nobody drew.
+   */
+  it('declares both written tiers as text, and neither as an artefact', () => {
+    for (const id of [C4_ROLE['type-line'], C4_ROLE.description]) {
+      expect(C4_ROLES[id]?.kind, id).toBe('text');
+      // Parent-less: a type line is half of one element's label, not a level of
+      // the model, so nothing written about containers may fall on it.
+      expect(C4_ROLES[id]?.parent, id).toBeUndefined();
+    }
+    // …and no `kind` maps to either: the nine artefacts are the nine artefacts,
+    // and the role stamped on a component stays on its SHAPE alone.
+    expect(Object.values(C4_ROLE_OF_KIND)).not.toContain(C4_ROLE['type-line']);
+    expect(Object.values(C4_ROLE_OF_KIND)).not.toContain(C4_ROLE.description);
   });
 
   it('namespaces every role, keys it by its own id and kebab-cases it', () => {
