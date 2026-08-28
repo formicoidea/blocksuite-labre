@@ -1,5 +1,6 @@
 import {
   FrameworkBackgroundInteractionExtension,
+  InterchangeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -18,6 +19,7 @@ import {
   C4BoundaryRendererExtension,
 } from './element-renderer';
 import { C4BoardView, C4BoundaryView } from './element-view';
+import { C4_INTERCHANGE } from './interchange';
 import { C4NodeRendererExtension } from './node/node-renderer';
 import { C4NodeView } from './node/node-view';
 import { C4_PROFILES } from './profiles';
@@ -116,6 +118,10 @@ export class C4ViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(C4_RULES));
       context.register(ValidationProfileExtension(C4_PROFILES));
+      // Writing mermaid files, declared rather than assumed (`docs/adr/0012`).
+      // Tooling like the rest of this class: with the flag off there is nothing
+      // to export WITH, while a stored diagram keeps painting (`docs/adr/0009`).
+      context.register(InterchangeExtension(C4_INTERCHANGE));
       context.register(c4SeniorTool);
       context.register(CommandExtension(c4Commands, c4CommandIcons));
       // The flag-gated half of a selected FRAME's row, through the `custom:`

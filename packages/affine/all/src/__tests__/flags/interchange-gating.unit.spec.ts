@@ -46,6 +46,17 @@ describe('the interchange registry is flag-gated tooling', () => {
     expect(found[0].format.tier).toBe('semantic');
   });
 
+  test('C4 declares its mermaid export with the flag on', () => {
+    const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
+      framework: 'c4',
+    });
+
+    expect(found.map(capability => capability.id)).toEqual([
+      'c4:mermaid:export',
+    ]);
+    expect(found[0].format.tier).toBe('semantic');
+  });
+
   test('it declares nothing at all with the flag off', () => {
     const provider = mountEdgelessProvider(ALL_OFF);
 

@@ -47,6 +47,18 @@ export {
   toMermaidAlias,
   toMermaidText,
 } from './export.js';
+// C4's entries in the interchange registry (`docs/adr/0012`) — one today,
+// mermaid OUT. Exported whole so a host can ask what C4 can read and write
+// without mounting an editor, and call it without one either.
+export {
+  C4_INTERCHANGE,
+  C4_MERMAID_EXPORT,
+  C4_MERMAID_EXTENSION,
+  C4_MERMAID_FORMAT,
+  C4_MERMAID_MIME,
+  c4BoardFrom,
+  c4SafeFilename,
+} from './interchange.js';
 // The toolbox, for the host that composes the command registry and the
 // translation-key manifest out of the frameworks it installed (see
 // `packages/affine/all/src/{commands,translations}.ts`).
