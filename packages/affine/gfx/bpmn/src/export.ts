@@ -518,33 +518,43 @@ function isAttrName(name: string): boolean {
  * two carried fragments the same fragment, and the root's is the one a second
  * copy would duplicate.
  *
- * The scan stops at the first `>` OUTSIDE a quoted value, so an attribute whose
- * value contains `>` does not truncate the tag; and `id` is required to be
- * preceded by whitespace, so `camunda:id` and `bpmnElement` are not mistaken
- * for it.
+ * The whole scan is quote-aware — `id=` is only recognised OUTSIDE a quoted
+ * value, so an attribute whose value contains ` id='X'` (a condition string,
+ * an XPath) cannot shadow the element's real id, and a value containing `>`
+ * does not truncate the tag. `id` is required to be preceded by whitespace,
+ * so `camunda:id` and `bpmnElement` are not mistaken for it.
  */
 function carriedRootId(fragment: string): string | undefined {
   let quote: string | undefined;
-  let end = fragment.length;
+  let capturing = false;
+  let valueStart = 0;
   for (let index = 0; index < fragment.length; index++) {
     const char = fragment[index];
     if (quote !== undefined) {
-      if (char === quote) quote = undefined;
+      if (char !== quote) continue;
+      if (capturing) {
+        const value = fragment.slice(valueStart, index);
+        return value.length > 0 ? value : undefined;
+      }
+      quote = undefined;
       continue;
     }
     if (char === '"' || char === "'") {
       quote = char;
       continue;
     }
-    if (char === '>') {
-      end = index;
-      break;
+    if (char === '>') break;
+    if (char === 'i' && /\s/.test(fragment[index - 1] ?? '')) {
+      const match = /^id\s*=\s*("|')/.exec(fragment.slice(index));
+      if (match) {
+        quote = match[1];
+        capturing = true;
+        valueStart = index + match[0].length;
+        index += match[0].length - 1;
+      }
     }
   }
-  const opening = fragment.slice(0, end);
-  const found = /(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(opening);
-  const value = found?.[1] ?? found?.[2];
-  return value !== undefined && value.length > 0 ? value : undefined;
+  return undefined;
 }
 
 /**
