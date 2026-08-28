@@ -1,9 +1,6 @@
 name: Test
 
 on:
-  push:
-    branches:
-      - trimed-lib
   pull_request:
   workflow_dispatch:
   # Post-merge safety net for blocksuite-labre-main (the default branch, which
