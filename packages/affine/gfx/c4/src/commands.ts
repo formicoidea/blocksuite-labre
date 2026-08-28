@@ -42,10 +42,28 @@ import { c4ExportMermaidIcon, C4_TOOLBOX_ICONS } from './toolbar/icons';
  * connect them. The fix was the order, and the lesson is cheaper to apply before
  * the overflow than after it.
  *
- * The first seven here are the seven a C4 diagram cannot be drawn without: a
- * person, a system, a container, a component — the four levels — the
- * relationship that joins any two of them, the board they are drawn on, and the
- * database, which is the container flavour every real system has one of.
+ * ## The house order for a framework that FITS (PO, 28/08/2026)
+ *
+ * A general convention, decided on this pack and applying to every framework of
+ * fourteen commands or fewer — i.e. every one whose sub-menu is never
+ * arbitrated, so the author's order is the only order anybody ever sees:
+ *
+ *   1. the BOARDS first — the sheet has to exist before anything can be put on
+ *      it, and a first-time user who reaches for a person before a board draws
+ *      a person on the void;
+ *   2. then the BASE components, the ones a diagram of this kind is mostly made
+ *      of;
+ *   3. then the NICHE ones last;
+ *   4. and components of the SAME TYPE stay adjacent — the external variant sits
+ *      against the plain one it varies, not in a ghetto of externals at the end.
+ *
+ * This SUPERSEDES the previous C4 order, which led with the four levels and put
+ * the board sixth: it was built to make the would-be cold start drawable, and
+ * the PO's answer is that a cold start which opens with the sheet is drawable
+ * sooner. Applied here, it reads: the board, then person / person-ext, system /
+ * system-ext (each variant next to its plain form), container, component,
+ * database, then the two container flavours that are a container with a picture,
+ * then the relationship, then the two boundaries, then the export.
  */
 interface Spec {
   id: string;
@@ -71,7 +89,18 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
-  /* ── The core: a drawable diagram, from the first click ─────────────── */
+  /* ── Boards first: the sheet everything else is drawn on ────────────── */
+  {
+    id: 'addBoard',
+    label: 'C4 board',
+    iconKey: 'c4.board',
+    kind: 'artefact',
+    category: 'diagrams',
+    element: 'board',
+    run: createC4Board,
+  },
+  /* ── The base components: the four levels, each plain form immediately
+       followed by its external variant ─────────────────────────────────── */
   {
     id: 'addPerson',
     label: 'Person',
@@ -82,6 +111,15 @@ const SPECS: Spec[] = [
     run: std => createC4Node(std, 'person'),
   },
   {
+    id: 'addPersonExt',
+    label: 'Person (external)',
+    iconKey: 'c4.person.external',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:person-ext',
+    run: std => createC4Node(std, 'person-ext'),
+  },
+  {
     id: 'addSystem',
     label: 'Software system',
     iconKey: 'c4.system',
@@ -89,6 +127,15 @@ const SPECS: Spec[] = [
     category: 'elements',
     element: 'node:system',
     run: std => createC4Node(std, 'system'),
+  },
+  {
+    id: 'addSystemExt',
+    label: 'Software system (external)',
+    iconKey: 'c4.system.external',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:system-ext',
+    run: std => createC4Node(std, 'system-ext'),
   },
   {
     id: 'addContainer',
@@ -108,30 +155,10 @@ const SPECS: Spec[] = [
     element: 'node:component',
     run: std => createC4Node(std, 'component'),
   },
+  /* ── The niche components: a container with a picture on it ─────────── */
   {
-    // Fifth, and the reason the four levels above are worth drawing: C4 asks
-    // every relationship to be READ as a sentence, and the tool is where the
-    // author says which way it runs.
-    id: 'relationshipTool',
-    label: 'Relationship',
-    iconKey: 'c4.relationship',
-    kind: 'tool',
-    category: 'relations',
-    element: 'connector:relationship',
-    run: activateC4Relationship,
-  },
-  {
-    id: 'addBoard',
-    label: 'C4 board',
-    iconKey: 'c4.board',
-    kind: 'artefact',
-    category: 'diagrams',
-    element: 'board',
-    run: createC4Board,
-  },
-  {
-    // Seventh, and the last of the would-be cold start: the container flavour
-    // every real system has one of, and the only one with a role of its own.
+    // The container flavour every real system has one of, and the only one with
+    // a role of its own — so it leads the three.
     id: 'addDatabase',
     label: 'Database',
     iconKey: 'c4.database',
@@ -140,26 +167,6 @@ const SPECS: Spec[] = [
     element: 'node:database',
     run: std => createC4Node(std, 'database'),
   },
-  /* ── The frames drawn INSIDE a diagram ──────────────────────────────── */
-  {
-    id: 'addSystemBoundary',
-    label: 'System boundary',
-    iconKey: 'c4.boundary.system',
-    kind: 'artefact',
-    category: 'boundaries',
-    element: 'boundary:system',
-    run: std => createC4Boundary(std, 'system'),
-  },
-  {
-    id: 'addContainerBoundary',
-    label: 'Container boundary',
-    iconKey: 'c4.boundary.container',
-    kind: 'artefact',
-    category: 'boundaries',
-    element: 'boundary:container',
-    run: std => createC4Boundary(std, 'container'),
-  },
-  /* ── The remaining container flavours ───────────────────────────────── */
   {
     id: 'addMobile',
     label: 'Mobile app',
@@ -178,24 +185,35 @@ const SPECS: Spec[] = [
     element: 'node:browser',
     run: std => createC4Node(std, 'browser'),
   },
-  /* ── The two "somebody else owns this" variants ─────────────────────── */
+  /* ── What joins the components, then the frames drawn round them ────── */
   {
-    id: 'addPersonExt',
-    label: 'Person (external)',
-    iconKey: 'c4.person.external',
-    kind: 'artefact',
-    category: 'elements',
-    element: 'node:person-ext',
-    run: std => createC4Node(std, 'person-ext'),
+    // C4 asks every relationship to be READ as a sentence, and the tool is where
+    // the author says which way it runs.
+    id: 'relationshipTool',
+    label: 'Relationship',
+    iconKey: 'c4.relationship',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:relationship',
+    run: activateC4Relationship,
   },
   {
-    id: 'addSystemExt',
-    label: 'Software system (external)',
-    iconKey: 'c4.system.external',
+    id: 'addSystemBoundary',
+    label: 'System boundary',
+    iconKey: 'c4.boundary.system',
     kind: 'artefact',
-    category: 'elements',
-    element: 'node:system-ext',
-    run: std => createC4Node(std, 'system-ext'),
+    category: 'boundaries',
+    element: 'boundary:system',
+    run: std => createC4Boundary(std, 'system'),
+  },
+  {
+    id: 'addContainerBoundary',
+    label: 'Container boundary',
+    iconKey: 'c4.boundary.container',
+    kind: 'artefact',
+    category: 'boundaries',
+    element: 'boundary:container',
+    run: std => createC4Boundary(std, 'container'),
   },
 ];
 
