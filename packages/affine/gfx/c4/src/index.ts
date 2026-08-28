@@ -46,6 +46,9 @@ export {
   type C4TierElement,
   c4TierText,
 } from './component.js';
+// Which of the three C4 diagrams a board declares it draws, and the words the
+// picker offers them under — DATA, like the rules that read the fact.
+export { C4_BOARD_LEVEL_MENU, type C4BoardLevelOption } from './levels.js';
 // The levels of requirement, and the rules they arbitrate: DATA a host can
 // read, ship and reason about without an editor.
 export { C4_PROFILES } from './profiles.js';

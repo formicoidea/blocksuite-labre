@@ -17,9 +17,10 @@ import {
   getRegisteredCommands,
   runCommand,
 } from '@labre/std';
-import { html, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 
 import { createC4Legend } from '../actions';
+import { C4_BOARD_LEVEL_MENU, type C4BoardLevelOption } from '../levels';
 
 import { c4ExportMermaidIcon } from './icons';
 
@@ -35,6 +36,39 @@ const ResizeIcon = html`<svg
 >
   <path d="M9 5H5v4M15 19h4v-4" />
   <path d="M5 5l6 6M19 19l-6-6" />
+</svg>`;
+
+/**
+ * The two glyphs the level picker needs, drawn inline rather than pulled from
+ * `@labre/affine-components` — a dependency this package does not have and
+ * which is not worth adding for two paths. The same call
+ * `validation-toolbar.ts` makes for its own tick, and the same call
+ * {@link ResizeIcon} above already makes.
+ */
+const ChevronDownIcon = html`<svg
+  width="16"
+  height="16"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 9l6 6 6-6" />
+</svg>`;
+
+const CheckIcon = html`<svg
+  width="20"
+  height="20"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M5 12.5l4.5 4.5L19 7.5" />
 </svg>`;
 
 const findCommand = (ctx: ToolbarContext, id: string) =>
@@ -197,6 +231,158 @@ export const c4BoardToolbarExtension = ToolbarModuleExtension({
 });
 
 /**
+ * The board the level picker is about, or `null`.
+ *
+ * ONE board, deliberately: a level is one statement about one sheet, and a
+ * selection spanning two boards has no honest current value to show — the same
+ * call the generic Validation dropdown makes about the profile it offers.
+ */
+function selectedBoard(ctx: ToolbarContext): C4BoardElementModel | null {
+  const models = ctx.getSurfaceModels();
+  if (models.length !== 1) return null;
+  const [model] = models;
+  return model instanceof C4BoardElementModel ? model : null;
+}
+
+/**
+ * Put the board on `option`, and report it.
+ *
+ * `captureSync` first, so one click is one undo — the rule every write on this
+ * toolbar follows. Choosing **Free sketch** CLEARS the field rather than writing
+ * a fourth value, which is the very move `ValidationManager.setProfile` makes
+ * for the default profile and for its reason: the default must leave a document
+ * byte-identical to one drawn before the field existed.
+ *
+ * A choice that changes nothing writes nothing and reports nothing — an undo
+ * checkpoint for a no-op is a click the user has to press twice to get back
+ * past.
+ */
+function pickLevel(ctx: ToolbarContext, option: C4BoardLevelOption) {
+  const board = selectedBoard(ctx);
+  if (!board) return;
+  const previous = board.level;
+  if (previous === option.level) return;
+
+  ctx.std.store.captureSync();
+  if (option.level === undefined) board.clearField('level');
+  else board.level = option.level;
+
+  ctx.std.getOptional(TelemetryProvider)?.track('FrameworkViewLevelSet', {
+    page: 'whiteboard editor',
+    segment: 'element toolbar',
+    module: 'c4 toolbar',
+    control: 'level',
+    framework: 'c4',
+    // The absence is a value the dashboard needs as much as the three others:
+    // "put back to a free sketch" is the gesture that says the author changed
+    // their mind about what the sheet is.
+    level: option.level ?? 'none',
+    ...(previous !== undefined ? { previousLevel: previous } : {}),
+  });
+}
+
+/**
+ * The level picker: which of C4's three diagrams this board draws.
+ *
+ * ## Why it is a DECLARED fact and not a rename
+ *
+ * A board's title is free text and always was — "Payments", "Internet Banking",
+ * whatever the author writes on it — and nothing in it says which of the three
+ * sheets it is. The level is a second, small, closed statement sitting beside
+ * the title, and picking one leaves the words alone: the author keeps their
+ * name, the rules get a fact they can read (`rules.ts`, C15 and C16).
+ *
+ * ## Why it is flag-gated tooling
+ *
+ * Declaring a level is deciding how the diagram is to be READ and judged, which
+ * is exactly what `docs/adr/0009` calls tooling: with the `c4` flag off, a board
+ * already carrying a level keeps it written, keeps painting and simply stops
+ * being offered the choice — and stops being checked, because the rules go with
+ * the same flag. Nothing a stored document needs to load or paint is behind it.
+ *
+ * ## Shape
+ *
+ * A dropdown, like the Validation entry it sits beside, and for the same reason:
+ * four mutually exclusive options with a current value are a menu, not four
+ * buttons competing for a toolbar's width. The trigger NAMES the level in force,
+ * so a reader of the row knows what the sheet claims without opening anything.
+ */
+const levelPickerAction = {
+  // Between the legend (`b.`) and the generic Validation dropdown (`z.`): the
+  // level is a statement about the sheet, read before the level of requirement
+  // applied to it.
+  id: 'c.level',
+  when: (ctx: ToolbarContext) => selectedBoard(ctx) !== null,
+  content(ctx: ToolbarContext) {
+    const board = selectedBoard(ctx);
+    if (!board) return null;
+
+    const menuLabel = translateKey(
+      ctx.std,
+      C4_BOARD_LEVEL_MENU.labelKey,
+      C4_BOARD_LEVEL_MENU.labelFallback
+    );
+    const wordsFor = (option: C4BoardLevelOption) =>
+      translateKey(ctx.std, option.labelKey, option.labelFallback);
+    const current =
+      C4_BOARD_LEVEL_MENU.options.find(
+        option => option.level === board.level
+      ) ??
+      // A board carrying a level this build does not know — a peer on a newer
+      // version, an import — names it rather than silently reading as a sketch.
+      undefined;
+
+    const options = C4_BOARD_LEVEL_MENU.options.map(option => {
+      const selected = option.level === board.level;
+      return html`<editor-menu-action
+        data-testid="c4-level-option"
+        data-level=${option.level ?? 'none'}
+        data-selected=${selected ? 'true' : nothing}
+        aria-label=${wordsFor(option)}
+        aria-pressed=${selected}
+        @click=${() => pickLevel(ctx, option)}
+      >
+        ${selected ? CheckIcon : html`<span style="width: 20px;"></span>`}
+        <span class="label">${wordsFor(option)}</span>
+      </editor-menu-action>`;
+    });
+
+    return html`<editor-menu-button
+      data-testid="c4-level-entry"
+      .contentPadding=${'8px'}
+      .button=${html`
+        <editor-icon-button
+          data-testid="c4-level-button"
+          aria-label=${menuLabel}
+          .tooltip=${menuLabel}
+          .justify=${'space-between'}
+          .labelHeight=${'20px'}
+        >
+          <span class="label"
+            >${current === undefined ? menuLabel : wordsFor(current)}</span
+          >
+          ${ChevronDownIcon}
+        </editor-icon-button>
+      `}
+    >
+      <div
+        data-testid="c4-level-menu"
+        data-orientation="vertical"
+        data-size="large"
+      >
+        <div
+          role="group"
+          aria-label=${menuLabel}
+          style="display: flex; flex-direction: column;"
+        >
+          ${options}
+        </div>
+      </div>
+    </editor-menu-button>`;
+  },
+};
+
+/**
  * The legend button — the flag-gated half of the row (see the note above).
  *
  * `b.` sorts it after the resize toggle, so the two modules render as the one
@@ -244,18 +430,24 @@ export const c4LegendToolbarConfig = {
  * put on a selected board: the resize toggle (always-on, `<flavour>`), the
  * legend and the level of requirement.
  *
- * The last two are gated by the same flag and appear together or not at all, so
+ * The last three — the legend, the LEVEL this board declares and the level of
+ * requirement — are gated by the same flag and appear together or not at all, so
  * one module is the honest grouping rather than a workaround: `c4` off takes
- * away both the gesture that CREATES legend elements and the choice of how hard
- * to check the diagram, and leaves the stored board its handles.
+ * away the gesture that CREATES legend elements, the choice of which diagram
+ * this sheet is, and the choice of how hard to check it, and leaves the stored
+ * board its handles and everything already written on it.
  *
- * Sorting keeps the row readable across the merge — `b.legend` from the config
- * above, `z.validation` from {@link validationToolbarConfig} — so the user sees
- * resize, legend, then the level, whatever order the modules were registered in.
+ * Sorting keeps the row readable across the merge — `b.legend` and `c.level`
+ * from the config above, `z.validation` from {@link validationToolbarConfig} —
+ * so the user sees resize, legend, the diagram's level, then the level of
+ * requirement, whatever order the modules were registered in.
  */
 export const c4BoardToolingToolbarConfig: ToolbarModuleConfig = {
   actions: [
     ...c4LegendToolbarConfig.actions,
+    // Which of the three C4 diagrams this sheet draws — a fact about the board,
+    // written on the board, read by two of the sixteen rules.
+    levelPickerAction,
     // The generic dropdown, not a C4 variant of it: the config names no
     // framework — it reads the registered rules and profiles — so this is the
     // very same object wardley, bpmn and the context map register.

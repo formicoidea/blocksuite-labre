@@ -15,12 +15,12 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * tooling, and a board already set to `strict` simply stops being checked until
  * it comes back — the id stays written, untouched.
  *
- * ## Both tables spell out all FOURTEEN ids
+ * ## Both tables spell out all SIXTEEN ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `c4.strict` actually
- * requires reads fourteen lines here instead of one file per rule, and a rule
+ * requires reads sixteen lines here instead of one file per rule, and a rule
  * shipped later cannot join a level in silence.
  */
 
@@ -66,6 +66,8 @@ const sketch: ValidationProfile = {
     'c4.system-in-boundary': 'audit',
     'c4.container-in-container-boundary': 'audit',
     'c4.component-level-skip': 'audit',
+    'c4.context-diagram-level': 'audit',
+    'c4.container-diagram-level': 'audit',
   },
 };
 
@@ -73,11 +75,21 @@ const sketch: ValidationProfile = {
  * Strict: the diagram is a DELIVERABLE, and it is held to the review checklist.
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
- * becomes something another team will be handed. NINE rules move to `warning`.
+ * becomes something another team will be handed. ELEVEN rules move to
+ * `warning`.
  *
  * Three of them read a question from the checklist itself (c4model.com): is
  * every element named, is every relationship labelled, is every arrow one the
  * model can state.
+ *
+ * Two are the LEVEL rules — `c4.context-diagram-level` and
+ * `c4.container-diagram-level` — and they are the easiest promotion in the
+ * table, because the user has already spoken: a board declaring a level is an
+ * author saying which sheet this is, and a container drawn on a sheet its own
+ * author called a context diagram is a contradiction inside one document. There
+ * is no reading under which the drawing meant it — and the one reading under
+ * which nothing should be said, a sheet whose level was never stated, is silence
+ * from the rules themselves rather than from this table.
  *
  * Three more are the ZOOM rules — `c4.system-in-boundary`,
  * `c4.container-in-container-boundary` and `c4.component-level-skip`. They are
@@ -100,13 +112,15 @@ const sketch: ValidationProfile = {
  * as our convention rather than implying C4 forbids it, which is what keeps the
  * promotion honest.
  *
- * Note the partition here is NOT the provenance one — nine promoted against nine
- * `recommendation` rules is a coincidence of arithmetic and nothing else, since
- * the two nines do not hold the same rules: the three `c4.isolated-*` come from
- * the checklist and stay remarks, while three of ours are promoted. The spec
- * constant is called `PROMOTED` for exactly that reason.
+ * Note the partition here is NOT the provenance one — eleven promoted against
+ * eleven `recommendation` rules is a coincidence of arithmetic and nothing else,
+ * since the two elevens do not hold the same rules: the three `c4.isolated-*`
+ * come from the checklist and stay remarks, while three of ours are promoted.
+ * The spec constant is called `PROMOTED` for exactly that reason.
  *
  * ## The five that do NOT move, and why the table spells them out
+ *
+ * Five out of sixteen, still — the two rules this slice added both moved.
  *
  * `c4.isolated-system`, `c4.isolated-container`, `c4.isolated-component`,
  * `c4.database-initiates` and `c4.person-in-boundary` stay `audit` here too.
@@ -152,6 +166,10 @@ const strict: ValidationProfile = {
     'c4.system-in-boundary': 'warning',
     'c4.container-in-container-boundary': 'warning',
     'c4.component-level-skip': 'warning',
+    // The two LEVEL rules: the author has SAID which sheet this is, and the
+    // sheet shows something that sheet does not show — see the header.
+    'c4.context-diagram-level': 'warning',
+    'c4.container-diagram-level': 'warning',
     // The five that do not move — see the header.
     'c4.isolated-system': 'audit',
     'c4.isolated-container': 'audit',

@@ -111,6 +111,11 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   relation.
  * - `label-presence` — the subject must be NAMED. The first family that reads
  *   an element's words rather than its geometry, its role or its relations.
+ * - `view-admissibility` — which roles a frame ADMITS, read off a level the
+ *   frame itself declares. The first family whose question is asked of the
+ *   VIEW rather than of the artefact: every other one starts from a subject and
+ *   looks around it, this one starts from the sheet and asks what has been
+ *   drawn on it.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -126,7 +131,8 @@ export type RuleFamily =
   | 'role-count'
   | 'edge-locality'
   | 'reachability'
-  | 'label-presence';
+  | 'label-presence'
+  | 'view-admissibility';
 
 /**
  * WHEN a rule is evaluated (PF5.14).
@@ -864,6 +870,59 @@ export interface LabelPresenceDef {
 }
 
 /**
+ * `view-admissibility` configuration — WHICH ROLES the frame admits, given the
+ * level the frame itself declares.
+ *
+ * The engine names no framework and no level. It is handed the PROP the frame
+ * writes its level in, and a table keyed by the VALUES that prop can take: the
+ * same idiom `backgroundLabelText` and `backgroundInVariant` already use to read
+ * a declared prop off an instance, promoted to a rule so a verdict can turn on
+ * it. C4 is the first consumer — `levelProp: 'level'`, keyed by
+ * `context` / `container` / `component` — and nothing here knows that.
+ *
+ * ## Why the table is FORBIDDEN and not ADMITTED
+ *
+ * Because the honest default for a view is permissive. A C4 context diagram
+ * legitimately shows the people and the neighbouring systems around the one it
+ * is about; a container diagram legitimately shows the persons, the systems and
+ * the system boundary it zooms into. An allow-list would have to enumerate
+ * every one of those, and would indict every artefact the framework's author
+ * forgot — including the free rectangles, the notes and the legend glyphs a
+ * whiteboard is made of. A deny-list says only what the notation actually
+ * refuses, and everything it does not name is left alone (PRD principle 8).
+ *
+ * A level the table has no entry for — or whose entry is empty — is a level the
+ * rule has nothing to say about, and it evaluates NOTHING there. That is what
+ * lets a framework declare the two levels that forbid something and stay silent
+ * on the one that forbids nothing, rather than shipping a rule that can never
+ * fire.
+ */
+export interface ViewAdmissibilityDef {
+  /**
+   * The prop the FRAME writes its level in, on the instance itself — `'level'`
+   * for a C4 board.
+   *
+   * A prop name and not a declared axis, a zone or a variant, because the level
+   * of a view is none of those: it is a fact the author states about the sheet,
+   * and the engine's job is to read it back where the framework says it is
+   * written. A frame whose prop holds nothing, or holds something that is not a
+   * non-empty string, has stated no level and is not judged.
+   */
+  levelProp: string;
+  /**
+   * Per level VALUE, the roles that view does not admit — matched by
+   * {@link roleIsA}, so naming a parent role covers its specialisations (C4's
+   * `c4:container` reaches `c4:database`, `c4:boundary` reaches both of its
+   * children).
+   *
+   * Own keys only when it is read: the table is an object literal shipped by a
+   * framework, so a frame whose level happened to say `'constructor'` must not
+   * resolve to something off the prototype.
+   */
+  forbidden: Readonly<Record<string, readonly RoleId[]>>;
+}
+
+/**
  * `element-in-zone` configuration — the artefact is on the map, but is it in the
  * right REGION of it?
  *
@@ -995,8 +1054,10 @@ export interface ValidationRule extends RuleMessage {
    * role (a generalist square, a free text) never matches — proportionality,
    * PRD principle 8.
    *
-   * Absent for `no-overlap`, whose subjects are declared per PAIR: the rule has
-   * no single subject role, and naming one would be data that lies.
+   * Absent for `no-overlap`, whose subjects are declared per PAIR, and for
+   * `view-admissibility`, whose subjects are declared per LEVEL: in both cases
+   * the rule has no single subject role, and naming one would be data that
+   * lies.
    */
   appliesTo?: RoleId;
   /** The framework's role vocabulary, for the inheritance walk. */
@@ -1077,6 +1138,11 @@ export interface ValidationRule extends RuleMessage {
   reachability?: ReachabilityDef;
   /** `label-presence` only: the subjects are named by {@link appliesTo}. */
   label?: LabelPresenceDef;
+  /**
+   * `view-admissibility` only: the views are named by {@link backgroundRole},
+   * and the subjects by the level the view declares.
+   */
+  admissibility?: ViewAdmissibilityDef;
 }
 
 /**
@@ -3833,6 +3899,111 @@ function evaluateElementInZone(
 }
 
 /**
+ * "Does this artefact belong on THIS view?"
+ *
+ * The first family whose subject is the SHEET. Every other one starts from an
+ * artefact — a node, a relation, a pair — and asks something about where it is
+ * or what touches it. This one starts from a frame that has DECLARED what kind
+ * of view it is, and judges what has been drawn on it against that declaration.
+ *
+ * The level is read off the instance, from the prop the rule names
+ * ({@link ViewAdmissibilityDef.levelProp}) — the very idiom the background
+ * primitives already use for labels and variants — so the engine learns which
+ * views exist from the document rather than from a registry of its own.
+ *
+ * ## What it stays silent about, and why each one matters
+ *
+ * - **a frame that declares NO level** — the overwhelming majority, and every
+ *   frame in every document written before the prop existed. No fact, no rule
+ *   (PRD principle 8): a sheet whose author never said which view it is has
+ *   made no claim for anything to contradict, and a family that guessed would
+ *   light up every diagram already on disk.
+ * - **a level the rule's table does not name**, or names with an empty list —
+ *   the rule has nothing to say about that view. That is what lets a framework
+ *   ship the levels that forbid something and stay quiet on the one that
+ *   forbids nothing, instead of a rule that can never fire.
+ * - **an element carrying no role** — a rectangle somebody dropped on the sheet
+ *   to think with belongs to no notation, so no view can refuse it.
+ * - **an element off every declared view** — it is on the canvas beside the
+ *   sheet, not on it, and a view judges what is drawn ON it.
+ * - **the frame itself**, and any other frame of the same role: a view is not
+ *   an artefact drawn on itself.
+ *
+ * ## Which view judges an element
+ *
+ * The one whose plot contains its CENTRE ({@link plotContaining}) — membership,
+ * with the same tie-break every attribution in this file uses, and never the
+ * nearest-frame fallback: "this artefact is on that view" has to mean it, or a
+ * box floating beside a context diagram would be indicted by it.
+ *
+ * A subject on two nested views is judged by ONE of them, the smaller id, which
+ * is the same answer `role-count` and `edge-locality` give. Two views drawn on
+ * top of each other is not a case C4 has, and inventing a second verdict for it
+ * would mean inventing which of the two the author meant.
+ *
+ * ## Cost, and why it is realtime-safe
+ *
+ * One pass to collect the views (units per board), one plot resolved per view,
+ * then ONE pass over the elements with one containment walk and at most
+ * `forbidden.length` role tests each. Linear in the surface, no graph, no pair
+ * walk, nothing quadratic — the same budget `element-in-background` and
+ * `role-count` are measured on.
+ */
+function evaluateViewAdmissibility(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const def = rule.admissibility;
+  if (def === undefined) return [];
+  if (missingFrameRole(rule, 'view-admissibility')) return [];
+
+  // The views that have both DECLARED a level and given this rule something to
+  // say about it. Resolved once, per frame — the plot arithmetic and the table
+  // lookup must not be paid per subject.
+  const views: { instance: BackgroundInstance; plot: Bound }[] = [];
+  const forbiddenOf = new Map<string, readonly RoleId[]>();
+  for (const frame of framePlots(rule, elements)) {
+    const stated = frame.instance.props[def.levelProp];
+    // A level is a non-empty string or it is nothing. The value comes off a
+    // Y.Map, so it is whatever a peer, an importer or an older client wrote.
+    if (typeof stated !== 'string' || stated === '') continue;
+    // Own keys only: `forbidden` is an object literal shipped by a framework.
+    if (!Object.hasOwn(def.forbidden, stated)) continue;
+    const forbidden = def.forbidden[stated];
+    if (forbidden === undefined || forbidden.length === 0) continue;
+    views.push(frame);
+    forbiddenOf.set(frame.instance.id, forbidden);
+  }
+  // No view on the board has stated a level this rule judges: not one element
+  // is walked.
+  if (views.length === 0) return [];
+
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    const role = el.role;
+    if (role === undefined) continue;
+    // A view is never an artefact drawn on ITSELF — its own centre is inside
+    // its own plot, so without this a rule forbidding the frame's own role
+    // would indict every frame that declared a level.
+    if (forbiddenOf.has(el.id)) continue;
+
+    const view = plotContaining(centreOf(el.elementBound), views);
+    if (view === null) continue;
+
+    const forbidden = forbiddenOf.get(view.id);
+    if (forbidden === undefined) continue;
+    // One finding per element, whichever forbidden role matched: the author has
+    // drawn one box on the wrong sheet, and telling them twice about it would
+    // be describing our table rather than their diagram.
+    if (forbidden.some(entry => roleIsA(role, entry, rule.roles))) {
+      violations.push(raise(rule, [el.id], view.id));
+    }
+  }
+  return violations;
+}
+
+/**
  * "How many relations reach this node?" — the cardinality half of a grammar.
  *
  * One pass to count, one pass to judge. For every element carrying the declared
@@ -4542,6 +4713,7 @@ const RULE_FAMILIES: Record<
   'edge-locality': evaluateEdgeLocality,
   reachability: evaluateReachability,
   'label-presence': evaluateLabelPresence,
+  'view-admissibility': evaluateViewAdmissibility,
 };
 
 /** A rule the drawing path evaluates. `moment` absent means `'realtime'`. */
@@ -5120,6 +5292,14 @@ export function verdictPropsOf(
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
     if (rule.family === 'label-presence' && isRealtime(rule)) props.add('text');
+    // The level a VIEW declares decides which roles it admits, so changing it —
+    // or clearing it back to "free sketch", which DELETES the key, which is why
+    // `touchesVerdict` reads `oldValues` too — re-judges everything drawn on
+    // that frame. Derived from the rule's own declaration and never from a name
+    // the engine knows, exactly like the transition toggles below.
+    if (rule.admissibility !== undefined) {
+      props.add(rule.admissibility.levelProp);
+    }
     if (rule.background === undefined) continue;
     for (const prop of backgroundTransitionVisibleProps(rule.background)) {
       props.add(prop);
