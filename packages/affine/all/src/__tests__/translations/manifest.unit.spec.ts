@@ -213,5 +213,6 @@ describe('getTranslationKeyManifest', () => {
         .sort(),
       'chrome wordings the scan could not pair with their call site'
     ).toEqual(UNPAIRABLE_CHROME_KEYS);
-  }, 15_000);
+    // ~2.8k files read synchronously: ~3s warm, but 20s+ on a cold NTFS cache.
+  }, 90_000);
 });
