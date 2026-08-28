@@ -186,8 +186,16 @@ const shown = (models: unknown[], readonly = false) => {
  * is exactly what these assertions read.
  */
 describe('morphToolbarConfig — the rendered dropdown', () => {
-  /** Render one template into a detached host, and always take it away again. */
-  const draw = (
+  /**
+   * Render one template into a host, and always take it away again — this
+   * package runs `isolate: false`, so every spec file shares one page and a
+   * host left behind is another file's problem.
+   *
+   * `await`ed inside the `try`, not returned from it: returning the promise
+   * would run the `finally` — and so remove the host — before an async body had
+   * made its assertions.
+   */
+  const draw = async (
     template: TemplateResult,
     body: (host: HTMLElement) => void | Promise<void>
   ) => {
@@ -195,7 +203,7 @@ describe('morphToolbarConfig — the rendered dropdown', () => {
     document.body.append(host);
     try {
       render(template, host);
-      return body(host);
+      await body(host);
     } finally {
       host.remove();
     }
