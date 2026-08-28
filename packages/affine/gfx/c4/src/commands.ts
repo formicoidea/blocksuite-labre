@@ -35,12 +35,18 @@ import { c4ExportMermaidIcon, C4_TOOLBOX_ICONS } from './toolbar/icons';
  *
  * That does not make the ORDER free — it makes it a fifteenth entry away from
  * mattering. Add one more of anything, an artefact or a second export, and the
- * catalogue outgrows the cap, the ranking kicks in, and the first seven of this
- * list become the COLD START every new user meets. BPMN learned that the hard
- * way in a live recette (#144): its declarations were grouped by family, so the
- * seven a first-time user met were six events and a task, with nothing to
- * connect them. The fix was the order, and the lesson is cheaper to apply before
- * the overflow than after it.
+ * catalogue outgrows the cap, the ranking kicks in, and the first
+ * `SENIOR_MENU_RANKED_SLOTS` of this list become the COLD START every new user
+ * meets. BPMN learned that the hard way in a live recette (#144): its
+ * declarations were grouped by family, so the head a first-time user met was six
+ * events and a task, with nothing to connect them. The fix was the order, and
+ * the lesson is cheaper to apply before the overflow than after it.
+ *
+ * The head is THIRTEEN slots since #167 (seven recent + six frequent), not the
+ * seven it was when BPMN met the problem — which makes the cold start nearly the
+ * whole toolbox and the author's order nearly the whole answer. Named through
+ * the constant rather than restated as a number, so the next widening does not
+ * leave a lie here.
  *
  * ## The house order for a framework that FITS (PO, 28/08/2026)
  *
