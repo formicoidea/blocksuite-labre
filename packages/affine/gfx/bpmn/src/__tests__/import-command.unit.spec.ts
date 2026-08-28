@@ -1,7 +1,7 @@
 import { ConnectorElementModel } from '@labre/affine-model';
 import { NotificationProvider } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
-import type { BlockStdScope } from '@labre/std';
+import { type BlockStdScope, isCommandAvailable } from '@labre/std';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -68,7 +68,15 @@ class StubSurface {
       Object.defineProperties(connector, {
         id: { value: id, enumerable: true },
         role: { value: props.role, enumerable: true },
-        elementBound: { value: bound },
+        // `[0, 0, 0, 0]`, and it is the POINT: a connector has no geometry of
+        // its own, its bound comes off the path the connector manager routes
+        // between its ends, and that path is computed on a later tick than the
+        // `addElement` that made it. Read synchronously — which is the only
+        // moment the command has — a freshly imported connector really does
+        // answer the origin with no size (confirmed by a chromium probe on
+        // #162). A stub that answered anything else would hide the one bug
+        // this file exists to keep fixed.
+        elementBound: { value: new Bound(0, 0, 0, 0) },
         // The two the rewrite WRITES — `board-stub`'s fakes leave them
         // read-only, which is the whole reason this stub is not that one.
         source: { value: props.source, writable: true, enumerable: true },
@@ -148,6 +156,36 @@ const FOREIGN_FILE = `<?xml version="1.0" encoding="UTF-8"?>
 </bpmn:definitions>
 `;
 
+/**
+ * The same process, drawn a hundred thousand units from the origin.
+ *
+ * Not a pathological file: bpmn.io hands out coordinates like these the moment
+ * somebody drags a whole process across its canvas, and BPMN DI coordinates are
+ * relative to the plane with no bound on how large they get. The shapes tile a
+ * 308 × 160 box at (99932, 99940), which is the reviewer's chromium probe —
+ * the sync common bound was `[0, 0, 100240, 100100]`.
+ */
+const FAR_FROM_ORIGIN_FILE = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_2" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_2" isExecutable="false">
+    <bpmn:startEvent id="Start_2" name="Order received" />
+    <bpmn:task id="Task_2" name="Check the stock" />
+    <bpmn:endEvent id="End_2" name="Order shipped" />
+    <bpmn:sequenceFlow id="Flow_A" sourceRef="Start_2" targetRef="Task_2" />
+    <bpmn:sequenceFlow id="Flow_B" sourceRef="Task_2" targetRef="End_2" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_2">
+    <bpmndi:BPMNPlane id="Plane_2" bpmnElement="Process_2">
+      <bpmndi:BPMNShape id="Shape_S" bpmnElement="Start_2"><dc:Bounds x="99932" y="99940" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_T" bpmnElement="Task_2"><dc:Bounds x="100080" y="100020" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_E" bpmnElement="End_2"><dc:Bounds x="100204" y="99940" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_A" bpmnElement="Flow_A"><di:waypoint x="99968" y="99958" /><di:waypoint x="100080" y="100060" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_B" bpmnElement="Flow_B"><di:waypoint x="100180" y="100060" /><di:waypoint x="100204" y="99958" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
+`;
+
 const asFile = (text: string, name = 'process.bpmn') =>
   ({ name, text: () => Promise.resolve(text) }) as unknown as File;
 
@@ -169,9 +207,12 @@ describe('the import command', () => {
     // Filed with the export it is the other half of, not with the pool: the
     // two directions of one format are one subject.
     expect(descriptor!.category).toBe('interchange');
-    // Nothing has to be selected — and, unlike every other BPMN entry with a
-    // narrower availability, there is no `when` to narrow it either.
-    expect(descriptor!.availability).toBe('always');
+    // Nothing has to be SELECTED, and there is no `when` to narrow it — but it
+    // writes, so a read-only document is one it cannot run on and the
+    // declaration says so. `'always'` would light the entry on a read-only
+    // board, do nothing when clicked, and put the same untruth in the
+    // serializable manifest a host reads.
+    expect(descriptor!.availability).toBe('editable');
     expect(descriptor!.when).toBeUndefined();
     expect(descriptor!.iconKey).toBe('bpmn.import-xml');
     expect(descriptor!.defaultKeys).toEqual({ mac: [], other: [] });
@@ -179,6 +220,16 @@ describe('the import command', () => {
       framework: 'bpmn',
       element: 'board:import-xml',
     });
+  });
+
+  it('withdraws from every surface on a read-only document', () => {
+    // The half `'editable'` buys that the runtime guard cannot: a surface asks
+    // the DECLARATION what to render, so with `'always'` the entry was listed,
+    // clickable and silently dead on a document nothing can be written to.
+    expect(isCommandAvailable(stubEditor().std, descriptor!)).toBe(true);
+    expect(
+      isCommandAvailable(stubEditor({ readonly: true }).std, descriptor!)
+    ).toBe(false);
   });
 
   it('takes the catalogue, the palette and the agent, and nothing else', () => {
@@ -291,6 +342,49 @@ describe('materializing an imported board', () => {
     ).toContain('bioc:stroke');
   });
 
+  it('sends both ends of an edge onto ONE element when the file reused an id', () => {
+    // BPMN requires ids to be unique across a document; a merged file, or an
+    // import run twice into one file, breaks that. The reader imports both and
+    // records a `substituted-id` note saying the SECOND will be written back
+    // under an id Labre mints — so a flow naming that id means the FIRST of
+    // them, and this is the fold that has to agree with that sentence.
+    const duplicated = FOREIGN_FILE.replace(
+      '<bpmn:endEvent id="End_1" name="Order shipped" />',
+      '<bpmn:endEvent id="Start_1" name="Order shipped" />'
+    ).replace(
+      '<bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />',
+      '<bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Start_1" />'
+    );
+
+    const { std, surface } = stubEditor();
+    const { elements, report } = importBpmnXml(duplicated);
+    expect(report.notes.map(note => note.kind)).toContain('substituted-id');
+
+    const created = materializeBpmnImport(std, elements);
+    const startIds = created.filter((_, index) => {
+      const carried = surface.added[index].interchange as
+        | Record<string, { id?: string }>
+        | undefined;
+      return carried?.bpmn?.id === 'Start_1';
+    });
+    // Both elements were imported — nothing is dropped for sharing a name.
+    expect(startIds).toHaveLength(2);
+
+    const flow = created
+      .map(id => surface.getElementById(id))
+      .find(
+        (model): model is ConnectorElementModel =>
+          model instanceof ConnectorElementModel
+      );
+    // Both ends named the duplicated id, and both land on the FIRST element to
+    // claim it — the only answer consistent with the `substituted-id` note the
+    // user was just shown ("the second will be written back under an id Labre
+    // mints"). Pinned so nobody turns the fold into last-wins and quietly moves
+    // an arrow onto a different artefact.
+    expect(flow?.source?.id).toBe(startIds[0]);
+    expect(flow?.target?.id).toBe(startIds[0]);
+  });
+
   it('does nothing at all when there is no surface', () => {
     const std = { get: () => ({ surface: null }) } as unknown as BlockStdScope;
     expect(materializeBpmnImport(std, [{ type: 'bpmnPool' }])).toEqual([]);
@@ -353,6 +447,24 @@ describe('the import report', () => {
     // Nothing FAILED — every one of these is something the document kept — but
     // each is a difference between the file handed over and the board drawn.
     expect(remarks.accent).toBe('warning');
+    // ALWAYS, not only when the toast defers to it: the console line is the one
+    // still there in ten minutes, and "always" is the interesting half of the
+    // claim on the branch that does NOT need it.
+    expect(table).toHaveBeenCalledTimes(1);
+    expect(table.mock.calls[0][0]).toHaveLength(2);
+
+    // The BOUNDARY, both sides of it. Five is the last count spelled out and
+    // six is the first deferred; asserting 2 and 7 alone would let the
+    // comparison slip by one in either direction without a test noticing.
+    const five = stubEditor();
+    reportBpmnImport(five.std, report({ notes: [1, 2, 3, 4, 5].map(note) }));
+    expect(five.notify.mock.calls[1][0].message.split('\n')).toHaveLength(5);
+
+    const six = stubEditor();
+    reportBpmnImport(six.std, report({ notes: [1, 2, 3, 4, 5, 6].map(note) }));
+    expect(six.notify.mock.calls[1][0].message).toBe(
+      '6 remarks — the full report is in the browser console.'
+    );
 
     const many = stubEditor();
     table.mockClear();
@@ -407,6 +519,40 @@ describe('running the import command', () => {
     expect(setViewportByBound).toHaveBeenCalledTimes(1);
     expect(setTool).toHaveBeenCalledTimes(1);
     expect(notify.mock.calls[0][0].title).toBe('BPMN file imported');
+  });
+
+  it('fits the drawing, not the drawing plus the origin', async () => {
+    // The regression. A connector's bound is not known on the tick that creates
+    // it and reads back as `[0, 0, 0, 0]`, so a common bound that counted it
+    // stretched from the origin to the far corner of the process. On a file
+    // bpmn.io drew a hundred thousand units out — which is one drag of a whole
+    // process across its canvas — the fit was a 100000-wide box and the import
+    // landed as a speck nobody could see.
+    //
+    // The ARGUMENT is what is asserted, not the call: `toHaveBeenCalled` passed
+    // happily throughout the bug.
+    const { std, surface, setViewportByBound } = stubEditor();
+    picked.file.mockResolvedValue(asFile(FAR_FROM_ORIGIN_FILE));
+
+    await importBpmnXmlFile(std);
+
+    // There has to BE a connector, or the test proves nothing.
+    expect(
+      surface.added.filter(props => props.type === 'connector')
+    ).not.toHaveLength(0);
+
+    const [bound] = setViewportByBound.mock.calls[0];
+    // Nowhere near the origin, and the size of a process rather than the size
+    // of the distance to it.
+    expect(bound.x).toBeGreaterThan(99_000);
+    expect(bound.y).toBeGreaterThan(99_000);
+    expect(bound.w).toBeLessThan(1_000);
+    expect(bound.h).toBeLessThan(1_000);
+    // …and it still HOLDS the drawing: the far corner of the last shape is
+    // inside the box, so nothing was cropped in the course of not including
+    // the origin.
+    expect(bound.x + bound.w).toBeGreaterThanOrEqual(100_240);
+    expect(bound.y + bound.h).toBeGreaterThanOrEqual(100_100);
   });
 
   it('names what is wrong with a file it cannot read, and draws nothing', async () => {

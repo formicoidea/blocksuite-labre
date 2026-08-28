@@ -36,6 +36,7 @@ import {
   type AnyCommandDescriptor,
   getCommandsForSurface,
   getRegisteredCommands,
+  isCommandAvailable,
   runCommand,
   SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
@@ -475,8 +476,8 @@ describe('the BPMN toolbox past fourteen', () => {
     // 22 rows, not 25: the panel filters on availability, and the two lane
     // gestures and the export all need a selected pool. Everything that can be
     // done from a blank board is listed — including the IMPORT, which is the
-    // one entry here that is not a thing to draw and the reason it declares
-    // `availability: 'always'`.
+    // one entry here that is not a thing to draw. It declares
+    // `availability: 'editable'`, and this document is editable.
     const entries = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-entry"]'
@@ -1020,10 +1021,13 @@ describe('the BPMN XML import, end to end', () => {
     );
     expect(command, 'bpmn.importXml is not registered').toBeDefined();
     // The mirror image of the export's guard: nothing selected is exactly when
-    // this one is wanted, so there is no `when` to withdraw it.
+    // this one is wanted, so there is no `when` to withdraw it. It still
+    // declares a precondition, and it is the honest one — an import WRITES, so
+    // a read-only document is one it cannot run on.
     edgeless.gfx.selection.clear();
-    expect(command!.availability).toBe('always');
+    expect(command!.availability).toBe('editable');
     expect(command!.when).toBeUndefined();
+    expect(isCommandAvailable(edgeless.std, command!)).toBe(true);
 
     // A file Labre did not write: a bare process (no participant), so the pool
     // is one the reader minted, and a boundary event it has no artefact for.
@@ -1076,5 +1080,46 @@ describe('the BPMN XML import, end to end', () => {
     // It degrades to silence rather than throwing: the elements are on the
     // surface either way.
     expect(() => reportBpmnImport(edgeless.std, report)).not.toThrow();
+  });
+
+  /**
+   * ONE undo step for the whole file, asserted as a user would feel it.
+   *
+   * The unit spec pins `captureSync` being called twice, which is the mechanism
+   * and not the promise. What a user cares about is that the file they just
+   * regretted goes in one keystroke — and that is a property of the store's
+   * undo manager, not of a spy, so it can only be proved here.
+   */
+  test('the whole imported file leaves in one undo', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    // Something drawn BEFORE the import, so "one step" is distinguishable from
+    // "undo everything": this must survive.
+    const before = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: BPMN_ROLE_OF_KIND.task,
+      shapeType: 'rect',
+      text: 'Drawn by hand',
+      xywh: '[900,900,120,72]',
+    });
+    await wait(200);
+
+    const { elements } = importBpmnXml(
+      exportBpmnXml(bpmnBoardOf(edgeless.std), { name: 'Round' })
+    );
+    window.doc.captureSync();
+    const created = materializeBpmnImport(edgeless.std, elements);
+    window.doc.captureSync();
+    await wait(200);
+    expect(created.length).toBeGreaterThan(1);
+
+    window.doc.undo();
+    await wait(200);
+
+    for (const id of created) {
+      expect(surface.getElementById(id), id).toBeNull();
+    }
+    // …and exactly one step: what was on the board before is still there.
+    expect(surface.getElementById(before)).not.toBeNull();
   });
 });

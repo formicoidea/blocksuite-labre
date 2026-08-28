@@ -487,13 +487,18 @@ function notifyBpmn(
  * its own source id in `interchange.bpmn.id`, so the map from file id to
  * surface id is a fold over the very array the reader returned; the second pass
  * rewrites the two endpoints from it. Nothing else is needed, and nothing else
- * is done: an end the map cannot resolve is left exactly as the file wrote it,
- * because a dangling reference the user can go and look up beats a silent
- * detachment.
+ * is done: an end the map cannot resolve is left exactly as the file wrote it.
+ * That keeps the DOCUMENT honest, not the drawing — a connector naming an id no
+ * element has routes to an empty path and is invisible on the canvas (it does
+ * not crash; `connector-manager.ts` handles the missing connectable) — and an
+ * unresolvable name a reader can go and look up in the source file beats one
+ * this function quietly invented. It is defence in depth rather than a live
+ * case: the reader CARRIES a flow whose end it did not draw instead of emitting
+ * it (D1), so nothing it returns reaches this fallback.
  *
  * ## Why this is a function and not the body of the command
  *
- * It is the body of the command. It is also, verbatim, what
+ * It is the body of the command. It is also, in substance, what
  * `integration-test`'s BPMN round trip has been proving since #160 — the spec
  * wrote it out longhand precisely because there was no command to call. There
  * is one now, and the spec calls THIS, so the thing that is proven in chromium
@@ -546,7 +551,7 @@ function remarkLine(note: InterchangeNote): string {
 /**
  * Say what the import did — the summary, and the remarks.
  *
- * ## v1 of ADR 0012's open question 2 ("where does the report live?")
+ * ## v1 of ADR 0012's open question 4 ("where does the report live?")
  *
  * The architect's v1: a NOTIFICATION for the summary, and the full notes on a
  * surface that is reachable and honest. Reachable rules out a toast that names
@@ -676,9 +681,30 @@ export async function importBpmnXmlFile(std: BlockStdScope): Promise<void> {
   // the same reason: a board that landed off-screen looks like a command that
   // did nothing. The padding is in MODEL units, so it is divided by the zoom to
   // stay a constant margin on screen — the template panel's own arithmetic.
+  //
+  // ## Why the empty boxes are dropped, and it is not defensive
+  //
+  // A connector has no geometry of its own: its bound is derived from the path
+  // the connector manager routes between its two ends, and that path is
+  // computed on a LATER tick than the `addElement` that created it. Read
+  // synchronously here — which is the only moment this function has — every
+  // freshly imported connector answers `[0, 0, 0, 0]`, and a common bound that
+  // includes the origin stretches from (0, 0) to the far corner of the drawing.
+  // A file drawn at x ≈ 100000 (bpmn.io hands those out the moment somebody
+  // drags a process across the canvas) then fits a 100000-wide box, and the
+  // process the user just imported is a speck in the corner.
+  //
+  // Dropping zero-area boxes costs nothing and loses nothing: a connector runs
+  // BETWEEN two nodes, so once its path settles its bound is already inside
+  // theirs, and every artefact this pack draws has a positive size by
+  // construction (`NODE_SIZE`, and a pool's plot). What is left is exactly the
+  // shaped elements, which is what "fit the imported board" means.
   const boxes = created
     .map(id => gfx.surface?.getElementById(id)?.elementBound)
-    .filter((bound): bound is Bound => bound !== undefined);
+    .filter(
+      (bound): bound is Bound =>
+        bound !== undefined && bound.w > 0 && bound.h > 0
+    );
   const bound = getCommonBound(boxes);
   if (bound) {
     const padding = 20 / gfx.viewport.zoom;

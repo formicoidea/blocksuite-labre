@@ -525,14 +525,23 @@ const exportCommand: CommandDescriptor = {
  * at all. It keeps `'catalogue'` (the registry's total surface — a command
  * missing from it is unreachable), `'palette'` and `'agent'`.
  *
- * ## `'always'`, and the one thing that is still checked
+ * ## `'editable'`, which is the first use of it in the repo
  *
- * An import needs no selection, so there is no precondition for a catalogue to
- * show and `availability` says so. Read-only is checked inside the action and
- * not here, for the reason the union documents — it holds ONE value, and
- * `'always'` is the honest precondition. The mirror image of the export, which
- * READS and is therefore offered on a read-only document precisely because that
- * is the board somebody wants to take away.
+ * An import needs no selection — but it WRITES, so a read-only document is a
+ * document it cannot run on, and that is a precondition a catalogue has to be
+ * able to show. `'editable'` is exactly that value and it has been in the union
+ * since `docs/adr/0008` (`Availability`, `command-registry.ts`); nothing had
+ * reached for it before. `'always'` would light the entry on a read-only
+ * document, do nothing when clicked, and put the same untruth into the
+ * serializable manifest a host reads — which is the one thing `availability`
+ * exists to prevent.
+ *
+ * The guard inside {@link importBpmnXmlFile} stays: a declaration is what a
+ * surface renders from, and the action is what actually touches the store.
+ *
+ * The mirror image of the export, which READS and is therefore `'selection'` on
+ * a pool and offered on a read-only document precisely because that is the
+ * board somebody wants to take away.
  */
 const importCommand: CommandDescriptor = {
   id: 'bpmn.importXml',
@@ -553,7 +562,7 @@ const importCommand: CommandDescriptor = {
   // bindable from Settings › Shortcuts, which is what `toShortcutDescriptor`
   // being total buys.
   defaultKeys: { mac: [], other: [] },
-  availability: 'always',
+  availability: 'editable',
   run: importBpmnXmlFile,
   // `board:` and not `pool:`: the export names the pool whose toolbar launched
   // it, and this one is launched with no pool anywhere.

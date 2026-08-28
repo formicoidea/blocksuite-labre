@@ -16,8 +16,14 @@ It needs nothing selected, which is the point: the moment you want it most is on
 an empty board. So it declines the pool's contextual toolbar (a contextual
 toolbar is a statement about a selection) and the senior sub-menu (which is what
 you reach for to draw something), and lives in the catalogue, the command
-palette and the agent surface. It is keyless by default and bindable from
+palette and the agent surface. It does declare one precondition — it writes, so
+it withdraws from every surface on a read-only document rather than sitting
+there lit and doing nothing. It is keyless by default and bindable from
 Settings › Shortcuts like every other framework command.
+
+The whole imported file arrives in view: the fit is computed from the shapes,
+which is what makes a process a bpmn.io user dragged far across their canvas
+land at a readable size rather than as a speck beside the origin.
 
 **It is filed in a new `interchange` section, and the export moved in beside
 it.** The two directions of one format are one subject — this board as a `.bpmn`
@@ -33,7 +39,8 @@ written back, because re-emitting it would produce a file that contradicts the
 drawing) — plus the BPMN version and the tool that wrote the file, so
 "bpmn.io drew it differently" is answerable in one line. When there are remarks,
 a second notification spells them out; past a handful it defers to a
-`console.table` that always holds all of them. That is v1 of the report: the
+`console.table` that always holds all of them. That is v1 of the report (ADR
+0012's open question 4): the
 destination is the conformity panel, where an import remark belongs beside a
 validation finding, and the console is named as a stopgap rather than dressed up
 as a home.

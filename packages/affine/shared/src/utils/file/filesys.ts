@@ -174,10 +174,20 @@ export async function openFilesWith(
     input.multiple = multiple;
 
     if (acceptType !== 'Any') {
-      // For example, `accept="image/*"` or `accept="video/*,audio/*"`.
-      input.accept = Object.keys(
-        FileTypes.find(i => i.description === acceptType)?.accept ?? ''
-      ).join(',');
+      // For example, `accept="image/*,.png,.jpg"` or `accept="video/*,.mp4"`.
+      //
+      // The EXTENSIONS as well as the MIME types, and the extensions are the
+      // half that matters for anything the OS has no type for: `.bpmn`, `.mm`
+      // and `.opml` are registered nowhere, so a filter built from
+      // `application/xml` alone greys them out in the native dialog and the
+      // file cannot be picked at all. This is the branch every browser without
+      // the File System Access API takes — Firefox and Safari — and
+      // `showOpenFilePicker` above already reads both halves of the same table.
+      const type =
+        FileTypes.find(i => i.description === acceptType)?.accept ?? {};
+      input.accept = [...Object.keys(type), ...Object.values(type).flat()].join(
+        ','
+      );
     }
     document.body.append(input);
     // The `change` event fires when the user interacts with the dialog.
