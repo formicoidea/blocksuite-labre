@@ -1,4 +1,4 @@
-import type { C4NodeKind } from '@labre/affine-model';
+import type { C4BoundaryVariant, C4NodeKind } from '@labre/affine-model';
 import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
 
 /**
@@ -34,11 +34,28 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * drawn in and drawn round, and a rule written on the artefacts must never fall
  * on the sheet holding them.
  *
+ * The boundary is the ONE frame with children, and they are the second
+ * specialisation in the pack: `c4:system-boundary` and `c4:container-boundary`.
+ * Unlike the four levels, this really IS specialisation — a system boundary is a
+ * boundary, in the way a database is a container — and the split exists because
+ * C4's levels are ZOOMS of one element: the frame says which zoom the sheet is
+ * at, and what may be drawn inside it follows from that. Everything already
+ * written on `c4:boundary` keeps falling on both through `roleIsA`, which is what
+ * lets the two membership rules and the legend stay written on the parent.
+ *
  * ## Compatibility
  *
  * Nothing is backfilled. A diagram drawn before today carries no role, so it is
  * never evaluated and never says a word — the same promise every role in this
  * library has made (PRD principle 8).
+ *
+ * And nothing is REWRITTEN either, which the boundary split is the first
+ * occasion to say out loud: a boundary drawn before it carries the PARENT role,
+ * `c4:boundary`, and that stays a role the vocabulary declares rather than a
+ * legacy alias to be migrated away. A rule framed against the parent reaches it;
+ * a rule framed against a child does not, and that asymmetry is deliberate — a
+ * zoom rule that needs to know WHICH level the frame is at cannot honestly guess
+ * it from a boundary that never said.
  */
 
 /** Every role this framework declares. */
@@ -53,9 +70,11 @@ export type C4Role =
   | 'title'
   | 'type-line'
   | 'description'
-  // The frames.
+  // The frames — and the two levels a boundary can be drawn at.
   | 'board'
   | 'boundary'
+  | 'system-boundary'
+  | 'container-boundary'
   // The one connecting object.
   | 'relationship';
 
@@ -80,6 +99,8 @@ export const C4_ROLE = {
   description: 'c4:description',
   board: 'c4:board',
   boundary: 'c4:boundary',
+  'system-boundary': 'c4:system-boundary',
+  'container-boundary': 'c4:container-boundary',
   relationship: 'c4:relationship',
 } as const satisfies Record<C4Role, C4RoleId>;
 
@@ -231,13 +252,35 @@ const TIER_DEFS: readonly RoleDef[] = [
 ];
 
 /**
- * The two frames: the sheet a diagram is drawn on, and the dashed rectangle
- * drawn round part of it.
+ * The frames: the sheet a diagram is drawn on, the dashed rectangle drawn round
+ * part of it, and the two LEVELS that rectangle can be drawn at.
  *
- * Both parent-less, and not related to each other either. A board is where the
- * diagram lives; a boundary is a statement made INSIDE it about which elements
- * belong to one system or one container. Neither is an element of the model, so
- * a rule about people, systems, containers or components must fall on neither.
+ * The board and the boundary are parent-less, and not related to each other
+ * either. A board is where the diagram lives; a boundary is a statement made
+ * INSIDE it about which elements belong to one system or one container. Neither
+ * is an element of the model, so a rule about people, systems, containers or
+ * components must fall on neither.
+ *
+ * ## Why the boundary has two children
+ *
+ * Because C4's four levels are ZOOMS of one element — "a software system is made
+ * up of containers, each of which contains components" — and the boundary is
+ * where the canvas says which zoom this part of the sheet is at. Until the
+ * children existed, "inside a boundary" was one undifferentiated fact, and the
+ * rules that read it could only ask whether an element was framed by SOMETHING;
+ * they could not ask the question the model actually poses, which is whether it
+ * is framed by the right LEVEL. A container drawn inside a container boundary is
+ * that boundary — drawn inside itself — and no rule could say so.
+ *
+ * They mirror the parent's `kind` (both are `node`, both are drawn as the same
+ * dashed rectangle) and specialise it, so everything already written on
+ * `c4:boundary` — `c4.homeless-component`, `c4.person-in-boundary`, the legend's
+ * "Boundary" row, the frame gate that decides where a profile may be chosen —
+ * keeps reaching them through `roleIsA` with nothing restated.
+ *
+ * A boundary is stamped with its child role and its `variant` at ONE place
+ * ({@link C4_BOUNDARY_ROLE}, read by `createC4Boundary`); nothing else writes
+ * either, and the two must never be made to disagree.
  */
 const FRAME_DEFS: readonly RoleDef[] = [
   {
@@ -251,6 +294,20 @@ const FRAME_DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: roleKey(C4_ROLE.boundary),
     labelFallback: 'Boundary',
+  },
+  {
+    id: C4_ROLE['system-boundary'],
+    parent: C4_ROLE.boundary,
+    kind: 'node',
+    labelKey: roleKey(C4_ROLE['system-boundary']),
+    labelFallback: 'System boundary',
+  },
+  {
+    id: C4_ROLE['container-boundary'],
+    parent: C4_ROLE.boundary,
+    kind: 'node',
+    labelKey: roleKey(C4_ROLE['container-boundary']),
+    labelFallback: 'Container boundary',
   },
 ];
 
@@ -332,4 +389,24 @@ export const C4_ROLE_OF_KIND: Record<C4NodeKind, RoleId> = {
   mobile: C4_ROLE.container,
   browser: C4_ROLE.container,
   component: C4_ROLE.component,
+};
+
+/**
+ * The boundary's `variant` → the role it means.
+ *
+ * The frame's twin of {@link C4_ROLE_OF_KIND}, and it exists for the same
+ * reason: the renderer and the exporter read `variant` (it picks the bracket
+ * line under the corner, `background.ts`), the RULES read the role, and this
+ * table is the single place that says the two are the same statement.
+ *
+ * Total over `C4BoundaryVariant` by its type, so a third kind of boundary cannot
+ * land without being given a meaning — and `createC4Boundary` writes both fields
+ * from it in one call, which is what keeps them from ever disagreeing. A
+ * boundary whose `variant` was never written carries the PARENT role and no
+ * bracket line: that is the pre-split document, and it is left exactly as it was
+ * found.
+ */
+export const C4_BOUNDARY_ROLE: Record<C4BoundaryVariant, RoleId> = {
+  system: C4_ROLE['system-boundary'],
+  container: C4_ROLE['container-boundary'],
 };

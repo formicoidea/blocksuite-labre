@@ -15,12 +15,12 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * tooling, and a board already set to `strict` simply stops being checked until
  * it comes back — the id stays written, untouched.
  *
- * ## Both tables spell out all ELEVEN ids
+ * ## Both tables spell out all FOURTEEN ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `c4.strict` actually
- * requires reads eleven lines here instead of one file per rule, and a rule
+ * requires reads fourteen lines here instead of one file per rule, and a rule
  * shipped later cannot join a level in silence.
  */
 
@@ -63,6 +63,9 @@ const sketch: ValidationProfile = {
     'c4.database-initiates': 'audit',
     'c4.homeless-component': 'audit',
     'c4.person-in-boundary': 'audit',
+    'c4.system-in-boundary': 'audit',
+    'c4.container-in-container-boundary': 'audit',
+    'c4.component-level-skip': 'audit',
   },
 };
 
@@ -70,11 +73,21 @@ const sketch: ValidationProfile = {
  * Strict: the diagram is a DELIVERABLE, and it is held to the review checklist.
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
- * becomes something another team will be handed. Six rules move to `warning`.
+ * becomes something another team will be handed. NINE rules move to `warning`.
  *
  * Three of them read a question from the checklist itself (c4model.com): is
  * every element named, is every relationship labelled, is every arrow one the
  * model can state.
+ *
+ * Three more are the ZOOM rules — `c4.system-in-boundary`,
+ * `c4.container-in-container-boundary` and `c4.component-level-skip`. They are
+ * promoted on the same test as everything else here: whether the diagram might
+ * honestly have meant it. None of the three can be meant. A boundary is a system
+ * or a container, so nothing inside one is a system; a container boundary IS its
+ * container, so no container goes in it; and a component framed by no container
+ * is a sheet with a level missing. Each is a drawing whose author will change it
+ * once they see it, which is the definition of a `warning` at the level where
+ * somebody has said the diagram is a deliverable.
  *
  * The other three — `c4.untyped-link`, `c4.relationship-self-loop` and
  * `c4.homeless-component` — are OURS, and they are promoted anyway. Provenance
@@ -87,10 +100,11 @@ const sketch: ValidationProfile = {
  * as our convention rather than implying C4 forbids it, which is what keeps the
  * promotion honest.
  *
- * Note the partition here is NOT the provenance one, though both happen to be
- * six and five: the three `c4.isolated-*` rules come from the checklist and stay
- * remarks, while three of ours are promoted. The spec constant is called
- * `PROMOTED` for exactly that reason.
+ * Note the partition here is NOT the provenance one — nine promoted against nine
+ * `recommendation` rules is a coincidence of arithmetic and nothing else, since
+ * the two nines do not hold the same rules: the three `c4.isolated-*` come from
+ * the checklist and stay remarks, while three of ours are promoted. The spec
+ * constant is called `PROMOTED` for exactly that reason.
  *
  * ## The five that do NOT move, and why the table spells them out
  *
@@ -133,6 +147,11 @@ const strict: ValidationProfile = {
     'c4.relationship-endpoints': 'warning',
     'c4.relationship-self-loop': 'warning',
     'c4.homeless-component': 'warning',
+    // The three zoom rules: a drawing that contradicts the model's own levels
+    // has no second reading — see the header.
+    'c4.system-in-boundary': 'warning',
+    'c4.container-in-container-boundary': 'warning',
+    'c4.component-level-skip': 'warning',
     // The five that do not move — see the header.
     'c4.isolated-system': 'audit',
     'c4.isolated-container': 'audit',
