@@ -29,7 +29,7 @@ import { setupEditor } from '../utils/setup.js';
  * The overflow lives here under a seventeen-command test owner so the MECHANISM
  * is tested on its own terms, independent of any framework's inventory. BPMN's
  * descriptive-profile pack is now the first shipped framework to cross the cap
- * for real (25 commands), and `bpmn.spec.ts` checks the same behaviour on it —
+ * for real (26 commands), and `bpmn.spec.ts` checks the same behaviour on it —
  * this spec is what proved the button was waiting.
  */
 
@@ -250,7 +250,8 @@ describe('the senior sub-menu past fourteen commands', () => {
   test('wardley tipped past the cap when it learned to read a file', async () => {
     // The other side of the same rule, pinned because it is a PRODUCT change a
     // reader of the diff would not predict from "two new commands": Wardley's
-    // catalogue reached fifteen, so its row is now thirteen ranked buttons plus
+    // catalogue reached fifteen with the OWM pair and sixteen with the SVG
+    // fallback beside it, so its row is now thirteen ranked buttons plus
     // the catalogue button rather than its whole nominated surface. Nothing is
     // unreachable — that is what the fourteenth button is for — but which
     // thirteen a cold user meets is now an arbitration rather than the author's

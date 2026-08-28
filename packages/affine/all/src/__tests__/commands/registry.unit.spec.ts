@@ -31,7 +31,7 @@ describe('command registry invariants', () => {
       [...FRAMEWORK_IDS, 'core'].map(owner => [owner, byOwner(owner).length])
     );
     expect(counts).toEqual({
-      // 15 since the OWM DSL pair: the thirteen-entry toolbox, plus
+      // 16 since the OWM DSL pair: the thirteen-entry toolbox, plus
       // `wardley.importOwm` and `wardley.exportOwm` — the second framework to
       // declare an interchange capability (`docs/adr/0012`), and the one whose
       // exporter replaces the copy that lived outside this repo.
@@ -57,7 +57,14 @@ describe('command registry invariants', () => {
       // and whoever adds a sixteenth command owes the question rather than just
       // this number. Pinned live in
       // `integration-test/.../catalogue-overflow.spec.ts`.
-      wardley: 15,
+      //
+      // …and 16 since `wardley.importSvg`, the visual-tier FALLBACK
+      // (`docs/adr/0012`, P2). It declines `senior-menu` — the row carries the
+      // NATIVE format, which is `wardley.importOwm` beside it — so the
+      // nomination list is untouched at fourteen and only the catalogue grew.
+      // The overflow above was already tipped by the OWM pair; this widens it
+      // by one without changing which thirteen a cold start meets.
+      wardley: 16,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -82,7 +89,12 @@ describe('command registry invariants', () => {
       // `availability: 'always'`, declines the contextual toolbar (a selection
       // is exactly what an empty board has none of) and is reached from the
       // catalogue and the palette.
-      bpmn: 25,
+      // …and 26 since `bpmn.importSvg`, the visual-tier FALLBACK: the same
+      // gesture through the same seam over a different declared capability, and
+      // it deliberately does NOT contest the sub-menu (see its own comment in
+      // `gfx/bpmn/src/commands.ts`) — the catalogue grew by one, the
+      // nomination pool did not.
+      bpmn: 26,
       // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
       // board and the relationship tool) plus `c4.exportMermaid`, whose subject
       // is a SELECTED board and which declines the sub-menu. Fourteen against a
@@ -123,7 +135,11 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(110);
+    // 112 since the two SVG fallback imports (`bpmn.importSvg`,
+    // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
+    // because ADR 0012 declares interchange per framework × format × direction
+    // and refuses to infer a framework from a `.svg`.
+    expect(commands).toHaveLength(112);
   });
 
   /**
@@ -335,15 +351,19 @@ describe('menu and manifest enumerate the same source', () => {
     // The DECLARED source is one list, and the manifest is the whole of it —
     // that is the drift this test was written for, and it is unchanged.
     expect(manifest).toEqual(wardleyCommands.map(c => c.id));
-    expect(manifest).toHaveLength(15);
+    expect(manifest).toHaveLength(16);
 
-    // The sub-menu is now a proper SUBSET of it rather than the same list, and
-    // the one entry outside it is a declaration: `wardley.exportOwm` declines
-    // the row because an export is what you do to a board you already have
-    // (`docs/adr/0012`, and BPMN's own ruling). Every other entry is in both,
-    // in author order — which is what the original assertion was protecting.
-    expect(menu).toEqual(manifest.filter(id => id !== 'wardley.exportOwm'));
-    // Fourteen NOMINATIONS. Not fourteen buttons: the catalogue is fifteen, so
+    // The sub-menu is a proper SUBSET of it rather than the same list, and the
+    // two entries outside it are declarations rather than omissions.
+    // `wardley.exportOwm` declines the row because an export is what you do to
+    // a board you already have; `wardley.importSvg` declines it because the row
+    // carries the NATIVE format and this is the visual-tier fallback
+    // (`docs/adr/0012`, P2 — and BPMN's own ruling for both). Every other entry
+    // is in both, in author order, which is what the original assertion was
+    // protecting.
+    const DECLINE_THE_ROW = ['wardley.exportOwm', 'wardley.importSvg'];
+    expect(menu).toEqual(manifest.filter(id => !DECLINE_THE_ROW.includes(id)));
+    // Fourteen NOMINATIONS. Not fourteen buttons: the catalogue is sixteen, so
     // `selectSeniorMenuCommands` ranks this list down to thirteen plus the
     // catalogue button. This assertion is about what Wardley DECLARES; what the
     // row actually renders is pinned in the browser suite.

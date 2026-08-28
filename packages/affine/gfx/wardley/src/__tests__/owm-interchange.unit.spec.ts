@@ -97,13 +97,15 @@ describe('the declaration', () => {
     expect(WARDLEY_OWM_EXPORT.id).toBe('wardley:owm:export');
     expect(WARDLEY_OWM_IMPORT.id).toBe('wardley:owm:import');
     // Sorted by id, which is what makes a menu built from this list come out in
-    // the same order on every boot: `export` before `import`.
-    expect(interchangeCapabilities(provider, { framework: 'wardley' })).toEqual(
-      [WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT]
-    );
+    // the same order on every boot: `export` before `import`, and the OWM pair
+    // before the `svg` row that joined them.
+    expect(
+      interchangeCapabilities(provider, { framework: 'wardley', format: 'owm' })
+    ).toEqual([WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT]);
     expect(
       interchangeCapabilities(provider, {
         framework: 'wardley',
+        format: 'owm',
         direction: 'import',
       })
     ).toEqual([WARDLEY_OWM_IMPORT]);
@@ -298,17 +300,21 @@ describe('the export command', () => {
 describe('the Wardley catalogue', () => {
   it('groups the interchange pair into a section of its own', () => {
     const categories = [...new Set(wardleyCommands.map(c => c.category))];
-    // Last, and last on purpose: the two directions of the OWM DSL are what you
-    // do with a map, after the three sections of what you draw one WITH.
+    // Last, and last on purpose: what you do WITH a map — the two directions of
+    // the OWM DSL, and the SVG fallback that reads a picture of one — after the
+    // three sections of what you draw one with.
     expect(categories).toEqual([
       'backgrounds',
       'nodes',
       'connectors',
       'interchange',
     ]);
+    // The native format both ways, then the best-effort reader: declaration
+    // order, and also the order somebody scanning "what can I do with a file"
+    // wants it in (`docs/adr/0012`, P2).
     expect(
       wardleyCommands.filter(c => c.category === 'interchange').map(c => c.id)
-    ).toEqual(['wardley.importOwm', 'wardley.exportOwm']);
+    ).toEqual(['wardley.importOwm', 'wardley.exportOwm', 'wardley.importSvg']);
   });
 
   it('keeps every command in the catalogue, whatever else it declines', () => {

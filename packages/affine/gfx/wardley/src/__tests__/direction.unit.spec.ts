@@ -86,10 +86,13 @@ describe('the link tool announces its gesture (M1)', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
     //
-    // Scoped to what you DRAW with, since the OWM pair landed. An `action`
-    // whose subject is the whole map — import, export — describes what it does
-    // to a document, which is a different sentence from "which way round do I
-    // drag this": the next assertion is what keeps the two apart.
+    // Scoped to what you DRAW with, since the OWM pair and the SVG fallback
+    // landed. An `action` whose subject is the whole map — import, export —
+    // describes what it does to a document, which is a different sentence from
+    // "which way round do I drag this": the next assertion is what keeps the
+    // two apart. Inside the population this DOES cover, the rule is unchanged
+    // and as strict as the day it was written: a tool either announces a
+    // gesture or says nothing at all.
     const noisy = wardleyCommands.filter(
       c =>
         c.kind !== 'action' &&
@@ -97,6 +100,13 @@ describe('the link tool announces its gesture (M1)', () => {
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);
+
+    // …and the visual-tier fallback is outside the SUB-MENU by declaration
+    // rather than by accident, which is the other half of why its description
+    // is proportionate: it never renders a second line in the row at all
+    // (`docs/adr/0012`, P2 — the row carries the native format).
+    const fallback = wardleyCommands.find(c => c.id === 'wardley.importSvg');
+    expect(fallback?.surfaces).not.toContain('senior-menu');
   });
 
   it('never lends a role’s gesture hint to a command that draws no edge', () => {

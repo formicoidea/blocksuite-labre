@@ -129,6 +129,19 @@ export const wardleyOpportunityIcon = svg`<svg width="24" height="24" viewBox="0
   <path d="M14.5 19.5 C15.5 16.5, 17 16.5, 18 19" stroke="${RED}" stroke-width="1.7" fill="none" stroke-linecap="round"/>
 </svg>`;
 
+/**
+ * Import an SVG sketch — a framed picture with an arrow coming IN.
+ *
+ * Deliberately the same glyph BPMN gives the same command: the two wrap ONE
+ * parser and make one promise, and a reader who has met one should recognise
+ * the other without reading its label.
+ */
+export const wardleyImportSvgIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="5" width="14" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M3.5 13 7 9.5l3 3 2-2 3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 14.5v6M16.5 17l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 /** Benefit/Investment gradient background: axes + zero line + green J-curve. */
 export const wardleyBenefitIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M4 20V4M4 20h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>

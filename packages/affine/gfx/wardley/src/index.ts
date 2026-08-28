@@ -45,6 +45,10 @@ export {
   wardleySafeFilename,
 } from './export';
 export { importWardleyOwm } from './import';
+// Wardley's entries in the interchange registry (`docs/adr/0012`) — the OWM
+// DSL both ways, and the visual-tier SVG fallback. Exported whole so a host can
+// ask what Wardley can read and write without mounting an editor, and call it
+// without one either (P3).
 export {
   WARDLEY_INTERCHANGE,
   WARDLEY_OWM_EXPORT,
@@ -52,4 +56,6 @@ export {
   WARDLEY_OWM_FORMAT,
   WARDLEY_OWM_IMPORT,
   WARDLEY_OWM_MIME,
+  WARDLEY_SVG_FORMAT,
+  WARDLEY_SVG_IMPORT,
 } from './interchange';

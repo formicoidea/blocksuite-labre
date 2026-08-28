@@ -5,7 +5,13 @@ import type {
   InterchangeFormat,
   InterchangeImportCapability,
 } from '@labre/affine-block-surface';
-import { interchangeCapabilityId } from '@labre/affine-block-surface';
+import {
+  interchangeCapabilityId,
+  parseSvgSketch,
+  SVG_SKETCH_EXTENSION,
+  SVG_SKETCH_FORMAT_ID,
+  SVG_SKETCH_MIME,
+} from '@labre/affine-block-surface';
 import {
   BpmnNodeElementModel,
   BpmnPoolElementModel,
@@ -175,8 +181,53 @@ export const BPMN_XML_IMPORT: InterchangeImportCapability = {
   run: importBpmnXml,
 };
 
+/* ── The visual tier ──────────────────────────────────────────────────── */
+
+/**
+ * SVG. **Visual** — the file carries a rendering, not a model.
+ *
+ * A separate format object from `BPMN_XML_FORMAT` and deliberately not a shared
+ * singleton with Wardley's: ADR 0012's unit is the TRIPLE, and the ADR
+ * explicitly rejects "one capability per format, with the framework inferred
+ * from the file" — a `.svg` is read by several frameworks and the inference is
+ * exactly the guess the ADR forbids everywhere else. The three constants come
+ * from the parser's own package so the two declarations cannot drift into
+ * disagreeing about the extension or the mime a picker filters on.
+ */
+export const BPMN_SVG_FORMAT: InterchangeFormat = {
+  id: SVG_SKETCH_FORMAT_ID,
+  tier: 'visual',
+  extensions: [SVG_SKETCH_EXTENSION],
+  mime: SVG_SKETCH_MIME,
+};
+
+/**
+ * `bpmn:svg:import` — an SVG as a sketch, best effort.
+ *
+ * **The heuristics statement and the known failure modes this capability owes
+ * (ADR 0012, open question 2) are the module documentation of
+ * `packages/affine/blocks/surface/src/extensions/svg-sketch.ts`.** They are
+ * written once, there, because BPMN and Wardley wrap the SAME parser and
+ * therefore make the same guesses; a framework that ever wants narrower or
+ * wider recognition writes its own parser and its own paragraph beside it.
+ *
+ * What lands is a level-1 sketch (ADR 0007) — plain shapes, brush strokes and
+ * editable free text — that the author then PROMOTES into BPMN artefacts.
+ * Nothing here decides that a rounded rectangle in somebody's picture was a
+ * task, and no `interchange` payload is written, because a visual round-trip
+ * would be a re-render (P2).
+ */
+export const BPMN_SVG_IMPORT: InterchangeImportCapability = {
+  id: interchangeCapabilityId('bpmn', BPMN_SVG_FORMAT.id, 'import'),
+  framework: 'bpmn',
+  format: BPMN_SVG_FORMAT,
+  direction: 'import',
+  run: parseSvgSketch,
+};
+
 /** Everything BPMN registers, in one list the view extension can hand over. */
 export const BPMN_INTERCHANGE: readonly InterchangeCapability[] = [
   BPMN_XML_EXPORT,
   BPMN_XML_IMPORT,
+  BPMN_SVG_IMPORT,
 ];

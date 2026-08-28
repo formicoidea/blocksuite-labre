@@ -18,6 +18,7 @@ export * from './reading-toolbar';
 export * from './reading-widget';
 export * from './spotlight';
 export * from './surface-middleware';
+export * from './svg-sketch';
 export * from './tags-toolbar';
 export * from './validation';
 export * from './validation-toolbar';

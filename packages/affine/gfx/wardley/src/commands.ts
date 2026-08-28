@@ -11,6 +11,7 @@ import {
   createWardleyPipeline,
   exportOwmFile,
   importOwmFile,
+  importWardleySvgFile,
   wardleyMapsOnBoard,
 } from './actions';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
@@ -24,6 +25,7 @@ import {
   wardleyEvolutionGradientIcon,
   wardleyExportOwmIcon,
   wardleyImportOwmIcon,
+  wardleyImportSvgIcon,
   wardleyInertiaIcon,
   wardleyLinkIcon,
   wardleyMarketIcon,
@@ -347,13 +349,71 @@ const exportCommand: CommandDescriptor = {
 };
 
 /**
+ * The SVG FALLBACK import — the visual tier, named as such before the picker
+ * opens (`docs/adr/0012`, P2).
+ *
+ * ## Why the catalogue and not the senior row
+ *
+ * Because {@link importCommand} is already there. The sub-menu carries the
+ * framework's NATIVE format — the OWM DSL, which the ADR's roadmap calls the
+ * reference Wardley import — and that is the route a user should be pointed at:
+ * an `.owm` file carries `[visibility, evolution]` pairs, which ARE the map's
+ * meaning, so it round-trips. This one reads a picture. A fallback that
+ * outranked the real thing would be the platform offering the lossy door first,
+ * and Wardley's fourteen nominations are already exactly the cap — a fifteenth
+ * would push a button out of the row for the rarest thing anybody does to a map.
+ *
+ * So it lands one click away, in the artefact catalogue behind "More
+ * artefacts…", and keeps `'palette'` and `'agent'` so it stays findable by name
+ * and invocable by an agent.
+ *
+ * **Flagged for the PO** as a curation call rather than a technical one: it is
+ * a one-line change either way.
+ *
+ * ## The label names the tier before the file is read
+ *
+ * A map is coordinates, and this reader recovers none: it recognises circles
+ * and words. Saying so in the description is not modesty, it is the contract —
+ * "the import surface must name the tier before the file is read".
+ */
+const importSvgCommand: CommandDescriptor = {
+  id: 'wardley.importSvg',
+  owner: 'wardley',
+  kind: 'action',
+  labelKey: 'com.labre.commands.wardley.importSvg',
+  labelFallback: 'Import SVG sketch',
+  descriptionKey: 'com.labre.commands.wardley.importSvg.description',
+  descriptionFallback:
+    'Best effort: recognises shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
+  // The same section the two OWM directions are filed under, and the same one
+  // BPMN files its `.bpmn` pair under: a host that translated the header once
+  // has translated it for every framework.
+  category: 'interchange',
+  iconKey: 'wardley.import-svg',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  // Last of the three interchange entries, which is also how the section reads
+  // for somebody scanning "what can I do with a file": the native format both
+  // ways, then the best-effort reader.
+  order: SPECS.length + 2,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  // It WRITES, so a read-only document is one it cannot run on.
+  availability: 'editable',
+  run: importWardleySvgFile,
+  // `board:` and not `node:`: it is launched with nothing selected, and often
+  // with nothing on the canvas at all.
+  telemetry: { framework: 'wardley', element: 'board:import-svg' },
+};
+
+/**
  * The Wardley registry: the thirteen toolbox entries, then the two directions
- * of the OWM DSL (`docs/adr/0012`).
+ * of the OWM DSL and the SVG fallback (`docs/adr/0012`).
  */
 export const wardleyCommands: CommandDescriptor[] = [
   ...toolboxCommands,
   importCommand,
   exportCommand,
+  importSvgCommand,
 ];
 
 /** `iconKey` → template. Never travels through either manifest (ADR 0008). */
@@ -373,4 +433,5 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.inertia': wardleyInertiaIcon,
   'wardley.import-owm': wardleyImportOwmIcon,
   'wardley.export-owm': wardleyExportOwmIcon,
+  'wardley.import-svg': wardleyImportSvgIcon,
 };

@@ -12,6 +12,7 @@ import {
   createBpmnNode,
   createBpmnPool,
   exportBpmnXmlFile,
+  importBpmnSvgFile,
   importBpmnXmlFile,
   removeBpmnLane,
 } from './actions';
@@ -27,6 +28,7 @@ import {
   bpmnGatewayIcon,
   bpmnGatewayParallelIcon,
   bpmnGroupIcon,
+  bpmnImportSvgIcon,
   bpmnImportXmlIcon,
   bpmnLaneAddIcon,
   bpmnLaneRemoveIcon,
@@ -47,10 +49,11 @@ import {
  * The BPMN toolbox as commands. Like EDGY, BPMN had a menu and zero manifest
  * entries before PF3 — invisible to Settings › Shortcuts (`docs/adr/0008`).
  *
- * ## Twenty-five, and the fifteen
+ * ## Twenty-six, and the fifteen
  *
  * The descriptive-profile pack draws 17 artefacts, 3 connecting objects and 3
- * swimlane gestures; the two directions of the `.bpmn` format make 25, against a
+ * swimlane gestures; the two directions of the `.bpmn` format and the SVG
+ * fallback that reads a picture of a process make 26, against a
  * senior sub-menu that holds 14. That is not a problem to be solved: PF6 built
  * the arbitration for exactly this day (`selectSeniorMenuCommands`), and past
  * the cap the sub-menu becomes the thirteen commands THIS user reaches for plus
@@ -73,7 +76,10 @@ import {
  *   no longer promote a command from outside it, so a command left out of it
  *   lives in the catalogue sidepanel and nowhere else. That is the right home
  *   for `bpmn.exportXml`, whose subject is a board you already have and which is
- *   reached from the pool's "⋮" — it declines the row on purpose.
+ *   reached from the pool's "⋮" — it declines the row on purpose. And for
+ *   `bpmn.importSvg`, which declines it for a different reason again: the row
+ *   carries the NATIVE format, and the visual-tier fallback sits one click away
+ *   behind "More artefacts…" — see the note on {@link importSvgCommand}.
  *
  *   `bpmn.importXml` does NOT, since the PO decision of the same day: an import
  *   is where a board COMES FROM, and the sub-menu is the first thing a user
@@ -87,7 +93,7 @@ import {
  *   last nomination, so it is one of the two the "More artefacts…" button covers
  *   until somebody reaches for it.
  *
- * All 25 are in the catalogue, all 25 are bindable from Settings › Shortcuts,
+ * All 26 are in the catalogue, all 26 are bindable from Settings › Shortcuts,
  * and none of them is unreachable.
  */
 interface Spec {
@@ -612,11 +618,66 @@ const importCommand: CommandDescriptor = {
   telemetry: { framework: 'bpmn', element: 'board:import-xml' },
 };
 
+/**
+ * The SVG FALLBACK import — the visual tier, named as such before the picker
+ * opens.
+ *
+ * ## Why it is not in the senior sub-menu, and that is an arbitration
+ *
+ * `bpmn.importXml` took the fifteenth nomination on the PO's ruling of
+ * 2026-08-28, and that ruling was about where a BPMN board comes FROM: a file
+ * somebody sent you, in the format the framework speaks. This is the other
+ * kind of file — a picture of a process, from a tool that does not export
+ * `.bpmn` at all — and it lands one click away, in the artefact catalogue
+ * behind "More artefacts…", rather than taking a sixteenth slot in a row that
+ * seats fourteen. The registry spec's budget assertion allows exactly ONE
+ * over-nomination per owner and BPMN has spent it; this entry deliberately does
+ * not contest it.
+ *
+ * **Flagged for the PO**: if the fallback turns out to be what people actually
+ * reach for — a `.svg` is what most drawing tools export — this is a one-line
+ * change (`surfaces` gains `'senior-menu'`), and it is a curation decision
+ * rather than a merge.
+ *
+ * ## The label says the tier, because P2 requires it BEFORE the file is read
+ *
+ * "Import SVG sketch", and a description that spends its whole sentence on what
+ * this is not: best effort, shapes and text, no round-trip. ADR 0012 is blunt
+ * about the cost of getting this wrong — "a single 'Import…' entry that hides
+ * the difference would earn a support ticket per user" — and the surface is the
+ * only place the difference can be stated, because the report comes AFTER the
+ * decision to open the file.
+ */
+const importSvgCommand: CommandDescriptor = {
+  id: 'bpmn.importSvg',
+  owner: 'bpmn',
+  kind: 'action',
+  labelKey: 'com.labre.commands.bpmn.importSvg',
+  labelFallback: 'Import SVG sketch',
+  descriptionKey: 'com.labre.commands.bpmn.importSvg.description',
+  descriptionFallback:
+    'Best effort: recognises shapes and text, no round-trip. What arrives is a sketch you then promote into BPMN artefacts.',
+  // Filed with the two `.bpmn` directions: the subject is the same one — this
+  // board, and a file it came from or goes to.
+  category: 'interchange',
+  iconKey: 'bpmn.import-svg',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  order: SPECS.length + 4,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  // It WRITES, so a read-only document is one it cannot run on — the same
+  // reasoning as `bpmn.importXml`, and the value the catalogue renders from.
+  availability: 'editable',
+  run: importBpmnSvgFile,
+  telemetry: { framework: 'bpmn', element: 'board:import-svg' },
+};
+
 export const bpmnCommands: CommandDescriptor[] = [
   ...toolboxCommands,
   ...laneCommands,
   exportCommand,
   importCommand,
+  importSvgCommand,
 ];
 
 export const bpmnCommandIcons: Record<string, TemplateResult> = {
@@ -645,4 +706,5 @@ export const bpmnCommandIcons: Record<string, TemplateResult> = {
   'bpmn.lane-remove': bpmnLaneRemoveIcon,
   'bpmn.export-xml': bpmnExportXmlIcon,
   'bpmn.import-xml': bpmnImportXmlIcon,
+  'bpmn.import-svg': bpmnImportSvgIcon,
 };

@@ -91,11 +91,14 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
-      // Both directions of the OWM DSL (`docs/adr/0012`, P1). HERE, beside the
-      // rules, because offering to read or write a file is TOOLING: turning the
-      // wardley flag off removes the two commands and leaves every element a
-      // past import created — and every byte of `interchange` they carry —
-      // exactly where it is (`docs/adr/0009`).
+      // Both directions of the OWM DSL, and the SVG fallback that reads a
+      // picture of a map (`docs/adr/0012`, P1) — ONE registration, because the
+      // unit of declaration is the capability and `WARDLEY_INTERCHANGE` is the
+      // list of them. HERE, beside the rules, because offering to read or write
+      // a file is TOOLING: turning the wardley flag off removes the three
+      // commands and leaves every element a past import created — and every
+      // byte of `interchange` they carry — exactly where it is
+      // (`docs/adr/0009`).
       context.register(InterchangeExtension(WARDLEY_INTERCHANGE));
       // Map quality (PF13.9): the four nudges the tool cannot judge, and
       // nothing else — the on-demand check-up Wardley used to expose beside
