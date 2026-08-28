@@ -26,6 +26,12 @@ vendor colour beside a shape whose fill the author can now change, the body of
 an expanded sub-process drawn collapsed, a nested lane set beside the flat one
 that replaced it, an `<import>` of a document nobody resolved.
 
+What is kept is filed under the source element it came off, so two lanes of one
+pool that each carry a `camunda:owner` still have two owners afterwards, and a
+flow whose end is something Labre does not draw — a boundary event's error path,
+the commonest Analytic construct there is — is kept whole beside the event it
+runs to rather than drawn as an arrow attached to nothing.
+
 Nothing is dropped in silence. The import returns a **report** — three counts
 and a list of notes naming what happened to what, by the file's own ids — and
 the notes are precise enough to act on: which fragment was quarantined and why,

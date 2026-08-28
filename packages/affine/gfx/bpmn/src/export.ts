@@ -730,13 +730,23 @@ export function exportBpmnXmlWithWarnings(
 
   /* ── Processes and participants ──────────────────────────────────── */
 
+  /**
+   * Is this board still the poolless one an import minted a pool for?
+   *
+   * A pool that stands for a bare `process` (`interchange.bpmn.element =
+   * 'process'`, ADR 0012 D6) is what tells this writer to give the poolless
+   * form back rather than invent a collaboration the author never drew — but
+   * ONLY while it is the whole board. Draw a second pool beside it and the
+   * author has made a collaboration: from then on it is a participant like any
+   * other, because the alternative is a pool they can see and drag that has no
+   * shape in the file and is drawn by nothing that opens it.
+   */
+  const givesBackPoollessForm =
+    pools.length === 1 && carriedBpmnElement(pools[0]) === 'process';
+
   const processes: PlannedProcess[] = pools.map(pool => {
-    // A pool an import minted for a file that had NO participant — a bare
-    // `process`, which is exactly what a poolless Labre board exports as. It
-    // says so on itself (`interchange.bpmn.element = 'process'`, ADR 0012 D6)
-    // and that is what tells this writer to give the poolless form back rather
-    // than invent a collaboration the author never drew.
-    const wasBareProcess = carriedBpmnElement(pool) === 'process';
+    const wasBareProcess =
+      givesBackPoollessForm && carriedBpmnElement(pool) === 'process';
     const given = carriedBpmnId(pool);
     // The pool's OWN element is the participant — it is what a `BPMNShape`
     // points at and what a message flow can reference — so that is the id the

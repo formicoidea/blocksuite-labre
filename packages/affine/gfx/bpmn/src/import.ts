@@ -102,6 +102,9 @@ import { BPMN_ROLE } from './roles.js';
  * | the 17 kinds, pools, flat lanes, the 3 edge roles, the DI   | mapped      | drawn, and written back from the drawing            |
  * | element ids (participants, flow nodes, flows, lanes)        | mapped      | given back verbatim — the fixed point (D3)          |
  * | `documentation`, `ioSpecification`, `conditionExpression`, … | carried     | invisible on the canvas, kept verbatim              |
+ * | `process/@isExecutable="true"`                              | carried     | the writer emits `false` until re-emission lands    |
+ * | a flow onto a carried node (a boundary event's error path)  | carried     | kept beside the node it runs to, never drawn loose  |
+ * | a `BPMNShape` drawing an element the file does not declare  | carried     | kept under the id it names; nothing is drawn for it |
  * | loop / multi-instance / compensation markers                | carried     | a plain task on the canvas, still marked in the file |
  * | Analytic elements (boundary, inclusive, event-based, …)     | carried     | not drawn, kept whole on the enclosing pool         |
  * | `camunda:` / `zeebe:` / `signavio:` extensions              | carried     | kept verbatim, declarations included                |
@@ -112,6 +115,8 @@ import { BPMN_ROLE } from './roles.js';
  * | an edge's explicit `di:waypoint` routing                    | **lost**    | re-routed from the two ends, and it says so         |
  * | the file's `definitions/@id`, `@targetNamespace`, `@exporter` | **lost**  | Labre writes its own                                |
  * | the file's `process/@id`, where a participant names one      | **lost**   | re-minted from the participant's id, which IS kept  |
+ * | `laneSet/@id`, `collaboration/@id` and `@name`, `BPMNDiagram/@id`, `BPMNPlane/@id`, every `BPMNShape/@id` and `BPMNEdge/@id`, the folded `dataObject/@id` | **lost** | re-derived from the id its element settled on, which is what makes the fixed point a fixed point (D3) |
+ * | a gap or an overlap between two lane bands                   | **lost**   | lanes are weights: Labre lays its bands end to end  |
  * | the plane offset (§12.3)                                    | **lost**   | shape exact, origin at (0, 0) — the export's doing  |
  * | surface identity across a re-import                         | **lost**   | a new board beside the old one, never a merge       |
  *
@@ -155,6 +160,44 @@ export const BPMN_KIND_OF_XML: ReadonlyMap<string, BpmnNodeKind> = new Map(
     ]
   )
 );
+
+/**
+ * `.bpmn`'s scope vocabulary — where a carried fragment came off (D2, as
+ * amended in #157).
+ *
+ * One Labre element stands for several source elements: a pool is a
+ * `participant` AND its `process`, plus a `laneSet`, every `lane`, the
+ * `BPMNShape` that draws it, and — on the first pool of a document — the
+ * `collaboration` and `definitions` themselves. Everything they carry lands in
+ * ONE payload, so what came off which is recorded, or two lanes with the same
+ * foreign attribute leave one value in a persisted field and a report that
+ * says two.
+ *
+ * A scope is either a source element's **id, verbatim** — every carried flow
+ * node, every lane, every carried root element — or one of the `@` keys below,
+ * for the parts of the document that have no id worth naming or whose identity
+ * is their relation to this element. `@` is not an XML NameStartChar, so no id
+ * in a conformant file can ever collide with one.
+ *
+ * The rule for a fragment is always the same: **the scope is the element it was
+ * a child of**, because that is where an exporter has to put it back. For an
+ * attribute it is the element that carried the attribute; for a `di` fragment,
+ * what that fragment draws.
+ */
+export const BPMN_SCOPE = {
+  /** The element this payload rides on: the participant, the flow node, the flow. */
+  self: '@self',
+  /** Its `BPMNShape` or `BPMNEdge`. */
+  shape: '@shape',
+  /** The `process` behind a participant — the pool's other half. */
+  process: '@process',
+  /** The pool's `laneSet`. */
+  laneSet: '@laneSet',
+  /** The `collaboration`, whose residue rides on the first pool (D6). */
+  collaboration: '@collaboration',
+  /** `definitions` itself: its foreign attributes, its declarations, its roots. */
+  definitions: '@definitions',
+} as const;
 
 /**
  * The three edge elements, and the role each one IS.
@@ -231,6 +274,13 @@ const NOT_A_BODY = new Set([
 
 /* ── Reading the DOM by hand ──────────────────────────────────────────── */
 
+/** The `Node.nodeType`s a fragment can be made of, spelled rather than numbered. */
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const CDATA_NODE = 4;
+const PI_NODE = 7;
+const COMMENT_NODE = 8;
+
 /** The element children of `node`, in document order. */
 function childrenOf(node: Element): Element[] {
   return Array.from(node.children);
@@ -297,10 +347,19 @@ function fragmentOf(element: Element): string {
 
   const parts: string[] = [];
   for (const child of Array.from(element.childNodes)) {
-    if (child.nodeType === 1) {
+    if (child.nodeType === ELEMENT_NODE) {
       parts.push(fragmentOf(child as Element));
-    } else if (child.nodeType === 3 || child.nodeType === 4) {
+    } else if (child.nodeType === TEXT_NODE || child.nodeType === CDATA_NODE) {
       parts.push(escapeText(child.nodeValue ?? ''));
+    } else if (child.nodeType === COMMENT_NODE) {
+      // A comment inside a vendor extension is documentation somebody wrote by
+      // hand, and dropping it while promising the fragment back "character for
+      // character" would make that promise false in the one place a human
+      // would notice.
+      parts.push(`<!--${child.nodeValue ?? ''}-->`);
+    } else if (child.nodeType === PI_NODE) {
+      const instruction = child as ProcessingInstruction;
+      parts.push(`<?${instruction.target} ${instruction.data}?>`);
     }
   }
 
@@ -330,6 +389,17 @@ function parseDefinitions(source: string): Element {
   if (!root || root.localName !== 'definitions') {
     throw new Error(
       `A BPMN file opens on <definitions>; this one opens on <${root?.localName ?? 'nothing'}>.`
+    );
+  }
+  // The NAMESPACE, not the element name — `<definitions>` is also the root of a
+  // DMN decision model, and of anything else built on the same OMG scaffolding.
+  // Without this a `.dmn` imports as an empty board, which is exactly the
+  // "three zeroes claiming an empty process" this reader refuses to return.
+  if (root.namespaceURI !== BPMN_NS.model) {
+    throw new Error(
+      `This <definitions> is in "${root.namespaceURI ?? 'no namespace'}", not ` +
+        `in BPMN 2.0's ("${BPMN_NS.model}"). A DMN decision model and a BPMN ` +
+        `process open on the same element name and are not the same file.`
     );
   }
   return root;
@@ -546,13 +616,16 @@ function connectorProps(role: string): SerializedElementProps {
   };
 }
 
-/** The version of the format this file declares (ADR 0012, P2 as amended). */
+/**
+ * The version of the format this file declares (ADR 0012, P2 as amended).
+ *
+ * Always `2.0` and never the namespace URI itself: `parseDefinitions` has
+ * already refused anything that is not in BPMN 2.0's MODEL namespace, so there
+ * is no case in which a foreign URI could leak out of here into a UI that would
+ * render it as a version.
+ */
 function sourceVersionOf(definitions: Element): string | undefined {
-  const version =
-    definitions.namespaceURI === BPMN_NS.model
-      ? '2.0'
-      : (definitions.namespaceURI ?? undefined);
-  if (version === undefined) return undefined;
+  const version = '2.0';
   const exporter = attrOf(definitions, 'exporter');
   if (exporter === undefined) return version;
   const exporterVersion = attrOf(definitions, 'exporterVersion');
@@ -653,6 +726,12 @@ export function importBpmnXml(
 
   const drafts: Draft[] = [];
   const seenSourceIds = new Set<string>();
+  /** Source ids that became an artefact a flow may attach to: pools and nodes. */
+  const mappedSourceIds = new Set<string>();
+  /** Source ids kept verbatim on some element instead: never a connector end. */
+  const carriedSourceIds = new Set<string>();
+  /** Every source id whose diagram element this reader consumed or kept. */
+  const drawnSourceIds = new Set<string>();
 
   /* ── Roots ─────────────────────────────────────────────────────────── */
 
@@ -709,22 +788,40 @@ export function importBpmnXml(
     seenSourceIds.add(sourceId);
   };
 
+  /** One attribute, kept under the scope of the element that carried it. */
   const carryAttr = (
     payload: ForeignInterchange,
+    scope: string,
     name: string,
     value: string
   ) => {
-    payload.attrs = { ...payload.attrs, [name]: value };
+    payload.attrs = {
+      ...payload.attrs,
+      [scope]: { ...payload.attrs?.[scope], [name]: value },
+    };
     carried++;
   };
 
+  /**
+   * One fragment, kept under the scope of the element it was a CHILD of.
+   *
+   * `announce: false` for a fragment whose own note is written at the call site
+   * — a flow onto a carried node is carried for a REASON, and two notes about
+   * one flow, one of them generic, is a worse report than one that is precise.
+   */
   const carryChild = (
     payload: ForeignInterchange,
+    scope: string,
     child: Element,
-    sourceId: string | undefined
+    sourceId: string | undefined,
+    announce = true
   ) => {
-    payload.children = [...(payload.children ?? []), fragmentOf(child)];
+    payload.children = {
+      ...payload.children,
+      [scope]: [...(payload.children?.[scope] ?? []), fragmentOf(child)],
+    };
     carried++;
+    if (!announce) return;
     note({
       kind: 'carried',
       element: child.nodeName,
@@ -734,6 +831,19 @@ export function importBpmnXml(
         `the nearest element that has one. It is not drawn, and no validation ` +
         `rule sees it.`,
     });
+  };
+
+  /** One diagram fragment, kept under the scope of what it DRAWS. */
+  const carryDi = (
+    payload: ForeignInterchange,
+    scope: string,
+    fragment: string
+  ) => {
+    payload.di = {
+      ...payload.di,
+      [scope]: [...(payload.di?.[scope] ?? []), fragment],
+    };
+    carried++;
   };
 
   const quarantine = (
@@ -754,6 +864,7 @@ export function importBpmnXml(
   const sortAttributes = (
     element: Element,
     payload: ForeignInterchange,
+    scope: string,
     sourceId: string | undefined,
     understood: readonly string[] = READ_ATTRS[element.localName] ??
       READ_ATTRS['']
@@ -770,7 +881,7 @@ export function importBpmnXml(
         );
         continue;
       }
-      carryAttr(payload, attr.name, attr.value);
+      carryAttr(payload, scope, attr.name, attr.value);
     }
   };
 
@@ -781,7 +892,13 @@ export function importBpmnXml(
     sourceId: string | undefined
   ) => {
     if (!shape) return;
-    sortAttributes(shape, payload, sourceId, READ_SHAPE_ATTRS);
+    sortAttributes(
+      shape,
+      payload,
+      BPMN_SCOPE.shape,
+      sourceId,
+      READ_SHAPE_ATTRS
+    );
     for (const child of childrenOf(shape)) {
       // The bounds and the waypoints ARE the drawing, and the drawing is what
       // was mapped. A `BPMNLabel` and anything else is kept as diagram matter.
@@ -791,8 +908,7 @@ export function importBpmnXml(
       if (child.namespaceURI === BPMN_NS.di && child.localName === 'waypoint') {
         continue;
       }
-      payload.di = [...(payload.di ?? []), fragmentOf(child)];
-      carried++;
+      carryDi(payload, BPMN_SCOPE.shape, fragmentOf(child));
     }
   };
 
@@ -814,6 +930,11 @@ export function importBpmnXml(
   for (const participant of participants) {
     const sourceId = attrOf(participant, 'id');
     claim(sourceId, 'participant');
+    if (sourceId !== undefined) {
+      // A pool is an end a message flow may legally attach to (§10.6).
+      mappedSourceIds.add(sourceId);
+      drawnSourceIds.add(sourceId);
+    }
     const shape = sourceId === undefined ? undefined : shapes.get(sourceId);
     const payload: ForeignInterchange = {};
     // The PARTICIPANT's id, because the participant is what the pool draws and
@@ -825,11 +946,26 @@ export function importBpmnXml(
     const ref = attrOf(participant, 'processRef');
     const process = ref === undefined ? undefined : processById.get(ref);
 
-    sortAttributes(participant, payload, sourceId);
+    sortAttributes(participant, payload, BPMN_SCOPE.self, sourceId);
     sortShapeExtras(shape?.element, payload, sourceId);
     // Labre draws ONE thing where the format writes two, so the process's own
-    // foreign matter rides on the pool that stands for it.
-    if (process) sortAttributes(process, payload, attrOf(process, 'id'));
+    // foreign matter rides on the pool that stands for it — under its own
+    // scope, because it is a different source element with its own attributes.
+    if (process) {
+      sortAttributes(
+        process,
+        payload,
+        BPMN_SCOPE.process,
+        attrOf(process, 'id')
+      );
+      // A model downgrade if it were dropped: the writer emits
+      // `isExecutable="false"` for every process it writes, so a file that says
+      // `true` is saying something Labre does not model and must not lose.
+      const executable = attrOf(process, 'isExecutable');
+      if (executable !== undefined && executable !== 'false') {
+        carryAttr(payload, BPMN_SCOPE.process, 'isExecutable', executable);
+      }
+    }
 
     const bounds = shape?.bounds ?? null;
     const draft: Draft = {
@@ -882,9 +1018,19 @@ export function importBpmnXml(
   if (bareProcess) {
     const sourceId = attrOf(bareProcess, 'id');
     claim(sourceId, 'process');
+    if (sourceId !== undefined) {
+      mappedSourceIds.add(sourceId);
+      drawnSourceIds.add(sourceId);
+    }
     const payload: ForeignInterchange = { element: 'process' };
     if (sourceId !== undefined) payload.id = sourceId;
-    sortAttributes(bareProcess, payload, sourceId);
+    // `@self` and not `@process`: this pool IS the process, which is exactly
+    // what `element: 'process'` says.
+    sortAttributes(bareProcess, payload, BPMN_SCOPE.self, sourceId);
+    const bareExecutable = attrOf(bareProcess, 'isExecutable');
+    if (bareExecutable !== undefined && bareExecutable !== 'false') {
+      carryAttr(payload, BPMN_SCOPE.self, 'isExecutable', bareExecutable);
+    }
     mintedPool = {
       props: {
         type: 'bpmnPool',
@@ -928,7 +1074,12 @@ export function importBpmnXml(
   for (const [process, pool] of poolOfProcess) {
     const laneSet = modelChild(process, 'laneSet');
     if (!laneSet) continue;
-    sortAttributes(laneSet, pool.payload, attrOf(laneSet, 'id'));
+    sortAttributes(
+      laneSet,
+      pool.payload,
+      BPMN_SCOPE.laneSet,
+      attrOf(laneSet, 'id')
+    );
 
     const bands: Band[] = [];
 
@@ -962,17 +1113,26 @@ export function importBpmnXml(
           sourceId === undefined
             ? null
             : (shapes.get(sourceId)?.bounds ?? null);
+        // The file's id, verbatim: a lane has no interchange payload of its
+        // own, and this prop IS where its identity is kept (D3). The exporter
+        // writes it back unprefixed for exactly that reason. It is also this
+        // lane's SCOPE, so two lanes carrying one foreign attribute keep two
+        // values.
+        const laneId = sourceId ?? `lane-${bands.length + 1}`;
+        // A lane is drawn — its band is the pool's own subdivision — so its
+        // shape is consumed rather than orphaned, but it is not something a
+        // flow may attach to.
+        if (sourceId !== undefined) drawnSourceIds.add(sourceId);
         bands.push({
           lane: {
-            // The file's id, verbatim: a lane has no interchange payload of its
-            // own, and this prop IS where its identity is kept (D3). The
-            // exporter writes it back unprefixed for exactly that reason.
-            id: sourceId ?? `lane-${bands.length + 1}`,
+            id: laneId,
             name: [...path, name].filter(Boolean).join(' / '),
             // A relative WEIGHT, and the band's drawn height is the truest one
             // there is: the plot is shared in proportion, so two bands that
             // were 120 and 240 units tall come back as a third and two thirds,
-            // whatever the pool is resized to afterwards.
+            // whatever the pool is resized to afterwards. Filled in below,
+            // because a set in which only SOME bands were drawn cannot mix the
+            // two kinds of number.
             size: rect && rect.h > 0 ? rect.h : 1,
           },
           rect,
@@ -981,23 +1141,63 @@ export function importBpmnXml(
             .filter(Boolean),
         });
         // Everything else about the lane rides on the pool, which is the
-        // nearest thing that HAS a payload.
-        sortAttributes(lane, pool.payload, sourceId);
+        // nearest thing that HAS a payload — under the lane's own scope.
+        sortAttributes(lane, pool.payload, laneId, sourceId);
         for (const child of childrenOf(lane)) {
           if (isModel(child) && child.localName === 'flowNodeRef') continue;
-          carryChild(pool.payload, child, sourceId);
+          carryChild(pool.payload, laneId, child, sourceId);
         }
       }
     };
     walkLanes(laneSet, []);
 
     if (bands.length === 0) continue;
+
     // Top to bottom, which is the order a pool paints its bands in. Sorted by
     // the DRAWING when the drawing says (D4: the file's diagram wins at
     // import), and left in document order when it does not.
-    if (bands.every(band => band.rect !== null)) {
+    const allDrawn = bands.every(band => band.rect !== null);
+    if (allDrawn) {
       bands.sort((a, b) => (a.rect as Rect).y - (b.rect as Rect).y);
+    } else {
+      // A drawn height and the fallback `1` are not the same KIND of number: a
+      // band of 200 beside a band of 1 paints a hairline nobody drew. So a set
+      // that is not wholly drawn is split equally, and — like every other
+      // position this reader invents (D4) — it says so.
+      for (const band of bands) band.lane.size = 1;
+      note({
+        kind: 'invented-layout',
+        sourceId: attrOf(laneSet, 'id'),
+        element: 'laneSet',
+        message:
+          `${bands.length === 1 ? 'This lane' : `Some of these ${bands.length} lanes`} ` +
+          `arrived with no diagram, so Labre split the pool into equal bands. ` +
+          `The proportions are Labre's and not the file's.`,
+      });
     }
+
+    // Bands that do not tile the pool are still only WEIGHTS here — Labre lays
+    // them end to end — so a file that drew a gap or an overlap between two
+    // lanes comes back with the gap closed. That changes the picture, so it is
+    // said once rather than discovered.
+    if (allDrawn && bands.length > 1) {
+      const gap = bands.slice(1).some((band, index) => {
+        const above = bands[index].rect as Rect;
+        return Math.abs((band.rect as Rect).y - (above.y + above.h)) > 0.5;
+      });
+      if (gap) {
+        note({
+          kind: 'invented-layout',
+          sourceId: attrOf(laneSet, 'id'),
+          element: 'laneSet',
+          message:
+            `The lanes of this pool are drawn with a gap or an overlap between ` +
+            `them. Labre lays its bands end to end, so their heights were kept ` +
+            `in proportion and the space between them was closed.`,
+        });
+      }
+    }
+
     pool.props.lanes = bands.map(band => band.lane);
     laneBands.set(pool, bands);
   }
@@ -1016,8 +1216,16 @@ export function importBpmnXml(
     }
   }
 
-  /** One semantic element of a scope: mapped, or carried on `host`. */
-  const readNode = (element: Element, host: Draft | undefined) => {
+  /**
+   * One semantic element of a scope: mapped, or carried on `host` under
+   * `hostScope` — which is the element it was a child of, because that is where
+   * an exporter has to put it back.
+   */
+  const readNode = (
+    element: Element,
+    host: Draft | undefined,
+    hostScope: string
+  ) => {
     const sourceId = attrOf(element, 'id');
     const local = element.localName;
 
@@ -1032,10 +1240,44 @@ export function importBpmnXml(
       return;
     }
 
+    // What TRIGGERS an event, in either of the two forms §10.5.2 allows: the
+    // definition written inside the event, or a reference to one declared at
+    // root scope (Table 10.82). Both are read, because both say the same thing
+    // — and an event whose trigger is named by reference must never come back
+    // as the None event the spec says an event with no definition is.
     const trigger = childrenOf(element).find(
       child => isModel(child) && child.localName.endsWith('EventDefinition')
     );
-    const kind = BPMN_KIND_OF_XML.get(xmlKindKey(local, trigger?.localName));
+    const triggerRef = modelChild(element, 'eventDefinitionRef');
+    const referenced = (() => {
+      const ref = triggerRef?.textContent?.trim();
+      if (!ref) return undefined;
+      // A QName, resolved by id within this one file — which is what every tool
+      // does with the unprefixed form this format writes everywhere else.
+      return roots.find(
+        root =>
+          attrOf(root, 'id') === ref.split(':').pop() &&
+          root.localName.endsWith('EventDefinition')
+      );
+    })();
+    const kind = BPMN_KIND_OF_XML.get(
+      xmlKindKey(local, (trigger ?? referenced)?.localName)
+    );
+
+    // A trigger we could not read is not a trigger we may drop: the event goes
+    // whole into the carried branch below rather than onto the canvas claiming
+    // something the file did not say.
+    if (kind === undefined && triggerRef !== undefined) {
+      note({
+        kind: 'warning',
+        sourceId,
+        element: local,
+        message:
+          `<${local}> names its trigger by reference to ` +
+          `"${triggerRef.textContent?.trim() ?? ''}", which Labre does not ` +
+          `draw. The event was kept whole rather than drawn as a plain one.`,
+      });
+    }
 
     if (kind === undefined) {
       // CARRIED, and standing on its own: an Analytic or executable flow node —
@@ -1044,24 +1286,28 @@ export function importBpmnXml(
       // in, which is the nearest mapped element there is, and its DI rides with
       // it so that whatever writes it back can draw it where it was.
       if (!host) return;
-      carryChild(host.payload, element, sourceId);
+      carryChild(host.payload, hostScope, element, sourceId);
+      if (sourceId !== undefined) carriedSourceIds.add(sourceId);
       const shape = sourceId === undefined ? undefined : shapes.get(sourceId);
       if (shape) {
-        host.payload.di = [
-          ...(host.payload.di ?? []),
-          fragmentOf(shape.element),
-        ];
+        // Keyed by what it DRAWS, which is the carried element itself — the
+        // only way a writer can pair the two back up.
+        carryDi(host.payload, sourceId ?? hostScope, fragmentOf(shape.element));
       }
       return;
     }
 
     claim(sourceId, local);
+    if (sourceId !== undefined) {
+      mappedSourceIds.add(sourceId);
+      drawnSourceIds.add(sourceId);
+    }
     const payload: ForeignInterchange = {};
     if (sourceId !== undefined) payload.id = sourceId;
     const shape = sourceId === undefined ? undefined : shapes.get(sourceId);
     const bounds = shape?.bounds ?? null;
 
-    sortAttributes(element, payload, sourceId);
+    sortAttributes(element, payload, BPMN_SCOPE.self, sourceId);
     sortShapeExtras(shape?.element, payload, sourceId);
 
     // The label, from wherever this kind keeps it: an annotation's is a child
@@ -1081,9 +1327,9 @@ export function importBpmnXml(
       shape !== undefined && attrOf(shape.element, 'isExpanded') === 'true';
 
     for (const child of childrenOf(element)) {
-      // The trigger IS the kind and the annotation's text IS the label: two
-      // children that were read rather than carried.
-      if (child === trigger) continue;
+      // The trigger IS the kind — in either of its two forms — and the
+      // annotation's text IS the label: children that were read, not carried.
+      if (child === trigger || child === triggerRef) continue;
       if (
         isModel(child) &&
         local === 'textAnnotation' &&
@@ -1111,7 +1357,7 @@ export function importBpmnXml(
         }
         continue;
       }
-      carryChild(payload, child, sourceId);
+      carryChild(payload, BPMN_SCOPE.self, child, sourceId);
     }
 
     const size = NODE_SIZE[kind];
@@ -1142,96 +1388,171 @@ export function importBpmnXml(
     }
   };
 
-  /** One edge of a scope. `true` when this element WAS an edge. */
-  const readEdge = (element: Element): boolean => {
-    const local = element.localName;
-    const role = EDGE_ROLE_OF_ELEMENT[local];
-    if (role === undefined) return false;
+  /**
+   * The edges, held back until every node of the document has been read.
+   *
+   * A flow may name an end declared further down the file, so whether both of
+   * its ends were MAPPED is not knowable while the walk is still going. It has
+   * to be knowable: a flow onto a carried node — a boundary event's error path,
+   * which is the commonest Analytic construct there is — must not become a
+   * connector with a dead end, drawn on the canvas, attached to nothing and
+   * dropped by the next export. See {@link readEdges}.
+   */
+  const pendingEdges: {
+    element: Element;
+    host: Draft | undefined;
+    hostScope: string;
+  }[] = [];
 
-    const sourceId = attrOf(element, 'id');
-    const from = attrOf(element, 'sourceRef');
-    const to = attrOf(element, 'targetRef');
-    if (!from || !to) {
-      note({
-        kind: 'warning',
-        sourceId,
-        element: local,
-        message:
-          `<${local}> names only one of its two ends, so there is no arrow to ` +
-          `draw between them. It was left out.`,
-      });
-      return true;
-    }
-
-    claim(sourceId, local);
-    const payload: ForeignInterchange = {};
-    if (sourceId !== undefined) payload.id = sourceId;
-    sortAttributes(element, payload, sourceId);
-    // The exporter writes `associationDirection="None"` on every association —
-    // the role is declared without a direction — so only another value is
-    // something the model does not hold.
-    const direction = attrOf(element, 'associationDirection');
-    if (
-      local === 'association' &&
-      direction !== undefined &&
-      direction !== 'None'
-    ) {
-      carryAttr(payload, 'associationDirection', direction);
-    }
-    for (const child of childrenOf(element)) {
-      carryChild(payload, child, sourceId);
-    }
-    const di = sourceId === undefined ? undefined : diEdges.get(sourceId);
-    sortShapeExtras(di?.element, payload, sourceId);
-    if (di && di.waypoints > 2) explicitRoutes++;
-
-    const name = attrOf(element, 'name');
-    drafts.push({
-      props: {
-        ...connectorProps(role),
-        // The SOURCE FILE's ids — the caller remaps them onto the ones the
-        // surface minted. See the module comment.
-        source: { id: from, position: [0.5, 0.5] },
-        target: { id: to, position: [0.5, 0.5] },
-        ...(name ? { text: name } : {}),
-      },
-      payload,
-      order: di?.index ?? Number.POSITIVE_INFINITY,
-      kind: 'edge',
-    });
+  /** `true` when this element WAS an edge, whatever became of it. */
+  const collectEdge = (
+    element: Element,
+    host: Draft | undefined,
+    hostScope: string
+  ): boolean => {
+    if (EDGE_ROLE_OF_ELEMENT[element.localName] === undefined) return false;
+    pendingEdges.push({ element, host, hostScope });
     return true;
+  };
+
+  /** Every flow, once the whole document is known. */
+  const readEdges = () => {
+    for (const { element, host, hostScope } of pendingEdges) {
+      const local = element.localName;
+      const role = EDGE_ROLE_OF_ELEMENT[local];
+      const sourceId = attrOf(element, 'id');
+      const from = attrOf(element, 'sourceRef');
+      const to = attrOf(element, 'targetRef');
+
+      if (!from || !to) {
+        note({
+          kind: 'warning',
+          sourceId,
+          element: local,
+          message:
+            `<${local}> names only one of its two ends, so there is no arrow ` +
+            `to draw between them. It was left out.`,
+        });
+        continue;
+      }
+
+      // An end on something Labre did not draw. Carried whole, beside the node
+      // it points at and under the same scope, so the pair travels together and
+      // re-emits together — never a live connector with a dead end, which would
+      // be the fourth state D1 says does not exist.
+      const dangling = [from, to].filter(end => !mappedSourceIds.has(end));
+      if (dangling.length > 0) {
+        if (!host) continue;
+        carryChild(host.payload, hostScope, element, sourceId, false);
+        if (sourceId !== undefined) carriedSourceIds.add(sourceId);
+        const edgeDi =
+          sourceId === undefined ? undefined : diEdges.get(sourceId);
+        if (edgeDi) {
+          carryDi(
+            host.payload,
+            sourceId ?? hostScope,
+            fragmentOf(edgeDi.element)
+          );
+        }
+        note({
+          kind: 'warning',
+          sourceId,
+          element: local,
+          message:
+            `<${local}> runs to ${dangling.map(end => `"${end}"`).join(' and ')}, ` +
+            `which ${dangling.length === 1 ? 'is' : 'are'} not drawn on this ` +
+            `canvas. The flow is kept whole beside ` +
+            `${dangling.length === 1 ? 'it' : 'them'} rather than drawn with a ` +
+            `loose end.`,
+        });
+        continue;
+      }
+
+      claim(sourceId, local);
+      if (sourceId !== undefined) drawnSourceIds.add(sourceId);
+      const payload: ForeignInterchange = {};
+      if (sourceId !== undefined) payload.id = sourceId;
+      sortAttributes(element, payload, BPMN_SCOPE.self, sourceId);
+      // The exporter writes `associationDirection="None"` on every association
+      // — the role is declared without a direction — so only another value is
+      // something the model does not hold.
+      const direction = attrOf(element, 'associationDirection');
+      if (
+        local === 'association' &&
+        direction !== undefined &&
+        direction !== 'None'
+      ) {
+        carryAttr(payload, BPMN_SCOPE.self, 'associationDirection', direction);
+      }
+      for (const child of childrenOf(element)) {
+        carryChild(payload, BPMN_SCOPE.self, child, sourceId);
+      }
+      const di = sourceId === undefined ? undefined : diEdges.get(sourceId);
+      sortShapeExtras(di?.element, payload, sourceId);
+      if (di && di.waypoints > 2) explicitRoutes++;
+
+      const name = attrOf(element, 'name');
+      drafts.push({
+        props: {
+          ...connectorProps(role),
+          // The SOURCE FILE's ids — the caller remaps them onto the ones the
+          // surface minted. See the module comment.
+          source: { id: from, position: [0.5, 0.5] },
+          target: { id: to, position: [0.5, 0.5] },
+          ...(name ? { text: name } : {}),
+        },
+        payload,
+        order: di?.index ?? Number.POSITIVE_INFINITY,
+        kind: 'edge',
+      });
+    }
   };
 
   /* ── Walking the document ──────────────────────────────────────────── */
 
   for (const collaboration of collaborations) {
     const host = residence();
+    const scope = BPMN_SCOPE.collaboration;
     if (host) {
-      sortAttributes(collaboration, host.payload, attrOf(collaboration, 'id'));
+      sortAttributes(
+        collaboration,
+        host.payload,
+        scope,
+        attrOf(collaboration, 'id')
+      );
     }
     for (const child of childrenOf(collaboration)) {
       if (child.localName === 'participant' && isModel(child)) continue;
-      if (isModel(child) && readEdge(child)) continue;
+      if (isModel(child) && collectEdge(child, host, scope)) continue;
       if (isModel(child)) {
-        readNode(child, host);
+        readNode(child, host, scope);
         continue;
       }
-      if (host) carryChild(host.payload, child, attrOf(collaboration, 'id'));
+      if (host) {
+        carryChild(host.payload, scope, child, attrOf(collaboration, 'id'));
+      }
     }
   }
 
   for (const process of processes) {
-    const pool = poolOfProcess.get(process) ?? residence();
+    const pool = poolOfProcess.get(process);
+    const host = pool ?? residence();
+    // `@self` when the pool IS this process (a file with no participant),
+    // `@process` when the pool is a participant standing in front of it.
+    const scope =
+      pool && pool === mintedPool ? BPMN_SCOPE.self : BPMN_SCOPE.process;
     for (const child of childrenOf(process)) {
       if (child.localName === 'laneSet' && isModel(child)) continue;
-      if (isModel(child) && readEdge(child)) continue;
+      if (isModel(child) && collectEdge(child, host, scope)) continue;
       if (isModel(child)) {
-        readNode(child, pool);
+        readNode(child, host, scope);
         continue;
       }
-      if (pool) carryChild(pool.payload, child, attrOf(process, 'id'));
+      if (host) carryChild(host.payload, scope, child, attrOf(process, 'id'));
     }
   }
+
+  readEdges();
 
   /* ── The document's own residue (D6) ───────────────────────────────── */
 
@@ -1255,12 +1576,17 @@ export function importBpmnXml(
     for (const attr of Array.from(definitions.attributes)) {
       if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:')) {
         if (!OWN_NAMESPACES.has(attr.value)) {
-          carryAttr(host.payload, attr.name, attr.value);
+          carryAttr(
+            host.payload,
+            BPMN_SCOPE.definitions,
+            attr.name,
+            attr.value
+          );
         }
         continue;
       }
       if (READ_ATTRS.definitions.includes(attr.name)) continue;
-      carryAttr(host.payload, attr.name, attr.value);
+      carryAttr(host.payload, BPMN_SCOPE.definitions, attr.name, attr.value);
     }
 
     for (const root of residue) {
@@ -1292,7 +1618,33 @@ export function importBpmnXml(
             `went ahead, and this reading of the process may be wrong.`,
         });
       }
-      carryChild(host.payload, root, attrOf(definitions, 'id'));
+      carryChild(
+        host.payload,
+        BPMN_SCOPE.definitions,
+        root,
+        attrOf(definitions, 'id')
+      );
+    }
+
+    // A `BPMNShape` or `BPMNEdge` that draws an element the file never
+    // declares. It is broken in the source — nothing can resolve it — but it is
+    // still a node of the file, and D1 has no state for "quietly forgotten":
+    // kept under the id it names, and named in the report so a reader can go
+    // and look.
+    for (const [target, shape] of [
+      ...[...shapes].map(([id, entry]) => [id, entry.element] as const),
+      ...[...diEdges].map(([id, entry]) => [id, entry.element] as const),
+    ]) {
+      if (drawnSourceIds.has(target) || carriedSourceIds.has(target)) continue;
+      carryDi(host.payload, target, fragmentOf(shape));
+      note({
+        kind: 'warning',
+        sourceId: target,
+        element: shape.localName,
+        message:
+          `The diagram draws "${target}", which the file does not declare. ` +
+          `The shape is kept, and nothing is drawn for it.`,
+      });
     }
   } else if (residue.length > 0) {
     // Nothing was drawn, so there is nothing for the residue to ride on. Said

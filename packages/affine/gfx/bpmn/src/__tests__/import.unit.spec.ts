@@ -211,6 +211,7 @@ const FOREIGN = `<?xml version="1.0" encoding="UTF-8"?>
       <bpmn2:timerEventDefinition id="Timer_1" />
     </bpmn2:boundaryEvent>
     <bpmn2:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Activity_1" />
+    <bpmn2:sequenceFlow id="Flow_esc" name="too late" sourceRef="Boundary_1" targetRef="StartEvent_1" />
   </bpmn2:process>
   <bpmndi:BPMNDiagram id="Diagram_1">
     <bpmndi:BPMNPlane id="Plane_1" bpmnElement="Collaboration_0">
@@ -231,6 +232,10 @@ const FOREIGN = `<?xml version="1.0" encoding="UTF-8"?>
         <di:waypoint x="248" y="170" />
         <di:waypoint x="300" y="170" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_esc" bpmnElement="Flow_esc">
+        <di:waypoint x="400" y="228" />
+        <di:waypoint x="230" y="188" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn2:definitions>
@@ -241,6 +246,14 @@ describe('a file written by another tool', () => {
   const { elements, report } = result;
   const payload = (element: (typeof elements)[number]) =>
     (element.interchange as Record<string, Record<string, unknown>>).bpmn;
+  /** Carried attributes of one SCOPE — the source element they came off. */
+  const attrsOf = (carried: Record<string, unknown>, scope: string) =>
+    (carried.attrs as Record<string, Record<string, string>>)[scope] ?? {};
+  /** Carried fragments filed under one scope: the element they were inside. */
+  const childrenOf = (carried: Record<string, unknown>, scope: string) =>
+    (carried.children as Record<string, string[]>)[scope] ?? [];
+  const diOf = (carried: Record<string, unknown>, scope: string) =>
+    (carried.di as Record<string, string[]>)[scope] ?? [];
   const pool = elements.find(element => element.type === 'bpmnPool')!;
   const nodes = elements.filter(element => element.type === 'bpmnNode');
 
@@ -257,45 +270,60 @@ describe('a file written by another tool', () => {
   it('keeps the vendor extension VERBATIM, on the element it was written on', () => {
     const task = payload(nodes[1]);
     expect(task.id).toBe('Activity_1');
-    // An attribute in a foreign namespace, kept under the name the file used.
-    expect((task.attrs as Record<string, string>)['camunda:assignee']).toBe(
-      'demo'
-    );
+    // An attribute in a foreign namespace, kept under the name the file used —
+    // and under the SCOPE of the element that carried it, which for a task's
+    // own attribute is `@self`.
+    expect(attrsOf(task, '@self')['camunda:assignee']).toBe('demo');
     // …and a whole subtree, character for character, prefixes included: it is
     // meaningless under any other declaration.
-    expect(task.children).toContain(
+    expect(childrenOf(task, '@self')).toContain(
       '<bpmn2:documentation>Two people, one trolley.</bpmn2:documentation>'
     );
     // …whitespace included, which is what "verbatim" means: the file's own
     // indentation is inside the fragment, so the assertion is on what it
     // CONTAINS rather than on a string that has been tidied up.
-    const extension = (task.children as string[]).find(child =>
+    const extension = childrenOf(task, '@self').find(child =>
       child.startsWith('<bpmn2:extensionElements>')
     );
     expect(extension).toContain('<camunda:property name="sla" value="24h" />');
     expect(extension).toContain('<camunda:properties>');
   });
 
+  it('keeps a comment inside a carried fragment, which "verbatim" also means', () => {
+    const { elements: read } = importBpmnXml(
+      FOREIGN.replace(
+        '<camunda:properties>',
+        '<!-- the SLA is contractual --><camunda:properties>'
+      ),
+      {}
+    );
+    const task = read.filter(element => element.type === 'bpmnNode')[1];
+    const extension = childrenOf(
+      (task.interchange as Record<string, Record<string, unknown>>).bpmn,
+      '@self'
+    ).find(child => child.startsWith('<bpmn2:extensionElements>'));
+    expect(extension).toContain('<!-- the SLA is contractual -->');
+  });
+
   it('carries an Analytic flow node on the pool of its process', () => {
     // A boundary event is not in the descriptive profile and Labre draws none:
-    // it is kept whole on the pool — the nearest mapped element — with the
-    // shape that draws it, so what re-emits it can put it back where it was.
+    // it is kept whole on the pool — the nearest mapped element — under the
+    // scope of the element it was a CHILD of, which is where a writer has to
+    // put it back, and with the shape that draws it under its own id.
     const carried = payload(pool);
     expect(
-      (carried.children as string[]).some(child =>
+      childrenOf(carried, '@process').some(child =>
         child.startsWith('<bpmn2:boundaryEvent id="Boundary_1"')
       )
     ).toBe(true);
     expect(
-      (carried.children as string[]).some(child =>
+      childrenOf(carried, '@process').some(child =>
         child.includes('<bpmn2:timerEventDefinition id="Timer_1" />')
       )
     ).toBe(true);
-    expect(
-      (carried.di as string[]).some(fragment =>
-        fragment.includes('bpmnElement="Boundary_1"')
-      )
-    ).toBe(true);
+    expect(diOf(carried, 'Boundary_1')[0]).toContain(
+      'bpmnElement="Boundary_1"'
+    );
 
     // It is NOT on the canvas: no third node, and no rule will ever judge it.
     expect(nodes).toHaveLength(2);
@@ -309,18 +337,75 @@ describe('a file written by another tool', () => {
     expect(note?.sourceId).toBe('Boundary_1');
   });
 
+  it('carries a flow onto a carried node too — never a connector with a dead end', () => {
+    // The commonest Analytic construct in the wild: a boundary event and the
+    // error path off it. The event is carried (above), so its flow has an end
+    // that is on no canvas — and a connector pointing at an element nobody
+    // created is a broken arrow the next export drops silently, which is the
+    // fourth state D1 says does not exist.
+    const carried = payload(pool);
+    expect(
+      childrenOf(carried, '@process').some(child =>
+        child.startsWith('<bpmn2:sequenceFlow id="Flow_esc"')
+      )
+    ).toBe(true);
+    // Its own edge goes with it, so the pair can be put back together.
+    expect(diOf(carried, 'Flow_esc')[0]).toContain('bpmnElement="Flow_esc"');
+
+    // Exactly one connector — the flow between the two DRAWN artefacts — and
+    // every endpoint on the canvas resolves to something the import created.
+    const connectors = elements.filter(element => element.type === 'connector');
+    expect(connectors).toHaveLength(1);
+    const ids = new Set(
+      elements
+        .map(
+          element =>
+            (element.interchange as Record<string, { id?: string }> | undefined)
+              ?.bpmn?.id
+        )
+        .filter(Boolean)
+    );
+    for (const connector of connectors) {
+      expect(ids.has((connector.source as { id: string }).id)).toBe(true);
+      expect(ids.has((connector.target as { id: string }).id)).toBe(true);
+    }
+
+    // …and the report says so, naming the flow and the end it could not draw.
+    const note = report.notes.find(entry => entry.sourceId === 'Flow_esc');
+    expect(note?.kind).toBe('warning');
+    expect(note?.message).toContain('Boundary_1');
+  });
+
   it('carries the declarations a carried fragment cannot be read without', () => {
-    const attrs = payload(pool).attrs as Record<string, string>;
+    const document = attrsOf(payload(pool), '@definitions');
     // `xmlns:camunda` and `xmlns:bioc` are not decoration: a `camunda:property`
     // fragment written back without them is not a document anybody can parse.
-    expect(attrs['xmlns:camunda']).toBe('http://camunda.org/schema/1.0/bpmn');
-    expect(attrs['xmlns:bioc']).toBe('http://bpmn.io/schema/bpmn/biocolor/1.0');
+    expect(document['xmlns:camunda']).toBe(
+      'http://camunda.org/schema/1.0/bpmn'
+    );
+    expect(document['xmlns:bioc']).toBe(
+      'http://bpmn.io/schema/bpmn/biocolor/1.0'
+    );
     // The four this library writes for itself are NOT carried: they would come
     // back on every round trip and grow the payload for ever.
-    expect(attrs['xmlns:bpmn2']).toBeUndefined();
-    expect(attrs['xmlns:dc']).toBeUndefined();
-    // The process's own foreign attribute rides on the pool that draws it.
-    expect(attrs['camunda:historyTimeToLive']).toBe('30');
+    expect(document['xmlns:bpmn2']).toBeUndefined();
+    expect(document['xmlns:dc']).toBeUndefined();
+    // The process's own foreign attribute rides on the pool that draws it —
+    // under the PROCESS's scope, not the participant's, because they are two
+    // source elements and only one of them said this.
+    expect(
+      attrsOf(payload(pool), '@process')['camunda:historyTimeToLive']
+    ).toBe('30');
+    expect(attrsOf(payload(pool), '@self')['camunda:historyTimeToLive']).toBe(
+      undefined
+    );
+  });
+
+  it('keeps `isExecutable="true"`, which the writer would otherwise downgrade', () => {
+    // The exporter writes `isExecutable="false"` on every process it writes, so
+    // a file that says `true` is saying something Labre does not model. Read and
+    // dropped, it would be a silent model downgrade on every round trip.
+    expect(attrsOf(payload(pool), '@process').isExecutable).toBe('true');
   });
 
   it('quarantines the vendor colour, and says why', () => {
@@ -335,6 +420,60 @@ describe('a file written by another tool', () => {
     const note = report.notes.find(entry => entry.element === 'bioc:fill');
     expect(note?.kind).toBe('quarantined');
     expect(note?.sourceId).toBe('Activity_1');
+  });
+
+  it('quarantines the body of an EXPANDED sub-process, and draws it collapsed', () => {
+    // D5 case 2, both halves. The pack draws the collapsed form only, so a body
+    // written back under a shape flagged `isExpanded="false"` would be a model
+    // and a diagram that contradict each other — and the body is still in the
+    // document, waiting for the chantier that learns to draw it.
+    const expanded = wrap(
+      `<bpmn:process id="Proc">` +
+        `<bpmn:subProcess id="Sub_1" name="Handle">` +
+        `<bpmn:documentation>why</bpmn:documentation>` +
+        `<bpmn:task id="Inner_1" name="Inside" />` +
+        `</bpmn:subProcess></bpmn:process>`,
+      `<bpmndi:BPMNShape id="S_sub" bpmnElement="Sub_1" isExpanded="true"><dc:Bounds x="0" y="0" width="300" height="200" /></bpmndi:BPMNShape>` +
+        `<bpmndi:BPMNShape id="S_in" bpmnElement="Inner_1"><dc:Bounds x="40" y="60" width="100" height="80" /></bpmndi:BPMNShape>`
+    );
+    const { elements, report } = importBpmnXml(expanded, {});
+    const nodes = elements.filter(element => element.type === 'bpmnNode');
+    // One artefact: the sub-process. The task inside it is not on the canvas.
+    expect(nodes.map(node => node.kind)).toEqual(['subProcess']);
+
+    const carried = (
+      nodes[0].interchange as Record<
+        string,
+        {
+          quarantined: { fragment: string; reason: string }[];
+          children: Record<string, string[]>;
+        }
+      >
+    ).bpmn;
+    const held = carried.quarantined.map(entry => entry.fragment);
+    expect(
+      held.some(fragment => fragment.includes('<bpmn:task id="Inner_1"'))
+    ).toBe(true);
+    // …and the inner DIAGRAM with it, because a body without its shapes is not
+    // something a later chantier could draw.
+    expect(
+      held.some(fragment => fragment.includes('bpmnElement="Inner_1"'))
+    ).toBe(true);
+    // The activity's own documentation is NOT the body: carried, not held.
+    expect(carried.children['@self'].join('')).toContain(
+      '<bpmn:documentation>why</bpmn:documentation>'
+    );
+    expect(
+      report.notes.some(
+        note => note.kind === 'quarantined' && note.element === 'bpmn:task'
+      )
+    ).toBe(true);
+
+    // The other half, which is what makes the quarantine mean anything: the
+    // re-export draws it collapsed and the body is nowhere in the file.
+    const written = exportBpmnXml(boardFromProps(elements));
+    expect(written).toContain('isExpanded="false"');
+    expect(written).not.toContain('Inner_1');
   });
 
   it('quarantines a document-level <import>, on the pool that holds the residue', () => {
@@ -420,6 +559,62 @@ const LANED = (refs: {
 </bpmn:definitions>
 `;
 
+describe('what came off which element', () => {
+  /** Two lanes of one pool, each carrying the SAME foreign attribute. */
+  const OWNED = LANED({ front: [], back: [] })
+    .replace(
+      'xmlns:di="http://www.omg.org/spec/DD/20100524/DI"',
+      'xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn"'
+    )
+    .replace(
+      '<bpmn:lane id="L1" name="Front office">',
+      '<bpmn:lane id="L1" name="Front office" camunda:owner="alice">'
+    )
+    .replace(
+      '<bpmn:lane id="L2" name="Back office">',
+      '<bpmn:lane id="L2" name="Back office" camunda:owner="bob">'
+    );
+
+  it('keeps two lanes’ identical foreign attributes apart, and counts both', () => {
+    // The defect the first review of this importer found, pinned. SEVEN source
+    // elements pour into a pool's payload — the participant, its process, the
+    // laneSet, every lane, the shape that draws it, the collaboration and
+    // `definitions` — so a map keyed by attribute name alone loses one of these
+    // two owners into a PERSISTED value, and the report says two were kept.
+    const { elements, report } = importBpmnXml(OWNED, {});
+    const pool = elements.find(element => element.type === 'bpmnPool')!;
+    const carried = (
+      pool.interchange as Record<
+        string,
+        { attrs: Record<string, Record<string, string>> }
+      >
+    ).bpmn;
+
+    expect(carried.attrs.L1['camunda:owner']).toBe('alice');
+    expect(carried.attrs.L2['camunda:owner']).toBe('bob');
+    // Two attributes and the `xmlns:camunda` that makes them legible: three,
+    // and the count is the truth rather than a claim about it.
+    expect(report.carried).toBe(3);
+  });
+
+  it('scopes by the element a fragment came off, so a writer knows where it goes', () => {
+    const { elements } = importBpmnXml(OWNED, {});
+    const pool = elements.find(element => element.type === 'bpmnPool')!;
+    const carried = (
+      pool.interchange as Record<string, { attrs: Record<string, unknown> }>
+    ).bpmn;
+
+    // A source id for a lane, an `@` role key for the parts of the document
+    // that have no id worth naming. `@` is not an XML NameStartChar, so the two
+    // vocabularies cannot collide however a file names its elements.
+    expect(Object.keys(carried.attrs).sort()).toEqual([
+      '@definitions',
+      'L1',
+      'L2',
+    ]);
+  });
+});
+
 describe('lanes', () => {
   it('derives each band’s weight from the height it was drawn at', () => {
     const { elements } = importBpmnXml(
@@ -459,6 +654,44 @@ describe('lanes', () => {
     expect(note?.sourceId).toBe('T2');
     expect(note?.message).toContain('Front office');
     expect(note?.message).toContain('Back office');
+  });
+
+  it('splits equally when only SOME bands were drawn, and says it did', () => {
+    // A drawn height and the fallback weight are not the same kind of number: a
+    // band of 200 beside a band of 1 paints a hairline nobody drew. D4 gives a
+    // shape with no diagram a deterministic position AND a note; a lane gets
+    // the same treatment rather than a silent 0.5%.
+    const half = LANED({ front: [], back: [] }).replace(
+      /<bpmndi:BPMNShape id="S_L2"[\s\S]*?<\/bpmndi:BPMNShape>/,
+      ''
+    );
+    const { elements, report } = importBpmnXml(half, {});
+    const pool = elements.find(element => element.type === 'bpmnPool')!;
+    expect((pool.lanes as { size: number }[]).map(lane => lane.size)).toEqual([
+      1, 1,
+    ]);
+    const note = report.notes.find(
+      entry => entry.kind === 'invented-layout' && entry.element === 'laneSet'
+    );
+    expect(note?.message).toContain('equal bands');
+  });
+
+  it('says so when the bands it was given do not tile the pool', () => {
+    // Labre lays its bands end to end, so a file that drew a gap between two
+    // lanes comes back with the gap closed. Defensible — `lanes` is a weight
+    // list — and the picture changes, so it is said once.
+    const gapped = LANED({ front: [], back: [] }).replace(
+      '<dc:Bounds x="30" y="100" width="570" height="200" />',
+      '<dc:Bounds x="30" y="180" width="570" height="120" />'
+    );
+    const { report } = importBpmnXml(gapped, {});
+    expect(
+      report.notes.some(
+        note =>
+          note.kind === 'invented-layout' &&
+          /gap or an overlap/.test(note.message)
+      )
+    ).toBe(true);
   });
 
   it('flattens a nested lane set onto its leaves, and quarantines the nesting', () => {
@@ -602,6 +835,80 @@ describe('the files an importer meets on its first afternoon', () => {
     );
     expect(ids).toHaveLength(2);
     expect(new Set(ids).size).toBe(2);
+  });
+
+  it('reads a trigger named by REFERENCE, and never as a plain event', () => {
+    // §10.5.2 Table 10.82: a catch event may name its trigger by reference to a
+    // root-level definition, and the spec is explicit that an event with NO
+    // definition is a None event. Reading the by-reference form as a plain
+    // start event would put a claim on the canvas the file did not make.
+    const { elements } = importBpmnXml(
+      wrap(
+        `<bpmn:message id="Msg_1" name="Order" />` +
+          `<bpmn:messageEventDefinition id="MsgDef_1" messageRef="Msg_1" />` +
+          `<bpmn:process id="Proc"><bpmn:startEvent id="S" name="In">` +
+          `<bpmn:eventDefinitionRef>MsgDef_1</bpmn:eventDefinitionRef>` +
+          `</bpmn:startEvent></bpmn:process>`
+      ),
+      {}
+    );
+    const node = elements.find(element => element.type === 'bpmnNode')!;
+    expect(node.kind).toBe('startEventMessage');
+    expect(node.role).toBe(BPMN_ROLE.startEventMessage);
+  });
+
+  it('keeps an event whole when the trigger it references is not one it draws', () => {
+    const { elements, report } = importBpmnXml(
+      wrap(
+        `<bpmn:signalEventDefinition id="SigDef_1" />` +
+          `<bpmn:process id="Proc"><bpmn:startEvent id="S">` +
+          `<bpmn:eventDefinitionRef>SigDef_1</bpmn:eventDefinitionRef>` +
+          `</bpmn:startEvent></bpmn:process>`
+      ),
+      {}
+    );
+    // Not drawn as a None start event: carried, like every other trigger the
+    // descriptive profile does not have a glyph for.
+    expect(elements.filter(element => element.type === 'bpmnNode')).toEqual([]);
+    const note = report.notes.find(entry => entry.sourceId === 'S');
+    expect(note?.kind).toBe('warning');
+    expect(note?.message).toContain('SigDef_1');
+  });
+
+  it('keeps a shape that draws something the file does not declare', () => {
+    const { report, elements } = importBpmnXml(
+      wrap(
+        `<bpmn:process id="Proc"><bpmn:task id="T" /></bpmn:process>`,
+        `<bpmndi:BPMNShape id="S_T" bpmnElement="T"><dc:Bounds x="0" y="0" width="100" height="80" /></bpmndi:BPMNShape>` +
+          `<bpmndi:BPMNShape id="S_ghost" bpmnElement="Nothing_1"><dc:Bounds x="300" y="0" width="100" height="80" /></bpmndi:BPMNShape>`
+      ),
+      {}
+    );
+    // Broken in the source — nothing can resolve it — and still a node of the
+    // file, so it is kept under the id it names and named in the report. D1 has
+    // no state for "quietly forgotten".
+    expect(
+      elements.filter(element => element.type === 'bpmnNode')
+    ).toHaveLength(1);
+    const note = report.notes.find(entry => entry.sourceId === 'Nothing_1');
+    expect(note?.kind).toBe('warning');
+    const pool = elements.find(element => element.type === 'bpmnPool')!;
+    expect(
+      (pool.interchange as Record<string, { di: Record<string, string[]> }>)
+        .bpmn.di.Nothing_1[0]
+    ).toContain('bpmnElement="Nothing_1"');
+  });
+
+  it('throws on a `<definitions>` that is not BPMN’s — a `.dmn`, say', () => {
+    // DMN's root element is also `<definitions>`. Without the NAMESPACE check
+    // a decision model imports as an empty board, which is the "three zeroes
+    // claiming an empty process" this reader promises never to return.
+    expect(() =>
+      importBpmnXml(
+        `<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="d" />`,
+        {}
+      )
+    ).toThrow(/not\s+in BPMN 2\.0's/);
   });
 
   it('throws on a file that is not well-formed', () => {
