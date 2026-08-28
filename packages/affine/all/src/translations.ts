@@ -233,6 +233,35 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.record.linked', 'Linked'],
   ['com.labre.reading.record.none', 'Not linked to a record.'],
   ['com.labre.reading.drift.message', 'The board and the record disagree'],
+  // BPMN interchange: what an export could not write down, and what an import
+  // did with the file. Chrome and not framework prose — these are the words the
+  // library's own notification puts around a report the reader produced, so
+  // they ship with an English default and a standalone playground reads
+  // correctly with no catalogue registered.
+  [
+    'com.labre.commands.bpmn.exportXml.warnings',
+    'What this export could not write down',
+  ],
+  ['com.labre.commands.bpmn.importXml.done', 'BPMN file imported'],
+  [
+    'com.labre.commands.bpmn.importXml.failed',
+    'This file could not be imported',
+  ],
+  [
+    'com.labre.commands.bpmn.importXml.remarks',
+    'What the import could not keep as it was',
+  ],
+  [
+    'com.labre.commands.bpmn.importXml.console',
+    'remarks — the full report is in the browser console.',
+  ],
+  // The three count labels of the summary line. Separate keys rather than one
+  // sentence with holes in it: the seam has no interpolation and no
+  // pluralisation (both are the host's), so a countable noun is the largest
+  // unit this library can hand over without inventing grammar.
+  ['com.labre.commands.bpmn.importXml.drawn', 'drawn'],
+  ['com.labre.commands.bpmn.importXml.carried', 'carried'],
+  ['com.labre.commands.bpmn.importXml.quarantined', 'quarantined'],
 ];
 
 /**

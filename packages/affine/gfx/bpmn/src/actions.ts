@@ -2,19 +2,28 @@ import {
   DefaultTool,
   EdgelessCRUDIdentifier,
   generateElementId,
+  type InterchangeImportResult,
+  type InterchangeNote,
+  type InterchangeReport,
+  type SerializedElementProps,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   type BpmnLane,
   type BpmnNodeKind,
   BpmnPoolElementModel,
+  ConnectorElementModel,
   ConnectorMode,
   PointStyle,
   StrokeStyle,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
-import { downloadBlob } from '@labre/affine-shared/utils';
-import { Bound } from '@labre/global/gfx';
+import {
+  EditPropsStore,
+  NotificationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
+import { downloadBlob, openSingleFileWith } from '@labre/affine-shared/utils';
+import { Bound, getCommonBound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
@@ -28,9 +37,10 @@ import {
   SEQUENCE_STROKE,
   SEQUENCE_WIDTH,
 } from './consts';
-import type { BpmnExportBoard } from './export.js';
+import { BPMN_FORMAT_ID, type BpmnExportBoard } from './export.js';
 import {
   BPMN_XML_EXPORT,
+  BPMN_XML_IMPORT,
   bpmnBoardFrom,
   bpmnSafeFilename,
 } from './interchange.js';
@@ -387,12 +397,300 @@ export function bpmnExportFilename(std: BlockStdScope): string {
  */
 export function exportBpmnXmlFile(std: BlockStdScope): void {
   const elements = gfxOf(std).surface?.elementModels ?? [];
-  const { text, filename, mime } = BPMN_XML_EXPORT.run(elements, {
+  const { text, filename, mime, warnings } = BPMN_XML_EXPORT.run(elements, {
     name: bpmnExportFilename(std),
   });
   // The charset is the browser's business, not the format's: `mime` is what
   // `.bpmn` IS, and this is how a blob is told to carry it.
   downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
+
+  // The `warnings` channel, spent. The writer has been populating it since
+  // #149 and the command dropped it on the floor — a #159 review nit, and the
+  // one thing that made "an export loses things too, and the user who clicked
+  // Export is the one person entitled to be told" false in the only place a
+  // user stands. A warning is never an error: the file downloaded, and it is
+  // valid; what it could not say is what this names.
+  if (!warnings || warnings.length === 0) return;
+  notifyBpmn(std, {
+    title: translateKey(std, EXPORT_WARNINGS_KEY, EXPORT_WARNINGS_FALLBACK),
+    message: warnings.join('\n'),
+    accent: 'warning',
+  });
+}
+
+/* ── Import (BPMN 2.0 XML) ────────────────────────────────────────────── */
+
+const EXPORT_WARNINGS_KEY = 'com.labre.commands.bpmn.exportXml.warnings';
+const EXPORT_WARNINGS_FALLBACK = 'What this export could not write down';
+const IMPORT_DONE_KEY = 'com.labre.commands.bpmn.importXml.done';
+const IMPORT_DONE_FALLBACK = 'BPMN file imported';
+const IMPORT_FAILED_KEY = 'com.labre.commands.bpmn.importXml.failed';
+const IMPORT_FAILED_FALLBACK = 'This file could not be imported';
+const IMPORT_REMARKS_KEY = 'com.labre.commands.bpmn.importXml.remarks';
+const IMPORT_REMARKS_FALLBACK = 'What the import could not keep as it was';
+const IMPORT_CONSOLE_KEY = 'com.labre.commands.bpmn.importXml.console';
+const IMPORT_CONSOLE_FALLBACK =
+  'remarks — the full report is in the browser console.';
+const IMPORT_DRAWN_KEY = 'com.labre.commands.bpmn.importXml.drawn';
+const IMPORT_DRAWN_FALLBACK = 'drawn';
+const IMPORT_CARRIED_KEY = 'com.labre.commands.bpmn.importXml.carried';
+const IMPORT_CARRIED_FALLBACK = 'carried';
+const IMPORT_QUARANTINED_KEY = 'com.labre.commands.bpmn.importXml.quarantined';
+const IMPORT_QUARANTINED_FALLBACK = 'quarantined';
+
+/**
+ * How many remarks the second notification spells out before it hands the
+ * reader to the console.
+ *
+ * A toast is a headline surface: past five lines it stops being read and starts
+ * being dismissed, and a report nobody reads is a report that was not written.
+ * See {@link reportBpmnImport} for what the number is a compromise about.
+ */
+const REMARKS_IN_A_NOTIFICATION = 5;
+
+/**
+ * The notification seam, or silence.
+ *
+ * `getOptional`, like every other call site in the library: the host injects a
+ * `NotificationService` (labreapp does, the standalone playground does not), and
+ * a framework that assumed one would be a framework the playground cannot run.
+ * Nothing here decides that an import failed to happen because nobody was
+ * listening — the elements are on the surface either way.
+ */
+function notifyBpmn(
+  std: BlockStdScope,
+  options: {
+    title: string;
+    message: string;
+    accent: 'info' | 'warning' | 'error';
+  }
+): void {
+  std.getOptional(NotificationProvider)?.notify({
+    title: options.title,
+    message: options.message,
+    accent: options.accent,
+    // Long enough to read a paragraph of remarks, and still self-dismissing:
+    // an import report is not a modal, and a toast the user has to close is a
+    // toast that interrupts the next thing they were doing.
+    duration: 8000,
+  });
+}
+
+/**
+ * Write an imported board onto the surface, and give back the ids it minted.
+ *
+ * ## The one thing the caller of an importer owes (`docs/adr/0012`, D3)
+ *
+ * `surface.addElement` mints its own nanoid and ignores any id it is handed —
+ * surface identity is Labre's and never the file's — so a connector arrives
+ * with `source` / `target` naming the SOURCE FILE's ids. Every element carries
+ * its own source id in `interchange.bpmn.id`, so the map from file id to
+ * surface id is a fold over the very array the reader returned; the second pass
+ * rewrites the two endpoints from it. Nothing else is needed, and nothing else
+ * is done: an end the map cannot resolve is left exactly as the file wrote it,
+ * because a dangling reference the user can go and look up beats a silent
+ * detachment.
+ *
+ * ## Why this is a function and not the body of the command
+ *
+ * It is the body of the command. It is also, verbatim, what
+ * `integration-test`'s BPMN round trip has been proving since #160 — the spec
+ * wrote it out longhand precisely because there was no command to call. There
+ * is one now, and the spec calls THIS, so the thing that is proven in chromium
+ * and the thing a user reaches from the catalogue cannot be two different
+ * pieces of code.
+ *
+ * The `interchange` payload needs no second pass: it rides in the props as one
+ * whole blob and `addElement` writes it with everything else, which is the
+ * whole-record LWW the field's own contract asks for (D2).
+ */
+export function materializeBpmnImport(
+  std: BlockStdScope,
+  elements: readonly SerializedElementProps[]
+): string[] {
+  const surface = gfxOf(std).surface;
+  if (!surface) return [];
+
+  const bySource = new Map<string, string>();
+  const created = elements.map(props => {
+    const id = surface.addElement({ ...props });
+    const carried = props.interchange as
+      | Record<string, { id?: string }>
+      | undefined;
+    const source = carried?.[BPMN_FORMAT_ID]?.id;
+    // FIRST wins, matching the reader's own answer to a file that used one id
+    // twice: it imports both and says so in a `substituted-id` note, and a flow
+    // naming that id means the first of them.
+    if (source !== undefined && !bySource.has(source)) bySource.set(source, id);
+    return id;
+  });
+
+  for (const id of created) {
+    const model = surface.getElementById(id);
+    if (!(model instanceof ConnectorElementModel)) continue;
+    for (const side of ['source', 'target'] as const) {
+      const end = model[side];
+      if (end?.id === undefined) continue;
+      model[side] = { ...end, id: bySource.get(end.id) ?? end.id };
+    }
+  }
+  return created;
+}
+
+/** One remark, as the line a reader sees. */
+function remarkLine(note: InterchangeNote): string {
+  const subject = note.sourceId ?? note.element;
+  return subject ? `${subject}: ${note.message}` : note.message;
+}
+
+/**
+ * Say what the import did — the summary, and the remarks.
+ *
+ * ## v1 of ADR 0012's open question 2 ("where does the report live?")
+ *
+ * The architect's v1: a NOTIFICATION for the summary, and the full notes on a
+ * surface that is reachable and honest. Reachable rules out a toast that names
+ * a count and drops the list; honest rules out the two things that look easier
+ * — writing the notes into the document as a text annotation (which pollutes a
+ * board the user did not ask us to draw on, and which the next export would
+ * have to explain) and dropping them (the notes are not derivable by re-running
+ * anything: the file is gone the moment the picker closes).
+ *
+ * So: one notification with the counts and the format version, a second with
+ * the remarks when there are few enough to read, and `console.table` with all
+ * of them, always, whenever there is one. The console is a poor product
+ * surface and it is named as one — the deliberate TARGET is the conformity
+ * panel, which is where a reader already goes to ask what is wrong with this
+ * board, and where an import remark belongs beside a validation finding. This
+ * is a stopgap that tells the truth, not the destination.
+ */
+export function reportBpmnImport(
+  std: BlockStdScope,
+  report: InterchangeReport
+): void {
+  const counts = [
+    `${report.mapped} ${translateKey(std, IMPORT_DRAWN_KEY, IMPORT_DRAWN_FALLBACK)}`,
+    `${report.carried} ${translateKey(std, IMPORT_CARRIED_KEY, IMPORT_CARRIED_FALLBACK)}`,
+    `${report.quarantined} ${translateKey(std, IMPORT_QUARANTINED_KEY, IMPORT_QUARANTINED_FALLBACK)}`,
+  ].join(' · ');
+  // The version the reader actually READ, which is a fact about the file and
+  // not about this library — an `exporter` attribute is how a support thread
+  // about "bpmn.io drew it differently" gets answered in one line.
+  const version = report.sourceVersion;
+
+  notifyBpmn(std, {
+    title: translateKey(std, IMPORT_DONE_KEY, IMPORT_DONE_FALLBACK),
+    message: version ? `${counts} — BPMN ${version}` : counts,
+    accent: 'info',
+  });
+
+  const notes = report.notes;
+  if (notes.length === 0) return;
+
+  // Always, and before the second toast: the console line is the one that is
+  // still there in ten minutes, and the only place the WHOLE list lands when
+  // there are forty of them.
+  console.info(
+    `[bpmn] import report — ${counts}${version ? ` — BPMN ${version}` : ''}`
+  );
+  console.table(
+    notes.map(note => ({
+      kind: note.kind,
+      source: note.sourceId ?? '',
+      element: note.element ?? '',
+      message: note.message,
+    }))
+  );
+
+  notifyBpmn(std, {
+    title: translateKey(std, IMPORT_REMARKS_KEY, IMPORT_REMARKS_FALLBACK),
+    message:
+      notes.length <= REMARKS_IN_A_NOTIFICATION
+        ? notes.map(remarkLine).join('\n')
+        : `${notes.length} ${translateKey(std, IMPORT_CONSOLE_KEY, IMPORT_CONSOLE_FALLBACK)}`,
+    // Not `error`, and not `info`: nothing failed — every one of these is
+    // something the document KEPT — but each one is a difference between the
+    // file the user handed over and the board they are looking at.
+    accent: 'warning',
+  });
+}
+
+/**
+ * Read a `.bpmn` file the user picks, draw it, and say what it cost.
+ *
+ * Four steps, and the middle one is not re-implemented here: pick the file,
+ * run the DECLARED capability (`docs/adr/0012`), write what it returned,
+ * report. `BPMN_XML_IMPORT.run` is the same function labre-mcp calls, so the
+ * command and the registry cannot read the same file differently — the same
+ * "one door, and the registry is the label on it" the export follows, and a
+ * plain import for the same reason (the capability is a pure function and a
+ * value; a DI lookup would buy nothing and P3 is explicit that the registry is
+ * the editor's view of these functions, not a gate in front of them).
+ *
+ * ## What arrives is a NEW board, never a merge
+ *
+ * The elements are added beside whatever is already on the surface. That is the
+ * bottom row of the reader's own loss table — surface identity across a
+ * re-import is lost — and it is the honest behaviour: two boards the user can
+ * see and delete beats a merge that silently rewrote artefacts they had edited.
+ *
+ * ## Failure is an exception, and it says which one
+ *
+ * The reader THROWS on a file that is not a readable BPMN document, because its
+ * five note kinds cannot say "this is not a file I can read" and a report of
+ * three zeroes would claim an empty process where there was none. The sentence
+ * it throws names which of the cases it was — malformed XML, a root that is not
+ * `definitions`, a DMN model, a choreography — so it is shown as it is rather
+ * than replaced with a wording of our own that knows less.
+ */
+export async function importBpmnXmlFile(std: BlockStdScope): Promise<void> {
+  const gfx = gfxOf(std);
+  if (!gfx.surface || std.store.readonly) return;
+
+  const file = await openSingleFileWith('Bpmn');
+  // The user closed the picker. Not a failure, and not a notification: they
+  // know what they just did.
+  if (!file) return;
+
+  let result: InterchangeImportResult;
+  try {
+    result = BPMN_XML_IMPORT.run(await file.text(), { name: file.name });
+  } catch (error) {
+    notifyBpmn(std, {
+      title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
+      message: error instanceof Error ? error.message : String(error),
+      accent: 'error',
+    });
+    return;
+  }
+
+  // One undo step for the whole file, the way one lane gesture is one step:
+  // `captureSync` before opens a boundary, the writes land inside it, and the
+  // second one closes it. An import a user has to undo forty times is an import
+  // they cannot undo.
+  std.store.captureSync();
+  const created = materializeBpmnImport(std, result.elements);
+  std.store.captureSync();
+
+  // …and then bring it into view, which is what template insertion does for
+  // the same reason: a board that landed off-screen looks like a command that
+  // did nothing. The padding is in MODEL units, so it is divided by the zoom to
+  // stay a constant margin on screen — the template panel's own arithmetic.
+  const boxes = created
+    .map(id => gfx.surface?.getElementById(id)?.elementBound)
+    .filter((bound): bound is Bound => bound !== undefined);
+  const bound = getCommonBound(boxes);
+  if (bound) {
+    const padding = 20 / gfx.viewport.zoom;
+    gfx.viewport.setViewportByBound(
+      bound,
+      [padding, padding, padding, padding],
+      true
+    );
+  }
+  gfx.tool.setTool(DefaultTool);
+
+  reportBpmnImport(std, result.report);
 }
 
 /**

@@ -260,12 +260,12 @@ describe('the bpmn command inventory', () => {
     .filter(c => c.surfaces.includes('senior-menu'))
     .map(c => c.id);
 
-  it('declares twenty-four commands, every one of them in the catalogue', () => {
-    // Twenty-four since `bpmn.exportXml`: 17 artefacts, 3 connecting-object
-    // tools, the pool, the two lane gestures, and the export — the first entry
-    // whose subject is the BOARD rather than an element.
-    expect(bpmnCommands).toHaveLength(24);
-    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(24);
+  it('declares twenty-five commands, every one of them in the catalogue', () => {
+    // Twenty-five since `bpmn.importXml`: 17 artefacts, 3 connecting-object
+    // tools, the pool, the two lane gestures, and the two whose subject is the
+    // BOARD rather than an element — the same format, out and in.
+    expect(bpmnCommands).toHaveLength(25);
+    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(25);
     for (const command of bpmnCommands) {
       expect(command.owner, command.id).toBe('bpmn');
       expect(command.scope, command.id).toBe('edgeless');
@@ -326,7 +326,7 @@ describe('the bpmn command inventory', () => {
       [...bpmnCommands].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     );
 
-  it('groups the catalogue into seven sections, in first-encounter order', () => {
+  it('groups the catalogue into eight sections, in first-encounter order', () => {
     // The GROUPED view, not raw declaration contiguity. The declarations
     // interleave categories ON PURPOSE — the first seven are the drawable core
     // rather than one family — so "each category is declared in one run" is no
@@ -343,6 +343,10 @@ describe('the bpmn command inventory', () => {
       'swimlanes',
       'data',
       'annotations',
+      // Last, and last on purpose: the two directions of the `.bpmn` format are
+      // what you do to a process that is already drawn, so the section follows
+      // everything that draws one.
+      'interchange',
     ]);
     // One group per category — no split, and no trailing uncategorised group.
     expect(new Set(groups.map(g => g.category)).size).toBe(groups.length);
@@ -375,15 +379,17 @@ describe('the bpmn command inventory', () => {
       'bpmn.messageFlowTool',
       'bpmn.associationTool',
     ]);
-    // The pool, then the two gestures that divide it, then the one thing you
-    // do to the finished process — filed together even though eleven
-    // declarations separate the first two.
+    // The pool and the two gestures that divide it — filed together even
+    // though eleven declarations separate the first two.
     expect(ids('swimlanes')).toEqual([
       'bpmn.addPool',
       'bpmn.addLane',
       'bpmn.removeLane',
-      'bpmn.exportXml',
     ]);
+    // …and the format, both ways, in one section of its own. Out before in,
+    // which is the order they shipped and the order they are used in: a board
+    // is drawn here and taken away far more often than a foreign file arrives.
+    expect(ids('interchange')).toEqual(['bpmn.exportXml', 'bpmn.importXml']);
   });
 
   /**

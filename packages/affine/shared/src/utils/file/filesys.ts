@@ -98,6 +98,17 @@ const FileTypes: NonNullable<OpenFilePickerOptions['types']> = [
       'text/xml': ['.mm', '.opml', '.xml'],
     },
   },
+  {
+    // A BPMN 2.0 interchange document. `.xml` rides along with `.bpmn` because
+    // half the tools in the wild write the same bytes under the generic
+    // extension, and a picker that refused them would refuse a valid process
+    // for the sake of a filename. What the file actually IS gets decided by the
+    // reader, which throws on anything that is not a BPMN `<definitions>`.
+    description: 'Bpmn',
+    accept: {
+      'application/xml': ['.bpmn', '.xml'],
+    },
+  },
 ];
 
 /**
@@ -111,7 +122,8 @@ type AcceptTypes =
   | 'Markdown'
   | 'Html'
   | 'Zip'
-  | 'MindMap';
+  | 'MindMap'
+  | 'Bpmn';
 
 export async function openFilesWith(
   acceptType: AcceptTypes = 'Any',
