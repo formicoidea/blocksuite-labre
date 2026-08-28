@@ -49,10 +49,11 @@ import {
  * The BPMN toolbox as commands. Like EDGY, BPMN had a menu and zero manifest
  * entries before PF3 — invisible to Settings › Shortcuts (`docs/adr/0008`).
  *
- * ## Twenty-five, and the fifteen
+ * ## Twenty-six, and the fifteen
  *
  * The descriptive-profile pack draws 17 artefacts, 3 connecting objects and 3
- * swimlane gestures; the two directions of the `.bpmn` format make 25, against a
+ * swimlane gestures; the two directions of the `.bpmn` format and the SVG
+ * fallback that reads a picture of a process make 26, against a
  * senior sub-menu that holds 14. That is not a problem to be solved: PF6 built
  * the arbitration for exactly this day (`selectSeniorMenuCommands`), and past
  * the cap the sub-menu becomes the thirteen commands THIS user reaches for plus
@@ -75,7 +76,10 @@ import {
  *   no longer promote a command from outside it, so a command left out of it
  *   lives in the catalogue sidepanel and nowhere else. That is the right home
  *   for `bpmn.exportXml`, whose subject is a board you already have and which is
- *   reached from the pool's "⋮" — it declines the row on purpose.
+ *   reached from the pool's "⋮" — it declines the row on purpose. And for
+ *   `bpmn.importSvg`, which declines it for a different reason again: the row
+ *   carries the NATIVE format, and the visual-tier fallback sits one click away
+ *   behind "More artefacts…" — see the note on {@link importSvgCommand}.
  *
  *   `bpmn.importXml` does NOT, since the PO decision of the same day: an import
  *   is where a board COMES FROM, and the sub-menu is the first thing a user
@@ -89,7 +93,7 @@ import {
  *   last nomination, so it is one of the two the "More artefacts…" button covers
  *   until somebody reaches for it.
  *
- * All 25 are in the catalogue, all 25 are bindable from Settings › Shortcuts,
+ * All 26 are in the catalogue, all 26 are bindable from Settings › Shortcuts,
  * and none of them is unreachable.
  */
 interface Spec {
@@ -652,7 +656,7 @@ const importSvgCommand: CommandDescriptor = {
   labelFallback: 'Import SVG sketch',
   descriptionKey: 'com.labre.commands.bpmn.importSvg.description',
   descriptionFallback:
-    'Best effort: recognizes shapes and text, no round-trip. What arrives is a sketch you then promote into BPMN artefacts.',
+    'Best effort: recognises shapes and text, no round-trip. What arrives is a sketch you then promote into BPMN artefacts.',
   // Filed with the two `.bpmn` directions: the subject is the same one — this
   // board, and a file it came from or goes to.
   category: 'interchange',

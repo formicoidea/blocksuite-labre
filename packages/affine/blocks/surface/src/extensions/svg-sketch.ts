@@ -31,34 +31,51 @@ import type {
  * recognises GEOMETRY and nothing else: `<rect>` becomes a rectangle,
  * `<circle>` and `<ellipse>` an ellipse, `<polygon>` a polygon, `<line>`,
  * `<polyline>` and `<path>` a brush stroke sampled at its vertices, and
- * `<text>` an editable free-text element. Fill, stroke, stroke width and font
- * size are carried across where the shape model has a direct equivalent, with
- * CSS inheritance down `<g>` honoured and colours passed through verbatim.
- * Coordinates are user units mapped 1:1 onto canvas units, offset by the
- * `viewBox` origin and by every `translate(…)` on the way down. Everything it
- * emits is an ADR 0007 **level 1** element — a plain shape on the free surface,
- * which the author then PROMOTES. It recognises no role, no relation and no
- * framework vocabulary, and it never claims to: a Wardley component and a text
- * box are both `<rect>` plus `<text>`, and deciding which is which is the one
- * question only the author can answer.
+ * `<text>` an editable free-text element. Fill, stroke, stroke width, font size
+ * and text anchor are carried across where the shape model has a direct
+ * equivalent, with CSS inheritance down `<g>` honoured and colours passed
+ * through verbatim. Coordinates are user units placed by the outermost
+ * viewport: the `viewBox` origin is subtracted and the `viewBox`-to-`width`
+ * scale is applied uniformly (`min(width / viewBox width, height / viewBox
+ * height)`, which is what the default `preserveAspectRatio` means), then every
+ * `translate(…)` on the way down. Everything it emits is an ADR 0007 **level 1**
+ * element — a plain shape on the free surface, which the author then PROMOTES.
+ * It recognises no role, no relation and no framework vocabulary, and it never
+ * claims to: a Wardley component and a text box are both `<rect>` plus
+ * `<text>`, and deciding which is which is the one question only the author can
+ * answer.
  *
- * **Where it is known to be wrong.** A `scale`, `rotate`, `matrix` or `skew`
- * transform is IGNORED rather than applied, so anything under one lands at its
- * untransformed position and size — one note per transform kind says so.
+ * **Where it is known to be wrong, and the list is meant to be complete.** A
+ * `scale`, `rotate`, `matrix` or `skew` transform is IGNORED rather than
+ * applied, so anything under one lands at its untransformed position and size.
  * Curves (`C`, `S`, `Q`, `T`, `A`) are flattened to their endpoints, so a
- * rounded connector arrives as a polyline through its anchor points; an arc
+ * rounded connector arrives as a polyline through its anchor points and an arc
  * that doubles back arrives as a straight line. A `<path>` that outlines a
  * filled region (an arrowhead, an icon glyph) arrives as an open stroke, not as
  * a filled shape. `<image>`, `<defs>`, `<marker>`, gradients, filters,
  * `<clipPath>` and `<mask>` are skipped by the reader, and `<use>` and
  * `<foreignObject>` never reach it at all — the SANITIZER removes them, because
- * they are two of the constructs an SVG can carry code in. So a drawing built
- * out of symbol instances arrives nearly empty; each construct kind gets
- * exactly one note, from whichever of the two dropped it, so an empty-looking
- * result always says why. A paint served by `url(#…)` falls back to a neutral.
+ * they are two of the constructs an SVG can carry code in. A `<style>` sheet is
+ * skipped, and that one is worth naming twice: mermaid paints almost entirely
+ * through CSS classes, so a mermaid SVG arrives in the initial colours — mostly
+ * black — with only the note to say why. `<title>`, `<desc>` and `<metadata>`
+ * are dropped in silence, deliberately and as the only exception to the rule
+ * below: they render nothing, so there is nothing to have lost.
+ *
+ * **What this reader alters without a note, because a note could not help.**
  * Text width and height are ESTIMATED from the font size and the character
- * count, because measuring text needs a font this function is not allowed to
- * have, so a label box is approximately and not exactly the size it was.
+ * count, because measuring text needs a font a pure function of a string is not
+ * allowed to have, so a label box is approximately and not exactly the size it
+ * was. Whitespace inside a label is collapsed to single spaces and trimmed
+ * (`xml:space="preserve"` is not honoured). A `<tspan>`'s own `x`/`y`, its `dx`
+ * / `dy` offsets and `dominant-baseline` are ignored, so a label laid out span
+ * by span arrives as plain stacked lines in document order. `stroke-dasharray`
+ * is not read, so a dashed line arrives solid. `em` font sizes are resolved
+ * against the inherited size only, with no font-relative refinement.
+ *
+ * **Everything else is reported.** Every OTHER construct this reader ignores,
+ * alters or cannot resolve produces exactly one `warning` note per KIND — never
+ * one per instance — so a result that looks empty always says why.
  *
  * ## What it never does
  *
@@ -103,8 +120,14 @@ export const SVG_SKETCH_MIME = 'image/svg+xml';
  * more thing that differs between the two environments.
  */
 const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const CDATA_NODE = 4;
 
-function childElements(parent: Element): Element[] {
+// `Node` and not `Element`, because only `childNodes` is ever read and one
+// caller is DOMPurify's `RETURN_DOM` answer — which its own typed overload
+// declares as a `Node`. Widening the parameter is more honest than casting the
+// argument at that one call site.
+function childElements(parent: Node): Element[] {
   const found: Element[] = [];
   for (const node of Array.from(parent.childNodes)) {
     if (node.nodeType === ELEMENT_NODE) found.push(node as Element);
@@ -124,6 +147,22 @@ function num(element: Element, name: string, fallback = 0): number {
   // sketch is what this reader promises.
   const value = Number.parseFloat(raw);
   return Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * A length that must be an absolute number of user units, or `0`.
+ *
+ * `width="100%"` is the case this exists for: `parseFloat` reads it as `100`,
+ * and a viewport 100 units wide against a 1000-unit `viewBox` would scale the
+ * whole drawing to a tenth of its size. A percentage is a length this reader
+ * cannot resolve — it depends on a containing block there is none of — so it
+ * answers "no length declared" and the caller falls back to 1:1.
+ */
+function absoluteLength(element: Element, name: string): number {
+  const raw = element.getAttribute(name);
+  if (raw === null || raw.includes('%')) return 0;
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 /** Every number in a string, in order — `points`, `viewBox`, a transform's args. */
@@ -164,12 +203,14 @@ class Notebook {
 
 /* ── Presentation, inherited the way CSS inherits it ──────────────────── */
 
-/** The presentation attributes this reader knows how to spend. */
+/** The presentation properties this reader knows how to spend. */
 interface Paint {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
   fontSize?: number;
+  /** Inherited, because `text-anchor` is an inherited CSS property. */
+  textAnchor?: string;
 }
 
 /** `style="fill:#fff;stroke:none"`, as a map. Wins over the attribute. */
@@ -188,6 +229,38 @@ function styleMap(element: Element): Map<string, string> {
 }
 
 /**
+ * `12`, `12px`, `12pt`, `1.5em` as a number of user units, or `undefined` for
+ * "this reader cannot resolve it, and has said so".
+ *
+ * Three units and no more. `px` and a bare number are user units already, `pt`
+ * is 4/3 of one by CSS's own definition, and `em` is the INHERITED size — which
+ * this reader has, and which is the only font-relative context a pure function
+ * of a string can honestly claim. Everything else (`%`, `ex`, `ch`, `rem`, the
+ * viewport units) needs a containing block or a loaded font, so it is refused
+ * with a note rather than silently read as its number: `font-size="200%"` read
+ * as 200 would draw a label fourteen times too big.
+ */
+function fontSizeOf(raw: string, inherited: number, notes: Notebook) {
+  const value = Number.parseFloat(raw);
+  if (!Number.isFinite(value) || value <= 0) return undefined;
+  // The tail after the number as WRITTEN, not after `String(value)` — `12.0px`
+  // and `12px` are the same length and `String(12)` is two characters.
+  const unit = raw
+    .trim()
+    .replace(/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/, '')
+    .trim()
+    .toLowerCase();
+  if (unit === '' || unit === 'px') return value;
+  if (unit === 'pt') return (value * 4) / 3;
+  if (unit === 'em') return value * inherited;
+  notes.once(
+    `font-unit:${unit}`,
+    `Font sizes in \`${unit}\` cannot be resolved without a page to measure against; those labels use the inherited size.`
+  );
+  return undefined;
+}
+
+/**
  * This element's paint, on top of what it inherited.
  *
  * Inheritance is not a nicety: real files — bpmn.io's, mermaid's, Illustrator's
@@ -195,17 +268,23 @@ function styleMap(element: Element): Map<string, string> {
  * only looked at the leaf would import every shape in the SVG's initial colours
  * and get the picture visibly wrong.
  */
-function paintOf(element: Element, inherited: Paint): Paint {
+function paintOf(element: Element, inherited: Paint, notes: Notebook): Paint {
   const style = styleMap(element);
-  const read = (property: string): string | undefined =>
-    style.get(property) ?? element.getAttribute(property) ?? undefined;
+  // `inherit` is resolved HERE, where the inherited value is in hand, rather
+  // than downstream where the only honest answer would be a neutral: the
+  // keyword means "whatever my parent had", and this function is the one place
+  // that knows.
+  const read = (property: string): string | undefined => {
+    const raw = style.get(property) ?? element.getAttribute(property);
+    return raw === null || raw === undefined || raw.trim() === 'inherit'
+      ? undefined
+      : raw;
+  };
 
   const strokeWidth = read('stroke-width');
-  const fontSize = read('font-size');
   const parsedWidth =
     strokeWidth === undefined ? undefined : Number.parseFloat(strokeWidth);
-  const parsedFont =
-    fontSize === undefined ? undefined : Number.parseFloat(fontSize);
+  const fontSize = read('font-size');
 
   return {
     fill: read('fill') ?? inherited.fill,
@@ -215,13 +294,82 @@ function paintOf(element: Element, inherited: Paint): Paint {
         ? parsedWidth
         : inherited.strokeWidth,
     fontSize:
-      parsedFont !== undefined && Number.isFinite(parsedFont)
-        ? parsedFont
-        : inherited.fontSize,
+      (fontSize === undefined
+        ? undefined
+        : fontSizeOf(
+            fontSize,
+            inherited.fontSize ?? DEFAULT_FONT_SIZE,
+            notes
+          )) ?? inherited.fontSize,
+    textAnchor: read('text-anchor') ?? inherited.textAnchor,
   };
 }
 
-/** The SVG initial values, which is what an unpainted element actually is. */
+/**
+ * Whether this element renders at all, with a note for each reason it does not.
+ *
+ * `display:none` removes the element AND its subtree from the rendering;
+ * `visibility:hidden` hides the element but not necessarily its children — this
+ * reader treats both as "skip the subtree", which is the coarser of the two and
+ * the one that keeps an invisible frame from arriving as a black rectangle over
+ * the drawing. Both are common: bpmn.io hides its own measurement layers this
+ * way, and an exporter's off-canvas scaffolding is the usual source of a
+ * "why is there a huge black box on my board" report.
+ */
+function isHidden(element: Element, notes: Notebook): boolean {
+  const style = styleMap(element);
+  const display = style.get('display') ?? element.getAttribute('display');
+  if (display?.trim() === 'none') {
+    notes.once(
+      'hidden:display',
+      'Parts of the file marked `display:none` were not imported — they draw nothing where the file came from either.'
+    );
+    return true;
+  }
+  const visibility =
+    style.get('visibility') ?? element.getAttribute('visibility');
+  const hidden = visibility?.trim();
+  if (hidden === 'hidden' || hidden === 'collapse') {
+    notes.once(
+      'hidden:visibility',
+      'Parts of the file marked `visibility:hidden` were not imported — they draw nothing where the file came from either.'
+    );
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Opacity is not carried, and that is a note rather than a drop.
+ *
+ * The shape model has no opacity of its own — a colour is a colour — so a
+ * half-transparent shade would have to be baked into the colour, which needs
+ * the backdrop it sits on. It is imported at full strength, which is visible
+ * and editable, and the note says the strength changed.
+ */
+function noteOpacity(element: Element, notes: Notebook): void {
+  const style = styleMap(element);
+  for (const property of ['opacity', 'fill-opacity', 'stroke-opacity']) {
+    const raw = style.get(property) ?? element.getAttribute(property);
+    if (raw === null || raw === undefined) continue;
+    const value = Number.parseFloat(raw);
+    if (Number.isFinite(value) && value < 1) {
+      notes.once(
+        'opacity',
+        'Transparency is not carried: partly transparent shapes arrive at full strength.'
+      );
+      return;
+    }
+  }
+}
+
+/**
+ * The SVG initial values, which is what an unpainted element actually is.
+ *
+ * `fill: black` is the SPEC's initial value, not a choice — an attribute-free
+ * `<rect>` renders as a solid black box in every browser, and importing it
+ * hollow would be this reader redrawing the file rather than reading it.
+ */
 const INITIAL_PAINT: Paint = { fill: 'black', stroke: 'none', strokeWidth: 1 };
 
 /** The font size a `<text>` with none declared is drawn at. */
@@ -240,7 +388,7 @@ const NEUTRAL_FILL = '#cccccc';
  * verbatim and the picture keeps its colours. Two values cannot be: a paint
  * server (`url(#gradient)`) needs a `<defs>` this reader skips, and
  * `currentColor` needs an inherited CSS colour there is nobody to ask for.
- * Both fall back to a neutral and are noted once.
+ * Both fall back to a neutral, and both say so.
  */
 function colorOf(
   raw: string | undefined,
@@ -256,14 +404,82 @@ function colorOf(
     );
     return fallback;
   }
-  if (value === 'currentColor' || value === 'inherit') return fallback;
+  if (value === 'currentColor') {
+    notes.once(
+      'current-color',
+      '`currentColor` has no page to inherit from here; the shapes that used it are a flat neutral.'
+    );
+    return fallback;
+  }
   return value;
 }
 
-/* ── Geometry ─────────────────────────────────────────────────────────── */
+/* ── Geometry: one frame, carried down the tree ───────────────────────── */
+
+/**
+ * How a user-space coordinate at this depth becomes a canvas coordinate:
+ * `canvas = user * s + o`.
+ *
+ * Carrying the SCALE rather than only the offset is what makes a `viewBox`
+ * honest. `width="200" viewBox="0 0 1000 1000"` is a drawing authored at 1000
+ * units and displayed at 200; reading its coordinates 1:1 imports it five times
+ * too big, and every stroke width and font size with it. The factor is uniform
+ * — `min(width / viewBox width, height / viewBox height)` — because that is
+ * what the default `preserveAspectRatio` (`xMidYMid meet`) means, and a
+ * non-uniform read would need a shape model with independent axes.
+ */
+interface Frame {
+  ox: number;
+  oy: number;
+  s: number;
+}
+
+const IDENTITY: Frame = { ox: 0, oy: 0, s: 1 };
+
+const px = (frame: Frame, x: number) => x * frame.s + frame.ox;
+const py = (frame: Frame, y: number) => y * frame.s + frame.oy;
+/** A LENGTH is scaled and never offset — a width, a radius, a font size. */
+const len = (frame: Frame, value: number) => value * frame.s;
 
 const xywh = (x: number, y: number, w: number, h: number) =>
   `[${x},${y},${w},${h}]`;
+
+/**
+ * The frame a `<svg>` element establishes inside its parent's.
+ *
+ * The same arithmetic for the outermost one (whose parent frame is the
+ * identity) and for a nested one, which is why there is one function: a nested
+ * `<svg>` is a new viewport, its `x`/`y` place it in the parent's user space,
+ * and its own `viewBox` re-origins and re-scales what is inside it.
+ */
+function viewportFrame(element: Element, parent: Frame): Frame {
+  const placed: Frame = {
+    ox: px(parent, num(element, 'x')),
+    oy: py(parent, num(element, 'y')),
+    s: parent.s,
+  };
+
+  const box = numbers(element.getAttribute('viewBox') ?? '');
+  if (box.length < 4) return placed;
+  const [minX, minY, boxW, boxH] = box;
+  if (boxW <= 0 || boxH <= 0) return placed;
+
+  const width = absoluteLength(element, 'width');
+  const height = absoluteLength(element, 'height');
+  // No declared size is not a broken file — it is the usual `<svg viewBox=…>`
+  // that fills whatever it is put in. There is no containing block here, so the
+  // viewBox IS the size and the scale stays the parent's.
+  const scale =
+    width > 0 && height > 0
+      ? placed.s * Math.min(width / boxW, height / boxH)
+      : placed.s;
+
+  return {
+    ox: placed.ox - minX * scale,
+    oy: placed.oy - minY * scale,
+    s: scale,
+  };
+}
 
 /**
  * The `translate(…)` this element contributes, and a note for every other kind
@@ -275,9 +491,9 @@ const xywh = (x: number, y: number, w: number, h: number) =>
  * wrong place, and the author is about to move things anyway. What is not
  * acceptable is doing it quietly, so each ignored KIND is named once.
  */
-function translateOf(element: Element, notes: Notebook): [number, number] {
+function translated(element: Element, frame: Frame, notes: Notebook): Frame {
   const raw = element.getAttribute('transform');
-  if (!raw) return [0, 0];
+  if (!raw) return frame;
 
   let tx = 0;
   let ty = 0;
@@ -295,7 +511,13 @@ function translateOf(element: Element, notes: Notebook): [number, number] {
       `\`${kind}\` transforms are ignored (best effort): what carried one is placed as if it did not.`
     );
   }
-  return [tx, ty];
+  // A translate is expressed in the PARENT's user units, so it is scaled by the
+  // frame it was written in and never by the one it creates.
+  return {
+    ox: frame.ox + tx * frame.s,
+    oy: frame.oy + ty * frame.s,
+    s: frame.s,
+  };
 }
 
 /* ── Path data ────────────────────────────────────────────────────────── */
@@ -321,7 +543,7 @@ const PATH_ENDPOINT: Record<string, number> = { c: 4, s: 2, q: 2, a: 5 };
 const CURVE_COMMANDS = new Set(['c', 's', 'q', 't', 'a']);
 
 /**
- * A `d` attribute as one polyline per subpath.
+ * A `d` attribute as one polyline per subpath, in the element's own user space.
  *
  * `M/L/H/V/Z` are exact. Curves are flattened to their ENDPOINTS — coarse, and
  * deliberately so: this is a sketch, the author is going to redraw whatever
@@ -342,6 +564,12 @@ function samplePath(d: string, notes: Notebook): number[][][] {
 
   const push = () => {
     if (current.length >= 2) subpaths.push(current);
+    else if (current.length === 1) {
+      notes.once(
+        'lone-point',
+        'A path that never moved anywhere draws nothing and was skipped.'
+      );
+    }
     current = [];
   };
 
@@ -403,7 +631,11 @@ interface Sketch {
 }
 
 /** The generic shape props every recognised outline lands with. */
-function shapeProps(paint: Paint, sketch: Sketch): SerializedElementProps {
+function shapeProps(
+  paint: Paint,
+  frame: Frame,
+  sketch: Sketch
+): SerializedElementProps {
   const fill = colorOf(paint.fill, NEUTRAL_FILL, sketch.notes);
   const stroke = colorOf(paint.stroke, NEUTRAL_STROKE, sketch.notes);
   return {
@@ -416,43 +648,60 @@ function shapeProps(paint: Paint, sketch: Sketch): SerializedElementProps {
     fillColor: fill ?? 'transparent',
     strokeColor: stroke ?? 'transparent',
     strokeStyle: stroke === undefined ? StrokeStyle.None : StrokeStyle.Solid,
-    strokeWidth: paint.strokeWidth ?? 1,
+    strokeWidth: len(frame, paint.strokeWidth ?? 1),
   };
 }
 
+const EMPTY_BOX_NOTE = 'Shapes with no width or height were skipped.';
+
 function readRect(
   element: Element,
-  dx: number,
-  dy: number,
+  frame: Frame,
   paint: Paint,
   sketch: Sketch
 ): void {
   const w = num(element, 'width');
   const h = num(element, 'height');
   if (w <= 0 || h <= 0) {
-    sketch.notes.once(
-      'empty-box',
-      'Shapes with no width or height were skipped.'
-    );
+    sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
     return;
   }
+
   // `rx` is an absolute corner radius in user units, and the shape model reads
   // a `radius` of 1 or more as absolute pixels (below 1 it is a RATIO of the
   // shorter side). Sub-pixel radii are visually zero, so they are dropped
-  // rather than reinterpreted as a 40 % round-over.
-  const rx = num(element, 'rx', num(element, 'ry'));
+  // rather than reinterpreted as a 40 % round-over — and a PERCENTAGE radius is
+  // refused outright for the same reason it would otherwise be read as its
+  // number: `rx="50%"` would round a box over by fifty pixels rather than into
+  // a pill.
+  const rawRadius = element.getAttribute('rx') ?? element.getAttribute('ry');
+  let radius = 0;
+  if (rawRadius?.includes('%')) {
+    sketch.notes.once(
+      'percent-radius',
+      'Corner radii given as a percentage were not read; those corners arrive square.'
+    );
+  } else {
+    const scaled = len(frame, num(element, 'rx', num(element, 'ry')));
+    radius = scaled >= 1 ? scaled : 0;
+  }
+
   sketch.elements.push({
-    ...shapeProps(paint, sketch),
+    ...shapeProps(paint, frame, sketch),
     shapeType: ShapeType.Rect,
-    radius: rx >= 1 ? rx : 0,
-    xywh: xywh(num(element, 'x') + dx, num(element, 'y') + dy, w, h),
+    radius,
+    xywh: xywh(
+      px(frame, num(element, 'x')),
+      py(frame, num(element, 'y')),
+      len(frame, w),
+      len(frame, h)
+    ),
   });
 }
 
 function readEllipse(
   element: Element,
-  dx: number,
-  dy: number,
+  frame: Frame,
   paint: Paint,
   sketch: Sketch
 ): void {
@@ -461,19 +710,21 @@ function readEllipse(
   const rx = circle ? r : num(element, 'rx');
   const ry = circle ? r : num(element, 'ry');
   if (rx <= 0 || ry <= 0) {
-    sketch.notes.once(
-      'empty-box',
-      'Shapes with no width or height were skipped.'
-    );
+    sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
     return;
   }
-  const cx = num(element, 'cx') + dx;
-  const cy = num(element, 'cy') + dy;
+  const cx = num(element, 'cx');
+  const cy = num(element, 'cy');
   sketch.elements.push({
-    ...shapeProps(paint, sketch),
+    ...shapeProps(paint, frame, sketch),
     shapeType: ShapeType.Ellipse,
     radius: 0,
-    xywh: xywh(cx - rx, cy - ry, rx * 2, ry * 2),
+    xywh: xywh(
+      px(frame, cx - rx),
+      py(frame, cy - ry),
+      len(frame, rx * 2),
+      len(frame, ry * 2)
+    ),
   });
 }
 
@@ -489,15 +740,14 @@ function readEllipse(
  */
 function readPolygon(
   element: Element,
-  dx: number,
-  dy: number,
+  frame: Frame,
   paint: Paint,
   sketch: Sketch
 ): void {
   const flat = numbers(element.getAttribute('points') ?? '');
   const points: number[][] = [];
   for (let i = 0; i + 1 < flat.length; i += 2) {
-    points.push([flat[i] + dx, flat[i + 1] + dy]);
+    points.push([px(frame, flat[i]), py(frame, flat[i + 1])]);
   }
   const xs = points.map(p => p[0]);
   const ys = points.map(p => p[1]);
@@ -508,10 +758,7 @@ function readPolygon(
 
   if (points.length < 3 || w <= 0 || h <= 0) {
     if (points.length === 0 || w < 0 || h < 0) {
-      sketch.notes.once(
-        'empty-box',
-        'Shapes with no width or height were skipped.'
-      );
+      sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
       return;
     }
     sketch.notes.once(
@@ -519,7 +766,7 @@ function readPolygon(
       'A polygon with fewer than three corners, or flat on one axis, arrives as its bounding rectangle.'
     );
     sketch.elements.push({
-      ...shapeProps(paint, sketch),
+      ...shapeProps(paint, frame, sketch),
       shapeType: ShapeType.Rect,
       radius: 0,
       xywh: xywh(minX, minY, Math.max(w, 1), Math.max(h, 1)),
@@ -528,10 +775,10 @@ function readPolygon(
   }
 
   sketch.elements.push({
-    ...shapeProps(paint, sketch),
+    ...shapeProps(paint, frame, sketch),
     shapeType: ShapeType.Polygon,
     radius: 0,
-    vertices: points.map(([px, py]) => [(px - minX) / w, (py - minY) / h]),
+    vertices: points.map(([x, y]) => [(x - minX) / w, (y - minY) / h]),
     isClosed: true,
     xywh: xywh(minX, minY, w, h),
   });
@@ -539,33 +786,52 @@ function readPolygon(
 
 /**
  * A stroke — `<line>`, `<polyline>`, `<path>` — as one brush element per
- * connected run of points.
+ * connected run of points, in CANVAS coordinates.
+ *
+ * ## Key order is load-bearing here, and it is not a style choice
+ *
+ * `BrushElementModel` declares `points` with a `@convert` that re-bases them
+ * onto the bound it derives, INFLATED BY `lineWidth`, and a `@derive` that
+ * writes `xywh` from the same arithmetic. `surface.addElement` copies props
+ * onto the model in `Object.keys` order, so `lineWidth` must be assigned BEFORE
+ * `points` or the conversion runs against the model's default width of 4 and
+ * the stroke lands with a box that is up to three pixels off on every side.
+ * **Do not reorder the literal below**; the integration spec
+ * (`integration-test/…/svg-sketch.spec.ts`) pins the resulting `xywh` on a live
+ * surface precisely because a unit test over plain props cannot see this.
  *
  * The points handed over are ABSOLUTE, which is what the brush tool itself
- * passes: the model's own `@convert` re-bases them onto the bound it derives,
- * so an importer that pre-computed `xywh` would be doing that arithmetic twice
- * and disagreeing with the model about the line-width inflation.
+ * passes: the model derives the box, so an importer that pre-computed `xywh`
+ * would be doing that arithmetic twice and disagreeing with the model about the
+ * line-width inflation.
  */
-function pushStroke(points: number[][], paint: Paint, sketch: Sketch): void {
+function pushStroke(
+  points: number[][],
+  paint: Paint,
+  frame: Frame,
+  sketch: Sketch
+): void {
   if (points.length < 2) return;
   const color =
     colorOf(paint.stroke, NEUTRAL_STROKE, sketch.notes) ??
     // A path with no stroke and a fill is an outlined REGION — an arrowhead, a
     // glyph. It is drawn as a stroke anyway (a brush is the only thing this
     // reader has for an open path), so it takes the fill's colour rather than
-    // arriving invisible.
+    // arriving invisible. And a shape with neither is still drawn, in the
+    // initial black, because that is what the file renders as.
     colorOf(paint.fill, NEUTRAL_STROKE, sketch.notes) ??
     NEUTRAL_STROKE;
   sketch.elements.push({
     type: 'brush',
     color,
-    lineWidth: Math.max(paint.strokeWidth ?? 1, 1),
+    // BEFORE `points` — see this function's own documentation.
+    lineWidth: Math.max(len(frame, paint.strokeWidth ?? 1), 1),
     points,
   });
 }
 
 /**
- * `<text>` and its `<tspan>`s as an EDITABLE free-text element.
+ * `<text>` and its children as an EDITABLE free-text element.
  *
  * The PO-critical path, and the one thing this tier promises without
  * qualification: a label that arrives as a picture of a word is a label nobody
@@ -573,50 +839,63 @@ function pushStroke(points: number[][], paint: Paint, sketch: Sketch): void {
  * `TextElementModel.propsToY` turns it into the `Y.Text` the editor binds to,
  * so the first double-click puts a caret in it.
  *
- * Two approximations are unavoidable and are stated rather than hidden. SVG's
- * `y` is a BASELINE and the model's box is a top edge, so the box is lifted by
- * one font size. And the box's width is estimated from the character count,
- * because measuring text needs a loaded font — which is exactly the thing a
- * pure function of a string is not allowed to have.
+ * ## Children in DOCUMENT ORDER, text nodes included
+ *
+ * `<text>Hello <tspan>World</tspan></text>` is one label reading "Hello World",
+ * and a reader that collected only the `<tspan>`s would import "World" and
+ * lose the rest without noticing — the worst kind of loss, because the result
+ * still looks like a label. So the children are walked in order and every
+ * non-empty run, span or bare text node alike, becomes a line.
+ *
+ * Two approximations are unavoidable and are stated in this module's own
+ * failure-modes paragraph rather than in a note, because no note could help:
+ * SVG's `y` is a BASELINE and the model's box is a top edge, so the box is
+ * lifted by one font size; and the box's width is estimated from the character
+ * count, because measuring text needs a loaded font — which is exactly the
+ * thing a pure function of a string is not allowed to have. Whitespace inside
+ * a run is collapsed to single spaces and trimmed, so `xml:space="preserve"`
+ * is not honoured.
  */
 const CHARACTER_WIDTH_RATIO = 0.55;
 const LINE_HEIGHT_RATIO = 1.2;
 
 function readText(
   element: Element,
-  dx: number,
-  dy: number,
+  frame: Frame,
   paint: Paint,
   sketch: Sketch
 ): void {
-  const spans = childElements(element).filter(
-    child => nameOf(child) === 'tspan'
-  );
-  const lines = (
-    spans.length > 0
-      ? spans.map(span => span.textContent ?? '')
-      : [element.textContent ?? '']
-  )
-    .map(line => line.replace(/\s+/g, ' ').trim())
-    .filter(line => line.length > 0);
+  const lines: string[] = [];
+  const collapse = (raw: string) => raw.replace(/\s+/g, ' ').trim();
+
+  for (const node of Array.from(element.childNodes)) {
+    if (node.nodeType === TEXT_NODE || node.nodeType === CDATA_NODE) {
+      const line = collapse(node.nodeValue ?? '');
+      if (line) lines.push(line);
+    } else if (node.nodeType === ELEMENT_NODE) {
+      const child = node as Element;
+      if (nameOf(child) !== 'tspan') continue;
+      if (isHidden(child, sketch.notes)) continue;
+      const line = collapse(child.textContent ?? '');
+      if (line) lines.push(line);
+    }
+  }
 
   if (lines.length === 0) {
     sketch.notes.once('empty-text', 'Empty text elements were skipped.');
     return;
   }
 
-  const fontSize = paint.fontSize ?? DEFAULT_FONT_SIZE;
+  const fontSize = len(frame, paint.fontSize ?? DEFAULT_FONT_SIZE);
   const widest = Math.max(...lines.map(line => line.length));
   const w = Math.max(widest * fontSize * CHARACTER_WIDTH_RATIO, fontSize);
   const h = lines.length * fontSize * LINE_HEIGHT_RATIO;
 
-  // `text-anchor` says which end of the box `x` names. Honouring it is what
-  // keeps a centred bpmn.io label centred on the task it labels.
-  const anchor = (
-    styleMap(element).get('text-anchor') ??
-    element.getAttribute('text-anchor') ??
-    'start'
-  ).trim();
+  // `text-anchor` says which end of the box `x` names, and it INHERITS — a
+  // `<g text-anchor="middle">` around a whole diagram is how bpmn.io centres
+  // every label it writes, so reading it off the leaf alone would offset every
+  // one of them by half its width.
+  const anchor = (paint.textAnchor ?? 'start').trim();
   const align =
     anchor === 'middle'
       ? TextAlign.Center
@@ -632,8 +911,8 @@ function readText(
     textAlign: align,
     color: colorOf(paint.fill, NEUTRAL_STROKE, sketch.notes) ?? NEUTRAL_STROKE,
     xywh: xywh(
-      num(element, 'x') + dx - shift,
-      num(element, 'y') + dy - fontSize,
+      px(frame, num(element, 'x')) - shift,
+      py(frame, num(element, 'y')) - fontSize,
       w,
       h
     ),
@@ -641,110 +920,147 @@ function readText(
 }
 
 /** The names that are containers rather than drawings. */
-const CONTAINERS = new Set(['g', 'a', 'switch']);
+const CONTAINERS = new Set(['g', 'a']);
+
+/**
+ * What renders nothing and is therefore dropped in SILENCE — the one exception
+ * to "every ignored kind gets a note".
+ *
+ * A `<title>` is an accessible name, a `<desc>` a long description, a
+ * `<metadata>` block a machine-readable annotation. None of them paints a
+ * pixel, so there is no loss to report and a note about each would be three
+ * lines of noise on the first import of every file a real tool ever wrote.
+ * `<style>` is deliberately NOT here: it paints, and losing it is the single
+ * most visible thing this reader does to a mermaid diagram.
+ */
+const NON_RENDERING = new Set(['title', 'desc', 'metadata']);
 
 /** The sanitizer's own HTML wrapper, which no `.svg` on a disk ever contained. */
 const PARSER_SCAFFOLDING = new Set(['html', 'head', 'body']);
 
 function walk(
   parent: Element,
-  dx: number,
-  dy: number,
+  frame: Frame,
   inherited: Paint,
   sketch: Sketch
 ): void {
   for (const element of childElements(parent)) {
-    const name = nameOf(element);
-    const [tx, ty] = translateOf(element, sketch.notes);
-    const x = dx + tx;
-    const y = dy + ty;
-    const paint = paintOf(element, inherited);
-
-    if (CONTAINERS.has(name)) {
-      walk(element, x, y, paint, sketch);
-      continue;
-    }
-    if (name === 'svg') {
-      // A nested `<svg>` is a new viewport: its own `x`/`y` offset it, and its
-      // `viewBox` re-origins it exactly as the outermost one does.
-      const [vx, vy] = viewBoxOffset(element);
-      walk(
-        element,
-        x + num(element, 'x') + vx,
-        y + num(element, 'y') + vy,
-        paint,
-        sketch
-      );
-      continue;
-    }
-
-    switch (name) {
-      case 'rect':
-        readRect(element, x, y, paint, sketch);
-        break;
-      case 'circle':
-      case 'ellipse':
-        readEllipse(element, x, y, paint, sketch);
-        break;
-      case 'polygon':
-        readPolygon(element, x, y, paint, sketch);
-        break;
-      case 'line':
-        pushStroke(
-          [
-            [num(element, 'x1') + x, num(element, 'y1') + y],
-            [num(element, 'x2') + x, num(element, 'y2') + y],
-          ],
-          paint,
-          sketch
-        );
-        break;
-      case 'polyline': {
-        const flat = numbers(element.getAttribute('points') ?? '');
-        const points: number[][] = [];
-        for (let i = 0; i + 1 < flat.length; i += 2) {
-          points.push([flat[i] + x, flat[i + 1] + y]);
-        }
-        pushStroke(points, paint, sketch);
-        break;
-      }
-      case 'path':
-        for (const subpath of samplePath(
-          element.getAttribute('d') ?? '',
-          sketch.notes
-        )) {
-          pushStroke(
-            subpath.map(([px, py]) => [px + x, py + y]),
-            paint,
-            sketch
-          );
-        }
-        break;
-      case 'text':
-        readText(element, x, y, paint, sketch);
-        break;
-      default:
-        // Everything this reader has no artefact for, named ONCE per kind:
-        // `<use>`, `<image>`, `<defs>`, `<marker>`, the gradients, the filters,
-        // `<foreignObject>`, and whatever SVG grows next. A drawing built out
-        // of symbol instances arrives nearly empty, and this is the line that
-        // tells its author why instead of leaving them to guess.
-        sketch.notes.once(
-          `skipped:${name}`,
-          `\`<${name}>\` is not recognised and was skipped.`,
-          name
-        );
-    }
+    visit(element, frame, inherited, sketch);
   }
 }
 
-/** `viewBox="minX minY w h"` as the offset that puts its origin at (0, 0). */
-function viewBoxOffset(root: Element): [number, number] {
-  const raw = root.getAttribute('viewBox');
-  if (!raw) return [0, 0];
-  const values = numbers(raw);
-  if (values.length < 4) return [0, 0];
-  return [-values[0], -values[1]];
+/** One element and whatever it contains, placed in its parent's frame. */
+function visit(
+  element: Element,
+  frame: Frame,
+  inherited: Paint,
+  sketch: Sketch
+): void {
+  const name = nameOf(element);
+  if (NON_RENDERING.has(name)) return;
+  if (isHidden(element, sketch.notes)) return;
+
+  const here = translated(element, frame, sketch.notes);
+  const paint = paintOf(element, inherited, sketch.notes);
+  noteOpacity(element, sketch.notes);
+
+  if (CONTAINERS.has(name)) {
+    walk(element, here, paint, sketch);
+    return;
+  }
+  if (name === 'switch') {
+    // §5.10: a `<switch>` renders the FIRST child whose requirement attributes
+    // pass, and this reader evaluates none of them — so it takes the first,
+    // which is what a viewer that supports everything does, and says the
+    // alternatives went. Rendering all of them would stack every localisation
+    // of a label on top of itself.
+    const [first, ...rest] = childElements(element).filter(
+      child => !NON_RENDERING.has(nameOf(child))
+    );
+    if (rest.length > 0) {
+      sketch.notes.once(
+        'switch',
+        'A `<switch>` offers alternative renderings; the first was imported and the others were not.'
+      );
+    }
+    if (first) visit(first, here, paint, sketch);
+    return;
+  }
+  if (name === 'svg') {
+    walk(element, viewportFrame(element, here), paint, sketch);
+    return;
+  }
+
+  emit(element, name, here, paint, sketch);
+}
+
+/** One recognised element, as props. Split out so `<switch>` can reuse it. */
+function emit(
+  element: Element,
+  name: string,
+  frame: Frame,
+  paint: Paint,
+  sketch: Sketch
+): void {
+  switch (name) {
+    case 'rect':
+      readRect(element, frame, paint, sketch);
+      break;
+    case 'circle':
+    case 'ellipse':
+      readEllipse(element, frame, paint, sketch);
+      break;
+    case 'polygon':
+      readPolygon(element, frame, paint, sketch);
+      break;
+    case 'line':
+      pushStroke(
+        [
+          [px(frame, num(element, 'x1')), py(frame, num(element, 'y1'))],
+          [px(frame, num(element, 'x2')), py(frame, num(element, 'y2'))],
+        ],
+        paint,
+        frame,
+        sketch
+      );
+      break;
+    case 'polyline': {
+      const flat = numbers(element.getAttribute('points') ?? '');
+      const points: number[][] = [];
+      for (let i = 0; i + 1 < flat.length; i += 2) {
+        points.push([px(frame, flat[i]), py(frame, flat[i + 1])]);
+      }
+      pushStroke(points, paint, frame, sketch);
+      break;
+    }
+    case 'path':
+      for (const subpath of samplePath(
+        element.getAttribute('d') ?? '',
+        sketch.notes
+      )) {
+        pushStroke(
+          subpath.map(([x, y]) => [px(frame, x), py(frame, y)]),
+          paint,
+          frame,
+          sketch
+        );
+      }
+      break;
+    case 'text':
+      readText(element, frame, paint, sketch);
+      break;
+    default:
+      // Everything this reader has no artefact for, named ONCE per kind:
+      // `<image>`, `<defs>`, `<marker>`, the gradients, the filters, `<style>`,
+      // and whatever SVG grows next. A drawing built out of symbol instances
+      // arrives nearly empty, and this is the line that tells its author why
+      // instead of leaving them to guess.
+      sketch.notes.once(
+        `skipped:${name}`,
+        `\`<${name}>\` is not recognised and was skipped.`,
+        name
+      );
+  }
 }
 
 /* ── The capability's function ────────────────────────────────────────── */
@@ -769,9 +1085,16 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
   const doc = new DOMParser().parseFromString(source, 'image/svg+xml');
   const error = doc.querySelector('parsererror');
   if (error) {
+    // The FIRST line only. Chromium's `parsererror` is a whole rendered
+    // document — a heading, the message, then the offending source line with a
+    // caret under it — and pouring that into a toast makes the one sentence
+    // that matters unreadable.
+    const [summary = ''] = (error.textContent ?? '')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
     throw new Error(
-      `This file is not well-formed XML, so no drawing can be read out of it: ` +
-        `${(error.textContent ?? '').trim().slice(0, 200)}`
+      `This file is not well-formed XML, so no drawing can be read out of it: ${summary.slice(0, 200)}`
     );
   }
   if (nameOf(doc.documentElement) !== 'svg') {
@@ -783,7 +1106,7 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
   const clean = DOMPurify.sanitize(source, {
     USE_PROFILES: { svg: true },
     RETURN_DOM: true,
-  }) as unknown as Element;
+  });
 
   // …and then say what the sanitizer took, which is NOT the same list as what
   // the walk below skips. `<use>` and `<foreignObject>` never reach the walk at
@@ -811,13 +1134,19 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
         name
       );
     } else if (removed.attribute) {
+      // Worded for what this actually is, which is broader than "unsafe": the
+      // sanitizer's allow-list drops an event handler AND a `requiredFeatures`,
+      // and calling the second one dangerous would be this reader accusing a
+      // perfectly ordinary file of something.
       notes.once(
         'removed-attribute',
-        'Unsafe attributes (event handlers, script URLs) were removed while sanitizing the file.'
+        'Attributes outside the safe SVG drawing vocabulary — event handlers, script URLs, and anything else the sanitizer does not know — were removed before the file was read.'
       );
     }
   }
 
+  // No cast: `RETURN_DOM: true` in the literal selects DOMPurify's typed
+  // overload, which answers an `HTMLElement` — the sanitized body wrapper.
   const root = childElements(clean).find(child => nameOf(child) === 'svg');
   if (!root) {
     throw new Error(
@@ -850,8 +1179,14 @@ export function parseSvgSketch(
 
   const sketch: Sketch = { elements: [], notes: new Notebook() };
   const root = parseSvgRoot(source, sketch.notes);
-  const [vx, vy] = viewBoxOffset(root);
-  walk(root, vx, vy, INITIAL_PAINT, sketch);
+  // The root `<svg>` paints like any other element — a `fill` on it is what
+  // every shape under it inherits — and it establishes the outermost viewport.
+  walk(
+    root,
+    viewportFrame(root, IDENTITY),
+    paintOf(root, INITIAL_PAINT, sketch.notes),
+    sketch
+  );
 
   if (sketch.elements.length === 0) {
     sketch.notes.once(

@@ -264,7 +264,7 @@ const importSvgCommand: CommandDescriptor = {
   labelFallback: 'Import SVG sketch',
   descriptionKey: 'com.labre.commands.wardley.importSvg.description',
   descriptionFallback:
-    'Best effort: recognizes shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
+    'Best effort: recognises shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
   // The same section id BPMN files its two `.bpmn` directions under, so a host
   // that translated the header once has translated it for every framework.
   category: 'interchange',

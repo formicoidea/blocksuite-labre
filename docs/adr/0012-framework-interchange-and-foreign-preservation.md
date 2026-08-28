@@ -440,7 +440,7 @@ The general rule behind the case: **a capability records the format version it
 read**, and where a format is in motion the tier is decided by what the targeted
 version carries, not by what the oldest file in the wild happens to lack.
 
-#### Answered at implementation (PR B3, the SVG importer)
+#### Answered at implementation (PR #173, the SVG importer)
 
 The first visual-tier capability shipped as **two** capabilities —
 `bpmn:svg:import` and `wardley:svg:import` — and answered this ADR's **open
@@ -462,20 +462,39 @@ strokes, and text as EDITABLE free text. No role, no relation, no framework
 vocabulary. What a Wardley SVG importer is allowed to guess turns out to be
 exactly what a BPMN one is, because the answer is "nothing about the
 vocabulary"; the day one of them wants more, it writes its own parser and its
-own paragraph beside it. The known failure modes are in that module and are
-summarised in the mapping table of the PR: ignored `scale` / `rotate` / `matrix`
-transforms, curves flattened to their endpoints, `<use>` and `<foreignObject>`
-removed by the sanitizer before the reader sees them, estimated text boxes.
+own paragraph beside it. **The known failure modes live in that module's
+documentation and nowhere else** — the "where it is known to be wrong" paragraph
+of `svg-sketch.ts`, which is the one place both capabilities point at and the
+only copy anybody has to keep true.
 
-**2. Nothing is dropped silently, at the granularity of the KIND.** D1's
-discipline has no counterpart here — a visual import classifies nothing, because
-it carries nothing — but its principle does, and the reader honours it: every
-construct it ignores produces exactly ONE `warning` note, per kind and never per
-instance. A file with four hundred `<use>` instances is one fact about that
-file. The two stages that can drop something both report: the SANITIZER's
-removals are read off `DOMPurify.removed` and named, because a drawing built out
-of symbol instances arrives empty and "nothing was recognised" would be true and
-useless.
+**2. Nothing is dropped silently, at the granularity of the KIND — and that
+sentence had to be EARNED.** D1's discipline has no counterpart here — a visual
+import classifies nothing, because it carries nothing — but its principle does,
+and the reader honours it: every construct it ignores produces exactly ONE
+`warning` note, per kind and never per instance. A file with four hundred
+`<use>` instances is one fact about that file.
+
+Three consequences, each of which was a silent loss when this reader was first
+written and is a note now. The SANITIZER is a second dropping stage and reports
+like the first: its removals are read off `DOMPurify.removed` and named, because
+`<use>` and `<foreignObject>` never reach the walk at all and a drawing built
+out of symbol instances would otherwise arrive empty with only "nothing was
+recognised" to explain it. **Hidden content is skipped rather than imported
+black**: `display:none` and `visibility:hidden` subtrees draw nothing where the
+file came from, and SVG's initial `fill` is BLACK — so importing an exporter's
+off-canvas scaffolding "faithfully" puts a slab over the board. And what is
+altered rather than dropped is reported too: transparency flattened, a
+percentage corner radius refused, a `currentColor` substituted, a font size in a
+unit no pure function can resolve.
+
+Two exceptions, both deliberate and both stated in the module. `<title>`,
+`<desc>` and `<metadata>` are dropped in SILENCE, because they render nothing
+and a note each would be three lines of noise on the first import of every real
+file. And a short list of things the reader ALTERS where no note could help —
+estimated text boxes, collapsed whitespace, ignored `tspan` positioning and
+`dy`, unread `stroke-dasharray` — is named in that same paragraph rather than
+in the report, because a remark a user can do nothing about is a remark that
+teaches them to dismiss the ones they can.
 
 **3. The five note kinds stay closed, and a visual import uses one of them.**
 Every note it emits is a `warning`. `carried` and `quarantined` describe a
@@ -557,11 +576,11 @@ ADR builds the seam and the BPMN import chantier is the first row that moves.
 | ----------- | ----------- | ------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **BPMN**    | `.bpmn` XML | Labre → file | semantic | **shipped** (PR #149) — to be re-declared as a registry capability                                                                                                                                                           |
 | **BPMN**    | `.bpmn` XML | file → Labre | semantic | **next chantier** — the worked example D1–D6 specifies                                                                                                                                                                       |
-| **BPMN**    | SVG         | file → Labre | visual   | **shipped** (PR B3) — recognition only, no round-trip; `bpmn:svg:import`, over the shared parser                                                                                                                             |
+| **BPMN**    | SVG         | file → Labre | visual   | **shipped** (PR #173) — recognition only, no round-trip; `bpmn:svg:import`, over the shared parser                                                                                                                           |
 | **Wardley** | OWM DSL     | Labre → file | semantic | **exists in labre-mcp, outside the lib** — to be **migrated** onto a lib exporter                                                                                                                                            |
 | **Wardley** | OWM DSL     | file → Labre | semantic | roadmap, and the **reference Wardley import** — `component` / `anchor` / `evolve` / `pipeline` and the `[visibility, maturity]` pair map onto the Wardley element models almost directly                                     |
 | **Wardley** | mermaid     | file → Labre | semantic | roadmap — **awaits mermaid's experimental wardley type** (coordinates carried natively once stabilized; OWM DSL is the reference route until then, and a pre-type mermaid file falls back to graph-without-coordinates — P2) |
-| **Wardley** | SVG         | file → Labre | visual   | **shipped** (PR B3) — recognition only; `wardley:svg:import`, the SAME parser BPMN declares, because a picture says nothing about which vocabulary it is a picture of                                                        |
+| **Wardley** | SVG         | file → Labre | visual   | **shipped** (PR #173) — recognition only; `wardley:svg:import`, the SAME parser BPMN declares, because a picture says nothing about which vocabulary it is a picture of                                                      |
 | **C4**      | mermaid     | Labre → file | semantic | **in flight**, parallel chantier — lands **on this registry**, not beside it                                                                                                                                                 |
 
 Three notes the chantiers should not have to rediscover:
@@ -1185,8 +1204,8 @@ decisions above.
    call, and it is a real one: a path means the MCP server reads the user's
    filesystem, inline text means a large `.bpmn` travels through a tool call.
    Likely both, with the path form gated; not decided here.
-2. ~~**SVG recognition scope, per framework.**~~ **Answered** by PR B3 — see
-   _Answered at implementation (PR B3, the SVG importer)_ under P2. The
+2. ~~**SVG recognition scope, per framework.**~~ **Answered** by PR #173 — see
+   _Answered at implementation (PR #173, the SVG importer)_ under P2. The
    statement is written once, in `svg-sketch.ts`, because both shipped visual
    capabilities wrap one parser; the answer to "what is a visual capability
    allowed to guess" is _geometry, and nothing about the vocabulary_. The

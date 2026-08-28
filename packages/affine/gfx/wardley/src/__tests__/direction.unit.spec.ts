@@ -86,26 +86,30 @@ describe('the link tool announces its gesture (M1)', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
     //
-    // What is forbidden is a GESTURE HINT on a command that states no
-    // direction, and that is what this measures — a role's own
-    // `gestureHintKey`, read off the vocabulary. It used to measure "has a
-    // `descriptionKey` at all", which was the same set right up until
-    // `wardley.importSvg`: a command whose description says what an import
-    // costs you ("Best effort … no round-trip", `docs/adr/0012` P2) is not
-    // announcing a drag direction, and forbidding it would forbid a framework
-    // from ever explaining a command.
-    const gestureHints = new Set(
-      Object.values(WARDLEY_ROLES)
-        .map(role => role.direction?.gestureHintKey)
-        .filter((key): key is string => key !== undefined)
-    );
+    // Scoped to the SUB-MENU, which is where the second line would be rendered
+    // and therefore what M1 was ever about. Inside that population the
+    // assertion is unchanged and as strict as the day it was written: a
+    // sub-menu button either announces a gesture or says nothing at all.
+    //
+    // The scope is what `wardley.importSvg` made necessary, and it is a
+    // narrowing rather than a weakening: that command is catalogue-only, and
+    // its description says what an import COSTS you ("Best effort … no
+    // round-trip", `docs/adr/0012` P2) rather than which way to drag. Reading
+    // it as a gesture hint would have forbidden a framework from ever
+    // explaining a command it does not put in the row.
     const noisy = wardleyCommands.filter(
       c =>
+        c.surfaces.includes('senior-menu') &&
         c.descriptionKey !== undefined &&
-        gestureHints.has(c.descriptionKey) &&
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);
+
+    // …and the catalogue-only entry is out of scope by DECLARATION, not by
+    // accident: if it ever joins the row it lands back inside the assertion
+    // above and has to argue for its second line there.
+    const fallback = wardleyCommands.find(c => c.id === 'wardley.importSvg');
+    expect(fallback?.surfaces).not.toContain('senior-menu');
   });
 });
 

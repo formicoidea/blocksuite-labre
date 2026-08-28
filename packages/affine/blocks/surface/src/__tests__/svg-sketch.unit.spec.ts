@@ -235,6 +235,35 @@ describe('what each element becomes', () => {
     expect(hollow.strokeStyle).toBe('none');
   });
 
+  it('paints an attribute-free shape the way a browser paints it: BLACK', () => {
+    // The SPEC's initial value, not a preference: `fill` starts at black and
+    // `stroke` at none, so an attribute-free `<rect>` renders as a solid black
+    // box in every browser. Importing it hollow would be this reader REDRAWING
+    // the file rather than reading it — and the whole 46-test suite passed with
+    // the initial fill flipped to `none`, which is exactly the hole this pins.
+    const [rect] = run(svg('<rect width="10" height="10"/>')).elements;
+    expect(rect.filled).toBe(true);
+    expect(rect.fillColor).toBe('black');
+    expect(rect.strokeStyle).toBe('none');
+  });
+
+  it('gives an attribute-free stroke a VISIBLE colour', () => {
+    // A `<line>` with no `stroke` renders as nothing at all, and a `<path>`
+    // outlining a filled region renders as its fill. Both arrive as a brush —
+    // the only thing this reader has for an open path — so both take a visible
+    // colour rather than arriving invisible on the canvas.
+    const [line] = run(svg('<line x1="0" y1="0" x2="10" y2="10"/>')).elements;
+    expect(line.type).toBe('brush');
+    expect(line.color).toBeTruthy();
+    expect(line.color).not.toBe('none');
+    expect(line.color).not.toBe('transparent');
+
+    const [path] = run(svg('<path d="M0 0 L10 0 L10 10 Z"/>')).elements;
+    expect(path.color).toBeTruthy();
+    expect(path.color).not.toBe('none');
+    expect(path.color).not.toBe('transparent');
+  });
+
   it('reads presentation out of a `style` attribute too', () => {
     // mermaid and Illustrator write `style="fill:…"`; bpmn.io writes the
     // attribute. A reader that knew only one of the two imports half the files
@@ -311,6 +340,63 @@ describe('`<text>` becomes an editable free-text element', () => {
       'Empty text'
     );
   });
+
+  it('keeps text that sits BESIDE a tspan, in document order', () => {
+    // The worst kind of loss, because the result still looks like a label:
+    // collecting only the `<tspan>`s imports "World" and drops "Hello " with
+    // nothing to say about it. Children are walked in order, text nodes
+    // included.
+    const [props] = run(
+      svg('<text x="0" y="0">Hello <tspan>World</tspan></text>')
+    ).elements;
+    expect(props.text).toBe('Hello\nWorld');
+  });
+
+  it('keeps a trailing text run after the last tspan', () => {
+    const [props] = run(
+      svg('<text x="0" y="0"><tspan>a</tspan> then b</text>')
+    ).elements;
+    expect(props.text).toBe('a\nthen b');
+  });
+
+  it('inherits `text-anchor` from a group, the way CSS does', () => {
+    // A `<g text-anchor="middle">` around a whole diagram is how bpmn.io
+    // centres every label it writes, so reading it off the leaf alone would
+    // offset every one of them by half its width.
+    const [props] = run(
+      svg(
+        '<g text-anchor="middle"><text x="100" y="20" font-size="10">abcd</text></g>'
+      )
+    ).elements;
+    expect(props.textAlign).toBe('center');
+    const [x, , w] = boxOf(props);
+    expect(x + w / 2).toBeCloseTo(100);
+  });
+
+  it('reads `font-size` in pt and em, and refuses the rest out loud', () => {
+    // `pt` is 4/3 of a user unit by CSS's own definition, and `em` is the
+    // INHERITED size — the only font-relative context a pure function of a
+    // string can honestly claim.
+    expect(
+      run(svg('<text x="0" y="0" font-size="12pt">x</text>')).elements[0]
+        .fontSize
+    ).toBeCloseTo(16);
+    expect(
+      run(
+        svg(
+          '<g font-size="20"><text x="0" y="0" font-size="1.5em">x</text></g>'
+        )
+      ).elements[0].fontSize
+    ).toBeCloseTo(30);
+
+    // `200%` read as its number would draw a label fourteen times too big, so
+    // it falls back to the inherited size and says why.
+    const percent = run(svg('<text x="0" y="0" font-size="200%">x</text>'));
+    expect(percent.elements[0].fontSize).toBe(16);
+    expect(percent.report.notes.map(n => n.message).join(' ')).toContain(
+      'cannot be resolved without a page to measure against'
+    );
+  });
 });
 
 /* ── Coordinates ──────────────────────────────────────────────────────── */
@@ -352,6 +438,96 @@ describe('coordinates', () => {
     ).elements;
     expect(props.fillColor).toBe('#abc');
     expect(props.strokeColor).toBe('#def');
+  });
+
+  it('applies the viewBox-to-width scale, uniformly', () => {
+    // A drawing authored at 1000 units and displayed at 200 is FIVE TIMES
+    // smaller than its coordinates say. Reading them 1:1 imports a board five
+    // times too big — and silently, which is what made this worth a rule
+    // rather than a note.
+    const [props] = run(
+      svg(
+        '<rect x="100" y="200" width="400" height="100" stroke-width="10"/>',
+        'width="200" height="200" viewBox="0 0 1000 1000"'
+      )
+    ).elements;
+    expect(boxOf(props)).toEqual([20, 40, 80, 20]);
+    // A LENGTH is scaled too, or a hairline arrives as a slab.
+    expect(props.strokeWidth).toBeCloseTo(2);
+  });
+
+  it('takes the SMALLER ratio, which is what preserveAspectRatio defaults to', () => {
+    // `xMidYMid meet`: the drawing is scaled to fit inside the viewport, so the
+    // factor is one number and not one per axis — which is also the only thing
+    // a shape model with no independent axes could honour.
+    const [props] = run(
+      svg(
+        '<rect x="0" y="0" width="100" height="100"/>',
+        'width="400" height="200" viewBox="0 0 100 100"'
+      )
+    ).elements;
+    expect(boxOf(props)).toEqual([0, 0, 200, 200]);
+  });
+
+  it('scales the font size and the text box with everything else', () => {
+    const [props] = run(
+      svg(
+        '<text x="100" y="100" font-size="20">Hi</text>',
+        'width="500" height="500" viewBox="0 0 1000 1000"'
+      )
+    ).elements;
+    expect(props.fontSize).toBeCloseTo(10);
+    const [x, y] = boxOf(props);
+    expect([x, y]).toEqual([50, 40]);
+  });
+
+  it('stays 1:1 when the file declares no absolute size', () => {
+    // `<svg viewBox=…>` with no width is the usual "fill whatever you put me
+    // in", and there is no containing block here — so the viewBox IS the size.
+    const [props] = run(
+      svg(
+        '<rect x="10" y="10" width="20" height="20"/>',
+        'viewBox="0 0 100 100"'
+      )
+    ).elements;
+    expect(boxOf(props)).toEqual([10, 10, 20, 20]);
+  });
+
+  it('refuses a percentage width rather than reading it as a number', () => {
+    // `width="100%"` parses as 100, and 100/1000 would shrink the drawing to a
+    // tenth. A percentage is a length this reader cannot resolve, so it falls
+    // back to 1:1.
+    const [props] = run(
+      svg(
+        '<rect x="10" y="10" width="20" height="20"/>',
+        'width="100%" height="100%" viewBox="0 0 1000 1000"'
+      )
+    ).elements;
+    expect(boxOf(props)).toEqual([10, 10, 20, 20]);
+  });
+
+  it('composes the scale into a nested `<svg>`', () => {
+    const [props] = run(
+      svg(
+        '<svg x="100" y="0" width="100" height="100" viewBox="0 0 200 200">' +
+          '<rect x="20" y="20" width="40" height="40"/></svg>',
+        'width="500" height="500" viewBox="0 0 1000 1000"'
+      )
+    ).elements;
+    // Outer scale 0.5 places the nested viewport's origin at (50, 0). Inside
+    // it, 100 parent units carry a 200-unit viewBox, so the scale COMPOSES to
+    // 0.5 × 0.5 = 0.25 — and the rect at (20, 20) side 40 lands at
+    // (50 + 5, 5) with side 10.
+    expect(boxOf(props)).toEqual([55, 5, 10, 10]);
+  });
+
+  it('reads paint off the root `<svg>` itself', () => {
+    // The root paints like any other element: a `fill` on it is what every
+    // shape under it inherits.
+    const [props] = run(
+      svg('<rect width="5" height="5"/>', 'fill="#0a0"')
+    ).elements;
+    expect(props.fillColor).toBe('#0a0');
   });
 });
 
@@ -428,11 +604,149 @@ describe('nothing is ignored silently', () => {
     ).toHaveLength(2);
   });
 
-  it('says which unsafe attributes went, without naming each one', () => {
+  it('says attributes went, without accusing an innocent one', () => {
+    // The sanitizer's allow-list drops an event handler AND a perfectly
+    // ordinary `requiredFeatures`, so the remark is worded for what actually
+    // happened — one line for the lot, and no claim that any particular
+    // attribute was dangerous.
     const said = messages(
-      svg('<rect width="10" height="10" onload="alert(1)" onclick="alert(2)"/>')
+      svg(
+        '<rect width="10" height="10" onload="alert(1)" onclick="alert(2)"/>' +
+          '<g requiredFeatures="http://www.w3.org/TR/SVG11/feature#Shape"/>'
+      )
     );
-    expect(said.filter(m => m.includes('Unsafe attributes'))).toHaveLength(1);
+    const removed = said.filter(m => m.includes('the sanitizer does not know'));
+    expect(removed).toHaveLength(1);
+    expect(removed[0]).not.toMatch(/unsafe attributes were removed/i);
+  });
+
+  it('skips a `display:none` subtree, and says it did', () => {
+    // The "why is there a huge black box on my board" report: an exporter's
+    // off-canvas scaffolding is marked hidden, and an attribute-free `<rect>`
+    // is a solid BLACK box, so importing it visible puts a slab over the
+    // drawing. One note per reason, not per element.
+    const result = run(
+      svg(
+        '<g display="none"><rect width="9999" height="9999"/><rect width="10" height="10"/></g>' +
+          '<rect x="0" y="0" width="10" height="10"/>'
+      )
+    );
+    expect(result.elements).toHaveLength(1);
+    expect(boxOf(result.elements[0])).toEqual([0, 0, 10, 10]);
+    expect(
+      result.report.notes.filter(n => n.message.includes('`display:none`'))
+    ).toHaveLength(1);
+  });
+
+  it('skips `visibility:hidden` too, including from a style attribute', () => {
+    const result = run(
+      svg(
+        '<rect width="10" height="10" style="visibility:hidden"/>' +
+          '<rect width="10" height="10" visibility="collapse"/>'
+      )
+    );
+    expect(result.elements).toEqual([]);
+    expect(
+      result.report.notes.filter(n => n.message.includes('`visibility:hidden`'))
+    ).toHaveLength(1);
+  });
+
+  it('imports a half-transparent shape at full strength, and says so once', () => {
+    // Not a drop: the shape model has no opacity of its own, so a faded shade
+    // would have to be baked into the colour against a backdrop this reader
+    // does not have. Visible and editable beats faithful and absent.
+    const result = run(
+      svg(
+        '<rect width="10" height="10" opacity="0.4"/>' +
+          '<circle cx="5" cy="5" r="5" fill-opacity="0.2"/>'
+      )
+    );
+    expect(result.elements).toHaveLength(2);
+    expect(
+      result.report.notes.filter(n => n.message.includes('Transparency'))
+    ).toHaveLength(1);
+  });
+
+  it('says `currentColor` was substituted, which its own contract claims', () => {
+    const result = run(
+      svg('<rect width="10" height="10" fill="currentColor"/>')
+    );
+    expect(result.elements[0].filled).toBe(true);
+    expect(
+      result.report.notes.filter(n => n.message.includes('`currentColor`'))
+    ).toHaveLength(1);
+  });
+
+  it('resolves `inherit` from the parent rather than from a neutral', () => {
+    // The keyword means "whatever my parent had", and the paint walk is the one
+    // place that knows — so it never reaches the colour fallback at all, and
+    // there is nothing to report.
+    const result = run(
+      svg('<g fill="#123456"><rect width="5" height="5" fill="inherit"/></g>')
+    );
+    expect(result.elements[0].fillColor).toBe('#123456');
+    expect(result.report.notes).toEqual([]);
+  });
+
+  it('drops `<title>`, `<desc>` and `<metadata>` in silence', () => {
+    // The ONE exception to "every ignored kind gets a note", and it is a
+    // decision: they render nothing, so there is nothing to have lost, and a
+    // note each would be three lines of noise on the first import of every file
+    // a real tool ever wrote.
+    const result = run(
+      svg(
+        '<title>Order to cash</title><desc>A process</desc><metadata>x</metadata>' +
+          '<rect width="10" height="10"/>'
+      )
+    );
+    expect(result.elements).toHaveLength(1);
+    expect(result.report.notes).toEqual([]);
+  });
+
+  it('does NOT drop `<style>` in silence — mermaid paints through it', () => {
+    // The single most visible thing this reader does to a mermaid diagram: its
+    // colours live in a CSS sheet, so the drawing arrives in the initial
+    // colours with only this note to say why.
+    const said = messages(
+      svg('<style>.node { fill: #f00; }</style><rect width="10" height="10"/>')
+    );
+    expect(said.filter(m => m.includes('`<style>`'))).toHaveLength(1);
+  });
+
+  it('renders only the first branch of a `<switch>`, and says the rest went', () => {
+    // §5.10 picks the first child whose requirements pass; this reader
+    // evaluates none of them, so it takes the first — what a viewer supporting
+    // everything does. Rendering all of them would stack every localisation of
+    // a label on top of itself.
+    const result = run(
+      svg(
+        '<switch><text x="0" y="0" systemLanguage="fr">Bonjour</text>' +
+          '<text x="0" y="0">Hello</text></switch>'
+      )
+    );
+    expect(result.elements).toHaveLength(1);
+    expect(result.elements[0].text).toBe('Bonjour');
+    expect(
+      result.report.notes.filter(n => n.message.includes('`<switch>`'))
+    ).toHaveLength(1);
+  });
+
+  it('refuses a percentage corner radius rather than reading it as pixels', () => {
+    // `rx="50%"` read as its number would round a box over by fifty pixels
+    // instead of into a pill.
+    const result = run(svg('<rect width="200" height="100" rx="50%"/>'));
+    expect(result.elements[0].radius).toBe(0);
+    expect(
+      result.report.notes.filter(n => n.message.includes('percentage'))
+    ).toHaveLength(1);
+  });
+
+  it('says a lone `M` drew nothing rather than dropping it in silence', () => {
+    const result = run(svg('<path d="M10 10"/>'));
+    expect(result.elements).toEqual([]);
+    expect(result.report.notes.map(n => n.message).join(' ')).toContain(
+      'never moved anywhere'
+    );
   });
 
   it('falls back to a neutral for a paint served by a gradient, and says so', () => {
@@ -524,6 +838,21 @@ describe('an empty or a broken file', () => {
     expect(result.report.notes.map(n => n.message).join(' ')).toContain(
       'No shape or text was recognised'
     );
+  });
+
+  it('shows the FIRST line of the parser error, not the whole page', () => {
+    // Chromium's `parsererror` is a rendered document — a heading, the message,
+    // then the offending source line with a caret under it. Pouring that into a
+    // toast makes the one sentence that matters unreadable.
+    let thrown = '';
+    try {
+      run('<svg><rect width="1"</svg>');
+    } catch (error) {
+      thrown = (error as Error).message;
+    }
+    expect(thrown).toMatch(/not well-formed XML/);
+    expect(thrown.split('\n')).toHaveLength(1);
+    expect(thrown).not.toContain('^');
   });
 
   it('throws on malformed XML, naming what is wrong', () => {
