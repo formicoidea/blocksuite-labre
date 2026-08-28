@@ -10,10 +10,9 @@ feat(edgeless): a BPMN node changes into a nearby kind from its own toolbar
 Realising mid-draft that the rectangle should have been a **user task** used to
 cost a delete, a re-draw, a re-connect and a re-typed label — and every sequence
 flow attached to the node with it. Select a BPMN node now and its contextual
-toolbar carries a **Change type** dropdown, next to the shape entries it already
-had: pick the user task, the timer start, the parallel gateway, the call
-activity, and the element stays the same element. Same box, same words, same
-wires, same id. One ctrl+z puts it back.
+toolbar carries a **Change type** dropdown: pick the user task, the timer start,
+the parallel gateway, the call activity, and the element stays the same element.
+Same box, same words, same wires, same id. One ctrl+z puts it back.
 
 What a node may become is **declared data**, not a derivation: six families —
 the three tasks, the three starts, the three ends, the two gateways, the two

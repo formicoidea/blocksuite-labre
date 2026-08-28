@@ -1237,9 +1237,10 @@ describe('morphing a BPMN node into a nearby kind', () => {
 
   test('the entry is registered on the node flavour', () => {
     const registry = edgeless.std.get(ToolbarRegistryIdentifier);
-    // `affine:surface:bpmnNode` was a free slot: a BPMN node is a
-    // `ShapeElementModel`, but the shape toolbar binds `affine:surface:shape`,
-    // so this module arrives BESIDE the inherited shape entries.
+    // `affine:surface:bpmnNode` was a free slot: the toolbar merges by flavour
+    // KEY, so the shape module (bound to `affine:surface:shape`) never reaches
+    // a bpmn node however much of `ShapeElementModel` the class inherits — and
+    // nothing else had claimed this key.
     const config = registry.getModuleBy('affine:surface:bpmnNode');
     expect(config).toBeTruthy();
     expect(config?.actions.map(action => action.id)).toContain('e.morph');

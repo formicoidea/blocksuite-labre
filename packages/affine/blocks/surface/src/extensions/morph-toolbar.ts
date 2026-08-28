@@ -305,8 +305,9 @@ function renderOption<K extends string>(
  * rather than calling it, and there is no choice about that: the widget package
  * depends on THIS one, so importing it here would close a cycle. The
  * composition is the widget's — `editor-menu-button` wrapping
- * `editor-icon-button`s, current value shown as `active` — so the dropdown a
- * user meets is the same object as "Switch shape type" next to it.
+ * `editor-icon-button`s, current value shown as `active` — so this dropdown is
+ * the same object a user already knows from "Switch shape type", down to the
+ * chevron and the tick.
  */
 export function morphToolbarConfig<K extends string>(
   spec: MorphSpec<K>

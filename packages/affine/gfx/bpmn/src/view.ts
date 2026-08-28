@@ -109,11 +109,15 @@ export class BpmnViewExtension extends ViewExtensionProvider {
       // The "Change type" dropdown on a selected NODE's contextual toolbar —
       // the generic module, parameterized by BPMN's own families table.
       //
-      // `affine:surface:bpmnNode` is a free slot: a bpmn node is a
-      // `ShapeElementModel`, but `shapeToolbarExtension` binds
-      // `affine:surface:shape` alone, and `renderToolbar` merges the modules of
-      // the element's own flavour with the two surface wildcards — so this row
-      // arrives beside the inherited shape entries rather than replacing them.
+      // `affine:surface:bpmnNode` is a FREE slot, and class inheritance has
+      // nothing to do with it: `renderToolbar` merges by flavour KEY — the
+      // element's own, its `custom:` twin and the `affine:surface:*` wildcards
+      // — so `shapeToolbarExtension`, which binds `affine:surface:shape`, never
+      // reaches a bpmn node however much of `ShapeElementModel` the class
+      // inherits. Nothing claimed this key before, so the registration is purely
+      // additive: it joins the wildcard entries (tags, validation) that a node
+      // already gets, and a second module claiming the same key would throw
+      // `DuplicateServiceDefinitionError` before the editor finished setting up.
       //
       // Registered HERE, in the flag-gated half, because a morph is TOOLING: a
       // node drawn while the flag was on keeps its kind, its role, its glyph
