@@ -151,6 +151,31 @@ describe('the C4 element models', () => {
     expect(node.includesPoint(400, 50, options)).toBe(false);
   });
 
+  /**
+   * The LEVEL slice's one model change, seen from the document format.
+   *
+   * Same shape and same promise as the boundary's `variant` below: optional,
+   * `undefined` by default, and therefore absent from what a document carries.
+   * Every C4 board ever saved stays byte-identical, and the two rules that read
+   * the field evaluate nothing on one — which is what makes the whole slice
+   * additive with no schema bump and no migration.
+   *
+   * And, unlike `variant`, there is NO derived default to read: a board that
+   * says nothing is a free sketch, not a context diagram we guessed at.
+   */
+  it('leaves the board level absent, and writes nothing for it', () => {
+    const board = detached(C4BoardElementModel);
+    expect(board.level).toBeUndefined();
+    expect(stored(board).has('level')).toBe(false);
+
+    stored(board).set('level', 'container');
+    expect(board.level).toBe('container');
+
+    // No `levelOrDefault`, deliberately — the absence is a value, and reading
+    // one would hand every diagram already on disk a level nobody chose.
+    expect('levelOrDefault' in (board as unknown as object)).toBe(false);
+  });
+
   it('leaves the boundary variant absent, and writes nothing for it', () => {
     const boundary = detached(C4BoundaryElementModel);
     // Optional, `undefined`, and NOT in the stored props: a boundary that never

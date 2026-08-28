@@ -100,6 +100,24 @@ nothing emits nothing. The reachable set is a table each framework declares by
 hand, and this event is the only evidence that the table is the right one: a
 pair nobody ever crosses did not need to be offered.
 
+## The level a view declares
+
+A framework VIEW can state which level it draws — a C4 board set to Context,
+Container or Component, or put back to a free sketch. The statement is
+optional, it is what the level rules read, and it renames nothing.
+
+| Event                   | When                                          | Required props       |
+| ----------------------- | --------------------------------------------- | -------------------- |
+| `FrameworkViewLevelSet` | the user picks a level for a framework's view | `framework`, `level` |
+
+A sixth framework event, and not a creation either: nothing is inserted and
+nothing is rewritten but one prop on the frame. `level` carries the framework's
+own closed vocabulary, plus `'none'` for "back to a free sketch" — the value the
+dashboard needs most, because it is the one that says the declaration was
+regretted. `previousLevel` carries the one it replaces, when there was one. Ids
+only: never the board's title, never what is drawn on it. A gesture that changes
+nothing emits nothing.
+
 ## The direction of a typed edge (ADR 0010)
 
 For a connector carrying an edge role, the persisted `source → target` pair IS

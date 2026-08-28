@@ -7,6 +7,7 @@ import {
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
 import { c4Commands } from './commands.js';
+import { C4_BOARD_LEVEL_MENU } from './levels.js';
 import { C4_PROFILES } from './profiles.js';
 import { C4_ROLES } from './roles.js';
 import { C4_RULES } from './rules.js';
@@ -34,6 +35,15 @@ export const c4TranslationEntries: TranslationKeyManifestEntry[] =
     collectTranslationKeys('background', [
       C4_BOARD_BACKGROUND,
       C4_BOUNDARY_BACKGROUND,
+      // The LEVEL a board declares, and the words the picker offers it under.
+      //
+      // Filed under `background` with the two declarations above, and it is the
+      // honest bucket rather than a convenient one: `level` is a prop of the
+      // board BACKGROUND, these are the names of the values it can take, and
+      // the table is walked exactly as the two declarations beside it are —
+      // nothing is restated in `affine/all`, so a key added to the picker
+      // reaches a host's catalogue by construction.
+      C4_BOARD_LEVEL_MENU,
     ]),
     // AFTER the two above, and the order is load-bearing: a rule carries its
     // framework's `roles` and, for `c4.person-in-boundary`, the boundary's own

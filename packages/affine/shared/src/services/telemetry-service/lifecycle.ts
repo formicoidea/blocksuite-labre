@@ -160,12 +160,44 @@ export interface FrameworkElementMorphedEvent extends TelemetryEvent {
   elementCount: number;
 }
 
+/**
+ * A framework VIEW was told which level it draws — a C4 board set to Context,
+ * Container or Component, or put back to a free sketch.
+ *
+ * **A new event name, for the reason {@link FrameworkPromotionEvent} gives.**
+ * Nothing is inserted, nothing is morphed and no level of requirement changes:
+ * the author is stating what the sheet IS, which is a fact none of the existing
+ * events describes. Reusing one of them would corrupt the funnel it belongs to.
+ *
+ * Worth measuring on its own, and for the same reason a profile change is: this
+ * is an OPTIONAL declaration nothing forces, so how often it is made is the only
+ * evidence that asking for it was worth the toolbar entry — and a level users
+ * set and then clear is a rule pack that argued with a drawing they meant.
+ *
+ * Ids only: the framework and the level's own closed vocabulary. Never the
+ * board's title, never what is drawn on it.
+ */
+export interface FrameworkViewLevelEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  /** Owning framework of the view, e.g. `c4`. */
+  framework: FrameworkId;
+  /**
+   * The level now in force, from the framework's own closed vocabulary —
+   * `'none'` when the view has been put back to declaring nothing, which is a
+   * value the dashboard needs as much as the others.
+   */
+  level: string;
+  /** The one it replaces, when the view declared one. */
+  previousLevel?: string;
+}
+
 export type FrameworkDiagramEvents = {
   FrameworkElementAdded: FrameworkElementEvent;
   FrameworkToolPicked: FrameworkElementEvent;
   FrameworkLegendCreated: FrameworkElementEvent;
   FrameworkElementPromoted: FrameworkPromotionEvent;
   FrameworkElementMorphed: FrameworkElementMorphedEvent;
+  FrameworkViewLevelSet: FrameworkViewLevelEvent;
   EdgeDirectionInverted: EdgeDirectionEvent;
 };
 

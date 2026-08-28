@@ -61,16 +61,32 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * undifferentiated fact, and a rule can only read the level off the frame if the
  * frame says it.
  *
+ * ## The sixth question, which is asked of the SHEET
+ *
+ * Two more rules — `c4.context-diagram-level` and `c4.container-diagram-level` —
+ * read the same statement one step out: C4's levels are not only zooms of an
+ * element, they are DIAGRAM TYPES, and each of the three the editor draws is
+ * defined by what appears on it (c4model.com, one page per diagram type).
+ *
+ * They are the first rules in this library whose subject is the sheet rather
+ * than an artefact, and they exist because no rule reading the drawing alone
+ * could see the level skip {@link componentLevelSkip} documents at length. The
+ * fact had to be declared, so the board now carries an optional `level` and the
+ * author sets it; a board that states none is a free sketch and neither rule
+ * evaluates a thing on it — which is every C4 diagram drawn before this slice.
+ *
  * ## Where each rule's authority comes from, as DATA
  *
- * Every rule declares a {@link RuleProvenance}, and the split is **nine
+ * Every rule declares a {@link RuleProvenance}, and the split is **eleven
  * `recommendation` / five `labre-convention`**. `standard` appears nowhere and
  * never will: C4 has no published specification to cite a clause of, which is
  * exactly why the checklist is the source — so the six that read it are
  * `recommendation`, naming the method the way `wardley` and `ddd-context-map`
  * name theirs. The three zoom rules are `recommendation` too, and cite the
  * abstractions page rather than the checklist: what they indict is a statement
- * of C4's own model.
+ * of C4's own model. The two LEVEL rules cite a third page — the diagram types
+ * — for the same kind of reason: what each sheet shows is a definition C4
+ * publishes, not a question the checklist asks.
  *
  * The five that are OURS say so out loud, in the field and in their own
  * comments: `c4.untyped-link` (a gesture of this canvas C4 never anticipated),
@@ -95,9 +111,9 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * boxes go down first, the arrows next, the words last, and for the whole of
  * that a checklist is describing a drawing whose author already knows it is
  * unfinished. `c4.strict` is the level somebody chooses when the diagram has
- * become a deliverable, and it promotes NINE of the fourteen to `warning` — the
- * checklist half, and the three zoom rules, which have no reading under which
- * the drawing meant it (`profiles.ts`).
+ * become a deliverable, and it promotes ELEVEN of the sixteen to `warning` — the
+ * checklist half, the three zoom rules and the two level rules, none of which
+ * has a reading under which the drawing meant it (`profiles.ts`).
  *
  * `blocking-overridable` appears nowhere. NOTHING downstream implements a
  * blocking level — no gesture is refused anywhere in this library — so shipping
@@ -119,10 +135,22 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * nothing. An old document gains no finding it did not already have — see
  * {@link componentLevelSkip}, which is the whole of that argument.
  *
- * ## Three questions this pack deliberately does NOT ask
+ * A board drawn before the LEVEL existed carries none, and the two level rules
+ * evaluate nothing on it — the same promise the boundary split made, one frame
+ * out, and the reason the field is optional with no default to read.
+ *
+ * ## Two questions this pack deliberately does NOT ask
  *
  * Not gaps in the engine — gaps in what a v1 C4 element can be asked. Each one
- * is a rule the day the model carries the fact it would read:
+ * is a rule the day the model carries the fact it would read. There were three;
+ * the middle one was **levels mixed on one board**, and it is now asked: the
+ * board declares its level and `c4.context-diagram-level` /
+ * `c4.container-diagram-level` judge what is drawn on it. That entry stayed on
+ * this list for as long as it did because the honest blocker was never the
+ * engine but the MODEL — "the BOARD carries no level", it used to say, "so
+ * nothing on it says which of the four sheets this is". The board carries one
+ * now, and the two remaining entries are still waiting for exactly that kind of
+ * fact:
  *
  * - **an empty boundary.** "A boundary round nothing is a claim about nothing"
  *   is a `role-count` question, and `role-count` counts ONE subject role per
@@ -131,15 +159,6 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  *   to count — and four rules each saying "this boundary holds no component"
  *   would fire on the three perfectly ordinary boundaries holding one of the
  *   other kinds.
- * - **levels mixed on one board.** A C4 diagram is drawn at ONE level —
- *   containers of a system, or components of a container, never both — and a
- *   board that mixes them is the commonest way a C4 diagram becomes unreadable.
- *   The BOARD carries no level: it is a titled card, and the title is free text,
- *   so nothing on it says which of the four sheets this is and nothing can say
- *   the sheet has been broken. The three zoom rules answer the neighbouring
- *   question and only that one — they read the level off the BOUNDARY, which
- *   does declare one, so they judge what is drawn inside a frame and stay silent
- *   about a board whose author mixed levels without drawing one.
  * - **the technology of a container or a component.** The checklist asks for it
  *   ("Java/Spring", "React SPA", "PostgreSQL") and the notation draws it as a
  *   second line under the name. The blocker that used to be here is GONE — the
@@ -1051,11 +1070,17 @@ const containerInContainerBoundary: ValidationRule = {
  * no notion of a nearer one. A rule that fires on the right diagram is worse than
  * one that misses a wrong one.
  *
- * What can see it is a BOARD that declares which of the four levels it is
- * drawing: on a component diagram a system boundary is out of place whatever is
- * inside it, and the level is then read off the sheet rather than guessed from
- * what happens to be drawn on it. That is the next slice's question (the board
- * `level`), and this limit is the honest reason it is worth asking.
+ * What CAN see it is a BOARD that declares which level it is drawing, and that
+ * now exists: {@link containerDiagramLevel} indicts the components on a sheet
+ * whose author has said it is a container diagram, reading the level off the
+ * sheet rather than guessing it from what happens to be drawn on it. This rule
+ * is unchanged and still says nothing there — the two compose, the board-level
+ * one covering exactly the case this one structurally cannot.
+ *
+ * The limit therefore survives in one shape only, and it is the honest one: a
+ * board that declares NO level. Nothing on such a sheet says which diagram it
+ * is, so nothing can say the level has been skipped. That is a sketch, and a
+ * sketch is left alone.
  */
 const componentLevelSkip: ValidationRule = {
   id: 'c4.component-level-skip',
@@ -1077,20 +1102,218 @@ const componentLevelSkip: ValidationRule = {
   backgroundRole: C4_ROLE['container-boundary'],
 };
 
+/* ── Level: is what is on the SHEET at the level the sheet declares? ────── */
+
 /**
- * The pack, whole: fourteen rules, all registered, all live.
+ * The citation the two level rules share.
  *
- * Four families, and no more than four are needed — C4 has one connecting
- * object, four flat levels and two frames, so there is no swimlane question, no
- * graph traversal and no cardinality per frame to ask about. The three zoom
- * rules added nothing to that list: they are two more `element-in-zone` rules
- * and one more `element-in-background` rule, because the split that made them
- * askable happened in the role VOCABULARY and not in the engine.
+ * The DIAGRAMS pages rather than the abstractions page the zoom rules cite:
+ * what those three rules read is what the model IS ("a system is made of
+ * containers"), while these two read what each SHEET shows — which C4 states
+ * separately, one page per level, as the definition of the diagram type.
+ */
+const LEVEL_PROVENANCE = {
+  source: 'recommendation',
+  reference:
+    'C4 model — the diagram types (c4model.com): the system context, container and component diagrams each define what is drawn on them',
+} as const;
+
+/**
+ * **C15** — a container, a component or a boundary on a board that says it is a
+ * CONTEXT diagram.
  *
- * Fourteen and not thirteen because the grammar and the self-loop are two rules
- * (see {@link relationshipSelfLoop}); fourteen and not seventeen because the four
+ * The first rule in this pack — in this library — whose subject is the SHEET.
+ * Everything before it reads an artefact and looks around it; this one reads a
+ * fact the board itself declares and judges what has been drawn on it.
+ *
+ * ## What the board now says, and why it had to say it
+ *
+ * `c4.component-level-skip` documents the hole this closes: a sheet with a
+ * system boundary, components inside it and NO container boundary anywhere
+ * raises nothing, because the only frame that rule could read is the one nobody
+ * drew. No rule reading the drawing alone can see that — a component correctly
+ * nested in a container boundary is inside the system boundary too, so the
+ * negative reading indicts the conformant diagram. The level had to come from
+ * somewhere the drawing does not, and the only honest source is the author.
+ *
+ * So the board carries an optional `level` (`C4BoardElementModel`), the picker
+ * writes it, and a board that never states one is a free sketch judged by
+ * nothing here — which is every C4 diagram drawn before this slice.
+ *
+ * ## What a context diagram forbids, and the much longer list it does not
+ *
+ * Three things: containers (which reaches the database, the mobile app and the
+ * single-page app through `roleIsA`), components, and BOUNDARIES at either
+ * level, including one drawn before the split.
+ *
+ * The boundary is the entry a reader will question, so it is the one worth
+ * spelling out: a context diagram draws the system it is about as a BOX, with
+ * the people and the neighbouring systems around it. The dashed frame is how
+ * C4 says "here is the inside of that box", which is precisely the move a
+ * context diagram has not made yet — an enterprise-boundary variant exists in
+ * the wider C4 literature, and this editor draws neither of its two frames as
+ * one, so a boundary here is a zoom on a sheet that declared it was not zoomed.
+ *
+ * Everything else is legal and deliberately so. Persons, systems, relationships,
+ * titles, type lines, descriptions, legend glyphs, sticky notes and the free
+ * rectangles somebody thought with are all left alone: C4 context diagrams are
+ * made of neighbours, and a deny-list that named what is admitted rather than
+ * what is refused would indict half of them.
+ */
+const contextDiagramLevel: ValidationRule = {
+  id: 'c4.context-diagram-level',
+  framework: 'c4',
+  family: 'view-admissibility',
+  severity: 'audit',
+  // No `appliesTo`: the subjects are declared per LEVEL, in `admissibility`,
+  // and naming a single one here would be data that lies.
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.context-diagram-level',
+  messageFallback:
+    'This board is a context diagram, and containers, components and boundaries are not drawn on one.',
+  suggestionKey: 'com.labre.c4.validation.context-diagram-level.suggestion',
+  suggestionFallback:
+    'A context diagram shows the system in the middle, the people who use it and the systems around it — every one of them a box, none of them a frame. Draw the parts on a container diagram, or set this board to the level it really shows.',
+  version: 1,
+  provenance: LEVEL_PROVENANCE,
+  backgroundRole: C4_ROLE.board,
+  admissibility: {
+    // The prop the board writes its level in. The rule names it; the engine
+    // reads it; nothing in between knows the word "C4".
+    levelProp: 'level',
+    forbidden: {
+      context: [
+        // Reaches `c4:database` by declaration, and the mobile app and the
+        // single-page app outright — they carry `c4:container` (`roles.ts`).
+        C4_ROLE.container,
+        C4_ROLE.component,
+        // The PARENT role: both children, and every boundary drawn before the
+        // split. A context diagram has not zoomed into anything yet.
+        C4_ROLE.boundary,
+      ],
+    },
+  },
+};
+
+/**
+ * **C16** — a component or a container boundary on a board that says it is a
+ * CONTAINER diagram.
+ *
+ * The sharp end of the slice, and the rule that finally sees
+ * `c4.component-level-skip`'s known limit: a system boundary full of components
+ * with no container boundary anywhere is a container diagram (or a context one)
+ * with the container level missing, and now that the board says which sheet it
+ * is, the components can be named for what they are.
+ *
+ * ## What a container diagram forbids, which is two things and not four
+ *
+ * Components, and CONTAINER boundaries. Everything else a container diagram
+ * legitimately shows: the persons who use the system, the neighbouring systems
+ * it talks to, the containers themselves, and the SYSTEM boundary drawn round
+ * them — which is the frame a container diagram is defined by, so forbidding it
+ * would indict the textbook drawing.
+ *
+ * The container boundary is out for the reason `c4.container-in-container-boundary`
+ * gives from the other side: that frame IS a container, and what goes inside it
+ * is components — which is a component diagram, on a sheet that says it is a
+ * container one.
+ *
+ * ## The interplay with the zoom rules, stated rather than engineered away
+ *
+ * A component drawn inside a proper container boundary on a `container`-level
+ * board raises BOTH this rule and, from the frame's side, nothing else — the
+ * component is claimed by a container boundary, so `c4.component-level-skip` is
+ * silent, and `c4.container-in-container-boundary` is about containers. The
+ * board-level rule fires alone, and it is right to: a container diagram showing
+ * a container boundary with components inside it is a COMPONENT diagram, and
+ * the author fixes it by saying so — set the level to Component — or by taking
+ * the zoom off this sheet and drawing it on its own.
+ *
+ * That is a deliberate v1 stance, and the alternative was considered and
+ * rejected: exempting elements inside a boundary the zoom rules already govern
+ * would mean the board's own declaration stops applying wherever somebody drew
+ * a frame, which is the level saying one thing and the sheet showing another
+ * with nothing to report. The board's level judges the whole board. A sheet
+ * that wants two levels is two sheets.
+ *
+ * (An element's effective level could one day be DERIVED from the innermost
+ * boundary containing it rather than from the board — a derivation family, not
+ * a rule. Nothing here builds it, and the zoom rules from the boundary slice
+ * already police what is inside a frame; this is the note that says the two
+ * readings exist and that v1 chose the simpler one.)
+ */
+const containerDiagramLevel: ValidationRule = {
+  id: 'c4.container-diagram-level',
+  framework: 'c4',
+  family: 'view-admissibility',
+  severity: 'audit',
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.container-diagram-level',
+  messageFallback:
+    'This board is a container diagram, and components and container boundaries are not drawn on one.',
+  suggestionKey: 'com.labre.c4.validation.container-diagram-level.suggestion',
+  suggestionFallback:
+    'A container diagram shows one system’s containers — with the people and the neighbouring systems around them, and a system boundary round the containers themselves. A container zoomed open is the next sheet down: set this board to Component, or move the zoom to its own board.',
+  version: 1,
+  provenance: LEVEL_PROVENANCE,
+  backgroundRole: C4_ROLE.board,
+  admissibility: {
+    levelProp: 'level',
+    forbidden: {
+      container: [
+        C4_ROLE.component,
+        // The CHILD role, never the parent: the system boundary is the frame a
+        // container diagram is DEFINED by, and a boundary drawn before the
+        // split never said which level it was at.
+        C4_ROLE['container-boundary'],
+      ],
+    },
+  },
+};
+
+/**
+ * ## And the third level, which declares no rule at all
+ *
+ * `component` is a level the picker offers, the board can carry and NOTHING in
+ * this pack judges — deliberately, and it is worth saying why rather than
+ * leaving a reader to notice the gap.
+ *
+ * A component diagram shows one container's components, and around them it
+ * legitimately shows the containers they talk to, the systems behind those, and
+ * the people at the top of the chain — C4 draws the neighbours at every level.
+ * The frame it is defined by is a container boundary, which is therefore legal
+ * too, and a system boundary drawn round that is the ordinary nesting. That
+ * leaves no role a component diagram refuses.
+ *
+ * A rule declared for it would be an empty `forbidden` list — data that can
+ * never fire, which this file already calls the worst thing declarative data can
+ * do. So there is no third rule, and `{@link ViewAdmissibilityDef}` is built to
+ * make that the natural outcome: a level absent from the table is a level the
+ * rule has nothing to say about, and the engine walks nothing for it.
+ */
+
+/**
+ * The pack, whole: sixteen rules, all registered, all live.
+ *
+ * FIVE families, where fourteen rules needed four. C4 has one connecting object,
+ * four flat levels and two frames, so there is still no swimlane question, no
+ * graph traversal and no cardinality per frame to ask about — and the three zoom
+ * rules added nothing to the list, being two more `element-in-zone` rules and one
+ * more `element-in-background` rule, because the split that made them askable
+ * happened in the role VOCABULARY and not in the engine.
+ *
+ * The two LEVEL rules are the exception, and the fifth family is the honest
+ * reason: their question is asked of the SHEET, off a fact the sheet declares,
+ * and no family that starts from an artefact can express it. That is also why
+ * `view-admissibility` is generic and lives in the engine — C4 is its first
+ * consumer, not its owner.
+ *
+ * Sixteen and not fifteen because the grammar and the self-loop are two rules
+ * (see {@link relationshipSelfLoop}); sixteen and not nineteen because the four
  * per-level naming rules collapsed into {@link unnamedElement} the moment an
- * element's name became one text role instead of four shapes' inner text.
+ * element's name became one text role instead of four shapes' inner text; and
+ * sixteen and not seventeen because the component level forbids nothing (see
+ * above).
  */
 export const C4_RULES: readonly ValidationRule[] = [
   // Naming: does the drawing say anything at all?
@@ -1112,4 +1335,7 @@ export const C4_RULES: readonly ValidationRule[] = [
   systemInBoundary,
   containerInContainerBoundary,
   componentLevelSkip,
+  // Level: is what is on the SHEET at the level the sheet declares?
+  contextDiagramLevel,
+  containerDiagramLevel,
 ];

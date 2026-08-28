@@ -1,6 +1,7 @@
 import { collectTranslationKeys } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
+import { C4_BOARD_LEVEL_MENU } from '../levels';
 import { C4_PROFILES } from '../profiles';
 import { C4_RULES } from '../rules';
 import { c4TranslationEntries } from '../translations';
@@ -20,13 +21,14 @@ import { c4TranslationEntries } from '../translations';
  */
 
 /**
- * The nine `strict` promotes.
+ * The eleven `strict` promotes.
  *
  * Named for what the PROFILE does, not for where the rules come from, and the
  * two are deliberately not the same partition — a coincidence of arithmetic
- * makes both 9/5, which is exactly why the constant must not be called
- * `CHECKLIST`. Three of these restate a checklist question and three restate
- * C4's own abstractions; `c4.untyped-link`, `c4.relationship-self-loop` and
+ * makes both 11/5, which is exactly why the constant must not be called
+ * `CHECKLIST`. Three of these restate a checklist question, three restate C4's
+ * own abstractions and two restate its diagram TYPES;
+ * `c4.untyped-link`, `c4.relationship-self-loop` and
  * `c4.homeless-component` are OURS and are promoted anyway, because none has a
  * reading under which the diagram meant it. Meanwhile the three isolation rules
  * DO come from the checklist and are not promoted, because they report
@@ -42,6 +44,11 @@ const PROMOTED = [
   'c4.system-in-boundary',
   'c4.container-in-container-boundary',
   'c4.component-level-skip',
+  // The two LEVEL rules: the author has SAID which sheet this is, and the sheet
+  // shows something that sheet does not show. The easiest promotion in the
+  // table — the user already spoke.
+  'c4.context-diagram-level',
+  'c4.container-diagram-level',
 ];
 
 /** The five that stay an audit at every level — unfinished work, or our idioms. */
@@ -68,7 +75,7 @@ describe('C4 validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = C4_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(14);
+    expect(ruleIds).toHaveLength(16);
     for (const profile of C4_PROFILES) {
       expect(profile.framework).toBe('c4');
       expect(profile.labelKey).toMatch(/^com\.labre\.c4\.profile\./);
@@ -89,9 +96,9 @@ describe('C4 validation profiles', () => {
     }
   });
 
-  it('promotes the nine on the strict profile', () => {
+  it('promotes the eleven on the strict profile', () => {
     const [, strict] = C4_PROFILES;
-    expect(PROMOTED).toHaveLength(9);
+    expect(PROMOTED).toHaveLength(11);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
@@ -171,5 +178,35 @@ describe('what a host has to be able to translate', () => {
     expect(sourceOf.get('com.labre.c4.role.person')).toBe('role');
     expect(sourceOf.get('com.labre.c4.profile.sketch')).toBe('profile');
     expect(sourceOf.get('com.labre.c4.validation.untyped-link')).toBe('rule');
+    // The level picker's words are filed with the two frame declarations: the
+    // level is a prop of the board BACKGROUND, and these name its values.
+    expect(sourceOf.get('com.labre.c4.level.section')).toBe('background');
+    expect(sourceOf.get('com.labre.c4.level.context')).toBe('background');
+  });
+
+  it('names every word the level picker can put on screen', () => {
+    // Derived from the declaration, like everything else here: `levels.ts` is
+    // one object, `translations.ts` walks it, and a fifth entry would arrive in
+    // a host's catalogue with no further work.
+    const byKey = new Map(
+      c4TranslationEntries.map(entry => [entry.key, entry])
+    );
+    expect(byKey.get(C4_BOARD_LEVEL_MENU.labelKey)?.fallback).toBe('Level');
+    expect(C4_BOARD_LEVEL_MENU.options).toHaveLength(4);
+    for (const option of C4_BOARD_LEVEL_MENU.options) {
+      expect(option.labelKey, option.labelKey).toMatch(
+        /^com\.labre\.c4\.level\./
+      );
+      expect(byKey.get(option.labelKey)?.fallback, option.labelKey).toBe(
+        option.labelFallback
+      );
+    }
+    // The default is the first entry a user reads, and it writes NOTHING.
+    expect(C4_BOARD_LEVEL_MENU.options.map(option => option.level)).toEqual([
+      undefined,
+      'context',
+      'container',
+      'component',
+    ]);
   });
 });

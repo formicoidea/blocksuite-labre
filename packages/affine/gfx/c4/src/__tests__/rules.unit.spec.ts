@@ -39,6 +39,8 @@ const PERSON_IN_BOUNDARY = 'c4.person-in-boundary';
 const SYSTEM_IN_BOUNDARY = 'c4.system-in-boundary';
 const CONTAINER_IN_CONTAINER_BOUNDARY = 'c4.container-in-container-boundary';
 const COMPONENT_LEVEL_SKIP = 'c4.component-level-skip';
+const CONTEXT_DIAGRAM_LEVEL = 'c4.context-diagram-level';
+const CONTAINER_DIAGRAM_LEVEL = 'c4.container-diagram-level';
 
 /** The three rules the zoom slice added, as a set to filter findings by. */
 const ZOOM_RULES = [
@@ -47,11 +49,15 @@ const ZOOM_RULES = [
   COMPONENT_LEVEL_SKIP,
 ];
 
+/** The two rules the LEVEL slice added — the ones whose subject is the sheet. */
+const LEVEL_RULES = [CONTEXT_DIAGRAM_LEVEL, CONTAINER_DIAGRAM_LEVEL];
+
 interface Extra {
   source?: string;
   target?: string;
   text?: string;
   profile?: string;
+  level?: string;
 }
 
 function element(
@@ -70,16 +76,32 @@ function element(
     ...(extra.profile !== undefined
       ? { validationProfile: extra.profile }
       : {}),
+    // The board's declared level, ABSENT unless a fixture states one — which is
+    // what every C4 board drawn before this slice looks like.
+    ...(extra.level !== undefined ? { level: extra.level } : {}),
     get elementBound() {
       return new Bound(...xywh);
     },
   } as unknown as GfxPrimitiveElementModel;
 }
 
-/** The board: 1400×900 at the origin, carrying its role and a title. */
+/**
+ * The board: 1400×900 at the origin, carrying its role and a title — and NO
+ * level, deliberately. A sheet whose author never said which of the three
+ * diagrams it is, which is every C4 board drawn before this slice and the
+ * default the picker offers.
+ */
 const board = (profile?: string) =>
   element('bg', [0, 0, 1400, 900], C4_ROLE.board, {
     text: 'System context',
+    ...(profile !== undefined ? { profile } : {}),
+  });
+
+/** The same board, declaring which of the three diagrams it draws. */
+const boardAt = (level: string, profile?: string) =>
+  element('bg', [0, 0, 1400, 900], C4_ROLE.board, {
+    text: 'System context',
+    level,
     ...(profile !== undefined ? { profile } : {}),
   });
 
@@ -184,7 +206,7 @@ const conformant = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the fourteen rules of the pack, in reading order', () => {
+  it('ships exactly the sixteen rules of the pack, in reading order', () => {
     expect(C4_RULES.map(rule => rule.id)).toEqual([
       UNLABELED_RELATIONSHIP,
       UNNAMED_ELEMENT,
@@ -200,7 +222,70 @@ describe('what the framework ships', () => {
       SYSTEM_IN_BOUNDARY,
       CONTAINER_IN_CONTAINER_BOUNDARY,
       COMPONENT_LEVEL_SKIP,
+      CONTEXT_DIAGRAM_LEVEL,
+      CONTAINER_DIAGRAM_LEVEL,
     ]);
+  });
+
+  /**
+   * Five families for sixteen rules, and the fifth is the one this slice added.
+   *
+   * Pinned because the count is an argument the header makes: C4 needs no
+   * swimlane question, no graph traversal and no cardinality per frame, so the
+   * families it uses are few — and `view-admissibility` joined them only because
+   * its question is asked of the SHEET, which none of the other four can express.
+   */
+  it('needs five families, and declares no subject role for the level rules', () => {
+    expect([...new Set(C4_RULES.map(rule => rule.family))].sort()).toEqual([
+      'edge-degree',
+      'element-in-background',
+      'element-in-zone',
+      'label-presence',
+      'relation-endpoints',
+      'view-admissibility',
+    ]);
+    for (const rule of C4_RULES) {
+      if (!LEVEL_RULES.includes(rule.id)) continue;
+      // The subjects are declared per LEVEL, so naming one here would lie.
+      expect(rule.appliesTo, rule.id).toBeUndefined();
+      expect(rule.admissibility?.levelProp, rule.id).toBe('level');
+    }
+  });
+
+  /**
+   * The forbidden matrix, spelled out — the whole content of the two rules, and
+   * the place a reviewer checks that C4's neighbours are still welcome.
+   */
+  it('forbids exactly what each declared level does not draw', () => {
+    const forbiddenAt = (ruleId: string, level: string) =>
+      [
+        ...(C4_RULES.find(rule => rule.id === ruleId)?.admissibility?.forbidden[
+          level
+        ] ?? []),
+      ].sort();
+
+    // A context diagram draws systems as BOXES, with the people and the
+    // neighbouring systems around them — never the parts, never a frame.
+    expect(forbiddenAt(CONTEXT_DIAGRAM_LEVEL, 'context')).toEqual(
+      [C4_ROLE.container, C4_ROLE.component, C4_ROLE.boundary].sort()
+    );
+    // A container diagram draws one system's containers inside its system
+    // boundary: persons, systems, containers and the system frame are all legal.
+    expect(forbiddenAt(CONTAINER_DIAGRAM_LEVEL, 'container')).toEqual(
+      [C4_ROLE.component, C4_ROLE['container-boundary']].sort()
+    );
+    // …and the third level declares NOTHING. A component diagram legitimately
+    // shows persons, containers, components and both frames, so a rule for it
+    // would be an empty list — data that can never fire.
+    for (const rule of C4_RULES) {
+      const forbidden = rule.admissibility?.forbidden;
+      if (forbidden === undefined) continue;
+      expect(Object.keys(forbidden), rule.id).not.toContain('component');
+      // Every declared level says something, or it would not be declared.
+      for (const [level, roles] of Object.entries(forbidden)) {
+        expect(roles.length, `${rule.id} · ${level}`).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('namespaces every rule and holds no prose in the engine', () => {
@@ -221,8 +306,9 @@ describe('what the framework ships', () => {
   });
 
   it('names a frame on every rule, so every finding can be waived somewhere', () => {
-    // Nine measure against the BOARD — attribution only, since none of them
-    // reads a coordinate — and the five membership and zoom rules against a
+    // Eleven measure against the BOARD — nine for attribution alone, since they
+    // read no coordinate, plus the two LEVEL rules, for which the board is the
+    // subject of the question — and the five membership and zoom rules against a
     // BOUNDARY, which is the frame their question is actually about.
     const framedBy = (role: string) =>
       C4_RULES.filter(rule => rule.backgroundRole === role)
@@ -242,7 +328,7 @@ describe('what the framework ships', () => {
     // container boundary is inside the system boundary too, so a rule written
     // that way would indict the conformant drawing — see `componentLevelSkip`.
     expect(framedBy(C4_ROLE['system-boundary'])).toEqual([]);
-    expect(framedBy(C4_ROLE.board)).toHaveLength(9);
+    expect(framedBy(C4_ROLE.board)).toHaveLength(11);
     for (const rule of C4_RULES)
       expect(rule.backgroundRole, rule.id).toBeDefined();
   });
@@ -318,7 +404,27 @@ describe('what the framework ships', () => {
         expect(reference, rule.id).toMatch(/C4 model/);
       }
     }
-    expect(byProvenance('recommendation')).toHaveLength(9);
+    expect(byProvenance('recommendation')).toHaveLength(11);
+  });
+
+  /**
+   * The two level rules cite the DIAGRAM TYPES, not the abstractions the zoom
+   * rules cite and not the review checklist the other six do — three pages of
+   * c4model.com, three different things being restated, and a reader of the
+   * bubble has to be able to tell which.
+   */
+  it('cites C4’s diagram types for the two level rules', () => {
+    const level = C4_RULES.filter(rule => LEVEL_RULES.includes(rule.id));
+    expect(level).toHaveLength(2);
+    const references = new Set(level.map(rule => rule.provenance!.reference));
+    // ONE citation, read twice — the call the zoom and isolation rules make.
+    expect(references.size).toBe(1);
+    for (const rule of level) {
+      expect(rule.provenance!.source, rule.id).toBe('recommendation');
+      expect(rule.provenance!.reference, rule.id).toMatch(/diagram types/);
+      // …and NOT the abstractions, which is the zoom rules' citation.
+      expect(rule.provenance!.reference, rule.id).not.toMatch(/abstractions/);
+    }
   });
 
   /**
@@ -1170,6 +1276,236 @@ describe('C14 · a component whose container nobody drew', () => {
   });
 });
 
+describe('C15 · a board that says it is a CONTEXT diagram', () => {
+  it('flags a container drawn on it', () => {
+    const violations = evaluate([boardAt('context'), container('c')]);
+    expect(idsOf(violations)).toEqual([
+      CONTEXT_DIAGRAM_LEVEL,
+      ISOLATED_CONTAINER,
+    ]);
+    const level = only(violations, CONTEXT_DIAGRAM_LEVEL)[0];
+    expect(level.elementIds).toEqual(['c']);
+    // Attributed to the BOARD: the view is the subject of the question, and it
+    // is where the arbitration would be written.
+    expect(level.backgroundId).toBe('bg');
+  });
+
+  it('reaches the database, the mobile app and the single-page app', () => {
+    // `c4:database` specialises `c4:container` by declaration; the mobile and
+    // browser kinds carry `c4:container` outright.
+    expect(
+      only(
+        evaluate([boardAt('context'), database('d')]),
+        CONTEXT_DIAGRAM_LEVEL
+      ).map(violation => violation.elementIds)
+    ).toEqual([['d']]);
+  });
+
+  it('flags a component, and a boundary at EITHER level', () => {
+    for (const el of [
+      component('x', 300, 300),
+      systemBoundary('x'),
+      containerBoundary('x'),
+      // …including one drawn before the split, which never said which level it
+      // was at: a context diagram has zoomed into nothing, whatever the frame
+      // would have claimed.
+      boundary('x'),
+    ]) {
+      const found = only(
+        evaluate([boardAt('context'), el]),
+        CONTEXT_DIAGRAM_LEVEL
+      );
+      expect(
+        found.map(violation => violation.elementIds),
+        el.role
+      ).toEqual([['x']]);
+    }
+  });
+
+  it('leaves the people and the neighbouring systems alone', () => {
+    // What a context diagram IS. C4 draws its neighbours, and a deny-list that
+    // named what is admitted would have indicted every one of them.
+    const violations = evaluate([
+      boardAt('context'),
+      person('p'),
+      title('t-p', 'Personal banking customer'),
+      system('s', 600),
+      title('t-s', 'Internet Banking System', 600, 240),
+      rel('r', 'p', 's'),
+    ]);
+    expect(only(violations, CONTEXT_DIAGRAM_LEVEL)).toEqual([]);
+    expect(violations).toEqual([]);
+  });
+});
+
+describe('C16 · a board that says it is a CONTAINER diagram', () => {
+  it('flags a component drawn on it', () => {
+    const violations = evaluate([boardAt('container'), component('k')]);
+    // C10 stays silent: the board carries no boundary at all, so there is no
+    // frame for "outside every boundary" to be about. The LEVEL rule needs no
+    // frame but the sheet itself, which is the whole point of the family.
+    expect(idsOf(violations)).toEqual([
+      CONTAINER_DIAGRAM_LEVEL,
+      ISOLATED_COMPONENT,
+    ]);
+    expect(only(violations, CONTAINER_DIAGRAM_LEVEL)[0].elementIds).toEqual([
+      'k',
+    ]);
+    expect(only(violations, HOMELESS_COMPONENT)).toEqual([]);
+  });
+
+  it('flags a container boundary, and not the system boundary round it', () => {
+    const violations = evaluate([
+      boardAt('container'),
+      systemBoundary('bd-sys', 100, 100),
+      element('bd-cnt', [160, 340, 440, 300], C4_ROLE['container-boundary'], {
+        text: 'API Application',
+      }),
+    ]);
+    // The system boundary is the frame a container diagram is DEFINED by, so
+    // forbidding it would indict the textbook drawing.
+    expect(
+      only(violations, CONTAINER_DIAGRAM_LEVEL).map(v => v.elementIds)
+    ).toEqual([['bd-cnt']]);
+  });
+
+  it('leaves persons, systems, containers and the system frame alone', () => {
+    // The whole legal alphabet of a container diagram, in one fixture.
+    const violations = evaluate([
+      boardAt('container'),
+      systemBoundary('bd-sys', 100, 100),
+      container('c-web', 200, 200),
+      database('d-store', 500, 200),
+      person('p', 1000, 200),
+      system('s', 1000, 500),
+      rel('r1', 'p', 'c-web'),
+      rel('r2', 'c-web', 'd-store'),
+      rel('r3', 'c-web', 's'),
+    ]);
+    expect(only(violations, CONTAINER_DIAGRAM_LEVEL)).toEqual([]);
+    expect(idsOf(violations)).toEqual([]);
+  });
+
+  /**
+   * The hole `c4.component-level-skip` documents at length, CLOSED — and this
+   * is the pin the whole slice exists for.
+   *
+   * A sheet with a system boundary, components inside it and no container
+   * boundary anywhere raises nothing from C14: the only frame that rule could
+   * read is the one nobody drew, and the negative reading would indict the
+   * conformant nesting. Now that the board says which diagram it is, the
+   * components can be named for what they are.
+   */
+  it('sees the level skip C14 structurally cannot', () => {
+    const skipped = [systemBoundary('bd'), component('k', 300, 300)];
+    // Unchanged from the slice before: on a board declaring nothing, C14 is
+    // silent and so is everything else but the isolation remark.
+    expect(idsOf(evaluate([board(), ...skipped]))).toEqual([
+      ISOLATED_COMPONENT,
+    ]);
+    // Say the sheet is a container diagram and the component is named.
+    const violations = evaluate([boardAt('container'), ...skipped]);
+    expect(idsOf(violations)).toEqual([
+      CONTAINER_DIAGRAM_LEVEL,
+      ISOLATED_COMPONENT,
+    ]);
+    expect(only(violations, CONTAINER_DIAGRAM_LEVEL)[0].elementIds).toEqual([
+      'k',
+    ]);
+    // C14 still says nothing — the two compose, this rule covering exactly the
+    // case that one cannot see.
+    expect(only(violations, COMPONENT_LEVEL_SKIP)).toEqual([]);
+  });
+
+  /**
+   * The v1 STANCE, pinned rather than discovered: the board's level judges the
+   * whole board, boundaries included.
+   *
+   * A component correctly nested in a container boundary on a `container`-level
+   * board IS flagged, and that is deliberate. Exempting elements inside a frame
+   * the zoom rules already govern would mean the board's own declaration stops
+   * applying wherever somebody drew a boundary — the level saying one thing and
+   * the sheet showing another, with nothing to report. A container diagram
+   * showing a container boundary full of components is a COMPONENT diagram, and
+   * the author fixes it by saying so or by moving the zoom to its own sheet.
+   */
+  it('still flags a component nested in a proper container boundary', () => {
+    const violations = evaluate([
+      boardAt('container'),
+      containerBoundary('bd'),
+      component('k', 300, 300),
+    ]);
+    // The frame AND the box: the two together are the component diagram drawn
+    // on a sheet that says it is a container one.
+    expect(
+      only(violations, CONTAINER_DIAGRAM_LEVEL)
+        .map(violation => violation.elementIds.join('+'))
+        .sort()
+    ).toEqual(['bd', 'k']);
+    // The zoom rules stay quiet: a container boundary claims the component, so
+    // C14 is satisfied and C13 is about containers.
+    expect(
+      violations.filter(violation => ZOOM_RULES.includes(violation.ruleId))
+    ).toEqual([]);
+  });
+});
+
+describe('a board that declares NO level', () => {
+  /**
+   * The compatibility promise of this slice, and the reason the field is
+   * optional with no default to read.
+   *
+   * Every C4 board ever drawn carries no `level`, so neither level rule
+   * evaluates a thing on one — including on the boards the fixtures above light
+   * up when they DO declare one.
+   */
+  it('says nothing whatever is drawn on it', () => {
+    for (const el of [
+      container('x'),
+      database('x'),
+      component('x'),
+      systemBoundary('x'),
+      containerBoundary('x'),
+      boundary('x'),
+    ]) {
+      const violations = evaluate([board(), el]);
+      expect(
+        violations.filter(violation => LEVEL_RULES.includes(violation.ruleId)),
+        el.role
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing on a board that carries no role either', () => {
+    // A sheet drawn before `c4:board` existed is not a view of anything.
+    expect(
+      evaluate([legacyBoard(), container('c')]).filter(violation =>
+        LEVEL_RULES.includes(violation.ruleId)
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about a level value this build does not know', () => {
+    // A peer on a newer version, or an import. An unrecognised level is a level
+    // the rules have nothing to say about, never a reason to guess.
+    expect(
+      evaluate([boardAt('deployment'), container('c')]).filter(violation =>
+        LEVEL_RULES.includes(violation.ruleId)
+      )
+    ).toEqual([]);
+    // …and `component`, which the picker offers and no rule declares.
+    expect(
+      evaluate([
+        boardAt('component'),
+        containerBoundary('bd'),
+        component('k', 300, 300),
+        container('c', 900, 200),
+        person('p', 1100, 600),
+      ]).filter(violation => LEVEL_RULES.includes(violation.ruleId))
+    ).toEqual([]);
+  });
+});
+
 describe('the conformant nesting the zoom rules must never touch', () => {
   it('says nothing about containers in the system frame and components in the container frame', () => {
     const violations = evaluate(zoomed());
@@ -1186,6 +1522,38 @@ describe('the conformant nesting the zoom rules must never touch', () => {
     for (const violation of violations) {
       expect(violation.ruleId).toMatch(/^c4\.isolated-/);
     }
+  });
+
+  /**
+   * The composed fixture, judged at a declared level — the noise check.
+   *
+   * `zoomed()` is a sheet that draws BOTH a container diagram (containers inside
+   * a system boundary) and a component zoom (a container boundary with its
+   * components). With no level declared, that is a legitimate, if busy,
+   * whiteboard and the pack says nothing about it.
+   *
+   * Declare it a container diagram and three things are named: the container
+   * boundary and its two components. That is not noise, it is the rule working —
+   * the sheet genuinely mixes two levels, which `rules.ts` calls the commonest
+   * way a C4 diagram becomes unreadable. Pinned to the exact three so the
+   * blast radius stays a decision rather than a surprise.
+   */
+  it('names the second level on a sheet that draws two', () => {
+    const declared = zoomed().map(el =>
+      el.id === 'bg' ? boardAt('container') : el
+    );
+    const named = only(evaluate(declared), CONTAINER_DIAGRAM_LEVEL)
+      .map(violation => violation.elementIds.join('+'))
+      .sort();
+    expect(named).toEqual(['bd-cnt', 'k-security', 'k-signin']);
+    // The containers, the database, the system boundary, the actor and the
+    // system the sheet is about are all left alone: a container diagram draws
+    // every one of them.
+    expect(named).not.toContain('bd-sys');
+    expect(named).not.toContain('c-web');
+    expect(named).not.toContain('d-store');
+    expect(named).not.toContain('p');
+    expect(named).not.toContain('s');
   });
 
   it('flags exactly the box moved to the wrong zoom', () => {
@@ -1295,12 +1663,13 @@ describe('where the level of requirement can be chosen', () => {
     expect(new Set(claims).size).toBe(claims.length);
   });
 
-  it('puts the legend and the dropdown on one row, in reading order', () => {
-    // `b.` after the always-on `a.toggle-resize`, `z.` last: the user sees
-    // resize, legend, then the level, whatever order the modules registered in.
+  it('puts the legend, the level and the dropdown on one row, in reading order', () => {
+    // `b.` and `c.` after the always-on `a.toggle-resize`, `z.` last: the user
+    // sees resize, legend, the diagram's LEVEL, then the level of requirement,
+    // whatever order the modules registered in.
     expect(
       c4Toolbar.c4BoardToolingToolbarConfig.actions.map(action => action.id)
-    ).toEqual(['b.legend', 'z.validation']);
+    ).toEqual(['b.legend', 'c.level', 'z.validation']);
   });
 
   it('gives the BOUNDARY no toolbar module at all', () => {
