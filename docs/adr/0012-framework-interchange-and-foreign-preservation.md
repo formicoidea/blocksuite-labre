@@ -1,11 +1,14 @@
 # ADR 0012 — The platform trades diagrams with the outside world, and preserves what it does not understand
 
-- Status: **proposed** (August 2026) — requires human approval. It adds one
-  persisted field to `GfxPrimitiveElementModel`, i.e. to the Y.Map of **every**
-  surface element, and it fixes the MEANING of that field for documents that
-  will be written before any of it ships. That is the red zone `CLAUDE.md`
-  names twice over (`packages/framework/std` gfx element plumbing, and a
-  schema/model change that must stay loadable by older documents).
+- Status: **accepted** (August 2026) — accepted with the field landing in
+  PR #157, under PO red-zone review: the status flip and the `interchange`
+  accessor are approved in the same breath, because approving the field is what
+  accepts D2/D3/D5 in practice. It adds one persisted field to
+  `GfxPrimitiveElementModel`, i.e. to the Y.Map of **every** surface element,
+  and it fixes the MEANING of that field for documents that will be written
+  before any of it ships. That is the red zone `CLAUDE.md` names twice over
+  (`packages/framework/std` gfx element plumbing, and a schema/model change that
+  must stay loadable by older documents).
 - Deciders: Mathieu Jolly
 - Milestone: framework interchange — a platform capability, not a BPMN feature
 - **Generalized on PO direction (2026-08-27).** The first draft decided the
