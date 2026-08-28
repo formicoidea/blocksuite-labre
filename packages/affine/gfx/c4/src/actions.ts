@@ -45,7 +45,7 @@ import type { C4ExportBoard } from './export';
 import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
 import { C4_AUTO_LEGEND } from './legend';
 import { c4NodeProps } from './presets';
-import { C4_ROLE } from './roles';
+import { C4_BOUNDARY_ROLE, C4_ROLE } from './roles';
 import { C4_TYPE_PLACEHOLDER } from './type-line';
 
 /**
@@ -261,6 +261,18 @@ export function createC4Board(std: BlockStdScope) {
  * what is written under the corner ({@link BOUNDARY_LABEL}, and the note on
  * `variantProp` in `background.ts`). The name is document data from that moment
  * on — renaming a boundary never contradicts its variant.
+ *
+ * ## The role and the variant are written HERE, together, or not at all
+ *
+ * This is the ONE place either field is written, and it writes both from the same
+ * argument: the `variant` the renderer and the exporter read, and the child ROLE
+ * the zoom rules read ({@link C4_BOUNDARY_ROLE}). They are two spellings of one
+ * fact — which level this frame is drawn at — and nothing downstream can tell
+ * that they were ever separate, so a boundary whose role said "system" and whose
+ * variant said "container" would paint one thing and be judged as another, with
+ * nothing on screen to show which half was wrong. Anybody adding a second
+ * creation site (a paste path, an importer, a template) writes both or writes
+ * neither.
  */
 export function createC4Boundary(
   std: BlockStdScope,
@@ -273,7 +285,10 @@ export function createC4Boundary(
   const { centerX: cx, centerY: cy } = gfx.viewport;
   const id = surface.addElement({
     type: 'c4Boundary',
-    role: C4_ROLE.boundary,
+    // The CHILD role matching the variant — never the parent, which is now the
+    // role of a boundary drawn before the split and of nothing this editor
+    // creates. See the note above.
+    role: C4_BOUNDARY_ROLE[variant],
     name: BOUNDARY_LABEL[variant],
     variant,
     xywh: new Bound(

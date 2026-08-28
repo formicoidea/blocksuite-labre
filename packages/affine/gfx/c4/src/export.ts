@@ -10,6 +10,7 @@ import type {
   ConnectorElementModel,
 } from '@labre/affine-model';
 import type { Bound } from '@labre/global/gfx';
+import { roleIsA } from '@labre/std/gfx';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background';
 import {
@@ -20,7 +21,7 @@ import {
   c4StatedTechnology,
   type C4TierElement,
 } from './component';
-import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
+import { C4_ROLE, C4_ROLE_OF_KIND, C4_ROLES } from './roles';
 
 /**
  * The board, as a **mermaid C4 diagram** (https://mermaid.js.org/syntax/c4.html).
@@ -436,8 +437,14 @@ function oneBoard(
   /* ── Who is on this sheet ────────────────────────────────────────── */
 
   const nodes = board.nodes.filter(model => isC4Node(model) && inScope(model));
+  // `roleIsA` and not an equality: a boundary drawn today carries the CHILD role
+  // of its variant (`c4:system-boundary`, `c4:container-boundary`) and one drawn
+  // before the split carries the parent. Both are boundaries, both are exported,
+  // and the bracket line each one gets is decided by `variant` exactly as before
+  // — the role split changed which frames this filter has to recognise, not what
+  // the file says about any of them.
   const boundaries = board.boundaries.filter(
-    model => model.role === C4_ROLE.boundary && inScope(model)
+    model => roleIsA(model.role, C4_ROLE.boundary, C4_ROLES) && inScope(model)
   );
 
   /* ── Aliases ─────────────────────────────────────────────────────── */

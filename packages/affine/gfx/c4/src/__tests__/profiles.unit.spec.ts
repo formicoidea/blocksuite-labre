@@ -20,17 +20,17 @@ import { c4TranslationEntries } from '../translations';
  */
 
 /**
- * The six `strict` promotes.
+ * The nine `strict` promotes.
  *
  * Named for what the PROFILE does, not for where the rules come from, and the
  * two are deliberately not the same partition — a coincidence of arithmetic
- * makes both 6/5, which is exactly why the constant must not be called
- * `CHECKLIST`. Three of these restate a checklist question; `c4.untyped-link`,
- * `c4.relationship-self-loop` and `c4.homeless-component` are OURS and are
- * promoted anyway, because none has a reading under which the diagram meant it.
- * Meanwhile the three isolation rules DO come from the checklist and are not
- * promoted, because they report unfinished work. Provenance and severity are
- * orthogonal — see `profiles.ts`.
+ * makes both 9/5, which is exactly why the constant must not be called
+ * `CHECKLIST`. Three of these restate a checklist question and three restate
+ * C4's own abstractions; `c4.untyped-link`, `c4.relationship-self-loop` and
+ * `c4.homeless-component` are OURS and are promoted anyway, because none has a
+ * reading under which the diagram meant it. Meanwhile the three isolation rules
+ * DO come from the checklist and are not promoted, because they report
+ * unfinished work. Provenance and severity are orthogonal — see `profiles.ts`.
  */
 const PROMOTED = [
   'c4.unlabeled-relationship',
@@ -39,6 +39,9 @@ const PROMOTED = [
   'c4.relationship-endpoints',
   'c4.relationship-self-loop',
   'c4.homeless-component',
+  'c4.system-in-boundary',
+  'c4.container-in-container-boundary',
+  'c4.component-level-skip',
 ];
 
 /** The five that stay an audit at every level — unfinished work, or our idioms. */
@@ -65,7 +68,7 @@ describe('C4 validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = C4_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(11);
+    expect(ruleIds).toHaveLength(14);
     for (const profile of C4_PROFILES) {
       expect(profile.framework).toBe('c4');
       expect(profile.labelKey).toMatch(/^com\.labre\.c4\.profile\./);
@@ -86,9 +89,9 @@ describe('C4 validation profiles', () => {
     }
   });
 
-  it('promotes the six on the strict profile', () => {
+  it('promotes the nine on the strict profile', () => {
     const [, strict] = C4_PROFILES;
-    expect(PROMOTED).toHaveLength(6);
+    expect(PROMOTED).toHaveLength(9);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }

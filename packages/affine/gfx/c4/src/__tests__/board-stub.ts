@@ -13,7 +13,7 @@ import { Bound } from '@labre/global/gfx';
 import type { C4ComponentGroup, C4TierElement } from '../component';
 import { DESCRIPTION_PLACEHOLDER } from '../consts';
 import type { C4ExportBoard } from '../export';
-import { C4_ROLE, C4_ROLE_OF_KIND } from '../roles';
+import { C4_BOUNDARY_ROLE, C4_ROLE, C4_ROLE_OF_KIND } from '../roles';
 import { C4_TYPE_PLACEHOLDER } from '../type-line';
 
 /**
@@ -51,6 +51,16 @@ export function fakeBoard(id: string, bound: Box, name?: string) {
   return board as unknown as C4BoardElementModel;
 }
 
+/**
+ * A boundary, stamped the way the creation site stamps one.
+ *
+ * The default role follows the VARIANT — `createC4Boundary` writes both from the
+ * same argument and they may never disagree (`actions.ts`) — so a fixture that
+ * states a variant models a boundary drawn today, and one that states neither
+ * models a boundary drawn before the role split: the parent role, and no bracket
+ * line. An explicit `role` still wins, for the fixture that wants a boundary with
+ * no role at all.
+ */
 export function fakeBoundary(
   id: string,
   bound: Box,
@@ -63,7 +73,12 @@ export function fakeBoundary(
   Object.defineProperties(boundary, {
     id: { value: id, enumerable: true },
     role: {
-      value: 'role' in options ? options.role : C4_ROLE.boundary,
+      value:
+        'role' in options
+          ? options.role
+          : options.variant === undefined
+            ? C4_ROLE.boundary
+            : C4_BOUNDARY_ROLE[options.variant],
       enumerable: true,
     },
     name: { value: options.name, enumerable: true },

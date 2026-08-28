@@ -37,14 +37,40 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * - does every element earn its place on the sheet?
  *   (`c4.isolated-*`, `c4.homeless-component`)
  *
+ * ## The fifth question, which is not the checklist's but the MODEL's
+ *
+ * Three rules — `c4.system-in-boundary`, `c4.container-in-container-boundary`
+ * and `c4.component-level-skip` — ask something the review checklist never
+ * phrases, because C4 says it one level further up, in the abstractions
+ * themselves (c4model.com/abstractions):
+ *
+ * > A software system is made up of one or more containers, each of which
+ * > contains one or more components.
+ *
+ * The four levels are therefore ZOOMS of one element, not four kinds of box, and
+ * the boundary is where the canvas says which zoom a part of the sheet is at.
+ * From which three things follow with no judgement of ours added: a software
+ * system drawn INSIDE a boundary is a mistyped container or a zoom that never
+ * happened (the boundary already IS a system or a container); a container drawn
+ * inside a CONTAINER boundary is that boundary, drawn inside itself; and a
+ * component framed only by a SYSTEM boundary has skipped the container level the
+ * model puts between them.
+ *
+ * None of the three could be asked before `roles.ts` split the boundary into
+ * `c4:system-boundary` and `c4:container-boundary`: "inside a boundary" was one
+ * undifferentiated fact, and a rule can only read the level off the frame if the
+ * frame says it.
+ *
  * ## Where each rule's authority comes from, as DATA
  *
- * Every rule declares a {@link RuleProvenance}, and the split is **six
+ * Every rule declares a {@link RuleProvenance}, and the split is **nine
  * `recommendation` / five `labre-convention`**. `standard` appears nowhere and
  * never will: C4 has no published specification to cite a clause of, which is
  * exactly why the checklist is the source — so the six that read it are
  * `recommendation`, naming the method the way `wardley` and `ddd-context-map`
- * name theirs.
+ * name theirs. The three zoom rules are `recommendation` too, and cite the
+ * abstractions page rather than the checklist: what they indict is a statement
+ * of C4's own model.
  *
  * The five that are OURS say so out loud, in the field and in their own
  * comments: `c4.untyped-link` (a gesture of this canvas C4 never anticipated),
@@ -69,7 +95,9 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * boxes go down first, the arrows next, the words last, and for the whole of
  * that a checklist is describing a drawing whose author already knows it is
  * unfinished. `c4.strict` is the level somebody chooses when the diagram has
- * become a deliverable, and it promotes the eight checklist rules to `warning`.
+ * become a deliverable, and it promotes NINE of the fourteen to `warning` — the
+ * checklist half, and the three zoom rules, which have no reading under which
+ * the drawing meant it (`profiles.ts`).
  *
  * `blocking-overridable` appears nowhere. NOTHING downstream implements a
  * blocking level — no gesture is refused anywhere in this library — so shipping
@@ -81,8 +109,15 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  *
  * A diagram drawn before the roles existed carries no role on anything, so it
  * is never evaluated and never says a word (PRD principle 8). A board drawn
- * before anybody added a boundary has no frame for the two boundary rules to be
- * about, and both are silent by construction.
+ * before anybody added a boundary has no frame for the five boundary rules to be
+ * about, and all five are silent by construction.
+ *
+ * A boundary drawn before the ROLE SPLIT carries the parent `c4:boundary` and no
+ * child, and the split is what makes the difference legible: the two rules framed
+ * on the parent reach it exactly as they always did, and the two framed on
+ * `c4:container-boundary` find no frame of their own on such a board and say
+ * nothing. An old document gains no finding it did not already have — see
+ * {@link componentLevelSkip}, which is the whole of that argument.
  *
  * ## Three questions this pack deliberately does NOT ask
  *
@@ -99,9 +134,12 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * - **levels mixed on one board.** A C4 diagram is drawn at ONE level —
  *   containers of a system, or components of a container, never both — and a
  *   board that mixes them is the commonest way a C4 diagram becomes unreadable.
- *   The board carries no level in v1 (D3): it is a titled card, and the title
- *   is free text. Nothing on the model says which of the four sheets this is,
- *   so nothing can say the sheet has been broken.
+ *   The BOARD carries no level: it is a titled card, and the title is free text,
+ *   so nothing on it says which of the four sheets this is and nothing can say
+ *   the sheet has been broken. The three zoom rules answer the neighbouring
+ *   question and only that one — they read the level off the BOUNDARY, which
+ *   does declare one, so they judge what is drawn inside a frame and stay silent
+ *   about a board whose author mixed levels without drawing one.
  * - **the technology of a container or a component.** The checklist asks for it
  *   ("Java/Spring", "React SPA", "PostgreSQL") and the notation draws it as a
  *   second line under the name. The blocker that used to be here is GONE — the
@@ -677,10 +715,42 @@ const databaseInitiates: ValidationRule = {
  * as the boundary round it. A component floating beside every boundary belongs
  * to nothing the diagram names, so the reader cannot say what it is inside.
  *
+ * ## Why it stays framed on the PARENT role, where it might have been retargeted
+ *
+ * The obvious move, once the boundary split in two, was to point this rule at
+ * `c4:container-boundary` — "a component belongs inside a CONTAINER boundary" —
+ * and be done in one rule. It is not taken, and the reason is old documents.
+ *
+ * `backgroundsOf` matches a frame by `roleIsA`, and a boundary stamped with the
+ * PARENT role is not a `c4:container-boundary`: descent runs from child to
+ * ancestor, never the other way. So on a diagram drawn before the split — every
+ * C4 board that exists today — a retargeted rule would find no frame of its own,
+ * and `element-in-background` answers a frameless board with silence. The rule
+ * would not fire wrongly; it would stop firing at all, and a check the user has
+ * had since the pack shipped would disappear from every document already drawn
+ * without anybody being told. (One board is worse than silent: draw a single new
+ * container boundary on an old diagram and every component sitting in the old
+ * frames becomes homeless at once.)
+ *
+ * So the requirement is split by what each half actually claims. THIS rule keeps
+ * the weaker, older claim — a component must be framed by SOMETHING — which is
+ * our drawing convention and reads the same on every document ever saved. The
+ * sharper claim, that the something must be a container, is C4's own model and is
+ * {@link componentLevelSkip}, framed on the child role and therefore silent on
+ * exactly the documents that never said which level their frames were at.
+ *
+ * The two compose, and the one seam worth stating: a component drawn outside
+ * EVERY boundary on a board that has a container boundary raises both — one
+ * saying it belongs to nothing, the other that no container claims it. That is
+ * redundant, not contradictory, and suppressing it would need a family that can
+ * ask "inside A but not inside B", which none of the eight expresses. Two
+ * remarks about one box is the honest price of the compatibility above.
+ *
  * ## Containment, and the silence around it
  *
- * The subject must be fully inside SOME element carrying `c4:boundary`, and the
- * rule is silent whenever there is none on the board at all — a component
+ * The subject must be fully inside SOME element carrying `c4:boundary` — the
+ * parent role, so both of its children and every pre-split boundary count — and
+ * the rule is silent whenever there is none on the board at all — a component
  * diagram sketched before anybody drew the container frame is a sketch, and so
  * is one drawn before the role existed. That silence is what keeps this from
  * being the rule that lights a whole board up on its first minute.
@@ -793,15 +863,232 @@ const personInBoundary: ValidationRule = {
   },
 };
 
+/* ── Zoom: is what is inside the frame at the frame's own level? ───────── */
+
 /**
- * The pack, whole: eleven rules, all registered, all live.
+ * The citation the three zoom rules share.
+ *
+ * One reference for one statement of C4's, read three ways — the same call
+ * {@link isolationRule} makes for the three isolation rules. Naming the
+ * abstractions rather than the review checklist is the honest half: the
+ * checklist never asks this question, and the model answers it before the
+ * checklist begins.
+ */
+const ZOOM_PROVENANCE = {
+  source: 'recommendation',
+  reference:
+    'C4 model — the core abstractions (c4model.com/abstractions): a software system is made up of containers, each of which contains components; the levels are zooms of one element',
+} as const;
+
+/**
+ * **C12** — a software system drawn inside a boundary.
+ *
+ * The first of the three zoom rules, and the widest: it is framed on the PARENT
+ * role, so ANY boundary counts — a system boundary, a container boundary, and a
+ * boundary drawn before either existed.
+ *
+ * ## What is wrong with the drawing
+ *
+ * A boundary already IS a system or a container: that is the whole of what the
+ * dashed rectangle says. So a software system drawn inside one is a claim the
+ * model has no room for — a system inside a system, or a system inside a
+ * container — and it is always one of two mistakes. Either the box is a
+ * CONTAINER the author drew with the system tool (the commonest, because the two
+ * are the same rounded rectangle in a different blue), or the zoom never
+ * happened: the author drew the frame for the next level down and then filled it
+ * with the level they were already on.
+ *
+ * Neither reading is a diagram the reader can follow, and no third reading makes
+ * it one — which is why the rule can be framed on the parent role without losing
+ * anything. Whichever level the boundary is at, a system does not go in it.
+ *
+ * ## Mechanics: `element-in-zone`, `expect: 'outside'`
+ *
+ * {@link personInBoundary}'s, exactly, and for its reasons:
+ * `element-in-background` has one polarity and no `expect` to turn round, while
+ * `element-in-zone` has the polarity and the boundary declares a single full-plot
+ * zone (`background.ts`) that IS the inside of the frame. The geometry comes from
+ * the declaration the renderer paints from, so a boundary that is moved or
+ * resized moves this rule with it.
+ *
+ * And the same two silences come with it: a system STRADDLING the dashed edge
+ * raises nothing (`element-in-zone` judges a subject only against the frame that
+ * CONTAINS it, and half in is not in), and a board with no boundary is silence
+ * twice over. Both are the drawing hand being left alone.
+ */
+const systemInBoundary: ValidationRule = {
+  id: 'c4.system-in-boundary',
+  framework: 'c4',
+  family: 'element-in-zone',
+  severity: 'audit',
+  appliesTo: C4_ROLE.system,
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.system-in-boundary',
+  messageFallback: 'This software system is drawn inside a boundary.',
+  suggestionKey: 'com.labre.c4.validation.system-in-boundary.suggestion',
+  suggestionFallback:
+    'A boundary already is a system or a container, so nothing inside it can be a system. If this box is one of the parts, draw it as a container; if it is the thing the boundary is about, move it out and let the frame carry its name.',
+  version: 1,
+  provenance: ZOOM_PROVENANCE,
+  // The PARENT role: any boundary, at any level, including one drawn before the
+  // level was written down. A system belongs inside none of them.
+  backgroundRole: C4_ROLE.boundary,
+  background: C4_BOUNDARY_BACKGROUND,
+  inZone: {
+    zoneIds: ['name'],
+    expect: 'outside',
+  },
+};
+
+/**
+ * **C13** — a container drawn inside a container boundary. The PO's zoom
+ * paradox, and the rule this whole slice exists for.
+ *
+ * A container boundary is the frame of a COMPONENT diagram: it says "this is one
+ * container, and here are its parts". A container drawn inside it is therefore
+ * either that container drawn inside itself, or a second container on a sheet
+ * that has zoomed past the level where containers live. Only components belong
+ * in there.
+ *
+ * ## The frame is the CHILD role, and that is the whole rule
+ *
+ * `c4:container-boundary`, never the parent. A container inside a SYSTEM boundary
+ * is the single most ordinary thing in C4 — it is what a container diagram IS —
+ * so a rule framed one role up would indict every correct container diagram ever
+ * drawn. The split exists to let this rule name the one frame it is about.
+ *
+ * A pre-split boundary carries the parent and matches no child, so this rule
+ * finds no frame on an old document and says nothing there. That is not a hole
+ * being papered over: such a boundary never said which level it was at, and
+ * guessing would mean indicting containers on the strength of a variant field
+ * this rule cannot see.
+ *
+ * ## The DATABASE comes free
+ *
+ * `appliesTo: c4:container` reaches `c4:database` through `roleIsA`, and reaches
+ * the mobile app and the single-page app without even that — they carry
+ * `c4:container` outright (`roles.ts`). A data store drawn inside a container
+ * boundary is the same paradox with a cylinder.
+ */
+const containerInContainerBoundary: ValidationRule = {
+  id: 'c4.container-in-container-boundary',
+  framework: 'c4',
+  family: 'element-in-zone',
+  severity: 'audit',
+  appliesTo: C4_ROLE.container,
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.container-in-container-boundary',
+  messageFallback: 'This container is drawn inside a container boundary.',
+  suggestionKey:
+    'com.labre.c4.validation.container-in-container-boundary.suggestion',
+  suggestionFallback:
+    'A container boundary IS that container, and what goes inside it is its components. Draw this box as a component — or, if the sheet is really about the containers of a system, make the frame a system boundary.',
+  version: 1,
+  provenance: ZOOM_PROVENANCE,
+  // The CHILD role, and it has to be: a container inside a SYSTEM boundary is
+  // what a container diagram is made of.
+  backgroundRole: C4_ROLE['container-boundary'],
+  background: C4_BOUNDARY_BACKGROUND,
+  inZone: {
+    zoneIds: ['name'],
+    expect: 'outside',
+  },
+};
+
+/**
+ * **C14** — a component framed by a system boundary and by no container.
+ *
+ * The sharp half of {@link homelessComponent} — read that rule's comment first,
+ * it carries the argument for why this is a second rule and not a retarget of the
+ * first — and the third zoom rule.
+ *
+ * A component is a part of a CONTAINER. The frame that says which container is a
+ * container boundary, so a component framed only by a system boundary has skipped
+ * the level the model puts between them: the sheet is a container diagram with
+ * components drawn on it, and the reader cannot say which container any of them
+ * belongs to. The zoom went from system straight to component.
+ *
+ * ## Why `element-in-background` and not the zone family the other two use
+ *
+ * Because the honest question is a POSITIVE one — "is a container claiming this
+ * component?" — and the negative reading is not equivalent on this canvas. A
+ * container boundary is normally drawn INSIDE a system boundary, so "the
+ * component is inside a system boundary" is true of every conformant component
+ * diagram that also draws the system frame, and `element-in-zone` judges a
+ * subject against whichever frame contains it with no notion of a nearer one.
+ * The rule would fire on the correct drawing.
+ *
+ * `element-in-background` asks the positive question directly: a component not
+ * contained by ANY `c4:container-boundary` is in violation, and a component
+ * nested in one is silent however many other frames are drawn round it.
+ *
+ * ## What it stays silent about, which is exactly the compatibility promise
+ *
+ * A board with no container boundary at all — including every board drawn before
+ * the role split, whose boundaries all carry the parent role — has no frame of
+ * this rule's for anything to be inside or outside of, and
+ * `element-in-background` answers that with silence. An old document therefore
+ * gains NOTHING from this rule, and {@link homelessComponent} keeps saying on it
+ * precisely what it said before.
+ *
+ * The same silence covers the honest sketch: a component diagram whose author has
+ * not drawn the container frame yet is a sketch, which is the reading
+ * {@link homelessComponent} already documents and the one that keeps this from
+ * being the rule that lights up a board in its first minute.
+ *
+ * ## The KNOWN LIMIT, which is the other face of that silence
+ *
+ * A sheet with a system boundary, components drawn inside it and NO container
+ * boundary anywhere raises nothing — and that is the level skip that is easiest
+ * to draw. The rule cannot see it, because the only frame it could read is the
+ * one nobody drew.
+ *
+ * Closing it here would mean asking the opposite question — "is this component
+ * inside a SYSTEM boundary?" — and that question indicts the CONFORMANT drawing:
+ * a container boundary is normally drawn inside a system boundary, so a
+ * component correctly nested in the container frame is inside the system frame
+ * too, and `element-in-zone` judges it against whichever frame contains it with
+ * no notion of a nearer one. A rule that fires on the right diagram is worse than
+ * one that misses a wrong one.
+ *
+ * What can see it is a BOARD that declares which of the four levels it is
+ * drawing: on a component diagram a system boundary is out of place whatever is
+ * inside it, and the level is then read off the sheet rather than guessed from
+ * what happens to be drawn on it. That is the next slice's question (the board
+ * `level`), and this limit is the honest reason it is worth asking.
+ */
+const componentLevelSkip: ValidationRule = {
+  id: 'c4.component-level-skip',
+  framework: 'c4',
+  family: 'element-in-background',
+  severity: 'audit',
+  appliesTo: C4_ROLE.component,
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.component-level-skip',
+  messageFallback: 'No container boundary claims this component.',
+  suggestionKey: 'com.labre.c4.validation.component-level-skip.suggestion',
+  suggestionFallback:
+    'A component is a part of one container, and a system boundary is not a container: as drawn, the sheet jumps from the system to its components and the reader cannot tell which container this is in. Draw the container boundary round the parts that belong to it.',
+  version: 1,
+  provenance: ZOOM_PROVENANCE,
+  // The CHILD role: the frame that names a container, and the only one that can
+  // answer this question. No `background` declaration — `element-in-background`
+  // measures against the element BOX and reads no margin.
+  backgroundRole: C4_ROLE['container-boundary'],
+};
+
+/**
+ * The pack, whole: fourteen rules, all registered, all live.
  *
  * Four families, and no more than four are needed — C4 has one connecting
  * object, four flat levels and two frames, so there is no swimlane question, no
- * graph traversal and no cardinality per frame to ask about.
+ * graph traversal and no cardinality per frame to ask about. The three zoom
+ * rules added nothing to that list: they are two more `element-in-zone` rules
+ * and one more `element-in-background` rule, because the split that made them
+ * askable happened in the role VOCABULARY and not in the engine.
  *
- * Eleven and not ten because the grammar and the self-loop are two rules (see
- * {@link relationshipSelfLoop}); eleven and not fourteen because the four
+ * Fourteen and not thirteen because the grammar and the self-loop are two rules
+ * (see {@link relationshipSelfLoop}); fourteen and not seventeen because the four
  * per-level naming rules collapsed into {@link unnamedElement} the moment an
  * element's name became one text role instead of four shapes' inner text.
  */
@@ -821,4 +1108,8 @@ export const C4_RULES: readonly ValidationRule[] = [
   // Membership: which frame does the element belong to?
   homelessComponent,
   personInBoundary,
+  // Zoom: is what is inside the frame at the frame's own level?
+  systemInBoundary,
+  containerInContainerBoundary,
+  componentLevelSkip,
 ];
