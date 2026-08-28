@@ -28,11 +28,21 @@ import type { C4BoardLevel } from '@labre/affine-model';
  * a board on Free sketch is byte-identical to every C4 board drawn before this
  * existed.
  *
- * ## `code` is missing on purpose
+ * ## All four C's are offered, `code` included
  *
- * C4's fourth level is the one its own author says to skip unless the picture is
- * generated from the source, and this editor draws none of it. Offering it would
- * be offering a sheet nothing in the pack can draw or judge.
+ * C4 is named after Context, Containers, Components and Code, and the picker
+ * says all four. The fourth is the one C4's own author tells you to skip unless
+ * the picture is generated from the source, and this editor draws no code-level
+ * artefact — but that is a fact about the TOOLING, not about what a sheet may
+ * declare. An architect keeping a board for the class diagram they paste in from
+ * elsewhere is entitled to say what it is, and a picker that refused would be
+ * presenting our limitation as the notation's.
+ *
+ * Two of the four are judged by no rule at all — `component` and `code` — and
+ * `rules.ts` says why: a component diagram legitimately shows everything C4
+ * names, and nothing in the pack knows what a code diagram admits. Both are
+ * declarations the tool records and does not check, which is a perfectly honest
+ * thing for a declaration to be.
  */
 export interface C4BoardLevelOption {
   /**
@@ -50,8 +60,8 @@ export interface C4BoardLevelOption {
 const levelKey = (name: string) => `com.labre.c4.level.${name}`;
 
 /**
- * The picker, whole: its own heading and its four entries, in the order a
- * reader zooms — no level, then out to in.
+ * The picker, whole: its own heading and its five entries, in the order a
+ * reader zooms — no level, then the four C's from out to in.
  *
  * One object rather than a loose array plus a stray heading constant, because
  * the manifest walks DECLARATIONS: `c4TranslationEntries` hands this value to
@@ -86,6 +96,14 @@ export const C4_BOARD_LEVEL_MENU: {
       level: 'component',
       labelKey: levelKey('component'),
       labelFallback: 'Component',
+    },
+    {
+      // The fourth C. Recorded, exported and readable; judged by no rule — see
+      // the header, and `rules.ts` on why an empty forbidden list is data that
+      // can never fire.
+      level: 'code',
+      labelKey: levelKey('code'),
+      labelFallback: 'Code',
     },
   ],
 };

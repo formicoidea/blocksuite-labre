@@ -17,10 +17,11 @@ boundary full of components with no container boundary anywhere — was invisibl
 to the whole pack, as `c4.component-level-skip` documented at length.
 
 A C4 board now carries an optional **level**, set from a small dropdown on the
-selected board: Free sketch (the default), Context, Container or Component. It
-is a declared fact sitting beside the title, not a rename — the author keeps
-whatever words they wrote — and choosing Free sketch clears it again, so a board
-that never states one is byte-identical to every C4 board drawn before today.
+selected board: Free sketch (the default), then the four C's the notation is
+named after — Context, Containers, Components, Code. It is a declared fact
+sitting beside the title, not a rename — the author keeps whatever words they
+wrote — and choosing Free sketch clears it again, so a board that never states
+one is byte-identical to every C4 board drawn before today.
 
 Two rules read it, citing C4's diagram types:
 
@@ -32,10 +33,13 @@ Two rules read it, citing C4's diagram types:
 
 Persons, systems, the containers themselves and the system boundary stay legal
 throughout: C4 draws its neighbours at every level, and the rules refuse only
-what the notation actually refuses. The component level declares nothing at all,
-because a component diagram legitimately shows all of it. Both rules are remarks
-on Sketch and warnings once the board is set to Review checklist, which now
-promotes eleven of the sixteen rules — and a board that declares no level is
+what the notation actually refuses. Two of the four levels declare no rule at
+all — a component diagram legitimately shows everything C4 names, and a code
+diagram is a level this pack cannot yet speak about, since the editor draws no
+code-level artefact. Both are still an author's to declare: what a sheet may say
+about itself is the notation's business, not this editor's. Both rules are
+remarks on Sketch and warnings once the board is set to Review checklist, which
+now promotes eleven of the sixteen rules — and a board that declares no level is
 silent under both, so no diagram already drawn gains a finding.
 
 Under it, the engine gains a generic **`view-admissibility`** family: a rule

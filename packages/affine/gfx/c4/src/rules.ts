@@ -1272,24 +1272,32 @@ const containerDiagramLevel: ValidationRule = {
 };
 
 /**
- * ## And the third level, which declares no rule at all
+ * ## And the two levels that declare no rule at all
  *
- * `component` is a level the picker offers, the board can carry and NOTHING in
- * this pack judges — deliberately, and it is worth saying why rather than
- * leaving a reader to notice the gap.
+ * C4 is named after its four C's — Context, Containers, Components, Code — and
+ * the picker offers all four (`levels.ts`). Two of them are levels a board can
+ * carry and NOTHING in this pack judges, deliberately, and it is worth saying
+ * why rather than leaving a reader to notice the gap.
  *
- * A component diagram shows one container's components, and around them it
- * legitimately shows the containers they talk to, the systems behind those, and
- * the people at the top of the chain — C4 draws the neighbours at every level.
- * The frame it is defined by is a container boundary, which is therefore legal
- * too, and a system boundary drawn round that is the ordinary nesting. That
- * leaves no role a component diagram refuses.
+ * **`component`** — a component diagram shows one container's components, and
+ * around them it legitimately shows the containers they talk to, the systems
+ * behind those, and the people at the top of the chain: C4 draws the neighbours
+ * at every level. The frame it is defined by is a container boundary, which is
+ * therefore legal too, and a system boundary drawn round that is the ordinary
+ * nesting. That leaves no role a component diagram refuses.
  *
- * A rule declared for it would be an empty `forbidden` list — data that can
+ * **`code`** — for the opposite reason. Not "nothing is forbidden" but "we know
+ * nothing yet": the editor draws no code-level artefact, so the pack has no
+ * vocabulary in which to say what such a sheet admits or refuses. The
+ * declaration is still the author's to make — that is a decision about the
+ * NOTATION's vocabulary, not about our tooling (`C4BoardLevel` says so at
+ * length) — and the tool records it without pretending to check it.
+ *
+ * A rule declared for either would be an empty `forbidden` list — data that can
  * never fire, which this file already calls the worst thing declarative data can
- * do. So there is no third rule, and `{@link ViewAdmissibilityDef}` is built to
- * make that the natural outcome: a level absent from the table is a level the
- * rule has nothing to say about, and the engine walks nothing for it.
+ * do. So there are two rules and not four, and {@link ViewAdmissibilityDef} is
+ * built to make that the natural outcome: a level absent from the table is a
+ * level the rule has nothing to say about, and the engine walks nothing for it.
  */
 
 /**
@@ -1312,8 +1320,9 @@ const containerDiagramLevel: ValidationRule = {
  * (see {@link relationshipSelfLoop}); sixteen and not nineteen because the four
  * per-level naming rules collapsed into {@link unnamedElement} the moment an
  * element's name became one text role instead of four shapes' inner text; and
- * sixteen and not seventeen because the component level forbids nothing (see
- * above).
+ * sixteen and not eighteen because two of the four levels a board can declare
+ * are judged by nothing — `component` forbids nothing and `code` is a level this
+ * pack cannot yet speak about (see above).
  */
 export const C4_RULES: readonly ValidationRule[] = [
   // Naming: does the drawing say anything at all?

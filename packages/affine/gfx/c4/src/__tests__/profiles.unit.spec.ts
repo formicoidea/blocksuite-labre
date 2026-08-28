@@ -186,13 +186,13 @@ describe('what a host has to be able to translate', () => {
 
   it('names every word the level picker can put on screen', () => {
     // Derived from the declaration, like everything else here: `levels.ts` is
-    // one object, `translations.ts` walks it, and a fifth entry would arrive in
+    // one object, `translations.ts` walks it, and a sixth entry would arrive in
     // a host's catalogue with no further work.
     const byKey = new Map(
       c4TranslationEntries.map(entry => [entry.key, entry])
     );
     expect(byKey.get(C4_BOARD_LEVEL_MENU.labelKey)?.fallback).toBe('Level');
-    expect(C4_BOARD_LEVEL_MENU.options).toHaveLength(4);
+    expect(C4_BOARD_LEVEL_MENU.options).toHaveLength(5);
     for (const option of C4_BOARD_LEVEL_MENU.options) {
       expect(option.labelKey, option.labelKey).toMatch(
         /^com\.labre\.c4\.level\./
@@ -201,12 +201,40 @@ describe('what a host has to be able to translate', () => {
         option.labelFallback
       );
     }
-    // The default is the first entry a user reads, and it writes NOTHING.
+  });
+
+  /**
+   * C4 is named after its four C's, and the picker says all four.
+   *
+   * The PO's red-zone call on #178: what the EDITOR can draw is a fact about the
+   * TOOLING, and what a SHEET may declare is a fact about the notation. `code`
+   * is offered even though nothing draws a code-level artefact and no rule
+   * judges one — an author keeping a board for a class diagram pasted in from
+   * elsewhere is entitled to say what it is, and a picker that refused would be
+   * presenting our limitation as C4's.
+   */
+  it('offers the four C’s, and the free sketch that writes nothing', () => {
     expect(C4_BOARD_LEVEL_MENU.options.map(option => option.level)).toEqual([
+      // The default, the first entry a user reads, and the one that CLEARS the
+      // field rather than writing a fifth value.
       undefined,
       'context',
       'container',
       'component',
+      'code',
     ]);
+    // One entry per level, and no two reading alike: a picker with two entries
+    // saying the same thing is a picker that decides nothing.
+    const words = C4_BOARD_LEVEL_MENU.options.map(
+      option => option.labelFallback
+    );
+    expect(words).toEqual([
+      'Free sketch',
+      'Context',
+      'Container',
+      'Component',
+      'Code',
+    ]);
+    expect(new Set(words).size).toBe(words.length);
   });
 });

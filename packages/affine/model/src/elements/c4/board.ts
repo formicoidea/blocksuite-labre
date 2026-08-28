@@ -8,14 +8,38 @@ import { FrameworkBackgroundElementModel } from '../framework-background/index.j
  * Which of C4's levels this board draws — the DECLARED fact, as opposed to the
  * title, which is free text and says whatever its author wants it to.
  *
- * Three values and not four: `code` is the level C4 itself says to skip unless
- * the diagram is generated from the source, and this editor draws none of it.
+ * **Four values, for the four C's the notation is named after**: Context,
+ * Containers, Components, Code. The vocabulary is the model's, so it says all
+ * of it.
  *
- * A board that states one is a board a rule can judge — "a container has no
+ * ## Why `code` is here although nothing draws it
+ *
+ * Because the two questions are not the same one. What the EDITOR can draw is a
+ * fact about this tooling — there are no code-level artefacts in the pack today,
+ * and C4 itself says to skip that diagram unless it is generated from the source
+ * — while what a SHEET may declare is a fact about the author's intent. A board
+ * an architect keeps for the class diagram they paste in from elsewhere is a
+ * code-level board, and a vocabulary that refused to let them say so would be
+ * this editor's limitation dressed up as the notation's.
+ *
+ * So the declaration is the author's to make, and no rule judges it: nothing in
+ * the pack knows what a code diagram admits, and a rule with nothing to forbid
+ * is data that can never fire (`rules.ts` says this at length, about `component`
+ * and `code` together). The level is recorded, exported and readable; it is
+ * simply not yet checked.
+ *
+ * ## Widening this union is additive
+ *
+ * A value added here is a value older clients have never seen, and they read it
+ * back as the string it is — the same promise `C4NodeKind` and
+ * `C4BoundaryVariant` make. No document is rewritten, no migration is owed, and
+ * a rule that does not name a level evaluates nothing on a board carrying it.
+ *
+ * A board that states a level is a board a rule can judge — "a container has no
  * place on a context diagram" — where a board that states nothing is a free
  * sketch, which is what every C4 diagram ever drawn in this editor is.
  */
-export type C4BoardLevel = 'context' | 'container' | 'component';
+export type C4BoardLevel = 'context' | 'container' | 'component' | 'code';
 
 export type C4BoardProps = FrameworkBackgroundProps & {
   /** The diagram title, written top-left — edited inline on dblclick. */

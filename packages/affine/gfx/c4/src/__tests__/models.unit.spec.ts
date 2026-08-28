@@ -168,8 +168,14 @@ describe('the C4 element models', () => {
     expect(board.level).toBeUndefined();
     expect(stored(board).has('level')).toBe(false);
 
-    stored(board).set('level', 'container');
-    expect(board.level).toBe('container');
+    // Each of the four C's reads straight back off what a document carries —
+    // `code` included, which nothing draws and no rule judges: what a SHEET may
+    // declare is the notation's business, not this editor's (PO, red-zone
+    // review of #178).
+    for (const level of ['context', 'container', 'component', 'code']) {
+      stored(board).set('level', level);
+      expect(board.level, level).toBe(level);
+    }
 
     // No `levelOrDefault`, deliberately — the absence is a value, and reading
     // one would hand every diagram already on disk a level nobody chose.

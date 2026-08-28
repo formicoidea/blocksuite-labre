@@ -7,6 +7,7 @@ import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
+import { C4_BOARD_LEVEL_MENU } from '../levels';
 import { C4_PROFILES } from '../profiles';
 import { C4_ROLE } from '../roles';
 // Namespace import: one of the pins below is about what this module does NOT
@@ -274,18 +275,53 @@ describe('what the framework ships', () => {
     expect(forbiddenAt(CONTAINER_DIAGRAM_LEVEL, 'container')).toEqual(
       [C4_ROLE.component, C4_ROLE['container-boundary']].sort()
     );
-    // …and the third level declares NOTHING. A component diagram legitimately
-    // shows persons, containers, components and both frames, so a rule for it
-    // would be an empty list — data that can never fire.
+    // …and TWO of the four C's declare nothing, for two different reasons. A
+    // component diagram legitimately shows persons, containers, components and
+    // both frames, so it forbids nothing; a code diagram is a level this pack
+    // cannot yet speak about at all. Either rule would be an empty list — data
+    // that can never fire.
+    const judged = new Set<string>();
     for (const rule of C4_RULES) {
       const forbidden = rule.admissibility?.forbidden;
       if (forbidden === undefined) continue;
-      expect(Object.keys(forbidden), rule.id).not.toContain('component');
       // Every declared level says something, or it would not be declared.
       for (const [level, roles] of Object.entries(forbidden)) {
         expect(roles.length, `${rule.id} · ${level}`).toBeGreaterThan(0);
+        judged.add(level);
       }
     }
+    expect([...judged].sort()).toEqual(['container', 'context']);
+  });
+
+  /**
+   * The picker's vocabulary and the rules' tables, confronted — the PO's
+   * red-zone call on #178, pinned where it can be read.
+   *
+   * C4 is named after its four C's and the picker offers all four; the rules
+   * judge two of them. The two lists are therefore NOT the same list, and that
+   * is the point: what the editor can draw is a fact about the tooling, what a
+   * sheet may declare is a fact about the notation, and a level nothing judges
+   * is still a level an author may state.
+   */
+  it('judges two of the four levels a board can declare', () => {
+    // The free-sketch entry carries no level, so it drops out: what is left is
+    // the notation's own vocabulary, which is what a rule keys on.
+    const offered = C4_BOARD_LEVEL_MENU.options
+      .filter(option => option.level !== undefined)
+      .map(option => String(option.level));
+    expect(offered).toEqual(['context', 'container', 'component', 'code']);
+
+    const judged = new Set(
+      C4_RULES.flatMap(rule => Object.keys(rule.admissibility?.forbidden ?? {}))
+    );
+    // Every level a rule names is a level the picker offers — a rule keyed on a
+    // value nobody can choose would never fire and never say why.
+    for (const level of judged) expect(offered, level).toContain(level);
+    // …and the two it does not name are the two documented as unjudged.
+    expect(offered.filter(level => !judged.has(level))).toEqual([
+      'component',
+      'code',
+    ]);
   });
 
   it('namespaces every rule and holds no prose in the engine', () => {
@@ -1493,16 +1529,50 @@ describe('a board that declares NO level', () => {
         LEVEL_RULES.includes(violation.ruleId)
       )
     ).toEqual([]);
-    // …and `component`, which the picker offers and no rule declares.
-    expect(
-      evaluate([
-        boardAt('component'),
-        containerBoundary('bd'),
-        component('k', 300, 300),
-        container('c', 900, 200),
-        person('p', 1100, 600),
-      ]).filter(violation => LEVEL_RULES.includes(violation.ruleId))
-    ).toEqual([]);
+  });
+
+  /**
+   * The two levels the picker offers and no rule judges.
+   *
+   * `component` forbids nothing — a component diagram legitimately shows all of
+   * it — and `code` is a level this pack cannot yet speak about, offered because
+   * C4 is named after its four C's and what a sheet may DECLARE is not limited
+   * by what this editor can DRAW (PO, red-zone review of #178).
+   *
+   * The same board, drawn every way the pack knows how, is silent under both.
+   */
+  it('says nothing at the two levels no rule declares', () => {
+    const busy = () => [
+      systemBoundary('bd-sys', 100, 100),
+      element('bd-cnt', [160, 340, 440, 300], C4_ROLE['container-boundary'], {
+        text: 'API Application',
+      }),
+      component('k', 300, 400),
+      container('c', 900, 200),
+      database('d', 900, 450),
+      person('p', 1150, 600),
+      system('s', 1150, 100),
+    ];
+
+    for (const level of ['component', 'code']) {
+      expect(
+        evaluate([boardAt(level), ...busy()]).filter(violation =>
+          LEVEL_RULES.includes(violation.ruleId)
+        ),
+        level
+      ).toEqual([]);
+    }
+    // …and the very same board DOES light up at the two levels that are judged,
+    // so the silences above are the rules declining to speak rather than a
+    // fixture nothing could ever indict.
+    for (const level of ['context', 'container']) {
+      expect(
+        evaluate([boardAt(level), ...busy()]).filter(violation =>
+          LEVEL_RULES.includes(violation.ruleId)
+        ).length,
+        level
+      ).toBeGreaterThan(0);
+    }
   });
 });
 
