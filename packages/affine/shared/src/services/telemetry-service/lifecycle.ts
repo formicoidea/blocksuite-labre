@@ -46,6 +46,7 @@ export interface FrameworkElementEvent extends TelemetryEvent {
     | 'edgy'
     | 'cynefin'
     | 'bpmn'
+    | 'c4'
     | 'event-storming'
     | 'core-domain'
     | 'context-map';

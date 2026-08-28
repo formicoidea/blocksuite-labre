@@ -34,6 +34,10 @@ import {
   BrushRenderViewExtension,
   BrushViewExtension,
 } from '@labre/affine-gfx-brush/view';
+import {
+  C4RenderViewExtension,
+  C4ViewExtension,
+} from '@labre/affine-gfx-c4/view';
 import { ConnectorViewExtension } from '@labre/affine-gfx-connector/view';
 import {
   CynefinEstuarineRenderViewExtension,
@@ -154,6 +158,8 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('cynefin-estuarine') ? [CynefinEstuarineViewExtension] : []),
     BpmnRenderViewExtension,
     ...(on('bpmn') ? [BpmnViewExtension] : []),
+    C4RenderViewExtension,
+    ...(on('c4') ? [C4ViewExtension] : []),
     DddCoreDomainRenderViewExtension,
     DddContextMapRenderViewExtension,
     DddEventStormingRenderViewExtension,

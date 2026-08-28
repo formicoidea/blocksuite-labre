@@ -375,7 +375,22 @@ export interface BackgroundWashDef {
 
 export interface BackgroundSurfaceDef {
   fill?: BackgroundColor;
-  border?: { color: BackgroundColor; width: number; radius?: number };
+  /**
+   * The frame round the card. `dash` is a pattern in model units, exactly as
+   * {@link BackgroundStroke.dash} is; absent — which is what every declaration
+   * written before it existed says — draws the solid line it always drew.
+   *
+   * Named consumer: the C4 boundary, which the notation draws as a DASHED
+   * rectangle round a group of elements. A dash is what tells a boundary from a
+   * board on that canvas, so it belongs where the rest of the frame is declared
+   * rather than in a renderer wrapper only one framework would ever have.
+   */
+  border?: {
+    color: BackgroundColor;
+    width: number;
+    radius?: number;
+    dash?: readonly number[];
+  };
 }
 
 /**

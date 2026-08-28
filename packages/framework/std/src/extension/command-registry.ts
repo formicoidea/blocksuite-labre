@@ -33,7 +33,7 @@ export type ElementCreationSource =
   | 'manually save';
 
 /**
- * The seven framework modules that own commands. An EXPLICIT list, not a
+ * The eight framework modules that own commands. An EXPLICIT list, not a
  * subset assertion over `OPTIONAL_BLOCKS`: that list mixes frameworks with
  * plain blocks. `packages/affine/all/src/frameworks.ts` asserts that every id
  * here is a real flag key (`satisfies readonly OptionalBlock[]`).
@@ -46,6 +46,7 @@ export const FRAMEWORK_IDS = [
   'edgy',
   'cynefin-estuarine',
   'bpmn',
+  'c4',
   'ddd-event-storming',
   'ddd-core-domain',
   'ddd-context-map',
