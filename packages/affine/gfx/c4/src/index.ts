@@ -14,6 +14,10 @@ export {
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
 } from './consts.js';
+// The middle tier of an element's label, DERIVED from its kind: `[Person]`,
+// `[Container: Java]`. Pure and total over the nine kinds, so a host, a rule or
+// a reading can name an element exactly as the canvas does.
+export { C4_TYPE_WORD, c4TypeLine } from './type-line.js';
 export {
   C4_ROLE,
   C4_ROLE_OF_KIND,

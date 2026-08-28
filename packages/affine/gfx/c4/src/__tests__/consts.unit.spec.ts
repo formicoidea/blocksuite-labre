@@ -1,7 +1,20 @@
 import type { C4NodeKind } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
-import { BOUNDARY_LABEL, NODE_LABEL, NODE_PALETTE, NODE_SIZE } from '../consts';
+import {
+  BOUNDARY_LABEL,
+  DESCRIPTION_FONT_SIZE,
+  INNER_FONT_SIZE,
+  NODE_BOX,
+  NODE_LABEL,
+  NODE_PALETTE,
+  NODE_RADIUS,
+  NODE_SIZE,
+  PERSON_BODY_TOP,
+  PERSON_BOX,
+  TYPE_FONT_SIZE,
+} from '../consts';
+import { C4_TYPE_WORD, c4TypeLine } from '../type-line';
 
 /**
  * The per-kind tables.
@@ -38,9 +51,65 @@ describe('the C4 per-kind tables', () => {
       const { w, h } = NODE_SIZE[kind];
       expect(w, kind).toBeGreaterThan(0);
       expect(h, kind).toBeGreaterThan(0);
-      // Wide and squat: a C4 box holds a name, a technology and a sentence.
-      expect(h, kind).toBeLessThanOrEqual(w);
     }
+  });
+
+  /**
+   * The reference stencil repeats ONE `v:textRect` — `106.3 × 74.409` — on the
+   * system, the container, the component, the database, the phone and the
+   * browser window. Seven of the nine kinds are that box at ×2, which is what
+   * lets a row of C4 elements line up without anybody arranging them.
+   */
+  it('gives seven of the nine kinds the stencil’s one footprint', () => {
+    for (const kind of ALL_KINDS) {
+      if (kind === 'person' || kind === 'person-ext') continue;
+      expect(NODE_SIZE[kind], kind).toEqual(NODE_BOX);
+      // Wide and squat: a C4 box holds a name, a technology and a sentence.
+      expect(NODE_BOX.h).toBeLessThan(NODE_BOX.w);
+    }
+  });
+
+  /**
+   * …and the two people are the stencil's OWN exception, not a preference.
+   *
+   * Their silhouette is one path whose head arc is drawn about a centre above
+   * the body's top edge, so the head stands clear of a body that is itself the
+   * standard height — 122.18 in total against 74.409. The stencil's sheet shows
+   * it: the person's group is translated further down the page to make room.
+   */
+  it('gives the person the taller box its head needs', () => {
+    for (const kind of ['person', 'person-ext'] as const) {
+      expect(NODE_SIZE[kind], kind).toEqual(PERSON_BOX);
+    }
+    expect(PERSON_BOX.w).toBe(NODE_BOX.w);
+    expect(PERSON_BOX.h).toBeGreaterThan(NODE_BOX.h);
+    // The body under the head is the standard box exactly.
+    expect(PERSON_BOX.h * (1 - PERSON_BODY_TOP)).toBeCloseTo(NODE_BOX.h, 0);
+  });
+
+  /**
+   * The stencil rounds two kinds and no others: `rx="4.252"` on the phone,
+   * `rx="1.4173"` on the browser window, and a plain `<rect>` with no `rx` at
+   * all on every boxed level. The glyph-bodied kinds carry zero because their
+   * native rect paints nothing.
+   */
+  it('rounds only the two devices, as the stencil does', () => {
+    expect(Object.keys(NODE_RADIUS).sort()).toEqual([...ALL_KINDS].sort());
+    expect(NODE_RADIUS.mobile).toBeGreaterThan(NODE_RADIUS.browser);
+    expect(NODE_RADIUS.browser).toBeGreaterThan(0);
+    for (const kind of ALL_KINDS) {
+      if (kind === 'mobile' || kind === 'browser') continue;
+      expect(NODE_RADIUS[kind], kind).toBe(0);
+    }
+  });
+
+  /**
+   * The three tiers get smaller as they get more detailed — the stencil's 10 / 6
+   * / 8, which is the one ordering that keeps a name reading as the name.
+   */
+  it('sizes the three text tiers as the stencil does', () => {
+    expect(INNER_FONT_SIZE).toBeGreaterThan(DESCRIPTION_FONT_SIZE);
+    expect(DESCRIPTION_FONT_SIZE).toBeGreaterThan(TYPE_FONT_SIZE);
   });
 
   it('gives every kind words to start from', () => {
@@ -81,5 +150,70 @@ describe('the C4 per-kind tables', () => {
     for (const words of Object.values(BOUNDARY_LABEL)) {
       expect(words).toBeTruthy();
     }
+  });
+});
+
+/**
+ * The derived middle tier — the line the reader actually uses to tell a
+ * container from a component when both are the same rectangle.
+ *
+ * A total table over the nine kinds, because the wording is the notation and
+ * two of the entries look like mistakes until you check the stencil: a
+ * `database` says **Container**, and an external element says the same word as
+ * the kind it is external to.
+ */
+describe('the derived type line', () => {
+  const WITHOUT: Record<C4NodeKind, string> = {
+    person: '[Person]',
+    'person-ext': '[Person]',
+    system: '[Software System]',
+    'system-ext': '[Software System]',
+    container: '[Container]',
+    database: '[Container]',
+    mobile: '[Container]',
+    browser: '[Container]',
+    component: '[Component]',
+  };
+
+  it('says what the stencil says, for every one of the nine kinds', () => {
+    expect(Object.keys(C4_TYPE_WORD).sort()).toEqual([...ALL_KINDS].sort());
+    for (const kind of ALL_KINDS) {
+      expect(c4TypeLine(kind), kind).toBe(WITHOUT[kind]);
+    }
+  });
+
+  it('labels the cylinder a Container, exactly as the stencil’s desc does', () => {
+    // `[Container: technology]`, not `[Database: …]`. A database is a container
+    // and the cylinder is a picture of one, not a fourth level. (The mermaid
+    // export still emits `ContainerDb` — a different question, in a different
+    // grammar.)
+    expect(c4TypeLine('database', 'PostgreSQL')).toBe(
+      '[Container: PostgreSQL]'
+    );
+  });
+
+  it('greys an external element without renaming it', () => {
+    expect(c4TypeLine('person-ext')).toBe(c4TypeLine('person'));
+    expect(c4TypeLine('system-ext')).toBe(c4TypeLine('system'));
+  });
+
+  it('appends the technology only when the author actually set one', () => {
+    expect(c4TypeLine('container', 'Java')).toBe('[Container: Java]');
+    expect(c4TypeLine('component', 'Spring MVC')).toBe(
+      '[Component: Spring MVC]'
+    );
+    // Absent, empty and blank are the same statement — no technology — and none
+    // of them may produce a dangling `[Container: ]`.
+    for (const nothing of [undefined, '', '   ', '\n\t']) {
+      expect(c4TypeLine('container', nothing), JSON.stringify(nothing)).toBe(
+        '[Container]'
+      );
+    }
+  });
+
+  it('keeps the line one line', () => {
+    expect(c4TypeLine('container', '  Spring   Boot \n 3 ')).toBe(
+      '[Container: Spring Boot 3]'
+    );
   });
 });

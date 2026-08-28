@@ -1,7 +1,10 @@
 import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
 import {
+  backgroundInVariant,
   backgroundLabelHits,
+  backgroundLabelText,
   backgroundSize,
+  backgroundTexts,
   hitTestBackgroundLabel,
 } from '@labre/affine-block-surface';
 import { describe, expect, it } from 'vitest';
@@ -162,7 +165,7 @@ describe('the C4 boundary', () => {
     expect(rec.fills).toEqual([]);
     expect(rec.rects).toEqual([]);
 
-    expect(rec.strokes).toEqual(['#6b6b6b']);
+    expect(rec.strokes).toEqual(['#444444']);
     // The dash IS the distinction between a boundary and a board.
     expect(rec.dashes).toEqual([[...BOUNDARY_DASH]]);
   });
@@ -178,15 +181,59 @@ describe('the C4 boundary', () => {
     // of a frame least likely to have an element sitting in it.
     expect(name.y).toBeLessThan(H - margin.bottom);
     expect(name.y).toBeGreaterThan(H / 2);
-    expect(name.color).toBe('#4a4a4a');
+    // Black, and a size larger than the pack's first pass: the stencil's own
+    // `.st8`, which is what it takes to read a boundary's name over the diagram
+    // the frame is drawn on top of.
+    expect(name.color).toBe('#000000');
   });
 
   it('is the boundary role, and the c4Boundary element type', () => {
     expect(C4_BOUNDARY_BACKGROUND.type).toBe('c4Boundary');
     expect(C4_BOUNDARY_BACKGROUND.role).toBe(C4_ROLE.boundary);
-    // No `variantProp`: `variant` is optional on the element, an unstated one
-    // matches no variant, and a variant-gated label would paint NOTHING on a
-    // boundary that never states its level. See the declaration's own note.
-    expect(C4_BOUNDARY_BACKGROUND.variantProp).toBeUndefined();
+  });
+
+  /**
+   * The bracket line the stencil writes under a boundary's name.
+   *
+   * The gate is the DERIVED `variantOrDefault`, never the optional `variant`
+   * itself: an unstated one stringifies to `"undefined"` and would match no
+   * variant, so a boundary already on disk — which stored nothing — would get no
+   * line at all. Which is the trap this declaration used to route round by
+   * declaring no `variantProp`; the getter removes it instead.
+   */
+  it('writes the level under the name, and reads a stored one as a system', () => {
+    expect(C4_BOUNDARY_BACKGROUND.variantProp).toBe('variantOrDefault');
+
+    const words = (variantOrDefault: string) =>
+      backgroundTexts(C4_BOUNDARY_BACKGROUND)
+        .filter(text =>
+          backgroundInVariant(C4_BOUNDARY_BACKGROUND, text.variants, {
+            variantOrDefault,
+          })
+        )
+        .map(text => backgroundLabelText(text, { variantOrDefault }));
+
+    // Exactly one bracket line per variant, and it is the stencil's wording.
+    expect(words('system')).toContain('[Software System]');
+    expect(words('system')).not.toContain('[Container]');
+    expect(words('container')).toContain('[Container]');
+    expect(words('container')).not.toContain('[Software System]');
+    // The getter itself — that an unstated variant reads as a system, which is
+    // what makes the gate above fire on a boundary already on disk — is the
+    // model's own promise, and `models.unit.spec.ts` holds it to it.
+  });
+
+  it('offers the level to no editor: it is vocabulary, not the author’s words', () => {
+    // The author names a boundary; what KIND of boundary it is was said by
+    // picking the tool. Declared with a `labelKey` and no `prop`, so it is
+    // translatable through the host's catalogue and `backgroundLabelHits`
+    // never hands it a box.
+    for (const text of backgroundTexts(C4_BOUNDARY_BACKGROUND)) {
+      if (text.id === 'name') continue;
+      expect(text.prop, text.id).toBeUndefined();
+      expect(text.labelKey, text.id).toMatch(
+        /^com\.labre\.c4\.boundary\.type\./
+      );
+    }
   });
 });

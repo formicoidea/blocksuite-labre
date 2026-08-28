@@ -129,6 +129,34 @@ export const C4_MERMAID_OF_KIND: Record<C4NodeKind, C4MermaidMapping> = {
   component: { macro: 'Component', level: 'component' },
 };
 
+/**
+ * Which macros have a `techn` slot at all — mermaid's own grammar, and the
+ * reason the emission cannot be one `args.push` for everybody.
+ *
+ * The C4 macros take their optional arguments POSITIONALLY, and the position of
+ * `descr` is not the same in both families: `Person(alias, label, descr)` and
+ * `System(alias, label, descr)` have no technology (a person is not built with
+ * one, and a software system's is a level down), while
+ * `Container(alias, label, techn, descr)` and `Component(…)` do. Emitting a
+ * description in the third slot of a `Container` would render it as the
+ * technology — a wrong statement in a file somebody pastes into a renderer, and
+ * the exact reason this is a table rather than a conditional.
+ *
+ * The consequence for a `person` the author typed a technology on: it is drawn
+ * in the type line on the canvas (`c4TypeLine` writes whatever it is given) and
+ * it does not survive the export, because mermaid has nowhere to put it. Better
+ * than the alternative, which is inventing a slot or shifting the description.
+ */
+const MACRO_TAKES_TECHN: Record<C4MermaidMapping['macro'], boolean> = {
+  Person: false,
+  Person_Ext: false,
+  System: false,
+  System_Ext: false,
+  Container: true,
+  ContainerDb: true,
+  Component: true,
+};
+
 /** The two boundary macros, keyed by the variant the element declares. */
 const BOUNDARY_MACRO = {
   system: 'System_Boundary',
@@ -292,6 +320,10 @@ interface PlannedNode {
   mapping: C4MermaidMapping;
   alias: string;
   name: string;
+  /** The `techn` argument, already sanitized. Empty means "not stated". */
+  techn: string;
+  /** The `descr` argument, already sanitized. Empty means "not stated". */
+  descr: string;
   /** Index into the document's boundary list, or -1 for the top level. */
   parent: number;
 }
@@ -429,11 +461,18 @@ function oneBoard(
 
   const plannedNodes: PlannedNode[] = nodes.map(model => {
     const name = labelOf(model.text) || UNNAMED;
+    const mapping = C4_MERMAID_OF_KIND[model.kind];
     return {
       model,
-      mapping: C4_MERMAID_OF_KIND[model.kind],
+      mapping,
       alias: minter.mint(name),
       name,
+      // The author's own technology WINS over the kind's default: `mobile` and
+      // `browser` carry one because their picture means something the macro has
+      // no other way to say, and a container the author has typed "Flutter" on
+      // is not a "mobile app" that happens to be written in Flutter.
+      techn: labelOf(model.technology) || mapping.techn || '',
+      descr: labelOf(model.description),
       parent: parentOf(model.elementBound, -1),
     };
   });
@@ -503,7 +542,14 @@ function oneBoard(
     for (const node of plannedNodes) {
       if (node.parent !== parent) continue;
       const args = [node.alias, `"${node.name}"`];
-      if (node.mapping.techn) args.push(`"${node.mapping.techn}"`);
+      // Positional, so a later argument is NEVER emitted without the earlier
+      // one: a container with a description and no technology writes an explicit
+      // empty `""` to hold the slot open, which is what mermaid's grammar
+      // requires and what keeps the description from being read as a technology.
+      if (MACRO_TAKES_TECHN[node.mapping.macro] && (node.techn || node.descr)) {
+        args.push(`"${node.techn}"`);
+      }
+      if (node.descr) args.push(`"${node.descr}"`);
       lines.push(`${indent}${node.mapping.macro}(${args.join(', ')})`);
     }
     for (const [index, boundary] of plannedBoundaries.entries()) {
