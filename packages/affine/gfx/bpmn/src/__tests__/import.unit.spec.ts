@@ -1258,6 +1258,58 @@ describe('the writer gives back what the reader carried', () => {
     expect(wellFormed(text)).toBe(true);
   });
 
+  it('reads a carried root’s id past an ` id=` inside another attribute’s value', () => {
+    // The id scan is quote-aware end to end: an attribute VALUE containing a
+    // raw ` id='X'` (a condition string, an XPath) must not shadow the real
+    // id="Y2" — before the fix it did, and alongside a legitimate id="X"
+    // fragment the Y2 one was dropped with a warning naming an id it does not
+    // have.
+    const pool = fakePool('p', [0, 0, 400, 200], { name: 'P' });
+    (pool as { interchange?: unknown }).interchange = {
+      bpmn: {
+        attrs: { '@definitions': { 'xmlns:acme': 'urn:acme' } },
+        children: {
+          '@definitions': [
+            '<acme:a id="X" />',
+            `<acme:c note=" id='X'" id="Y2" />`,
+          ],
+        },
+      },
+    };
+
+    const { text, warnings } = exportBpmnXmlWithWarnings(
+      board({ pools: [pool] })
+    );
+    expect(occurrences(text, '<acme:a')).toBe(1);
+    expect(occurrences(text, '<acme:c')).toBe(1);
+    expect(text).toContain('id="Y2"');
+    expect(warnings).toEqual([]);
+    expect(wellFormed(text)).toBe(true);
+  });
+
+  it('scans past an ` id=` hidden in a value even with no real id behind it', () => {
+    // The reviewer's direct probe: `note=" id='FAKE'" id="REAL"` must scan as
+    // REAL — pasted twice, REAL is the id the dedup keys on, so the fragment
+    // is written exactly once.
+    const payload = {
+      bpmn: {
+        attrs: { '@definitions': { 'xmlns:acme': 'urn:acme' } },
+        children: {
+          '@definitions': [`<acme:policy note=" id='FAKE'" id="REAL" />`],
+        },
+      },
+    };
+    const one = fakePool('p-one', [0, 0, 400, 200], { name: 'One' });
+    const two = fakePool('p-two', [0, 300, 400, 200], { name: 'Two' });
+    (one as { interchange?: unknown }).interchange = payload;
+    (two as { interchange?: unknown }).interchange = payload;
+
+    const written = exportBpmnXml(board({ pools: [one, two] }));
+    expect(occurrences(written, '<acme:policy')).toBe(1);
+    expect(occurrences(written, 'id="REAL"')).toBe(1);
+    expect(wellFormed(written)).toBe(true);
+  });
+
   it('refuses a carried attribute NAME that is not a name, and stays balanced', () => {
     // The serializer escapes attribute VALUES and interpolates NAMES, so a
     // "name" can close its own element and open two more — and the damage is
