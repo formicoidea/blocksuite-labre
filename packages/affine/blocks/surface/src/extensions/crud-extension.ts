@@ -142,11 +142,16 @@ export class EdgelessCRUDExtension extends Extension {
 
     const element = this._surface.getElementById(id);
     if (element) {
-      const key = getLastPropsKey(element.type, {
-        ...element.yMap.toJSON(),
-        ...props,
-      });
-      key && this.std.get(EditPropsStore).recordLastProps(key, props);
+      const merged = { ...element.yMap.toJSON(), ...props };
+      const key = getLastPropsKey(element.type, merged);
+      // A role-carrying framework artefact (a BPMN message flow, a C4
+      // relationship…) must not teach the shared last-props its costume:
+      // last-props are keyed by TYPE, and the next plain element of that type
+      // would draw dressed as the framework (sibling of review #144 M1). A
+      // plain element restyling still records, as it should.
+      if (key && merged.role === undefined) {
+        this.std.get(EditPropsStore).recordLastProps(key, props);
+      }
       this._surface.updateElement(id, props);
       return;
     }

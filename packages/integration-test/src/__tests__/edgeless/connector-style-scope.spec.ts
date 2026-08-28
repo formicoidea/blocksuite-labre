@@ -188,6 +188,59 @@ describe('framework flow styles never leak into the plain connector', () => {
   });
 
   /**
+   * The sibling leak, closed at `EdgelessCRUDExtension.updateElement`: arming
+   * was fixed, but RESTYLING an existing framework flow through the crud (the
+   * element toolbar's write path) still recorded the flow's costume into the
+   * shared 'connector' last-props. So: draw a BPMN sequence flow, restyle it
+   * through the crud, and the next plain connector must still be plain —
+   * while the restyle itself lands on the flow.
+   */
+  test('restyle a bpmn flow via updateElement → the plain connector stays plain', () => {
+    const shape = addShape();
+
+    // The user's own plain style, recorded the ordinary way.
+    const ownId = service.crud.addElement('connector', {
+      mode: ConnectorMode.Straight,
+    });
+    if (!ownId) throw new Error('failed to add connector');
+    service.crud.updateElement(ownId, { strokeWidth: 10 });
+
+    // A sequence flow on the board…
+    const command = getRegisteredCommands(std).find(
+      candidate => candidate.id === 'bpmn.sequenceFlowTool'
+    );
+    expect(command, 'bpmn.sequenceFlowTool is not registered').toBeTruthy();
+    runCommand(std, command!, {
+      surface: 'senior-menu',
+      source: 'toolbar:general',
+    });
+    const flow = draw(shape);
+    expect(flow.role).toBe(BPMN_ROLE.sequenceFlow);
+
+    // …restyled through the crud, as the element toolbar does.
+    service.crud.updateElement(flow.id, {
+      strokeStyle: StrokeStyle.Dash,
+      rearEndpointStyle: PointStyle.Diamond,
+    });
+    expect(flow.strokeStyle).toBe(StrokeStyle.Dash);
+    expect(flow.rearEndpointStyle).toBe(PointStyle.Diamond);
+
+    // The store did not move: still the user's own plain style.
+    const last = std.get(EditPropsStore).lastProps$.value.connector;
+    expect(last.strokeStyle).toBe(StrokeStyle.Solid);
+    expect(last.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(last.strokeWidth).toBe(10);
+
+    // Arm the plain connector and draw: no dash, no diamond, no role.
+    service.gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
+    const plain = draw(shape);
+    expect(plain.yMap.has('role')).toBe(false);
+    expect(plain.strokeStyle).toBe(StrokeStyle.Solid);
+    expect(plain.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(plain.strokeWidth).toBe(10);
+  });
+
+  /**
    * The OTHER half of the promise, and the half nothing was guarding: the plain
    * tool's own menu must still record. Every assertion above is about a store
    * that does NOT move, and a store that never moves at all would satisfy all
