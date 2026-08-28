@@ -588,17 +588,32 @@ interface ForeignInterchange {
   id?: string;
   /** Its source element name, when the element itself was carried, not mapped. */
   element?: string;
-  /** Attributes we do not model — foreign-namespaced and standard alike. */
-  attrs?: Record<string, string>;
-  /** Child fragments, serialized: `extensionElements`, unmodelled children,
-   *  and whole carried elements that were children of this one. */
-  children?: string[];
-  /** DI fragments describing anything in `children`. */
-  di?: string[];
+  /** Attributes we do not model, by SCOPE then by name. See below. */
+  attrs?: Record<InterchangeScope, Record<string, string>>;
+  /** Child fragments, serialized, by the scope of the element they were in. */
+  children?: Record<InterchangeScope, string[]>;
+  /** DI fragments, by the scope of what they draw. */
+  di?: Record<InterchangeScope, string[]>;
   /** Fragments kept but NOT re-emitted, with the reason (D5). */
   quarantined?: { fragment: string; reason: string }[];
 }
 ```
+
+**The three carrying members are keyed by SCOPE, and that was settled by the
+first importer's review rather than by this draft.** The draft's flat
+`Record<name, value>` was wrong in a way that could not have been repaired
+later: one Labre element stands for SEVERAL source elements — a pool is a
+`participant` and its `process`, plus a `laneSet`, every `lane`, the
+`BPMNShape` that draws it, and, on the first pool, the `collaboration` and
+`definitions` — so two lanes carrying one foreign attribute left one value in a
+persisted Y.Map and a report that said two. It also could not support
+re-emission at all, because nothing recorded which element an attribute came
+off. A scope is the source element's **id, verbatim**, or an `@`-prefixed ROLE
+key (`@self`, `@shape`, and whatever else a format needs) for a source element
+with no id of its own; `@` is not an XML NameStartChar, so the two vocabularies
+cannot collide. The rule for a fragment is always the same: **the scope is the
+element it was a child of**, because that is where an exporter has to put it
+back.
 
 The key is the **format** id (`interchange.bpmn`, `interchange.owm`), never the
 framework — a `.bpmn` and an OWM file make different promises about the same
@@ -779,6 +794,54 @@ copy-pastes, undoes and syncs with an element the user can see, which is the
 whole argument of D2; the alternative is the doc-level table D2 rejected; and an
 architect who has deleted the only pool of an imported process has deleted the
 process.
+
+#### Divergences accepted at implementation (PR #160, the importer)
+
+D1–D6 were written before a reader existed. Building one found four places where
+the text and the code cannot both stand; each was reviewed on its merits and is
+recorded HERE rather than in a merged pull request, for the reason P1's own
+divergences section gives — the next capability author reads this file and not
+that thread. **Where this section and the decisions above disagree, this section
+is what the code does.**
+
+**1. D3's satellite rule, and it changes ids for every board.** D3 says export
+prefers `interchange.<fmt>.id`. That alone is not enough for the fixed point it
+promises: an element drags SATELLITE ids with it — a pool's `process` and
+`laneSet`, every `BPMNShape` and `BPMNEdge`, a data object's `dataObject`, a
+group's `category` — and those were minted from the SURFACE id, which the file
+never carried and an import must never guess. So they are now minted from the id
+the element **settled on** (the file's, when it was given one). Two visible
+consequences, both accepted: a pooled process is written as
+`Process_Participant_x` where it used to be `Process_x`, and a lane's id is
+written unprefixed, because a lane that arrived as `Lane_3` has to leave as
+`Lane_3` and not as `Lane_Lane_3`. Without this, the second file agrees with the
+first on every semantic id and differs on every diagram id — a round trip that
+looks right and is not.
+
+**2. D6's minted pool gives the poolless form back only while it is the whole
+board.** D6 mints a pool for a file with no participant and has it carry
+`element: 'process'`, so the writer knows to write the poolless form. It does not
+say what happens when the author then draws a SECOND pool beside it. Answer: from
+that moment the board is a collaboration and the imported pool is a participant
+like any other. The alternative — keeping it participant-less — leaves a pool the
+architect can see and drag with no shape in the exported file, drawn by nothing
+that opens it, which is the invisible-loss failure this ADR exists to prevent.
+
+**3. D1's refusal is a CHOREOGRAPHY refusal; a conversation is carried.** D1
+declines "a `definitions` whose only root is a `choreography` or a
+`conversation`". A `conversation` is never a root — §10.6 makes it a child of
+`collaboration` — so as written the sentence describes a file that cannot exist.
+The reader refuses a root `choreography` (and `globalChoreographyTask`) by name,
+and a conversation inside a collaboration is CARRIED like any other vocabulary
+the pack does not draw. That is the better behaviour: the process beside it is
+real and importable, and refusing the file would lose it to make a point.
+
+**4. `mapped` counts what became a drawn artefact, lanes included.** A lane is
+drawn, editable and is not an element of its own, so it is counted; and the pool
+D6 mints for a bare `process` is counted too, because there IS a source element
+it is the artefact for — the `process` — which is exactly what
+`element: 'process'` records. The count is of source nodes that got an artefact,
+not of surface elements created.
 
 ## What is knowingly lost, and what is merely invisible
 

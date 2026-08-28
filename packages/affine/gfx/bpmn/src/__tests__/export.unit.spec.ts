@@ -893,7 +893,18 @@ describe('ids', () => {
           nodes: [
             fakeNode('a:b', 'task', [BAND + 10, 20, 20, 20]),
             fakeNode('a/b', 'task', [BAND + 60, 20, 20, 20]),
-            fakeNode('Process_sales', 'task', [BAND + 110, 20, 20, 20]),
+            // A surface id that collides with an id the exporter mints for
+            // itself. Retargeted when the satellite ids started being derived
+            // from the id an element SETTLED on rather than from its surface id
+            // (ADR 0012 D3, as implemented): the process of pool `sales` is now
+            // `Process_Participant_sales`, so `Process_sales` collides with
+            // nothing and this fixture would have stopped testing anything.
+            fakeNode('Process_Participant_sales', 'task', [
+              BAND + 110,
+              20,
+              20,
+              20,
+            ]),
           ],
         })
       )

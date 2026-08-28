@@ -10,7 +10,11 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { exportBpmnXmlFile } from '../actions';
-import { BPMN_INTERCHANGE, BPMN_XML_EXPORT } from '../interchange';
+import {
+  BPMN_INTERCHANGE,
+  BPMN_XML_EXPORT,
+  BPMN_XML_IMPORT,
+} from '../interchange';
 import { BPMN_ROLE } from '../roles';
 import {
   BAND,
@@ -104,21 +108,39 @@ const runExport = BPMN_XML_EXPORT.run;
 /* ── Tests ────────────────────────────────────────────────────────────── */
 
 describe('the declaration', () => {
-  it('is the triple, and BPMN declares no import', () => {
+  it('is the triple, and BPMN now declares both directions of it', () => {
     const provider = mount();
 
     expect(BPMN_XML_EXPORT.id).toBe('bpmn:bpmn:export');
+    expect(BPMN_XML_IMPORT.id).toBe('bpmn:bpmn:import');
+    // Sorted by id, which is what makes a menu built from this list come out in
+    // the same order on every boot: `export` before `import`.
     expect(interchangeCapabilities(provider, { framework: 'bpmn' })).toEqual([
       BPMN_XML_EXPORT,
+      BPMN_XML_IMPORT,
     ]);
-    // #149 shipped the writer; nobody has written the reader. The registry says
-    // so rather than letting a caller assume the symmetry.
+    // Each direction on its own, and TYPED: a caller that asked for readers
+    // gets `run`s it can call, not a union it has to narrow a second time.
     expect(
       interchangeCapabilities(provider, {
         framework: 'bpmn',
         direction: 'import',
       })
-    ).toEqual([]);
+    ).toEqual([BPMN_XML_IMPORT]);
+    expect(
+      interchangeCapabilities(provider, {
+        framework: 'bpmn',
+        direction: 'export',
+      })
+    ).toEqual([BPMN_XML_EXPORT]);
+  });
+
+  it('reads and writes through ONE format object, which is the payload key', () => {
+    // `bpmn` is the key foreign matter rides under on an element (ADR 0012,
+    // D2). Two format objects that agreed today would be two things to keep in
+    // step, and the failure would be silent: a reader writing `interchange.bpmn`
+    // and a writer looking under something else finds nothing and says nothing.
+    expect(BPMN_XML_IMPORT.format).toBe(BPMN_XML_EXPORT.format);
   });
 
   it('declares `.bpmn` as a semantic format', () => {

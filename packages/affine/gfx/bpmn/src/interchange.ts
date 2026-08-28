@@ -3,6 +3,7 @@ import type {
   InterchangeExportCapability,
   InterchangeExporter,
   InterchangeFormat,
+  InterchangeImportCapability,
 } from '@labre/affine-block-surface';
 import { interchangeCapabilityId } from '@labre/affine-block-surface';
 import {
@@ -12,20 +13,30 @@ import {
 } from '@labre/affine-model';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
-import { type BpmnExportBoard, exportBpmnXmlWithWarnings } from './export.js';
+import {
+  BPMN_FORMAT_ID,
+  type BpmnExportBoard,
+  exportBpmnXmlWithWarnings,
+} from './export.js';
+import { importBpmnXml } from './import.js';
 
 /**
  * BPMN's entries in the interchange registry (`docs/adr/0012`, P1).
  *
- * One entry today — `.bpmn` OUT, shipped in #149 — and that is the point of
- * declaring the triple rather than the format: BPMN can write a `.bpmn` and
- * cannot yet read one, and the registry now says exactly that instead of
- * leaving a reader to infer a symmetry nobody implemented.
+ * Both directions of one format, declared as two capabilities and not as one
+ * symmetric thing: `.bpmn` OUT shipped in #149, `.bpmn` IN is the worked
+ * example D1–D6 specifies, and each makes its own promises. The registry says
+ * so in the only way it can — a row per triple.
  *
- * Everything here is pure. The serializer was already a pure function with no
- * `std` in sight, and this file adds no editor to it: it only picks the
- * artefacts the serializer speaks about out of a surface's elements, which is
- * the half of `bpmnBoardOf` that never needed a `BlockStdScope`.
+ * They share the FORMAT object, deliberately. `bpmn` is the id under which
+ * foreign matter rides on an element (D2), so a reader and a writer that
+ * disagreed about it would write payloads the other could not find; there is
+ * one `BPMN_XML_FORMAT` and both point at it.
+ *
+ * Everything here is pure. Neither serializer nor parser has ever had a `std`
+ * in sight, and this file adds no editor to either: it picks the artefacts the
+ * writer speaks about out of a surface's elements, and hands the reader's
+ * output straight back to whoever asked for it.
  */
 
 /* ── The format ───────────────────────────────────────────────────────── */
@@ -42,7 +53,7 @@ export const BPMN_XML_EXTENSION = '.bpmn';
 export const BPMN_XML_MIME = 'application/xml';
 
 export const BPMN_XML_FORMAT: InterchangeFormat = {
-  id: 'bpmn',
+  id: BPMN_FORMAT_ID,
   tier: 'semantic',
   extensions: [BPMN_XML_EXTENSION],
   mime: BPMN_XML_MIME,
@@ -137,7 +148,25 @@ export const BPMN_XML_EXPORT: InterchangeExportCapability = {
   run: runBpmnXmlExport,
 };
 
+/**
+ * `bpmn:bpmn:import` — a `.bpmn` file as a board.
+ *
+ * A thin adapter over {@link importBpmnXml} and nothing else, which is the
+ * whole of what a capability is: the parser is a pure function of a string, so
+ * the registry entry has nothing to add to it and deliberately adds nothing.
+ * A reader that threw its arms around a surface here would be a reader
+ * labre-mcp could not call.
+ */
+export const BPMN_XML_IMPORT: InterchangeImportCapability = {
+  id: interchangeCapabilityId('bpmn', BPMN_XML_FORMAT.id, 'import'),
+  framework: 'bpmn',
+  format: BPMN_XML_FORMAT,
+  direction: 'import',
+  run: importBpmnXml,
+};
+
 /** Everything BPMN registers, in one list the view extension can hand over. */
 export const BPMN_INTERCHANGE: readonly InterchangeCapability[] = [
   BPMN_XML_EXPORT,
+  BPMN_XML_IMPORT,
 ];
