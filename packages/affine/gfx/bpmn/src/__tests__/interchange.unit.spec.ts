@@ -2,6 +2,7 @@ import {
   InterchangeExtension,
   InterchangeIdentifier,
   interchangeCapabilities,
+  parseSvgSketch,
 } from '@labre/affine-block-surface';
 import { Container } from '@labre/global/di';
 import type { BlockStdScope } from '@labre/std';
@@ -12,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportBpmnXmlFile } from '../actions';
 import {
   BPMN_INTERCHANGE,
+  BPMN_SVG_IMPORT,
   BPMN_XML_EXPORT,
   BPMN_XML_IMPORT,
 } from '../interchange';
@@ -118,12 +120,14 @@ describe('the declaration', () => {
     expect(interchangeCapabilities(provider, { framework: 'bpmn' })).toEqual([
       BPMN_XML_EXPORT,
       BPMN_XML_IMPORT,
+      BPMN_SVG_IMPORT,
     ]);
     // Each direction on its own, and TYPED: a caller that asked for readers
     // gets `run`s it can call, not a union it has to narrow a second time.
     expect(
       interchangeCapabilities(provider, {
         framework: 'bpmn',
+        format: 'bpmn',
         direction: 'import',
       })
     ).toEqual([BPMN_XML_IMPORT]);
@@ -133,6 +137,55 @@ describe('the declaration', () => {
         direction: 'export',
       })
     ).toEqual([BPMN_XML_EXPORT]);
+  });
+
+  it('declares the SVG fallback as a third, VISUAL row', () => {
+    const provider = mount();
+
+    expect(BPMN_SVG_IMPORT.id).toBe('bpmn:svg:import');
+    expect(
+      interchangeCapabilities(provider, {
+        framework: 'bpmn',
+        direction: 'import',
+      })
+      // Sorted by id: `bpmn:bpmn:import` before `bpmn:svg:import`, so the
+      // native format is the first thing a menu built from this list offers and
+      // the fallback is second. That order is the registry's, not a UI's.
+    ).toEqual([BPMN_XML_IMPORT, BPMN_SVG_IMPORT]);
+    expect(BPMN_SVG_IMPORT.format).toEqual({
+      id: 'svg',
+      tier: 'visual',
+      extensions: ['.svg'],
+      mime: 'image/svg+xml',
+    });
+  });
+
+  it('wraps the SHARED parser, adding nothing of its own', () => {
+    // The identity, not an equivalence: BPMN and Wardley read a `.svg` through
+    // one function, so they cannot drift into recognising different pictures —
+    // and the heuristics statement ADR 0012's open question 2 asks for is
+    // written ONCE, in that parser's module documentation, rather than twice
+    // with the second copy going stale.
+    expect(BPMN_SVG_IMPORT.run).toBe(parseSvgSketch);
+  });
+
+  it('reads a `.svg` with plain stubs, and writes no payload', () => {
+    // P3's purity requirement over the SECOND format, and P2's hard rule
+    // stated where a framework declares it: a visual import carries nothing,
+    // quarantines nothing and writes no `interchange` key on anything. The
+    // anti-decay test with the whole fixture table lives in the parser's own
+    // package; this is the framework's half of it.
+    const capability = mount().get(InterchangeIdentifier('bpmn:svg:import'));
+    if (capability.direction !== 'import') throw new Error('expected import');
+
+    const result = capability.run(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="40" height="20"/></svg>',
+      { name: 'sketch.svg' }
+    );
+    expect(result.elements).toHaveLength(1);
+    expect(result.elements[0]).not.toHaveProperty('interchange');
+    expect(result.report.carried).toBe(0);
+    expect(result.report.quarantined).toBe(0);
   });
 
   it('reads and writes through ONE format object, which is the payload key', () => {

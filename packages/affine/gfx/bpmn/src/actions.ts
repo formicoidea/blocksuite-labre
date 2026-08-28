@@ -39,6 +39,7 @@ import {
 } from './consts';
 import { BPMN_FORMAT_ID, type BpmnExportBoard } from './export.js';
 import {
+  BPMN_SVG_IMPORT,
   BPMN_XML_EXPORT,
   BPMN_XML_FORMAT,
   BPMN_XML_IMPORT,
@@ -510,6 +511,20 @@ export function reportBpmnImport(
  */
 export async function importBpmnXmlFile(std: BlockStdScope): Promise<void> {
   await runInterchangeImportFile(std, BPMN_XML_IMPORT);
+}
+
+/**
+ * Read an SVG the user picks as a SKETCH, and say what it cost.
+ *
+ * The same four steps as the `.bpmn` import, over a different declared
+ * capability — which is the whole point of the seam: a second format costs a
+ * declaration and a command, not a pipeline. What differs is the PROMISE, and
+ * the promise is made by the command's own label and description before the
+ * picker ever opens (`docs/adr/0012`, P2): recognition, best effort, no
+ * round-trip, and a level-1 sketch the author then promotes.
+ */
+export async function importBpmnSvgFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, BPMN_SVG_IMPORT);
 }
 
 /**

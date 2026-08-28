@@ -9,6 +9,7 @@ import {
   createWardleyMarket,
   createWardleyNode,
   createWardleyPipeline,
+  importWardleySvgFile,
 } from './actions';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
@@ -19,6 +20,7 @@ import {
   wardleyComponentIcon,
   wardleyEcosystemIcon,
   wardleyEvolutionGradientIcon,
+  wardleyImportSvgIcon,
   wardleyInertiaIcon,
   wardleyLinkIcon,
   wardleyMarketIcon,
@@ -223,27 +225,88 @@ function gestureOf(spec: Spec) {
   };
 }
 
-export const wardleyCommands: CommandDescriptor[] = SPECS.map(
-  (spec, order) => ({
-    id: `wardley.${spec.id}`,
-    owner: 'wardley',
-    kind: spec.kind,
-    labelKey: spec.labelKey ?? `com.labre.commands.wardley.${spec.id}`,
-    labelFallback: spec.label,
-    ...gestureOf(spec),
-    category: spec.category,
-    iconKey: spec.iconKey,
-    surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
-    order,
-    scope: 'edgeless',
-    defaultKeys: spec.key
-      ? { mac: ['w', spec.key], other: ['w', spec.key] }
-      : { mac: [], other: [] },
-    availability: 'always',
-    run: std => spec.run(std.get(GfxControllerIdentifier)),
-    telemetry: { framework: 'wardley', element: spec.element },
-  })
-);
+/**
+ * The SVG FALLBACK import — Wardley's first command whose subject is a FILE
+ * rather than something you draw, and the first that is not in the sub-menu.
+ *
+ * ## Why the catalogue and not the senior row
+ *
+ * The thirteen entries above are the toolbox: every one of them draws
+ * something, and the sub-menu is the row you open to draw. This opens a file
+ * picker. It stays one click away — the catalogue sidepanel, reached from
+ * "More artefacts…" — and it keeps `'palette'` and `'agent'` so it is still
+ * findable by name and still invocable by an agent. Wardley's thirteen are
+ * also, since the eligibility ruling of 2026-08-28, its whole nomination pool
+ * against a row that seats fourteen; putting a board-level action into the
+ * last free slot would spend it on the rarest thing anybody does to a map.
+ *
+ * When the OWM DSL import lands it is the framework's NATIVE format and the
+ * reference Wardley route (ADR 0012's roadmap says so in as many words), and
+ * the senior sub-menu is where that one belongs — beside "start from a
+ * component" sits "start from a map somebody sent me". This is the fallback,
+ * and a fallback that outranked the real thing would be the platform pointing
+ * a user at the lossy door first.
+ *
+ * **Flagged for the PO** as a curation call rather than a technical one: it is
+ * a one-line change either way.
+ *
+ * ## The label names the tier before the file is read (ADR 0012, P2)
+ *
+ * A map is coordinates, and this reader recovers none: it recognises circles
+ * and words. Saying so in the description is not modesty, it is the contract —
+ * "the import surface must name the tier before the file is read".
+ */
+const importSvgCommand: CommandDescriptor = {
+  id: 'wardley.importSvg',
+  owner: 'wardley',
+  kind: 'action',
+  labelKey: 'com.labre.commands.wardley.importSvg',
+  labelFallback: 'Import SVG sketch',
+  descriptionKey: 'com.labre.commands.wardley.importSvg.description',
+  descriptionFallback:
+    'Best effort: recognizes shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
+  // The same section id BPMN files its two `.bpmn` directions under, so a host
+  // that translated the header once has translated it for every framework.
+  category: 'interchange',
+  iconKey: 'wardley.import-svg',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  // After the thirteen toolbox entries, which are ordered 0…12: a category is
+  // where a command is FILED and `order` only ranks it inside one.
+  order: SPECS.length,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  // It WRITES, so a read-only document is one it cannot run on.
+  availability: 'editable',
+  run: importWardleySvgFile,
+  // `board:` and not `node:`: it is launched with nothing selected, and often
+  // with nothing on the canvas at all.
+  telemetry: { framework: 'wardley', element: 'board:import-svg' },
+};
+
+const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
+  id: `wardley.${spec.id}`,
+  owner: 'wardley',
+  kind: spec.kind,
+  labelKey: spec.labelKey ?? `com.labre.commands.wardley.${spec.id}`,
+  labelFallback: spec.label,
+  ...gestureOf(spec),
+  category: spec.category,
+  iconKey: spec.iconKey,
+  surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
+  order,
+  scope: 'edgeless',
+  defaultKeys: spec.key
+    ? { mac: ['w', spec.key], other: ['w', spec.key] }
+    : { mac: [], other: [] },
+  availability: 'always',
+  run: std => spec.run(std.get(GfxControllerIdentifier)),
+  telemetry: { framework: 'wardley', element: spec.element },
+}));
+
+export const wardleyCommands: CommandDescriptor[] = [
+  ...toolboxCommands,
+  importSvgCommand,
+];
 
 /** `iconKey` → template. Never travels through either manifest (ADR 0008). */
 export const wardleyCommandIcons: Record<string, TemplateResult> = {
@@ -260,4 +323,5 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.link': wardleyLinkIcon,
   'wardley.arrow': wardleyArrowIcon,
   'wardley.inertia': wardleyInertiaIcon,
+  'wardley.import-svg': wardleyImportSvgIcon,
 };

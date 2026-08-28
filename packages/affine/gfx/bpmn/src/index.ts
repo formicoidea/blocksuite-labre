@@ -52,11 +52,14 @@ export {
 // What an artefact may BECOME: the declared families, and the spec the generic
 // morph module is registered with. Data a host can read without an editor.
 export { BPMN_MORPH_FAMILIES, BPMN_MORPH_SPEC } from './morph.js';
-// BPMN's entries in the interchange registry (`docs/adr/0012`) — one today,
-// `.bpmn` OUT. Exported whole so a host can ask what BPMN can read and write
-// without mounting an editor, and call it without one either.
+// BPMN's entries in the interchange registry (`docs/adr/0012`) — `.bpmn` out,
+// `.bpmn` in, and the visual-tier SVG fallback. Exported whole so a host can
+// ask what BPMN can read and write without mounting an editor, and call it
+// without one either.
 export {
   BPMN_INTERCHANGE,
+  BPMN_SVG_FORMAT,
+  BPMN_SVG_IMPORT,
   BPMN_XML_EXPORT,
   BPMN_XML_EXTENSION,
   BPMN_XML_IMPORT,

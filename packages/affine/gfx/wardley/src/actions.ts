@@ -1,4 +1,8 @@
-import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
+import {
+  backgroundSize,
+  DefaultTool,
+  runInterchangeImportFile,
+} from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
@@ -13,9 +17,11 @@ import {
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
+import type { BlockStdScope } from '@labre/std';
 import type { GfxController } from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background';
+import { WARDLEY_SVG_IMPORT } from './interchange';
 import {
   ECOSYSTEM_LABEL,
   ECOSYSTEM_SIZE,
@@ -436,6 +442,23 @@ export function createWardleyMarket(gfx: GfxController) {
   );
 
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
+}
+
+/**
+ * Read an SVG the user picks as a SKETCH, and say what it cost.
+ *
+ * Wardley's first interchange command, and its whole implementation: the four
+ * steps live in {@link runInterchangeImportFile} and the reading lives in the
+ * declared capability, so this framework contributes a declaration and a
+ * label rather than a pipeline (`docs/adr/0012`, P1 and P3).
+ *
+ * It takes a `BlockStdScope` and not the `GfxController` the rest of this file
+ * runs on, because an import is not a drawing gesture: it opens a picker,
+ * writes a whole board in one undo step, moves the viewport and notifies —
+ * none of which a `GfxController` alone can do.
+ */
+export async function importWardleySvgFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, WARDLEY_SVG_IMPORT);
 }
 
 /**

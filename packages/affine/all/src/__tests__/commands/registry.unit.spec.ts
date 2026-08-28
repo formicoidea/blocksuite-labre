@@ -31,7 +31,11 @@ describe('command registry invariants', () => {
       [...FRAMEWORK_IDS, 'core'].map(owner => [owner, byOwner(owner).length])
     );
     expect(counts).toEqual({
-      wardley: 13,
+      // 14 since `wardley.importSvg`, the visual-tier fallback (`docs/adr/0012`
+      // P2): the first Wardley command that draws nothing and the first that
+      // declines `senior-menu`, so the thirteen-strong sub-menu is unchanged
+      // and the catalogue grew by one.
+      wardley: 14,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -56,7 +60,12 @@ describe('command registry invariants', () => {
       // `availability: 'always'`, declines the contextual toolbar (a selection
       // is exactly what an empty board has none of) and is reached from the
       // catalogue and the palette.
-      bpmn: 25,
+      // …and 26 since `bpmn.importSvg`, the visual-tier FALLBACK: the same
+      // gesture through the same seam over a different declared capability, and
+      // it deliberately does NOT contest the sub-menu (see its own comment in
+      // `gfx/bpmn/src/commands.ts`) — the catalogue grew by one, the
+      // nomination pool did not.
+      bpmn: 26,
       // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
       // board and the relationship tool) plus `c4.exportMermaid`, whose subject
       // is a SELECTED board and which declines the sub-menu. Fourteen against a
@@ -97,7 +106,11 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(108);
+    // 110 since the two SVG fallback imports (`bpmn.importSvg`,
+    // `wardley.importSvg`) — one per framework, because ADR 0012 declares
+    // interchange per framework × format × direction and refuses to infer a
+    // framework from a `.svg`.
+    expect(commands).toHaveLength(110);
   });
 
   /**
@@ -302,11 +315,17 @@ describe('menu and manifest enumerate the same source', () => {
     const menu = wardleyCommands
       .filter(c => c.surfaces.includes('senior-menu'))
       .map(c => c.id);
-    const manifest = getCommandManifest()
-      .filter(e => e.owner === 'wardley')
-      .map(e => e.id);
-    expect(menu).toEqual(manifest);
+    const manifest = getCommandManifest().filter(e => e.owner === 'wardley');
+    // The two lists are compared on the sub-menu's own terms, because since
+    // `wardley.importSvg` the manifest is WIDER than the sub-menu: a command
+    // that draws nothing declines `senior-menu` and lives in the catalogue.
+    // The drift this test exists to kill is a menu entry the manifest has
+    // never heard of, and that is still exactly what it checks.
+    expect(menu).toEqual(
+      manifest.filter(e => e.surfaces.includes('senior-menu')).map(e => e.id)
+    );
     expect(menu).toHaveLength(13);
+    expect(manifest).toHaveLength(14);
   });
 
   /**

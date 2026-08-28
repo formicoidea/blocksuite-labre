@@ -6,6 +6,14 @@ export {
 } from './roles';
 export { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 export { wardleyCommandIcons, wardleyCommands } from './commands';
+// Wardley's entries in the interchange registry (`docs/adr/0012`) — one today,
+// SVG IN. Exported whole so a host can ask what Wardley can read without
+// mounting an editor, and call it without one either (P3).
+export {
+  WARDLEY_INTERCHANGE,
+  WARDLEY_SVG_FORMAT,
+  WARDLEY_SVG_IMPORT,
+} from './interchange';
 export { wardleyTranslationEntries } from './translations.js';
 export {
   WARDLEY_NATURE,

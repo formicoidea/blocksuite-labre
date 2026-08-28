@@ -1,4 +1,5 @@
 import {
+  InterchangeExtension,
   ReadingProfileExtension,
   tagsToolbarConfig,
   validationToolbarConfig,
@@ -22,6 +23,7 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
+import { WARDLEY_INTERCHANGE } from './interchange';
 import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_NUDGES } from './nudges';
@@ -89,6 +91,11 @@ export class WardleyViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
+      // Reading a foreign file, declared rather than assumed (`docs/adr/0012`).
+      // Tooling like everything else in this class: with the flag off there is
+      // nothing to import WITH, while a map a past import wrote keeps every
+      // element it was given (`docs/adr/0009`).
+      context.register(InterchangeExtension(WARDLEY_INTERCHANGE));
       // Map quality (PF13.9): the four nudges the tool cannot judge, and
       // nothing else — the on-demand check-up Wardley used to expose beside
       // them was dropped on the PO recette of 02/08/2026. The engine keeps the

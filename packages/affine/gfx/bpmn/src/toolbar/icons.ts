@@ -29,6 +29,20 @@ export const bpmnImportXmlIcon = svg`<svg width="24" height="24" viewBox="0 0 24
   <path d="M16 14.5v6M13.5 17l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+/**
+ * Import an SVG sketch — the import page again, with the picture frame that
+ * says "this arrives as a drawing" rather than as a process.
+ *
+ * Kept a sibling of {@link bpmnImportXmlIcon} on purpose: they are the same
+ * gesture (a file becomes a board) and the difference between them is the TIER,
+ * which is what the mountain-in-a-frame glyph is for.
+ */
+export const bpmnImportSvgIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="5" width="14" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M3.5 13 7 9.5l3 3 2-2 3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 14.5v6M16.5 17l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 /** Start event — thin green ring. */
 export const bpmnStartIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="12" cy="12" r="8" stroke="#43a06b" stroke-width="2"/>
