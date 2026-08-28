@@ -1182,6 +1182,118 @@ describe('the writer gives back what the reader carried', () => {
     );
   });
 
+  /** Does this actually parse? The one assertion a duplicate id survives. */
+  const wellFormed = (xml: string) =>
+    new DOMParser()
+      .parseFromString(xml, 'application/xml')
+      .querySelector('parsererror') === null;
+
+  /** How many times a needle occurs — a duplicate `xsd:ID` is a count of 2. */
+  const occurrences = (haystack: string, needle: string) =>
+    haystack.split(needle).length - 1;
+
+  it('writes a PASTED pool’s carried elements once, at every scope', () => {
+    // `interchange` is declared on the base element model precisely so that a
+    // payload survives a paste, a duplicate or an alt-drag (PR #73) — so a pool
+    // imported from a `.bpmn` and then copy-pasted holds its carried boundary
+    // event, its lane's documentation, its diagram and the document's residue
+    // TWICE. Written twice they are duplicate `xsd:ID`s, which is the one thing
+    // no BPMN tool survives, and the id is the invariant rather than the text:
+    // deduplication keys on the id a carried root claims, wherever the scope
+    // that carried it happens to be.
+    const lanes = [{ id: 'L1', name: 'One', size: 1 }];
+    const payload = {
+      bpmn: {
+        id: 'P_1',
+        attrs: { '@definitions': { 'xmlns:acme': 'urn:acme' } },
+        children: {
+          '@definitions': ['<acme:policy id="Pol_1" />'],
+          '@process': ['<bpmn:inclusiveGateway id="Inc_1" name="Either" />'],
+          L1: ['<bpmn:documentation id="D_1">why</bpmn:documentation>'],
+        },
+        di: { Inc_1: ['<bpmndi:BPMNShape id="S_inc" bpmnElement="Inc_1" />'] },
+      },
+    };
+    const one = fakePool('p-one', [0, 0, 400, 200], { name: 'One', lanes });
+    const two = fakePool('p-two', [0, 300, 400, 200], { name: 'Two', lanes });
+    (one as { interchange?: unknown }).interchange = payload;
+    (two as { interchange?: unknown }).interchange = payload;
+
+    const written = exportBpmnXml(board({ pools: [one, two] }));
+
+    // Document scope, process scope, lane scope, plane scope: one each.
+    expect(occurrences(written, '<acme:policy')).toBe(1);
+    expect(occurrences(written, 'id="Inc_1"')).toBe(1);
+    expect(occurrences(written, 'id="D_1"')).toBe(1);
+    expect(occurrences(written, 'id="S_inc"')).toBe(1);
+    expect(occurrences(written, 'xmlns:acme')).toBe(1);
+    expect(wellFormed(written)).toBe(true);
+  });
+
+  it('keeps the first of two DIFFERENT elements claiming one id, and says so', () => {
+    // Not a paste: two pools imported from two different files, each carrying
+    // its own `<bpmn:message id="Msg_1">`. The strings differ, so text identity
+    // would let both through — and the invariant at stake is `xsd:ID`
+    // uniqueness, which neither needs nor implies identical characters. One is
+    // written, and the one that is not is named rather than dropped in silence.
+    const withMessage = (name: string) => ({
+      bpmn: {
+        children: {
+          '@definitions': [`<bpmn:message id="Msg_1" name="${name}" />`],
+        },
+      },
+    });
+    const one = fakePool('p-one', [0, 0, 400, 200], { name: 'One' });
+    const two = fakePool('p-two', [0, 300, 400, 200], { name: 'Two' });
+    (one as { interchange?: unknown }).interchange = withMessage('A');
+    (two as { interchange?: unknown }).interchange = withMessage('B');
+
+    const { text, warnings } = exportBpmnXmlWithWarnings(
+      board({ pools: [one, two] })
+    );
+    expect(occurrences(text, 'id="Msg_1"')).toBe(1);
+    expect(text).toContain('name="A"');
+    expect(text).not.toContain('name="B"');
+    expect(warnings.some(line => line.includes('"Msg_1"'))).toBe(true);
+    expect(wellFormed(text)).toBe(true);
+  });
+
+  it('refuses a carried attribute NAME that is not a name, and stays balanced', () => {
+    // The serializer escapes attribute VALUES and interpolates NAMES, so a
+    // "name" can close its own element and open two more — and the damage is
+    // not confined to the element carrying the bad payload: it injects a
+    // sibling into `collaboration` and unbalances the whole file. `interchange`
+    // is ordinary collaborative Y.Map data, so this payload is reachable from
+    // any peer, any hand-edited document, any paste from a foreign board.
+    const pool = fakePool('p', [0, 0, 400, 200], { name: 'P' });
+    (pool as { interchange?: unknown }).interchange = {
+      bpmn: {
+        id: 'P_x',
+        attrs: {
+          '@self': {
+            'evil="x"><bpmn:task id="INJECTED" /><bpmn:task z': 'y',
+            'a b': 'spaces are not a name either',
+            '<>&': 'nor are these',
+            // …and one that IS a name, to prove the guard is a filter and not
+            // a blanket refusal: `prefix:local` is what every foreign attribute
+            // in a `.bpmn` wears.
+            'camunda:assignee': 'demo',
+          },
+        },
+      },
+    };
+
+    const { text, warnings } = exportBpmnXmlWithWarnings(
+      board({ pools: [pool] })
+    );
+    expect(text).not.toContain('INJECTED');
+    expect(text).toContain('camunda:assignee="demo"');
+    expect(wellFormed(text)).toBe(true);
+    expect(warnings.some(line => line.includes('not a valid XML name'))).toBe(
+      true
+    );
+  });
+
   it('writes the document’s residue once, however many pools carry it', () => {
     // D6 has the residue ride on the FIRST pool, and this writer asks every
     // pool, because "first" is the reader's document order and not the board's.

@@ -48,11 +48,29 @@ silent:
   by the residue sweep, and would have been drawn by the writer. Quarantine now
   takes the whole subtree's diagram with it.
 
+**A carried element is written back at most once, and the unit is the id.** A
+board's foreign payload travels with the element through a copy-paste — that is
+what `interchange` is declared on the base model for — so a pool imported from a
+`.bpmn` and then pasted holds its carried boundary event, its lane's
+documentation and its shape twice. Written twice they are duplicate `xsd:ID`s,
+which is the one thing no BPMN tool survives. The guard is document-wide, keyed
+on the id a carried fragment claims rather than on its text, so it also catches
+two different elements from two different files claiming one id: the first is
+written, the rest are named in the export's warnings.
+
+**Neither half of a carried attribute is trusted as markup.** A value is escaped
+and a name is interpolated, so a name is the half that can close its own element
+and open others — and `interchange` is ordinary collaborative document data. A
+carried name is written only if it is a name: an NCName, or the `prefix:local`
+pair every foreign attribute in a `.bpmn` wears.
+
 What still does not round-trip is in the loss table, in `import.ts` and in ADR
-0012, and two rows are new because the writer put them there: a carried shape
-keeps the source file's coordinates, so once the drawing has been moved it lands
-beside the process rather than inside it (the export says so); and a file that
-binds one of this library's own four prefixes to some other namespace keeps that
-declaration in the document and out of the file, because writing it back would
-rebind the prefix every `dc:Bounds` is written under. Quarantined material is
-never re-emitted, by design and by test.
+0012, and five rows are new because the writer put them there — a carried shape
+keeps the source file's coordinates and so lands beside a drawing that has since
+moved; a declaration rebinding one of this library's own four prefixes is kept
+in the document and out of the file, and the matter under it is then read under
+Labre's meaning rather than the original's; a declaration scoped to anything but
+`definitions` is not carried at all; a duplicate id keeps its first claimant;
+and two pools disagreeing about one `definitions` attribute resolve last-wins.
+Every one of them is named in the export's warnings rather than left to be
+discovered. Quarantined material is never re-emitted, by design and by test.

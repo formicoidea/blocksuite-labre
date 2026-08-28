@@ -484,33 +484,176 @@ function carriedOf(model: {
 }
 
 /**
- * The carried attributes of one or more scopes, merged left to right.
+ * Whether a carried attribute NAME can be written back as one.
  *
- * Merged rather than concatenated because an attribute is a NAME on an element
- * and there is only one of each: a later scope wins, which is what lets the
- * caller order the scopes by how specific they are. Values are re-escaped by
- * the serializer like any other attribute — a carried value is data, not
- * markup, and it is the one half of a payload that must NOT be trusted as XML.
+ * The serializer escapes attribute VALUES and interpolates NAMES, which is the
+ * only asymmetry in this file that matters for the shape of the document: a
+ * value can say anything and stay inside its quotes, and a name cannot. A
+ * "name" of `x="1"><task id="INJECTED" /><y z` closes the element it was on and
+ * opens two more, so the damage is not confined to the element carrying the bad
+ * payload — it unbalances the whole file.
+ *
+ * `interchange` is ordinary collaborative Y.Map data: any peer with write
+ * access, any hand-edited document, any paste from a board that met a different
+ * importer. So a name is written only if it IS a name — an NCName, or the
+ * `prefix:local` pair of them that every foreign attribute in a `.bpmn` wears.
+ * {@link isNcName} rejects `:` itself, so "one colon" needs no separate check.
+ *
+ * This also disposes of a degenerate payload shape for free: `attrs: []` puts
+ * `Object.entries` on an array, whose keys are `"0"`, `"1"` — not NCNames,
+ * because an XML name cannot open on a digit.
  */
-function carriedAttrs(
-  payload: ForeignInterchange | undefined,
-  ...scopes: readonly string[]
-): Attrs {
-  const out: Attrs = {};
-  for (const scope of scopes) {
-    const bag = payload?.attrs?.[scope];
-    if (bag === null || typeof bag !== 'object') continue;
-    for (const [name, value] of Object.entries(bag)) {
-      // Not a prototype key and not an empty one. This is a persisted value
-      // whose history is a file from anywhere at all, so it is read the way
-      // `_assignElementProp` reads an unknown prop (PR #73): verbatim, minus
-      // the two names that are not data. Which DECLARATIONS may be written is a
-      // different question, decided at the `definitions` tag itself.
-      if (name === '__proto__' || name.length === 0) continue;
-      if (typeof value === 'string') out[name] = value;
+function isAttrName(name: string): boolean {
+  const colon = name.indexOf(':');
+  if (colon < 0) return isNcName(name);
+  return isNcName(name.slice(0, colon)) && isNcName(name.slice(colon + 1));
+}
+
+/**
+ * The `xsd:ID` a carried fragment's ROOT element claims, if it claims one.
+ *
+ * Read off the opening tag by hand rather than by parsing, because this module
+ * has no parser and is not going to grow one (it is a pure function of the
+ * board — ADR 0012 P3). That is enough for what it is for: an id is what makes
+ * two carried fragments the same fragment, and the root's is the one a second
+ * copy would duplicate.
+ *
+ * The scan stops at the first `>` OUTSIDE a quoted value, so an attribute whose
+ * value contains `>` does not truncate the tag; and `id` is required to be
+ * preceded by whitespace, so `camunda:id` and `bpmnElement` are not mistaken
+ * for it.
+ */
+function carriedRootId(fragment: string): string | undefined {
+  let quote: string | undefined;
+  let end = fragment.length;
+  for (let index = 0; index < fragment.length; index++) {
+    const char = fragment[index];
+    if (quote !== undefined) {
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === '>') {
+      end = index;
+      break;
     }
   }
-  return out;
+  const opening = fragment.slice(0, end);
+  const found = /(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(opening);
+  const value = found?.[1] ?? found?.[2];
+  return value !== undefined && value.length > 0 ? value : undefined;
+}
+
+/**
+ * The carried half of one export: what has already been written back, and what
+ * this writer refused to write.
+ *
+ * Stateful, and created per call, because both of the invariants it holds are
+ * DOCUMENT-wide and neither is checkable from one element:
+ *
+ * - **an `xsd:ID` is unique across the file.** `interchange` is declared on the
+ *   base element model precisely so a payload survives a paste (PR #73), so a
+ *   pool imported from a `.bpmn` and then copy-pasted holds its carried
+ *   boundary event, its lane's `documentation` and the document's residue
+ *   TWICE. Written twice, they are duplicate ids, and a duplicate `xsd:ID` is
+ *   the one thing no BPMN tool survives. First claim wins — it is the one
+ *   already written and already referenced — and a SECOND, DIFFERENT fragment
+ *   claiming the same id is a conflict the export reports rather than resolves;
+ * - **an attribute name is a name.** See {@link isAttrName}.
+ *
+ * The order in which the caller asks decides who wins, so the caller is the
+ * document's own emission order, which is deterministic in the board.
+ */
+class Carried {
+  /** The fragment already written for each id a carried root claimed. */
+  readonly #byId = new Map<string, string>();
+  /** Id-less DOCUMENT-scope fragments, of which two pools carry ONE. */
+  readonly #shared = new Set<string>();
+  /** Ids claimed a second time by a DIFFERENT fragment. */
+  readonly conflictingIds: string[] = [];
+  /** Attribute names refused because they are not names. */
+  readonly refusedNames: string[] = [];
+
+  /**
+   * The carried attributes of one or more scopes, merged left to right.
+   *
+   * Merged rather than concatenated because an attribute is a NAME on an
+   * element and there is only one of each: a later scope wins, which is what
+   * lets the caller order the scopes by how specific they are.
+   *
+   * NEITHER half of a carried attribute is trusted as markup. The value is
+   * re-escaped by the serializer like any other; the name is checked against
+   * {@link isAttrName}, because the serializer interpolates it and a name is
+   * the half that can escape its own element.
+   */
+  attrs(
+    payload: ForeignInterchange | undefined,
+    ...scopes: readonly string[]
+  ): Attrs {
+    const out: Attrs = {};
+    for (const scope of scopes) {
+      const bag = payload?.attrs?.[scope];
+      if (bag === null || typeof bag !== 'object') continue;
+      for (const [name, value] of Object.entries(bag)) {
+        if (typeof value !== 'string') continue;
+        // `__proto__` is a valid NCName and still not a key this writer will
+        // carry into an object it builds — the prototype-pollution exclusion
+        // PR #73 draws round its own verbatim write, drawn here too.
+        if (name === '__proto__') continue;
+        if (!isAttrName(name)) {
+          this.refusedNames.push(name);
+          continue;
+        }
+        out[name] = value;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The fragments of this bag that have not been written back already.
+   *
+   * @param shared for matter that belongs to the DOCUMENT rather than to the
+   * element carrying it — D6's `definitions` and `collaboration` residue, and
+   * the plane's carried diagram elements. Two pools holding the same payload
+   * hold ONE of those, so an id-less one is deduplicated on its text as well.
+   * An id-less fragment at ELEMENT scope is never deduplicated: two tasks may
+   * each carry their own `<documentation>`, and two pools each their own
+   * `<BPMNLabel />`, and those are two fragments rather than one written twice.
+   */
+  keep(fragments: readonly XmlNode[], shared = false): XmlNode[] {
+    const out: XmlNode[] = [];
+    for (const node of fragments) {
+      if (!('fragment' in node)) {
+        out.push(node);
+        continue;
+      }
+      const id = carriedRootId(node.fragment);
+      if (id === undefined) {
+        if (shared) {
+          if (this.#shared.has(node.fragment)) continue;
+          this.#shared.add(node.fragment);
+        }
+        out.push(node);
+        continue;
+      }
+      const written = this.#byId.get(id);
+      if (written !== undefined) {
+        // The same characters twice is one thing carried twice — a paste — and
+        // writing it once is the whole job. DIFFERENT characters under one id
+        // are two things that cannot both be in a file, and that is a sentence
+        // the person exporting is entitled to hear.
+        if (written !== node.fragment) this.conflictingIds.push(id);
+        continue;
+      }
+      this.#byId.set(id, node.fragment);
+      out.push(node);
+    }
+    return out;
+  }
 }
 
 /** Whether a stored fragment is a string this writer can put back. */
@@ -601,7 +744,18 @@ const PROCESS_HEAD = new Set([
 /** `tProcess` and `tCollaboration` both end their drawable half on this slot. */
 const ARTIFACT_LOCALS = new Set(['association', 'group', 'textAnnotation']);
 
-/** `tProcess`, after its `artifact*` slot. */
+/**
+ * `tProcess`, after its `artifact*` slot.
+ *
+ * `resourceRole` is the abstract head of a substitution group, so the three
+ * names a file actually writes are here beside it (Table 10.142).
+ *
+ * Both spellings of `correlationSub(s)cription` are here because the NORMATIVE
+ * schema misspells it: `tProcess` really does declare
+ * `correlationSubcription`, without the second `s` (Table 10.136, ISO p. 311).
+ * A file written against the published XSD carries the typo and a file written
+ * against the prose carries the correction, and both belong in this slot.
+ */
 const PROCESS_TAIL = new Set([
   'resourceRole',
   'performer',
@@ -684,28 +838,6 @@ function slot<Slot extends string>(
   name: Slot
 ): XmlNode[] {
   return bag[name] ?? [];
-}
-
-/**
- * The same fragment carried twice, written once.
- *
- * Document-scope matter (D6) rides on the FIRST pool, and this writer reads
- * every pool rather than guessing which one that is — so a pool duplicated by a
- * copy-paste would otherwise write the file's `<bpmn:message>` roots and its
- * `xmlns:camunda` twice, and duplicate ids are the one thing an `xsd:ID` cannot
- * survive. Identity is the fragment string, because a fragment is stored
- * verbatim and two copies of one source element are the same characters.
- */
-function distinct(fragments: readonly XmlNode[]): XmlNode[] {
-  const seen = new Set<string>();
-  const out: XmlNode[] = [];
-  for (const node of fragments) {
-    if (!('fragment' in node)) continue;
-    if (seen.has(node.fragment)) continue;
-    seen.add(node.fragment);
-    out.push(node);
-  }
-  return out;
 }
 
 /**
@@ -1321,25 +1453,63 @@ export function exportBpmnXmlWithWarnings(
   /* ── What the file gave us back ──────────────────────────────────── */
 
   /**
+   * The carried half of this export: what has been written back already, and
+   * what was refused. See {@link Carried} for the two invariants it holds.
+   *
+   * One per call, consulted by every re-emission site in the order the document
+   * is built — which is why it is created here and threaded down rather than
+   * applied at each site independently: a pool duplicated by a copy-paste puts
+   * the SAME carried element in two different processes, and no site can see
+   * that on its own.
+   */
+  const carried = new Carried();
+
+  /**
    * The document's own residue, gathered from every pool rather than from one.
    *
    * D6 has an import file `definitions`- and `collaboration`-scope matter on
    * the FIRST pool, but "first" is the reader's document order and this writer
    * is handed the board's — and a pool can be copy-pasted, deleted, or drawn
-   * before the imported one. So every pool is asked, and {@link distinct} is
-   * what keeps a duplicated payload from writing the file's roots twice.
+   * before the imported one. So every pool is asked, and {@link Carried.keep}
+   * is what keeps a duplicated payload from writing the file's roots twice.
    */
   const poolPayloads = processes
     .filter(process => process.pool !== null)
     .map(process => process.payload);
 
-  const documentAttrs = (scope: string): Attrs => {
-    const out: Attrs = {};
+  /**
+   * One document-scope bag of attributes, merged across the pools that carry
+   * it, and the conflicts that merge resolved.
+   *
+   * Computed ONCE per scope rather than on each read, because the merge is
+   * last-wins and a silent last-wins across two pools imported from two
+   * different files is one of them being rebound with nobody told. Last-wins
+   * stays — there is one attribute of each name on `definitions` and something
+   * has to be written — and the disagreement goes in the report.
+   */
+  const documentAttrsOf = (scope: string) => {
+    const value: Attrs = {};
+    const disagreed: string[] = [];
     for (const payload of poolPayloads) {
-      Object.assign(out, carriedAttrs(payload, scope));
+      for (const [name, carriedValue] of Object.entries(
+        carried.attrs(payload, scope)
+      )) {
+        const seen = value[name];
+        if (seen !== undefined && seen !== carriedValue) disagreed.push(name);
+        value[name] = carriedValue;
+      }
     }
-    return out;
+    return { value, disagreed };
   };
+
+  const definitionsAttrs = documentAttrsOf(BPMN_SCOPE.definitions);
+  const collaborationAttrs = documentAttrsOf(BPMN_SCOPE.collaboration);
+  const disagreeingDeclarations = [
+    ...new Set([
+      ...definitionsAttrs.disagreed,
+      ...collaborationAttrs.disagreed,
+    ]),
+  ];
 
   /**
    * A carried declaration that would contradict one this writer makes.
@@ -1350,17 +1520,19 @@ export function exportBpmnXmlWithWarnings(
    * library's four prefixes to something else (`xmlns:dc` as Dublin Core, say).
    * Writing that back would rebind the prefix every `dc:Bounds` in this
    * document is written under, so it is refused: the declaration stays in the
-   * document, out of the file, and the person exporting is told.
+   * document, out of the file, and the person exporting is told — including
+   * what it means for the fragments that were written under it.
    */
-  const contradictingDeclarations = Object.keys(
-    documentAttrs(BPMN_SCOPE.definitions)
-  ).filter(name => name in BPMN_OWN_DECLARATIONS);
+  const contradictingDeclarations = Object.keys(definitionsAttrs.value).filter(
+    name => name in BPMN_OWN_DECLARATIONS
+  );
 
   const documentChildren = (scope: string): XmlNode[] =>
-    distinct(
+    carried.keep(
       poolPayloads.flatMap(payload =>
         carriedFragments(payload?.children, scope)
-      )
+      ),
+      true
     );
 
   /* ── The semantic half ───────────────────────────────────────────── */
@@ -1393,11 +1565,11 @@ export function exportBpmnXmlWithWarnings(
     // extensionElements? → choreography* → participant* → messageFlow* →
     // artifact* → conversationNode* → …`. The scope says which ELEMENT a
     // fragment came out of; the XSD is what says where in it.
-    const carried = bySlot(
+    const shared = bySlot(
       documentChildren(BPMN_SCOPE.collaboration),
       collaborationSlotOf
     );
-    children.push(...slot(carried, 'head'));
+    children.push(...slot(shared, 'head'));
     // `participant*` strictly before `messageFlow*` (tCollaboration's sequence).
     for (const process of processes) {
       if (!process.participantId) continue;
@@ -1413,31 +1585,33 @@ export function exportBpmnXmlWithWarnings(
             // tag and is applied there instead.
             ...(process.selfIsProcess
               ? {}
-              : carriedAttrs(process.payload, BPMN_SCOPE.self)),
+              : carried.attrs(process.payload, BPMN_SCOPE.self)),
           },
           process.selfIsProcess
             ? []
-            : carriedFragments(process.payload?.children, BPMN_SCOPE.self)
+            : carried.keep(
+                carriedFragments(process.payload?.children, BPMN_SCOPE.self)
+              )
         )
       );
     }
     for (const edge of edges) {
       if (edge.element !== 'messageFlow') continue;
-      children.push(semanticEdge(edge));
+      children.push(semanticEdge(edge, carried));
     }
-    children.push(...slot(carried, 'messageFlow'));
+    children.push(...slot(shared, 'messageFlow'));
     // `artifact*` last, and only what fell outside every pool: an annotation
     // drawn ON a pool is that process's, and belongs with the work it is about.
-    children.push(...artifacts(COLLABORATION, planned, edges));
-    children.push(...slot(carried, 'artifact'));
-    children.push(...slot(carried, 'tail'));
+    children.push(...artifacts(COLLABORATION, planned, edges, carried));
+    children.push(...slot(shared, 'artifact'));
+    children.push(...slot(shared, 'tail'));
     roots.push(
       el(
         'bpmn:collaboration',
         {
           id: collaborationId,
           name: options.name || undefined,
-          ...documentAttrs(BPMN_SCOPE.collaboration),
+          ...collaborationAttrs.value,
         },
         children
       )
@@ -1461,10 +1635,14 @@ export function exportBpmnXmlWithWarnings(
           // than the `false` written just above, and giving it back is the
           // model downgrade this half of the round trip repairs.
           ...(process.selfIsProcess
-            ? carriedAttrs(process.payload, BPMN_SCOPE.self, BPMN_SCOPE.process)
-            : carriedAttrs(process.payload, BPMN_SCOPE.process)),
+            ? carried.attrs(
+                process.payload,
+                BPMN_SCOPE.self,
+                BPMN_SCOPE.process
+              )
+            : carried.attrs(process.payload, BPMN_SCOPE.process)),
         },
-        processChildren(index, process, planned, edges)
+        processChildren(index, process, planned, edges, carried)
       )
     );
   }
@@ -1491,13 +1669,15 @@ export function exportBpmnXmlWithWarnings(
             // a pool here always runs left to right: the plot is cut into
             // horizontal bands, which is what a horizontal pool means.
             isHorizontal: 'true',
-            ...carriedAttrs(process.payload, BPMN_SCOPE.shape),
+            ...carried.attrs(process.payload, BPMN_SCOPE.shape),
           },
           // `tBPMNShape` is `Bounds → BPMNLabel?`, so anything carried off this
           // shape — a label, a vendor's own DI child — goes after the bounds.
           [
             el('dc:Bounds', boundsAttrs(bound, dx, dy)),
-            ...carriedFragments(process.payload?.di, BPMN_SCOPE.shape),
+            ...carried.keep(
+              carriedFragments(process.payload?.di, BPMN_SCOPE.shape)
+            ),
           ]
         )
       );
@@ -1544,11 +1724,11 @@ export function exportBpmnXmlWithWarnings(
     if (node.model.kind === 'gatewayExclusive') {
       attrs.isMarkerVisible = 'true';
     }
-    Object.assign(attrs, carriedAttrs(node.payload, BPMN_SCOPE.shape));
+    Object.assign(attrs, carried.attrs(node.payload, BPMN_SCOPE.shape));
     planeElements.push(
       el('bpmndi:BPMNShape', attrs, [
         el('dc:Bounds', boundsAttrs(node.bound, dx, dy)),
-        ...carriedFragments(node.payload?.di, BPMN_SCOPE.shape),
+        ...carried.keep(carriedFragments(node.payload?.di, BPMN_SCOPE.shape)),
       ])
     );
   }
@@ -1560,7 +1740,7 @@ export function exportBpmnXmlWithWarnings(
         {
           id: minter.mint('Edge', edge.id),
           bpmnElement: edge.id,
-          ...carriedAttrs(edge.payload, BPMN_SCOPE.shape),
+          ...carried.attrs(edge.payload, BPMN_SCOPE.shape),
         },
         // `tBPMNEdge` is `waypoint+ → BPMNLabel?`: the routing first, whatever
         // was carried off the edge after it.
@@ -1568,7 +1748,7 @@ export function exportBpmnXmlWithWarnings(
           ...edge.waypoints.map(([x, y]) =>
             el('di:waypoint', { x: num(x + dx), y: num(y + dy) })
           ),
-          ...carriedFragments(edge.payload?.di, BPMN_SCOPE.shape),
+          ...carried.keep(carriedFragments(edge.payload?.di, BPMN_SCOPE.shape)),
         ]
       )
     );
@@ -1598,11 +1778,14 @@ export function exportBpmnXmlWithWarnings(
    * It is in the loss table and the warning below says so out loud; it is not
    * silent, and nothing is lost — only displaced.
    */
-  const carriedPlane = distinct([
-    ...processes.flatMap(process => carriedPlaneDi(process.payload)),
-    ...planned.flatMap(node => carriedPlaneDi(node.payload)),
-    ...edges.flatMap(edge => carriedPlaneDi(edge.payload)),
-  ]);
+  const carriedPlane = carried.keep(
+    [
+      ...processes.flatMap(process => carriedPlaneDi(process.payload)),
+      ...planned.flatMap(node => carriedPlaneDi(node.payload)),
+      ...edges.flatMap(edge => carriedPlaneDi(edge.payload)),
+    ],
+    true
+  );
   planeElements.push(...carriedPlane);
 
   const diagram = el(
@@ -1647,7 +1830,7 @@ export function exportBpmnXmlWithWarnings(
       // same namespace as the `xmlns:bpmn` above, different prefix, and a
       // fragment stored verbatim needs the prefix it was stored under.
       ...Object.fromEntries(
-        Object.entries(documentAttrs(BPMN_SCOPE.definitions)).filter(
+        Object.entries(definitionsAttrs.value).filter(
           ([name]) => !(name in BPMN_OWN_DECLARATIONS)
         )
       ),
@@ -1736,14 +1919,71 @@ export function exportBpmnXmlWithWarnings(
   }
 
   if (contradictingDeclarations.length > 0) {
+    const one = contradictingDeclarations.length === 1;
     warnings.push(
       `This board came from a BPMN file that used ` +
         `${contradictingDeclarations.join(' and ')} for something other than ` +
-        `what BPMN means by ${contradictingDeclarations.length === 1 ? 'it' : 'them'}. ` +
+        `what BPMN means by ${one ? 'it' : 'them'}. ` +
         `Labre writes its own, so the file's ` +
-        `${contradictingDeclarations.length === 1 ? 'declaration was' : 'declarations were'} ` +
+        `${one ? 'declaration was' : 'declarations were'} ` +
         `left out rather than allowed to redefine the diagram's own namespaces. ` +
-        `${contradictingDeclarations.length === 1 ? 'It is' : 'They are'} still in the document.`
+        `${one ? 'It is' : 'They are'} still in the document. ` +
+        // The half a reader would otherwise have to work out: the DECLARATION
+        // is what was dropped, and the matter written under it was not — so it
+        // is now read under Labre's binding of the same prefix, which means
+        // something else. That is the larger of the two changes and it was the
+        // silent one.
+        `Anything the file wrote under ` +
+        `${one ? 'that prefix' : 'those prefixes'} is still in the export and ` +
+        `will now be read under Labre's meaning of ` +
+        `${one ? 'it' : 'them'}, which is not the meaning the original had.`
+    );
+  }
+
+  // Two pools, two source files, one prefix bound two ways. Last one wins —
+  // there is one attribute of each name on `definitions` and something has to
+  // be written — but a rebinding nobody was told about is how a fragment comes
+  // to mean something else with no trace of when.
+  if (disagreeingDeclarations.length > 0) {
+    warnings.push(
+      `Two pools on this board disagree about ` +
+        `${disagreeingDeclarations.join(' and ')}: they came from BPMN files ` +
+        `that gave the same name two different values. The last was written ` +
+        `and the other left out, so matter carried from the first file is now ` +
+        `read under the second's meaning. Both are still in the document.`
+    );
+  }
+
+  // A carried element claiming an id another has already written back. The
+  // duplicate-by-paste case is silent on purpose — one thing carried twice is
+  // written once and nothing is lost — so this fires only for two DIFFERENT
+  // fragments claiming one id, which is a file that cannot hold both.
+  const conflicting = [...new Set(carried.conflictingIds)];
+  if (conflicting.length > 0) {
+    const one = conflicting.length === 1;
+    warnings.push(
+      `${conflicting.length} ${one ? 'element' : 'elements'} imported from a ` +
+        `BPMN file could not be written back: ` +
+        `${conflicting.map(id => `"${id}"`).join(', ')} ` +
+        `${one ? 'names an id' : 'name ids'} another imported element had ` +
+        `already claimed, and a BPMN id must be unique across a document. The ` +
+        `first was kept. ${one ? 'The other is' : 'The others are'} still in ` +
+        `the document; ${one ? 'it is' : 'they are'} not in this file.`
+    );
+  }
+
+  // An attribute NAME that is not a name. It cannot be written without
+  // unbalancing the document — the serializer interpolates a name and escapes
+  // only a value — so it is dropped rather than allowed to corrupt the file.
+  const refusedNames = [...new Set(carried.refusedNames)];
+  if (refusedNames.length > 0) {
+    const one = refusedNames.length === 1;
+    warnings.push(
+      `${refusedNames.length} carried ${one ? 'attribute' : 'attributes'} ` +
+        `could not be written back, because ` +
+        `${one ? 'its name is not' : 'their names are not'} a valid XML name. ` +
+        `${one ? 'It is' : 'They are'} still in the document. This is a sign ` +
+        `the payload was edited by something other than a BPMN import.`
     );
   }
 
@@ -1784,7 +2024,8 @@ function processChildren(
   index: number,
   process: PlannedProcess,
   planned: readonly PlannedNode[],
-  edges: readonly PlannedEdge[]
+  edges: readonly PlannedEdge[],
+  carried: Carried
 ): XmlNode[] {
   const mine = planned.filter(node => node.scope === index);
   const children: XmlNode[] = [];
@@ -1799,20 +2040,22 @@ function processChildren(
    * for the pool an import minted for a bare `process`, because that pool is
    * the process (D6).
    */
-  const carried = bySlot(
-    process.selfIsProcess
-      ? carriedFragments(
-          process.payload?.children,
-          BPMN_SCOPE.self,
-          BPMN_SCOPE.process
-        )
-      : carriedFragments(process.payload?.children, BPMN_SCOPE.process),
+  const mySlots = bySlot(
+    carried.keep(
+      process.selfIsProcess
+        ? carriedFragments(
+            process.payload?.children,
+            BPMN_SCOPE.self,
+            BPMN_SCOPE.process
+          )
+        : carriedFragments(process.payload?.children, BPMN_SCOPE.process)
+    ),
     processSlotOf
   );
 
   // `documentation`, `extensionElements`, `auditing`, `property`… — everything
   // `tProcess` puts BEFORE its lane sets, which is where the sequence starts.
-  children.push(...slot(carried, 'head'));
+  children.push(...slot(mySlots, 'head'));
 
   /**
    * `laneSet` — FLAT, and only when the pool actually PAINTS lanes.
@@ -1834,11 +2077,13 @@ function processChildren(
         'bpmn:laneSet',
         {
           id: process.laneSetId,
-          ...carriedAttrs(process.payload, BPMN_SCOPE.laneSet),
+          ...carried.attrs(process.payload, BPMN_SCOPE.laneSet),
         },
         [
           // `tLaneSet` is `documentation* → extensionElements? → lane*`.
-          ...carriedFragments(process.payload?.children, BPMN_SCOPE.laneSet),
+          ...carried.keep(
+            carriedFragments(process.payload?.children, BPMN_SCOPE.laneSet)
+          ),
           ...process.lanes.map(band =>
             el(
               'bpmn:lane',
@@ -1848,14 +2093,16 @@ function processChildren(
                 // A lane's SCOPE is the id the file called it, which is what
                 // the pool stores on the band — never the id minted just above,
                 // which a collision could have moved.
-                ...carriedAttrs(process.payload, band.lane.id),
+                ...carried.attrs(process.payload, band.lane.id),
               },
               [
                 // `tLane` is `documentation* → extensionElements? →
                 // partitionElement? → flowNodeRef* → childLaneSet?`, so what
                 // was carried off the lane goes before the references. The
                 // `childLaneSet` never arrives: D5 case 3 quarantines it.
-                ...carriedFragments(process.payload?.children, band.lane.id),
+                ...carried.keep(
+                  carriedFragments(process.payload?.children, band.lane.id)
+                ),
                 ...mine
                   .filter(
                     node =>
@@ -1877,7 +2124,7 @@ function processChildren(
   /* flowElement* — the flow nodes, the data references, the sequence flows. */
   for (const node of mine) {
     if (node.mapping.slot === 'artifact') continue;
-    children.push(semanticNode(node));
+    children.push(semanticNode(node, carried));
     // The `dataObject` a `dataObjectReference` points at: a flow element of
     // this same process, written beside the reference. The spec splits the two
     // on purpose — the OBJECT carries the item definition, the REFERENCE
@@ -1895,17 +2142,17 @@ function processChildren(
   }
   for (const edge of edges) {
     if (edge.scope !== index || edge.element !== 'sequenceFlow') continue;
-    children.push(semanticEdge(edge));
+    children.push(semanticEdge(edge, carried));
   }
   // Carried flow elements — the Analytic vocabulary, the flows onto it — in the
   // same slot as the ones above, because that is the slot they came out of.
-  children.push(...slot(carried, 'flowElement'));
+  children.push(...slot(mySlots, 'flowElement'));
 
   /* artifact* — annotations, groups, associations. Last, per the XSD. */
-  children.push(...artifacts(index, planned, edges));
-  children.push(...slot(carried, 'artifact'));
+  children.push(...artifacts(index, planned, edges, carried));
+  children.push(...slot(mySlots, 'artifact'));
   /* …and `resourceRole*` and its neighbours, which follow the artifacts. */
-  children.push(...slot(carried, 'tail'));
+  children.push(...slot(mySlots, 'tail'));
 
   return children;
 }
@@ -1921,17 +2168,18 @@ function processChildren(
 function artifacts(
   scope: number,
   planned: readonly PlannedNode[],
-  edges: readonly PlannedEdge[]
+  edges: readonly PlannedEdge[],
+  carried: Carried
 ): XmlNode[] {
   const out: XmlNode[] = [];
 
   for (const node of planned) {
     if (node.scope !== scope || node.mapping.slot !== 'artifact') continue;
-    out.push(semanticNode(node));
+    out.push(semanticNode(node, carried));
   }
   for (const edge of edges) {
     if (edge.scope !== scope || edge.element !== 'association') continue;
-    out.push(semanticEdge(edge));
+    out.push(semanticEdge(edge, carried));
   }
 
   return out;
@@ -1950,7 +2198,7 @@ function artifacts(
  * `associationDirection` the file actually stated win over the `None` this
  * exporter writes for a role that declares no direction (`docs/adr/0010`).
  */
-function semanticEdge(edge: PlannedEdge): XmlElement {
+function semanticEdge(edge: PlannedEdge, carried: Carried): XmlElement {
   const attrs: Attrs = {
     id: edge.id,
     // `association` has no `name` in this exporter and never had one.
@@ -1960,14 +2208,14 @@ function semanticEdge(edge: PlannedEdge): XmlElement {
     // "This note is about that task" reads the same from either end, so the
     // association claims no direction.
     ...(edge.element === 'association' ? { associationDirection: 'None' } : {}),
-    ...carriedAttrs(edge.payload, BPMN_SCOPE.self),
+    ...carried.attrs(edge.payload, BPMN_SCOPE.self),
   };
   return el(
     `bpmn:${edge.element}`,
     attrs,
     // A flow has no child this exporter writes, so there is nothing for the
     // carried ones to be ordered against.
-    carriedFragments(edge.payload?.children, BPMN_SCOPE.self)
+    carried.keep(carriedFragments(edge.payload?.children, BPMN_SCOPE.self))
   );
 }
 
@@ -1987,10 +2235,12 @@ function semanticEdge(edge: PlannedEdge): XmlElement {
  * after every child of an event an import can have carried. One rule covers
  * both, which is the only way it stays true.
  */
-function semanticNode(node: PlannedNode): XmlElement {
+function semanticNode(node: PlannedNode, written: Carried): XmlElement {
   const { mapping, name } = node;
-  const carried = carriedFragments(node.payload?.children, BPMN_SCOPE.self);
-  const foreign = carriedAttrs(node.payload, BPMN_SCOPE.self);
+  const carried = written.keep(
+    carriedFragments(node.payload?.children, BPMN_SCOPE.self)
+  );
+  const foreign = written.attrs(node.payload, BPMN_SCOPE.self);
 
   if (mapping.element === 'textAnnotation') {
     return el(

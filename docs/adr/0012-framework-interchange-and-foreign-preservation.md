@@ -846,7 +846,7 @@ not of surface elements created.
 #### Divergences accepted at implementation (PR #164, the writer)
 
 The reader was built against D1–D6; the writer was built against the reader.
-Five places where the decisions above are incomplete rather than wrong, recorded
+Six places where the decisions above are incomplete rather than wrong, recorded
 HERE for the reason both sections above give — the next capability author reads
 this file and not that thread. **Where this section and the decisions above
 disagree, this section is what the code does.**
@@ -899,14 +899,49 @@ diagram with it, and the sweep skips a quarantined id. This is the case NIT-2 of
 #160's review predicted would "start biting when re-emission lands"; it bit on
 the first run.
 
-**5. Document-scope matter is read off every pool, and de-duplicated.** D6 files
-`definitions`- and `collaboration`-scope residue on _the first pool_. "First" is
-the reader's document order, and the writer is handed the board's — and a pool
-can be copy-pasted, deleted, or drawn before the imported one. So the writer
-asks every pool and writes each distinct fragment once. Identity is the fragment
-string, which is exact because a fragment is stored verbatim. Without this, a
-duplicated pool writes the file's root elements twice, and a duplicated `xsd:ID`
-is the one thing no BPMN tool survives.
+**5. Every carried fragment is written back at most once, and the unit is the
+`xsd:ID`.** D6 files `definitions`- and `collaboration`-scope residue on _the
+first pool_. "First" is the reader's document order, and the writer is handed
+the board's — and a pool can be copy-pasted, deleted, or drawn before the
+imported one. So the writer asks every pool.
+
+The deduplication that follows is **not** document-scope-only, and the first cut
+of this PR got that wrong. `interchange` is declared on the base element model
+precisely so a payload survives a paste (PR #73), so a pool imported from a
+`.bpmn` and then copy-pasted holds its carried boundary event, its lane's
+`documentation` and its `BPMNShape` twice as well — at `@process`, at a lane
+scope and on the plane, none of which is document scope. **The guard is
+document-wide and applies at every re-emission site.**
+
+Its key is the **`xsd:ID` a carried fragment's root claims**, not the fragment's
+text, because uniqueness of the id is the invariant and text identity is neither
+necessary nor sufficient for it: two pools imported from two different files
+each carrying `<message id="Msg_1" name="A"/>` and `<message id="Msg_1"
+name="B"/>` are different strings and cannot both be written. First claim wins —
+it is the one already written and already referenced — and a second, DIFFERENT
+fragment under the same id is reported. Text identity remains the fallback for
+an **id-less fragment at document scope**, where two pools carrying one payload
+carry one fragment; an id-less fragment at element scope is never deduplicated,
+because two tasks may each carry their own `<documentation>` and those are two
+fragments rather than one written twice.
+
+**6. Neither half of a carried attribute is trusted as markup.** The serializer
+escapes attribute VALUES and interpolates NAMES, which is the one asymmetry in
+that module that decides the SHAPE of the document rather than its content: a
+value says anything and stays inside its quotes, a name does not. A "name" of
+`x="1"><task id="INJECTED"/><y z` closes its own element and opens two more, so
+the damage is not confined to the element carrying the payload — it unbalances
+the file. `interchange` is ordinary collaborative Y.Map data (any peer with
+write access, any hand-edited document, any paste from a board that met a
+different importer), so a carried name is written only if it IS a name: an
+NCName, or the `prefix:local` pair of them every foreign attribute in a `.bpmn`
+wears. Refused names stay in the document and are reported.
+
+The FRAGMENT half of the same question is deliberately not guarded, and that is
+D2 rather than an oversight: verbatim re-emission of arbitrary foreign matter
+cannot be made safe without re-parsing it, which a pure function of the board
+cannot do. The reader/writer pair is the trust boundary, and it is stated as one
+in `export.ts`'s `XmlFragment`.
 
 ## What is knowingly lost, and what is merely invisible
 
@@ -921,27 +956,30 @@ was a promise when this table was first written and is a passing test now; the
 rows that moved are marked, and the two rows the writer ADDED are the honest
 price of it.
 
-| what                                                                             | state                             | round-trip result                                                                                                                                                                                                       |
-| -------------------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the plane offset (§12.3)                                                         | **lost**                          | shape exact, absolute origin at `(0, 0)`                                                                                                                                                                                |
-| surface identity across a re-import                                              | **lost**                          | a new board, never a merge into the old one                                                                                                                                                                             |
-| **a carried shape's position, once the drawing has moved** _(new)_               | **lost**                          | a carried fragment is given back character for character, so it keeps the source file's coordinates while everything drawn is translated to the plane origin. The export warns. Nothing is lost; something is displaced |
-| **an `xmlns:` rebinding one of Labre's own four prefixes** _(new)_               | **lost on export**                | kept in the document, not written back: re-emitting it would rebind the prefix every `dc:Bounds` in the file is written under. The export warns                                                                         |
-| **a carried fragment's SLOT inside its parent** _(new)_                          | **lost, and re-derived**          | the scope records which element a fragment was a child of, not which slot of it. The writer places it from the XSD sequence — always legal, not necessarily where the file had it                                       |
-| a colour set in bpmn.io                                                          | **lost on export** (quarantined)  | imports grey, re-exports without the vendor colour                                                                                                                                                                      |
-| expanded sub-process rendering                                                   | **lost on export** (quarantined)  | drawn collapsed; the body and its DI survive in the document                                                                                                                                                            |
-| lane nesting                                                                     | **lost on export** (quarantined)  | flat lanes with joined names; the nesting survives in the document                                                                                                                                                      |
-| `<import>` of a multi-file set                                                   | **lost on export** (quarantined)  | single-file import only                                                                                                                                                                                                 |
-| **`process/@isExecutable="true"`** _(was lost, now round-trips)_                 | **carried**                       | written back on the `process`, overriding the `false` the writer mints                                                                                                                                                  |
-| **a file's own prefix for a namespace (`bpmn2:`)** _(was lost, now round-trips)_ | **carried**                       | re-declared on `definitions`, without which every fragment carried under it is unparseable                                                                                                                              |
-| `conditionExpression`, `default` on a flow                                       | **carried**                       | invisible on canvas, re-emitted verbatim                                                                                                                                                                                |
-| loop / multi-instance / compensation markers                                     | **carried**                       | a plain task on canvas, marked again in the file                                                                                                                                                                        |
-| `ioSpecification`, `dataInputAssociation`                                        | **carried**                       | re-emitted verbatim on the activity                                                                                                                                                                                     |
-| `documentation`                                                                  | **carried**                       | re-emitted verbatim                                                                                                                                                                                                     |
-| Analytic elements (boundary / inclusive / event-based, `transaction`, …)         | **carried** on the enclosing pool | not drawn; re-emitted into the flow-element slot they came out of, with their `BPMNShape` back on the plane                                                                                                             |
-| a flow onto a carried node (a boundary event's error path)                       | **carried**                       | never drawn loose; re-emitted with the node it runs to, its `BPMNEdge` included                                                                                                                                         |
-| `camunda:` / `zeebe:` / `signavio:` extensions                                   | **carried**                       | re-emitted verbatim, with the declarations they need                                                                                                                                                                    |
-| the 17 kinds, pools, flat lanes, 3 edge roles, DI                                | **mapped**                        | drawn and re-emitted from the drawing                                                                                                                                                                                   |
+| what                                                                             | state                             | round-trip result                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| the plane offset (§12.3)                                                         | **lost**                          | shape exact, absolute origin at `(0, 0)`                                                                                                                                                                                                                                                               |
+| surface identity across a re-import                                              | **lost**                          | a new board, never a merge into the old one                                                                                                                                                                                                                                                            |
+| **a carried shape's position, once the drawing has moved** _(new)_               | **lost**                          | a carried fragment is given back character for character, so it keeps the source file's coordinates while everything drawn is translated to the plane origin. The export warns. Nothing is lost; something is displaced                                                                                |
+| **an `xmlns:` rebinding one of Labre's own four prefixes** _(new)_               | **lost on export**                | kept in the document, not written back: re-emitting it would rebind the prefix every `dc:Bounds` in the file is written under. The fragments carried under it ARE written and are then read under Labre's binding — reinterpreted rather than lost, which is the worse half, so the warning names both |
+| **an `xmlns:` declared on anything but `definitions`** _(new)_                   | **lost**                          | the reader carries declarations off `definitions` only, so a fragment relying on one scoped to its own ancestor comes back unparseable. bpmn.io and Camunda both hoist, so it is theoretical on a real file                                                                                            |
+| **a carried element whose id another carried element already claimed** _(new)_   | **lost on export**                | the first is written and the rest are not — an `xsd:ID` is unique across a document, and a pool duplicated by a paste carries its whole payload twice. The duplicates stay in the document; the export names them                                                                                      |
+| **two pools disagreeing about one `definitions` attribute** _(new)_              | **lost on export**                | one value can be written and the last wins; matter carried from the other file is then read under it. Both stay in the document and the export warns                                                                                                                                                   |
+| **a carried fragment's SLOT inside its parent** _(new)_                          | **lost, and re-derived**          | the scope records which element a fragment was a child of, not which slot of it. The writer places it from the XSD sequence — always legal, not necessarily where the file had it                                                                                                                      |
+| a colour set in bpmn.io                                                          | **lost on export** (quarantined)  | imports grey, re-exports without the vendor colour                                                                                                                                                                                                                                                     |
+| expanded sub-process rendering                                                   | **lost on export** (quarantined)  | drawn collapsed; the body and its DI survive in the document                                                                                                                                                                                                                                           |
+| lane nesting                                                                     | **lost on export** (quarantined)  | flat lanes with joined names; the nesting survives in the document                                                                                                                                                                                                                                     |
+| `<import>` of a multi-file set                                                   | **lost on export** (quarantined)  | single-file import only                                                                                                                                                                                                                                                                                |
+| **`process/@isExecutable="true"`** _(was lost, now round-trips)_                 | **carried**                       | written back on the `process`, overriding the `false` the writer mints                                                                                                                                                                                                                                 |
+| **a file's own prefix for a namespace (`bpmn2:`)** _(was lost, now round-trips)_ | **carried**                       | re-declared on `definitions`, without which every fragment carried under it is unparseable                                                                                                                                                                                                             |
+| `conditionExpression`, `default` on a flow                                       | **carried**                       | invisible on canvas, re-emitted verbatim                                                                                                                                                                                                                                                               |
+| loop / multi-instance / compensation markers                                     | **carried**                       | a plain task on canvas, marked again in the file                                                                                                                                                                                                                                                       |
+| `ioSpecification`, `dataInputAssociation`                                        | **carried**                       | re-emitted verbatim on the activity                                                                                                                                                                                                                                                                    |
+| `documentation`                                                                  | **carried**                       | re-emitted verbatim                                                                                                                                                                                                                                                                                    |
+| Analytic elements (boundary / inclusive / event-based, `transaction`, …)         | **carried** on the enclosing pool | not drawn; re-emitted into the flow-element slot they came out of, with their `BPMNShape` back on the plane                                                                                                                                                                                            |
+| a flow onto a carried node (a boundary event's error path)                       | **carried**                       | never drawn loose; re-emitted with the node it runs to, its `BPMNEdge` included                                                                                                                                                                                                                        |
+| `camunda:` / `zeebe:` / `signavio:` extensions                                   | **carried**                       | re-emitted verbatim, with the declarations they need                                                                                                                                                                                                                                                   |
+| the 17 kinds, pools, flat lanes, 3 edge roles, DI                                | **mapped**                        | drawn and re-emitted from the drawing                                                                                                                                                                                                                                                                  |
 
 A carried element is not on the canvas, so no validation rule sees it and no
 audit counts it. That is correct and must be said out loud in the report:
