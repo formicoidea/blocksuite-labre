@@ -213,8 +213,9 @@ describe('the senior sub-menu past fourteen commands', () => {
   });
 
   test('a fourteen-command owner still shows everything and no button', async () => {
-    // The same editor, a second menu for wardley (13 declared): under the cap
-    // the sub-menu IS the declared surface, and no More button is rendered.
+    // The same editor, a second menu for wardley (15 declared, 14 of them
+    // nominating the row since the OWM DSL pair): AT the cap the sub-menu is
+    // still the whole nominated surface, and no More button is rendered.
     const wardleyMenu = document.createElement(
       'test-overflow-menu'
     ) as TestOverflowMenu;

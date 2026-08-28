@@ -30,7 +30,14 @@ describe('command registry on the canvas', () => {
 
   test('the wardley toolbox is registered whole — the 13 that used to be menu-only included', () => {
     const ids = menuCommands('wardley').map(c => c.id);
-    expect(ids).toHaveLength(13);
+    // Fourteen since the OWM DSL pair (`docs/adr/0012`): the thirteen artefacts
+    // plus `wardley.importOwm`, which nominates the row because an import is
+    // where a board comes FROM and the sub-menu is the first thing a user opens
+    // on an empty canvas (PO decision of 2026-08-28). `wardley.exportOwm`
+    // declines it and lives in the catalogue.
+    expect(ids).toHaveLength(14);
+    expect(ids).toContain('wardley.importOwm');
+    expect(ids).not.toContain('wardley.exportOwm');
     // The six that existed ONLY as buttons before PF3, invisible to the
     // shortcut manifest and therefore to Settings › Shortcuts.
     expect(ids).toContain('wardley.addMarket');

@@ -31,7 +31,17 @@ describe('command registry invariants', () => {
       [...FRAMEWORK_IDS, 'core'].map(owner => [owner, byOwner(owner).length])
     );
     expect(counts).toEqual({
-      wardley: 13,
+      // 15 since the OWM DSL pair: the thirteen-entry toolbox, plus
+      // `wardley.importOwm` and `wardley.exportOwm` — the second framework to
+      // declare an interchange capability (`docs/adr/0012`), and the one whose
+      // exporter replaces the copy that lived outside this repo.
+      //
+      // The import NOMINATES the sub-menu and the export declines it, which is
+      // the PO ruling of 2026-08-28 read the way BPMN already reads it: an
+      // import is where a board comes FROM, an export is what you do to one you
+      // already have. That puts Wardley at fourteen nominations against a cap
+      // of fourteen — it fits, to the entry, and a fifteenth tips it over.
+      wardley: 15,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -97,7 +107,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(108);
+    expect(commands).toHaveLength(110);
   });
 
   /**
@@ -305,8 +315,21 @@ describe('menu and manifest enumerate the same source', () => {
     const manifest = getCommandManifest()
       .filter(e => e.owner === 'wardley')
       .map(e => e.id);
-    expect(menu).toEqual(manifest);
-    expect(menu).toHaveLength(13);
+
+    // The DECLARED source is one list, and the manifest is the whole of it —
+    // that is the drift this test was written for, and it is unchanged.
+    expect(manifest).toEqual(wardleyCommands.map(c => c.id));
+    expect(manifest).toHaveLength(15);
+
+    // The sub-menu is now a proper SUBSET of it rather than the same list, and
+    // the one entry outside it is a declaration: `wardley.exportOwm` declines
+    // the row because an export is what you do to a board you already have
+    // (`docs/adr/0012`, and BPMN's own ruling). Every other entry is in both,
+    // in author order — which is what the original assertion was protecting.
+    expect(menu).toEqual(manifest.filter(id => id !== 'wardley.exportOwm'));
+    // Fourteen nominations against a cap of fourteen: Wardley still fits to the
+    // entry, so `selectSeniorMenuCommands` never has to rank it.
+    expect(menu).toHaveLength(14);
   });
 
   /**
