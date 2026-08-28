@@ -111,7 +111,14 @@ function iconOf(kind: BpmnNodeKind): TemplateResult {
  * ({@link bpmnMorphProps}) and `clearOf` the keys the target does not write
  * ({@link bpmnMorphClears}) — both live in `presets.ts`, beside the one
  * description of what a BPMN node IS, precisely so that a morph and a creation
- * can never disagree about what a `dataObject` looks like.
+ * can never disagree about what a `callActivity` looks like.
+ *
+ * That pair is the one place the FULL preset earns its keep on today's table:
+ * `subProcess` and `callActivity` differ only in `strokeWidth` (2 ⇄ 4), and the
+ * thick border is the whole distinction. Every other family here shares one
+ * preset across its members, so the rest of the patch is inert — kept anyway,
+ * because a family grows by DECLARATION and nobody would be prompted to check
+ * the presets on the day one gains a member that styles itself differently.
  */
 export const BPMN_MORPH_SPEC: MorphSpec<BpmnNodeKind> = {
   framework: 'bpmn',

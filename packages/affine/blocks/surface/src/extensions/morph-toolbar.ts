@@ -1,4 +1,4 @@
-import { EditorChevronDown } from '@labre/affine-components/toolbar';
+import { renderPickerMenu } from '@labre/affine-components/toolbar';
 import { MindmapElementModel } from '@labre/affine-model';
 import {
   type ToolbarContext,
@@ -8,7 +8,7 @@ import {
 import { getMostCommonValue } from '@labre/affine-shared/utils';
 import type { FrameworkId } from '@labre/std';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
-import { html, type TemplateResult } from 'lit';
+import type { TemplateResult } from 'lit';
 
 /**
  * **Morph** — a framework element becomes a NEARBY kind of itself, from its own
@@ -19,8 +19,11 @@ import { html, type TemplateResult } from 'lit';
  * should have been a user task is not a modelling mistake, it is modelling —
  * and today the only way through it is delete, re-draw, re-connect, re-type.
  * That gesture loses the geometry, every sequence flow attached to the node and
- * the label somebody wrote; this one changes `kind` and `role` and touches
- * nothing else.
+ * the label somebody wrote; this one writes `kind`, `role` and the target's
+ * preset APPEARANCE, and touches nothing else. The appearance is deliberately
+ * in that list — see {@link MorphSpec.propsOf}: a morph resets styling to what
+ * the target kind is born as, so a morphed artefact and a freshly drawn one are
+ * the same element.
  *
  * ## Why this is not "Switch shape type"
  *
@@ -42,7 +45,9 @@ import { html, type TemplateResult } from 'lit';
  * It is not a creation: nothing is inserted, nothing is deleted, no id changes.
  * `xywh`, every connector endpoint pointing at the element, and the text it
  * carries are all untouched — see {@link MorphSpec.propsOf}, whose contract is
- * that it returns NEITHER `type`, NOR `xywh`, NOR `text`.
+ * that it returns NEITHER `type`, NOR `xywh`, NOR `text`. {@link applyMorph}
+ * strips those three from whatever the spec hands back, so the contract is
+ * ENFORCED here rather than merely asked for.
  *
  * It is also not a style change, which is why it is not `FrameworkElementAdded`
  * that reports it. `FrameworkElementMorphed` is its own event for the reason
@@ -109,11 +114,29 @@ export interface MorphSpec<K extends string = string> {
    * target's own appearance depends on.
    *
    * Must NOT contain `type` (the element is not being re-typed), `xywh` (the
-   * geometry is the user's) or `text` (the words are the user's). Returning the
-   * presets is not optional politeness: a `{kind, role}` patch alone leaves a
-   * task morphed into a data object still filled and still stroked, because
-   * those two props were written by the task's preset and nothing else will
-   * rewrite them.
+   * geometry is the user's) or `text` (the words are the user's). Those three
+   * are stripped by {@link applyMorph} whatever the spec returns, so this is a
+   * contract the module enforces and not one it trusts.
+   *
+   * ## Why the whole preset, and not just `{kind, role}`
+   *
+   * Because the appearance of a framework artefact is written by the preset of
+   * the kind it was CREATED as, and nothing else will ever rewrite it. BPMN has
+   * one shipped pair where that bites today: `subProcess` → `callActivity`
+   * differ only in `strokeWidth` (2 ⇄ 4), and the thick border IS what tells a
+   * reader that this box stands for a process defined elsewhere. A two-key
+   * patch would produce a call activity indistinguishable from the sub-process
+   * it no longer is.
+   *
+   * Every other shipped BPMN family currently shares one preset across its
+   * members, so for those the full patch is a no-op — and that is the second
+   * reason to require it rather than to optimise it away. It is insurance for
+   * the day a family gains a member whose preset differs (a family is DATA and
+   * grows by declaration, with no code change to prompt the question), and it
+   * is the guarantee that a morphed artefact and one freshly drawn from the
+   * palette are byte-for-byte the same element. A framework that derives this
+   * from its creation builder — as BPMN's `bpmnMorphProps` does — cannot let
+   * the two drift apart.
    */
   propsOf(kind: K): Record<string, unknown>;
   /**
@@ -201,6 +224,30 @@ function morphTarget<K extends string>(
 }
 
 /**
+ * What a morph may never rewrite, whatever a spec hands back: the element's
+ * identity, its geometry, and the user's words.
+ */
+const NOT_A_MORPH = ['type', 'xywh', 'text'] as const;
+
+/**
+ * The spec's patch with those three removed.
+ *
+ * {@link MorphSpec.propsOf} already promises not to include them, and BPMN's
+ * builder honours the promise by construction. This is the second lock, and it
+ * belongs here rather than in each framework: a spec is DATA a framework
+ * author writes, `propsOf` is most naturally derived from a CREATION builder
+ * (which of course emits `type` and `xywh`), and the failure mode of forgetting
+ * one strip is a morph that silently moves an element to `[0,0,0,0]` or empties
+ * its label. A contract worth stating in the type is worth enforcing at the
+ * one place that writes.
+ */
+function morphPatch(props: Record<string, unknown>): Record<string, unknown> {
+  const patch = { ...props };
+  for (const key of NOT_A_MORPH) delete patch[key];
+  return patch;
+}
+
+/**
  * Write one kind onto every element of the selection that is not already it.
  *
  * Exported because it is the WRITE and the menu is only the chrome around it:
@@ -215,11 +262,12 @@ function morphTarget<K extends string>(
  * past, which teaches the editor "the last thing you made looked like this" —
  * and the props here are a WHOLE preset, not the one field a user just changed.
  * For any element type the last-props schema names, morphing one artefact would
- * therefore restyle the next one drawn from the palette: pick a data object's
- * unfilled, unstroked preset once and the next task comes out invisible. No
- * BPMN type is in that schema today, so nothing is broken right now — which is
- * exactly the kind of accident that lands the day one is added. This module is
- * generic and must not depend on which types happen to be listed.
+ * therefore restyle the next one drawn from the palette — one morph to a
+ * thick-bordered call activity, and the next artefact of that type comes out
+ * wearing a border nobody asked for. No BPMN type is in that schema today, so
+ * nothing is broken right now, which is exactly the kind of accident that lands
+ * the day one is added. This module is generic and must not depend on which
+ * types happen to be listed.
  *
  * `surface.updateElement` is the same write without the memory; the read-only
  * refusal the CRUD also carries is restated in {@link morphTarget}.
@@ -249,7 +297,7 @@ export function applyMorph<K extends string>(
   // nothing — the rule every arbitration gesture in this repo already follows.
   if (!changing.length) return;
 
-  const props = spec.propsOf(kind);
+  const props = morphPatch(spec.propsOf(kind));
   const cleared = spec.clearOf?.(kind) ?? [];
 
   ctx.std.store.captureSync();
@@ -275,39 +323,21 @@ export function applyMorph<K extends string>(
   });
 }
 
-/** One line of the dropdown — one kind of the family. */
-function renderOption<K extends string>(
-  ctx: ToolbarContext,
-  spec: MorphSpec<K>,
-  target: MorphTarget<K>,
-  kind: K
-): TemplateResult {
-  const { key, fallback } = spec.labelOf(kind);
-  const label = key ? translateKey(ctx.std, key, fallback) : fallback;
-
-  return html`<editor-icon-button
-    data-testid="element-morph-option"
-    data-kind=${kind}
-    aria-label=${label}
-    .tooltip=${label}
-    .active=${kind === target.current}
-    .activeMode=${'background'}
-    @click=${() => applyMorph(ctx, spec, kind)}
-  >
-    ${spec.iconOf(kind)}
-  </editor-icon-button>`;
+/** One wording, resolved against the host's catalogue when it named a key. */
+function wording(ctx: ToolbarContext, { key, fallback }: MorphLabel): string {
+  return key ? translateKey(ctx.std, key, fallback) : fallback;
 }
 
 /**
  * The toolbar module, parameterized by one framework's morph declaration.
  *
- * The markup restates `renderMenu`'s (`@labre/affine-widget-edgeless-toolbar`)
- * rather than calling it, and there is no choice about that: the widget package
- * depends on THIS one, so importing it here would close a cycle. The
- * composition is the widget's — `editor-menu-button` wrapping
- * `editor-icon-button`s, current value shown as `active` — so this dropdown is
- * the same object a user already knows from "Switch shape type", down to the
- * chevron and the tick.
+ * The dropdown is `renderPickerMenu` (`@labre/affine-components/toolbar`) — the
+ * SAME one-of-many picker "Switch shape type" is, chevron, tooltips, active
+ * background and all, so a user meets one affordance rather than two that
+ * resemble each other. It lives in the component package and not in
+ * `@labre/affine-widget-edgeless-toolbar`, where the picker was first written,
+ * because that widget package depends on THIS one: importing it here would
+ * close a cycle, and the component package is below both.
  */
 export function morphToolbarConfig<K extends string>(
   spec: MorphSpec<K>
@@ -325,29 +355,26 @@ export function morphToolbarConfig<K extends string>(
           const target = morphTarget(ctx, spec);
           if (!target) return null;
 
-          const label = spec.label.key
-            ? translateKey(ctx.std, spec.label.key, spec.label.fallback)
-            : spec.label.fallback;
-
-          // The testid sits on the HOST as well as on the trigger: the trigger
-          // is handed to `editor-menu-button` as a property and rendered into
+          // `testId` puts `element-morph` on the host and
+          // `element-morph-option` on each line. The host matters: the trigger
+          // is handed to `editor-menu-button` as a PROPERTY and rendered into
           // its shadow root, so the host is the only handle the toolbar's own
           // DOM offers.
-          return html`<editor-menu-button
-            data-testid="element-morph-entry"
-            aria-label=${`${label.toLowerCase()}-menu`}
-            .button=${html`
-              <editor-icon-button
-                data-testid="element-morph-button"
-                aria-label=${label}
-                .tooltip=${label}
-              >
-                ${spec.iconOf(target.current)} ${EditorChevronDown}
-              </editor-icon-button>
-            `}
-          >
-            ${target.family.map(kind => renderOption(ctx, spec, target, kind))}
-          </editor-menu-button>`;
+          return renderPickerMenu({
+            testId: 'element-morph',
+            label: wording(ctx, spec.label),
+            // The current kind's own icon on the closed button, exactly as the
+            // shape picker shows the current shape: the dropdown reads as a
+            // statement about the selection before it is opened.
+            icon: spec.iconOf(target.current),
+            items: target.family.map(kind => ({
+              key: wording(ctx, spec.labelOf(kind)),
+              value: kind,
+              icon: spec.iconOf(kind),
+            })),
+            currentValue: target.current,
+            onPick: (picked: K) => applyMorph(ctx, spec, picked),
+          });
         },
       },
     ],

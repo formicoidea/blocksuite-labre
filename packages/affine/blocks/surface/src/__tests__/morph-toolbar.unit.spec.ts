@@ -221,6 +221,32 @@ describe('applyMorph — what one pick writes', () => {
     expect(model.clearField).not.toHaveBeenCalled();
   });
 
+  it('strips identity, geometry and text even when the spec hands them over', () => {
+    // `propsOf` is DATA a framework author writes, and it is most naturally
+    // derived from a CREATION builder — which of course emits `type` and
+    // `xywh`. The contract is stated in the type and enforced here, so a spec
+    // that forgets one strip cannot silently move an element to the origin or
+    // empty its label.
+    const leaky: MorphSpec<Kind> = {
+      ...SPEC,
+      propsOf: kind => ({
+        ...SPEC.propsOf(kind),
+        type: 'testNode',
+        xywh: '[0,0,0,0]',
+        text: 'clobbered',
+      }),
+    };
+    const model = node('task');
+    applyMorph(context([model]), leaky, 'taskUser');
+
+    const [, props] = model.surface.updateElement.mock.calls[0];
+    expect(props).not.toHaveProperty('type');
+    expect(props).not.toHaveProperty('xywh');
+    expect(props).not.toHaveProperty('text');
+    // …and everything the spec legitimately asked for still lands.
+    expect(props).toMatchObject({ kind: 'taskUser', role: 'test:taskUser' });
+  });
+
   it('takes one undo checkpoint for a whole multi-selection', () => {
     captureSync.mockClear();
     const models = [node('task'), node('taskService'), node('task')];

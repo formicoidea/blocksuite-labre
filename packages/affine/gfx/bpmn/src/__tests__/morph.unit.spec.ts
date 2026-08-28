@@ -2,6 +2,7 @@ import type { BpmnNodeKind } from '@labre/affine-model';
 import { StrokeStyle, TextVerticalAlign } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
+import { bpmnCommandIcons, bpmnCommands } from '../commands';
 import { BPMN_MORPH_FAMILIES, BPMN_MORPH_SPEC } from '../morph';
 import { bpmnMorphClears, bpmnMorphProps, NODE_PRESETS } from '../presets';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
@@ -72,7 +73,31 @@ describe('the BPMN morph families', () => {
       // cannot disagree about what a user task is called.
       expect(label.key).toMatch(/^com\.labre\.commands\.bpmn\./);
       expect(label.fallback).not.toBe(kind);
-      expect(BPMN_MORPH_SPEC.iconOf(kind)).toBeDefined();
+    }
+  });
+
+  it('shows each kind the very icon its creation command draws', () => {
+    // Reference equality, not "is defined": `iconOf` falls back to the task
+    // icon for a kind it cannot resolve, so a lookup that quietly stopped
+    // working would still hand back a `TemplateResult` — and every entry in
+    // the dropdown would be a rectangle.
+    for (const kind of MORPHABLE) {
+      const command = bpmnCommands.find(
+        candidate => candidate.telemetry?.element === `node:${kind}`
+      );
+      expect(command?.iconKey, kind).toBeDefined();
+      expect(BPMN_MORPH_SPEC.iconOf(kind), kind).toBe(
+        bpmnCommandIcons[command!.iconKey!]
+      );
+    }
+  });
+
+  it('draws no two kinds of one family with the same icon', () => {
+    // A family whose members were indistinguishable in the menu would be a
+    // menu that decides nothing.
+    for (const family of BPMN_MORPH_FAMILIES) {
+      const icons = new Set(family.map(kind => BPMN_MORPH_SPEC.iconOf(kind)));
+      expect(icons.size, family.join(' / ')).toBe(family.length);
     }
   });
 });
@@ -95,6 +120,46 @@ describe('bpmnMorphProps — the patch a kind is worth', () => {
       const props = bpmnMorphProps(kind);
       expect(props.kind).toBe(kind);
       expect(props.role).toBe(BPMN_ROLE_OF_KIND[kind]);
+    }
+  });
+
+  it('gives the call activity the border that a two-key patch would not', () => {
+    // THE production case for reapplying the whole preset, and the only pair on
+    // today's table where the members of one family style themselves
+    // differently: same rounded rectangle, and the border is the whole
+    // distinction between "a process defined inline" and "one defined
+    // elsewhere". A `{kind, role}` morph leaves the call activity wearing the
+    // sub-process's thin border — a drawing that says the wrong thing.
+    expect(bpmnMorphProps('callActivity').strokeWidth).not.toBe(
+      bpmnMorphProps('subProcess').strokeWidth
+    );
+  });
+
+  it('carries every key a morphable pair disagrees on', () => {
+    // Data-driven over the declared table rather than over the pair above: a
+    // family gains members by DECLARATION, and this is what asks the question
+    // nobody would otherwise be prompted to ask — does the patch actually carry
+    // everything the two ends of a legal morph differ in?
+    for (const family of BPMN_MORPH_FAMILIES) {
+      for (const from of family) {
+        for (const to of family) {
+          if (from === to) continue;
+
+          const before = bpmnMorphProps(from);
+          const after = bpmnMorphProps(to);
+          const cleared = new Set(bpmnMorphClears(to));
+
+          // Every key the source writes is either rewritten by the target's
+          // patch or explicitly cleared. Anything else is a prop of the OLD
+          // artefact left silently in force on the new one.
+          for (const key of Object.keys(before)) {
+            expect(
+              key in after || cleared.has(key),
+              `${from} → ${to} leaves "${key}" behind`
+            ).toBe(true);
+          }
+        }
+      }
     }
   });
 

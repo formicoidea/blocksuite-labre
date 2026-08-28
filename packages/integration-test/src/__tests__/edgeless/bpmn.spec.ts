@@ -39,6 +39,10 @@ import {
   ToolbarRegistryIdentifier,
 } from '@labre/affine/shared/services';
 import {
+  AFFINE_TOOLBAR_WIDGET,
+  type AffineToolbarWidget,
+} from '@labre/affine/widgets/toolbar';
+import {
   type AnyCommandDescriptor,
   getCommandsForSurface,
   getRegisteredCommands,
@@ -48,6 +52,7 @@ import {
 } from '@labre/affine/std';
 import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
 import { ContextProvider } from '@lit/context';
+import { render, type TemplateResult } from 'lit';
 import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -1235,6 +1240,36 @@ describe('morphing a BPMN node into a nearby kind', () => {
     return new ToolbarContext(edgeless.std);
   };
 
+  /**
+   * The same selection, made the way the real toolbar makes it.
+   *
+   * `select` above writes the registry's two signals itself, which is
+   * deterministic and keeps most of these cases about the MORPH. This one goes
+   * through the widget's own `updateWithSurface` — the method the selection
+   * subscription calls — so that the flavour those tests hand-write is proved
+   * to be the flavour the editor actually derives for a bpmn node. Without it,
+   * every case here would still pass against a module registered on a key the
+   * toolbar never asks for.
+   */
+  const selectThroughWidget = (...nodes: BpmnNodeElementModel[]) => {
+    edgeless.gfx.selection.set({
+      elements: nodes.map(node => node.id),
+      editing: false,
+    });
+    const widget = edgeless.widgetComponents[
+      AFFINE_TOOLBAR_WIDGET
+    ] as AffineToolbarWidget;
+    expect(widget).toBeDefined();
+
+    const ctx = new ToolbarContext(edgeless.std);
+    widget.updateWithSurface(
+      ctx,
+      true,
+      nodes.map(node => node.id)
+    );
+    return ctx;
+  };
+
   test('the entry is registered on the node flavour', () => {
     const registry = edgeless.std.get(ToolbarRegistryIdentifier);
     // `affine:surface:bpmnNode` was a free slot: the toolbar merges by flavour
@@ -1284,10 +1319,19 @@ describe('morphing a BPMN node into a nearby kind', () => {
   });
 
   test('a sub-process becomes a call activity, and the border says so', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
     const node = await draw('bpmn.addSubProcess');
     const before = node.strokeWidth;
 
-    applyMorph(select(node), BPMN_MORPH_SPEC, 'callActivity');
+    // Put the key on the element FIRST, so the clearField path has something to
+    // clear. No BPMN preset but the group's writes `textVerticalAlign`, and the
+    // group is in no family — so without seeding it here the assertion below
+    // would pass against a `clearField` that was never called at all.
+    surface.updateElement(node.id, { textVerticalAlign: 'top' });
+    await wait();
+    expect(node.yMap.has('textVerticalAlign')).toBe(true);
+
+    applyMorph(selectThroughWidget(node), BPMN_MORPH_SPEC, 'callActivity');
     await wait(200);
 
     expect(node.kind).toBe('callActivity');
@@ -1297,9 +1341,62 @@ describe('morphing a BPMN node into a nearby kind', () => {
     // looking exactly like the sub-process it no longer is.
     expect(node.strokeWidth).not.toBe(before);
     expect(node.strokeWidth).toBe(bpmnMorphProps('callActivity').strokeWidth);
-    // A key no BPMN preset but the group's writes stays absent rather than
-    // arriving as `undefined` in the Y.Map.
+    // …and the key the target's preset does not write is GONE from the Y.Map,
+    // rather than left silently in force from whatever wrote it.
     expect(node.yMap.has('textVerticalAlign')).toBe(false);
+  });
+
+  test('the dropdown draws the whole family, in order, with the current one lit', async () => {
+    const node = await draw('bpmn.addTask');
+    const ctx = selectThroughWidget(node);
+
+    const config = morphToolbarConfig(BPMN_MORPH_SPEC);
+    const action = config.actions[0] as {
+      content: (ctx: ToolbarContext) => TemplateResult | null;
+    };
+    const template = action.content(ctx);
+    expect(template).not.toBeNull();
+
+    // Rendered for real: `when` and the patch are covered by the unit suites,
+    // and a `content` that returned `null` would satisfy every one of them.
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      render(template, host);
+      await wait();
+
+      const options = Array.from(
+        host.querySelectorAll('[data-testid="element-morph-option"]')
+      );
+      // The activity family, in declaration order — which is menu order.
+      expect(options.map(el => el.getAttribute('data-value'))).toEqual([
+        'task',
+        'taskUser',
+        'taskService',
+      ]);
+      expect(options.map(el => el.getAttribute('aria-label'))).toEqual([
+        'Task',
+        'User task',
+        'Service task',
+      ]);
+      // Exactly one is lit, and it is what the selection currently is.
+      const active = options.filter(
+        el => (el as HTMLElement & { active?: boolean }).active
+      );
+      expect(active).toHaveLength(1);
+      expect(active[0].getAttribute('data-value')).toBe('task');
+
+      // …and clicking one is the gesture: same element, new kind.
+      (
+        options.find(el => el.getAttribute('data-value') === 'taskService') as
+          | HTMLElement
+          | undefined
+      )?.click();
+      await wait(200);
+      expect(node.kind).toBe('taskService');
+    } finally {
+      host.remove();
+    }
   });
 
   test('one undo puts the artefact back', async () => {

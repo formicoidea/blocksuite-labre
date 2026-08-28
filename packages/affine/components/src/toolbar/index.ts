@@ -17,6 +17,13 @@ export {
   EditorMenuContent,
 } from './menu-button.js';
 export { MenuContext } from './menu-context.js';
+export {
+  type PickerMenu,
+  type PickerMenuItem,
+  renderCurrentPickerItemWith,
+  renderPickerMenu,
+  renderPickerMenuItems,
+} from './picker-menu.js';
 export { EditorToolbarSeparator } from './separator.js';
 export { darkToolbarStyles, lightToolbarStyles } from './styles.js';
 export { EditorToolbar } from './toolbar.js';

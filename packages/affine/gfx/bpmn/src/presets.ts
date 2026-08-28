@@ -256,14 +256,29 @@ const NOT_A_MORPH = ['type', 'xywh', 'text'] as const;
  * business touching.
  *
  * Derived from the creation builder rather than restated beside it, and that is
- * the whole point of the function: a `{kind, role}` patch is the obvious morph
- * and it is wrong, because the appearance of a BPMN artefact lives in props the
- * PREVIOUS kind's preset wrote. Morph a task to a data object with a two-key
- * patch and the folded page arrives still filled and still stroked, because
- * `filled` and `strokeStyle` were set when the task was drawn and nothing in
- * the patch says otherwise. Two builders would agree the day they were written
- * and drift on the first restyle — which is the argument this file already
- * makes for having one creation builder at all.
+ * the whole point of the function.
+ *
+ * ## Why a `{kind, role}` patch is not enough
+ *
+ * Because the appearance of a BPMN artefact lives in props the CREATING kind's
+ * preset wrote, and nothing else ever rewrites them. One shipped morph pair
+ * shows it today: `subProcess` and `callActivity` are the same rounded
+ * rectangle and differ only in `strokeWidth` — 2 against 4 — and that thick
+ * border IS how a reader tells "this box stands for a process defined
+ * elsewhere" from "this box stands for one defined inline". Morph between them
+ * with two keys and the call activity arrives wearing the sub-process's thin
+ * border, which is a drawing that says the wrong thing.
+ *
+ * Every other family declared in `./morph.ts` currently shares one preset
+ * across its members, so for those the full patch changes nothing — and that is
+ * the second reason to write it this way rather than to trim it. A family is
+ * DATA (`BPMN_MORPH_FAMILIES`) and grows by declaration, with no code change to
+ * prompt anyone to ask whether the presets still agree; deriving the patch from
+ * the creation builder means the answer is right in advance. It is also what
+ * guarantees that a morphed artefact and one drawn fresh from the palette are
+ * the same element — two builders would agree the day they were written and
+ * drift on the first restyle, which is the argument this file already makes for
+ * having one creation builder at all.
  */
 export function bpmnMorphProps(kind: BpmnNodeKind): Record<string, unknown> {
   // Widened to the plain record on the way in: `type` is required on what the
