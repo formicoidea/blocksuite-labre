@@ -1000,7 +1000,10 @@ describe('the export command', () => {
     expect(descriptor!.kind).toBe('action');
     expect(descriptor!.owner).toBe('bpmn');
     expect(descriptor!.scope).toBe('edgeless');
-    expect(descriptor!.category).toBe('swimlanes');
+    // `interchange` since the import landed beside it: the two directions of
+    // one format are one subject, and a category is where a command is FILED
+    // rather than which toolbar it is reached from.
+    expect(descriptor!.category).toBe('interchange');
     expect(descriptor!.availability).toBe('selection');
     expect(descriptor!.iconKey).toBeTruthy();
     expect(descriptor!.telemetry).toEqual({

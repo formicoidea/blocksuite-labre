@@ -16,6 +16,19 @@ export const bpmnExportXmlIcon = svg`<svg width="24" height="24" viewBox="0 0 24
   <path d="M16 20.5v-6M13.5 18l2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+/**
+ * Import BPMN XML — the export's document, with the arrow coming back IN.
+ *
+ * Deliberately the same page and the same arrow, mirrored: the two commands are
+ * one subject in two directions, and a reader who has met one should recognise
+ * the other without reading its label.
+ */
+export const bpmnImportXmlIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13.5 3.5 18.5 8.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 14.5v6M13.5 17l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 /** Start event — thin green ring. */
 export const bpmnStartIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="12" cy="12" r="8" stroke="#43a06b" stroke-width="2"/>

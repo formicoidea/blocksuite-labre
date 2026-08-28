@@ -12,6 +12,7 @@ import {
   createBpmnNode,
   createBpmnPool,
   exportBpmnXmlFile,
+  importBpmnXmlFile,
   removeBpmnLane,
 } from './actions';
 import {
@@ -26,6 +27,7 @@ import {
   bpmnGatewayIcon,
   bpmnGatewayParallelIcon,
   bpmnGroupIcon,
+  bpmnImportXmlIcon,
   bpmnLaneAddIcon,
   bpmnLaneRemoveIcon,
   bpmnMessageIcon,
@@ -479,8 +481,11 @@ const exportCommand: CommandDescriptor = {
   descriptionKey: 'com.labre.commands.bpmn.exportXml.description',
   descriptionFallback:
     'Download the whole board as a BPMN 2.0 XML file, ready to open in any BPMN tool.',
-  // Filed with the pool, which is the selection that offers it.
-  category: 'swimlanes',
+  // Filed with the import it is the other half of — see {@link INTERCHANGE}.
+  // It shipped filed under `swimlanes`, because the pool's "⋮" is where it is
+  // REACHED from and there was no better section for a command with no sibling;
+  // a category is where a command is FILED, and it has one now.
+  category: 'interchange',
   iconKey: 'bpmn.export-xml',
   surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
   order: SPECS.length + 2,
@@ -495,10 +500,80 @@ const exportCommand: CommandDescriptor = {
   when: std => bpmnPoolsSelected(std).length > 0,
 };
 
+/**
+ * The IMPORT — the other direction of the same format, and the first BPMN
+ * command that needs nothing on the board at all.
+ *
+ * ## `interchange`, and why the export moved into it
+ *
+ * These two are one subject: this board as a `.bpmn` file, out and in. The
+ * export was filed under `swimlanes` because that is the toolbar it is reached
+ * from and because a section of one is not a section; a category is where a
+ * command is FILED and not where it is reached from, and filing the pair apart
+ * would make the catalogue say that taking a process away and bringing one back
+ * are different kinds of thing. `order` is untouched, so nothing MOVES inside a
+ * section — the position law of `docs/adr/0008` is about rank, and this is
+ * membership.
+ *
+ * ## Surfaces: three, and the two it declines
+ *
+ * No `'senior-menu'`, for the reason the lane gestures and the export give: the
+ * sub-menu is what you reach for to DRAW something, and this draws nothing you
+ * chose. No `'contextual-toolbar'` either, and that is the difference from the
+ * export — a contextual toolbar is a statement about a SELECTION, and the
+ * moment this command is most wanted is on an empty board with nothing selected
+ * at all. It keeps `'catalogue'` (the registry's total surface — a command
+ * missing from it is unreachable), `'palette'` and `'agent'`.
+ *
+ * ## `'editable'`, which is the first use of it in the repo
+ *
+ * An import needs no selection — but it WRITES, so a read-only document is a
+ * document it cannot run on, and that is a precondition a catalogue has to be
+ * able to show. `'editable'` is exactly that value and it has been in the union
+ * since `docs/adr/0008` (`Availability`, `command-registry.ts`); nothing had
+ * reached for it before. `'always'` would light the entry on a read-only
+ * document, do nothing when clicked, and put the same untruth into the
+ * serializable manifest a host reads — which is the one thing `availability`
+ * exists to prevent.
+ *
+ * The guard inside {@link importBpmnXmlFile} stays: a declaration is what a
+ * surface renders from, and the action is what actually touches the store.
+ *
+ * The mirror image of the export, which READS and is therefore `'selection'` on
+ * a pool and offered on a read-only document precisely because that is the
+ * board somebody wants to take away.
+ */
+const importCommand: CommandDescriptor = {
+  id: 'bpmn.importXml',
+  owner: 'bpmn',
+  kind: 'action',
+  labelKey: 'com.labre.commands.bpmn.importXml',
+  labelFallback: 'Import BPMN XML',
+  descriptionKey: 'com.labre.commands.bpmn.importXml.description',
+  descriptionFallback:
+    'Open a BPMN 2.0 XML file as a board. What Labre cannot draw is kept in the document, and the import says what it was.',
+  category: 'interchange',
+  iconKey: 'bpmn.import-xml',
+  surfaces: ['catalogue', 'palette', 'agent'],
+  order: SPECS.length + 3,
+  scope: 'edgeless',
+  // Keyless by intent, like every other BPMN entry: past fourteen a framework
+  // binds by host override rather than by shipping a default chord. Still
+  // bindable from Settings › Shortcuts, which is what `toShortcutDescriptor`
+  // being total buys.
+  defaultKeys: { mac: [], other: [] },
+  availability: 'editable',
+  run: importBpmnXmlFile,
+  // `board:` and not `pool:`: the export names the pool whose toolbar launched
+  // it, and this one is launched with no pool anywhere.
+  telemetry: { framework: 'bpmn', element: 'board:import-xml' },
+};
+
 export const bpmnCommands: CommandDescriptor[] = [
   ...toolboxCommands,
   ...laneCommands,
   exportCommand,
+  importCommand,
 ];
 
 export const bpmnCommandIcons: Record<string, TemplateResult> = {
@@ -526,4 +601,5 @@ export const bpmnCommandIcons: Record<string, TemplateResult> = {
   'bpmn.lane-add': bpmnLaneAddIcon,
   'bpmn.lane-remove': bpmnLaneRemoveIcon,
   'bpmn.export-xml': bpmnExportXmlIcon,
+  'bpmn.import-xml': bpmnImportXmlIcon,
 };

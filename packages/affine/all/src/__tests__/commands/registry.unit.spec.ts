@@ -47,7 +47,12 @@ describe('command registry invariants', () => {
       // subject is the whole BOARD rather than an element: it is reached from
       // the pool's "⋮" menu, and what it serializes is every BPMN artefact on
       // the surface.
-      bpmn: 24,
+      // 25 since `bpmn.importXml` — the other direction of the same format, and
+      // the first framework command that needs NOTHING on the board: it is
+      // `availability: 'always'`, declines the contextual toolbar (a selection
+      // is exactly what an empty board has none of) and is reached from the
+      // catalogue and the palette.
+      bpmn: 25,
       // 11 since WS5 added the board (`ddd-event-storming.addBoard`) and the
       // aggregate sticky (`ddd-event-storming.addAggregate`).
       'ddd-event-storming': 11,
@@ -72,7 +77,7 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       core: 12,
     });
-    expect(commands).toHaveLength(93);
+    expect(commands).toHaveLength(94);
   });
 
   /**

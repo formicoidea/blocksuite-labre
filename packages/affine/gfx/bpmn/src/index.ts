@@ -7,6 +7,13 @@ export { BPMN_POOL_BACKGROUND } from './background.js';
 // half of the export that needs an editor, kept apart from the half that does
 // not so a host can substitute either.
 export { bpmnBoardOf } from './actions.js';
+// …and the mirror half of the import: the reader is pure, and THIS is the one
+// thing its caller owes it — the surface mints ids, so a connector's endpoints
+// arrive naming the source file's and are rewritten from the map the returned
+// array already carries (`docs/adr/0012`, D3). Exported so the command, the
+// chromium round trip and a host embedding the reader all write a board the
+// same way.
+export { materializeBpmnImport, reportBpmnImport } from './actions.js';
 export { bpmnCommandIcons, bpmnCommands } from './commands';
 // The board as a BPMN 2.0 interchange document. A pure function — element
 // models in, XML out — so a host can export a board it never rendered, and the

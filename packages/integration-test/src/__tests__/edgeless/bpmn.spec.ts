@@ -16,6 +16,8 @@ import {
   bpmnPoolOf,
   exportBpmnXml,
   importBpmnXml,
+  materializeBpmnImport,
+  reportBpmnImport,
 } from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
@@ -34,6 +36,7 @@ import {
   type AnyCommandDescriptor,
   getCommandsForSurface,
   getRegisteredCommands,
+  isCommandAvailable,
   runCommand,
   SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
@@ -395,13 +398,14 @@ describe('the BPMN toolbox past fourteen', () => {
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
   test('the sub-menu overflows: seven ranked slots plus More artefacts', () => {
-    // 24 declared, 14 of them nominated for the row — and past the cap the
+    // 25 declared, 14 of them nominated for the row — and past the cap the
     // fourteen do not matter either: the catalogue is what gets ranked. The
-    // twenty-fourth is `bpmn.exportXml`, which draws nothing and is therefore
-    // in the catalogue and out of the sub-menu, like the two lane gestures.
+    // last two are `bpmn.exportXml` and `bpmn.importXml`, which draw nothing
+    // you chose and are therefore in the catalogue and out of the sub-menu,
+    // like the two lane gestures.
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
-    ).toHaveLength(24);
+    ).toHaveLength(25);
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
@@ -443,10 +447,12 @@ describe('the BPMN toolbox past fourteen', () => {
     expect(panel).not.toBeNull();
     expect(panel!.dataset.owner).toBe('bpmn');
 
-    // The seven sections BPMN declares, in the order each is FIRST met — the
+    // The eight sections BPMN declares, in the order each is FIRST met — the
     // panel never sorts headers alphabetically. `swimlanes` sits fifth and not
     // last because the pool is one of the seven a user meets on a blank board,
-    // and the section follows the earliest command filed under it.
+    // and the section follows the earliest command filed under it;
+    // `interchange` is last because the two directions of the `.bpmn` format
+    // are what you do to a process that is already drawn.
     const groups = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-group"]'
@@ -460,21 +466,27 @@ describe('the BPMN toolbox past fourteen', () => {
       'swimlanes',
       'data',
       'annotations',
+      'interchange',
     ]);
     // …and every header reads as a phrase, not as a raw key: with no host
     // catalogue registered, `humanizeCategory` is what the panel falls back to.
     expect(groups[0].textContent).toContain('Events');
-    expect(groups.at(-1)!.textContent).toContain('Annotations');
+    expect(groups.at(-1)!.textContent).toContain('Interchange');
 
-    // 21 rows, not 24: the panel filters on availability, and the two lane
+    // 22 rows, not 25: the panel filters on availability, and the two lane
     // gestures and the export all need a selected pool. Everything that can be
-    // drawn from a blank board is listed.
+    // done from a blank board is listed — including the IMPORT, which is the
+    // one entry here that is not a thing to draw. It declares
+    // `availability: 'editable'`, and this document is editable.
     const entries = Array.from(
       catalogueRoot()?.querySelectorAll<HTMLElement>(
         '[data-testid="artefact-catalogue-entry"]'
       ) ?? []
     );
-    expect(entries).toHaveLength(21);
+    expect(entries).toHaveLength(22);
+    expect(entries.map(entry => entry.dataset.commandId)).toContain(
+      'bpmn.importXml'
+    );
     // The ones that are in the catalogue and NOT in the fourteen are reachable
     // here and nowhere else in the chrome — which is the whole promise.
     const ids = entries.map(entry => entry.dataset.commandId);
@@ -860,37 +872,16 @@ describe('the BPMN XML import, end to end', () => {
    * and the caller rewrites them from the map the returned array already
    * contains (`docs/adr/0012`, D3).
    *
-   * Written out here rather than mocked, because this IS the import command's
-   * body — the command itself is I4's — and a test that skipped it would be
-   * proving the round trip of something nobody can call.
+   * Written out longhand here until the command existed, because this IS the
+   * command's body and a test that skipped it would be proving the round trip
+   * of something nobody could call. The command exists now (`bpmn.importXml`),
+   * so this calls the SHIPPED function: what chromium proves and what a user
+   * reaches from the catalogue are the same code, which is the only arrangement
+   * in which this test means anything.
    */
   const writeToSurface = (
     elements: readonly (Record<string, unknown> & { type: string })[]
-  ) => {
-    const surface = getSurface(window.doc, window.editor).model;
-    const bySource = new Map<string, string>();
-    const created = elements.map(props => {
-      const id = surface.addElement({ ...props });
-      const carried = props.interchange as
-        | Record<string, { id?: string }>
-        | undefined;
-      const source = carried?.bpmn?.id;
-      if (source !== undefined && !bySource.has(source)) {
-        bySource.set(source, id);
-      }
-      return id;
-    });
-    for (const id of created) {
-      const model = surface.getElementById(id);
-      if (!(model instanceof ConnectorElementModel)) continue;
-      for (const side of ['source', 'target'] as const) {
-        const end = model[side];
-        if (end?.id === undefined) continue;
-        model[side] = { ...end, id: bySource.get(end.id) ?? end.id };
-      }
-    }
-    return created;
-  };
+  ) => materializeBpmnImport(edgeless.std, elements);
 
   test('a label that fights the format comes back whole through a real parser', async () => {
     const surface = getSurface(window.doc, window.editor).model;
@@ -1013,5 +1004,122 @@ describe('the BPMN XML import, end to end', () => {
     // …and the file it writes now is the file it read: the ADR's fixed point,
     // with a store, a connector manager and a real parser in the loop.
     expect(exportBpmnXml(board, { name: 'Round' })).toBe(first);
+  });
+
+  /**
+   * The COMMAND, as far as a browser test can drive it.
+   *
+   * The one step that cannot run here is the file dialog — no test drives an OS
+   * picker — so what is proved is everything on either side of it: the entry is
+   * registered and reachable with an empty selection, and the body it runs puts
+   * a foreign file on a live surface. The dialog itself, and the two branches
+   * around it, are `import-command.unit.spec.ts`'s.
+   */
+  test('the import is registered, needs no selection, and lands a foreign file', async () => {
+    const command = getRegisteredCommands(edgeless.std).find(
+      c => c.id === 'bpmn.importXml'
+    );
+    expect(command, 'bpmn.importXml is not registered').toBeDefined();
+    // The mirror image of the export's guard: nothing selected is exactly when
+    // this one is wanted, so there is no `when` to withdraw it. It still
+    // declares a precondition, and it is the honest one — an import WRITES, so
+    // a read-only document is one it cannot run on.
+    edgeless.gfx.selection.clear();
+    expect(command!.availability).toBe('editable');
+    expect(command!.when).toBeUndefined();
+    expect(isCommandAvailable(edgeless.std, command!)).toBe(true);
+
+    // A file Labre did not write: a bare process (no participant), so the pool
+    // is one the reader minted, and a boundary event it has no artefact for.
+    const foreign = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js" exporterVersion="17.0.0">
+  <bpmn:process id="Process_1" isExecutable="false">
+    <bpmn:startEvent id="Start_1" name="Order received" />
+    <bpmn:task id="Task_1" name="Check the stock" />
+    <bpmn:boundaryEvent id="Boundary_1" attachedToRef="Task_1" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_1">
+    <bpmndi:BPMNPlane id="Plane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start_1"><dc:Bounds x="100" y="100" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task" bpmnElement="Task_1"><dc:Bounds x="200" y="80" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_1" bpmnElement="Flow_1"><di:waypoint x="136" y="118" /><di:waypoint x="200" y="118" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
+`;
+
+    const { elements, report } = importBpmnXml(foreign);
+    const created = materializeBpmnImport(edgeless.std, elements);
+    await wait(200);
+
+    const board = bpmnBoardOf(edgeless.std);
+    // The minted pool (D6), the two flow objects, and the arrow between them.
+    expect(board.pools).toHaveLength(1);
+    expect(board.nodes.map(node => node.kind)).toEqual(['startEvent', 'task']);
+    expect(board.connectors).toHaveLength(1);
+
+    // The endpoints are SURFACE ids — the file said `Start_1` and `Task_1`, and
+    // what the connector manager has to be able to resolve is what the store
+    // minted. This is the assertion no plain-object stub can make: the
+    // connector's `source` came back off a real accessor over a `Y.Map`.
+    const flow = board.connectors[0];
+    expect(created).toContain(flow.source?.id);
+    expect(flow.target?.id).toBe(
+      board.nodes.find(node => node.kind === 'task')?.id
+    );
+    // …and the boundary event Labre cannot draw is in the DOCUMENT, on the
+    // pool, read back through the persisted `interchange` field.
+    expect(JSON.stringify(board.pools[0].interchange)).toContain(
+      'boundaryEvent'
+    );
+    expect(report.carried).toBeGreaterThan(0);
+
+    // The report surface, on a host that injected no notification service —
+    // which is this playground, and every standalone embedding of the library.
+    // It degrades to silence rather than throwing: the elements are on the
+    // surface either way.
+    expect(() => reportBpmnImport(edgeless.std, report)).not.toThrow();
+  });
+
+  /**
+   * ONE undo step for the whole file, asserted as a user would feel it.
+   *
+   * The unit spec pins `captureSync` being called twice, which is the mechanism
+   * and not the promise. What a user cares about is that the file they just
+   * regretted goes in one keystroke — and that is a property of the store's
+   * undo manager, not of a spy, so it can only be proved here.
+   */
+  test('the whole imported file leaves in one undo', async () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    // Something drawn BEFORE the import, so "one step" is distinguishable from
+    // "undo everything": this must survive.
+    const before = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: BPMN_ROLE_OF_KIND.task,
+      shapeType: 'rect',
+      text: 'Drawn by hand',
+      xywh: '[900,900,120,72]',
+    });
+    await wait(200);
+
+    const { elements } = importBpmnXml(
+      exportBpmnXml(bpmnBoardOf(edgeless.std), { name: 'Round' })
+    );
+    window.doc.captureSync();
+    const created = materializeBpmnImport(edgeless.std, elements);
+    window.doc.captureSync();
+    await wait(200);
+    expect(created.length).toBeGreaterThan(1);
+
+    window.doc.undo();
+    await wait(200);
+
+    for (const id of created) {
+      expect(surface.getElementById(id), id).toBeNull();
+    }
+    // …and exactly one step: what was on the board before is still there.
+    expect(surface.getElementById(before)).not.toBeNull();
   });
 });
