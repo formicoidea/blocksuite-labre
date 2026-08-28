@@ -252,8 +252,12 @@ describe('bpmn style-C constants', () => {
  * BPMN is the first shipped framework whose CATALOGUE outgrows the fourteen
  * senior slots, so two things that used to be the same list are now two lists,
  * and both of them are pinned here: what the framework offers (25), and the
- * fourteen it nominates for the sub-menu — of which a cold start opens on the
+ * fifteen it nominates for the sub-menu — of which a cold start opens on the
  * first thirteen.
+ *
+ * Fifteen since the PO decision of 2026-08-28 put `bpmn.importXml` in the row:
+ * nominating more than the cap is what the arbitration is FOR, and BPMN has
+ * been past it since #157.
  */
 describe('the bpmn command inventory', () => {
   const byId = new Map(bpmnCommands.map(c => [c.id, c]));
@@ -290,11 +294,16 @@ describe('the bpmn command inventory', () => {
     expect(created.sort()).toEqual([...KINDS].sort());
   });
 
-  it('spends its fourteen senior slots on one of each family, plus the variants', () => {
-    // Exactly at the cap, and spelled out: past fourteen the sub-menu ranks
-    // THIS list by usage — nothing outside it is eligible (PO ruling of
-    // 2026-08-28) — so it is both the pool a history reorders membership in and
-    // the fourteen a host reading the manifest sees.
+  it('nominates one of each family, the variants, and the import', () => {
+    // Spelled out, because the sub-menu ranks THIS list by usage and nothing
+    // outside it is eligible (PO ruling of 2026-08-28) — so it is both the pool
+    // a history reorders membership in and the list a host reading the manifest
+    // sees.
+    //
+    // Fifteen, one past the cap of fourteen, and that is not an overflow bug:
+    // BPMN's catalogue has outgrown the cap since #157, so the row is already
+    // arbitrated down to thirteen buttons plus "More artefacts…". Nominating
+    // past the cap is what the arbitration is for.
     expect(seniorIds).toEqual([
       // The seven a first contact draws a whole process with, in declaration
       // order…
@@ -314,9 +323,14 @@ describe('the bpmn command inventory', () => {
       'bpmn.addParallelGateway',
       'bpmn.addDataObject',
       'bpmn.addTextAnnotation',
+      // …and the one nomination that draws nothing: a board comes FROM a file,
+      // and the sub-menu is the first thing a user opens on an empty canvas (PO
+      // decision of 2026-08-28, which reversed the earlier reading for the
+      // import alone — `bpmn.exportXml` still declines the row).
+      'bpmn.importXml',
     ]);
-    expect(seniorIds).toHaveLength(14);
-    // The nine kept out are reachable everywhere else — nothing is orphaned.
+    expect(seniorIds).toHaveLength(15);
+    // The ten kept out are reachable everywhere else — nothing is orphaned.
     for (const command of bpmnCommands) {
       if (seniorIds.includes(command.id)) continue;
       expect(command.surfaces, command.id).toContain('catalogue');
@@ -443,8 +457,9 @@ describe('the bpmn command inventory', () => {
       'bpmn.addParallelGateway',
       'bpmn.addDataObject',
     ]);
-    // Pure author order, head to tail: the fourteenth nomination
-    // (`bpmn.addTextAnnotation`) is the only one the More button covers.
+    // Pure author order, head to tail: the two nominations past the row
+    // (`bpmn.addTextAnnotation` and, since 2026-08-28, `bpmn.importXml`) are
+    // what the More button covers until this user reaches for one.
     expect(commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
     expect(commands.map(c => c.id)).toEqual(
       seniorIds.slice(0, SENIOR_MENU_RANKED_SLOTS)
@@ -453,10 +468,16 @@ describe('the bpmn command inventory', () => {
 
   /**
    * The eligibility ruling of 2026-08-28, pinned on the framework that caused
-   * it. `bpmn.exportXml` and `bpmn.importXml` decline `'senior-menu'`: their
-   * subject is the whole BOARD, and the PO met "Export BPMN" in a row of things
-   * you DRAW because the ranking used to read the catalogue. However heavily a
-   * user exports, neither may enter the sub-menu.
+   * it. `bpmn.exportXml` declines `'senior-menu'`: its subject is the whole
+   * BOARD, it is reached from the pool it is about, and the PO met "Export
+   * BPMN" in a row of things you DRAW because the ranking used to read the
+   * catalogue. However heavily a user exports, it may not enter the sub-menu —
+   * the same for the two lane gestures, which act on a selected pool.
+   *
+   * `bpmn.importXml` is NOT in this list, and that is the PO decision of the
+   * same day (recorded below): an import is where a board comes from, so it is
+   * nominated and usage may seat it. What the ruling forbids is usage
+   * OVERRIDING a declaration, not a declaration changing.
    */
   it('never seats a board action, however often it is invoked', () => {
     const catalogue = [...bpmnCommands]
@@ -466,7 +487,6 @@ describe('the bpmn command inventory', () => {
 
     const heavy = new Set([
       'bpmn.exportXml',
-      'bpmn.importXml',
       'bpmn.addLane',
       'bpmn.removeLane',
     ]);
@@ -478,6 +498,31 @@ describe('the bpmn command inventory', () => {
     for (const id of heavy) expect(ids, id).not.toContain(id);
     // And the row is untouched by that usage: still the cold-start thirteen.
     expect(ids).toEqual(seniorIds.slice(0, SENIOR_MENU_RANKED_SLOTS));
+  });
+
+  /**
+   * The other half of the same decision. `bpmn.importXml` is the fifteenth
+   * nomination and therefore outside the cold-start thirteen — but it is IN the
+   * pool, so a user who imports finds it in the row next time instead of
+   * reopening the catalogue sidepanel every time somebody sends them a file.
+   */
+  it('seats the import for the user who reaches for it', () => {
+    const catalogue = [...bpmnCommands]
+      .filter(c => c.surfaces.includes('catalogue'))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const menu = catalogue.filter(c => c.surfaces.includes('senior-menu'));
+    expect(menu).toHaveLength(15);
+
+    const { commands } = selectSeniorMenuCommands(menu, catalogue, id =>
+      id === 'bpmn.importXml' ? { count: 9999, lastUsedAt: 9999 } : undefined
+    );
+
+    const ids = commands.map(command => command.id);
+    expect(ids).toContain('bpmn.importXml');
+    // Membership, never position: it is still laid out where its author put
+    // it — last — and not at the head because it was used last.
+    expect(ids.at(-1)).toBe('bpmn.importXml');
+    expect(commands).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 
   it('arms a dashed, circle-to-arrow connector for the message flow', () => {

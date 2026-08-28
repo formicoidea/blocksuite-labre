@@ -235,35 +235,39 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.record.linked', 'Linked'],
   ['com.labre.reading.record.none', 'Not linked to a record.'],
   ['com.labre.reading.drift.message', 'The board and the record disagree'],
-  // BPMN interchange: what an export could not write down, and what an import
-  // did with the file. Chrome and not framework prose — these are the words the
-  // library's own notification puts around a report the reader produced, so
-  // they ship with an English default and a standalone playground reads
-  // correctly with no catalogue registered.
+  // BPMN interchange: what an export could not write down. Chrome and not
+  // framework prose — these are the words the library's own notification puts
+  // around a report the writer produced, so they ship with an English default
+  // and a standalone playground reads correctly with no catalogue registered.
   [
     'com.labre.commands.bpmn.exportXml.warnings',
     'What this export could not write down',
   ],
-  ['com.labre.commands.bpmn.importXml.done', 'BPMN file imported'],
+  // What an IMPORT did with the file — one set of keys for every format, not
+  // one per format. The format's own name is composed into the wording
+  // ("BPMN" + "file imported", "OWM 2.0" after the counts), which is the same
+  // compromise the three count labels below already make: the seam has no
+  // interpolation, so a proper noun and a countable noun are the largest units
+  // this library can hand over without inventing grammar. A key per format
+  // would ask a host to translate the same sentence once per reader we ship,
+  // and would leave every new format silently untranslated.
+  ['com.labre.interchange.import.done', 'file imported'],
+  ['com.labre.interchange.import.failed', 'This file could not be imported'],
   [
-    'com.labre.commands.bpmn.importXml.failed',
-    'This file could not be imported',
-  ],
-  [
-    'com.labre.commands.bpmn.importXml.remarks',
+    'com.labre.interchange.import.remarks',
     'What the import could not keep as it was',
   ],
   [
-    'com.labre.commands.bpmn.importXml.console',
+    'com.labre.interchange.import.console',
     'remarks — the full report is in the browser console.',
   ],
   // The three count labels of the summary line. Separate keys rather than one
   // sentence with holes in it: the seam has no interpolation and no
   // pluralisation (both are the host's), so a countable noun is the largest
   // unit this library can hand over without inventing grammar.
-  ['com.labre.commands.bpmn.importXml.drawn', 'drawn'],
-  ['com.labre.commands.bpmn.importXml.carried', 'carried'],
-  ['com.labre.commands.bpmn.importXml.quarantined', 'quarantined'],
+  ['com.labre.interchange.import.drawn', 'drawn'],
+  ['com.labre.interchange.import.carried', 'carried'],
+  ['com.labre.interchange.import.quarantined', 'quarantined'],
 ];
 
 /**

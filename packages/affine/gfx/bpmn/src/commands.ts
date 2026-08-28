@@ -532,15 +532,29 @@ const exportCommand: CommandDescriptor = {
  * section — the position law of `docs/adr/0008` is about rank, and this is
  * membership.
  *
- * ## Surfaces: three, and the two it declines
+ * ## Surfaces: four, and the one it declines
  *
- * No `'senior-menu'`, for the reason the lane gestures and the export give: the
- * sub-menu is what you reach for to DRAW something, and this draws nothing you
- * chose. No `'contextual-toolbar'` either, and that is the difference from the
- * export — a contextual toolbar is a statement about a SELECTION, and the
- * moment this command is most wanted is on an empty board with nothing selected
- * at all. It keeps `'catalogue'` (the registry's total surface — a command
- * missing from it is unreachable), `'palette'` and `'agent'`.
+ * `'senior-menu'` since the PO decision of 2026-08-28, which REVERSES the
+ * ruling this comment used to carry ("the sub-menu is a row of things you DRAW,
+ * and this draws nothing you chose"). The distinction survives for the EXPORT,
+ * which is still catalogue-and-toolbar only: an export is what you do to a
+ * board you already have, and it is reached from the pool it is about. An
+ * import is where a board COMES FROM. On an empty canvas the sub-menu is the
+ * first thing a user opens, and "start from a file somebody sent me" belongs in
+ * that row beside "start from a start event" — asking them to find the
+ * catalogue sidepanel first was the friction the decision names.
+ *
+ * The row itself is not at risk: BPMN's catalogue has outgrown the cap since
+ * #157, so `selectSeniorMenuCommands` already ranks the nomination list down to
+ * thirteen buttons plus "More artefacts…", and this entry takes a slot only
+ * when the user actually reaches for it. It is the fifteenth nomination, and
+ * nothing about the arbitration changes.
+ *
+ * No `'contextual-toolbar'`, and that is the difference from the export — a
+ * contextual toolbar is a statement about a SELECTION, and the moment this
+ * command is most wanted is on an empty board with nothing selected at all. It
+ * keeps `'catalogue'` (the registry's total surface — a command missing from it
+ * is unreachable), `'palette'` and `'agent'`.
  *
  * ## `'editable'`, which is the first use of it in the repo
  *
@@ -571,7 +585,7 @@ const importCommand: CommandDescriptor = {
     'Open a BPMN 2.0 XML file as a board. What Labre cannot draw is kept in the document, and the import says what it was.',
   category: 'interchange',
   iconKey: 'bpmn.import-xml',
-  surfaces: ['catalogue', 'palette', 'agent'],
+  surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
   order: SPECS.length + 3,
   scope: 'edgeless',
   // Keyless by intent, like every other BPMN entry: past fourteen a framework

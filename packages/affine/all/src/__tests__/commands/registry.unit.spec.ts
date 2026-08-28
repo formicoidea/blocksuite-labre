@@ -3,6 +3,8 @@ import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
   canonicalCombo,
   FRAMEWORK_IDS,
+  selectSeniorMenuCommands,
+  SENIOR_MENU_CAP,
   type CommandDescriptor,
   type FrameworkId,
 } from '@labre/std';
@@ -138,11 +140,35 @@ describe('command registry invariants', () => {
     }
   });
 
-  /** The one numeric cap, and it is a UI one: 14 slots in the sub-menu. */
-  test('no owner exceeds 14 senior-menu slots', () => {
+  /**
+   * The one numeric cap, and it is a UI one: 14 buttons in the sub-menu's row.
+   *
+   * Asserted on what is RENDERED, not on what is declared, since the PO
+   * decision of 2026-08-28 put `bpmn.importXml` in BPMN's row and took its
+   * nominations to fifteen. Nominating past the cap is what the arbitration is
+   * for: an owner whose catalogue outgrows fourteen has its nominations ranked
+   * down to thirteen buttons plus "More artefacts…", and an owner below the cap
+   * cannot nominate past it, because every nomination is also a catalogue entry
+   * (the test at the bottom of this file). What must never happen is a row
+   * wider than the popover, and that is the number this counts.
+   */
+  test('no owner renders more than 14 senior-menu buttons', () => {
     for (const id of FRAMEWORK_IDS) {
-      const slots = byOwner(id).filter(c => c.surfaces.includes('senior-menu'));
-      expect(slots.length, `${id} sub-menu`).toBeLessThanOrEqual(14);
+      const owned = byOwner(id);
+      const nominated = owned.filter(c => c.surfaces.includes('senior-menu'));
+      const catalogue = owned.filter(c => c.surfaces.includes('catalogue'));
+      // `() => undefined` is the cold start; the pick is the same size for
+      // every other usage history, which is the property being counted.
+      const { commands, overflow } = selectSeniorMenuCommands(
+        nominated,
+        catalogue,
+        () => undefined
+      );
+      // Plus the permanent "More artefacts…" button an overflowed row carries.
+      expect(
+        commands.length + (overflow ? 1 : 0),
+        `${id} sub-menu`
+      ).toBeLessThanOrEqual(SENIOR_MENU_CAP);
     }
   });
 

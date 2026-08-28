@@ -122,11 +122,16 @@ describe('below the cap nothing is arbitrated', () => {
 describe('eligibility: ranked membership is declared, never earned', () => {
   /**
    * The PO ruling of 2026-08-28, and the regression it exists to stop. BPMN's
-   * `bpmn.exportXml` and `bpmn.importXml` decline `'senior-menu'` on purpose —
-   * their subject is the whole BOARD, they live in the pool's "⋮" and in the
-   * catalogue — and the ranking used to drag them into the sub-menu by their
-   * own usage. "Export BPMN" in a row of things you DRAW answers no question a
-   * user asked. A declined surface is a statement, not a default to out-vote.
+   * `bpmn.exportXml` declines `'senior-menu'` on purpose — its subject is the
+   * whole BOARD, it lives in the pool's "⋮" and in the catalogue — and the
+   * ranking used to drag it into the sub-menu by its own usage. "Export BPMN"
+   * in a row of things you DRAW answers no question a user asked. A declined
+   * surface is a statement, not a default to out-vote.
+   *
+   * What the rule does NOT say is that a declaration cannot change: the same
+   * day's second decision nominated `bpmn.importXml`, because a board comes
+   * FROM a file. That is a framework rewriting its own statement, which is the
+   * one thing allowed to move a command into this row.
    */
   test('a catalogue-only command never enters the sub-menu, however used', () => {
     const menu = catalogueOf(14);
