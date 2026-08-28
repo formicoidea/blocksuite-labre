@@ -1,11 +1,21 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
-import { BPMN_XML_OF_KIND, exportBpmnXml } from '../export';
+import {
+  BPMN_XML_OF_KIND,
+  exportBpmnXml,
+  exportBpmnXmlWithWarnings,
+} from '../export';
 import { BPMN_KIND_OF_XML, importBpmnXml } from '../import';
 import { BPMN_XML_IMPORT } from '../interchange';
 import { BPMN_ROLE } from '../roles';
-import { ALL_KINDS, boardFromProps, collaborationBoard } from './board-stub';
+import {
+  ALL_KINDS,
+  board,
+  boardFromProps,
+  collaborationBoard,
+  fakePool,
+} from './board-stub';
 
 /**
  * The BPMN 2.0 XML import (`docs/adr/0012`, D1–D6).
@@ -386,10 +396,23 @@ describe('a file written by another tool', () => {
     expect(document['xmlns:bioc']).toBe(
       'http://bpmn.io/schema/bpmn/biocolor/1.0'
     );
-    // The four this library writes for itself are NOT carried: they would come
-    // back on every round trip and grow the payload for ever.
-    expect(document['xmlns:bpmn2']).toBeUndefined();
+    // …and so is the file's own prefix for the MODEL namespace, which is the
+    // trap the writer half found. Every fragment above is stored with the
+    // prefixes the file spelled it in — `bpmn2:boundaryEvent`,
+    // `bpmn2:documentation` — and a document that declares `xmlns:bpmn` and
+    // not `xmlns:bpmn2` cannot parse one of them. Same namespace as this
+    // library's own, different prefix, and the prefix is what a verbatim
+    // fragment needs.
+    expect(document['xmlns:bpmn2']).toBe(
+      'http://www.omg.org/spec/BPMN/20100524/MODEL'
+    );
+    // What is NOT carried is a declaration `export.ts` makes anyway — the PAIR,
+    // prefix and URI both. This file spells the three DI namespaces exactly as
+    // the library does, so they would come back on every round trip and report
+    // themselves as carried on a file nothing was carried from.
     expect(document['xmlns:dc']).toBeUndefined();
+    expect(document['xmlns:di']).toBeUndefined();
+    expect(document['xmlns:bpmndi']).toBeUndefined();
     // The process's own foreign attribute rides on the pool that draws it —
     // under the PROCESS's scope, not the participant's, because they are two
     // source elements and only one of them said this.
@@ -941,5 +964,290 @@ describe('the files an importer meets on its first afternoon', () => {
     const note = report.notes.find(entry => entry.element === 'extension');
     expect(note?.kind).toBe('warning');
     expect(note?.message).toMatch(/may be wrong/);
+  });
+});
+
+/* ── The writer half: what the reader carried, given back ─────────────── */
+
+/**
+ * The other half of `docs/adr/0012`'s headline, and the one that makes the
+ * first half mean anything.
+ *
+ * The reader files foreign matter under a SCOPE — the source element it came
+ * off — because that is what a writer needs in order to put it back. These
+ * tests are that writer's: the scope decides which emitted element a fragment
+ * belongs to, and the XSD decides where inside it, because a scope records a
+ * parent and not a slot. `tProcess` is an `xsd:sequence`, so a carried
+ * `<auditing>` written after the lane set is a document a validating parser
+ * refuses even though every character of it is right.
+ */
+describe('the writer gives back what the reader carried', () => {
+  type Read = ReturnType<typeof importBpmnXml>;
+
+  /** The carried half of every payload — what a round trip must preserve. */
+  const carriedHalf = (result: Read) =>
+    result.elements
+      .map(
+        element =>
+          (element.interchange as Record<string, Record<string, unknown>>)?.bpmn
+      )
+      .filter(Boolean)
+      .map(payload => {
+        const kept = { ...payload };
+        // Quarantine is DEFINED as "kept and never written back", so it cannot
+        // survive a round trip and must not be asked to. That it is absent from
+        // the second read is asserted below, and is the point of the state.
+        delete kept.quarantined;
+        return kept;
+      });
+
+  const quarantinedOf = (result: Read) =>
+    result.elements.flatMap(element => {
+      const payload = (
+        element.interchange as
+          | Record<string, { quarantined?: unknown[] }>
+          | undefined
+      )?.bpmn;
+      return payload?.quarantined ?? [];
+    });
+
+  it('is a FIXED POINT on foreign matter: what came in comes back, and stays', () => {
+    // The mirror of the Labre fixed point at the top of this file, and the
+    // stronger claim of the two: that one is about a file this library wrote,
+    // this one is about a file it did not. A boundary event, its error path, a
+    // vendor extension, a vendor's namespace and the file's own prefix for
+    // BPMN's — none of which Labre draws, all of which the next tool to open
+    // the file needs to find exactly where it left them.
+    const first = importBpmnXml(FOREIGN, {});
+    const written = exportBpmnXml(boardFromProps(first.elements));
+
+    // 1. The carried half is in the file, character for character.
+    expect(written).toContain(
+      '<bpmn2:boundaryEvent id="Boundary_1" name="Too slow" attachedToRef="Activity_1">'
+    );
+    expect(written).toContain('<bpmn2:timerEventDefinition id="Timer_1" />');
+    expect(written).toContain(
+      '<bpmn2:sequenceFlow id="Flow_esc" name="too late" sourceRef="Boundary_1" targetRef="StartEvent_1" />'
+    );
+    expect(written).toContain('<camunda:property name="sla" value="24h" />');
+    expect(written).toContain(
+      '<bpmn2:documentation>Two people, one trolley.</bpmn2:documentation>'
+    );
+    expect(written).toContain('camunda:assignee="demo"');
+    // …the diagram that draws what is on no canvas, whole…
+    expect(written).toContain(
+      '<bpmndi:BPMNShape id="Shape_b" bpmnElement="Boundary_1">'
+    );
+    expect(written).toContain(
+      '<bpmndi:BPMNEdge id="Edge_esc" bpmnElement="Flow_esc">'
+    );
+    // …and the two declarations without which none of the above parses. The
+    // second is the trap the writer found: `bpmn2` and `bpmn` are one namespace
+    // under two prefixes, and a fragment stored verbatim needs its own.
+    expect(written).toContain(
+      'xmlns:camunda="http://camunda.org/schema/1.0/bpmn"'
+    );
+    expect(written).toContain(
+      'xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL"'
+    );
+
+    // 2. Reading it again records the very same payloads, key for key.
+    const second = importBpmnXml(written, {});
+    expect(carriedHalf(second)).toEqual(carriedHalf(first));
+    expect(second.report.carried).toBe(first.report.carried);
+
+    // 3. …and writing THAT gives back the same bytes. From the first export
+    //    onward the file is a fixed point, as it is for a Labre board.
+    expect(exportBpmnXml(boardFromProps(second.elements))).toBe(written);
+  });
+
+  it('never writes a quarantined fragment back, and the second read holds none', () => {
+    // Both halves of D5, and neither passes for the wrong reason now: the first
+    // read holds three things, the file holds none of them, and the second read
+    // therefore has nothing to hold. Until re-emission existed the second
+    // assertion passed because the writer wrote nothing at all.
+    const first = importBpmnXml(FOREIGN, {});
+    expect(quarantinedOf(first)).toHaveLength(3);
+
+    const written = exportBpmnXml(boardFromProps(first.elements));
+    expect(written).not.toContain('bioc:stroke');
+    expect(written).not.toContain('bioc:fill');
+    expect(written).not.toContain('<bpmn2:import');
+
+    const second = importBpmnXml(written, {});
+    expect(quarantinedOf(second)).toEqual([]);
+    expect(second.report.quarantined).toBe(0);
+    // The vendor's DECLARATION is not the vendor's colour: it comes back,
+    // because a payload that still holds `bioc:` fragments would be unreadable
+    // the day somebody teaches Labre to draw them.
+    expect(written).toContain(
+      'xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0"'
+    );
+  });
+
+  it('gives `isExecutable="true"` back instead of downgrading it every trip', () => {
+    // The writer emits `false` on every process it writes, so a file that said
+    // `true` was a silent model downgrade on each round trip. The reader
+    // carries the value under `@process`; applying the carried attributes AFTER
+    // the ones this exporter mints is what lets it win.
+    const written = exportBpmnXml(
+      boardFromProps(importBpmnXml(FOREIGN, {}).elements)
+    );
+    expect(written).toContain('isExecutable="true"');
+    expect(written).not.toContain('isExecutable="false"');
+  });
+
+  /**
+   * One process carrying a fragment for each of `tProcess`'s four slots.
+   *
+   * `auditing` belongs before the lane sets, an `inclusiveGateway` among the
+   * flow elements, an `association` among the artifacts and a `performer`
+   * after them — and all four were children of the same `process`, so the
+   * scope cannot tell them apart and the schema is the only thing that can.
+   */
+  const SLOTTED = LANED({ front: [], back: [] })
+    .replace(
+      '<bpmn:laneSet id="LS">',
+      '<bpmn:auditing id="Aud_1" /><bpmn:laneSet id="LS">'
+    )
+    .replace(
+      '<bpmn:task id="T2" name="Down below" />',
+      '<bpmn:task id="T2" name="Down below" />' +
+        '<bpmn:inclusiveGateway id="Inc_1" name="Either" />' +
+        '<bpmn:association id="Assoc_x" sourceRef="Ghost_1" targetRef="T1" />' +
+        '<bpmn:performer id="Perf_1" />'
+    );
+
+  it('puts a carried fragment in its XSD slot, not where its scope was', () => {
+    const written = exportBpmnXml(
+      boardFromProps(importBpmnXml(SLOTTED, {}).elements)
+    );
+    const at = (needle: string) => {
+      const index = written.indexOf(needle);
+      expect(index, needle).toBeGreaterThan(-1);
+      return index;
+    };
+
+    // `laneSet* → flowElement* → artifact* → resourceRole*`, with the base
+    // type's own children before all of it. Four carried fragments, four slots,
+    // and the order written is the schema's rather than the payload's.
+    expect(at('<bpmn:auditing')).toBeLessThan(at('<bpmn:laneSet'));
+    expect(at('<bpmn:laneSet')).toBeLessThan(at('<bpmn:task id="T1"'));
+    expect(at('<bpmn:task id="T1"')).toBeLessThan(at('<bpmn:inclusiveGateway'));
+    expect(at('<bpmn:inclusiveGateway')).toBeLessThan(at('<bpmn:association'));
+    expect(at('<bpmn:association')).toBeLessThan(at('<bpmn:performer'));
+  });
+
+  it('writes a carried flow node among the flow elements, after the drawn ones', () => {
+    // The same rule on the foreign file: `tProcess` puts every flow element in
+    // one block, so the boundary event and its error path go in beside the
+    // sequence flow this exporter wrote itself, and inside the same process.
+    const written = exportBpmnXml(
+      boardFromProps(importBpmnXml(FOREIGN, {}).elements)
+    );
+    expect(written.indexOf('<bpmn:sequenceFlow id="Flow_1"')).toBeLessThan(
+      written.indexOf('<bpmn2:boundaryEvent')
+    );
+    expect(written.indexOf('<bpmn2:boundaryEvent')).toBeLessThan(
+      written.indexOf('</bpmn:process>')
+    );
+  });
+
+  it('puts a lane’s own foreign attribute back on that lane', () => {
+    // The collision the first review of the importer found, closed at the other
+    // end: two lanes carried one attribute name each, and the writer has to
+    // tell them apart out of a single payload on a single pool.
+    const OWNED = LANED({ front: [], back: [] })
+      .replace(
+        'xmlns:di="http://www.omg.org/spec/DD/20100524/DI"',
+        'xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn"'
+      )
+      .replace(
+        '<bpmn:lane id="L1" name="Front office">',
+        '<bpmn:lane id="L1" name="Front office" camunda:owner="alice">'
+      )
+      .replace(
+        '<bpmn:lane id="L2" name="Back office">',
+        '<bpmn:lane id="L2" name="Back office" camunda:owner="bob">'
+      );
+
+    const written = exportBpmnXml(
+      boardFromProps(importBpmnXml(OWNED, {}).elements)
+    );
+    expect(written).toContain(
+      '<bpmn:lane id="L1" name="Front office" camunda:owner="alice">'
+    );
+    expect(written).toContain(
+      '<bpmn:lane id="L2" name="Back office" camunda:owner="bob">'
+    );
+  });
+
+  it('writes the document’s residue once, however many pools carry it', () => {
+    // D6 has the residue ride on the FIRST pool, and this writer asks every
+    // pool, because "first" is the reader's document order and not the board's.
+    // A pool copy-pasted would otherwise write the file's roots twice — and a
+    // duplicated `xsd:ID` is the one thing no BPMN tool survives.
+    const payload = {
+      bpmn: {
+        attrs: { '@definitions': { 'xmlns:acme': 'urn:acme' } },
+        children: { '@definitions': ['<acme:policy id="Pol_1" />'] },
+      },
+    };
+    const one = fakePool('p-one', [0, 0, 400, 200], { name: 'One' });
+    const two = fakePool('p-two', [0, 300, 400, 200], { name: 'Two' });
+    (one as { interchange?: unknown }).interchange = payload;
+    (two as { interchange?: unknown }).interchange = payload;
+
+    const written = exportBpmnXml(board({ pools: [one, two] }));
+    expect(written.split('<acme:policy').length - 1).toBe(1);
+    expect(written.split('xmlns:acme').length - 1).toBe(1);
+  });
+
+  it('orders carried diagram elements by id, so one payload writes one plane', () => {
+    // A Y.Map hands its keys back in whatever order it stored them, and a
+    // document that is the same document has to export to the same bytes.
+    // Sorted rather than trusted: insertion order is a property of the runtime
+    // and not of the value.
+    const pool = fakePool('p', [0, 0, 400, 200], { name: 'P' });
+    (pool as { interchange?: unknown }).interchange = {
+      bpmn: {
+        id: 'P_1',
+        di: {
+          Zed_1: ['<bpmndi:BPMNShape id="S_zed" bpmnElement="Zed_1" />'],
+          Alpha_1: ['<bpmndi:BPMNShape id="S_alpha" bpmnElement="Alpha_1" />'],
+        },
+      },
+    };
+    const written = exportBpmnXml(board({ pools: [pool] }));
+    expect(written.indexOf('S_alpha')).toBeLessThan(written.indexOf('S_zed'));
+  });
+
+  it('says so when a carried shape and the drawing no longer agree', () => {
+    // The one place where "verbatim" and "in the right place" are different
+    // sentences: a carried shape keeps the file's own coordinates and the rest
+    // of the drawing has just been translated to the plane origin (§12.3). Not
+    // silent — the export's loss channel names it — and nothing is lost, only
+    // displaced.
+    const { warnings } = exportBpmnXmlWithWarnings(
+      boardFromProps(importBpmnXml(FOREIGN, {}).elements)
+    );
+    expect(
+      warnings.some(line => line.includes('kept exactly as the file drew'))
+    ).toBe(true);
+  });
+
+  it('changes nothing at all for a board that never met an import', () => {
+    // The no-slow-leak property, from the writer's side. Every element on this
+    // board is asked about its foreign matter and every one of them has none,
+    // so the bytes are the bytes #149 wrote — and an EMPTY payload, which is
+    // what an older peer could leave behind, is worth exactly as little as no
+    // payload at all.
+    const { board: drawn } = collaborationBoard();
+    const before = exportBpmnXml(drawn, { name: 'Order to cash' });
+
+    for (const model of [...drawn.pools, ...drawn.nodes, ...drawn.connectors]) {
+      (model as { interchange?: unknown }).interchange = { bpmn: {} };
+    }
+    expect(exportBpmnXml(drawn, { name: 'Order to cash' })).toBe(before);
   });
 });

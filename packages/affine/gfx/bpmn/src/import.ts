@@ -24,6 +24,8 @@ import {
 import {
   BPMN_FORMAT_ID,
   BPMN_NS,
+  BPMN_OWN_DECLARATIONS,
+  BPMN_SCOPE,
   BPMN_XML_OF_KIND,
   type BpmnXmlMapping,
   escapeAttr,
@@ -101,32 +103,39 @@ import { BPMN_ROLE } from './roles.js';
  * | ----------------------------------------------------------- | ----------- | --------------------------------------------------- |
  * | the 17 kinds, pools, flat lanes, the 3 edge roles, the DI   | mapped      | drawn, and written back from the drawing            |
  * | element ids (participants, flow nodes, flows, lanes)        | mapped      | given back verbatim — the fixed point (D3)          |
- * | `documentation`, `ioSpecification`, `conditionExpression`, … | carried     | invisible on the canvas, kept verbatim              |
- * | `process/@isExecutable="true"`                              | carried     | the writer emits `false` until re-emission lands    |
- * | a flow onto a carried node (a boundary event's error path)  | carried     | kept beside the node it runs to, never drawn loose  |
- * | a `BPMNShape` drawing an element the file does not declare  | carried     | kept under the id it names; nothing is drawn for it |
+ * | `documentation`, `ioSpecification`, `conditionExpression`, … | carried     | invisible on the canvas, written back in its XSD slot |
+ * | `process/@isExecutable="true"`                              | carried     | written back; the `false` this writer mints is overridden |
+ * | a flow onto a carried node (a boundary event's error path)  | carried     | never drawn loose, and re-emitted beside the node it runs to |
+ * | a `BPMNShape` drawing an element the file does not declare  | carried     | kept under the id it names, and put back on the plane |
  * | loop / multi-instance / compensation markers                | carried     | a plain task on the canvas, still marked in the file |
- * | Analytic elements (boundary, inclusive, event-based, …)     | carried     | not drawn, kept whole on the enclosing pool         |
- * | `camunda:` / `zeebe:` / `signavio:` extensions              | carried     | kept verbatim, declarations included                |
+ * | Analytic elements (boundary, inclusive, event-based, …)     | carried     | not drawn; re-emitted in the flow-element slot it came out of |
+ * | `camunda:` / `zeebe:` / `signavio:` extensions              | carried     | re-emitted verbatim, declarations included          |
+ * | the file's own prefix for a namespace (`bpmn2:`, `semantic:`) | carried    | re-declared on `definitions`, so the fragments under it parse |
  * | a colour set in bpmn.io (`bioc:`, `color:`)                 | quarantined | imports grey; the colour is kept and not written back |
- * | the body of an expanded sub-process                         | quarantined | drawn collapsed; the body survives in the document  |
+ * | the body of an expanded sub-process                         | quarantined | drawn collapsed; the body and its DI survive in the document |
  * | lane nesting (`childLaneSet`)                               | quarantined | flat lanes with joined names; the nesting survives  |
  * | `definitions`-level `<import>`                              | quarantined | single-file import only                             |
  * | an edge's explicit `di:waypoint` routing                    | **lost**    | re-routed from the two ends, and it says so         |
+ * | a CARRIED shape's position, once the drawing has moved      | **lost**   | the fragment is verbatim, so it keeps the file's own coordinates while the rest is translated to the plane origin. The export warns; nothing is lost, something is displaced |
+ * | an `xmlns:` binding one of Labre's own four prefixes elsewhere | **lost on export** | kept in the document; not written back, because it would rebind the prefix every `dc:Bounds` in the file is under. The export warns |
  * | the file's `definitions/@id`, `@targetNamespace`, `@exporter` | **lost**  | Labre writes its own                                |
  * | the file's `process/@id`, where a participant names one      | **lost**   | re-minted from the participant's id, which IS kept  |
  * | `laneSet/@id`, `collaboration/@id` and `@name`, `BPMNDiagram/@id`, `BPMNPlane/@id`, every `BPMNShape/@id` and `BPMNEdge/@id`, the folded `dataObject/@id` | **lost** | re-derived from the id its element settled on, which is what makes the fixed point a fixed point (D3) |
+ * | a carried fragment's SLOT inside its parent                  | **lost, and re-derived** | the scope records the parent, not the slot; the writer places it from the XSD sequence, which is legal but need not be where the file had it |
  * | a gap or an overlap between two lane bands                   | **lost**   | lanes are weights: Labre lays its bands end to end  |
  * | the plane offset (§12.3)                                    | **lost**   | shape exact, origin at (0, 0) — the export's doing  |
  * | surface identity across a re-import                         | **lost**   | a new board beside the old one, never a merge       |
  *
- * One row is owed rather than done, and it is stated here because a reader of
- * this file is who needs to know: **the carried and quarantined payloads are
- * written to the document and are not yet re-emitted on export.** The reader
- * puts them there, whole, with the namespace declarations they need; the writer
- * that puts them back into a `.bpmn` is the other half of the chantier. Until
- * it lands, "kept verbatim" means kept in the Labre document, not kept in the
- * next file out of it.
+ * The row that used to be owed is owed no longer: **the carried payload IS
+ * re-emitted on export**, into the element its scope names and the slot the
+ * XSD puts it in, with the namespace declarations it needs. The property that
+ * makes the claim checkable is the mirror of D3's: read a foreign file, write
+ * it, read it again, and the carried payloads are identical — a fixed point on
+ * matter this library does not understand. `import.unit.spec.ts` pins it.
+ *
+ * Quarantined material is the deliberate exception and always was: it is kept
+ * in the document and never written back, so a second read of an exported file
+ * holds none of it. That is not a gap in the round trip, it is D5.
  */
 
 /* ── The inverse of the export's tables ───────────────────────────────── */
@@ -163,41 +172,14 @@ export const BPMN_KIND_OF_XML: ReadonlyMap<string, BpmnNodeKind> = new Map(
 
 /**
  * `.bpmn`'s scope vocabulary — where a carried fragment came off (D2, as
- * amended in #157).
+ * amended in #157), and where the writer puts it back.
  *
- * One Labre element stands for several source elements: a pool is a
- * `participant` AND its `process`, plus a `laneSet`, every `lane`, the
- * `BPMNShape` that draws it, and — on the first pool of a document — the
- * `collaboration` and `definitions` themselves. Everything they carry lands in
- * ONE payload, so what came off which is recorded, or two lanes with the same
- * foreign attribute leave one value in a persisted field and a report that
- * says two.
- *
- * A scope is either a source element's **id, verbatim** — every carried flow
- * node, every lane, every carried root element — or one of the `@` keys below,
- * for the parts of the document that have no id worth naming or whose identity
- * is their relation to this element. `@` is not an XML NameStartChar, so no id
- * in a conformant file can ever collide with one.
- *
- * The rule for a fragment is always the same: **the scope is the element it was
- * a child of**, because that is where an exporter has to put it back. For an
- * attribute it is the element that carried the attribute; for a `di` fragment,
- * what that fragment draws.
+ * Declared in `export.ts` and re-exported here, for the reason
+ * {@link BPMN_FORMAT_ID} is: the reader files a fragment under a scope and the
+ * writer looks it up under one, and a table written twice is a table that
+ * drifts. See its doc comment there for what a scope means.
  */
-export const BPMN_SCOPE = {
-  /** The element this payload rides on: the participant, the flow node, the flow. */
-  self: '@self',
-  /** Its `BPMNShape` or `BPMNEdge`. */
-  shape: '@shape',
-  /** The `process` behind a participant — the pool's other half. */
-  process: '@process',
-  /** The pool's `laneSet`. */
-  laneSet: '@laneSet',
-  /** The `collaboration`, whose residue rides on the first pool (D6). */
-  collaboration: '@collaboration',
-  /** `definitions` itself: its foreign attributes, its declarations, its roots. */
-  definitions: '@definitions',
-} as const;
+export { BPMN_SCOPE };
 
 /**
  * The three edge elements, and the role each one IS.
@@ -284,6 +266,11 @@ const COMMENT_NODE = 8;
 /** The element children of `node`, in document order. */
 function childrenOf(node: Element): Element[] {
   return Array.from(node.children);
+}
+
+/** Every element under `node`, at any depth, in document order. */
+function descendantsOf(node: Element): Element[] {
+  return childrenOf(node).flatMap(child => [child, ...descendantsOf(child)]);
 }
 
 /** Is this element in the BPMN MODEL namespace, whatever prefix it wears? */
@@ -558,22 +545,6 @@ const READ_SHAPE_ATTRS = [
   'isHorizontal',
 ];
 
-/**
- * The namespaces `export.ts` declares for itself, which are therefore not
- * foreign matter when they come back in.
- *
- * A file's OTHER declarations — `xmlns:camunda`, `xmlns:bioc` — are carried,
- * because a carried `camunda:` fragment means nothing without the declaration
- * it was written under, and whatever writes those fragments back has to write
- * this back with them.
- */
-const OWN_NAMESPACES = new Set<string>([
-  BPMN_NS.model,
-  BPMN_NS.bpmndi,
-  BPMN_NS.di,
-  BPMN_NS.dc,
-]);
-
 /** How far off to the side an undrawn artefact is swept, and on what grid. */
 const SWEEP_GAP = 160;
 const SWEEP_STEP = 200;
@@ -732,6 +703,17 @@ export function importBpmnXml(
   const carriedSourceIds = new Set<string>();
   /** Every source id whose diagram element this reader consumed or kept. */
   const drawnSourceIds = new Set<string>();
+  /**
+   * Source ids whose diagram element is QUARANTINED, and must therefore not be
+   * picked up by the orphan sweep at the end.
+   *
+   * Quarantine means kept and deliberately not written back (D5), so a shape
+   * that escaped into the carried column would be re-emitted by the writer and
+   * the quarantine would mean nothing. It is a third answer to "was this
+   * diagram element accounted for", beside drawn and carried, and it is exactly
+   * as good an answer as either.
+   */
+  const quarantinedSourceIds = new Set<string>();
 
   /* ── Roots ─────────────────────────────────────────────────────────── */
 
@@ -1106,6 +1088,11 @@ export function importBpmnXml(
             BPMN_QUARANTINE_REASON.nestedLanes,
             { sourceId, element: 'childLaneSet' }
           );
+          // A lane holding a child set is not a band Labre paints — its LEAVES
+          // are — so the shape drawing it describes a subdivision the flat pool
+          // does not have. Accounted for by the quarantine, and kept out of the
+          // orphan sweep, or the writer would put a stray band back.
+          if (sourceId !== undefined) quarantinedSourceIds.add(sourceId);
           walkLanes(nested, [...path, name]);
           continue;
         }
@@ -1344,13 +1331,23 @@ export function importBpmnXml(
           BPMN_QUARANTINE_REASON.expanded,
           { sourceId, element: child.nodeName }
         );
-        const inner = attrOf(child, 'id');
-        const innerShape = inner === undefined ? undefined : shapes.get(inner);
-        if (innerShape) {
+        // The body's diagram goes with the body, all the way down. A shape left
+        // behind here is an ORPHAN — nothing declares what it draws any more —
+        // so the residue sweep at the end of this reader would pick it up and
+        // carry it, and the writer would then draw it: the quarantine defeated
+        // by its own leftovers, which is the "absent from the re-export" half
+        // of D5 that nothing could fail on until re-emission landed.
+        for (const held of [child, ...descendantsOf(child)]) {
+          const inner = attrOf(held, 'id');
+          if (inner === undefined) continue;
+          quarantinedSourceIds.add(inner);
+          const drawn =
+            shapes.get(inner)?.element ?? diEdges.get(inner)?.element;
+          if (!drawn) continue;
           payload.quarantined = [
             ...(payload.quarantined ?? []),
             {
-              fragment: fragmentOf(innerShape.element),
+              fragment: fragmentOf(drawn),
               reason: BPMN_QUARANTINE_REASON.expanded,
             },
           ];
@@ -1571,11 +1568,19 @@ export function importBpmnXml(
 
   if (host) {
     // `definitions`' own foreign attributes, and every namespace declaration
-    // that is not one of the four this library writes: a carried `camunda:`
-    // fragment means nothing without the declaration it was written under.
+    // this library is not going to write for itself: a carried `camunda:`
+    // fragment means nothing without the declaration it was written under, and
+    // neither does a `bpmn2:boundaryEvent`.
+    //
+    // The test is the PAIR and not the URI. `xmlns:bpmn2` and `xmlns:bpmn` name
+    // the same namespace and are not interchangeable to a fragment stored
+    // verbatim: dropping the file's prefix would leave every carried fragment
+    // in this document unreadable, which is what the writer half found. What is
+    // dropped is only an exact match of a declaration `export.ts` makes anyway
+    // — which is what keeps a Labre file's payload empty.
     for (const attr of Array.from(definitions.attributes)) {
       if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:')) {
-        if (!OWN_NAMESPACES.has(attr.value)) {
+        if (BPMN_OWN_DECLARATIONS[attr.name] !== attr.value) {
           carryAttr(
             host.payload,
             BPMN_SCOPE.definitions,
@@ -1635,7 +1640,13 @@ export function importBpmnXml(
       ...[...shapes].map(([id, entry]) => [id, entry.element] as const),
       ...[...diEdges].map(([id, entry]) => [id, entry.element] as const),
     ]) {
-      if (drawnSourceIds.has(target) || carriedSourceIds.has(target)) continue;
+      if (
+        drawnSourceIds.has(target) ||
+        carriedSourceIds.has(target) ||
+        quarantinedSourceIds.has(target)
+      ) {
+        continue;
+      }
       carryDi(host.payload, target, fragmentOf(shape));
       note({
         kind: 'warning',
