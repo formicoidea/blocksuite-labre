@@ -82,15 +82,35 @@ describe('the link tool announces its gesture (M1)', () => {
     );
   });
 
-  it('leaves every other command without a gesture hint', () => {
+  it('leaves every other TOOLBOX command without a gesture hint', () => {
     // Proportionality: a component button decides no orientation, so it has
     // nothing to announce and must not grow a second tooltip line.
+    //
+    // Scoped to what you DRAW with, since the OWM pair landed. An `action`
+    // whose subject is the whole map — import, export — describes what it does
+    // to a document, which is a different sentence from "which way round do I
+    // drag this": the next assertion is what keeps the two apart.
     const noisy = wardleyCommands.filter(
       c =>
+        c.kind !== 'action' &&
         c.descriptionKey !== undefined &&
         !['wardley.linkTool', 'wardley.evolutionArrow'].includes(c.id)
     );
     expect(noisy.map(c => c.id)).toEqual([]);
+  });
+
+  it('never lends a role’s gesture hint to a command that draws no edge', () => {
+    // The other half of the scoping above: an action may carry a description,
+    // and it may never be one of the vocabulary's gesture hints — those belong
+    // to the tool that stamps the role, and nowhere else (`docs/adr/0010`, M1).
+    const hints = new Set(
+      Object.values(WARDLEY_ROLES)
+        .map(def => def.direction?.gestureHintKey)
+        .filter(key => key !== undefined)
+    );
+    for (const command of wardleyCommands.filter(c => c.kind === 'action')) {
+      expect(hints.has(command.descriptionKey!)).toBe(false);
+    }
   });
 });
 

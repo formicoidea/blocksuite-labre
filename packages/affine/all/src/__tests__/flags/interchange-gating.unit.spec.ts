@@ -54,6 +54,27 @@ describe('the interchange registry is flag-gated tooling', () => {
     ]);
   });
 
+  test('Wardley declares both directions of the OWM DSL with the flag on', () => {
+    const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
+      framework: 'wardley',
+    });
+
+    // The second framework on the registry, and the row ADR 0012 records as
+    // OWED: the Wardley serializer used to live in labre-mcp, outside this
+    // repo, which is the ADR's one named violation of P3.
+    expect(found.map(capability => capability.id)).toEqual([
+      'wardley:owm:export',
+      'wardley:owm:import',
+    ]);
+    // Semantic in both directions: a `[visibility, evolution]` pair IS a
+    // position on the two axes, so the import is a translation and not
+    // recognition, and both owe the whole preservation contract.
+    expect(found.map(capability => capability.format.tier)).toEqual([
+      'semantic',
+      'semantic',
+    ]);
+  });
+
   test('C4 declares its mermaid export with the flag on', () => {
     const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
       framework: 'c4',
@@ -73,8 +94,13 @@ describe('the interchange registry is flag-gated tooling', () => {
     expect(interchangeCapabilities(provider, { framework: 'bpmn' })).toEqual(
       []
     );
+    expect(interchangeCapabilities(provider, { framework: 'wardley' })).toEqual(
+      []
+    );
     // Nothing else has slipped a capability in through an always-on extension:
-    // the registry is empty, not merely BPMN-less.
+    // the registry is empty, not merely BPMN-less. This is the assertion that
+    // catches an `InterchangeExtension` registered from a framework's RENDER
+    // view extension instead of its flag-gated one.
     expect(interchangeCapabilities(provider)).toEqual([]);
   });
 
