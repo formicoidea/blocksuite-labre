@@ -2,6 +2,9 @@ import {
   BpmnNodeElementModel,
   BpmnPoolElementModel,
   BrushElementModel,
+  C4BoardElementModel,
+  C4BoundaryElementModel,
+  C4NodeElementModel,
   ConnectorElementModel,
   ContextMapBoardElementModel,
   CoreDomainChartElementModel,
@@ -42,12 +45,18 @@ export const elementsCtorMap = {
   eventStorming: EventStormingBoardElementModel,
   bpmnNode: BpmnNodeElementModel,
   bpmnPool: BpmnPoolElementModel,
+  c4Node: C4NodeElementModel,
+  c4Board: C4BoardElementModel,
+  c4Boundary: C4BoundaryElementModel,
 };
 
 export {
   BpmnNodeElementModel,
   BpmnPoolElementModel,
   BrushElementModel,
+  C4BoardElementModel,
+  C4BoundaryElementModel,
+  C4NodeElementModel,
   ConnectorElementModel,
   ContextMapBoardElementModel,
   CoreDomainChartElementModel,
@@ -87,6 +96,9 @@ export enum CanvasElementType {
   EVENTSTORMING = 'eventStorming',
   BPMNNODE = 'bpmnNode',
   BPMNPOOL = 'bpmnPool',
+  C4NODE = 'c4Node',
+  C4BOARD = 'c4Board',
+  C4BOUNDARY = 'c4Boundary',
 }
 
 export type ElementModelMap = {
@@ -109,6 +121,9 @@ export type ElementModelMap = {
   ['eventStorming']: EventStormingBoardElementModel;
   ['bpmnNode']: BpmnNodeElementModel;
   ['bpmnPool']: BpmnPoolElementModel;
+  ['c4Node']: C4NodeElementModel;
+  ['c4Board']: C4BoardElementModel;
+  ['c4Boundary']: C4BoundaryElementModel;
 };
 
 export function isCanvasElementType(type: string): type is CanvasElementType {
