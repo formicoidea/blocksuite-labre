@@ -15,7 +15,7 @@ import * as c4Toolbar from '../toolbar/config';
 import { C4_ELEMENT_MATRIX, C4_RELATIONSHIP_MATRIX, C4_RULES } from '../rules';
 
 /**
- * The fourteen C4 rules, rule by rule — and above all what each of them stays
+ * The eleven C4 rules, rule by rule — and above all what each of them stays
  * SILENT about. Silence is the expensive half: a rule that fires on a croquis is
  * a rule the workshop switches off, and a C4 diagram is drawn as a croquis for
  * most of its life.
@@ -26,10 +26,7 @@ import { C4_ELEMENT_MATRIX, C4_RELATIONSHIP_MATRIX, C4_RULES } from '../rules';
  */
 
 const UNLABELED_RELATIONSHIP = 'c4.unlabeled-relationship';
-const UNNAMED_PERSON = 'c4.unnamed-person';
-const UNNAMED_SYSTEM = 'c4.unnamed-system';
-const UNNAMED_CONTAINER = 'c4.unnamed-container';
-const UNNAMED_COMPONENT = 'c4.unnamed-component';
+const UNNAMED_ELEMENT = 'c4.unnamed-element';
 const UNTYPED_LINK = 'c4.untyped-link';
 const RELATIONSHIP_ENDPOINTS = 'c4.relationship-endpoints';
 const RELATIONSHIP_SELF_LOOP = 'c4.relationship-self-loop';
@@ -83,16 +80,39 @@ const legacyBoard = () => element('bg', [0, 0, 1400, 900]);
 const boundary = (id: string, x = 200, y = 200, text = 'API Application') =>
   element(id, [x, y, 520, 360], C4_ROLE.boundary, { text });
 
+/**
+ * A C4 artefact: the SHAPE, carrying the role and — deliberately — no text at
+ * all. Since the component became a group the shape is a body and nothing else;
+ * its name is the `c4:title` child beside it ({@link title}). A fixture that
+ * still wrote words here would be modelling a document this editor cannot
+ * produce, and would quietly excuse a rule that read the wrong place.
+ */
 const node =
   (role: string, w: number, h: number) =>
-  (id: string, x = 100, y = 100, text = 'Named') =>
-    element(id, [x, y, w, h], role, { text });
+  (id: string, x = 100, y = 100) =>
+    element(id, [x, y, w, h], role);
 
 const person = node(C4_ROLE.person, 120, 140);
 const system = node(C4_ROLE.system, 180, 120);
 const container = node(C4_ROLE.container, 180, 120);
 const database = node(C4_ROLE.database, 160, 120);
 const component = node(C4_ROLE.component, 120, 80);
+
+/**
+ * The `c4:title` text child — where a C4 element's name actually lives.
+ *
+ * Defaults to the kind's own label, because that is what `actions.ts` seeds at
+ * creation (`NODE_LABEL[kind]`): a fresh node is NOT nameless, it is prompted.
+ */
+const title = (id: string, text = 'Person', x = 100, y = 240) =>
+  element(id, [x, y, 160, 24], C4_ROLE.title, { text });
+
+/** The other two tiers, for the pin that says a rule about names ignores them. */
+const typeLine = (id: string, text = '[Container]', x = 100, y = 268) =>
+  element(id, [x, y, 160, 20], C4_ROLE['type-line'], { text });
+
+const description = (id: string, text = 'Does a thing.', x = 100, y = 290) =>
+  element(id, [x, y, 160, 40], C4_ROLE.description, { text });
 
 /** A typed relationship, labelled unless a test says otherwise. */
 const rel = (id: string, source: string, target: string, text = 'Uses') =>
@@ -130,13 +150,10 @@ const conformant = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the fourteen rules of the pack, in reading order', () => {
+  it('ships exactly the eleven rules of the pack, in reading order', () => {
     expect(C4_RULES.map(rule => rule.id)).toEqual([
       UNLABELED_RELATIONSHIP,
-      UNNAMED_PERSON,
-      UNNAMED_SYSTEM,
-      UNNAMED_CONTAINER,
-      UNNAMED_COMPONENT,
+      UNNAMED_ELEMENT,
       UNTYPED_LINK,
       RELATIONSHIP_ENDPOINTS,
       RELATIONSHIP_SELF_LOOP,
@@ -178,7 +195,7 @@ describe('what the framework ships', () => {
       HOMELESS_COMPONENT,
       PERSON_IN_BOUNDARY,
     ]);
-    expect(framedBy(C4_ROLE.board)).toHaveLength(12);
+    expect(framedBy(C4_ROLE.board)).toHaveLength(9);
   });
 
   it('declares no level the pipework cannot honour, and starts every rule quiet', () => {
@@ -191,18 +208,13 @@ describe('what the framework ships', () => {
   });
 
   it('keeps the naming checks off the drawing path', () => {
-    // A box is created EMPTY and typed into a second later, so a real-time
-    // naming rule would bracket every symbol the instant it appeared. `moment`
-    // is a property of the rule, so the claim is provable rather than promised.
+    // Naming is what a user does by TYPING, so a real-time rule of this family
+    // would re-evaluate on every keystroke in every title on the board.
+    // `moment` is a property of the rule, so the claim is provable rather than
+    // promised.
     const onDemand = C4_RULES.filter(rule => rule.moment === 'on-demand');
     expect(onDemand.map(rule => rule.id).sort()).toEqual(
-      [
-        UNLABELED_RELATIONSHIP,
-        UNNAMED_PERSON,
-        UNNAMED_SYSTEM,
-        UNNAMED_CONTAINER,
-        UNNAMED_COMPONENT,
-      ].sort()
+      [UNLABELED_RELATIONSHIP, UNNAMED_ELEMENT].sort()
     );
     // Absent everywhere else, which is what `'realtime'` means: the default is
     // never restated, so nobody has to wonder whether an omission was a choice.
@@ -298,40 +310,66 @@ describe('C1 · a relationship nobody has labelled', () => {
   });
 });
 
-describe('C2–C5 · an element nobody has named', () => {
-  it('flags each level with its own sentence', () => {
-    expect(idsOf(checkup([board(), person('p', 100, 100, '')]))).toEqual([
-      UNNAMED_PERSON,
-    ]);
-    expect(idsOf(checkup([board(), system('s', 100, 100, '')]))).toEqual([
-      UNNAMED_SYSTEM,
-    ]);
-    expect(idsOf(checkup([board(), container('c', 100, 100, '')]))).toEqual([
-      UNNAMED_CONTAINER,
-    ]);
-    expect(idsOf(checkup([board(), component('k', 100, 100, '')]))).toEqual([
-      UNNAMED_COMPONENT,
+describe('C2 · an element nobody has named', () => {
+  it('flags an EMPTIED title, whatever level it belongs to', () => {
+    // One rule, one sentence, every artefact: the name is a `c4:title` text and
+    // the shape carries none, so there is nothing per-level left to say.
+    const violations = checkup([board(), person('p'), title('t', '')]);
+    expect(idsOf(violations)).toEqual([UNNAMED_ELEMENT]);
+    // The finding lands on the TITLE — that is the element the author edits.
+    expect(violations[0].elementIds).toEqual(['t']);
+  });
+
+  it('says nothing about a freshly dropped node, which is PROMPTED not nameless', () => {
+    // The trap this rule had to be written around. `actions.ts` seeds the
+    // kind's own label into the title at creation, so a box reading "Person" is
+    // a box whose author has not finished — not a box with no name. Four rules
+    // ago this fired on every element the instant it appeared.
+    expect(checkup([board(), person('p'), title('t', 'Person')])).toEqual([]);
+    expect(checkup([board(), container('c'), title('t', 'Web app')])).toEqual(
+      []
+    );
+  });
+
+  it('counts whitespace as no name at all', () => {
+    expect(idsOf(checkup([board(), system('s'), title('t', '   ')]))).toEqual([
+      UNNAMED_ELEMENT,
     ]);
   });
 
-  it('catches an unnamed DATABASE with the container rule', () => {
-    // The one specialisation the pack declares: a data store IS a container, so
-    // `roleIsA` reaches it and there is no fifth naming rule to forget.
-    const violations = checkup([board(), database('d', 100, 100, '')]);
-    expect(idsOf(violations)).toEqual([UNNAMED_CONTAINER]);
-    expect(violations[0].elementIds).toEqual(['d']);
+  /**
+   * The KNOWN LIMIT, pinned so it stays a decision rather than a surprise.
+   *
+   * `label-presence` evaluates the elements that exist. Delete the title
+   * outright — rather than emptying it — and there is no `c4:title` on the board
+   * for the rule to be about, so a genuinely nameless component goes unreported.
+   *
+   * Closing it means asking "does this SHAPE have a title among its group's
+   * children?", which is a question about group membership rather than about a
+   * label's presence, and no family expresses it today. See the rule's own
+   * comment; `c4ComponentSiblings` is where the answer would come from.
+   */
+  it('says nothing when the title element is DELETED rather than emptied', () => {
+    expect(checkup([board(), person('p')])).toEqual([]);
   });
 
-  it('says nothing about a named element', () => {
+  it('ignores the other two tiers, which are not names', () => {
+    // An empty type line or description is a subtitle nobody filled in, and
+    // this rule is written on `c4:title` alone.
     expect(
-      checkup([board(), person('p'), system('s', 600), component('k', 1000)])
+      checkup([
+        board(),
+        component('k'),
+        title('t', 'Sign In Controller'),
+        typeLine('tl', ''),
+        description('d', ''),
+      ])
     ).toEqual([]);
   });
 
   it('says nothing about the frames, whose words are the user’s own', () => {
-    // A board and a boundary are not elements of the model, so a rule about
-    // people, systems, containers and components falls on neither — an untitled
-    // sheet is a sheet somebody has not titled yet.
+    // A board and a boundary are not elements of the model and carry no title
+    // child — an untitled sheet is a sheet somebody has not titled yet.
     expect(checkup([board(''), boundary('bd', 200, 200, '')])).toEqual([]);
   });
 
@@ -340,7 +378,7 @@ describe('C2–C5 · an element nobody has named', () => {
   });
 });
 
-describe('C6 · a plain connector between two elements', () => {
+describe('C3 · a plain connector between two elements', () => {
   it('flags the link, and shows the verdicts that go quiet behind it', () => {
     const violations = evaluate([
       board(),
@@ -389,7 +427,7 @@ describe('C6 · a plain connector between two elements', () => {
   });
 });
 
-describe('C7 · what a relationship may run between', () => {
+describe('C4 · what a relationship may run between', () => {
   it('flags an arrow drawn between two people', () => {
     const violations = evaluate([
       board(),
@@ -454,7 +492,7 @@ describe('C7 · what a relationship may run between', () => {
   });
 });
 
-describe('C8 · a relationship that loops onto its own element', () => {
+describe('C5 · a relationship that loops onto its own element', () => {
   it('flags the loop, and only the loop', () => {
     const violations = evaluate([board(), system('a'), rel('r', 'a', 'a')]);
     expect(idsOf(violations)).toEqual([RELATIONSHIP_SELF_LOOP]);
@@ -526,7 +564,7 @@ describe('C8 · a relationship that loops onto its own element', () => {
   });
 });
 
-describe('C9–C11 · an element nothing connects', () => {
+describe('C6–C8 · an element nothing connects', () => {
   it('flags a lone system, container and component', () => {
     expect(idsOf(evaluate([board(), system('a')]))).toEqual([ISOLATED_SYSTEM]);
     expect(idsOf(evaluate([board(), container('c')]))).toEqual([
@@ -563,7 +601,7 @@ describe('C9–C11 · an element nothing connects', () => {
   });
 });
 
-describe('C12 · a data store that calls somebody', () => {
+describe('C9 · a data store that calls somebody', () => {
   it('flags a relationship leaving a database', () => {
     const violations = evaluate([
       board(),
@@ -595,7 +633,7 @@ describe('C12 · a data store that calls somebody', () => {
   });
 });
 
-describe('C13 · a component belongs inside a boundary', () => {
+describe('C10 · a component belongs inside a boundary', () => {
   it('flags a component drawn outside every boundary', () => {
     const violations = evaluate([
       board(),
@@ -635,7 +673,7 @@ describe('C13 · a component belongs inside a boundary', () => {
   });
 });
 
-describe('C14 · a person is never inside the system', () => {
+describe('C11 · a person is never inside the system', () => {
   it('flags a person drawn inside a boundary', () => {
     const violations = evaluate([
       board(),

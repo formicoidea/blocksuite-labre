@@ -20,24 +20,21 @@ import { c4TranslationEntries } from '../translations';
  */
 
 /**
- * The nine `strict` promotes.
+ * The six `strict` promotes.
  *
  * Named for what the PROFILE does, not for where the rules come from, and the
  * two are deliberately not the same partition — a coincidence of arithmetic
- * makes both 9/5, which is exactly why the constant must not be called
- * `CHECKLIST`. Seven of these restate a checklist question; `c4.untyped-link`
- * and `c4.relationship-self-loop` are OURS and are promoted anyway, because
- * neither has a reading under which the diagram meant it. Meanwhile the three
- * isolation rules DO come from the checklist and are not promoted, because they
- * report unfinished work. Provenance and severity are orthogonal — see
- * `profiles.ts`.
+ * makes both 6/5, which is exactly why the constant must not be called
+ * `CHECKLIST`. Three of these restate a checklist question; `c4.untyped-link`,
+ * `c4.relationship-self-loop` and `c4.homeless-component` are OURS and are
+ * promoted anyway, because none has a reading under which the diagram meant it.
+ * Meanwhile the three isolation rules DO come from the checklist and are not
+ * promoted, because they report unfinished work. Provenance and severity are
+ * orthogonal — see `profiles.ts`.
  */
 const PROMOTED = [
   'c4.unlabeled-relationship',
-  'c4.unnamed-person',
-  'c4.unnamed-system',
-  'c4.unnamed-container',
-  'c4.unnamed-component',
+  'c4.unnamed-element',
   'c4.untyped-link',
   'c4.relationship-endpoints',
   'c4.relationship-self-loop',
@@ -68,7 +65,7 @@ describe('C4 validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = C4_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(14);
+    expect(ruleIds).toHaveLength(11);
     for (const profile of C4_PROFILES) {
       expect(profile.framework).toBe('c4');
       expect(profile.labelKey).toMatch(/^com\.labre\.c4\.profile\./);
@@ -89,9 +86,9 @@ describe('C4 validation profiles', () => {
     }
   });
 
-  it('promotes the nine on the strict profile', () => {
+  it('promotes the six on the strict profile', () => {
     const [, strict] = C4_PROFILES;
-    expect(PROMOTED).toHaveLength(9);
+    expect(PROMOTED).toHaveLength(6);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }

@@ -27,7 +27,8 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  * room. Four of its questions are answerable from the model alone and are the
  * four this pack asks:
  *
- * - is every ELEMENT named, and typed? (`c4.unnamed-*`)
+ * - is every ELEMENT named? (`c4.unnamed-element`, which reads the `c4:title`
+ *   text of a component group rather than any of the four levels)
  * - does every RELATIONSHIP carry a label saying what it is for?
  *   (`c4.unlabeled-relationship`)
  * - is every relationship one a reader can follow — between two things the
@@ -87,10 +88,15 @@ import { C4_ROLE, C4_ROLES } from './roles.js';
  *   so nothing can say the sheet has been broken.
  * - **the technology of a container or a component.** The checklist asks for it
  *   ("Java/Spring", "React SPA", "PostgreSQL") and the notation draws it as a
- *   second line under the name. In v1 an element's words are ONE free-text
- *   label (D2), so "has a technology" and "has a name" are the same string and
- *   `label-presence` cannot tell the two apart. A rule reading a `technology`
- *   prop is one line of data behind the model change.
+ *   second line under the name. The blocker that used to be here is GONE — the
+ *   type line is its own element now, stamped `c4:type-line`, and
+ *   `technologyOfTypeLine` reads the author's half back out of it. What stops
+ *   the rule is no longer the model but the QUESTION: `label-presence` asks
+ *   whether there are words, and a type line always has some (the kind's own
+ *   word is seeded into it). "Has a technology" means "has more than the word
+ *   the tool wrote", which is a predicate on the content — a family this engine
+ *   does not have, and a bad first reason to invent one. Worth revisiting when
+ *   a second framework wants the same shape of question.
  */
 
 /**
@@ -218,96 +224,80 @@ const unlabeledRelationship: ValidationRule = {
 };
 
 /**
- * The four naming rules, one per level, built from one description.
+ * **C2** — an element nobody has named.
  *
- * `label-presence` names ONE subject role (`appliesTo`), and the four levels of
- * C4 are FLAT by declaration — a container is not a kind of system — so there
- * is no single role for "any element" to be written on. Four rules is therefore
- * the shape the vocabulary forces, and it is the better shape anyway: the
- * sentence a user reads names the thing they are looking at, and a profile can
- * move one level without the others.
+ * ONE rule for all nine artefacts, and it reads the `c4:title` TEXT rather than
+ * any of the four levels.
  *
- * Three rules, not four, would be a mistake worth naming: `c4:container` covers
- * the DATABASE, the mobile app and the single-page app for free, because
- * `roleIsA` walks the parent chain and all three are containers (`roles.ts`).
- * An unnamed cylinder is caught by the container rule, not by a fifth one.
+ * ## Why it is one rule now, where it was four
+ *
+ * It was four — `c4.unnamed-{person,system,container,component}` — because
+ * `label-presence` names one `appliesTo` role, the four levels are flat by
+ * declaration, and a shape's name lived in the shape's own inner text. Every
+ * one of those premises moved when the component became a GROUP: the shape
+ * carries **no text at all**, and an element's name is a text child stamped
+ * `c4:title` (`roles.ts` says so at length, and instructs a naming rule to read
+ * exactly that role).
+ *
+ * So there is now a single role meaning "the name of a C4 element", and four
+ * rules asking the same question of it would be one question asked four times.
+ * The per-level wording goes with them — a title is a title at every level, and
+ * the rule can no longer tell a person's from a container's without walking the
+ * group, which is not this family's business.
+ *
+ * ## What it actually fires on, which is narrower than it sounds
+ *
+ * A fresh node is created with its kind's own label already in the title —
+ * `Person`, `Web app`, `API Application` (`actions.ts` seeds `NODE_LABEL[kind]`,
+ * a name and a prompt at once). `label-presence` sees words and says nothing.
+ * The rule therefore fires on exactly one thing: **a title an author has
+ * emptied.** That is a good deal quieter than the four rules it replaces, which
+ * fired on every freshly dropped box until somebody typed — and it is the
+ * honest reading, because a box reading "Person" is a box whose author has not
+ * finished, not a box with no name.
+ *
+ * ## The known limit: a DELETED title is silence
+ *
+ * If the title element is removed outright rather than emptied, there is no
+ * `c4:title` on the board for this rule to be about, and it says nothing. The
+ * component is then genuinely nameless and the check-up will not mention it.
+ *
+ * That is a real hole and it is named rather than papered over. Closing it means
+ * asking a different question — "does this SHAPE have a title among its group's
+ * children?" — which is a rule about group membership, not about a label's
+ * presence, and no family expresses it today. `c4ComponentSiblings` is where the
+ * answer would come from when one does. Until then the drawn diagram is judged
+ * and the missing element is not, which is the same direction every other
+ * silence in this file leans.
  */
-function namingRule(
-  level: 'person' | 'system' | 'container' | 'component',
-  role: RoleId,
-  message: string,
-  suggestion: string
-): ValidationRule {
-  return {
-    id: `c4.unnamed-${level}`,
-    framework: 'c4',
-    family: 'label-presence',
-    severity: 'audit',
-    appliesTo: role,
-    roles: C4_ROLES,
-    messageKey: `com.labre.c4.validation.unnamed-${level}`,
-    messageFallback: message,
-    suggestionKey: `com.labre.c4.validation.unnamed-${level}.suggestion`,
-    suggestionFallback: suggestion,
-    version: 1,
-    // See `unlabeledRelationship`: a box is created empty and typed into a
-    // second later, so the naming check belongs to the moment somebody asks
-    // whether the diagram is done.
-    moment: 'on-demand',
-    backgroundRole: C4_ROLE.board,
-    label: { present: true },
-  };
-}
-
-/**
- * **C2** — a person nobody has named.
- *
- * The checklist's first question, on the level where it costs the reader most:
- * a nameless stick figure is a diagram claiming somebody uses this system
- * without saying who, which is precisely the fact a C1 context diagram exists
- * to establish.
- */
-const unnamedPerson = namingRule(
-  'person',
-  C4_ROLE.person,
-  'This person has no name.',
-  'Name the ROLE rather than the individual — "Personal banking customer", "Back-office staff". Who uses the system is the fact a context diagram exists to establish.'
-);
-
-/** **C3** — a software system nobody has named. */
-const unnamedSystem = namingRule(
-  'system',
-  C4_ROLE.system,
-  'This software system has no name.',
-  'Give it the name the organisation actually uses for it. A grey box with no name tells the reader there is something out there and nothing else.'
-);
-
-/**
- * **C4** — a container nobody has named.
- *
- * Covers the database, the mobile app and the single-page app for free: all
- * three ARE containers (`roles.ts`), so `roleIsA` reaches them from this one
- * rule and the vocabulary can gain a fourth picture without gaining a rule.
- */
-const unnamedContainer = namingRule(
-  'container',
-  C4_ROLE.container,
-  'This container has no name.',
-  'Name the deployable thing — "API Application", "Web Application", "Database". C4 asks for the technology too; write it in the same label until the model carries it separately.'
-);
-
-/** **C5** — a component nobody has named. */
-const unnamedComponent = namingRule(
-  'component',
-  C4_ROLE.component,
-  'This component has no name.',
-  'Name the responsibility it carries — "Sign In Controller", "Security Component". A component is the one level where an unnamed box is indistinguishable from a placeholder.'
-);
+const unnamedElement: ValidationRule = {
+  id: 'c4.unnamed-element',
+  framework: 'c4',
+  family: 'label-presence',
+  severity: 'audit',
+  // The TITLE, not the artefact: the shape carries no text since the component
+  // became a group, so a rule written on `c4:person` would read nothing on
+  // every element on the board and report every one of them unnamed.
+  appliesTo: C4_ROLE.title,
+  roles: C4_ROLES,
+  messageKey: 'com.labre.c4.validation.unnamed-element',
+  messageFallback: 'This element has no name.',
+  suggestionKey: 'com.labre.c4.validation.unnamed-element.suggestion',
+  suggestionFallback:
+    'Write the name a reader outside the room would recognise — "Personal banking customer" for a person, "API Application" for a container, "Sign In Controller" for a component. The type line under it already says what kind of thing it is, so the name is free to say which one.',
+  version: 1,
+  // See `unlabeledRelationship`: naming is what a user does by TYPING, so the
+  // check belongs to the moment somebody asks whether the diagram is done
+  // rather than to every keystroke.
+  moment: 'on-demand',
+  backgroundRole: C4_ROLE.board,
+  label: { present: true },
+};
 
 /* ── Grammar: what an arrow may run between ────────────────────────────── */
 
 /**
- * **C6** — a plain connector between two C4 elements is a relationship nobody
+ * **C3** — a plain connector between two C4 elements is a relationship nobody
  * typed.
  *
  * The gap every other rule in this file falls through, and BPMN's `B4`
@@ -374,7 +364,7 @@ const untypedLink: ValidationRule = {
 };
 
 /**
- * **C7** — a relationship runs between two things the model has.
+ * **C4** — a relationship runs between two things the model has.
  *
  * The grammar, and it is short because C4's is: the matrix sanctions every
  * ordered pair of the four levels but person → person (see
@@ -429,7 +419,7 @@ const relationshipEndpoints: ValidationRule = {
 };
 
 /**
- * **C8** — a relationship that loops back onto the element it leaves.
+ * **C5** — a relationship that loops back onto the element it leaves.
  *
  * OURS, not the C4 model's, and split out of {@link relationshipEndpoints} for
  * exactly that reason. The matrix restates something C4 says — the notation has
@@ -566,21 +556,21 @@ function isolationRule(
   };
 }
 
-/** **C9** — a software system nothing reaches and that reaches nothing. */
+/** **C6** — a software system nothing reaches and that reaches nothing. */
 const isolatedSystem = isolationRule(
   'system',
   C4_ROLE.system,
   'Nothing connects this software system to the rest of the diagram.'
 );
 
-/** **C10** — a container nothing reaches and that reaches nothing. */
+/** **C7** — a container nothing reaches and that reaches nothing. */
 const isolatedContainer = isolationRule(
   'container',
   C4_ROLE.container,
   'Nothing connects this container to the rest of the diagram.'
 );
 
-/** **C11** — a component nothing reaches and that reaches nothing. */
+/** **C8** — a component nothing reaches and that reaches nothing. */
 const isolatedComponent = isolationRule(
   'component',
   C4_ROLE.component,
@@ -588,7 +578,7 @@ const isolatedComponent = isolationRule(
 );
 
 /**
- * **C12** — a data store that calls somebody.
+ * **C9** — a data store that calls somebody.
  *
  * OURS, not the checklist's, and an idiom rather than a law — which is why it
  * is `audit` at both levels and says so in its own sentence.
@@ -627,7 +617,7 @@ const databaseInitiates: ValidationRule = {
 /* ── Membership: which frame does the element belong to? ───────────────── */
 
 /**
- * **C13** — a component drawn outside any boundary.
+ * **C10** — a component drawn outside any boundary.
  *
  * A component is the one level of C4 that means nothing on its own: it is a
  * part OF a container, and the container it is part of is drawn on the canvas
@@ -676,7 +666,7 @@ const homelessComponent: ValidationRule = {
 };
 
 /**
- * **C14** — a person drawn inside a boundary.
+ * **C11** — a person drawn inside a boundary.
  *
  * OURS, like {@link databaseInitiates}, and `audit` at both levels for the same
  * reason. A boundary says "these things are parts of one system, or of one
@@ -739,23 +729,21 @@ const personInBoundary: ValidationRule = {
 };
 
 /**
- * The pack, whole: fourteen rules, all registered, all live.
+ * The pack, whole: eleven rules, all registered, all live.
  *
  * Four families, and no more than four are needed — C4 has one connecting
  * object, four flat levels and two frames, so there is no swimlane question, no
  * graph traversal and no cardinality per frame to ask about.
  *
- * Fourteen and not thirteen because the grammar and the self-loop are two rules:
- * see {@link relationshipSelfLoop} for why one rule could not honestly carry
- * both.
+ * Eleven and not ten because the grammar and the self-loop are two rules (see
+ * {@link relationshipSelfLoop}); eleven and not fourteen because the four
+ * per-level naming rules collapsed into {@link unnamedElement} the moment an
+ * element's name became one text role instead of four shapes' inner text.
  */
 export const C4_RULES: readonly ValidationRule[] = [
   // Naming: does the drawing say anything at all?
   unlabeledRelationship,
-  unnamedPerson,
-  unnamedSystem,
-  unnamedContainer,
-  unnamedComponent,
+  unnamedElement,
   // Grammar: what an arrow may run between, and whether it is an arrow at all.
   untypedLink,
   relationshipEndpoints,

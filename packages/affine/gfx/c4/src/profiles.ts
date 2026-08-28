@@ -15,12 +15,12 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * tooling, and a board already set to `strict` simply stops being checked until
  * it comes back — the id stays written, untouched.
  *
- * ## Both tables spell out all FOURTEEN ids
+ * ## Both tables spell out all ELEVEN ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `c4.strict` actually
- * requires reads fourteen lines here instead of one file per rule, and a rule
+ * requires reads eleven lines here instead of one file per rule, and a rule
  * shipped later cannot join a level in silence.
  */
 
@@ -53,10 +53,7 @@ const sketch: ValidationProfile = {
   isDefault: true,
   rules: {
     'c4.unlabeled-relationship': 'audit',
-    'c4.unnamed-person': 'audit',
-    'c4.unnamed-system': 'audit',
-    'c4.unnamed-container': 'audit',
-    'c4.unnamed-component': 'audit',
+    'c4.unnamed-element': 'audit',
     'c4.untyped-link': 'audit',
     'c4.relationship-endpoints': 'audit',
     'c4.relationship-self-loop': 'audit',
@@ -73,20 +70,27 @@ const sketch: ValidationProfile = {
  * Strict: the diagram is a DELIVERABLE, and it is held to the review checklist.
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
- * becomes something another team will be handed. Nine rules move to `warning`.
+ * becomes something another team will be handed. Six rules move to `warning`.
  *
- * Eight of them read a question from the checklist itself (c4model.com): is
+ * Three of them read a question from the checklist itself (c4model.com): is
  * every element named, is every relationship labelled, is every arrow one the
- * model can state, does every component sit in the container it belongs to.
+ * model can state.
  *
- * The ninth — `c4.relationship-self-loop` — is OURS, and it is promoted anyway.
- * Provenance and severity are orthogonal: where a house reading has an honest
- * alternative the diagram might have meant, it stays a remark (see the five
- * below), and where it does not, it bites. A box drawn as using itself has no
- * second reading — whatever the author saw is a level down — so at the level
- * where somebody has said the diagram is a deliverable, saying so is the point.
- * The rule's message names it as our convention rather than implying C4 forbids
- * it, which is what keeps the promotion honest.
+ * The other three — `c4.untyped-link`, `c4.relationship-self-loop` and
+ * `c4.homeless-component` — are OURS, and they are promoted anyway. Provenance
+ * and severity are ORTHOGONAL, and this table is where that shows: what decides
+ * whether a house reading bites is not where it came from but whether the
+ * diagram might honestly have meant it. A connector the model never recorded, a
+ * box drawn as using itself, a component belonging to no container — none of
+ * the three has a second reading, so at the level where somebody has said the
+ * drawing is a deliverable, saying so is the point. Each message names the rule
+ * as our convention rather than implying C4 forbids it, which is what keeps the
+ * promotion honest.
+ *
+ * Note the partition here is NOT the provenance one, though both happen to be
+ * six and five: the three `c4.isolated-*` rules come from the checklist and stay
+ * remarks, while three of ours are promoted. The spec constant is called
+ * `PROMOTED` for exactly that reason.
  *
  * ## The five that do NOT move, and why the table spells them out
  *
@@ -124,10 +128,7 @@ const strict: ValidationProfile = {
   fallback: 'Review checklist',
   rules: {
     'c4.unlabeled-relationship': 'warning',
-    'c4.unnamed-person': 'warning',
-    'c4.unnamed-system': 'warning',
-    'c4.unnamed-container': 'warning',
-    'c4.unnamed-component': 'warning',
+    'c4.unnamed-element': 'warning',
     'c4.untyped-link': 'warning',
     'c4.relationship-endpoints': 'warning',
     'c4.relationship-self-loop': 'warning',
