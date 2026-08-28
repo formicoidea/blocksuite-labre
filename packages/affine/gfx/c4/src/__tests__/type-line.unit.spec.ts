@@ -326,6 +326,13 @@ describe('c4MorphedTypeLine — the caption follows the shape', () => {
       expect(c4MorphedTypeLine(from, to, c4TypeLine(from, 'Java'))).toBe(
         c4TypeLine(from, 'Java')
       );
+      // Padded, as a stored tier can be. The answer is the TRIMMED line, which
+      // is what the caller compares against before deciding to write — read it
+      // against the untrimmed original instead and every inert morph would
+      // spend a transaction rewriting the padding away.
+      expect(
+        c4MorphedTypeLine(from, to, `  ${C4_TYPE_PLACEHOLDER[from]}  `)
+      ).toBe(C4_TYPE_PLACEHOLDER[from]);
     }
   });
 });

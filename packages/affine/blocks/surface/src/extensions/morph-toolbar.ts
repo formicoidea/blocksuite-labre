@@ -434,7 +434,19 @@ export function morphToolbarConfig<K extends string>(
         // `y.element-tags` and `z.validation`: WHICH artefact this is reads
         // before how it is qualified, and both read before how hard it is
         // checked.
-        id: 'e.morph',
+        //
+        // SCOPED by the declaring framework, because `renderToolbar` merges
+        // the actions of every module on a row BY ID — `groupBy(a => a.id)`,
+        // then a deep merge. One flavour can now carry several morph modules
+        // (a group is a C4 component and a Wardley component), and two entries
+        // both called `e.morph` would be merged into one whose `content` came
+        // from whichever was registered last: a single dropdown, silently
+        // answering for one framework and not the other. `e.morph.c4` and
+        // `e.morph.wardley` sort adjacently, in the same slot, and never
+        // collide. The TESTIDs stay `element-morph` / `element-morph-option`,
+        // because the row draws one of these at a time and the DOM handle is
+        // about the affordance, not about who declared it.
+        id: `e.morph.${spec.framework}`,
         when: (ctx: ToolbarContext) => morphTarget(ctx, spec) !== null,
         content(ctx: ToolbarContext) {
           const target = morphTarget(ctx, spec);

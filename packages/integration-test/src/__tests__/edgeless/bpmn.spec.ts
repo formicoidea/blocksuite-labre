@@ -1288,7 +1288,9 @@ describe('morphing a BPMN node into a nearby kind', () => {
     // nothing else had claimed this key.
     const config = registry.getModuleBy('affine:surface:bpmnNode');
     expect(config).toBeTruthy();
-    expect(config?.actions.map(action => action.id)).toContain('e.morph');
+    // Scoped by the declaring framework: one flavour may carry several morph
+    // modules, and `renderToolbar` merges a row's actions BY ID.
+    expect(config?.actions.map(action => action.id)).toContain('e.morph.bpmn');
   });
 
   test('a task becomes a user task and keeps its box, its words and its wire', async () => {

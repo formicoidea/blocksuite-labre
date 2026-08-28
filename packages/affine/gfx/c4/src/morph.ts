@@ -13,6 +13,7 @@ import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import { c4CommandIcons, c4Commands } from './commands';
+import { NODE_LABEL } from './consts';
 import { c4MorphClears, c4MorphProps } from './presets';
 import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
 import { c4MorphedTypeLine } from './type-line';
@@ -125,48 +126,111 @@ export function c4NodeOfComponent(
   return found;
 }
 
-/** The component's `c4:type-line` tier, if it still has one. */
-function typeLineOf(model: GfxPrimitiveElementModel) {
+/** One tier of a component, by the role it carries. */
+function tierOf(model: GfxPrimitiveElementModel, role: string) {
   if (!(model instanceof GroupElementModel)) return undefined;
   return model.childElements.find(
     (child): child is TextElementModel =>
-      child instanceof TextElementModel && child.role === C4_ROLE['type-line']
+      child instanceof TextElementModel && child.role === role
   );
 }
 
 /**
- * Keep the caption saying what the shape now is — the `afterMorph` half of the
- * C4 spec.
+ * Write one tier, in place, if the decision says to.
  *
- * `[Container: Java]` is two statements in one line: the bracketed word is the
- * notation's, derived from `kind`, and the technology is the author's. The
- * watcher that keeps the two apart (`node/type-line-watcher.ts`) only ever runs
- * when somebody finishes TYPING into the tier, so a morph — which changes the
- * kind without anybody touching the words — has to make the same statement for
- * itself. {@link c4MorphedTypeLine} owns the decision, including the decision
- * to leave a line the author wrote alone.
+ * `decide` reads the tier as it is STORED and answers with the whole line to
+ * write, or `null` for "this text is the author's, leave it". The comparison
+ * that decides whether anything happens is against the TRIMMED text — the same
+ * string `decide` was given — because a decision made on `'[Container]  '`
+ * returns `'[Person]'`, and comparing that against the untrimmed original
+ * would call a no-op a change and spend a transaction rewriting the padding
+ * away.
  *
  * In place, in one transaction, and inside the caller's `captureSync`: the
  * `Y.Text` instance is what any bound editor holds, so it is mutated rather
  * than replaced, and the rewrite is part of the same single ctrl+z as the kind
  * that made it necessary.
  */
-function rewriteTypeLine(
+function rewriteTier(
   model: GfxPrimitiveElementModel,
-  from: C4NodeKind,
-  to: C4NodeKind
+  role: string,
+  decide: (text: string) => string | null
 ) {
-  const tier = typeLineOf(model);
+  const tier = tierOf(model, role);
   if (!tier || tier.isLocked()) return;
 
-  const raw = tier.text.toString();
-  const next = c4MorphedTypeLine(from, to, raw);
-  if (next === null || next === raw) return;
+  const text = tier.text.toString().trim();
+  const next = decide(text);
+  if (next === null || next === text) return;
 
   tier.surface.store.transact(() => {
     tier.text.delete(0, tier.text.length);
     tier.text.insert(0, next);
   });
+}
+
+/**
+ * Keep the component's own words saying what the shape now is — the
+ * `afterMorph` half of the C4 spec.
+ *
+ * ## The two tiers a morph may touch, and the one rule they share
+ *
+ * The rule is the same for both and it is deliberately timid: rewrite ONLY
+ * what the notation itself wrote, and never what an author typed. A morph is
+ * not allowed to take away words somebody put on the picture.
+ *
+ * - **The type line.** `[Container: Java]` is two statements in one: the
+ *   bracketed word is derived from `kind`, the technology is the author's.
+ *   The watcher that keeps the halves apart (`node/type-line-watcher.ts`) only
+ *   runs when somebody finishes TYPING into the tier, so a morph — which
+ *   changes the kind with nobody touching the words — has to make the same
+ *   statement for itself. {@link c4MorphedTypeLine} owns that decision.
+ * - **The title.** This is the one a user actually sees go wrong, and it is
+ *   the one the type line does NOT cover: `NODE_LABEL` differs inside the
+ *   container family (`Container` / `Database` / `Mobile app` / `Web app`), so
+ *   an untouched component morphed from a container to a database keeps a
+ *   cylinder captioned "Container" — a picture flatly contradicting its own
+ *   name. The rule is placeholder→placeholder and nothing else: the title is
+ *   rewritten only when it is EXACTLY the source kind's own prompt, which is
+ *   what a component nobody has named still carries. A component called
+ *   "Customer database" keeps that name whatever it becomes, which is the PO's
+ *   "the label is intact" for every title that is real content.
+ */
+function rewriteTiers(
+  model: GfxPrimitiveElementModel,
+  from: C4NodeKind,
+  to: C4NodeKind
+) {
+  rewriteTier(model, C4_ROLE['type-line'], text =>
+    c4MorphedTypeLine(from, to, text)
+  );
+  rewriteTier(model, C4_ROLE.title, text => c4MorphedTitle(from, to, text));
+}
+
+/**
+ * The name a component should carry once its shape has morphed — or `null`
+ * when the name is the AUTHOR's and must not be touched.
+ *
+ * Exactly one case rewrites: the title is the source kind's own creation
+ * prompt, letter for letter, which is what a component nobody has named still
+ * says. Everything else — a name typed over it, a prompt with a word added, a
+ * cleared title, another kind's prompt — is content, and content survives a
+ * morph untouched.
+ *
+ * This is the tier the type line does NOT cover, and the only one where a user
+ * sees the contradiction: {@link NODE_LABEL} differs across the container
+ * family where `C4_TYPE_WORD` does not, so a fresh container morphed to a
+ * database would otherwise be a cylinder captioned "Container".
+ *
+ * Pure and total over every string, like its sibling in `type-line.ts`: the
+ * input is a canvas text element somebody may have typed anything into.
+ */
+export function c4MorphedTitle(
+  from: C4NodeKind,
+  to: C4NodeKind,
+  rawText: string | null | undefined
+): string | null {
+  return (rawText ?? '').trim() === NODE_LABEL[from] ? NODE_LABEL[to] : null;
 }
 
 /**
@@ -200,7 +264,7 @@ export const C4_MORPH_SPEC: MorphSpec<C4NodeKind> = {
   roleOf: kind => C4_ROLE_OF_KIND[kind],
   propsOf: c4MorphProps,
   clearOf: c4MorphClears,
-  afterMorph: rewriteTypeLine,
+  afterMorph: rewriteTiers,
   labelOf,
   iconOf,
   label: morphLabel('com.labre.morph.toolbar.label', 'Change type'),

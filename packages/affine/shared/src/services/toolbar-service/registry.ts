@@ -59,8 +59,23 @@ export function toolbarModuleFlavour(variant: string): string {
  * duplicates on.
  */
 export function toolbarModuleKey(flavour: string, owner: string): string {
+  // Dev-only, because the failure it prevents is silent: an empty owner
+  // produces `flavour#`, which is a DIFFERENT variant from `flavour` and would
+  // therefore register a second module the bare-key lookups below never see,
+  // and an owner carrying the separator makes `toolbarModuleFlavour` cut in the
+  // wrong place, filing the module under a flavour nobody draws.
+  if (process.env.NODE_ENV !== 'production') {
+    if (!owner || owner.includes(MODULE_OWNER_SEPARATOR)) {
+      throw new Error(
+        `toolbarModuleKey: owner must be non-empty and free of "${MODULE_OWNER_SEPARATOR}" (got ${JSON.stringify(owner)})`
+      );
+    }
+  }
   return `${flavour}${MODULE_OWNER_SEPARATOR}${owner}`;
 }
+
+/** One shared empty answer, so a miss allocates nothing and can be frozen. */
+const NO_MODULES: readonly ToolbarModule[] = Object.freeze([]);
 
 export class ToolbarRegistryExtension extends Extension {
   flavour$ = signal<string>('affine:note');
@@ -99,11 +114,18 @@ export class ToolbarRegistryExtension extends Extension {
    * re-renders on every selection change, every drag frame and every zoom
    * notch.
    *
-   * A module registered under the bare flavour leads its group, so
-   * {@link getModuleBy} — and through it the placement lookup — answers with
-   * the same module it answered with before flavours could be shared.
+   * A module registered under the BARE flavour leads its group, and the rest
+   * follow in registration order. The order is what decides nothing much —
+   * `renderToolbar` sorts the merged actions by `placement`, `id` and `score`
+   * — and it is pinned all the same, because "which module answers a bare-key
+   * question" must not depend on which framework happened to be registered
+   * first.
+   *
+   * Each group is FROZEN: it is handed out by {@link modulesFor} on every
+   * render, and a caller that sorted or spliced the answer in place would
+   * silently rewrite the registry for every later render.
    */
-  #grouped: Map<string, ToolbarModule[]> | null = null;
+  #grouped: Map<string, readonly ToolbarModule[]> | null = null;
 
   get #groups() {
     if (!this.#grouped) {
@@ -115,26 +137,62 @@ export class ToolbarRegistryExtension extends Extension {
         else if (variant === flavour) group.unshift(module);
         else group.push(module);
       }
-      this.#grouped = groups;
+      for (const group of groups.values()) Object.freeze(group);
+      this.#grouped = groups as Map<string, readonly ToolbarModule[]>;
     }
     return this.#grouped;
   }
 
-  /** Every module contributing to one flavour's row, in registration order. */
+  /**
+   * Every module contributing to one flavour's row — the bare-key module
+   * first, then the owner-suffixed ones in registration order.
+   */
   modulesFor(flavour: string): readonly ToolbarModule[] {
-    return this.#groups.get(flavour) ?? [];
+    return this.#groups.get(flavour) ?? NO_MODULES;
   }
 
+  /**
+   * The config registered under the flavour ITSELF, or `null`.
+   *
+   * Deliberately not "the first module of this flavour". The callers of this
+   * method ask a question about one identified registration — does this block
+   * flavour have a toolbar of its own, where does that toolbar sit — and an
+   * owner-suffixed contributor is an ADDITION to a row, not a stand-in for the
+   * module that defines it. Answering with a contributor would make the reply
+   * depend on which frameworks a host happened to switch on: with `wardley`
+   * off and `c4` on, `custom:affine:surface:group` has no bare module at all,
+   * and returning C4's morph there would let a placement (or a `has`-style
+   * probe) be decided by a menu that only some builds ship.
+   */
   getModuleBy(flavour: string) {
-    return this.modulesFor(flavour)[0]?.config ?? null;
+    return (
+      this.modulesFor(flavour).find(module => module.id.variant === flavour)
+        ?.config ?? null
+    );
   }
 
+  /**
+   * Where a flavour's row sits: the first module of it that actually SAYS.
+   *
+   * A row is one row however many modules contribute to it, so the placement
+   * is a property of the flavour and not of a registration — and a contributor
+   * that declares none must not be read as declaring the default. Scanning for
+   * the first module with a `placement` keeps the answer the same whether the
+   * framework that states it is registered first, last, or under an owner.
+   */
   getModulePlacement(flavour: string, fallback: ToolbarPlacement = 'top') {
     return (
-      this.getModuleBy(`custom:${flavour}`)?.placement ??
-      this.getModuleBy(flavour)?.placement ??
+      this.#placementOf(`custom:${flavour}`) ??
+      this.#placementOf(flavour) ??
       fallback
     );
+  }
+
+  #placementOf(flavour: string): ToolbarPlacement | undefined {
+    for (const module of this.modulesFor(flavour)) {
+      if (module.config.placement) return module.config.placement;
+    }
+    return undefined;
   }
 
   static override setup(di: Container) {

@@ -32,9 +32,15 @@ fresh from the sub-menu are the same element. That matters visibly here: a
 container paints its body natively and a cylinder, a phone and a browser window
 hand it to the renderer, so a two-field patch would have left a rectangle
 painted behind the cylinder. The grey of an external element moves with it for
-the same reason. The type line under the name follows the shape too, keeping the
-technology the author wrote and leaving any line they typed themselves
-untouched.
+the same reason.
+
+The component's own words follow the shape too, under one timid rule: **only
+what the notation itself wrote is rewritten, never what you typed.** An
+untouched container morphed to a database is renamed "Database" and captioned
+`[Container: technology]`, because a cylinder captioned "Container" is a picture
+contradicting itself. A container you called "Customer database", built with
+React, keeps both — the name verbatim, and the technology carried across into
+the new caption.
 
 Under the hood, the generic morph module now supports **composite** artefacts: a
 C4 element is a native group holding the shape and its three lines of words, so
@@ -45,5 +51,7 @@ ceiling: a toolbar flavour used to hold at most two modules, and both of the
 group's slots were already taken (native group operations, and Wardley's
 qualification dropdown, which is on the group for the very same reason). A
 module may now name its owner, so several frameworks can contribute to one
-element's row — and the whole view layer is mounted in a test that fails on the
-collision that used to be silent until the editor refused to open.
+element's row, and a morph's toolbar entry is scoped by the framework that
+declared it so two of them on one row can never be merged into one dropdown.
+The whole view layer is mounted in a test that fails on the collision that used
+to be silent until the editor refused to open.

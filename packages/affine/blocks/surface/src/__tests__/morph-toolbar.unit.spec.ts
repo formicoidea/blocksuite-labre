@@ -692,3 +692,70 @@ describe('morphToolbarConfig — a composite artefact', () => {
     expect(afterMorphCalls).toHaveLength(0);
   });
 });
+
+/**
+ * Two frameworks morphing on ONE flavour.
+ *
+ * The row a composite gets is the wrapper's row, and a wrapper is a wrapper: a
+ * canvas `group` is a C4 component AND a Wardley one. Both frameworks may now
+ * register a morph module against it (`toolbarModuleKey`), which puts their two
+ * entries into the same `renderToolbar` merge — and that merge is BY ID:
+ * `groupBy(action => action.id)`, then a deep merge of everything that shares
+ * one. Two entries both called `e.morph` would come out as a single dropdown
+ * whose `content` was whichever module was registered last, silently answering
+ * for one framework and not the other.
+ *
+ * The unit suite is where this is provable without an editor: the ids are the
+ * whole mechanism, and the render below shows that two configs really do draw
+ * two independent dropdowns rather than one.
+ */
+describe('morphToolbarConfig — two frameworks, one flavour', () => {
+  const otherConfig = morphToolbarConfig({ ...SPEC, framework: 'wardley' });
+
+  const contentOf = (module: ReturnType<typeof morphToolbarConfig>) =>
+    (
+      module.actions[0] as {
+        content: (ctx: ToolbarContext) => TemplateResult | null;
+      }
+    ).content;
+
+  it('scopes the action id by the declaring framework', () => {
+    expect(config.actions[0].id).toBe('e.morph.bpmn');
+    expect(otherConfig.actions[0].id).toBe('e.morph.wardley');
+    // The mutation this exists for: one shared id is exactly what the merge
+    // collapses.
+    expect(config.actions[0].id).not.toBe(otherConfig.actions[0].id);
+  });
+
+  it('still sorts into the same slot, between `d.` and `y.`', () => {
+    // `renderToolbar` orders by id, so the scoping must not move the entry out
+    // of the place the row was designed around.
+    for (const id of [config.actions[0].id, otherConfig.actions[0].id]) {
+      expect(id > 'd.').toBe(true);
+      expect(id < 'y.').toBe(true);
+    }
+  });
+
+  it('draws two independent dropdowns, each with its own family', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      const ctx = context([node('task')]);
+      render(
+        html`${contentOf(config)(ctx)}${contentOf(otherConfig)(ctx)}`,
+        host
+      );
+
+      // Both hosts carry the same testid, because the testid is about the
+      // affordance and a real row draws one of these at a time.
+      expect(
+        host.querySelectorAll('[data-testid="element-morph"]')
+      ).toHaveLength(2);
+      expect(
+        host.querySelectorAll('[data-testid="element-morph-option"]')
+      ).toHaveLength(6);
+    } finally {
+      host.remove();
+    }
+  });
+});

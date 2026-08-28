@@ -2,6 +2,7 @@ import { ViewExtensionManager } from '@labre/affine-ext-loader';
 import {
   ToolbarModuleExtension,
   ToolbarModuleIdentifier,
+  ToolbarRegistryExtension,
   toolbarModuleFlavour,
   toolbarModuleKey,
 } from '@labre/affine-shared/services';
@@ -85,6 +86,28 @@ describe('the whole view layer mounts in one container', () => {
     );
     // The native group operations sit on the other group key, untouched.
     expect([...modules.keys()]).toContain('affine:surface:group');
+  });
+
+  test('a flavour claimed only by a contributor still has a row', () => {
+    // `{wardley: false, c4: true}` is a real configuration, and it leaves
+    // `custom:affine:surface:group` with NO bare module: only C4's morph. The
+    // row still exists — `modulesFor` finds it — while `getModuleBy`, which
+    // answers about the flavour's own registration, correctly says there is
+    // none. Reading a contributor there would let a placement, or a "does this
+    // flavour have a toolbar" probe, be decided by a menu only some builds
+    // ship.
+    const container = mount('edgeless', { wardley: false });
+    const registry = new ToolbarRegistryExtension({
+      provider: container.provider(),
+    } as never);
+    const flavour = 'custom:affine:surface:group';
+
+    expect(
+      registry.modulesFor(flavour).map(module => module.id.variant)
+    ).toEqual([toolbarModuleKey(flavour, 'c4-morph')]);
+    expect(registry.getModuleBy(flavour)).toBeNull();
+    // …and the native group operations, on the other group key, are untouched.
+    expect(registry.getModuleBy('affine:surface:group')).toBeTruthy();
   });
 
   test('the C4 morph goes away with the C4 flag, and nothing else does', () => {

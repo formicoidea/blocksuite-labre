@@ -44,6 +44,7 @@ export {
 export {
   C4_MORPH_FAMILIES,
   C4_MORPH_SPEC,
+  c4MorphedTitle,
   c4NodeOfComponent,
 } from './morph.js';
 // A C4 component — the shape and its own words, grouped. Where the two written

@@ -111,6 +111,62 @@ describe('morphing a C4 component into a nearby kind', () => {
     return ctx;
   };
 
+  /* ── The row the user actually sees ──────────────────────────────────── */
+
+  /** The `EditorToolbar` element the widget renders the row into. */
+  const toolbar = () =>
+    (
+      edgeless.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar ?? null;
+
+  const onRow = (selector: string) =>
+    toolbar()?.querySelector(selector) ?? null;
+
+  const frames = async (count = 4) => {
+    for (let i = 0; i < count; i++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+  };
+
+  /**
+   * Select, then let the widget do the whole of its own work.
+   *
+   * `select` above drives `updateWithSurface` by hand, which is deterministic
+   * and right for the cases about the MORPH. This one sets the canvas
+   * selection and nothing else, so the flavour, the module lookup, the merge
+   * and the render are all the editor's — which is the only way to find out
+   * whether the entry reaches the row a user is looking at.
+   */
+  const selectAndRender = async (...ids: string[]) => {
+    edgeless.gfx.selection.set({ elements: ids, editing: false });
+    await wait(250);
+    await edgeless.updateComplete;
+    await frames();
+  };
+
+  /** A Wardley component: the circle that carries the role, and its label. */
+  const addWardleyComponent = () => {
+    const surface = getSurface(window.doc, window.editor).model;
+    const node = surface.addElement({
+      type: 'wardleyNode',
+      kind: 'component',
+      role: 'wardley:component',
+      xywh: '[900,900,60,60]',
+    });
+    const label = surface.addElement({
+      type: 'text',
+      text: 'Payments',
+      role: 'wardley:label',
+      xywh: '[970,910,120,26]',
+    });
+    return surface.addElement({
+      type: 'group',
+      children: { [node]: true, [label]: true },
+    });
+  };
+
   test('the entry is registered on the group flavour, beside Wardley own', () => {
     const registry = edgeless.std.get(ToolbarRegistryIdentifier);
     const key = toolbarModuleKey('custom:affine:surface:group', 'c4-morph');
@@ -122,6 +178,54 @@ describe('morphing a C4 component into a nearby kind', () => {
     expect(modules.map(module => module.id.variant)).toContain(key);
     expect(modules.length).toBeGreaterThan(1);
     expect(registry.getModuleBy('affine:surface:group')).toBeTruthy();
+    // The bare-key question still answers about the bare key: Wardley's module
+    // defines this row, C4's is an addition to it.
+    expect(modules.map(module => module.id.variant)[0]).toBe(
+      'custom:affine:surface:group'
+    );
+  });
+
+  /**
+   * The claim the registry test above cannot make: that the entry reaches the
+   * row a user is looking at.
+   *
+   * Everything else in this file drives `updateWithSurface` or calls
+   * `applyMorph` directly, and every one of those would still pass against a
+   * registry that had gone back to one module per key — the module would simply
+   * never be merged into the rendered row and nobody would notice. So these two
+   * cases set the canvas selection and read the toolbar's own DOM, with the
+   * flavour resolution, the module lookup, the `when` filter, the id merge and
+   * the render all left to the editor.
+   *
+   * They are two cases and not one because "two contributors on one flavour" is
+   * two claims, and no single element can carry both: a C4 component's tiers
+   * carry `c4:*` roles, so Wardley's qualification dropdown correctly stands
+   * down on it, and a Wardley component carries no `kind` the C4 morph knows.
+   * What has to hold is that EACH module reaches the row of the element it is
+   * about — the suffixed one as much as the bare one.
+   */
+  test('the morph entry is drawn on the real row of a C4 component', async () => {
+    const { group } = await draw('c4.addContainer');
+    await selectAndRender(group.id);
+
+    expect(toolbar()).not.toBeNull();
+    expect(onRow('[data-testid="element-morph"]')).not.toBeNull();
+    // Wardley's module is on this very flavour and correctly says nothing
+    // here: its `when` asks about roles this element does not carry.
+    expect(onRow('[data-testid="element-tags-entry"]')).toBeNull();
+  });
+
+  test('the bare module on the same flavour still reaches its own row', async () => {
+    // The regression the grouping could have caused: a Wardley component is
+    // also a group, and its qualification dropdown is registered under the BARE
+    // `custom:affine:surface:group`. If `modulesFor` dropped bare modules — or
+    // returned only the first of a flavour — this row would come up empty.
+    const wardley = addWardleyComponent();
+    await wait();
+    await selectAndRender(wardley);
+
+    expect(onRow('[data-testid="element-tags-entry"]')).not.toBeNull();
+    expect(onRow('[data-testid="element-morph"]')).toBeNull();
   });
 
   test('a container becomes a database, and only the shape changes', async () => {
@@ -159,13 +263,17 @@ describe('morphing a C4 component into a nearby kind', () => {
     expect(node.fillColor).toBe(c4MorphProps('container').fillColor);
 
     // …and nothing else a user could point at. Same elements, same ids, same
-    // geometry, same words — the group is the one thing morph must not rewrite.
+    // geometry — the group is the one thing morph must not rewrite.
     expect(node.xywh).toBe(shapeBox);
     expect(group.xywh).toBe(box);
     expect(group.role).toBeUndefined();
     expect(group.childElements).toHaveLength(4);
     const after = tiersOf(group);
-    expect(after.title.text.toString()).toBe(words.title);
+    // The one tier that moves, and it moves because it MUST: the title of a
+    // component nobody has named is the kind's own prompt, and a cylinder
+    // captioned "Container" is a picture contradicting itself.
+    expect(words.title).toBe('Container');
+    expect(after.title.text.toString()).toBe('Database');
     expect(after.description.text.toString()).toBe(words.description);
     expect([
       after.title.xywh,
@@ -194,6 +302,26 @@ describe('morphing a C4 component into a nearby kind', () => {
     expect(typeLine.text.toString()).toBe(C4_TYPE_PLACEHOLDER.container);
   });
 
+  test('a name the author wrote survives the morph', async () => {
+    // The other half of the title rule, and the one that matters most: the
+    // prompt follows the shape, and content never does. A component called
+    // "Customer database" is called that whatever silhouette it ends up with.
+    const { group, node } = await draw('c4.addContainer');
+    const title = tiersOf(group).title;
+
+    window.doc.transact(() => {
+      title.text.delete(0, title.text.length);
+      title.text.insert(0, 'Customer database');
+    });
+    await wait();
+
+    applyMorph(select(group), C4_MORPH_SPEC, 'database');
+    await wait(200);
+
+    expect(node.kind).toBe('database');
+    expect(title.text.toString()).toBe('Customer database');
+  });
+
   test('a technology the author stated survives the morph', async () => {
     const { group, node } = await draw('c4.addContainer');
     const typeLine = tiersOf(group).typeLine;
@@ -215,18 +343,25 @@ describe('morphing a C4 component into a nearby kind', () => {
 
   test('one undo puts the component back', async () => {
     const { group, node } = await draw('c4.addPerson');
+    const title = tiersOf(group).title;
     window.doc.captureSync();
+    expect(title.text.toString()).toBe('Person');
 
     applyMorph(select(group), C4_MORPH_SPEC, 'person-ext');
     await wait(200);
     expect(node.kind).toBe('person-ext');
+    expect(title.text.toString()).toBe('External person');
     const grey = node.fillColor;
 
     window.doc.undo();
     await wait(200);
 
+    // ONE undo, and it takes the shape and the words the morph rewrote with
+    // it — `afterMorph` runs inside the same `captureSync`, so there is no
+    // second step where the cylinder is back and the caption is not.
     expect(node.kind).toBe('person');
     expect(node.fillColor).not.toBe(grey);
+    expect(title.text.toString()).toBe('Person');
   });
 
   test('the dropdown draws the container family, with the current one lit', async () => {

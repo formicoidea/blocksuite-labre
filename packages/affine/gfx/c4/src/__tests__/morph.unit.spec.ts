@@ -11,12 +11,18 @@ import { describe, expect, it } from 'vitest';
 
 import { c4TierBoxes } from '../component';
 import {
+  NODE_LABEL,
   NODE_PALETTE,
   NODE_RADIUS,
   NODE_SIZE,
   NODE_STROKE_WIDTH,
 } from '../consts';
-import { C4_MORPH_FAMILIES, C4_MORPH_SPEC, c4NodeOfComponent } from '../morph';
+import {
+  C4_MORPH_FAMILIES,
+  C4_MORPH_SPEC,
+  c4MorphedTitle,
+  c4NodeOfComponent,
+} from '../morph';
 import { c4MorphClears, c4MorphProps, c4NodeProps } from '../presets';
 import { C4_ROLE_OF_KIND } from '../roles';
 import { C4_TYPE_TAKES_TECHNOLOGY, C4_TYPE_WORD } from '../type-line';
@@ -47,7 +53,9 @@ describe('the declared families', () => {
     // which is the one thing C4 exists to stop. The board and the boundary are
     // frames and are not `C4NodeKind`s at all.
     expect(FAMILY_MEMBERS).not.toContain('component');
-    expect(FAMILY_MEMBERS.sort()).toEqual(
+    // Copies, not `.sort()` on the shared arrays: sorting in place would leave
+    // every later case in this file reading a table this one reordered.
+    expect([...FAMILY_MEMBERS].sort()).toEqual(
       EVERY_KIND.filter(kind => kind !== 'component').sort()
     );
   });
@@ -95,6 +103,20 @@ describe('a family is geometry-preserving by construction', () => {
       const colours = new Set(family.map(kind => NODE_PALETTE[kind].text));
       expect(colours.size).toBe(1);
     }
+  });
+
+  it('does NOT share one name inside the container family', () => {
+    // The one tier that genuinely moves, and the reason the title has a rule of
+    // its own: `NODE_LABEL` differs across the containers where the type word
+    // does not, so a fresh container morphed to a database would otherwise be a
+    // cylinder captioned "Container".
+    const containers = C4_MORPH_FAMILIES[2];
+    expect(new Set(containers.map(kind => NODE_LABEL[kind])).size).toBe(
+      containers.length
+    );
+    // …and it moves in the other two families as well.
+    expect(NODE_LABEL.person).not.toBe(NODE_LABEL['person-ext']);
+    expect(NODE_LABEL.system).not.toBe(NODE_LABEL['system-ext']);
   });
 
   it('keeps the caption saying the same word inside a family', () => {
@@ -175,6 +197,58 @@ describe('the patch one kind is worth', () => {
     // No C4 preset spreads a key conditionally: all nine write the same key
     // set with different values. The day one stops, this stops being empty.
     for (const kind of EVERY_KIND) expect(c4MorphClears(kind)).toEqual([]);
+  });
+});
+
+/**
+ * The NAME, when the shape becomes something else.
+ *
+ * The timid rule, and the two branches are the whole of it: the notation's own
+ * prompt follows the shape, and anything a human typed is theirs.
+ */
+describe('c4MorphedTitle — the name follows the shape, or does not', () => {
+  it('carries an untouched prompt across to the target own name', () => {
+    // What a component nobody has named still says — and what would otherwise
+    // caption a cylinder "Container".
+    expect(c4MorphedTitle('container', 'database', 'Container')).toBe(
+      'Database'
+    );
+    expect(c4MorphedTitle('person', 'person-ext', 'Person')).toBe(
+      'External person'
+    );
+    expect(c4MorphedTitle('browser', 'mobile', 'Web app')).toBe('Mobile app');
+    // Padding is not content: the prompt is read trimmed, as it is stored.
+    expect(c4MorphedTitle('container', 'mobile', '  Container  ')).toBe(
+      'Mobile app'
+    );
+  });
+
+  it('leaves every name a human could have written', () => {
+    // The PO's "the label is intact", stated as the cases that must survive: a
+    // real name, the prompt with a word added, another kind's prompt, an
+    // emptied title.
+    for (const raw of [
+      'Customer database',
+      'Container of record',
+      'Database',
+      'container',
+      '',
+      '   ',
+      null,
+      undefined,
+    ]) {
+      expect(c4MorphedTitle('container', 'database', raw)).toBeNull();
+    }
+  });
+
+  it('is a no-op wherever the two kinds are named the same', () => {
+    // Total over the table, so a kind added with a shared label cannot make
+    // this rewrite something into itself.
+    for (const kind of EVERY_KIND) {
+      expect(c4MorphedTitle(kind, kind, NODE_LABEL[kind])).toBe(
+        NODE_LABEL[kind]
+      );
+    }
   });
 });
 
