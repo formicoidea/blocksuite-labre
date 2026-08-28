@@ -9,7 +9,10 @@ export default defineConfig({
   test: {
     globalSetup: '../../../scripts/vitest-global.js',
     include: ['src/__tests__/**/*.unit.spec.ts'],
-    testTimeout: 1000,
+    // 10s like the other heavy view packages (components, widgets/toolbar…):
+    // on a cold vite transform cache the first test to pull a lazy chunk
+    // (image adapter, vanilla-extract .css.ts) pays the transform cost.
+    testTimeout: 10000,
     coverage: {
       provider: 'istanbul', // or 'c8'
       reporter: ['lcov'],

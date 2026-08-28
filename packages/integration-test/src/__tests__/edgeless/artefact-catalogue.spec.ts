@@ -104,16 +104,27 @@ describe('artefact catalogue sidepanel', () => {
   test('the panel draws the registry: groups, in the framework order', async () => {
     await open();
 
-    // Wardley's three declared categories, in declaration order — the panel
+    // Wardley's four declared categories, in declaration order — the panel
     // never sorts the headers alphabetically (that would overrule the
-    // framework's own reading of its toolbox).
+    // framework's own reading of its toolbox). `interchange` is last and last
+    // on purpose: the two directions of the OWM DSL are what you do WITH a map,
+    // after the three sections of what you draw one with.
     expect(groups().map(group => group.dataset.category)).toEqual([
       'backgrounds',
       'nodes',
       'connectors',
+      'interchange',
     ]);
-    // Every catalogue command has a row, and every row an icon and a label.
-    expect(entries()).toHaveLength(13);
+    // Fourteen of Wardley's fifteen catalogue commands, and the fifteenth is
+    // absent for a reason the panel is supposed to have: it filters on
+    // `isCommandAvailable` AND on `when`, and `wardley.exportOwm` needs a
+    // Wardley map on the board to have a plot to measure coordinates against.
+    // This board has none, so there is nothing to export and no row offering to.
+    expect(entries()).toHaveLength(14);
+    const shown = entries().map(entry => entry.dataset.commandId);
+    expect(shown).toContain('wardley.importOwm');
+    expect(shown).not.toContain('wardley.exportOwm');
+    // Every row has an icon and a label.
     for (const entry of entries()) {
       expect(entry.dataset.commandId, entry.outerHTML).toBeTruthy();
       expect(entry.textContent?.trim(), entry.dataset.commandId).toBeTruthy();
@@ -197,11 +208,11 @@ describe('artefact catalogue sidepanel', () => {
    * The head section's SIZE, sensed on the rendered panel — the test above uses
    * one used command and would pass at a cap of 7, of 13 or of 200.
    *
-   * Seven rows, not the sub-menu's thirteen (architect's ruling of 2026-08-28):
-   * the two surfaces share the arbitration and not the magnitude, because at
-   * `TOUCH_TARGET_MIN_PX` a row thirteen of them would fill the first screen of
-   * a 320px panel with duplicates and push every category under the fold. All
-   * thirteen wardley commands are fed a measure here, so what bounds the
+   * Seven rows, not the sub-menu's fourteen (architect's ruling of
+   * 2026-08-28): the two surfaces share the arbitration and not the magnitude,
+   * because at `TOUCH_TARGET_MIN_PX` a row fourteen of them would fill the
+   * first screen of a 320px panel with duplicates and push every category under
+   * the fold. Every wardley command is fed a measure here, so what bounds the
    * section is the slot count and nothing else.
    */
   test('the head section stops at seven rows however much was used', async () => {

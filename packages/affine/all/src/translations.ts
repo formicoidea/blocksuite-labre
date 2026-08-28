@@ -247,6 +247,14 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
     'com.labre.commands.bpmn.exportXml.warnings',
     'What this export could not write down',
   ],
+  // Wardley's own, and the same sentence: one key per WRITER, because an
+  // export's losses are the capability's own words and there is no generic
+  // pipeline writing them (the import's wordings below are shared precisely
+  // because there is one).
+  [
+    'com.labre.commands.wardley.exportOwm.warnings',
+    'What this export could not write down',
+  ],
   // What an IMPORT did with the file — one set of keys for every format, not
   // one per format. The format's own name is composed into the wording
   // ("BPMN" + "file imported", "OWM 2.0" after the counts), which is the same
