@@ -53,7 +53,8 @@ import {
  * swimlane gestures, which is a catalogue of 23 against a senior sub-menu that
  * holds 14. That is not a problem to be solved: PF6 built the arbitration for
  * exactly this day (`selectSeniorMenuCommands`), and past the cap the sub-menu
- * becomes the seven commands THIS user reaches for plus "More artefacts…".
+ * becomes the thirteen commands THIS user reaches for plus "More artefacts…" —
+ * fourteen buttons, exactly the cap.
  *
  * What a framework still owes is a sensible COLD START, and it owes it twice:
  *
@@ -63,11 +64,18 @@ import {
  *   the data object, the annotation). What stays out is the TRIGGER variants of
  *   start and end — a plain event is the honest first draft, and the envelope or
  *   the clock is a refinement — the data store, and the two things you reach for
- *   only once something is already drawn: the association and the group;
- * - the SEVEN a user with no history actually meets, which is the first seven of
- *   the catalogue in declaration order. That is a different list from the
- *   fourteen, and it is the one that gets seen first — see the note on {@link
- *   SPECS} for why the declarations lead with the core rather than by family.
+ *   only once something is already drawn: the association and the group.
+ *
+ *   Since the eligibility ruling of 2026-08-28 this list is not merely a cold
+ *   start but the whole ELIGIBLE pool: usage ranks membership inside it and can
+ *   no longer promote a command from outside it, so a command left out of the
+ *   fourteen lives in the catalogue sidepanel and nowhere else. That is the
+ *   right home for `bpmn.exportXml` and `bpmn.importXml`, whose subject is the
+ *   whole board rather than something you draw;
+ * - the THIRTEEN a user with no history actually meets, which is the authored
+ *   head of those fourteen. That is a different list again, and it is the one
+ *   that gets seen first — see the note on {@link SPECS} for why the
+ *   declarations lead with the core rather than by family.
  *
  * All 23 are in the catalogue, all 23 are bindable from Settings › Shortcuts,
  * and none of them is unreachable.
@@ -91,7 +99,12 @@ interface Spec {
     | 'data'
     | 'annotations'
     | 'swimlanes';
-  /** In the fourteen the sub-menu shows before any usage is measured. */
+  /**
+   * In the fourteen the sub-menu may ever show. Since 2026-08-28 this is an
+   * eligibility declaration, not a starting position: usage ranks membership
+   * INSIDE this list and never promotes into it, and a cold start opens on its
+   * first thirteen.
+   */
   senior: boolean;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
@@ -103,19 +116,23 @@ interface Spec {
  * START — which is why it leads with the canonical core rather than with the
  * events.
  *
- * `selectSeniorMenuCommands` falls back to the first seven of the catalogue for
- * a user who has invoked nothing yet, so an order grouped strictly by family
- * spent all seven on events: start, three of its variants, two ends, task. A
- * first contact with BPMN with no gateway, no sequence flow and no pool — every
- * button drawing a circle, and nothing to connect them with. Caught in a live
- * recette, and it is pure data.
+ * `selectSeniorMenuCommands` falls back to the authored head of the NOMINATED
+ * list for a user who has invoked nothing yet. The row held seven when the
+ * recette caught this, and an order grouped strictly by family spent all seven
+ * on events: start, three of its variants, two ends, task. A first contact with
+ * BPMN with no gateway, no sequence flow and no pool — every button drawing a
+ * circle, and nothing to connect them with. Caught in a live recette, and it is
+ * pure data.
  *
  * The first seven are therefore the seven artefacts a process cannot be drawn
  * without: start, end, task, exclusive gateway, sequence flow, pool, message
- * flow. Everything else follows in family blocks. Nothing about position
- * STABILITY changes — author order is still the position law, and usage only
- * ever changes membership, never where a button sits (`docs/adr/0008`,
- * amendment of 2026-08-26).
+ * flow. Everything else follows in family blocks. The row seats thirteen since
+ * 2026-08-28, which makes the head wider but not less load-bearing: a framework
+ * whose declarations opened on six variants of one family would still meet a
+ * user with a lopsided first contact. Nothing about position STABILITY changes
+ * — author order is still the position law, and usage only ever changes
+ * membership, never where a button sits (`docs/adr/0008`, amendments of
+ * 2026-08-26 and 2026-08-28).
  *
  * The catalogue reads off the same order, so its headers now appear in
  * first-encounter order — events, activities, gateways, flows, swimlanes, data,

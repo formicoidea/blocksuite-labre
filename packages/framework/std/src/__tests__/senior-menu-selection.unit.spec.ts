@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  CATALOGUE_HEAD_RANKED_SLOTS,
   SENIOR_MENU_CAP,
   SENIOR_MENU_RANKED_SLOTS,
   rankCommandsByUsage,
@@ -20,6 +21,8 @@ import {
  * Re-arbitrated by the PO on 2026-08-28 (same ADR, second amendment): thirteen
  * ranked slots instead of seven, recency-first instead of frequency-first, and
  * membership drawn from the `'senior-menu'` surface instead of the catalogue.
+ * The sidepanel head section keeps its own seven — same arbitration, its own
+ * magnitude — which is the third decision of that amendment.
  */
 
 const command = (
@@ -280,6 +283,68 @@ describe('past the cap, thirteen slots ranked on two axes', () => {
     expect(idsOf(commands)).not.toContain('cmd.6');
   });
 
+  /**
+   * The pin for ruling 2's OTHER half — that recency LEADS.
+   *
+   * The fixture above proves the dedup arbitration but not the axis priority:
+   * with three doubles over a fourteen-command menu, recency-first and
+   * frequency-first happen to seat the same thirteen, and
+   * `selectSeniorMenuCommands` re-sorts into author order so the pick order is
+   * invisible. Inverting `pickByUsage` to seed with `mostUsed` therefore escapes
+   * every other sub-menu test in this file.
+   *
+   * This shape does not let it. Twenty commands, all measured, in three groups:
+   * three that top BOTH axes, six touched today and almost never otherwise, and
+   * eleven workhorses last touched long ago. The two orderings disagree on four
+   * seats — recency-first seats `cmd.13`/`cmd.14` and drops `cmd.7`/`cmd.8`,
+   * frequency-first does the reverse and takes `cmd.19` besides.
+   */
+  test('recency leads: inverting the two axes changes who is seated', () => {
+    const { menu, catalogue } = overflowing(20, 20);
+    const table: Record<string, CommandUsageStats> = {
+      'cmd.0': { count: 1000, lastUsedAt: 1000 },
+      'cmd.1': { count: 999, lastUsedAt: 999 },
+      'cmd.2': { count: 998, lastUsedAt: 998 },
+    };
+    // Picked up this morning, once each — invisible to frequency.
+    for (let i = 3; i <= 8; i++) {
+      table[`cmd.${i}`] = { count: 1, lastUsedAt: 1000 - i };
+    }
+    // Heavy, and not touched in weeks — invisible to recency.
+    for (let i = 9; i <= 19; i++) {
+      table[`cmd.${i}`] = { count: 500 - i, lastUsedAt: i };
+    }
+
+    const { commands } = selectSeniorMenuCommands(
+      menu,
+      catalogue,
+      statsFrom(table)
+    );
+
+    // Seven recent seats: the three doubles plus cmd.3 … cmd.6. Six frequency
+    // seats: the heaviest six that are not already in, cmd.9 … cmd.14. So the
+    // two commands touched this morning but ranked eighth and ninth on recency
+    // are the ones that lose — under a frequency-first ranking they would be
+    // seated and cmd.13 / cmd.14 would not.
+    expect(idsOf(commands)).toEqual([
+      'cmd.0',
+      'cmd.1',
+      'cmd.2',
+      'cmd.3',
+      'cmd.4',
+      'cmd.5',
+      'cmd.6',
+      'cmd.9',
+      'cmd.10',
+      'cmd.11',
+      'cmd.12',
+      'cmd.13',
+      'cmd.14',
+    ]);
+    expect(idsOf(commands)).not.toContain('cmd.7');
+    expect(idsOf(commands)).not.toContain('cmd.8');
+  });
+
   test('a command nobody ever invoked ranks after every command somebody did', () => {
     const { menu, catalogue } = overflowing();
     // The last three nominated commands are the only measured ones; they win
@@ -371,9 +436,9 @@ describe('rankCommandsByUsage (the catalogue head section)', () => {
     ]);
   });
 
-  test('a frequency-only pick joins after the seven recency ranks', () => {
+  test('a frequency-only pick joins after the four recency ranks', () => {
     const table: Record<string, CommandUsageStats> = {
-      // Two old workhorses, past the seven-deep recency head.
+      // Two old workhorses, past the four-deep recency head.
       'cmd.0': { count: 500, lastUsedAt: 1 },
       'cmd.1': { count: 400, lastUsedAt: 2 },
     };
@@ -384,18 +449,77 @@ describe('rankCommandsByUsage (the catalogue head section)', () => {
     expect(
       idsOf(rankCommandsByUsage(catalogueOf(16), statsFrom(table)))
     ).toEqual([
-      // The recency head, newest first…
+      // The four recency seats, newest first…
       'cmd.15',
       'cmd.14',
       'cmd.13',
       'cmd.12',
-      'cmd.11',
-      'cmd.10',
-      'cmd.9',
-      // …then what the frequency slots pick up.
+      // …then the three frequency ones: the two workhorses, and — the seats
+      // still not full — the next command down the frequency ranking.
       'cmd.0',
       'cmd.1',
+      'cmd.11',
     ]);
+  });
+
+  /**
+   * The architect's ruling of 2026-08-28, third decision of the day: the head
+   * section is NOT the sub-menu's thirteen. Both PO rulings concern a
+   * horizontal row of icon buttons; this is a vertical list of 44px rows in a
+   * 320px panel, and thirteen of them would push every category below the fold.
+   *
+   * Written so the cap is genuinely SENSED: eleven measured commands, so the
+   * result is bounded by the slot count and by nothing else. It would go red at
+   * 13, and red again at 4 or at 6 — a `.slice(0, 7)` of the sub-menu's pick,
+   * the tempting shortcut, would return seven recency picks and no workhorse at
+   * all, so the last two assertions are what keep "& frequent" honest.
+   */
+  test('the head section seats seven, four of them by recency', () => {
+    const table: Record<string, CommandUsageStats> = {};
+    // Four touched today, seven heavy and stale — eleven measured for seven
+    // seats, so something must be dropped and WHICH is the whole assertion.
+    for (let index = 0; index < 4; index++) {
+      table[`cmd.${index}`] = { count: 1, lastUsedAt: 900 - index };
+    }
+    for (let index = 4; index < 11; index++) {
+      table[`cmd.${index}`] = { count: 500 - index, lastUsedAt: index };
+    }
+
+    const ranked = rankCommandsByUsage(catalogueOf(16), statsFrom(table));
+    expect(ranked).toHaveLength(CATALOGUE_HEAD_RANKED_SLOTS);
+    expect(CATALOGUE_HEAD_RANKED_SLOTS).toBeLessThan(SENIOR_MENU_RANKED_SLOTS);
+    expect(idsOf(ranked)).toEqual([
+      // Recency first, four deep…
+      'cmd.0',
+      'cmd.1',
+      'cmd.2',
+      'cmd.3',
+      // …then three by frequency, and not one more.
+      'cmd.4',
+      'cmd.5',
+      'cmd.6',
+    ]);
+  });
+
+  /**
+   * Same measure, same arbitration, two magnitudes: the sub-menu seats thirteen
+   * of these and the panel head seven, and the head is a prefix-by-membership
+   * of nothing — it is its own selection, run at its own size.
+   */
+  test('the same usage seats thirteen in the row and seven in the head', () => {
+    const { menu, catalogue } = overflowing(16, 20);
+    const stats = statsFrom(
+      Object.fromEntries(
+        menu.map((c, index) => [c.id, { count: 16 - index, lastUsedAt: index }])
+      )
+    );
+
+    expect(rankCommandsByUsage(menu, stats)).toHaveLength(
+      CATALOGUE_HEAD_RANKED_SLOTS
+    );
+    expect(
+      selectSeniorMenuCommands(menu, catalogue, stats).commands
+    ).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 
   /**
@@ -416,12 +540,19 @@ describe('rankCommandsByUsage (the catalogue head section)', () => {
     expect(idsOf(ranked)).toEqual(['cmd.export']);
   });
 
-  test('caps at the ranked slot count even when more were used', () => {
-    const table: Record<string, CommandUsageStats> = {};
-    for (let index = 0; index < 16; index++) {
-      table[`cmd.${index}`] = { count: 16 - index, lastUsedAt: index };
-    }
-    const ranked = rankCommandsByUsage(catalogueOf(16), statsFrom(table));
-    expect(ranked).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  /**
+   * The store is asked once per command per selection, not once more per row
+   * returned: the ranking already built the measure map, and the filter reads
+   * it rather than the store. At the sidepanel's size that is 7 reads saved per
+   * panel render; the promise is in `pickByUsage`'s own comment.
+   */
+  test('the usage store is read once per command, not twice', () => {
+    const asked: string[] = [];
+    rankCommandsByUsage(catalogueOf(16), id => {
+      asked.push(id);
+      return { count: 1, lastUsedAt: 1 };
+    });
+    expect(asked).toHaveLength(16);
+    expect(new Set(asked).size).toBe(16);
   });
 });

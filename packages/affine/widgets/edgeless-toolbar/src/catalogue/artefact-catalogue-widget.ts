@@ -503,6 +503,11 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     // `'senior-menu'`, because that row is a row of things you draw. This panel
     // is the full-catalogue surface, so a board action a user really does reach
     // for — `bpmn.exportXml` — belongs at its head. See `rankCommandsByUsage`.
+    //
+    // Seven rows at most (`CATALOGUE_HEAD_RANKED_SLOTS`, 4 recent + 3 used),
+    // NOT the sub-menu's thirteen: at 44px a row, thirteen would be ~604px of
+    // duplicated shortcuts and would push every category below the fold on a
+    // laptop. Same arbitration, its own magnitude.
     const usage = this.std.getOptional(CommandUsageIdentifier);
     const ranked = usage
       ? rankCommandsByUsage(commands, id => usage.statsOf(id))

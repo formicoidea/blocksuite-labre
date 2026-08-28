@@ -4,6 +4,7 @@ import {
   COMMAND_USAGE_KEY,
 } from '@labre/affine/shared/services';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine/shared/consts';
+import { CATALOGUE_HEAD_RANKED_SLOTS } from '@labre/affine/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -190,6 +191,51 @@ describe('artefact catalogue sidepanel', () => {
     expect(
       entries().filter(e => e.dataset.commandId === 'wardley.addInertia').length
     ).toBe(2);
+  });
+
+  /**
+   * The head section's SIZE, sensed on the rendered panel — the test above uses
+   * one used command and would pass at a cap of 7, of 13 or of 200.
+   *
+   * Seven rows, not the sub-menu's thirteen (architect's ruling of 2026-08-28):
+   * the two surfaces share the arbitration and not the magnitude, because at
+   * `TOUCH_TARGET_MIN_PX` a row thirteen of them would fill the first screen of
+   * a 320px panel with duplicates and push every category under the fold. All
+   * thirteen wardley commands are fed a measure here, so what bounds the
+   * section is the slot count and nothing else.
+   */
+  test('the head section stops at seven rows however much was used', async () => {
+    await open();
+    const all = entries().map(entry => entry.dataset.commandId!);
+    expect(all.length).toBeGreaterThan(CATALOGUE_HEAD_RANKED_SLOTS);
+
+    // Every command measured: descending counts, ascending timestamps, so the
+    // two axes disagree and the seven seats are genuinely contested.
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify(
+        Object.fromEntries(
+          all.map((id, index) => [id, { c: all.length - index, t: index }])
+        )
+      )
+    );
+    catalogue().close();
+    await open();
+
+    const head = widgetRoot()?.querySelector<HTMLElement>(
+      '[data-testid="artefact-catalogue-ranked"]'
+    );
+    expect(head).not.toBeNull();
+    const headIds = Array.from(
+      head!.querySelectorAll<HTMLElement>(ENTRY),
+      entry => entry.dataset.commandId!
+    );
+    expect(headIds).toHaveLength(CATALOGUE_HEAD_RANKED_SLOTS);
+    // Four by recency (the latest timestamps are the LAST commands) and three
+    // by frequency (the heaviest counts are the first) — both halves of a
+    // section labelled "Recent & frequent", not seven of one.
+    expect(headIds.slice(0, 4)).toEqual(all.slice(-4).reverse());
+    expect(headIds.slice(4)).toEqual(all.slice(0, 3));
   });
 
   test('a wheel over the panel never pans the board', async () => {

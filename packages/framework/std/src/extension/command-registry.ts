@@ -324,9 +324,10 @@ export interface CommandUsageStats {
  * Telemetry is analytics: it leaves for a product dashboard, it only covers
  * commands that declare a `telemetry` field, and no in-editor decision may
  * depend on it. Usage is local state read back BY the editor: PF6 shows only
- * seven of a framework's commands in the senior sub-menu once the framework has
- * more than fourteen artefacts, ranked as "four most-used + three most-recent".
- * That ranking needs a measure for EVERY command — a `core` action, a
+ * thirteen of a framework's commands in the senior sub-menu once the framework
+ * has more than fourteen artefacts, ranked as "seven most-recent + six
+ * most-used" (PO re-arbitration of 2026-08-28, superseding the 4 + 3 of
+ * 2026-08-26). That ranking needs a measure for EVERY command — a `core` action, a
  * self-emitting one, one nobody ever thought to instrument — so the record call
  * sits outside the telemetry condition and stays there.
  *
@@ -614,19 +615,46 @@ export function getCommandsForSurface(
  */
 export const SENIOR_MENU_CAP = 14;
 
-const MOST_RECENT_SLOTS = 7;
-const MOST_USED_SLOTS = 6;
+const MENU_RECENT_SLOTS = 7;
+const MENU_USED_SLOTS = 6;
 
 /**
- * How many buttons survive once an owner overflows: {@link MOST_RECENT_SLOTS}
- * by recency plus {@link MOST_USED_SLOTS} by frequency — thirteen (PO
+ * How many buttons survive once an owner overflows: {@link MENU_RECENT_SLOTS}
+ * by recency plus {@link MENU_USED_SLOTS} by frequency — thirteen (PO
  * re-arbitration of 2026-08-28, superseding the 4 + 3 of 2026-08-26).
  *
  * Thirteen and not fourteen because the permanent "More artefacts…" button is
  * the fourteenth: an overflowed sub-menu therefore renders exactly the cap, and
  * the row a user meets past the cap is as wide as the one they meet below it.
  */
-export const SENIOR_MENU_RANKED_SLOTS = MOST_RECENT_SLOTS + MOST_USED_SLOTS;
+export const SENIOR_MENU_RANKED_SLOTS = MENU_RECENT_SLOTS + MENU_USED_SLOTS;
+
+const HEAD_RECENT_SLOTS = 4;
+const HEAD_USED_SLOTS = 3;
+
+/**
+ * How many rows the catalogue sidepanel's "Recent & frequent" head section
+ * holds: {@link HEAD_RECENT_SLOTS} + {@link HEAD_USED_SLOTS} = seven.
+ *
+ * Deliberately NOT {@link SENIOR_MENU_RANKED_SLOTS}, and this is the third
+ * decision of 2026-08-28 (architect's ruling on review of the two PO ones). The
+ * sub-menu's thirteen is argued from ITS geometry — a horizontal row of ~24px
+ * icon buttons, thirteen of them plus the More button making up the fourteen
+ * cap. None of that transfers to a vertical list of 44px rows in a panel
+ * `min(320px, 85vw)` wide: thirteen of those is ~604px of head section, which
+ * on a 13" laptop is the entire first screen, every row of it a duplicate of a
+ * row filed below, pushing the categories — the panel's actual information
+ * architecture — wholly under the fold. Worst for exactly the power user the
+ * section exists to serve.
+ *
+ * So the two surfaces share the ARBITRATION and not the MAGNITUDE: one
+ * algorithm, two parameterisations. Seven keeps the size the PO recette of
+ * 27/08/2026 signed off on, and the 4 + 3 split keeps both halves of a section
+ * labelled "Recent & frequent" — a plain `.slice(0, 7)` of the sub-menu's pick
+ * would have returned seven recency picks and zero frequency ones, quietly
+ * deleting the "& frequent" half.
+ */
+export const CATALOGUE_HEAD_RANKED_SLOTS = HEAD_RECENT_SLOTS + HEAD_USED_SLOTS;
 
 /**
  * Which of an owner's commands the senior sub-menu actually shows.
@@ -663,10 +691,12 @@ export const SENIOR_MENU_RANKED_SLOTS = MOST_RECENT_SLOTS + MOST_USED_SLOTS;
  * result is the first thirteen of the nominated list — a deterministic cold
  * start, not an empty menu.
  *
- * @param menu the owner's `'senior-menu'` commands, already order-sorted — the
- *   ranking pool AND the authored order membership is laid out in
- * @param catalogue the owner's whole `'catalogue'` surface, already order-sorted
- *   — read only to decide whether the owner overflows
+ * @param menu the owner's `'senior-menu'` commands, already order-sorted. It is
+ *   both the pool the ranking draws membership from and the authored order the
+ *   survivors are laid back out in.
+ * @param catalogue the owner's whole `'catalogue'` surface, already
+ *   order-sorted. Read only for its length, to decide whether the owner
+ *   overflows at all; it contributes no candidate.
  * @param statsOf per-user measure; `undefined` for a command never invoked
  */
 export function selectSeniorMenuCommands(
@@ -681,16 +711,29 @@ export function selectSeniorMenuCommands(
   const authored = new Map(menu.map((command, index) => [command, index]));
   const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
 
+  // (7, 6): thirteen icon buttons, plus the "More artefacts…" one, is the cap.
+  const { commands } = pickByUsage(
+    menu,
+    statsOf,
+    MENU_RECENT_SLOTS,
+    MENU_USED_SLOTS
+  );
+
   return {
-    commands: pickByUsage(menu, statsOf).sort((a, b) => order(a) - order(b)),
+    commands: commands.sort((a, b) => order(a) - order(b)),
     overflow: true,
   };
 }
 
 /**
- * The shared arbitration, over whatever pool its caller hands it:
- * {@link MOST_RECENT_SLOTS} by recency plus {@link MOST_USED_SLOTS} by
- * frequency, deduplicated.
+ * The shared arbitration, over whatever pool its caller hands it: `recentSlots`
+ * by recency plus `usedSlots` by frequency, deduplicated.
+ *
+ * The two slot counts are PARAMETERS rather than constants because the two
+ * consumers share this ranking and not its magnitude — the sub-menu passes
+ * (7, 6) for a row of icon buttons, the sidepanel head (4, 3) for a vertical
+ * list of 44px rows. One arbitration, two parameterisations, still never two
+ * opinions.
  *
  * Recency goes FIRST since the PO's re-arbitration of 2026-08-28 (it was 4
  * most-used + 3 most-recent): what a user reached for this morning is what they
@@ -701,12 +744,19 @@ export function selectSeniorMenuCommands(
  * loop below does by walking `mostUsed` whole rather than only its head.
  *
  * Returned in PICK order (the recency ranks first, the frequency additions
- * after); each consumer imposes its own display order.
+ * after); each consumer imposes its own display order. The `stats` map is
+ * returned with them so a consumer that filters on "was this ever measured?"
+ * does not ask the store a second time — see {@link rankCommandsByUsage}.
  */
 function pickByUsage(
   pool: AnyCommandDescriptor[],
-  statsOf: (id: string) => CommandUsageStats | undefined
-): AnyCommandDescriptor[] {
+  statsOf: (id: string) => CommandUsageStats | undefined,
+  recentSlots: number,
+  usedSlots: number
+): {
+  commands: AnyCommandDescriptor[];
+  stats: Map<AnyCommandDescriptor, CommandUsageStats | undefined>;
+} {
   const authored = new Map(pool.map((command, index) => [command, index]));
   const order = (command: AnyCommandDescriptor) => authored.get(command) ?? 0;
   // One read per command per selection: the store answers from storage, and the
@@ -741,19 +791,20 @@ function pickByUsage(
     used => used.count
   );
 
+  const total = recentSlots + usedSlots;
   const chosen = new Set<AnyCommandDescriptor>();
-  for (const command of mostRecent.slice(0, MOST_RECENT_SLOTS)) {
+  for (const command of mostRecent.slice(0, recentSlots)) {
     chosen.add(command);
   }
-  // The {@link MOST_USED_SLOTS} remaining slots, from the frequency ranking:
-  // walking it whole rather than its head is what makes a double pick free its
+  // The `usedSlots` remaining seats, from the frequency ranking: walking it
+  // whole rather than only its head is what makes a double pick free its
   // most-used slot for the next candidate instead of wasting it.
   for (const command of mostUsed) {
-    if (chosen.size >= SENIOR_MENU_RANKED_SLOTS) break;
+    if (chosen.size >= total) break;
     chosen.add(command);
   }
 
-  return [...chosen].slice(0, SENIOR_MENU_RANKED_SLOTS);
+  return { commands: [...chosen].slice(0, total), stats };
 }
 
 /**
@@ -762,8 +813,12 @@ function pickByUsage(
  * 27/08/2026).
  *
  * Same arbitration as the senior sub-menu ({@link pickByUsage}) — one ranking,
- * two consumers, never two opinions — with three deliberate differences:
+ * two consumers, never two opinions — with four deliberate differences:
  *
+ * - it seats {@link CATALOGUE_HEAD_RANKED_SLOTS} (4 recent + 3 used), not the
+ *   sub-menu's thirteen. The two surfaces share the arbitration and not the
+ *   magnitude: see {@link CATALOGUE_HEAD_RANKED_SLOTS} for why thirteen 44px
+ *   rows in a 320px panel would bury the categories under the fold.
  * - it ranks the CATALOGUE surface, and keeps doing so after the eligibility
  *   ruling of 2026-08-28 narrowed the sub-menu to `'senior-menu'` declarers.
  *   That ruling is about the sub-menu, which is a row of things you DRAW; the
@@ -785,9 +840,16 @@ export function rankCommandsByUsage(
   catalogue: AnyCommandDescriptor[],
   statsOf: (id: string) => CommandUsageStats | undefined
 ): AnyCommandDescriptor[] {
-  return pickByUsage(catalogue, statsOf).filter(
-    command => statsOf(command.id) !== undefined
+  const { commands, stats } = pickByUsage(
+    catalogue,
+    statsOf,
+    HEAD_RECENT_SLOTS,
+    HEAD_USED_SLOTS
   );
+  // Through the map the ranking already built, not a second round of store
+  // reads: "one read per command per selection" is a promise this function used
+  // to break once per returned row.
+  return commands.filter(command => stats.get(command) !== undefined);
 }
 
 /** Resolve an `iconKey` through the registered icon tables. */
