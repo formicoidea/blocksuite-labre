@@ -38,6 +38,7 @@ export {
   c4ComponentSiblings,
   c4ComponentTiers,
   c4StatedDescription,
+  c4StatedName,
   c4StatedTechnology,
   type C4TierBox,
   type C4TierBoxes,

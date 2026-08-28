@@ -4,13 +4,14 @@ import {
   DESCRIPTION_FONT_SIZE,
   DESCRIPTION_LINES,
   DESCRIPTION_PLACEHOLDER,
-  INNER_FONT_SIZE,
   PERSON_BODY_TOP,
-  TIER_BLANK_LINE,
   TIER_LINE_HEIGHT,
+  TIER_MARGIN,
   TIER_SIDE_INSET,
-  TITLE_LINE_HEIGHT,
-  TITLE_TOP_MARGIN,
+  TITLE_FONT_SIZE,
+  TITLE_LINES,
+  TITLE_TYPE_GAP,
+  TYPE_DESCRIPTION_GAP,
   TYPE_FONT_SIZE,
 } from './consts';
 import { C4_ROLE } from './roles';
@@ -58,28 +59,42 @@ export interface C4TierBox {
 }
 
 export interface C4TierBoxes {
+  title: C4TierBox;
   typeLine: C4TierBox;
   description: C4TierBox;
 }
 
 /**
- * The two text boxes of a component, laid out against the node's own box.
+ * The three text boxes of a component, laid out against the node's own box.
  *
- * The stack is the stencil's: the name at roughly three-tenths of the height,
- * the type line opening where the name's line box closes, and the description a
- * blank line under that. Every step is a multiple of a font size rather than an
- * absolute, so the three tiers stay in proportion at whatever size the node is
- * created at — which is what a person needs, its box being 244 tall where every
- * other kind's is 148.
+ * ## The rhythm
  *
- * The person's `bodyTop` is the one asymmetry and it is the stencil's: its head
- * stands clear ABOVE a body of the standard height, and its words are laid out
- * in the BODY (`v:textRect` is the body box exactly), so the whole stack starts
- * below the head rather than across it.
+ * A margin, the name over two lines, a small gap, the type line, a wider gap,
+ * the description over two, and the same margin again — which is exactly what
+ * {@link NODE_BOX} is tall enough for, because the box is derived from this
+ * stack rather than the stack fitted into the box. So the default element is
+ * neither cramped nor half empty, and the two gaps say what they mean: the name
+ * and its type line are one heading, the sentence under them is a second
+ * statement.
+ *
+ * The tiers are stacked by walking DOWN — each one placed under the last plus
+ * its gap — rather than by six independent offsets. Six offsets is six chances
+ * for two tiers to overlap; a walk cannot produce one.
+ *
+ * ## The person
+ *
+ * `bodyTop` is the one asymmetry and it is the stencil's: a person's head stands
+ * clear ABOVE a body of the standard height, and its words are laid out in the
+ * BODY (`v:textRect` is the body box exactly), so the whole stack starts below
+ * the head rather than across it.
+ *
+ * ## What this is not
  *
  * A creation-time answer and nothing more. The tiers are real elements from the
  * moment they are drawn: an author who moves one has moved it, and nothing here
- * runs again to put it back.
+ * runs again to put it back. It is also proportional in the one direction that
+ * matters — a node dragged taller keeps its margins where they were, because
+ * they are absolutes; only the person's head, which is a picture, scales.
  */
 export function c4TierBoxes(
   kind: C4NodeKind,
@@ -93,25 +108,22 @@ export function c4TierBoxes(
   const inset = w * TIER_SIDE_INSET;
   const width = w - inset * 2;
 
-  // Where the title's own line box closes — the same arithmetic the creation
-  // site pads the shape's inner text by, plus one line of it.
-  const titleBottom =
-    bodyTop +
-    (h - bodyTop) * TITLE_TOP_MARGIN +
-    INNER_FONT_SIZE * TITLE_LINE_HEIGHT;
-
-  const typeHeight = TYPE_FONT_SIZE * TIER_LINE_HEIGHT;
-  const descriptionTop =
-    titleBottom + typeHeight + DESCRIPTION_FONT_SIZE * TIER_BLANK_LINE;
+  let top = bodyTop + TIER_MARGIN;
+  const tier = (fontSize: number, lines: number, gapAfter: number) => {
+    const box = {
+      x: x + inset,
+      y: y + top,
+      w: width,
+      h: fontSize * TIER_LINE_HEIGHT * lines,
+    };
+    top += box.h + gapAfter;
+    return box;
+  };
 
   return {
-    typeLine: { x: x + inset, y: y + titleBottom, w: width, h: typeHeight },
-    description: {
-      x: x + inset,
-      y: y + descriptionTop,
-      w: width,
-      h: DESCRIPTION_FONT_SIZE * TIER_LINE_HEIGHT * DESCRIPTION_LINES,
-    },
+    title: tier(TITLE_FONT_SIZE, TITLE_LINES, TITLE_TYPE_GAP),
+    typeLine: tier(TYPE_FONT_SIZE, 1, TYPE_DESCRIPTION_GAP),
+    description: tier(DESCRIPTION_FONT_SIZE, DESCRIPTION_LINES, 0),
   };
 }
 
@@ -138,8 +150,9 @@ export interface C4ComponentGroup {
   childIds: readonly string[];
 }
 
-/** The two tiers of one node's component — either may be absent. */
+/** The three tiers of one node's component — any of them may be absent. */
 export interface C4ComponentTiers {
+  title?: C4TierElement;
   typeLine?: C4TierElement;
   description?: C4TierElement;
 }
@@ -158,13 +171,16 @@ export interface C4ComponentTiers {
  *
  * ## What a bare node resolves to, and why that is the right answer
  *
- * `{}` — no tiers, no technology, no description. Which is exactly what happens
+ * `{}` — no name, no technology, no description. Which is exactly what happens
  * to a node whose group was released (native "ungroup"), to one whose texts were
  * deleted, and to one drawn before this change. None of those is an error and
- * none of them is guessed at: an element with no words under it states nothing
- * under it, and the export says so by writing nothing. The picture is still a
- * C4 element — the role is on the shape and survives everything — it has simply
- * stopped saying more than its name.
+ * none of them is guessed at: an element with no words on it states nothing, and
+ * the export says so by writing nothing. The picture is still a C4 element — the
+ * role is on the shape and survives everything.
+ *
+ * The NAME is the one tier with somewhere else to look, and only for the last of
+ * those three: an element drawn before the title became a child keeps its name
+ * in the shape's own inner text. See {@link c4StatedName}.
  *
  * The FIRST group holding the node wins, and the first text of each role in it.
  * Groups nest, so a component grouped again inside a bigger group has two
@@ -182,7 +198,8 @@ export function c4ComponentTiers(
   const tiers: C4ComponentTiers = {};
   for (const text of texts) {
     if (!siblings.has(text.id)) continue;
-    if (text.role === C4_ROLE['type-line']) tiers.typeLine ??= text;
+    if (text.role === C4_ROLE.title) tiers.title ??= text;
+    else if (text.role === C4_ROLE['type-line']) tiers.typeLine ??= text;
     else if (text.role === C4_ROLE.description) tiers.description ??= text;
   }
   return tiers;
@@ -215,6 +232,41 @@ export function c4TierText(tier: C4TierElement | undefined): string {
   const value = tier?.text;
   if (value === null || value === undefined) return '';
   return String(value).trim();
+}
+
+/**
+ * The NAME a component states — its `c4:title` tier if it has one, and the
+ * shape's own inner text if it has not.
+ *
+ * ## No placeholder suppression, unlike the other two
+ *
+ * A fresh element's title reads `Container`, and that goes into the export
+ * verbatim. It is not a prompt standing in for a value the way
+ * `[Container: technology]` is: an unnamed container IS a container, and
+ * `Container(x, "Container")` is a true statement about a box somebody drew and
+ * has not named yet. Blanking it would hand the reader `?` instead — less
+ * information, not more honesty. The other two tiers suppress their prompts
+ * because "built with a technology called technology" is not true of anything.
+ *
+ * ## The fallback, and who needs it
+ *
+ * An element drawn before 28/08/2026 keeps its name in the SHAPE's native inner
+ * text, which is where that iteration put it, and it has no title child at all.
+ * That is the whole of the compatibility story and it costs one `??`: nothing is
+ * migrated, nothing is rewritten, and such an element exports exactly as it
+ * always did. The test is EXISTENCE of the tier, not whether it is empty — a
+ * component whose title the author deliberately cleared has been cleared, and
+ * reaching past it to a shape text that is not there either would say nothing
+ * different anyway.
+ */
+export function c4StatedName(
+  tiers: C4ComponentTiers,
+  shapeText: unknown
+): string {
+  if (tiers.title) return c4TierText(tiers.title);
+  return shapeText === null || shapeText === undefined
+    ? ''
+    : String(shapeText).trim();
 }
 
 /**

@@ -330,26 +330,29 @@ describe('what a c4 command actually creates', () => {
       expect(props.fillColor, kind).toBe(NODE_PALETTE[kind].fill);
       expect(props.strokeColor, kind).toBe(NODE_PALETTE[kind].border);
       expect(props.color, kind).toBe(NODE_PALETTE[kind].text);
-      // Every C4 element carries words: the box is the same box at three of the
-      // four levels, so one with nothing written in it says nothing at all.
-      expect(props.text, kind).toBe(NODE_LABEL[kind]);
+      // Every C4 element carries words — the box is the same box at three of
+      // the four levels, so one with nothing written on it says nothing at all
+      // — but they are on the TITLE tier now, not on the shape.
+      const [, title] = createdAll(command);
+      expect(title.role, kind).toBe(C4_ROLE.title);
+      expect(title.text, kind).toBe(NODE_LABEL[kind]);
     }
   });
 
   it('builds a whole component, not a lone box, for every node kind', () => {
     // The PO's recette of 28/08/2026, at the command level: every one of the
-    // nine artefacts arrives as the shape, its two written tiers and the group
-    // that makes the three one thing. Asserted here as well as in
-    // `component.unit.spec.ts` because this is the wiring a user reaches — a
-    // command rewired to a creation function that dropped a bare shape would
-    // pass every other assertion in this file.
+    // nine artefacts arrives as the shape, its three written tiers — the name
+    // included — and the group that makes the four one thing. Asserted here as
+    // well as in `component.unit.spec.ts` because this is the wiring a user
+    // reaches: a command rewired to a creation function that dropped a bare
+    // shape would pass every other assertion in this file.
     for (const command of c4Commands) {
       const element = command.telemetry?.element;
       if (!element?.startsWith('node:')) continue;
       expect(
         createdAll(command).map(props => props.type),
         element
-      ).toEqual(['c4Node', 'text', 'text', 'group']);
+      ).toEqual(['c4Node', 'text', 'text', 'text', 'group']);
     }
   });
 
@@ -386,20 +389,26 @@ describe('what a c4 command actually creates', () => {
     }
   });
 
-  it('opens every node top-aligned, so the three tiers stack under the name', () => {
-    // The title is the native inner text and the two text tiers are placed
-    // under it, so top-aligning the one is what puts the STACK where the
-    // reference stencil puts it. The person's padding also clears its HEAD: its
-    // words are laid out in the body, not the silhouette.
-    const person = created(byId.get('c4.addPerson')!);
-    const system = created(byId.get('c4.addSystem')!);
-    for (const props of [person, system]) {
-      expect(props.textVerticalAlign).toBe('top');
+  it('drops a shape with no words in it, and stacks the three tiers below', () => {
+    // The name is a `c4:title` child since the PO's follow-up, so the shape
+    // carries no inner text — anything written there would be a second,
+    // invisible name. The person's stack also clears its HEAD: its words are
+    // laid out in the body, not across the silhouette.
+    for (const id of ['c4.addPerson', 'c4.addSystem']) {
+      expect(created(byId.get(id)!).text, id).toBeUndefined();
     }
-    const [personTop] = person.padding as [number, number];
-    const [systemTop] = system.padding as [number, number];
-    expect(personTop).toBeGreaterThan(NODE_SIZE.person.h * PERSON_BODY_TOP);
-    expect(systemTop).toBeLessThan(NODE_SIZE.system.h / 2);
+    const [, personTitle] = createdAll(byId.get('c4.addPerson')!);
+    const [, systemTitle] = createdAll(byId.get('c4.addSystem')!);
+    const topOf = (props: Record<string, unknown>) =>
+      (JSON.parse(props.xywh as string) as number[])[1];
+    // Element boxes are centred on the viewport origin, so a tier's top is
+    // measured against the element's own top edge.
+    expect(topOf(personTitle) + NODE_SIZE.person.h / 2).toBeGreaterThan(
+      NODE_SIZE.person.h * PERSON_BODY_TOP
+    );
+    expect(topOf(systemTitle) + NODE_SIZE.system.h / 2).toBeLessThan(
+      NODE_SIZE.system.h / 2
+    );
   });
 
   it('creates the board and the two boundaries with their frame roles', () => {

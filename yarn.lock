@@ -2242,6 +2242,7 @@ __metadata:
     "@labre/affine-gfx-ddd-shared": "workspace:*"
     "@labre/affine-gfx-pointer": "workspace:*"
     "@labre/affine-gfx-shape": "workspace:*"
+    "@labre/affine-gfx-text": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
     "@labre/affine-widget-edgeless-toolbar": "workspace:*"

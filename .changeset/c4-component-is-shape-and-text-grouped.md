@@ -12,22 +12,40 @@ right to: an element's technology and its description were typed into a
 Two lines of the notation that an architect could read and never write on. On a
 whiteboard you write on the picture.
 
-**So a C4 element is now four elements that behave as one.** The shape, whose
-inner text is the NAME; a canvas text carrying the type line — `[Person]`,
-`[Container: Java and Spring MVC]`; a canvas text carrying the description; and
-a group joining the three. One click selects the whole component and moves,
-copies or deletes it as one thing. A double-click descends into whichever tier
-is under the pointer and opens the ordinary in-place editor on it — the same
-gesture, the same editor and the same toolbar as any other words on the canvas.
-There is no form left anywhere in the pack.
+**So a C4 element is now five elements that behave as one.** The shape, which
+carries no text at all; a canvas text holding the NAME; one holding the type
+line — `[Person]`, `[Container: Java and Spring MVC]`; one holding the
+description; and a group joining the four. One click selects the whole component
+and moves, copies or deletes it as one thing. A double-click opens the ordinary
+in-place editor on whichever line is under the pointer — the same gesture, the
+same editor and the same toolbar as any other words on the canvas, for all three
+of them. There is no form left anywhere in the pack, and no second kind of text.
+
+Double-clicking the BODY of the shape edits the name, which is what everybody's
+hand does anyway: the gesture is routed to the name's own editor rather than
+opening the shape's, so an element can never grow an invisible second name under
+its real one.
 
 **All three tiers exist from the moment you draw one**, carrying the official
-stencil's own prompts: the kind's name in the box, `[Container: technology]`
+stencil's own prompts: the kind's label as the name, `[Container: technology]`
 under it and `description` under that. You meet three lines of stencil and
-overwrite what you have something to say about, rather than a bare box and two
+overwrite what you have something to say about, rather than a bare box and three
 invisible slots somebody has to tell you about. A prompt is not a value: an
 element whose tiers are untouched exports as `Container(alias, "Container")`,
-not as one built with a technology called "technology".
+not as one built with a technology called "technology". The NAME is the
+exception and goes out verbatim — an unnamed container really is a container,
+and saying so beats printing `?`.
+
+**Elements are taller, because the words now need the room.** A default box goes
+from 212.6 × 148.8 to **212.6 × 172.8**, and a person from 212.6 × 244.4 to
+**212.6 × 268.3**. The width is untouched — every glyph is proportioned off it,
+a person's head included. The height is no longer the stencil's textRect but the
+sum of what the box actually holds: a margin, two lines for the name, a small
+gap, the type line, a wider gap, two lines for the description, the same margin
+again. Two lines for the name is what drove the growth: "Internet Banking
+System" does not fit on one at this size, and it should not have to. Change a
+tier's size or a gap and the footprint follows, so a box can never disagree with
+its own contents. **Existing elements keep the size they were drawn at.**
 
 **The type line stays half the notation's.** Which of the four levels a box is,
 is the diagram's business — it comes from the element's kind, which is what the
@@ -52,19 +70,23 @@ they could be added without a schema bump and why they can be removed the same
 way.
 
 **The mermaid export says exactly what it said before**, byte for byte on the
-same diagram: the technology comes out of the type line the author typed and the
-description out of the text under it, resolved through the group and the role
-each text carries. Which text belongs to which box is answered by the GROUP, and
-which of a component's texts is the type line by its ROLE — never by the order
-the elements happen to sit in, so reordering, copying or regrouping cannot swap
-one architect's technology onto another's box.
+same diagram: the name, the technology and the description all come out of the
+words the author typed, resolved through the group and the role each text
+carries. Which text belongs to which box is answered by the GROUP, and which of
+a component's texts is the name by its ROLE — never by the order the elements
+happen to sit in, so reordering, copying or regrouping cannot swap one
+architect's technology onto another's box.
 
-Three behaviours worth knowing, all of them pinned:
+Four behaviours worth knowing, all of them pinned:
+
+- an element drawn **before this change** keeps its name in the shape's own
+  text, which is where the previous iteration put it, and the export reads it
+  from there. Nothing is migrated or rewritten, and double-clicking such an
+  element still opens the editor its name is actually in;
 
 - an **ungrouped** element — one whose group was released, or whose texts were
-  deleted — exports with no technology and no description. It is still a C4
-  element, the role being on the shape; it has simply stopped saying more than
-  its name, and nothing is invented for it;
+  deleted — exports with no name, no technology and no description. It is still
+  a C4 element, the role being on the shape, and nothing is invented for it;
 - a **relationship dropped on the component** rather than exactly on its shape —
   on the group, or on one of the two lines of words — is written against the
   shape all the same. All four parts accept a connector and all four look like
@@ -74,5 +96,5 @@ Three behaviours worth knowing, all of them pinned:
   round two boxes, and an arrow landing on it points at nothing in particular.
 
 The node renderer no longer paints any text at all: the glyphs — the person, the
-cylinder, the phone, the browser window — are untouched, and the words above
-them are real elements.
+cylinder, the phone, the browser window — are untouched, and every word on a
+component is a real element.

@@ -21,7 +21,7 @@ import {
 } from '../actions';
 import { c4Commands } from '../commands';
 import type { C4ComponentGroup, C4TierElement } from '../component';
-import { DESCRIPTION_PLACEHOLDER } from '../consts';
+import { DESCRIPTION_PLACEHOLDER, NODE_LABEL } from '../consts';
 import {
   C4_MERMAID_OF_KIND,
   type C4ExportBoard,
@@ -136,9 +136,14 @@ class Components {
   /** Group a node with its own words, and hand the node straight back. */
   with(
     node: C4NodeElementModel,
-    tiers: { typeLine?: string; description?: string }
+    tiers: { title?: string; typeLine?: string; description?: string }
   ): C4NodeElementModel {
     const childIds = [node.id];
+    if (tiers.title !== undefined) {
+      const id = `${node.id}-title`;
+      this.texts.push({ id, role: C4_ROLE.title, text: tiers.title });
+      childIds.push(id);
+    }
     if (tiers.typeLine !== undefined) {
       const id = `${node.id}-type`;
       this.texts.push({ id, role: C4_ROLE['type-line'], text: tiers.typeLine });
@@ -229,15 +234,13 @@ function composedBoard(): C4ExportBoard {
     // Its type line is the untouched placeholder, which is what a person that
     // nobody typed a technology on actually carries — and which the export must
     // read as "nothing stated" rather than as a technology called "technology".
-    components.with(
-      fakeNode('n-customer', 'person', [900, 300, 60, 60], {
-        text: 'Customer',
-      }),
-      {
-        typeLine: C4_TYPE_PLACEHOLDER.person,
-        description: 'A customer of the bank.',
-      }
-    ),
+    // Its NAME is a `c4:title` child and the shape carries no text at all,
+    // which is what every element drawn today looks like.
+    components.with(fakeNode('n-customer', 'person', [900, 300, 60, 60]), {
+      title: 'Customer',
+      typeLine: C4_TYPE_PLACEHOLDER.person,
+      description: 'A customer of the bank.',
+    }),
     fakeNode('n-auditor', 'person-ext', [1000, 300, 60, 60], {
       text: 'External auditor',
     }),
@@ -250,18 +253,16 @@ function composedBoard(): C4ExportBoard {
     // Both tiers written — the enriched case the whole change request is about,
     // and the one that proves the technology is read back OUT of the line the
     // author typed rather than out of a field.
-    components.with(
-      fakeNode('n-webapp', 'container', [200, 500, 80, 60], {
-        text: 'Web Application',
-      }),
-      {
-        typeLine: '[Container: Java and Spring MVC]',
-        description: 'Delivers the static content and the banking SPA.',
-      }
-    ),
-    // A BARE node — no group, no words. Every ungrouped node behaves this way
-    // and it is the fallback that has to hold: the picture's own default
-    // technology still applies, and nothing is invented.
+    components.with(fakeNode('n-webapp', 'container', [200, 500, 80, 60]), {
+      title: 'Web Application',
+      typeLine: '[Container: Java and Spring MVC]',
+      description: 'Delivers the static content and the banking SPA.',
+    }),
+    // A BARE node — no group, no words, its name in the SHAPE's own inner text.
+    // Which is both an ungrouped element and an element drawn before the title
+    // became a child, and the fallback that has to hold for either: the name is
+    // read off the shape, the picture's own default technology still applies,
+    // and nothing is invented.
     fakeNode('n-spa', 'browser', [350, 500, 80, 60], {
       text: 'Single-Page App',
     }),
@@ -269,26 +270,18 @@ function composedBoard(): C4ExportBoard {
     // A description and NO technology, on a macro that has a slot for both: the
     // one case that has to write an explicit empty `""` to hold the slot open.
     // The type line is there and says `[Container]` — the author cleared it.
-    components.with(
-      fakeNode('n-db', 'database', [200, 560, 80, 50], {
-        text: 'Database',
-      }),
-      {
-        typeLine: '[Container]',
-        description: 'Stores user registration information.',
-      }
-    ),
+    components.with(fakeNode('n-db', 'database', [200, 560, 80, 50]), {
+      title: 'Database',
+      typeLine: '[Container]',
+      description: 'Stores user registration information.',
+    }),
     // A component whose description was left at the stencil's own prompt — the
     // state of every element five seconds after it is drawn.
-    components.with(
-      fakeNode('n-signin', 'component', [200, 250, 80, 60], {
-        text: 'Sign In Controller',
-      }),
-      {
-        typeLine: C4_TYPE_PLACEHOLDER.component,
-        description: DESCRIPTION_PLACEHOLDER,
-      }
-    ),
+    components.with(fakeNode('n-signin', 'component', [200, 250, 80, 60]), {
+      title: 'Sign In Controller',
+      typeLine: C4_TYPE_PLACEHOLDER.component,
+      description: DESCRIPTION_PLACEHOLDER,
+    }),
     fakeNode('n-security', 'component', [300, 250, 80, 60], {
       text: 'Security Component',
     }),
@@ -572,6 +565,71 @@ describe('what a node says about itself', () => {
     expect(
       source.split('\n').filter(line => line.includes('Container('))
     ).toHaveLength(1);
+  });
+});
+
+/* ── The name ─────────────────────────────────────────────────────────── */
+
+/**
+ * Where an element's NAME comes from, since the PO's follow-up moved it off the
+ * shape and onto a `c4:title` child.
+ *
+ * Two paths, and the second is the whole compatibility story: the tier when
+ * there is one, the shape's own inner text when there is not.
+ */
+describe('the name an element exports under', () => {
+  const named = (
+    tiers: { title?: string } | null,
+    shapeText?: string
+  ): string => {
+    const components = new Components();
+    const node = fakeNode('n', 'container', [700, 400, 60, 60], {
+      text: shapeText,
+    });
+    return exportC4Mermaid(
+      surface({
+        boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
+        nodes: [tiers ? components.with(node, tiers) : node],
+        texts: components.texts,
+        groups: components.groups,
+      })
+    );
+  };
+
+  it('reads the title tier, in preference to anything on the shape', () => {
+    expect(named({ title: 'Web Application' })).toContain(
+      'Container(web_application, "Web Application")'
+    );
+    // A shape that still carries stale text loses to the tier that is drawn.
+    expect(named({ title: 'Web Application' }, 'Old Name')).not.toContain(
+      'Old Name'
+    );
+  });
+
+  it('falls back to the shape’s own text for an element drawn before', () => {
+    // No title child at all — an ungrouped element, or one from the iteration
+    // where the name WAS the shape's inner text. Nothing is migrated for it.
+    expect(named(null, 'Legacy System')).toContain(
+      'Container(legacy_system, "Legacy System")'
+    );
+    // …and the same holds for a grouped element whose title was deleted.
+    expect(named({}, 'Legacy System')).toContain(
+      'Container(legacy_system, "Legacy System")'
+    );
+  });
+
+  it('writes the creation prompt through verbatim, unlike the other tiers', () => {
+    // An unnamed container IS a container, and `Container(x, "Container")` says
+    // so. Suppressing it the way the technology prompt is suppressed would hand
+    // the reader `?` instead — less information, not more honesty.
+    expect(named({ title: NODE_LABEL.container })).toContain(
+      'Container(container, "Container")'
+    );
+  });
+
+  it('names a thing with no words anywhere "?" rather than pretending', () => {
+    expect(named({ title: '   ' })).toContain('Container(e, "?")');
+    expect(named(null)).toContain('Container(e, "?")');
   });
 });
 

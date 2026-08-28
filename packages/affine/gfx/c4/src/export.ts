@@ -16,6 +16,7 @@ import {
   type C4ComponentGroup,
   c4ComponentTiers,
   c4StatedDescription,
+  c4StatedName,
   c4StatedTechnology,
   type C4TierElement,
 } from './component';
@@ -492,9 +493,14 @@ function oneBoard(
   const groups = board.groups ?? [];
 
   const plannedNodes: PlannedNode[] = nodes.map(model => {
-    const name = labelOf(model.text) || UNNAMED;
     const mapping = C4_MERMAID_OF_KIND[model.kind];
     const tiers = c4ComponentTiers(model.id, groups, texts);
+    // The NAME comes off the `c4:title` tier, and off the shape's own inner text
+    // only for an element drawn before the title became a child. Verbatim, with
+    // no placeholder reading: an unnamed container really is a container, so
+    // `Container(x, "Container")` is true where `Container(x, "?")` throws away
+    // what little the author has said.
+    const name = labelOf(c4StatedName(tiers, model.text)) || UNNAMED;
     return {
       model,
       mapping,

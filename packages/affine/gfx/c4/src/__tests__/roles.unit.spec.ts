@@ -16,9 +16,9 @@ import { C4_ROLE, C4_ROLE_OF_KIND, C4_ROLES } from '../roles';
 const ALL_KINDS = Object.keys(NODE_SIZE) as C4NodeKind[];
 
 describe('C4 role vocabulary', () => {
-  it('declares the five levels, the two tiers, the two frames and the one relationship', () => {
-    // 7 node roles + 2 text + 1 edge.
-    expect(Object.keys(C4_ROLES)).toHaveLength(10);
+  it('declares the five levels, the three tiers, the two frames and the one relationship', () => {
+    // 7 node roles + 3 text + 1 edge.
+    expect(Object.keys(C4_ROLES)).toHaveLength(11);
     for (const id of [
       C4_ROLE.person,
       C4_ROLE.system,
@@ -41,17 +41,33 @@ describe('C4 role vocabulary', () => {
    * it reads, so a rule measuring one has to measure its INK. Filing them as
    * nodes would let a geometric rule judge an element by a rectangle nobody drew.
    */
-  it('declares both written tiers as text, and neither as an artefact', () => {
-    for (const id of [C4_ROLE['type-line'], C4_ROLE.description]) {
+  it('declares all three written tiers as text, and none as an artefact', () => {
+    const tiers = [C4_ROLE.title, C4_ROLE['type-line'], C4_ROLE.description];
+    for (const id of tiers) {
       expect(C4_ROLES[id]?.kind, id).toBe('text');
-      // Parent-less: a type line is half of one element's label, not a level of
+      // Parent-less: a tier is one line of one element's label, not a level of
       // the model, so nothing written about containers may fall on it.
       expect(C4_ROLES[id]?.parent, id).toBeUndefined();
+      // …and no `kind` maps to any of them: the nine artefacts are the nine
+      // artefacts, and the role of a component stays on its SHAPE alone.
+      expect(Object.values(C4_ROLE_OF_KIND), id).not.toContain(id);
     }
-    // …and no `kind` maps to either: the nine artefacts are the nine artefacts,
-    // and the role stamped on a component stays on its SHAPE alone.
-    expect(Object.values(C4_ROLE_OF_KIND)).not.toContain(C4_ROLE['type-line']);
-    expect(Object.values(C4_ROLE_OF_KIND)).not.toContain(C4_ROLE.description);
+  });
+
+  /**
+   * `c4:title` is where an element's NAME lives, and the role a naming rule
+   * has to read (see the note in `roles.ts`).
+   *
+   * Pinned on its own because it is the youngest role in the pack and the one
+   * with a consumer outside it: the label-presence rules collapse onto it.
+   */
+  it('gives the name a role of its own, distinct from the other two tiers', () => {
+    expect(C4_ROLE.title).toBe('c4:title');
+    expect(C4_ROLES[C4_ROLE.title]).toBeDefined();
+    expect(C4_ROLES[C4_ROLE.title].labelFallback).toBe('Name');
+    expect(
+      new Set([C4_ROLE.title, C4_ROLE['type-line'], C4_ROLE.description]).size
+    ).toBe(3);
   });
 
   it('namespaces every role, keys it by its own id and kebab-cases it', () => {
