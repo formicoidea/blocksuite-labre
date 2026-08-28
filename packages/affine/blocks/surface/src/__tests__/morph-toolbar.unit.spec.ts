@@ -2,7 +2,7 @@ import { MindmapElementModel } from '@labre/affine-model';
 import type { ToolbarContext } from '@labre/affine-shared/services';
 import type { SerializedXYWH } from '@labre/global/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
-import { html } from 'lit';
+import { html, render, type TemplateResult } from 'lit';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -98,13 +98,24 @@ const captureSync = vi.fn();
 function context(models: unknown[], readonly = false) {
   return {
     readonly,
-    std: { store: { captureSync } },
+    // `getOptional` is what `translateKey` reaches for: absent provider means
+    // the declared English fallback, which is what a standalone editor shows.
+    std: { store: { captureSync }, getOptional: () => undefined },
     getSurfaceModels: () => models,
     getSurfaceModelsByType: (klass: abstract new (...a: never[]) => unknown) =>
       models.filter(model => model instanceof klass),
     track: vi.fn(),
   } as unknown as ToolbarContext;
 }
+
+/** Human wordings, so an `aria-label` assertion is not just the kind again. */
+const WORDING: Record<Kind, string> = {
+  task: 'Task',
+  taskUser: 'User task',
+  taskService: 'Service task',
+  dataObject: 'Data object',
+  dataStore: 'Data store',
+};
 
 /**
  * Two families and a per-kind patch that flips a hazard key, which is the whole
@@ -128,9 +139,12 @@ const SPEC: MorphSpec<Kind> = {
     ...(kind === 'taskUser' ? { textVerticalAlign: 'top' } : {}),
   }),
   clearOf: kind => (kind === 'taskUser' ? [] : ['textVerticalAlign']),
-  labelOf: kind => ({ fallback: kind }),
-  iconOf: () => html``,
-  label: { fallback: 'Change type' },
+  labelOf: kind => ({
+    key: `com.labre.test.morph.${kind}`,
+    fallback: WORDING[kind],
+  }),
+  iconOf: kind => html`<svg data-icon-for=${kind}></svg>`,
+  label: { key: 'com.labre.test.morph.label', fallback: 'Change type' },
 };
 
 const config = morphToolbarConfig(SPEC);
@@ -145,6 +159,11 @@ const moduleWhen = config.when as (ctx: ToolbarContext) => boolean;
 const actionWhen = (
   config.actions[0] as { when: (ctx: ToolbarContext) => boolean }
 ).when;
+const actionContent = (
+  config.actions[0] as {
+    content: (ctx: ToolbarContext) => TemplateResult | null;
+  }
+).content;
 
 const shown = (models: unknown[], readonly = false) => {
   const ctx = context(models, readonly);
@@ -152,6 +171,140 @@ const shown = (models: unknown[], readonly = false) => {
   expect(actionWhen(ctx)).toBe(module);
   return module;
 };
+
+/**
+ * The rendered dropdown.
+ *
+ * This suite runs in vitest BROWSER mode (`vitest.config.ts` in this package:
+ * chromium via playwright), so `document` is the real one and lit renders into
+ * it — no jsdom shim and no new infrastructure. The custom elements are
+ * deliberately NOT defined here: `isolate: false` means every spec file in this
+ * package shares one page, so calling `effects()` would either throw on the
+ * second file to try it or leak definitions across the suite. Unupgraded,
+ * `editor-menu-button` and `editor-icon-button` still receive every attribute
+ * binding, and lit sets property bindings (`.active`) as plain expandos — which
+ * is exactly what these assertions read.
+ */
+describe('morphToolbarConfig — the rendered dropdown', () => {
+  /** Render one template into a detached host, and always take it away again. */
+  const draw = (
+    template: TemplateResult,
+    body: (host: HTMLElement) => void | Promise<void>
+  ) => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      render(template, host);
+      return body(host);
+    } finally {
+      host.remove();
+    }
+  };
+
+  const optionsOf = (host: HTMLElement) =>
+    Array.from(
+      host.querySelectorAll<HTMLElement & { active?: boolean }>(
+        '[data-testid="element-morph-option"]'
+      )
+    );
+
+  it('draws the whole family, in declaration order, under the entry testid', async () => {
+    const ctx = context([node('task')]);
+    const template = actionContent(ctx);
+    // The mutation this whole case exists for: a `content` that returned `null`
+    // satisfies every OTHER test in this file.
+    expect(template).not.toBeNull();
+
+    await draw(template!, host => {
+      expect(
+        host.querySelector('[data-testid="element-morph"]')
+      ).not.toBeNull();
+
+      const options = optionsOf(host);
+      // One per family member, in the order the spec declared them — because
+      // declaration order IS menu order.
+      expect(options.map(el => el.getAttribute('data-value'))).toEqual([
+        'task',
+        'taskUser',
+        'taskService',
+      ]);
+      // …and the family the selection is NOT in is nowhere in the menu.
+      expect(options.map(el => el.getAttribute('data-value'))).not.toContain(
+        'dataObject'
+      );
+    });
+  });
+
+  it('names every option with its resolved wording', async () => {
+    const ctx = context([node('taskUser')]);
+    await draw(actionContent(ctx)!, host => {
+      // The label the host would translate, falling back to the declared
+      // English because this context registers no `TranslationProvider`.
+      expect(optionsOf(host).map(el => el.getAttribute('aria-label'))).toEqual([
+        'Task',
+        'User task',
+        'Service task',
+      ]);
+    });
+  });
+
+  it('lights exactly one option, and it is what the selection is', async () => {
+    const ctx = context([node('taskService')]);
+    await draw(actionContent(ctx)!, host => {
+      const active = optionsOf(host).filter(el => el.active === true);
+      expect(active).toHaveLength(1);
+      expect(active[0].getAttribute('data-value')).toBe('taskService');
+    });
+  });
+
+  it('shows the most common kind as current across a multi-selection', async () => {
+    const ctx = context([node('task'), node('task'), node('taskUser')]);
+    await draw(actionContent(ctx)!, host => {
+      const active = optionsOf(host).filter(el => el.active === true);
+      expect(active).toHaveLength(1);
+      expect(active[0].getAttribute('data-value')).toBe('task');
+    });
+  });
+
+  it('morphs the selection when an option is clicked', async () => {
+    const model = node('task');
+    const ctx = context([model]);
+
+    await draw(actionContent(ctx)!, host => {
+      const target = optionsOf(host).find(
+        el => el.getAttribute('data-value') === 'taskService'
+      );
+      expect(target).toBeDefined();
+
+      // The gesture, not a call to `applyMorph`: this is the wiring between the
+      // rendered button and the write, which nothing else in this file covers.
+      target!.click();
+
+      expect(model.surface.updateElement).toHaveBeenCalledWith(model.id, {
+        kind: 'taskService',
+        role: 'test:taskService',
+        filled: false,
+      });
+      expect(ctx.track).toHaveBeenCalledWith(
+        'FrameworkElementMorphed',
+        expect.objectContaining({
+          fromRole: 'test:task',
+          toRole: 'test:taskService',
+          elementCount: 1,
+        })
+      );
+    });
+  });
+
+  it('draws nothing at all when the selection has nothing to become', () => {
+    // `content` answers `null` on exactly the selections `when` refuses, so the
+    // two can never disagree about whether there is an entry.
+    expect(
+      actionContent(context([node('task'), node('dataObject')]))
+    ).toBeNull();
+    expect(actionContent(context([]))).toBeNull();
+  });
+});
 
 describe('morphToolbarConfig — when the dropdown stands up', () => {
   it('shows on a homogeneous selection whose kinds share one family', () => {

@@ -163,11 +163,17 @@ describe('bpmnMorphProps — the patch a kind is worth', () => {
     }
   });
 
-  it('rewrites the appearance keys a naive {kind, role} patch would leave', () => {
-    // The hazard, stated as an assertion: a task is a filled, solidly stroked
-    // rectangle and a data object is a glyph-bodied artefact that paints
-    // nothing natively. Morphing between them with two keys leaves the folded
-    // page filled and stroked.
+  it('carries the appearance of each kind, not a shared default', () => {
+    // Fidelity of `bpmnMorphProps` across kinds: the patch a kind is worth
+    // really is that kind's preset, so the three styling families the pack
+    // draws — a filled solid body, a glyph-bodied artefact that paints nothing
+    // natively, and a dashed hollow outline — come out distinct.
+    //
+    // These three are NOT a morph between one another: `task`, `dataObject` and
+    // `group` sit in different families (and `group` in none), so the table
+    // forbids every pair of them. What they prove is the builder, which is what
+    // the reachable morphs are then derived from — the pair where that actually
+    // changes an element is `subProcess` ⇄ `callActivity`, asserted above.
     const task = bpmnMorphProps('task');
     const dataObject = bpmnMorphProps('dataObject');
 
