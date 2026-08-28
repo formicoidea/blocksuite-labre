@@ -6,6 +6,7 @@ import {
   backgroundPlot,
   morphToolbarConfig,
 } from '@labre/affine/blocks/surface';
+import type { ConnectorTool } from '@labre/affine/gfx/connector';
 // Straight off the framework package, as the connector and template specs
 // already reach for theirs: `@labre/affine` re-exports the blocks, not the
 // framework modules.
@@ -34,7 +35,6 @@ import {
 } from '@labre/affine/model';
 import {
   COMMAND_USAGE_KEY,
-  EditPropsStore,
   ToolbarContext,
   ToolbarRegistryIdentifier,
 } from '@labre/affine/shared/services';
@@ -634,11 +634,15 @@ describe('the BPMN toolbox past fourteen', () => {
     // `docs/adr/0010` asks for and the rules PR relies on).
     expect(edgeless.gfx.tool.currentToolName$.peek()).toBe('connector');
 
-    // Below is the SHAPE of what that produces, assembled by hand: the props the
-    // command recorded, plus the role the tool would have written. It checks the
-    // preset the command arms and that a connector so built binds and routes —
-    // NOT `ConnectorTool`'s own write, which is that tool's contract and is
-    // covered where the tool lives.
+    // Below is the SHAPE of what that produces, assembled by hand: the look the
+    // command armed the TOOL with, plus the role the tool would have written.
+    // It checks the preset the command arms and that a connector so built binds
+    // and routes — NOT `ConnectorTool`'s own write, which is that tool's
+    // contract and is covered where the tool lives.
+    //
+    // The look is read off the tool options, not off `EditPropsStore`: a
+    // framework flow arms its own style and never records it, or the next PLAIN
+    // connector would come out dressed as a message flow (#144 M1).
     const from = surface.addElement({
       type: 'bpmnNode',
       kind: 'taskUser',
@@ -653,10 +657,11 @@ describe('the BPMN toolbox past fourteen', () => {
       shapeType: 'rect',
       xywh: '[0,300,120,72]',
     });
-    const last = edgeless.std.get(EditPropsStore).lastProps$.value.connector;
+    const armed = edgeless.gfx.tool.currentTool$.peek() as ConnectorTool;
     const flowId = surface.addElement({
       type: 'connector',
-      ...last,
+      mode: armed.activatedOption.mode,
+      ...armed.activatedOption.style,
       role: BPMN_ROLE.messageFlow,
       source: { id: from, position: [0.5, 0.5] },
       target: { id: to, position: [0.5, 0.5] },
@@ -683,12 +688,15 @@ describe('the BPMN toolbox past fourteen', () => {
     });
     await wait();
 
-    const last = edgeless.std.get(EditPropsStore).lastProps$.value.connector;
-    expect(last.strokeStyle).toBe(StrokeStyle.Dash);
+    // The look rides on the tool, never through `EditPropsStore` (#144 M1):
+    // `connector-style-scope.spec.ts` owns the other half of that contract.
+    const armed = edgeless.gfx.tool.currentTool$.peek() as ConnectorTool;
+    const style = armed.activatedOption.style ?? {};
+    expect(style.strokeStyle).toBe(StrokeStyle.Dash);
     // No head at either end: an association names no relation, so an arrowhead
     // would be the picture claiming a direction the role refuses to have.
-    expect(last.frontEndpointStyle).toBe(PointStyle.None);
-    expect(last.rearEndpointStyle).toBe(PointStyle.None);
+    expect(style.frontEndpointStyle).toBe(PointStyle.None);
+    expect(style.rearEndpointStyle).toBe(PointStyle.None);
   });
 });
 

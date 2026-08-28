@@ -18,7 +18,6 @@ import {
   StrokeStyle,
 } from '@labre/affine-model';
 import {
-  EditPropsStore,
   NotificationProvider,
   translateKey,
 } from '@labre/affine-shared/services';
@@ -149,20 +148,21 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
  * than left transparent — the shape, the size and the position are the spec's.
  */
 export function activateBpmnMessageFlow(std: BlockStdScope) {
-  std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Orthogonal,
-    stroke: MESSAGE_STROKE,
-    strokeStyle: StrokeStyle.Dash,
-    strokeWidth: MESSAGE_WIDTH,
-    frontEndpointStyle: PointStyle.Circle,
-    rearEndpointStyle: PointStyle.Arrow,
-  });
   gfxOf(std).tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Orthogonal,
     // A TYPED edge (`docs/adr/0010`), and the role its vocabulary already
     // declared with the verb "sends a message to": the source is the
     // participant that sends, the target the one that receives.
     role: BPMN_ROLE.messageFlow,
+    // The flow's look rides on the activation, never through the last-props
+    // store: the plain connector tool must keep the user's own style (#144 M1).
+    style: {
+      stroke: MESSAGE_STROKE,
+      strokeStyle: StrokeStyle.Dash,
+      strokeWidth: MESSAGE_WIDTH,
+      frontEndpointStyle: PointStyle.Circle,
+      rearEndpointStyle: PointStyle.Arrow,
+    },
   });
   // Keep the palette open (native sub-menu behaviour).
 }
@@ -182,17 +182,19 @@ export function activateBpmnMessageFlow(std: BlockStdScope) {
  * {@link ASSOCIATION_STROKE}'s neighbours in `./consts.ts`.
  */
 export function activateBpmnAssociation(std: BlockStdScope) {
-  std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Orthogonal,
-    stroke: ASSOCIATION_STROKE,
-    strokeStyle: StrokeStyle.Dash,
-    strokeWidth: ASSOCIATION_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.None,
-  });
   gfxOf(std).tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Orthogonal,
     role: BPMN_ROLE.association,
+    // The association's look rides on the activation, never through the
+    // last-props store: the plain connector tool must keep the user's own
+    // style (#144 M1).
+    style: {
+      stroke: ASSOCIATION_STROKE,
+      strokeStyle: StrokeStyle.Dash,
+      strokeWidth: ASSOCIATION_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.None,
+    },
   });
   // Keep the palette open (native sub-menu behaviour).
 }

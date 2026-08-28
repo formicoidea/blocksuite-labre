@@ -13,7 +13,6 @@ import {
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
@@ -320,17 +319,20 @@ export function createC4Boundary(
  * acquiring one afterwards (`docs/adr/0010`).
  */
 export function activateC4Relationship(std: BlockStdScope) {
-  std.get(EditPropsStore).recordLastProps('connector', {
-    mode: ConnectorMode.Straight,
-    stroke: RELATIONSHIP_STROKE,
-    strokeStyle: StrokeStyle.Dash,
-    strokeWidth: RELATIONSHIP_WIDTH,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.Triangle,
-  });
   gfxOf(std).tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: C4_ROLE.relationship,
+    // The relationship's look rides on the activation, never through the
+    // last-props store: the plain connector tool must keep the user's own
+    // style (#144 M1). A dashed grey edge with a filled head is the C4
+    // stencil's, and it must not become the plain connector's costume.
+    style: {
+      stroke: RELATIONSHIP_STROKE,
+      strokeStyle: StrokeStyle.Dash,
+      strokeWidth: RELATIONSHIP_WIDTH,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.Triangle,
+    },
   });
   // Keep the palette open (native sub-menu behaviour).
 }

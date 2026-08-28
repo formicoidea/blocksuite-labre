@@ -13,6 +13,7 @@ import { getRegisteredCommands, runCommand } from '@labre/affine/std';
 // Straight off the framework package, as `bpmn.spec.ts` already does:
 // `@labre/affine` re-exports the blocks, not the framework modules.
 import { BPMN_ROLE } from '@labre/affine-gfx-bpmn';
+import { C4_ROLE } from '@labre/affine-gfx-c4';
 import type { BlockStdScope } from '@labre/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -101,6 +102,59 @@ describe('framework flow styles never leak into the plain connector', () => {
 
     // Pick the plain connector tool and draw: the user's own style, the plain
     // default markers, and NO role — not a message-flow costume.
+    service.gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
+    const plain = draw(shape);
+    expect(plain.yMap.has('role')).toBe(false);
+    expect(plain.strokeStyle).toBe(StrokeStyle.Solid);
+    expect(plain.frontEndpointStyle).toBe(PointStyle.None);
+    expect(plain.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(plain.strokeWidth).toBe(10);
+  });
+
+  /**
+   * The same contract on the framework that arrived AFTER the fix. C4's
+   * relationship is the loudest costume of the lot — dashed where the plain
+   * connector is solid — so a leak here would be visible on the very next edge
+   * the user draws, and the invariant only holds if it holds for every
+   * framework that arms the connector, not just the six the fix was written
+   * for.
+   */
+  test('arm c4 relationship → draw → the plain connector stays plain', () => {
+    const shape = addShape();
+
+    // The user's own plain style, recorded the ordinary way.
+    const ownId = service.crud.addElement('connector', {
+      mode: ConnectorMode.Straight,
+    });
+    if (!ownId) throw new Error('failed to add connector');
+    service.crud.updateElement(ownId, { strokeWidth: 10 });
+
+    const command = getRegisteredCommands(std).find(
+      candidate => candidate.id === 'c4.relationshipTool'
+    );
+    expect(command, 'c4.relationshipTool is not registered').toBeTruthy();
+    runCommand(std, command!, {
+      surface: 'senior-menu',
+      source: 'toolbar:general',
+    });
+
+    // The last-props store did not move: still the user's own style.
+    const last = std.get(EditPropsStore).lastProps$.value.connector;
+    expect(last.strokeStyle).toBe(StrokeStyle.Solid);
+    expect(last.rearEndpointStyle).toBe(PointStyle.Arrow);
+    expect(last.strokeWidth).toBe(10);
+
+    // The relationship itself still draws with the whole C4 stencil: straight,
+    // dashed, filled head, and the role.
+    const relationship = draw(shape);
+    expect(relationship.role).toBe(C4_ROLE.relationship);
+    expect(relationship.mode).toBe(ConnectorMode.Straight);
+    expect(relationship.strokeStyle).toBe(StrokeStyle.Dash);
+    expect(relationship.frontEndpointStyle).toBe(PointStyle.None);
+    expect(relationship.rearEndpointStyle).toBe(PointStyle.Triangle);
+
+    // …and the plain connector is still SOLID, still the user's width, still
+    // roleless — not a relationship in disguise.
     service.gfx.tool.setTool(ConnectorTool, { mode: ConnectorMode.Straight });
     const plain = draw(shape);
     expect(plain.yMap.has('role')).toBe(false);
