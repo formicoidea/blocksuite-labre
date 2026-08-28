@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BOUNDARY_LABEL,
   DESCRIPTION_FONT_SIZE,
-  INNER_FONT_SIZE,
   NODE_BOX,
   NODE_LABEL,
   NODE_PALETTE,
@@ -12,6 +11,9 @@ import {
   NODE_SIZE,
   PERSON_BODY_TOP,
   PERSON_BOX,
+  TIER_MARGIN,
+  TIER_STACK_HEIGHT,
+  TITLE_FONT_SIZE,
   TYPE_FONT_SIZE,
 } from '../consts';
 import { C4_TYPE_WORD, c4TypeLine } from '../type-line';
@@ -70,6 +72,27 @@ describe('the C4 per-kind tables', () => {
   });
 
   /**
+   * The height is DERIVED from what the box has to hold, which is the PO's call
+   * of 28/08/2026: grow the shapes if that is what it takes to have room to
+   * write. The width stays the stencil's, because every glyph is proportioned
+   * off it — a person's head radius included.
+   *
+   * Asserted as the arithmetic rather than as a number, so that changing a tier
+   * size or a gap moves the footprint with it instead of leaving a box that
+   * silently no longer fits its own contents.
+   */
+  it('derives the box height from the tiers it has to hold', () => {
+    expect(NODE_BOX.h).toBe(TIER_MARGIN * 2 + TIER_STACK_HEIGHT);
+    // Equal margins above and below the stack: it sits IN the box, not in the
+    // top of it.
+    expect(NODE_BOX.h - TIER_STACK_HEIGHT).toBe(TIER_MARGIN * 2);
+    // Taller than the stencil's own 74.409 × 2 textRect, and that is the growth
+    // the recette asked for: that rect held a name a renderer could paint at any
+    // size it liked, this one holds three real text elements at fixed ones.
+    expect(NODE_BOX.h).toBeGreaterThan(74.409 * 2);
+  });
+
+  /**
    * …and the two people are the stencil's OWN exception, not a preference.
    *
    * Their silhouette is one path whose head arc is drawn about a centre above
@@ -108,7 +131,7 @@ describe('the C4 per-kind tables', () => {
    * / 8, which is the one ordering that keeps a name reading as the name.
    */
   it('sizes the three text tiers as the stencil does', () => {
-    expect(INNER_FONT_SIZE).toBeGreaterThan(DESCRIPTION_FONT_SIZE);
+    expect(TITLE_FONT_SIZE).toBeGreaterThan(DESCRIPTION_FONT_SIZE);
     expect(DESCRIPTION_FONT_SIZE).toBeGreaterThan(TYPE_FONT_SIZE);
   });
 

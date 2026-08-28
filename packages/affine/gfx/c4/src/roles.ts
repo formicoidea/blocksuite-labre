@@ -49,6 +49,10 @@ export type C4Role =
   | 'container'
   | 'database'
   | 'component'
+  // The three tiers of an element's label, as canvas text.
+  | 'title'
+  | 'type-line'
+  | 'description'
   // The frames.
   | 'board'
   | 'boundary'
@@ -71,6 +75,9 @@ export const C4_ROLE = {
   container: 'c4:container',
   database: 'c4:database',
   component: 'c4:component',
+  title: 'c4:title',
+  'type-line': 'c4:type-line',
+  description: 'c4:description',
   board: 'c4:board',
   boundary: 'c4:boundary',
   relationship: 'c4:relationship',
@@ -154,6 +161,76 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
 ];
 
 /**
+ * The three written tiers of an element's label — its NAME, its type line and
+ * its description — as roles on the canvas TEXT elements that carry them.
+ *
+ * ## Why the tiers have roles at all
+ *
+ * Because a C4 component is a GROUP (PO recette, 28/08/2026): the shape and
+ * three texts, every one of them edited in place exactly like any other words on
+ * the canvas. Which leaves one question — given a group of three texts and a
+ * box, WHICH text is the name and which is the technology? — and the platform
+ * already has an answer for "what is this element, semantically". Roles survive
+ * what the alternatives do not: a child reordered inside its group, a group
+ * ungrouped and regrouped, a tier copied to another node, a tier deleted and
+ * redrawn. Position in `children` survives none of those.
+ *
+ * `kind: 'text'`, which is the same call `wardley:label` makes and for the same
+ * reason: these are free text elements whose BOX is a creation-time default and
+ * not a statement about anything. A rule measuring one must measure its ink.
+ *
+ * ## `c4:title` is where an element's NAME lives
+ *
+ * For one iteration the name was the shape's own native inner text and only the
+ * other two tiers were elements. The PO's follow-up closed that: two kinds of
+ * text in one component meant two editors, two toolbars and two sets of rules
+ * for the same three lines, and the odd one out was the one that mattered most.
+ * A C4 element's name is now `c4:title`, on equal terms with the tiers under it,
+ * and the shape carries no text at all.
+ *
+ * It is the role a rule about naming must read. Everything that asks "is this
+ * element named?" — for any of the nine artefacts, at any of the four levels —
+ * asks it of the `c4:title` grouped with the shape. The exporter still falls
+ * back to the shape's own inner text for an element drawn before this change,
+ * which is where those names really are; a rule may do the same or not, but it
+ * must not look for a name on the shape FIRST.
+ *
+ * ## What they are NOT
+ *
+ * Not levels of the model, not artefacts, and not a fourth thing a C4 diagram
+ * can contain. They are three lines of ONE element's label, which is why they
+ * are parent-less and why nothing in the pack maps a `kind` to them
+ * ({@link C4_ROLE_OF_KIND} stays the nine artefacts). The role stamped on the
+ * artefact stays on the SHAPE alone — the rules, the facts and the export all
+ * key on it, and a rule that fell on a type line would be asking a subtitle to
+ * have a name of its own.
+ *
+ * The GROUP itself is deliberately role-less, for the reason `legend.ts` gives
+ * about legend glyphs: a role makes an element count as an artefact for every
+ * rule written against roles, and the wrapper round a box is not a second box.
+ */
+const TIER_DEFS: readonly RoleDef[] = [
+  {
+    id: C4_ROLE.title,
+    kind: 'text',
+    labelKey: roleKey(C4_ROLE.title),
+    labelFallback: 'Name',
+  },
+  {
+    id: C4_ROLE['type-line'],
+    kind: 'text',
+    labelKey: roleKey(C4_ROLE['type-line']),
+    labelFallback: 'Type line',
+  },
+  {
+    id: C4_ROLE.description,
+    kind: 'text',
+    labelKey: roleKey(C4_ROLE.description),
+    labelFallback: 'Description',
+  },
+];
+
+/**
  * The two frames: the sheet a diagram is drawn on, and the dashed rectangle
  * drawn round part of it.
  *
@@ -219,6 +296,7 @@ const RELATIONSHIP_DEFS: readonly RoleDef[] = [
 
 const DEFS: readonly RoleDef[] = [
   ...ELEMENT_DEFS,
+  ...TIER_DEFS,
   ...FRAME_DEFS,
   ...RELATIONSHIP_DEFS,
 ];

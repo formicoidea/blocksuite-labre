@@ -20,6 +20,8 @@ import {
   c4ExportFilename,
 } from '../actions';
 import { c4Commands } from '../commands';
+import type { C4ComponentGroup, C4TierElement } from '../component';
+import { DESCRIPTION_PLACEHOLDER, NODE_LABEL } from '../consts';
 import {
   C4_MERMAID_OF_KIND,
   type C4ExportBoard,
@@ -29,6 +31,7 @@ import {
 } from '../export';
 import { C4_ROLE, C4_ROLE_OF_KIND } from '../roles';
 import { c4BoardToolbarConfig } from '../toolbar/config';
+import { C4_TYPE_PLACEHOLDER, C4_TYPE_WORD } from '../type-line';
 
 /**
  * The mermaid C4 export.
@@ -94,8 +97,6 @@ function fakeNode(
   options: {
     text?: string;
     role?: string;
-    technology?: string;
-    description?: string;
   } = {}
 ) {
   const node = Object.create(C4NodeElementModel.prototype) as Record<
@@ -110,14 +111,56 @@ function fakeNode(
       enumerable: true,
     },
     text: { value: options.text, enumerable: true },
-    // Own properties, so the `@field()` accessors (which reach for a Y.Map this
-    // detached object has none of) are shadowed. `undefined` is the honest
-    // stand-in for a field a document never wrote.
-    technology: { value: options.technology, enumerable: true },
-    description: { value: options.description, enumerable: true },
     elementBound: { value: new Bound(...bound) },
   });
   return node as unknown as C4NodeElementModel;
+}
+
+/**
+ * A component's words, as the elements they actually are.
+ *
+ * Since the PO's recette of 28/08/2026 a C4 element's technology and its
+ * description are canvas TEXT elements grouped with the shape rather than two
+ * fields on it, so the fixtures below build what the creation site builds: a
+ * text per tier carrying its ROLE, and a group joining them to the node.
+ *
+ * Plain objects rather than detached `TextElementModel`s, because the exporter
+ * asks a text element for exactly three things — an id, a role, and whatever it
+ * says — and reads the last one through `String(…)`. That is the whole contract
+ * (`C4TierElement`), and honouring it with a real Y.Text would test Yjs.
+ */
+class Components {
+  readonly texts: C4TierElement[] = [];
+  readonly groups: C4ComponentGroup[] = [];
+
+  /** Group a node with its own words, and hand the node straight back. */
+  with(
+    node: C4NodeElementModel,
+    tiers: { title?: string; typeLine?: string; description?: string }
+  ): C4NodeElementModel {
+    const childIds = [node.id];
+    if (tiers.title !== undefined) {
+      const id = `${node.id}-title`;
+      this.texts.push({ id, role: C4_ROLE.title, text: tiers.title });
+      childIds.push(id);
+    }
+    if (tiers.typeLine !== undefined) {
+      const id = `${node.id}-type`;
+      this.texts.push({ id, role: C4_ROLE['type-line'], text: tiers.typeLine });
+      childIds.push(id);
+    }
+    if (tiers.description !== undefined) {
+      const id = `${node.id}-descr`;
+      this.texts.push({
+        id,
+        role: C4_ROLE.description,
+        text: tiers.description,
+      });
+      childIds.push(id);
+    }
+    this.groups.push({ id: `${node.id}-group`, childIds });
+    return node;
+  }
 }
 
 function fakeConnector(
@@ -174,6 +217,7 @@ const surface = (partial: Partial<C4ExportBoard>): C4ExportBoard => ({
  */
 function composedBoard(): C4ExportBoard {
   const board = fakeBoard('b-1', [0, 0, 1400, 900], 'Internet banking');
+  const components = new Components();
 
   const outer = fakeBoundary('bd-outer', [100, 150, 600, 500], {
     name: 'Internet banking system',
@@ -187,8 +231,14 @@ function composedBoard(): C4ExportBoard {
   const nodes = [
     // A description on a PERSON: mermaid's `Person` has no `techn` slot at all,
     // so the sentence is the third argument here and the fourth on a container.
-    fakeNode('n-customer', 'person', [900, 300, 60, 60], {
-      text: 'Customer',
+    // Its type line is the untouched placeholder, which is what a person that
+    // nobody typed a technology on actually carries — and which the export must
+    // read as "nothing stated" rather than as a technology called "technology".
+    // Its NAME is a `c4:title` child and the shape carries no text at all,
+    // which is what every element drawn today looks like.
+    components.with(fakeNode('n-customer', 'person', [900, 300, 60, 60]), {
+      title: 'Customer',
+      typeLine: C4_TYPE_PLACEHOLDER.person,
       description: 'A customer of the bank.',
     }),
     fakeNode('n-auditor', 'person-ext', [1000, 300, 60, 60], {
@@ -200,24 +250,37 @@ function composedBoard(): C4ExportBoard {
     fakeNode('n-mainframe', 'system-ext', [1100, 600, 60, 60], {
       text: 'Mainframe Banking System',
     }),
-    // Both fields set — the enriched case the whole change request is about.
-    fakeNode('n-webapp', 'container', [200, 500, 80, 60], {
-      text: 'Web Application',
-      technology: 'Java and Spring MVC',
+    // Both tiers written — the enriched case the whole change request is about,
+    // and the one that proves the technology is read back OUT of the line the
+    // author typed rather than out of a field.
+    components.with(fakeNode('n-webapp', 'container', [200, 500, 80, 60]), {
+      title: 'Web Application',
+      typeLine: '[Container: Java and Spring MVC]',
       description: 'Delivers the static content and the banking SPA.',
     }),
+    // A BARE node — no group, no words, its name in the SHAPE's own inner text.
+    // Which is both an ungrouped element and an element drawn before the title
+    // became a child, and the fallback that has to hold for either: the name is
+    // read off the shape, the picture's own default technology still applies,
+    // and nothing is invented.
     fakeNode('n-spa', 'browser', [350, 500, 80, 60], {
       text: 'Single-Page App',
     }),
     fakeNode('n-mobile', 'mobile', [500, 500, 80, 60], { text: 'Mobile App' }),
     // A description and NO technology, on a macro that has a slot for both: the
     // one case that has to write an explicit empty `""` to hold the slot open.
-    fakeNode('n-db', 'database', [200, 560, 80, 50], {
-      text: 'Database',
+    // The type line is there and says `[Container]` — the author cleared it.
+    components.with(fakeNode('n-db', 'database', [200, 560, 80, 50]), {
+      title: 'Database',
+      typeLine: '[Container]',
       description: 'Stores user registration information.',
     }),
-    fakeNode('n-signin', 'component', [200, 250, 80, 60], {
-      text: 'Sign In Controller',
+    // A component whose description was left at the stencil's own prompt — the
+    // state of every element five seconds after it is drawn.
+    components.with(fakeNode('n-signin', 'component', [200, 250, 80, 60]), {
+      title: 'Sign In Controller',
+      typeLine: C4_TYPE_PLACEHOLDER.component,
+      description: DESCRIPTION_PLACEHOLDER,
     }),
     fakeNode('n-security', 'component', [300, 250, 80, 60], {
       text: 'Security Component',
@@ -290,6 +353,8 @@ function composedBoard(): C4ExportBoard {
     nodes,
     boundaries: [outer, inner],
     connectors,
+    texts: components.texts,
+    groups: components.groups,
   });
 }
 
@@ -369,34 +434,86 @@ describe('a whole C4 board, as mermaid', () => {
  * downstream can detect.
  */
 describe('what a node says about itself', () => {
+  /**
+   * One component, and what it serializes to.
+   *
+   * `technology` is written the way an author writes it — INTO the type line —
+   * so the fixture states the line and the exporter is left to read the one half
+   * of it that is the author's. Passing nothing at all builds a bare node with
+   * no words under it, which is what an ungrouped element resolves to.
+   */
   const oneNode = (
     kind: C4NodeKind,
-    options: { technology?: string; description?: string }
-  ) =>
-    exportC4Mermaid(
+    tiers: { typeLine?: string; description?: string } = {}
+  ) => {
+    const components = new Components();
+    const node = fakeNode('n', kind, [700, 400, 60, 60], { text: 'X' });
+    const nodes = [
+      Object.keys(tiers).length > 0 ? components.with(node, tiers) : node,
+    ];
+    return exportC4Mermaid(
       surface({
         boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
-        nodes: [
-          fakeNode('n', kind, [700, 400, 60, 60], { text: 'X', ...options }),
-        ],
+        nodes,
+        texts: components.texts,
+        groups: components.groups,
       })
     );
+  };
 
-  it('writes neither when the author stated neither', () => {
-    expect(oneNode('container', {})).toContain('Container(x, "X")\n');
-    expect(oneNode('system', {})).toContain('System(x, "X")\n');
-    expect(oneNode('person', {})).toContain('Person(x, "X")\n');
+  /** The same, with the technology stated rather than the whole line. */
+  const withTechnology = (kind: C4NodeKind, technology: string) =>
+    oneNode(kind, { typeLine: `[${C4_TYPE_WORD[kind]}: ${technology}]` });
+
+  it('writes neither when the component has no words under it at all', () => {
+    // The bare-node fallback: no group, no tiers, nothing stated. Which is also
+    // what a released group and a deleted tier resolve to.
+    expect(oneNode('container')).toContain('Container(x, "X")\n');
+    expect(oneNode('system')).toContain('System(x, "X")\n');
+    expect(oneNode('person')).toContain('Person(x, "X")\n');
+  });
+
+  it('writes neither when both tiers are still the stencil’s prompts', () => {
+    // Every tier exists from the moment a component is drawn, so an untouched
+    // element carries a literal `[Container: technology]` and a literal
+    // `description`. Exporting those as data would put the word "technology" in
+    // the technology slot of a file somebody is about to paste into a renderer.
+    const source = oneNode('container', {
+      typeLine: C4_TYPE_PLACEHOLDER.container,
+      description: DESCRIPTION_PLACEHOLDER,
+    });
+    expect(source).toContain('Container(x, "X")\n');
+    expect(source).not.toContain('technology');
   });
 
   it('writes the technology in the slot the macro has for it', () => {
-    expect(oneNode('container', { technology: 'Java' })).toContain(
+    expect(withTechnology('container', 'Java')).toContain(
       'Container(x, "X", "Java")'
     );
-    expect(oneNode('component', { technology: 'Spring MVC' })).toContain(
+    expect(withTechnology('component', 'Spring MVC')).toContain(
       'Component(x, "X", "Spring MVC")'
     );
-    expect(oneNode('database', { technology: 'PostgreSQL' })).toContain(
+    expect(withTechnology('database', 'PostgreSQL')).toContain(
       'ContainerDb(x, "X", "PostgreSQL")'
+    );
+  });
+
+  it('reads the technology out of whatever shape the line was left in', () => {
+    // The author types on the picture, so the exporter meets every form the
+    // in-place editor can leave behind — not a validated field.
+    for (const line of [
+      '[Container: Java]',
+      'Container: Java',
+      '  [container:   Java]  ',
+      'Java',
+    ]) {
+      expect(oneNode('container', { typeLine: line }), line).toContain(
+        'Container(x, "X", "Java")'
+      );
+    }
+    // …and a line reduced to the bare notation word states no technology.
+    expect(oneNode('container', { typeLine: '[Container]' })).toContain(
+      'Container(x, "X")\n'
     );
   });
 
@@ -419,37 +536,265 @@ describe('what a node says about itself', () => {
     ).toContain('System_Ext(x, "X", "Somebody else’s.")');
     // …and a technology typed on one of them is drawn on the canvas and simply
     // has nowhere to go here. Documented rather than invented a slot for.
-    expect(oneNode('person', { technology: 'ignored' })).toContain(
-      'Person(x, "X")\n'
-    );
+    expect(withTechnology('person', 'ignored')).toContain('Person(x, "X")\n');
   });
 
   it('lets the author’s technology win over the picture’s default', () => {
     // `mobile` and `browser` carry a default `techn` because their picture means
     // something the macro cannot otherwise say. An author who typed "Flutter"
     // has said it better.
-    expect(oneNode('mobile', {})).toContain('Container(x, "X", "mobile app")');
-    expect(oneNode('mobile', { technology: 'Flutter' })).toContain(
+    expect(oneNode('mobile')).toContain('Container(x, "X", "mobile app")');
+    expect(withTechnology('mobile', 'Flutter')).toContain(
       'Container(x, "X", "Flutter")'
     );
-    expect(oneNode('browser', { technology: 'React' })).toContain(
+    expect(withTechnology('browser', 'React')).toContain(
       'Container(x, "X", "React")'
     );
   });
 
-  it('sanitizes both fields exactly as it sanitizes a label', () => {
+  it('sanitizes both tiers exactly as it sanitizes a label', () => {
     // A quote ENDS a quoted argument in this grammar, `%%` opens a comment
     // wherever it appears, and a macro call is one line.
     const source = oneNode('container', {
-      technology: 'a "quoted"\ntechnology',
+      typeLine: 'a "quoted"\ntechnology stack',
       description: 'a %%commented%% one\ttoo',
     });
     expect(source).toContain(
-      `Container(x, "X", "a 'quoted' technology", "a %commented% one too")`
+      `Container(x, "X", "a 'quoted' technology stack", "a %commented% one too")`
     );
     expect(
       source.split('\n').filter(line => line.includes('Container('))
     ).toHaveLength(1);
+  });
+});
+
+/* ── The name ─────────────────────────────────────────────────────────── */
+
+/**
+ * Where an element's NAME comes from, since the PO's follow-up moved it off the
+ * shape and onto a `c4:title` child.
+ *
+ * Two paths, and the second is the whole compatibility story: the tier when
+ * there is one, the shape's own inner text when there is not.
+ */
+describe('the name an element exports under', () => {
+  const named = (
+    tiers: { title?: string } | null,
+    shapeText?: string
+  ): string => {
+    const components = new Components();
+    const node = fakeNode('n', 'container', [700, 400, 60, 60], {
+      text: shapeText,
+    });
+    return exportC4Mermaid(
+      surface({
+        boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
+        nodes: [tiers ? components.with(node, tiers) : node],
+        texts: components.texts,
+        groups: components.groups,
+      })
+    );
+  };
+
+  it('reads the title tier, in preference to anything on the shape', () => {
+    expect(named({ title: 'Web Application' })).toContain(
+      'Container(web_application, "Web Application")'
+    );
+    // A shape that still carries stale text loses to the tier that is drawn.
+    expect(named({ title: 'Web Application' }, 'Old Name')).not.toContain(
+      'Old Name'
+    );
+  });
+
+  it('falls back to the shape’s own text for an element drawn before', () => {
+    // No title child at all — an ungrouped element, or one from the iteration
+    // where the name WAS the shape's inner text. Nothing is migrated for it.
+    expect(named(null, 'Legacy System')).toContain(
+      'Container(legacy_system, "Legacy System")'
+    );
+    // …and the same holds for a grouped element whose title was deleted.
+    expect(named({}, 'Legacy System')).toContain(
+      'Container(legacy_system, "Legacy System")'
+    );
+  });
+
+  it('writes the creation prompt through verbatim, unlike the other tiers', () => {
+    // An unnamed container IS a container, and `Container(x, "Container")` says
+    // so. Suppressing it the way the technology prompt is suppressed would hand
+    // the reader `?` instead — less information, not more honesty.
+    expect(named({ title: NODE_LABEL.container })).toContain(
+      'Container(container, "Container")'
+    );
+  });
+
+  it('names a thing with no words anywhere "?" rather than pretending', () => {
+    expect(named({ title: '   ' })).toContain('Container(e, "?")');
+    expect(named(null)).toContain('Container(e, "?")');
+  });
+});
+
+/* ── Which words belong to which box ──────────────────────────────────── */
+
+/**
+ * The resolution the whole arrangement rests on.
+ *
+ * Two containers side by side both have a `[Container: …]` under them, and only
+ * the GROUP says which is which; a group holds a shape and two texts, and only
+ * the ROLE says which text is the type line. Get either wrong and the export
+ * silently attributes one architect's technology to another's box.
+ */
+describe('which words belong to which box', () => {
+  const twoContainers = (build: (components: Components) => void) => {
+    const components = new Components();
+    const left = fakeNode('n-left', 'container', [300, 400, 80, 60], {
+      text: 'Left',
+    });
+    const right = fakeNode('n-right', 'container', [600, 400, 80, 60], {
+      text: 'Right',
+    });
+    build(components);
+    return exportC4Mermaid(
+      surface({
+        boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
+        nodes: [left, right],
+        texts: components.texts,
+        groups: components.groups,
+      })
+    );
+  };
+
+  it('gives each node the words grouped with it, and no others', () => {
+    const source = twoContainers(components => {
+      components.texts.push(
+        { id: 't-left', role: C4_ROLE['type-line'], text: '[Container: Java]' },
+        { id: 't-right', role: C4_ROLE['type-line'], text: '[Container: Go]' }
+      );
+      components.groups.push(
+        { id: 'g-left', childIds: ['n-left', 't-left'] },
+        { id: 'g-right', childIds: ['n-right', 't-right'] }
+      );
+    });
+    expect(source).toContain('Container(left, "Left", "Java")');
+    expect(source).toContain('Container(right, "Right", "Go")');
+  });
+
+  it('tells the two tiers apart by their role, not by their order', () => {
+    // The description is written into the group FIRST here. Position in
+    // `children` is an implementation detail a reorder, a copy or a regroup
+    // rewrites; the role is written on the element and travels with it.
+    const source = twoContainers(components => {
+      components.texts.push(
+        { id: 't-descr', role: C4_ROLE.description, text: 'A sentence.' },
+        { id: 't-type', role: C4_ROLE['type-line'], text: '[Container: Java]' }
+      );
+      components.groups.push({
+        id: 'g-left',
+        childIds: ['t-descr', 't-type', 'n-left'],
+      });
+    });
+    expect(source).toContain('Container(left, "Left", "Java", "A sentence.")');
+  });
+
+  it('ignores a text in the group that carries no C4 role', () => {
+    // A sticky note somebody grouped with the component. It is words on the
+    // canvas; it is not a statement about the box (`docs/adr/0010`).
+    const source = twoContainers(components => {
+      components.texts.push({ id: 't-note', text: 'ask Marie about this' });
+      components.groups.push({ id: 'g-left', childIds: ['n-left', 't-note'] });
+    });
+    expect(source).toContain('Container(left, "Left")\n');
+    expect(source).not.toContain('Marie');
+  });
+
+  it('ignores a rightly-roled text that is grouped with nothing', () => {
+    // The tier of a component whose group was released, left on bare canvas. It
+    // is no longer under any box, so it is no longer about any box.
+    const source = twoContainers(components => {
+      components.texts.push({
+        id: 't-orphan',
+        role: C4_ROLE['type-line'],
+        text: '[Container: Rust]',
+      });
+    });
+    expect(source).toContain('Container(left, "Left")\n');
+    expect(source).not.toContain('Rust');
+  });
+
+  it('exports a node whose group holds only the shape as a bare one', () => {
+    // Both texts deleted, the group left standing. Nothing invented.
+    const source = twoContainers(components => {
+      components.groups.push({ id: 'g-left', childIds: ['n-left'] });
+    });
+    expect(source).toContain('Container(left, "Left")\n');
+  });
+});
+
+/**
+ * A relationship dropped on a COMPONENT rather than on its shape.
+ *
+ * A native group is `connectable`, and the connector tool walks every
+ * connectable element whose bound holds the pointer — so an arrow dragged onto a
+ * C4 component records the group's id about as often as the shape's. On the
+ * canvas the two are indistinguishable (a component's group bound IS its shape's
+ * bound), which is exactly what makes this dangerous: without the fallback below
+ * every such relationship would vanish from the exported file, silently, because
+ * a `Rel` is written by alias and a group has none.
+ */
+describe('a relationship that landed on the component', () => {
+  const relate = (from: string, to: string, groups: C4ComponentGroup[]) => {
+    const components = new Components();
+    return exportC4Mermaid(
+      surface({
+        boards: [fakeBoard('b', [0, 0, 1400, 900], 'B')],
+        nodes: [
+          fakeNode('n-a', 'system', [300, 400, 60, 60], { text: 'Alpha' }),
+          fakeNode('n-b', 'system', [600, 400, 60, 60], { text: 'Beta' }),
+        ],
+        connectors: [
+          fakeConnector(
+            'c',
+            C4_ROLE.relationship,
+            { source: from, target: to },
+            'Uses'
+          ),
+        ],
+        texts: components.texts,
+        groups,
+      })
+    );
+  };
+
+  const components = [
+    { id: 'g-a', childIds: ['n-a', 't-a'] },
+    { id: 'g-b', childIds: ['n-b', 't-b'] },
+  ];
+
+  it('is written against the shape the group speaks for', () => {
+    expect(relate('g-a', 'g-b', components)).toContain(
+      'Rel(alpha, beta, "Uses")'
+    );
+    // …and mixing the two ends is the common case, an author having hit the
+    // shape on one and the component on the other.
+    expect(relate('n-a', 'g-b', components)).toContain(
+      'Rel(alpha, beta, "Uses")'
+    );
+  });
+
+  it('is written against the shape when it landed on one of the words', () => {
+    // A canvas text is connectable too, and the tiers cover the middle band of
+    // the box — so an arrow released over the type line records ITS id. Every
+    // part of a component answers for its shape.
+    expect(relate('t-a', 't-b', components)).toContain(
+      'Rel(alpha, beta, "Uses")'
+    );
+  });
+
+  it('is dropped when the group holds two components, which name neither', () => {
+    // A lasso somebody drew round two boxes. An arrow landing on it points at
+    // neither in particular, and guessing would put a sentence in the file that
+    // nobody drew.
+    const lasso = [{ id: 'g-both', childIds: ['n-a', 'n-b'] }];
+    expect(relate('g-both', 'n-b', lasso)).not.toContain('Rel(');
   });
 });
 

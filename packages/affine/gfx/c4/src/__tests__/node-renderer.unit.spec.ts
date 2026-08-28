@@ -3,19 +3,24 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { NODE_SIZE } from '../consts';
 import { c4Node } from '../node/node-renderer';
-import { c4TypeLine } from '../type-line';
 import { recordingCtx, stubMatrix } from './canvas-stub';
 
 /**
  * The native shape body is somebody else's renderer (and its own tests): what
  * this file is about is the layer C4 adds on top of it — the five silhouettes a
- * rectangle cannot be, and the two text tiers under the title.
+ * rectangle cannot be.
  *
  * So `shape` is stubbed to a no-op and every operation the recorder sees is one
  * this renderer made. The assertions are about WHAT was drawn and in what
  * PROPORTIONS of the node box, which is the form the reference stencil states
  * its own geometry in — never about absolute coordinates, which would make every
  * nudge to a glyph a test failure and would not survive a resize anyway.
+ *
+ * It used to be about the text tiers as well. It is not any more, and that
+ * absence is asserted rather than merely dropped: since the PO's recette of
+ * 28/08/2026 the type line and the description are real canvas TEXT elements
+ * grouped with the shape, so a renderer painting words over them would draw the
+ * label twice.
  */
 
 vi.mock('@labre/affine-gfx-shape', () => ({ shape: vi.fn() }));
@@ -29,8 +34,7 @@ const TEXT = '#ffffff';
 function nodeModel(
   kind: C4NodeKind,
   rotate = 0,
-  size: { w: number; h: number } = NODE_SIZE[kind],
-  tiers: Tiers = {}
+  size: { w: number; h: number } = NODE_SIZE[kind]
 ): C4NodeElementModel {
   return {
     kind,
@@ -41,27 +45,8 @@ function nodeModel(
     color: TEXT,
     strokeWidth: 2,
     fontSize: 20,
-    // Where the native renderer MEASURED the title this frame — the anchor the
-    // two painted tiers hang off. `null` by default because `shape` is stubbed
-    // to a no-op here, which is also the state of a brand-new element on its
-    // very first paint: the renderer's own fallback then applies.
-    textBound: null,
-    ...tiers,
   } as unknown as C4NodeElementModel;
 }
-
-interface Tiers {
-  technology?: string;
-  description?: string;
-  /** A title block the native renderer would have measured, in MODEL units. */
-  textBound?: { y: number; h: number } | null;
-}
-
-/**
- * A title laid out where a freshly created node puts it — top-aligned, one
- * line, ending about a third of the way down a standard box.
- */
-const MEASURED_TITLE = { y: 30, h: 24 } as const;
 
 /** A canvas renderer, reduced to the one method the glyph layer calls. */
 const rendererStub = {
@@ -84,14 +69,9 @@ beforeEach(() => {
 });
 
 /** Draw one kind and hand back what the canvas saw. */
-function draw(
-  kind: C4NodeKind,
-  rotate = 0,
-  size?: { w: number; h: number },
-  tiers?: Tiers
-) {
+function draw(kind: C4NodeKind, rotate = 0, size?: { w: number; h: number }) {
   c4Node(
-    nodeModel(kind, rotate, size, tiers),
+    nodeModel(kind, rotate, size),
     rec.ctx,
     stubMatrix(),
     rendererStub,
@@ -125,13 +105,13 @@ const ALL_KINDS = [
 const BARE = ['system', 'system-ext', 'container', 'component'] as const;
 
 /**
- * The painting operations of the GLYPH, with the text tiers filtered out.
+ * The painting operations of the GLYPH.
  *
- * The tiers are drawn on every kind — the type line is notation, not decoration
- * — so a bare kind is one that draws no SHAPE, not one that draws nothing.
+ * Nothing is filtered out any more, and that is the change: this renderer used
+ * to paint two lines of text under the title and no longer paints a single
+ * character, so a bare kind draws literally nothing.
  */
-const glyphOps = (ops: readonly string[]) =>
-  ops.filter(op => op !== 'fillText');
+const glyphOps = (ops: readonly string[]) => ops;
 
 describe('the C4 node glyph layer', () => {
   it('draws a silhouette on five kinds and on no other', () => {
@@ -140,6 +120,24 @@ describe('the C4 node glyph layer', () => {
       const { ops } = draw(kind);
       const expected = !(BARE as readonly string[]).includes(kind);
       expect(glyphOps(ops).length > 0, kind).toBe(expected);
+    }
+  });
+
+  /**
+   * The PO's recette of 28/08/2026, seen from the renderer.
+   *
+   * The type line and the description are canvas TEXT elements grouped with the
+   * shape now — real words an author double-clicks and types into. A renderer
+   * still painting its own copy of them would draw every label twice, offset by
+   * whatever the two layouts disagreed about, and the copy nobody could edit
+   * would be the one that stayed wrong.
+   */
+  it('writes no text at all: the tiers are elements, not paint', () => {
+    for (const kind of ALL_KINDS) {
+      rec = recordingCtx();
+      const { texts, ops } = draw(kind);
+      expect(texts, kind).toHaveLength(0);
+      expect(ops, kind).not.toContain('fillText');
     }
   });
 
@@ -167,10 +165,7 @@ describe('the C4 node glyph layer', () => {
       for (const size of sizes) {
         rec = recordingCtx();
         const where = `${kind} ${size.w}x${size.h}`;
-        expect(
-          () => draw(kind, 0, size, { description: 'a sentence about it' }),
-          where
-        ).not.toThrow();
+        expect(() => draw(kind, 0, size), where).not.toThrow();
         for (const curve of rec.curves) {
           expect(curve.rx, where).toBeGreaterThanOrEqual(0);
           expect(curve.ry, where).toBeGreaterThanOrEqual(0);
@@ -356,98 +351,5 @@ describe('the C4 node glyph layer', () => {
     expect(bar.x).toBeGreaterThan(curves[2].x);
     expect(bar.y + bar.h).toBeLessThan(screen.y + 1);
     expect(bar.w / w).toBeGreaterThan(0.7);
-  });
-});
-
-/* ── The three text tiers ─────────────────────────────────────────────── */
-
-/**
- * The tiers the PO's third change request is about: the derived type line and
- * the author's description, painted under the title on EVERY kind.
- *
- * The title itself is the native shape's inner text and is somebody else's
- * renderer (stubbed to a no-op here), which is exactly the seam: this file
- * asserts what the C4 layer adds under it.
- */
-describe('the C4 node text tiers', () => {
-  it('writes the derived type line on every one of the nine kinds', () => {
-    for (const kind of ALL_KINDS) {
-      rec = recordingCtx();
-      const { texts } = draw(kind);
-      expect(texts, kind).toHaveLength(1);
-      expect(texts[0].text, kind).toBe(c4TypeLine(kind));
-      // Centred, in the element's own text colour.
-      expect(texts[0].align, kind).toBe('center');
-      expect(texts[0].x, kind).toBe(NODE_SIZE[kind].w / 2);
-      expect(texts[0].color, kind).toBe(TEXT);
-    }
-  });
-
-  it('folds the author’s technology into that same line', () => {
-    const { texts } = draw('container', 0, undefined, { technology: 'Java' });
-    expect(texts).toHaveLength(1);
-    expect(texts[0].text).toBe('[Container: Java]');
-  });
-
-  it('writes the description under it, in a larger face, when there is one', () => {
-    const { texts } = draw('container', 0, undefined, {
-      technology: 'Java',
-      description: 'Delivers the banking functionality.',
-    });
-    expect(texts.length).toBeGreaterThan(1);
-    const [type, ...description] = texts;
-    expect(type.text).toBe('[Container: Java]');
-    // Below the type line, and in a LARGER face than it: the stencil's own
-    // 6 / 8, which is what keeps the type line reading as a subtitle.
-    expect(description[0].y).toBeGreaterThan(type.y);
-    expect(Number.parseFloat(description[0].font)).toBeGreaterThan(
-      Number.parseFloat(type.font)
-    );
-    expect(description.map(line => line.text).join(' ')).toContain('Delivers');
-  });
-
-  it('hangs the tiers off wherever the title actually landed', () => {
-    // The one anchor that cannot collide with the words above it: a canvas
-    // renderer cannot MOVE the native title, so it reads where the native text
-    // renderer just put it and starts underneath.
-    rec = recordingCtx();
-    const high = draw('system', 0, undefined, { textBound: MEASURED_TITLE });
-    const highY = high.texts[0].y;
-    rec = recordingCtx();
-    const low = draw('system', 0, undefined, {
-      textBound: { y: MEASURED_TITLE.y + 40, h: MEASURED_TITLE.h },
-    });
-    expect(low.texts[0].y).toBeCloseTo(highY + 40, 5);
-    // …and it always clears the block, never overlaps it.
-    expect(highY).toBeGreaterThan(MEASURED_TITLE.y + MEASURED_TITLE.h);
-  });
-
-  it('wraps a description to the node, and says so when it will not fit', () => {
-    const { texts } = draw('component', 0, undefined, {
-      textBound: MEASURED_TITLE,
-      description:
-        'A long sentence that cannot possibly fit inside one line of a ' +
-        'component box, nor inside the four or five that a box this size has ' +
-        'room for, and therefore has to be cut somewhere honest instead.',
-    });
-    const description = texts.slice(1);
-    expect(description.length).toBeGreaterThan(1);
-    // Every line stays inside the box…
-    const { w, h } = NODE_SIZE.component;
-    for (const line of description) {
-      expect(line.y).toBeLessThanOrEqual(h);
-      const size = Number.parseFloat(line.font);
-      expect(line.text.length * (size / 2)).toBeLessThanOrEqual(w);
-    }
-    // …and the last one admits there was more.
-    expect(description.at(-1)!.text.endsWith('…')).toBe(true);
-  });
-
-  it('writes no description tier for a field the author never filled', () => {
-    for (const nothing of [undefined, '', '   ']) {
-      rec = recordingCtx();
-      const { texts } = draw('system', 0, undefined, { description: nothing });
-      expect(texts, JSON.stringify(nothing)).toHaveLength(1);
-    }
   });
 });

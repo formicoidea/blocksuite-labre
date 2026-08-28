@@ -33,23 +33,30 @@ import { c4BoardToolbarConfig, c4LegendToolbarConfig } from '../toolbar/config';
 const ALL_KINDS = Object.keys(NODE_SIZE) as C4NodeKind[];
 
 /**
- * Run a creation command against a stub editor and report the element it asked
- * the surface for.
+ * Run a creation command against a stub editor and report every element it
+ * asked the surface for, in the order it asked.
  *
  * Through `run`, never through the action: what a user reaches is the COMMAND,
  * and a spec that called the function directly would keep passing after someone
  * rewired a descriptor to the wrong one.
+ *
+ * A LIST rather than one element since the PO's recette of 28/08/2026: a node
+ * command now builds a whole component — the shape, its type line, its
+ * description and the group joining them. What this file is about is the
+ * ARTEFACT, so {@link created} keeps returning the first; the component's own
+ * shape is `component.unit.spec.ts`'s subject.
  */
-function created(command: CommandDescriptor): Record<string, unknown> {
-  let props: Record<string, unknown> = {};
+function createdAll(command: CommandDescriptor): Record<string, unknown>[] {
+  const added: Record<string, unknown>[] = [];
   const gfx = {
     surface: {
       addElement: (next: Record<string, unknown>) => {
-        props = next;
-        return 'element-id';
+        added.push(next);
+        return `element-${added.length}`;
       },
     },
     viewport: { centerX: 0, centerY: 0 },
+    layer: { generateIndex: () => 'a0' },
     doc: { captureSync: () => {} },
     tool: { setTool: () => {} },
     selection: { set: () => {} },
@@ -59,7 +66,12 @@ function created(command: CommandDescriptor): Record<string, unknown> {
   } as unknown as BlockStdScope;
 
   command.run(std, { surface: 'senior-menu', source: 'toolbar:general' });
-  return props;
+  return added;
+}
+
+/** The artefact a creation command drops — the first thing it adds. */
+function created(command: CommandDescriptor): Record<string, unknown> {
+  return createdAll(command)[0] ?? {};
 }
 
 /** The same, for the one command that arms a tool instead of dropping a shape. */
@@ -318,9 +330,29 @@ describe('what a c4 command actually creates', () => {
       expect(props.fillColor, kind).toBe(NODE_PALETTE[kind].fill);
       expect(props.strokeColor, kind).toBe(NODE_PALETTE[kind].border);
       expect(props.color, kind).toBe(NODE_PALETTE[kind].text);
-      // Every C4 element carries words: the box is the same box at three of the
-      // four levels, so one with nothing written in it says nothing at all.
-      expect(props.text, kind).toBe(NODE_LABEL[kind]);
+      // Every C4 element carries words — the box is the same box at three of
+      // the four levels, so one with nothing written on it says nothing at all
+      // — but they are on the TITLE tier now, not on the shape.
+      const [, title] = createdAll(command);
+      expect(title.role, kind).toBe(C4_ROLE.title);
+      expect(title.text, kind).toBe(NODE_LABEL[kind]);
+    }
+  });
+
+  it('builds a whole component, not a lone box, for every node kind', () => {
+    // The PO's recette of 28/08/2026, at the command level: every one of the
+    // nine artefacts arrives as the shape, its three written tiers — the name
+    // included — and the group that makes the four one thing. Asserted here as
+    // well as in `component.unit.spec.ts` because this is the wiring a user
+    // reaches: a command rewired to a creation function that dropped a bare
+    // shape would pass every other assertion in this file.
+    for (const command of c4Commands) {
+      const element = command.telemetry?.element;
+      if (!element?.startsWith('node:')) continue;
+      expect(
+        createdAll(command).map(props => props.type),
+        element
+      ).toEqual(['c4Node', 'text', 'text', 'text', 'group']);
     }
   });
 
@@ -357,20 +389,26 @@ describe('what a c4 command actually creates', () => {
     }
   });
 
-  it('opens every node top-aligned, so the three tiers stack under the name', () => {
-    // The title is the native inner text and the type line and description are
-    // painted under wherever it landed, so top-aligning the one is what puts the
-    // STACK where the reference stencil puts it. The person's padding also
-    // clears its HEAD: its words are laid out in the body, not the silhouette.
-    const person = created(byId.get('c4.addPerson')!);
-    const system = created(byId.get('c4.addSystem')!);
-    for (const props of [person, system]) {
-      expect(props.textVerticalAlign).toBe('top');
+  it('drops a shape with no words in it, and stacks the three tiers below', () => {
+    // The name is a `c4:title` child since the PO's follow-up, so the shape
+    // carries no inner text — anything written there would be a second,
+    // invisible name. The person's stack also clears its HEAD: its words are
+    // laid out in the body, not across the silhouette.
+    for (const id of ['c4.addPerson', 'c4.addSystem']) {
+      expect(created(byId.get(id)!).text, id).toBeUndefined();
     }
-    const [personTop] = person.padding as [number, number];
-    const [systemTop] = system.padding as [number, number];
-    expect(personTop).toBeGreaterThan(NODE_SIZE.person.h * PERSON_BODY_TOP);
-    expect(systemTop).toBeLessThan(NODE_SIZE.system.h / 2);
+    const [, personTitle] = createdAll(byId.get('c4.addPerson')!);
+    const [, systemTitle] = createdAll(byId.get('c4.addSystem')!);
+    const topOf = (props: Record<string, unknown>) =>
+      (JSON.parse(props.xywh as string) as number[])[1];
+    // Element boxes are centred on the viewport origin, so a tier's top is
+    // measured against the element's own top edge.
+    expect(topOf(personTitle) + NODE_SIZE.person.h / 2).toBeGreaterThan(
+      NODE_SIZE.person.h * PERSON_BODY_TOP
+    );
+    expect(topOf(systemTitle) + NODE_SIZE.system.h / 2).toBeLessThan(
+      NODE_SIZE.system.h / 2
+    );
   });
 
   it('creates the board and the two boundaries with their frame roles', () => {

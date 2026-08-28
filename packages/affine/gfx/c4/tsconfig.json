@@ -13,6 +13,7 @@
     { "path": "../ddd-shared" },
     { "path": "../pointer" },
     { "path": "../shape" },
+    { "path": "../text" },
     { "path": "../../model" },
     { "path": "../../shared" },
     { "path": "../../widgets/edgeless-toolbar" },

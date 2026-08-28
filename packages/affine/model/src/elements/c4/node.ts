@@ -107,31 +107,21 @@ export class C4NodeElementModel extends ShapeElementModel {
     });
   }
 
+  /**
+   * The one field a C4 node carries, and the whole of its schema.
+   *
+   * The two other tiers of the notation — the type line and the description —
+   * are deliberately NOT fields here. They are canvas TEXT elements, grouped
+   * with the shape, and they are edited in place exactly like any other words on
+   * the canvas (PO recette, 28/08/2026). A field would have been a second place
+   * to write the same sentence, reachable only through a form, and the form is
+   * the mechanism the recette rejected: an architect writes on the picture.
+   *
+   * What that buys the document format is that this model stays exactly what it
+   * was — `kind`, on a native shape — while the component grows two more tiers.
+   * See `gfx/c4/src/actions.ts` for how the group is assembled and
+   * `gfx/c4/src/export.ts` for how it is read back.
+   */
   @field('system' as C4NodeKind)
   accessor kind: C4NodeKind = 'system';
-
-  /**
-   * The technology this element is built with — the `technology` half of C4's
-   * `[Container: technology]` type line, and mermaid's `techn` argument.
-   *
-   * OPTIONAL, and `undefined` by default: `@field()`'s `init` writes nothing for
-   * an `undefined` default, so a node that never states a technology stays
-   * byte-identical to one created before this field existed. No schema version
-   * bump, no migration, every document already on disk opens and paints exactly
-   * as it did. The same call {@link C4BoundaryElementModel.variant} makes.
-   *
-   * Never the TYPE itself: what kind of thing this is comes from `kind` and is
-   * derived (`c4TypeLine`), so the two can never disagree.
-   */
-  @field()
-  accessor technology: string | undefined = undefined;
-
-  /**
-   * The sentence under the type line — the third tier of the official notation,
-   * and the one that says what the element is FOR.
-   *
-   * Optional on exactly the same terms as {@link technology}.
-   */
-  @field()
-  accessor description: string | undefined = undefined;
 }

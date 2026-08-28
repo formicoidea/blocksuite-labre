@@ -10,39 +10,48 @@ import {
   ConnectorElementModel,
   ConnectorMode,
   FontFamily,
+  FontStyle,
+  FontWeight,
+  GroupElementModel,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
   TextAlign,
-  TextFitMode,
-  TextVerticalAlign,
+  TextElementModel,
 } from '@labre/affine-model';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  type GfxController,
+  GfxControllerIdentifier,
+  type SurfaceBlockModel,
+} from '@labre/std/gfx';
 
+import { type C4TierBox, c4TierBoxes } from './component';
 import {
   BOARD_REF_HEIGHT,
   BOARD_REF_WIDTH,
   BOUNDARY_LABEL,
   BOUNDARY_REF_HEIGHT,
   BOUNDARY_REF_WIDTH,
-  INNER_FONT_SIZE,
+  DESCRIPTION_FONT_SIZE,
+  DESCRIPTION_PLACEHOLDER,
   NODE_LABEL,
   NODE_PALETTE,
   NODE_RADIUS,
   NODE_SIZE,
   NODE_STROKE_WIDTH,
-  PERSON_BODY_TOP,
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
-  TITLE_TOP_MARGIN,
+  TITLE_FONT_SIZE,
+  TYPE_FONT_SIZE,
 } from './consts';
 import { type C4ExportBoard, exportC4Mermaid } from './export';
 import { C4_AUTO_LEGEND } from './legend';
 import { C4_ROLE, C4_ROLE_OF_KIND } from './roles';
+import { C4_TYPE_PLACEHOLDER } from './type-line';
 
 /**
  * Standalone creation/activation actions for the C4 toolbox — the same shape
@@ -86,7 +95,94 @@ function finish(gfx: GfxController, id: string) {
   // Keep the palette open (native sub-menu behaviour).
 }
 
-/** Create a C4 element (native shape) centred on the viewport. */
+/**
+ * One of a component's two written tiers, as a canvas TEXT element.
+ *
+ * Every style prop is passed EXPLICITLY, and that is not belt and braces: both
+ * creation APIs run the new props through `EditPropsStore.applyLastProps('text',
+ * …)`, which merges whatever the user last set on a free text element
+ * underneath — a 24px face, a colour from another diagram, a left alignment.
+ * Explicit props win the merge, so the only ones that survive it are the ones
+ * written here. A type line inheriting the colour of the last sticky note
+ * somebody typed would be a notation set by accident.
+ *
+ * `hasMaxWidth` is what keeps a long sentence inside the element instead of
+ * running out over the canvas: the box wraps at its own width and grows
+ * downward, and the group grows with it, so a component always contains its own
+ * words.
+ */
+function addTier(
+  surface: SurfaceBlockModel,
+  index: string,
+  role: string,
+  text: string,
+  fontSize: number,
+  fontWeight: FontWeight,
+  color: string,
+  box: C4TierBox
+): string {
+  return surface.addElement({
+    type: 'text',
+    role,
+    text,
+    index,
+    color,
+    fontFamily: FontFamily.Inter,
+    fontSize,
+    fontWeight,
+    fontStyle: FontStyle.Normal,
+    textAlign: TextAlign.Center,
+    hasMaxWidth: true,
+    xywh: new Bound(box.x, box.y, box.w, box.h).serialize(),
+  });
+}
+
+/**
+ * Create a C4 component centred on the viewport: the shape, its THREE written
+ * tiers, and the GROUP that makes the four one thing.
+ *
+ * ## Five elements, and why the group is one of them
+ *
+ * The PO's recette of 28/08/2026 rejected the "Details" popover the type line
+ * and the description used to be typed into: an architect writes on the picture.
+ * Its follow-up went one further and took the NAME off the shape too — for one
+ * iteration the name was the shape's native inner text and the other two tiers
+ * were elements, which meant two kinds of text in one component, two editors,
+ * two toolbars and two sets of rules for the same three lines.
+ *
+ * So the shape is created carrying NO text at all, and the three lines are three
+ * canvas `text` elements. Which leaves the problem the popover did not have —
+ * four elements have to move, copy and delete as one — and a native `group` is
+ * the platform's own answer: one click selects the component, a second descends
+ * into whichever tier was clicked, and every gesture the editor already knows
+ * works on it.
+ *
+ * The group's `xywh` is DERIVED from its children. Its `index`, and the tiers',
+ * are not layering statements but stability ones: the five elements are created
+ * in painting order, the shape first and the words above it, because two
+ * elements sharing an index sort by id — and an id is a nanoid.
+ *
+ * ## An empty shape is still a whole target
+ *
+ * A shape with no text would normally be hit only near its border and across the
+ * few characters of its label, which is the AFFiNE behaviour `includesPoint`
+ * implements. `C4NodeElementModel` overrides it to force the interior test, so
+ * the body stays draggable, selectable and double-clickable across its whole
+ * area with nothing written in it — the override that was added for the
+ * glyph-bodied kinds now carries every kind.
+ *
+ * ## Placeholders, not values
+ *
+ * All three tiers exist from creation, carrying the stencil's own prompts: the
+ * kind's label as the name, `[Container: technology]` under it and `description`
+ * under that. The author meets three lines of stencil rather than an empty box.
+ * The two lower prompts are read as "nothing stated" by the exporter; the NAME
+ * is not, because an unnamed container really is a container (`component.ts`).
+ *
+ * The ROLE is stamped on the shape and on all three texts, and NOT on the group:
+ * the rules, the facts and the export all key on the shape, and the wrapper
+ * round a box is not a second box (`roles.ts`).
+ */
 export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
   const gfx = gfxOf(std);
   const surface = gfx.surface;
@@ -94,16 +190,14 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
 
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
+  const x = cx - w / 2;
+  const y = cy - h / 2;
   const paint = NODE_PALETTE[kind];
   const glyphBody = GLYPH_BODY_KINDS.has(kind);
-  // A person's words are laid out in its BODY, not in the silhouette: the head
-  // stands clear above, and a title padded from the element's own top edge would
-  // be written across it. Every other kind's body IS its box.
-  const bodyTop =
-    kind === 'person' || kind === 'person-ext' ? h * PERSON_BODY_TOP : 0;
 
-  const id = surface.addElement({
+  const shapeId = surface.addElement({
     type: 'c4Node',
+    index: gfx.layer.generateIndex(),
     kind,
     // Semantic identity, posted next to `kind` — which stays untouched and keeps
     // driving the rendering. The role is the authority on what the box MEANS,
@@ -126,33 +220,74 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     // square-cornered rectangles, and rounds only the two devices. Harmless on a
     // glyph-bodied kind, whose native shape is invisible.
     radius: NODE_RADIUS[kind],
-    // Every kind carries words, unlike BPMN: the box is the same box at three of
-    // the four levels, so a C4 element with nothing written in it says nothing.
-    text: NODE_LABEL[kind],
+    // NO `text`, and that is the point of this iteration: the name is the
+    // `c4:title` child below, so the shape is a body and nothing else. Its text
+    // COLOUR is still seeded — an element drawn before this change carries its
+    // name here, and the node view routes a double-click to that editor for
+    // exactly those, so the words have to stay legible.
     color: paint.text,
     fontFamily: FontFamily.Inter,
-    fontSize: INNER_FONT_SIZE,
+    fontSize: TITLE_FONT_SIZE,
     textAlign: TextAlign.Center,
-    // TOP-aligned, with the stencil's own top margin under the element's edge.
-    //
-    // The title is the native inner text and the two tiers under it are painted
-    // by the renderer, hung off wherever the title landed — so top-aligning the
-    // one is what puts the STACK where the reference model puts it (the name at
-    // roughly three-tenths of the height, the type line under it, the sentence
-    // under that). A centred title would push both tiers into the bottom third.
-    //
-    // A creation-time default like every other value here: the author can move
-    // the title from the shape toolbar afterwards and the tiers follow it, and a
-    // node drawn before this change keeps its centred title and simply carries
-    // its tiers lower. Nothing needs migrating.
-    textVerticalAlign: TextVerticalAlign.Top,
-    padding: [bodyTop + (h - bodyTop) * TITLE_TOP_MARGIN, INNER_FONT_SIZE / 2],
-    // The stencil's sizes are normative: a long name overflows rather than
-    // deforming the element out of its row.
-    textFitMode: TextFitMode.Overflow,
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+    xywh: new Bound(x, y, w, h).serialize(),
   });
-  finish(gfx, id);
+
+  const boxes = c4TierBoxes(kind, x, y, w, h);
+  const titleId = addTier(
+    surface,
+    gfx.layer.generateIndex(),
+    C4_ROLE.title,
+    // The kind's own label — `Person`, `Web app`. A name and a prompt at once,
+    // which is why the exporter writes it through unchanged.
+    NODE_LABEL[kind],
+    TITLE_FONT_SIZE,
+    // The one tier with weight on it: it is the heading of the box, and at 20px
+    // against a 16px sentence the size alone does not carry that.
+    FontWeight.SemiBold,
+    paint.text,
+    boxes.title
+  );
+  const typeLineId = addTier(
+    surface,
+    gfx.layer.generateIndex(),
+    C4_ROLE['type-line'],
+    C4_TYPE_PLACEHOLDER[kind],
+    TYPE_FONT_SIZE,
+    FontWeight.Regular,
+    paint.text,
+    boxes.typeLine
+  );
+  const descriptionId = addTier(
+    surface,
+    gfx.layer.generateIndex(),
+    C4_ROLE.description,
+    DESCRIPTION_PLACEHOLDER,
+    DESCRIPTION_FONT_SIZE,
+    FontWeight.Regular,
+    paint.text,
+    boxes.description
+  );
+
+  const groupId = surface.addElement({
+    type: 'group',
+    index: gfx.layer.generateIndex(),
+    // A plain record is a legal `children`: the group's own `propsToY` takes the
+    // KEYS and forces every value to `true`.
+    children: {
+      [shapeId]: true,
+      [titleId]: true,
+      [typeLineId]: true,
+      [descriptionId]: true,
+    },
+    // No title, deliberately. The group renderer paints one only while the
+    // component is selected, and a component announcing itself as "Group 3"
+    // above its own name is a label nobody wrote.
+  });
+
+  // The GROUP is what the gesture produced, so the group is what is selected: a
+  // click selects the component, a double-click descends into the tier under
+  // the pointer. That is the whole recette in one selection.
+  finish(gfx, groupId);
 }
 
 /** Create a C4 board (the sheet one diagram is drawn on) centred on the viewport. */
@@ -319,15 +454,30 @@ export function c4ExportBoardOf(std: BlockStdScope): C4ExportBoard {
   const nodes: C4NodeElementModel[] = [];
   const boundaries: C4BoundaryElementModel[] = [];
   const connectors: ConnectorElementModel[] = [];
+  // The two written tiers of every component, and the groups that say whose
+  // words they are. Collected whole and unfiltered: `component.ts` resolves
+  // them by membership, which is a question about the document rather than
+  // about the board's geometry.
+  const texts: TextElementModel[] = [];
+  const groups: GroupElementModel[] = [];
 
   for (const element of elements) {
     if (element instanceof C4NodeElementModel) nodes.push(element);
     else if (element instanceof C4BoundaryElementModel)
       boundaries.push(element);
     else if (element instanceof ConnectorElementModel) connectors.push(element);
+    else if (element instanceof TextElementModel) texts.push(element);
+    else if (element instanceof GroupElementModel) groups.push(element);
   }
 
-  return { boards: c4BoardsForExport(std), nodes, boundaries, connectors };
+  return {
+    boards: c4BoardsForExport(std),
+    nodes,
+    boundaries,
+    connectors,
+    texts,
+    groups,
+  };
 }
 
 /**
