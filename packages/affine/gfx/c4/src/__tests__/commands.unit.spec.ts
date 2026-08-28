@@ -220,15 +220,18 @@ describe('the c4 command inventory', () => {
    *
    * A FIFTEENTH entry of any kind tips it over: a deployment node, a
    * code-level element, a second export. The ranking then kicks in and a user
-   * with no history meets the first seven of the catalogue. BPMN learned that in
-   * a live recette (#144); the second half of this test is what applies the
-   * lesson before the overflow rather than after it, by asserting what the cold
-   * start WOULD be.
+   * with no history meets the first `SENIOR_MENU_RANKED_SLOTS` of the catalogue.
+   * BPMN learned that in a live recette (#144); the second half of this test is
+   * what applies the lesson before the overflow rather than after it, by
+   * asserting what the cold start WOULD be.
    *
-   * Those seven are no longer the four levels and the line between them: the
-   * PO's boards-first convention (28/08/2026) supersedes that reading. The
-   * catalogue now opens with the SHEET, then the two most-drawn levels with
-   * their external variants beside them, then the container and the component.
+   * That head is THIRTEEN since #167 (seven recent + six frequent), not the
+   * seven BPMN met — so the cold start is nearly the whole toolbox, and the
+   * author's order is nearly the whole answer. It is also no longer the four
+   * levels and the line between them: the PO's boards-first convention
+   * (28/08/2026) supersedes that reading, and the catalogue opens with the
+   * SHEET, then the two most-drawn levels with their external variants beside
+   * them, then the container and the component.
    */
   it('does not overflow, and would lead with the board and five levels', () => {
     const catalogue = [...c4Commands]

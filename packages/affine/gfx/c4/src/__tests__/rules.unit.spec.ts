@@ -207,6 +207,99 @@ describe('what the framework ships', () => {
     }
   });
 
+  /**
+   * Provenance, as a TOTALITY test rather than a spot check — BPMN's pattern,
+   * for BPMN's reason.
+   *
+   * The field is optional on the engine's side, but a C4 rule arriving without
+   * one is the bug the field exists to prevent: an architecture review asked
+   * that a Labre convention never present itself as a norm violation, and a
+   * rule with no declared provenance shows no line at all, which is exactly the
+   * state that review found.
+   */
+  it('declares where every rule gets its authority', () => {
+    for (const rule of C4_RULES) {
+      expect(rule.provenance, rule.id).toBeDefined();
+      expect(rule.provenance!.reference, rule.id).toBeTruthy();
+    }
+  });
+
+  it('claims no STANDARD, because C4 has no specification to cite', () => {
+    // The distinguishing fact about this pack. BPMN cites clauses of ISO/IEC
+    // 19510; C4 has a review checklist its author publishes, which is a
+    // recommendation however widely it is followed. A rule here claiming
+    // `standard` would be inventing an authority that does not exist.
+    for (const rule of C4_RULES) {
+      expect(rule.provenance!.source, rule.id).not.toBe('standard');
+      // `organization` is reserved for the org profiles the PRD names, and no
+      // framework declares one yet. Pinned so the day one does is a decision.
+      expect(rule.provenance!.source, rule.id).not.toBe('organization');
+      expect(['recommendation', 'labre-convention'], rule.id).toContain(
+        rule.provenance!.source
+      );
+    }
+  });
+
+  it('names the method it recommends, and owns every convention', () => {
+    const byProvenance = (source: string) =>
+      C4_RULES.filter(rule => rule.provenance?.source === source)
+        .map(rule => rule.id)
+        .sort();
+
+    // The five that are OURS, and exactly those. Each says so in the citation
+    // itself, so a reader of the bubble is never told C4 forbids what C4 does
+    // not.
+    expect(byProvenance('labre-convention')).toEqual(
+      [
+        UNTYPED_LINK,
+        RELATIONSHIP_SELF_LOOP,
+        DATABASE_INITIATES,
+        HOMELESS_COMPONENT,
+        PERSON_IN_BOUNDARY,
+      ].sort()
+    );
+    for (const rule of C4_RULES) {
+      const { source, reference } = rule.provenance!;
+      if (source === 'labre-convention') {
+        expect(reference, rule.id).toMatch(/Labre/);
+      } else {
+        // A recommendation names the METHOD, so the user can weigh it. Every
+        // one of C4's names C4 — there is no linter to cite here, the way
+        // bpmnlint is cited one framework over.
+        expect(reference, rule.id).toMatch(/C4 model/);
+      }
+    }
+    expect(byProvenance('recommendation')).toHaveLength(6);
+  });
+
+  it('keeps provenance PURELY descriptive', () => {
+    // No evaluator reads it, so a rule with the field and the same rule without
+    // it must reach the same verdict. The engine ships its own pin of this;
+    // this one is C4's, on C4's own board, because a framework that annotated
+    // its way into a behaviour change would not find out from another package's
+    // test.
+    const stripped = C4_RULES.map(rule => {
+      const { provenance: _dropped, ...rest } = rule;
+      return rest;
+    });
+    const board_ = [
+      board(),
+      person('p'),
+      title('t', ''),
+      system('a', 600),
+      rel('r', 'p', 'a', ''),
+    ];
+    expect(evaluateRules(stripped, board_)).toEqual(
+      evaluateRules(C4_RULES, board_)
+    );
+    expect(evaluateCheckup(stripped, board_)).toEqual(
+      evaluateCheckup(C4_RULES, board_)
+    );
+    // ...and the check-up half actually found something, so the comparison is
+    // not two empty arrays agreeing.
+    expect(evaluateCheckup(C4_RULES, board_).length).toBeGreaterThan(0);
+  });
+
   it('keeps the naming checks off the drawing path', () => {
     // Naming is what a user does by TYPING, so a real-time rule of this family
     // would re-evaluate on every keystroke in every title on the board.
