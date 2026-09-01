@@ -55,6 +55,40 @@ export const GROUP_STROKE = '#8e8d91';
 export const INNER_FONT_SIZE = 18;
 
 /**
+ * The smallest font a FITTED label is asked for — the importer's floor, and
+ * only its (`bpmnLabelFit` in `presets.ts`).
+ *
+ * A file draws its artefacts at whatever scale its author's tool uses, and
+ * bpmn.io's normative sizes are about six tenths of this pack's: a 36-unit
+ * event against a 56-unit one, a 100×72 task against a 120×72. The label of an
+ * imported artefact is therefore asked for at a size proportional to the box
+ * the FILE gave, and 10 is where that shrinking stops — under it a label is no
+ * longer read, it is guessed at.
+ *
+ * It is a floor on what is ASKED for, not on what is painted: the shape
+ * renderer's own `TextFitMode.Contained` pass shrinks further, to its own floor
+ * of 8 (`MIN_CONTAINED_FONT_SIZE`), when even this does not fit. Kept here as a
+ * number of our own rather than imported from `@labre/affine-gfx-shape`, so the
+ * reader stays a pure function of a string with no renderer behind it (ADR
+ * 0012, P3).
+ */
+export const LABEL_MIN_FONT_SIZE = 10;
+
+/**
+ * How much of a box a fitted label gives up to its margin, per side.
+ *
+ * A shape's native inset is a FIXED 20 units horizontally
+ * (`SHAPE_TEXT_PADDING`), which is a sixth of this pack's 120-unit task and
+ * therefore invisible on a drawn board — and more than the whole width of a
+ * 36-unit event, which leaves NEGATIVE room for the text and is why an imported
+ * label breaks in the middle of a word. Expressed as a ratio, the margin
+ * follows the artefact down: it is exactly the native inset at the pack's own
+ * task width and it never grows past it, so a drawn node is untouched and a
+ * small one keeps a usable line.
+ */
+export const LABEL_INSET_RATIO = 1 / 6;
+
+/**
  * Default node sizes (model units) per kind.
  *
  * Three sizes carry the whole scale: the 56-unit event, the 120×72 task and the

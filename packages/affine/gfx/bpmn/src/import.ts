@@ -1368,6 +1368,11 @@ export function importBpmnXml(
           : new Bound(0, 0, size.w, size.h)
         ).serialize(),
         text: text || undefined,
+        // The file's own box, which this reader may not rewrite — so the label
+        // is fitted to it rather than painted past it (#184). A shape the file
+        // did not draw is laid out at the pack's own size below, and wants the
+        // pack's own type: no fit, and an element identical to a drawn one.
+        ...(bounds ? { fitLabel: true } : {}),
       }),
       payload,
       order: shape?.index ?? Number.POSITIVE_INFINITY,

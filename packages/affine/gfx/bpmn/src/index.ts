@@ -42,7 +42,12 @@ export {
 // What an artefact is BORN as, shared by the palette and the importer so a task
 // read out of a file and a task drawn by hand are one element in the document —
 // and, since the morph, by the toolbar that says one artefact more precisely.
+// `bpmnLabelFit` rides along with it: a host that materializes artefacts from a
+// geometry of its own — a file, a generator, another editor's board — fits their
+// labels the way the importer does, rather than reinventing the arithmetic.
 export {
+  bpmnLabelFit,
+  type BpmnLabelFit,
   bpmnMorphClears,
   bpmnMorphProps,
   bpmnNodeProps,

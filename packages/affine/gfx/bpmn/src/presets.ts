@@ -1,12 +1,15 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
 import {
   FontFamily,
+  SHAPE_TEXT_PADDING,
+  SHAPE_TEXT_VERTICAL_PADDING,
   ShapeStyle,
   StrokeStyle,
   TextAlign,
   TextFitMode,
   TextVerticalAlign,
 } from '@labre/affine-model';
+import { Bound } from '@labre/global/gfx';
 
 import {
   CALL_ACTIVITY_WIDTH,
@@ -16,8 +19,11 @@ import {
   GROUP_RADIUS,
   GROUP_STROKE,
   INNER_FONT_SIZE,
+  LABEL_INSET_RATIO,
+  LABEL_MIN_FONT_SIZE,
   NEUTRAL_STROKE,
   NODE_FILL,
+  NODE_SIZE,
   NODE_STROKE_WIDTH,
   START_WIDTH,
   TASK_RADIUS,
@@ -181,6 +187,104 @@ export const NODE_PRESETS: Record<BpmnNodeKind, BpmnNodePreset> = {
   },
 };
 
+/* ── Fitting a label to a box the pack did not choose ─────────────────── */
+
+/** The label typography a foreign box asks for. See {@link bpmnLabelFit}. */
+export interface BpmnLabelFit {
+  fontSize: number;
+  /** `[vertical, horizontal]`, as `ShapeElementModel.padding` is written. */
+  padding: [number, number];
+  textFitMode: TextFitMode;
+}
+
+/**
+ * `[w, h]` off a serialized box.
+ *
+ * A `Bound` and not a hand-rolled `split(',')`: the same deserializer the store
+ * reads an element's geometry with, so a box this builder measures and a box
+ * the canvas draws can never be two different rectangles.
+ */
+function boxExtent(xywh: string): [number, number] {
+  const bound = Bound.deserialize(xywh);
+  return [bound.w, bound.h];
+}
+
+/**
+ * How big a box is against the pack's own — and `1`, meaning "the pack's own",
+ * for an extent that says nothing.
+ *
+ * A `dc:Bounds` of zeros, of negatives or of `NaN` (which is what a
+ * non-numeric attribute parses to) reaches an importer on its first afternoon
+ * in the wild. The answer for a box that says nothing is the DRAWN artefact's
+ * type, not a shrunken guess at a size nobody gave — and never `NaN`, which is
+ * not a number the store can hold.
+ */
+const ratioOf = (extent: number, standard: number): number =>
+  Number.isFinite(extent) && extent > 0 ? extent / standard : 1;
+
+/** One side's margin: the ratio of the extent, never more than the native inset. */
+const insetOf = (extent: number, native: number): number =>
+  Number.isFinite(extent) && extent > 0
+    ? Math.round(Math.min(native, extent * LABEL_INSET_RATIO))
+    : native;
+
+/**
+ * The typography a label needs to sit INSIDE a box this pack did not choose —
+ * which in practice means a box an interchange file chose (`import.ts`).
+ *
+ * ## Why an imported label misbehaves and a drawn one does not
+ *
+ * Every value the creation builder writes is calibrated against
+ * {@link NODE_SIZE}: an 18-unit font and the shape's native 20-unit horizontal
+ * inset are comfortable in a 120-unit task, which is what the palette draws.
+ * A file draws to its author's scale, and bpmn.io's normative sizes — the ones
+ * nearly every `.bpmn` in the wild carries — are a 100×80 task and a 36-unit
+ * event. In a 100-unit task the native inset leaves 60 units of line, which is
+ * less than the word "Étudier" is wide at 18 units, so the label breaks in the
+ * middle of a word; in a 36-unit event it leaves NEGATIVE room, and the name
+ * sprawls across the canvas. Both are issue #184, and neither is reachable from
+ * the palette.
+ *
+ * So the three props that decide how a label sits are derived from the box:
+ *
+ *  - **`fontSize`** shrinks with the box, proportionally, and never grows past
+ *    {@link INNER_FONT_SIZE} — a file that draws BIGGER than this pack gets the
+ *    pack's own type, not inflated type — with {@link LABEL_MIN_FONT_SIZE} as
+ *    the floor;
+ *  - **`padding`** becomes {@link LABEL_INSET_RATIO} of the box, capped at the
+ *    shape's native inset, so the margin follows the artefact down instead of
+ *    eating it;
+ *  - **`textFitMode`** becomes `Contained`, which is the honest statement of
+ *    what an imported artefact IS: the file fixed the box — re-exporting a
+ *    different one would rewrite the author's diagram — so the TEXT is what
+ *    yields. The renderer then shrinks the font further, per frame, whenever a
+ *    long name still does not fit.
+ *
+ * Pure arithmetic on two numbers: no measuring, no canvas, no renderer. The
+ * fit does not have to be exact, because `Contained` finishes it at paint time
+ * with the real font metrics; what this has to do is stop asking for type the
+ * box was never going to hold.
+ */
+export function bpmnLabelFit(
+  kind: BpmnNodeKind,
+  w: number,
+  h: number
+): BpmnLabelFit {
+  const size = NODE_SIZE[kind];
+  const scale = Math.min(1, ratioOf(w, size.w), ratioOf(h, size.h));
+  return {
+    fontSize: Math.max(
+      LABEL_MIN_FONT_SIZE,
+      Math.round(INNER_FONT_SIZE * scale)
+    ),
+    padding: [
+      insetOf(h, SHAPE_TEXT_VERTICAL_PADDING),
+      insetOf(w, SHAPE_TEXT_PADDING),
+    ],
+    textFitMode: TextFitMode.Contained,
+  };
+}
+
 /**
  * One BPMN node, as the props `surface.addElement` takes.
  *
@@ -192,12 +296,26 @@ export const NODE_PRESETS: Record<BpmnNodeKind, BpmnNodePreset> = {
  * label the source left empty gets no `text` key at all rather than an empty
  * one, which is what keeps an imported node byte-comparable with a drawn one
  * that was never typed into.
+ *
+ * `fitLabel` says the box is NOT the pack's own — the caller took it from a
+ * file it may not rewrite — so the label is fitted to it
+ * ({@link bpmnLabelFit}). It is asked for explicitly rather than inferred from
+ * the box's size for two reasons: an importer knows whether it read a
+ * `dc:Bounds` and a guess never would, and {@link bpmnMorphProps} calls this
+ * builder with a throwaway box whose numbers must not be allowed to mean
+ * anything.
  */
 export function bpmnNodeProps(
   kind: BpmnNodeKind,
-  box: { xywh: string; text?: string }
+  box: { xywh: string; text?: string; fitLabel?: boolean }
 ): Record<string, unknown> & { type: string } {
   const preset = NODE_PRESETS[kind];
+  // Nothing to fit without a label: an artefact whose name the file left empty
+  // stays byte-identical to a drawn one, which is what `presets.ts` is for.
+  const fit =
+    box.fitLabel && box.text
+      ? bpmnLabelFit(kind, ...boxExtent(box.xywh))
+      : undefined;
   return {
     type: 'bpmnNode',
     kind,
@@ -224,7 +342,7 @@ export function bpmnNodeProps(
     text: box.text,
     color: NEUTRAL_STROKE,
     fontFamily: FontFamily.Inter,
-    fontSize: INNER_FONT_SIZE,
+    fontSize: fit?.fontSize ?? INNER_FONT_SIZE,
     textAlign: preset.textAlign ?? TextAlign.Center,
     // Spread, never a defaulted key: the model's own default is already
     // `Center`, so writing it here would put a new key in the Y.Map of every
@@ -234,8 +352,14 @@ export function bpmnNodeProps(
       ? { textVerticalAlign: preset.textVerticalAlign }
       : {}),
     // BPMN symbols have normative sizes: a long label overflows rather
-    // than deforming the node
-    textFitMode: TextFitMode.Overflow,
+    // than deforming the node. An imported artefact is the one case where that
+    // is not enough — its box is the FILE's and its label is the file's too, so
+    // the text is fitted to the box instead of painted past it (#184).
+    textFitMode: fit?.textFitMode ?? TextFitMode.Overflow,
+    // Spread, never a defaulted key, for the reason `textVerticalAlign` is: a
+    // drawn artefact keeps the shape's own inset and puts nothing of its own in
+    // the Y.Map.
+    ...(fit ? { padding: fit.padding } : {}),
     xywh: box.xywh,
   };
 }
