@@ -3888,9 +3888,9 @@ __metadata:
   linkType: hard
 
 "@preact/signals-core@npm:^1.8.0":
-  version: 1.9.0
-  resolution: "@preact/signals-core@npm:1.9.0"
-  checksum: 10/36cd36634f3fa1672bd1d4e73bab601aa008864f02f9e9abb22b6c52e265db5e8cb98dc0fca06600eeba7d5cc59b225ed8a64ce191f50e029bb75aa812b01993
+  version: 1.14.4
+  resolution: "@preact/signals-core@npm:1.14.4"
+  checksum: 10/11b948fd5c1420100bacbf384cd27fd3e55db093075b370f15b3029ce29921b2f7bd60b31ed19a8a6dbbba6ce2fa27ec2f2de5ef6335635f3c04ac3b753bf39c
   languageName: node
   linkType: hard
 
