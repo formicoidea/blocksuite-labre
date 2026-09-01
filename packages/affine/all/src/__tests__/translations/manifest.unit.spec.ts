@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
 import { describe, expect, test } from 'vitest';
 
 import { getTranslationKeyManifest } from '../../translations.js';
@@ -61,6 +62,14 @@ const TEMPLATE = /`(com\.labre\.[^`$]*)\$\{/g;
  * a list of keys, not a wording, so it is excluded.
  */
 const PAIR = /'(com\.labre\.[^']+)',\s*'(?!com\.labre\.)((?:[^'\\]|\\.)*)'/gs;
+/**
+ * The same pair with a DOUBLE-quoted wording, which is not a style choice: a
+ * sentence containing an apostrophe ("a pool of Labre's own") is written with
+ * double quotes by prettier, and a drift check that only read single quotes
+ * would quietly stop covering exactly the wordings that are hardest to
+ * translate.
+ */
+const PAIR_DQ = /'(com\.labre\.[^']+)',\s*"((?:[^"\\]|\\.)*)"/gs;
 /**
  * The module-const form of the same pair — the repo's `<STEM>_KEY` /
  * `<STEM>_FALLBACK` convention, which is the SCREAMING_CASE of the
@@ -132,6 +141,122 @@ describe('getTranslationKeyManifest', () => {
     });
   });
 
+  /**
+   * The six families of #182 / #183, pinned key by key.
+   *
+   * Two claims per entry, and both matter to a host: the KEY is in the manifest
+   * (so the catalogue's non-drift test picks it up at the next bump), and the
+   * FALLBACK is letter for letter the English the editor used to hard-code (so
+   * registering no `TranslationProvider` changes nothing on screen).
+   */
+  const pinned = (key: string, fallback: string, source = 'chrome') =>
+    expect(byKey.get(key), key).toEqual({ key, fallback, source });
+
+  test('the core toasts crossed the seam (#182)', () => {
+    pinned('com.labre.toast.copied-to-clipboard', 'Copied to clipboard');
+    pinned('com.labre.toast.linked-doc-created', 'Linked doc created');
+    pinned(
+      'com.labre.toast.note-removed-from-page-mode',
+      'Note removed from Page Mode'
+    );
+    pinned(
+      'com.labre.toast.frame-inserted-into-page',
+      'Frame inserted into Page.'
+    );
+    pinned('com.labre.toast.no-link-found', 'No link found');
+  });
+
+  test('the board toolbars and the editor chrome crossed it (#183)', () => {
+    // One tooltip for every framework board, and the two legend wordings.
+    pinned('com.labre.board.toolbar.resize-toggle', 'Enable / lock resizing');
+    pinned(
+      'com.labre.board.toolbar.legend',
+      'Generate the legend (notation present)'
+    );
+    pinned(
+      'com.labre.board.toolbar.legend.components',
+      'Generate the legend (components present)'
+    );
+
+    // The editor's own verbs, shared by every block toolbar that offers them.
+    pinned('com.labre.toolbar.bring-to-front', 'Bring to Front');
+    pinned('com.labre.toolbar.send-to-back', 'Send to Back');
+    pinned('com.labre.toolbar.copy', 'Copy');
+    pinned('com.labre.toolbar.duplicate', 'Duplicate');
+    pinned('com.labre.toolbar.delete', 'Delete');
+    pinned('com.labre.toolbar.lock', 'Lock');
+    pinned('com.labre.toolbar.more', 'More');
+    pinned('com.labre.toolbar.link', 'Link');
+    pinned('com.labre.toolbar.create-linked-doc', 'Create linked doc');
+    pinned('com.labre.toolbar.draw-connector', 'Draw connector');
+    pinned('com.labre.toolbar.switch-view', 'Switch view');
+    pinned('com.labre.toolbar.inline-view', 'Inline view');
+    pinned('com.labre.toolbar.card-view', 'Card view');
+    pinned('com.labre.toolbar.embed-view', 'Embed view');
+
+    // …and what a linked-doc card says when there is nothing to preview.
+    pinned('com.labre.embed.linked-doc.deleted', 'This linked doc is deleted.');
+    pinned(
+      'com.labre.embed.linked-doc.empty-preview',
+      'Preview of the doc will be displayed here.'
+    );
+  });
+
+  test('the BPMN import remarks with a fixed wording carry a key', () => {
+    pinned(
+      'com.labre.bpmn.import.remark.invented-pool',
+      'This file names no participant, so its process was drawn in a pool of ' +
+        "Labre's own. The pool is not the file's: exporting writes the process " +
+        'back without one.'
+    );
+    expect(
+      byKey.get('com.labre.bpmn.import.remark.lane-gap')?.fallback
+    ).toContain('Labre lays its bands end to end');
+    expect(
+      byKey.get('com.labre.bpmn.import.remark.must-understand')?.fallback
+    ).toContain('MUST be understood');
+  });
+
+  test('a framework carries its own catalogue headers (#183)', () => {
+    // BPMN's categories, which core's registry knows nothing about once the
+    // bundler has stripped the framework groups out of it. The fallback is the
+    // panel's own `humanizeCategory`, so a bundled host with no catalogue
+    // reads a word rather than a raw key.
+    for (const [category, header] of [
+      ['events', 'Events'],
+      ['activities', 'Activities'],
+      ['gateways', 'Gateways'],
+      ['flows', 'Flows'],
+      ['swimlanes', 'Swimlanes'],
+      ['data', 'Data'],
+      ['annotations', 'Annotations'],
+      ['interchange', 'Interchange'],
+    ] as const) {
+      pinned(`com.labre.catalogue.category.${category}`, header);
+    }
+    // The composed BUNDLE gets them too — the point of the whole change: they
+    // are in the framework's own contribution, not only in core's walk of
+    // `getCommands()`.
+    const bpmnKeys = new Set(bpmnTranslationEntries.map(entry => entry.key));
+    expect(bpmnKeys.has('com.labre.catalogue.category.events')).toBe(true);
+    expect(bpmnKeys.has('com.labre.catalogue.category.gateways')).toBe(true);
+  });
+
+  test('a placed artefact is seeded through the seam, not from a literal', () => {
+    // Resolved at PLACEMENT: the fallback is the very word the canvas used to
+    // be given, so an English host draws exactly what it drew before.
+    pinned('com.labre.bpmn.seed.task', 'Task', 'seed');
+    pinned('com.labre.bpmn.seed.subProcess', 'Sub-process', 'seed');
+    pinned('com.labre.bpmn.seed.group', 'Group', 'seed');
+    pinned('com.labre.edgy.seed.people', 'People', 'seed');
+    pinned('com.labre.edgy.seed.activity', 'Activity', 'seed');
+    // A kind BPMN deliberately draws with no caption asks for no key.
+    expect(byKey.get('com.labre.bpmn.seed.startEvent')).toBeUndefined();
+    // The C4 board's name reuses the board ROLE's key rather than minting a
+    // second one for the same noun.
+    expect(byKey.get('com.labre.c4.role.board')?.fallback).toBe('C4 diagram');
+  });
+
   test('the manifest and the library source agree, in both directions', () => {
     const files = SCAN_DIRS.flatMap(dir => sourceFiles(join(ROOT, dir)));
     expect(files.length).toBeGreaterThan(100);
@@ -158,6 +283,7 @@ describe('getTranslationKeyManifest', () => {
 
       const pairs = [
         ...[...src.matchAll(PAIR)].map(m => [m[1], m[2]] as const),
+        ...[...src.matchAll(PAIR_DQ)].map(m => [m[1], m[2]] as const),
         ...[...src.matchAll(CONST_PAIR)].map(m => [m[2], m[3]] as const),
       ];
       for (const [key, fallback] of pairs) {

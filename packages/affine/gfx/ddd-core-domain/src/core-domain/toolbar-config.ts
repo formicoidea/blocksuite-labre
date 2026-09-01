@@ -1,6 +1,7 @@
 import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { CoreDomainChartElementModel } from '@labre/affine-model';
 import {
+  BOARD_LEGEND_NOTATION,
   TelemetryProvider,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -14,7 +15,7 @@ const coreDomainToolbarConfig = {
   actions: [
     {
       id: 'a.legend',
-      tooltip: 'Generate the legend (notation present)',
+      tooltipWording: BOARD_LEGEND_NOTATION,
       icon: dddLegendIcon,
       run(ctx) {
         const bg = ctx.getSurfaceModelsByType(CoreDomainChartElementModel)[0];

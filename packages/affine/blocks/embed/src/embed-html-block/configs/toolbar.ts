@@ -2,10 +2,15 @@ import { toast } from '@labre/affine-components/toast';
 import { EmbedHtmlModel } from '@labre/affine-model';
 import {
   ActionPlacement,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
   type ToolbarAction,
   type ToolbarActionGroup,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import {
@@ -112,7 +117,7 @@ const builtinToolbarConfig = {
       actions: [
         {
           id: 'copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedHtmlModel);
@@ -121,13 +126,18 @@ const builtinToolbarConfig = {
             const slice = Slice.fromModels(ctx.store, [model]);
             ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(ctx.host, 'Copied to clipboard'))
+              .then(() =>
+                toast(
+                  ctx.host,
+                  translateKey(ctx.std, ...TOAST_COPIED_TO_CLIPBOARD)
+                )
+              )
               .catch(console.error);
           },
         },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedHtmlModel);
@@ -145,7 +155,7 @@ const builtinToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {

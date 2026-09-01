@@ -292,6 +292,11 @@ export const clipboardGroup: MenuItemGroup<CodeBlockToolbarContext> = {
   items: [
     {
       type: 'duplicate',
+      // NOT a `ToolbarAction`: the code block's "⋮" is a `MenuItemGroup`,
+      // rendered by `renderGroups` over a context that is generic and carries
+      // no `std`, so the wording seam cannot reach it. Left English with the
+      // rest of that menu's vocabulary rather than keying two of its five
+      // entries — see the changeset.
       label: 'Duplicate',
       icon: DuplicateIcon,
       when: ({ doc }) => !doc.readonly,
@@ -327,6 +332,7 @@ export const deleteGroup: MenuItemGroup<CodeBlockToolbarContext> = {
   items: [
     {
       type: 'delete',
+      // See the note on `duplicate` above.
       label: 'Delete',
       icon: DeleteIcon,
       when: ({ doc }) => !doc.readonly,

@@ -5,6 +5,9 @@ import {
   EdgyFacetsElementModel,
 } from '@labre/affine-model';
 import {
+  BOARD_LEGEND_NOTATION,
+  BOARD_RESIZE_TOGGLE,
+  type ChromeWording,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -70,7 +73,7 @@ function booleanToggle<
 >(
   Model: T,
   id: string,
-  tooltip: string,
+  tooltip: string | ChromeWording,
   icon: TemplateResult,
   prop: 'resizeEnabled' | 'showLabels' | 'spotlightEnabled'
 ) {
@@ -78,7 +81,12 @@ function booleanToggle<
     ctx.getSurfaceModelsByType(Model) as unknown as Record<string, boolean>[];
   return {
     id,
-    tooltip,
+    tooltip: typeof tooltip === 'string' ? tooltip : tooltip[1],
+    // The declared wording, when the caller gave one instead of a literal:
+    // `combine` resolves it against the host's catalogue and writes it over
+    // the English default above, so a playground with no catalogue reads
+    // exactly what it read before (#183).
+    tooltipWording: typeof tooltip === 'string' ? undefined : tooltip,
     icon,
     active(ctx: ToolbarContext) {
       const all = models(ctx);
@@ -115,7 +123,7 @@ function legendAction<
 >(Model: T, id: string) {
   return {
     id,
-    tooltip: 'Generate the legend (notation present)',
+    tooltipWording: BOARD_LEGEND_NOTATION,
     icon: dddLegendIcon,
     run(ctx: ToolbarContext) {
       const background = ctx.getSurfaceModelsByType(Model)[0] as unknown as
@@ -142,7 +150,7 @@ export const edgyToolbarConfig = {
     booleanToggle(
       EdgyFacetsElementModel,
       'a.toggle-resize',
-      'Enable / lock resizing',
+      BOARD_RESIZE_TOGGLE,
       ResizeIcon,
       'resizeEnabled'
     ),
@@ -175,7 +183,7 @@ export const edgyBoardToolbarConfig = {
     booleanToggle(
       EdgyBoardElementModel,
       'a.toggle-resize',
-      'Enable / lock resizing',
+      BOARD_RESIZE_TOGGLE,
       ResizeIcon,
       'resizeEnabled'
     ),

@@ -1,5 +1,6 @@
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
@@ -27,6 +28,12 @@ import { CONTEXT_MAP_RULES } from './rules.js';
 export const contextMapTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(contextMapCommands),
+    // The catalogue's own group headers, derived from the very categories
+    // these commands declare. They ship WITH the framework because core's
+    // registry names no framework category in the bundled distribution, so a
+    // host that composed core's manifest alone drew translated entries under
+    // English headers (#183).
+    commandCategoryTranslationEntries(contextMapCommands),
     collectTranslationKeys('role', CONTEXT_MAP_ROLES),
     collectTranslationKeys('background', CONTEXT_MAP_BACKGROUND),
     collectTranslationKeys('rule', CONTEXT_MAP_RULES),

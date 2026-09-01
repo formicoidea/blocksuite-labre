@@ -13,6 +13,10 @@ import {
   YesterdayIcon,
 } from '@blocksuite/icons/lit';
 import { type DeltaInsert, Slice, Text } from '@labre/store';
+import {
+  TOAST_COPIED_TO_CLIPBOARD,
+  translateKey,
+} from '@labre/affine-shared/services';
 
 import { slashMenuToolTips } from './tooltips';
 import type { SlashMenuConfig } from './types';
@@ -122,7 +126,7 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
           std.clipboard
             .copy(slice)
             .then(() => {
-              toast(std.host, 'Copied to clipboard');
+              toast(std.host, translateKey(std, ...TOAST_COPIED_TO_CLIPBOARD));
             })
             .catch(e => {
               console.error(e);

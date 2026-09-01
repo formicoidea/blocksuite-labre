@@ -3,10 +3,12 @@ import { NoteBlockModel, NoteDisplayMode } from '@labre/affine-model';
 import {
   NotificationProvider,
   SidebarExtensionIdentifier,
+  TOAST_NOTE_REMOVED_FROM_PAGE,
   type ToolbarAction,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import {
@@ -303,7 +305,7 @@ function setDisplayMode(
   const data =
     newMode === NoteDisplayMode.EdgelessOnly
       ? {
-          title: 'Note removed from Page Mode',
+          title: translateKey(ctx.std, ...TOAST_NOTE_REMOVED_FROM_PAGE),
           message: 'Content removed from your page.',
         }
       : {

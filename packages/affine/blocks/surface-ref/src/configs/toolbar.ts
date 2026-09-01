@@ -6,7 +6,11 @@ import {
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
   type ToolbarModuleConfig,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { CaptionIcon, CopyIcon, DeleteIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit';
@@ -32,7 +36,7 @@ export const surfaceRefToolbarModuleConfig: ToolbarModuleConfig = {
     },
     {
       id: 'c.copy-surface-ref',
-      label: 'Copy',
+      labelWording: TOOLBAR_COPY,
       icon: CopyIcon(),
       run: ctx => {
         const surfaceRefBlock = ctx.getCurrentBlockByType(
@@ -47,7 +51,10 @@ export const surfaceRefToolbarModuleConfig: ToolbarModuleConfig = {
           .pipe(copySelectedModelsCommand)
           .run();
 
-        toast(surfaceRefBlock.std.host, 'Copied to clipboard');
+        toast(
+          surfaceRefBlock.std.host,
+          translateKey(surfaceRefBlock.std, ...TOAST_COPIED_TO_CLIPBOARD)
+        );
       },
     },
     {
@@ -82,7 +89,7 @@ export const surfaceRefToolbarModuleConfig: ToolbarModuleConfig = {
     },
     {
       id: 'g.surface-ref-deletion',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       placement: ActionPlacement.More,
       variant: 'destructive',

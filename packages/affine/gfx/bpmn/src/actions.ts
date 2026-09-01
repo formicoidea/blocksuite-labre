@@ -32,6 +32,7 @@ import {
   MESSAGE_STROKE,
   MESSAGE_WIDTH,
   NODE_LABEL,
+  nodeLabelKey,
   NODE_SIZE,
   SEQUENCE_STROKE,
   SEQUENCE_WIDTH,
@@ -80,7 +81,13 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
   const id = surface.addElement(
     bpmnNodeProps(kind, {
       xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-      text: NODE_LABEL[kind] || undefined,
+      // Translated HERE and once: the caption is document content the moment
+      // it lands, so the host's catalogue is asked at placement and never
+      // again (`nodeLabelKey`, and #183 on why a French board should not
+      // start in English).
+      text: NODE_LABEL[kind]
+        ? translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
+        : undefined,
     })
   );
   finish(gfx, id);

@@ -35,6 +35,41 @@ import { bpmnNodeProps } from './presets.js';
 import { BPMN_ROLE } from './roles.js';
 
 /**
+ * The remarks whose wording is FIXED, as `[key, English]` pairs.
+ *
+ * A reader is a pure function of text (`docs/adr/0012`, P3) and has no `std`,
+ * so it cannot ask the host's catalogue for anything: it declares the key on
+ * the note and `reportInterchangeImport` resolves it when it draws the report
+ * (`InterchangeNote.messageKey`). The English string stays here and stays the
+ * fallback, so the console table and a playground with no catalogue read
+ * exactly what they read before.
+ *
+ * These three and no others, and the line is not arbitrary: every remaining
+ * remark NAMES something out of the file — `<boundaryEvent>`, an id, a count of
+ * lanes — and the seam has neither interpolation nor pluralisation. A key for
+ * one of those would be a sentence with holes in it that a translator cannot
+ * see the shape of, which is the same refusal the interchange count labels
+ * already make (`interchange-import.ts`).
+ *
+ * They are contributed to the manifest by `./translations.ts`, with the
+ * framework, because they ship in the BPMN bundle rather than in core.
+ */
+export const BPMN_IMPORT_REMARKS = {
+  inventedPool: [
+    'com.labre.bpmn.import.remark.invented-pool',
+    "This file names no participant, so its process was drawn in a pool of Labre's own. The pool is not the file's: exporting writes the process back without one.",
+  ],
+  laneGap: [
+    'com.labre.bpmn.import.remark.lane-gap',
+    'The lanes of this pool are drawn with a gap or an overlap between them. Labre lays its bands end to end, so their heights were kept in proportion and the space between them was closed.',
+  ],
+  mustUnderstand: [
+    'com.labre.bpmn.import.remark.must-understand',
+    'The file declares an extension that it says MUST be understood to read the model correctly. Labre does not understand it: the import went ahead, and this reading of the process may be wrong.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
+/**
  * A BPMN 2.0 interchange document, read as a board — the inverse of `export.ts`
  * on the vocabulary Labre draws, and an honest accounting of everything else
  * (`docs/adr/0012`, D1–D6).
@@ -1034,10 +1069,8 @@ export function importBpmnXml(
       kind: 'invented-layout',
       sourceId,
       element: 'process',
-      message:
-        `This file names no participant, so its process was drawn in a pool of ` +
-        `Labre's own. The pool is not the file's: exporting writes the process ` +
-        `back without one.`,
+      messageKey: BPMN_IMPORT_REMARKS.inventedPool[0],
+      message: BPMN_IMPORT_REMARKS.inventedPool[1],
     });
   }
 
@@ -1180,10 +1213,8 @@ export function importBpmnXml(
           kind: 'invented-layout',
           sourceId: attrOf(laneSet, 'id'),
           element: 'laneSet',
-          message:
-            `The lanes of this pool are drawn with a gap or an overlap between ` +
-            `them. Labre lays its bands end to end, so their heights were kept ` +
-            `in proportion and the space between them was closed.`,
+          messageKey: BPMN_IMPORT_REMARKS.laneGap[0],
+          message: BPMN_IMPORT_REMARKS.laneGap[1],
         });
       }
     }
@@ -1620,10 +1651,8 @@ export function importBpmnXml(
         note({
           kind: 'warning',
           element: 'extension',
-          message:
-            `The file declares an extension that it says MUST be understood to ` +
-            `read the model correctly. Labre does not understand it: the import ` +
-            `went ahead, and this reading of the process may be wrong.`,
+          messageKey: BPMN_IMPORT_REMARKS.mustUnderstand[0],
+          message: BPMN_IMPORT_REMARKS.mustUnderstand[1],
         });
       }
       carryChild(

@@ -9,6 +9,7 @@ import {
   ShapeStyle,
   StrokeStyle,
 } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
@@ -21,6 +22,7 @@ import {
   LABEL_GAP,
   NODE_FILL,
   NODE_LABEL,
+  nodeLabelKey,
   NODE_SIZE,
   NODE_STROKE,
   NODE_STROKE_WIDTH,
@@ -183,7 +185,9 @@ export function createEdgyBox(std: BlockStdScope, kind: EdgyBoxKind) {
     strokeWidth: NODE_STROKE_WIDTH,
     radius: kind === 'outcome' ? OUTCOME_RADIUS : 0,
     vertices: kind === 'activity' ? ACTIVITY_VERTICES : null,
-    text: NODE_LABEL[kind],
+    // Translated HERE and once: what a gesture writes onto the canvas is
+    // document content the moment it lands (`nodeLabelKey`).
+    text: translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind]),
     color: NODE_STROKE,
     fontFamily: FontFamily.Inter,
     fontSize: INNER_FONT_SIZE,
@@ -214,7 +218,7 @@ export function createEdgyPeople(std: BlockStdScope) {
   });
   const labelId = addLabel(
     surface,
-    NODE_LABEL.people,
+    translateKey(std, nodeLabelKey('people'), NODE_LABEL.people),
     cx - 60,
     cy + h / 2 + LABEL_GAP
   );

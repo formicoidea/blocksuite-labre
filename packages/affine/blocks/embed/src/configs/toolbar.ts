@@ -16,11 +16,19 @@ import {
   blockCommentToolbarButton,
   EmbedOptionProvider,
   type LinkEventType,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_EMBED_VIEW,
+  TOOLBAR_INLINE_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
@@ -98,7 +106,7 @@ function createBuiltinToolbarConfigForExternal(
         actions: [
           {
             id: 'inline',
-            label: 'Inline view',
+            labelWording: TOOLBAR_INLINE_VIEW,
             run(ctx) {
               const model = ctx.getCurrentModel();
               if (!model || !isExternalEmbedModel(model)) return;
@@ -131,7 +139,7 @@ function createBuiltinToolbarConfigForExternal(
           },
           {
             id: 'card',
-            label: 'Card view',
+            labelWording: TOOLBAR_CARD_VIEW,
             disabled(ctx) {
               const model = ctx.getCurrentModel();
               if (!model || !isExternalEmbedModel(model)) return true;
@@ -191,7 +199,7 @@ function createBuiltinToolbarConfigForExternal(
           },
           {
             id: 'embed',
-            label: 'Embed view',
+            labelWording: TOOLBAR_EMBED_VIEW,
             disabled(ctx) {
               const model = ctx.getCurrentModel();
               if (!model || !isExternalEmbedModel(model)) return false;
@@ -268,7 +276,10 @@ function createBuiltinToolbarConfigForExternal(
               ?.viewType ?? 'card';
           const actions = this.actions.map(action => ({ ...action }));
           const viewType$ = signal(
-            `${viewType === 'card' ? 'Card' : 'Embed'} view`
+            translateKey(
+              ctx.std,
+              ...(viewType === 'card' ? TOOLBAR_CARD_VIEW : TOOLBAR_EMBED_VIEW)
+            )
           );
           const onToggle = createOnToggleFn(
             ctx,
@@ -359,7 +370,7 @@ function createBuiltinToolbarConfigForExternal(
         actions: [
           {
             id: 'copy',
-            label: 'Copy',
+            labelWording: TOOLBAR_COPY,
             icon: CopyIcon(),
             run(ctx) {
               const model = ctx.getCurrentBlockByType(klass)?.model;
@@ -368,13 +379,18 @@ function createBuiltinToolbarConfigForExternal(
               const slice = Slice.fromModels(ctx.store, [model]);
               ctx.clipboard
                 .copySlice(slice)
-                .then(() => toast(ctx.host, 'Copied to clipboard'))
+                .then(() =>
+                  toast(
+                    ctx.host,
+                    translateKey(ctx.std, ...TOAST_COPIED_TO_CLIPBOARD)
+                  )
+                )
                 .catch(console.error);
             },
           },
           {
             id: 'duplicate',
-            label: 'Duplicate',
+            labelWording: TOOLBAR_DUPLICATE,
             icon: DuplicateIcon(),
             run(ctx) {
               const model = ctx.getCurrentBlockByType(klass)?.model;
@@ -402,7 +418,7 @@ function createBuiltinToolbarConfigForExternal(
       {
         placement: ActionPlacement.More,
         id: 'c.delete',
-        label: 'Delete',
+        labelWording: TOOLBAR_DELETE,
         icon: DeleteIcon(),
         variant: 'destructive',
         run(ctx) {
@@ -435,7 +451,7 @@ const createBuiltinSurfaceToolbarConfigForExternal = (
         actions: [
           {
             id: 'card',
-            label: 'Card view',
+            labelWording: TOOLBAR_CARD_VIEW,
             run(ctx) {
               const model = ctx.getCurrentBlockByType(klass)?.model;
               if (!model || !isExternalEmbedModel(model)) return;
@@ -480,7 +496,7 @@ const createBuiltinSurfaceToolbarConfigForExternal = (
           },
           {
             id: 'embed',
-            label: 'Embed view',
+            labelWording: TOOLBAR_EMBED_VIEW,
             disabled: true,
           },
         ],

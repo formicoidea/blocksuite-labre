@@ -22,6 +22,8 @@ import {
   DocModeProvider,
   FileSizeLimitProvider,
   TelemetryProvider,
+  TOAST_COPIED_TO_CLIPBOARD,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { formatSize, openSingleFileWith } from '@labre/affine-shared/utils';
 import {
@@ -107,7 +109,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
   copy = () => {
     const slice = Slice.fromModels(this.store, [this.model]);
     this.std.clipboard.copySlice(slice).catch(console.error);
-    toast(this.host, 'Copied to clipboard');
+    toast(this.host, translateKey(this.std, ...TOAST_COPIED_TO_CLIPBOARD));
   };
 
   download = () => {

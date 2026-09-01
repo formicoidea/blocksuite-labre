@@ -45,6 +45,11 @@ import type {
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { tableViewMeta } from '@labre/data-view/view-presets';
 import {
@@ -305,9 +310,9 @@ export const builtinToolbarConfig = {
       actions: [
         {
           id: 'copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
-          run({ chain, host }) {
+          run({ chain, host, std }) {
             const [ok] = chain
               .pipe(getSelectedModelsCommand)
               .pipe(draftSelectedModelsCommand)
@@ -316,12 +321,12 @@ export const builtinToolbarConfig = {
 
             if (!ok) return;
 
-            toast(host, 'Copied to clipboard');
+            toast(host, translateKey(std, ...TOAST_COPIED_TO_CLIPBOARD));
           },
         },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run({ chain, store, selection }) {
             store.captureSync();
@@ -366,7 +371,7 @@ export const builtinToolbarConfig = {
       actions: [
         {
           id: 'delete',
-          label: 'Delete',
+          labelWording: TOOLBAR_DELETE,
           icon: DeleteIcon(),
           variant: 'destructive',
           run({ chain }) {

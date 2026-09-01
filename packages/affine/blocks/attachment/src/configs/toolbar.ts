@@ -11,8 +11,14 @@ import {
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_EMBED_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
@@ -49,7 +55,7 @@ export const attachmentViewDropdownMenu = {
   actions: [
     {
       id: 'card',
-      label: 'Card view',
+      labelWording: TOOLBAR_CARD_VIEW,
       run(ctx) {
         const model = ctx.getCurrentModelByType(AttachmentBlockModel);
         if (!model) return;
@@ -70,7 +76,7 @@ export const attachmentViewDropdownMenu = {
     },
     {
       id: 'embed',
-      label: 'Embed view',
+      labelWording: TOOLBAR_EMBED_VIEW,
       disabled: ctx => {
         const block = ctx.getCurrentBlockByType(AttachmentBlockComponent);
         return block ? !block.embedded() : true;
@@ -128,7 +134,9 @@ export const attachmentViewDropdownMenu = {
     const viewType$ = computed(() => {
       const [cardAction, embedAction] = actions.value;
       const embed = model.props.embed$.value ?? false;
-      return embed ? embedAction.label : cardAction.label;
+      // Through the seam, like the entries themselves: the dropdown compares
+      // this word with the label of each entry to mark the current one.
+      return toolbarActionLabel(ctx.std, embed ? embedAction : cardAction);
     });
     const onToggle = (e: CustomEvent<boolean>) => {
       e.stopPropagation();
@@ -251,7 +259,7 @@ const builtinToolbarConfig = {
       actions: [
         {
           id: 'copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
           run(ctx) {
             // TODO(@fundon): unify `clone` method
@@ -261,7 +269,7 @@ const builtinToolbarConfig = {
         },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(AttachmentBlockModel);
@@ -297,7 +305,7 @@ const builtinToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {

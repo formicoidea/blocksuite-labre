@@ -1,7 +1,16 @@
 import type { AnyCommandDescriptor } from '@labre/std';
 
-/** The i18n key prefix every catalogue group header is looked up under. */
-export const CATALOGUE_CATEGORY_KEY_PREFIX = 'com.labre.catalogue.category.';
+/**
+ * The header key prefix and the header fallback, re-exported from `@labre/std`
+ * where they are declared.
+ *
+ * They moved there so a FRAMEWORK can derive its own catalogue-header keys for
+ * the translation manifest without depending on this widget (#183): in the
+ * bundled distribution core's command registry names no framework category, so
+ * every framework has to contribute its own. Re-exported rather than moved
+ * away, because the panel below is still the thing that renders them.
+ */
+export { CATALOGUE_CATEGORY_KEY_PREFIX, humanizeCategory } from '@labre/std';
 
 /**
  * One section of the catalogue: a category and the commands declaring it.
@@ -55,31 +64,4 @@ export function groupCommandsByCategory(
   if (uncategorised.length)
     groups.push({ category: null, commands: uncategorised });
   return groups;
-}
-
-/**
- * The English default for a category header, derived from the category id.
- *
- * `'backgrounds'` → `'Backgrounds'`, `'value-flow'` → `'Value flow'`,
- * `'boundedContext'` → `'Bounded context'`. Sentence case, not title case: a
- * header is a phrase, and capitalising every word turns `'change arrows'` into
- * a product name.
- *
- * It is a FALLBACK and nothing more. A host with a catalogue answers
- * `com.labre.catalogue.category.<id>` and this is never seen; a standalone
- * playground reads a word instead of a raw key. The library still invents no
- * framework prose — a category id is the framework's own word, only respelled.
- */
-export function humanizeCategory(category: string): string {
-  const words = category
-    // camelCase and PascalCase boundaries, before the separators are split on:
-    // `'boundedContext'` has no separator to find otherwise.
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map(word => word.toLowerCase());
-
-  if (!words.length) return category;
-  const [first, ...rest] = words;
-  return [first.charAt(0).toUpperCase() + first.slice(1), ...rest].join(' ');
 }

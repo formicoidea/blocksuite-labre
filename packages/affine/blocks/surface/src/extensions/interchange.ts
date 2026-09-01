@@ -102,6 +102,23 @@ export interface InterchangeNote {
   element?: string;
   /** One line, in the user's words: what happened and what it costs them. */
   message: string;
+  /**
+   * The i18n key {@link message} is the English default of — set only when the
+   * remark is a FIXED sentence.
+   *
+   * A reader is a pure function of text (`docs/adr/0012`, P3): it has no `std`,
+   * so it cannot reach the host's catalogue and hands the key over instead, and
+   * `reportInterchangeImport` resolves it when it draws the report. That is the
+   * whole of the seam here, and it deliberately covers only the remarks that
+   * say the same thing every time.
+   *
+   * A remark that NAMES something out of the file — an element, an id, a count
+   * of lanes — carries no key and stays English. The seam has no interpolation
+   * and no pluralisation (both are the host's), so the alternative would be to
+   * invent a grammar for sentences with holes in them, which is exactly what
+   * the three interchange count labels already refuse to do.
+   */
+  messageKey?: string;
 }
 
 /**

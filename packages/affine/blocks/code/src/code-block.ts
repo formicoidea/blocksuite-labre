@@ -10,6 +10,8 @@ import {
   DocModeProvider,
   EditorSettingProvider,
   NotificationProvider,
+  TOAST_COPIED_TO_CLIPBOARD,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getViewportElement } from '@labre/affine-shared/utils';
 import { IS_MAC, IS_MOBILE } from '@labre/global/env';
@@ -431,7 +433,9 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
     this.std.clipboard
       .copySlice(slice)
       .then(() => {
-        this.notificationService?.toast('Copied to clipboard');
+        this.notificationService?.toast(
+          translateKey(this.std, ...TOAST_COPIED_TO_CLIPBOARD)
+        );
       })
       .catch(e => {
         this.notificationService?.toast('Copied failed, something went wrong');
