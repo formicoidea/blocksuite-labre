@@ -21,7 +21,15 @@ export type EdgyFacetsProps = BaseElementProps & {
    * margins only exist for the facet name labels — pointless when hidden).
    */
   cropToCircles?: boolean;
-  /** When false the diagram stops granting the hover spotlight. */
+  /**
+   * INERT since #195 — kept for backward compatibility only.
+   *
+   * The hover spotlight is board logic: it is granted by the EDGY board
+   * (`edgyBoard`), never by this drawing, so nothing reads this field on a
+   * facets Venn any more. It stays declared because documents written before
+   * the change carry it, and an undeclared property would not survive a load
+   * (see the schema red zone in `CLAUDE.md`). Do not read it, do not remove it.
+   */
   spotlightEnabled?: boolean;
 
   // ── Editable labels (double-click on the canvas to edit) ──────────────
@@ -88,6 +96,7 @@ export class EdgyFacetsElementModel extends GfxPrimitiveElementModel<EdgyFacetsP
   @field(false)
   accessor cropToCircles: boolean = false;
 
+  /** Inert — see {@link EdgyFacetsProps.spotlightEnabled} (#195). */
   @field(true)
   accessor spotlightEnabled: boolean = true;
 

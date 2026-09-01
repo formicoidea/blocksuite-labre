@@ -1,5 +1,6 @@
 import type { ConnectorElementModel } from '@labre/affine-model';
 import { createIdentifier } from '@labre/global/di';
+import type { Bound } from '@labre/global/gfx';
 import type { GfxModel } from '@labre/std/gfx';
 import {
   GfxPrimitiveElementModel,
@@ -60,6 +61,39 @@ export function spotlightSet(
     if (connector.target?.id) keep.add(connector.target.id);
   }
   return keep;
+}
+
+/** The shape {@link findSpotlightHost} needs of a candidate host. */
+export type SpotlightHostCandidate = {
+  type: string;
+  elementBound: Bound;
+  spotlightEnabled?: boolean;
+};
+
+/**
+ * The host that grants `target` the spotlight, or `null` when none does.
+ *
+ * A host qualifies when its type was REGISTERED as a spotlight host
+ * (`SpotlightHostExtension`), when it did not opt out (`spotlightEnabled:
+ * false`, its toolbar toggle) and when its bounds contain the target. A
+ * background whose type is not registered grants nothing, whatever fields it
+ * carries — that is how the EDGY facets Venn stopped spotlighting (#195).
+ *
+ * Pure — exported for unit tests.
+ */
+export function findSpotlightHost<T extends SpotlightHostCandidate>(
+  target: { elementBound: Bound },
+  elements: readonly T[],
+  hostTypes: readonly string[]
+): T | null {
+  return (
+    elements.find(
+      el =>
+        hostTypes.includes(el.type) &&
+        el.spotlightEnabled !== false &&
+        el.elementBound.contains(target.elementBound)
+    ) ?? null
+  );
 }
 
 /** Delay before a new spotlight is applied / cleared, so brushing across
@@ -148,12 +182,7 @@ export class SpotlightManager extends InteractivityExtension {
     // The behavior is granted by a host whose bounds contain the target —
     // unless that host opted out (`spotlightEnabled: false`, toolbar toggle).
     const host = target
-      ? surface.elementModels.find(
-          el =>
-            hostTypes.includes(el.type) &&
-            (el as { spotlightEnabled?: boolean }).spotlightEnabled !== false &&
-            el.elementBound.contains(target.elementBound)
-        )
+      ? findSpotlightHost(target, surface.elementModels, hostTypes)
       : null;
 
     if (!target || !host) {
