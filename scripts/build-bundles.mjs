@@ -471,12 +471,57 @@ function sharedBundleDeps(pkg) {
   return out;
 }
 
+/**
+ * A framework that contributes commands must ship the DATA-ONLY projection of
+ * them beside the real thing (`docs/adr/0008` § Packaging).
+ *
+ * The point of the subpath is what it does NOT pull: a `CommandDescriptor`
+ * holds its `run`, so importing the main entry to read a list of names and
+ * chords drags the whole action graph — the import/export machinery, the
+ * surface and gfx deep paths, megabytes of it — into the chunk of a settings
+ * pane that renders static rows. `./commands-manifest` is the same six fields
+ * with no function in sight, so it costs a few hundred bytes and nothing else.
+ *
+ * Enforced here rather than trusted: the file must exist and must carry no
+ * runtime import, exactly as `frameworks.ts` must (see {@link importDataModule}).
+ * A `commands-manifest.ts` that reached for `./commands` would compile and pass
+ * every test while silently restoring the ~2.9 MB it exists to avoid.
+ */
+const COMMANDS_MANIFEST = 'commands-manifest.ts';
+
+function assertDataOnlyManifest(src, label) {
+  const fileAbs = path.join(src, COMMANDS_MANIFEST);
+  if (!fs.existsSync(fileAbs)) {
+    throw new Error(
+      `${label} contributes commands but has no src/${COMMANDS_MANIFEST} — ` +
+        `the bundle's ./commands-manifest subpath would export nothing`
+    );
+  }
+  // Asked of the TYPE-STRIPPED code, not of the source text: a line-wise regex
+  // cannot tell `import type {\n …\n} from './x'` from `import {\n …\n} from
+  // './x'`, and the second is precisely the mistake worth catching. After the
+  // strip, a type-only import is gone and anything left is a runtime one.
+  const { code } = esbuild.transformSync(fs.readFileSync(fileAbs, 'utf8'), {
+    loader: 'ts',
+    format: 'esm',
+  });
+  const runtimeImport = code.match(/(?:from|import)\s*\(?\s*['"][^'"]+['"]/);
+  if (runtimeImport) {
+    throw new Error(
+      `${label}/src/${COMMANDS_MANIFEST} must stay data-only (type-only ` +
+        `imports), else the subpath drags the action graph it exists to ` +
+        `avoid — offending import: ${runtimeImport[0]}`
+    );
+  }
+}
+
 function buildFramework(fw, reverseMap) {
   const out = path.join(OUT_DIR, fw.out);
   const src = path.join(out, 'src');
   fs.rmSync(out, { recursive: true, force: true });
   copySrc(path.join(PKGS_DIR, fw.dir, 'src'), src);
   rewriteBundleImports(src, fw.pkg, reverseMap, fw.out);
+  if (fw.shortcuts) assertDataOnlyManifest(src, fw.out);
 
   // descriptor.ts — host wiring. A single flag-gated extension keeps the
   // original { flag, …, viewExtension } shape; multi-extension frameworks (an
@@ -541,6 +586,11 @@ function buildFramework(fw, reverseMap) {
           '.': './src/index.ts',
           './view': './src/view.ts',
           './descriptor': './src/descriptor.ts',
+          // Data-only, like `./descriptor`: rows for Settings › Shortcuts with
+          // no `run` behind them. Only for a framework that HAS commands.
+          ...(fw.shortcuts
+            ? { './commands-manifest': `./src/${COMMANDS_MANIFEST}` }
+            : {}),
         },
         files: ['src'],
         dependencies: {

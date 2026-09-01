@@ -295,6 +295,126 @@ function compile({ dir, pkg }, paths) {
   console.log(`  ✓ ${pkg.name} → dist (${rewritten} specifiers made explicit)`);
 }
 
+/**
+ * The `_pkgs/*` leak (issue #60) — a TYPE-resolution problem, not a runtime one.
+ *
+ * Core vendors the ~70 workspace packages under `dist/_pkgs/<pkg>/…` and
+ * re-exports them through one-line shims (`./global/utils` → `_pkgs/global/utils`).
+ * The shims are what a consumer imports, and `explicitifySpecifiers` above keeps
+ * the JS honest. But when tsc EMITS a dependent bundle's `.d.ts` it has to name
+ * the module a type came from, and it names it by reverse-mapping the tsconfig
+ * `paths` entry below (`<core>/*` → `<core>/dist/*`). The declaration file for
+ * `Constructor` physically lives at `dist/_pkgs/global/utils.d.ts`, so tsc
+ * writes `@formicoidea/labre-core/_pkgs/global/utils` — a subpath the published
+ * `exports` map does not carry. Consumers only miss it because `skipLibCheck`
+ * hides it; turn that off and every such reference is an unresolved module.
+ *
+ * Two fixes were on the table: rewrite the specifiers to the public shim
+ * subpath, or publish the subpaths tsc actually named. This takes the SECOND,
+ * because the first is not total: a `_pkgs` reference is only rewritable when a
+ * public shim happens to re-export that exact module, and nothing guarantees
+ * one exists for every internal declaration tsc chooses to name — the day it
+ * does not, the rewrite has no target and either throws at release time or
+ * silently leaves the broken specifier it was meant to remove. Publishing the
+ * subpath always has a target: the file is right there.
+ *
+ * The leak is bounded by DERIVING the list instead of guessing it: only the
+ * `_pkgs` subpaths the emitted files genuinely reference are added, so the map
+ * grows and shrinks with the emit and never exposes an internal nobody asked
+ * for. And the pass ends by re-checking every reference against the map it just
+ * wrote, so an unresolvable one fails the release rather than the consumer.
+ */
+function internalSubpathRefs(bundles, coreName) {
+  const prefix = `${coreName}/_pkgs/`;
+  /** subpath (`_pkgs/global/utils`) → the files that name it. */
+  const refs = new Map();
+  for (const b of bundles) {
+    for (const abs of listFiles(path.join(b.dir, 'dist'))) {
+      if (!abs.endsWith('.js') && !abs.endsWith('.d.ts')) continue;
+      const src = fs.readFileSync(abs, 'utf8');
+      for (const [, , , spec, offset] of [...src.matchAll(SPEC_RE)].map(m => [
+        ...m,
+        m.index,
+      ])) {
+        if (!spec.startsWith(prefix) || inComment(src, offset)) continue;
+        // Verbatim: the exports key has to match the specifier as WRITTEN,
+        // extension and all (Node compares subpaths literally).
+        const sub = spec.slice(coreName.length + 1);
+        if (!refs.has(sub)) refs.set(sub, []);
+        refs
+          .get(sub)
+          .push(`${b.pkg.name}: ${toPosix(path.relative(b.dir, abs))}`);
+      }
+    }
+  }
+  return refs;
+}
+
+/**
+ * The `dist/` file behind an internal subpath, per condition. A specifier tsc
+ * synthesized is extensionless (`_pkgs/global/utils`) and may name either a
+ * sibling file or a directory index; one that came through
+ * {@link explicitifySpecifiers} already carries `.js`.
+ */
+function distTarget(coreDir, sub, ext) {
+  const stem = sub.replace(/\.js$/, '');
+  for (const candidate of [`${stem}${ext}`, `${stem}/index${ext}`]) {
+    if (fs.existsSync(path.join(coreDir, 'dist', candidate))) {
+      return `./dist/${candidate}`;
+    }
+  }
+  return null;
+}
+
+function exposeInternalTypeSubpaths(core, others) {
+  const refs = internalSubpathRefs([core, ...others], core.pkg.name);
+  if (!refs.size) {
+    console.log(`${core.pkg.name}: no internal _pkgs subpath referenced`);
+    return;
+  }
+  const added = {};
+  const unresolvable = [];
+  for (const sub of [...refs.keys()].sort()) {
+    const types = distTarget(core.dir, sub, '.d.ts');
+    const js = distTarget(core.dir, sub, '.js');
+    if (!types && !js) {
+      unresolvable.push(`${sub} (named by ${refs.get(sub)[0]})`);
+      continue;
+    }
+    added[`./${sub}`] = {
+      ...(types ? { types } : {}),
+      ...(js ? { import: js } : {}),
+    };
+  }
+  if (unresolvable.length) {
+    throw new Error(
+      `${core.pkg.name}: ${unresolvable.length} internal subpath(s) referenced ` +
+        `by the emit resolve to no file:\n  ${unresolvable.join('\n  ')}`
+    );
+  }
+  core.pkg.exports = { ...core.pkg.exports, ...added };
+  // The audit the whole pass exists for: after the map is written, EVERY
+  // `_pkgs` specifier the emit names must resolve through it. A consumer with
+  // `skipLibCheck: false` sees exactly what this check sees.
+  const unexported = [...refs.keys()].filter(
+    sub => !core.pkg.exports[`./${sub}`]
+  );
+  if (unexported.length) {
+    throw new Error(
+      `${core.pkg.name}: ${unexported.length} internal subpath(s) still absent ` +
+        `from the exports map:\n  ${unexported.join('\n  ')}`
+    );
+  }
+  fs.writeFileSync(
+    path.join(core.dir, 'package.json'),
+    JSON.stringify(core.pkg, null, 2) + '\n'
+  );
+  console.log(
+    `  ✓ ${core.pkg.name} exposes ${Object.keys(added).length} internal ` +
+      `subpath(s) the emitted .d.ts name`
+  );
+}
+
 for (const b of ordered) {
   const paths = {};
   for (const d of bundleDeps(b)) {
@@ -305,5 +425,12 @@ for (const b of ordered) {
   }
   compile(b, Object.keys(paths).length ? paths : undefined);
 }
+
+const core = bundles.find(b => b.pkg.name.endsWith('/labre-core'));
+if (!core) throw new Error('no core bundle in dist-bundles/');
+exposeInternalTypeSubpaths(
+  core,
+  bundles.filter(b => b !== core)
+);
 
 console.log(`compiled ${bundles.length} bundles → dist`);

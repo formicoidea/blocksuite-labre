@@ -503,6 +503,41 @@ than the older flat `{ flag, telemetry, viewExtension }`. `telemetry` becomes
 `telemetryKey` per the decision above. This ADR's implementation lands after
 #70 and adopts its shape; it does not reopen it.
 
+### A bundle publishes its commands twice, and the second copy is data
+
+A framework bundle's MAIN entry exports its `CommandDescriptor[]`, and a
+descriptor holds its `run`. So the entry transitively pulls the framework's
+whole action graph — the import/export machinery, the surface, gfx, model and
+shared deep paths of core — and no tree-shaker can prune it, because every
+reference is genuine. That is the right cost for an editor assembling the
+registry, and the wrong one for a host settings pane listing names and chords:
+issue #181 measured eight action graphs (~2.9 MB of dist) behind ~100 static
+rows.
+
+So each framework bundle ALSO publishes `./commands-manifest`, on the model of
+`./descriptor`: the same commands projected by `toShortcutManifestEntry` onto
+the six fields a shortcuts panel reads — `id`, `owner`, `labelKey`,
+`labelFallback`, `scope`, `defaultKeys` — in a **data-only module**, the same
+discipline `frameworks.ts` keeps and for the same reason. Type-only imports,
+no `run`, no `params`, so the module references nothing and costs a few hundred
+bytes.
+
+Two guards keep the second copy honest, because a second copy is a copy:
+
+- `scripts/build-bundles.mjs` refuses to build a framework whose
+  `src/commands-manifest.ts` is missing or carries a runtime import — one
+  `from './commands.js'` would compile, pass, and silently restore everything
+  the subpath exists to avoid;
+- `commands-manifest.unit.spec.ts` pins every manifest row-for-row against
+  `toShortcutManifestEntry` over the real commands, so adding a command names
+  exactly what to write.
+
+`ShortcutManifestEntry` is declared in `@labre/std` beside that projection —
+not in `packages/affine/all/src/shortcuts.ts` — because core's rows and a
+framework bundle's rows are concatenated host-side and must be one type.
+`labelFallback` is part of it: the projection used to drop it, which left a
+host with no catalogue rendering raw i18n keys.
+
 ### Reserving the prefix letter
 
 The registry cannot detect a collision it cannot see, so it must be told about
