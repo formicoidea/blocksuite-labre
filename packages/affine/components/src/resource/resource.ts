@@ -130,7 +130,9 @@ export class ResourceController implements Disposable {
     this.state$.value = { ...this.state$.value, ...state };
   }
 
-  subscribe() {
+  // The explicit return type keeps declaration emit off signals-core's
+  // `DisposeFn`, whose `[Symbol.dispose]` member tsc cannot serialize.
+  subscribe(): () => void {
     return effect(() => {
       const blobId = this.blobId$.value;
       if (!blobId) return;
