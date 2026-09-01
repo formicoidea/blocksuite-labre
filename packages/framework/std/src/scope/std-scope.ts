@@ -13,6 +13,7 @@ import { DndController } from '../extension/dnd/index.js';
 import { EditorLifeCycleExtension } from '../extension/editor-life-cycle.js';
 import { ServiceManager } from '../extension/service-manager.js';
 import { GfxController } from '../gfx/controller.js';
+import { ElementHighlightManager } from '../gfx/highlight.js';
 import { GridManager, LayerManager } from '../gfx/index.js';
 import { GfxSelectionManager } from '../gfx/selection.js';
 import { SurfaceMiddlewareExtension } from '../gfx/surface-middleware.js';
@@ -40,6 +41,7 @@ const internalExtensions = [
   Clipboard,
   GfxController,
   GfxSelectionManager,
+  ElementHighlightManager,
   GridManager,
   LayerManager,
   SurfaceMiddlewareExtension,
