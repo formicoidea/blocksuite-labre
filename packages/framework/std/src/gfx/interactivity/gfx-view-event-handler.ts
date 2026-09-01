@@ -68,8 +68,24 @@ export class GfxViewEventManager {
         filter: ['canvas', 'local'],
       })
       .reduce((pre, model) => {
+        const view = this.gfx.view.get(model) as GfxElementModelView | null;
+
+        if (!view) return pre;
+
+        // The VIEW's hit test, not the model's.
+        //
+        // `GfxElementModelView.includesPoint` delegates to the model by
+        // default, so for every view that does not override it this is the
+        // same answer as before. It is the seam a framework needs when the
+        // area that SELECTS an element and the area that its own gestures
+        // answer on are not the same rectangle: a framework background is
+        // picked by its border alone (issue #194), yet its editable labels
+        // must keep receiving the double-click that renames them, and a BPMN
+        // pool's lane separators must keep receiving the drag that moves them.
+        // Those zones are drawn by the framework's view, so that is where they
+        // are declared — the model layer stays free of geometry it cannot see.
         if (
-          model.includesPoint(
+          view.includesPoint(
             x,
             y,
             {
@@ -82,9 +98,7 @@ export class GfxViewEventManager {
             ? model.externalBound?.isPointInBound([x, y])
             : false)
         ) {
-          const view = this.gfx.view.get(model) as GfxElementModelView | null;
-
-          view && pre.push(view);
+          pre.push(view);
         }
 
         return pre;
