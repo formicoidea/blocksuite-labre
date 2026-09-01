@@ -1,5 +1,25 @@
 # @labre/affine-block-list
 
+## 0.34.0
+
+### Patch Changes
+
+- Updated dependencies [881d3f5]
+- Updated dependencies [6c1bdfb]
+- Updated dependencies [8b00f7d]
+- Updated dependencies [5f76ab3]
+- Updated dependencies [f09d68c]
+  - @labre/std@0.34.0
+  - @labre/affine-shared@0.34.0
+  - @labre/affine-components@0.34.0
+  - @labre/affine-gfx-turbo-renderer@0.34.0
+  - @labre/affine-inline-preset@0.34.0
+  - @labre/affine-model@0.34.0
+  - @labre/affine-rich-text@0.34.0
+  - @labre/affine-ext-loader@0.34.0
+  - @labre/global@0.34.0
+  - @labre/store@0.34.0
+
 ## 0.33.0
 
 ### Patch Changes

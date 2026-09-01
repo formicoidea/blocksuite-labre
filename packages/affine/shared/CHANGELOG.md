@@ -1,5 +1,91 @@
 # @labre/affine-shared
 
+## 0.34.0
+
+### Patch Changes
+
+- 6c1bdfb: fix(edgeless): a read-only mount no longer overwrites the saved session viewport
+
+  `edgeless-root-block._initViewport` saves the current viewport on unmount, under
+  a key shared by every mount of the same doc (`blocksuite:<docId>:edgelessViewport`).
+  A host embedding the same doc read-only — a mini map, a frame preview in a
+  conversation bubble — therefore taught the full editor to reopen framed like the
+  preview, and, now that such previews can pan, framed arbitrarily.
+
+  The save goes through a new `EditPropsStore.saveViewport`, which skips the write
+  when `store.readonly` is true: a read-only mount is a preview, not an editing
+  session, and has no business writing the shared session state. Readonly is read
+  at save time, so a session that turns read-only before unmounting stops writing
+  too. Deliberate hand-offs that still go through `setStorage('viewport', …)`
+  (surface-ref, frame panel) are unchanged.
+
+- 8b00f7d: fix(blocks): core toasts, board tooltips, catalogue headers and seed texts cross the translation seam
+
+  A host that wires `TranslationExtension` now gets a catalogue that covers the
+  editor, instead of one that covers everything except the parts a user actually
+  reads first. Six families of hard-coded English are gone (refs #182, #183);
+  every one of them is a `com.labre.*` key with the previous literal as its
+  English fallback, so an editor with no `TranslationProvider` registered reads
+  exactly what it read before.
+
+  - **Toasts** — "Copied to clipboard", "Linked doc created", "Note removed from
+    Page Mode", "Frame inserted into Page.", "No link found".
+  - **Board toolbars** — the resize toggle every framework board carries, and the
+    two legend wordings, declared once in `@labre/affine-shared` rather than
+    eight times.
+  - **Editor chrome** — the toolbar verbs (Copy, Duplicate, Delete, Lock, Link,
+    More, Bring to Front, Send to Back, Create linked doc, Draw connector), the
+    view switcher (Switch / Inline / Card / Embed view) and the linked-doc card's
+    four "nothing to show" sentences. `ToolbarAction` gained `labelWording` /
+    `tooltipWording`: a declared `[key, English]` pair the toolbar resolves when
+    it builds the row, which keeps a call site one line and keeps the row's width
+    planning honest about what it is about to say.
+  - **Catalogue headers** — every framework now contributes its own
+    `com.labre.catalogue.category.*` keys. Core's registry names no framework
+    category once `build:bundles` has stripped it, so a bundled host was drawing
+    translated entries under English headers.
+  - **BPMN import remarks** — the three whose wording is a fixed sentence carry a
+    key (`InterchangeNote.messageKey`). The ones that name an element, an id or a
+    count of lanes do not: the seam has no interpolation.
+  - **Seed texts** — the caption a placed BPMN or EDGY artefact is given, and a
+    C4 board's name, are resolved AT PLACEMENT. What lands in the document is
+    content the author owns from that moment on and is never re-translated.
+
+  `getTranslationKeyManifest()` gains all of it, including a new `'seed'` source
+  for the words a framework writes onto the canvas.
+
+  Three surfaces are deliberately left English, and each one is a refusal rather
+  than an oversight. The **C4 component tier seeds** (`NODE_LABEL`,
+  `C4_TYPE_PLACEHOLDER`, `DESCRIPTION_PLACEHOLDER`) are read back as SENTINELS by
+  the morph and by the mermaid exporter, which is a pure function of the board
+  and has no `std` to re-resolve them with — translating them would change what
+  an export writes. The **code block's "⋮"** is a `MenuItemGroup` rendered over a
+  generic context that carries no `std`. The **slash menu** and the **mobile
+  keyboard toolbar** item names are their own vocabularies, untouched apart from
+  the toasts they raise.
+
+- f09d68c: fix(blocks): contextual toolbar buttons repaint in place under @preact/signals-core 1.14
+
+  Clicking a stateful button in the element toolbar (resize, sketch/strict
+  validation modes, profile picker) wrote the new state to the document but left
+  the button showing the old one — the toolbar only caught up after
+  deselecting and reselecting the element.
+
+  `Flags.refresh()` forced a repaint by toggling a flag off and back on inside a
+  `batch()`. Since `@preact/signals-core` 1.14 a batch that ends on its initial
+  value no longer notifies subscribers, so every `refresh()` call became a silent
+  no-op. `Flags` now carries a revision counter that `refresh()` increments, and
+  the toolbar widget subscribes to it alongside the flag value, so a forced
+  refresh repaints without ever exposing a transient "no selection" frame.
+
+- Updated dependencies [881d3f5]
+- Updated dependencies [8b00f7d]
+- Updated dependencies [5f76ab3]
+  - @labre/std@0.34.0
+  - @labre/affine-model@0.34.0
+  - @labre/global@0.34.0
+  - @labre/store@0.34.0
+
 ## 0.33.0
 
 ### Patch Changes

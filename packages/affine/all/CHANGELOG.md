@@ -1,5 +1,196 @@
 # @labre/affine
 
+## 0.34.0
+
+### Minor Changes
+
+- 881d3f5: feat(blocks): every framework bundle publishes a data-only ./commands-manifest subpath, and bundle .d.ts stop leaking \_pkgs internals
+
+  ## `./commands-manifest` (#181)
+
+  A host settings pane that lists the framework commands — id, label, chord,
+  scope, owner — had one published route to them: the bundle's MAIN entry. A
+  `CommandDescriptor` carries its `run`, so that entry pulls the framework's whole
+  action graph behind it: the import/export machinery (Wardley's `import.js` alone
+  is 47 KB), the surface, gfx, model and shared deep paths of core. Nothing can be
+  tree-shaken away, because every descriptor genuinely references its handler. The
+  pane's chunk was carrying eight action graphs to draw about a hundred static
+  rows.
+
+  Each framework bundle now also publishes `./commands-manifest`, modelled on the
+  existing `./descriptor`: the same commands projected to the six fields a
+  shortcuts panel needs — `id`, `owner`, `labelKey`, `labelFallback`, `scope`,
+  `defaultKeys` — with no `run`, no `params`, and type-only imports, so the module
+  references nothing at all. It is a few hundred bytes per framework instead of
+  megabytes.
+
+  The projection is `toShortcutManifestEntry`, new in `@labre/std` beside the two
+  projections that were already there. `scripts/build-bundles.mjs` refuses to
+  build a framework whose manifest module reaches for a runtime import, and a unit
+  test pins every manifest row-for-row against the commands it projects, so the
+  second copy cannot drift from the first.
+
+  ## `labelFallback` survives the projection (#181)
+
+  `getShortcutManifest`'s row type kept `labelKey` but dropped `labelFallback`,
+  which left a host with no translation catalogue rendering raw i18n keys — and
+  forced every host to re-project from the main entry to recover a wording the
+  library already knew. `ShortcutManifestEntry` now carries it, and it is declared
+  once, in `@labre/std`, so core's rows and a framework bundle's rows are the same
+  type: a host concatenates them. `owner` also narrows from `string` to
+  `CommandOwner`, and the never-populated `when?: string` is gone.
+
+  ## `_pkgs/*` in the emitted declarations (#60)
+
+  The published `.d.ts` named internal core subpaths — `_pkgs/global/utils`,
+  `_pkgs/global/di`, `_pkgs/affine-widget-edgeless-toolbar` — that core's
+  `exports` map did not carry. tsc synthesises them when emitting a dependent
+  bundle's declarations, by reverse-mapping the tsconfig `paths` entry onto the
+  file a type physically lives in. Only `skipLibCheck: true` hid it; a consumer
+  that type-checks the bundle declarations got unresolved-module errors.
+
+  `scripts/compile-bundles.mjs` now scans the finished emit for those references
+  and publishes exactly the subpaths it finds, then re-checks every reference
+  against the map it wrote. Rewriting the specifiers to a public shim was the
+  alternative and was not taken: a rewrite only has a target when a public shim
+  happens to re-export that exact module, and nothing guarantees one exists for
+  every internal declaration tsc may name. Publishing the subpath always has a
+  target, and deriving the list from the emit keeps the exposure to what the
+  declarations genuinely need.
+
+### Patch Changes
+
+- 8b00f7d: fix(blocks): core toasts, board tooltips, catalogue headers and seed texts cross the translation seam
+
+  A host that wires `TranslationExtension` now gets a catalogue that covers the
+  editor, instead of one that covers everything except the parts a user actually
+  reads first. Six families of hard-coded English are gone (refs #182, #183);
+  every one of them is a `com.labre.*` key with the previous literal as its
+  English fallback, so an editor with no `TranslationProvider` registered reads
+  exactly what it read before.
+
+  - **Toasts** — "Copied to clipboard", "Linked doc created", "Note removed from
+    Page Mode", "Frame inserted into Page.", "No link found".
+  - **Board toolbars** — the resize toggle every framework board carries, and the
+    two legend wordings, declared once in `@labre/affine-shared` rather than
+    eight times.
+  - **Editor chrome** — the toolbar verbs (Copy, Duplicate, Delete, Lock, Link,
+    More, Bring to Front, Send to Back, Create linked doc, Draw connector), the
+    view switcher (Switch / Inline / Card / Embed view) and the linked-doc card's
+    four "nothing to show" sentences. `ToolbarAction` gained `labelWording` /
+    `tooltipWording`: a declared `[key, English]` pair the toolbar resolves when
+    it builds the row, which keeps a call site one line and keeps the row's width
+    planning honest about what it is about to say.
+  - **Catalogue headers** — every framework now contributes its own
+    `com.labre.catalogue.category.*` keys. Core's registry names no framework
+    category once `build:bundles` has stripped it, so a bundled host was drawing
+    translated entries under English headers.
+  - **BPMN import remarks** — the three whose wording is a fixed sentence carry a
+    key (`InterchangeNote.messageKey`). The ones that name an element, an id or a
+    count of lanes do not: the seam has no interpolation.
+  - **Seed texts** — the caption a placed BPMN or EDGY artefact is given, and a
+    C4 board's name, are resolved AT PLACEMENT. What lands in the document is
+    content the author owns from that moment on and is never re-translated.
+
+  `getTranslationKeyManifest()` gains all of it, including a new `'seed'` source
+  for the words a framework writes onto the canvas.
+
+  Three surfaces are deliberately left English, and each one is a refusal rather
+  than an oversight. The **C4 component tier seeds** (`NODE_LABEL`,
+  `C4_TYPE_PLACEHOLDER`, `DESCRIPTION_PLACEHOLDER`) are read back as SENTINELS by
+  the morph and by the mermaid exporter, which is a pure function of the board
+  and has no `std` to re-resolve them with — translating them would change what
+  an export writes. The **code block's "⋮"** is a `MenuItemGroup` rendered over a
+  generic context that carries no `std`. The **slash menu** and the **mobile
+  keyboard toolbar** item names are their own vocabularies, untouched apart from
+  the toasts they raise.
+
+- Updated dependencies [881d3f5]
+- Updated dependencies [6c1bdfb]
+- Updated dependencies [8b00f7d]
+- Updated dependencies [6551c82]
+- Updated dependencies [5f76ab3]
+- Updated dependencies [f09d68c]
+  - @labre/std@0.34.0
+  - @labre/affine-gfx-wardley@0.34.0
+  - @labre/affine-gfx-edgy@0.34.0
+  - @labre/affine-gfx-cynefin-estuarine@0.34.0
+  - @labre/affine-gfx-bpmn@0.34.0
+  - @labre/affine-gfx-c4@0.34.0
+  - @labre/affine-gfx-ddd-event-storming@0.34.0
+  - @labre/affine-gfx-ddd-core-domain@0.34.0
+  - @labre/affine-gfx-ddd-context-map@0.34.0
+  - @labre/affine-shared@0.34.0
+  - @labre/affine-block-root@0.34.0
+  - @labre/affine-block-surface@0.34.0
+  - @labre/affine-block-attachment@0.34.0
+  - @labre/affine-block-bookmark@0.34.0
+  - @labre/affine-block-code@0.34.0
+  - @labre/affine-block-database@0.34.0
+  - @labre/affine-block-embed@0.34.0
+  - @labre/affine-block-embed-doc@0.34.0
+  - @labre/affine-block-frame@0.34.0
+  - @labre/affine-block-image@0.34.0
+  - @labre/affine-block-note@0.34.0
+  - @labre/affine-block-surface-ref@0.34.0
+  - @labre/affine-components@0.34.0
+  - @labre/affine-inline-link@0.34.0
+  - @labre/affine-inline-reference@0.34.0
+  - @labre/affine-widget-toolbar@0.34.0
+  - @labre/affine-widget-edgeless-toolbar@0.34.0
+  - @labre/affine-widget-slash-menu@0.34.0
+  - @labre/affine-widget-keyboard-toolbar@0.34.0
+  - @labre/affine-block-callout@0.34.0
+  - @labre/affine-block-data-view@0.34.0
+  - @labre/affine-block-divider@0.34.0
+  - @labre/affine-block-edgeless-text@0.34.0
+  - @labre/affine-block-latex@0.34.0
+  - @labre/affine-block-list@0.34.0
+  - @labre/affine-block-paragraph@0.34.0
+  - @labre/affine-block-table@0.34.0
+  - @labre/data-view@0.34.0
+  - @labre/affine-foundation@0.34.0
+  - @labre/affine-fragment-adapter-panel@0.34.0
+  - @labre/affine-fragment-doc-title@0.34.0
+  - @labre/affine-fragment-frame-panel@0.34.0
+  - @labre/affine-fragment-outline@0.34.0
+  - @labre/affine-gfx-brush@0.34.0
+  - @labre/affine-gfx-connector@0.34.0
+  - @labre/affine-gfx-ddd-aggregate@0.34.0
+  - @labre/affine-gfx-ddd-shared@0.34.0
+  - @labre/affine-gfx-group@0.34.0
+  - @labre/affine-gfx-link@0.34.0
+  - @labre/affine-gfx-mindmap@0.34.0
+  - @labre/affine-gfx-note@0.34.0
+  - @labre/affine-gfx-pointer@0.34.0
+  - @labre/affine-gfx-shape@0.34.0
+  - @labre/affine-gfx-template@0.34.0
+  - @labre/affine-gfx-text@0.34.0
+  - @labre/affine-gfx-turbo-renderer@0.34.0
+  - @labre/affine-inline-comment@0.34.0
+  - @labre/affine-inline-footnote@0.34.0
+  - @labre/affine-inline-latex@0.34.0
+  - @labre/affine-inline-mention@0.34.0
+  - @labre/affine-inline-preset@0.34.0
+  - @labre/affine-model@0.34.0
+  - @labre/affine-rich-text@0.34.0
+  - @labre/affine-widget-drag-handle@0.34.0
+  - @labre/affine-widget-edgeless-auto-connect@0.34.0
+  - @labre/affine-widget-edgeless-dragging-area@0.34.0
+  - @labre/affine-widget-edgeless-selected-rect@0.34.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.34.0
+  - @labre/affine-widget-frame-title@0.34.0
+  - @labre/affine-widget-linked-doc@0.34.0
+  - @labre/affine-widget-note-slicer@0.34.0
+  - @labre/affine-widget-page-dragging-area@0.34.0
+  - @labre/affine-widget-remote-selection@0.34.0
+  - @labre/affine-widget-scroll-anchoring@0.34.0
+  - @labre/affine-widget-viewport-overlay@0.34.0
+  - @labre/affine-ext-loader@0.34.0
+  - @labre/global@0.34.0
+  - @labre/store@0.34.0
+  - @labre/sync@0.34.0
+
 ## 0.33.0
 
 ### Minor Changes
