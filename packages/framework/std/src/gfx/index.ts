@@ -16,6 +16,12 @@ export { GfxController } from './controller.js';
 export type { CursorType, StandardCursor } from './cursor.js';
 export { GfxExtension, GfxExtensionIdentifier } from './extension.js';
 export { GridManager } from './grid.js';
+export {
+  DEFAULT_HIGHLIGHT_DURATION,
+  DEFAULT_HIGHLIGHT_PADDING,
+  ElementHighlightManager,
+  type HighlightElementsOptions,
+} from './highlight.js';
 export { GfxControllerIdentifier } from './identifiers.js';
 export type {
   BoxSelectionContext,
