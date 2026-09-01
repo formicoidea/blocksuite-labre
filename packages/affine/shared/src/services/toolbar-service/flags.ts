@@ -17,6 +17,24 @@ export enum Flag {
 export class Flags {
   value$ = signal(Flag.None);
 
+  /**
+   * Bumped on every {@link Flags.refresh} call.
+   *
+   * `refresh` intentionally leaves `value$` unchanged, so it cannot be used as
+   * a repaint channel on its own: since `@preact/signals-core` 1.14 a `batch`
+   * that ends on its initial value notifies nobody. Subscribers that must
+   * re-run on a forced refresh have to read this revision counter as well.
+   */
+  #revision$ = signal(0);
+
+  get revision() {
+    return this.#revision$.peek();
+  }
+
+  get revision$() {
+    return this.#revision$;
+  }
+
   get value() {
     return this.value$.peek();
   }
@@ -37,10 +55,17 @@ export class Flags {
     return (flag & value) !== Flag.None;
   }
 
+  /**
+   * Forces subscribers to re-run while keeping `flag` activated.
+   *
+   * The revision bump is what actually notifies; the batch keeps both writes
+   * in a single notification so the toolbar never sees a transient
+   * {@link Flag.None} frame.
+   */
   refresh(flag: Flag) {
     batch(() => {
-      this.toggle(flag, false);
       this.toggle(flag, true);
+      this.#revision$.value++;
     });
   }
 
