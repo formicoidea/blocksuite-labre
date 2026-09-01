@@ -660,6 +660,9 @@ export class AffineToolbarWidget extends WidgetComponent {
     disposables.add(
       effect(() => {
         const value = flags.value$.value;
+        // Subscribes to forced refreshes: `flags.refresh()` keeps `value$`
+        // untouched, the revision counter is the only thing that changes.
+        void flags.revision$.value;
 
         // Hides toolbar
         if (Flag.None === value || flags.check(Flag.Hiding, value)) {
@@ -702,6 +705,8 @@ export class AffineToolbarWidget extends WidgetComponent {
         }
 
         const value = flags.value$.value;
+        // Subscribes to forced refreshes, see above.
+        void flags.revision$.value;
 
         if (!context.activated) return;
         if (Flag.None === value || flags.contains(Flag.Hiding, value)) return;

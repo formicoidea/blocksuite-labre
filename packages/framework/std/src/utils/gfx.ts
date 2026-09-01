@@ -3,10 +3,12 @@ import { effect } from '@preact/signals-core';
 
 import { SurfaceBlockModel } from '../gfx/model/surface/surface-model.js';
 
+// The explicit return type keeps declaration emit off signals-core's
+// `DisposeFn`, whose `[Symbol.dispose]` member tsc cannot serialize.
 export function onSurfaceAdded(
   doc: Store,
   callback: (model: SurfaceBlockModel | null) => void
-) {
+): () => void {
   let found = false;
   let foundId = '';
 
