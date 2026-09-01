@@ -314,7 +314,7 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.34.0",
+  "version": "0.34.1",
   "devDependencies": {
     "@vanilla-extract/vite-plugin": "5.1.4",
     "happy-dom": "^17.4.4",

@@ -1,5 +1,20 @@
 # @labre/affine-widget-frame-title
 
+## 0.34.1
+
+### Patch Changes
+
+- Updated dependencies [6120f7a]
+- Updated dependencies [cb49bb1]
+  - @labre/affine-model@0.34.1
+  - @labre/std@0.34.1
+  - @labre/affine-block-surface@0.34.1
+  - @labre/affine-components@0.34.1
+  - @labre/affine-rich-text@0.34.1
+  - @labre/affine-shared@0.34.1
+  - @labre/affine-ext-loader@0.34.1
+  - @labre/global@0.34.1
+
 ## 0.34.0
 
 ### Patch Changes

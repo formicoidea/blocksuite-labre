@@ -1,5 +1,72 @@
 # @labre/affine-model
 
+## 0.34.1
+
+### Patch Changes
+
+- 6120f7a: fix(edgeless): a framework background is picked by its border, not its whole area
+
+  Framework backgrounds and boards hit-tested their entire rectangle, so they
+  competed with their own content for every click. A board created after the
+  shapes it covers sits above them in the paint order and swallowed 100% of the
+  clicks on those shapes; one sitting below filled every gap the content left —
+  the interior of an unfilled shape, the space beside a small node — which is
+  where the "one time in two" came from. Eleven element types were affected: the
+  BPMN pool, both C4 frames, the event-storming board, the core domain chart, the
+  Wardley background and the context-map board (subclasses of the
+  framework-background primitive), plus the EDGY board, the EDGY facets diagram,
+  Cynefin and Estuarine (standalone implementations of the same geometry).
+
+  A background is now selected by a band along its border, ten screen pixels wide
+  and adjusted for the zoom like every shape's stroke, with two carve-outs:
+
+  - a **BPMN pool** keeps its title bands clickable — the participant strip on the
+    left and the lane strip beside it — which is the bpmn.io convention and the
+    only part of a pool that is the pool rather than the process drawn on it;
+  - **editable label zones** (Wardley axis titles, EDGY facet names, C4 board and
+    boundary names) still receive the double-click that renames them, and a BPMN
+    pool's lane separators still receive the drag that moves them. Pointer events
+    now reach a view through the VIEW's `includesPoint` rather than the model's —
+    it delegates to the model by default, so nothing else changes — which is what
+    lets a framework declare its own gesture zones beside the code that draws
+    them.
+
+  The lasso (`containsBound` / `intersectsBound`) is untouched, and a selected
+  background is still dragged from anywhere inside it: the drag path asks about
+  the element's visible extent (`ignoreTransparent: false`), which the interior
+  still answers, exactly as an unfilled shape does.
+
+- cb49bb1: fix(edgeless): the edgy venn stops hosting the spotlight — board logic lives on
+  the edgy board
+
+  The EDGY "Enterprise Design Facets" Venn (`edgy`) was registered as a
+  spotlight host alongside the EDGY board (`edgyBoard`), so any element laid
+  inside its circles got the hover spotlight: hovering one faded everything else
+  on the diagram. That is board logic on a drawing. The Venn frames a notation;
+  it does not host a dependency reading.
+
+  `SpotlightHostExtension('edgy')` is gone and the "Enable / disable hover
+  spotlight" toggle has left the Venn's contextual toolbar. The board keeps both,
+  unchanged. The Venn keeps its appearance toggles — labels, pictos, crop,
+  resize — plus its legend, which moves from `d.legend` to `c.legend` now that
+  the row is one shorter.
+
+  `spotlightEnabled` STAYS on `EdgyFacetsElementModel`: documents written before
+  this change carry the property and must stay loadable. It is simply inert —
+  nothing reads it on a Venn any more.
+
+  The host lookup `SpotlightManager` runs on every pointermove is now the
+  exported pure `findSpotlightHost(target, elements, hostTypes)`, so the rule a
+  Venn grants nothing and a board grants is pinned by a unit test rather than by
+  a DI registration read by eye.
+
+  Refs #195
+
+- Updated dependencies [6120f7a]
+  - @labre/std@0.34.1
+  - @labre/global@0.34.1
+  - @labre/store@0.34.1
+
 ## 0.34.0
 
 ### Patch Changes
