@@ -213,6 +213,21 @@ export class EditPropsStore extends LifeCycleWatcher {
     this.innerProps$.value = OptionalPropsSchema.parse(nextProps);
   }
 
+  /**
+   * Remember the edgeless viewport of the current editing session, so the next
+   * mount of this doc reopens where the user left it.
+   *
+   * The storage key is shared by every mount of the same doc, so a read-only
+   * mount — an embedded preview, a mini map — must not overwrite what the full
+   * editor remembered: a preview is not an editing session. Readonly is read
+   * here, at save time (the edgeless root block saves on unmount), so a
+   * session that turns read-only before unmounting stops writing too.
+   */
+  saveViewport(viewport: StorageProps['viewport']) {
+    if (this.std.store.readonly) return;
+    this.setStorage('viewport', viewport);
+  }
+
   setStorage<T extends StoragePropsKey>(key: T, value: StorageProps[T]) {
     const oldValue = this.getStorage(key);
     this._getStorage(key).setItem(

@@ -320,7 +320,9 @@ export class EdgelessRootBlockComponent extends BlockComponent<
     run();
 
     this._disposables.add(() => {
-      std.get(EditPropsStore).setStorage('viewport', {
+      // `saveViewport` skips read-only mounts: a preview of this doc (an
+      // embedded mini map) must not overwrite the viewport of the full editor.
+      std.get(EditPropsStore).saveViewport({
         centerX: gfx.viewport.centerX,
         centerY: gfx.viewport.centerY,
         zoom: gfx.viewport.zoom,
