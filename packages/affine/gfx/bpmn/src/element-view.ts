@@ -1,6 +1,7 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnPoolElementModel } from '@labre/affine-model';
-import type { PointerEventState } from '@labre/std';
+import type { EditorHost, PointerEventState } from '@labre/std';
+import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
 import { bpmnLanesOf, renameBpmnLane } from './actions.js';
@@ -137,6 +138,38 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
 
   private get _editable(): boolean {
     return !this.gfx.std.store.readonly && !this.model.isLocked();
+  }
+
+  /**
+   * A pool is SELECTED by its border and its painted title bands
+   * (`BpmnPoolElementModel.includesPoint`) — but two of this view's gestures
+   * live elsewhere on it and must still receive their pointer events:
+   *
+   * - the internal LANE SEPARATORS, twelve-unit strips in the middle of the
+   *   flow area, which arm the drag that moves them;
+   * - the zoom-GROWN rename targets, which reach past the painted bands when
+   *   the board is small on screen so a fingertip can still land on one.
+   *
+   * Neither is a selection zone — a click in the flow area still goes to
+   * whatever the user dropped there, because picking asks the MODEL. This
+   * override only decides where the pool's own gestures are heard, which is why
+   * it is declared here, beside the code that draws and handles them, rather
+   * than in `affine-model` where none of this geometry is reachable.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options: PointTestOptions,
+    host: EditorHost
+  ): boolean {
+    if (super.includesPoint(x, y, options, host)) return true;
+
+    // Element-local by subtraction, like every other box in this view — see the
+    // rotation reserve in the class comment.
+    const [ex, ey] = this.model.deserializedXYWH;
+    const local: [number, number] = [x - ex, y - ey];
+
+    return this._boundaryAt(local) !== null || this._targetAt(local) !== null;
   }
 
   /* ── Hover: what this point would do ───────────────────────────────── */

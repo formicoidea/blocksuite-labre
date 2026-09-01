@@ -1,7 +1,8 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import type { EdgyFacetsElementModel } from '@labre/affine-model';
 import { rotatePoint } from '@labre/global/gfx';
-import type { PointerEventState } from '@labre/std';
+import type { EditorHost, PointerEventState } from '@labre/std';
+import type { PointTestOptions } from '@labre/std/gfx';
 import {
   GfxElementModelView,
   GfxViewInteractionExtension,
@@ -30,13 +31,11 @@ export class EdgyView extends GfxElementModelView<EdgyFacetsElementModel> {
     super.onDestroyed();
   }
 
-  /** Double-click on a label → edit its text in place. */
-  private _onDblClick(e: PointerEventState): void {
-    if (this.model.isLocked()) return;
+  /** The editable facet label under a MODEL-space point, or null. */
+  private _labelAt(mx: number, my: number) {
     // No labels shown → nothing to edit (and the cropped mapping differs).
-    if (!this.model.showLabels) return;
+    if (!this.model.showLabels) return null;
 
-    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
     const [bx, by, w, h] = this.model.deserializedXYWH;
 
     // Convert the model-space point into element-local coordinates, undoing the
@@ -59,7 +58,34 @@ export class EdgyView extends GfxElementModelView<EdgyFacetsElementModel> {
     const rx = (lx - ox) / s;
     const ry = (ly - oy) / s;
 
-    const hit = hitTestEdgyLabel(getEdgyLabelHits(this.model), rx, ry);
+    return hitTestEdgyLabel(getEdgyLabelHits(this.model), rx, ry);
+  }
+
+  /**
+   * The diagram is SELECTED by its border (`EdgyFacetsElementModel`), but its
+   * three facet labels must still receive the double-click that renames them.
+   *
+   * Same seam Wardley uses, for the same reason: the pointer router asks the
+   * VIEW, so a framework declares its own gesture zones next to the code that
+   * draws them, and the model layer keeps a hit test that only says what a
+   * click SELECTS.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options: PointTestOptions,
+    host: EditorHost
+  ): boolean {
+    if (super.includesPoint(x, y, options, host)) return true;
+    return this._labelAt(x, y) !== null;
+  }
+
+  /** Double-click on a label → edit its text in place. */
+  private _onDblClick(e: PointerEventState): void {
+    if (this.model.isLocked()) return;
+
+    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+    const hit = this._labelAt(mx, my);
     if (!hit) return;
 
     this._openLabelEditor(hit.field, e);

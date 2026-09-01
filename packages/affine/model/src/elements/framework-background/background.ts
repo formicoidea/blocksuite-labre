@@ -3,11 +3,12 @@ import {
   Bound,
   getPointsFromBoundWithRotation,
   linePolygonIntersects,
-  pointInPolygon,
   polygonNearestPoint,
 } from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
+import type { BaseElementProps, PointTestOptions } from '@labre/std/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
+
+import { backgroundIncludesPoint } from './hit-test.js';
 
 /**
  * The props every framework background carries, whatever it draws.
@@ -65,8 +66,16 @@ export abstract class FrameworkBackgroundElementModel<
     ) as IVec;
   }
 
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
+  /**
+   * Picked by its BORDER band, not by its whole area — see
+   * {@link backgroundIncludesPoint} for the why and for what a caller asking
+   * about the visible extent (`ignoreTransparent: false`) still gets.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    return backgroundIncludesPoint(this, x, y, options);
   }
 }

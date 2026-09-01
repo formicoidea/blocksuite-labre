@@ -1,8 +1,37 @@
 import type { SerializedXYWH } from '@labre/global/gfx';
+import { rotatePoint } from '@labre/global/gfx';
+import type { PointTestOptions } from '@labre/std/gfx';
 import { field } from '@labre/std/gfx';
 
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
+
+/**
+ * Width of the participant band — the left margin strip the pool name is
+ * written up, in model units.
+ *
+ * Declared HERE, in the model, and re-exported by `@labre/affine-gfx-bpmn`
+ * rather than the other way round. The pool's own hit test needs it (a pool is
+ * clickable by its title bands as well as its border, the bpmn.io convention),
+ * and `affine-model` cannot reach into `affine-block-surface` where the
+ * declaration is resolved. One number, owned by the layer that both the
+ * declaration and the hit test can read.
+ */
+export const POOL_BAND_WIDTH = 28;
+
+/**
+ * Width of a lane's own title band — the strip immediately inside the
+ * participant band, with the lane name turned on its side.
+ *
+ * Four units narrower than {@link POOL_BAND_WIDTH}, and for the same reason the
+ * lane font is two points smaller: the two strips sit side by side, so the
+ * subordinate one has to say so. Identical widths read as a single 56-unit
+ * gutter rather than as a participant containing lanes, which is exactly the
+ * relationship the picture has to carry.
+ *
+ * NO fill, divider only — what bpmn.io, Camunda and Visio all draw.
+ */
+export const POOL_LANE_BAND_WIDTH = 24;
 
 /**
  * One LANE (couloir) of a pool: a horizontal band the participant's own work is
@@ -101,4 +130,81 @@ export class BpmnPoolElementModel extends FrameworkBackgroundElementModel<BpmnPo
    */
   @field()
   accessor lanes: BpmnLane[] | undefined = undefined;
+
+  /**
+   * A pool is picked by its BORDER — and by its TITLE BANDS, which is the one
+   * carve-out the recette kept (issue #194).
+   *
+   * That is the bpmn.io convention, and it is the convention because the bands
+   * are the only part of a pool that is the pool rather than the process drawn
+   * on it: the participant strip on the left carries the participant's name,
+   * the lane strip beside it carries the lane names, and nothing is ever
+   * dropped on either. The flow area is where the work goes, so a click there
+   * belongs to whatever is under the pointer.
+   *
+   * ## Where the geometry comes from
+   *
+   * The two strips run the FULL height of the pool: the participant band is the
+   * whole left margin, and the lane bands partition that same height between
+   * them with no gap — so their union is one vertical strip
+   * `POOL_LANE_BAND_WIDTH` wide, whatever the lanes' individual weights are.
+   * Which means this test needs no lane arithmetic at all, only the two widths
+   * (declared above, and read from here by the framework declaration) and the
+   * answer to "does this pool have a usable lane".
+   *
+   * The zoom-grown rename targets — the touch-sized boxes a double-click aims
+   * at — are the VIEW's business and stay in `pool-hit.ts`; what is painted is
+   * what is selectable, which is the promise this test has to keep.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    if (super.includesPoint(x, y, options)) return true;
+
+    const [ex, ey, w, h] = this.deserializedXYWH;
+
+    // Element-local coordinates, undoing the element rotation about its centre
+    // — the bands are axis-aligned inside the pool, not on the canvas.
+    let lx = x - ex;
+    let ly = y - ey;
+    const rotate = this.rotate ?? 0;
+    if (rotate) {
+      const [ux, uy] = rotatePoint([x, y], [ex + w / 2, ey + h / 2], -rotate);
+      lx = ux - ex;
+      ly = uy - ey;
+    }
+
+    if (ly < 0 || ly > h || lx < 0) return false;
+
+    // Clamped to a pool narrower than its own margin — the degenerate case the
+    // renderer clamps too.
+    const band = Math.min(POOL_BAND_WIDTH, w);
+    const lanes = this.hasUsableLane
+      ? Math.min(POOL_LANE_BAND_WIDTH, w - band)
+      : 0;
+    return lx <= band + Math.max(lanes, 0);
+  }
+
+  /**
+   * Whether at least one lane is drawn — the only thing the hit test needs to
+   * know about the partition.
+   *
+   * Mirrors what `backgroundInstanceZones` keeps (a string id, a finite size
+   * greater than zero): a malformed row is dropped there and paints no band, so
+   * it must not make a band clickable here either.
+   */
+  private get hasUsableLane(): boolean {
+    const lanes = this.lanes;
+    if (!Array.isArray(lanes)) return false;
+    return lanes.some(
+      lane =>
+        typeof lane?.id === 'string' &&
+        lane.id !== '' &&
+        typeof lane.size === 'number' &&
+        Number.isFinite(lane.size) &&
+        lane.size > 0
+    );
+  }
 }

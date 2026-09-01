@@ -210,8 +210,20 @@ describe('a Wardley map written before the primitive', () => {
 
     // A passive canvas: an arrow connects nodes, never the map under them.
     expect(background.connectable).toBe(false);
-    expect(background.includesPoint(800, 450)).toBe(true);
-    expect(background.includesPoint(-10, 450)).toBe(false);
+    // Picked by its BORDER band, not by its area (issue #194): the middle of a
+    // legacy map belongs to whatever the user drew on it, exactly as it does on
+    // a map created today. The band is ~10 screen pixels wide, so a point 5
+    // units off the left edge is on it and one 40 units in is not.
+    expect(background.includesPoint(5, 450)).toBe(true);
+    expect(background.includesPoint(800, 450)).toBe(false);
+    expect(background.includesPoint(-10, 450)).toBe(true);
+    expect(background.includesPoint(-40, 450)).toBe(false);
+    // The interior still answers for the DRAG path, which asks about the
+    // visible extent rather than about what a click would pick — so a selected
+    // legacy map is still moved by pressing anywhere inside it.
+    expect(
+      background.includesPoint(800, 450, { ignoreTransparent: false })
+    ).toBe(true);
     expect(background.getNearestPoint([-40, 450])).toEqual([0, 450]);
   });
 

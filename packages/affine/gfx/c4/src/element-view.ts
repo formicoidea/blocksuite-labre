@@ -10,7 +10,8 @@ import type {
 } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
 import { rotatePoint } from '@labre/global/gfx';
-import type { PointerEventState } from '@labre/std';
+import type { EditorHost, PointerEventState } from '@labre/std';
+import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background';
@@ -55,10 +56,8 @@ abstract class C4FrameView<
     super.onDestroyed();
   }
 
-  private _onDblClick(e: PointerEventState): void {
-    if (this.gfx.std.store.readonly || this.model.isLocked()) return;
-
-    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+  /** The editable name label under a MODEL-space point, or null. */
+  private _labelAt(mx: number, my: number) {
     const [bx, by, w, h] = this.model.deserializedXYWH;
 
     // Element-local coordinates, undoing the element rotation about its centre.
@@ -83,7 +82,35 @@ abstract class C4FrameView<
       lx,
       ly
     );
-    if (!hit || hit.prop !== 'name') return;
+    return hit && hit.prop === 'name' ? hit : null;
+  }
+
+  /**
+   * A frame is SELECTED by its border (`FrameworkBackgroundElementModel`, issue
+   * #194) — but the name written on its card must still receive the
+   * double-click that renames it.
+   *
+   * Same seam Wardley and EDGY use: the pointer router asks the VIEW, picking
+   * asks the MODEL, and a framework declares its own gesture zones beside the
+   * code that draws them. Without this the name becomes unrenameable; without
+   * the model change the card swallows every click meant for the nodes on it.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options: PointTestOptions,
+    host: EditorHost
+  ): boolean {
+    if (super.includesPoint(x, y, options, host)) return true;
+    return this._labelAt(x, y) !== null;
+  }
+
+  private _onDblClick(e: PointerEventState): void {
+    if (this.gfx.std.store.readonly || this.model.isLocked()) return;
+
+    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+    const hit = this._labelAt(mx, my);
+    if (!hit) return;
 
     this._openEditor(hit.text, e);
   }
