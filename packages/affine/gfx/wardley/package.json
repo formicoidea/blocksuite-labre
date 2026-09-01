@@ -34,6 +34,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./commands-manifest": "./src/commands-manifest.ts",
     "./view": "./src/view.ts"
   },
   "files": [

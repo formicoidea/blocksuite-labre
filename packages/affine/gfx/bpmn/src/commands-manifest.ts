@@ -1,0 +1,228 @@
+import type { ShortcutManifestEntry } from '@labre/std';
+
+/**
+ * The BPMN commands as SHORTCUT-MANIFEST rows — id, label, chord, scope,
+ * owner — and nothing else.
+ *
+ * DATA ONLY, and that is the whole point (`docs/adr/0008` § Packaging). A
+ * `CommandDescriptor` carries its `run`, so a host settings pane that imports
+ * the package entry to list names and chords drags the entire action graph —
+ * the import/export machinery, the surface and gfx deep paths — into its
+ * chunk. This module has type-only imports, so the published bundle exposes it
+ * as `./commands-manifest`: a few hundred bytes that reference nothing.
+ *
+ * GENERATED-SHAPED, hand-committed: `commands-manifest.unit.spec.ts` asserts
+ * row-for-row equality with `toShortcutManifestEntry` over {@link bpmnCommands},
+ * so this file cannot drift from the commands it projects. Add a command and
+ * the test says exactly what to add here.
+ */
+export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
+  {
+    id: 'bpmn.addStartEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addStartEvent',
+    labelFallback: 'Start event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addEndEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addEndEvent',
+    labelFallback: 'End event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addTask',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addTask',
+    labelFallback: 'Task',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addExclusiveGateway',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addExclusiveGateway',
+    labelFallback: 'Exclusive gateway',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.sequenceFlowTool',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.sequenceFlowTool',
+    labelFallback: 'Sequence flow',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addPool',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addPool',
+    labelFallback: 'Pool',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.messageFlowTool',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.messageFlowTool',
+    labelFallback: 'Message flow',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addUserTask',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addUserTask',
+    labelFallback: 'User task',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addServiceTask',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addServiceTask',
+    labelFallback: 'Service task',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addSubProcess',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addSubProcess',
+    labelFallback: 'Sub-process',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addCallActivity',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addCallActivity',
+    labelFallback: 'Call activity',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addParallelGateway',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addParallelGateway',
+    labelFallback: 'Parallel gateway',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addMessageStartEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addMessageStartEvent',
+    labelFallback: 'Message start event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addTimerStartEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addTimerStartEvent',
+    labelFallback: 'Timer start event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addMessageEndEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addMessageEndEvent',
+    labelFallback: 'Message end event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addTerminateEndEvent',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addTerminateEndEvent',
+    labelFallback: 'Terminate end event',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.associationTool',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.associationTool',
+    labelFallback: 'Association',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addDataObject',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addDataObject',
+    labelFallback: 'Data object',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addDataStore',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addDataStore',
+    labelFallback: 'Data store',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addTextAnnotation',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addTextAnnotation',
+    labelFallback: 'Text annotation',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addGroup',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addGroup',
+    labelFallback: 'Group',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.addLane',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.addLane',
+    labelFallback: 'Add lane',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.removeLane',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.removeLane',
+    labelFallback: 'Remove lane',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.exportXml',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.exportXml',
+    labelFallback: 'Export BPMN XML',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.importXml',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.importXml',
+    labelFallback: 'Import BPMN XML',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.importSvg',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.importSvg',
+    labelFallback: 'Import SVG sketch',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+];

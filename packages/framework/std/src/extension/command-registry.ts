@@ -443,6 +443,52 @@ export function toShortcutDescriptor(
 }
 
 /**
+ * The DATA-ONLY shortcut projection: what a host's Settings › Shortcuts pane
+ * reads to draw a row, and nothing else. No `handler`, no `run`, no `params` —
+ * so a module holding these entries carries no reference to the action graph
+ * behind the command and can be published on its own subpath (each framework
+ * bundle's `./commands-manifest`).
+ *
+ * It is the SIX fields the panel needs. `labelFallback` is one of them and that
+ * is deliberate: the projection used to drop it, which left a host with no
+ * catalogue rendering raw i18n keys for the rows it could not translate, and
+ * forced every host to re-project from the main entry to recover a wording the
+ * library already knew.
+ *
+ * `owner` is a {@link CommandOwner} rather than `ShortcutDescriptor`'s open
+ * `string`: the panel groups by owner, and the closed union is what makes that
+ * grouping exhaustive host-side.
+ */
+export interface ShortcutManifestEntry {
+  id: string;
+  labelKey: string;
+  /** English default behind {@link labelKey}; see {@link CommandDescriptor.labelFallback}. */
+  labelFallback?: string;
+  defaultKeys: { mac: string[]; other: string[] };
+  scope: ShortcutScope;
+  owner: CommandOwner;
+}
+
+/**
+ * The third permanent projection out of {@link CommandDescriptor}, beside
+ * {@link toShortcutDescriptor} and {@link toCommandManifestEntry}. TOTAL for
+ * the same reason the shortcut descriptor is: a keyless command still yields a
+ * row, so Settings › Shortcuts can bind it.
+ */
+export function toShortcutManifestEntry(
+  command: AnyCommandDescriptor
+): ShortcutManifestEntry {
+  return {
+    id: command.id,
+    labelKey: command.labelKey,
+    labelFallback: command.labelFallback,
+    defaultKeys: command.defaultKeys,
+    scope: command.scope,
+    owner: command.owner,
+  };
+}
+
+/**
  * The shape of a zod definition, read through `_def` rather than `instanceof`.
  *
  * `instanceof z.ZodOptional` would need a VALUE import of zod in `@labre/std`,
