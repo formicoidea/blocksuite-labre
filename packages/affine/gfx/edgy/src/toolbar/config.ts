@@ -161,14 +161,9 @@ export const edgyToolbarConfig = {
       LabelsIcon,
       'showLabels'
     ),
-    booleanToggle(
-      EdgyFacetsElementModel,
-      'c.toggle-spotlight',
-      'Enable / disable hover spotlight',
-      SpotlightIcon,
-      'spotlightEnabled'
-    ),
-    legendAction(EdgyFacetsElementModel, 'd.legend'),
+    // No spotlight toggle here: the hover spotlight is BOARD logic and lives on
+    // the EDGY board toolbar below. The Venn only carries APPEARANCE (#195).
+    legendAction(EdgyFacetsElementModel, 'c.legend'),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyFacetsElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
