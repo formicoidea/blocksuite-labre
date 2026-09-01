@@ -186,7 +186,6 @@ export const nodeLabelKey = (kind: BpmnNodeKind) =>
  * Pool (background container) defaults — read by the `BPMN_POOL_BACKGROUND`
  * declaration (`background.ts`), which is the only thing that draws a pool.
  */
-export const POOL_BAND_WIDTH = 28;
 export const POOL_FRAME_COLOR = '#262626';
 /**
  * The card. The same white every framework background paints — it is what
@@ -212,20 +211,13 @@ export const POOL_FONT_FAMILY = 'Inter, sans-serif';
 export const POOL_LANE_NAME_FONT_SIZE = 13;
 
 /**
- * Width of a lane's own title band, in model units — the strip immediately
- * inside the participant band, with the lane name turned on its side.
- *
- * Four units narrower than {@link POOL_BAND_WIDTH}, and for the same reason the
- * font is two points smaller: the two strips sit side by side, so the
- * subordinate one has to say so. Identical widths read as a single 56-unit
- * gutter rather than as a participant containing lanes, which is exactly the
- * relationship the picture has to carry.
- *
- * NO fill, divider only — what bpmn.io, Camunda and Visio all draw. A second
- * grey strip beside the pool's own would double the furniture and leave the
- * flow area looking inset by two margins.
+ * The two band widths live in `@labre/affine-model`, beside the pool model that
+ * hit-tests against them (a pool is clickable by its title bands as well as by
+ * its border — the bpmn.io convention, issue #194). They are re-exported here
+ * so this file stays the one place a reader looks for a pool's metrics, and so
+ * the declaration keeps reading them from where it always did.
  */
-export const POOL_LANE_BAND_WIDTH = 24;
+export { POOL_BAND_WIDTH, POOL_LANE_BAND_WIDTH } from '@labre/affine-model';
 
 /**
  * How close to an internal lane boundary a pointer has to be, in MODEL units,

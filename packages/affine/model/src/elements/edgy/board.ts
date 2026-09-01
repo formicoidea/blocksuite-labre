@@ -3,12 +3,13 @@ import {
   Bound,
   getPointsFromBoundWithRotation,
   linePolygonIntersects,
-  pointInPolygon,
   polygonNearestPoint,
 } from '@labre/global/gfx';
 import type { SerializedXYWH } from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
+import type { BaseElementProps, PointTestOptions } from '@labre/std/gfx';
 import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+
+import { backgroundIncludesPoint } from '../framework-background/index.js';
 
 export type EdgyBoardProps = BaseElementProps & {
   /** When false the resize handles are hidden — toggled from the toolbar. */
@@ -52,9 +53,17 @@ export class EdgyBoardElementModel extends GfxPrimitiveElementModel<EdgyBoardPro
     ) as IVec;
   }
 
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
+  /**
+   * Picked by its BORDER band: a board is a passive canvas and the clicks over
+   * its area belong to what the user laid on it. Same test every framework
+   * background runs — see {@link backgroundIncludesPoint}.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    return backgroundIncludesPoint(this, x, y, options);
   }
 
   @field(true)

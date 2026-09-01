@@ -184,8 +184,19 @@ describe('a BPMN pool written before the primitive', () => {
     // in. The five geometry answers below are the five the class used to
     // restate verbatim and now inherits.
     expect(pool.connectable).toBe(false);
-    expect(pool.includesPoint(280, 100)).toBe(true);
-    expect(pool.includesPoint(-10, 100)).toBe(false);
+    // Picked by its BORDER and by its participant band, not by its whole area
+    // (issue #194) — the bpmn.io convention, and it holds for a legacy pool
+    // exactly as it does for one drawn today.
+    expect(pool.includesPoint(20, 100)).toBe(true);
+    expect(pool.includesPoint(-10, 100)).toBe(true);
+    expect(pool.includesPoint(280, 100)).toBe(false);
+    // No lanes on a legacy pool, so no lane strip beside the participant band.
+    expect(pool.includesPoint(40, 100)).toBe(false);
+    // The flow area still answers for the DRAG path, which asks about the
+    // visible extent rather than about what a click would pick.
+    expect(pool.includesPoint(280, 100, { ignoreTransparent: false })).toBe(
+      true
+    );
     expect(pool.getNearestPoint([-40, 100])).toEqual([0, 100]);
     // A line straight through the lane crosses both of its vertical edges.
     expect(

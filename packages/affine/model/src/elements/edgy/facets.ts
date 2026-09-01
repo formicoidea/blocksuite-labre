@@ -3,11 +3,12 @@ import {
   Bound,
   getPointsFromBoundWithRotation,
   linePolygonIntersects,
-  pointInPolygon,
   polygonNearestPoint,
 } from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
+import type { BaseElementProps, PointTestOptions } from '@labre/std/gfx';
 import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+
+import { backgroundIncludesPoint } from '../framework-background/index.js';
 
 export type EdgyFacetsProps = BaseElementProps & {
   /** When false the resize handles are hidden — toggled from the toolbar. */
@@ -79,9 +80,20 @@ export class EdgyFacetsElementModel extends GfxPrimitiveElementModel<EdgyFacetsP
     ) as IVec;
   }
 
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
+  /**
+   * Picked by its BORDER band — see {@link backgroundIncludesPoint}.
+   *
+   * The facet LABELS stay double-clickable all the same: their zones are added
+   * by `EdgyView.includesPoint`, which is what the pointer router consults, so
+   * the rename target lives with the code that draws it and the model layer
+   * stays free of it.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    return backgroundIncludesPoint(this, x, y, options);
   }
 
   @field(true)

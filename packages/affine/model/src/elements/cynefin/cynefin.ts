@@ -3,11 +3,12 @@ import {
   Bound,
   getPointsFromBoundWithRotation,
   linePolygonIntersects,
-  pointInPolygon,
   polygonNearestPoint,
 } from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
+import type { BaseElementProps, PointTestOptions } from '@labre/std/gfx';
 import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+
+import { backgroundIncludesPoint } from '../framework-background/index.js';
 
 export type CynefinProps = BaseElementProps & {
   /** When false the resize handles are hidden — toggled from the toolbar. */
@@ -56,9 +57,17 @@ export class CynefinElementModel extends GfxPrimitiveElementModel<CynefinProps> 
     ) as IVec;
   }
 
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
+  /**
+   * Picked by its BORDER band — see {@link backgroundIncludesPoint}. The five
+   * domains are a picture the user drops elements onto, so the clicks inside
+   * the frame belong to those elements.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    return backgroundIncludesPoint(this, x, y, options);
   }
 
   @field(true)

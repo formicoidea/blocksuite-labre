@@ -7,7 +7,8 @@ import {
 import type { WardleyBackgroundElementModel } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
 import { rotatePoint } from '@labre/global/gfx';
-import type { PointerEventState } from '@labre/std';
+import type { EditorHost, PointerEventState } from '@labre/std';
+import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
 import {
@@ -32,11 +33,15 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
     super.onDestroyed();
   }
 
-  /** Double-click on a label → edit its text in place. */
-  private _onDblClick(e: PointerEventState): void {
-    if (this.model.isLocked()) return;
-
-    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+  /**
+   * The editable label under a MODEL-space point, or null.
+   *
+   * Which labels exist, where they sit, what they SAY and which are editable
+   * all come from the declaration the renderer paints — one source, resolved
+   * through the same catalogue, so a label can never be drawn in one place
+   * and clicked in another, nor read one thing and open on another.
+   */
+  private _labelAt(mx: number, my: number) {
     const [bx, by, w, h] = this.model.deserializedXYWH;
 
     // Convert the model-space point into element-local coordinates, undoing the
@@ -51,10 +56,6 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       ly = uy - by;
     }
 
-    // Which labels exist, where they sit, what they SAY and which are editable
-    // all come from the declaration the renderer paints — one source, resolved
-    // through the same catalogue, so a label can never be drawn in one place
-    // and clicked in another, nor read one thing and open on another.
     const hit = hitTestBackgroundLabel(
       backgroundLabelHits(
         WARDLEY_BACKGROUND,
@@ -66,9 +67,38 @@ export class WardleyView extends GfxElementModelView<WardleyBackgroundElementMod
       lx,
       ly
     );
-    if (!hit) return;
     // The declaration names the prop; this decides whether it may be written.
-    if (!isWardleyLabelProp(hit.prop)) return;
+    if (!hit || !isWardleyLabelProp(hit.prop)) return null;
+    return { prop: hit.prop, text: hit.text };
+  }
+
+  /**
+   * The map is SELECTED by its border (`WardleyBackgroundElementModel`), but
+   * its axis labels must still receive the double-click that renames them.
+   *
+   * So the two areas differ, and this is where they are allowed to: the pointer
+   * router asks the VIEW (`GfxViewEventManager`), and the view adds the zones
+   * the declaration draws its labels in. Picking is unaffected —
+   * `getElementByPoint` still asks the model, so a click in the middle of the
+   * map still goes to whatever the user put there.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options: PointTestOptions,
+    host: EditorHost
+  ): boolean {
+    if (super.includesPoint(x, y, options, host)) return true;
+    return this._labelAt(x, y) !== null;
+  }
+
+  /** Double-click on a label → edit its text in place. */
+  private _onDblClick(e: PointerEventState): void {
+    if (this.model.isLocked()) return;
+
+    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+    const hit = this._labelAt(mx, my);
+    if (!hit) return;
 
     this._openLabelEditor(hit.prop, hit.text, e);
   }

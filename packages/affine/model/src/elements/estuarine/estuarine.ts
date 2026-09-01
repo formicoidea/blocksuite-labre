@@ -3,11 +3,12 @@ import {
   Bound,
   getPointsFromBoundWithRotation,
   linePolygonIntersects,
-  pointInPolygon,
   polygonNearestPoint,
 } from '@labre/global/gfx';
-import type { BaseElementProps } from '@labre/std/gfx';
+import type { BaseElementProps, PointTestOptions } from '@labre/std/gfx';
 import { field, GfxPrimitiveElementModel } from '@labre/std/gfx';
+
+import { backgroundIncludesPoint } from '../framework-background/index.js';
 
 export type EstuarineProps = BaseElementProps & {
   /** When false the resize handles are hidden — toggled from the toolbar. */
@@ -54,9 +55,17 @@ export class EstuarineElementModel extends GfxPrimitiveElementModel<EstuarinePro
     ) as IVec;
   }
 
-  override includesPoint(x: number, y: number): boolean {
-    const points = getPointsFromBoundWithRotation(this);
-    return pointInPolygon([x, y], points);
+  /**
+   * Picked by its BORDER band — see {@link backgroundIncludesPoint}. The map is
+   * a space constraint nodes are dropped into, so the clicks inside it are
+   * theirs.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    return backgroundIncludesPoint(this, x, y, options);
   }
 
   @field(true)
