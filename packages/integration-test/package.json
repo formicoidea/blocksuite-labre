@@ -45,7 +45,6 @@
   ],
   "devDependencies": {
     "@vanilla-extract/vite-plugin": "5.1.4",
-    "fflate": "^0.8.2",
     "vite": "^7.3.5",
     "vite-plugin-istanbul": "^7.2.1",
     "vite-plugin-wasm": "^3.5.0",
