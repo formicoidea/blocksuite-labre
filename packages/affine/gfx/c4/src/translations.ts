@@ -1,5 +1,6 @@
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
@@ -31,6 +32,12 @@ import { C4_RULES } from './rules.js';
 export const c4TranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(c4Commands),
+    // The catalogue's own group headers, derived from the very categories
+    // these commands declare. They ship WITH the framework because core's
+    // registry names no framework category in the bundled distribution, so a
+    // host that composed core's manifest alone drew translated entries under
+    // English headers (#183).
+    commandCategoryTranslationEntries(c4Commands),
     collectTranslationKeys('role', C4_ROLES),
     collectTranslationKeys('background', [
       C4_BOARD_BACKGROUND,

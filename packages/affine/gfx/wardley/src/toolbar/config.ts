@@ -1,6 +1,9 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { WardleyBackgroundElementModel } from '@labre/affine-model';
 import {
+  BOARD_LEGEND_COMPONENTS,
+  BOARD_RESIZE_TOGGLE,
+  type ChromeWording,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -153,14 +156,19 @@ type WardleyToggleProp =
  */
 function booleanToggle(
   id: string,
-  tooltip: string,
+  tooltip: string | ChromeWording,
   icon: TemplateResult,
   prop: WardleyToggleProp,
   when?: (ctx: ToolbarContext) => boolean
 ) {
   return {
     id,
-    tooltip,
+    tooltip: typeof tooltip === 'string' ? tooltip : tooltip[1],
+    // The declared wording, when the caller gave one instead of a literal:
+    // `combine` resolves it against the host's catalogue and writes it over
+    // the English default above, so a playground with no catalogue reads
+    // exactly what it read before (#183).
+    tooltipWording: typeof tooltip === 'string' ? undefined : tooltip,
     icon,
     when: when ?? true,
     active(ctx: ToolbarContext) {
@@ -185,7 +193,7 @@ export const wardleyToolbarConfig = {
   actions: [
     booleanToggle(
       'a.toggle-resize',
-      'Enable / lock resizing',
+      BOARD_RESIZE_TOGGLE,
       ResizeIcon,
       'resizeEnabled'
     ),
@@ -253,7 +261,7 @@ export const wardleyToolbarConfig = {
     // background's perimeter (+ a gradient-meaning block for gradient variants).
     {
       id: 'd.legend',
-      tooltip: 'Generate the legend (components present)',
+      tooltipWording: BOARD_LEGEND_COMPONENTS,
       icon: wardleyLegendIcon,
       run(ctx) {
         const models = ctx.getSurfaceModelsByType(

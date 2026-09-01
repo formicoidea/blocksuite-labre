@@ -12,12 +12,10 @@ import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain'
 import { eventStormingTranslationEntries } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyTranslationEntries } from '@labre/affine-gfx-edgy';
 import { wardleyTranslationEntries } from '@labre/affine-gfx-wardley';
-import {
-  CATALOGUE_CATEGORY_KEY_PREFIX,
-  humanizeCategory,
-} from '@labre/affine-widget-edgeless-toolbar';
+import { CHROME_WORDINGS } from '@labre/affine-shared/services';
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   type FrameworkId,
   mergeTranslationEntries,
@@ -135,25 +133,24 @@ const chromeTableEntries = (): TranslationKeyManifestEntry[] =>
  *
  * DERIVED, not restated: the categories are walked out of `getCommands()`, so a
  * framework that invents a category gets its header key in the manifest by
- * construction — which is the whole point on the eve of a BPMN pack that will
- * declare several. The fallback comes from `humanizeCategory`, the very
- * function the panel renders with, so the two cannot drift.
+ * construction. The fallback comes from `humanizeCategory`, the very function
+ * the panel renders with, so the two cannot drift.
  *
  * Flag-independent like the rest of the manifest: `getCommands()` with no flags
  * enumerates every command, so a catalogue built once covers a framework
  * switched on later.
+ *
+ * In the BUNDLED distribution this walks core's commands alone — the framework
+ * groups are stripped from this file — which is why every framework contributes
+ * its OWN category headers from its `…TranslationEntries` as well (#183: a
+ * bundled host was offered translated catalogue ENTRIES under untranslated
+ * headers, because "EVENTS" and "GATEWAYS" are BPMN's categories and BPMN's
+ * commands are not in core). The two overlap in the monorepo and
+ * `mergeTranslationEntries` de-duplicates them, so both assemblies produce the
+ * same list.
  */
-const catalogueCategoryEntries = (): TranslationKeyManifestEntry[] => {
-  const categories = new Set<string>();
-  for (const command of getCommands()) {
-    if (command.category) categories.add(command.category);
-  }
-  return [...categories].map(category => ({
-    key: `${CATALOGUE_CATEGORY_KEY_PREFIX}${category}`,
-    fallback: humanizeCategory(category),
-    source: 'chrome' as const,
-  }));
-};
+const catalogueCategoryEntries = (): TranslationKeyManifestEntry[] =>
+  commandCategoryTranslationEntries(getCommands());
 
 /**
  * Chrome wordings: the `translateKey(std, key, fallback)` literals of the
@@ -302,6 +299,16 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
     ...FRAMEWORK_TRANSLATION_GROUPS.map(group => group.entries),
     chromeTableEntries(),
     catalogueCategoryEntries(),
+    // The editor's own shared vocabulary — the toasts, the toolbar verbs, the
+    // view switcher, the board tooltips — DECLARED in
+    // `@labre/affine-shared/services` beside nothing at all, and walked here
+    // rather than restated. Same rule as the tables above: a wording added to
+    // `CHROME_WORDINGS` reaches a host with no second edit.
+    CHROME_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
     CHROME_KEYS.map(([key, fallback]) => ({
       key,
       fallback,

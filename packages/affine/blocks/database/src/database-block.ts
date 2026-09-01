@@ -16,6 +16,8 @@ import {
   NotificationProvider,
   type TelemetryEventMap,
   TelemetryProvider,
+  TOAST_COPIED_TO_CLIPBOARD,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getDropResult } from '@labre/affine-widget-drag-handle';
 import {
@@ -108,7 +110,10 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             this.std.clipboard
               .copySlice(slice)
               .then(() => {
-                toast(this.host, 'Copied to clipboard');
+                toast(
+                  this.host,
+                  translateKey(this.std, ...TOAST_COPIED_TO_CLIPBOARD)
+                );
               })
               .catch(console.error);
           },

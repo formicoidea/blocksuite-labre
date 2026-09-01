@@ -2,6 +2,8 @@ import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { BpmnPoolElementModel } from '@labre/affine-model';
 import {
   ActionPlacement,
+  BOARD_RESIZE_TOGGLE,
+  type ChromeWording,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -42,13 +44,18 @@ type BpmnPoolToggleProp = 'resizeEnabled';
  */
 function booleanToggle(
   id: string,
-  tooltip: string,
+  tooltip: string | ChromeWording,
   icon: TemplateResult,
   prop: BpmnPoolToggleProp
 ) {
   return {
     id,
-    tooltip,
+    tooltip: typeof tooltip === 'string' ? tooltip : tooltip[1],
+    // The declared wording, when the caller gave one instead of a literal:
+    // `combine` resolves it against the host's catalogue and writes it over
+    // the English default above, so a playground with no catalogue reads
+    // exactly what it read before (#183).
+    tooltipWording: typeof tooltip === 'string' ? undefined : tooltip,
     icon,
     active(ctx: ToolbarContext) {
       const models = ctx.getSurfaceModelsByType(BpmnPoolElementModel);
@@ -160,7 +167,7 @@ export const bpmnPoolToolbarConfig = {
   actions: [
     booleanToggle(
       'a.toggle-resize',
-      'Enable / lock resizing',
+      BOARD_RESIZE_TOGGLE,
       ResizeIcon,
       'resizeEnabled'
     ),

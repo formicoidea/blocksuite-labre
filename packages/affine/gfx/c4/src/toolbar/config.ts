@@ -6,6 +6,8 @@ import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { C4BoardElementModel } from '@labre/affine-model';
 import {
   ActionPlacement,
+  BOARD_LEGEND_NOTATION,
+  BOARD_RESIZE_TOGGLE,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -194,7 +196,7 @@ export const c4BoardToolbarConfig = {
   actions: [
     {
       id: 'a.toggle-resize',
-      tooltip: 'Enable / lock resizing',
+      tooltipWording: BOARD_RESIZE_TOGGLE,
       icon: ResizeIcon,
       active(ctx: ToolbarContext) {
         const models = ctx.getSurfaceModelsByType(C4BoardElementModel);
@@ -392,7 +394,7 @@ export const c4LegendToolbarConfig = {
   actions: [
     {
       id: 'b.legend',
-      tooltip: 'Generate the legend (notation present)',
+      tooltipWording: BOARD_LEGEND_NOTATION,
       icon: dddLegendIcon,
       run(ctx: ToolbarContext) {
         createC4Legend(ctx.std);

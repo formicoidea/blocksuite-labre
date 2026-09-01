@@ -20,9 +20,13 @@ import {
   CitationProvider,
   DocDisplayMetaProvider,
   DocModeProvider,
+  LINKED_DOC_DELETED,
+  LINKED_DOC_EMPTY_PREVIEW,
+  LINKED_DOC_FAILED,
   OpenDocExtensionIdentifier,
   type OpenDocMode,
   ThemeProvider,
+  translateKey,
   whenLinkedDocContentReady,
 } from '@labre/affine-shared/services';
 import {
@@ -363,13 +367,13 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
 
     const showDefaultNoteContent = isError || isLoading || isDeleted || isEmpty;
     const defaultNoteContent = isError
-      ? 'This linked doc failed to load.'
+      ? translateKey(this.std, ...LINKED_DOC_FAILED)
       : isLoading
         ? ''
         : isDeleted
-          ? 'This linked doc is deleted.'
+          ? translateKey(this.std, ...LINKED_DOC_DELETED)
           : isEmpty
-            ? 'Preview of the doc will be displayed here.'
+            ? translateKey(this.std, ...LINKED_DOC_EMPTY_PREVIEW)
             : '';
 
     const dateText =

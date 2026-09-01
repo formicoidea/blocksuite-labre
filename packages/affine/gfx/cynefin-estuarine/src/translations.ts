@@ -1,5 +1,6 @@
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
@@ -29,6 +30,12 @@ import { ESTUARINE_ROLES } from './estuarine/roles.js';
 export const cynefinEstuarineTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(cynefinEstuarineCommands),
+    // The catalogue's own group headers, derived from the very categories
+    // these commands declare. They ship WITH the framework because core's
+    // registry names no framework category in the bundled distribution, so a
+    // host that composed core's manifest alone drew translated entries under
+    // English headers (#183).
+    commandCategoryTranslationEntries(cynefinEstuarineCommands),
     collectTranslationKeys('role', ESTUARINE_ROLES),
     collectTranslationKeys('nudge', ESTUARINE_NUDGES)
   );

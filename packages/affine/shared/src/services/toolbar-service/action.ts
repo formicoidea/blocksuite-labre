@@ -1,5 +1,7 @@
+import type { BlockStdScope } from '@labre/std';
 import type { TemplateResult } from 'lit';
 
+import { type ChromeWording, translateKey } from '../translation-service';
 import type { ToolbarContext } from './context';
 
 export enum ActionPlacement {
@@ -29,9 +31,28 @@ type ActionBase = {
 
 export type ToolbarAction = ActionBase & {
   label?: string;
+  /**
+   * The same word as {@link label}, said as an i18n key with its English
+   * default — resolved against the host's catalogue when the row is built, and
+   * written over `label` there (`combine`, in the toolbar widget).
+   *
+   * It exists because `label` is a VALUE and the translation seam needs `std`:
+   * a literal here is the one wording a host cannot override, which is what
+   * left a fully translated editor saying "Duplicate" and "Card view" in
+   * English (#183). Declaring the pair keeps a call site one line — the shape a
+   * static label already had — instead of pushing every entry that has words
+   * into a `generate`.
+   *
+   * Wordings are declared once in `@labre/affine-shared/services`
+   * (`CHROME_WORDINGS`), which is also what the key manifest walks — a pair
+   * spelt inline at a call site would be a key no host is ever offered.
+   */
+  labelWording?: ChromeWording;
   showLabel?: boolean;
   icon?: TemplateResult;
   tooltip?: string | TemplateResult;
+  /** {@link labelWording}, for the tooltip. Written over `tooltip`. */
+  tooltipWording?: ChromeWording;
   variant?: 'destructive';
   disabled?: ((cx: ToolbarContext) => boolean) | boolean;
   content?:
@@ -66,3 +87,22 @@ export type ToolbarGenericAction =
   | ToolbarActionGroupGenerator;
 
 export type ToolbarActions<T extends ActionBase = ToolbarGenericAction> = T[];
+
+/**
+ * What an entry SAYS, whether it declared a wording or a literal label.
+ *
+ * The row itself never needs this — `combine` resolves `labelWording` onto
+ * `label` before anything is drawn. It exists for the entries a widget renders
+ * ITSELF out of the raw declarations, which is exactly what the view switcher
+ * does: `content(ctx)` hands its own children to `affine-view-dropdown-menu`,
+ * so those never pass through `combine` and would otherwise be the one control
+ * in the editor left saying "Card view" in English (#183).
+ */
+export function toolbarActionLabel(
+  std: BlockStdScope,
+  action: ToolbarAction
+): string {
+  return action.labelWording
+    ? translateKey(std, ...action.labelWording)
+    : (action.label ?? '');
+}

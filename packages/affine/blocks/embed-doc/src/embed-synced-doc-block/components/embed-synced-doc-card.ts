@@ -1,7 +1,11 @@
 import { RENDER_CARD_THROTTLE_MS } from '@labre/affine-block-embed';
 import { LoadingIcon } from '@labre/affine-components/icons';
 import {
+  LINKED_DOC_DELETED,
+  LINKED_DOC_FAILED,
+  SYNCED_DOC_EMPTY_PREVIEW,
   ThemeProvider,
+  translateKey,
   whenLinkedDocContentReady,
 } from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
@@ -171,14 +175,15 @@ export class EmbedSyncedDocCard extends WithDisposable(ShadowlessElement) {
     const title = isLoading ? 'Loading...' : this.block.title$;
 
     const showDefaultNoteContent = isLoading || error || isDeleted || isEmpty;
+    const std = this.block.std;
     const defaultNoteContent = error
-      ? 'This linked doc failed to load.'
+      ? translateKey(std, ...LINKED_DOC_FAILED)
       : isLoading
         ? ''
         : isDeleted
-          ? 'This linked doc is deleted.'
+          ? translateKey(std, ...LINKED_DOC_DELETED)
           : isEmpty
-            ? 'Preview of the page will be displayed here.'
+            ? translateKey(std, ...SYNCED_DOC_EMPTY_PREVIEW)
             : '';
 
     const dateText = this.block.docUpdatedAt.toLocaleString();

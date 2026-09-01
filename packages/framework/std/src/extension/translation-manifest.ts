@@ -27,6 +27,16 @@ export type TranslationKeySource =
   | 'profile'
   | 'audit-criterion'
   | 'reading'
+  /**
+   * The words a framework WRITES ONTO THE CANVAS when an artefact is placed —
+   * the "Task" a fresh BPMN task is captioned with, the "People" under an EDGY
+   * person. Document content and not chrome, which is why they are a source of
+   * their own: they are resolved ONCE, at placement, and what lands in the
+   * document is a string the author then owns and edits. Changing the
+   * catalogue afterwards renames nothing, exactly as renaming a shape by hand
+   * would not.
+   */
+  | 'seed'
   | 'chrome';
 
 export interface TranslationKeyManifestEntry {
@@ -112,6 +122,68 @@ export function commandTranslationEntries(
     'command',
     commands.map(toCommandManifestEntry)
   );
+}
+
+/** The i18n key prefix every artefact-catalogue group header is looked up under. */
+export const CATALOGUE_CATEGORY_KEY_PREFIX = 'com.labre.catalogue.category.';
+
+/**
+ * The English default for a category header, derived from the category id.
+ *
+ * `'backgrounds'` → `'Backgrounds'`, `'value-flow'` → `'Value flow'`,
+ * `'boundedContext'` → `'Bounded context'`. Sentence case, not title case: a
+ * header is a phrase, and capitalising every word turns `'change arrows'` into
+ * a product name.
+ *
+ * It is a FALLBACK and nothing more. A host with a catalogue answers
+ * `com.labre.catalogue.category.<id>` and this is never seen; a standalone
+ * playground reads a word instead of a raw key. The library still invents no
+ * framework prose — a category id is the framework's own word, only respelled.
+ *
+ * It lives in `@labre/std` rather than beside the panel that renders it because
+ * a FRAMEWORK has to derive the same fallback for its own contribution to the
+ * key manifest (see {@link commandCategoryTranslationEntries}), and `@labre/std`
+ * is the only layer every framework package already depends on. The catalogue
+ * widget re-exports it, so the panel and the manifest cannot drift.
+ */
+export function humanizeCategory(category: string): string {
+  const words = category
+    // camelCase and PascalCase boundaries, before the separators are split on:
+    // `'boundedContext'` has no separator to find otherwise.
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(word => word.toLowerCase());
+
+  if (!words.length) return category;
+  const [first, ...rest] = words;
+  return [first.charAt(0).toUpperCase() + first.slice(1), ...rest].join(' ');
+}
+
+/**
+ * The catalogue group headers a command group implies: one entry per distinct
+ * `category` it declares, with the panel's own humanised fallback.
+ *
+ * A framework contributes these WITH its commands, for the reason the command
+ * entries themselves ship with the framework: `@formicoidea/labre-core` is the
+ * editor minus the frameworks, so a header key derived from core's registry
+ * alone knows nothing about "events", "gateways" or "swimlanes" — and a bundled
+ * host ended up drawing translated catalogue entries under English headers
+ * (#183). Deriving them from the same `commands` array on both sides makes the
+ * monorepo assembly and the composed bundle produce the same list.
+ */
+export function commandCategoryTranslationEntries(
+  commands: readonly AnyCommandDescriptor[]
+): TranslationKeyManifestEntry[] {
+  const categories = new Set<string>();
+  for (const command of commands) {
+    if (command.category) categories.add(command.category);
+  }
+  return [...categories].map(category => ({
+    key: `${CATALOGUE_CATEGORY_KEY_PREFIX}${category}`,
+    fallback: humanizeCategory(category),
+    source: 'chrome' as const,
+  }));
 }
 
 /**

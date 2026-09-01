@@ -2,6 +2,9 @@ import { ImageBlockModel } from '@labre/affine-model';
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
@@ -60,7 +63,7 @@ const builtinToolbarConfig = {
       actions: [
         {
           id: 'a.copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
           run(ctx) {
             const block = ctx.getCurrentBlockByType(ImageBlockComponent);
@@ -69,7 +72,7 @@ const builtinToolbarConfig = {
         },
         {
           id: 'b.duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run(ctx) {
             const block = ctx.getCurrentBlockByType(ImageBlockComponent);
@@ -106,7 +109,7 @@ const builtinToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {

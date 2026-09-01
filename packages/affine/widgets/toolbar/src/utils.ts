@@ -6,6 +6,7 @@ import {
 import {
   ActionPlacement,
   planToolbarLayout,
+  TOOLBAR_MORE,
   TOOLBAR_SETTLE_DELAY,
   type ToolbarAction,
   type ToolbarActions,
@@ -16,6 +17,7 @@ import {
   type ToolbarMetrics,
   type ToolbarPlacement,
   toolbarRoomChanged,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { nextTick } from '@labre/global/utils';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -200,10 +202,26 @@ export function combine(actions: ToolbarActions, context: ToolbarContext) {
 
     if ('generate' in action && typeof action.generate === 'function') {
       // TODO(@fundon): should delete `generate` fn
-      return {
-        ...newAction,
-        ...action.generate(context),
-      };
+      Object.assign(newAction, action.generate(context));
+    }
+
+    // The i18n seam, applied HERE and only here: every path that draws an
+    // entry — the row, a group's children, the "⋮" — goes through `combine`
+    // first, and the row's own signature (`renderToolbar`) reads the resolved
+    // `label` a few lines later, so an entry that changes language is a row
+    // that is re-planned rather than one drawn at the wrong width.
+    //
+    // A declared wording WINS over a static `label` / `tooltip` left beside it:
+    // the static one is the English default and is already the wording's own
+    // fallback, so the two can never disagree.
+    if (newAction.labelWording) {
+      newAction.label = translateKey(context.std, ...newAction.labelWording);
+    }
+    if (newAction.tooltipWording) {
+      newAction.tooltip = translateKey(
+        context.std,
+        ...newAction.tooltipWording
+      );
     }
 
     return newAction;
@@ -622,6 +640,9 @@ export function renderToolbar(
     if (moreMenuItems.length) {
       const key = `${context.getCurrentModel()?.id}`;
       hasMenu = true;
+      // The one word the WIDGET says on its own account, so it is the one
+      // wording no entry can declare for it (#183).
+      const moreLabel = translateKey(context.std, ...TOOLBAR_MORE);
 
       primary.push({
         kind: 'template',
@@ -636,8 +657,8 @@ export function renderToolbar(
               .contentPadding="${'8px'}"
               .button=${html`
                 <editor-icon-button
-                  aria-label="More"
-                  .tooltip="${'More'}"
+                  aria-label=${moreLabel}
+                  .tooltip="${moreLabel}"
                   .iconContainerPadding=${innerToolbar ? 4 : 2}
                   .iconSize=${innerToolbar ? '16px' : undefined}
                 >

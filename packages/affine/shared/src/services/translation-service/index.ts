@@ -2,6 +2,8 @@ import { createIdentifier } from '@labre/global/di';
 import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
+export * from './chrome.js';
+
 /**
  * The library holds no prose: every human-readable string it produces —
  * shortcut labels, role names, validation messages — is an i18n KEY

@@ -30,7 +30,16 @@ import type {
   ToolbarActions,
   ToolbarContext,
 } from '@labre/affine-shared/services';
-import { QuickSearchProvider } from '@labre/affine-shared/services';
+import {
+  QuickSearchProvider,
+  TOOLBAR_BRING_TO_FRONT,
+  TOOLBAR_COPY,
+  TOOLBAR_CREATE_LINKED_DOC,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_LINK,
+  TOOLBAR_SEND_TO_BACK,
+} from '@labre/affine-shared/services';
 import { matchModels, type ReorderingType } from '@labre/affine-shared/utils';
 import { Bound, getCommonBoundWithRotation } from '@labre/global/gfx';
 import {
@@ -114,7 +123,7 @@ export const moreActions = [
     actions: [
       {
         id: 'a.bring-to-front',
-        label: 'Bring to Front',
+        labelWording: TOOLBAR_BRING_TO_FRONT,
         icon: ArrowUpBigTopIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -141,7 +150,7 @@ export const moreActions = [
       },
       {
         id: 'c.send-to-back',
-        label: 'Send to Back',
+        labelWording: TOOLBAR_SEND_TO_BACK,
         icon: ArrowDownBigBottomIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -158,7 +167,7 @@ export const moreActions = [
     actions: [
       {
         id: 'copy',
-        label: 'Copy',
+        labelWording: TOOLBAR_COPY,
         icon: CopyIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -174,7 +183,7 @@ export const moreActions = [
       },
       {
         id: 'duplicate',
-        label: 'Duplicate',
+        labelWording: TOOLBAR_DUPLICATE,
         icon: DuplicateIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -294,7 +303,7 @@ export const moreActions = [
       },
       {
         id: 'b.create-linked-doc',
-        label: 'Create linked doc',
+        labelWording: TOOLBAR_CREATE_LINKED_DOC,
         icon: LinkedPageIcon(),
         when(ctx) {
           const models = ctx.getSurfaceModels();
@@ -376,7 +385,7 @@ export const moreActions = [
         id: 'c.link-element',
         // Attach a link (existing doc or external URL) to a single drawing
         // element. A hover arrow (edgeless-element-link widget) opens it.
-        label: 'Link',
+        labelWording: TOOLBAR_LINK,
         icon: LinkIcon(),
         when(ctx) {
           const el = getLinkableElement(ctx);
@@ -423,7 +432,7 @@ export const moreActions = [
   // Deleting Group
   {
     id: 'e.delete',
-    label: 'Delete',
+    labelWording: TOOLBAR_DELETE,
     icon: DeleteIcon(),
     variant: 'destructive',
     run(ctx) {

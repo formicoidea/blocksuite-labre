@@ -102,6 +102,10 @@ import {
   ConfigExtensionFactory,
 } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  TOAST_COPIED_TO_CLIPBOARD,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import type { TemplateResult } from 'lit';
@@ -1122,7 +1126,7 @@ export const defaultKeyboardToolbarConfig: KeyboardToolbarConfig = {
           .pipe(getSelectedModelsCommand)
           .with({
             onCopy: () => {
-              toast(std.host, 'Copied to clipboard');
+              toast(std.host, translateKey(std, ...TOAST_COPIED_TO_CLIPBOARD));
             },
           })
           .pipe(draftSelectedModelsCommand)

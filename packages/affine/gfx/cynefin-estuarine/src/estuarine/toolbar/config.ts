@@ -1,6 +1,8 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { EstuarineElementModel } from '@labre/affine-model';
 import {
+  BOARD_RESIZE_TOGGLE,
+  type ChromeWording,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -79,13 +81,18 @@ type EstuarineToggleProp =
 
 function booleanToggle(
   id: string,
-  tooltip: string,
+  tooltip: string | ChromeWording,
   icon: TemplateResult,
   prop: EstuarineToggleProp
 ) {
   return {
     id,
-    tooltip,
+    tooltip: typeof tooltip === 'string' ? tooltip : tooltip[1],
+    // The declared wording, when the caller gave one instead of a literal:
+    // `combine` resolves it against the host's catalogue and writes it over
+    // the English default above, so a playground with no catalogue reads
+    // exactly what it read before (#183).
+    tooltipWording: typeof tooltip === 'string' ? undefined : tooltip,
     icon,
     active(ctx: ToolbarContext) {
       const models = ctx.getSurfaceModelsByType(EstuarineElementModel);
@@ -107,7 +114,7 @@ export const estuarineToolbarConfig = {
   actions: [
     booleanToggle(
       'a.toggle-resize',
-      'Enable / lock resizing',
+      BOARD_RESIZE_TOGGLE,
       ResizeIcon,
       'resizeEnabled'
     ),

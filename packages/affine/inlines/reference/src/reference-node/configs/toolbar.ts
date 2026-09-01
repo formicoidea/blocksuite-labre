@@ -2,8 +2,13 @@ import { notifyLinkedDocSwitchedToEmbed } from '@labre/affine-components/notific
 import {
   ActionPlacement,
   DocDisplayMetaProvider,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_DELETE,
+  TOOLBAR_EMBED_VIEW,
+  TOOLBAR_INLINE_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarModuleConfig,
 } from '@labre/affine-shared/services';
 import {
@@ -51,12 +56,12 @@ export const builtinInlineReferenceToolbarConfig = {
       actions: [
         {
           id: 'inline',
-          label: 'Inline view',
+          labelWording: TOOLBAR_INLINE_VIEW,
           disabled: true,
         },
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           run(ctx) {
             const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineReference)) return;
@@ -105,7 +110,7 @@ export const builtinInlineReferenceToolbarConfig = {
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           disabled(ctx) {
             const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineReference)) return true;
@@ -189,7 +194,7 @@ export const builtinInlineReferenceToolbarConfig = {
         if (!(target instanceof AffineReference)) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
-        const viewType$ = signal(actions[0].label);
+        const viewType$ = signal(toolbarActionLabel(ctx.std, actions[0]));
         const onToggle = (e: CustomEvent<boolean>) => {
           const opened = e.detail;
           if (!opened) return;
@@ -228,7 +233,7 @@ export const builtinInlineReferenceToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {

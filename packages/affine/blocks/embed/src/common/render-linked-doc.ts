@@ -6,7 +6,12 @@ import {
   NoteDisplayMode,
   ParagraphBlockModel,
 } from '@labre/affine-model';
-import { NotificationProvider } from '@labre/affine-shared/services';
+import {
+  NotificationProvider,
+  TOAST_LINKED_DOC_CREATED,
+  TOOLBAR_CREATE_LINKED_DOC,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import type { BlockStdScope } from '@labre/std';
 import {
@@ -129,7 +134,7 @@ export function promptDocTitle(std: BlockStdScope, autofill?: string) {
   if (!notification) return Promise.resolve(undefined);
 
   return notification.prompt({
-    title: 'Create linked doc',
+    title: translateKey(std, ...TOOLBAR_CREATE_LINKED_DOC),
     message: 'Enter a title for the new doc.',
     placeholder: 'Untitled',
     autofill,
@@ -140,7 +145,7 @@ export function promptDocTitle(std: BlockStdScope, autofill?: string) {
 
 export function notifyDocCreated(std: BlockStdScope) {
   std.getOptional(NotificationProvider)?.notifyWithUndoAction({
-    title: 'Linked doc created',
+    title: translateKey(std, ...TOAST_LINKED_DOC_CREATED),
     message: 'You can click undo to recovery block content',
     accent: 'info',
     duration: 10 * 1000,

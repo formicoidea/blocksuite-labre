@@ -64,6 +64,10 @@ function createdAll(command: CommandDescriptor): Record<string, unknown>[] {
   };
   const std = {
     get: () => gfx,
+    // No host catalogue, which is the case this stub is about: the board's
+    // name is seeded through the translation seam, and with nothing registered
+    // it must fall back to the English the model always carried.
+    getOptional: () => undefined,
   } as unknown as BlockStdScope;
 
   command.run(std, { surface: 'senior-menu', source: 'toolbar:general' });

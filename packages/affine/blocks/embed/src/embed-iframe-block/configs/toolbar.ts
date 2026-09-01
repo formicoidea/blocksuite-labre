@@ -7,11 +7,20 @@ import {
 } from '@labre/affine-shared/consts';
 import {
   ActionPlacement,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_EMBED_VIEW,
+  TOOLBAR_INLINE_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
@@ -95,7 +104,7 @@ export const builtinToolbarConfig = {
       actions: [
         {
           id: 'inline',
-          label: 'Inline view',
+          labelWording: TOOLBAR_INLINE_VIEW,
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
             if (!model) return;
@@ -130,7 +139,7 @@ export const builtinToolbarConfig = {
         },
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
             if (!model) return;
@@ -169,7 +178,7 @@ export const builtinToolbarConfig = {
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           disabled: true,
         },
       ],
@@ -194,7 +203,7 @@ export const builtinToolbarConfig = {
             .actions=${actions}
             .context=${ctx}
             .toggle=${toggle}
-            .viewType$=${signal(actions[2].label)}
+            .viewType$=${signal(toolbarActionLabel(ctx.std, actions[2]))}
           ></affine-view-dropdown-menu>`
         )}`;
       },
@@ -249,7 +258,7 @@ export const builtinToolbarConfig = {
       actions: [
         {
           id: 'copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
@@ -258,7 +267,12 @@ export const builtinToolbarConfig = {
             const slice = Slice.fromModels(ctx.store, [model]);
             ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(ctx.host, 'Copied to clipboard'))
+              .then(() =>
+                toast(
+                  ctx.host,
+                  translateKey(ctx.std, ...TOAST_COPIED_TO_CLIPBOARD)
+                )
+              )
               .catch(console.error);
 
             ctx.track('CopiedLink', {
@@ -269,7 +283,7 @@ export const builtinToolbarConfig = {
         },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
@@ -309,7 +323,7 @@ export const builtinToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {
@@ -335,7 +349,7 @@ export const builtinSurfaceToolbarConfig = {
       actions: [
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           run(ctx) {
             const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
             if (!model) return;
@@ -376,7 +390,7 @@ export const builtinSurfaceToolbarConfig = {
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           disabled: true,
         },
       ],
@@ -400,7 +414,7 @@ export const builtinSurfaceToolbarConfig = {
             @toggle=${onToggle}
             .actions=${actions}
             .context=${ctx}
-            .viewType$=${signal(actions[1].label)}
+            .viewType$=${signal(toolbarActionLabel(ctx.std, actions[1]))}
           ></affine-view-dropdown-menu>`
         )}`;
       },

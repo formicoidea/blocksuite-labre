@@ -18,6 +18,8 @@ import {
 import {
   ActionPlacement,
   type ElementLockEvent,
+  TOOLBAR_DRAW_CONNECTOR,
+  TOOLBAR_LOCK,
   type ToolbarAction,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -176,8 +178,8 @@ export const builtinMiscToolbarConfig = {
     {
       placement: ActionPlacement.End,
       id: 'a.draw-connector',
-      label: 'Draw connector',
-      tooltip: 'Draw connector',
+      labelWording: TOOLBAR_DRAW_CONNECTOR,
+      tooltipWording: TOOLBAR_DRAW_CONNECTOR,
       icon: ConnectorCIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModels();
@@ -218,7 +220,7 @@ export const builtinMiscToolbarConfig = {
     {
       placement: ActionPlacement.End,
       id: 'b.lock',
-      tooltip: 'Lock',
+      tooltipWording: TOOLBAR_LOCK,
       icon: LockIcon(),
       run(ctx) {
         const models = ctx.getSurfaceModels();

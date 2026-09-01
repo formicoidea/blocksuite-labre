@@ -35,6 +35,20 @@ export const INNER_FONT_SIZE = 20;
 export const LABEL_FONT_SIZE = 18;
 export const LABEL_GAP = 8;
 
+/**
+ * The i18n key {@link NODE_LABEL} is the English default of, when the label is
+ * written onto the canvas.
+ *
+ * Resolved AT PLACEMENT (`createEdgyBox`, `createEdgyPeople`) and never
+ * afterwards: the text a gesture writes is content the author owns from that
+ * moment on, and re-translating it on every paint would overwrite a name
+ * somebody typed. The same words also name the ROLES (`roles.ts`), under their
+ * own keys — a role is a fact about an element and is read live, which is a
+ * different question with a different answer.
+ */
+export const nodeLabelKey = (kind: EdgyNodeKind) =>
+  `com.labre.edgy.seed.${kind}`;
+
 /** Default inner text / label per kind. */
 export const NODE_LABEL: Record<EdgyNodeKind, string> = {
   people: 'People',

@@ -2,6 +2,8 @@ import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { ContextMapBoardElementModel } from '@labre/affine-model';
 import {
+  BOARD_LEGEND_NOTATION,
+  BOARD_RESIZE_TOGGLE,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -43,7 +45,7 @@ export const contextMapBoardToolbarConfig = {
   actions: [
     {
       id: 'a.toggle-resize',
-      tooltip: 'Enable / lock resizing',
+      tooltipWording: BOARD_RESIZE_TOGGLE,
       icon: ResizeIcon,
       active(ctx: ToolbarContext) {
         const models = ctx.getSurfaceModelsByType(ContextMapBoardElementModel);
@@ -62,7 +64,7 @@ export const contextMapBoardToolbarConfig = {
     },
     {
       id: 'b.legend',
-      tooltip: 'Generate the legend (notation present)',
+      tooltipWording: BOARD_LEGEND_NOTATION,
       icon: dddLegendIcon,
       run(ctx: ToolbarContext) {
         const board = ctx.getSurfaceModelsByType(

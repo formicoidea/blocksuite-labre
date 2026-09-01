@@ -1,6 +1,9 @@
 import {
+  TOOLBAR_SWITCH_VIEW,
   type ToolbarAction,
+  toolbarActionLabel,
   ToolbarContext,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { SignalWatcher } from '@labre/global/lit';
 import { PropTypes, requiredProperties } from '@labre/std';
@@ -35,13 +38,22 @@ export class ViewDropdownMenu extends SignalWatcher(LitElement) {
       viewType$: { value: viewType },
     } = this;
 
+    // These entries never went through `combine` — the group that owns them
+    // brings its own template and hands them over raw — so the i18n seam is
+    // applied here, with the same key the row would have used. `viewType` is
+    // resolved by the caller through the very same wordings, which is what
+    // keeps the "currently selected" comparison below a comparison of words.
+    const wordOf = (action: ToolbarAction) =>
+      toolbarActionLabel(context.std, action);
+    const switchView = translateKey(context.std, ...TOOLBAR_SWITCH_VIEW);
+
     return html`
       <editor-menu-button
         .contentPadding="${'8px'}"
         .button=${html`
           <editor-icon-button
-            aria-label="Switch view"
-            .tooltip="${'Switch view'}"
+            aria-label=${switchView}
+            .tooltip="${switchView}"
             .justify="${'space-between'}"
             .labelHeight="${'20px'}"
             .iconContainerWidth="${'110px'}"
@@ -59,19 +71,25 @@ export class ViewDropdownMenu extends SignalWatcher(LitElement) {
               return action.when ?? true;
             }),
             action => action.id,
-            ({ id, label, disabled, run }) => html`
-              <editor-menu-action
-                aria-label="${ifDefined(label)}"
-                data-testid="${`link-to-${id}`}"
-                ?data-selected="${label === viewType}"
-                ?disabled="${ifDefined(
-                  typeof disabled === 'function' ? disabled(context) : disabled
-                )}"
-                @click=${() => run?.(context)}
-              >
-                ${label}
-              </editor-menu-action>
-            `
+            action => {
+              const { id, disabled, run } = action;
+              const label = wordOf(action);
+              return html`
+                <editor-menu-action
+                  aria-label="${ifDefined(label)}"
+                  data-testid="${`link-to-${id}`}"
+                  ?data-selected="${label === viewType}"
+                  ?disabled="${ifDefined(
+                    typeof disabled === 'function'
+                      ? disabled(context)
+                      : disabled
+                  )}"
+                  @click=${() => run?.(context)}
+                >
+                  ${label}
+                </editor-menu-action>
+              `;
+            }
           )}
         </div>
       </editor-menu-button>

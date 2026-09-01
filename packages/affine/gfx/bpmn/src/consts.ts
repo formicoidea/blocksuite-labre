@@ -142,6 +142,9 @@ export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
  * go inside it, and inside is where the folded page and the cylinder already
  * are. The user can still type — the text simply overflows, which is the
  * honest failure rather than a label painted over the glyph.
+ *
+ * The caption is asked of the host's catalogue under {@link nodeLabelKey} when
+ * the artefact is placed, with the entry below as the English default.
  */
 export const NODE_LABEL: Record<BpmnNodeKind, string> = {
   startEvent: '',
@@ -166,6 +169,18 @@ export const NODE_LABEL: Record<BpmnNodeKind, string> = {
   // centred so it does not float over whatever the group encloses.
   group: 'Group',
 };
+
+/**
+ * The i18n key {@link NODE_LABEL} is the English default of.
+ *
+ * Resolved AT PLACEMENT (`createBpmnNode`) and never afterwards: what a gesture
+ * writes into the document is content the author owns from that moment on, and
+ * a renderer that re-translated it on every paint would silently overwrite a
+ * name somebody typed. The kinds with an empty label ask for nothing — there is
+ * no word to translate, and BPMN puts an event's name outside its glyph anyway.
+ */
+export const nodeLabelKey = (kind: BpmnNodeKind) =>
+  `com.labre.bpmn.seed.${kind}`;
 
 /**
  * Pool (background container) defaults — read by the `BPMN_POOL_BACKGROUND`

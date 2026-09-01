@@ -152,10 +152,21 @@ const REMARKS_IN_A_NOTIFICATION = 5;
  */
 const formatLabel = (format: InterchangeFormat) => format.id.toUpperCase();
 
-/** One remark, as the line a reader sees. */
-function remarkLine(note: InterchangeNote): string {
+/**
+ * One remark, as the line a reader sees.
+ *
+ * The reader that produced it had no `std` and could not translate it (P3), so
+ * this is where a remark that declared a key gets its wording — with its own
+ * `message` as the English default, exactly like every other `translateKey`
+ * call site. A remark with no key is one that names something out of the file
+ * and is shown as the reader wrote it (see `InterchangeNote.messageKey`).
+ */
+function remarkLine(std: BlockStdScope, note: InterchangeNote): string {
+  const message = note.messageKey
+    ? translateKey(std, note.messageKey, note.message)
+    : note.message;
   const subject = note.sourceId ?? note.element;
-  return subject ? `${subject}: ${note.message}` : note.message;
+  return subject ? `${subject}: ${message}` : message;
 }
 
 /**
@@ -262,7 +273,7 @@ export function reportInterchangeImport(
     title: translateKey(std, IMPORT_REMARKS_KEY, IMPORT_REMARKS_FALLBACK),
     message:
       notes.length <= REMARKS_IN_A_NOTIFICATION
-        ? notes.map(remarkLine).join('\n')
+        ? notes.map(note => remarkLine(std, note)).join('\n')
         : `${notes.length} ${translateKey(std, IMPORT_CONSOLE_KEY, IMPORT_CONSOLE_FALLBACK)}`,
     // Not `error`, and not `info`: nothing failed — every one of these is
     // something the document KEPT — but each one is a difference between the

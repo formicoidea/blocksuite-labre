@@ -1,5 +1,6 @@
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
@@ -27,6 +28,12 @@ import { CORE_DOMAIN_RULES } from './rules.js';
 export const coreDomainTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(coreDomainCommands),
+    // The catalogue's own group headers, derived from the very categories
+    // these commands declare. They ship WITH the framework because core's
+    // registry names no framework category in the bundled distribution, so a
+    // host that composed core's manifest alone drew translated entries under
+    // English headers (#183).
+    commandCategoryTranslationEntries(coreDomainCommands),
     collectTranslationKeys('role', CORE_DOMAIN_ROLES),
     collectTranslationKeys('background', CORE_DOMAIN_BACKGROUND),
     collectTranslationKeys('rule', CORE_DOMAIN_RULES),

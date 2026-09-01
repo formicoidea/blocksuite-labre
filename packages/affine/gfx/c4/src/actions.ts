@@ -13,6 +13,7 @@ import {
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
@@ -44,7 +45,7 @@ import type { C4ExportBoard } from './export';
 import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
 import { C4_AUTO_LEGEND } from './legend';
 import { c4NodeProps } from './presets';
-import { C4_BOUNDARY_ROLE, C4_ROLE } from './roles';
+import { C4_BOUNDARY_ROLE, C4_ROLE, c4BoardRoleKey } from './roles';
 import { C4_TYPE_PLACEHOLDER } from './type-line';
 
 /**
@@ -242,6 +243,13 @@ export function createC4Board(std: BlockStdScope) {
     // The FRAME the elements are drawn on, and a role of its own: a rule written
     // on the artefacts must never fall on the sheet holding them.
     role: C4_ROLE.board,
+    // The sheet's own name, written HERE rather than left to the model's
+    // default so that a board drawn in a translated host starts in that
+    // language (#183). It is content from that moment on — the title is
+    // editable on a double-click — so it is asked for once and never
+    // re-resolved. The key is the BOARD ROLE's: the two are the same noun, and
+    // a second key would ask a host to word "C4 diagram" twice.
+    name: translateKey(std, c4BoardRoleKey, 'C4 diagram'),
     xywh: new Bound(
       cx - BOARD_REF_WIDTH / 2,
       cy - BOARD_REF_HEIGHT / 2,

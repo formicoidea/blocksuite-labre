@@ -17,9 +17,11 @@ import {
 } from '@labre/affine-model';
 import {
   NotificationProvider,
+  TOAST_FRAME_INSERTED_INTO_PAGE,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   getMostCommonResolvedValue,
@@ -90,7 +92,7 @@ const builtinSurfaceToolbarConfig = {
         const notification = ctx.std.getOptional(NotificationProvider);
         if (notification) {
           notification.notifyWithUndoAction({
-            title: 'Frame inserted into Page.',
+            title: translateKey(ctx.std, ...TOAST_FRAME_INSERTED_INTO_PAGE),
             message: 'Frame has been inserted into doc',
             accent: 'success',
           });

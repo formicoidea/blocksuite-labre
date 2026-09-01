@@ -11,6 +11,8 @@ import {
   type IframeOptions,
   LinkPreviewServiceIdentifier,
   NotificationProvider,
+  TOAST_NO_LINK_FOUND,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
@@ -128,7 +130,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
     const link = this.model.props.url;
     if (!link) {
       this.notificationService?.notify({
-        title: 'No link found',
+        title: translateKey(this.std, ...TOAST_NO_LINK_FOUND),
         message: 'Please set a link to the block',
         accent: 'warning',
         onClose: function (): void {},

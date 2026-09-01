@@ -1,5 +1,6 @@
 import {
   collectTranslationKeys,
+  commandCategoryTranslationEntries,
   commandTranslationEntries,
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
@@ -29,6 +30,12 @@ import { EVENT_STORMING_RULES } from './rules.js';
 export const eventStormingTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
     commandTranslationEntries(eventStormingCommands),
+    // The catalogue's own group headers, derived from the very categories
+    // these commands declare. They ship WITH the framework because core's
+    // registry names no framework category in the bundled distribution, so a
+    // host that composed core's manifest alone drew translated entries under
+    // English headers (#183).
+    commandCategoryTranslationEntries(eventStormingCommands),
     collectTranslationKeys('role', EVENT_STORMING_ROLES),
     collectTranslationKeys('background', EVENT_STORMING_BACKGROUND),
     collectTranslationKeys('rule', EVENT_STORMING_RULES),

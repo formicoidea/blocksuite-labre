@@ -3,8 +3,13 @@ import {
   ActionPlacement,
   EmbedIframeService,
   EmbedOptionProvider,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_DELETE,
+  TOOLBAR_EMBED_VIEW,
+  TOOLBAR_INLINE_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarModuleConfig,
 } from '@labre/affine-shared/services';
 import {
@@ -105,12 +110,12 @@ export const builtinInlineLinkToolbarConfig = {
       actions: [
         {
           id: 'inline',
-          label: 'Inline view',
+          labelWording: TOOLBAR_INLINE_VIEW,
           disabled: true,
         },
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           run(ctx) {
             const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineLink)) return;
@@ -177,7 +182,7 @@ export const builtinInlineLinkToolbarConfig = {
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           when(ctx) {
             const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineLink)) return false;
@@ -271,7 +276,7 @@ export const builtinInlineLinkToolbarConfig = {
         if (!(target instanceof AffineLink)) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
-        const viewType$ = signal(actions[0].label);
+        const viewType$ = signal(toolbarActionLabel(ctx.std, actions[0]));
         const onToggle = (e: CustomEvent<boolean>) => {
           const opened = e.detail;
           if (!opened) return;
@@ -346,7 +351,7 @@ export const builtinInlineLinkToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {

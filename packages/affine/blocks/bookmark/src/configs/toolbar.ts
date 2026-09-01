@@ -21,11 +21,20 @@ import {
   EmbedIframeService,
   EmbedOptionProvider,
   type LinkEventType,
+  TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CARD_VIEW,
+  TOOLBAR_COPY,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_EMBED_VIEW,
+  TOOLBAR_INLINE_VIEW,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
@@ -107,7 +116,7 @@ const builtinToolbarConfig = {
       actions: [
         {
           id: 'inline',
-          label: 'Inline view',
+          labelWording: TOOLBAR_INLINE_VIEW,
           run(ctx) {
             const model = ctx.getCurrentModelByType(BookmarkBlockModel);
             if (!model) return;
@@ -140,12 +149,12 @@ const builtinToolbarConfig = {
         },
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           disabled: true,
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           disabled(ctx) {
             const model = ctx.getCurrentModelByType(BookmarkBlockModel);
             if (!model) return true;
@@ -225,7 +234,7 @@ const builtinToolbarConfig = {
         if (!model) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
-        const viewType$ = signal(actions[1].label);
+        const viewType$ = signal(toolbarActionLabel(ctx.std, actions[1]));
         const onToggle = createOnToggleFn(
           ctx,
           'OpenedViewSelector',
@@ -299,7 +308,7 @@ const builtinToolbarConfig = {
       actions: [
         {
           id: 'copy',
-          label: 'Copy',
+          labelWording: TOOLBAR_COPY,
           icon: CopyIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(BookmarkBlockModel);
@@ -308,13 +317,18 @@ const builtinToolbarConfig = {
             const slice = Slice.fromModels(ctx.store, [model]);
             ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(ctx.host, 'Copied to clipboard'))
+              .then(() =>
+                toast(
+                  ctx.host,
+                  translateKey(ctx.std, ...TOAST_COPIED_TO_CLIPBOARD)
+                )
+              )
               .catch(console.error);
           },
         },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          labelWording: TOOLBAR_DUPLICATE,
           icon: DuplicateIcon(),
           run(ctx) {
             const model = ctx.getCurrentModelByType(BookmarkBlockModel);
@@ -342,7 +356,7 @@ const builtinToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
-      label: 'Delete',
+      labelWording: TOOLBAR_DELETE,
       icon: DeleteIcon(),
       variant: 'destructive',
       run(ctx) {
@@ -367,12 +381,12 @@ const builtinSurfaceToolbarConfig = {
       actions: [
         {
           id: 'card',
-          label: 'Card view',
+          labelWording: TOOLBAR_CARD_VIEW,
           disabled: true,
         },
         {
           id: 'embed',
-          label: 'Embed view',
+          labelWording: TOOLBAR_EMBED_VIEW,
           run(ctx) {
             const model = ctx.getCurrentModelByType(BookmarkBlockModel);
             if (!model) return;
@@ -464,7 +478,7 @@ const builtinSurfaceToolbarConfig = {
         if (!model) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
-        const viewType$ = signal('Card view');
+        const viewType$ = signal(translateKey(ctx.std, ...TOOLBAR_CARD_VIEW));
         const onToggle = createOnToggleFn(
           ctx,
           'OpenedViewSelector',

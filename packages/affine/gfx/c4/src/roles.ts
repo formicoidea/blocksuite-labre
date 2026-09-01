@@ -140,6 +140,14 @@ void _everyRoleIsMapped;
 const roleKey = (id: RoleId) => `com.labre.c4.role.${id.slice('c4:'.length)}`;
 
 /**
+ * The board's own key, exported because `createC4Board` seeds the sheet's NAME
+ * from it (#183: a board drawn in a French host should not be called
+ * "C4 diagram"). One key for the role and for the seed, because they are the
+ * same noun and a host must not be asked to word it twice.
+ */
+export const c4BoardRoleKey = roleKey(C4_ROLE.board);
+
+/**
  * The four levels of the C4 model, flat — see the note at the top of this file
  * on why composition is not specialisation — plus the one specialisation C4
  * itself draws, the database under the container.
