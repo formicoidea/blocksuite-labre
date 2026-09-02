@@ -60,20 +60,41 @@ describe('wardley canvas shortcuts', () => {
     expect(shapes[0].yMap.get('role')).toBe('wardley:inertia');
   });
 
-  test('an unknown key in the armed wardley namespace does nothing (w+e ≠ eraser)', async () => {
+  test('w then a creates an anchor, carrying its role (labre#538)', async () => {
+    key('w');
+    key('a');
+    await wait();
+
+    const nodes = service.surface.getElementsByType('wardleyNode');
+    expect(nodes.length).toBe(1);
+    expect(nodes[0].yMap.get('role')).toBe('wardley:anchor');
+  });
+
+  test('w then e arms the evolution arrow tool (labre#538)', async () => {
+    key('w');
+    key('e');
+    await wait();
+
+    // A connector tool, not the eraser `e` alone reaches: the chord was
+    // consumed by the wardley namespace. Nothing is drawn until a drag.
+    expect(service.gfx.tool.currentToolName$.peek()).toBe('connector');
+    expect(service.surface.elementModels.length).toBe(0);
+  });
+
+  test('an unknown key in the armed wardley namespace does nothing (w+h ≠ hand)', async () => {
     const before = service.gfx.tool.currentToolName$.peek();
 
     key('w');
-    key('e'); // no wardley shortcut on 'e' — must NOT reach the eraser binding
+    key('h'); // no wardley shortcut on 'h' — must NOT reach the hand binding
     await wait();
 
     expect(service.gfx.tool.currentToolName$.peek()).toBe(before);
     expect(service.surface.elementModels.length).toBe(0);
 
-    // the namespace was left: 'e' alone still reaches the eraser tool
-    key('e');
+    // the namespace was left: 'h' alone still reaches the hand tool
+    key('h');
     await wait();
-    expect(service.gfx.tool.currentToolName$.peek()).toBe('eraser');
+    expect(service.gfx.tool.currentToolName$.peek()).toBe('pan');
   });
 
   test('the chord prefix expires and does not leak into single keys', async () => {

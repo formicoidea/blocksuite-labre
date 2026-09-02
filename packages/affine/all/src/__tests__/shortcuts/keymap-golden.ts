@@ -13,6 +13,13 @@
  * Regenerating this file defeats its purpose: it exists so a user's persisted
  * v0.29 override table keeps resolving to the same action after the switchover
  * (docs/adr/0008).
+ *
+ * AMENDED 2026-09-02 (labre#538, staging recette retour n°12) — one deliberate
+ * default-keymap change, not a regeneration: `w a` now creates an ANCHOR
+ * (`wardley.addAnchor`, keyless until then) and the evolution arrow moved to
+ * `w e`. Ids are unchanged, so a persisted override table still resolves; only
+ * these two defaults moved. Anything else in this file drifting is still a
+ * regression.
  */
 export const KEYMAP_GOLDEN = {
   declarations: [
@@ -59,6 +66,13 @@ export const KEYMAP_GOLDEN = {
       other: ['Mod-z'],
     },
     {
+      id: 'wardley.addAnchor',
+      owner: 'wardley',
+      scope: 'edgeless',
+      mac: ['w', 'a'],
+      other: ['w', 'a'],
+    },
+    {
       id: 'wardley.addBackground',
       owner: 'wardley',
       scope: 'edgeless',
@@ -97,8 +111,8 @@ export const KEYMAP_GOLDEN = {
       id: 'wardley.evolutionArrow',
       owner: 'wardley',
       scope: 'edgeless',
-      mac: ['w', 'a'],
-      other: ['w', 'a'],
+      mac: ['w', 'e'],
+      other: ['w', 'e'],
     },
     {
       id: 'wardley.linkTool',
@@ -121,7 +135,8 @@ export const KEYMAP_GOLDEN = {
         'Mod-Shift-f': 'shape.cycleTextFit',
         'w c': 'wardley.addComponent',
         'w l': 'wardley.linkTool',
-        'w a': 'wardley.evolutionArrow',
+        'w a': 'wardley.addAnchor',
+        'w e': 'wardley.evolutionArrow',
         'w i': 'wardley.addInertia',
         'w p': 'wardley.addPipeline',
         'w m': 'wardley.addMethod',
@@ -141,7 +156,8 @@ export const KEYMAP_GOLDEN = {
         'Mod-Shift-f': 'shape.cycleTextFit',
         'w c': 'wardley.addComponent',
         'w l': 'wardley.linkTool',
-        'w a': 'wardley.evolutionArrow',
+        'w a': 'wardley.addAnchor',
+        'w e': 'wardley.evolutionArrow',
         'w i': 'wardley.addInertia',
         'w p': 'wardley.addPipeline',
         'w m': 'wardley.addMethod',

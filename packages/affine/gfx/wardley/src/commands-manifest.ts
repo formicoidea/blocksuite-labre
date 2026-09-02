@@ -87,7 +87,7 @@ export const wardleyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.wardley.addAnchor',
     labelFallback: 'Anchor',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['w', 'a'], other: ['w', 'a'] },
   },
   {
     id: 'wardley.addPipeline',
@@ -111,7 +111,7 @@ export const wardleyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.keyboardShortcuts.wardley.evolutionArrow',
     labelFallback: 'Arrow (evolution)',
     scope: 'edgeless',
-    defaultKeys: { mac: ['w', 'a'], other: ['w', 'a'] },
+    defaultKeys: { mac: ['w', 'e'], other: ['w', 'e'] },
   },
   {
     id: 'wardley.addInertia',
