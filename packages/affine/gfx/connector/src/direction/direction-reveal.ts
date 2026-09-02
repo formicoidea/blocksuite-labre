@@ -15,7 +15,7 @@ import {
  * **M2 of `docs/adr/0010` — "show it".**
  *
  * A typed edge reveals its orientation on hover and on selection: ONE mark, the
- * role's verb laid ALONG the link — `depends on` — in a box whose far end is a
+ * role's verb laid ALONG the link — `needs` — in a box whose far end is a
  * point aimed at the target. At rest the board keeps the canonical arrowless
  * look, because on a Wardley map a permanent head already means something else
  * (evolution movement), and two meanings on one glyph make both unreadable.
@@ -82,7 +82,7 @@ export interface EdgeLabelAnchor {
    * this flag: the point of the box must face the TARGET, so on a link running
    * right-to-left — where the turn put the box's right end at the SOURCE — the
    * point moves to the box's left end. The words themselves never reverse; a
-   * mirrored `depends on` would be a smudge, not a rotation.
+   * mirrored `needs` would be a smudge, not a rotation.
    */
   flipped: boolean;
 }

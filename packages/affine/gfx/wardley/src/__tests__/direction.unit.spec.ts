@@ -40,16 +40,38 @@ describe('the vocabulary states the convention', () => {
     }
   });
 
-  it('says the dependency verb is "depends on", and the arrow’s is not', () => {
+  it('says the dependency verb is "needs", and the arrow’s is not', () => {
     // Tier 2, and the whole of what W4 reads: the source of a dependency is the
     // CONSUMER. The change arrow is oriented too and means something else — a
     // rule may only read "consumer / provider" out of an edge whose verb says
     // so.
+    //
+    // The verb read "depends on" until the PO recette of 02/09/2026. The KEY is
+    // what a host catalogue binds and it did not move; only the English
+    // fallback did, which is exactly the seam this pin is here to protect.
     const dependency = findRoleDef(vocabularies, WARDLEY_ROLE.dependency);
     const arrow = findRoleDef(vocabularies, WARDLEY_ROLE.changeArrow);
 
-    expect(dependency?.direction?.verbFallback).toBe('depends on');
-    expect(arrow?.direction?.verbFallback).not.toBe('depends on');
+    expect(dependency?.direction?.verbKey).toBe(
+      'com.labre.wardley.role.dependency.verb'
+    );
+    expect(dependency?.direction?.verbFallback).toBe('needs');
+    expect(arrow?.direction?.verbFallback).not.toBe('needs');
+  });
+
+  it('paints the dependency chip in the house primary, and nothing else', () => {
+    // The PO asked for THIS relation to stand out (recette of 02/09/2026). A
+    // colour declared on the role rather than on the reveal is what keeps that
+    // decision from repainting every other framework's typed edges, so the pin
+    // is two-sided: the dependency asks for a colour, and no other Wardley edge
+    // role does.
+    const dependency = findRoleDef(vocabularies, WARDLEY_ROLE.dependency);
+    expect(dependency?.direction?.chipColor).toBe('#2563eb');
+
+    for (const def of Object.values(WARDLEY_ROLES)) {
+      if (def.id === WARDLEY_ROLE.dependency) continue;
+      expect(def.direction?.chipColor, def.id).toBeUndefined();
+    }
   });
 
   it('answers "is this a typed edge" for edges, nodes and strangers alike', () => {

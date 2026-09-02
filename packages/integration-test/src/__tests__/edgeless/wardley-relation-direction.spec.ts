@@ -397,7 +397,7 @@ describe('the direction of a wardley dependency', () => {
     const label = widget!.shadowRoot?.querySelector(
       '[data-testid="edge-direction-label"]'
     );
-    expect(label?.textContent?.trim()).toBe('depends on');
+    expect(label?.textContent?.trim()).toBe('needs');
 
     // An edge bound to nothing relates nothing, so it says nothing — the same
     // guard W4 applies before it judges anything.
@@ -471,9 +471,14 @@ describe('the direction of a wardley dependency', () => {
     // The VERB, and nothing else. Both ends are named on this board — the
     // grouped label beside each circle — and neither name is in the box: the
     // label is short enough to sit on the link instead of over the map.
-    expect(shown!.textContent?.trim()).toBe('depends on');
+    expect(shown!.textContent?.trim()).toBe('needs');
     expect(shown!.textContent).not.toContain('Kettle');
     expect(shown!.textContent).not.toContain('Electricity');
+
+    // In the colour the ROLE declares (PO recette of 02/09/2026), which is what
+    // makes the value chain unmistakable without touching the default every
+    // other framework's typed edge keeps.
+    expect(shown!.style.backgroundColor).toBe('rgb(37, 99, 235)');
 
     // Turned onto the segment it sits on, not laid flat across it.
     expect(transform(shown!).degrees).toBeCloseTo(45, 0);
@@ -503,7 +508,7 @@ describe('the direction of a wardley dependency', () => {
     // cannot disagree.
     invert([edge]);
     const reversed = await label();
-    expect(reversed!.textContent?.trim()).toBe('depends on');
+    expect(reversed!.textContent?.trim()).toBe('needs');
     expect(reversed!.dataset.arrow).toBe('start');
     // Still readable: the link now runs up-and-left, so the box is turned by
     // 180° and lands back at the same +45°.
