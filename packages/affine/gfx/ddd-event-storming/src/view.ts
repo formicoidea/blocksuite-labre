@@ -1,4 +1,5 @@
 import {
+  morphToolbarConfig,
   QualityNudgeExtension,
   validationToolbarConfig,
   ValidationProfileExtension,
@@ -8,7 +9,10 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
-import { ToolbarModuleExtension } from '@labre/affine-shared/services';
+import {
+  ToolbarModuleExtension,
+  toolbarModuleKey,
+} from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
@@ -16,6 +20,7 @@ import { eventStormingCommandIcons, eventStormingCommands } from './commands';
 import { eventStormingEffects } from './effects';
 import { EventStormingRendererExtension } from './element-renderer';
 import { EventStormingInteraction, EventStormingView } from './element-view';
+import { EVENT_STORMING_MORPH_SPEC } from './morph';
 import { EVENT_STORMING_NUDGES } from './nudges';
 import { EVENT_STORMING_PROFILES } from './profiles';
 import { EVENT_STORMING_ROLES } from './roles';
@@ -93,6 +98,40 @@ export class DddEventStormingViewExtension extends ViewExtensionProvider {
       context.register(eventStormingSeniorTool);
       context.register(
         CommandExtension(eventStormingCommands, eventStormingCommandIcons)
+      );
+      // The "Change type" dropdown on a selected STICKY's contextual toolbar —
+      // the generic module, parameterized by Event Storming's own family.
+      //
+      // ## Why the key carries an owner
+      //
+      // A sticky is a native `group` (the shadow and the face), so the row the
+      // toolbar draws for it is the GROUP's row, merged by the registry from
+      // every module registered on that flavour. Both plain group keys were
+      // claimed long ago — `affine:surface:group` by the native operations
+      // (rename, ungroup), `custom:affine:surface:group` by Wardley's
+      // qualification dropdown — and C4's morph already took the
+      // `#c4-morph` variant. `toolbarModuleKey` is what lifts the ceiling of
+      // one module per flavour: this one is registered under
+      // `custom:affine:surface:group#ddd-event-storming-morph` and the registry
+      // hands it to the same row (`toolbar-service/registry.ts`).
+      //
+      // ## Why here
+      //
+      // In the flag-gated half, because a morph is TOOLING: a sticky placed
+      // while the flag was on keeps its role, its colours, its words, its
+      // shadow and its place in every rule when the flag goes off — it just
+      // stops being something the toolbar offers to say differently
+      // (`docs/adr/0009`).
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey(
+              'custom:affine:surface:group',
+              'ddd-event-storming-morph'
+            )
+          ),
+          config: morphToolbarConfig(EVENT_STORMING_MORPH_SPEC),
+        })
       );
     }
   }
