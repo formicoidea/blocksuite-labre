@@ -225,7 +225,30 @@ describe('morphing a C4 component into a nearby kind', () => {
     await selectAndRender(wardley);
 
     expect(onRow('[data-testid="element-tags-entry"]')).not.toBeNull();
-    expect(onRow('[data-testid="element-morph"]')).toBeNull();
+
+    // The other half of this case USED to read "and no morph at all on this
+    // row", which was a proxy for what it actually meant — that C4's morph
+    // stands down on a composite that is not its own — and the proxy held only
+    // while C4 owned the one morph on this flavour. Wardley has since declared
+    // its own, and a Wardley component is exactly what it is about, so the row
+    // now legitimately carries a morph dropdown. Counting it here would be
+    // wrong twice over: the count belongs to Wardley's own spec, which pins
+    // that a Wardley component draws EXACTLY ONE of these
+    // (`wardley-morph.spec.ts`).
+    //
+    // So the claim is put where the refusal lives instead of being read off the
+    // DOM: C4's config, asked about this selection, says no. That survives the
+    // sixth framework declaring a morph, which the old assertion did not.
+    const model = getSurface(window.doc, window.editor).model.getElementById(
+      wardley
+    ) as GroupElementModel;
+    const config = morphToolbarConfig(C4_MORPH_SPEC);
+    const ctx = select(model);
+    expect(
+      typeof config.when === 'function' ? config.when(ctx) : config.when
+    ).toBe(false);
+    // …and the resolution is the reason: a Wardley component holds no `c4Node`.
+    expect(c4NodeOfComponent(model)).toBeUndefined();
   });
 
   test('a container becomes a database, and only the shape changes', async () => {
