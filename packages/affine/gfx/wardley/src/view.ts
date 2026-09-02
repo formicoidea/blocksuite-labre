@@ -19,7 +19,11 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { extendTemplateCategory } from '@labre/affine-gfx-template';
-import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
+import {
+  BlockFlavourIdentifier,
+  CommandExtension,
+  IconTableExtension,
+} from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
@@ -27,7 +31,7 @@ import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_INTERCHANGE } from './interchange';
 import { WARDLEY_MORPH_SPEC } from './morph';
-import { WARDLEY_TAG_DEFS } from './natures';
+import { WARDLEY_TAG_DEFS, wardleyNatureIcons } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_NUDGES } from './nudges';
 import { WARDLEY_READING } from './reading';
@@ -135,6 +139,13 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // library release. All packs must land in this one DI scope — `getAll`
       // never merges across scopes.
       context.register(UniverseTagDefsExtension(WARDLEY_TAG_DEFS));
+      // The drawings the pack's `iconKey`s name. Separate from the pack ON
+      // PURPOSE: the pack is a data format a host may ship as JSON, so it can
+      // only name a key — the template it resolves to belongs to the framework
+      // that ships the icons. Same table and same resolution as a command's,
+      // and registered here so it goes with the flag exactly like the dropdown
+      // that reads it.
+      context.register(IconTableExtension(wardleyNatureIcons));
       // The qualification dropdown on the selected component's toolbar. A
       // THIRD module on the same element, through a free `custom:` flavour
       // slot. Generic in shape — it names no framework and builds its sections

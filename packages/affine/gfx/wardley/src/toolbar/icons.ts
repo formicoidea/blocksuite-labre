@@ -38,6 +38,44 @@ const RED = '#d6455d';
 /** Gradient green — matches gradient.ts GRADIENT_GREEN. */
 const GREEN = '#1f9e4d';
 
+/**
+ * The four NATURES, for the qualification dropdown (`natures.ts`).
+ *
+ * Monochrome `currentColor` line glyphs, drawn at the weight of the check mark
+ * they sit beside, because they live in a MENU ROW and not on the canvas: the
+ * artefact glyphs below name something the user is about to draw, while these
+ * name what an already-drawn component IS. Four things that must be told apart
+ * at 20 px, so each takes the most literal picture available rather than a
+ * clever one.
+ */
+
+/** Activity — something that is DONE: a gear, the common glyph of a process. */
+export const wardleyNatureActivityIcon = svg`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="3.2"/>
+  <path d="M12 2.5v2.4M12 19.1v2.4M21.5 12h-2.4M4.9 12H2.5M18.7 5.3l-1.7 1.7M7 17l-1.7 1.7M18.7 18.7 17 17M7 7 5.3 5.3"/>
+</svg>`;
+
+/** Data — something that is RECORDED: the database cylinder. */
+export const wardleyNatureDataIcon = svg`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="6" rx="7" ry="3"/>
+  <path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/>
+  <path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>
+</svg>`;
+
+/** Practice — a way of DOING, and always someone's: two people. */
+export const wardleyNaturePracticeIcon = svg`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="9" cy="7.5" r="3"/>
+  <path d="M2.5 20v-1.2a4.3 4.3 0 0 1 4.3-4.3h4.4a4.3 4.3 0 0 1 4.3 4.3V20"/>
+  <path d="M16.5 5.2a3 3 0 0 1 0 5.6M18 14.7a4.3 4.3 0 0 1 3.5 4.1V20"/>
+</svg>`;
+
+/** Knowledge — something that is KNOWN: an open book. */
+export const wardleyNatureKnowledgeIcon = svg`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 7.2C10.6 5.7 8.6 5 6 5H3v13h3.5c2.2 0 4.1.6 5.5 1.8"/>
+  <path d="M12 7.2C13.4 5.7 15.4 5 18 5h3v13h-3.5c-2.2 0-4.1.6-5.5 1.8"/>
+  <path d="M12 7.2v12.6"/>
+</svg>`;
+
 /** Component node (validated COMP-C2): single circle. */
 export const wardleyComponentIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="12" cy="12" r="6.3" fill="#fff" stroke="currentColor" stroke-width="1.5"/>

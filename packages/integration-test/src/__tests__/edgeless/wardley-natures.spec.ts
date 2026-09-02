@@ -211,6 +211,22 @@ describe('the nature of a Wardley component', () => {
       ]);
     });
 
+    test('each of the four is pictured, in a real assembly', async () => {
+      // The PO asked for the four choices to be imaged (recette of 02/09/2026),
+      // and this is the only test that exercises the whole seam at once: the
+      // pack names an icon KEY (it is data, and may ship as JSON), the
+      // framework registers the drawings with `IconTableExtension`, and the
+      // dropdown resolves one against the other through DI. A unit test can pin
+      // either half; only a mounted editor pins that they meet.
+      const component = addComponent();
+      await select(component);
+
+      const drawn = options().map(el =>
+        el.querySelector('[data-testid="element-tag-option-icon"] svg')
+      );
+      expect(drawn.filter(Boolean)).toHaveLength(4);
+    });
+
     test('ONE click on a composite component reaches it', async () => {
       // What the senior menu actually builds: an ellipse and a free text,
       // grouped. A single click selects the GROUP, which carries no role — and

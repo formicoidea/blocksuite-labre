@@ -3,11 +3,13 @@ import {
   type ToolbarContext,
   type UniverseTagDefs,
 } from '@labre/affine-shared/services';
+import { CommandIconsIdentifier } from '@labre/std';
 import type { GfxModel, RoleDefs } from '@labre/std/gfx';
 import {
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
+import { render, svg, type TemplateResult } from 'lit';
 import { describe, expect, it } from 'vitest';
 
 import { tagsToolbarConfig } from '../extensions/tags-toolbar.js';
@@ -69,15 +71,25 @@ function group(...children: GfxModel[]): GfxModel {
   return g;
 }
 
-function context(models: GfxModel[], packs: UniverseTagDefs[] = [PACK]) {
+function context(
+  models: GfxModel[],
+  packs: UniverseTagDefs[] = [PACK],
+  icons: Record<string, TemplateResult> = {}
+) {
   // A fresh `std` per context: the registry is memoized per scope, so sharing
   // one would leak a previous test's packs.
   const std = {
     provider: {
-      getAll: (id: unknown) =>
-        id === UniverseTagDefsProvider
-          ? new Map(packs.map(pack => [pack.packId, pack]))
-          : new Map(),
+      getAll: (id: unknown) => {
+        if (id === UniverseTagDefsProvider) {
+          return new Map(packs.map(pack => [pack.packId, pack]));
+        }
+        // The icon tables a framework registers with `IconTableExtension` —
+        // the same identifier a command's icons land on, because an icon key
+        // is an icon key.
+        if (id === CommandIconsIdentifier) return new Map([['icons', icons]]);
+        return new Map();
+      },
     },
     getOptional: () => undefined,
   };
@@ -244,5 +256,88 @@ describe('the entry is generic', () => {
     // namespacing exists to prevent.
     expect(stands(context([element('edgy:activity')], [wildcard]))).toBe(false);
     expect(stands(context([element('wardley:anchor')], [wildcard]))).toBe(true);
+  });
+});
+
+/**
+ * The icon a tag VALUE may carry (PO recette of 02/09/2026).
+ *
+ * A pack is host-extensible DATA and may ship as a `.json` asset, so a value
+ * names a key and never a template; the drawing comes from a table the
+ * framework registers, and both ends of that seam are optional. What is pinned
+ * here is that a value with no icon renders as it always has.
+ */
+describe('the icon of a tag value', () => {
+  it('renders a value icon only when the pack names one AND it resolves', () => {
+    // The PO asked for the four Wardley natures to be pictured (recette of
+    // 02/09/2026). The seam that makes it possible without breaking a host's
+    // own packs is asserted here, three ways at once: a pack carries an icon
+    // KEY (it may ship as `.json`, so it can carry nothing else), the drawing
+    // comes from a registered table, and a value with neither renders exactly
+    // as it always has.
+    const pack: UniverseTagDefs = {
+      ...PACK,
+      tags: [
+        {
+          ...PACK.tags[0],
+          values: [
+            { id: 'wardley:nature/data', label: 'Data', iconKey: 'demo.data' },
+            // A key no table answers — a framework switched off, or a host pack
+            // whose icons this build does not ship.
+            {
+              id: 'wardley:nature/practice',
+              label: 'Practice',
+              iconKey: 'demo.missing',
+            },
+            // ...and the pack that never heard of icons: every host pack today.
+            { id: 'wardley:nature/knowledge', label: 'Knowledge' },
+          ],
+        },
+      ],
+    };
+    const icons: Record<string, TemplateResult> = {
+      'demo.data': svg`<svg data-testid="demo-glyph" viewBox="0 0 24 24"></svg>`,
+    };
+
+    const ctx = context([element('wardley:component')], [pack], icons);
+    const action = config.actions?.[0] as {
+      content: (c: ToolbarContext) => TemplateResult | null;
+    };
+    const template = action.content(ctx);
+    expect(template).not.toBeNull();
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      render(template, host);
+      const options = Array.from(
+        host.querySelectorAll<HTMLElement>('[data-testid="element-tag-option"]')
+      );
+      expect(options.map(o => o.dataset.valueId)).toEqual([
+        'wardley:nature/data',
+        'wardley:nature/practice',
+        'wardley:nature/knowledge',
+      ]);
+      // Resolved: the glyph is drawn, and the label is still there beside it.
+      expect(
+        options[0].querySelector('[data-testid="element-tag-option-icon"]')
+      ).toBeTruthy();
+      expect(
+        options[0].querySelector('[data-testid="demo-glyph"]')
+      ).toBeTruthy();
+      expect(options[0].textContent).toContain('Data');
+      // Unresolved, and absent: no glyph, no placeholder, and the label — the
+      // one thing the row is FOR — untouched in both.
+      for (const option of [options[1], options[2]]) {
+        expect(
+          option.querySelector('[data-testid="element-tag-option-icon"]'),
+          option.dataset.valueId
+        ).toBeNull();
+      }
+      expect(options[1].textContent).toContain('Practice');
+      expect(options[2].textContent).toContain('Knowledge');
+    } finally {
+      host.remove();
+    }
   });
 });
