@@ -3,6 +3,18 @@ export {
   eventStormingCommands,
 } from './commands.js';
 export { EVENT_STORMING_BACKGROUND } from './background.js';
+// What a sticky may BECOME: the family and the spec the flag-gated morph module
+// is registered with, the resolution from a selected group to the face the role
+// lives on, and the two pure rules the integration suite drives directly.
+export {
+  ES_MORPH_FAMILIES,
+  ES_STICKY_FACES,
+  EVENT_STORMING_MORPH_SPEC,
+  eventStormingFaceOfSticky,
+  eventStormingMorphedLabel,
+  eventStormingMorphProps,
+  eventStormingStickyKind,
+} from './morph.js';
 export { EVENT_STORMING_NUDGES } from './nudges.js';
 export { EVENT_STORMING_PROFILES } from './profiles.js';
 export {
