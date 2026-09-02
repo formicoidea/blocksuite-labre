@@ -409,6 +409,125 @@ describe('what the record says, in the host’s own words', () => {
   });
 });
 
+/**
+ * The recette bug of 02/09/2026: "Read this component" said "Not linked to a
+ * record" on a component the host HAD bound.
+ *
+ * A Wardley component is a composite — a group holding the circle that carries
+ * the role and the free text that names it — and a plain click selects the
+ * GROUP. The reading resolves to the circle (that is where the role is), the
+ * host's own linking gesture stamped the group (that is what was selected), and
+ * the panel compared the two and found nothing. The record side of the reading
+ * now asks the tolerant question; the WRITE contract is untouched.
+ */
+describe('a binding carried by the composite', () => {
+  const phaseProperty = [
+    {
+      key: 'phase',
+      label: 'Phase',
+      value: { kind: 'text' as const, value: 'genesis' },
+    },
+  ];
+
+  /** The composite as a framework draws it: circle + label, grouped. */
+  const composite = (
+    ctx: ReturnType<typeof setup>,
+    props: Record<string, unknown> = {}
+  ) => {
+    const component = ctx.addComponent(0.55, 0.5);
+    const label = ctx.add({
+      type: 'text',
+      text: 'Brewing tea',
+      role: 'wardley:label',
+      xywh: '[900,441,120,26]',
+    });
+    const group = ctx.add({
+      type: 'group',
+      children: { [component.id]: true, [label.id]: true },
+      ...props,
+    });
+    return { component, label, group };
+  };
+
+  test('the record resolves through the group a plain click selects', () => {
+    const ctx = setup({ properties: phaseProperty });
+    ctx.addMap();
+    const { component, group } = composite(ctx, { pivotDocId: RECORD });
+
+    // The circle itself carries nothing — that is the whole point.
+    expect(component.pivotDocId).toBeUndefined();
+    expect(group.pivotDocId).toBe(RECORD);
+
+    const record = readRecord(ctx.std, component, WARDLEY_READING)!;
+    expect(record.pivotDocId).toBe(RECORD);
+    // …and the WHOLE record side comes from the resolved binding, not just the
+    // "Linked" line: the panel and the drift can never name different records.
+    expect(record.phase).toBe('genesis');
+  });
+
+  test('the element’s own binding still wins over the group’s', () => {
+    const ctx = setup({ properties: phaseProperty });
+    ctx.addMap();
+    const component = ctx.addComponent(0.55, 0.5, { pivotDocId: RECORD });
+    ctx.add({
+      type: 'group',
+      children: { [component.id]: true },
+      pivotDocId: 'pivot-onboarding',
+    });
+
+    // The most specific binding wins: an element bound in its own right is
+    // never shadowed by the group it happens to sit in.
+    expect(readRecord(ctx.std, component, WARDLEY_READING)?.pivotDocId).toBe(
+      RECORD
+    );
+  });
+
+  test('an unbound composite still resolves to no record at all', () => {
+    const ctx = setup({ properties: phaseProperty });
+    ctx.addMap();
+    const { component } = composite(ctx);
+
+    expect(readRecord(ctx.std, component, WARDLEY_READING)).toBeUndefined();
+  });
+
+  test('the drift trigger speaks about it too, and names the group’s record', async () => {
+    const ctx = setup({ properties: phaseProperty });
+    ctx.addMap();
+    const { component } = composite(ctx, { pivotDocId: RECORD });
+    await settleDrift();
+    ctx.reading.drift$.value = null;
+
+    ctx.surface.updateElement(component.id, { xywh: '[900,400,18,18]' });
+    await settleDrift();
+
+    // The drift is reported ON the role-carrying element (that is what the
+    // panel is anchored to) and AGAINST the resolved record.
+    expect(ctx.reading.drift$.value).toMatchObject({
+      elementId: component.id,
+      pivotDocId: RECORD,
+      fields: [
+        { field: 'phase', read: 'Product (+Rental)', record: 'genesis' },
+      ],
+    });
+  });
+
+  test('resolving a composite binding writes nothing', () => {
+    const ctx = setup({ properties: phaseProperty });
+    ctx.addMap();
+    const { component } = composite(ctx, { pivotDocId: RECORD });
+    const before = ctx.snapshot();
+
+    for (let i = 0; i < 50; i++) {
+      readRecord(ctx.std, component, WARDLEY_READING);
+    }
+
+    // A tolerance is a filter on the way IN. It never repairs, never migrates,
+    // and never copies the binding down onto the element.
+    expect(ctx.snapshot()).toEqual(before);
+    expect(component.yMap.has('pivotDocId')).toBe(false);
+  });
+});
+
 describe('the drift trigger', () => {
   test('never fires on the gesture itself, and fires once it has settled', async () => {
     const ctx = setup({

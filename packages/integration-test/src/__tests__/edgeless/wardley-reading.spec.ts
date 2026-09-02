@@ -259,6 +259,73 @@ describe('the reversed reading of a Wardley component', () => {
   });
 
   /**
+   * The recette bug of 02/09/2026, and the reason for the reading tolerance.
+   *
+   * A Wardley component is a composite: the role lives on the circle, and a
+   * plain click selects the GROUP — so a host's own linking gesture stamps the
+   * group. The panel resolves its reading on the circle, and used to ask the
+   * strict question there, reporting "Not linked to a record" over a binding
+   * plainly present in the document.
+   *
+   * Mounted WITH a picker on purpose: with none, the link button is hidden by
+   * design and its absence would prove nothing.
+   */
+  test('a binding carried by the group reads as linked', async () => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [
+      PivotRecordPickerExtension({ pick: async () => 'pivot-other' }),
+    ]);
+
+    addMap();
+    const component = addComponent();
+    const group = groupOf(component, addLabel());
+    service.surface.updateElement(group, { pivotDocId: 'pivot-payments' });
+    await select(group);
+
+    clickElement(readButton()!);
+    await settle();
+
+    // The circle carries nothing; the composite does; the component is linked.
+    expect(
+      service.surface.getElementById(component)!.pivotDocId
+    ).toBeUndefined();
+    expect(field('reading-record')?.textContent).toContain('Linked');
+    expect(field('reading-record')?.textContent).not.toContain('Not linked');
+    // Nothing left to offer: the affordance is for a component with no record
+    // anywhere in its composite.
+    expect(field('reading-link-record')).toBeNull();
+  });
+
+  test('…and an unbound composite still offers the link, on the element', async () => {
+    unmount?.();
+    unmount = null;
+    await mount(undefined, [
+      PivotRecordPickerExtension({ pick: async () => 'pivot-payments' }),
+    ]);
+
+    addMap();
+    const component = addComponent();
+    const group = groupOf(component, addLabel());
+    await select(group);
+    clickElement(readButton()!);
+    await settle();
+
+    const link = field('reading-link-record') as HTMLElement | null;
+    expect(link).not.toBeNull();
+
+    clickElement(link!);
+    await settle();
+
+    // The WRITE contract is untouched by the reading tolerance: the binding is
+    // stamped on the element that CARRIES THE ROLE, never on the wrapper.
+    expect(service.surface.getElementById(component)!.pivotDocId).toBe(
+      'pivot-payments'
+    );
+    expect(service.surface.getElementById(group)!.pivotDocId).toBeUndefined();
+  });
+
+  /**
    * A pivot record whose `nature` property is an ordinary host multi-select:
    * the options are the words a human typed, not the framework's value ids.
    */

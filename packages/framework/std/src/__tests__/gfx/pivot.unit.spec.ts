@@ -19,7 +19,11 @@ import {
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { effects } from '../../effects.js';
-import { collectPivotOccurrences, isPivotBound } from '../../gfx/index.js';
+import {
+  collectPivotOccurrences,
+  isPivotBound,
+  resolvePivotBinding,
+} from '../../gfx/index.js';
 import type { TestShapeElement } from '../test-gfx-element.js';
 import {
   RootBlockSchemaExtension,
@@ -195,6 +199,143 @@ describe('isPivotBound', () => {
     // send a provider looking for a document that cannot exist.
     expect(isPivotBound(blank)).toBe(false);
     expect(isPivotBound(unbound)).toBe(false);
+  });
+});
+
+/**
+ * The READING tolerance, and the only one.
+ *
+ * A business framework draws its artefacts as composites — a Wardley component
+ * is a group holding a circle and a label — and a plain click selects the
+ * GROUP. ADR 0005/0006 put the binding on the element and say nothing about
+ * WHICH element of a composite carries it, so a reader that only looked at the
+ * role-carrying one reported "not linked" on a component a host had bound by
+ * its wrapper. Nothing here widens the WRITE contract: bindings are still
+ * stamped on the element.
+ */
+describe('resolvePivotBinding', () => {
+  let store!: ReturnType<typeof setupSurface>['store'];
+  let surface!: SurfaceBlockModel;
+
+  beforeEach(() => {
+    ({ store, surface } = setupSurface());
+  });
+
+  const shape = (props: Record<string, unknown> = {}) =>
+    surface.getElementById(
+      surface.addElement({ type: 'testShape', ...props })
+    )!;
+
+  const group = (children: string[], props: Record<string, unknown> = {}) =>
+    surface.getElementById(
+      surface.addElement({
+        type: 'testGroup',
+        children: Object.fromEntries(children.map(id => [id, true])),
+        ...props,
+      })
+    )!;
+
+  test('an element bound in its own right answers for itself', () => {
+    const el = shape({ pivotDocId: RECORD });
+
+    expect(resolvePivotBinding(el)).toBe(el);
+  });
+
+  test('a bare child resolves through the group that carries the binding', () => {
+    const circle = shape();
+    const label = shape();
+    const composite = group([circle.id, label.id], { pivotDocId: RECORD });
+
+    // The bug, in one assertion: the circle is what the reading resolves to,
+    // the group is what the host's own gesture naturally stamped, and both are
+    // "this component".
+    expect(circle.pivotDocId).toBeUndefined();
+    expect(resolvePivotBinding(circle)).toBe(composite);
+    expect(resolvePivotBinding(circle)?.pivotDocId).toBe(RECORD);
+  });
+
+  test('the child wins when both are bound — the most specific binding', () => {
+    const circle = shape({ pivotDocId: RECORD });
+    group([circle.id], { pivotDocId: OTHER_RECORD });
+
+    // Asymmetric on purpose: a group gathering two bound components is a
+    // container, not an occurrence of either, and each child answers for itself.
+    expect(resolvePivotBinding(circle)).toBe(circle);
+    expect(resolvePivotBinding(circle)?.pivotDocId).toBe(RECORD);
+  });
+
+  test('nothing bound anywhere in the chain resolves to nothing', () => {
+    const circle = shape();
+    group([circle.id]);
+
+    expect(resolvePivotBinding(circle)).toBeUndefined();
+  });
+
+  test('an ungrouped, unbound element resolves to nothing', () => {
+    expect(resolvePivotBinding(shape())).toBeUndefined();
+  });
+
+  test('a group inside a group is still part of the chain', () => {
+    const circle = shape();
+    const inner = group([circle.id]);
+    const outer = group([inner.id], { pivotDocId: RECORD });
+
+    // Nesting is ordinary: grouping a composite with an annotation makes the
+    // component's own group an intermediate node, and the binding is one step
+    // further up.
+    expect(resolvePivotBinding(circle)).toBe(outer);
+  });
+
+  test('the empty string is not a binding, at any level', () => {
+    const circle = shape({ pivotDocId: '' });
+    group([circle.id], { pivotDocId: '' });
+
+    // `@field()` writes whatever it is given; `''` means "none", and resolving
+    // it would send the provider looking for a document that cannot exist.
+    expect(resolvePivotBinding(circle)).toBeUndefined();
+  });
+
+  test('a cyclic group relation terminates instead of hanging', () => {
+    const circle = shape();
+    const inner = group([circle.id]);
+    const outer = group([inner.id]);
+    // A cycle is not reachable through `addChild`, but a corrupted or
+    // concurrently-merged document can hold one — and a reader on the render
+    // path must degrade to `undefined`, never hang.
+    store.transact(() => {
+      (inner as unknown as { children: Map<string, boolean> }).children.set(
+        outer.id,
+        true
+      );
+    });
+
+    expect(surface.getGroup(outer.id)).toBe(inner);
+    expect(resolvePivotBinding(circle)).toBeUndefined();
+  });
+
+  test('…and still finds the binding sitting on the cycle', () => {
+    const circle = shape();
+    const inner = group([circle.id]);
+    const outer = group([inner.id], { pivotDocId: RECORD });
+    store.transact(() => {
+      (inner as unknown as { children: Map<string, boolean> }).children.set(
+        outer.id,
+        true
+      );
+    });
+
+    expect(resolvePivotBinding(circle)).toBe(outer);
+  });
+
+  test('resolving writes nothing into the document', () => {
+    const circle = shape();
+    group([circle.id], { pivotDocId: RECORD });
+    const before = JSON.stringify(surface.elements.getValue()!.toJSON());
+
+    resolvePivotBinding(circle);
+    resolvePivotBinding(circle);
+
+    expect(JSON.stringify(surface.elements.getValue()!.toJSON())).toBe(before);
   });
 });
 

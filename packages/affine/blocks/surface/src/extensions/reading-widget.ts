@@ -9,7 +9,7 @@ import {
   runCommand,
   WidgetViewExtension,
 } from '@labre/std';
-import { isPivotBound } from '@labre/std/gfx';
+import { resolvePivotBinding } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, type TemplateResult } from 'lit';
 import { state } from 'lit/decorators.js';
@@ -560,13 +560,20 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
    * cannot choose a document, so with no picker there is nothing to offer and
    * the affordance is HIDDEN rather than disabled — the `QuickSearchProvider`
    * precedent, and the same rule `queryPivotProperties` follows.
+   *
+   * "Linked" is the TOLERANT question (`resolvePivotBinding`): the reading is
+   * resolved on the element carrying the role, but a host is free to have
+   * stamped the composite a plain click selects, and a component that is bound
+   * must never be reported as unlinked. Offering the link is the strict
+   * question by construction — the button only shows when nothing in the chain
+   * is bound, and it still stamps the role-carrying element.
    */
   private _renderRecord(reading: ElementReading, writable: boolean) {
     const surface = this.gfx.surface;
     const element = surface?.getElementById(reading.elementId);
     if (!element) return nothing;
 
-    const bound = isPivotBound(element);
+    const bound = resolvePivotBinding(element) !== undefined;
     const picker = this.std.getOptional(PivotRecordPickerProvider);
 
     return this._field(
@@ -702,15 +709,28 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
    * board, and the seam has no field for it: the drift line reports it so the
    * user can settle it on whichever side is wrong, and the library does not
    * invent a transport for a fact the host never agreed to receive.
+   *
+   * The patch is built on the element that CARRIES the binding, not on the one
+   * the reading was resolved for. They are the same element in every ordinary
+   * case; they differ only when the composite is what a host bound, and there
+   * the resolved element is the only honest choice. `elementId` is half of the
+   * occurrence key (`pivotDocId` + `elementId`) that the materiality publisher
+   * tracks and RETRACTS on: publishing under the role-carrying element's id,
+   * against a record it does not itself point at, would create an occurrence
+   * no watcher ever tracked and therefore none can ever retract — host data
+   * left attributed to an occurrence that does not exist, which is exactly the
+   * leak ADR 0006 § 4.3 forbids.
    */
   private readonly _updateRecord =
     (elementId: string, pivotDocId: string) => (event: Event) => {
       event.stopPropagation();
       const element = this.gfx.surface?.getElementById(elementId);
       if (!element) return;
+      const bound = resolvePivotBinding(element);
+      if (!bound || bound.pivotDocId !== pivotDocId) return;
       publishOccurrenceMaterialities(
         this.std,
-        buildOccurrencePatch(element, pivotDocId)
+        buildOccurrencePatch(bound, pivotDocId)
       );
       // The disagreement has been answered; the next local change re-checks it
       // from scratch, so nothing here has to remember it.
