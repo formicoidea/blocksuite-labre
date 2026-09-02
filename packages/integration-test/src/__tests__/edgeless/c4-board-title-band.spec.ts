@@ -7,24 +7,39 @@ import type { C4BoardElementModel } from '@labre/affine/model';
 import type { GfxModel } from '@labre/std/gfx';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import { wait } from '../utils/common.js';
+import { pointerdown, pointermove, pointerup, wait } from '../utils/common.js';
 import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * The C4 board's title band, in a real editor.
+ * The C4 board's title band, driven through the REAL pointer pipeline.
  *
- * The unit suites own the two halves: which strip the model carves out of the
+ * The unit suites own the geometry: which strip the model carves out of the
  * border-only hit test (`affine-model`), and which strip the view hands a
- * double-click to (`gfx/c4`). What only a live board can answer is what a user
- * actually notices — that a click on the header selects the SHEET, that a
- * double-click there opens the title editor, and that neither of them steals a
- * click meant for what is drawn under the band.
+ * double-click to (`gfx/c4`). What only a live editor can answer is whether the
+ * gesture ever ARRIVES — and the first version of this file got that wrong. It
+ * called `view.dispatch('dblclick', …)` by hand, which walks past everything
+ * between a mouse and a view; it passed while the real board, under a real
+ * mouse, renamed nothing (lead's recette, 02/09/2026).
  *
- * The regression it exists for: since backgrounds stopped being picked by their
- * area (issues #194 / #197), the board's title was reachable only by hitting
- * the few characters of the drawn glyphs, and a single click on it selected
- * nothing at all.
+ * So every case below dispatches real `PointerEvent`s on the editor host at
+ * real screen coordinates and lets the dispatcher, the tool controller, the
+ * default tool and the interactivity manager do the whole of their own work.
+ * Nothing here reaches into a view.
+ *
+ * ## The routing bug the recette found
+ *
+ * `GfxViewEventManager` delivered a click or a double-click to the top of its
+ * HOVERED stack, and rebuilt that stack on `pointermove` alone. A pointer that
+ * arrives without a move reaching the manager — the first gesture in a freshly
+ * mounted editor, whose `pointermove` is dropped before the dispatcher is
+ * active; an element created under a stationary pointer — therefore left the
+ * stack empty, and the double-click was delivered to nobody. Selection still
+ * worked, because `handleElementSelection` re-picks by point on every click:
+ * one pointer, two answers, one of them stale. `_targetOf` now falls back to
+ * the event's own coordinates, and the two agree again.
+ *
+ * The first case below is that exact sequence, and it is RED without that fix.
  */
 describe('the C4 board wears a selectable title band', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -55,6 +70,38 @@ describe('the C4 board wears a selectable title band', () => {
   /** What the editor's own picking says is under a MODEL-space point. */
   const pick = (x: number, y: number): GfxModel | null =>
     edgeless.gfx.getElementByPoint(x, y);
+
+  /* ── Driving the real pipeline ───────────────────────────────────────── */
+
+  const host = () => window.editor.host as HTMLElement;
+
+  /** A model point, as the position the pointer helpers take. */
+  const at = (x: number, y: number) => {
+    const [vx, vy] = edgeless.gfx.viewport.toViewCoord(x, y);
+    return { x: vx, y: vy };
+  };
+
+  /** One press and release — the dispatcher synthesizes `click` from these. */
+  const tap = (p: { x: number; y: number }) => {
+    pointerdown(host(), p);
+    pointerup(host(), p);
+  };
+
+  /**
+   * A real double-click: two presses in the same place, close enough in time
+   * that `ClickController` counts them as one gesture.
+   */
+  const doubleClick = async (p: { x: number; y: number }) => {
+    tap(p);
+    tap(p);
+    await wait();
+  };
+
+  /** The in-place `<input>` the view opens, or null. */
+  const titleEditor = () =>
+    (Array.from(document.body.children).findLast(
+      el => el.tagName === 'INPUT'
+    ) as HTMLInputElement | undefined) ?? null;
 
   /* ── Selecting ───────────────────────────────────────────────────────── */
 
@@ -99,73 +146,79 @@ describe('the C4 board wears a selectable title band', () => {
     expect(pick(720, BAND / 2)?.id).toBe(board.id);
   });
 
-  /* ── Renaming ────────────────────────────────────────────────────────── */
+  /* ── Renaming, through the pointer pipeline ──────────────────────────── */
 
-  /**
-   * The in-place `<input>` the view opens, or null.
-   *
-   * It is appended to `document.body` itself and positioned `fixed` over the
-   * pointer, so a direct child of the body is exactly what it is — and the last
-   * one, so a stale editor from an earlier case could never stand in for a new
-   * one.
-   */
-  const titleEditor = () =>
-    (Array.from(document.body.children).findLast(
-      el => el.tagName === 'INPUT'
-    ) as HTMLInputElement | undefined) ?? null;
-
-  /**
-   * A double-click at a MODEL-space point, handed to the board's own view.
-   *
-   * The view is fetched from the gfx registry rather than constructed, which is
-   * what makes this an integration case: if `C4BoardView` were not registered
-   * for `c4Board`, there would be no handler here to dispatch to.
-   */
-  const dblclick = async (board: C4BoardElementModel, x: number, y: number) => {
-    // A canvas element's view, so it dispatches; `gfx.view.get` is typed over
-    // blocks as well, which do not.
-    const view = edgeless.gfx.view.get(board.id) as {
-      dispatch: (event: 'dblclick', evt: unknown) => boolean;
-    } | null;
-    expect(view).not.toBeNull();
-    const [vx, vy] = edgeless.gfx.viewport.toViewCoord(x, y);
-    const handled = view!.dispatch('dblclick', {
-      x: vx,
-      y: vy,
-      raw: { clientX: vx, clientY: vy },
-    });
-    await wait();
-    return handled;
-  };
-
-  test('a double-click anywhere in the band opens the title editor', async () => {
+  test('a double-click in the band renames the board, with no move first', async () => {
     const board = await addBoard();
 
-    // Nowhere near the glyphs: the words end long before the middle of a
-    // 1400-unit sheet, and the whole point of the band is that the user does
-    // not have to find them.
-    await dblclick(board, BOARD_W - 200, BAND / 2);
+    // THE recette case, and the one the routing bug broke: the pointer's first
+    // gesture on this editor, so no `pointermove` has reached the interactivity
+    // manager and its hovered stack is empty. The double-click has to be routed
+    // from its own coordinates or it reaches nobody.
+    //
+    // Deliberately far from the drawn glyphs, 200 units in from the right edge:
+    // the whole band is the target, which is the point of painting it.
+    await doubleClick(at(BOARD_W - 200, BAND / 2));
 
     const input = titleEditor();
     expect(input).not.toBeNull();
     // Opened on the words currently DRAWN, never on an empty box.
     expect(input!.value).toBe('Internet banking');
+    // The board is held in editing so the global delete/escape keys stand down.
+    expect(edgeless.gfx.selection.editing).toBe(true);
 
-    // …and it renames, which is what the whole band is for.
     input!.value = 'System context';
     input!.dispatchEvent(new Event('blur'));
     await wait();
     expect(board.name).toBe('System context');
+    expect(titleEditor()).toBeNull();
+  });
+
+  test('…and after the pointer has moved onto the band, as a hand does', async () => {
+    const board = await addBoard();
+    const point = at(BOARD_W - 200, BAND / 2);
+
+    // The ordinary path: a real hand moves onto the band before clicking, which
+    // fills the hovered stack. Asserted beside the case above so the fallback
+    // can never be mistaken for the only route that works.
+    tap(at(5, BOARD_H / 2));
+    await wait();
+    pointermove(host(), point);
+    await wait();
+
+    await doubleClick(point);
+
+    expect(titleEditor()).not.toBeNull();
+    expect(titleEditor()!.value).toBe(board.name);
+  });
+
+  test('a double-click on an ALREADY selected board still renames it', async () => {
+    const board = await addBoard();
+    const point = at(BOARD_W - 200, BAND / 2);
+
+    // Select it first, the way the recette did: the second gesture then arrives
+    // on an element that is already selected, which is where the lead suspected
+    // the double-click was being consumed.
+    edgeless.gfx.selection.set({ elements: [board.id], editing: false });
+    await wait();
+    expect(edgeless.gfx.selection.selectedIds).toEqual([board.id]);
+
+    await doubleClick(point);
+
+    expect(titleEditor()).not.toBeNull();
+    expect(titleEditor()!.value).toBe('Internet banking');
   });
 
   test('a double-click under the band opens nothing', async () => {
     const board = await addBoard();
 
-    await dblclick(board, BOARD_W / 2, BOARD_H / 2);
+    // The middle of the sheet, where the diagram goes…
+    await doubleClick(at(BOARD_W / 2, BOARD_H / 2));
     expect(titleEditor()).toBeNull();
 
-    // …including immediately under the painted edge.
-    await dblclick(board, BOARD_W / 2, BAND + 20);
+    // …and immediately under the painted edge, which is the boundary the band
+    // must not reach past or it steals the clicks meant for what is drawn below.
+    await doubleClick(at(BOARD_W / 2, BAND + 20));
     expect(titleEditor()).toBeNull();
     expect(board.name).toBe('Internet banking');
   });

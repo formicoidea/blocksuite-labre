@@ -2,6 +2,7 @@
 '@labre/affine-model': minor
 '@labre/affine-gfx-c4': minor
 '@labre/affine-block-surface': minor
+'@labre/std': patch
 ---
 
 feat(edgeless): the c4 board wears a selectable title band
@@ -45,3 +46,33 @@ title lands on the same pixels — the anchor is in plot ratios either way.
 **No document changes.** No new field, no schema bump, no migration: the band is
 rendering and hit testing. A board saved before this release opens with a header
 band and a title you can rename, and nothing else about it moves.
+
+### …and a canvas click reaches the element it landed on
+
+The recette of the above found a defect one layer down, in `@labre/std`, and it
+was not about C4 at all. `GfxViewEventManager` delivered a click, a
+double-click and a pointer press to the top of its HOVERED stack, and that stack
+is rebuilt on `pointermove` alone. A pointer that arrives somewhere without a
+move reaching the manager therefore left it EMPTY or STALE, and the gesture was
+delivered to nobody — or to whatever the pointer was last over.
+
+It happens for real: the first gesture in a freshly mounted editor loses its
+`pointermove` (the dispatcher drops events until it is active), an element
+created under a stationary pointer is never moved onto, and a viewport change
+slides the canvas under a pointer that never moves.
+
+The symptom was precise, and it is exactly what the recette saw on the board's
+new band: a click SELECTED the sheet — `handleElementSelection` re-picks by
+point on every click — while a double-click renamed nothing. One pointer, two
+answers to "what is under it", one of them stale.
+
+`GfxViewEventManager` now falls back to the event's own coordinates when the top
+of the hovered stack is not under them, using the same walk the hover
+bookkeeping uses. Strictly additive: every gesture that was being routed
+somewhere is still routed there, and the ones that were being dropped now land.
+Hover `pointerenter` / `pointerleave` are untouched — announcing an arrival from
+a click would be a departure that never happened.
+
+Every framework gesture that rides this seam is covered by the existing suites:
+the BPMN pool's participant and lane renames and its separator drag, Wardley's
+and EDGY's label renames, the mindmap's interactions.
