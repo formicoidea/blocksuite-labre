@@ -899,39 +899,8 @@ export function rankCommandsByUsage(
   return commands.filter(command => stats.get(command) !== undefined);
 }
 
-/**
- * Register an icon table that no COMMAND owns.
- *
- * Same identifier, same `iconKey` namespace and same resolution as the table
- * `CommandExtension` registers, because an icon key is an icon key: what
- * differs is only which declaration carries the key. A framework's tag VALUES
- * are the second such declaration — `UniverseTagDefs` is a host-extensible DATA
- * format (a pack may ship as a `.json` asset), so a value can carry a
- * serializable `iconKey` and nothing else, and the template it names is
- * resolved here.
- *
- * Registering it inside a flag-gated view extension is what makes a disabled
- * framework's icons vanish with the rest of its tooling.
- */
-export function IconTableExtension(
-  icons: Record<string, TemplateResult>
-): ExtensionType {
-  return {
-    setup: di => {
-      di.addImpl(CommandIconsIdentifier(`Icons-${_commandId++}`), icons);
-    },
-  };
-}
-
-/**
- * Resolve an `iconKey` through every registered icon table.
- *
- * `undefined` when nothing answers — an unknown key, or a table that was never
- * registered because its framework is switched off. Every caller draws nothing
- * in that case rather than a placeholder: an icon is decoration, and a missing
- * one must never remove the label beside it.
- */
-export function resolveIconKey(
+/** Resolve an `iconKey` through the registered icon tables. */
+export function getCommandIcon(
   std: BlockStdScope,
   iconKey: string | undefined
 ): TemplateResult | undefined {
@@ -941,12 +910,4 @@ export function resolveIconKey(
     if (icon) return icon;
   }
   return undefined;
-}
-
-/** {@link resolveIconKey}, named for its first and largest caller. */
-export function getCommandIcon(
-  std: BlockStdScope,
-  iconKey: string | undefined
-): TemplateResult | undefined {
-  return resolveIconKey(std, iconKey);
 }

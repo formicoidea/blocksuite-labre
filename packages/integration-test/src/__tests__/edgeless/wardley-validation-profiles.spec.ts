@@ -304,6 +304,28 @@ describe('validation profiles', () => {
       expect(option(STRICT)!.getAttribute('aria-pressed')).toBe('false');
     });
 
+    test('marks it the way the native menus do (PO recette of 02/09/2026)', async () => {
+      // The house shape, shared with the tag qualifier and the C4 level picker:
+      // label left, tick right and only on the row in force, `data-option`
+      // carrying the primary colour from `editor-menu-action`'s own stylesheet.
+      // No gutter is held open on the left — an empty one read as a missing
+      // icon, which is the misreading this row shape was changed to end.
+      const map = addBackground();
+      await select(map);
+
+      for (const row of options()) {
+        const el = row as HTMLElement;
+        expect(el.hasAttribute('data-option'), el.dataset.profileId).toBe(true);
+        const children = Array.from(el.children);
+        expect(children[0].className, el.dataset.profileId).toBe('label');
+        expect(children.length, el.dataset.profileId).toBe(
+          el.dataset.profileId === SKETCH ? 2 : 1
+        );
+      }
+      expect(option(SKETCH)!.querySelector('svg')).not.toBeNull();
+      expect(option(STRICT)!.querySelector('svg')).toBeNull();
+    });
+
     test('never appears on something that is not a root instance', async () => {
       addBackground();
       const node = addComponent('[100,100,40,40]');

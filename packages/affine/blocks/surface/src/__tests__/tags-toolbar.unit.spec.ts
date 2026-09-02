@@ -3,14 +3,13 @@ import {
   type ToolbarContext,
   type UniverseTagDefs,
 } from '@labre/affine-shared/services';
-import { CommandIconsIdentifier } from '@labre/std';
 import type { GfxModel, RoleDefs } from '@labre/std/gfx';
 import {
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
-import { render, svg, type TemplateResult } from 'lit';
-import { describe, expect, it } from 'vitest';
+import { render, type TemplateResult } from 'lit';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { tagsToolbarConfig } from '../extensions/tags-toolbar.js';
 
@@ -53,10 +52,10 @@ const PACK: UniverseTagDefs = {
  * An element that passes the config's `instanceof` gate without dragging a
  * surface, a Y.Doc and a renderer into a unit test.
  */
-function element(role?: string): GfxModel {
+function element(role?: string, tags?: Record<string, string[]>): GfxModel {
   const el = Object.create(GfxPrimitiveElementModel.prototype) as GfxModel;
   Object.defineProperty(el, 'role', { value: role, configurable: true });
-  Object.defineProperty(el, 'tags', { value: undefined, configurable: true });
+  Object.defineProperty(el, 'tags', { value: tags, configurable: true });
   return el;
 }
 
@@ -71,25 +70,15 @@ function group(...children: GfxModel[]): GfxModel {
   return g;
 }
 
-function context(
-  models: GfxModel[],
-  packs: UniverseTagDefs[] = [PACK],
-  icons: Record<string, TemplateResult> = {}
-) {
+function context(models: GfxModel[], packs: UniverseTagDefs[] = [PACK]) {
   // A fresh `std` per context: the registry is memoized per scope, so sharing
   // one would leak a previous test's packs.
   const std = {
     provider: {
-      getAll: (id: unknown) => {
-        if (id === UniverseTagDefsProvider) {
-          return new Map(packs.map(pack => [pack.packId, pack]));
-        }
-        // The icon tables a framework registers with `IconTableExtension` —
-        // the same identifier a command's icons land on, because an icon key
-        // is an icon key.
-        if (id === CommandIconsIdentifier) return new Map([['icons', icons]]);
-        return new Map();
-      },
+      getAll: (id: unknown) =>
+        id === UniverseTagDefsProvider
+          ? new Map(packs.map(pack => [pack.packId, pack]))
+          : new Map(),
     },
     getOptional: () => undefined,
   };
@@ -260,46 +249,50 @@ describe('the entry is generic', () => {
 });
 
 /**
- * The icon a tag VALUE may carry (PO recette of 02/09/2026).
+ * How an option ROW reads (PO recette of 02/09/2026).
  *
- * A pack is host-extensible DATA and may ship as a `.json` asset, so a value
- * names a key and never a template; the drawing comes from a table the
- * framework registers, and both ends of that seam are optional. What is pinned
- * here is that a value with no icon renders as it always has.
+ * The native menus of this editor — the Regular/Semibold panel, the size
+ * dropdowns — put the label on the left and a tick on the right, and only on
+ * the row in force; the active row is coloured, and nothing holds a gutter open
+ * for a tick that is not there. These home-made dropdowns did the opposite, and
+ * the hole on the left of an inactive row read as a MISSING ICON rather than as
+ * an empty tick slot — which is what the icons briefly shipped for it were
+ * filling.
+ *
+ * The colour lives in `editor-menu-action`'s shadow stylesheet (`data-option`)
+ * and is not assertable from here, so what is pinned is the DOM the design
+ * rests on: the attribute that opts the row in, the order label-then-tick, and
+ * the absence of both tick and spacer on an unselected row.
  */
-describe('the icon of a tag value', () => {
-  it('renders a value icon only when the pack names one AND it resolves', () => {
-    // The PO asked for the four Wardley natures to be pictured (recette of
-    // 02/09/2026). The seam that makes it possible without breaking a host's
-    // own packs is asserted here, three ways at once: a pack carries an icon
-    // KEY (it may ship as `.json`, so it can carry nothing else), the drawing
-    // comes from a registered table, and a value with neither renders exactly
-    // as it always has.
-    const pack: UniverseTagDefs = {
-      ...PACK,
-      tags: [
-        {
-          ...PACK.tags[0],
-          values: [
-            { id: 'wardley:nature/data', label: 'Data', iconKey: 'demo.data' },
-            // A key no table answers — a framework switched off, or a host pack
-            // whose icons this build does not ship.
-            {
-              id: 'wardley:nature/practice',
-              label: 'Practice',
-              iconKey: 'demo.missing',
-            },
-            // ...and the pack that never heard of icons: every host pack today.
-            { id: 'wardley:nature/knowledge', label: 'Knowledge' },
-          ],
-        },
-      ],
-    };
-    const icons: Record<string, TemplateResult> = {
-      'demo.data': svg`<svg data-testid="demo-glyph" viewBox="0 0 24 24"></svg>`,
-    };
+describe('an option row reads like the native menus', () => {
+  const PICKER: UniverseTagDefs = {
+    ...PACK,
+    tags: [
+      {
+        ...PACK.tags[0],
+        values: [
+          { id: 'wardley:nature/data', label: 'Data' },
+          { id: 'wardley:nature/practice', label: 'Practice' },
+        ],
+      },
+    ],
+  };
 
-    const ctx = context([element('wardley:component')], [pack], icons);
+  const hosts: HTMLElement[] = [];
+  afterEach(() => {
+    while (hosts.length) hosts.pop()!.remove();
+  });
+
+  /** The rendered rows of a component already qualified `data`. */
+  function options(): HTMLElement[] {
+    const ctx = context(
+      [
+        element('wardley:component', {
+          'wardley:nature': ['wardley:nature/data'],
+        }),
+      ],
+      [PICKER]
+    );
     const action = config.actions?.[0] as {
       content: (c: ToolbarContext) => TemplateResult | null;
     };
@@ -308,36 +301,38 @@ describe('the icon of a tag value', () => {
 
     const host = document.createElement('div');
     document.body.append(host);
-    try {
-      render(template, host);
-      const options = Array.from(
-        host.querySelectorAll<HTMLElement>('[data-testid="element-tag-option"]')
-      );
-      expect(options.map(o => o.dataset.valueId)).toEqual([
-        'wardley:nature/data',
-        'wardley:nature/practice',
-        'wardley:nature/knowledge',
-      ]);
-      // Resolved: the glyph is drawn, and the label is still there beside it.
-      expect(
-        options[0].querySelector('[data-testid="element-tag-option-icon"]')
-      ).toBeTruthy();
-      expect(
-        options[0].querySelector('[data-testid="demo-glyph"]')
-      ).toBeTruthy();
-      expect(options[0].textContent).toContain('Data');
-      // Unresolved, and absent: no glyph, no placeholder, and the label — the
-      // one thing the row is FOR — untouched in both.
-      for (const option of [options[1], options[2]]) {
-        expect(
-          option.querySelector('[data-testid="element-tag-option-icon"]'),
-          option.dataset.valueId
-        ).toBeNull();
-      }
-      expect(options[1].textContent).toContain('Practice');
-      expect(options[2].textContent).toContain('Knowledge');
-    } finally {
-      host.remove();
+    hosts.push(host);
+    render(template, host);
+    return Array.from(
+      host.querySelectorAll<HTMLElement>('[data-testid="element-tag-option"]')
+    );
+  }
+
+  it('opts every row into the native option shape', () => {
+    const rows = options();
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.hasAttribute('data-option'), row.dataset.valueId).toBe(true);
     }
+  });
+
+  it('draws the tick AFTER the label, and only on the selected row', () => {
+    const [on, off] = options();
+
+    // Selected: label first, tick last. The order IS the design — a tick on the
+    // left is the non-native shape this PR undid.
+    expect(on.dataset.selected).toBe('true');
+    const children = Array.from(on.children);
+    expect(children).toHaveLength(2);
+    expect(children[0].className).toBe('label');
+    expect(children[0].textContent).toBe('Data');
+    expect(children[1].tagName.toLowerCase()).toBe('svg');
+
+    // Unselected: the label ALONE. No tick, and no 20 px spacer standing in for
+    // one — an empty gutter is what read as a missing icon.
+    expect(off.hasAttribute('data-selected')).toBe(false);
+    expect(Array.from(off.children)).toHaveLength(1);
+    expect(off.children[0].className).toBe('label');
+    expect(off.querySelector('svg')).toBeNull();
   });
 });
