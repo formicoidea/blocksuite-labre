@@ -109,16 +109,21 @@ const DEFS: readonly RoleDef[] = [
     labelKey: 'com.labre.wardley.role.method',
   },
   /**
-   * The value-chain link: "A depends on B".
+   * The value-chain link: "A needs B".
    *
    * The comment above was the whole of the convention until `docs/adr/0010`
    * made it DATA. Tier 1 of that ADR is generic — `source` is the subject of
    * the role's verb, `target` its object — and tier 2 is this `direction`
-   * block: the verb of THIS role is "depends on", so its source is the
-   * consumer and its target is what the consumer needs. Needs descend from
-   * source to target; value flows back up. W4 evaluates exactly that reading,
-   * and the tool hint below is what makes it a statement the user made rather
-   * than a by-product of which end their finger landed on first.
+   * block: the verb of THIS role is "needs", so its source is the consumer and
+   * its target is what the consumer needs. Needs descend from source to target;
+   * value flows back up. W4 evaluates exactly that reading, and the tool hint
+   * below is what makes it a statement the user made rather than a by-product
+   * of which end their finger landed on first.
+   *
+   * The verb read "depends on" until the PO recette of 02/09/2026: one word, in
+   * the user's own vocabulary, on a chip that is laid ALONG the link and must
+   * not outgrow it. Only the FALLBACK moved — `verbKey` is stable, and the
+   * French wording ("A besoin") comes from the host's catalogue.
    */
   {
     id: WARDLEY_ROLE.dependency,
@@ -127,10 +132,16 @@ const DEFS: readonly RoleDef[] = [
     labelFallback: 'Dependency',
     direction: {
       verbKey: 'com.labre.wardley.role.dependency.verb',
-      verbFallback: 'depends on',
+      verbFallback: 'needs',
       gestureHintKey: 'com.labre.wardley.role.dependency.gesture',
       gestureHintFallback:
         'Drag from the component that has the need to what it needs.',
+      // The house primary, on THIS chip and no other (same recette). The value
+      // chain is what a Wardley map is read along, and the PO asked for the
+      // relation that carries it to be unmistakable — a decision about one
+      // relation, so it is declared on that relation rather than on the
+      // mechanism, and every other framework's reveal keeps the colour it had.
+      chipColor: '#2563eb',
     },
   },
   // The map itself: the axes frame the other roles are positioned against.

@@ -67,7 +67,7 @@ export type RoleKind = 'node' | 'edge' | 'text';
  * catalogue always wins, and a catalogue-less playground still reads.
  */
 export interface EdgeDirectionDef {
-  /** i18n key of the verb — `'depends on'`. Resolved by the host. */
+  /** i18n key of the verb — `'needs'`. Resolved by the host. */
   verbKey: string;
   /** The framework's own wording for {@link verbKey}. */
   verbFallback?: string;
@@ -80,6 +80,17 @@ export interface EdgeDirectionDef {
   gestureHintKey?: string;
   /** The framework's own wording for {@link gestureHintKey}. */
   gestureHintFallback?: string;
+  /**
+   * CSS colour of the chip the reveal draws this verb in (M2). Absent — which
+   * is every role but one — keeps the house affordance blue the mechanism has
+   * always used, so declaring nothing repaints nothing.
+   *
+   * A colour belongs to the ROLE rather than to the widget because the chip is
+   * per-relation: the PO may want one framework's central relation to stand out
+   * without every other framework's edges changing with it. The chip's text is
+   * white, so a colour declared here must be dark enough to carry it.
+   */
+  chipColor?: string;
 }
 
 export interface RoleDef {

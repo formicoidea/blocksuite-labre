@@ -64,7 +64,7 @@ const EDGE_DIRECTION_Z_INDEX = 0;
  * is an unreadable one):
  *
  * - **M2** — while a typed edge is hovered or selected, the role's VERB laid
- *   along the link: `depends on`, in a box that ends in a point aimed at the
+ *   along the link: `needs`, in a box that ends in a point aimed at the
  *   provider. Since the PO acceptance of 02/08/2026 this is the only mark the
  *   reveal draws; the canvas chevron it used to sit on top of is folded into
  *   that point (see `direction-reveal.ts`). Since the second pass of the same
@@ -101,6 +101,11 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
      * point has no border to speak of, and a hairline diagonal at 40 % zoom is
      * a smudge. Solid house blue with white text reads in both themes and
      * cannot be mistaken for the map's own ink.
+     *
+     * The background here is the DEFAULT, which every role that declares no
+     * chipColor keeps: render() overrides it inline only for a role that asks
+     * for one, so a colour decision taken about one relation never repaints the
+     * others.
      */
     .edge-direction-label {
       --edge-direction-point: 9px;
@@ -297,6 +302,9 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
     const verb = this._verbFor(edge);
     if (!verb) return nothing;
 
+    // Declared by the ROLE, defaulted by the stylesheet: only a relation that
+    // asked for its own colour gets an inline background at all.
+    const chipColor = edge.direction?.chipColor;
     const { viewport } = this.gfx;
     const [x, y] = viewport.toViewCoord(anchor.at[0], anchor.at[1]);
     // Two decimals: below what a reader can see on a 12 px box, and it keeps
@@ -314,6 +322,7 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
       style=${styleMap({
         left: `${x}px`,
         top: `${y}px`,
+        ...(chipColor ? { background: chipColor } : {}),
         // Read right to left, as CSS composes it: scale by the zoom and turn
         // onto the line, both about the box's centre, and only THEN slide that
         // centre onto the anchor. The lengths in the class are model units, so

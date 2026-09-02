@@ -56,6 +56,21 @@ export type TagValueDef = {
   description?: string;
   /** Advisory colour token. The library may ignore it; it never affects layout. */
   color?: string;
+  /**
+   * Advisory icon KEY — never a template.
+   *
+   * A pack is plain data (the TS type IS the JSON schema, so a pack may ship as
+   * a `.json` asset), and a `TemplateResult` is neither serializable nor
+   * host-authorable. So a value names an icon and the framework that ships the
+   * value registers the drawing under the same key, through
+   * `IconTableExtension`; a picker resolves it with `resolveIconKey`.
+   *
+   * Optional at both ends. A value with no `iconKey`, and a key no registered
+   * table answers — a pack whose framework is switched off, a host pack that
+   * ships icons for none of its values — render exactly as they did before this
+   * field existed: the label alone.
+   */
+  iconKey?: string;
   /** Hidden from pickers; still displayed when already present on an element. */
   deprecated?: boolean;
 };
@@ -208,7 +223,7 @@ type Draft = {
  * - **Additive fields merge:** `values` are unioned by value id, `appliesTo`
  *   arrays are unioned, and `'*'` absorbs any list.
  * - **Cosmetic fields — last pack wins:** `label`, `description`, `color`,
- *   `order`, `required`, `deprecated`.
+ *   `iconKey`, `order`, `required`, `deprecated`.
  * - **Structural fields — first pack wins, conflict recorded:** `cardinality`,
  *   and `values: 'open'` vs a closed list. The conflict becomes a
  *   `duplicate-conflict` error issue and does NOT throw. A host that needs a
