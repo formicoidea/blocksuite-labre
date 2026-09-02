@@ -344,12 +344,10 @@ describe('morphing an Event Storming sticky into another kind', () => {
       // because what this render reaches is the trigger's light DOM; the open
       // panel is a popover only a real click creates.
       for (const option of options) {
+        const kind = option.getAttribute('data-value') ?? '';
         const swatch = option.querySelector('svg');
-        expect(swatch, option.getAttribute('data-value')).toBeTruthy();
-        expect(
-          swatch!.getAttribute('width'),
-          option.getAttribute('data-value')
-        ).toBe('24');
+        expect(swatch, kind).toBeTruthy();
+        expect(swatch!.getAttribute('width'), kind).toBe('24');
       }
       // Declaration order is menu order, and it is the grammar's order — the
       // same one the senior sub-menu renders, hotspot last.
