@@ -71,7 +71,7 @@ describe('the whole view layer mounts in one container', () => {
     expect(() => collide.setup(container)).toThrowError(/already exists/);
   });
 
-  test('the group row carries four modules, from four owners', () => {
+  test('the group row carries five modules, from five owners', () => {
     const modules = toolbarModules(mount('edgeless'));
     const forGroup = [...modules.keys()].filter(
       variant => toolbarModuleFlavour(variant) === 'custom:affine:surface:group'
@@ -79,11 +79,11 @@ describe('the whole view layer mounts in one container', () => {
 
     // Wardley's qualification dropdown, under the bare flavour…
     expect(forGroup).toContain('custom:affine:surface:group');
-    // …and the two morphs, each under an owner-suffixed variant that cannot
-    // collide with it — nor with each other — while still being merged into the
-    // same row. Both frameworks build their artefact as a native group, so
-    // three contributors on one flavour is the shipped configuration and not a
-    // hypothetical one.
+    // …and the three morphs, each under an owner-suffixed variant that cannot
+    // collide with it — nor with each other — while all four are merged into
+    // the same row. Every one of those frameworks builds its artefact as a
+    // native group, so four contributors on one flavour is the shipped
+    // configuration and not a hypothetical one.
     expect(forGroup).toContain(
       toolbarModuleKey('custom:affine:surface:group', 'c4-morph')
     );
@@ -93,14 +93,18 @@ describe('the whole view layer mounts in one container', () => {
         'ddd-event-storming-morph'
       )
     );
-    expect(forGroup).toHaveLength(3);
-    // The native group operations sit on the other group key, untouched.
+    expect(forGroup).toContain(
+      toolbarModuleKey('custom:affine:surface:group', 'ddd-core-domain-morph')
+    );
+    expect(forGroup).toHaveLength(4);
+    // The native group operations sit on the other group key, untouched — the
+    // fifth owner, and the one a stored group needs whatever the flags say.
     expect([...modules.keys()]).toContain('affine:surface:group');
   });
 
-  test('a flavour claimed only by a contributor still has a row', () => {
+  test('a flavour claimed only by contributors still has a row', () => {
     // `{wardley: false}` is a real configuration, and it leaves
-    // `custom:affine:surface:group` with NO bare module: only the two morphs.
+    // `custom:affine:surface:group` with NO bare module: only the three morphs.
     // The row still exists — `modulesFor` finds them — while `getModuleBy`,
     // which answers about the flavour's own registration, correctly says there
     // is none. Reading a contributor there would let a placement, or a "does
@@ -112,11 +116,17 @@ describe('the whole view layer mounts in one container', () => {
     } as never);
     const flavour = 'custom:affine:surface:group';
 
+    // In `extensions/view.ts` registration order — event storming, then C4,
+    // then core domain — because that is what `modulesFor` returns and pinning
+    // it costs nothing. It is not an order a user can observe: `renderToolbar`
+    // merges these modules' actions BY ID and sorts on that, so the row reads
+    // the same whichever framework registered first.
     expect(
       registry.modulesFor(flavour).map(module => module.id.variant)
     ).toEqual([
       toolbarModuleKey(flavour, 'ddd-event-storming-morph'),
       toolbarModuleKey(flavour, 'c4-morph'),
+      toolbarModuleKey(flavour, 'ddd-core-domain-morph'),
     ]);
     expect(registry.getModuleBy(flavour)).toBeNull();
     // …and the native group operations, on the other group key, are untouched.
@@ -129,22 +139,36 @@ describe('the whole view layer mounts in one container', () => {
       'ddd-event-storming-morph'
     );
     const c4Morph = toolbarModuleKey('custom:affine:surface:group', 'c4-morph');
+    const cdMorph = toolbarModuleKey(
+      'custom:affine:surface:group',
+      'ddd-core-domain-morph'
+    );
 
-    const off = toolbarModules(mount('edgeless', { c4: false }));
-    expect([...off.keys()]).not.toContain(c4Morph);
+    const noC4 = toolbarModules(mount('edgeless', { c4: false }));
+    expect([...noC4.keys()]).not.toContain(c4Morph);
     // A morph is TOOLING: the flag takes the menu away and leaves the row a
     // stored component still needs — Wardley's slot on the same flavour, the
-    // native group operations, and the OTHER framework's morph — exactly where
-    // they were (`docs/adr/0009`). The two share a flavour and nothing else.
-    expect([...off.keys()]).toContain(esMorph);
-    expect([...off.keys()]).toContain('custom:affine:surface:group');
-    expect([...off.keys()]).toContain('affine:surface:group');
+    // native group operations, and the OTHER frameworks' morphs — exactly where
+    // they were (`docs/adr/0009`). The three share a flavour and nothing else.
+    expect([...noC4.keys()]).toContain(esMorph);
+    expect([...noC4.keys()]).toContain(cdMorph);
+    expect([...noC4.keys()]).toContain('custom:affine:surface:group');
+    expect([...noC4.keys()]).toContain('affine:surface:group');
 
     const noStorming = toolbarModules(
       mount('edgeless', { 'ddd-event-storming': false })
     );
     expect([...noStorming.keys()]).not.toContain(esMorph);
     expect([...noStorming.keys()]).toContain(c4Morph);
+    expect([...noStorming.keys()]).toContain(cdMorph);
     expect([...noStorming.keys()]).toContain('custom:affine:surface:group');
+
+    const noCoreDomain = toolbarModules(
+      mount('edgeless', { 'ddd-core-domain': false })
+    );
+    expect([...noCoreDomain.keys()]).not.toContain(cdMorph);
+    expect([...noCoreDomain.keys()]).toContain(c4Morph);
+    expect([...noCoreDomain.keys()]).toContain(esMorph);
+    expect([...noCoreDomain.keys()]).toContain('custom:affine:surface:group');
   });
 });

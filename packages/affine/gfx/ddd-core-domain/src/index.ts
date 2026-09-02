@@ -6,6 +6,18 @@ export {
   CORE_DOMAIN_LEGEND_TONES,
 } from './core-domain/background.js';
 export { coreDomain } from './core-domain/element-renderer.js';
+// The morph: the families the dropdown is parameterized by, the resolution from
+// a selected group to the shape the role lives on, the patch a kind is worth,
+// and the caption rule — all of them what the unit and integration suites drive.
+export {
+  CORE_DOMAIN_MORPH_FAMILIES,
+  CORE_DOMAIN_MORPH_SPEC,
+  coreDomainArtefactOf,
+  coreDomainMorphClears,
+  coreDomainMorphedCaption,
+  coreDomainMorphProps,
+  type CdMorphKind,
+} from './morph.js';
 export { CORE_DOMAIN_NUDGES } from './nudges.js';
 export { CORE_DOMAIN_PROFILES } from './profiles.js';
 export {

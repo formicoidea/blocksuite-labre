@@ -68,7 +68,7 @@ export function groupIds(std: BlockStdScope, ids: string[]): string {
   return result.groupId || ids[0];
 }
 
-interface ShapeOpts {
+export interface ShapeOpts {
   shapeType?: 'rect' | 'ellipse' | 'diamond';
   fill: string;
   /**
@@ -96,14 +96,24 @@ interface ShapeOpts {
   };
 }
 
-function addShape(
-  surface: Surface,
+/**
+ * The props a DDD shape is CREATED with, as a record — the write of
+ * {@link addShape}, minus the write.
+ *
+ * Split out for the Core Domain morph, and for the reason C4's `presets.ts`
+ * gives: a kind's appearance is written by the preset of the kind it was created
+ * as and nothing else ever rewrites it, so a morph that restated the table would
+ * agree with the palette the day it was written and drift on the first restyle.
+ * Derived, they cannot — a morphed dot and one freshly placed are the same
+ * element.
+ */
+export function dddShapeProps(
   x: number,
   y: number,
   w: number,
   h: number,
   opts: ShapeOpts
-): string {
+): Record<string, unknown> & { type: string } {
   const {
     shapeType = 'rect',
     fill,
@@ -113,7 +123,7 @@ function addShape(
     label,
     role,
   } = opts;
-  return surface.addElement({
+  return {
     type: 'shape',
     // `undefined` writes nothing: a neutral artefact keeps no `role` key.
     role,
@@ -136,7 +146,18 @@ function addShape(
           textFitMode: label.fit,
         }
       : {}),
-  });
+  };
+}
+
+function addShape(
+  surface: Surface,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  opts: ShapeOpts
+): string {
+  return surface.addElement(dddShapeProps(x, y, w, h, opts));
 }
 
 function addText(
@@ -256,6 +277,35 @@ export function addBubble(
   });
 }
 
+/** The ink every Core Domain artefact is outlined with. */
+const ARTEFACT_STROKE = '#1f2328';
+
+/**
+ * What a Core Domain DOT is, as shape options — read by the creation site below
+ * and by the morph, so the two can never disagree about what a platform
+ * sub-domain looks like. See {@link dddShapeProps}.
+ */
+export function dotShapeOpts(fill: string, role?: string): ShapeOpts {
+  return {
+    shapeType: 'ellipse',
+    fill,
+    stroke: ARTEFACT_STROKE,
+    strokeWidth: 1.5,
+    role,
+  };
+}
+
+/** What a Team Topologies MARKER square is, the same way. */
+export function markerShapeOpts(fill: string, role?: string): ShapeOpts {
+  return {
+    fill,
+    stroke: ARTEFACT_STROKE,
+    strokeWidth: 1.5,
+    radius: 4,
+    role,
+  };
+}
+
 /** A Core Domain dot (sub-domain / bounded context); optional label to its right. */
 export function addDot(
   surface: Surface,
@@ -268,13 +318,14 @@ export function addDot(
   role?: string
 ): string {
   const d = DOT_SIZE;
-  const dot = addShape(surface, cx - d / 2, cy - d / 2, d, d, {
-    shapeType: 'ellipse',
-    fill,
-    stroke: '#1f2328',
-    strokeWidth: 1.5,
-    role,
-  });
+  const dot = addShape(
+    surface,
+    cx - d / 2,
+    cy - d / 2,
+    d,
+    d,
+    dotShapeOpts(fill, role)
+  );
   if (!label) return dot;
   const lbl = addText(
     surface,
@@ -366,13 +417,14 @@ export function addMarker(
 ): string {
   const { fill, letter, label, role } = opts;
   const s = MARKER_SIZE;
-  const box = addShape(surface, cx - s / 2, cy - s / 2, s, s, {
-    fill,
-    stroke: '#1f2328',
-    strokeWidth: 1.5,
-    radius: 4,
-    role,
-  });
+  const box = addShape(
+    surface,
+    cx - s / 2,
+    cy - s / 2,
+    s,
+    s,
+    markerShapeOpts(fill, role)
+  );
   const glyph = addText(
     surface,
     cx - s / 2,
