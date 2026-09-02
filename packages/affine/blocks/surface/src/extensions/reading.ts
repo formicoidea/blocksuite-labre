@@ -16,8 +16,8 @@ import type { RoleDefs, RoleId, SurfaceBlockModel } from '@labre/std/gfx';
 import {
   GfxControllerIdentifier,
   GfxPrimitiveElementModel,
-  isPivotBound,
   readElementTags,
+  resolvePivotBinding,
   roleIsA,
 } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
@@ -853,17 +853,26 @@ function propertyStrings(snapshot: PivotSnapshot, key: string): string[] {
  * fields, a dangling record, a still-loading one — and the caller shows the
  * local reading alone. That is the `queryPivotProperties` contract: "this
  * editor has no host data layer" is not an error to put in front of a user.
+ *
+ * The binding is resolved through {@link resolvePivotBinding} rather than read
+ * off `element` directly: a business framework draws its artefacts as
+ * composites, and a host that stamped the GROUP a click selects — rather than
+ * the circle that carries the role — is still describing this component. The
+ * whole record side of the reading therefore starts from the RESOLVED binding,
+ * drift included, so a panel and a drift line can never disagree about which
+ * record they are talking about.
  */
 export function readRecord(
   std: BlockStdScope,
   element: GfxPrimitiveElementModel,
   profile: ReadingProfile
 ): RecordReading | undefined {
-  if (!isPivotBound(element)) return undefined;
+  const bound = resolvePivotBinding(element);
+  if (!bound) return undefined;
   const keys = profile.recordKeys;
   if (!keys?.nature && !keys?.phase) return undefined;
 
-  const state = queryPivotProperties(std, element.pivotDocId);
+  const state = queryPivotProperties(std, bound.pivotDocId);
   if (!state) return undefined;
 
   const current = state.value;
@@ -883,7 +892,7 @@ export function readRecord(
       : { resolved: [], unknown: [] };
 
   return {
-    pivotDocId: element.pivotDocId,
+    pivotDocId: bound.pivotDocId,
     ...(resolved.length ? { nature: resolved } : {}),
     ...(unknown.length ? { unknownNature: unknown } : {}),
     ...(phase.length ? { phase: phase[0] } : {}),
@@ -1198,8 +1207,10 @@ export class ReadingManager extends LifeCycleWatcher {
     const element = surface?.getElementById(elementId);
     if (!surface || !element) return;
     // Only a LINKED element can drift: without a record there is nothing to
-    // disagree with, and the reading is just a reading.
-    if (!isPivotBound(element)) {
+    // disagree with, and the reading is just a reading. "Linked" is the same
+    // tolerant question the panel asks — a binding carried by the composite is
+    // this component's binding (`resolvePivotBinding`).
+    if (!resolvePivotBinding(element)) {
       if (this.drift$.value?.elementId === elementId) this.drift$.value = null;
       return;
     }

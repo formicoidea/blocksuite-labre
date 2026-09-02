@@ -104,6 +104,7 @@ export {
   isPivotBound,
   type PivotBoundElement,
   type PivotOccurrence,
+  resolvePivotBinding,
 } from './model/surface/pivot.js';
 export {
   type EdgeDirectionDef,
