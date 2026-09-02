@@ -3,6 +3,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   BpmnPoolElementModel,
+  C4_BOARD_TITLE_BAND_HEIGHT,
+  C4BoardElementModel,
+  C4BoundaryElementModel,
   CynefinElementModel,
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
@@ -266,6 +269,73 @@ describe('a BPMN pool is picked by its border and its title bands', () => {
 
     expect(pool.includesPoint(540, 100, PICK)).toBe(true);
     expect(pool.includesPoint(20, 100, PICK)).toBe(false);
+  });
+});
+
+describe('a C4 board is picked by its border and its title band', () => {
+  /** The reference board: 1400 × 900, a 56-unit header across the top. */
+  const BOARD = { xywh: '[0,0,1400,900]', rotate: 0 };
+  const BAND = C4_BOARD_TITLE_BAND_HEIGHT;
+
+  it('takes the whole title band, full width', () => {
+    const board = detached(C4BoardElementModel, BOARD);
+
+    // The band is the strip the diagram title is written across: it is the
+    // SHEET rather than the diagram drawn on it, so it stays clickable — the
+    // same carve-out the BPMN pool's participant band makes.
+    expect(board.includesPoint(700, 30, PICK)).toBe(true);
+    // Full width, so the far end of the header answers as the near end does.
+    expect(board.includesPoint(1300, 30, PICK)).toBe(true);
+    expect(board.includesPoint(40, BAND - 1, PICK)).toBe(true);
+  });
+
+  it('stops where the band stops, and leaves the plot to its nodes', () => {
+    const board = detached(C4BoardElementModel, BOARD);
+
+    // One unit under the painted edge, and the click belongs to whatever is
+    // drawn there — which is the whole reason #194 narrowed the hit test.
+    expect(board.includesPoint(700, BAND + 1, PICK)).toBe(false);
+    expect(board.includesPoint(700, 450, PICK)).toBe(false);
+    expect(board.includesPoint(1300, 800, PICK)).toBe(false);
+    // The border is still the border.
+    expect(board.includesPoint(1396, 450, PICK)).toBe(true);
+    expect(board.includesPoint(700, 896, PICK)).toBe(true);
+  });
+
+  it('turns the band with the board', () => {
+    // Half a turn about the centre (700, 450): the header is now the strip
+    // across the BOTTOM of the canvas.
+    const board = detached(C4BoardElementModel, { ...BOARD, rotate: 180 });
+
+    expect(board.includesPoint(700, 880, PICK)).toBe(true);
+    expect(board.includesPoint(700, 30, PICK)).toBe(false);
+  });
+
+  it('clamps a board shorter than its own header', () => {
+    // The degenerate case the renderer clamps: the band is the element, so the
+    // carve-out may not reach past it and claim units that are not there.
+    const board = detached(C4BoardElementModel, {
+      xywh: '[0,0,1400,20]',
+      rotate: 0,
+    });
+
+    expect(board.includesPoint(700, 10, PICK)).toBe(true);
+    // Outside the element entirely, and past the border band with it.
+    expect(board.includesPoint(700, 40, PICK)).toBe(false);
+  });
+
+  it('leaves the boundary alone: it has no band, and wears none', () => {
+    // A boundary is drawn OVER a diagram. A header strip there would swallow
+    // the clicks meant for the very elements it is drawn round, so it inherits
+    // the plain border test and nothing else.
+    const boundary = detached(C4BoundaryElementModel, {
+      xywh: '[0,0,520,360]',
+      rotate: 0,
+    });
+
+    expect(boundary.includesPoint(260, 30, PICK)).toBe(false);
+    expect(boundary.includesPoint(260, 180, PICK)).toBe(false);
+    expect(boundary.includesPoint(5, 180, PICK)).toBe(true);
   });
 });
 

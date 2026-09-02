@@ -335,17 +335,39 @@ export const BOARD_TITLE_FONT_SIZE = 20;
 export const BOARD_TITLE_COLOR = '#262626';
 
 /**
+ * The header strip's own tint — a shade of the card, not a colour of its own.
+ *
+ * Sober on purpose, and the same intent as the pool's participant band
+ * (`POOL_BAND_FILL`, `#f4f4f5`): the band has to be SEEN, because a strip a user
+ * cannot see is a target they cannot aim at, and it must not read as a second
+ * object sitting on the sheet. A hair lighter than the pool's, which is what it
+ * takes to stay quiet under a 20-unit title rather than under a 13-unit one.
+ */
+export const BOARD_BAND_FILL = '#f7f8fa';
+
+/**
  * The size a fresh board is created at, and the room its furniture takes.
  *
  * The Context Map board's own numbers: a C4 diagram is the same kind of object —
  * a sheet you spread out and add boxes to as the system is discovered — so it
  * starts at the same size and grows the same way. The top margin is deeper than
- * the other three because that is where the title is written.
+ * the other three because that is where the title is written — and, since the
+ * title band, it IS the title band (`C4_BOARD_TITLE_BAND_HEIGHT`, re-exported
+ * below from the model that owns it).
  */
 export const BOARD_REF_WIDTH = 1400;
 export const BOARD_REF_HEIGHT = 900;
 export const BOARD_MARGIN = 24;
-export const BOARD_TITLE_MARGIN = 56;
+
+/**
+ * The board's top margin lives in `@labre/affine-model`, beside the board model
+ * that hit-tests against it (a board is clickable by its title band as well as
+ * by its border — the same carve-out the BPMN pool makes, issues #194 / #197).
+ * It is re-exported here so this file stays the one place a reader looks for a
+ * board's metrics, and so the declaration keeps reading it from where it always
+ * did — under its own name, since a margin that is a painted band is a band.
+ */
+export { C4_BOARD_TITLE_BAND_HEIGHT } from '@labre/affine-model';
 
 /* ── The boundary ──────────────────────────────────────────────────────── */
 

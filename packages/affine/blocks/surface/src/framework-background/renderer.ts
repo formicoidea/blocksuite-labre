@@ -238,22 +238,25 @@ export function createFrameworkBackgroundRenderer<
     // down to the operation.
     const bands = def.chrome?.sideBands;
     if (bands?.length) {
-      // The band IS the margin strip, clamped to an element narrower than its
-      // own margin — the one case where the two can disagree.
-      const bandWidth = Math.min(x0, w);
       for (const band of bands) {
-        if (bandWidth <= 0) continue;
+        const top = band.side === 'top';
+        // The band IS the margin strip it covers, clamped to an element smaller
+        // than its own margin — the one case where the two can disagree.
+        const thickness = top ? Math.min(y0, h) : Math.min(x0, w);
+        if (thickness <= 0) continue;
         if (band.fill) {
           ctx.fillStyle = color(band.fill);
-          ctx.fillRect(0, 0, bandWidth, h);
+          if (top) ctx.fillRect(0, 0, w, thickness);
+          else ctx.fillRect(0, 0, thickness, h);
         }
         const divider = band.divider;
         if (divider) {
           ctx.strokeStyle = color(divider.color);
           ctx.lineWidth = divider.width;
           if (divider.dash?.length) ctx.setLineDash([...divider.dash]);
-          // Full height: the strip a margin gives up runs the whole side.
-          line(bandWidth, 0, bandWidth, h);
+          // The full span: the strip a margin gives up runs the whole side.
+          if (top) line(0, thickness, w, thickness);
+          else line(thickness, 0, thickness, h);
           if (divider.dash?.length) ctx.setLineDash([]);
         }
       }

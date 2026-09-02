@@ -5,6 +5,10 @@
 export { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
 export {
   BOUNDARY_LABEL,
+  // The header strip's height, owned by the model that hit-tests against it and
+  // re-exported here with the rest of a board's metrics: a host laying a board
+  // out needs to know how much of the top of the sheet is furniture.
+  C4_BOARD_TITLE_BAND_HEIGHT,
   type C4NodePaint,
   DESCRIPTION_PLACEHOLDER,
   NODE_LABEL,

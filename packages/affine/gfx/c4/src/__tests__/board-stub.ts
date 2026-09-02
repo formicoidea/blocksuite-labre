@@ -242,7 +242,7 @@ export const surface = (partial: Partial<C4ExportBoard>): C4ExportBoard => ({
  * unexercised.
  *
  * Geometry, for whoever has to move a box: the board's plot runs x 24…1376 and
- * y 56…876 (`BOARD_MARGIN`, `BOARD_TITLE_MARGIN`); the system boundary's runs
+ * y 56…876 (`BOARD_MARGIN`, `C4_BOARD_TITLE_BAND_HEIGHT`); the system boundary's runs
  * x 112…688, y 162…638 and the container boundary's x 162…438, y 212…428
  * (`BOUNDARY_MARGIN`). Everything below is attributed by its CENTRE against
  * those, most-nested first.

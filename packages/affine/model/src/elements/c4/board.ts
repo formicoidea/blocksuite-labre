@@ -1,8 +1,33 @@
 import type { SerializedXYWH } from '@labre/global/gfx';
+import { rotatePoint } from '@labre/global/gfx';
+import type { PointTestOptions } from '@labre/std/gfx';
 import { field } from '@labre/std/gfx';
 
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
+
+/**
+ * Height of the board's title band — the header strip across the top of the
+ * sheet the diagram title is written in, in model units.
+ *
+ * Declared HERE, in the model, and re-exported by `@labre/affine-gfx-c4` rather
+ * than the other way round, for the reason `POOL_BAND_WIDTH` is: the
+ * board's own hit test needs it (a board is clickable by its title band as well
+ * as its border), and `affine-model` cannot reach into `affine-block-surface`
+ * where the declaration is resolved. One number, owned by the layer that both
+ * the declaration and the hit test can read.
+ *
+ * It is the board's TOP MARGIN, and it always was — the deep inset the plot
+ * gives up so the title has somewhere to be written. Naming it says out loud
+ * what was already true, so the strip that is painted, the strip that is picked
+ * and the strip that opens the rename are one number rather than three.
+ *
+ * 56 is what the title has been written in since the pack shipped: a 20-unit
+ * title, sitting on a baseline a third of the band up from its foot, with the
+ * rest as breathing room above and below. Changing it moves the title, so it is
+ * a visual decision and not a hit-test one.
+ */
+export const C4_BOARD_TITLE_BAND_HEIGHT = 56;
 
 /**
  * Which of C4's levels this board draws — the DECLARED fact, as opposed to the
@@ -102,4 +127,56 @@ export class C4BoardElementModel extends FrameworkBackgroundElementModel<C4Board
    */
   @field()
   accessor level: C4BoardLevel | undefined = undefined;
+
+  /**
+   * A board is picked by its BORDER — and by its TITLE BAND, the one carve-out
+   * this frame keeps (issues #194 / #197).
+   *
+   * The same carve-out a BPMN pool makes, for the same reason and by the same
+   * arithmetic: the band is the only part of the sheet that is the SHEET rather
+   * than the diagram drawn on it. The title is written there, nothing is ever
+   * dropped there by convention, and the plot below is where the work goes — so
+   * a click there belongs to whatever node is under the pointer.
+   *
+   * Without this the title became unreachable the day backgrounds stopped being
+   * picked by their area: the only thing left answering was the view's
+   * double-click zone, which is the tight box of the DRAWN glyphs, and a single
+   * click on the title selected nothing at all.
+   *
+   * ## Where the geometry comes from
+   *
+   * The band is the top margin, full width — one number
+   * ({@link C4_BOARD_TITLE_BAND_HEIGHT}), read from here by the framework
+   * declaration, so what is painted is what is selectable. There is no
+   * zoom-grown target here as there is on a pool: the pool grows its 28-unit
+   * strip to stay reachable when zoomed out, which would put the rename zone
+   * outside the selectable one. A 56-unit header does not need it, and the
+   * promise "what is painted is what is picked" is worth more than the pixels.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options?: PointTestOptions
+  ): boolean {
+    if (super.includesPoint(x, y, options)) return true;
+
+    const [ex, ey, w, h] = this.deserializedXYWH;
+
+    // Element-local coordinates, undoing the element rotation about its centre
+    // — the band is axis-aligned inside the board, not on the canvas.
+    let lx = x - ex;
+    let ly = y - ey;
+    const rotate = this.rotate ?? 0;
+    if (rotate) {
+      const [ux, uy] = rotatePoint([x, y], [ex + w / 2, ey + h / 2], -rotate);
+      lx = ux - ex;
+      ly = uy - ey;
+    }
+
+    if (lx < 0 || lx > w || ly < 0) return false;
+
+    // Clamped to a board shorter than its own header — the degenerate case the
+    // renderer clamps too.
+    return ly <= Math.min(C4_BOARD_TITLE_BAND_HEIGHT, h);
+  }
 }

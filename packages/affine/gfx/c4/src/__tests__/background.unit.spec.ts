@@ -10,7 +10,11 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from '../background';
-import { BOUNDARY_DASH } from '../consts';
+import {
+  BOARD_BAND_FILL,
+  BOUNDARY_DASH,
+  C4_BOARD_TITLE_BAND_HEIGHT,
+} from '../consts';
 import { c4Board, c4Boundary } from '../element-renderer';
 import { C4_ROLE } from '../roles';
 import { recordingCtx, stubMatrix } from './canvas-stub';
@@ -115,7 +119,8 @@ describe.each([
     expect(def.axes).toBeUndefined();
     expect(def.instanceZones).toBeUndefined();
     expect(def.chrome?.washes).toBeUndefined();
-    // The single zone each declares is a label carrier, never a tint.
+    // Any zone either declares is a label carrier, never a tint — and the
+    // board declares none at all, since its title moved into its header band.
     for (const zone of def.zones ?? []) {
       expect(zone.fill, zone.id).toBeUndefined();
       expect(zone.rect).toEqual({ x: 0, y: 0, w: 1, h: 1 });
@@ -126,24 +131,73 @@ describe.each([
 describe('the C4 board', () => {
   const W = 1400;
   const H = 900;
+  const BAND = C4_BOARD_TITLE_BAND_HEIGHT;
 
-  it('paints an opaque white card with a titled header', () => {
+  it('paints an opaque white card with a titled header BAND', () => {
     const rec = render(c4Board, { name: 'Context diagram' }, W, H);
 
-    // Card first, frame over it — the primitive's own order.
-    expect(rec.ops).toEqual(['fill', 'stroke', 'fillText']);
+    // Card first, the band over its fill, the frame over both — the
+    // primitive's own order, so the border keeps outlining the whole element.
+    expect(rec.ops).toEqual([
+      'fill',
+      'fillRect',
+      'stroke',
+      'stroke',
+      'fillText',
+    ]);
     expect(rec.fills).toEqual(['#ffffff']);
-    expect(rec.strokes).toEqual(['#d5d9e0']);
+    // Two strokes now: the band's divider, then the card's border. Both the
+    // card's own line, so the strip reads as the frame continued.
+    expect(rec.strokes).toEqual(['#d5d9e0', '#d5d9e0']);
     // Solid: a board is not a boundary.
     expect(rec.dashes).toHaveLength(0);
+
+    // The band IS the top margin, full width — one number, and it is painted.
+    // A strip a user cannot see is a strip they cannot aim at, and this one is
+    // what a click selects (`C4BoardElementModel.includesPoint`).
+    expect(rec.rects).toEqual([
+      { x: 0, y: 0, w: W, h: BAND, fill: BOARD_BAND_FILL },
+    ]);
+    // …and the rule under it runs the whole width, at the band's foot.
+    expect(rec.segments).toEqual([{ x1: 0, y1: BAND, x2: W, y2: BAND }]);
 
     const [title] = rec.texts;
     expect(title.text).toBe('Context diagram');
     expect(title.vertical).toBe(false);
-    // Left-aligned with the plot, written in the deep top margin above it.
+    // Left-aligned with the plot, written INSIDE the band above it — the same
+    // pixels as before the band was painted: the anchor never moved.
     expect(title.x).toBe(C4_BOARD_BACKGROUND.geometry.margin.left);
     expect(title.y).toBeGreaterThan(0);
-    expect(title.y).toBeLessThan(C4_BOARD_BACKGROUND.geometry.margin.top);
+    expect(title.y).toBeLessThan(BAND);
+  });
+
+  /**
+   * The title is the BAND's label, not a zone's.
+   *
+   * It used to be a full-plot zone that tinted nothing and existed only to
+   * carry a name, because a board had no band to write one in. It has one now —
+   * the deep top margin, painted — so the name is the band's in exactly the
+   * sense the BPMN pool's participant name is, and the zone went with it.
+   */
+  it('writes its title in the band, and declares no zone at all', () => {
+    expect(C4_BOARD_BACKGROUND.zones).toBeUndefined();
+
+    const bands = C4_BOARD_BACKGROUND.chrome?.sideBands ?? [];
+    expect(bands).toHaveLength(1);
+    expect(bands[0].side).toBe('top');
+    expect(bands[0].label?.prop).toBe('name');
+    // The band's thickness is never declared beside the margin it covers: the
+    // primitive reads the margin, so the two cannot drift apart.
+    expect(C4_BOARD_BACKGROUND.geometry.margin.top).toBe(BAND);
+  });
+
+  it('clamps the band on a board shorter than its own header', () => {
+    // The degenerate case: the band is the element. The model's carve-out
+    // clamps the same way, so what is picked stays what is painted.
+    const rec = render(c4Board, { name: 'Squashed' }, W, 20);
+    expect(rec.rects).toEqual([
+      { x: 0, y: 0, w: W, h: 20, fill: BOARD_BAND_FILL },
+    ]);
   });
 
   it('is the board role, and the c4Board element type', () => {
