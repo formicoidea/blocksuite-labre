@@ -396,12 +396,13 @@ export interface BackgroundSurfaceDef {
 /**
  * A filled strip of FIXED width, painted over one margin of the card.
  *
- * The width of a band IS the margin it covers
- * ({@link BackgroundGeometry.margin}), never a second number: the margin is
+ * The thickness of a band IS the margin it covers
+ * ({@link BackgroundGeometry.margin}) — `margin.left` for a `'left'` band,
+ * `margin.top` for a `'top'` one — never a second number: the margin is
  * already the room the plot gives up to the furniture, and letting a
- * declaration state a different width would be two numbers that must agree and
- * one day will not. An element narrower than its own margin clamps the band to
- * the element, which is the only case where the two can disagree.
+ * declaration state a different thickness would be two numbers that must agree
+ * and one day will not. An element smaller than its own margin clamps the band
+ * to the element, which is the only case where the two can disagree.
  *
  * A band is part of the CARD, not a layer over it: it is painted over the
  * card's fill and under its border, so the frame keeps outlining the whole
@@ -409,16 +410,18 @@ export interface BackgroundSurfaceDef {
  * them, and anchored in plot ratios — the plot edge is the band's inner edge,
  * so `x: 0` with a negative `dx` walks back INTO the band.
  *
- * Named consumer: the BPMN pool, a lane whose participant name is written up a
+ * Named consumers: the BPMN pool, a lane whose participant name is written up a
  * filled band along its left edge, with a {@link divider} between that band and
- * the flow area.
+ * the flow area; and the C4 board, whose diagram title is written across a
+ * header strip along its top edge.
  *
- * Only `'left'` for now — same philosophy as the wash direction
- * ({@link BackgroundWashDef.stops}): the union grows the day a framework asks
- * for a top or a right band, not in anticipation of one.
+ * `'left'` and `'top'` — the two a framework has actually asked for. The union
+ * grows the day one asks for a right or a bottom band, not in anticipation of
+ * one, which is the same philosophy the wash direction follows
+ * ({@link BackgroundWashDef.stops}).
  */
 export interface BackgroundSideBandDef {
-  side: 'left';
+  side: 'left' | 'top';
   /** Tint over the whole strip. Absent means the card shows through. */
   fill?: BackgroundColor;
   /** The line between the band and the plot. Absent means none. */

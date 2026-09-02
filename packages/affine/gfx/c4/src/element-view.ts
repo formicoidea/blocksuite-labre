@@ -1,4 +1,7 @@
-import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
+import type {
+  BackgroundLabelHit,
+  FrameworkBackgroundDef,
+} from '@labre/affine-block-surface';
 import {
   backgroundLabelHits,
   EdgelessCRUDIdentifier,
@@ -15,6 +18,7 @@ import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background';
+import { c4InBoardTitleBand } from './board-hit';
 
 /**
  * The one gesture the two C4 frames carry: a double-click on the name edits it
@@ -71,17 +75,35 @@ abstract class C4FrameView<
       ly = uy - by;
     }
 
-    const hit = hitTestBackgroundLabel(
-      backgroundLabelHits(
-        this.def,
-        this.model as unknown as Record<string, unknown>,
-        w,
-        h,
-        this.gfx.std.getOptional(TranslationProvider)
-      ),
-      lx,
-      ly
+    const hits = backgroundLabelHits(
+      this.def,
+      this.model as unknown as Record<string, unknown>,
+      w,
+      h,
+      this.gfx.std.getOptional(TranslationProvider)
     );
+    return this._nameAt(hits, lx, ly);
+  }
+
+  /**
+   * Which region of the frame aims at the name, given an ELEMENT-LOCAL point.
+   *
+   * The DRAWN WORDS by default — the box `backgroundLabelHits` derives from the
+   * very anchor the renderer paints at, so a label can never be drawn in one
+   * place and clicked in another. That is the right answer for a name written
+   * INSIDE the plot, over the diagram, where anything wider would swallow
+   * clicks meant for the elements around it: the C4 boundary's name sits in its
+   * bottom-left corner, and this is its whole story.
+   *
+   * A frame whose name has a strip of its own overrides this and returns the
+   * strip — see {@link C4BoardView}.
+   */
+  protected _nameAt(
+    hits: readonly BackgroundLabelHit[],
+    lx: number,
+    ly: number
+  ): BackgroundLabelHit | null {
+    const hit = hitTestBackgroundLabel(hits, lx, ly);
     return hit && hit.prop === 'name' ? hit : null;
   }
 
@@ -94,6 +116,11 @@ abstract class C4FrameView<
    * asks the MODEL, and a framework declares its own gesture zones beside the
    * code that draws them. Without this the name becomes unrenameable; without
    * the model change the card swallows every click meant for the nodes on it.
+   *
+   * The BOARD's band is in both answers — the model picks it and this widens
+   * nothing over it — so on that frame the fallback below only ever fires for a
+   * point the model already took. It is the BOUNDARY that still needs it: its
+   * name is written inside the plot, where nothing is selectable.
    */
   override includesPoint(
     x: number,
@@ -190,12 +217,36 @@ abstract class C4FrameView<
   }
 }
 
-/** The sheet a C4 diagram is drawn on. Double-click its title to rename it. */
+/**
+ * The sheet a C4 diagram is drawn on. Double-click ANYWHERE in its title band
+ * to rename it.
+ *
+ * The band and not the words, which is the whole of what this subclass changes.
+ * A header strip you may only double-click the eleven characters of is a target
+ * that lies about where it is — the same call the BPMN pool's participant band
+ * makes, and now the same geometry: the strip that is painted is the strip a
+ * single click selects (`C4BoardElementModel.includesPoint`) and the strip a
+ * double-click renames.
+ *
+ * `hits` still supplies the WORDS the editor opens on, so a board showing its
+ * default title opens on that title rather than on an empty box — only the
+ * region grew.
+ */
 export class C4BoardView extends C4FrameView<C4BoardElementModel> {
   static override type: string = 'c4Board';
 
   protected override get def(): FrameworkBackgroundDef {
     return C4_BOARD_BACKGROUND;
+  }
+
+  protected override _nameAt(
+    hits: readonly BackgroundLabelHit[],
+    lx: number,
+    ly: number
+  ): BackgroundLabelHit | null {
+    const name = hits.find(hit => hit.prop === 'name');
+    if (!name) return null;
+    return c4InBoardTitleBand(this.model, [lx, ly]) ? name : null;
   }
 }
 
