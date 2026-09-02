@@ -44,8 +44,14 @@ import {
  *
  * The seven ids that already shipped keep their id AND their `labelKey`
  * verbatim, so persisted host override tables and translation catalogues stay
- * valid. The six promoted ones ship keyless (`{ mac: [], other: [] }`) — still
+ * valid. The six promoted ones shipped keyless (`{ mac: [], other: [] }`) — still
  * registered, so a host override on their id actually binds.
+ *
+ * Amended 2026-09-02 (staging recette, retour n°12 — labre#538): `w a` is the
+ * ANCHOR and the evolution arrow moved to `w e`. `a` reads as "anchor" to every
+ * user who tried the chord, and `e` is "evolution". Ids and `labelKey`s are
+ * untouched, so persisted override tables keep binding; only the two defaults
+ * moved. `keymap-golden.ts` carries the same amendment.
  *
  * Declaration order IS the sub-menu order, kept identical to the pre-PF3
  * button row so the switchover is invisible on the canvas.
@@ -159,6 +165,7 @@ const SPECS: Spec[] = [
   {
     id: 'addAnchor',
     label: 'Anchor',
+    key: 'a',
     iconKey: 'wardley.anchor',
     category: 'nodes',
     kind: 'artefact',
@@ -192,7 +199,7 @@ const SPECS: Spec[] = [
     id: 'evolutionArrow',
     label: 'Arrow (evolution)',
     labelKey: 'com.labre.keyboardShortcuts.wardley.evolutionArrow',
-    key: 'a',
+    key: 'e',
     iconKey: 'wardley.arrow',
     category: 'connectors',
     kind: 'tool',
