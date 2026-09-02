@@ -39,8 +39,9 @@ import { styleMap } from 'lit/directives/style-map.js';
  * ## What is shared, and what is not
  *
  * Shared: the host geometry and its layer, the panel's box and chrome, the
- * click-away and Escape contracts, and the re-measure wiring. Not shared: a
- * single line of CONTENT — each panel renders its own body into
+ * pinned header over a scrolling body, the click-away and Escape contracts, and
+ * the re-measure wiring. Not shared: a single line of CONTENT — each panel
+ * passes its own header and body to
  * {@link EditorAnchoredPanel.renderAnchoredPanel}, and neither knows the other
  * exists.
  */
@@ -114,6 +115,35 @@ export type AnchoredPanelBox = {
 };
 
 /**
+ * The corner radius of the senior button bar, which this panel wears too.
+ *
+ * `edgeless-toolbar` rounds at 16 and so, since #199, does every menu that
+ * slides out of it. The panel is the same family of chrome floating over the
+ * same bar; at 8 it read as a foreign box parked above the toolbar.
+ */
+const PANEL_RADIUS = 16;
+
+/**
+ * The inset between the panel's border and the words inside it.
+ *
+ * It has to clear the corner arc, not merely look comfortable: an inner
+ * rectangle inset by less than `r × (1 − 1/√2)` ≈ 4.7px has its own corners cut
+ * by a 16px radius. Every inset below is at or above that, which is why the
+ * scrolling box never bleeds into the rounded edge.
+ */
+const PANEL_INLINE_PADDING = 16;
+
+/**
+ * The width of the scrollbar the body reserves, and the width the thumb takes.
+ *
+ * Reserved permanently (`scrollbar-gutter: stable`) rather than appearing with
+ * the overflow: the panel's content is recomputed on every board change, so a
+ * gutter that came and went would shift the text sideways under the reader
+ * while they are reading it.
+ */
+const PANEL_SCROLLBAR_WIDTH = 8;
+
+/**
  * The host geometry, the layer and the panel's chrome — the half of the pattern
  * that is CSS.
  *
@@ -145,12 +175,27 @@ export const editorAnchoredPanelStyles = css`
     pointer-events: none;
   }
 
+  /*
+    The FRAME, and nothing that scrolls.
+
+    \`overflow: hidden\` rather than \`overflow-y: auto\`: the panel owns the
+    rounded corners, so it is the box that must clip — and a box that clips is
+    the only one whose children can be trusted not to paint over the arc. The
+    scrolling moved one level in, to \`.editor-anchored-panel-body\`, which is
+    what pins the header.
+
+    A column, because \`max-height\` has to be shared: the header takes what it
+    needs and the body takes the rest. The measured maximum
+    ({@link EditorAnchoredPanel.anchorBox}) therefore still means what it says —
+    the whole panel, header included, never exceeds it.
+  */
   .editor-anchored-panel {
     position: absolute;
     box-sizing: border-box;
-    overflow-y: auto;
-    padding: 12px;
-    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: ${unsafeCSS(PANEL_RADIUS)}px;
     border: 1px solid var(--affine-border-color);
     background: var(--affine-background-overlay-panel-color, #fff);
     box-shadow: var(--affine-shadow-2);
@@ -159,6 +204,73 @@ export const editorAnchoredPanelStyles = css`
     font-size: 14px;
     line-height: 1.4;
     pointer-events: auto;
+  }
+
+  /*
+    The header stays. It is the sentence that says what the panel is about, and
+    a title that scrolls out of its own panel leaves the reader looking at a
+    list of values with nothing naming them.
+
+    \`flex: 0 0 auto\` so a long title wraps rather than being squeezed, and the
+    bottom border so the body visibly passes UNDER it instead of appearing to
+    end mid-air.
+  */
+  .editor-anchored-panel-header {
+    flex: 0 0 auto;
+    padding: 12px ${unsafeCSS(PANEL_INLINE_PADDING)}px 8px;
+    border-bottom: 1px solid var(--affine-border-color);
+  }
+
+  /*
+    The one box that scrolls.
+
+    \`min-height: 0\` is belt-and-braces, not load-bearing: a flex child's
+    automatic minimum size is its content, but \`overflow-y: auto\` already
+    resets it to zero (CSS flexbox § 4.5) — the suite stays green with the
+    line removed (lead's mutation probe). Spelled out anyway so the shrink
+    survives the day someone moves the overflow off this box.
+
+    The right inset is split — \`padding-right\` plus the reserved gutter — so
+    the text sits the same distance from both edges while the scrollbar keeps a
+    lane of its own. The bottom inset is a MARGIN rather than padding: padding
+    is inside the scrolling box, so the scrollbar would run down to it and into
+    the bottom arc; a margin ends the scrolling box early and leaves the corner
+    to the frame.
+  */
+  .editor-anchored-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    padding: 12px ${unsafeCSS(PANEL_INLINE_PADDING - PANEL_SCROLLBAR_WIDTH)}px 0
+      ${unsafeCSS(PANEL_INLINE_PADDING)}px;
+    margin-bottom: 12px;
+  }
+
+  /*
+    The house scrollbar: thin, invisible at rest, and only drawn while the
+    pointer is over the box it belongs to. Same values as \`table-block-css\`
+    and the data-view scrollers, so the editor has one scrollbar and not three.
+  */
+  .editor-anchored-panel-body::-webkit-scrollbar {
+    width: ${unsafeCSS(PANEL_SCROLLBAR_WIDTH)}px;
+  }
+
+  .editor-anchored-panel-body::-webkit-scrollbar-thumb {
+    border-radius: ${unsafeCSS(PANEL_SCROLLBAR_WIDTH / 2)}px;
+    background-color: transparent;
+  }
+
+  .editor-anchored-panel-body::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .editor-anchored-panel-body:hover::-webkit-scrollbar-thumb {
+    background-color: var(--affine-black-30);
+  }
+
+  .editor-anchored-panel-body:hover::-webkit-scrollbar-track {
+    background-color: var(--affine-hover-color);
   }
 `;
 
@@ -275,7 +387,19 @@ export abstract class EditorAnchoredPanel extends WidgetComponent<RootBlockModel
 
   /**
    * The panel's frame: the box, the dialog semantics and the pointer
-   * swallowing. The subclass passes its own body and nothing else.
+   * swallowing. The subclass passes its own two halves and nothing else.
+   *
+   * ## Why the header is a parameter and not a line of the body
+   *
+   * Because the split is the whole fix. Both panels rendered their title as the
+   * first node of a body that was itself the scrolling box, so a reading long
+   * enough to scroll scrolled its own title away. Making the header an argument
+   * is what forces a consumer to say which of its markup stays put — a default
+   * would have quietly kept the old behaviour for whoever forgot.
+   *
+   * The header is where a panel puts its title and, if it has one, the actions
+   * that belong beside it: Map quality's close button rides there and stays
+   * reachable however far the checklist runs.
    *
    * Deliberately NOT `aria-modal`: it promises everything behind the dialog is
    * inert, and these panels promise the opposite — the canvas stays usable
@@ -293,6 +417,9 @@ export abstract class EditorAnchoredPanel extends WidgetComponent<RootBlockModel
       /** The element the panel is about, when it is about one. */
       elementId?: string;
     },
+    /** Pinned: the title, and whatever must stay beside it. */
+    header: unknown,
+    /** Scrolled: everything the panel has to say. */
     body: unknown
   ): TemplateResult {
     const { left, width, bottom, maxHeight } = this.anchorBox();
@@ -314,7 +441,15 @@ export abstract class EditorAnchoredPanel extends WidgetComponent<RootBlockModel
       @pointerup=${this.swallow}
       @click=${this.swallow}
     >
-      ${body}
+      <div
+        class="editor-anchored-panel-header"
+        data-testid="anchored-panel-header"
+      >
+        ${header}
+      </div>
+      <div class="editor-anchored-panel-body" data-testid="anchored-panel-body">
+        ${body}
+      </div>
     </div>`;
   }
 

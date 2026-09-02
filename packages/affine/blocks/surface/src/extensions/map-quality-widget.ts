@@ -107,14 +107,9 @@ export class MapQualityWidget extends EditorAnchoredPanel {
   static override styles = [
     editorAnchoredPanelStyles,
     css`
-      /* The box, the layer and the anchoring come from the shared pattern; this
-       is the panel's own stacking of sections inside it. */
-      .map-quality-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
+      /* The box, the layer, the anchoring AND the column of header over body
+         all come from the shared pattern now — what is left here is the two
+         rows this panel puts inside those two slots. */
       .map-quality-head {
         display: flex;
         align-items: center;
@@ -452,24 +447,24 @@ export class MapQualityWidget extends EditorAnchoredPanel {
         label: title,
       },
       html`<div class="map-quality-head">
-          <span>${title}</span>
-          <button
-            class="map-quality-close"
-            type="button"
-            data-testid="map-quality-close"
-            aria-label=${translateKey(
-              this.std,
-              'com.labre.validation.map-quality.close',
-              'Close'
-            )}
-            @pointerdown=${this.swallow}
-            @pointerup=${this.swallow}
-            @click=${this._close}
-          >
-            ×
-          </button>
-        </div>
-        ${this._renderNudges(element)}`
+        <span>${title}</span>
+        <button
+          class="map-quality-close"
+          type="button"
+          data-testid="map-quality-close"
+          aria-label=${translateKey(
+            this.std,
+            'com.labre.validation.map-quality.close',
+            'Close'
+          )}
+          @pointerdown=${this.swallow}
+          @pointerup=${this.swallow}
+          @click=${this._close}
+        >
+          ×
+        </button>
+      </div>`,
+      this._renderNudges(element)
     );
   }
 }

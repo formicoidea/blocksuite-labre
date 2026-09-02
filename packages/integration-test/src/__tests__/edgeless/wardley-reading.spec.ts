@@ -544,6 +544,48 @@ describe('the reversed reading of a Wardley component', () => {
       expect(after.left).toBeCloseTo(before.left, 0);
       expect(after.bottom).toBeCloseTo(before.bottom, 0);
     });
+
+    test('its title is pinned outside the box that scrolls', async () => {
+      await openOnAComponent();
+
+      const header = query('[data-testid="anchored-panel-header"]');
+      const body = query('[data-testid="anchored-panel-body"]');
+      expect(header).not.toBeNull();
+      expect(body).not.toBeNull();
+
+      // The reading's own title goes in the header slot, and the fields — the
+      // part that can outgrow the panel — in the scrolling one. A title
+      // rendered as the body's first line is what used to scroll away.
+      expect(header!.querySelector('.reading-title')).not.toBeNull();
+      expect(body!.querySelector('.reading-title')).toBeNull();
+      expect(
+        body!.querySelector('[data-testid="reading-node-type"]')
+      ).not.toBeNull();
+
+      expect(getComputedStyle(body!).overflowY).toBe('auto');
+      expect(getComputedStyle(header!).overflowY).not.toBe('auto');
+    });
+
+    test('it wears the senior bar’s own corner radius', async () => {
+      await openOnAComponent();
+
+      // The bar draws its corners with `smooth-corner`, which takes the radius
+      // as a property rather than as CSS — so the reference is READ off the bar
+      // instead of restated here, and a toolbar redesign moves both or fails
+      // this test.
+      const smooth = seniorBar()!.closest('smooth-corner') as
+        | (HTMLElement & { borderRadius: number })
+        | null;
+      expect(smooth).not.toBeNull();
+
+      // Same family of chrome, same corner — the reasoning that took
+      // `edgeless-slide-menu` from 8 to 16 in #199, applied to the panel that
+      // floats over the very same bar.
+      expect(getComputedStyle(panel()!).borderTopLeftRadius).toBe(
+        `${smooth!.borderRadius}px`
+      );
+      expect(getComputedStyle(panel()!).borderTopLeftRadius).toBe('16px');
+    });
   });
 
   /**

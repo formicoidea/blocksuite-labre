@@ -107,11 +107,14 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   static override styles = [
     editorAnchoredPanelStyles,
     css`
+      /* Pinned by the shared frame, which owns its padding; all this adds is
+         the weight that makes it read as a title. */
       .reading-title {
         font-weight: 600;
-        margin-bottom: 8px;
       }
 
+      /* The first field sits directly under the pinned header, so the rule that
+         separates two fields would draw a second line against the header's. */
       .reading-field + .reading-field {
         margin-top: 10px;
         padding-top: 10px;
@@ -748,18 +751,18 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
         ),
       },
       html`<div class="reading-title">
-          ${translateKey(
-            this.std,
-            'com.labre.reading.panel.title',
-            'What this map says about this component'
-          )}
-        </div>
-        ${this._renderNodeType(reading, profile)}
-        ${this._renderNature(reading, profile, record, writable)}
-        ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
-        ${this._renderPhase(reading)} ${this._renderNaming(reading)}
-        ${this._renderRecord(reading, writable)}
-        ${writable ? this._renderDrift(reading) : nothing}`
+        ${translateKey(
+          this.std,
+          'com.labre.reading.panel.title',
+          'What this map says about this component'
+        )}
+      </div>`,
+      html`${this._renderNodeType(reading, profile)}
+      ${this._renderNature(reading, profile, record, writable)}
+      ${this._renderRelations(reading)} ${this._renderValueFlow(reading)}
+      ${this._renderPhase(reading)} ${this._renderNaming(reading)}
+      ${this._renderRecord(reading, writable)}
+      ${writable ? this._renderDrift(reading) : nothing}`
     );
   }
 }

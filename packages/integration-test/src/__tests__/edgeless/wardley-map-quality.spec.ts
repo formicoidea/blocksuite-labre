@@ -844,6 +844,35 @@ describe('map quality', () => {
       expect(reading).toBeInstanceOf(EditorAnchoredPanel);
     });
 
+    test('its heading row — close button included — is pinned above the list', async () => {
+      const map = addBackground();
+      await open(map);
+
+      const header = widgetRoot()?.querySelector<HTMLElement>(
+        '[data-testid="anchored-panel-header"]'
+      );
+      const body = widgetRoot()?.querySelector<HTMLElement>(
+        '[data-testid="anchored-panel-body"]'
+      );
+      expect(header).not.toBeNull();
+      expect(body).not.toBeNull();
+
+      // The header slot takes the whole heading ROW, not just the words: a
+      // checklist long enough to scroll must not carry its own way out with it.
+      expect(
+        header!.querySelector('[data-testid="map-quality-close"]')
+      ).not.toBeNull();
+      expect(
+        body!.querySelector('[data-testid="map-quality-close"]')
+      ).toBeNull();
+
+      // The boxes to tick are the part that scrolls.
+      expect(
+        body!.querySelector('[data-testid="map-quality-nudge"]')
+      ).not.toBeNull();
+      expect(getComputedStyle(body!).overflowY).toBe('auto');
+    });
+
     test('it takes the senior bar’s width, at both window sizes', async () => {
       const map = addBackground();
       await open(map);
