@@ -224,9 +224,11 @@ export const editorAnchoredPanelStyles = css`
   /*
     The one box that scrolls.
 
-    \`min-height: 0\` is load-bearing: a flex child's automatic minimum size is
-    its content, so without it the body refuses to shrink, the PANEL grows past
-    its \`max-height\` and nothing scrolls at all.
+    \`min-height: 0\` is belt-and-braces, not load-bearing: a flex child's
+    automatic minimum size is its content, but \`overflow-y: auto\` already
+    resets it to zero (CSS flexbox § 4.5) — the suite stays green with the
+    line removed (lead's mutation probe). Spelled out anyway so the shrink
+    survives the day someone moves the overflow off this box.
 
     The right inset is split — \`padding-right\` plus the reserved gutter — so
     the text sits the same distance from both edges while the scrollbar keeps a
