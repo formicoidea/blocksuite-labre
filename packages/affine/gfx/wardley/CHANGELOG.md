@@ -1,5 +1,114 @@
 # @labre/affine-gfx-wardley
 
+## 0.35.0
+
+### Minor Changes
+
+- 7f09608: feat(edgeless): the wardley value-chain link says "needs", in the house blue
+
+  The dependency role's English verb was "depends on"; it is now `needs` — one
+  word, in the user's own vocabulary, on a chip that is laid ALONG the link and
+  must not outgrow it. The i18n KEY (`com.labre.wardley.role.dependency.verb`) is
+  untouched, so a host catalogue keeps binding it; the French wording comes from
+  there.
+
+  The chip that shows it is painted `#2563eb`. The colour is declared by the
+  ROLE (`EdgeDirectionDef.chipColor`, optional) rather than by the reveal
+  mechanism, so exactly one relation changes: every other framework's typed edge
+  — BPMN's sequence flow, C4's "uses", the DDD context map's "is upstream of",
+  and Wardley's own evolution arrow — keeps the affordance blue it had.
+
+  Documents are untouched: a chip colour is runtime configuration, and no element
+  gained or lost a field.
+
+- 053735f: feat(edgeless): wardley components morph into their neighbours
+
+  A selected Wardley artefact now carries the **Change type** dropdown its BPMN
+  and C4 cousins already have. One family, the four ways of saying "the value
+  chain depends on this": **component**, **market**, **ecosystem**, **pipeline**.
+  Realising halfway through a map that what you drew is a market of many
+  suppliers, or a whole ecosystem, used to cost a delete, a re-draw, every
+  dependency re-attached and the name typed again.
+
+  Unlike BPMN and C4, a Wardley morph rebuilds the artefact's **glyph**, because
+  on this notation the glyph is the meaning: a market arrives with the three dots
+  and the triangle that make it one, a pipeline arrives with the handle it is
+  connected through, and both are taken away again on the way out. The
+  dependencies and evolution arrows already attached follow — a link drawn to a
+  component moves onto the handle when it becomes a pipeline, and back to the body
+  when it stops being one. All of it is a single undo step.
+
+  Two deliberate departures, both PO decisions:
+
+  - **The size is the notation, so the morph applies it.** A market left at a
+    component's 18 pixels is an unreadable smudge; the target's canonical size is
+    written, CENTRED on where the artefact already stands, so it does not move.
+    BPMN and C4 keep the user's box, where a size is only a preference.
+  - **The handle lands flat** in the artefact's group, where a pipeline drawn from
+    the sub-menu nests it with the label. Nothing reads that nesting, and the
+    reverse morph flattens a drawn one the same way.
+
+  The **anchor** and the **method** are offered neither way: an anchor is what the
+  value chain hangs from rather than a link in it, and a method's fill encodes a
+  decision a morph would silently discard. The label is the author's — the only
+  string rewritten is a placeholder nobody has typed over.
+
+  Wardley's creation presets move to `presets.ts` and are exported, so the palette
+  and the morph read one description of what a market looks like. `wardley` gates
+  the menu only: a map drawn while the flag was on keeps every element, every role
+  and every rule when it goes off.
+
+### Patch Changes
+
+- ea5d249: fix(edgeless): option rows read like the native menus
+
+  Every one-of-N dropdown on the edgeless toolbars now draws its rows the way the
+  editor's own menus do — the Regular/Semibold panel, the size dropdowns: **label
+  on the left, tick on the right and only on the option in force, the active row
+  in the primary colour.**
+
+  Three home-made dropdowns had restated the opposite shape, each keeping a 20 px
+  gutter on the left of every row for a tick that was only ever drawn on one of
+  them: the tag qualification menu (`element-tag-option`), the validation profile
+  menu (`validation-profile-option`, and the "Map quality…" row that held a
+  spacer to line up with it) and the C4 level menu (`c4-level-option`). The empty
+  gutter did not read as an empty tick slot — it read as a MISSING ICON.
+
+  The shape is not reimplemented three times: `editor-menu-action` gains an
+  opt-in `data-option` affordance carrying the geometry and the primary colour,
+  next to the `data-selected` it already had. Nothing else changes appearance —
+  the more-menu, the conversion menu and the other rows that use `data-selected`
+  are untouched, as are every click handler, `data-testid` and ARIA attribute of
+  the three menus.
+
+  **The tag-value icon mechanism, added the same day, is removed.** It existed to
+  fill that gutter, and the gutter is gone: `TagValueDef.iconKey`,
+  `IconTableExtension` and `resolveIconKey` are withdrawn, `getCommandIcon` is
+  back to the single function it was, and the four Wardley nature glyphs are gone
+  with the icon key table that named them. All of it shipped hours earlier, was
+  never consumed by a host, and is removed before any host could bind it — so the
+  API surface a host sees is the one it had before that release.
+
+- Updated dependencies [ea5d249]
+- Updated dependencies [e9cd7e1]
+- Updated dependencies [de3560d]
+- Updated dependencies [7f09608]
+- Updated dependencies [ad21e60]
+- Updated dependencies [cf0d8a1]
+  - @labre/affine-block-surface@0.35.0
+  - @labre/affine-shared@0.35.0
+  - @labre/std@0.35.0
+  - @labre/affine-model@0.35.0
+  - @labre/affine-gfx-connector@0.35.0
+  - @labre/affine-widget-edgeless-toolbar@0.35.0
+  - @labre/affine-gfx-group@0.35.0
+  - @labre/affine-gfx-pointer@0.35.0
+  - @labre/affine-gfx-shape@0.35.0
+  - @labre/affine-gfx-template@0.35.0
+  - @labre/affine-ext-loader@0.35.0
+  - @labre/global@0.35.0
+  - @labre/store@0.35.0
+
 ## 0.34.2
 
 ### Patch Changes

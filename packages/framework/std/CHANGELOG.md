@@ -1,5 +1,156 @@
 # @labre/std
 
+## 0.35.0
+
+### Minor Changes
+
+- 7f09608: feat(edgeless): the wardley value-chain link says "needs", in the house blue
+
+  The dependency role's English verb was "depends on"; it is now `needs` — one
+  word, in the user's own vocabulary, on a chip that is laid ALONG the link and
+  must not outgrow it. The i18n KEY (`com.labre.wardley.role.dependency.verb`) is
+  untouched, so a host catalogue keeps binding it; the French wording comes from
+  there.
+
+  The chip that shows it is painted `#2563eb`. The colour is declared by the
+  ROLE (`EdgeDirectionDef.chipColor`, optional) rather than by the reveal
+  mechanism, so exactly one relation changes: every other framework's typed edge
+  — BPMN's sequence flow, C4's "uses", the DDD context map's "is upstream of",
+  and Wardley's own evolution arrow — keeps the affordance blue it had.
+
+  Documents are untouched: a chip colour is runtime configuration, and no element
+  gained or lost a field.
+
+### Patch Changes
+
+- ea5d249: fix(edgeless): option rows read like the native menus
+
+  Every one-of-N dropdown on the edgeless toolbars now draws its rows the way the
+  editor's own menus do — the Regular/Semibold panel, the size dropdowns: **label
+  on the left, tick on the right and only on the option in force, the active row
+  in the primary colour.**
+
+  Three home-made dropdowns had restated the opposite shape, each keeping a 20 px
+  gutter on the left of every row for a tick that was only ever drawn on one of
+  them: the tag qualification menu (`element-tag-option`), the validation profile
+  menu (`validation-profile-option`, and the "Map quality…" row that held a
+  spacer to line up with it) and the C4 level menu (`c4-level-option`). The empty
+  gutter did not read as an empty tick slot — it read as a MISSING ICON.
+
+  The shape is not reimplemented three times: `editor-menu-action` gains an
+  opt-in `data-option` affordance carrying the geometry and the primary colour,
+  next to the `data-selected` it already had. Nothing else changes appearance —
+  the more-menu, the conversion menu and the other rows that use `data-selected`
+  are untouched, as are every click handler, `data-testid` and ARIA attribute of
+  the three menus.
+
+  **The tag-value icon mechanism, added the same day, is removed.** It existed to
+  fill that gutter, and the gutter is gone: `TagValueDef.iconKey`,
+  `IconTableExtension` and `resolveIconKey` are withdrawn, `getCommandIcon` is
+  back to the single function it was, and the four Wardley nature glyphs are gone
+  with the icon key table that named them. All of it shipped hours earlier, was
+  never consumed by a host, and is removed before any host could bind it — so the
+  API surface a host sees is the one it had before that release.
+
+- de3560d: feat(edgeless): the c4 board wears a selectable title band
+
+  The C4 board now has a **painted title band** across the top of the sheet: a
+  click anywhere in it selects the board, and a double-click anywhere in it opens
+  the title editor.
+
+  Since framework backgrounds stopped being picked by their area and started being
+  picked by their borders alone (#194 / #197), the board's title had quietly
+  become unreachable. A single click on it selected nothing, and the only thing
+  still answering a double-click was the tight box of the drawn glyphs — a target
+  a few characters wide, on a sheet 1400 units across.
+
+  The BPMN pool had already solved this and its solution is transposed whole:
+
+  - **The band is the top margin.** `C4_BOARD_TITLE_BAND_HEIGHT` (56 model units)
+    is declared in `@labre/affine-model`, beside the board model that hit-tests
+    against it, and re-exported by `@labre/affine-gfx-c4` — exactly as
+    `POOL_BAND_WIDTH` is. It is the same number the title has always been written
+    in; it now has a name, so what is painted, what is picked and what is renamed
+    are one number rather than three.
+  - **It is painted**, from the declaration and not from ad-hoc drawing code: a
+    quiet tint (`#f7f8fa`) under a divider in the card's own line. A strip a user
+    cannot see is a strip they cannot aim at. `BackgroundSideBandDef.side` gains
+    `'top'` beside `'left'` for it — the union grows when a framework asks, and one
+    has.
+  - **It is selectable**: `C4BoardElementModel.includesPoint` carves the band out
+    of the border-only test, in element-local coordinates, de-rotated about the
+    centre, clamped on a board shorter than its own header.
+  - **It is renameable end to end**: `C4BoardView` widens its rename zone from the
+    drawn words to the whole band. The C4 boundary is deliberately untouched — its
+    name sits inside the plot, over the diagram, where a wide zone would swallow
+    clicks meant for the elements around it.
+
+  The board's title moved from a full-plot zone's label to the band's label. That
+  zone existed only to carry a name because a board had no band to write one in;
+  it has one now, so the zone went with the label and the board declares none. The
+  title lands on the same pixels — the anchor is in plot ratios either way.
+
+  **No document changes.** No new field, no schema bump, no migration: the band is
+  rendering and hit testing. A board saved before this release opens with a header
+  band and a title you can rename, and nothing else about it moves.
+
+  ### …and a canvas click reaches the element it landed on
+
+  The recette of the above found a defect one layer down, in `@labre/std`, and it
+  was not about C4 at all. `GfxViewEventManager` delivered a click, a
+  double-click and a pointer press to the top of its HOVERED stack, and that stack
+  is rebuilt on `pointermove` alone. A pointer that arrives somewhere without a
+  move reaching the manager therefore left it EMPTY or STALE, and the gesture was
+  delivered to nobody — or to whatever the pointer was last over.
+
+  It happens for real: the first gesture in a freshly mounted editor loses its
+  `pointermove` (the dispatcher drops events until it is active), an element
+  created under a stationary pointer is never moved onto, and a viewport change
+  slides the canvas under a pointer that never moves.
+
+  The symptom was precise, and it is exactly what the recette saw on the board's
+  new band: a click SELECTED the sheet — `handleElementSelection` re-picks by
+  point on every click — while a double-click renamed nothing. One pointer, two
+  answers to "what is under it", one of them stale.
+
+  `GfxViewEventManager` now falls back to the event's own coordinates when the top
+  of the hovered stack is not under them, using the same walk the hover
+  bookkeeping uses. Strictly additive: every gesture that was being routed
+  somewhere is still routed there, and the ones that were being dropped now land.
+  Hover `pointerenter` / `pointerleave` are untouched — announcing an arrival from
+  a click would be a departure that never happened.
+
+  Every framework gesture that rides this seam is covered by the existing suites:
+  the BPMN pool's participant and lane renames and its separator drag, Wardley's
+  and EDGY's label renames, the mindmap's interactions.
+
+- cf0d8a1: The reading panel finds a record bound to the composite, not just to the circle.
+
+  "Read this component" reported "Not linked to a record" on a Wardley component
+  whose record link was plainly there in the document. A component is a COMPOSITE
+  — a group holding the circle that carries the role and the free text that names
+  it — and the two halves answer different questions: the panel resolves its
+  reading on the circle, because that is where the role is, while a plain click
+  selects the GROUP, so a host's own linking gesture stamps the group. Neither
+  side was wrong; they were looking at different elements.
+
+  `resolvePivotBinding(element)` in `@labre/std/gfx` is the one place that
+  reconciles them: the element itself when it is bound, otherwise the first bound
+  element in its chain of ancestor groups, with the child always winning over the
+  group it sits in. The whole record side of the reading now starts from that
+  resolved binding — the "Linked" line, the record's nature and phase, and the
+  drift comparison — so the panel and the drift line can never name different
+  records.
+
+  Reading only. Writing is unchanged: `pivot.bind` and the panel's "Link to a
+  record" still stamp the element that carries the role, and
+  `collectPivotOccurrences` and the materiality seam stay strictly
+  element-by-element, because that is the contract a host builds its derived state
+  on (ADR 0006).
+
+  - @labre/global@0.35.0
+  - @labre/store@0.35.0
+
 ## 0.34.2
 
 ### Patch Changes

@@ -1,5 +1,91 @@
 # @labre/affine-model
 
+## 0.35.0
+
+### Minor Changes
+
+- de3560d: feat(edgeless): the c4 board wears a selectable title band
+
+  The C4 board now has a **painted title band** across the top of the sheet: a
+  click anywhere in it selects the board, and a double-click anywhere in it opens
+  the title editor.
+
+  Since framework backgrounds stopped being picked by their area and started being
+  picked by their borders alone (#194 / #197), the board's title had quietly
+  become unreachable. A single click on it selected nothing, and the only thing
+  still answering a double-click was the tight box of the drawn glyphs — a target
+  a few characters wide, on a sheet 1400 units across.
+
+  The BPMN pool had already solved this and its solution is transposed whole:
+
+  - **The band is the top margin.** `C4_BOARD_TITLE_BAND_HEIGHT` (56 model units)
+    is declared in `@labre/affine-model`, beside the board model that hit-tests
+    against it, and re-exported by `@labre/affine-gfx-c4` — exactly as
+    `POOL_BAND_WIDTH` is. It is the same number the title has always been written
+    in; it now has a name, so what is painted, what is picked and what is renamed
+    are one number rather than three.
+  - **It is painted**, from the declaration and not from ad-hoc drawing code: a
+    quiet tint (`#f7f8fa`) under a divider in the card's own line. A strip a user
+    cannot see is a strip they cannot aim at. `BackgroundSideBandDef.side` gains
+    `'top'` beside `'left'` for it — the union grows when a framework asks, and one
+    has.
+  - **It is selectable**: `C4BoardElementModel.includesPoint` carves the band out
+    of the border-only test, in element-local coordinates, de-rotated about the
+    centre, clamped on a board shorter than its own header.
+  - **It is renameable end to end**: `C4BoardView` widens its rename zone from the
+    drawn words to the whole band. The C4 boundary is deliberately untouched — its
+    name sits inside the plot, over the diagram, where a wide zone would swallow
+    clicks meant for the elements around it.
+
+  The board's title moved from a full-plot zone's label to the band's label. That
+  zone existed only to carry a name because a board had no band to write one in;
+  it has one now, so the zone went with the label and the board declares none. The
+  title lands on the same pixels — the anchor is in plot ratios either way.
+
+  **No document changes.** No new field, no schema bump, no migration: the band is
+  rendering and hit testing. A board saved before this release opens with a header
+  band and a title you can rename, and nothing else about it moves.
+
+  ### …and a canvas click reaches the element it landed on
+
+  The recette of the above found a defect one layer down, in `@labre/std`, and it
+  was not about C4 at all. `GfxViewEventManager` delivered a click, a
+  double-click and a pointer press to the top of its HOVERED stack, and that stack
+  is rebuilt on `pointermove` alone. A pointer that arrives somewhere without a
+  move reaching the manager therefore left it EMPTY or STALE, and the gesture was
+  delivered to nobody — or to whatever the pointer was last over.
+
+  It happens for real: the first gesture in a freshly mounted editor loses its
+  `pointermove` (the dispatcher drops events until it is active), an element
+  created under a stationary pointer is never moved onto, and a viewport change
+  slides the canvas under a pointer that never moves.
+
+  The symptom was precise, and it is exactly what the recette saw on the board's
+  new band: a click SELECTED the sheet — `handleElementSelection` re-picks by
+  point on every click — while a double-click renamed nothing. One pointer, two
+  answers to "what is under it", one of them stale.
+
+  `GfxViewEventManager` now falls back to the event's own coordinates when the top
+  of the hovered stack is not under them, using the same walk the hover
+  bookkeeping uses. Strictly additive: every gesture that was being routed
+  somewhere is still routed there, and the ones that were being dropped now land.
+  Hover `pointerenter` / `pointerleave` are untouched — announcing an arrival from
+  a click would be a departure that never happened.
+
+  Every framework gesture that rides this seam is covered by the existing suites:
+  the BPMN pool's participant and lane renames and its separator drag, Wardley's
+  and EDGY's label renames, the mindmap's interactions.
+
+### Patch Changes
+
+- Updated dependencies [ea5d249]
+- Updated dependencies [de3560d]
+- Updated dependencies [7f09608]
+- Updated dependencies [cf0d8a1]
+  - @labre/std@0.35.0
+  - @labre/global@0.35.0
+  - @labre/store@0.35.0
+
 ## 0.34.2
 
 ### Patch Changes

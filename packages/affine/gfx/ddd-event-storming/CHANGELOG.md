@@ -1,5 +1,74 @@
 # @labre/affine-gfx-ddd-event-storming
 
+## 0.35.0
+
+### Minor Changes
+
+- e389df0: feat(edgeless): event storming stickies morph into any sticky kind
+
+  A selected sticky now carries the **Change type** dropdown on its contextual
+  toolbar, so an orange square that turns out to have been a command becomes one
+  in a click — no delete, no redraw, no reconnecting the flows that already point
+  at it, no retyping the words.
+
+  The reachable set is the whole notation, in one family: nine kinds, in the
+  order the grammar reads them (`domainEvent`, `command`, `aggregate`, `actor`,
+  `constraint`, `policy`, `readModel`, `system`) with the **hotspot** last. Event
+  Storming is a wall of identically-shaped paper whose colour is the claim, so
+  splitting the kinds into families would be inventing a hierarchy the method
+  does not have — and "this sticky is really a question" is the single most
+  common thing a workshop discovers, which is why the diamond is in the family
+  rather than beside it.
+
+  One pick rewrites the face's role, its two colours and its silhouette; the
+  faux drop shadow behind it changes silhouette with the face (a diamond over an
+  untouched rectangle would float on a smudge), and the words follow only when
+  they are still the notation's own prompt — anything the workshop wrote is
+  theirs. All of it lands in a single ctrl+z.
+
+  `xywh` is untouched, as it is for every morph: an **aggregate** is born at 160
+  against the standard 120, and keeps that room when it becomes a command. The
+  paint says what a sticky means; the size says how much room the author gave it.
+
+  A sticky placed before roles existed (pre-WS5) carries none, so it has no kind
+  to change and is not offered the menu — nothing is backfilled. The dropdown is
+  gated by the `ddd-event-storming` flag like the rest of the framework's
+  tooling: switching it off takes the menu away and leaves every stored board
+  painting, loading and validating exactly as before.
+
+### Patch Changes
+
+- 6e4306c: fix(edgeless): the morph dropdown draws the sticky and dot swatches
+
+  The Event Storming and Core Domain swatch icons declared a `viewBox` and no
+  size of their own: the senior sub-menu sizes icons with a container rule, so
+  they rendered there and collapsed to nothing in the "Change type" dropdown —
+  nine invisible stickies, five invisible dots (playground recette of the morph
+  train, 02/09/2026). Every swatch now carries `width`/`height` like the other
+  frameworks' icons, so it renders at 24px wherever it is drawn. The sub-menu is
+  unchanged: its container rule was already forcing the same 24px.
+
+- Updated dependencies [aca4653]
+- Updated dependencies [ea5d249]
+- Updated dependencies [e9cd7e1]
+- Updated dependencies [de3560d]
+- Updated dependencies [7f09608]
+- Updated dependencies [ad21e60]
+- Updated dependencies [cf0d8a1]
+  - @labre/affine-gfx-ddd-shared@0.35.0
+  - @labre/affine-block-surface@0.35.0
+  - @labre/affine-shared@0.35.0
+  - @labre/std@0.35.0
+  - @labre/affine-model@0.35.0
+  - @labre/affine-gfx-connector@0.35.0
+  - @labre/affine-widget-edgeless-toolbar@0.35.0
+  - @labre/affine-gfx-group@0.35.0
+  - @labre/affine-gfx-pointer@0.35.0
+  - @labre/affine-gfx-template@0.35.0
+  - @labre/affine-ext-loader@0.35.0
+  - @labre/global@0.35.0
+  - @labre/store@0.35.0
+
 ## 0.34.2
 
 ### Patch Changes
