@@ -29,5 +29,5 @@ roles carry identity, nudges are descriptive prompts, neither is normative.
   The absence is the feature.
 - Framework coverage of the validation platform is 7/8 and complete at that number. An audit
   reporting "missing `rules.ts`" should be closed against this ADR.
-- Revisit only for a rule about *form* rather than judgement — an element belonging to no
-  domain, say. A rule about *where* something belongs stays out of scope permanently.
+- Revisit only for a rule about _form_ rather than judgement — an element belonging to no
+  domain, say. A rule about _where_ something belongs stays out of scope permanently.
