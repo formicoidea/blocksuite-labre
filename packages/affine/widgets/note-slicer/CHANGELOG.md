@@ -1,5 +1,19 @@
 # @labre/affine-widget-note-slicer
 
+## 0.34.2
+
+### Patch Changes
+
+- @labre/affine-block-note@0.34.2
+- @labre/affine-block-surface@0.34.2
+- @labre/affine-components@0.34.2
+- @labre/affine-ext-loader@0.34.2
+- @labre/affine-model@0.34.2
+- @labre/affine-shared@0.34.2
+- @labre/affine-widget-edgeless-selected-rect@0.34.2
+- @labre/global@0.34.2
+- @labre/std@0.34.2
+
 ## 0.34.1
 
 ### Patch Changes

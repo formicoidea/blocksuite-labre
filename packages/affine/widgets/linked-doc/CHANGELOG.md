@@ -1,5 +1,20 @@
 # @labre/affine-widget-linked-doc
 
+## 0.34.2
+
+### Patch Changes
+
+- @labre/affine-block-image@0.34.2
+- @labre/affine-components@0.34.2
+- @labre/affine-ext-loader@0.34.2
+- @labre/affine-inline-reference@0.34.2
+- @labre/affine-model@0.34.2
+- @labre/affine-rich-text@0.34.2
+- @labre/affine-shared@0.34.2
+- @labre/global@0.34.2
+- @labre/std@0.34.2
+- @labre/store@0.34.2
+
 ## 0.34.1
 
 ### Patch Changes
