@@ -1,13 +1,6 @@
 import type { UniverseTagDefs } from '@labre/affine-shared/services';
-import type { TemplateResult } from 'lit';
 
 import { WARDLEY_ROLE } from './roles';
-import {
-  wardleyNatureActivityIcon,
-  wardleyNatureDataIcon,
-  wardleyNatureKnowledgeIcon,
-  wardleyNaturePracticeIcon,
-} from './toolbar/icons';
 
 /**
  * The Wardley **nature** tag — the framework's type-3 contextual qualification
@@ -59,33 +52,6 @@ export const WARDLEY_NATURE = {
   knowledge: `${WARDLEY_NATURE_TAG_ID}/knowledge`,
 } as const;
 
-/**
- * Icon keys, one per nature — the same split as a command's, for the same
- * reason.
- *
- * The pack below is DATA and stays data: it names a key, never a template. The
- * drawings are registered separately ({@link wardleyNatureIcons}, seeded with
- * `IconTableExtension`) and the dropdown resolves the key at render time. A
- * client's private pack that re-declares one of these values keeps its icon by
- * repeating the key; one that declares a key of its own registers its own
- * table, and one that declares neither simply renders labels — the format has
- * no opinion about which.
- */
-export const WARDLEY_NATURE_ICON_KEY = {
-  activity: 'wardley.nature.activity',
-  data: 'wardley.nature.data',
-  practice: 'wardley.nature.practice',
-  knowledge: 'wardley.nature.knowledge',
-} as const;
-
-/** `iconKey` → drawing, for `IconTableExtension`. Mirrors `wardleyCommandIcons`. */
-export const wardleyNatureIcons: Record<string, TemplateResult> = {
-  [WARDLEY_NATURE_ICON_KEY.activity]: wardleyNatureActivityIcon,
-  [WARDLEY_NATURE_ICON_KEY.data]: wardleyNatureDataIcon,
-  [WARDLEY_NATURE_ICON_KEY.practice]: wardleyNaturePracticeIcon,
-  [WARDLEY_NATURE_ICON_KEY.knowledge]: wardleyNatureKnowledgeIcon,
-};
-
 export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
   formatVersion: 1,
   // The id of this PACK, not of the framework: several packs may extend
@@ -111,26 +77,22 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           id: WARDLEY_NATURE.activity,
           label: 'Activity',
           description: 'Something that is DONE — a step, a service, a process.',
-          iconKey: WARDLEY_NATURE_ICON_KEY.activity,
         },
         {
           id: WARDLEY_NATURE.data,
           label: 'Data',
           description: 'Something that is RECORDED — a dataset, a register.',
-          iconKey: WARDLEY_NATURE_ICON_KEY.data,
         },
         {
           id: WARDLEY_NATURE.practice,
           label: 'Practice',
           description:
             'A way of doing — a method, a convention, an operating model.',
-          iconKey: WARDLEY_NATURE_ICON_KEY.practice,
         },
         {
           id: WARDLEY_NATURE.knowledge,
           label: 'Knowledge',
           description: 'Something that is KNOWN — a model, a theory, a rule.',
-          iconKey: WARDLEY_NATURE_ICON_KEY.knowledge,
         },
       ],
     },

@@ -60,6 +60,11 @@ const ChevronDownIcon = html`<svg
   <path d="M6 9l6 6 6-6" />
 </svg>`;
 
+/**
+ * The tick on the level in force — inline, this package carrying no icon
+ * dependency. Rendered at the END of the row and only when selected, the row
+ * itself wearing `data-option` for the native geometry and the primary colour.
+ */
 const CheckIcon = html`<svg
   width="20"
   height="20"
@@ -337,6 +342,7 @@ const levelPickerAction = {
     const options = C4_BOARD_LEVEL_MENU.options.map(option => {
       const selected = option.level === board.level;
       return html`<editor-menu-action
+        data-option
         data-testid="c4-level-option"
         data-level=${option.level ?? 'none'}
         data-selected=${selected ? 'true' : nothing}
@@ -344,8 +350,8 @@ const levelPickerAction = {
         aria-pressed=${selected}
         @click=${() => pickLevel(ctx, option)}
       >
-        ${selected ? CheckIcon : html`<span style="width: 20px;"></span>`}
         <span class="label">${wordsFor(option)}</span>
+        ${selected ? CheckIcon : nothing}
       </editor-menu-action>`;
     });
 

@@ -196,6 +196,33 @@ export class EditorMenuAction extends LitElement {
       pointer-events: none;
     }
 
+    /*
+     * An OPTION row: one of N choices, the one in force carrying
+     * data-selected. Opt-in through data-option, because a plain command row is
+     * not a choice and keeps its left-packed icon and its grey highlight.
+     *
+     * The shape invents nothing. It is what edgeless-tool-icon-button draws
+     * with justify='space-between' and its default active-mode-color -- the
+     * Regular/Semibold menu -- and what size-dropdown-menu already spells out
+     * for its own check list: label left, tick right and ONLY when selected,
+     * the selected row in the primary colour. The colour IS the affordance, so
+     * the background highlight goes, and no gutter is held open on the left for
+     * a tick that is not there.
+     */
+    :host([data-option]) {
+      justify-content: space-between;
+    }
+
+    :host([data-option][data-selected]) {
+      color: var(--affine-primary-color);
+      background-color: unset;
+    }
+
+    /* The tick takes the row's colour rather than the neutral icon one. */
+    :host([data-option][data-selected]) ::slotted(svg) {
+      color: inherit;
+    }
+
     :host(:hover.delete),
     :host(:hover.delete) ::slotted(svg) {
       background-color: var(--affine-background-error-color);

@@ -211,20 +211,26 @@ describe('the nature of a Wardley component', () => {
       ]);
     });
 
-    test('each of the four is pictured, in a real assembly', async () => {
-      // The PO asked for the four choices to be imaged (recette of 02/09/2026),
-      // and this is the only test that exercises the whole seam at once: the
-      // pack names an icon KEY (it is data, and may ship as JSON), the
-      // framework registers the drawings with `IconTableExtension`, and the
-      // dropdown resolves one against the other through DI. A unit test can pin
-      // either half; only a mounted editor pins that they meet.
+    test('the rows read like a native menu, in a real assembly', async () => {
+      // The PO's reading of 02/09/2026: the rows must look like the editor's
+      // own menus — label left, tick right and only where it means something.
+      // Only a mounted editor pins that the four rows agree with each other,
+      // which is the half a unit test on one template cannot see.
       const component = addComponent();
-      await select(component);
+      await pick(component, DATA);
 
-      const drawn = options().map(el =>
-        el.querySelector('[data-testid="element-tag-option-icon"] svg')
-      );
-      expect(drawn.filter(Boolean)).toHaveLength(4);
+      for (const row of options()) {
+        const el = row as HTMLElement;
+        expect(el.hasAttribute('data-option'), el.dataset.valueId).toBe(true);
+        const children = Array.from(el.children);
+        // The label opens every row; the tick closes the one in force, and no
+        // spacer stands in for it anywhere else.
+        expect(children[0].className, el.dataset.valueId).toBe('label');
+        expect(children.length, el.dataset.valueId).toBe(
+          el.dataset.valueId === DATA ? 2 : 1
+        );
+      }
+      expect(option(DATA)!.querySelector('svg')).not.toBeNull();
     });
 
     test('ONE click on a composite component reaches it', async () => {

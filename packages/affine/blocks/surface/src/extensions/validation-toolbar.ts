@@ -17,6 +17,9 @@ import { ValidationManager, type ValidationProfile } from './validation.js';
  * `@blocksuite/icons`, which this package does not depend on and which is not
  * worth a new dependency for one glyph — the same call the framework toolbars
  * already make for their own icons.
+ *
+ * It sits at the END of the row and only when the profile is in force:
+ * `data-option` gives the row the native geometry and the primary colour.
  */
 const CheckIcon = html`<svg
   width="20"
@@ -235,6 +238,10 @@ function renderMapQualitySection(
     ),
     'validation-map-quality-section',
     [
+      // No `data-option`, and no spacer: this row OPENS something, it is not
+      // one of N choices. It held a 20 px gutter only to line its label up with
+      // the profile rows above, whose tick used to sit on the left; the tick
+      // has moved right, so the gutter is gone from both.
       html`<editor-menu-action
         data-testid="validation-map-quality-open"
         aria-label=${label}
@@ -242,7 +249,6 @@ function renderMapQualitySection(
           ctx.std.getOptional(ValidationManager)?.openMapQuality(element);
         }}
       >
-        <span style="width: 20px;"></span>
         <span class="label">${label}</span>
       </editor-menu-action>`,
     ]
@@ -265,6 +271,7 @@ function renderSections(
     const options = profiles.map(profile => {
       const selected = profile.id === active?.id;
       return html`<editor-menu-action
+        data-option
         data-testid="validation-profile-option"
         data-profile-id=${profile.id}
         data-selected=${selected ? 'true' : nothing}
@@ -272,10 +279,10 @@ function renderSections(
         aria-pressed=${selected}
         @click=${() => pickProfile(ctx, element, profile)}
       >
-        ${selected ? CheckIcon : html`<span style="width: 20px;"></span>`}
         <span class="label"
           >${translateKey(ctx.std, profile.labelKey, profile.fallback)}</span
         >
+        ${selected ? CheckIcon : nothing}
       </editor-menu-action>`;
     });
 

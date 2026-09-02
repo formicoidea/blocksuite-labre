@@ -28,9 +28,7 @@ import * as Y from 'yjs';
 
 import {
   WARDLEY_NATURE,
-  WARDLEY_NATURE_ICON_KEY,
   WARDLEY_NATURE_TAG_ID,
-  wardleyNatureIcons,
   WARDLEY_TAG_DEFS,
 } from '../natures';
 import { WARDLEY_ROLE, WARDLEY_ROLES } from '../roles';
@@ -87,28 +85,6 @@ describe('the pack the library ships', () => {
     ]) {
       expect(tagAppliesToRole(nature, role, WARDLEY_ROLES), role).toBe(false);
     }
-  });
-
-  test('gives each of the four an icon, as a KEY and never a template', () => {
-    // The PO asked for the dropdown to picture its four choices (recette of
-    // 02/09/2026). What a value may carry is a serializable key: the pack is a
-    // data format a host may ship as JSON, and a `TemplateResult` in it would
-    // make that impossible for everybody.
-    const values = registry.tag(WARDLEY_NATURE_TAG_ID)!.values as {
-      id: string;
-      iconKey?: string;
-    }[];
-
-    for (const value of values) {
-      expect(typeof value.iconKey, value.id).toBe('string');
-      // ...and it resolves, in the table this framework registers.
-      expect(wardleyNatureIcons[value.iconKey!], value.id).toBeDefined();
-    }
-    // Four distinct drawings, so no two natures share a picture.
-    expect(new Set(values.map(v => v.iconKey)).size).toBe(4);
-    expect(Object.keys(wardleyNatureIcons).sort()).toEqual(
-      Object.values(WARDLEY_NATURE_ICON_KEY).sort()
-    );
   });
 
   test("a client's private pack extends it without a library release", () => {

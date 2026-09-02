@@ -7,7 +7,7 @@ import {
   type ToolbarModuleConfig,
   translateKey,
 } from '@labre/affine-shared/services';
-import { getRegisteredCommands, resolveIconKey, runCommand } from '@labre/std';
+import { getRegisteredCommands, runCommand } from '@labre/std';
 import type { RoleDefs } from '@labre/std/gfx';
 import {
   elementTagValues,
@@ -55,15 +55,6 @@ const TAG_SET_ID = 'tag.set';
  * role-bearing members means the group is not one artefact, and no honest
  * "current value" exists, so there is no entry.
  *
- * ## Icons, and why a value carries a KEY
- *
- * A value may draw a small glyph beside its label — Wardley's four natures do.
- * The glyph is never IN the pack: `UniverseTagDefs` is a host-extensible data
- * format that may ship as a `.json` asset, so a value declares a serializable
- * `iconKey` and the framework registers the drawing under that key
- * (`IconTableExtension`), exactly as a command does. Unresolved or absent, the
- * row renders as it always has — the label alone.
- *
  * ## Gating
  *
  * Registered by a framework's FLAG-GATED view extension, like its rules and its
@@ -72,7 +63,14 @@ const TAG_SET_ID = 'tag.set';
  * costs nothing, because they were never needed to load or paint anything.
  */
 
-/** The tick on a selected value, drawn inline like the neighbouring modules'. */
+/**
+ * The tick on a selected value, drawn inline like the neighbouring modules'.
+ *
+ * Inline because this package does not depend on `@blocksuite/icons`, and to
+ * the RIGHT of the label, rendered only when the value is on: `data-option` on
+ * the row gives it the house geometry and the primary colour (`menu-button.ts`),
+ * the same one the Regular/Semibold menu uses.
+ */
 const CheckIcon = html`<svg
   width="20"
   height="20"
@@ -252,11 +250,8 @@ function renderSection(
   const options = offeredValues(def, selected).map(value => {
     const on = selected.includes(value.id);
     const valueLabel = value.label || value.id;
-    // Decoration, and strictly optional: a value declaring no `iconKey`, and a
-    // key no registered table answers, both fall back to the label alone —
-    // which is exactly what every host pack rendered before the field existed.
-    const icon = resolveIconKey(ctx.std, value.iconKey);
     return html`<editor-menu-action
+      data-option
       data-testid="element-tag-option"
       data-tag-id=${def.id}
       data-value-id=${value.id}
@@ -265,15 +260,8 @@ function renderSection(
       aria-pressed=${on}
       @click=${() => toggleValue(ctx, target, def, value.id)}
     >
-      ${on ? CheckIcon : html`<span style="width: 20px;"></span>`}
-      ${icon
-        ? html`<span
-            data-testid="element-tag-option-icon"
-            style="display: inline-flex; align-items: center; width: 20px; height: 20px;"
-            >${icon}</span
-          >`
-        : nothing}
       <span class="label">${valueLabel}</span>
+      ${on ? CheckIcon : nothing}
     </editor-menu-action>`;
   });
 
