@@ -16,6 +16,38 @@ export { WARDLEY_PROFILES } from './profiles';
 export { WARDLEY_NUDGES } from './nudges';
 export { WARDLEY_NAMING_CONVENTIONS, WARDLEY_READING } from './reading';
 export { WARDLEY_RULES } from './rules';
+// What a Wardley artefact is BORN as, shared by the palette and — since the
+// morph — by the toolbar that says one artefact differently, so the two can
+// never disagree about what a market looks like. The sizes are the notation
+// itself, which is why a host laying out a map without an editor needs them.
+export {
+  type WardleyArtefactKind,
+  wardleyCanonicalBox,
+  wardleyCenteredBox,
+  wardleyHandleBox,
+  wardleyHandleProps,
+  wardleyMarketDotBoxes,
+  wardleyMarketDotProps,
+  wardleyMarketLinkPairs,
+  wardleyMarketLinkProps,
+  WARDLEY_NODE_LABEL,
+  WARDLEY_NODE_SIZE,
+  wardleyMorphClears,
+  wardleyMorphProps,
+  wardleyNodeProps,
+} from './presets';
+// What an artefact may BECOME: the declared family, the spec the generic morph
+// module is registered with, the resolution from a selected group to the node
+// inside it, and the two rules a composite morph owes its own parts. Data a
+// host can read without an editor.
+export {
+  WARDLEY_MORPH_FAMILIES,
+  WARDLEY_MORPH_SPEC,
+  type WardleyMorphKind,
+  wardleyMorphComposite,
+  wardleyMorphedLabel,
+  wardleyNodeOfComponent,
+} from './morph';
 /**
  * The map's own frame, declared. Public because a host that lays elements out
  * against the plot — labre-mcp does, and so does anything that generates a map

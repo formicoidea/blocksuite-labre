@@ -14,7 +14,6 @@ import {
   TextFitMode,
   WardleyBackgroundElementModel,
   type WardleyBgVariant,
-  type WardleyNodeKind,
 } from '@labre/affine-model';
 import {
   NotificationProvider,
@@ -34,36 +33,29 @@ import {
 } from './export';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
 import {
-  ECOSYSTEM_LABEL,
-  ECOSYSTEM_SIZE,
   HANDLE_SIZE,
   INERTIA_COLOR,
   INERTIA_SIZE,
-  LABEL_DEFAULT,
   LABEL_FONT_SIZE,
   LABEL_GAP,
   LINK_GREY,
   LINK_STROKE_WIDTH,
-  MARKET_DOT_RING,
-  MARKET_DOT_SIZE,
-  MARKET_DOT_STROKE_WIDTH,
-  MARKET_LABEL,
-  MARKET_LINK_COLOR,
-  MARKET_LINK_WIDTH,
-  MARKET_SIZE,
-  METHOD_FILL,
-  METHOD_LABEL,
-  METHOD_SIZE,
-  NODE_FILL,
-  NODE_SIZE,
   NODE_STROKE,
-  NODE_STROKE_WIDTH,
-  PIPELINE_FILL,
-  PIPELINE_HEIGHT,
-  PIPELINE_LABEL,
-  PIPELINE_WIDTH,
   WARDLEY_RED,
 } from './node/consts';
+import {
+  type WardleyArtefactKind,
+  wardleyCanonicalBox,
+  wardleyHandleBox,
+  wardleyHandleProps,
+  wardleyMarketDotBoxes,
+  wardleyMarketDotProps,
+  wardleyMarketLinkPairs,
+  wardleyMarketLinkProps,
+  WARDLEY_NODE_LABEL,
+  WARDLEY_NODE_SIZE,
+  wardleyNodeProps,
+} from './presets';
 import { WARDLEY_ROLE } from './roles';
 
 /**
@@ -129,25 +121,18 @@ const LABEL_H = LABEL_FONT_SIZE + 8;
  * The single-circle node flavours: one connectable ellipse + a label to its
  * right, grouped. The glyph itself (anchor silhouette, ecosystem hatching,
  * method inner circle) is drawn by the node renderer from `kind`.
+ *
+ * A subset of {@link WardleyArtefactKind}, and named away from
+ * `WardleyNodeKind` on purpose: the model declares a type of that name with
+ * SEVEN values, and two homonyms of different cardinality — one of them the
+ * source of the semantic vocabulary — is a trap. The market and the pipeline
+ * are composites with creation functions of their own; the handle is not an
+ * artefact at all.
  */
-const NODE_PRESETS = {
-  component: { d: NODE_SIZE, fill: NODE_FILL, label: LABEL_DEFAULT.component },
-  anchor: { d: NODE_SIZE, fill: NODE_FILL, label: LABEL_DEFAULT.anchor },
-  // Ecosystem: glyph = double border + hatched donut; connectors attach to
-  // this outer circle's center.
-  ecosystem: { d: ECOSYSTEM_SIZE, fill: NODE_FILL, label: ECOSYSTEM_LABEL },
-  // Method: the FILL color encodes the chosen method (editable).
-  method: { d: METHOD_SIZE, fill: METHOD_FILL, label: METHOD_LABEL },
-} as const satisfies Partial<Record<WardleyNodeKind, unknown>>;
-
-/**
- * The subset of {@link WardleyNodeKind} that the single-circle presets above
- * cover. Renamed away from `WardleyNodeKind` on purpose: the model declares a
- * type of that name with SEVEN values, and two homonyms of different
- * cardinality — one of them now the source of the semantic vocabulary — is a
- * trap. `WARDLEY_ROLE[kind]` below only compiles while this stays a subset.
- */
-export type WardleySingleCircleKind = keyof typeof NODE_PRESETS;
+export type WardleySingleCircleKind = Exclude<
+  WardleyArtefactKind,
+  'market' | 'pipeline'
+>;
 
 function finish(gfx: GfxController, id: string) {
   gfx.doc.captureSync();
@@ -165,36 +150,22 @@ function group(gfx: GfxController, ids: string[]) {
   return result.groupId || ids[0];
 }
 
-/** Add a native ellipse wardley node centred on (cx, cy). */
-function addEllipseNode(
+/**
+ * Add a wardley node of one kind, at its canonical size, centred on (cx, cy).
+ *
+ * The props are {@link wardleyNodeProps}' and nothing else: the palette and the
+ * "Change type" dropdown read that one description, so a market drawn here and
+ * a component morphed into one are the same element (`presets.ts`).
+ */
+function addNode(
   surface: Surface,
-  kind: WardleySingleCircleKind | 'market',
+  kind: WardleyArtefactKind,
   cx: number,
-  cy: number,
-  d: number,
-  fillColor: string,
-  strokeWidth = NODE_STROKE_WIDTH,
-  // The market's three inner dots are the GLYPH's own wiring, not artefacts the
-  // user placed — the same reason its triangle connectors carry no role. They
-  // sit inside the market circle by construction, so a role would make every
-  // market composite report an overlap with itself (W3).
-  neutral = false
+  cy: number
 ) {
-  return surface.addElement({
-    type: 'wardleyNode',
-    kind,
-    // Semantic identity (PF1): posted next to `kind`, which stays untouched
-    // and keeps driving the rendering.
-    role: neutral ? undefined : WARDLEY_ROLE[kind],
-    shapeType: 'ellipse',
-    filled: true,
-    fillColor,
-    strokeColor: NODE_STROKE,
-    strokeWidth,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    xywh: new Bound(cx - d / 2, cy - d / 2, d, d).serialize(),
-  });
+  return surface.addElement(
+    wardleyNodeProps(kind, { xywh: wardleyCanonicalBox(kind, cx, cy) })
+  );
 }
 
 /** Add a native free-text label (same Inter family as the axis labels). */
@@ -278,14 +249,14 @@ export function createWardleyNode(
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { d, fill, label } = NODE_PRESETS[kind];
+  const { w } = WARDLEY_NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
-  const nodeId = addEllipseNode(surface, kind, cx, cy, d, fill);
+  const nodeId = addNode(surface, kind, cx, cy);
   const labelId = addLabel(
     surface,
-    label,
-    cx + d / 2 + LABEL_GAP,
+    WARDLEY_NODE_LABEL[kind],
+    cx + w / 2 + LABEL_GAP,
     cy - LABEL_H / 2
   );
 
@@ -329,48 +300,22 @@ export function createWardleyPipeline(gfx: GfxController) {
   if (!gfx.surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const W = PIPELINE_WIDTH;
-  const H = PIPELINE_HEIGHT;
   const d = HANDLE_SIZE;
-  const top = cy - H / 2;
+  const top = cy - WARDLEY_NODE_SIZE.pipeline.h / 2;
 
   // Body: a WardleyNode rect, made non-connectable by `kind: 'pipeline'`.
-  const bodyId = gfx.surface.addElement({
-    type: 'wardleyNode',
-    kind: 'pipeline',
-    role: WARDLEY_ROLE.pipeline,
-    shapeType: 'rect',
-    filled: true,
-    fillColor: PIPELINE_FILL,
-    strokeColor: NODE_STROKE,
-    strokeWidth: NODE_STROKE_WIDTH,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    radius: 0,
-    xywh: new Bound(cx - W / 2, top, W, H).serialize(),
-  });
+  const bodyId = addNode(gfx.surface, 'pipeline', cx, cy);
 
   // Handle: a node-sized WardleyNode square straddling the top edge. Inherits
   // `centerAnchorOnly` so connectors attach to its center only.
-  const handleId = gfx.surface.addElement({
-    type: 'wardleyNode',
-    kind: 'handle',
-    role: WARDLEY_ROLE.handle,
-    shapeType: 'rect',
-    filled: true,
-    fillColor: NODE_FILL,
-    strokeColor: NODE_STROKE,
-    strokeWidth: NODE_STROKE_WIDTH,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    radius: 0,
-    xywh: new Bound(cx - d / 2, top - d / 2, d, d).serialize(),
-  });
+  const handleId = gfx.surface.addElement(
+    wardleyHandleProps({ xywh: wardleyHandleBox(cx, cy) })
+  );
 
   // Label centered horizontally on the pipeline, sitting ABOVE the handle.
   const labelId = addLabel(
     gfx.surface,
-    PIPELINE_LABEL,
+    WARDLEY_NODE_LABEL.pipeline,
     cx - 60,
     top - d / 2 - LABEL_H - LABEL_GAP,
     'center'
@@ -393,61 +338,24 @@ export function createWardleyMarket(gfx: GfxController) {
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const R = MARKET_SIZE / 2;
-  const rho = MARKET_DOT_RING;
-  const sin60 = Math.sqrt(3) / 2;
+  const R = WARDLEY_NODE_SIZE.market.w / 2;
 
   // Outer circle = the market node (connectable, center-only).
-  const circleId = addEllipseNode(
-    surface,
-    'market',
-    cx,
-    cy,
-    MARKET_SIZE,
-    NODE_FILL
-  );
+  const circleId = addNode(surface, 'market', cx, cy);
 
   // 3 inner component nodes (thick border, no label) at the triangle vertices.
-  const verts = [
-    [0, -rho],
-    [rho * sin60, rho / 2],
-    [-rho * sin60, rho / 2],
-  ];
-  const dotIds = verts.map(([vx, vy]) =>
-    addEllipseNode(
-      surface,
-      'component',
-      cx + vx,
-      cy + vy,
-      MARKET_DOT_SIZE,
-      NODE_FILL,
-      MARKET_DOT_STROKE_WIDTH,
-      true
-    )
+  const dotIds = wardleyMarketDotBoxes(cx, cy).map(xywh =>
+    surface.addElement(wardleyMarketDotProps({ xywh }))
   );
 
   // Triangle: 3 attached connectors (auto-route center-to-center, clipped).
-  const connIds = [
-    [dotIds[0], dotIds[1]],
-    [dotIds[1], dotIds[2]],
-    [dotIds[2], dotIds[0]],
-  ].map(([a, b]) =>
-    surface.addElement({
-      type: 'connector',
-      mode: ConnectorMode.Straight,
-      source: { id: a },
-      target: { id: b },
-      stroke: MARKET_LINK_COLOR,
-      strokeStyle: StrokeStyle.Solid,
-      strokeWidth: MARKET_LINK_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.None,
-    })
+  const connIds = wardleyMarketLinkPairs(dotIds).map(([a, b]) =>
+    surface.addElement(wardleyMarketLinkProps(a, b))
   );
 
   const labelId = addLabel(
     surface,
-    MARKET_LABEL,
+    WARDLEY_NODE_LABEL.market,
     cx + R + LABEL_GAP,
     cy - LABEL_H / 2
   );

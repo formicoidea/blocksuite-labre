@@ -1,5 +1,6 @@
 import {
   InterchangeExtension,
+  morphToolbarConfig,
   ReadingProfileExtension,
   tagsToolbarConfig,
   validationToolbarConfig,
@@ -10,6 +11,7 @@ import {
 import {
   AuditCriterionExtension,
   ToolbarModuleExtension,
+  toolbarModuleKey,
   UniverseTagDefsExtension,
 } from '@labre/affine-shared/services';
 import {
@@ -24,6 +26,7 @@ import { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 import { wardleyCommandIcons, wardleyCommands } from './commands';
 import { effects } from './effects';
 import { WARDLEY_INTERCHANGE } from './interchange';
+import { WARDLEY_MORPH_SPEC } from './morph';
 import { WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_PROFILES } from './profiles';
 import { WARDLEY_NUDGES } from './nudges';
@@ -152,6 +155,37 @@ export class WardleyViewExtension extends ViewExtensionProvider {
           })
         );
       }
+      // The "Change type" dropdown on a selected COMPONENT's contextual
+      // toolbar — the generic module, parameterized by Wardley's own family.
+      //
+      // ## Why the key carries an owner
+      //
+      // A Wardley artefact is a native `group`, so the row the toolbar draws
+      // for it is the GROUP's row — and both plain group keys are already
+      // claimed: `affine:surface:group` by the native group operations, and
+      // `custom:affine:surface:group` by the qualification dropdown twenty
+      // lines above, which is on the group for the very same reason this is.
+      // Registering a second module on either would throw
+      // `DuplicateServiceDefinitionError` before the editor finished setting
+      // up. `toolbarModuleKey` is what lifts that ceiling — C4's morph already
+      // uses it on this flavour — so the module is registered under the
+      // DISTINCT variant `custom:affine:surface:group#wardley-morph` and the
+      // registry hands it to the same row.
+      //
+      // ## Why here
+      //
+      // In the flag-gated half, because a morph is TOOLING: a market drawn
+      // while the flag was on keeps its circle, its dots, its role and its
+      // place in every rule when the flag goes off — it just stops being
+      // something the toolbar offers to say differently (`docs/adr/0009`).
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:group', 'wardley-morph')
+          ),
+          config: morphToolbarConfig(WARDLEY_MORPH_SPEC),
+        })
+      );
       // The reversed reading (MF3): what the map says about a component, on
       // demand. One declaration — the roles, the nature tag, the dependency
       // edge and the map's own zones, all of them already stated elsewhere in
