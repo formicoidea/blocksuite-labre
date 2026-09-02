@@ -336,6 +336,19 @@ describe('morphing an Event Storming sticky into another kind', () => {
       const options = Array.from(
         host.querySelectorAll('[data-testid="element-morph-option"]')
       );
+      // Every option's swatch declares its own size. The senior sub-menu sizes
+      // icons with a container rule, so a swatch svg that carries no width of
+      // its own renders there and collapses to nothing in the OPEN picker —
+      // which is exactly how the nine entries shipped invisible once (recette
+      // of 02/09/2026). Asserted on the attribute rather than the layout,
+      // because what this render reaches is the trigger's light DOM; the open
+      // panel is a popover only a real click creates.
+      for (const option of options) {
+        const kind = option.getAttribute('data-value') ?? '';
+        const swatch = option.querySelector('svg');
+        expect(swatch, kind).toBeTruthy();
+        expect(swatch!.getAttribute('width'), kind).toBe('24');
+      }
       // Declaration order is menu order, and it is the grammar's order — the
       // same one the senior sub-menu renders, hotspot last.
       expect(options.map(el => el.getAttribute('data-value'))).toEqual([

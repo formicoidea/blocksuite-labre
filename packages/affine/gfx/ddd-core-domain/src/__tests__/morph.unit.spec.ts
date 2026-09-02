@@ -481,4 +481,17 @@ describe('the spec handed to the generic module', () => {
       expect(CORE_DOMAIN_MORPH_SPEC.iconOf(kind)).toBeTruthy();
     }
   });
+
+  it('every swatch declares its own size', () => {
+    // The senior sub-menu sizes icons with a container rule
+    // (`.button-group-container svg`), so a swatch that carries no width of its
+    // own renders there and collapses to nothing in the morph dropdown — which
+    // is exactly how the five dots shipped invisible once (recette of
+    // 02/09/2026). The picker owns no such rule, so the drawing must.
+    for (const kind of EVERY_KIND) {
+      const markup = CORE_DOMAIN_MORPH_SPEC.iconOf(kind).strings.join('');
+      expect(markup, kind).toContain('width="24"');
+      expect(markup, kind).toContain('height="24"');
+    }
+  });
 });
