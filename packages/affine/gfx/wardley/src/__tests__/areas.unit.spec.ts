@@ -193,7 +193,7 @@ describe('the area presets', () => {
       // The load-bearing number: an 8-digit hex, so the fill carries ALPHA the
       // way `PIPELINE_FILL` does. A zone is drawn over the components it
       // groups, and the map has to stay readable through it.
-      expect(AREA_FILL).toBe('#c6dbfc99');
+      expect(AREA_FILL).toBe('#c6dbfc40');
       expect(AREA_FILL).toHaveLength(9);
       expect(AREA_STROKE).toBe('#5b9cf6');
       expect(AREA_STROKE_WIDTH).toBe(1);
@@ -446,8 +446,8 @@ describe('the fill a picked swatch writes', () => {
     // The nit the recette raised: a zone is drawn over the map it groups, so a
     // picker that wrote `#5b9cf6` as-is would hide the map behind an opaque
     // wash. Peace comes back as Peace at the zone's own opacity.
-    expect(wardleyFillColor(node('area'), '#5b9cf6')).toBe('#5b9cf699');
-    expect(wardleyFillColor(node('area'), '#C6DBFC')).toBe('#C6DBFC99');
+    expect(wardleyFillColor(node('area'), '#5b9cf6')).toBe('#5b9cf640');
+    expect(wardleyFillColor(node('area'), '#C6DBFC')).toBe('#C6DBFC40');
   });
 
   it('leaves every other artefact’s fill exactly as picked', () => {

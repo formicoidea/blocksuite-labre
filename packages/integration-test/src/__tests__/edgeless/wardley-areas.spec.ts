@@ -109,9 +109,9 @@ describe('drawing areas from the Wardley sub-menu', () => {
       WARDLEY_AREA_SIZE[shape].w,
       WARDLEY_AREA_SIZE[shape].h,
     ]);
-    // Peace light at ~60 % opacity over a thin Peace rim: the components
+    // Peace light at ~25 % opacity over a thin Peace rim: the components
     // underneath have to stay readable through the wash.
-    expect(area.fillColor).toBe('#c6dbfc99');
+    expect(area.fillColor).toBe('#c6dbfc40');
     expect(area.strokeColor).toBe('#5b9cf6');
     expect(area.strokeWidth).toBe(1);
     expect(area.filled).toBe(true);

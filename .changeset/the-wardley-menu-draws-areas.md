@@ -13,7 +13,7 @@ discussion — and until now an architect had to build one out of a shape, a fil
 with the right alpha, and a trip to "Send to back".
 
 Each is **one** element: a `wardleyNode` of kind `area`, translucent (Peace
-light at ~60 % opacity, `#c6dbfc99`) under a thin Peace rim, 240 × 160 for the
+light at ~25 % opacity, `#c6dbfc40`) under a thin Peace rim, 240 × 160 for the
 rectangle and 200 × 200 for the polygon. **One kind, two shapes**: the
 `shapeType` carries the whole of what differs between them, so there is one
 role, one legend row and one silence in the export rather than two of each. The
@@ -86,7 +86,7 @@ behaviour:
   `kind === 'area'`.
 - **`paletteColorAction` takes an optional `fillColorFor` hook.** A picked
   swatch is a hue, and a zone's fill is a WASH: writing `#5b9cf6` straight in
-  replaced `#c6dbfc99` with an opaque colour and hid the map underneath. The
+  replaced `#c6dbfc40` with an opaque colour and hid the map underneath. The
   Wardley toolbar passes a hook that re-appends the zone's alpha for an area and
   is the identity everywhere else — including on an 8-digit value the author
   chose from the custom picker, and on a theme token, neither of which it

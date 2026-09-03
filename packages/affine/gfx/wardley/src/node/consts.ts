@@ -212,7 +212,7 @@ export const DECELERATOR_LABEL = 'Decelerator';
  * which, so nothing about an area is a second kind to keep in step.
  *
  * A zone is drawn OVER the map it groups, so the fill is the load-bearing
- * number here: Peace light at ~60 % opacity, which is a wash the components
+ * number here: Peace light at ~25 % opacity, which is a wash the components
  * underneath still read through. The border is the saturated Peace of the same
  * swatch, thin like every other artefact's rim — the zone must frame the map,
  * never compete with it.
@@ -220,8 +220,8 @@ export const DECELERATOR_LABEL = 'Decelerator';
 export const AREA_RECT_SIZE = { w: 240, h: 160 };
 /** The polygon is born square: its default outline is a regular pentagon. */
 export const AREA_POLYGON_SIZE = { w: 200, h: 200 };
-/** Peace light at ~60 % opacity — an 8-digit hex, exactly as `PIPELINE_FILL`. */
-export const AREA_FILL = '#c6dbfc99';
+/** Peace light at ~25 % opacity — an 8-digit hex, exactly as `PIPELINE_FILL`. */
+export const AREA_FILL = '#c6dbfc40';
 /** Peace, the saturated shade of the same swatch. */
 export const AREA_STROKE = '#5b9cf6';
 export const AREA_STROKE_WIDTH = 1;

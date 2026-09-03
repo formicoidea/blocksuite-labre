@@ -24,7 +24,7 @@ import {
   WARDLEY_RED,
 } from '../node/consts';
 
-/** The two hex digits `AREA_FILL` carries — the zone's ~60 % opacity. */
+/** The two hex digits `AREA_FILL` carries — the zone's ~25 % opacity. */
 const AREA_ALPHA = AREA_FILL.slice(-2);
 
 /** A plain 6-digit hex, the only shape a swatch value takes. */
@@ -34,7 +34,7 @@ const SIX_DIGIT_HEX = /^#[0-9a-f]{6}$/i;
  * What a picked swatch WRITES on a Wardley node.
  *
  * The identity on every artefact but one. A zone is drawn over the components
- * it groups, so its fill is a WASH — `#c6dbfc99`, the alpha being the whole of
+ * it groups, so its fill is a WASH — `#c6dbfc40`, the alpha being the whole of
  * what keeps the map readable underneath — and a picker that wrote the swatch
  * as-is would replace it with an opaque hue and hide the map the zone annotates
  * (recette of #213). So a swatch picked for an area keeps the zone's alpha.

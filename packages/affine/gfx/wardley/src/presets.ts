@@ -199,7 +199,7 @@ const NODE_FILL_OF: Record<WardleyArtefactKind, string> = {
   // reads as the same solid arrow at the zoom an architect works at.
   accelerator: ACCELERATOR_FILL,
   decelerator: ACCELERATOR_FILL,
-  // Peace light at ~60 % opacity, for the reason the pipeline's white wash
+  // Peace light at ~25 % opacity, for the reason the pipeline's white wash
   // gives: a zone is drawn OVER the components it groups, so the map has to
   // stay readable through it. The 1px border stays opaque.
   area: AREA_FILL,
