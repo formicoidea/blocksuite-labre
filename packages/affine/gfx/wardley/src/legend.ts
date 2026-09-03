@@ -109,11 +109,134 @@ const LEGEND_GRADIENT: Record<
   },
 };
 
+/* ── Porter's five forces: the panel under the rows ───────────────────── */
+
+/** The panel's own numbers. Model units, like every other measure here. */
+const PORTER_PANEL = {
+  pad: 12,
+  titleFs: 16,
+  titleH: 22,
+  /** Between the title and the diagram, and between the diagram and caption. */
+  gapAfterTitle: 8,
+  gapBeforeCaption: 10,
+  /** The glyph's radius — half the map's, so the panel reads as a diagram. */
+  radius: 15,
+  /** Clearance between the arrow tips and the boxes they point at. */
+  clearance: 4,
+  /** The three letters, drawn on the glyph's centre as a free text. */
+  letterFs: 9,
+  boxFs: 12,
+  sideW: 150,
+  sideH: 34,
+  endW: 170,
+  endH: 24,
+  captionFs: 13,
+  captionH: 21,
+  backing: '#e5e7eb',
+  backingStroke: '#9aa0a6',
+} as const;
+
+/** The four forces the boxes name, north first and then clockwise. */
+const PORTER_FORCES = [
+  'Threat of new entrants',
+  'Bargaining power of customers',
+  'Threat of substitutes',
+  'Bargaining power of suppliers',
+] as const;
+
+/** What the panel's own glyph reads: the notation, not one force. */
+const PORTER_PANEL_LETTERS = 'R/L/E';
+
+/** What the letters mean, spelled out under the diagram. */
+const PORTER_CAPTION =
+  'R/L/E = Relative competition, or struggLe for survival, or struggle to Establish';
+
+/** A box in the panel, relative to the panel's top-left, plus its words. */
+interface PorterPanelBox {
+  xywh: [number, number, number, number];
+  label: string;
+}
+
+interface PorterPanelLayout {
+  w: number;
+  h: number;
+  title: [number, number, number, number];
+  /** The glyph's centre. */
+  center: [number, number];
+  radius: number;
+  boxes: PorterPanelBox[];
+  caption: [number, number, number, number];
+}
+
+/**
+ * How far a porter glyph of the given radius reaches, arrow tips included.
+ *
+ * DERIVED from the shared geometry rather than written down: the boxes must
+ * stand clear of the arrows, and the day somebody lengthens `PORTER_ARROW` a
+ * hard-coded 38 here would silently let a tip enter a box.
+ */
+function porterReach(radius: number): number {
+  return Math.max(
+    ...wardleyPorterArrows(0, 0, radius).flatMap(arrow => {
+      const [x, y, w, h] = Bound.deserialize(arrow.xywh).toXYWH();
+      return [Math.abs(x), Math.abs(y), Math.abs(x + w), Math.abs(y + h)];
+    })
+  );
+}
+
+/**
+ * The panel's geometry for a given width — the PO's reference drawing, as
+ * numbers.
+ *
+ * A pure function so the layout can be asserted without a surface, and so the
+ * one thing that must hold — that none of the four boxes overlaps the glyph
+ * they surround — is checkable rather than eyeballed.
+ */
+export function porterPanelLayout(w: number): PorterPanelLayout {
+  const p = PORTER_PANEL;
+  const inner = w - p.pad * 2;
+  // Where a box's near edge sits: past the arrow tips, never on them.
+  const clear = porterReach(p.radius) + p.clearance;
+
+  const diagramH = (clear + p.endH) * 2;
+  const cx = w / 2;
+  const cy = p.pad + p.titleH + p.gapAfterTitle + diagramH / 2;
+  const captionY = cy + diagramH / 2 + p.gapBeforeCaption;
+
+  return {
+    w,
+    h: captionY + p.captionH + p.pad,
+    title: [p.pad, p.pad, inner, p.titleH],
+    center: [cx, cy],
+    radius: p.radius,
+    boxes: [
+      {
+        xywh: [cx - p.endW / 2, cy - clear - p.endH, p.endW, p.endH],
+        label: PORTER_FORCES[0],
+      },
+      {
+        xywh: [cx + clear, cy - p.sideH / 2, p.sideW, p.sideH],
+        label: PORTER_FORCES[1],
+      },
+      {
+        xywh: [cx - p.endW / 2, cy + clear, p.endW, p.endH],
+        label: PORTER_FORCES[2],
+      },
+      {
+        xywh: [cx - clear - p.sideW, cy - p.sideH / 2, p.sideW, p.sideH],
+        label: PORTER_FORCES[3],
+      },
+    ],
+    caption: [p.pad, captionY, inner, p.captionH],
+  };
+}
+
 /**
  * Build a "Legend" group from real, editable elements (white rect frame +
  * "Legend" text + one row of [real component glyph + description text] per
  * Wardley component TYPE present inside the background's perimeter + a
- * gradient-meaning block when the background is a gradient variant). A snapshot
+ * gradient-meaning block when the background is a gradient variant + the
+ * five-forces panel when a Porter's-forces glyph is on the map). A snapshot
  * is created on each call; everything is grouped so it can be moved / resized /
  * edited and is dropped bottom-left of the background.
  */
@@ -172,7 +295,13 @@ export function createWardleyLegend(
   const variant = bg.variant;
   const grad = variant !== 'classic' ? LEGEND_GRADIENT[variant] : null;
   const gradH = grad ? 12 + GRAD_ROW_H : 0;
-  const H = PAD * 2 + TITLE_H + rows.length * ROW_H + gradH;
+  // The five-forces panel, and ONLY when a force is actually on the map: a
+  // legend of a map with no porter on it has to come out byte-identical to the
+  // one it came out as before this panel existed. Pinned in
+  // `porter.unit.spec.ts`.
+  const panel = present.has('porter') ? porterPanelLayout(W - PAD * 2) : null;
+  const panelH = panel ? 12 + panel.h : 0;
+  const H = PAD * 2 + TITLE_H + rows.length * ROW_H + gradH + panelH;
 
   const x0 = bx + 50;
   const y0 = by + bh - 56 - H;
@@ -545,6 +674,123 @@ export function createWardleyLegend(
         TEXT_W,
         GRAD_ROW_H,
         TEXT_FS
+      )
+    );
+  }
+
+  // Porter's five forces: the panel the PO's reference draws, under everything
+  // else. It is not a row — a row says what a glyph IS, and this says what the
+  // notation MEANS: four named pressures around one circle, and the three
+  // letters spelled out. Only drawn when a force is on the map, so a legend
+  // without one is the legend it always was.
+  if (panel) {
+    const px = x0 + PAD;
+    const py = ry + gradH + 12;
+    const p = PORTER_PANEL;
+
+    // The backing: square-cornered and grey, so the panel reads as a figure
+    // set into the legend rather than as one more entry in it.
+    ids.push(
+      surface.addElement({
+        type: 'shape',
+        shapeType: 'rect',
+        filled: true,
+        fillColor: p.backing,
+        strokeColor: p.backingStroke,
+        strokeWidth: 1,
+        shapeStyle: ShapeStyle.General,
+        roughness: 0,
+        radius: 0,
+        xywh: new Bound(px, py, panel.w, panel.h).serialize(),
+      })
+    );
+
+    const [tx, ty, tw, th] = panel.title;
+    ids.push(text("Porter's five forces", px + tx, py + ty, tw, th, p.titleFs));
+
+    const [cx, cy] = panel.center;
+    ids.push(
+      surface.addElement({
+        type: 'wardleyNode',
+        kind: 'porter',
+        shapeType: 'ellipse',
+        filled: true,
+        fillColor: NODE_FILL,
+        strokeColor: NODE_STROKE,
+        strokeWidth: NODE_STROKE_WIDTH,
+        shapeStyle: ShapeStyle.General,
+        roughness: 0,
+        xywh: new Bound(
+          px + cx - panel.radius,
+          py + cy - panel.radius,
+          panel.radius * 2,
+          panel.radius * 2
+        ).serialize(),
+      })
+    );
+    for (const arrow of wardleyPorterArrows(px + cx, py + cy, panel.radius)) {
+      ids.push(surface.addElement(wardleyPorterArrowProps(arrow)));
+    }
+    // All three letters at once: this circle stands for the NOTATION rather
+    // than for one force, so picking one of them would make the panel say that
+    // a Porter is an R.
+    //
+    // A SEPARATE text element, like the porter row above and for the same
+    // reason (recette v2): a shape lays its text out inside a padding
+    // (`SHAPE_TEXT_PADDING`) wider than this 30-unit circle, so the characters
+    // would be pushed outside it. A free text has no padding to overflow, and
+    // its box is placed on the circle's own centre.
+    ids.push(
+      text(
+        PORTER_PANEL_LETTERS,
+        px + cx - panel.radius,
+        py + cy - p.letterFs / 2 - 1,
+        panel.radius * 2,
+        p.letterFs + 2,
+        p.letterFs,
+        'center'
+      )
+    );
+
+    for (const box of panel.boxes) {
+      const [bx, by, bw, bh] = box.xywh;
+      ids.push(
+        surface.addElement({
+          type: 'shape',
+          shapeType: 'rect',
+          filled: true,
+          fillColor: '#ffffff',
+          strokeColor: NODE_STROKE,
+          strokeWidth: 1,
+          shapeStyle: ShapeStyle.General,
+          roughness: 0,
+          radius: 0,
+          xywh: new Bound(px + bx, py + by, bw, bh).serialize(),
+        })
+      );
+      ids.push(
+        text(
+          box.label,
+          px + bx + 4,
+          py + by + 3,
+          bw - 8,
+          bh - 6,
+          p.boxFs,
+          'center'
+        )
+      );
+    }
+
+    const [capX, capY, capW, capH] = panel.caption;
+    ids.push(
+      text(
+        PORTER_CAPTION,
+        px + capX,
+        py + capY,
+        capW,
+        capH,
+        p.captionFs,
+        'center'
       )
     );
   }
