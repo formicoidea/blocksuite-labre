@@ -5,6 +5,8 @@ import {
 } from '@labre/affine-model';
 import { GfxElementModelView } from '@labre/std/gfx';
 
+import { WARDLEY_ROLE } from '../roles.js';
+
 /**
  * View for a Wardley node. Registering it ensures `gfx.view.get(model)` returns
  * a view (required so move / select / connector interactions work).
@@ -30,6 +32,19 @@ import { GfxElementModelView } from '@labre/std/gfx';
  * glyph whose whole meaning is one character nobody could change. The four
  * arrows are polygons OUTSIDE the rim (`presets.ts`), so the double-click at
  * the centre reaches this circle rather than a connector's oversized head.
+ *
+ * ## …and only on the artefact, never on its wiring
+ *
+ * The four arrows are `wardleyNode`s too — `kind: 'porter'`, ROLE-LESS, the
+ * market's three inner dots exactly — so `kind` alone would hand each of them
+ * the same editor. The role is what separates the artefact the author placed
+ * from the glyph's own wiring, so it is the second half of the gate.
+ *
+ * That pair is also why they are `wardleyNode`s at all. Recette v2 found them
+ * as plain shapes, and `ShapeElementView` gives EVERY plain shape a
+ * double-click that mounts the inner-text editor: an arrow grew from 24 units
+ * high to 44 the moment one was opened, and the deformation survived Escape. An
+ * arrow is not a thing you write in, and this view is where that is said.
  */
 export class WardleyNodeView extends GfxElementModelView<WardleyNodeElementModel> {
   static override type: string = 'wardleyNode';
@@ -37,10 +52,13 @@ export class WardleyNodeView extends GfxElementModelView<WardleyNodeElementModel
   override onCreated(): void {
     super.onCreated();
     this.on('dblclick', () => {
-      // Only the porter: on every other kind the name is the text element next
-      // to the circle, and opening the shape's own editor here would write a
-      // second, invisible name into a field that must stay empty.
+      // Only the porter CIRCLE. The kind alone is not enough: the four arrows
+      // share it and are told apart by carrying no role, exactly as the
+      // market's inner dots are. On every other kind the name is the text
+      // element next to the circle, and opening the shape's own editor here
+      // would write a second, invisible name into a field that must stay empty.
       if (this.model.kind !== 'porter') return;
+      if (this.model.role !== WARDLEY_ROLE.porter) return;
 
       const edgeless = this.std.view.getBlock(this.std.store.root!.id);
       if (

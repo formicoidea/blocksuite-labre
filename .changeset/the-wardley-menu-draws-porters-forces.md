@@ -53,11 +53,21 @@ the map it presses on:
   downstream has to de-rotate anything. The geometry is one exported helper, so
   the palette, the map legend and the tests read the same numbers.
 
+  They are polygons on a **`wardleyNode`**, not on a plain `shape`, and that is
+  the same call again one layer down: every plain shape gets a double-click that
+  mounts the inner-text editor, and mounting it _deformed_ an arrow. An arrow is
+  not a thing you write in. As `wardleyNode`s they answer to `WardleyNodeView`,
+  which opens the letter editor only on the piece carrying the role — the
+  market's three role-less inner dots, exactly.
+
 It joins **no morph family**: "Change type" is the four ways of saying the value
 chain depends on something, and a force is not one of them.
 
 The **map legend** grows a row for it when a force stands inside the map, glyph
-and letter included, spelling out what the three letters mean. The **OWM export**
+and letter included, spelling out what the three letters mean. In that row the
+letter is a free text element rather than the circle's inner text: a shape lays
+its text out inside a padding larger than a 12-unit box, so at that size the
+character rendered under the circle instead of in it. The **OWM export**
 cannot write it: the format has no word for an external competition force, so
 the node is left out and the export says so in its warnings, beside the losses
 it already reports. It is skipped before names are resolved, so a force is never

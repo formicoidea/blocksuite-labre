@@ -64,29 +64,39 @@ describe('drawing Porter’s forces from the Wardley sub-menu', () => {
     return groups[0];
   };
 
-  const circleOf = (group: GroupElementModel) =>
+  /** Every piece of the glyph is a `wardleyNode`, arrows included. */
+  const nodesOf = (group: GroupElementModel) =>
     group.childElements.filter(
       (child): child is WardleyNodeElementModel =>
         child instanceof WardleyNodeElementModel
     );
 
-  /**
-   * The arrows. Filtered by `shapeType`, not by `instanceof ShapeElementModel`:
-   * `WardleyNodeElementModel` extends it, so the circle would come back too.
-   */
+  /** The circle: the one piece carrying the role. */
+  const circleOf = (group: GroupElementModel) =>
+    nodesOf(group).filter(child => child.role === WARDLEY_ROLE.porter);
+
+  /** The four arrows: role-less polygons, the glyph's own wiring. */
   const arrowsOf = (group: GroupElementModel) =>
-    group.childElements.filter(
-      (child): child is ShapeElementModel =>
-        child instanceof ShapeElementModel &&
-        !(child instanceof WardleyNodeElementModel)
-    );
+    nodesOf(group).filter(child => child.shapeType === 'polygon');
 
   test('one click makes one object: a circle and its four arrows', async () => {
     const group = await drawPorter();
 
     expect(group.childElements).toHaveLength(5);
+    expect(nodesOf(group)).toHaveLength(5);
     expect(circleOf(group)).toHaveLength(1);
     expect(arrowsOf(group)).toHaveLength(4);
+    // Not one plain `shape` among them. `ShapeElementView` gives every plain
+    // shape a double-click that mounts the inner-text editor, and mounting it
+    // deformed an arrow (recette v2) — so the arrows are `wardleyNode`s, the
+    // way the market's inner dots are.
+    expect(
+      group.childElements.some(
+        child =>
+          child instanceof ShapeElementModel &&
+          !(child instanceof WardleyNodeElementModel)
+      )
+    ).toBe(false);
     // No label anywhere: the letter is the notation, and a force is not
     // something the author names.
     expect(
@@ -231,6 +241,37 @@ describe('drawing Porter’s forces from the Wardley sub-menu', () => {
       WARDLEY_NODE_SIZE.porter.w,
       WARDLEY_NODE_SIZE.porter.h,
     ]);
+  });
+
+  test('a double-click on an arrow opens nothing and deforms nothing', async () => {
+    const group = await drawPorter();
+    // The north arrow, aimed at the middle of its shaft — well inside the
+    // polygon and nowhere near the circle.
+    const arrow = arrowsOf(group).find(a => {
+      const [, , w, h] = a.deserializedXYWH;
+      return h > w;
+    })!;
+    const before = arrow.deserializedXYWH;
+    const [ax, ay, aw, ah] = before;
+    // Three quarters down the box, on the axis: inside the SHAFT of the
+    // outline, not in the empty corner beside the head. Pinned through the
+    // model's own hit test so this case cannot pass by missing the arrow.
+    const px = ax + aw / 2;
+    const py = ay + ah * 0.75;
+    expect(
+      arrow.includesPoint(px, py, { hitThreshold: 1, zoom: 1 } as never)
+    ).toBe(true);
+
+    await doubleClick(at(px, py));
+
+    // Recette v2, both halves. `ShapeElementView` would have mounted the
+    // inner-text editor on this polygon — an arrow is not a thing you write in
+    // — and mounting it grew the box from 24 units high to 44, a deformation
+    // that survived Escape. `WardleyNodeView` gates on the ROLE as well as the
+    // kind, and a role-less arrow opens nothing at all.
+    expect(shapeEditor()).toBeNull();
+    expect(edgeless.gfx.selection.editing).toBe(false);
+    expect(arrow.deserializedXYWH).toEqual(before);
   });
 
   test('a double-click on another wardley kind opens no shape editor', async () => {

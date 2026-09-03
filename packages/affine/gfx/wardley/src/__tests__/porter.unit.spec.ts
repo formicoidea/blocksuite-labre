@@ -1,5 +1,4 @@
 import {
-  ShapeElementModel,
   ShapeStyle,
   TextFitMode,
   WardleyNodeElementModel,
@@ -223,30 +222,41 @@ describe('the four arrows', () => {
 
 /* ── What the sub-menu draws ──────────────────────────────────────────── */
 
+/** The circle: the one element of the glyph that carries the role. */
+const circleOf = (added: Added[]) =>
+  added.find(el => el.role === WARDLEY_ROLE.porter)!;
+/** The four arrows: role-less `wardleyNode` polygons. */
+const arrowsOf = (added: Added[]) =>
+  added.filter(el => el.shapeType === 'polygon');
+
 describe('createWardleyPorter', () => {
   it('draws one lettered circle and four red arrows, grouped as one', () => {
     const { gfx, added, grouped } = fakeGfx();
     createWardleyPorter(gfx);
 
-    const nodes = added.filter(el => el.type === 'wardleyNode');
-    const arrows = added.filter(el => el.type === 'shape');
-    expect(nodes).toHaveLength(1);
-    expect(arrows).toHaveLength(4);
+    // EVERY piece is a `wardleyNode`, arrows included — recette v2 (see
+    // `wardleyPorterArrowProps`): a plain `shape` gets a double-click that
+    // mounts the inner-text editor and deforms whatever it opens on.
+    expect(added.every(el => el.type === 'wardleyNode')).toBe(true);
+    expect(circleOf(added)).toBeDefined();
+    expect(arrowsOf(added)).toHaveLength(4);
     // Five elements, one group, and nothing else on the board: no label.
     expect(added).toHaveLength(5);
     expect(grouped).toHaveLength(1);
     expect(grouped[0]).toHaveLength(5);
     // Nothing a connector any more — the defect the recette of #210 found.
     expect(added.some(el => el.type === 'connector')).toBe(false);
+    // …and nothing a plain shape either — the defect recette v2 found.
+    expect(added.some(el => el.type === 'shape')).toBe(false);
   });
 
   it('writes the notation letter as the circle’s OWN inner text', () => {
     const { gfx, added } = fakeGfx();
     createWardleyPorter(gfx);
 
-    const circle = added.find(el => el.type === 'wardleyNode')!;
+    const circle = circleOf(added);
     expect(circle.kind).toBe('porter');
-    expect(circle.role).toBe(WARDLEY_ROLE.porter);
+    expect(circle.shapeType).toBe('ellipse');
     expect(circle.text).toBe(PORTER_DEFAULT_LETTER);
     expect(circle.fontSize).toBe(PORTER_LETTER_FONT_SIZE);
     expect(circle.color).toBe(NODE_STROKE);
@@ -265,14 +275,18 @@ describe('createWardleyPorter', () => {
     const { gfx, added } = fakeGfx();
     createWardleyPorter(gfx);
 
-    const arrows = added.filter(el => el.type === 'shape');
-    const circle = added.find(el => el.type === 'wardleyNode')!;
+    const arrows = arrowsOf(added);
+    const circle = circleOf(added);
     const expected = wardleyPorterArrows(100, 200);
 
     arrows.forEach((arrow, index) => {
-      // Role-less like the market's triangle: the glyph's own wiring, or every
-      // composite reports an overlap with itself (W3).
+      // Role-less like the market's inner dots — the glyph's own wiring — which
+      // is what keeps them out of W3, out of the OWM writer, out of
+      // `matchLabels`, out of the morph's resolution and, since recette v2, out
+      // of the letter editor: `WardleyNodeView` gates on the ROLE as well as
+      // the kind, and these share the kind.
       expect(arrow.role).toBeUndefined();
+      expect(arrow.kind).toBe('porter');
       expect(arrow.shapeType).toBe('polygon');
       expect(arrow.vertices).toEqual(expected[index].vertices);
       expect(arrow.xywh).toBe(expected[index].xywh);
@@ -328,11 +342,14 @@ describe('the legend', () => {
   const porterOnBoard = () => [
     Object.create(WardleyNodeElementModel.prototype, {
       kind: { value: 'porter' },
+      role: { value: WARDLEY_ROLE.porter },
     }),
-    // Plain shapes now, not connectors — which is precisely why the legend's
-    // INERTIA test is the one that has to be checked below.
+    // `wardleyNode` polygons since recette v2, not plain shapes — so they meet
+    // the legend's FIRST branch, on `kind`, rather than its inertia test. Both
+    // outcomes are checked below: one porter row, and no inertia row.
     ...wardleyPorterArrows(0, 0).map(() =>
-      Object.create(ShapeElementModel.prototype, {
+      Object.create(WardleyNodeElementModel.prototype, {
+        kind: { value: 'porter' },
         role: { value: undefined },
         shapeType: { value: 'polygon' },
         fillColor: { value: WARDLEY_RED },
@@ -340,19 +357,41 @@ describe('the legend', () => {
     ),
   ];
 
-  it('adds a porter row, spelling out what the three letters mean', () => {
+  it('adds ONE porter row, spelling out what the three letters mean', () => {
     const added = legendOf(porterOnBoard());
     const texts = added
       .filter(el => el.type === 'text')
       .map(el => String(el.text));
 
-    expect(texts).toContain(
-      "Porter's forces (external competition: R relative, L survival, E establish)"
-    );
-    // Drawn as the real glyph, letter included — a legend that dropped it would
-    // be describing a circle rather than the notation it stands for.
-    const circle = added.find(el => el.kind === 'porter')!;
-    expect(circle.text).toBe(PORTER_DEFAULT_LETTER);
+    // One row, not five: the four arrows carry `kind: 'porter'` too, and the
+    // legend collects kinds into a SET, so the glyph describes itself once.
+    expect(
+      texts.filter(t => t.startsWith("Porter's forces (external competition"))
+    ).toHaveLength(1);
+  });
+
+  it('draws the letter as its own text, not the circle’s inner text', () => {
+    const added = legendOf(porterOnBoard());
+    const circle = added.find(el => el.shapeType === 'ellipse')!;
+
+    // Recette v2: a shape lays its inner text out inside a vertical padding
+    // larger than this 12-unit box, so at font size 8 the character was pushed
+    // out UNDER the circle. The legend's letter is a free text element, which
+    // has no padding to overflow — and the circle carries none at all.
+    expect(circle.kind).toBe('porter');
+    expect(circle.text).toBeUndefined();
+
+    const letter = added.find(
+      el => el.type === 'text' && el.text === PORTER_DEFAULT_LETTER
+    )!;
+    expect(letter).toBeDefined();
+    expect(letter.fontSize).toBe(8);
+    expect(letter.textAlign).toBe('center');
+    // Centred on the circle it belongs to, on both axes.
+    const glyph = Bound.deserialize(String(circle.xywh));
+    const box = Bound.deserialize(String(letter.xywh));
+    expect(box.x + box.w / 2).toBeCloseTo(glyph.x + glyph.w / 2);
+    expect(box.y + box.h / 2).toBeCloseTo(glyph.y + glyph.h / 2);
   });
 
   it('describes nothing but the force: no evolution, no inertia', () => {
@@ -361,19 +400,24 @@ describe('the legend', () => {
       .map(el => String(el.text));
 
     // Two rows that must NOT appear. The arrows are red, so a legend reading
-    // colour alone would call them an evolution; they are plain filled shapes,
-    // so the inertia test — `ShapeElementModel` with a matching fill — is the
-    // one they could trip now that they are polygons rather than connectors.
-    // A map carrying a force and nothing else claims neither.
+    // colour alone would call them an evolution; and they are filled shapes, so
+    // the inertia test — a matching `fillColor` — is the other one they could
+    // trip. A map carrying a force and nothing else claims neither.
     expect(texts).not.toContain('Evolution / movement (red = future)');
     expect(texts).not.toContain('Inertia to change');
   });
 
-  it('leaves every legend glyph neutral, arrows included', () => {
+  it('leaves every legend glyph neutral, arrows and letter included', () => {
     // A legend documents the map; it is not part of it. Typing these would put
     // a phantom force under every rule written against roles.
+    //
+    // `role === undefined` rather than the key's absence: the arrows now go
+    // through `wardleyPorterArrowProps`, which states `role: undefined`
+    // explicitly the way `wardleyMarketDotProps` does. The surface drops
+    // undefined props (`_createElementFromProps`), so the two spellings write
+    // the same document and the value is the invariant worth pinning.
     for (const el of legendOf(porterOnBoard())) {
-      expect(el).not.toHaveProperty('role');
+      expect(el.role, String(el.type)).toBeUndefined();
     }
   });
 });
@@ -395,13 +439,32 @@ describe('the OWM export', () => {
     ]);
   }
 
+  /**
+   * The four arrows, as the exporter now meets them.
+   *
+   * Since recette v2 they are `wardleyNode`s rather than plain shapes, so they
+   * land in `board.nodes` instead of being invisible to `wardleyBoardFrom`
+   * altogether. What keeps them out of the file is the ROLE check at the top of
+   * the node loop — the same one that has always excluded the market's inner
+   * dots — and these fixtures are what proves it.
+   */
+  const arrowsAt = (visibility: number, evolution: number) => {
+    const [cx, cy] = owmPointOf(PLOT, visibility, evolution);
+    return wardleyPorterArrows(cx, cy).map((arrow, index) => {
+      const [x, y, w, h] = Bound.deserialize(arrow.xywh).toXYWH();
+      return fakeNode(`porter-arrow-${index}`, 'porter', [x, y, w, h], {
+        role: undefined,
+      });
+    });
+  };
+
   it('leaves the force out of the file and says why', () => {
     const kettle = drawNode('kettle', 'component', 'Kettle', 0.6, 0.7);
 
     const { text, warnings } = write(
       board({
         maps: [fakeMap()],
-        nodes: [kettle.node, porterAt(0.3, 0.8)],
+        nodes: [kettle.node, porterAt(0.3, 0.8), ...arrowsAt(0.3, 0.8)],
         labels: [kettle.label],
       })
     );
@@ -409,6 +472,9 @@ describe('the OWM export', () => {
     expect(text).toContain('component Kettle');
     expect(text).not.toContain('porter');
     expect(text).not.toContain("Porter's forces");
+    // ONE glyph, not five: only the piece carrying the role is a force. The
+    // four arrows are its wiring and are dropped a line earlier, by the role
+    // check, exactly as the market's inner dots are.
     expect(warnings).toContain(
       "1 Porter's forces glyph could not be written: OWM has no word for an external competition force, so it was left out."
     );
@@ -419,7 +485,10 @@ describe('the OWM export', () => {
     // name by design, so asking for one would call it "Component 1" and report
     // a loss that never happened, on a line the file does not contain.
     const { warnings } = write(
-      board({ maps: [fakeMap()], nodes: [porterAt(0.4, 0.4)] })
+      board({
+        maps: [fakeMap()],
+        nodes: [porterAt(0.4, 0.4), ...arrowsAt(0.4, 0.4)],
+      })
     );
 
     expect(warnings.join('\n')).not.toContain('Component 1');
@@ -443,9 +512,10 @@ describe('the OWM export', () => {
     const { text } = write(
       board({
         maps: [fakeMap()],
-        // The force FIRST in document order: greedy matching breaks ties by it,
-        // so this is the arrangement that would fail if it were a candidate.
-        nodes: [porter, kettle.node],
+        // The force and its wiring FIRST in document order: greedy matching
+        // breaks ties by it, so this is the arrangement that would fail if any
+        // of them were a candidate.
+        nodes: [porter, ...arrowsAt(0.6, 0.7), kettle.node],
         labels: [kettle.label],
       })
     );

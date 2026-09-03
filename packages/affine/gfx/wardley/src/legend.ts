@@ -30,11 +30,7 @@ import {
   PORTER_DEFAULT_LETTER,
   WARDLEY_RED,
 } from './node/consts';
-import {
-  wardleyPorterArrowProps,
-  wardleyPorterArrows,
-  wardleyPorterLetterProps,
-} from './presets';
+import { wardleyPorterArrowProps, wardleyPorterArrows } from './presets';
 
 /** Component kinds the legend can describe, in display order. */
 type LegendType =
@@ -352,6 +348,7 @@ export function createWardleyLegend(
         // line — and it is a RATIO, so the PO's doubling of the map glyph left
         // this row exactly where it was.
         const R = 6;
+        const FS = 8;
         const circle = surface.addElement({
           type: 'wardleyNode',
           kind: 'porter',
@@ -362,15 +359,29 @@ export function createWardleyLegend(
           strokeWidth: NODE_STROKE_WIDTH,
           shapeStyle: ShapeStyle.General,
           roughness: 0,
-          // The letter is the notation, so a legend that dropped it would be
-          // describing a circle rather than the glyph it stands for.
-          ...wardleyPorterLetterProps(PORTER_DEFAULT_LETTER, 8),
           xywh: new Bound(cx - R, cy - R, R * 2, R * 2).serialize(),
         });
         const arrows = wardleyPorterArrows(cx, cy, R).map(arrow =>
           surface.addElement(wardleyPorterArrowProps(arrow))
         );
-        return [circle, ...arrows];
+        // The letter is the notation, so a legend that dropped it would be
+        // describing a circle rather than the glyph it stands for — but here it
+        // is a SEPARATE text element rather than the circle's inner text, which
+        // is what the map glyph uses. A shape lays its text out inside padding
+        // (`SHAPE_TEXT_VERTICAL_PADDING`) larger than this 12-unit box, so at
+        // font size 8 the character was pushed out under the circle (recette
+        // v2). A free text has no padding to overflow, and its box is placed on
+        // the circle's own centre. Role-less like every other legend glyph.
+        const letter = text(
+          PORTER_DEFAULT_LETTER,
+          cx - R,
+          cy - FS / 2 - 1,
+          R * 2,
+          FS + 2,
+          FS,
+          'center'
+        );
+        return [circle, ...arrows, letter];
       }
       case 'link':
         return [

@@ -416,23 +416,41 @@ export function wardleyPorterArrows(
 }
 
 /**
- * One of those arrows as props: a filled native POLYGON, deliberately ROLE-LESS.
+ * One of those arrows as props: a filled POLYGON on a `wardleyNode`, and
+ * deliberately ROLE-LESS.
  *
- * A polygon and not a connector, which is the fix the recette of #210 asked
- * for: a connector's triangle head is sized off its stroke width, so the heads
- * arrived longer than the arrows and covered the circle, the letter and the
- * double-click target. A polygon's outline is exactly the seven points above.
+ * A polygon and not a connector, which is the first fix the recette of #210
+ * asked for: a connector's triangle head is sized off its stroke width, so the
+ * heads arrived longer than the arrows and covered the circle, the letter and
+ * the double-click target. A polygon's outline is exactly the seven points
+ * above.
  *
- * Role-less for the reason the market's three dots already give: these are the
- * glyph's own wiring rather than anything the author drew, so a role would make
- * every composite report an overlap with itself (W3). Filled rather than
- * stroked, so nothing about them is sized off a line width ever again.
+ * A `wardleyNode` and not a plain `shape`, which is the second: recette v2
+ * found that `ShapeElementView` gives EVERY plain shape a double-click that
+ * mounts the inner-text editor, and mounting it grew an arrow from 24 units
+ * high to 44 — a deformation that survived Escape. An arrow is not a thing you
+ * write in. Posting it as a `wardleyNode` moves it onto `WardleyNodeView`,
+ * which opens an editor only on the artefact that HAS a letter; the renderer is
+ * unaffected, because a Wardley node draws itself through the native shape
+ * renderer and that renderer already dispatches on `shapeType`.
+ *
+ * Role-less, and `kind: 'porter'` with it, for the reason the market's three
+ * inner dots already give — they are `kind: 'component'` and carry no role: this
+ * is the glyph's own wiring rather than anything the author drew, so a role
+ * would make every composite report an overlap with itself (W3), would offer
+ * four arrows to the OWM writer, and would let a stray label bind to one.
+ * `undefined` writes no key at all, exactly as it does for those dots.
+ *
+ * Filled rather than stroked, so nothing about them is sized off a line width
+ * ever again.
  */
 export function wardleyPorterArrowProps(
   arrow: WardleyPorterArrow
 ): Record<string, unknown> & { type: string } {
   return {
-    type: 'shape',
+    type: 'wardleyNode',
+    kind: 'porter',
+    role: undefined,
     shapeType: 'polygon',
     vertices: arrow.vertices,
     isClosed: true,
