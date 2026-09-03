@@ -94,10 +94,16 @@ Client->"Experience boutique et communaute"
  *
  * Every line below is legal OWM that a real editor writes: the presentation
  * switches, the attitudes, the annotations with their own coordinate list, a
- * submap, a url, the axis-label overrides, the accelerators, a flow link, a
- * link carrying a `;` context, a `//` comment, and a `pipeline` with a
- * `{ … }` body. Mixed in with three statements the pack DOES draw, so the
- * suite can assert that carrying does not disturb mapping.
+ * submap, a url, the axis-label overrides, a flow link, a link carrying a `;`
+ * context, a `//` comment, and a `pipeline` with a `{ … }` body. Mixed in with
+ * statements the pack DOES draw, so the suite can assert that carrying does not
+ * disturb mapping.
+ *
+ * `accelerator Faster` used to be in the first list and is now in the second:
+ * the pack draws the climate arrows since the two kinds landed. The line is
+ * kept exactly where it was, which is what makes the corpus useful for the
+ * transition — a keyword moving from carried to drawn must not disturb the
+ * lines around it.
  */
 export const KITCHEN_SINK_OWM = `title Everything at once
 // a comment, which is also carried

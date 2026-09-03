@@ -61,6 +61,8 @@ export const WARDLEY_ROLE = {
   ecosystem: 'wardley:ecosystem',
   method: 'wardley:method',
   porter: 'wardley:porter',
+  accelerator: 'wardley:accelerator',
+  decelerator: 'wardley:decelerator',
   dependency: 'wardley:dependency',
   map: 'wardley:map',
   changeArrow: 'wardley:change-arrow',
@@ -127,6 +129,34 @@ const DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: 'com.labre.wardley.role.porter',
     labelFallback: "Porter's forces",
+  },
+  /**
+   * An accelerator, and its mirror the decelerator: something that speeds
+   * evolution up, or slows it down.
+   *
+   * NO `parent`, for the reason the porter above gives and one of its own. An
+   * accelerator is not a link in the value chain drawn at another grain — it is
+   * an annotation of the CLIMATE, a statement about the pace at which the map
+   * moves rather than about what depends on what. So no rule written on
+   * `wardley:component` may match one: W3's overlap pairs above all, since an
+   * accelerator is drawn precisely where the components it accelerates are.
+   *
+   * Two roles and not one with a direction, because the two say opposite
+   * things: "this is going faster" and "this is being held back" are not the
+   * same claim read from either end, and a rule about one must never fall on
+   * the other.
+   */
+  {
+    id: WARDLEY_ROLE.accelerator,
+    kind: 'node',
+    labelKey: 'com.labre.wardley.role.accelerator',
+    labelFallback: 'Accelerator',
+  },
+  {
+    id: WARDLEY_ROLE.decelerator,
+    kind: 'node',
+    labelKey: 'com.labre.wardley.role.decelerator',
+    labelFallback: 'Decelerator',
   },
   /**
    * The value-chain link: "A needs B".

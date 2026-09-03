@@ -10,6 +10,13 @@ import {
 import { Bound } from '@labre/global/gfx';
 
 import {
+  ACCELERATOR_FILL,
+  ACCELERATOR_LABEL,
+  ACCELERATOR_SIZE,
+  ACCELERATOR_STROKE_WIDTH,
+  ACCELERATOR_VERTICES,
+  DECELERATOR_LABEL,
+  DECELERATOR_VERTICES,
   ECOSYSTEM_LABEL,
   ECOSYSTEM_SIZE,
   HANDLE_SIZE,
@@ -88,6 +95,23 @@ export const WARDLEY_NODE_SIZE: Record<
   market: { w: MARKET_SIZE, h: MARKET_SIZE },
   pipeline: { w: PIPELINE_WIDTH, h: PIPELINE_HEIGHT },
   porter: { w: PORTER_SIZE, h: PORTER_SIZE },
+  accelerator: ACCELERATOR_SIZE,
+  decelerator: ACCELERATOR_SIZE,
+};
+
+/**
+ * The kinds drawn as a native POLYGON, and the outline each one is.
+ *
+ * The table {@link wardleyNodeProps} reads to decide the shape type, so a kind's
+ * membership here is the whole of what makes it an arrow rather than a circle.
+ * A fresh array per call: `vertices` goes into a document, and a shared frozen
+ * literal handed to two elements would be one array two elements point at.
+ */
+const NODE_VERTICES_OF: Partial<
+  Record<WardleyArtefactKind, readonly (readonly [number, number])[]>
+> = {
+  accelerator: ACCELERATOR_VERTICES,
+  decelerator: DECELERATOR_VERTICES,
 };
 
 /**
@@ -113,6 +137,8 @@ export const WARDLEY_NODE_LABEL: Record<WardleyLabelledKind, string> = {
   method: METHOD_LABEL,
   market: MARKET_LABEL,
   pipeline: PIPELINE_LABEL,
+  accelerator: ACCELERATOR_LABEL,
+  decelerator: DECELERATOR_LABEL,
 };
 
 /**
@@ -132,6 +158,11 @@ const NODE_FILL_OF: Record<WardleyArtefactKind, string> = {
   // Opaque white, like every other circle: the RED is in the four arrows, and a
   // filled disk would fight the letter it is there to carry.
   porter: NODE_FILL,
+  // Flat grey. The reference draws these arrows with a gradient; this canvas
+  // has no gradient fill, so a solid mid-grey under a thick dark border is what
+  // reads as the same solid arrow at the zoom an architect works at.
+  accelerator: ACCELERATOR_FILL,
+  decelerator: ACCELERATOR_FILL,
 };
 
 /** A box centred on a point — how every Wardley creation site places a node. */
@@ -157,12 +188,14 @@ export function wardleyCanonicalBox(
 /**
  * Every prop a Wardley node is created with, for one kind and one box.
  *
- * Five of the six are a native ELLIPSE and differ only in fill and size: the
+ * Most of the pack is a native ELLIPSE and differs only in fill and size: the
  * glyph — the anchor's silhouette, the ecosystem's hatched donut, the method's
  * inner circle — is drawn by the renderer from `kind`, off this same model, so
  * stroke and fill stay editable from the shape toolbar exactly like any other
- * shape's. The pipeline is the exception and the reason `clearOf` exists on this
- * pack: it is a RECT, and it is the only kind that writes `radius`.
+ * shape's. Two families are the exception, and they are the reason `clearOf`
+ * exists on this pack: the pipeline is a RECT and the only kind that writes
+ * `radius`, and the accelerator / decelerator are POLYGONS — the only kinds
+ * that write `vertices` and `isClosed`.
  *
  * No `text`: a Wardley label is a separate free-text element grouped with the
  * node (see `addLabel` in `actions.ts`), never words stored on the shape.
@@ -172,6 +205,7 @@ export function wardleyNodeProps(
   box: { xywh: string }
 ): Record<string, unknown> & { type: string } {
   const rect = kind === 'pipeline';
+  const outline = NODE_VERTICES_OF[kind];
 
   return {
     type: 'wardleyNode',
@@ -180,11 +214,14 @@ export function wardleyNodeProps(
     // keeps driving the rendering. The role is what every rule reads — no rule
     // will ever look at a shape type.
     role: WARDLEY_ROLE[kind],
-    shapeType: rect ? 'rect' : 'ellipse',
+    shapeType: outline ? 'polygon' : rect ? 'rect' : 'ellipse',
     filled: true,
     fillColor: NODE_FILL_OF[kind],
     strokeColor: NODE_STROKE,
-    strokeWidth: NODE_STROKE_WIDTH,
+    // A thick rim on the arrows, the house thin one everywhere else: an arrow
+    // with a 1px border reads as an outline drawing rather than as the solid
+    // arrow the reference draws.
+    strokeWidth: outline ? ACCELERATOR_STROKE_WIDTH : NODE_STROKE_WIDTH,
     shapeStyle: ShapeStyle.General,
     roughness: 0,
     // Square corners, and ONLY on the kind that has corners at all. Spread
@@ -192,6 +229,12 @@ export function wardleyNodeProps(
     // truth about the ellipses — and because a key some kinds write and others
     // do not is precisely what `wardleyMorphClears` is for.
     ...(rect ? { radius: 0 } : {}),
+    // The outline, and the fact that it closes. A fresh array of fresh pairs:
+    // this goes into a document, and two elements sharing one literal would be
+    // two elements sharing one array.
+    ...(outline
+      ? { vertices: outline.map(([x, y]) => [x, y]), isClosed: true }
+      : {}),
     xywh: box.xywh,
   };
 }
@@ -522,16 +565,38 @@ export function wardleyMorphProps(
 }
 
 /**
- * Every key ANY kind's props may carry — the union over the whole pack.
+ * The kinds that can actually MORPH — the one family `morph.ts` declares.
+ *
+ * Restated here rather than imported, and that is a circular-import dodge with
+ * a real reason behind it: `morph.ts` reads this module for the presets, so
+ * this module cannot read it back. `morph.unit.spec.ts` asserts the two lists
+ * are the same set, so the restatement cannot drift.
+ *
+ * It exists because {@link wardleyMorphClears} needs a UNION, and a union over
+ * the whole pack is the wrong one. Since the accelerator and the decelerator
+ * joined it, "every key any kind writes" includes `vertices` and `isClosed` —
+ * keys of two POLYGONS that are in no family and that nothing may ever morph
+ * into. Left unrestricted, morphing a market back to a component would emit a
+ * delete for `vertices` on an ellipse that never had one: harmless today, and a
+ * patch that says something untrue about the pack the day a morphable kind
+ * gains an outline.
+ */
+export const WARDLEY_MORPHABLE_KINDS: readonly WardleyArtefactKind[] = [
+  'component',
+  'market',
+  'ecosystem',
+  'pipeline',
+];
+
+/**
+ * Every key a MORPHABLE kind's props may carry — the union over that family.
  *
  * Computed rather than listed, so a preset that starts spreading a key
  * conditionally is covered on the day it is added rather than on the day
  * somebody notices.
  */
 const EVERY_MORPH_KEY = new Set(
-  (Object.keys(WARDLEY_NODE_SIZE) as WardleyArtefactKind[]).flatMap(kind =>
-    Object.keys(wardleyMorphProps(kind))
-  )
+  WARDLEY_MORPHABLE_KINDS.flatMap(kind => Object.keys(wardleyMorphProps(kind)))
 );
 
 /**

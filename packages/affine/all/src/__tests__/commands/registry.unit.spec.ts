@@ -66,13 +66,18 @@ describe('command registry invariants', () => {
       // by one without changing which thirteen a cold start meets.
       //
       // …and 17 since `wardley.addPorter`, the Porter's-forces glyph. It DOES
-      // nominate the row, so the nomination list moves from fourteen to
-      // fifteen — `SENIOR_MENU_CAP + 1`, exactly the budget R4 allows and the
-      // last seat available. The overflow was already tipped by the OWM pair,
-      // so nothing about the arbitration changes; what does change is which
-      // thirteen a cold start meets, and the question the comment above owes
-      // the PO now has one more candidate in it.
-      wardley: 17,
+      // nominate the row, so the nomination list moved from fourteen to
+      // fifteen — `SENIOR_MENU_CAP + 1`, the last seat R4's budget allowed.
+      //
+      // …and 19 since the two climate arrows (`wardley.addAccelerator`,
+      // `wardley.addDecelerator`). They nominate too, which is the sixteenth
+      // and seventeenth nomination — past the budget, and exactly the
+      // curation question R4 says must be answered rather than merged. The PO
+      // answered it on 2026-09-03 (Amendment 2026-09-03 under R4): every
+      // Wardley artefact nominates the row, the row keeps its cap, and
+      // recency/frequency decide who is shown. The budget assertion below is
+      // amended to match, and the arbitration itself is untouched.
+      wardley: 19,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -147,8 +152,8 @@ describe('command registry invariants', () => {
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
     // because ADR 0012 declares interchange per framework × format × direction
     // and refuses to infer a framework from a `.svg`. …and 113 since
-    // `wardley.addPorter`.
-    expect(commands).toHaveLength(113);
+    // `wardley.addPorter`, 115 since the two Wardley climate arrows.
+    expect(commands).toHaveLength(115);
   });
 
   /**
@@ -206,7 +211,16 @@ describe('command registry invariants', () => {
    * quietly break: the pool feeds a row of fourteen, so it stays the size of
    * that row plus the single over-nomination the PO authorized on 2026-08-28
    * (`bpmn.importXml`, which took BPMN to fifteen).
+   *
+   * Wardley is EXEMPT from the second number since the PO's amendment of
+   * 2026-09-03 (ADR 0014, Amendment under R4): every Wardley artefact nominates
+   * the row. What the exemption does NOT touch is the first number, and that is
+   * the point — the row is still thirteen arbitrated seats plus "More
+   * artefacts…", so the assertion with teeth for that framework is the one
+   * below it: the whole toolbox is still reachable through the catalogue.
    */
+  const NO_NOMINATION_BUDGET = new Set<string>(['wardley']);
+
   test('no owner renders more than 14 senior-menu buttons, or nominates past its budget', () => {
     for (const id of FRAMEWORK_IDS) {
       const owned = byOwner(id);
@@ -240,9 +254,39 @@ describe('command registry invariants', () => {
       // FROM a file and the sub-menu is the first thing a user opens on an
       // empty canvas. A second one is a curation decision, not a merge, and it
       // should fail here until somebody makes it.
+      //
+      // Wardley's was MADE (2026-09-03), so the framework is skipped here
+      // rather than given a bigger number: a raised ceiling would be a budget
+      // nobody decided, and the decision was that this framework has none.
+      // Everything the budget was protecting still holds for it — the rendered
+      // row above, and the catalogue completeness below.
+      if (NO_NOMINATION_BUDGET.has(id)) continue;
       expect(nominated.length, `${id} nominations`).toBeLessThanOrEqual(
         SENIOR_MENU_CAP + 1
       );
+    }
+  });
+
+  /**
+   * The other half of the 2026-09-03 amendment, and the reason dropping the
+   * budget for Wardley costs the user nothing: an unbudgeted framework's row is
+   * still exactly as wide as the cap, and its whole toolbox is still reachable.
+   */
+  test('a framework with no nomination budget still renders a capped row', () => {
+    for (const id of NO_NOMINATION_BUDGET) {
+      const owned = byOwner(id);
+      const nominated = owned.filter(c => c.surfaces.includes('senior-menu'));
+      const catalogue = owned.filter(c => c.surfaces.includes('catalogue'));
+      const { commands: shown, overflow } = selectSeniorMenuCommands(
+        nominated,
+        catalogue,
+        () => undefined
+      );
+      // Thirteen arbitrated seats and the permanent way to the rest.
+      expect(shown.length + 1, `${id} sub-menu`).toBe(SENIOR_MENU_CAP);
+      expect(overflow, `${id} overflow`).toBeTruthy();
+      // …and nothing is unreachable: every artefact is in the catalogue.
+      expect(catalogue.length, `${id} catalogue`).toBe(owned.length);
     }
   });
 
@@ -360,7 +404,7 @@ describe('menu and manifest enumerate the same source', () => {
     // The DECLARED source is one list, and the manifest is the whole of it —
     // that is the drift this test was written for, and it is unchanged.
     expect(manifest).toEqual(wardleyCommands.map(c => c.id));
-    expect(manifest).toHaveLength(17);
+    expect(manifest).toHaveLength(19);
 
     // The sub-menu is a proper SUBSET of it rather than the same list, and the
     // two entries outside it are declarations rather than omissions.
@@ -372,12 +416,12 @@ describe('menu and manifest enumerate the same source', () => {
     // protecting.
     const DECLINE_THE_ROW = ['wardley.exportOwm', 'wardley.importSvg'];
     expect(menu).toEqual(manifest.filter(id => !DECLINE_THE_ROW.includes(id)));
-    // Fifteen NOMINATIONS — `SENIOR_MENU_CAP + 1`, exactly the budget ADR 0014
-    // R4 allows and the last seat available. Not fifteen buttons: the catalogue
-    // is seventeen, so `selectSeniorMenuCommands` ranks this list down to
-    // thirteen plus the catalogue button. This assertion is about what Wardley
-    // DECLARES; what the row actually renders is pinned in the browser suite.
-    expect(menu).toHaveLength(15);
+    // Seventeen NOMINATIONS — every artefact, which is the PO's amendment of
+    // 2026-09-03 to ADR 0014 R4. Not seventeen buttons: the catalogue is
+    // nineteen, so `selectSeniorMenuCommands` ranks this list down to thirteen
+    // plus the catalogue button. This assertion is about what Wardley DECLARES;
+    // what the row actually renders is pinned in the browser suite.
+    expect(menu).toHaveLength(17);
   });
 
   /**

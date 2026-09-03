@@ -4,6 +4,7 @@ import type { TemplateResult } from 'lit';
 
 import {
   activateWardleyConnector,
+  createWardleyAccelerator,
   createWardleyBackground,
   createWardleyInertia,
   createWardleyMarket,
@@ -17,9 +18,11 @@ import {
 } from './actions';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
+  wardleyAcceleratorIcon,
   wardleyAnchorIcon,
   wardleyArrowIcon,
   wardleyBackgroundIcon,
+  wardleyDeceleratorIcon,
   wardleyBenefitIcon,
   wardleyComponentIcon,
   wardleyEcosystemIcon,
@@ -234,6 +237,29 @@ const SPECS: Spec[] = [
     element: 'node:porter',
     run: createWardleyPorter,
   },
+  // The two climate annotations, after the force and for the same reason: they
+  // are not links in the value chain either, and they are reached for once the
+  // chain is drawn and the question becomes how fast it is moving. Keyless,
+  // like the porter — the `w` chord seats eight artefacts and a framework binds
+  // past that by host override.
+  {
+    id: 'addAccelerator',
+    label: 'Accelerator',
+    iconKey: 'wardley.accelerator',
+    category: 'nodes',
+    kind: 'artefact',
+    element: 'node:accelerator',
+    run: gfx => createWardleyAccelerator(gfx, 'accelerator'),
+  },
+  {
+    id: 'addDecelerator',
+    label: 'Decelerator',
+    iconKey: 'wardley.decelerator',
+    category: 'nodes',
+    kind: 'artefact',
+    element: 'node:decelerator',
+    run: gfx => createWardleyAccelerator(gfx, 'decelerator'),
+  },
 ];
 
 /**
@@ -429,14 +455,20 @@ const importSvgCommand: CommandDescriptor = {
 };
 
 /**
- * The Wardley registry: the fourteen toolbox entries, then the two directions
- * of the OWM DSL and the SVG fallback (`docs/adr/0012`).
+ * The Wardley registry: the sixteen toolbox entries, then the two directions of
+ * the OWM DSL and the SVG fallback (`docs/adr/0012`).
  *
- * The fourteenth toolbox entry (`addPorter`) takes the framework's nomination
- * count to fifteen — `SENIOR_MENU_CAP + 1`, which is exactly the budget ADR
- * 0014 R4 allows and the last one available. A sixteenth nomination is a
- * curation decision for the PO, and `registry.unit.spec.ts` fails until it is
- * made.
+ * ## Seventeen nominations, and the curation decision behind them
+ *
+ * `addPorter` spent the last seat of ADR 0014 R4's `SENIOR_MENU_CAP + 1`
+ * budget, and `addAccelerator` / `addDecelerator` are the two past it. The PO
+ * made the call on 2026-09-03 (Amendment 2026-09-03 under R4): **every Wardley
+ * artefact nominates the row**. The row itself is unchanged — thirteen
+ * arbitrated seats plus "More artefacts…", the cap of fourteen it has had since
+ * the OWM pair tipped this framework over — so what the decision buys is that
+ * a newly-drawn artefact is ELIGIBLE for a seat, and recency and frequency
+ * decide who gets one. Nothing becomes unreachable: the catalogue lists
+ * everything, which is the registry's own invariant.
  */
 export const wardleyCommands: CommandDescriptor[] = [
   ...toolboxCommands,
@@ -461,6 +493,8 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.arrow': wardleyArrowIcon,
   'wardley.inertia': wardleyInertiaIcon,
   'wardley.porter': wardleyPorterIcon,
+  'wardley.accelerator': wardleyAcceleratorIcon,
+  'wardley.decelerator': wardleyDeceleratorIcon,
   'wardley.import-owm': wardleyImportOwmIcon,
   'wardley.export-owm': wardleyExportOwmIcon,
   'wardley.import-svg': wardleyImportSvgIcon,

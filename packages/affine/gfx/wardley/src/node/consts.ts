@@ -151,3 +151,48 @@ export const PORTER_ARROW = {
 export const PORTER_LETTER_FONT_SIZE = 28;
 /** The letter a fresh glyph opens on: relative competition, the commonest read. */
 export const PORTER_DEFAULT_LETTER = 'R';
+
+/**
+ * Accelerators and decelerators — the climate annotations.
+ *
+ * A fat solid arrow with a flat grey fill and a thick dark border: as close as
+ * a native polygon gets to the reference's solid arrow, because this canvas has
+ * no gradient fill. The two are the same drawing mirrored — an accelerator
+ * points RIGHT, towards the commodity end of the evolution axis, a decelerator
+ * points LEFT, back towards genesis — and that direction IS the notation, which
+ * is why the outlines are written out below rather than expressed as one shape
+ * plus a `rotate`: a rotated element is one the selection, the resize handles
+ * and every bounding-box reader then have to de-rotate.
+ *
+ * Neither is a link in the value chain, so neither carries a component role
+ * (see `roles.ts`): they say something about the CLIMATE the map is drawn in.
+ */
+export const ACCELERATOR_SIZE = { w: 48, h: 40 };
+/** Flat grey: the arrow is a annotation, and must not out-shout the chain. */
+export const ACCELERATOR_FILL = '#bfbfbf';
+/** A thick dark border — `NODE_STROKE`, like every other artefact's rim. */
+export const ACCELERATOR_STROKE_WIDTH = 2;
+
+/**
+ * The accelerator's outline, normalized to its box, pointing RIGHT.
+ *
+ * Seven points: the shaft's two left corners, the head's upper barb, the tip,
+ * the head's lower barb, and back along the shaft. `0.55` is where the head
+ * starts, `0.28 / 0.72` the shaft's own edges.
+ */
+export const ACCELERATOR_VERTICES: readonly (readonly [number, number])[] = [
+  [0, 0.28],
+  [0.55, 0.28],
+  [0.55, 0],
+  [1, 0.5],
+  [0.55, 1],
+  [0.55, 0.72],
+  [0, 0.72],
+];
+
+/** The decelerator: the same outline mirrored `x → 1 − x`, pointing LEFT. */
+export const DECELERATOR_VERTICES: readonly (readonly [number, number])[] =
+  ACCELERATOR_VERTICES.map(([x, y]) => [1 - x, y] as const);
+
+export const ACCELERATOR_LABEL = 'Accelerator';
+export const DECELERATOR_LABEL = 'Decelerator';

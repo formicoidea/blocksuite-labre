@@ -7,6 +7,7 @@ import type {
 import {
   ConnectorMode,
   FontFamily,
+  FontWeight,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
@@ -49,6 +50,7 @@ import {
   PIPELINE_HEIGHT,
   WARDLEY_RED,
 } from './node/consts.js';
+import { WARDLEY_NODE_SIZE, wardleyNodeProps } from './presets.js';
 import { WARDLEY_ROLE } from './roles.js';
 
 /**
@@ -95,10 +97,11 @@ import { WARDLEY_ROLE } from './roles.js';
  * ## Three states, and the middle one is where the file survives
  *
  * **Mapped** is what the pack draws: `component`, `anchor`, `market`,
- * `ecosystem`, `pipeline`, `note`, `evolve`, `title`, and the `->` links.
+ * `ecosystem`, `accelerator`, `deaccelerator`, `pipeline`, `note`, `evolve`,
+ * `title`, and the `->` links.
  * **Carried** is every other statement — `style`, `annotation`, `attitudes`
  * (`pioneers` / `settlers` / `townplanners`), `submap`, `url`, `size`,
- * `accelerator`, the axis-label overrides, the flow links (`+>`, `+<`, `+<>`,
+ * the axis-label overrides, the flow links (`+>`, `+<`, `+<>`,
  * `+'…'>`), a link carrying a `;` context, and every `//` comment — kept
  * verbatim in `interchange.owm.children['@document']` on the map's background
  * element (D6) and written back, in order, at the end of the next export.
@@ -118,6 +121,7 @@ import { WARDLEY_ROLE } from './roles.js';
  * | what                                                                   | state       | after a round trip                                                                                                     |
  * | ---------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
  * | `component` / `anchor` / `market` / `ecosystem` and their coordinates  | mapped      | drawn, and written back from the drawing, to two decimals                                                              |
+ * | `accelerator` / `deaccelerator` and their coordinates                 | mapped      | drawn as the climate arrow, and written back under OWM's own spelling (`deaccelerator` for a decelerator)              |
  * | the NAME, which in this format is the identity                        | mapped      | given back verbatim, quoted exactly as it needs to be — the fixed point                                                |
  * | `pipeline Name [m1, m2]`                                              | mapped      | drawn as the body + handle composite; `[m1, m2]` written back from the body's two edges                                |
  * | `note Text [v, e]`                                                    | mapped      | a free text on the map, written back from its centre                                                                   |
@@ -125,7 +129,7 @@ import { WARDLEY_ROLE } from './roles.js';
  * | `A->B` links                                                          | mapped      | a `wardley:dependency` connector, consumer → what it needs, never inverted                                             |
  * | `title`                                                               | mapped      | consumed as the board's own name; written back from the board's name (see the two rows below)                          |
  * | a mapped line's TAIL — `label [x, y]`, `(build)`, `inertia`, comments | carried     | invisible on the canvas, re-appended to the very line it came off                                                      |
- * | `style`, `annotation(s)`, `attitudes`, `submap`, `url`, `size`, `accelerator`, the axis-label overrides | carried | invisible on the canvas, re-emitted verbatim at the end of the file          |
+ * | `style`, `annotation(s)`, `attitudes`, `submap`, `url`, `size`, the axis-label overrides | carried | invisible on the canvas, re-emitted verbatim at the end of the file          |
  * | flow links (`+>`, `+<`, `+<>`, `+'…'>`) and a link with a `;` context | carried     | not drawn — a flow is not a dependency — and re-emitted verbatim                                                       |
  * | a `pipeline` with a `{ … }` body                                      | carried     | the block is kept whole and written back whole; the pack draws no pipeline children                                    |
  * | `//` comments                                                         | carried     | re-emitted verbatim, at the end                                                                                        |
@@ -285,12 +289,21 @@ const LEADING_MATURITY = new RegExp(String.raw`^\s*(${MATURITY})`);
 
 /* ── The statements a document is made of ─────────────────────────────── */
 
-/** The keywords that declare a positioned artefact, and the kind each is. */
+/**
+ * The keywords that declare a positioned artefact, and the kind each is.
+ *
+ * `deaccelerator` is OWM's own spelling of a decelerator — the keyword the
+ * reference parser claims — so the KEY is the format's word and the VALUE is
+ * this canvas's kind. It is the one row where the two differ, and the reason
+ * this is a table rather than an identity.
+ */
 const NODE_KEYWORDS = {
   component: 'component',
   anchor: 'anchor',
   market: 'market',
   ecosystem: 'ecosystem',
+  accelerator: 'accelerator',
+  deaccelerator: 'decelerator',
 } as const;
 
 type NodeKeyword = keyof typeof NODE_KEYWORDS;
@@ -952,7 +965,12 @@ function label(
   x: number,
   y: number,
   textAlign: TextAlign,
-  color = NODE_STROKE
+  color = NODE_STROKE,
+  // Regular by default, because that is what a value-chain name is. The one
+  // caller that passes anything else is the climate arrow below, and it does so
+  // for the reason `createWardleyAccelerator` does: an imported map and a drawn
+  // one must be the same document, down to the weight of the words.
+  fontWeight: FontWeight = FontWeight.Regular
 ): SerializedElementProps {
   return {
     type: 'text',
@@ -963,6 +981,7 @@ function label(
     color,
     fontFamily: FontFamily.Inter,
     fontSize: LABEL_FONT_SIZE,
+    fontWeight,
     textAlign,
     xywh: `[${x},${y},${OWM_LABEL_WIDTH},${OWM_LABEL_HEIGHT}]`,
   };
@@ -977,6 +996,40 @@ function artefact(
   tail: string,
   mintHandle: (stem: string) => string
 ): SerializedElementProps[] {
+  // The two climate annotations are the only statements this reader draws as
+  // something other than a circle: a fat polygon, at the canonical size the
+  // palette gives one, with its name on the side its shaft is on. The presets
+  // own both facts, so a map that arrives from a file and one drawn by hand are
+  // the same element.
+  const kind = NODE_KEYWORDS[keyword];
+  if (kind === 'accelerator' || kind === 'decelerator') {
+    const { w, h } = WARDLEY_NODE_SIZE[kind];
+    const arrow: SerializedElementProps = {
+      ...wardleyNodeProps(kind, {
+        xywh: `[${cx - w / 2},${cy - h / 2},${w},${h}]`,
+      }),
+      interchange: payload({ id: name, tail }),
+    };
+    const rightwards = kind === 'accelerator';
+    return [
+      arrow,
+      label(
+        name,
+        rightwards
+          ? cx + w / 2 + LABEL_GAP
+          : cx - w / 2 - LABEL_GAP - OWM_LABEL_WIDTH,
+        cy - OWM_LABEL_HEIGHT / 2,
+        rightwards ? TextAlign.Left : TextAlign.Right,
+        NODE_STROKE,
+        // SemiBold, exactly as the sub-menu draws one. The recette of #212
+        // caught the two paths disagreeing: a climate arrow is an annotation
+        // laid over a map already full of names, and where it came from is not
+        // something the reader should be able to see.
+        FontWeight.SemiBold
+      ),
+    ];
+  }
+
   const diameter =
     keyword === 'anchor'
       ? OWM_ANCHOR_SIZE
@@ -988,8 +1041,8 @@ function artefact(
 
   const circle: SerializedElementProps = {
     type: 'wardleyNode',
-    kind: NODE_KEYWORDS[keyword],
-    role: WARDLEY_ROLE[NODE_KEYWORDS[keyword]],
+    kind,
+    role: WARDLEY_ROLE[kind],
     shapeType: 'ellipse',
     filled: true,
     fillColor: NODE_FILL,

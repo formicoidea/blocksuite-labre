@@ -10,7 +10,9 @@ export type WardleyNodeKind =
   | 'market'
   | 'ecosystem'
   | 'method'
-  | 'porter';
+  | 'porter'
+  | 'accelerator'
+  | 'decelerator';
 
 /**
  * A Wardley map node. Extends {@link ShapeElementModel} (a native ellipse) so it
@@ -19,17 +21,22 @@ export type WardleyNodeKind =
  * discriminates the plain `component`, the `anchor` (which the renderer
  * decorates with an inscribed person glyph), the two pieces of a pipeline (the
  * `pipeline` body + its square `handle`), the `market` outer circle, the
- * `ecosystem` grey backing disk, and the `porter` circle — a Porter's-forces
+ * `ecosystem` grey backing disk, the `porter` circle — a Porter's-forces
  * glyph, which is the one kind that is NOT a link in the value chain: it marks
- * an external competition force acting on the map. Composite nodes (pipeline /
- * market / ecosystem / porter) are built by grouping several of these + native
+ * an external competition force acting on the map — and the `accelerator` /
+ * `decelerator` arrows, which are not links in the chain either: they annotate
+ * the CLIMATE, saying that something is speeding evolution up or slowing it
+ * down. Those two are the first kinds drawn as a native POLYGON rather than an
+ * ellipse or a rect. Composite nodes (pipeline / market / ecosystem / porter /
+ * accelerator / decelerator) are built by grouping several of these + native
  * connectors + a text label. The text label is a SEPARATE native text element
  * grouped with the node, not stored here — the `porter` being the exception
  * that proves it, since its one letter is the shape's own inner text.
  *
  * `kind` is ADDITIVE by construction: a value is only ever appended, so a
  * document written before a value was appended carries none of it and opens
- * unchanged. `porter` is the most recent, and needs no migration.
+ * unchanged. `accelerator` and `decelerator` are the most recent, and need no
+ * migration.
  */
 export class WardleyNodeElementModel extends ShapeElementModel {
   override get type() {

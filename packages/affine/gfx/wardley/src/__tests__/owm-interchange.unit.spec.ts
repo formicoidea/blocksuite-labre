@@ -326,18 +326,26 @@ describe('the Wardley catalogue', () => {
     );
   });
 
-  it('nominates fifteen for the sub-menu, which is exactly the budget', () => {
+  it('nominates every artefact for the sub-menu, per the 2026-09-03 ruling', () => {
     const nominated = wardleyCommands.filter(c =>
       c.surfaces.includes('senior-menu')
     );
-    // `SENIOR_MENU_CAP + 1` (ADR 0014, R4) — the cap of fourteen plus the one
-    // deliberate over-nomination the PO signed off on. Fourteen until
-    // `wardley.addPorter` joined the row; the budget is now spent, and a
-    // sixteenth nomination is a curation decision rather than a merge.
-    expect(nominated).toHaveLength(15);
-    // The fourteen artefacts, plus the import — an import is where a board
-    // comes from, and on an empty canvas the sub-menu is the first thing a
-    // user opens (PO decision of 2026-08-28).
+    // Seventeen, which is past `SENIOR_MENU_CAP + 1` (ADR 0014, R4) on purpose:
+    // the two climate arrows were the sixteenth and seventeenth nomination, and
+    // the PO answered the curation question R4 raises rather than curating the
+    // list (Amendment 2026-09-03). Every artefact nominates; the row still
+    // seats thirteen plus "More artefacts…".
+    expect(nominated).toHaveLength(17);
+    // The two entries that DECLINE the row are the only ones missing, and both
+    // decline by declaration rather than by omission.
+    expect(
+      wardleyCommands
+        .filter(c => !c.surfaces.includes('senior-menu'))
+        .map(c => c.id)
+    ).toEqual(['wardley.exportOwm', 'wardley.importSvg']);
+    // The import is the last of them — an import is where a board comes from,
+    // and on an empty canvas the sub-menu is the first thing a user opens (PO
+    // decision of 2026-08-28).
     expect(nominated.at(-1)!.id).toBe('wardley.importOwm');
   });
 

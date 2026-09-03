@@ -8,6 +8,7 @@ import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
   ConnectorMode,
   FontFamily,
+  FontWeight,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
@@ -120,6 +121,14 @@ type Surface = NonNullable<GfxController['surface']>;
 
 /** Height of the native free-text labels (Inter, size 18). */
 const LABEL_H = LABEL_FONT_SIZE + 8;
+/**
+ * Width of a label box, whatever it reads.
+ *
+ * A number rather than a measurement, which is why a RIGHT-aligned label has to
+ * subtract it: the box does not shrink to the words, so the only way to make
+ * the words end on a given edge is to start the box a full width before it.
+ */
+const LABEL_W = 120;
 
 /**
  * The single-circle node flavours: one connectable ellipse + a label to its
@@ -127,15 +136,17 @@ const LABEL_H = LABEL_FONT_SIZE + 8;
  * method inner circle) is drawn by the node renderer from `kind`.
  *
  * A subset of {@link WardleyArtefactKind}, and named away from
- * `WardleyNodeKind` on purpose: the model declares a type of that name with
- * EIGHT values, and two homonyms of different cardinality — one of them the
- * source of the semantic vocabulary — is a trap. The market, the pipeline and
- * the Porter's-forces glyph are composites with creation functions of their
- * own; the handle is not an artefact at all.
+ * `WardleyNodeKind` on purpose: the model declares a type of that name with ten
+ * values, and two homonyms of different cardinality — one of them the source of
+ * the semantic vocabulary — is a trap. The market, the pipeline and the
+ * Porter's-forces glyph are composites with creation functions of their own;
+ * the accelerator and the decelerator are not circles at all and place their
+ * label on the side their arrow points from
+ * ({@link createWardleyAccelerator}); the handle is not an artefact.
  */
 export type WardleySingleCircleKind = Exclude<
   WardleyArtefactKind,
-  'market' | 'pipeline' | 'porter'
+  'market' | 'pipeline' | 'porter' | 'accelerator' | 'decelerator'
 >;
 
 function finish(gfx: GfxController, id: string) {
@@ -185,11 +196,13 @@ function addLabel(
   text: string,
   x: number,
   y: number,
-  textAlign: 'left' | 'center' = 'left'
+  textAlign: 'left' | 'center' | 'right' = 'left',
+  fontWeight: FontWeight = FontWeight.Regular
 ) {
   return surface.addElement({
     type: 'text',
     text,
+    fontWeight,
     // Semantic identity (PF1, revised in PF13.4): a Wardley label is a free
     // text element like any other, so its ROLE is the only thing that tells W3
     // it must not land on top of a node. A free text the user typed elsewhere
@@ -199,7 +212,7 @@ function addLabel(
     fontSize: LABEL_FONT_SIZE,
     color: NODE_STROKE,
     textAlign,
-    xywh: new Bound(x, y, 120, LABEL_H).serialize(),
+    xywh: new Bound(x, y, LABEL_W, LABEL_H).serialize(),
   });
 }
 
@@ -410,6 +423,57 @@ export function createWardleyPorter(gfx: GfxController) {
   );
 
   finish(gfx, group(gfx, [circleId, ...arrowIds]));
+}
+
+/**
+ * Create an accelerator or a decelerator: one fat native POLYGON and the words
+ * that say what it is, grouped like every other artefact.
+ *
+ * Not a link in the value chain, and not a pressure on it either: an annotation
+ * of the CLIMATE, saying that something is speeding evolution up (an arrow
+ * pointing right, towards commodity) or holding it back (the mirror, pointing
+ * left). Which way it points IS the notation, so the two are separate kinds
+ * with outlines of their own rather than one kind with a `rotate`.
+ *
+ * ## Where the words go, and why it is not always the right
+ *
+ * Every other single artefact on this canvas wears its name on its right,
+ * because a circle has no direction to disagree with. An arrow does. The
+ * reference puts the words on the side the arrow's SHAFT is on — right of an
+ * accelerator, left of a decelerator — so the reading runs into the arrow
+ * rather than across it, and the label is aligned towards it (left-aligned on
+ * the right, right-aligned on the left) so the words end against the shaft
+ * whatever their length.
+ *
+ * SemiBold, which no other Wardley label is: these two are annotations laid
+ * over a map that is already full of names, and the weight is what keeps the
+ * word readable as a remark ABOUT the map rather than as one more component.
+ */
+export function createWardleyAccelerator(
+  gfx: GfxController,
+  kind: 'accelerator' | 'decelerator'
+) {
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { w } = WARDLEY_NODE_SIZE[kind];
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+
+  const nodeId = addNode(surface, kind, cx, cy);
+
+  const rightwards = kind === 'accelerator';
+  const labelId = addLabel(
+    surface,
+    WARDLEY_NODE_LABEL[kind],
+    // A label box is a fixed LABEL_W wide whatever it reads, so a right-aligned
+    // one has to start a box-width before the edge the words must end on.
+    rightwards ? cx + w / 2 + LABEL_GAP : cx - w / 2 - LABEL_GAP - LABEL_W,
+    cy - LABEL_H / 2,
+    rightwards ? 'left' : 'right',
+    FontWeight.SemiBold
+  );
+
+  finish(gfx, group(gfx, [nodeId, labelId]));
 }
 
 /**
