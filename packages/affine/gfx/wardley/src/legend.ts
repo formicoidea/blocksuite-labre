@@ -27,8 +27,14 @@ import {
   NODE_STROKE,
   NODE_STROKE_WIDTH,
   PIPELINE_FILL,
+  PORTER_DEFAULT_LETTER,
   WARDLEY_RED,
 } from './node/consts';
+import {
+  wardleyPorterArrowProps,
+  wardleyPorterArrowSegments,
+  wardleyPorterLetterProps,
+} from './presets';
 
 /** Component kinds the legend can describe, in display order. */
 type LegendType =
@@ -40,7 +46,8 @@ type LegendType =
   | 'pipeline'
   | 'link'
   | 'arrow'
-  | 'inertia';
+  | 'inertia'
+  | 'porter';
 
 const LEGEND_ORDER: LegendType[] = [
   'component',
@@ -52,6 +59,7 @@ const LEGEND_ORDER: LegendType[] = [
   'link',
   'arrow',
   'inertia',
+  'porter',
 ];
 
 /** Default (editable) descriptions for each legend row. */
@@ -65,6 +73,8 @@ const LEGEND_DESC: Record<LegendType, string> = {
   link: 'Need relation (parent → child)',
   arrow: 'Evolution / movement (red = future)',
   inertia: 'Inertia to change',
+  porter:
+    "Porter's forces (external competition: R relative, L survival, E establish)",
 };
 
 type GradientVariant = Exclude<
@@ -94,6 +104,24 @@ const LEGEND_GRADIENT: Record<
 };
 
 /**
+ * Whether a connector is one of a Porter's-forces glyph's four arrows.
+ *
+ * Four facts at once, and no fewer: a hand-drawn evolution arrow the user
+ * recoloured solid red still carries `wardley:change-arrow`, and one drawn
+ * loose at both ends still carries it too. Only the glyph's own wiring is
+ * role-less, free AND solid red together.
+ */
+function isPorterArrow(el: ConnectorElementModel): boolean {
+  return (
+    el.role === undefined &&
+    el.stroke === WARDLEY_RED &&
+    el.strokeStyle === StrokeStyle.Solid &&
+    el.source?.id === undefined &&
+    el.target?.id === undefined
+  );
+}
+
+/**
  * Build a "Legend" group from real, editable elements (white rect frame +
  * "Legend" text + one row of [real component glyph + description text] per
  * Wardley component TYPE present inside the background's perimeter + a
@@ -121,6 +149,13 @@ export function createWardleyLegend(
     if (el instanceof WardleyNodeElementModel) {
       if (el.kind !== 'handle') present.add(el.kind);
     } else if (el instanceof ConnectorElementModel) {
+      // A Porter's-forces arrow is the GLYPH's own wiring, exactly as the
+      // market's triangle is — role-less, free at both ends, solid red. It is
+      // red because a force is red, not because anything is evolving, so
+      // counting it as an evolution arrow would describe a movement the map
+      // never claims. Checked BEFORE the red test below, which would otherwise
+      // swallow it.
+      if (isPorterArrow(el)) continue;
       if (el.strokeStyle === StrokeStyle.Dash || el.stroke === WARDLEY_RED) {
         present.add('arrow');
       } else if (el.stroke === LINK_GREY) {
@@ -321,6 +356,36 @@ export function createWardleyLegend(
           })
         );
         return [circle, ...dots, ...conns];
+      }
+      case 'porter': {
+        // The same drawing as the map's, at the row's scale: the helper scales
+        // the gap and the arrow length with the radius, so what a reader sees
+        // here is a small Porter and not a circle with two map-sized spikes.
+        //
+        // 6 and not the 8 the other circles get, because this glyph is the only
+        // one wider than its own circle: arrows included it spans `2 * (R + gap
+        // + length) * R / 15`, which at 8 would be 40 units in a row 30 tall.
+        // At 6 it comes to just over ROW_H and sits inside its line.
+        const R = 6;
+        const circle = surface.addElement({
+          type: 'wardleyNode',
+          kind: 'porter',
+          shapeType: 'ellipse',
+          filled: true,
+          fillColor: NODE_FILL,
+          strokeColor: NODE_STROKE,
+          strokeWidth: NODE_STROKE_WIDTH,
+          shapeStyle: ShapeStyle.General,
+          roughness: 0,
+          // The letter is the notation, so a legend that dropped it would be
+          // describing a circle rather than the glyph it stands for.
+          ...wardleyPorterLetterProps(PORTER_DEFAULT_LETTER, 8),
+          xywh: new Bound(cx - R, cy - R, R * 2, R * 2).serialize(),
+        });
+        const arrows = wardleyPorterArrowSegments(cx, cy, R).map(arrow =>
+          surface.addElement(wardleyPorterArrowProps(arrow, LINK_STROKE_WIDTH))
+        );
+        return [circle, ...arrows];
       }
       case 'link':
         return [

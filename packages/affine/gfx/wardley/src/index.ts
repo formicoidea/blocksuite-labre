@@ -32,9 +32,14 @@ export {
   wardleyMarketLinkProps,
   WARDLEY_NODE_LABEL,
   WARDLEY_NODE_SIZE,
+  type WardleyLabelledKind,
   wardleyMorphClears,
   wardleyMorphProps,
   wardleyNodeProps,
+  type WardleyPorterArrow,
+  wardleyPorterArrowProps,
+  wardleyPorterArrowSegments,
+  wardleyPorterLetterProps,
 } from './presets';
 // What an artefact may BECOME: the declared family, the spec the generic morph
 // module is registered with, the resolution from a selected group to the node

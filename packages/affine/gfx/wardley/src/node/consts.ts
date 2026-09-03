@@ -107,3 +107,28 @@ export const METHOD = {
   centerRatio: 0.5, // inner white component radius / R
 };
 export const METHOD_LABEL = 'Component';
+
+/**
+ * Porter's forces (composite): a market-sized white circle carrying ONE letter,
+ * pushed on from the four cardinal directions by solid red arrows.
+ *
+ * The letter IS the notation — **R** relative competition, **L** struggle for
+ * survival, **E** struggle to establish — which is why it is written as the
+ * shape's own inner text rather than as a label beside it: a double-click opens
+ * the native shape editor on the circle, and typing another letter is the whole
+ * of the edit. It is also why this glyph carries no label at all: the three
+ * words behind the three letters are the map's vocabulary, not a name the
+ * author gives one force.
+ */
+export const PORTER_SIZE = 30;
+/**
+ * The four arrows, read by `wardleyPorterArrowSegments`: each starts `gap`
+ * outside the circle's rim, runs `length` further out, and is stroked `width`
+ * thick. Solid and red — an evolution arrow is dashed, and the two must not be
+ * mistaken for one another on the same map.
+ */
+export const PORTER_ARROW = { gap: 3, length: 20, width: 4 };
+/** The letter, sized to sit inside a 30-unit circle without touching the rim. */
+export const PORTER_LETTER_FONT_SIZE = 14;
+/** The letter a fresh glyph opens on: relative competition, the commonest read. */
+export const PORTER_DEFAULT_LETTER = 'R';

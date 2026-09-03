@@ -9,6 +9,7 @@ import {
   createWardleyMarket,
   createWardleyNode,
   createWardleyPipeline,
+  createWardleyPorter,
   exportOwmFile,
   importOwmFile,
   importWardleySvgFile,
@@ -32,6 +33,7 @@ import {
   wardleyMethodIcon,
   wardleyOpportunityIcon,
   wardleyPipelineIcon,
+  wardleyPorterIcon,
 } from './toolbar/icons';
 
 /**
@@ -218,6 +220,20 @@ const SPECS: Spec[] = [
     element: 'node:inertia',
     run: createWardleyInertia,
   },
+  // Last of the nodes, and last of the row: a Porter's force is the only
+  // artefact on this palette that is not part of the map — it is what presses
+  // on it from outside — so it reads as an annotation you reach for once the
+  // chain is drawn. Keyless: the `w` chord already seats eight artefacts, and
+  // a framework binds past that by host override rather than by default.
+  {
+    id: 'addPorter',
+    label: "Porter's forces",
+    iconKey: 'wardley.porter',
+    category: 'nodes',
+    kind: 'artefact',
+    element: 'node:porter',
+    run: createWardleyPorter,
+  },
 ];
 
 /**
@@ -267,9 +283,9 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
  * the sub-menu is the first thing a user opens, and "start from the map
  * somebody sent me" belongs in that row beside "start from a component" —
  * asking them to find the catalogue sidepanel first is the friction the
- * decision names. It is Wardley's fourteenth nomination, which is exactly the
- * cap, so nothing about the sub-menu's arbitration changes and no button is
- * pushed out of the row.
+ * decision names. It is the `+1` of ADR 0014's R4 — the single deliberate
+ * over-nomination the PO signed off on, and the reason this framework's
+ * nomination budget is `SENIOR_MENU_CAP + 1` rather than the cap itself.
  *
  * No `'contextual-toolbar'`: a contextual toolbar is a statement about a
  * SELECTION, and the moment this command is most wanted is on a board with
@@ -413,8 +429,14 @@ const importSvgCommand: CommandDescriptor = {
 };
 
 /**
- * The Wardley registry: the thirteen toolbox entries, then the two directions
+ * The Wardley registry: the fourteen toolbox entries, then the two directions
  * of the OWM DSL and the SVG fallback (`docs/adr/0012`).
+ *
+ * The fourteenth toolbox entry (`addPorter`) takes the framework's nomination
+ * count to fifteen — `SENIOR_MENU_CAP + 1`, which is exactly the budget ADR
+ * 0014 R4 allows and the last one available. A sixteenth nomination is a
+ * curation decision for the PO, and `registry.unit.spec.ts` fails until it is
+ * made.
  */
 export const wardleyCommands: CommandDescriptor[] = [
   ...toolboxCommands,
@@ -438,6 +460,7 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.link': wardleyLinkIcon,
   'wardley.arrow': wardleyArrowIcon,
   'wardley.inertia': wardleyInertiaIcon,
+  'wardley.porter': wardleyPorterIcon,
   'wardley.import-owm': wardleyImportOwmIcon,
   'wardley.export-owm': wardleyExportOwmIcon,
   'wardley.import-svg': wardleyImportSvgIcon,

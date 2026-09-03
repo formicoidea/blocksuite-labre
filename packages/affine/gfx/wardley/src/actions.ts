@@ -41,6 +41,7 @@ import {
   LINK_GREY,
   LINK_STROKE_WIDTH,
   NODE_STROKE,
+  PORTER_DEFAULT_LETTER,
   WARDLEY_RED,
 } from './node/consts';
 import {
@@ -55,6 +56,9 @@ import {
   WARDLEY_NODE_LABEL,
   WARDLEY_NODE_SIZE,
   wardleyNodeProps,
+  wardleyPorterArrowProps,
+  wardleyPorterArrowSegments,
+  wardleyPorterLetterProps,
 } from './presets';
 import { WARDLEY_ROLE } from './roles';
 
@@ -124,14 +128,14 @@ const LABEL_H = LABEL_FONT_SIZE + 8;
  *
  * A subset of {@link WardleyArtefactKind}, and named away from
  * `WardleyNodeKind` on purpose: the model declares a type of that name with
- * SEVEN values, and two homonyms of different cardinality — one of them the
- * source of the semantic vocabulary — is a trap. The market and the pipeline
- * are composites with creation functions of their own; the handle is not an
- * artefact at all.
+ * EIGHT values, and two homonyms of different cardinality — one of them the
+ * source of the semantic vocabulary — is a trap. The market, the pipeline and
+ * the Porter's-forces glyph are composites with creation functions of their
+ * own; the handle is not an artefact at all.
  */
 export type WardleySingleCircleKind = Exclude<
   WardleyArtefactKind,
-  'market' | 'pipeline'
+  'market' | 'pipeline' | 'porter'
 >;
 
 function finish(gfx: GfxController, id: string) {
@@ -153,19 +157,26 @@ function group(gfx: GfxController, ids: string[]) {
 /**
  * Add a wardley node of one kind, at its canonical size, centred on (cx, cy).
  *
- * The props are {@link wardleyNodeProps}' and nothing else: the palette and the
- * "Change type" dropdown read that one description, so a market drawn here and
- * a component morphed into one are the same element (`presets.ts`).
+ * The APPEARANCE is {@link wardleyNodeProps}' and nothing else: the palette and
+ * the "Change type" dropdown read that one description, so a market drawn here
+ * and a component morphed into one are the same element (`presets.ts`).
+ *
+ * `extra` is for what a preset cannot carry — the Porter's-forces letter, which
+ * is CONTENT the author then edits, not a look. `wardleyMorphProps` strips
+ * `text` for exactly that reason, so a preset that wrote one would be a preset
+ * the morph has to un-write.
  */
 function addNode(
   surface: Surface,
   kind: WardleyArtefactKind,
   cx: number,
-  cy: number
+  cy: number,
+  extra: Record<string, unknown> = {}
 ) {
-  return surface.addElement(
-    wardleyNodeProps(kind, { xywh: wardleyCanonicalBox(kind, cx, cy) })
-  );
+  return surface.addElement({
+    ...wardleyNodeProps(kind, { xywh: wardleyCanonicalBox(kind, cx, cy) }),
+    ...extra,
+  });
 }
 
 /** Add a native free-text label (same Inter family as the axis labels). */
@@ -361,6 +372,44 @@ export function createWardleyMarket(gfx: GfxController) {
   );
 
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
+}
+
+/**
+ * Create a Porter's-forces glyph: a white circle carrying ONE letter, pushed on
+ * from the four cardinal directions by solid red arrows, all grouped as one
+ * object.
+ *
+ * It marks an EXTERNAL competition force acting on the map — which is why the
+ * circle carries `wardley:porter` and nothing under `wardley:component`: it is
+ * not a link in the value chain, and no rule written about the chain has
+ * anything to say about a pressure applied from outside it.
+ *
+ * No label, and that is the notation rather than an omission: the letter says
+ * which force this is (R relative competition, L struggle for survival, E
+ * struggle to establish) and it is the circle's OWN inner text, so a
+ * double-click opens the native shape editor on it. The four arrows are the
+ * glyph's own wiring — free, role-less, solid red — exactly as the market's
+ * triangle is.
+ */
+export function createWardleyPorter(gfx: GfxController) {
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+
+  const circleId = addNode(
+    surface,
+    'porter',
+    cx,
+    cy,
+    wardleyPorterLetterProps(PORTER_DEFAULT_LETTER)
+  );
+
+  const arrowIds = wardleyPorterArrowSegments(cx, cy).map(arrow =>
+    surface.addElement(wardleyPorterArrowProps(arrow))
+  );
+
+  finish(gfx, group(gfx, [circleId, ...arrowIds]));
 }
 
 /**

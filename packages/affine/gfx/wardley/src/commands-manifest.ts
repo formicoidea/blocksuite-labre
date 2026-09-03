@@ -122,6 +122,14 @@ export const wardleyCommandsManifest: ShortcutManifestEntry[] = [
     defaultKeys: { mac: ['w', 'i'], other: ['w', 'i'] },
   },
   {
+    id: 'wardley.addPorter',
+    owner: 'wardley',
+    labelKey: 'com.labre.commands.wardley.addPorter',
+    labelFallback: "Porter's forces",
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
     id: 'wardley.importOwm',
     owner: 'wardley',
     labelKey: 'com.labre.commands.wardley.importOwm',

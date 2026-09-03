@@ -64,7 +64,15 @@ describe('command registry invariants', () => {
       // nomination list is untouched at fourteen and only the catalogue grew.
       // The overflow above was already tipped by the OWM pair; this widens it
       // by one without changing which thirteen a cold start meets.
-      wardley: 16,
+      //
+      // …and 17 since `wardley.addPorter`, the Porter's-forces glyph. It DOES
+      // nominate the row, so the nomination list moves from fourteen to
+      // fifteen — `SENIOR_MENU_CAP + 1`, exactly the budget R4 allows and the
+      // last seat available. The overflow was already tipped by the OWM pair,
+      // so nothing about the arbitration changes; what does change is which
+      // thirteen a cold start meets, and the question the comment above owes
+      // the PO now has one more candidate in it.
+      wardley: 17,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
