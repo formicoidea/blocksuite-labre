@@ -45,8 +45,8 @@ describe('board role', () => {
   test('the reporter forwards role on a board and nothing on an element', () => {
     const invocation: CommandInvocation = {
       surface: 'senior-menu',
-      source: 'senior-menu',
-    } as CommandInvocation;
+      source: 'toolbar:general',
+    };
     const payloads: Record<string, unknown>[] = [];
     const track = (_event: string, payload: Record<string, unknown>) =>
       payloads.push(payload);
