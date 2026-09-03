@@ -23,9 +23,9 @@ std.getOptional(TelemetryProvider)?.track('FrameworkElementAdded', { ... });
 
 ## Block lifecycle taxonomy (the contract)
 
-Every block flavour reports the same five moments, so product analytics can
-compare blocks with one query. **A new block is not done until it emits these
-events** (this is part of the block template):
+Every canvas flavour (`CANVAS_FLAVOURS`) reports the same five moments, so
+product analytics can compare blocks with one query. **A new canvas block is
+not done until it emits these events** (this is part of the block template):
 
 | Event                | When                                                       | Required props                                                               |
 | -------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -36,14 +36,20 @@ events** (this is part of the block template):
 | `BlockUsageDuration` | end of an editing session on the block                     | `flavour`, `durationMs`                                                      |
 
 `BlockEdited`, `BlockDeleted`, `BlockAbandoned` and `BlockUsageDuration` are
-emitted automatically for every flavour by `BlockLifecycleTelemetryWatcher`
-(registered in the foundation view extension, fed by store mutations, local
-changes only). `BlockCreated` stays a UI-intent event emitted at insertion
-sites — do not emit it from store plumbing.
+emitted automatically by `BlockLifecycleTelemetryWatcher` (registered in the
+foundation view extension, fed by store mutations, local changes only) — for
+**canvas flavours only** (`CANVAS_FLAVOURS` in `block-lifecycle-watcher.ts`:
+the surface, notes, frames, edgeless text, media and embed cards). Prose
+flavours are not reported: per-paragraph sessions were the volume driver of the
+whole bus and answer nothing the corpus cannot answer later, whereas canvas
+behaviour (hesitation, abandonment, time spent) evaporates if not captured (PO
+decision, 2026-09-03). `BlockCreated` stays a UI-intent event emitted at
+insertion sites — do not emit it from store plumbing.
 
 Conventions:
 
-- `flavour` is the store flavour (`affine:paragraph`, `affine:database`…).
+- `flavour` is the store flavour, a canvas one here (`affine:note`,
+  `affine:frame`…).
 - `page` distinguishes `doc editor` vs `whiteboard editor` when relevant.
 - Events describe **user intent**, not store mechanics: a programmatic
   migration that rewrites blocks must not emit lifecycle events.
@@ -61,6 +67,15 @@ Business framework diagrams share one vocabulary; `framework` segments,
 
 Adding a framework = reuse these three events with a new `framework` value
 (add it to the `FrameworkElementEvent['framework']` union in `lifecycle.ts`).
+
+`role: 'board'` rides on `FrameworkElementAdded` when the command placed the
+framework's **board** (Wardley background, BPMN pool, C4 board, Cynefin frame…).
+Each framework names its board differently in `element`, so the ratio "boards
+created / elements added" per framework — the signal that the board gesture is
+understood — reads `role = 'board'`, never an `element` prefix. Declared on the
+command (`CommandDescriptor.telemetry.board`), forwarded by the reporter, and
+pinned per framework by `board-role.unit.spec.ts`: a framework without a board
+command fails the build.
 
 ## The promotion ladder (MF1)
 

@@ -137,6 +137,7 @@ describe('the palette entries that changed in WS5', () => {
     expect(eventStormingCommands[0].telemetry).toEqual({
       framework: 'ddd-event-storming',
       element: 'board',
+      board: true,
     });
     expect(eventStormingCommands.map(command => command.id)).toContain(
       'ddd-event-storming.addAggregate'

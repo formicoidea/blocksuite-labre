@@ -46,6 +46,8 @@ interface Spec {
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -58,6 +60,7 @@ const SPECS: Spec[] = [
     // A NEW telemetry value: every other entry below keeps the `element` string
     // it has emitted since ADR 0008.
     element: 'board',
+    board: true,
     icon: boardSwatch,
     run: std => createEventStormingBoard(std.get(GfxControllerIdentifier)),
   },
@@ -131,7 +134,11 @@ export const eventStormingCommands: CommandDescriptor[] = SPECS.map(
     defaultKeys: { mac: [], other: [] },
     availability: 'always',
     run: spec.run,
-    telemetry: { framework: 'ddd-event-storming', element: spec.element },
+    telemetry: {
+      framework: 'ddd-event-storming',
+      element: spec.element,
+      board: spec.board,
+    },
   })
 );
 

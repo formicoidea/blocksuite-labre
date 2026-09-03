@@ -177,8 +177,22 @@ export interface CommandDescriptor<P = void> {
    * Emitted centrally by {@link runCommand} — never by the command body.
    * `framework` is the code-side id; the reporter maps it through
    * `FrameworkDescriptor.telemetryKey` so the wire value stays historical.
+   *
+   * `board: true` marks the command that puts a framework's BOARD on the
+   * canvas (a Wardley background, a BPMN pool, a C4 board…). Every framework
+   * names its board differently in `element` — `background:classic`, `pool`,
+   * `board`, `cynefin` — so "boards created per framework" cannot be read off
+   * a prefix; it is declared here, at the command, and the reporter forwards
+   * it as the `role` dimension.
    */
-  telemetry?: { framework: FrameworkId; element: string };
+  telemetry?: CommandTelemetry;
+}
+
+/** See {@link CommandDescriptor.telemetry}. */
+export interface CommandTelemetry {
+  framework: FrameworkId;
+  element: string;
+  board?: true;
 }
 
 /**
@@ -243,7 +257,7 @@ export interface CommandManifestEntry {
    * command is. Derived from `CommandDescriptor.params`, never authored twice.
    */
   params?: CommandParam[];
-  telemetry?: { framework: FrameworkId; element: string };
+  telemetry?: CommandTelemetry;
 }
 
 /**

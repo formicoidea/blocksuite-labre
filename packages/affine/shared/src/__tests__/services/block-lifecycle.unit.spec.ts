@@ -26,16 +26,36 @@ const add = (id: string, init = false) =>
   ({
     type: 'add',
     id,
-    flavour: 'affine:paragraph',
+    flavour: 'affine:note',
     isLocal: true,
     init,
   }) as const;
 const update = (id: string) =>
-  ({ type: 'update', id, flavour: 'affine:paragraph', isLocal: true }) as const;
+  ({ type: 'update', id, flavour: 'affine:note', isLocal: true }) as const;
 const del = (id: string) =>
-  ({ type: 'delete', id, flavour: 'affine:paragraph', isLocal: true }) as const;
+  ({ type: 'delete', id, flavour: 'affine:note', isLocal: true }) as const;
 
 describe('BlockLifecycleTracker', () => {
+  test('reports canvas flavours only — prose never reaches the bus', () => {
+    const { tracker, events, tick } = setup();
+    for (const flavour of ['affine:paragraph', 'affine:list', 'affine:page']) {
+      tracker.handle({ ...add('p'), flavour });
+      tracker.handle({ ...update('p'), flavour });
+      tick(1_000);
+      tracker.handle({ ...del('p'), flavour });
+    }
+    tracker.flush();
+    expect(events).toEqual([]);
+
+    // Canvas blocks and every embed card do report.
+    tracker.handle({ ...update('s'), flavour: 'affine:surface' });
+    tracker.handle({ ...update('e'), flavour: 'affine:embed-linked-doc' });
+    expect(events.map(e => (e.props as { flavour: string }).flavour)).toEqual([
+      'affine:surface',
+      'affine:embed-linked-doc',
+    ]);
+  });
+
   test('ignores remote and initial-load mutations', () => {
     const { tracker, events } = setup();
     tracker.handle({ ...update('a'), isLocal: false });
@@ -44,7 +64,7 @@ describe('BlockLifecycleTracker', () => {
     tracker.handle(del('b'));
     // The delete of a loaded block is local: BlockDeleted only, no abandon.
     expect(events).toEqual([
-      { event: 'BlockDeleted', props: { flavour: 'affine:paragraph' } },
+      { event: 'BlockDeleted', props: { flavour: 'affine:note' } },
     ]);
   });
 
@@ -66,7 +86,7 @@ describe('BlockLifecycleTracker', () => {
       'BlockEdited',
     ]);
     expect(events[1].props).toEqual({
-      flavour: 'affine:paragraph',
+      flavour: 'affine:note',
       durationMs: 10_000,
     });
   });
@@ -78,7 +98,7 @@ describe('BlockLifecycleTracker', () => {
     tracker.handle(del('a'));
     expect(names()).toEqual(['BlockDeleted', 'BlockAbandoned']);
     expect(events[1].props).toEqual({
-      flavour: 'affine:paragraph',
+      flavour: 'affine:note',
       reason: 'deleted-after-create',
       ageMs: ABANDON_WINDOW_MS - 1,
     });

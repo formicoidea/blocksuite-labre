@@ -18,6 +18,32 @@ export const ABANDON_WINDOW_MS = 15_000;
 export const IDLE_GAP_MS = 30_000;
 
 /**
+ * The flavours whose lifecycle is reported. Canvas blocks only: the surface
+ * (every framework element mutation lands on it), the cards placed on it and
+ * the media that can be dropped there.
+ *
+ * Prose is deliberately out (PO decision, 2026-09-03). Per-paragraph edit
+ * sessions are the volume driver of the whole taxonomy and answer no product
+ * question the document itself cannot answer later — which documents carry
+ * prose next to a map is a corpus query, not a telemetry one. What evaporates
+ * if not captured is behaviour on the canvas: hesitation, abandonment, time
+ * spent — so that is what stays on the bus. Reversible in one line.
+ */
+export const CANVAS_FLAVOURS: ReadonlySet<string> = new Set([
+  'affine:surface',
+  'affine:note',
+  'affine:frame',
+  'affine:edgeless-text',
+  'affine:image',
+  'affine:attachment',
+  'affine:bookmark',
+]);
+
+export function isCanvasFlavour(flavour: string): boolean {
+  return CANVAS_FLAVOURS.has(flavour) || flavour.startsWith('affine:embed-');
+}
+
+/**
  * The subset of the store `blockUpdated` payload the tracker relies on —
  * structurally compatible with `Store['slots']['blockUpdated']` payloads.
  */
@@ -37,7 +63,8 @@ export type BlockLifecyclePayload = {
  * BlockCreated is intentionally NOT emitted here — it stays a UI-intent
  * event emitted at insertion sites (slash menu, toolbars), to avoid double
  * counting. Remote and initial-load mutations are ignored (`isLocal` only):
- * the taxonomy describes user intent, not store mechanics.
+ * the taxonomy describes user intent, not store mechanics. Non-canvas
+ * flavours are ignored too — see {@link CANVAS_FLAVOURS}.
  *
  * Pure logic, injectable clock — see the unit tests.
  */
@@ -57,7 +84,7 @@ export class BlockLifecycleTracker {
   ) {}
 
   handle(payload: BlockLifecyclePayload) {
-    if (!payload.isLocal) return;
+    if (!payload.isLocal || !isCanvasFlavour(payload.flavour)) return;
     const t = this._now();
     const { id, flavour } = payload;
 

@@ -56,6 +56,8 @@ interface Spec {
   kind?: 'artefact' | 'tool';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   run: (std: BlockStdScope) => void | Promise<void>;
 }
 
@@ -82,6 +84,7 @@ const SPECS: Spec[] = [
     iconKey: 'edgy.board',
     category: 'diagrams',
     element: 'board',
+    board: true,
     run: createEdgyBoard,
   },
   {
@@ -149,7 +152,7 @@ export const edgyCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   defaultKeys: { mac: [], other: [] },
   availability: 'always',
   run: spec.run,
-  telemetry: { framework: 'edgy', element: spec.element },
+  telemetry: { framework: 'edgy', element: spec.element, board: spec.board },
 }));
 
 export const edgyCommandIcons: Record<string, TemplateResult> = {

@@ -40,6 +40,8 @@ interface Spec {
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -52,6 +54,7 @@ const SPECS: Spec[] = [
     // A NEW telemetry value, and the only one in this file: every other entry
     // below keeps the `element` string it has emitted since ADR 0008.
     element: 'board',
+    board: true,
     icon: boardSwatch,
     run: std => createContextMapBoard(std.get(GfxControllerIdentifier)),
   },
@@ -116,7 +119,11 @@ export const contextMapCommands: CommandDescriptor[] = SPECS.map(
     defaultKeys: { mac: [], other: [] },
     availability: 'always',
     run: spec.run,
-    telemetry: { framework: 'ddd-context-map', element: spec.element },
+    telemetry: {
+      framework: 'ddd-context-map',
+      element: spec.element,
+      board: spec.board,
+    },
   })
 );
 
