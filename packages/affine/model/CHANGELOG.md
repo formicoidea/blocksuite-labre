@@ -1,5 +1,268 @@
 # @labre/affine-model
 
+## 0.36.0
+
+### Patch Changes
+
+- 3db21ea: feat(edgeless): the wardley menu draws accelerators and decelerators
+
+  The Wardley sub-menu gains two artefacts: an **accelerator** and a
+  **decelerator** — a fat arrow pointing right, towards commodity, and its mirror
+  pointing left, back towards genesis. They are the map's **climate** annotations:
+  they say nothing about what depends on what, they say how fast the thing beneath
+  them is moving, and until now an architect had to draw one out of a shape and
+  some patience.
+
+  Each is one native **polygon** (48 × 40) plus a name beside it, grouped. A flat
+  grey fill under a thick dark rim, which is as close as this canvas gets to the
+  reference's solid arrow — there is no gradient fill on the surface, and a 1px
+  border would read as an outline drawing rather than as a solid arrow.
+
+  **The direction is the notation**, and three decisions follow from it:
+
+  - **Two kinds, two vertex lists, no rotation.** The decelerator's outline is the
+    accelerator's mirrored `x → 1 − x`, written out rather than expressed as a
+    `rotate`: a rotated element is one the selection, the resize handles and every
+    bounding-box reader then have to de-rotate. The outlines are normalized to the
+    box, so the same seven points draw a legend row and a canvas arrow.
+  - **The name follows the shaft.** Every other single Wardley artefact wears its
+    name on the right, because a circle has no direction to disagree with. An
+    arrow does: the accelerator's name sits on its right, left-aligned, and the
+    decelerator's on its left, right-aligned, so the words end against the shaft
+    whatever their length and the reading runs into the arrow rather than across
+    its head. Both are SemiBold — the one Wardley label that is — because these
+    are remarks laid over a map already full of names.
+  - **`wardley:accelerator` and `wardley:decelerator` have no parent.** Neither is
+    a link in the value chain drawn at another grain, so no rule written on
+    `wardley:component` may reach them — W3's overlap pairs above all, since an
+    accelerator is drawn exactly where the components it accelerates are. Two
+    roles and not one with a direction: "this is going faster" and "this is being
+    held back" are opposite claims, and a rule about one must never fall on the
+    other.
+
+  They join **no morph family**, and that had a consequence worth naming: they are
+  this framework's first polygons, so they are the first kinds to write `vertices`
+  and `isClosed`. The morph's key union used to be computed over the WHOLE pack,
+  which would have put those two keys into every morphable kind's delete list —
+  keys of two shapes nothing may ever morph into. The union is now computed over
+  the four kinds that actually morph, restated in `presets.ts` (`morph.ts` reads
+  the presets, so it cannot be read back) with a test asserting the two lists are
+  the same set.
+
+  The **map legend** grows a row for each when one stands inside the map —
+  "Accelerator (speeds evolution up)" / "Decelerator (slows evolution down)" —
+  drawn with the map's own outline at the row's scale.
+
+  **OWM interchange, both ways.** The export writes them as component-shaped lines
+  (`accelerator Faster [0.70, 0.40]`), and the decelerator under OWM's own
+  spelling, `deaccelerator` — not a typo on our side but the keyword the reference
+  parser claims, so the line opens in any Wardley tool. The import now **draws**
+  both keywords at the canonical size with their names, where before it carried
+  them invisibly; the round trip is a fixed point. A document imported before this
+  change keeps whatever it carried — nothing is migrated, and its carried lines
+  are still written back verbatim.
+
+  An imported arrow is the same document as a drawn one down to the **weight of
+  its name**: the shared label helper takes a weight (Regular by default, because
+  that is what a value-chain name is) and the two climate arrows ask for SemiBold
+  on both paths. Where an artefact came from is not something the reader should be
+  able to see.
+
+  **The senior row: a curation decision, made.** Both nominate the sub-menu, which
+  takes Wardley to seventeen nominations — past ADR 0014 R4's `CAP + 1` budget,
+  which is exactly the question R4 says must be answered rather than merged. The
+  product owner answered it on 2026-09-03 (recorded as an amendment under R4):
+  **every Wardley artefact nominates the row**; the row keeps its cap of fourteen
+  (thirteen arbitrated seats plus "More artefacts…"), recency and frequency decide
+  who is shown, and the catalogue lists everything. No curation of the list, no
+  change to the cap.
+
+  **No document changes.** `WardleyNodeKind` gains `'accelerator'` and
+  `'decelerator'` by appending, which is how every value on it has ever arrived: a
+  map drawn before this release carries neither and opens byte-identical. No
+  schema bump, no migration.
+
+- 7381b0b: feat(edgeless): the wardley menu draws areas
+
+  The Wardley sub-menu gains a section of its own, **Areas**, and two entries in
+  it: **Area (rectangle)** and **Area (polygon)**. A zone you draw around the
+  components it groups — a business unit, a team's territory, a scope under
+  discussion — and until now an architect had to build one out of a shape, a fill
+  with the right alpha, and a trip to "Send to back".
+
+  Each is **one** element: a `wardleyNode` of kind `area`, translucent (Peace
+  light at ~25 % opacity, `#c6dbfc40`) under a thin Peace rim, 240 × 160 for the
+  rectangle and 200 × 200 for the polygon. **One kind, two shapes**: the
+  `shapeType` carries the whole of what differs between them, so there is one
+  role, one legend row and one silence in the export rather than two of each. The
+  polygon opens on the editor's own default outline — a regular pentagon, copied
+  fresh into the document — and its corners are then moved from the shape
+  toolbar's vertex editor, which is the point of choosing it over the rectangle.
+
+  **The name is the zone's own inner text.** Every other Wardley artefact wears
+  its name as a text element beside it; a label parked outside a boundary would
+  name whatever else happens to be there. So an area is created NAMELESS, a
+  double-click opens the native shape editor on an empty line
+  (`WardleyNodeView`'s handler, which until now served only the porter's letter),
+  and the words are written top-left in `TextFitMode.Overflow` — a zone is a
+  boundary drawn around real components, and a long name must never push it out
+  and swallow one the author did not mean to include. It is also why this is the
+  plainest creation site in the pack: one element and no group.
+
+  **It is lowered as it is drawn — to just above the map.** The surface paints in
+  index order, so a zone added after the components it covers would sit on top of
+  them: a wash over the drawing, and every click meant for a component inside it
+  eaten by the zone. But "the back of the surface" is one step too far, because a
+  Wardley map is itself an opaque framework BACKGROUND — a zone sent all the way
+  back went behind the map and was invisible. So the creation site mints an index
+  just above the topmost framework background the zone actually OVERLAPS, and
+  below everything else; with no background under it, the back of the surface is
+  right again. The author can raise it by hand; what this buys is that the first
+  thing they do after drawing a zone is not un-doing it.
+
+  **`wardley:area` has no parent**, and that is the whole declaration rather than
+  an omission. A zone is not a link in the value chain at any grain, and it is
+  drawn precisely ON TOP of the components it names — so a parent of
+  `wardley:component` would make W3 report an overlap on every area that does its
+  job. Covering the chain is what a zone IS.
+
+  The **map legend** grows a row when one stands inside the map — "Area (zone of
+  the map)" — drawn as a small translucent rect whatever the map's own zones are:
+  the row says what a zone is, and the number of corners is the author's choice
+  rather than notation.
+
+  **The OWM export says what it could not write.** OWM has no word for a zone of
+  the map, so an area is skipped — before `nameOf` is asked, so a nameless zone is
+  never christened "Component 3" and never counted among the artefacts that lost a
+  name — and the export warns: "N area(s) could not be written: OWM has no word
+  for a zone of the map". It is also excluded from label matching, which is the
+  failure a zone could cause and a force could not: an area's box sits next to
+  every label on the map, and one it claimed would be a name taken out of another
+  artefact's mouth and then thrown away.
+
+  **The toolbar** keeps what a Wardley node has always kept — the line-style
+  action and the colour picker seeded with the evolution-cycle swatches — plus the
+  shape toolbar's vertex editor, narrowed to `kind === 'area'`. Every other
+  polygon this framework draws has an outline that IS the notation (an accelerator
+  points right, a decelerator left), and dragging a barb would turn a statement
+  about the climate into a grey blob.
+
+  Making that button actually work took two small openings in
+  `@labre/affine-gfx-shape`, both additive and both defaulting to today's
+  behaviour:
+
+  - **`WardleyNodeView` now extends `ShapeElementView`.** The vertex action ends
+    in `if (view instanceof ShapeElementView) view.enterVertexEditingMode()`, so
+    while the Wardley view extended `GfxElementModelView` directly the entry was
+    on the row, enabled, and did nothing at all when clicked. `ShapeElementView`
+    is now generic over its model, defaulting to `ShapeElementModel` so every
+    existing call site is unchanged, and it exposes two
+    protected hooks — `editsTextOnDblClick()` and `editsVerticesOnSelection()`,
+    both `true` by default — for a framework node that inherits the vertex editor
+    but not the "every shape is a box you write in" wiring beside it. Wardley
+    answers the first with its porter/area gate and the second with
+    `kind === 'area'`.
+  - **`paletteColorAction` takes an optional `fillColorFor` hook.** A picked
+    swatch is a hue, and a zone's fill is a WASH: writing `#5b9cf6` straight in
+    replaced `#c6dbfc40` with an opaque colour and hid the map underneath. The
+    Wardley toolbar passes a hook that re-appends the zone's alpha for an area and
+    is the identity everywhere else — including on an 8-digit value the author
+    chose from the custom picker, and on a theme token, neither of which it
+    touches. EDGY and every other caller pass two arguments and are unaffected.
+
+  Both entries nominate the sub-menu, like every Wardley artefact since the
+  product owner's amendment of 2026-09-03 to ADR 0014 R4. The row is unchanged —
+  thirteen arbitrated seats plus "More artefacts…" — and the catalogue lists
+  everything, now under one more heading.
+
+  **No document changes.** `WardleyNodeKind` gains `'area'` by appending, which is
+  how every value on it has ever arrived: a map drawn before this release carries
+  none and opens byte-identical. No schema bump, no migration.
+
+- f7c5b9b: feat(edgeless): the wardley menu draws Porter's forces
+
+  The Wardley sub-menu gains a fourteenth artefact: **Porter's forces**, a large
+  white circle carrying one letter, pushed on from north, east, south and west by
+  four solid red arrows. It marks a force of EXTERNAL competition bearing on the
+  map — the thing a value chain is drawn under pressure from, and until now the
+  one thing an architect had to draw by hand out of a shape and four connectors.
+
+  It is drawn at **twice the market's diameter** (60 units), and deliberately: a
+  force is not a link in the value chain drawn a little differently, it is a
+  pressure on the whole map, and it has to read as one at the zoom an architect
+  works at. Every other number in the glyph — the gap, the shaft, the head, the
+  letter — is proportional to that diameter, so the map glyph and the legend row
+  are one drawing at two sizes.
+
+  **The letter is the notation**, not a name: **R** relative competition, **L**
+  struggle for survival, **E** struggle to establish. It is written as the
+  circle's OWN inner text rather than as a label beside it, so a double-click
+  opens the native shape editor on it and typing another letter is the whole of
+  the edit — `WardleyNodeView` mounts that editor, and only on this kind, because
+  every other Wardley artefact wears its name as a separate text element beside
+  it. The circle never grows to fit what is typed: the glyph has a canonical size
+  that says "external force" at a glance, so it keeps it the way the inertia bar
+  keeps its own.
+
+  Three deliberate calls, all of them about the same fact — a force is not part of
+  the map it presses on:
+
+  - **`wardley:porter` has no parent.** A market and an ecosystem specialise
+    `wardley:component` because they ARE links in the value chain drawn at another
+    grain. This one is not a link in it at all, so no rule written on
+    `wardley:component` may ever reach it — W3's overlap pairs above all. A force
+    sitting on top of the components it presses against is what pressing against
+    them looks like.
+  - **No label, and no empty string standing in for one.** The label table's key
+    type is narrowed to the kinds that HAVE one, because an empty placeholder is a
+    name nobody has typed yet, which is precisely what the morph is allowed to
+    rewrite.
+  - **The four arrows are the glyph's own wiring**, exactly as the market's
+    triangle is: role-less, so no composite reports an overlap with itself. They
+    are filled **polygons** and not connectors with a triangle endpoint, because a
+    connector sizes its head off its stroke width — a number about a line rather
+    than about this notation, which gave heads longer than the arrows carrying
+    them, covered the circle, hid the letter and stole the double-click. A
+    polygon's head is the number `consts.ts` writes down and nothing else, so the
+    arrows stand clear of the rim where the notation puts them. Each direction
+    carries its own axis-aligned box and its own vertex list, so nothing
+    downstream has to de-rotate anything. The geometry is one exported helper, so
+    the palette, the map legend and the tests read the same numbers.
+
+    They are polygons on a **`wardleyNode`**, not on a plain `shape`, and that is
+    the same call again one layer down: every plain shape gets a double-click that
+    mounts the inner-text editor, and mounting it _deformed_ an arrow. An arrow is
+    not a thing you write in. As `wardleyNode`s they answer to `WardleyNodeView`,
+    which opens the letter editor only on the piece carrying the role — the
+    market's three role-less inner dots, exactly.
+
+  It joins **no morph family**: "Change type" is the four ways of saying the value
+  chain depends on something, and a force is not one of them.
+
+  The **map legend** grows a row for it when a force stands inside the map, glyph
+  and letter included, spelling out what the three letters mean. In that row the
+  letter is a free text element rather than the circle's inner text: a shape lays
+  its text out inside a padding larger than a 12-unit box, so at that size the
+  character rendered under the circle instead of in it. The **OWM export**
+  cannot write it: the format has no word for an external competition force, so
+  the node is left out and the export says so in its warnings, beside the losses
+  it already reports. It is skipped before names are resolved, so a force is never
+  christened "Component 3" and never takes a label out of a neighbour's mouth.
+
+  `addPorter` ships **keyless** and nominates the senior row, which takes Wardley
+  to fifteen nominations — `SENIOR_MENU_CAP + 1`, exactly the budget ADR 0014 R4
+  allows and the last seat available. A sixteenth is a curation decision for the
+  product owner, and `registry.unit.spec.ts` fails until it is made.
+
+  **No document changes.** `WardleyNodeKind` gains `'porter'` by appending, which
+  is how every value on it has ever arrived: a map drawn before this release
+  carries none of them and opens byte-identical. No schema bump, no migration.
+
+- Updated dependencies [60fb357]
+  - @labre/std@0.36.0
+  - @labre/global@0.36.0
+  - @labre/store@0.36.0
+
 ## 0.35.0
 
 ### Minor Changes

@@ -1,5 +1,19 @@
 # @labre/affine-widget-scroll-anchoring
 
+## 0.36.0
+
+### Patch Changes
+
+- Updated dependencies [60fb357]
+- Updated dependencies [3db21ea]
+- Updated dependencies [7381b0b]
+- Updated dependencies [f7c5b9b]
+  - @labre/affine-shared@0.36.0
+  - @labre/std@0.36.0
+  - @labre/affine-model@0.36.0
+  - @labre/affine-ext-loader@0.36.0
+  - @labre/global@0.36.0
+
 ## 0.35.0
 
 ### Patch Changes

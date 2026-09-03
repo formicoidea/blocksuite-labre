@@ -1,5 +1,124 @@
 # @labre/affine
 
+## 0.36.0
+
+### Patch Changes
+
+- 60fb357: feat(telemetry): the block lifecycle reports canvas flavours only, and a framework's board command says so
+
+  Two decisions the product owner took on 2026-09-03, ahead of launch, on what
+  the telemetry bus should carry.
+
+  **Canvas only.** `BlockEdited` / `BlockDeleted` / `BlockAbandoned` /
+  `BlockUsageDuration` used to fire for every flavour. Per-paragraph editing
+  sessions were the volume driver of the whole bus — at near-zero usage they
+  already outnumbered every framework event combined — and they answer no
+  question the document cannot answer later: which documents carry prose next to
+  a map is a corpus query. What evaporates if not captured is behaviour on the
+  canvas — hesitation, abandonment, time spent on a map — so the watcher now
+  reports the surface, the cards placed on it and the media dropped there
+  (`CANVAS_FLAVOURS`), and nothing else. The trade-off is explicit: the "compare
+  every block with one query" promise of the lifecycle contract is given up for
+  prose. Reversible in one line.
+
+  **`role: 'board'`.** "How many boards are created per framework used" is the
+  ratio that says whether the board gesture is understood at all — and it could
+  not be read: Wardley names its board `background:classic`, BPMN `pool`, C4 and
+  EDGY `board`, Cynefin `cynefin` / `estuarine`, core-domain `background`. A
+  prefix convention would drift silently with the next framework. The board
+  command now declares `telemetry.board: true`, the central reporter forwards
+  it as a new `role` dimension on `FrameworkElementAdded` (absent on every other
+  event — no existing value changes), and a unit test pins the board elements of
+  all eight frameworks: a framework shipped without a board command fails the
+  build.
+
+- Updated dependencies [eab1785]
+- Updated dependencies [9fa662a]
+- Updated dependencies [60fb357]
+- Updated dependencies [3db21ea]
+- Updated dependencies [7381b0b]
+- Updated dependencies [f7c5b9b]
+- Updated dependencies [1149791]
+  - @labre/affine-gfx-wardley@0.36.0
+  - @labre/affine-components@0.36.0
+  - @labre/affine-block-surface@0.36.0
+  - @labre/affine-shared@0.36.0
+  - @labre/std@0.36.0
+  - @labre/affine-gfx-bpmn@0.36.0
+  - @labre/affine-gfx-c4@0.36.0
+  - @labre/affine-gfx-edgy@0.36.0
+  - @labre/affine-gfx-cynefin-estuarine@0.36.0
+  - @labre/affine-gfx-ddd-event-storming@0.36.0
+  - @labre/affine-gfx-ddd-core-domain@0.36.0
+  - @labre/affine-gfx-ddd-context-map@0.36.0
+  - @labre/affine-model@0.36.0
+  - @labre/affine-gfx-shape@0.36.0
+  - @labre/affine-block-attachment@0.36.0
+  - @labre/affine-block-bookmark@0.36.0
+  - @labre/affine-block-callout@0.36.0
+  - @labre/affine-block-code@0.36.0
+  - @labre/affine-block-data-view@0.36.0
+  - @labre/affine-block-database@0.36.0
+  - @labre/affine-block-divider@0.36.0
+  - @labre/affine-block-edgeless-text@0.36.0
+  - @labre/affine-block-embed@0.36.0
+  - @labre/affine-block-embed-doc@0.36.0
+  - @labre/affine-block-frame@0.36.0
+  - @labre/affine-block-image@0.36.0
+  - @labre/affine-block-latex@0.36.0
+  - @labre/affine-block-list@0.36.0
+  - @labre/affine-block-note@0.36.0
+  - @labre/affine-block-paragraph@0.36.0
+  - @labre/affine-block-root@0.36.0
+  - @labre/affine-block-surface-ref@0.36.0
+  - @labre/affine-block-table@0.36.0
+  - @labre/data-view@0.36.0
+  - @labre/affine-foundation@0.36.0
+  - @labre/affine-fragment-adapter-panel@0.36.0
+  - @labre/affine-fragment-doc-title@0.36.0
+  - @labre/affine-fragment-frame-panel@0.36.0
+  - @labre/affine-fragment-outline@0.36.0
+  - @labre/affine-gfx-brush@0.36.0
+  - @labre/affine-gfx-connector@0.36.0
+  - @labre/affine-gfx-group@0.36.0
+  - @labre/affine-gfx-link@0.36.0
+  - @labre/affine-gfx-mindmap@0.36.0
+  - @labre/affine-gfx-note@0.36.0
+  - @labre/affine-gfx-pointer@0.36.0
+  - @labre/affine-gfx-template@0.36.0
+  - @labre/affine-gfx-text@0.36.0
+  - @labre/affine-inline-footnote@0.36.0
+  - @labre/affine-inline-latex@0.36.0
+  - @labre/affine-inline-link@0.36.0
+  - @labre/affine-inline-mention@0.36.0
+  - @labre/affine-inline-preset@0.36.0
+  - @labre/affine-inline-reference@0.36.0
+  - @labre/affine-rich-text@0.36.0
+  - @labre/affine-widget-drag-handle@0.36.0
+  - @labre/affine-widget-edgeless-auto-connect@0.36.0
+  - @labre/affine-widget-edgeless-dragging-area@0.36.0
+  - @labre/affine-widget-edgeless-selected-rect@0.36.0
+  - @labre/affine-widget-edgeless-toolbar@0.36.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.36.0
+  - @labre/affine-widget-frame-title@0.36.0
+  - @labre/affine-widget-keyboard-toolbar@0.36.0
+  - @labre/affine-widget-linked-doc@0.36.0
+  - @labre/affine-widget-note-slicer@0.36.0
+  - @labre/affine-widget-page-dragging-area@0.36.0
+  - @labre/affine-widget-remote-selection@0.36.0
+  - @labre/affine-widget-slash-menu@0.36.0
+  - @labre/affine-widget-toolbar@0.36.0
+  - @labre/affine-widget-viewport-overlay@0.36.0
+  - @labre/affine-gfx-ddd-aggregate@0.36.0
+  - @labre/affine-gfx-ddd-shared@0.36.0
+  - @labre/affine-inline-comment@0.36.0
+  - @labre/affine-widget-scroll-anchoring@0.36.0
+  - @labre/affine-gfx-turbo-renderer@0.36.0
+  - @labre/affine-ext-loader@0.36.0
+  - @labre/global@0.36.0
+  - @labre/store@0.36.0
+  - @labre/sync@0.36.0
+
 ## 0.35.0
 
 ### Patch Changes
