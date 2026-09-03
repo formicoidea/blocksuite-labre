@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createWardleyPorter } from '../actions';
 import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
-import { createWardleyLegend } from '../legend';
+import { createWardleyLegend, porterPanelLayout } from '../legend';
 import { WARDLEY_MORPH_FAMILIES } from '../morph';
 import {
   NODE_FILL,
@@ -418,7 +418,153 @@ describe('the legend', () => {
     // the same document and the value is the invariant worth pinning.
     for (const el of legendOf(porterOnBoard())) {
       expect(el.role, String(el.type)).toBeUndefined();
+      // Tag-less for the same reason, and it is not free chrome: a legend
+      // glyph carrying `wardley:competition` would report a force nobody drew.
+      expect(el).not.toHaveProperty('tags');
     }
+  });
+
+  /* ── The five-forces panel ──────────────────────────────────────────── */
+
+  /** A plain Wardley component, as `instanceof` sees it. */
+  const componentOnBoard = () => [
+    Object.create(WardleyNodeElementModel.prototype, {
+      kind: { value: 'component' },
+    }),
+  ];
+
+  const textsOf = (added: Added[]) =>
+    added.filter(el => el.type === 'text').map(el => String(el.text));
+
+  /** The legend's own white frame — the first element it creates. */
+  const frameOf = (added: Added[]) => Bound.deserialize(String(added[0].xywh));
+
+  /**
+   * The panel's own porter circle — the LAST one created, since the row above
+   * draws one too and both are role-less, text-less `kind: 'porter'` ellipses.
+   */
+  const panelGlyph = (added: Added[]) =>
+    added.filter(el => el.kind === 'porter').at(-1)!;
+
+  describe("Porter's five forces", () => {
+    const PANEL = porterPanelLayout(450 - 16 * 2);
+
+    it('is absent from a map with no force on it, to the pixel', () => {
+      // The promise this panel owes every legend that came before it: a map
+      // without a porter produces exactly the elements, and exactly the frame,
+      // it produced yesterday. Literal numbers on purpose — a derived
+      // expectation would move with the code it is meant to hold still.
+      const added = legendOf(componentOnBoard());
+
+      // Frame, title, one glyph, one description, and nothing else.
+      expect(added).toHaveLength(4);
+      expect(added[0].xywh).toBe('[50,754,450,90]');
+      expect(added.some(el => el.fillColor === '#e5e7eb')).toBe(false);
+      expect(textsOf(added)).toEqual([
+        'Legend',
+        'Need / capability (activity, practice, data…)',
+      ]);
+    });
+
+    it('grows the frame by the panel, and by nothing else', () => {
+      const added = legendOf(porterOnBoard());
+      const [, , w, h] = frameOf(added).toXYWH();
+
+      // The porter ROW is the same 30 units every row is; the panel is 12 of
+      // separation plus its own height, under everything else.
+      expect(w).toBe(450);
+      expect(h).toBe(16 * 2 + 28 + 30 + 12 + PANEL.h);
+      // …and it still hangs 56 above the background's bottom edge.
+      expect(frameOf(added).toXYWH()[1]).toBe(900 - 56 - h);
+    });
+
+    it('draws the reference: a title, four forces and the letters', () => {
+      const texts = textsOf(legendOf(porterOnBoard()));
+
+      expect(texts).toContain("Porter's five forces");
+      expect(texts).toContain('Threat of new entrants');
+      expect(texts).toContain('Bargaining power of suppliers');
+      expect(texts).toContain('Bargaining power of customers');
+      expect(texts).toContain('Threat of substitutes');
+      // The three letters spelled out, each hiding in the word it stands for.
+      expect(texts).toContain(
+        'R/L/E = Relative competition, or struggLe for survival, or struggle to Establish'
+      );
+    });
+
+    it('sets the panel into a grey backing, square-cornered', () => {
+      const added = legendOf(porterOnBoard());
+      const backing = added.find(el => el.fillColor === '#e5e7eb')!;
+
+      expect(backing).toBeTruthy();
+      expect(backing.strokeColor).toBe('#9aa0a6');
+      expect(backing.strokeWidth).toBe(1);
+      // No radius: a figure set into the legend, not one more rounded card.
+      expect(backing.radius).toBe(0);
+      // Spanning the frame's inner width, inside the same white frame.
+      const box = Bound.deserialize(String(backing.xywh));
+      expect(box.w).toBe(PANEL.w);
+      expect(box.x).toBe(frameOf(added).x + 16);
+      expect(box.y + box.h).toBe(frameOf(added).y + frameOf(added).h - 16);
+    });
+
+    it('names the forces in four white boxes, none of them on the glyph', () => {
+      const added = legendOf(porterOnBoard());
+      // `type`, not just the colours: `NODE_FILL` is the same white, so the
+      // two porter circles would otherwise answer this description too.
+      const boxes = added.filter(
+        el =>
+          el.type === 'shape' &&
+          el.shapeType === 'rect' &&
+          el.fillColor === '#ffffff' &&
+          el.strokeColor === NODE_STROKE
+      );
+      expect(boxes).toHaveLength(4);
+      for (const box of boxes) {
+        expect(box.strokeWidth).toBe(1);
+        expect(box.radius).toBe(0);
+      }
+
+      // The whole point of deriving the clearance from `wardleyPorterArrows`:
+      // not one box touches the glyph or the four arrows pushing on it.
+      const glyph = panelGlyph(added);
+      const circle = Bound.deserialize(String(glyph.xywh));
+      const [cx, cy] = [circle.x + circle.w / 2, circle.y + circle.h / 2];
+      const parts = [
+        circle,
+        ...wardleyPorterArrows(cx, cy, circle.w / 2).map(a =>
+          Bound.deserialize(a.xywh)
+        ),
+      ];
+      for (const box of boxes) {
+        const b = Bound.deserialize(String(box.xywh));
+        for (const part of parts) {
+          expect(b.isOverlapWithBound(part), String(box.xywh)).toBe(false);
+        }
+      }
+    });
+
+    it('draws the notation itself, all three letters at once', () => {
+      const added = legendOf(porterOnBoard());
+      const glyph = panelGlyph(added);
+      const letters = added.find(el => el.text === 'R/L/E')!;
+
+      expect(glyph.kind).toBe('porter');
+      // Not one of the three: this circle stands for the NOTATION, so picking a
+      // letter would make the panel say that a Porter is an R. A SEPARATE text
+      // element, like the row's own letter and for the same reason — a shape's
+      // text padding is wider than a 30-unit circle.
+      expect(glyph).not.toHaveProperty('text');
+      expect(letters.type).toBe('text');
+      expect(letters.fontSize).toBe(9);
+      const box = Bound.deserialize(String(letters.xywh));
+      const circle = Bound.deserialize(String(glyph.xywh));
+      expect(box.x + box.w / 2).toBe(circle.x + circle.w / 2);
+      // The row's own glyph is untouched, and still says one letter.
+      expect(
+        added.filter(el => el.text === PORTER_DEFAULT_LETTER)
+      ).toHaveLength(1);
+    });
   });
 });
 

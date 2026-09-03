@@ -8,10 +8,21 @@ export { WARDLEY_AUDIT_CRITERIA } from './audit-criteria';
 export { wardleyCommandIcons, wardleyCommands } from './commands';
 export { wardleyTranslationEntries } from './translations.js';
 export {
+  WARDLEY_COMPETITION,
+  WARDLEY_COMPETITION_TAG_ID,
   WARDLEY_NATURE,
   WARDLEY_NATURE_TAG_ID,
   WARDLEY_TAG_DEFS,
 } from './natures';
+// The letter and the tag, related in both directions. Exported for the reason
+// the presets are: a host laying out or reading a map without an editor —
+// labre-mcp does — must be able to say which force a glyph marks without
+// re-deriving the mapping from the three labels.
+export {
+  competitionOfPorterLetter,
+  porterLetterOfCompetition,
+  type WardleyPorterLetter,
+} from './porter-competition';
 export { WARDLEY_PROFILES } from './profiles';
 export { WARDLEY_NUDGES } from './nudges';
 export { WARDLEY_NAMING_CONVENTIONS, WARDLEY_READING } from './reading';

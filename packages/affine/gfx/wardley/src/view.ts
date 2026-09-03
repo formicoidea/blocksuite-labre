@@ -38,6 +38,7 @@ import { WardleyElementRendererExtension } from './element-renderer';
 import { WardleyInteraction, WardleyView } from './element-view';
 import { WardleyNodeRendererExtension } from './node/node-renderer';
 import { WardleyNodeView } from './node/node-view';
+import { WardleyPorterWatcher } from './node/porter-watcher';
 import { wardleyNodeToolbarExtension } from './toolbar/node-config';
 import { wardleyToolbarExtension } from './toolbar/config';
 import { wardleySeniorTool } from './toolbar/senior-tool';
@@ -68,6 +69,15 @@ export class WardleyRenderViewExtension extends ViewExtensionProvider {
       context.register(WardleyInteraction);
       context.register(wardleyToolbarExtension);
       context.register(wardleyNodeToolbarExtension);
+      // A Porter's-forces glyph says the same thing twice — the letter in the
+      // circle and the `wardley:competition` tag on it — and this keeps the two
+      // spellings equal in both directions. HERE, in the always-on half, for
+      // `docs/adr/0009`'s reason: it authors nothing. It creates no element,
+      // offers no button, adds no artefact; it keeps an element ALREADY in the
+      // document coherent with itself, which a force drawn while the Wardley
+      // button was on must stay when the button goes off. Edgeless-only because
+      // a selection, a canvas text editor and a surface are all edgeless.
+      context.register(WardleyPorterWatcher);
     }
   }
 }
