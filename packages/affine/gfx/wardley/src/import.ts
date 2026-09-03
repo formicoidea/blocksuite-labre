@@ -7,6 +7,7 @@ import type {
 import {
   ConnectorMode,
   FontFamily,
+  FontWeight,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
@@ -964,7 +965,12 @@ function label(
   x: number,
   y: number,
   textAlign: TextAlign,
-  color = NODE_STROKE
+  color = NODE_STROKE,
+  // Regular by default, because that is what a value-chain name is. The one
+  // caller that passes anything else is the climate arrow below, and it does so
+  // for the reason `createWardleyAccelerator` does: an imported map and a drawn
+  // one must be the same document, down to the weight of the words.
+  fontWeight: FontWeight = FontWeight.Regular
 ): SerializedElementProps {
   return {
     type: 'text',
@@ -975,6 +981,7 @@ function label(
     color,
     fontFamily: FontFamily.Inter,
     fontSize: LABEL_FONT_SIZE,
+    fontWeight,
     textAlign,
     xywh: `[${x},${y},${OWM_LABEL_WIDTH},${OWM_LABEL_HEIGHT}]`,
   };
@@ -1012,7 +1019,13 @@ function artefact(
           ? cx + w / 2 + LABEL_GAP
           : cx - w / 2 - LABEL_GAP - OWM_LABEL_WIDTH,
         cy - OWM_LABEL_HEIGHT / 2,
-        rightwards ? TextAlign.Left : TextAlign.Right
+        rightwards ? TextAlign.Left : TextAlign.Right,
+        NODE_STROKE,
+        // SemiBold, exactly as the sub-menu draws one. The recette of #212
+        // caught the two paths disagreeing: a climate arrow is an annotation
+        // laid over a map already full of names, and where it came from is not
+        // something the reader should be able to see.
+        FontWeight.SemiBold
       ),
     ];
   }

@@ -418,6 +418,31 @@ describe('the OWM interchange', () => {
     expect(labels[1].textAlign).toBe(TextAlign.Right);
   });
 
+  it('writes those names SemiBold, exactly as the sub-menu draws them', () => {
+    // The defect the recette of #212 found: the import went through the shared
+    // `label()` helper, which is Regular because a value-chain name is. An
+    // imported map and a drawn one have to be the same document — where an
+    // artefact came from is not something the reader should be able to see.
+    const { elements } = importWardleyOwm(BOTH_OWM);
+    const labels = elements.filter(props => props.type === 'text');
+
+    expect(labels.map(props => props.fontWeight)).toEqual([
+      FontWeight.SemiBold,
+      FontWeight.SemiBold,
+    ]);
+  });
+
+  it('leaves every other imported name Regular', () => {
+    // The other half of the same claim: the weight is a statement about the
+    // climate arrows, not a new default the helper now applies to everything.
+    const { elements } = importWardleyOwm(
+      `component Kettle [0.60, 0.40]\nanchor User [0.95, 0.20]\n`
+    );
+    for (const props of elements.filter(el => el.type === 'text')) {
+      expect(props.fontWeight).toBe(FontWeight.Regular);
+    }
+  });
+
   it('round-trips: two arrows out, two arrows back, in place', () => {
     const once = importWardleyOwm(BOTH_OWM);
     const written = exportWardleyOwm(boardFromProps(once.elements), {});

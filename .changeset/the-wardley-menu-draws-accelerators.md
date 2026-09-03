@@ -61,6 +61,12 @@ them invisibly; the round trip is a fixed point. A document imported before this
 change keeps whatever it carried — nothing is migrated, and its carried lines
 are still written back verbatim.
 
+An imported arrow is the same document as a drawn one down to the **weight of
+its name**: the shared label helper takes a weight (Regular by default, because
+that is what a value-chain name is) and the two climate arrows ask for SemiBold
+on both paths. Where an artefact came from is not something the reader should be
+able to see.
+
 **The senior row: a curation decision, made.** Both nominate the sub-menu, which
 takes Wardley to seventeen nominations — past ADR 0014 R4's `CAP + 1` budget,
 which is exactly the question R4 says must be answered rather than merged. The
