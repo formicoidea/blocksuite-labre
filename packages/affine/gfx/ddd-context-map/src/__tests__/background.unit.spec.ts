@@ -56,6 +56,7 @@ describe('the palette entry that creates it', () => {
     expect(contextMapCommands[0].telemetry).toEqual({
       framework: 'ddd-context-map',
       element: 'board',
+      board: true,
     });
   });
 
