@@ -197,6 +197,19 @@ export class EditorMenuAction extends LitElement {
     }
 
     /*
+     * ...unless the row is a TOGGLE rather than one of N. The rule above reads
+     * a selected row as inert, which is right for a single choice — re-picking
+     * the option already in force is a no-op, so swallowing the click costs
+     * nothing. A toggle is the opposite: re-clicking the value in force is the
+     * ONLY way to un-pick it (the qualification dropdown's tag values), and an
+     * inert row leaves the user with a tag that cannot be removed. Such a row
+     * opts the pointer back in through data-toggle.
+     */
+    :host([data-selected][data-toggle]) {
+      pointer-events: auto;
+    }
+
+    /*
      * An OPTION row: one of N choices, the one in force carrying
      * data-selected. Opt-in through data-option, because a plain command row is
      * not a choice and keeps its left-packed icon and its grey highlight.

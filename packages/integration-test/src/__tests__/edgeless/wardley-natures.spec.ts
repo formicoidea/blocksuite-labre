@@ -30,21 +30,67 @@ const NATURE = 'wardley:nature';
 const DATA = 'wardley:nature/data';
 const PRACTICE = 'wardley:nature/practice';
 
-/** Native-shaped click: composed, so it crosses the widget's shadow boundary. */
+/**
+ * The node a real mouse would hand the event to at these coordinates: the
+ * browser's own hit test, walked down through open shadow roots the way the
+ * compositor does.
+ */
+function hitTarget(x: number, y: number, stopAt?: Element): Element | null {
+  let hit = document.elementFromPoint(x, y);
+  while (hit?.shadowRoot && hit !== stopAt) {
+    const deeper = hit.shadowRoot.elementFromPoint(x, y);
+    if (!deeper || deeper === hit) break;
+    hit = deeper;
+  }
+  return hit;
+}
+
+/** Containment across shadow boundaries — `Node.contains` stops at them. */
+function isWithin(ancestor: Element, node: Node | null): boolean {
+  let current: Node | null = node;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parentNode ?? (current as ShadowRoot).host ?? null;
+  }
+  return false;
+}
+
+/**
+ * A REAL pointer click, not a dispatch onto a node chosen by the test.
+ *
+ * `element.dispatchEvent(...)` reaches a handler even when CSS has made the
+ * element inert, which is exactly the class of defect this spec must catch: a
+ * selected option row carrying `pointer-events: none` swallows nothing — the
+ * pointer falls THROUGH it to the section behind, and the handler never runs,
+ * while a dispatching test stays green. So the target is looked up from the
+ * coordinates first, and the events go where the browser says they go.
+ */
 function clickElement(element: Element) {
   const rect = element.getBoundingClientRect();
+  const clientX = rect.x + rect.width / 2;
+  const clientY = rect.y + rect.height / 2;
+
+  const target = hitTarget(clientX, clientY, element);
+  if (!target || !isWithin(element, target)) {
+    throw new Error(
+      `nothing clickable at the centre of <${element.tagName.toLowerCase()}> ` +
+        `(${JSON.stringify(rect)}): the pointer lands on ` +
+        `<${target?.tagName.toLowerCase() ?? 'nothing'}> instead`
+    );
+  }
+
   const init = {
     bubbles: true,
     composed: true,
     cancelable: true,
-    clientX: rect.x + rect.width / 2,
-    clientY: rect.y + rect.height / 2,
+    clientX,
+    clientY,
     pointerId: 1,
     isPrimary: true,
   };
-  element.dispatchEvent(new PointerEvent('pointerdown', init));
-  element.dispatchEvent(new PointerEvent('pointerup', init));
-  element.dispatchEvent(new MouseEvent('click', init));
+  target.dispatchEvent(new PointerEvent('pointerdown', init));
+  target.dispatchEvent(new PointerEvent('pointerup', init));
+  target.dispatchEvent(new MouseEvent('click', init));
 }
 
 /** See the note in `wardley-validation-bubble.spec.ts`: the viewport persists. */
@@ -134,10 +180,26 @@ describe('the nature of a Wardley component', () => {
       children: Object.fromEntries(ids.map(id => [id, true])),
     });
 
+  /**
+   * Open the dropdown, as a user does. Not decoration: `editor-menu-content`
+   * is `display: none` until the popper shows it, so a row that is never
+   * popped open has no box and takes no pointer — a click on it is only ever
+   * a dispatch, never a click.
+   */
+  const openTags = async () => {
+    const entry = tagsEntry() as HTMLElement | null;
+    expect(entry).not.toBeNull();
+    if (entry!.dataset.open === 'true') return;
+    expect(tagsButton()).not.toBeNull();
+    clickElement(tagsButton()!);
+    await settle();
+    expect(entry!.dataset.open).toBe('true');
+  };
+
   /** Select something and pick a nature from its toolbar, as a user would. */
   const pick = async (selectionId: string, valueId: string) => {
     await select(selectionId);
-    expect(tagsButton()).not.toBeNull();
+    await openTags();
     expect(option(valueId)).not.toBeNull();
     clickElement(option(valueId)!);
     await settle();
@@ -325,11 +387,41 @@ describe('the nature of a Wardley component', () => {
       expect(model(component).yMap.has('tags')).toBe(false);
     });
 
+    test('the SELECTED row still takes the pointer, so it can be un-picked', async () => {
+      // The recette of 03/09/2026: `editor-menu-action` draws a selected row
+      // inert (`pointer-events: none`), which is right for a one-of-N menu and
+      // wrong here — the row in force is the only one that can clear the tag.
+      // Stated at the level the defect lives at, the hit test: the pointer used
+      // to fall THROUGH the tick onto the section, so nothing happened at all,
+      // while every dispatching test stayed green.
+      const component = addComponent();
+      await pick(component, DATA);
+      await openTags();
+
+      const row = option(DATA)! as HTMLElement;
+      expect(row.dataset.selected).toBe('true');
+      const rect = row.getBoundingClientRect();
+      const landed = hitTarget(
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2,
+        row
+      );
+      expect(isWithin(row, landed)).toBe(true);
+
+      clickElement(row);
+      await settle();
+
+      expect(readElementTags(model(component))).toEqual({});
+    });
+
     test('one pick is one undo, and it moves no geometry', async () => {
       const component = addComponent();
-      await select(component);
       window.doc.captureSync();
-      service.surface.updateElement(component, { xywh: '[500,500,60,60]' });
+      // A real move, but one the toolbar survives: the pick below is a REAL
+      // click, so the row has to be somewhere a pointer can reach. Hence
+      // sideways rather than down (a lower element pushes its toolbar past the
+      // 768 px fold), and before the selection rather than after.
+      service.surface.updateElement(component, { xywh: '[300,100,60,60]' });
       await settle();
 
       await pick(component, DATA);
@@ -339,7 +431,7 @@ describe('the nature of a Wardley component', () => {
       expect(readElementTags(model(component))).toEqual({});
       // `captureSync()` runs BEFORE the write, so the qualification is its own
       // undo step and the drag that preceded it is untouched.
-      expect(model(component).xywh).toBe('[500,500,60,60]');
+      expect(model(component).xywh).toBe('[300,100,60,60]');
     });
   });
 

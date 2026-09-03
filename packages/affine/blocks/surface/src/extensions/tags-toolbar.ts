@@ -250,8 +250,15 @@ function renderSection(
   const options = offeredValues(def, selected).map(value => {
     const on = selected.includes(value.id);
     const valueLabel = value.label || value.id;
+    // `data-toggle` beside `data-option`: the row draws like a native option,
+    // but clicking the value in FORCE is how it is un-picked (`toggleValue`),
+    // whatever the tag's cardinality. Without it the selected row inherits
+    // `editor-menu-action`'s inert `pointer-events: none` — the tick lands
+    // under the pointer, the click reaches the section instead, and a
+    // qualification can be set but never cleared with a real mouse.
     return html`<editor-menu-action
       data-option
+      data-toggle
       data-testid="element-tag-option"
       data-tag-id=${def.id}
       data-value-id=${value.id}
