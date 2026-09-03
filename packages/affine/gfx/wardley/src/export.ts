@@ -421,6 +421,10 @@ function labelAnchors(node: Box, label: Box): [number, number][] {
  *
  * A pipeline HANDLE never claims a label: it sits on the body's top edge, right
  * under the name the body owns, and would win every pipeline's name from it.
+ * A Porter's-forces glyph never claims one either, and for a sharper reason: it
+ * HAS no name — its one letter is the shape's own inner text — so any label it
+ * matched would be some neighbouring artefact's, taken out of that artefact's
+ * mouth and then thrown away, since a force is not written to the file at all.
  */
 function matchLabels(
   nodes: readonly WardleyNodeElementModel[],
@@ -433,7 +437,13 @@ function matchLabels(
     // A handle sits on the pipeline body's top edge, directly under the name
     // the BODY owns, and would win it from the body every time. A roleless node
     // is a glyph's own wiring (a market's three inner dots) and names nothing.
-    if (node.kind === 'handle' || node.role === undefined) return;
+    if (
+      node.kind === 'handle' ||
+      node.kind === 'porter' ||
+      node.role === undefined
+    ) {
+      return;
+    }
     const nodeBox = boxOf(node);
     labels.forEach((label, labelIndex) => {
       const labelBox = boxOf(label);
@@ -479,7 +489,10 @@ export function textOf(element: { text?: unknown }): string {
  * method is the `(build)` / `(buy)` / `(outsource)` decorator on a component
  * line — so a Labre method node is written as a component and the export warns
  * that the method itself could not be said. `pipeline` and `handle` are absent
- * because a pipeline is written from its BODY, in its own section.
+ * because a pipeline is written from its BODY, in its own section — and
+ * `porter` because OWM has no word for an external competition force at all.
+ * The node loop skips a force before this table is consulted, so a kind's
+ * absence here is never the reason it is left out.
  */
 const OWM_KEYWORD_OF_KIND: Partial<Record<WardleyNodeKind, string>> = {
   component: 'component',
@@ -632,10 +645,20 @@ export function exportWardleyOwmWithWarnings(
   const nodeLines: string[] = [];
   const pipelineLines: string[] = [];
   const methodNodes: string[] = [];
+  const porterNodes: string[] = [];
 
   for (const node of board.nodes) {
     if (node.role === undefined) continue; // a glyph's own wiring, not an artefact
     if (node.kind === 'handle') continue;
+    // Skipped BEFORE `nameOf`, and that is the whole reason it is a branch of
+    // its own rather than a missing entry in `OWM_KEYWORD_OF_KIND`: a force
+    // carries no name, so asking for one would christen it "Component 3" and
+    // count it among the artefacts that lost theirs — a warning about a loss
+    // that never happened, on a line the file does not contain.
+    if (node.kind === 'porter') {
+      porterNodes.push(node.id);
+      continue;
+    }
     if (twins.has(node.id)) continue; // written by its `evolve` line
 
     const name = nameOf(node);
@@ -750,6 +773,11 @@ export function exportWardleyOwmWithWarnings(
   if (methodNodes.length > 0) {
     warnings.push(
       `${methodNodes.length} component${methodNodes.length === 1 ? ' carries' : 's carry'} a method (build / buy / outsource). OWM writes a method as a decorator this export cannot tell apart, so ${methodNodes.length === 1 ? 'it was' : 'they were'} written as plain components.`
+    );
+  }
+  if (porterNodes.length > 0) {
+    warnings.push(
+      `${porterNodes.length} Porter's forces glyph${porterNodes.length === 1 ? '' : 's'} could not be written: OWM has no word for an external competition force, so ${porterNodes.length === 1 ? 'it was' : 'they were'} left out.`
     );
   }
   if (looseLinks.length > 0) {

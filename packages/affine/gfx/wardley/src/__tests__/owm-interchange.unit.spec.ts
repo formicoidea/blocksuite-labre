@@ -326,12 +326,16 @@ describe('the Wardley catalogue', () => {
     );
   });
 
-  it('nominates fourteen for the sub-menu, which is exactly the cap', () => {
+  it('nominates fifteen for the sub-menu, which is exactly the budget', () => {
     const nominated = wardleyCommands.filter(c =>
       c.surfaces.includes('senior-menu')
     );
-    expect(nominated).toHaveLength(14);
-    // The thirteen artefacts, plus the import — an import is where a board
+    // `SENIOR_MENU_CAP + 1` (ADR 0014, R4) — the cap of fourteen plus the one
+    // deliberate over-nomination the PO signed off on. Fourteen until
+    // `wardley.addPorter` joined the row; the budget is now spent, and a
+    // sixteenth nomination is a curation decision rather than a merge.
+    expect(nominated).toHaveLength(15);
+    // The fourteen artefacts, plus the import — an import is where a board
     // comes from, and on an empty canvas the sub-menu is the first thing a
     // user opens (PO decision of 2026-08-28).
     expect(nominated.at(-1)!.id).toBe('wardley.importOwm');

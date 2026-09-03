@@ -1,4 +1,5 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { COMMAND_USAGE_KEY } from '@labre/affine/shared/services';
 import {
   getCommandIcon,
   getCommandsForSurface,
@@ -20,6 +21,14 @@ describe('command registry on the canvas', () => {
   let edgeless!: EdgelessRootBlockComponent;
 
   beforeEach(async () => {
+    // The usage store persists across spec FILES sharing this browser page, and
+    // the assertion below is about the COLD-START row — the authored head of
+    // the nomination list, which is only what `selectSeniorMenuCommands`
+    // returns when nothing has been used. `artefact-catalogue.spec.ts` clears
+    // it on the way in for the same reason and leaves its own clicks behind;
+    // this file needs the same silence, and needed it the moment Wardley's
+    // nominations outgrew the ranked slots by more than one.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
     const cleanup = await setupEditor('edgeless');
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
     return cleanup;
@@ -39,7 +48,11 @@ describe('command registry on the canvas', () => {
     // asserting it: the visual-tier fallback declines the row (the row carries
     // the NATIVE format), so the catalogue grew to sixteen and the NOMINATION
     // list did not move at all.
-    expect(ids).toHaveLength(14);
+    // Fifteen since `wardley.addPorter`, which DOES nominate the row — and
+    // fifteen is `SENIOR_MENU_CAP + 1`, exactly the budget ADR 0014 R4 allows.
+    // The last seat is now spent; a sixteenth nomination fails by design.
+    expect(ids).toHaveLength(15);
+    expect(ids).toContain('wardley.addPorter');
     expect(ids).toContain('wardley.importOwm');
     expect(ids).not.toContain('wardley.exportOwm');
     expect(ids).not.toContain('wardley.importSvg');

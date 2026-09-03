@@ -1,8 +1,10 @@
 import {
   ConnectorMode,
+  FontFamily,
   PointStyle,
   ShapeStyle,
   StrokeStyle,
+  TextFitMode,
   type WardleyNodeKind,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
@@ -30,6 +32,10 @@ import {
   PIPELINE_HEIGHT,
   PIPELINE_LABEL,
   PIPELINE_WIDTH,
+  PORTER_ARROW,
+  PORTER_LETTER_FONT_SIZE,
+  PORTER_SIZE,
+  WARDLEY_RED,
 } from './node/consts';
 import { WARDLEY_ROLE } from './roles';
 
@@ -81,13 +87,26 @@ export const WARDLEY_NODE_SIZE: Record<
   method: { w: METHOD_SIZE, h: METHOD_SIZE },
   market: { w: MARKET_SIZE, h: MARKET_SIZE },
   pipeline: { w: PIPELINE_WIDTH, h: PIPELINE_HEIGHT },
+  porter: { w: PORTER_SIZE, h: PORTER_SIZE },
 };
+
+/**
+ * Every kind that is created NEXT TO a name — {@link WardleyArtefactKind} minus
+ * the `porter`.
+ *
+ * The porter is the one artefact with no label at all, and narrowing the key
+ * type is how that is said rather than an empty string parked in the table
+ * below. An empty string would be a name the author has not typed yet, which is
+ * exactly what the placeholders ARE and exactly what the morph is allowed to
+ * rewrite; a force's letter is the notation and belongs to nobody's vocabulary.
+ */
+export type WardleyLabelledKind = Exclude<WardleyArtefactKind, 'porter'>;
 
 /**
  * The words a kind is created NEXT TO — the prompt an artefact nobody has named
  * still carries, and the only string a morph is ever allowed to rewrite.
  */
-export const WARDLEY_NODE_LABEL: Record<WardleyArtefactKind, string> = {
+export const WARDLEY_NODE_LABEL: Record<WardleyLabelledKind, string> = {
   component: LABEL_DEFAULT.component,
   anchor: LABEL_DEFAULT.anchor,
   ecosystem: ECOSYSTEM_LABEL,
@@ -110,6 +129,9 @@ const NODE_FILL_OF: Record<WardleyArtefactKind, string> = {
   // White at ~60% opacity: a pipeline is a bar you place components ON, so the
   // map has to stay visible through it. The 1px border stays opaque.
   pipeline: PIPELINE_FILL,
+  // Opaque white, like every other circle: the RED is in the four arrows, and a
+  // filled disk would fight the letter it is there to carry.
+  porter: NODE_FILL,
 };
 
 /** A box centred on a point — how every Wardley creation site places a node. */
@@ -275,6 +297,198 @@ export function wardleyMarketLinkPairs<T>(dots: readonly T[]): [T, T][] {
     [dots[1], dots[2]],
     [dots[2], dots[0]],
   ];
+}
+
+/* ── Porter's forces ──────────────────────────────────────────────────── */
+
+/** One of the four arrows: its own axis-aligned box, and the outline in it. */
+export interface WardleyPorterArrow {
+  /** Serialized `xywh` of the box the polygon is drawn inside. */
+  xywh: string;
+  /** The outline as normalized [0-1] coordinates of that box, tip first. */
+  vertices: number[][];
+}
+
+/**
+ * The four arrow outlines, north first and then clockwise.
+ *
+ * Normalized, so they are the same seven points at every size — the BOX carries
+ * the scale — and one list per direction rather than one list plus a `rotate`,
+ * because a rotated element is one the selection, the resize handles and every
+ * bounding-box reader then have to de-rotate. Each is: tip, the two head
+ * corners, and the four corners of the shaft, with the head
+ * `headLength / length` of the way down and the shaft `width / headWidth` wide.
+ */
+const PORTER_HEAD = PORTER_ARROW.headLength / PORTER_ARROW.length; // 0.4
+const PORTER_SHAFT_LOW = (1 - PORTER_ARROW.width / PORTER_ARROW.headWidth) / 2;
+const PORTER_SHAFT_HIGH = 1 - PORTER_SHAFT_LOW;
+
+const PORTER_VERTICES: readonly number[][][] = [
+  // North — the tip at the top edge, the shaft running back down to the rim.
+  [
+    [0.5, 0],
+    [1, PORTER_HEAD],
+    [PORTER_SHAFT_HIGH, PORTER_HEAD],
+    [PORTER_SHAFT_HIGH, 1],
+    [PORTER_SHAFT_LOW, 1],
+    [PORTER_SHAFT_LOW, PORTER_HEAD],
+    [0, PORTER_HEAD],
+  ],
+  // East — the same outline turned a quarter, written out rather than rotated.
+  [
+    [1, 0.5],
+    [1 - PORTER_HEAD, 1],
+    [1 - PORTER_HEAD, PORTER_SHAFT_HIGH],
+    [0, PORTER_SHAFT_HIGH],
+    [0, PORTER_SHAFT_LOW],
+    [1 - PORTER_HEAD, PORTER_SHAFT_LOW],
+    [1 - PORTER_HEAD, 0],
+  ],
+  // South.
+  [
+    [0.5, 1],
+    [0, 1 - PORTER_HEAD],
+    [PORTER_SHAFT_LOW, 1 - PORTER_HEAD],
+    [PORTER_SHAFT_LOW, 0],
+    [PORTER_SHAFT_HIGH, 0],
+    [PORTER_SHAFT_HIGH, 1 - PORTER_HEAD],
+    [1, 1 - PORTER_HEAD],
+  ],
+  // West.
+  [
+    [0, 0.5],
+    [PORTER_HEAD, 0],
+    [PORTER_HEAD, PORTER_SHAFT_LOW],
+    [1, PORTER_SHAFT_LOW],
+    [1, PORTER_SHAFT_HIGH],
+    [PORTER_HEAD, PORTER_SHAFT_HIGH],
+    [PORTER_HEAD, 1],
+  ],
+];
+
+/** Whether a direction runs along X — the axis its box is long on. */
+const PORTER_HORIZONTAL = [false, true, false, true];
+/** Unit vector per direction, north first and then clockwise. */
+const PORTER_DIRECTIONS: readonly [number, number][] = [
+  [0, -1],
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+];
+
+/**
+ * The four arrows of a Porter's-forces glyph, for a circle of the given radius
+ * centred on (cx, cy) — a box and an outline each.
+ *
+ * The ONE description of the geometry, so the creation site, the map legend and
+ * the tests read the same numbers rather than three sets that agreed the day
+ * they were written. Each arrow starts `PORTER_ARROW.gap` clear of the rim —
+ * the arrows push against the circle, they do not touch it — and runs
+ * `PORTER_ARROW.length` further out, tip at the far end.
+ *
+ * Every distance scales WITH the radius, and that is what makes a legend row the
+ * same drawing at another size: a 12-unit glyph carrying four map-sized arrows
+ * would not be a small Porter, it would be a circle somebody stabbed.
+ */
+export function wardleyPorterArrows(
+  cx: number,
+  cy: number,
+  radius: number = PORTER_SIZE / 2
+): WardleyPorterArrow[] {
+  const scale = radius / (PORTER_SIZE / 2);
+  const near = radius + PORTER_ARROW.gap * scale;
+  const long = PORTER_ARROW.length * scale;
+  const across = PORTER_ARROW.headWidth * scale;
+
+  return PORTER_DIRECTIONS.map(([dx, dy], index) => {
+    const horizontal = PORTER_HORIZONTAL[index];
+    const w = horizontal ? long : across;
+    const h = horizontal ? across : long;
+    // The near edge of the box sits `near` from the centre along the direction;
+    // the box then extends outward, and is centred on the other axis.
+    const x = horizontal ? (dx > 0 ? cx + near : cx - near - long) : cx - w / 2;
+    const y = horizontal ? cy - h / 2 : dy > 0 ? cy + near : cy - near - long;
+    return {
+      xywh: new Bound(x, y, w, h).serialize(),
+      vertices: PORTER_VERTICES[index].map(([vx, vy]) => [vx, vy]),
+    };
+  });
+}
+
+/**
+ * One of those arrows as props: a filled POLYGON on a `wardleyNode`, and
+ * deliberately ROLE-LESS.
+ *
+ * A polygon and not a connector, which is the first fix the recette of #210
+ * asked for: a connector's triangle head is sized off its stroke width, so the
+ * heads arrived longer than the arrows and covered the circle, the letter and
+ * the double-click target. A polygon's outline is exactly the seven points
+ * above.
+ *
+ * A `wardleyNode` and not a plain `shape`, which is the second: recette v2
+ * found that `ShapeElementView` gives EVERY plain shape a double-click that
+ * mounts the inner-text editor, and mounting it grew an arrow from 24 units
+ * high to 44 — a deformation that survived Escape. An arrow is not a thing you
+ * write in. Posting it as a `wardleyNode` moves it onto `WardleyNodeView`,
+ * which opens an editor only on the artefact that HAS a letter; the renderer is
+ * unaffected, because a Wardley node draws itself through the native shape
+ * renderer and that renderer already dispatches on `shapeType`.
+ *
+ * Role-less, and `kind: 'porter'` with it, for the reason the market's three
+ * inner dots already give — they are `kind: 'component'` and carry no role: this
+ * is the glyph's own wiring rather than anything the author drew, so a role
+ * would make every composite report an overlap with itself (W3), would offer
+ * four arrows to the OWM writer, and would let a stray label bind to one.
+ * `undefined` writes no key at all, exactly as it does for those dots.
+ *
+ * Filled rather than stroked, so nothing about them is sized off a line width
+ * ever again.
+ */
+export function wardleyPorterArrowProps(
+  arrow: WardleyPorterArrow
+): Record<string, unknown> & { type: string } {
+  return {
+    type: 'wardleyNode',
+    kind: 'porter',
+    role: undefined,
+    shapeType: 'polygon',
+    vertices: arrow.vertices,
+    isClosed: true,
+    filled: true,
+    fillColor: WARDLEY_RED,
+    // The same red, so the arrow has no rim of another colour around it.
+    strokeColor: WARDLEY_RED,
+    strokeWidth: 0,
+    shapeStyle: ShapeStyle.General,
+    roughness: 0,
+    xywh: arrow.xywh,
+  };
+}
+
+/**
+ * The letter inside the circle, as shape-text props.
+ *
+ * A plain STRING and not a `Y.Text`: `ShapeElementModel.propsToY` builds the
+ * Y type on the way into the document, and this package depends on yjs only in
+ * its tests. `TextFitMode.Overflow` is the load-bearing line — the glyph has a
+ * canonical size that says "external force" at a glance, so the circle must
+ * never grow to fit whatever the author types into it, exactly as the inertia
+ * bar never deforms around its own text.
+ */
+export function wardleyPorterLetterProps(
+  letter: string,
+  fontSize: number = PORTER_LETTER_FONT_SIZE
+): Record<string, unknown> {
+  return {
+    text: letter,
+    color: NODE_STROKE,
+    fontFamily: FontFamily.Inter,
+    fontSize,
+    textAlign: 'center',
+    textHorizontalAlign: 'center',
+    textVerticalAlign: 'center',
+    textFitMode: TextFitMode.Overflow,
+  };
 }
 
 /**

@@ -64,7 +64,15 @@ describe('command registry invariants', () => {
       // nomination list is untouched at fourteen and only the catalogue grew.
       // The overflow above was already tipped by the OWM pair; this widens it
       // by one without changing which thirteen a cold start meets.
-      wardley: 16,
+      //
+      // …and 17 since `wardley.addPorter`, the Porter's-forces glyph. It DOES
+      // nominate the row, so the nomination list moves from fourteen to
+      // fifteen — `SENIOR_MENU_CAP + 1`, exactly the budget R4 allows and the
+      // last seat available. The overflow was already tipped by the OWM pair,
+      // so nothing about the arbitration changes; what does change is which
+      // thirteen a cold start meets, and the question the comment above owes
+      // the PO now has one more candidate in it.
+      wardley: 17,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -138,8 +146,9 @@ describe('command registry invariants', () => {
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
     // because ADR 0012 declares interchange per framework × format × direction
-    // and refuses to infer a framework from a `.svg`.
-    expect(commands).toHaveLength(112);
+    // and refuses to infer a framework from a `.svg`. …and 113 since
+    // `wardley.addPorter`.
+    expect(commands).toHaveLength(113);
   });
 
   /**
@@ -351,7 +360,7 @@ describe('menu and manifest enumerate the same source', () => {
     // The DECLARED source is one list, and the manifest is the whole of it —
     // that is the drift this test was written for, and it is unchanged.
     expect(manifest).toEqual(wardleyCommands.map(c => c.id));
-    expect(manifest).toHaveLength(16);
+    expect(manifest).toHaveLength(17);
 
     // The sub-menu is a proper SUBSET of it rather than the same list, and the
     // two entries outside it are declarations rather than omissions.
@@ -363,11 +372,12 @@ describe('menu and manifest enumerate the same source', () => {
     // protecting.
     const DECLINE_THE_ROW = ['wardley.exportOwm', 'wardley.importSvg'];
     expect(menu).toEqual(manifest.filter(id => !DECLINE_THE_ROW.includes(id)));
-    // Fourteen NOMINATIONS. Not fourteen buttons: the catalogue is sixteen, so
-    // `selectSeniorMenuCommands` ranks this list down to thirteen plus the
-    // catalogue button. This assertion is about what Wardley DECLARES; what the
-    // row actually renders is pinned in the browser suite.
-    expect(menu).toHaveLength(14);
+    // Fifteen NOMINATIONS — `SENIOR_MENU_CAP + 1`, exactly the budget ADR 0014
+    // R4 allows and the last seat available. Not fifteen buttons: the catalogue
+    // is seventeen, so `selectSeniorMenuCommands` ranks this list down to
+    // thirteen plus the catalogue button. This assertion is about what Wardley
+    // DECLARES; what the row actually renders is pinned in the browser suite.
+    expect(menu).toHaveLength(15);
   });
 
   /**

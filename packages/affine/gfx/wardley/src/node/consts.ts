@@ -107,3 +107,47 @@ export const METHOD = {
   centerRatio: 0.5, // inner white component radius / R
 };
 export const METHOD_LABEL = 'Component';
+
+/**
+ * Porter's forces (composite): a large white circle carrying ONE letter, pushed
+ * on from the four cardinal directions by solid red arrows.
+ *
+ * Twice the market's diameter, at the PO's recette of #210: this is not a link
+ * in the value chain drawn a little differently, it is a pressure bearing on the
+ * whole map, and it has to read as one at the zoom an architect actually works
+ * at. Every other number here is proportional to it.
+ *
+ * The letter IS the notation — **R** relative competition, **L** struggle for
+ * survival, **E** struggle to establish — which is why it is written as the
+ * shape's own inner text rather than as a label beside it: a double-click opens
+ * the native shape editor on the circle, and typing another letter is the whole
+ * of the edit. It is also why this glyph carries no label at all: the three
+ * words behind the three letters are the map's vocabulary, not a name the
+ * author gives one force.
+ */
+export const PORTER_SIZE = 60;
+/**
+ * The four arrows, read by `wardleyPorterArrows`: each starts `gap` outside the
+ * circle's rim and runs `length` further out, a `width`-wide shaft carrying a
+ * head `headLength` long and `headWidth` across.
+ *
+ * They are drawn as filled POLYGONS rather than as connectors with a triangle
+ * endpoint, and the recette of #210 is why: a connector sizes its head off its
+ * STROKE WIDTH (`DEFAULT_ARROW_SIZE` × strokeWidth / 2), which is a number about
+ * a line rather than about this notation — the head came out longer than the
+ * arrow, swallowed the circle, the letter and the double-click, and the glyph
+ * rendered as a solid red star. A polygon's head is the number written here and
+ * nothing else, at any size.
+ */
+export const PORTER_ARROW = {
+  gap: 6,
+  length: 40,
+  /** Shaft width. */
+  width: 8,
+  headLength: 16,
+  headWidth: 24,
+};
+/** The letter, sized to sit inside the circle without touching the rim. */
+export const PORTER_LETTER_FONT_SIZE = 28;
+/** The letter a fresh glyph opens on: relative competition, the commonest read. */
+export const PORTER_DEFAULT_LETTER = 'R';

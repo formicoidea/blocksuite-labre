@@ -111,6 +111,31 @@ export const wardleyMethodIcon = svg`<svg width="24" height="24" viewBox="0 0 24
   <circle cx="12" cy="12" r="4.6" fill="#fff" stroke="#1f2328" stroke-width="1.2"/>
 </svg>`;
 
+/**
+ * Porter's forces: a lettered circle pressed on from the four cardinal
+ * directions by short solid arrows.
+ *
+ * The arrows are RED like {@link wardleyArrowIcon}'s, because on this notation
+ * red is what "a force acting on the map" looks like; they are SOLID where the
+ * evolution arrow is dashed, which is the one thing that tells the two apart at
+ * 24 pixels. The circle keeps `currentColor` like every other artefact glyph.
+ */
+export const wardleyPorterIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="5.4" fill="#fff" stroke="currentColor" stroke-width="1.3"/>
+  <g stroke="${RED}" stroke-width="1.4" stroke-linecap="round">
+    <line x1="12" y1="6" x2="12" y2="3.4"/>
+    <line x1="18" y1="12" x2="20.6" y2="12"/>
+    <line x1="12" y1="18" x2="12" y2="20.6"/>
+    <line x1="6" y1="12" x2="3.4" y2="12"/>
+  </g>
+  <g fill="${RED}">
+    <path d="M12 1.4 L14 4.4 H10 Z"/>
+    <path d="M22.6 12 L19.6 14 V10 Z"/>
+    <path d="M12 22.6 L10 19.6 H14 Z"/>
+    <path d="M1.4 12 L4.4 10 V14 Z"/>
+  </g>
+</svg>`;
+
 /** Legend: a bordered box with glyph + line rows. */
 export const wardleyLegendIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/>

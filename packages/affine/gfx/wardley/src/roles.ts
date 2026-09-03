@@ -60,6 +60,7 @@ export const WARDLEY_ROLE = {
   market: 'wardley:market',
   ecosystem: 'wardley:ecosystem',
   method: 'wardley:method',
+  porter: 'wardley:porter',
   dependency: 'wardley:dependency',
   map: 'wardley:map',
   changeArrow: 'wardley:change-arrow',
@@ -107,6 +108,25 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.method,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.method',
+  },
+  /**
+   * A Porter's-forces glyph: one of the five forces of external competition
+   * bearing on the map (R relative competition, L struggle for survival, E
+   * struggle to establish — the letter inside the circle says which).
+   *
+   * NO `parent`, and that is the whole declaration rather than an omission. A
+   * market and an ecosystem specialise `component` because they ARE links in
+   * the value chain drawn at another grain. This one is not a link in it at
+   * all: it is a pressure applied from OUTSIDE, so no rule written on
+   * `wardley:component` — W3's overlap pairs above all — may ever match it. A
+   * force is allowed to sit on top of the components it presses against; that
+   * is what pressing against them looks like.
+   */
+  {
+    id: WARDLEY_ROLE.porter,
+    kind: 'node',
+    labelKey: 'com.labre.wardley.role.porter',
+    labelFallback: "Porter's forces",
   },
   /**
    * The value-chain link: "A needs B".

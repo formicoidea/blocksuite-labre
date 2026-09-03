@@ -27,8 +27,10 @@ import {
   NODE_STROKE,
   NODE_STROKE_WIDTH,
   PIPELINE_FILL,
+  PORTER_DEFAULT_LETTER,
   WARDLEY_RED,
 } from './node/consts';
+import { wardleyPorterArrowProps, wardleyPorterArrows } from './presets';
 
 /** Component kinds the legend can describe, in display order. */
 type LegendType =
@@ -40,7 +42,8 @@ type LegendType =
   | 'pipeline'
   | 'link'
   | 'arrow'
-  | 'inertia';
+  | 'inertia'
+  | 'porter';
 
 const LEGEND_ORDER: LegendType[] = [
   'component',
@@ -52,6 +55,7 @@ const LEGEND_ORDER: LegendType[] = [
   'link',
   'arrow',
   'inertia',
+  'porter',
 ];
 
 /** Default (editable) descriptions for each legend row. */
@@ -65,6 +69,8 @@ const LEGEND_DESC: Record<LegendType, string> = {
   link: 'Need relation (parent → child)',
   arrow: 'Evolution / movement (red = future)',
   inertia: 'Inertia to change',
+  porter:
+    "Porter's forces (external competition: R relative, L survival, E establish)",
 };
 
 type GradientVariant = Exclude<
@@ -128,6 +134,13 @@ export function createWardleyLegend(
       }
       // market triangle connectors (NODE_STROKE) are ignored.
     } else if (el instanceof ShapeElementModel) {
+      // The inertia bar is the only plain shape this legend describes, and it
+      // is recognised by its FILL. A Porter's-forces arrow is a plain shape too
+      // — a filled red polygon, the glyph's own wiring — and it is `WARDLEY_RED`
+      // rather than `INERTIA_COLOR`, so it falls through here and is described
+      // by the porter circle it belongs to. Asserted in `porter.unit.spec.ts`:
+      // an arrow that started answering this test would put an "Inertia to
+      // change" row in the legend of a map with no inertia bar on it.
       if (el.fillColor === INERTIA_COLOR) present.add('inertia');
     }
   }
@@ -321,6 +334,54 @@ export function createWardleyLegend(
           })
         );
         return [circle, ...dots, ...conns];
+      }
+      case 'porter': {
+        // The same drawing as the map's, at the row's scale: the helper scales
+        // the gap, the shaft and the head with the radius, so what a reader
+        // sees here is a small Porter and not a circle with four map-sized
+        // spikes through it.
+        //
+        // 6 and not the 8 the other circles get, because this glyph is the only
+        // one wider than its own circle: arrows included it spans
+        // `2 * (R + (gap + length) * R / 30)`, which at 8 would overrun a row
+        // 30 units tall. At 6 it comes to just over `ROW_H` and sits inside its
+        // line — and it is a RATIO, so the PO's doubling of the map glyph left
+        // this row exactly where it was.
+        const R = 6;
+        const FS = 8;
+        const circle = surface.addElement({
+          type: 'wardleyNode',
+          kind: 'porter',
+          shapeType: 'ellipse',
+          filled: true,
+          fillColor: NODE_FILL,
+          strokeColor: NODE_STROKE,
+          strokeWidth: NODE_STROKE_WIDTH,
+          shapeStyle: ShapeStyle.General,
+          roughness: 0,
+          xywh: new Bound(cx - R, cy - R, R * 2, R * 2).serialize(),
+        });
+        const arrows = wardleyPorterArrows(cx, cy, R).map(arrow =>
+          surface.addElement(wardleyPorterArrowProps(arrow))
+        );
+        // The letter is the notation, so a legend that dropped it would be
+        // describing a circle rather than the glyph it stands for — but here it
+        // is a SEPARATE text element rather than the circle's inner text, which
+        // is what the map glyph uses. A shape lays its text out inside padding
+        // (`SHAPE_TEXT_VERTICAL_PADDING`) larger than this 12-unit box, so at
+        // font size 8 the character was pushed out under the circle (recette
+        // v2). A free text has no padding to overflow, and its box is placed on
+        // the circle's own centre. Role-less like every other legend glyph.
+        const letter = text(
+          PORTER_DEFAULT_LETTER,
+          cx - R,
+          cy - FS / 2 - 1,
+          R * 2,
+          FS + 2,
+          FS,
+          'center'
+        );
+        return [circle, ...arrows, letter];
       }
       case 'link':
         return [
