@@ -308,11 +308,14 @@ describe('an option row reads like the native menus', () => {
     );
   }
 
-  it('opts every row into the native option shape', () => {
+  it('opts every row into the native option shape, as a TOGGLE', () => {
     const rows = options();
     expect(rows).toHaveLength(2);
     for (const row of rows) {
       expect(row.hasAttribute('data-option'), row.dataset.valueId).toBe(true);
+      // A tag value is un-picked by clicking it again, so the selected row must
+      // keep the pointer that `data-option` alone would take away from it.
+      expect(row.hasAttribute('data-toggle'), row.dataset.valueId).toBe(true);
     }
   });
 
