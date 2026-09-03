@@ -63,6 +63,7 @@ export const WARDLEY_ROLE = {
   porter: 'wardley:porter',
   accelerator: 'wardley:accelerator',
   decelerator: 'wardley:decelerator',
+  area: 'wardley:area',
   dependency: 'wardley:dependency',
   map: 'wardley:map',
   changeArrow: 'wardley:change-arrow',
@@ -157,6 +158,22 @@ const DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: 'com.labre.wardley.role.decelerator',
     labelFallback: 'Decelerator',
+  },
+  /**
+   * An area: a zone of the map, drawn around the components it groups.
+   *
+   * NO `parent`, and for the sharpest version of the reason the porter and the
+   * accelerator already give. A zone is not a link in the value chain at any
+   * grain — it is a statement about a REGION of the map — and it is drawn
+   * precisely ON TOP of the components it names, so a rule written on
+   * `wardley:component` would report an overlap (W3) on every area that does
+   * its job. Covering the chain is what a zone IS.
+   */
+  {
+    id: WARDLEY_ROLE.area,
+    kind: 'node',
+    labelKey: 'com.labre.wardley.role.area',
+    labelFallback: 'Area',
   },
   /**
    * The value-chain link: "A needs B".

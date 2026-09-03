@@ -146,6 +146,22 @@ export const wardleyCommandsManifest: ShortcutManifestEntry[] = [
     defaultKeys: { mac: [], other: [] },
   },
   {
+    id: 'wardley.addAreaRect',
+    owner: 'wardley',
+    labelKey: 'com.labre.commands.wardley.addAreaRect',
+    labelFallback: 'Area (rectangle)',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'wardley.addAreaPolygon',
+    owner: 'wardley',
+    labelKey: 'com.labre.commands.wardley.addAreaPolygon',
+    labelFallback: 'Area (polygon)',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
     id: 'wardley.importOwm',
     owner: 'wardley',
     labelKey: 'com.labre.commands.wardley.importOwm',

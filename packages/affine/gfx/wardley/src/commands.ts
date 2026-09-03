@@ -5,6 +5,7 @@ import type { TemplateResult } from 'lit';
 import {
   activateWardleyConnector,
   createWardleyAccelerator,
+  createWardleyArea,
   createWardleyBackground,
   createWardleyInertia,
   createWardleyMarket,
@@ -20,6 +21,8 @@ import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
   wardleyAcceleratorIcon,
   wardleyAnchorIcon,
+  wardleyAreaPolygonIcon,
+  wardleyAreaRectIcon,
   wardleyArrowIcon,
   wardleyBackgroundIcon,
   wardleyDeceleratorIcon,
@@ -81,7 +84,18 @@ interface Spec {
   /** Second keystroke of the `w` chord; absent = keyless by intent. */
   key?: string;
   iconKey: string;
-  category: 'backgrounds' | 'nodes' | 'connectors';
+  /**
+   * The catalogue section this entry files under, and the sub-menu group it
+   * reads in.
+   *
+   * `'areas'` is the fourth, and it is a section of its own for the reason the
+   * role has no parent: a zone is not a node of the value chain and not a
+   * relation between two — it is a statement about a REGION of the map, reached
+   * for once the chain is drawn. The catalogue header and its translation key
+   * are derived from this word (`commandCategoryTranslationEntries`), so
+   * declaring it is the whole of adding the section.
+   */
+  category: 'backgrounds' | 'nodes' | 'connectors' | 'areas';
   kind: 'artefact' | 'tool';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
@@ -259,6 +273,32 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     element: 'node:decelerator',
     run: gfx => createWardleyAccelerator(gfx, 'decelerator'),
+  },
+  // The zones, last of the toolbox and after the connectors: an area is drawn
+  // around a chain that already exists, so it is the last gesture of a map and
+  // reads as the last entry of the row. Two entries and ONE kind — the shape is
+  // the choice, and offering it as two buttons is what saves the author a trip
+  // through "switch type" for the commonest case.
+  //
+  // Keyless, like the porter and the two climate arrows: the `w` chord seats
+  // eight artefacts and a framework binds past that by host override.
+  {
+    id: 'addAreaRect',
+    label: 'Area (rectangle)',
+    iconKey: 'wardley.area-rect',
+    category: 'areas',
+    kind: 'artefact',
+    element: 'node:area-rect',
+    run: gfx => createWardleyArea(gfx, 'rect'),
+  },
+  {
+    id: 'addAreaPolygon',
+    label: 'Area (polygon)',
+    iconKey: 'wardley.area-polygon',
+    category: 'areas',
+    kind: 'artefact',
+    element: 'node:area-polygon',
+    run: gfx => createWardleyArea(gfx, 'polygon'),
   },
 ];
 
@@ -455,10 +495,10 @@ const importSvgCommand: CommandDescriptor = {
 };
 
 /**
- * The Wardley registry: the sixteen toolbox entries, then the two directions of
- * the OWM DSL and the SVG fallback (`docs/adr/0012`).
+ * The Wardley registry: the eighteen toolbox entries, then the two directions
+ * of the OWM DSL and the SVG fallback (`docs/adr/0012`).
  *
- * ## Seventeen nominations, and the curation decision behind them
+ * ## Nineteen nominations, and the curation decision behind them
  *
  * `addPorter` spent the last seat of ADR 0014 R4's `SENIOR_MENU_CAP + 1`
  * budget, and `addAccelerator` / `addDecelerator` are the two past it. The PO
@@ -469,6 +509,11 @@ const importSvgCommand: CommandDescriptor = {
  * a newly-drawn artefact is ELIGIBLE for a seat, and recency and frequency
  * decide who gets one. Nothing becomes unreachable: the catalogue lists
  * everything, which is the registry's own invariant.
+ *
+ * `addAreaRect` and `addAreaPolygon` are the two after those, and they land
+ * under that same amendment rather than reopening it: they nominate like every
+ * other Wardley artefact, the row is still thirteen arbitrated seats plus "More
+ * artefacts…", and the catalogue grows by a section of its own.
  */
 export const wardleyCommands: CommandDescriptor[] = [
   ...toolboxCommands,
@@ -495,6 +540,8 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.porter': wardleyPorterIcon,
   'wardley.accelerator': wardleyAcceleratorIcon,
   'wardley.decelerator': wardleyDeceleratorIcon,
+  'wardley.area-rect': wardleyAreaRectIcon,
+  'wardley.area-polygon': wardleyAreaPolygonIcon,
   'wardley.import-owm': wardleyImportOwmIcon,
   'wardley.export-owm': wardleyExportOwmIcon,
   'wardley.import-svg': wardleyImportSvgIcon,

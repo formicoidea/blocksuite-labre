@@ -1,5 +1,6 @@
 import {
   ConnectorMode,
+  DEFAULT_POLYGON_VERTICES,
   FontFamily,
   PointStyle,
   ShapeStyle,
@@ -15,12 +16,18 @@ import {
   ACCELERATOR_SIZE,
   ACCELERATOR_STROKE_WIDTH,
   ACCELERATOR_VERTICES,
+  AREA_FILL,
+  AREA_POLYGON_SIZE,
+  AREA_RECT_SIZE,
+  AREA_STROKE,
+  AREA_STROKE_WIDTH,
   DECELERATOR_LABEL,
   DECELERATOR_VERTICES,
   ECOSYSTEM_LABEL,
   ECOSYSTEM_SIZE,
   HANDLE_SIZE,
   LABEL_DEFAULT,
+  LABEL_FONT_SIZE,
   MARKET_DOT_RING,
   MARKET_DOT_SIZE,
   MARKET_DOT_STROKE_WIDTH,
@@ -97,6 +104,30 @@ export const WARDLEY_NODE_SIZE: Record<
   porter: { w: PORTER_SIZE, h: PORTER_SIZE },
   accelerator: ACCELERATOR_SIZE,
   decelerator: ACCELERATOR_SIZE,
+  // The RECT's size, because a kind gets one entry and the rect is the common
+  // area. The polygon's is {@link WARDLEY_AREA_SIZE} right below — the one
+  // place where a kind's canonical box depends on the shape it is drawn as.
+  area: AREA_RECT_SIZE,
+};
+
+/** The two shapes one area kind is drawn as: a plain zone, or one with corners. */
+export type WardleyAreaShape = 'rect' | 'polygon';
+
+/**
+ * The size an area is born at, per shape.
+ *
+ * Beside {@link WARDLEY_NODE_SIZE} rather than in it, because the table above
+ * is keyed by KIND and these two artefacts are one kind: a rectangle 240 × 160
+ * covers a band of the map, and the polygon is born square so its default
+ * pentagon is regular. `WARDLEY_NODE_SIZE.area` is the rect's, so anything that
+ * asks a kind for its canonical box — the morph does — still gets an answer.
+ */
+export const WARDLEY_AREA_SIZE: Record<
+  WardleyAreaShape,
+  { w: number; h: number }
+> = {
+  rect: AREA_RECT_SIZE,
+  polygon: AREA_POLYGON_SIZE,
 };
 
 /**
@@ -116,15 +147,20 @@ const NODE_VERTICES_OF: Partial<
 
 /**
  * Every kind that is created NEXT TO a name — {@link WardleyArtefactKind} minus
- * the `porter`.
+ * the `porter` and the `area`.
  *
- * The porter is the one artefact with no label at all, and narrowing the key
- * type is how that is said rather than an empty string parked in the table
+ * Those two are the artefacts with no label ELEMENT at all, and narrowing the
+ * key type is how that is said rather than an empty string parked in the table
  * below. An empty string would be a name the author has not typed yet, which is
  * exactly what the placeholders ARE and exactly what the morph is allowed to
- * rewrite; a force's letter is the notation and belongs to nobody's vocabulary.
+ * rewrite; a force's letter is the notation and belongs to nobody's vocabulary,
+ * and a zone's name is written INSIDE the zone, so a placeholder there would be
+ * a word the author has to delete before typing their own.
  */
-export type WardleyLabelledKind = Exclude<WardleyArtefactKind, 'porter'>;
+export type WardleyLabelledKind = Exclude<
+  WardleyArtefactKind,
+  'porter' | 'area'
+>;
 
 /**
  * The words a kind is created NEXT TO — the prompt an artefact nobody has named
@@ -163,6 +199,22 @@ const NODE_FILL_OF: Record<WardleyArtefactKind, string> = {
   // reads as the same solid arrow at the zoom an architect works at.
   accelerator: ACCELERATOR_FILL,
   decelerator: ACCELERATOR_FILL,
+  // Peace light at ~60 % opacity, for the reason the pipeline's white wash
+  // gives: a zone is drawn OVER the components it groups, so the map has to
+  // stay readable through it. The 1px border stays opaque.
+  area: AREA_FILL,
+};
+
+/**
+ * The rim colour of the kinds that do not wear the house one.
+ *
+ * A table with a single entry, and it is the honest way to say what an area is:
+ * every other artefact is a black-rimmed drawing of a thing in the value chain,
+ * and a zone is a coloured wash that FRAMES those drawings. A border in the
+ * same near-black would read as one more outline on a map already full of them.
+ */
+const NODE_STROKE_OF: Partial<Record<WardleyArtefactKind, string>> = {
+  area: AREA_STROKE,
 };
 
 /** A box centred on a point — how every Wardley creation site places a node. */
@@ -193,18 +245,24 @@ export function wardleyCanonicalBox(
  * inner circle — is drawn by the renderer from `kind`, off this same model, so
  * stroke and fill stay editable from the shape toolbar exactly like any other
  * shape's. Two families are the exception, and they are the reason `clearOf`
- * exists on this pack: the pipeline is a RECT and the only kind that writes
- * `radius`, and the accelerator / decelerator are POLYGONS — the only kinds
- * that write `vertices` and `isClosed`.
+ * exists on this pack: the pipeline and the area are RECTS and the only kinds
+ * that write `radius`, and the accelerator / decelerator are POLYGONS — the
+ * only kinds that write `vertices` and `isClosed` from here.
  *
  * No `text`: a Wardley label is a separate free-text element grouped with the
- * node (see `addLabel` in `actions.ts`), never words stored on the shape.
+ * node (see `addLabel` in `actions.ts`), never words stored on the shape. The
+ * porter and the area are the two exceptions, and neither writes it HERE: their
+ * inner text is content the author types, added at the creation site.
  */
 export function wardleyNodeProps(
   kind: WardleyArtefactKind,
   box: { xywh: string }
 ): Record<string, unknown> & { type: string } {
-  const rect = kind === 'pipeline';
+  // An area is born a RECT, and {@link wardleyAreaProps} is what turns the
+  // other half of the kind into a polygon: the two artefacts are one kind
+  // because the `shapeType` is the whole of what differs between them, so the
+  // common description lives here and the outline is spread over it.
+  const rect = kind === 'pipeline' || kind === 'area';
   const outline = NODE_VERTICES_OF[kind];
 
   return {
@@ -217,7 +275,7 @@ export function wardleyNodeProps(
     shapeType: outline ? 'polygon' : rect ? 'rect' : 'ellipse',
     filled: true,
     fillColor: NODE_FILL_OF[kind],
-    strokeColor: NODE_STROKE,
+    strokeColor: NODE_STROKE_OF[kind] ?? NODE_STROKE,
     // A thick rim on the arrows, the house thin one everywhere else: an arrow
     // with a 1px border reads as an outline drawing rather than as the solid
     // arrow the reference draws.
@@ -237,6 +295,75 @@ export function wardleyNodeProps(
       : {}),
     xywh: box.xywh,
   };
+}
+
+/**
+ * An AREA, as props — one kind, two shapes.
+ *
+ * The second discriminator this pack needed, and the reason it is a parameter
+ * rather than a second `kind`: a rectangular zone and a polygonal one are the
+ * same statement about the map ("all of this is one thing"), drawn with a
+ * different number of corners. A second kind would have to be kept in step in
+ * the role table, the legend, the export and the morph's key union, for a
+ * difference the `shapeType` already carries.
+ *
+ * Everything but the outline comes from {@link wardleyNodeProps}, which is the
+ * house rule: the fill, the rim and the role are the area's, wherever it is
+ * built from. What is added here is the two shapes and the fact that an area's
+ * NAME is its own inner text.
+ *
+ * ## The text is the name, and the zone never grows to fit it
+ *
+ * `TextFitMode.Overflow`, exactly as the porter's letter and the inertia bar:
+ * an area is a boundary drawn around real components, so a long name must never
+ * push that boundary out and swallow a component the author did not mean to
+ * include. Top-left, because a zone's name belongs in its corner rather than
+ * across the middle of the map it covers — and no `text` at all, so the editor
+ * a double-click opens starts on an empty line.
+ */
+export function wardleyAreaProps(
+  shape: WardleyAreaShape,
+  box: { xywh: string }
+): Record<string, unknown> & { type: string } {
+  const props: Record<string, unknown> & { type: string } = {
+    ...wardleyNodeProps('area', box),
+    // A thin rim under its own name, so the zone frames the map rather than
+    // adding one more black outline to it.
+    strokeWidth: AREA_STROKE_WIDTH,
+    // The name, as the shape's own text: left-aligned in the top corner, and a
+    // fit mode that never resizes the zone.
+    color: NODE_STROKE,
+    fontFamily: FontFamily.Inter,
+    fontSize: LABEL_FONT_SIZE,
+    textAlign: 'left',
+    textVerticalAlign: 'top',
+    textFitMode: TextFitMode.Overflow,
+  };
+  if (shape !== 'polygon') return props;
+
+  props.shapeType = 'polygon';
+  // The editor's own default outline — a regular pentagon — copied FRESH,
+  // because `vertices` goes into a document and two elements sharing one
+  // literal would be two elements sharing one array. The author then moves the
+  // corners from the shape toolbar's vertex editor.
+  props.vertices = DEFAULT_POLYGON_VERTICES.map(([x, y]) => [x, y]);
+  props.isClosed = true;
+  // …and a polygon has no corner radius. Deleted rather than never written,
+  // because the base description is the RECT's — same idiom, and same reason,
+  // as `wardleyMorphProps`: a patch cannot express absence, so a key that means
+  // nothing here must not be sitting in the Y.Map saying it does.
+  delete props.radius;
+  return props;
+}
+
+/** Where an area of the given shape is born, centred on a point. */
+export function wardleyAreaBox(
+  shape: WardleyAreaShape,
+  cx: number,
+  cy: number
+): string {
+  const { w, h } = WARDLEY_AREA_SIZE[shape];
+  return wardleyCenteredBox(cx, cy, w, h);
 }
 
 /**

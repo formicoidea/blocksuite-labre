@@ -104,19 +104,22 @@ describe('artefact catalogue sidepanel', () => {
   test('the panel draws the registry: groups, in the framework order', async () => {
     await open();
 
-    // Wardley's four declared categories, in declaration order — the panel
+    // Wardley's five declared categories, in declaration order — the panel
     // never sorts the headers alphabetically (that would overrule the
     // framework's own reading of its toolbox). `interchange` is last and last
     // on purpose: the two directions of the OWM DSL are what you do WITH a map,
-    // after the three sections of what you draw one with.
+    // after the four sections of what you draw one with — `areas` being the
+    // newest of those, and last of the four because a zone is drawn around a
+    // chain that is already there.
     expect(groups().map(group => group.dataset.category)).toEqual([
       'backgrounds',
       'nodes',
       'connectors',
+      'areas',
       'interchange',
     ]);
-    // Eighteen of Wardley's nineteen catalogue commands (sixteen of seventeen
-    // before the two climate arrows), and the missing one is absent for a
+    // Twenty of Wardley's twenty-one catalogue commands (eighteen of nineteen
+    // before the two zones), and the missing one is absent for a
     // reason the panel is supposed to have: it filters on `isCommandAvailable`
     // AND on `when`, and `wardley.exportOwm` needs a Wardley map on the board
     // to have a plot to measure coordinates against. This board has none, so
@@ -126,7 +129,7 @@ describe('artefact catalogue sidepanel', () => {
     // neither needs anything on the board, so both render — the native OWM
     // route and the visual-tier SVG fallback beside it, each labelled with what
     // it promises (`docs/adr/0012`, P2).
-    expect(entries()).toHaveLength(18);
+    expect(entries()).toHaveLength(20);
     const shown = entries().map(entry => entry.dataset.commandId);
     expect(shown).toContain('wardley.importOwm');
     expect(shown).toContain('wardley.importSvg');

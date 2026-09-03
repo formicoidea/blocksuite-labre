@@ -437,9 +437,13 @@ function matchLabels(
     // A handle sits on the pipeline body's top edge, directly under the name
     // the BODY owns, and would win it from the body every time. A roleless node
     // is a glyph's own wiring (a market's three inner dots) and names nothing.
+    // An AREA claims none either, and it is the one that would do real damage:
+    // a zone is drawn around the components it groups, so its box sits next to
+    // every label on the map and would win one from the artefact it belongs to.
     if (
       node.kind === 'handle' ||
       node.kind === 'porter' ||
+      node.kind === 'area' ||
       node.role === undefined
     ) {
       return;
@@ -490,9 +494,10 @@ export function textOf(element: { text?: unknown }): string {
  * line — so a Labre method node is written as a component and the export warns
  * that the method itself could not be said. `pipeline` and `handle` are absent
  * because a pipeline is written from its BODY, in its own section — and
- * `porter` because OWM has no word for an external competition force at all.
- * The node loop skips a force before this table is consulted, so a kind's
- * absence here is never the reason it is left out.
+ * `porter` because OWM has no word for an external competition force at all —
+ * and `area` for the same silence, since the format has no word for a zone of
+ * the map either. The node loop skips both before this table is consulted, so a
+ * kind's absence here is never the reason it is left out.
  *
  * The climate annotations DO have a word, and OWM's own spelling of the second
  * one is `deaccelerator` — not a typo on this side but the keyword the
@@ -654,6 +659,7 @@ export function exportWardleyOwmWithWarnings(
   const pipelineLines: string[] = [];
   const methodNodes: string[] = [];
   const porterNodes: string[] = [];
+  const areaNodes: string[] = [];
 
   for (const node of board.nodes) {
     if (node.role === undefined) continue; // a glyph's own wiring, not an artefact
@@ -665,6 +671,14 @@ export function exportWardleyOwmWithWarnings(
     // that never happened, on a line the file does not contain.
     if (node.kind === 'porter') {
       porterNodes.push(node.id);
+      continue;
+    }
+    // Same branch, same reason: an area's name is its own inner text rather
+    // than a label beside it, so `nameOf` would find none and christen the zone
+    // "Component 4" — counting a nameless artefact among the ones that lost
+    // their name, on a line the file does not contain either way.
+    if (node.kind === 'area') {
+      areaNodes.push(node.id);
       continue;
     }
     if (twins.has(node.id)) continue; // written by its `evolve` line
@@ -786,6 +800,11 @@ export function exportWardleyOwmWithWarnings(
   if (porterNodes.length > 0) {
     warnings.push(
       `${porterNodes.length} Porter's forces glyph${porterNodes.length === 1 ? '' : 's'} could not be written: OWM has no word for an external competition force, so ${porterNodes.length === 1 ? 'it was' : 'they were'} left out.`
+    );
+  }
+  if (areaNodes.length > 0) {
+    warnings.push(
+      `${areaNodes.length} area${areaNodes.length === 1 ? '' : 's'} could not be written: OWM has no word for a zone of the map, so ${areaNodes.length === 1 ? 'it was' : 'they were'} left out.`
     );
   }
   if (looseLinks.length > 0) {

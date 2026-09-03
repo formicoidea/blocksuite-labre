@@ -46,6 +46,9 @@ import {
   WARDLEY_RED,
 } from './node/consts';
 import {
+  type WardleyAreaShape,
+  wardleyAreaBox,
+  wardleyAreaProps,
   type WardleyArtefactKind,
   wardleyCanonicalBox,
   wardleyHandleBox,
@@ -136,17 +139,18 @@ const LABEL_W = 120;
  * method inner circle) is drawn by the node renderer from `kind`.
  *
  * A subset of {@link WardleyArtefactKind}, and named away from
- * `WardleyNodeKind` on purpose: the model declares a type of that name with ten
- * values, and two homonyms of different cardinality — one of them the source of
- * the semantic vocabulary — is a trap. The market, the pipeline and the
- * Porter's-forces glyph are composites with creation functions of their own;
- * the accelerator and the decelerator are not circles at all and place their
- * label on the side their arrow points from
- * ({@link createWardleyAccelerator}); the handle is not an artefact.
+ * `WardleyNodeKind` on purpose: the model declares a type of that name with
+ * eleven values, and two homonyms of different cardinality — one of them the
+ * source of the semantic vocabulary — is a trap. The market, the pipeline and
+ * the Porter's-forces glyph are composites with creation functions of their
+ * own; the accelerator and the decelerator are not circles at all and place
+ * their label on the side their arrow points from
+ * ({@link createWardleyAccelerator}); the area is a zone with no label element
+ * at all ({@link createWardleyArea}); the handle is not an artefact.
  */
 export type WardleySingleCircleKind = Exclude<
   WardleyArtefactKind,
-  'market' | 'pipeline' | 'porter' | 'accelerator' | 'decelerator'
+  'market' | 'pipeline' | 'porter' | 'accelerator' | 'decelerator' | 'area'
 >;
 
 function finish(gfx: GfxController, id: string) {
@@ -474,6 +478,43 @@ export function createWardleyAccelerator(
   );
 
   finish(gfx, group(gfx, [nodeId, labelId]));
+}
+
+/**
+ * Create an AREA: a translucent zone of the map, drawn as a rectangle or as a
+ * polygon whose corners the author then moves.
+ *
+ * One element and no group, which makes it the plainest creation site in this
+ * file — and the difference is the name. Every other artefact wears its name as
+ * a text element beside it, so every other artefact is a group of two. A zone's
+ * name belongs INSIDE the zone, so it is the shape's own inner text: created
+ * empty, opened by a double-click on the zone (`node/node-view.ts`), and set in
+ * a fit mode that never resizes the boundary around it.
+ *
+ * ## Why it is sent to the back
+ *
+ * A zone is drawn precisely OVER the components it groups, and the surface
+ * paints in index order: an area added last would sit on top of everything it
+ * surrounds — hiding it under a wash, and worse, intercepting every click meant
+ * for a component inside it. So the element is reordered to the BACK of the
+ * surface the moment it exists, through the same `layer.getReorderedIndex` the
+ * edgeless "Send to back" action calls. The author can still raise it by hand;
+ * what this buys is that the FIRST thing they do after drawing a zone is not
+ * un-doing it.
+ */
+export function createWardleyArea(gfx: GfxController, shape: WardleyAreaShape) {
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+  const id = surface.addElement(
+    wardleyAreaProps(shape, { xywh: wardleyAreaBox(shape, cx, cy) })
+  );
+
+  const model = surface.getElementById(id);
+  if (model) model.index = gfx.layer.getReorderedIndex(model, 'back');
+
+  finish(gfx, id);
 }
 
 /**

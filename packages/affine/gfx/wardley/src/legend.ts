@@ -19,6 +19,9 @@ import {
   ACCELERATOR_FILL,
   ACCELERATOR_STROKE_WIDTH,
   ACCELERATOR_VERTICES,
+  AREA_FILL,
+  AREA_STROKE,
+  AREA_STROKE_WIDTH,
   DECELERATOR_VERTICES,
   INERTIA_COLOR,
   LINK_GREY,
@@ -49,7 +52,8 @@ type LegendType =
   | 'inertia'
   | 'porter'
   | 'accelerator'
-  | 'decelerator';
+  | 'decelerator'
+  | 'area';
 
 const LEGEND_ORDER: LegendType[] = [
   'component',
@@ -64,6 +68,7 @@ const LEGEND_ORDER: LegendType[] = [
   'porter',
   'accelerator',
   'decelerator',
+  'area',
 ];
 
 /** Default (editable) descriptions for each legend row. */
@@ -81,6 +86,7 @@ const LEGEND_DESC: Record<LegendType, string> = {
     "Porter's forces (external competition: R relative, L survival, E establish)",
   accelerator: 'Accelerator (speeds evolution up)',
   decelerator: 'Decelerator (slows evolution down)',
+  area: 'Area (zone of the map)',
 };
 
 type GradientVariant = Exclude<
@@ -417,6 +423,29 @@ export function createWardleyLegend(
             strokeWidth: ACCELERATOR_STROKE_WIDTH,
             shapeStyle: ShapeStyle.General,
             roughness: 0,
+            xywh: new Bound(cx - gw / 2, cy - gh / 2, gw, gh).serialize(),
+          }),
+        ];
+      }
+      case 'area': {
+        // A small translucent rect, and the rect even when the map's zones are
+        // polygons: the row says what a ZONE is, and the number of corners is
+        // the author's choice rather than part of the notation. Same wash and
+        // same rim as the canvas draws, so the swatch is recognisable.
+        const gw = 34;
+        const gh = 20;
+        return [
+          surface.addElement({
+            type: 'wardleyNode',
+            kind: 'area',
+            shapeType: 'rect',
+            filled: true,
+            fillColor: AREA_FILL,
+            strokeColor: AREA_STROKE,
+            strokeWidth: AREA_STROKE_WIDTH,
+            shapeStyle: ShapeStyle.General,
+            roughness: 0,
+            radius: 0,
             xywh: new Bound(cx - gw / 2, cy - gh / 2, gw, gh).serialize(),
           }),
         ];

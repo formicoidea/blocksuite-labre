@@ -54,10 +54,14 @@ describe('command registry on the canvas', () => {
     // past the budget, and the PO's amendment of 2026-09-03 answered the
     // curation question rather than curating the list — every Wardley artefact
     // nominates the row, which still renders thirteen plus "More artefacts…".
-    expect(ids).toHaveLength(17);
+    // Nineteen since the two zones (`wardley.addAreaRect`,
+    // `wardley.addAreaPolygon`), which land under that same amendment.
+    expect(ids).toHaveLength(19);
     expect(ids).toContain('wardley.addPorter');
     expect(ids).toContain('wardley.addAccelerator');
     expect(ids).toContain('wardley.addDecelerator');
+    expect(ids).toContain('wardley.addAreaRect');
+    expect(ids).toContain('wardley.addAreaPolygon');
     expect(ids).toContain('wardley.importOwm');
     expect(ids).not.toContain('wardley.exportOwm');
     expect(ids).not.toContain('wardley.importSvg');
