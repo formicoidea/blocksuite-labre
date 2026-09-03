@@ -12,7 +12,8 @@ export type WardleyNodeKind =
   | 'method'
   | 'porter'
   | 'accelerator'
-  | 'decelerator';
+  | 'decelerator'
+  | 'area';
 
 /**
  * A Wardley map node. Extends {@link ShapeElementModel} (a native ellipse) so it
@@ -27,16 +28,19 @@ export type WardleyNodeKind =
  * `decelerator` arrows, which are not links in the chain either: they annotate
  * the CLIMATE, saying that something is speeding evolution up or slowing it
  * down. Those two are the first kinds drawn as a native POLYGON rather than an
- * ellipse or a rect. Composite nodes (pipeline / market / ecosystem / porter /
- * accelerator / decelerator) are built by grouping several of these + native
- * connectors + a text label. The text label is a SEPARATE native text element
- * grouped with the node, not stored here — the `porter` being the exception
- * that proves it, since its one letter is the shape's own inner text.
+ * ellipse or a rect — and the `area` is the third: a translucent ZONE of the
+ * map, drawn as a rect or as a polygon over the components it groups, and the
+ * only kind whose two shapes are the same kind (the `shapeType` says which).
+ * Composite nodes (pipeline / market / ecosystem / porter / accelerator /
+ * decelerator) are built by grouping several of these + native connectors + a
+ * text label. The text label is a SEPARATE native text element grouped with the
+ * node, not stored here — the `porter` and the `area` being the exceptions that
+ * prove it, since the porter's one letter and the area's name are the shape's
+ * own inner text.
  *
  * `kind` is ADDITIVE by construction: a value is only ever appended, so a
  * document written before a value was appended carries none of it and opens
- * unchanged. `accelerator` and `decelerator` are the most recent, and need no
- * migration.
+ * unchanged. `area` is the most recent, and needs no migration.
  */
 export class WardleyNodeElementModel extends ShapeElementModel {
   override get type() {

@@ -77,7 +77,13 @@ describe('command registry invariants', () => {
       // Wardley artefact nominates the row, the row keeps its cap, and
       // recency/frequency decide who is shown. The budget assertion below is
       // amended to match, and the arbitration itself is untouched.
-      wardley: 19,
+      //
+      // …and 21 since the two zones (`wardley.addAreaRect`,
+      // `wardley.addAreaPolygon`). They nominate like everything else this
+      // framework draws — the 2026-09-03 amendment already settled that — and
+      // they open a CATEGORY of its own, `areas`, whose catalogue header comes
+      // from the category id like every other section's.
+      wardley: 21,
       // 8 since the hand-drawn typed relation (`edgy.addRelation`) joined the
       // seven artefacts — the first EDGY entry that arms a tool.
       edgy: 8,
@@ -152,8 +158,9 @@ describe('command registry invariants', () => {
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
     // because ADR 0012 declares interchange per framework × format × direction
     // and refuses to infer a framework from a `.svg`. …and 113 since
-    // `wardley.addPorter`, 115 since the two Wardley climate arrows.
-    expect(commands).toHaveLength(115);
+    // `wardley.addPorter`, 115 since the two Wardley climate arrows, and 117
+    // since the two Wardley zones.
+    expect(commands).toHaveLength(117);
   });
 
   /**
@@ -404,7 +411,7 @@ describe('menu and manifest enumerate the same source', () => {
     // The DECLARED source is one list, and the manifest is the whole of it —
     // that is the drift this test was written for, and it is unchanged.
     expect(manifest).toEqual(wardleyCommands.map(c => c.id));
-    expect(manifest).toHaveLength(19);
+    expect(manifest).toHaveLength(21);
 
     // The sub-menu is a proper SUBSET of it rather than the same list, and the
     // two entries outside it are declarations rather than omissions.
@@ -416,12 +423,12 @@ describe('menu and manifest enumerate the same source', () => {
     // protecting.
     const DECLINE_THE_ROW = ['wardley.exportOwm', 'wardley.importSvg'];
     expect(menu).toEqual(manifest.filter(id => !DECLINE_THE_ROW.includes(id)));
-    // Seventeen NOMINATIONS — every artefact, which is the PO's amendment of
-    // 2026-09-03 to ADR 0014 R4. Not seventeen buttons: the catalogue is
-    // nineteen, so `selectSeniorMenuCommands` ranks this list down to thirteen
-    // plus the catalogue button. This assertion is about what Wardley DECLARES;
-    // what the row actually renders is pinned in the browser suite.
-    expect(menu).toHaveLength(17);
+    // Nineteen NOMINATIONS — every artefact, which is the PO's amendment of
+    // 2026-09-03 to ADR 0014 R4. Not nineteen buttons: the catalogue is
+    // twenty-one, so `selectSeniorMenuCommands` ranks this list down to
+    // thirteen plus the catalogue button. This assertion is about what Wardley
+    // DECLARES; what the row actually renders is pinned in the browser suite.
+    expect(menu).toHaveLength(19);
   });
 
   /**

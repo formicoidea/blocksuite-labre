@@ -32,6 +32,10 @@ export { WARDLEY_RULES } from './rules';
 // never disagree about what a market looks like. The sizes are the notation
 // itself, which is why a host laying out a map without an editor needs them.
 export {
+  WARDLEY_AREA_SIZE,
+  wardleyAreaBox,
+  wardleyAreaProps,
+  type WardleyAreaShape,
   type WardleyArtefactKind,
   wardleyCanonicalBox,
   wardleyCenteredBox,

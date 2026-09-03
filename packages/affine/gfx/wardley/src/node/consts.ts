@@ -196,3 +196,43 @@ export const DECELERATOR_VERTICES: readonly (readonly [number, number])[] =
 
 export const ACCELERATOR_LABEL = 'Accelerator';
 export const DECELERATOR_LABEL = 'Decelerator';
+
+/**
+ * Areas — the zones of the map.
+ *
+ * A ring you draw AROUND components to say "all of this is one thing": a
+ * business unit, a team's territory, a scope under discussion. It is not a link
+ * in the value chain and not an annotation of the climate either, which is why
+ * it carries a role with no parent and sits in a category of its own in the
+ * toolbox.
+ *
+ * Two shapes, one kind: a RECT for the common case and a POLYGON for a zone
+ * whose outline has to follow the components it groups (its corners are then
+ * moved from the shape toolbar's vertex editor). The `shapeType` is what says
+ * which, so nothing about an area is a second kind to keep in step.
+ *
+ * A zone is drawn OVER the map it groups, so the fill is the load-bearing
+ * number here: Peace light at ~25 % opacity, which is a wash the components
+ * underneath still read through. The border is the saturated Peace of the same
+ * swatch, thin like every other artefact's rim — the zone must frame the map,
+ * never compete with it.
+ */
+export const AREA_RECT_SIZE = { w: 240, h: 160 };
+/** The polygon is born square: its default outline is a regular pentagon. */
+export const AREA_POLYGON_SIZE = { w: 200, h: 200 };
+/** Peace light at ~25 % opacity — an 8-digit hex, exactly as `PIPELINE_FILL`. */
+export const AREA_FILL = '#c6dbfc40';
+/** Peace, the saturated shade of the same swatch. */
+export const AREA_STROKE = '#5b9cf6';
+export const AREA_STROKE_WIDTH = 1;
+/**
+ * The word the legend describes an area by.
+ *
+ * NOT written into the document: an area is created NAMELESS, so the editor
+ * that a double-click opens starts on an empty line and the first thing typed
+ * is the zone's own name. The other artefacts carry a placeholder because their
+ * name is a text element beside them and an empty one would be invisible; an
+ * area's name is its own inner text, and a placeholder there would be a word
+ * the author has to delete before writing theirs.
+ */
+export const AREA_LABEL = 'Area';

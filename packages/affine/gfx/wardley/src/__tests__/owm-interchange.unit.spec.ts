@@ -302,11 +302,15 @@ describe('the Wardley catalogue', () => {
     const categories = [...new Set(wardleyCommands.map(c => c.category))];
     // Last, and last on purpose: what you do WITH a map — the two directions of
     // the OWM DSL, and the SVG fallback that reads a picture of one — after the
-    // three sections of what you draw one with.
+    // four sections of what you draw one with. `areas` is the newest of those:
+    // a zone is not a node of the value chain and not a relation between two,
+    // and it comes last of the four because it is drawn around a chain that is
+    // already there.
     expect(categories).toEqual([
       'backgrounds',
       'nodes',
       'connectors',
+      'areas',
       'interchange',
     ]);
     // The native format both ways, then the best-effort reader: declaration
@@ -330,12 +334,13 @@ describe('the Wardley catalogue', () => {
     const nominated = wardleyCommands.filter(c =>
       c.surfaces.includes('senior-menu')
     );
-    // Seventeen, which is past `SENIOR_MENU_CAP + 1` (ADR 0014, R4) on purpose:
+    // Nineteen, which is past `SENIOR_MENU_CAP + 1` (ADR 0014, R4) on purpose:
     // the two climate arrows were the sixteenth and seventeenth nomination, and
     // the PO answered the curation question R4 raises rather than curating the
-    // list (Amendment 2026-09-03). Every artefact nominates; the row still
-    // seats thirteen plus "More artefacts…".
-    expect(nominated).toHaveLength(17);
+    // list (Amendment 2026-09-03). The two zones are the eighteenth and
+    // nineteenth, and land under that same amendment. Every artefact nominates;
+    // the row still seats thirteen plus "More artefacts…".
+    expect(nominated).toHaveLength(19);
     // The two entries that DECLINE the row are the only ones missing, and both
     // decline by declaration rather than by omission.
     expect(

@@ -155,6 +155,25 @@ export const wardleyDeceleratorIcon = svg`<svg width="24" height="24" viewBox="0
   <path d="M23 8.0 H10.9 V3 L1 12 L10.9 21 V16 H23 Z" fill="#f0f0f0" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
 
+/**
+ * Area (rectangle) and area (polygon): the zone, translucent, at 24 px.
+ *
+ * The pair differs on the OUTLINE and on nothing else, which is the whole of
+ * what the two commands differ on. A `currentColor` rim over a light fill like
+ * every other artefact glyph — the canvas draws the zone in Peace, but a
+ * coloured button would claim the colour is the notation, and it is a default
+ * the author changes from the toolbar. The pentagon is the editor's own default
+ * polygon, so the button is the shape the click produces.
+ */
+export const wardleyAreaRectIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2.6" y="5" width="18.8" height="14" rx="1" fill="#f0f0f0" fill-opacity="0.8" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/** The same zone with corners you move: the editor's own default pentagon. */
+export const wardleyAreaPolygonIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 2.8 L21.4 9.6 L17.8 20.8 H6.2 L2.6 9.6 Z" fill="#f0f0f0" fill-opacity="0.8" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+</svg>`;
+
 /** Legend: a bordered box with glyph + line rows. */
 export const wardleyLegendIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/>
