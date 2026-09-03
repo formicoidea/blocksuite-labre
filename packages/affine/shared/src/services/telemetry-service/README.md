@@ -23,9 +23,9 @@ std.getOptional(TelemetryProvider)?.track('FrameworkElementAdded', { ... });
 
 ## Block lifecycle taxonomy (the contract)
 
-Every block flavour reports the same five moments, so product analytics can
-compare blocks with one query. **A new block is not done until it emits these
-events** (this is part of the block template):
+Every canvas flavour (`CANVAS_FLAVOURS`) reports the same five moments, so
+product analytics can compare blocks with one query. **A new canvas block is
+not done until it emits these events** (this is part of the block template):
 
 | Event                | When                                                       | Required props                                                               |
 | -------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -48,7 +48,8 @@ insertion sites — do not emit it from store plumbing.
 
 Conventions:
 
-- `flavour` is the store flavour (`affine:paragraph`, `affine:database`…).
+- `flavour` is the store flavour, a canvas one here (`affine:note`,
+  `affine:frame`…).
 - `page` distinguishes `doc editor` vs `whiteboard editor` when relevant.
 - Events describe **user intent**, not store mechanics: a programmatic
   migration that rewrites blocks must not emit lifecycle events.

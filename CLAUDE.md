@@ -75,7 +75,8 @@ A new block (or gfx framework module) is DONE only when it has ALL of:
 4. **Telemetry**: creation sites emit `BlockCreated` (blocks) or
    `FrameworkElementAdded`/`FrameworkToolPicked` (frameworks). Lifecycle
    events (edited/deleted/abandoned/duration) come free from
-   `BlockLifecycleTelemetryWatcher`.
+   `BlockLifecycleTelemetryWatcher`, but for canvas flavours only
+   (`CANVAS_FLAVOURS`) — a prose-side block reports nothing but `BlockCreated`.
 5. **Unit tests** (and an integration spec if it renders on the canvas).
 6. **One changeset** (`yarn changeset`) describing the user-facing change.
 
