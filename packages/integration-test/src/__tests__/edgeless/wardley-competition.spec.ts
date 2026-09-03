@@ -316,6 +316,94 @@ describe('the force a Porter glyph marks', () => {
     expect(circle.text?.toString()).toBe('L');
   });
 
+  /* ── The undo ladder of a TYPED letter (recette of #211) ──────────── */
+
+  /**
+   * The invariant, checked at whatever state history happens to be in: the tag
+   * is a READING of the letter. One of R/L/E is that force; anything else — a
+   * half-typed `RR`, an emptied circle — is no force at all.
+   */
+  const expectConsistent = (circle: WardleyNodeElementModel, where: string) => {
+    const raw = circle.text?.toString() ?? '';
+    const forces: Record<string, string | undefined> = {
+      R: RELATIVE,
+      L: STRUGGLE,
+      E: ESTABLISH,
+    };
+    const expected = forces[raw.trim().toUpperCase()];
+    expect(tagsOf(circle), `${where} — text ${JSON.stringify(raw)}`).toEqual(
+      expected ? [expected] : []
+    );
+  };
+
+  const undo = async () => {
+    window.doc.undo();
+    await settle();
+  };
+  const redo = async () => {
+    window.doc.redo();
+    await settle();
+  };
+
+  test('every state an undo of a typed letter lands on is coherent', async () => {
+    // The recette's repro, exactly: from R/relative, open the editor, select
+    // all, type E, Escape. The inline editor writes that as several Yjs
+    // operations in separate undo scopes, so the states below include the
+    // intermediate texts nobody would call a force.
+    const { group, circle } = await drawPorter();
+    await pick(group.id, RELATIVE);
+    await retype(circle, 'E');
+    expect([circle.text?.toString(), tagsOf(circle)]).toEqual([
+      'E',
+      [ESTABLISH],
+    ]);
+
+    // Bounded by the letter, not by `canUndo`: undoing past the edits would
+    // undo the porter itself, and a deleted element says nothing about the
+    // coherence of a qualification.
+    let steps = 0;
+    while (steps < 6 && circle.text?.toString() !== 'R') {
+      await undo();
+      steps++;
+      // The defect: an intermediate text used to carry the force of the text
+      // that came AFTER it — two letters at once, qualified.
+      expectConsistent(circle, `after undo ${steps}`);
+    }
+    expect(steps).toBeGreaterThan(0);
+    expect(circle.text?.toString()).toBe('R');
+    expect(tagsOf(circle)).toEqual([RELATIVE]);
+
+    for (let step = 0; step < steps; step++) {
+      await redo();
+      expectConsistent(circle, `after redo ${step + 1}`);
+    }
+
+    // …and the document comes back EXACTLY to where the author left it, which
+    // is what the recette found it did not.
+    expect(circle.text?.toString()).toBe('E');
+    expect(tagsOf(circle)).toEqual([ESTABLISH]);
+  });
+
+  test('the qualification costs no undo entry of its own', async () => {
+    // The mechanism, measured rather than asserted: the tag is written with an
+    // origin the undo manager ignores, so it is not a step at all. Undoing
+    // takes the author back through their own keystrokes and no further, and
+    // the force follows whatever letter each step leaves behind.
+    const { circle } = await drawPorter();
+    await retype(circle, 'L');
+    expect(tagsOf(circle)).toEqual([STRUGGLE]);
+
+    // Bounded: undoing forever would eventually undo the porter itself, which
+    // says nothing about the qualification.
+    for (let step = 0; step < 6 && circle.text?.toString() !== 'R'; step++) {
+      await undo();
+      expectConsistent(circle, `after undo ${step + 1}`);
+    }
+
+    expect(circle.text?.toString()).toBe('R');
+    expect(tagsOf(circle)).toEqual([RELATIVE]);
+  });
+
   /* ── The legend's five-forces panel ───────────────────────────────── */
 
   test('the map’s Legend button draws the five-forces panel', async () => {

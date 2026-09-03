@@ -22,20 +22,24 @@ makes the other follow.
   click on the composite the sub-menu draws reaches the dropdown, because only
   the circle carries `wardley:porter` — the four arrows are the glyph's own
   wiring and carry nothing.
-- **Type a letter into the circle** and the glyph is qualified when the editor
-  closes. Read off the SELECTION and not off the text, exactly as C4's type line
-  is: a canvas text editor binds onto the element's `Y.Text`, so "the text
-  changed" fires once per keystroke, and an id LEAVING the editing set is the
-  only honest commit. `r`, `l`, `E` all land; `X`, `RL` and an emptied circle
-  clear the tag rather than picking the nearest value — a glyph nobody can read
-  must not be reported as a force somebody named.
+- **Type a letter into the circle** and the glyph is qualified as it is typed.
+  `r`, `l`, `E` all land; `X`, `RL` and an emptied circle clear the tag rather
+  than picking the nearest value — a glyph nobody can read must not be reported
+  as a force somebody named.
 - **Clearing the tag leaves the drawing alone.** Un-picking a value is a
   statement about the qualification — "I no longer claim which force this is" —
   and not about a map somebody is still reading.
 
-Neither direction writes when the two already agree, so one gesture is one
-write and one undo entry, and the pair settles at a fixed point instead of
-chasing each other round.
+The two are not symmetric, and that is the design rather than an omission: the
+letter is what the author writes, and **the tag is a reading of it**, recomputed
+after every local change of the text and written with an origin the undo manager
+ignores. So `tag = f(text)` holds at every instant history passes through, and
+the undo stack holds the author's own keystrokes and nothing else. A menu pick —
+the one gesture that starts from the tag — redraws the letter inside the very
+transaction the pick opened, so it still costs exactly one undo entry, redrawing
+included. The redraw compares the two semantically (a circle reading `e` already
+says "struggle to establish") and never runs while somebody has their caret in
+the circle, which is `C4TypeLineWatcher`'s lesson.
 
 The tag rides on the **same `wardley-core` pack** the natures do, and applies to
 `wardley:porter` alone. That is the mechanism paying for itself: a force is not

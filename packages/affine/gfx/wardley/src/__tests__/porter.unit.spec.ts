@@ -440,11 +440,15 @@ describe('the legend', () => {
   const frameOf = (added: Added[]) => Bound.deserialize(String(added[0].xywh));
 
   /**
-   * The panel's own porter circle — the LAST one created, since the row above
-   * draws one too and both are role-less, text-less `kind: 'porter'` ellipses.
+   * The panel's own porter circle — the LAST `kind: 'porter'` ELLIPSE created,
+   * since the row above draws one too. The `shapeType` filter is load-bearing:
+   * the four arrows are `kind: 'porter'` polygons, so "the last porter" is one
+   * of them, not the circle they push on.
    */
   const panelGlyph = (added: Added[]) =>
-    added.filter(el => el.kind === 'porter').at(-1)!;
+    added
+      .filter(el => el.kind === 'porter' && el.shapeType === 'ellipse')
+      .at(-1)!;
 
   describe("Porter's five forces", () => {
     const PANEL = porterPanelLayout(450 - 16 * 2);
