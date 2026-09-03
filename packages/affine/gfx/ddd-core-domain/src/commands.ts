@@ -31,6 +31,8 @@ interface Spec {
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -41,6 +43,7 @@ const SPECS: Spec[] = [
     label: 'Core Domain Chart',
     iconKey: 'ddd-core-domain.chart',
     element: 'background',
+    board: true,
     icon: chartSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
@@ -122,7 +125,11 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
     defaultKeys: { mac: [], other: [] },
     availability: 'always',
     run: spec.run,
-    telemetry: { framework: 'ddd-core-domain', element: spec.element },
+    telemetry: {
+      framework: 'ddd-core-domain',
+      element: spec.element,
+      board: spec.board,
+    },
   })
 );
 

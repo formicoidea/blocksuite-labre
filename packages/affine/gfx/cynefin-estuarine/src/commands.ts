@@ -23,6 +23,8 @@ interface Spec {
   label: string;
   iconKey: string;
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   run: (std: BlockStdScope) => void;
 }
 
@@ -32,6 +34,7 @@ const SPECS: Spec[] = [
     label: 'Cynefin framework',
     iconKey: 'cynefin.frame',
     element: 'cynefin',
+    board: true,
     run: createCynefin,
   },
   {
@@ -39,6 +42,7 @@ const SPECS: Spec[] = [
     label: 'Estuarine map',
     iconKey: 'estuarine.map',
     element: 'estuarine',
+    board: true,
     run: createEstuarineMap,
   },
   {
@@ -65,7 +69,11 @@ export const cynefinEstuarineCommands: CommandDescriptor[] = SPECS.map(
     defaultKeys: { mac: [], other: [] },
     availability: 'always',
     run: spec.run,
-    telemetry: { framework: 'cynefin-estuarine', element: spec.element },
+    telemetry: {
+      framework: 'cynefin-estuarine',
+      element: spec.element,
+      board: spec.board,
+    },
   })
 );
 

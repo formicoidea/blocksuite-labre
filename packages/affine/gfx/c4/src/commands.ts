@@ -91,6 +91,8 @@ interface Spec {
   category: 'diagrams' | 'elements' | 'boundaries' | 'relations';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   run: (std: BlockStdScope) => void;
 }
 
@@ -103,6 +105,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'diagrams',
     element: 'board',
+    board: true,
     run: createC4Board,
   },
   /* ── The base components: the four levels, each plain form immediately
@@ -241,7 +244,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   defaultKeys: { mac: [], other: [] },
   availability: 'always',
   run: spec.run,
-  telemetry: { framework: 'c4', element: spec.element },
+  telemetry: { framework: 'c4', element: spec.element, board: spec.board },
 }));
 
 /**

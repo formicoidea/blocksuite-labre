@@ -126,6 +126,8 @@ interface Spec {
   senior: boolean;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   run: (std: BlockStdScope) => void;
 }
 
@@ -219,6 +221,7 @@ const SPECS: Spec[] = [
     category: 'swimlanes',
     senior: true,
     element: 'pool',
+    board: true,
     run: createBpmnPool,
   },
   {
@@ -411,7 +414,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   defaultKeys: { mac: [], other: [] },
   availability: 'always',
   run: spec.run,
-  telemetry: { framework: 'bpmn', element: spec.element },
+  telemetry: { framework: 'bpmn', element: spec.element, board: spec.board },
 }));
 
 /**

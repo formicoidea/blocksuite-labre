@@ -80,6 +80,8 @@ interface Spec {
   kind: 'artefact' | 'tool';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
+  /** Places the framework's board — see `CommandTelemetry.board`. */
+  board?: true;
   run: (gfx: GfxController) => void;
 }
 
@@ -93,6 +95,7 @@ const SPECS: Spec[] = [
     category: 'backgrounds',
     kind: 'artefact',
     element: 'background:classic',
+    board: true,
     run: gfx => createWardleyBackground(gfx, 'classic'),
   },
   {
@@ -102,6 +105,7 @@ const SPECS: Spec[] = [
     category: 'backgrounds',
     kind: 'artefact',
     element: 'background:opportunity',
+    board: true,
     run: gfx => createWardleyBackground(gfx, 'opportunity'),
   },
   {
@@ -111,6 +115,7 @@ const SPECS: Spec[] = [
     category: 'backgrounds',
     kind: 'artefact',
     element: 'background:benefit',
+    board: true,
     run: gfx => createWardleyBackground(gfx, 'benefit'),
   },
   {
@@ -120,6 +125,7 @@ const SPECS: Spec[] = [
     category: 'backgrounds',
     kind: 'artefact',
     element: 'background:evolution-gradient',
+    board: true,
     run: gfx => createWardleyBackground(gfx, 'evolution-gradient'),
   },
   {
@@ -254,7 +260,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
     : { mac: [], other: [] },
   availability: 'always',
   run: std => spec.run(std.get(GfxControllerIdentifier)),
-  telemetry: { framework: 'wardley', element: spec.element },
+  telemetry: { framework: 'wardley', element: spec.element, board: spec.board },
 }));
 
 /**

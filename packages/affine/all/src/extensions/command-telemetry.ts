@@ -65,6 +65,10 @@ export function reportCommandTelemetry(
     // invoked the command. This is the metric that will arbitrate the 14
     // senior slots against the sidepanel against the palette.
     control: invocation.source,
+    // Only present on a framework's board command: the ratio "boards created
+    // / elements added" per framework is the signal that the board gesture is
+    // understood at all. Absent otherwise, so no existing event grows a key.
+    ...(telemetry.board ? { role: 'board' } : {}),
   });
 }
 
