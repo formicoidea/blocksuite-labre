@@ -49,9 +49,23 @@ function getTextColor(fillColor: Color) {
  * so the ~100 lines that wire `edgeless-shape-color-picker` to the models live
  * here once rather than being copied per framework.
  */
+/**
+ * The last word on what a picked swatch actually WRITES as a model's fill.
+ *
+ * The identity by default, which is what a colour picker means everywhere. It
+ * exists because a swatch is a hue and some elements are washes: a Wardley
+ * ZONE is drawn over the map it groups, so its fill carries an alpha, and a
+ * picked swatch that replaced `#c6dbfc99` with an opaque `#5b9cf6` would hide
+ * the very map the zone is there to annotate. A framework that has such
+ * elements says so here — per model, because the same picker serves its
+ * washes and its opaque artefacts.
+ */
+export type FillColorFor = (model: ShapeElementModel, value: Color) => Color;
+
 export function paletteColorAction(
   id: string,
-  palettes: Palette[]
+  palettes: Palette[],
+  fillColorFor: FillColorFor = (_model, value) => value
 ): ToolbarAction {
   return {
     id,
@@ -112,9 +126,12 @@ export function paletteColorAction(
       const onPickFillColor = pickColorWrapper('fillColor', palette => {
         const value = palette.value;
         const filled = isTransparent(value);
-        const props = packColor('fillColor', value);
         const crud = ctx.std.get(EdgelessCRUDIdentifier);
         models.forEach(model => {
+          // Per model, so a selection mixing a wash and an opaque artefact
+          // gets the right fill on each — and `packColor` runs on what the
+          // hook returned, since that is the value the document stores.
+          const props = packColor('fillColor', fillColorFor(model, value));
           if (filled && !model.filled) {
             const color = getTextColor(value);
             Object.assign(props, { filled, color });

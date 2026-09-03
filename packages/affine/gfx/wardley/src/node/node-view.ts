@@ -1,9 +1,5 @@
-import { mountShapeTextEditor } from '@labre/affine-gfx-shape';
-import {
-  ShapeElementModel,
-  type WardleyNodeElementModel,
-} from '@labre/affine-model';
-import { GfxElementModelView } from '@labre/std/gfx';
+import { ShapeElementView } from '@labre/affine-gfx-shape';
+import type { WardleyNodeElementModel } from '@labre/affine-model';
 
 import { WARDLEY_ROLE } from '../roles.js';
 
@@ -25,6 +21,20 @@ const NAMES_ITSELF: Partial<Record<string, string>> = {
 /**
  * View for a Wardley node. Registering it ensures `gfx.view.get(model)` returns
  * a view (required so move / select / connector interactions work).
+ *
+ * ## It extends `ShapeElementView`, and that is what makes "Edit vertices" work
+ *
+ * A Wardley node IS a `ShapeElementModel`, and the toolbar's vertex-editing
+ * action ends in `if (view instanceof ShapeElementView) view.enterVertexEditingMode()`.
+ * While this view extended `GfxElementModelView` directly, that check failed
+ * silently: the button was on the row, it was enabled, and clicking it did
+ * nothing at all — found by the recette of #213 on an area polygon, whose
+ * corners are the whole reason to draw one.
+ *
+ * Extending the shape view brings TWO wirings, and this framework wants exactly
+ * one of each. Both are hooks on the base rather than things to dodge by
+ * skipping `onCreated`, because skipping it would drop the wiring that is
+ * wanted along with the wiring that is not.
  *
  * ## Double-clicking edits the inner text — on the TWO kinds that have one
  *
@@ -68,32 +78,41 @@ const NAMES_ITSELF: Partial<Record<string, string>> = {
  * double-click that mounts the inner-text editor: an arrow grew from 24 units
  * high to 44 the moment one was opened, and the deformation survived Escape. An
  * arrow is not a thing you write in, and this view is where that is said.
+ *
+ * ## Vertices move on the AREA and nowhere else
+ *
+ * The other wiring. Every other polygon this framework draws has an outline
+ * that IS the notation — an accelerator points right and a decelerator points
+ * left, and a porter's arrow is the glyph's own wiring — so a handle on one can
+ * only turn a statement into a blob. A zone's outline is the opposite: it
+ * exists to follow the components it groups. Declining the hook on every other
+ * kind skips the overlay, the pointer wiring and the toolbar entry together,
+ * which is the same answer the toolbar's own `when` gives.
  */
-export class WardleyNodeView extends GfxElementModelView<WardleyNodeElementModel> {
+export class WardleyNodeView extends ShapeElementView<WardleyNodeElementModel> {
   static override type: string = 'wardleyNode';
 
-  override onCreated(): void {
-    super.onCreated();
-    this.on('dblclick', () => {
-      // Only the porter CIRCLE and the area. The kind alone is not enough: the
-      // porter's four arrows share its kind and are told apart by carrying no
-      // role, exactly as the market's inner dots are — hence a table of
-      // kind → the role the ARTEFACT carries, and an element that fails to
-      // match is either a glyph's own wiring or a kind whose name is the text
-      // element beside it. Opening the shape's own editor on those would write
-      // a second, invisible name into a field that must stay empty.
-      const named = NAMES_ITSELF[this.model.kind];
-      if (named === undefined || this.model.role !== named) return;
+  /**
+   * Only the porter CIRCLE and the area. The kind alone is not enough: the
+   * porter's four arrows share its kind and are told apart by carrying no role,
+   * exactly as the market's inner dots are — hence a table of kind → the role
+   * the ARTEFACT carries, and an element that fails to match is either a glyph's
+   * own wiring or a kind whose name is the text element beside it. Opening the
+   * shape's own editor on those would write a second, invisible name into a
+   * field that must stay empty.
+   */
+  protected override editsTextOnDblClick(): boolean {
+    // A read-only document is one nobody names anything on. The base view has
+    // no such check — a plain shape's editor is harmless there — but this gate
+    // is the whole of what a Wardley node offers, so it keeps the guard the
+    // hand-written handler carried.
+    if (this.std.store.readonly) return false;
+    const named = NAMES_ITSELF[this.model.kind];
+    return named !== undefined && this.model.role === named;
+  }
 
-      const edgeless = this.std.view.getBlock(this.std.store.root!.id);
-      if (
-        edgeless &&
-        !this.std.store.readonly &&
-        !this.model.isLocked() &&
-        this.model instanceof ShapeElementModel
-      ) {
-        mountShapeTextEditor(this.model, edgeless);
-      }
-    });
+  /** The zone, and nothing else this framework draws as a polygon. */
+  protected override editsVerticesOnSelection(): boolean {
+    return this.model.kind === 'area';
   }
 }

@@ -20,7 +20,26 @@ import { normalizeShapeBound } from './element-renderer';
 import { PolygonVertexEditingOverlay } from './overlay/polygon-vertex-editing-overlay';
 import { mountShapeTextEditor } from './text/edgeless-shape-text-editor';
 
-export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
+/**
+ * The view every shape gets, and the base a framework NODE view extends when
+ * its model is a {@link ShapeElementModel} subclass.
+ *
+ * Generic over the model, with the plain shape as the default, so
+ * `WardleyNodeView extends ShapeElementView<WardleyNodeElementModel>` reads its
+ * own `kind` off `this.model` without a cast. Every existing call site names no
+ * type argument and is unchanged.
+ *
+ * A framework node that extends this inherits the polygon VERTEX EDITOR, which
+ * is the whole reason to: {@link enterVertexEditingMode} is what the toolbar's
+ * "Edit vertices" action calls, and the action checks `view instanceof
+ * ShapeElementView` — a node view outside this hierarchy makes that button
+ * silently do nothing. What such a subclass usually does NOT want is the other
+ * thing wired here, the double-click-to-edit; {@link editsTextOnDblClick} is
+ * the one line it has to say so.
+ */
+export class ShapeElementView<
+  T extends ShapeElementModel = ShapeElementModel,
+> extends GfxElementModelView<T> {
   static override type: string = 'shape';
 
   /** Overlay for polygon vertex editing (only active for polygon shapes). */
@@ -72,8 +91,24 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
     }
   }
 
+  /**
+   * Whether a double-click on THIS element opens its own inner-text editor.
+   *
+   * True for every plain shape, which is what this editor has always done: a
+   * shape is a box you write in. It is a HOOK rather than a constant because a
+   * framework node is often not one — its name may be a text element grouped
+   * beside it, or the element may be a glyph's own wiring that must carry no
+   * words at all — and a subclass that overrode `onCreated` to dodge this one
+   * wiring would lose the vertex editor set up beside it.
+   */
+  protected editsTextOnDblClick(): boolean {
+    return true;
+  }
+
   private _initDblClickToEdit(): void {
     this.on('dblclick', () => {
+      if (!this.editsTextOnDblClick()) return;
+
       const edgeless = this.std.view.getBlock(this.std.store.root!.id);
 
       if (
@@ -426,8 +461,25 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
    * The overlay is shown when a polygon is selected and removed when
    * deselected or when a non-polygon shape is selected.
    */
+  /**
+   * Whether THIS element's corners may be moved by hand.
+   *
+   * True for every plain polygon. The companion of {@link editsTextOnDblClick},
+   * and a hook for the same reason: a framework polygon's outline is often the
+   * NOTATION rather than a drawing — a Wardley accelerator points right and a
+   * decelerator points left, and that direction is the whole of what separates
+   * them — so hovering one must not offer a handle that can only turn a
+   * statement into a blob. Declining here skips the selection overlay, the
+   * pointer wiring and {@link enterVertexEditingMode} together, which is the
+   * point: a half-wired overlay is worse than none.
+   */
+  protected editsVerticesOnSelection(): boolean {
+    return true;
+  }
+
   private _initPolygonVertexEditing(): void {
     if (this.model.shapeType !== ShapeType.Polygon) return;
+    if (!this.editsVerticesOnSelection()) return;
 
     // Subscribe to selection changes to manage overlay lifecycle
     this.disposable.add(
@@ -594,6 +646,10 @@ export class ShapeElementView extends GfxElementModelView<ShapeElementModel> {
    */
   enterVertexEditingMode(): void {
     if (this.model.shapeType !== ShapeType.Polygon) return;
+    // The same hook the selection wiring reads, asked again here: this is the
+    // other door into the mode, and an element that declined the wiring would
+    // otherwise get an overlay with no pointer handlers behind it.
+    if (!this.editsVerticesOnSelection()) return;
     this._ensureVertexEditingOverlay();
     this._enterVertexEditingMode();
   }

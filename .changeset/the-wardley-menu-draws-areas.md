@@ -1,5 +1,6 @@
 ---
 '@labre/affine-gfx-wardley': minor
+'@labre/affine-gfx-shape': minor
 '@labre/affine-model': patch
 ---
 
@@ -30,13 +31,16 @@ boundary drawn around real components, and a long name must never push it out
 and swallow one the author did not mean to include. It is also why this is the
 plainest creation site in the pack: one element and no group.
 
-**It is sent to the back as it is drawn.** The surface paints in index order, so
-a zone added after the components it covers would sit on top of them — a wash
-over the drawing, and every click meant for a component inside it eaten by the
-zone. The creation site reorders the element through the same
-`layer.getReorderedIndex(model, 'back')` the edgeless "Send to back" action
-calls. The author can raise it by hand; what this buys is that the first thing
-they do after drawing a zone is not un-doing it.
+**It is lowered as it is drawn — to just above the map.** The surface paints in
+index order, so a zone added after the components it covers would sit on top of
+them: a wash over the drawing, and every click meant for a component inside it
+eaten by the zone. But "the back of the surface" is one step too far, because a
+Wardley map is itself an opaque framework BACKGROUND — a zone sent all the way
+back went behind the map and was invisible. So the creation site mints an index
+just above the topmost framework background the zone actually OVERLAPS, and
+below everything else; with no background under it, the back of the surface is
+right again. The author can raise it by hand; what this buys is that the first
+thing they do after drawing a zone is not un-doing it.
 
 **`wardley:area` has no parent**, and that is the whole declaration rather than
 an omission. A zone is not a link in the value chain at any grain, and it is
@@ -64,6 +68,29 @@ shape toolbar's vertex editor, narrowed to `kind === 'area'`. Every other
 polygon this framework draws has an outline that IS the notation (an accelerator
 points right, a decelerator left), and dragging a barb would turn a statement
 about the climate into a grey blob.
+
+Making that button actually work took two small openings in
+`@labre/affine-gfx-shape`, both additive and both defaulting to today's
+behaviour:
+
+- **`WardleyNodeView` now extends `ShapeElementView`.** The vertex action ends
+  in `if (view instanceof ShapeElementView) view.enterVertexEditingMode()`, so
+  while the Wardley view extended `GfxElementModelView` directly the entry was
+  on the row, enabled, and did nothing at all when clicked. `ShapeElementView`
+  is now generic over its model, defaulting to `ShapeElementModel` so every
+  existing call site is unchanged, and it exposes two
+  protected hooks — `editsTextOnDblClick()` and `editsVerticesOnSelection()`,
+  both `true` by default — for a framework node that inherits the vertex editor
+  but not the "every shape is a box you write in" wiring beside it. Wardley
+  answers the first with its porter/area gate and the second with
+  `kind === 'area'`.
+- **`paletteColorAction` takes an optional `fillColorFor` hook.** A picked
+  swatch is a hue, and a zone's fill is a WASH: writing `#5b9cf6` straight in
+  replaced `#c6dbfc99` with an opaque colour and hid the map underneath. The
+  Wardley toolbar passes a hook that re-appends the zone's alpha for an area and
+  is the identity everywhere else — including on an 8-digit value the author
+  chose from the custom picker, and on a theme token, neither of which it
+  touches. EDGY and every other caller pass two arguments and are unaffected.
 
 Both entries nominate the sub-menu, like every Wardley artefact since the
 product owner's amendment of 2026-09-03 to ADR 0014 R4. The row is unchanged —

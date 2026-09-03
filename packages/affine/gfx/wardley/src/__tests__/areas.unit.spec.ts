@@ -2,12 +2,14 @@ import {
   DEFAULT_POLYGON_VERTICES,
   ShapeStyle,
   TextFitMode,
+  WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWardleyArea } from '../actions';
+import { createWardleyArea, wardleyAreaIndexOver } from '../actions';
+import { wardleyFillColor } from '../toolbar/node-config';
 import { wardleyCommands } from '../commands';
 import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
 import { createWardleyLegend } from '../legend';
@@ -51,30 +53,78 @@ import { owmPointOf } from '../export';
  *
  * The other two facts are about what a zone DOES to the map it covers. Its name
  * is its own inner text rather than a label beside it, because a label parked
- * outside a boundary would name whatever else is there. And it is sent to the
- * BACK the moment it exists, because a wash drawn last sits on top of every
- * component it groups and eats their clicks.
+ * outside a boundary would name whatever else is there. And it is LOWERED the
+ * moment it exists, because a wash drawn last sits on top of every component it
+ * groups and eats their clicks — to just above the framework background it
+ * covers, which is the correction the recette of #213 asked for: "the back of
+ * the surface" put it behind the opaque map and made it invisible.
  */
 
 type Added = Record<string, unknown>;
 
+/** One element already on the stubbed surface, in paint order. */
+type Placed = {
+  id: string;
+  index: string;
+  xywh: string;
+  group: null;
+};
+
+/**
+ * A framework background at that depth — a Wardley map, as far as this goes.
+ *
+ * `defineProperties` rather than `Object.assign`, as `owm-board-stub` does: the
+ * model's props are prototype ACCESSORS, and assigning through them would run
+ * the document machinery this test has none of.
+ */
+function fakeBackground(id: string, index: string, xywh: string): Placed {
+  const model = Object.create(
+    WardleyBackgroundElementModel.prototype
+  ) as Placed;
+  Object.defineProperties(model, {
+    id: { value: id, enumerable: true },
+    index: { value: index, enumerable: true },
+    xywh: { value: xywh, enumerable: true },
+    group: { value: null, enumerable: true },
+  });
+  return model;
+}
+
+/** Anything that is not a background: a component, a label, a connector. */
+function fakePlain(id: string, index: string, xywh: string): Placed {
+  return { id, index, xywh, group: null };
+}
+
 /**
  * Minimal GfxController stand-in, recording what the action posted — plus the
- * layer, which is the piece no other Wardley creation site touches.
+ * surface stack and the layer, the two pieces no other Wardley creation site
+ * touches.
  */
-function fakeGfx() {
+function fakeGfx(standing: Placed[] = []) {
   const added: Added[] = [];
   const grouped: string[][] = [];
-  const elements = new Map<string, { id: string; index: string }>();
+  const elements = new Map<string, Placed>();
   const reordered: { id: string; direction: string }[] = [];
   let n = 0;
 
+  for (const element of standing) elements.set(element.id, element);
+
   const gfx = {
     surface: {
+      get elementModels() {
+        return [...elements.values()];
+      },
       addElement: (props: Added) => {
         const id = `el-${n++}`;
         added.push(props);
-        elements.set(id, { id, index: 'a1' });
+        elements.set(id, {
+          id,
+          // The top of the stack, which is where a freshly added element lands
+          // — and the whole reason the action then lowers it.
+          index: 'zz',
+          xywh: String(props.xywh),
+          group: null,
+        });
         return id;
       },
       getElementById: (id: string) => elements.get(id) ?? null,
@@ -279,15 +329,144 @@ describe('creating an area', () => {
     }
   );
 
-  it('sends the zone to the BACK of the surface as it is drawn', () => {
+  it('sends a zone with nothing under it to the BACK of the surface', () => {
     const { gfx, elements, reordered } = fakeGfx();
     createWardleyArea(gfx, 'rect');
 
     // The whole reason this action touches the layer at all: a zone added last
     // would paint over everything it groups and intercept every click meant for
-    // a component inside it. Same mechanism as edgeless "Send to back".
+    // a component inside it. With no background beneath, the back of the
+    // surface is right, and the LAYER mints the key so an empty board gets its
+    // own initial index rather than one invented here.
     expect(reordered).toEqual([{ id: 'el-0', direction: 'back' }]);
     expect(elements.get('el-0')!.index).toBe('a0');
+  });
+
+  it('lands just above the map it is drawn on, below the components', () => {
+    // The defect the recette of #213 found: a Wardley map is an OPAQUE
+    // framework background, so a zone sent behind the whole surface went behind
+    // the map and was invisible. What a zone must be under is the artefacts it
+    // groups; what it must be over is the canvas they sit on.
+    const map = fakeBackground('map', 'a0', '[0,0,1600,900]');
+    const component = fakePlain('component', 'a1', '[90,190,18,18]');
+    const { gfx, elements, reordered } = fakeGfx([map, component]);
+
+    createWardleyArea(gfx, 'rect');
+
+    // Not the back: the layer was never asked for one.
+    expect(reordered).toEqual([]);
+    const index = elements.get('el-0')!.index;
+    expect(index > map.index).toBe(true);
+    expect(index < component.index).toBe(true);
+  });
+
+  it('ignores a background it does not overlap', () => {
+    // A board can carry another framework's canvas parked elsewhere. The zone
+    // is drawn over ITS map, and a background it does not touch says nothing
+    // about how deep it goes.
+    const elsewhere = fakeBackground('other', 'a0', '[5000,5000,800,600]');
+    const { gfx, reordered } = fakeGfx([elsewhere]);
+
+    createWardleyArea(gfx, 'rect');
+
+    expect(reordered).toEqual([{ id: 'el-0', direction: 'back' }]);
+  });
+});
+
+/* ── How deep, exactly ────────────────────────────────────────────────── */
+
+describe('where a zone goes in the stack', () => {
+  const BOX = new Bound(100, 100, 200, 200);
+  /** A background big enough to hold the zone — a map, in other words. */
+  const covering = (index: string) => ({
+    index,
+    xywh: '[0,0,1600,900]',
+    isBackground: true,
+  });
+
+  it('answers "the back" when nothing is under it', () => {
+    expect(wardleyAreaIndexOver([], BOX)).toBeNull();
+    expect(
+      wardleyAreaIndexOver(
+        [{ index: 'a1', xywh: '[0,0,1600,900]', isBackground: false }],
+        BOX
+      )
+    ).toBeNull();
+  });
+
+  it('slots between the background it covers and what sits above it', () => {
+    const index = wardleyAreaIndexOver(
+      [
+        covering('a0'),
+        { index: 'a2', xywh: '[110,110,18,18]', isBackground: false },
+      ],
+      BOX
+    )!;
+    expect(index).not.toBeNull();
+    expect(index > 'a0').toBe(true);
+    expect(index < 'a2').toBe(true);
+  });
+
+  it('appends above a background that is the topmost element there is', () => {
+    const index = wardleyAreaIndexOver([covering('a0')], BOX)!;
+    expect(index > 'a0').toBe(true);
+  });
+
+  it('clears the TOPMOST background it covers, not the first drawn', () => {
+    // Two maps stacked: the zone belongs above the one nearest the artefacts,
+    // whichever of them was drawn first.
+    const index = wardleyAreaIndexOver([covering('a0'), covering('a1')], BOX)!;
+    expect(index > 'a1').toBe(true);
+  });
+
+  it('reads the paint order off the indexes, not off the array', () => {
+    // Fractional indexes sort lexicographically, which IS the paint order — so
+    // the caller may hand these over in document order and be right anyway.
+    const index = wardleyAreaIndexOver(
+      [
+        { index: 'a2', xywh: '[110,110,18,18]', isBackground: false },
+        covering('a0'),
+      ],
+      BOX
+    )!;
+    expect(index > 'a0').toBe(true);
+    expect(index < 'a2').toBe(true);
+  });
+});
+
+/* ── A recoloured zone is still a wash ────────────────────────────────── */
+
+describe('the fill a picked swatch writes', () => {
+  const node = (kind: string) =>
+    Object.create(WardleyNodeElementModel.prototype, {
+      kind: { value: kind },
+    }) as never;
+
+  it('keeps the zone’s alpha when a swatch is picked for an area', () => {
+    // The nit the recette raised: a zone is drawn over the map it groups, so a
+    // picker that wrote `#5b9cf6` as-is would hide the map behind an opaque
+    // wash. Peace comes back as Peace at the zone's own opacity.
+    expect(wardleyFillColor(node('area'), '#5b9cf6')).toBe('#5b9cf699');
+    expect(wardleyFillColor(node('area'), '#C6DBFC')).toBe('#C6DBFC99');
+  });
+
+  it('leaves every other artefact’s fill exactly as picked', () => {
+    for (const kind of ['component', 'market', 'accelerator', 'porter']) {
+      expect(wardleyFillColor(node(kind), '#5b9cf6')).toBe('#5b9cf6');
+    }
+  });
+
+  it('never touches a value that already carries alpha, or a theme token', () => {
+    // An 8-digit hex is somebody's deliberate choice from the custom picker,
+    // and a token is not a hex at all — it must reach the document intact.
+    expect(wardleyFillColor(node('area'), '#5b9cf680')).toBe('#5b9cf680');
+    expect(wardleyFillColor(node('area'), '--affine-palette-shape-blue')).toBe(
+      '--affine-palette-shape-blue'
+    );
+  });
+
+  it('leaves a plain shape alone: only a wardley zone is a wash', () => {
+    expect(wardleyFillColor({} as never, '#5b9cf6')).toBe('#5b9cf6');
   });
 
   it('leaves the zone selected, so the author can name it at once', () => {

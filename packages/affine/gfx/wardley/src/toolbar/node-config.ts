@@ -3,7 +3,12 @@ import {
   paletteColorAction,
   shapeToolbarConfig,
 } from '@labre/affine-gfx-shape';
-import { type Palette, WardleyNodeElementModel } from '@labre/affine-model';
+import {
+  type Color,
+  type Palette,
+  type ShapeElementModel,
+  WardleyNodeElementModel,
+} from '@labre/affine-model';
 import {
   type ToolbarActions,
   type ToolbarContext,
@@ -12,7 +17,41 @@ import {
 } from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier } from '@labre/std';
 
-import { INERTIA_COLOR, METHOD_FILL, WARDLEY_RED } from '../node/consts';
+import {
+  AREA_FILL,
+  INERTIA_COLOR,
+  METHOD_FILL,
+  WARDLEY_RED,
+} from '../node/consts';
+
+/** The two hex digits `AREA_FILL` carries — the zone's ~60 % opacity. */
+const AREA_ALPHA = AREA_FILL.slice(-2);
+
+/** A plain 6-digit hex, the only shape a swatch value takes. */
+const SIX_DIGIT_HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * What a picked swatch WRITES on a Wardley node.
+ *
+ * The identity on every artefact but one. A zone is drawn over the components
+ * it groups, so its fill is a WASH — `#c6dbfc99`, the alpha being the whole of
+ * what keeps the map readable underneath — and a picker that wrote the swatch
+ * as-is would replace it with an opaque hue and hide the map the zone annotates
+ * (recette of #213). So a swatch picked for an area keeps the zone's alpha.
+ *
+ * Only a bare 6-digit hex is touched: a value that already carries alpha is
+ * somebody's deliberate choice from the custom picker, and a theme token
+ * (`--affine-…`) is not a hex at all and must reach the document intact.
+ */
+export function wardleyFillColor(
+  model: ShapeElementModel,
+  value: Color
+): Color {
+  if (!(model instanceof WardleyNodeElementModel)) return value;
+  if (model.kind !== 'area') return value;
+  if (typeof value !== 'string' || !SIX_DIGIT_HEX.test(value)) return value;
+  return `${value}${AREA_ALPHA}`;
+}
 
 /**
  * The Wardley **evolution cycle**, surfaced as ready-made swatches in the node
@@ -97,7 +136,7 @@ const wardleyNodeToolbarConfig = {
       KEEP_ACTION_IDS.has(action.id)
     ),
     ...areaVertexActions,
-    paletteColorAction('e.color', WARDLEY_PALETTE_LIST),
+    paletteColorAction('e.color', WARDLEY_PALETTE_LIST, wardleyFillColor),
   ],
   when: shapeToolbarConfig.when,
 } as ToolbarModuleConfig;

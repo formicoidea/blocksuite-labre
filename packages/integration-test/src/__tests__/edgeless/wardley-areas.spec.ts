@@ -6,6 +6,7 @@ import {
   DEFAULT_POLYGON_VERTICES,
   GroupElementModel,
   ShapeElementModel,
+  WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine/model';
 import {
@@ -135,7 +136,63 @@ describe('drawing areas from the Wardley sub-menu', () => {
     expect(area.vertices).toBeUndefined();
   });
 
-  /* ── Behind the map it covers ────────────────────────────────────────── */
+  /* ── Above the map, below the artefacts ──────────────────────────────── */
+
+  test('a zone on a map paints above the map and below a component', async () => {
+    // The defect the recette of #213 found: a Wardley map is an OPAQUE
+    // framework background, so "the back of the surface" put the zone behind it
+    // and the zone was invisible. What a zone must be under is the artefacts it
+    // groups; what it must be over is the canvas they sit on.
+    await run('wardley.addBackground');
+    const map = surfaceModel().elementModels.find(
+      (model): model is WardleyBackgroundElementModel =>
+        model instanceof WardleyBackgroundElementModel
+    )!;
+    await run('wardley.addComponent');
+    const component = surfaceModel().elementModels.find(
+      (model): model is WardleyNodeElementModel =>
+        model instanceof WardleyNodeElementModel && model.kind === 'component'
+    )!;
+
+    const area = await draw('wardley.addAreaRect');
+
+    const painted = edgeless.gfx.layer.canvasElements.map(el => el.id);
+    expect(painted.indexOf(area.id)).toBeGreaterThan(painted.indexOf(map.id));
+    expect(painted.indexOf(area.id)).toBeLessThan(
+      painted.indexOf(component.id)
+    );
+  });
+
+  test('a click inside the zone still picks the component under it', async () => {
+    await run('wardley.addBackground');
+    await run('wardley.addComponent');
+    const component = surfaceModel().elementModels.find(
+      (model): model is WardleyNodeElementModel =>
+        model instanceof WardleyNodeElementModel && model.kind === 'component'
+    )!;
+    const area = await draw('wardley.addAreaRect');
+
+    // Both are centred on the viewport, so the component sits inside the zone —
+    // which is what a zone is FOR, and exactly the click a wash on top would
+    // have eaten.
+    edgeless.gfx.selection.clear();
+    const [cx, cy, cw, ch] = component.deserializedXYWH;
+    const point = at(cx + cw / 2, cy + ch / 2);
+    pointerdown(window.editor.host as HTMLElement, point);
+    pointerup(window.editor.host as HTMLElement, point);
+    await wait();
+
+    // The GROUP the component was drawn as, since that is what a first click
+    // on a grouped element selects. What matters is the negative: the zone did
+    // not take the click.
+    const group = component.group as GroupElementModel;
+    const selected = edgeless.gfx.selection.selectedIds;
+    expect(selected).not.toContain(area.id);
+    expect(
+      selected.includes(component.id) || selected.includes(group.id),
+      `selected ${selected.join(', ')}`
+    ).toBe(true);
+  });
 
   test('a zone drawn after a component lands behind it', async () => {
     await run('wardley.addComponent');
@@ -260,6 +317,66 @@ describe('drawing areas from the Wardley sub-menu', () => {
   };
 
   const WARDLEY_NODE_FLAVOUR = 'affine:surface:wardleyNode';
+
+  /** Run the flavour's vertex action on that selection, as a click would. */
+  const runVertexEditing = (flavour: string, model: ShapeElementModel) => {
+    const ctx = select(flavour, model);
+    const action = edgeless.std
+      .get(ToolbarRegistryIdentifier)
+      .getModuleBy(flavour)!
+      .actions.find(a => a.id === 'f1.edit-vertices') as
+      | { run?: (ctx: ToolbarContext) => void }
+      | undefined;
+    expect(action?.run, 'f1.edit-vertices has no run').toBeTruthy();
+    action!.run!(ctx);
+  };
+
+  /** The view's own answer: is it actually in vertex-editing mode? */
+  const isEditingVertices = (model: ShapeElementModel) => {
+    const view = edgeless.gfx.view.get(model.id) as
+      | { vertexEditingOverlay?: { isEditing: boolean } | null }
+      | null
+      | undefined;
+    return view?.vertexEditingOverlay?.isEditing === true;
+  };
+
+  test('running the action really puts an area polygon into vertex editing', async () => {
+    // BUG 1 of the #213 recette, and the reason the view now extends
+    // `ShapeElementView`: the action ends in `if (view instanceof
+    // ShapeElementView) view.enterVertexEditingMode()`, so while this view sat
+    // outside that hierarchy the button was on the row, enabled, and did
+    // nothing whatsoever when clicked.
+    const area = await draw('wardley.addAreaPolygon');
+    expect(isEditingVertices(area)).toBe(false);
+
+    runVertexEditing(WARDLEY_NODE_FLAVOUR, area);
+    await wait();
+
+    expect(isEditingVertices(area)).toBe(true);
+    // The mode declares itself on the selection too, which is what hides the
+    // resize handles while the corners are being moved.
+    expect(edgeless.gfx.selection.editing).toBe(true);
+    expect(edgeless.gfx.selection.selectedIds).toEqual([area.id]);
+  });
+
+  test('a plain polygon shape still enters vertex editing', async () => {
+    // The regression guard for the hook added on `ShapeElementView`: a plain
+    // shape declines nothing, so its behaviour is exactly what it was.
+    const id = surfaceModel().addElement({
+      type: 'shape',
+      shapeType: 'polygon',
+      vertices: DEFAULT_POLYGON_VERTICES.map(([x, y]) => [x, y]),
+      isClosed: true,
+      xywh: '[600,600,200,200]',
+    });
+    await wait();
+    const polygon = surfaceModel().getElementById(id) as ShapeElementModel;
+
+    runVertexEditing('affine:surface:shape', polygon);
+    await wait();
+
+    expect(isEditingVertices(polygon)).toBe(true);
+  });
 
   test('a polygon zone is offered the vertex editor', async () => {
     // The whole point of choosing the polygon over the rectangle: its outline
