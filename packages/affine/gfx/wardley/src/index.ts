@@ -38,7 +38,7 @@ export {
   wardleyNodeProps,
   type WardleyPorterArrow,
   wardleyPorterArrowProps,
-  wardleyPorterArrowSegments,
+  wardleyPorterArrows,
   wardleyPorterLetterProps,
 } from './presets';
 // What an artefact may BECOME: the declared family, the spec the generic morph

@@ -301,16 +301,74 @@ export function wardleyMarketLinkPairs<T>(dots: readonly T[]): [T, T][] {
 
 /* ── Porter's forces ──────────────────────────────────────────────────── */
 
-/** One of the four arrows: where it starts and where its head lands. */
+/** One of the four arrows: its own axis-aligned box, and the outline in it. */
 export interface WardleyPorterArrow {
-  source: [number, number];
-  target: [number, number];
+  /** Serialized `xywh` of the box the polygon is drawn inside. */
+  xywh: string;
+  /** The outline as normalized [0-1] coordinates of that box, tip first. */
+  vertices: number[][];
 }
 
 /**
- * The four cardinal directions, north first and then clockwise — the order the
- * arrows are created in, and the order a test may read them back.
+ * The four arrow outlines, north first and then clockwise.
+ *
+ * Normalized, so they are the same seven points at every size — the BOX carries
+ * the scale — and one list per direction rather than one list plus a `rotate`,
+ * because a rotated element is one the selection, the resize handles and every
+ * bounding-box reader then have to de-rotate. Each is: tip, the two head
+ * corners, and the four corners of the shaft, with the head
+ * `headLength / length` of the way down and the shaft `width / headWidth` wide.
  */
+const PORTER_HEAD = PORTER_ARROW.headLength / PORTER_ARROW.length; // 0.4
+const PORTER_SHAFT_LOW = (1 - PORTER_ARROW.width / PORTER_ARROW.headWidth) / 2;
+const PORTER_SHAFT_HIGH = 1 - PORTER_SHAFT_LOW;
+
+const PORTER_VERTICES: readonly number[][][] = [
+  // North — the tip at the top edge, the shaft running back down to the rim.
+  [
+    [0.5, 0],
+    [1, PORTER_HEAD],
+    [PORTER_SHAFT_HIGH, PORTER_HEAD],
+    [PORTER_SHAFT_HIGH, 1],
+    [PORTER_SHAFT_LOW, 1],
+    [PORTER_SHAFT_LOW, PORTER_HEAD],
+    [0, PORTER_HEAD],
+  ],
+  // East — the same outline turned a quarter, written out rather than rotated.
+  [
+    [1, 0.5],
+    [1 - PORTER_HEAD, 1],
+    [1 - PORTER_HEAD, PORTER_SHAFT_HIGH],
+    [0, PORTER_SHAFT_HIGH],
+    [0, PORTER_SHAFT_LOW],
+    [1 - PORTER_HEAD, PORTER_SHAFT_LOW],
+    [1 - PORTER_HEAD, 0],
+  ],
+  // South.
+  [
+    [0.5, 1],
+    [0, 1 - PORTER_HEAD],
+    [PORTER_SHAFT_LOW, 1 - PORTER_HEAD],
+    [PORTER_SHAFT_LOW, 0],
+    [PORTER_SHAFT_HIGH, 0],
+    [PORTER_SHAFT_HIGH, 1 - PORTER_HEAD],
+    [1, 1 - PORTER_HEAD],
+  ],
+  // West.
+  [
+    [0, 0.5],
+    [PORTER_HEAD, 0],
+    [PORTER_HEAD, PORTER_SHAFT_LOW],
+    [1, PORTER_SHAFT_LOW],
+    [1, PORTER_SHAFT_HIGH],
+    [PORTER_HEAD, PORTER_SHAFT_HIGH],
+    [PORTER_HEAD, 1],
+  ],
+];
+
+/** Whether a direction runs along X — the axis its box is long on. */
+const PORTER_HORIZONTAL = [false, true, false, true];
+/** Unit vector per direction, north first and then clockwise. */
 const PORTER_DIRECTIONS: readonly [number, number][] = [
   [0, -1],
   [1, 0],
@@ -319,58 +377,73 @@ const PORTER_DIRECTIONS: readonly [number, number][] = [
 ];
 
 /**
- * Where the four arrows of a Porter's-forces glyph run, for a circle of the
- * given radius centred on (cx, cy).
+ * The four arrows of a Porter's-forces glyph, for a circle of the given radius
+ * centred on (cx, cy) — a box and an outline each.
  *
  * The ONE description of the geometry, so the creation site, the map legend and
  * the tests read the same numbers rather than three sets that agreed the day
  * they were written. Each arrow starts `PORTER_ARROW.gap` clear of the rim —
  * the arrows push against the circle, they do not touch it — and runs
- * `PORTER_ARROW.length` further out, head at the far end.
+ * `PORTER_ARROW.length` further out, tip at the far end.
  *
- * Both distances scale WITH the radius, and that is what makes a legend row the
- * same drawing at another size: a 16-unit glyph carrying two 20-unit arrows
+ * Every distance scales WITH the radius, and that is what makes a legend row the
+ * same drawing at another size: a 12-unit glyph carrying four map-sized arrows
  * would not be a small Porter, it would be a circle somebody stabbed.
  */
-export function wardleyPorterArrowSegments(
+export function wardleyPorterArrows(
   cx: number,
   cy: number,
   radius: number = PORTER_SIZE / 2
 ): WardleyPorterArrow[] {
   const scale = radius / (PORTER_SIZE / 2);
-  const from = radius + PORTER_ARROW.gap * scale;
-  const to = from + PORTER_ARROW.length * scale;
-  return PORTER_DIRECTIONS.map(([dx, dy]) => ({
-    source: [cx + dx * from, cy + dy * from],
-    target: [cx + dx * to, cy + dy * to],
-  }));
+  const near = radius + PORTER_ARROW.gap * scale;
+  const long = PORTER_ARROW.length * scale;
+  const across = PORTER_ARROW.headWidth * scale;
+
+  return PORTER_DIRECTIONS.map(([dx, dy], index) => {
+    const horizontal = PORTER_HORIZONTAL[index];
+    const w = horizontal ? long : across;
+    const h = horizontal ? across : long;
+    // The near edge of the box sits `near` from the centre along the direction;
+    // the box then extends outward, and is centred on the other axis.
+    const x = horizontal ? (dx > 0 ? cx + near : cx - near - long) : cx - w / 2;
+    const y = horizontal ? cy - h / 2 : dy > 0 ? cy + near : cy - near - long;
+    return {
+      xywh: new Bound(x, y, w, h).serialize(),
+      vertices: PORTER_VERTICES[index].map(([vx, vy]) => [vx, vy]),
+    };
+  });
 }
 
 /**
- * One of those arrows as props: a FREE connector, deliberately ROLE-LESS.
+ * One of those arrows as props: a filled native POLYGON, deliberately ROLE-LESS.
  *
- * Free rather than attached, and role-less, for the reason the market's
- * triangle already gives: these are the glyph's own wiring rather than
- * relations the author drew. Attaching them to the circle would let it drag
- * them out of square, and a role would make every composite report an overlap
- * with itself (W3) — and, worse here, would put four `wardley:change-arrow`
- * lookalikes on a map where an arrow means "this is evolving". Solid, never
- * dashed, for the same reason.
+ * A polygon and not a connector, which is the fix the recette of #210 asked
+ * for: a connector's triangle head is sized off its stroke width, so the heads
+ * arrived longer than the arrows and covered the circle, the letter and the
+ * double-click target. A polygon's outline is exactly the seven points above.
+ *
+ * Role-less for the reason the market's three dots already give: these are the
+ * glyph's own wiring rather than anything the author drew, so a role would make
+ * every composite report an overlap with itself (W3). Filled rather than
+ * stroked, so nothing about them is sized off a line width ever again.
  */
 export function wardleyPorterArrowProps(
-  arrow: WardleyPorterArrow,
-  strokeWidth: number = PORTER_ARROW.width
+  arrow: WardleyPorterArrow
 ): Record<string, unknown> & { type: string } {
   return {
-    type: 'connector',
-    mode: ConnectorMode.Straight,
-    source: { position: arrow.source },
-    target: { position: arrow.target },
-    stroke: WARDLEY_RED,
-    strokeStyle: StrokeStyle.Solid,
-    strokeWidth,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.Triangle,
+    type: 'shape',
+    shapeType: 'polygon',
+    vertices: arrow.vertices,
+    isClosed: true,
+    filled: true,
+    fillColor: WARDLEY_RED,
+    // The same red, so the arrow has no rim of another colour around it.
+    strokeColor: WARDLEY_RED,
+    strokeWidth: 0,
+    shapeStyle: ShapeStyle.General,
+    roughness: 0,
+    xywh: arrow.xywh,
   };
 }
 

@@ -1,10 +1,10 @@
 import {
-  ConnectorElementModel,
-  PointStyle,
-  StrokeStyle,
+  ShapeElementModel,
+  ShapeStyle,
   TextFitMode,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
+import { Bound } from '@labre/global/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWardleyPorter } from '../actions';
@@ -26,13 +26,12 @@ import {
   WARDLEY_NODE_SIZE,
   wardleyMorphClears,
   wardleyNodeProps,
-  wardleyPorterArrowSegments,
+  wardleyPorterArrows,
 } from '../presets';
 import { WARDLEY_ROLE } from '../roles';
 import {
   board,
   drawNode,
-  fakeConnector,
   fakeMap,
   fakeNode,
   flatten,
@@ -92,7 +91,10 @@ function fakeGfx() {
 /* ── What a force IS, as props ────────────────────────────────────────── */
 
 describe('the porter preset', () => {
-  it('is born at the market circle size, white and thin-bordered', () => {
+  it('is born large, white and thin-bordered', () => {
+    // Twice the market's diameter (PO, recette of #210): a force bears on the
+    // whole map and has to read as one at working zoom.
+    expect(PORTER_SIZE).toBe(60);
     expect(WARDLEY_NODE_SIZE.porter).toEqual({
       w: PORTER_SIZE,
       h: PORTER_SIZE,
@@ -142,48 +144,80 @@ describe('the porter preset', () => {
 
 /* ── The geometry, read by the creation site and the legend alike ─────── */
 
+/** An arrow's box as four numbers. */
+const boxOf = (arrow: { xywh: string }) =>
+  Bound.deserialize(arrow.xywh).toXYWH();
+
 describe('the four arrows', () => {
   const R = PORTER_SIZE / 2;
+  const near = R + PORTER_ARROW.gap;
+  const { length: L, headWidth: W } = PORTER_ARROW;
 
-  it('leave the rim by the gap and run the declared length outward', () => {
-    const [north, east, south, west] = wardleyPorterArrowSegments(0, 0);
-    const near = R + PORTER_ARROW.gap;
-    const far = near + PORTER_ARROW.length;
+  it('are four axis-aligned boxes, standing clear of the rim', () => {
+    // North first, then clockwise. Each box's NEAR edge is `gap` outside the
+    // rim and it runs `length` further out; its other axis is the head's width,
+    // which is the widest the arrow ever gets.
+    const [north, east, south, west] = wardleyPorterArrows(0, 0);
 
-    expect(north).toEqual({ source: [0, -near], target: [0, -far] });
-    expect(east).toEqual({ source: [near, 0], target: [far, 0] });
-    expect(south).toEqual({ source: [0, near], target: [0, far] });
-    expect(west).toEqual({ source: [-near, 0], target: [-far, 0] });
+    expect(boxOf(north)).toEqual([-W / 2, -near - L, W, L]);
+    expect(boxOf(east)).toEqual([near, -W / 2, L, W]);
+    expect(boxOf(south)).toEqual([-W / 2, near, W, L]);
+    expect(boxOf(west)).toEqual([-near - L, -W / 2, L, W]);
   });
 
-  it('are four, cardinal, and symmetric about the centre it is given', () => {
-    const arrows = wardleyPorterArrowSegments(100, 200);
+  it('are symmetric about the centre it is given, and never rotated', () => {
+    const arrows = wardleyPorterArrows(100, 200);
     expect(arrows).toHaveLength(4);
 
-    // Every head is `gap + length` clear of the rim, in one of four directions.
-    const far = R + PORTER_ARROW.gap + PORTER_ARROW.length;
-    for (const { source, target } of arrows) {
-      expect(Math.hypot(source[0] - 100, source[1] - 200)).toBeCloseTo(
-        R + PORTER_ARROW.gap
-      );
-      expect(Math.hypot(target[0] - 100, target[1] - 200)).toBeCloseTo(far);
+    // No `rotate`: each direction carries its own vertex list, so nothing
+    // downstream has to de-rotate a bounding box to know where an arrow is.
+    for (const arrow of arrows) {
+      expect(arrow).not.toHaveProperty('rotate');
+      expect(arrow.vertices).toHaveLength(7);
     }
-    // Opposite pairs cancel: north with south, east with west.
-    const sum = arrows.reduce(
-      (acc, { target }) => [acc[0] + target[0], acc[1] + target[1]],
-      [0, 0]
-    );
-    expect(sum).toEqual([400, 800]);
+
+    // The four boxes reflect into one another about (100, 200): the top of the
+    // north box and the bottom of the south box are the same distance out.
+    const [north, east, south, west] = arrows.map(boxOf);
+    expect(north[1] + (south[1] + south[3])).toBe(2 * 200);
+    expect(west[0] + (east[0] + east[2])).toBe(2 * 100);
+    expect(north[0]).toBe(south[0]);
+    expect(east[1]).toBe(west[1]);
   });
 
-  it('scale the whole glyph with the radius, gap and length included', () => {
+  it('outline a shaft with a head on it, tip first', () => {
+    // Seven points: the tip, the two head corners, the four shaft corners. The
+    // head is `headLength / length` of the box and the shaft `width / headWidth`
+    // of it across — the numbers `consts.ts` declares, and nothing derived from
+    // a stroke width, which is the whole reason these stopped being connectors.
+    const head = PORTER_ARROW.headLength / PORTER_ARROW.length;
+    const low = (1 - PORTER_ARROW.width / PORTER_ARROW.headWidth) / 2;
+
+    const [north] = wardleyPorterArrows(0, 0);
+    expect(north.vertices).toEqual([
+      [0.5, 0],
+      [1, head],
+      [1 - low, head],
+      [1 - low, 1],
+      [low, 1],
+      [low, head],
+      [0, head],
+    ]);
+    // The tip of each arrow points AWAY from the centre: north's is on the box's
+    // top edge, east's on its right edge, and so on.
+    const [, east, south, west] = wardleyPorterArrows(0, 0);
+    expect(east.vertices[0]).toEqual([1, 0.5]);
+    expect(south.vertices[0]).toEqual([0.5, 1]);
+    expect(west.vertices[0]).toEqual([0, 0.5]);
+  });
+
+  it('scale the whole glyph with the radius, gap and head included', () => {
     // What makes a legend row a small Porter rather than a small circle with
-    // two map-sized spikes through it.
-    const small = wardleyPorterArrowSegments(0, 0, R / 2);
-    expect(small[0]).toEqual({
-      source: [0, -(R + PORTER_ARROW.gap) / 2],
-      target: [0, -(R + PORTER_ARROW.gap + PORTER_ARROW.length) / 2],
-    });
+    // four map-sized spikes through it. The OUTLINE is normalized, so only the
+    // boxes move — which is why one vertex table serves every size.
+    const small = wardleyPorterArrows(0, 0, R / 2);
+    expect(boxOf(small[0])).toEqual([-W / 4, (-near - L) / 2, W / 2, L / 2]);
+    expect(small[0].vertices).toEqual(wardleyPorterArrows(0, 0)[0].vertices);
   });
 });
 
@@ -195,13 +229,15 @@ describe('createWardleyPorter', () => {
     createWardleyPorter(gfx);
 
     const nodes = added.filter(el => el.type === 'wardleyNode');
-    const connectors = added.filter(el => el.type === 'connector');
+    const arrows = added.filter(el => el.type === 'shape');
     expect(nodes).toHaveLength(1);
-    expect(connectors).toHaveLength(4);
+    expect(arrows).toHaveLength(4);
     // Five elements, one group, and nothing else on the board: no label.
     expect(added).toHaveLength(5);
     expect(grouped).toHaveLength(1);
     expect(grouped[0]).toHaveLength(5);
+    // Nothing a connector any more — the defect the recette of #210 found.
+    expect(added.some(el => el.type === 'connector')).toBe(false);
   });
 
   it('writes the notation letter as the circle’s OWN inner text', () => {
@@ -225,25 +261,38 @@ describe('createWardleyPorter', () => {
     );
   });
 
-  it('leaves the arrows role-less, solid red and headed outward', () => {
+  it('draws the arrows as role-less filled red polygons', () => {
     const { gfx, added } = fakeGfx();
     createWardleyPorter(gfx);
 
-    for (const arrow of added.filter(el => el.type === 'connector')) {
+    const arrows = added.filter(el => el.type === 'shape');
+    const circle = added.find(el => el.type === 'wardleyNode')!;
+    const expected = wardleyPorterArrows(100, 200);
+
+    arrows.forEach((arrow, index) => {
       // Role-less like the market's triangle: the glyph's own wiring, or every
       // composite reports an overlap with itself (W3).
       expect(arrow.role).toBeUndefined();
-      expect(arrow.stroke).toBe(WARDLEY_RED);
-      // Solid, never dashed — a dashed red line is an evolution arrow, and the
-      // two must not be mistaken for one another on the same map.
-      expect(arrow.strokeStyle).toBe(StrokeStyle.Solid);
-      expect(arrow.strokeWidth).toBe(PORTER_ARROW.width);
-      expect(arrow.frontEndpointStyle).toBe(PointStyle.None);
-      expect(arrow.rearEndpointStyle).toBe(PointStyle.Triangle);
-      // FREE at both ends: attaching them to the circle would let a resize drag
-      // them out of square.
-      expect(arrow.source).toHaveProperty('position');
-      expect(arrow.target).toHaveProperty('position');
+      expect(arrow.shapeType).toBe('polygon');
+      expect(arrow.vertices).toEqual(expected[index].vertices);
+      expect(arrow.xywh).toBe(expected[index].xywh);
+      // Filled, and stroked at ZERO: nothing about this glyph is sized off a
+      // line width, which is exactly what went wrong when it was a connector.
+      expect(arrow.filled).toBe(true);
+      expect(arrow.fillColor).toBe(WARDLEY_RED);
+      expect(arrow.strokeColor).toBe(WARDLEY_RED);
+      expect(arrow.strokeWidth).toBe(0);
+      expect(arrow.roughness).toBe(0);
+      expect(arrow.shapeStyle).toBe(ShapeStyle.General);
+    });
+
+    // …and not one of them overlaps the circle, which is what makes the letter
+    // visible and the double-click at the centre reach the circle rather than
+    // an arrow. The whole of BUG 1, asserted as geometry.
+    const rim = Bound.deserialize(String(circle.xywh));
+    for (const arrow of arrows) {
+      const box = Bound.deserialize(String(arrow.xywh));
+      expect(rim.isOverlapWithBound(box), String(arrow.xywh)).toBe(false);
     }
   });
 });
@@ -280,13 +329,13 @@ describe('the legend', () => {
     Object.create(WardleyNodeElementModel.prototype, {
       kind: { value: 'porter' },
     }),
-    ...wardleyPorterArrowSegments(0, 0).map(arrow =>
-      Object.create(ConnectorElementModel.prototype, {
+    // Plain shapes now, not connectors — which is precisely why the legend's
+    // INERTIA test is the one that has to be checked below.
+    ...wardleyPorterArrows(0, 0).map(() =>
+      Object.create(ShapeElementModel.prototype, {
         role: { value: undefined },
-        stroke: { value: WARDLEY_RED },
-        strokeStyle: { value: StrokeStyle.Solid },
-        source: { value: { position: arrow.source } },
-        target: { value: { position: arrow.target } },
+        shapeType: { value: 'polygon' },
+        fillColor: { value: WARDLEY_RED },
       })
     ),
   ];
@@ -306,15 +355,18 @@ describe('the legend', () => {
     expect(circle.text).toBe(PORTER_DEFAULT_LETTER);
   });
 
-  it('does not call the glyph’s four red arrows an evolution', () => {
+  it('describes nothing but the force: no evolution, no inertia', () => {
     const texts = legendOf(porterOnBoard())
       .filter(el => el.type === 'text')
       .map(el => String(el.text));
 
-    // The row that would appear if the red test below `isPorterArrow` had
-    // swallowed them. A map with a force on it and no arrow drawn claims no
-    // movement at all.
+    // Two rows that must NOT appear. The arrows are red, so a legend reading
+    // colour alone would call them an evolution; they are plain filled shapes,
+    // so the inertia test — `ShapeElementModel` with a matching fill — is the
+    // one they could trip now that they are polygons rather than connectors.
+    // A map carrying a force and nothing else claims neither.
     expect(texts).not.toContain('Evolution / movement (red = future)');
+    expect(texts).not.toContain('Inertia to change');
   });
 
   it('leaves every legend glyph neutral, arrows included', () => {
@@ -332,32 +384,25 @@ describe('the OWM export', () => {
   const write = (parts: Parameters<typeof flatten>[0]) =>
     exportWardleyOwmWithWarnings(wardleyBoardFrom(flatten(parts) as never), {});
 
-  /** A force, drawn where a component would be readable, plus its arrows. */
+  /** A force, drawn where a component would be readable. */
   function porterAt(visibility: number, evolution: number) {
     const [cx, cy] = owmPointOf(PLOT, visibility, evolution);
-    return {
-      node: fakeNode('porter-1', 'porter', [
-        cx - PORTER_SIZE / 2,
-        cy - PORTER_SIZE / 2,
-        PORTER_SIZE,
-        PORTER_SIZE,
-      ]),
-      arrows: wardleyPorterArrowSegments(cx, cy).map((_, index) =>
-        fakeConnector(`porter-arrow-${index}`, undefined)
-      ),
-    };
+    return fakeNode('porter-1', 'porter', [
+      cx - PORTER_SIZE / 2,
+      cy - PORTER_SIZE / 2,
+      PORTER_SIZE,
+      PORTER_SIZE,
+    ]);
   }
 
   it('leaves the force out of the file and says why', () => {
     const kettle = drawNode('kettle', 'component', 'Kettle', 0.6, 0.7);
-    const porter = porterAt(0.3, 0.8);
 
     const { text, warnings } = write(
       board({
         maps: [fakeMap()],
-        nodes: [kettle.node, porter.node],
+        nodes: [kettle.node, porterAt(0.3, 0.8)],
         labels: [kettle.label],
-        connectors: porter.arrows,
       })
     );
 
@@ -373,9 +418,8 @@ describe('the OWM export', () => {
     // The trap this skip is placed BEFORE `nameOf` to avoid: a force carries no
     // name by design, so asking for one would call it "Component 1" and report
     // a loss that never happened, on a line the file does not contain.
-    const porter = porterAt(0.4, 0.4);
     const { warnings } = write(
-      board({ maps: [fakeMap()], nodes: [porter.node] })
+      board({ maps: [fakeMap()], nodes: [porterAt(0.4, 0.4)] })
     );
 
     expect(warnings.join('\n')).not.toContain('Component 1');

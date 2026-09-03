@@ -1,4 +1,5 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { COMMAND_USAGE_KEY } from '@labre/affine/shared/services';
 import {
   getCommandIcon,
   getCommandsForSurface,
@@ -20,6 +21,14 @@ describe('command registry on the canvas', () => {
   let edgeless!: EdgelessRootBlockComponent;
 
   beforeEach(async () => {
+    // The usage store persists across spec FILES sharing this browser page, and
+    // the assertion below is about the COLD-START row — the authored head of
+    // the nomination list, which is only what `selectSeniorMenuCommands`
+    // returns when nothing has been used. `artefact-catalogue.spec.ts` clears
+    // it on the way in for the same reason and leaves its own clicks behind;
+    // this file needs the same silence, and needed it the moment Wardley's
+    // nominations outgrew the ranked slots by more than one.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
     const cleanup = await setupEditor('edgeless');
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
     return cleanup;

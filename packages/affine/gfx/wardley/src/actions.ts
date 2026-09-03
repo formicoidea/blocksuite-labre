@@ -57,7 +57,7 @@ import {
   WARDLEY_NODE_SIZE,
   wardleyNodeProps,
   wardleyPorterArrowProps,
-  wardleyPorterArrowSegments,
+  wardleyPorterArrows,
   wardleyPorterLetterProps,
 } from './presets';
 import { WARDLEY_ROLE } from './roles';
@@ -387,9 +387,9 @@ export function createWardleyMarket(gfx: GfxController) {
  * No label, and that is the notation rather than an omission: the letter says
  * which force this is (R relative competition, L struggle for survival, E
  * struggle to establish) and it is the circle's OWN inner text, so a
- * double-click opens the native shape editor on it. The four arrows are the
- * glyph's own wiring — free, role-less, solid red — exactly as the market's
- * triangle is.
+ * double-click opens the native shape editor on it (`node/node-view.ts`). The
+ * four arrows are the glyph's own wiring — role-less filled red polygons,
+ * outside the rim — exactly as the market's triangle is its own.
  */
 export function createWardleyPorter(gfx: GfxController) {
   const surface = gfx.surface;
@@ -405,7 +405,7 @@ export function createWardleyPorter(gfx: GfxController) {
     wardleyPorterLetterProps(PORTER_DEFAULT_LETTER)
   );
 
-  const arrowIds = wardleyPorterArrowSegments(cx, cy).map(arrow =>
+  const arrowIds = wardleyPorterArrows(cx, cy).map(arrow =>
     surface.addElement(wardleyPorterArrowProps(arrow))
   );
 
