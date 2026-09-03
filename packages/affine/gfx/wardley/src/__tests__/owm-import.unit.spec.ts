@@ -261,7 +261,11 @@ describe('what the pack does not draw is kept, not dropped', () => {
     expect(carried).toContain('size [1000, 800]');
     expect(carried).toContain('evolution Genesis->Custom->Product->Commodity');
     expect(carried).toContain('// a comment, which is also carried');
-    expect(carried).toContain('accelerator Faster [0.30, 0.50]');
+    // …and NOT the accelerator, which this pack draws since the two climate
+    // arrows landed. A keyword that graduates from carried to drawn leaves the
+    // carried column, and the line beside it is untouched.
+    expect(carried).not.toContain('accelerator Faster [0.30, 0.50]');
+    expect(carried).toContain('presentation [0.9, 0.1]');
     expect(carried).toContain('Kettle+>Suppliers');
     expect(carried).toContain('User->Partners; because they asked');
     expect(carried).toContain('pipeline Kettle');
@@ -291,7 +295,6 @@ describe('what the pack does not draw is kept, not dropped', () => {
         'annotation',
         'submap',
         'url',
-        'accelerator',
         'flow link',
         'link with a context',
         'pipeline{}',

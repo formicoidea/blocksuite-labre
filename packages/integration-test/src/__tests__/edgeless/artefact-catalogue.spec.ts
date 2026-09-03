@@ -115,17 +115,18 @@ describe('artefact catalogue sidepanel', () => {
       'connectors',
       'interchange',
     ]);
-    // Sixteen of Wardley's seventeen catalogue commands, and the seventeenth is
-    // absent for a reason the panel is supposed to have: it filters on
-    // `isCommandAvailable` AND on `when`, and `wardley.exportOwm` needs a
-    // Wardley map on the board to have a plot to measure coordinates against.
-    // This board has none, so there is nothing to export and no row offering to.
+    // Eighteen of Wardley's nineteen catalogue commands (sixteen of seventeen
+    // before the two climate arrows), and the missing one is absent for a
+    // reason the panel is supposed to have: it filters on `isCommandAvailable`
+    // AND on `when`, and `wardley.exportOwm` needs a Wardley map on the board
+    // to have a plot to measure coordinates against. This board has none, so
+    // there is nothing to export and no row offering to.
     //
     // Both IMPORTS are here, and that is the tier distinction made visible:
     // neither needs anything on the board, so both render — the native OWM
     // route and the visual-tier SVG fallback beside it, each labelled with what
     // it promises (`docs/adr/0012`, P2).
-    expect(entries()).toHaveLength(16);
+    expect(entries()).toHaveLength(18);
     const shown = entries().map(entry => entry.dataset.commandId);
     expect(shown).toContain('wardley.importOwm');
     expect(shown).toContain('wardley.importSvg');

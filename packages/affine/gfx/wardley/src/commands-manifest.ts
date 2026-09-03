@@ -130,6 +130,22 @@ export const wardleyCommandsManifest: ShortcutManifestEntry[] = [
     defaultKeys: { mac: [], other: [] },
   },
   {
+    id: 'wardley.addAccelerator',
+    owner: 'wardley',
+    labelKey: 'com.labre.commands.wardley.addAccelerator',
+    labelFallback: 'Accelerator',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'wardley.addDecelerator',
+    owner: 'wardley',
+    labelKey: 'com.labre.commands.wardley.addDecelerator',
+    labelFallback: 'Decelerator',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
     id: 'wardley.importOwm',
     owner: 'wardley',
     labelKey: 'com.labre.commands.wardley.importOwm',

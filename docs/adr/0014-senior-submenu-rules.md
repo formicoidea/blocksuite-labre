@@ -40,6 +40,16 @@ no framework negotiates a private variant.
   A test (`registry.unit.spec.ts`) fails on any further nomination: exceeding the budget is
   a curation decision the product owner makes deliberately, not a drift a diff review can
   miss.
+
+  **Amendment 2026-09-03 (the curation decision R4 asked for).** Wardley reached the budget
+  with `addPorter` and the two climate arrows (`addAccelerator`, `addDecelerator`) took it
+  past: the product owner ruled that **every Wardley artefact nominates the row**, so the
+  nomination budget no longer caps that framework. The row is untouched — 13 arbitrated
+  seats plus "More artefacts…", still a cap of 14 (R1) — and the catalogue still lists
+  everything, so what the ruling changes is only which artefacts are _eligible_ for a seat;
+  recency and frequency (R3) decide who is shown. No curation of the nomination list, and
+  no change to the cap.
+
 - **R5 — Native format in the row, fallback in the catalogue.** A framework nominates the
   import of its own semantic format (`.bpmn` for BPMN, `.owm` for Wardley). Fallback
   imports (the visual-tier SVG sketch, and any future best-effort route) declare

@@ -493,6 +493,12 @@ export function textOf(element: { text?: unknown }): string {
  * `porter` because OWM has no word for an external competition force at all.
  * The node loop skips a force before this table is consulted, so a kind's
  * absence here is never the reason it is left out.
+ *
+ * The climate annotations DO have a word, and OWM's own spelling of the second
+ * one is `deaccelerator` — not a typo on this side but the keyword the
+ * reference parser claims, so writing `decelerator` would produce a line no
+ * other Wardley tool reads. Both are written like a component line, `keyword
+ * name [visibility, evolution]`, which is exactly what they are in that format.
  */
 const OWM_KEYWORD_OF_KIND: Partial<Record<WardleyNodeKind, string>> = {
   component: 'component',
@@ -500,6 +506,8 @@ const OWM_KEYWORD_OF_KIND: Partial<Record<WardleyNodeKind, string>> = {
   market: 'market',
   ecosystem: 'ecosystem',
   method: 'component',
+  accelerator: 'accelerator',
+  decelerator: 'deaccelerator',
 };
 
 /** What one element carried from the file it came out of, if anything. */

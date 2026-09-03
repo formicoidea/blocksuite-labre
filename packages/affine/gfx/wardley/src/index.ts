@@ -33,6 +33,7 @@ export {
   WARDLEY_NODE_LABEL,
   WARDLEY_NODE_SIZE,
   type WardleyLabelledKind,
+  WARDLEY_MORPHABLE_KINDS,
   wardleyMorphClears,
   wardleyMorphProps,
   wardleyNodeProps,

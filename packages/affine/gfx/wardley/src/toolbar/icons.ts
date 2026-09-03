@@ -136,6 +136,25 @@ export const wardleyPorterIcon = svg`<svg width="24" height="24" viewBox="0 0 24
   </g>
 </svg>`;
 
+/**
+ * Accelerator / decelerator: the same fat arrow the canvas draws, at 24 px.
+ *
+ * `currentColor` outline over a light fill, like the other artefact glyphs —
+ * the canvas's flat grey would fight the toolbar's own theming, and the
+ * DIRECTION is what tells the two apart anyway, which is exactly what the two
+ * icons differ on and nothing else. The seven points are the outline of
+ * `ACCELERATOR_VERTICES` scaled onto the 24-unit box (a 22 × 18 arrow centred
+ * on it), so the button and the shape it draws are the same drawing.
+ */
+export const wardleyAcceleratorIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M1 8.0 H13.1 V3 L23 12 L13.1 21 V16 H1 Z" fill="#f0f0f0" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>`;
+
+/** The mirror of {@link wardleyAcceleratorIcon}: the same arrow, pointing left. */
+export const wardleyDeceleratorIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M23 8.0 H10.9 V3 L1 12 L10.9 21 V16 H23 Z" fill="#f0f0f0" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>`;
+
 /** Legend: a bordered box with glyph + line rows. */
 export const wardleyLegendIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/>

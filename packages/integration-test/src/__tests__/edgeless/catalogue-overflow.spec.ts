@@ -251,8 +251,8 @@ describe('the senior sub-menu past fourteen commands', () => {
     // The other side of the same rule, pinned because it is a PRODUCT change a
     // reader of the diff would not predict from "two new commands": Wardley's
     // catalogue reached fifteen with the OWM pair, sixteen with the SVG
-    // fallback beside it and seventeen with Porter's forces, so its row is
-    // now thirteen ranked buttons plus
+    // fallback beside it, seventeen with Porter's forces and nineteen with the
+    // two climate arrows, so its row is now thirteen ranked buttons plus
     // the catalogue button rather than its whole nominated surface. Nothing is
     // unreachable — that is what the fourteenth button is for — but which
     // thirteen a cold user meets is now an arbitration rather than the author's

@@ -16,6 +16,10 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 
 import { GRADIENT_GREEN, GRADIENT_RED } from './gradient';
 import {
+  ACCELERATOR_FILL,
+  ACCELERATOR_STROKE_WIDTH,
+  ACCELERATOR_VERTICES,
+  DECELERATOR_VERTICES,
   INERTIA_COLOR,
   LINK_GREY,
   LINK_STROKE_WIDTH,
@@ -43,7 +47,9 @@ type LegendType =
   | 'link'
   | 'arrow'
   | 'inertia'
-  | 'porter';
+  | 'porter'
+  | 'accelerator'
+  | 'decelerator';
 
 const LEGEND_ORDER: LegendType[] = [
   'component',
@@ -56,6 +62,8 @@ const LEGEND_ORDER: LegendType[] = [
   'arrow',
   'inertia',
   'porter',
+  'accelerator',
+  'decelerator',
 ];
 
 /** Default (editable) descriptions for each legend row. */
@@ -71,6 +79,8 @@ const LEGEND_DESC: Record<LegendType, string> = {
   inertia: 'Inertia to change',
   porter:
     "Porter's forces (external competition: R relative, L survival, E establish)",
+  accelerator: 'Accelerator (speeds evolution up)',
+  decelerator: 'Decelerator (slows evolution down)',
 };
 
 type GradientVariant = Exclude<
@@ -382,6 +392,34 @@ export function createWardleyLegend(
           'center'
         );
         return [circle, ...arrows, letter];
+      }
+      case 'accelerator':
+      case 'decelerator': {
+        // The map's own outline, at the row's scale: `vertices` are normalized
+        // to the box, so the SAME seven points draw a 30 × 18 legend arrow and
+        // a 48 × 40 canvas one. Role-less like every glyph in this box — a
+        // legend documents the map, it is not part of it.
+        const gw = 30;
+        const gh = 18;
+        return [
+          surface.addElement({
+            type: 'wardleyNode',
+            kind: type,
+            shapeType: 'polygon',
+            vertices: (type === 'accelerator'
+              ? ACCELERATOR_VERTICES
+              : DECELERATOR_VERTICES
+            ).map(([vx, vy]) => [vx, vy]),
+            isClosed: true,
+            filled: true,
+            fillColor: ACCELERATOR_FILL,
+            strokeColor: NODE_STROKE,
+            strokeWidth: ACCELERATOR_STROKE_WIDTH,
+            shapeStyle: ShapeStyle.General,
+            roughness: 0,
+            xywh: new Bound(cx - gw / 2, cy - gh / 2, gw, gh).serialize(),
+          }),
+        ];
       }
       case 'link':
         return [
