@@ -39,7 +39,11 @@ describe('command registry on the canvas', () => {
     // asserting it: the visual-tier fallback declines the row (the row carries
     // the NATIVE format), so the catalogue grew to sixteen and the NOMINATION
     // list did not move at all.
-    expect(ids).toHaveLength(14);
+    // Fifteen since `wardley.addPorter`, which DOES nominate the row — and
+    // fifteen is `SENIOR_MENU_CAP + 1`, exactly the budget ADR 0014 R4 allows.
+    // The last seat is now spent; a sixteenth nomination fails by design.
+    expect(ids).toHaveLength(15);
+    expect(ids).toContain('wardley.addPorter');
     expect(ids).toContain('wardley.importOwm');
     expect(ids).not.toContain('wardley.exportOwm');
     expect(ids).not.toContain('wardley.importSvg');
