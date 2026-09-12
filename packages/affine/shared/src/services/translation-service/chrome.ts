@@ -531,8 +531,7 @@ export const BLOCK_TYPE_DIVIDER_DESCRIPTION: ChromeWording = [
  * (`AutoLegendSpec.title`, `@labre/affine-gfx-ddd-shared`) — "Legend" itself,
  * distinct from the {@link BOARD_LEGEND_NOTATION} / {@link BOARD_LEGEND_COMPONENTS}
  * toolbar BUTTONS that create it. Declared here because it is the same word on
- * every board that has one (the three DDD tools today; EDGY's own legend
- * still says it as a literal until that lot converts it).
+ * every board that has one: the three DDD tools, EDGY and C4 alike.
  */
 export const BOARD_LEGEND_TITLE: ChromeWording = [
   'com.labre.board.legend.title',

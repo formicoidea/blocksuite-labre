@@ -16,6 +16,7 @@ import { ESTUARINE_ROLES } from './estuarine/roles.js';
 import { ESTUARINE_TOOLBAR_WORDINGS } from './estuarine/toolbar/config.js';
 import {
   CYNEFIN_ESTUARINE_TEMPLATE_CATEGORY_WORDINGS,
+  CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS,
   CYNEFIN_ESTUARINE_TEMPLATE_SEEDS,
 } from './templates/index.js';
 
@@ -66,6 +67,13 @@ export const cynefinEstuarineTranslationEntries: TranslationKeyManifestEntry[] =
     // The Templates-panel tab names — chrome, resolved by the panel widget,
     // never written into a document.
     CYNEFIN_ESTUARINE_TEMPLATE_CATEGORY_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
+    // The two hand-composed templates' own tile names — chrome as well, and
+    // distinct from the seeds they WRITE above.
+    CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS.map(([key, fallback]) => ({
       key,
       fallback,
       source: 'chrome' as const,

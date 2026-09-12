@@ -17,7 +17,10 @@ import {
   TextAlign,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 
 import { edgyCommands } from '../commands';
@@ -44,6 +47,28 @@ const S = (slug: string, fallback: string) => ({
   key: `com.labre.edgy.seed.${slug}`,
   fallback,
 });
+
+/**
+ * The four hand-composed scenes' own tile names — chrome, not seeds: a
+ * `Template.nameKey`, re-resolved every time the panel opens, never written
+ * into a document. None of the four derives from a command.
+ */
+export const EDGY_TEMPLATE_NAME_FACETS_OVERVIEW: ChromeWording = [
+  'com.labre.edgy.template.facets-overview',
+  'Facets overview',
+];
+export const EDGY_TEMPLATE_NAME_CUSTOMER_JOURNEY: ChromeWording = [
+  'com.labre.edgy.template.customer-journey',
+  'Customer journey',
+];
+export const EDGY_TEMPLATE_NAME_SERVICE_BLUEPRINT: ChromeWording = [
+  'com.labre.edgy.template.service-blueprint',
+  'Service blueprint',
+];
+export const EDGY_TEMPLATE_NAME_ORGANISATION_CHART: ChromeWording = [
+  'com.labre.edgy.template.organisation-chart',
+  'Organisation chart',
+];
 
 export const EDGY_TEMPLATE_SEED = {
   facetsTitle: S('facets-title', 'Facets'),
@@ -635,12 +660,14 @@ const ATTRS =
 function tpl(
   name: string,
   preview: string,
-  build: (std?: BlockStdScope) => SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
+    nameKey,
     content: makeTemplateSnapshot(build(), name),
     localize: std => makeTemplateSnapshot(build(std), name),
   };
@@ -654,22 +681,26 @@ export const edgyTemplateCategory: TemplateCategory = {
     tpl(
       'Facets overview',
       `<svg ${ATTRS} fill="none"><rect x="6" y="20" width="18" height="46" rx="3" fill="#1ec873"/><rect x="46" y="20" width="18" height="46" rx="3" fill="#2f6ff0"/><rect x="86" y="20" width="18" height="46" rx="3" fill="#f5246e"/><rect x="26" y="30" width="18" height="40" rx="3" fill="#4fd0ea"/><rect x="66" y="30" width="18" height="40" rx="3" fill="#cf8cff"/><rect x="106" y="30" width="18" height="40" rx="3" fill="#eeba51"/></svg>`,
-      facetsOverview
+      facetsOverview,
+      EDGY_TEMPLATE_NAME_FACETS_OVERVIEW[0]
     ),
     tpl(
       'Customer journey',
       `<svg ${ATTRS} fill="none"><path d="M20 24 H110 L122 40 L110 56 H20 Z" fill="#f3a3c0"/><rect x="26" y="30" width="22" height="20" fill="none" stroke="#fff"/><rect x="54" y="30" width="22" height="20" fill="none" stroke="#fff"/><rect x="82" y="30" width="22" height="20" fill="none" stroke="#fff"/></svg>`,
-      journey
+      journey,
+      EDGY_TEMPLATE_NAME_CUSTOMER_JOURNEY[0]
     ),
     tpl(
       'Service blueprint',
       `<svg ${ATTRS} fill="none"><rect x="8" y="14" width="119" height="16" fill="#fbd5e0"/><rect x="8" y="32" width="119" height="34" fill="#d4e9f8"/><rect x="20" y="18" width="22" height="9" fill="#f5246e" opacity="0.5"/><rect x="20" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/><rect x="60" y="40" width="22" height="9" fill="#2f6ff0" opacity="0.4"/></svg>`,
-      blueprint
+      blueprint,
+      EDGY_TEMPLATE_NAME_SERVICE_BLUEPRINT[0]
     ),
     tpl(
       'Organisation chart',
       `<svg ${ATTRS} fill="none"><rect x="52" y="12" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="14" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="52" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><rect x="90" y="38" width="32" height="14" rx="2" fill="#4fd0ea"/><path d="M68 26 V32 M30 32 H106 M30 32 V38 M68 32 V38 M106 32 V38" stroke="${NODE_STROKE}"/></svg>`,
-      orgChart
+      orgChart,
+      EDGY_TEMPLATE_NAME_ORGANISATION_CHART[0]
     ),
     // Kept: `addFacets`'s own label is "Enterprise Design facets" (the senior
     // sub-menu's wording), and this tile's tooltip has always said the

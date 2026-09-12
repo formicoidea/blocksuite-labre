@@ -30,6 +30,10 @@ export function resolveTemplateName(
   template: Template
 ): string {
   const fallback = template.name ?? '';
+  // Checked FIRST: a hand-composed template (a worked scene, an example map)
+  // carries no `commandId` at all, and `nameKey` is the only way its tile
+  // gets a translated wording of its own.
+  if (template.nameKey) return translateKey(std, template.nameKey, fallback);
   if (!template.commandId) return fallback;
   const command = getRegisteredCommands(std).find(
     c => c.id === template.commandId

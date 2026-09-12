@@ -5,6 +5,10 @@ import {
   StrokeStyle,
 } from '@labre/affine-model';
 import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
+import {
+  TranslationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
 import {
   type BlockStdScope,
@@ -508,6 +512,29 @@ describe('the c4 automatic legend', () => {
     // The board itself is never a legend row: a legend of what is drawn ON the
     // sheet must not list the sheet.
     expect(roles).not.toContain(C4_ROLE.board);
+  });
+
+  it('carries a titleKey for the box title, translated with a host and unchanged without one', () => {
+    expect(C4_AUTO_LEGEND.title).toBe('Legend');
+    expect(C4_AUTO_LEGEND.titleKey).toBe('com.labre.board.legend.title');
+    const NO_HOST_STD = {
+      getOptional: () => undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(NO_HOST_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
+    ).toBe('Legend');
+    const HOSTED_STD = {
+      getOptional: (id: unknown) =>
+        id === TranslationProvider
+          ? {
+              t: (key: string) =>
+                key === C4_AUTO_LEGEND.titleKey ? 'Légende' : undefined,
+            }
+          : undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(HOSTED_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
+    ).toBe('Légende');
   });
 
   it('asks for an exact match on the container, and only there', () => {

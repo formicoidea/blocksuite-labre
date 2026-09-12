@@ -75,6 +75,36 @@ describe('resolveTemplateName', () => {
     ).toBe('Boîte');
   });
 
+  it('a nameKey wins over commandId, with a provider registered', () => {
+    const std = stdWith(key =>
+      key === 'com.labre.templates.demo.link' ? 'Lien' : undefined
+    );
+    expect(
+      resolveTemplateName(
+        std,
+        template({
+          name: 'Link',
+          commandId: COMMAND.id,
+          nameKey: 'com.labre.templates.demo.link',
+        })
+      )
+    ).toBe('Lien');
+  });
+
+  it('a nameKey with no provider shows the template’s own name, letter for letter', () => {
+    const std = stdWith();
+    expect(
+      resolveTemplateName(
+        std,
+        template({
+          name: 'Link',
+          commandId: COMMAND.id,
+          nameKey: 'com.labre.templates.demo.link',
+        })
+      )
+    ).toBe('Link');
+  });
+
   it('resolves through the command’s key even when the template’s own name diverges from the command’s label — the fallback stays the TEMPLATE’s wording, not the command’s', () => {
     // `edgy.addFacets`’s own label is "Enterprise Design facets"; its
     // tile has always said "Facets diagram" — a name of its own, and this is

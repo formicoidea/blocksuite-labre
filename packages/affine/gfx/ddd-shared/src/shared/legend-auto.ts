@@ -91,10 +91,11 @@ export interface AutoLegendSectionSpec {
 
 export interface AutoLegendSpec {
   /**
-   * Box title. The three DDD tools all say "Legend" (PO recette, 26/08/2026:
-   * the boxes used to be titled in French, which was the one label in the
-   * library that was — identifiers and fallback wordings are English here, and
-   * the day a host ships a locale pack it translates a key, not a leftover).
+   * Box title. Every framework with an automatic legend says "Legend" (PO
+   * recette, 26/08/2026: the boxes used to be titled in French, which was the
+   * one label in the library that was — identifiers and fallback wordings are
+   * English here, and the day a host ships a locale pack it translates a key,
+   * not a leftover).
    */
   title: string;
   /**
@@ -103,7 +104,7 @@ export interface AutoLegendSpec {
    * {@link AutoLegendSectionSpec.titleKey}, one level up. Every framework that
    * says "Legend" reuses `BOARD_LEGEND_TITLE`
    * (`@labre/affine-shared/services`), since it is the SAME word on every
-   * board that has one.
+   * board that has one — the three DDD boards, EDGY and C4 alike.
    */
   titleKey?: string;
   width?: number;

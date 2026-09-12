@@ -12,7 +12,10 @@ import {
   PointStyle,
   StrokeStyle,
 } from '@labre/affine-model';
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 
 import { bpmnCommands } from '../commands';
@@ -56,6 +59,28 @@ export const SIMPLE_PROCESS_SEED = {
     fallback: 'Reject',
   },
 } as const;
+
+/**
+ * The two worked scenes' and the free-standing "Sequence flow" swatch's own
+ * tile names — a `nameKey` per hand-composed card, since none of the three
+ * derives from a command (`Template.nameKey`; `resolveTemplateName` checks it
+ * BEFORE `commandId`). `com.labre.bpmn.template.<slug>`, distinct from the
+ * `com.labre.bpmn.example.<scene>.*` seeds the two scenes WRITE — a tile name
+ * is chrome (re-rendered every time the panel opens), a seed is content
+ * (translated once, at insertion).
+ */
+export const BPMN_TEMPLATE_NAME_SIMPLE_PROCESS: ChromeWording = [
+  'com.labre.bpmn.template.simple-process',
+  'Simple process',
+];
+export const BPMN_TEMPLATE_NAME_MESSAGE_EXCHANGE: ChromeWording = [
+  'com.labre.bpmn.template.message-exchange',
+  'Message exchange',
+];
+export const BPMN_TEMPLATE_NAME_SEQUENCE_FLOW: ChromeWording = [
+  'com.labre.bpmn.template.sequence-flow',
+  'Sequence flow',
+];
 
 export const MESSAGE_EXCHANGE_SEED = {
   customer: {
@@ -297,11 +322,13 @@ const previews = {
 const scene = (
   name: string,
   preview: string,
-  build: (std?: BlockStdScope) => SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template => ({
   name,
   type: 'template',
   preview,
+  nameKey,
   content: makeTemplateSnapshot(build(), name),
   localize: std => makeTemplateSnapshot(build(std), name),
 });
@@ -394,14 +421,29 @@ export const bpmnTemplateCategory: TemplateCategory = {
   // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
   nameKey: 'com.labre.framework.bpmn',
   templates: [
-    scene('Simple process', previews.process, process),
-    scene('Message exchange', previews.messageExchange, messageExchange),
+    scene(
+      'Simple process',
+      previews.process,
+      process,
+      BPMN_TEMPLATE_NAME_SIMPLE_PROCESS[0]
+    ),
+    scene(
+      'Message exchange',
+      previews.messageExchange,
+      messageExchange,
+      BPMN_TEMPLATE_NAME_MESSAGE_EXCHANGE[0]
+    ),
     /* ── The core: a drawable process, from the first click ─────────────── */
     templateFromCommand(byId('bpmn.addStartEvent'), previews.startEvent),
     templateFromCommand(byId('bpmn.addEndEvent'), previews.endEvent),
     templateFromCommand(byId('bpmn.addTask'), previews.task),
     templateFromCommand(byId('bpmn.addExclusiveGateway'), previews.gateway),
-    scene('Sequence flow', previews.sequence, () => ({ a: freeSeq() })),
+    scene(
+      'Sequence flow',
+      previews.sequence,
+      () => ({ a: freeSeq() }),
+      BPMN_TEMPLATE_NAME_SEQUENCE_FLOW[0]
+    ),
     templateFromCommand(byId('bpmn.addPool'), previews.pool),
     /* ── Activities ─────────────────────────────────────────────────────── */
     templateFromCommand(byId('bpmn.addUserTask'), previews.taskUser),

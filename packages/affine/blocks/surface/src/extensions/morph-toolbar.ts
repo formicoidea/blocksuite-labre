@@ -6,7 +6,7 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { getMostCommonValue } from '@labre/affine-shared/utils';
-import type { FrameworkId } from '@labre/std';
+import type { BlockStdScope, FrameworkId } from '@labre/std';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
@@ -164,7 +164,12 @@ export interface MorphSpec<K extends string = string> {
    * still says what the SOURCE kind derived may be rewritten, and a line the
    * author typed over is theirs.
    */
-  afterMorph?(model: GfxPrimitiveElementModel, from: K, to: K): void;
+  afterMorph?(
+    model: GfxPrimitiveElementModel,
+    from: K,
+    to: K,
+    std?: BlockStdScope
+  ): void;
   /** The role a kind means — the `from` / `to` of the telemetry, ids only. */
   roleOf(kind: K): string;
   /**
@@ -388,8 +393,11 @@ export function applyMorph<K extends string>(
     for (const field of cleared) entry.target.clearField(field);
     // Inside the loop and inside the one checkpoint above: whatever the rest of
     // a composite owes this morph — C4's type line — is part of the same single
-    // ctrl+z as the kind that made it necessary.
-    spec.afterMorph?.(entry.selected, entry.kind, kind);
+    // ctrl+z as the kind that made it necessary. `ctx.std` is handed through so
+    // a rewrite can tell an untouched TRANSLATED placeholder from real content
+    // (`c4MorphedTypeLine`, `wardleyMorphedLabel`) — with no host it behaves
+    // exactly as it always has, English only.
+    spec.afterMorph?.(entry.selected, entry.kind, kind, ctx.std);
   }
 
   // The one DIRECT emission in this module, and the arbitrated exception is the

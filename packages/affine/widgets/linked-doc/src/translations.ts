@@ -78,9 +78,16 @@ export const LINKED_DOC_IMPORT_LOADING: ChromeWording = [
   'Importing the file may take some time. It depends on document size and complexity.',
 ];
 
+/**
+ * PO decision (2026-09-12): the brand "AFFiNE" — inherited verbatim from the
+ * fork — is replaced by "Labre" here and in
+ * {@link LINKED_DOC_IMPORT_NOTION_HELP_TOOLTIP}, the ONE deliberate exception
+ * to "fallback = the existing English literal, to the letter": the sentence
+ * names the wrong product otherwise.
+ */
 export const LINKED_DOC_IMPORT_INTRO: ChromeWording = [
   'com.labre.linked-doc.import.intro',
-  'AFFiNE will gradually support more file formats for import.',
+  'Labre will gradually support more file formats for import.',
 ];
 
 export const LINKED_DOC_IMPORT_FEEDBACK_LINK: ChromeWording = [
@@ -94,9 +101,10 @@ export const LINKED_DOC_IMPORT_FORMAT_NOTION: ChromeWording = [
   'Notion',
 ];
 
+/** Brand swap, same PO decision — see {@link LINKED_DOC_IMPORT_INTRO}. */
 export const LINKED_DOC_IMPORT_NOTION_HELP_TOOLTIP: ChromeWording = [
   'com.labre.linked-doc.import.notion-help-tooltip',
-  'Learn how to Import your Notion pages into AFFiNE.',
+  'Learn how to Import your Notion pages into Labre.',
 ];
 
 export const LINKED_DOC_IMPORT_COMING_SOON: ChromeWording = [

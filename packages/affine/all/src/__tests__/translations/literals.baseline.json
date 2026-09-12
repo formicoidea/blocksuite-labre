@@ -668,9 +668,6 @@
     "packages/affine/gfx/shape/src/toolbar/senior-tool.ts": [
       "Shape"
     ],
-    "packages/affine/gfx/template/src/toolbar/senior-tool.ts": [
-      "Template"
-    ],
     "packages/affine/gfx/wardley/src/import.ts": [
       "${} `${}` line${} kept verbatim on the map and written back on the next export. Nothing on this canvas draws ${}.",
       "line ${} declares coordinates this reader cannot make a number of, so they were not used."

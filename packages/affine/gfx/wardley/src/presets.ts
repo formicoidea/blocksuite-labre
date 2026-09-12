@@ -185,22 +185,19 @@ export const WARDLEY_NODE_LABEL: Record<WardleyLabelledKind, string> = {
  * `createWardleyMarket`), never afterwards. "Pipeline" is the PO's glossary
  * term for Wardley: the French proposal IS the English word.
  *
- * ## A narrowed gap: the morph's placeholder detection has no `std` to ask
+ * ## The morph's placeholder detection, translated
  *
  * `wardleyMorphedLabel` (`morph.ts`) decides whether to refresh an artefact's
- * name across a morph, and now accepts an OPTIONAL `std`: given one, it
+ * name across a morph, and accepts an OPTIONAL `std`: given one, it
  * recognises the stored text as "untouched" whether it reads the English
  * prompt or the host's own resolved wording, and resolves the TARGET kind's
  * prompt through the host too (the same fix `c4MorphedTypeLine` carries,
- * `gfx/c4/src/type-line.ts`). What remains unfixed is the CALL SITE:
- * `rewriteLabel` is reached through `MorphSpec.afterMorph`
- * (`packages/affine/blocks/surface`, a package this lot does not own), whose
- * signature is `(model, from, to): void` — no `std` — so today's morph
- * toolbar still calls this function with none. On a host running a French
- * catalogue, an untouched node's translated name therefore still will not be
- * refreshed by a morph gesture (a stale label survives it instead of being
- * replaced) — not a corruption, and fixed the moment `afterMorph` is handed
- * a `std` to pass on. Flagged in this lot's `notes`.
+ * `gfx/c4/src/type-line.ts`). `MorphSpec.afterMorph`
+ * (`packages/affine/blocks/surface`) now hands its callee the morph
+ * toolbar's own `std`, so `rewriteLabel` passes it straight through: on a
+ * host running a French catalogue, morphing an untouched TRANSLATED node
+ * rewrites its name to the target kind's own translated prompt, exactly as a
+ * standalone playground already rewrote the English one.
  */
 export const wardleyNodeLabelKey = (kind: WardleyLabelledKind) =>
   `com.labre.wardley.seed.${kind}`;

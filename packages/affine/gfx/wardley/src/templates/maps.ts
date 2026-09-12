@@ -13,7 +13,10 @@ import {
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 
 import { COLORS } from '../consts';
@@ -408,16 +411,28 @@ function seedText(
 function tpl(
   name: string,
   preview: string,
-  build: (std?: BlockStdScope) => SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
+    nameKey,
     content: makeTemplateSnapshot(build(), name),
     localize: std => makeTemplateSnapshot(build(std), name),
   };
 }
+
+/** The two worked maps' own tile names (`Template.nameKey`). */
+export const WARDLEY_TEMPLATE_NAME_TEA_SHOP: ChromeWording = [
+  'com.labre.wardley.template.tea-shop',
+  'Tea Shop',
+];
+export const WARDLEY_TEMPLATE_NAME_KODAK_INERTIA: ChromeWording = [
+  'com.labre.wardley.template.kodak-inertia',
+  'Kodak inertia',
+];
 
 function ann(e: number, v: number) {
   const cx = ex(e);
@@ -609,13 +624,15 @@ export const wardleyMaps: Template[] = [
     mapPreview(
       `<circle cx="78" cy="24" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="50" cy="44" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="86" cy="40" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="92" cy="58" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><path d="M78 24 L50 44 M78 24 L86 40 L92 58" stroke="${LINK_GREY}"/><path d="M50 44 h22" stroke="${WARDLEY_RED}" stroke-dasharray="3 2"/>`
     ),
-    teaShop
+    teaShop,
+    WARDLEY_TEMPLATE_NAME_TEA_SHOP[0]
   ),
   tpl(
     'Kodak inertia',
     mapPreview(
       `<circle cx="56" cy="22" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="54" cy="40" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="86" cy="40" r="3" fill="${NODE_FILL}" stroke="${WARDLEY_RED}"/><rect x="76" y="35" width="2.5" height="11" fill="${INERTIA_COLOR}"/><path d="M57 40 h17" stroke="${WARDLEY_RED}" stroke-dasharray="3 2"/>`
     ),
-    kodak
+    kodak,
+    WARDLEY_TEMPLATE_NAME_KODAK_INERTIA[0]
   ),
 ];
