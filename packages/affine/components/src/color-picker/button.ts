@@ -2,6 +2,7 @@ import type { Color, ColorScheme, Palette } from '@labre/affine-model';
 import { DefaultTheme, resolveColor } from '@labre/affine-model';
 import type { ColorEvent } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
 import { html, LitElement } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
@@ -122,6 +123,7 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
                   .palettes=${this.palettes}
                   .hollowCircle=${this.hollowCircle}
                   .hasTransparent=${false}
+                  .std=${this.std}
                   @select=${this.#select}
                 >
                   ${when(
@@ -192,6 +194,13 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
 
   @property({ attribute: false })
   accessor pick!: (event: PickColorEvent) => void;
+
+  /**
+   * Optional, forwarded to the nested `edgeless-color-panel` — see
+   * `EdgelessColorPanel.std` (`color-panel.ts`) for what it changes.
+   */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 
   @state()
   accessor tabType: Type = 'normal';

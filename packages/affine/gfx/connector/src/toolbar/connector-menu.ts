@@ -154,6 +154,7 @@ export class EdgelessConnectorMenu extends EdgelessToolbarToolMixin(
             .hasTransparent=${!this.edgeless.store
               .get(FeatureFlagService)
               .getFlag('enable_color_picker')}
+            .std=${this.edgeless.std}
             @select=${(e: ColorEvent) =>
               this.onChange({ stroke: e.detail.value })}
           ></edgeless-color-panel>

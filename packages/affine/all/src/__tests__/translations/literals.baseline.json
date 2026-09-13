@@ -13,17 +13,52 @@
       "Group",
       "Mind Map"
     ],
+    "packages/affine/blocks/surface/src/extensions/interchange-import.ts": [
+      "${} ${}"
+    ],
+    "packages/affine/components/src/icon-picker/emoji-data.ts": [
+      "Activity",
+      "Animals & Nature",
+      "Flags",
+      "Food & Drink",
+      "Objects",
+      "Smileys & People",
+      "Symbols",
+      "Travel & Places"
+    ],
     "packages/affine/gfx/bpmn/src/export.ts": [
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>n${}n"
     ],
     "packages/affine/gfx/c4/src/templates.ts": [
       "C4"
     ],
+    "packages/affine/gfx/shape/src/toolbar/senior-tool.ts": [
+      "Shape"
+    ],
     "packages/affine/gfx/text/src/toolbar/actions.ts": [
       "Aa"
     ],
-    "packages/affine/gfx/wardley/src/templates/index.ts": [
-      "Wardley"
+    "packages/affine/shared/src/consts/bracket-pairs.ts": [
+      "corner bracket",
+      "curly bracket",
+      "double quote",
+      "fullwidth angle bracket",
+      "fullwidth double quote",
+      "fullwidth parenthesis",
+      "fullwidth single quote",
+      "fullwidth square bracket",
+      "single quote",
+      "square bracket",
+      "white corner bracket"
+    ],
+    "packages/affine/shared/src/utils/file/filesys.ts": [
+      "Audios",
+      "Html",
+      "Images",
+      "Markdown",
+      "MindMap",
+      "Videos",
+      "Zip"
     ]
   },
   "deferred": {
@@ -214,6 +249,14 @@
       "Move Right",
       "Move Up",
       "Paste"
+    ],
+    "packages/affine/components/src/date-picker/date-picker.ts": [
+      "Clear",
+      "TODAY",
+      "clear",
+      "next month",
+      "previous month",
+      "today"
     ],
     "packages/affine/data-view/src/core/common/properties.ts": [
       "Properties"
@@ -624,94 +667,14 @@
     "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/plain-text.ts": [
       "+ o.node.props.pageId) ??"
     ],
-    "packages/affine/blocks/surface/src/extensions/interchange-import.ts": [
-      "${} ${}"
-    ],
-    "packages/affine/components/src/date-picker/date-picker.ts": [
-      "Clear",
-      "TODAY",
-      "clear",
-      "next month",
-      "previous month",
-      "today"
-    ],
-    "packages/affine/components/src/icon-picker/emoji-data.ts": [
-      "Activity",
-      "Animals & Nature",
-      "Flags",
-      "Food & Drink",
-      "Objects",
-      "Smileys & People",
-      "Symbols",
-      "Travel & Places"
-    ],
     "packages/affine/fragments/doc-title/src/doc-title.ts": [
       "true"
-    ],
-    "packages/affine/gfx/bpmn/src/import.ts": [
-      "${bands.length === 1 ? 'This lane' :",
-      "${} ${}",
-      "<${}> arrived with no diagram, so Labre placed it beside the",
-      "<${}> has no Labre artefact, so it is kept verbatim on",
-      "<${}> names its trigger by reference to",
-      "<${}> names only one of its two ends, so there is no arrow",
-      "<${}> runs to ${dangling.map(end =>",
-      "The diagram draws \"${}\", which the file does not declare.",
-      "The file lists this artefact in the lane \"${}\" and",
-      "The participant \"${}\" arrived with no",
-      "This file declares ${} root",
-      "Two elements in this file share the id \"${}\", which BPMN"
     ],
     "packages/affine/gfx/brush/src/toolbar/senior-tool.ts": [
       "Pen"
     ],
-    "packages/affine/gfx/shape/src/toolbar/senior-tool.ts": [
-      "Shape"
-    ],
     "packages/affine/gfx/template/src/toolbar/senior-tool.ts": [
       "Template"
-    ],
-    "packages/affine/gfx/wardley/src/import.ts": [
-      "${} `${}` line${} kept verbatim on the map and written back on the next export. Nothing on this canvas draws ${}.",
-      "line ${} declares coordinates this reader cannot make a number of, so they were not used."
-    ],
-    "packages/affine/gfx/wardley/src/natures.ts": [
-      "A way of doing — a method, a convention, an operating model.",
-      "Established players competing against one another on a market that exists.",
-      "Pressure on a newcomer trying to get into a market.",
-      "Pressure on a player to stay in a market it is already in.",
-      "Something that is DONE — a step, a service, a process.",
-      "Something that is KNOWN — a model, a theory, a rule.",
-      "Something that is RECORDED — a dataset, a register.",
-      "Wardley",
-      "What kind of thing this component is: an activity, data, a practice or knowledge.",
-      "Which of Porter's forces this glyph marks: relative competition, a struggle for survival, or a struggle to establish."
-    ],
-    "packages/affine/shared/src/consts/bracket-pairs.ts": [
-      "corner bracket",
-      "curly bracket",
-      "double quote",
-      "fullwidth angle bracket",
-      "fullwidth double quote",
-      "fullwidth parenthesis",
-      "fullwidth single quote",
-      "fullwidth square bracket",
-      "single quote",
-      "square bracket",
-      "white corner bracket"
-    ],
-    "packages/affine/shared/src/services/open-doc-config.ts": [
-      "Open in center peek",
-      "Open this doc"
-    ],
-    "packages/affine/shared/src/utils/file/filesys.ts": [
-      "Audios",
-      "Html",
-      "Images",
-      "Markdown",
-      "MindMap",
-      "Videos",
-      "Zip"
     ],
     "packages/framework/std/src/event/keymap.ts": [
       "+ name ); } return normalized; } function modifiers(name: string, event: KeyboardEvent, shift = true) { if (event.altKey) name ="

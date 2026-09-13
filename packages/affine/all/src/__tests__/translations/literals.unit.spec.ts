@@ -391,6 +391,145 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
   },
   { file: 'packages/affine/gfx/c4/src/templates.ts', text: 'C4' },
 
+  // PO decision (2026-09-12): the native file-picker's type descriptions
+  // stay English (`ImageProxyService` and the rest of `filesys.ts` name a
+  // FILE TYPE, not editor chrome — the same reasoning that already kept
+  // "Aa" and the notation letters out of the catalogue). See
+  // `packages/affine/shared/src/utils/file/filesys.ts`'s `description`
+  // fields and the `FileType` union they back.
+  {
+    file: 'packages/affine/shared/src/utils/file/filesys.ts',
+    text: 'Images',
+  },
+  {
+    file: 'packages/affine/shared/src/utils/file/filesys.ts',
+    text: 'Videos',
+  },
+  {
+    file: 'packages/affine/shared/src/utils/file/filesys.ts',
+    text: 'Audios',
+  },
+  {
+    file: 'packages/affine/shared/src/utils/file/filesys.ts',
+    text: 'Markdown',
+  },
+  { file: 'packages/affine/shared/src/utils/file/filesys.ts', text: 'Html' },
+  { file: 'packages/affine/shared/src/utils/file/filesys.ts', text: 'Zip' },
+  {
+    file: 'packages/affine/shared/src/utils/file/filesys.ts',
+    text: 'MindMap',
+  },
+
+  // `${notes.length} ${translateKey(...)}` (interchange-import.ts) — PURE
+  // interpolation with a space between the two holes and no static prose of
+  // its own; P3 matches it because it sits after `message:`, but there is no
+  // English here to translate, only two already-translated values glued
+  // together with a space.
+  {
+    file: 'packages/affine/blocks/surface/src/extensions/interchange-import.ts',
+    text: '${} ${}',
+  },
+
+  // `GROUP_ORDER[].name` (icon-picker/emoji-data.ts) — already translated at
+  // the render site: `emoji-picker-panel.ts` looks the group up by this very
+  // `name` and resolves `EMOJI_GROUP_WORDINGS[group.id]` (declared in this
+  // package's own `translations.ts`, which IS covered by the manifest). This
+  // pure-data file calls no `translateKey`, imports no `Wording` and writes
+  // no `com.labre.*` literal of its own, so the per-file seam gate
+  // (`SEAM_USE`) can never see that the render site already resolves it.
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Smileys & People',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Animals & Nature',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Food & Drink',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Activity',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Travel & Places',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Objects',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Symbols',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
+    text: 'Flags',
+  },
+
+  // `BracketPair.name` (`shared/src/consts/bracket-pairs.ts`) — an internal
+  // identifier, never displayed: both consumers (`blocks/code`'s auto-close
+  // and `inlines/preset`'s bracket keymap) read only `.left` / `.right`, never
+  // `.name`. Verified by searching every import of `BRACKET_PAIRS`.
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'corner bracket',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'curly bracket',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'double quote',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'fullwidth angle bracket',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'fullwidth double quote',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'fullwidth parenthesis',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'fullwidth single quote',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'fullwidth square bracket',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'single quote',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'square bracket',
+  },
+  {
+    file: 'packages/affine/shared/src/consts/bracket-pairs.ts',
+    text: 'white corner bracket',
+  },
+
+  // The senior-tool button's OWN generic name for a framework-less canvas
+  // primitive (a shape with no notation drawn on it) — kept English by design
+  // like the brush's "Pen" and the template button's "Template" (a different
+  // lot's packages; named here only for the cross-reference): a core tool
+  // with no framework descriptor is chrome so generic a wording key would
+  // buy nothing.
+  {
+    file: 'packages/affine/gfx/shape/src/toolbar/senior-tool.ts',
+    text: 'Shape',
+  },
+
   // Named here for the paper trail, but NOT above, because the detector
   // never turns them into a hit in the first place:
   // - `name: 'Cynefin / Estuarine'` (gfx/cynefin-estuarine/toolbar/senior-tool.ts)

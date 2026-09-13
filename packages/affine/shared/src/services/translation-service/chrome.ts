@@ -572,6 +572,190 @@ export const CHROME_DELETED_DOC: ChromeWording = [
   'Deleted doc',
 ];
 
+/* ── Palette swatch names (default theme) ──────────────────────────────
+ *
+ * A colour picker (`edgeless-color-panel`, `@labre/affine-components`) draws
+ * `palette.key` as the swatch's visible name AND its aria-label — a plain
+ * `Palette` (`packages/affine/model`, RED ZONE) carries no wording of its
+ * own, only `{ key, value }`, so every shape / note / connector / brush
+ * colour panel that iterates `DefaultTheme.Palettes` (or one of its sibling
+ * tables — `NoteBackgroundColorPalettes`, `StrokeColorShortPalettes`,
+ * `FillColorShortPalettes`, `ShapeTextColorPalettes`,
+ * `ShapeTextColorShortPalettes`) was, until now, showing an untranslatable
+ * English identifier.
+ *
+ * One wording per DISTINCT `key` string the default theme's tables produce
+ * (`buildPalettes`'s `${prefix}${key}` — `'LightRed'`, `'MediumBlue'`,
+ * `'Grey'`…), not one per colour word: the fallback must be the literal
+ * already on screen, letter for letter, and `'LightRed'` is that literal —
+ * decomposing it into a prefix key plus a colour key would produce a
+ * DIFFERENT string (`'Light' + 'Red'` needs a space `translateKey` has no
+ * grammar to insert) the moment a host actually translates one half.
+ *
+ * Deliberately NOT the same keys as {@link COLOR_NAME_WORDINGS}
+ * (`com.labre.color-name.*`, added by an earlier lot for the highlight menu
+ * and the icon picker's tint swatches, in `@labre/affine-components`): those
+ * fallbacks are lower-case (`'red'`), and the literal on screen here is
+ * title-case (`'Red'`, `'LightRed'`). Reusing the same key for two different
+ * literals would make the manifest's drift check fail the moment either
+ * call site's casing changed independently, so this is its own table under
+ * its own keys.
+ *
+ * A FRAMEWORK's own palette (Wardley's "Wonder" / "Peace" / "War", EDGY's
+ * "Identity" / "Architecture"…) does NOT live here: this table is for the
+ * one editor-wide default, and a framework names its own swatches through
+ * `NamedPalette.labelWording` (`@labre/affine-components/color-picker`)
+ * instead — see `resolvePaletteLabel` in the same package, which checks a
+ * swatch's own `labelWording` first and falls back to this table only when
+ * the swatch declares none (which is exactly the default-theme case).
+ */
+export const PALETTE_NAME_RED: ChromeWording = [
+  'com.labre.palette-name.red',
+  'Red',
+];
+export const PALETTE_NAME_ORANGE: ChromeWording = [
+  'com.labre.palette-name.orange',
+  'Orange',
+];
+export const PALETTE_NAME_YELLOW: ChromeWording = [
+  'com.labre.palette-name.yellow',
+  'Yellow',
+];
+export const PALETTE_NAME_GREEN: ChromeWording = [
+  'com.labre.palette-name.green',
+  'Green',
+];
+export const PALETTE_NAME_BLUE: ChromeWording = [
+  'com.labre.palette-name.blue',
+  'Blue',
+];
+export const PALETTE_NAME_PURPLE: ChromeWording = [
+  'com.labre.palette-name.purple',
+  'Purple',
+];
+export const PALETTE_NAME_MAGENTA: ChromeWording = [
+  'com.labre.palette-name.magenta',
+  'Magenta',
+];
+export const PALETTE_NAME_GREY: ChromeWording = [
+  'com.labre.palette-name.grey',
+  'Grey',
+];
+export const PALETTE_NAME_WHITE: ChromeWording = [
+  'com.labre.palette-name.white',
+  'White',
+];
+export const PALETTE_NAME_BLACK: ChromeWording = [
+  'com.labre.palette-name.black',
+  'Black',
+];
+export const PALETTE_NAME_TRANSPARENT: ChromeWording = [
+  'com.labre.palette-name.transparent',
+  'Transparent',
+];
+
+export const PALETTE_NAME_LIGHT_RED: ChromeWording = [
+  'com.labre.palette-name.light-red',
+  'LightRed',
+];
+export const PALETTE_NAME_LIGHT_ORANGE: ChromeWording = [
+  'com.labre.palette-name.light-orange',
+  'LightOrange',
+];
+export const PALETTE_NAME_LIGHT_YELLOW: ChromeWording = [
+  'com.labre.palette-name.light-yellow',
+  'LightYellow',
+];
+export const PALETTE_NAME_LIGHT_GREEN: ChromeWording = [
+  'com.labre.palette-name.light-green',
+  'LightGreen',
+];
+export const PALETTE_NAME_LIGHT_BLUE: ChromeWording = [
+  'com.labre.palette-name.light-blue',
+  'LightBlue',
+];
+export const PALETTE_NAME_LIGHT_PURPLE: ChromeWording = [
+  'com.labre.palette-name.light-purple',
+  'LightPurple',
+];
+export const PALETTE_NAME_LIGHT_MAGENTA: ChromeWording = [
+  'com.labre.palette-name.light-magenta',
+  'LightMagenta',
+];
+export const PALETTE_NAME_LIGHT_GREY: ChromeWording = [
+  'com.labre.palette-name.light-grey',
+  'LightGrey',
+];
+
+export const PALETTE_NAME_MEDIUM_RED: ChromeWording = [
+  'com.labre.palette-name.medium-red',
+  'MediumRed',
+];
+export const PALETTE_NAME_MEDIUM_ORANGE: ChromeWording = [
+  'com.labre.palette-name.medium-orange',
+  'MediumOrange',
+];
+export const PALETTE_NAME_MEDIUM_YELLOW: ChromeWording = [
+  'com.labre.palette-name.medium-yellow',
+  'MediumYellow',
+];
+export const PALETTE_NAME_MEDIUM_GREEN: ChromeWording = [
+  'com.labre.palette-name.medium-green',
+  'MediumGreen',
+];
+export const PALETTE_NAME_MEDIUM_BLUE: ChromeWording = [
+  'com.labre.palette-name.medium-blue',
+  'MediumBlue',
+];
+export const PALETTE_NAME_MEDIUM_PURPLE: ChromeWording = [
+  'com.labre.palette-name.medium-purple',
+  'MediumPurple',
+];
+export const PALETTE_NAME_MEDIUM_MAGENTA: ChromeWording = [
+  'com.labre.palette-name.medium-magenta',
+  'MediumMagenta',
+];
+export const PALETTE_NAME_MEDIUM_GREY: ChromeWording = [
+  'com.labre.palette-name.medium-grey',
+  'MediumGrey',
+];
+
+/**
+ * Keyed by the exact `Palette.key` string the default theme's tables produce
+ * (`buildPalettes`, `packages/affine/model/src/themes/{default,utils}.ts`) —
+ * the one lookup `resolvePaletteLabel` (`@labre/affine-components/color-picker`)
+ * falls back to when a swatch declares no `labelWording` of its own.
+ */
+export const PALETTE_NAME_WORDINGS: Readonly<Record<string, ChromeWording>> = {
+  Red: PALETTE_NAME_RED,
+  Orange: PALETTE_NAME_ORANGE,
+  Yellow: PALETTE_NAME_YELLOW,
+  Green: PALETTE_NAME_GREEN,
+  Blue: PALETTE_NAME_BLUE,
+  Purple: PALETTE_NAME_PURPLE,
+  Magenta: PALETTE_NAME_MAGENTA,
+  Grey: PALETTE_NAME_GREY,
+  White: PALETTE_NAME_WHITE,
+  Black: PALETTE_NAME_BLACK,
+  Transparent: PALETTE_NAME_TRANSPARENT,
+  LightRed: PALETTE_NAME_LIGHT_RED,
+  LightOrange: PALETTE_NAME_LIGHT_ORANGE,
+  LightYellow: PALETTE_NAME_LIGHT_YELLOW,
+  LightGreen: PALETTE_NAME_LIGHT_GREEN,
+  LightBlue: PALETTE_NAME_LIGHT_BLUE,
+  LightPurple: PALETTE_NAME_LIGHT_PURPLE,
+  LightMagenta: PALETTE_NAME_LIGHT_MAGENTA,
+  LightGrey: PALETTE_NAME_LIGHT_GREY,
+  MediumRed: PALETTE_NAME_MEDIUM_RED,
+  MediumOrange: PALETTE_NAME_MEDIUM_ORANGE,
+  MediumYellow: PALETTE_NAME_MEDIUM_YELLOW,
+  MediumGreen: PALETTE_NAME_MEDIUM_GREEN,
+  MediumBlue: PALETTE_NAME_MEDIUM_BLUE,
+  MediumPurple: PALETTE_NAME_MEDIUM_PURPLE,
+  MediumMagenta: PALETTE_NAME_MEDIUM_MAGENTA,
+  MediumGrey: PALETTE_NAME_MEDIUM_GREY,
+};
+
 /* ── Clipboard size-limit toasts (adapters/clipboard/utils.ts) ────────── */
 
 export const CHROME_CLIPBOARD_FILE_TOO_LARGE: ChromeWording = [
@@ -813,4 +997,32 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   TOAST_DOWNLOAD_IN_PROGRESS,
   TOAST_UPLOAD_SIZE_LIMIT,
   CHROME_LOADING,
+
+  PALETTE_NAME_RED,
+  PALETTE_NAME_ORANGE,
+  PALETTE_NAME_YELLOW,
+  PALETTE_NAME_GREEN,
+  PALETTE_NAME_BLUE,
+  PALETTE_NAME_PURPLE,
+  PALETTE_NAME_MAGENTA,
+  PALETTE_NAME_GREY,
+  PALETTE_NAME_WHITE,
+  PALETTE_NAME_BLACK,
+  PALETTE_NAME_TRANSPARENT,
+  PALETTE_NAME_LIGHT_RED,
+  PALETTE_NAME_LIGHT_ORANGE,
+  PALETTE_NAME_LIGHT_YELLOW,
+  PALETTE_NAME_LIGHT_GREEN,
+  PALETTE_NAME_LIGHT_BLUE,
+  PALETTE_NAME_LIGHT_PURPLE,
+  PALETTE_NAME_LIGHT_MAGENTA,
+  PALETTE_NAME_LIGHT_GREY,
+  PALETTE_NAME_MEDIUM_RED,
+  PALETTE_NAME_MEDIUM_ORANGE,
+  PALETTE_NAME_MEDIUM_YELLOW,
+  PALETTE_NAME_MEDIUM_GREEN,
+  PALETTE_NAME_MEDIUM_BLUE,
+  PALETTE_NAME_MEDIUM_PURPLE,
+  PALETTE_NAME_MEDIUM_MAGENTA,
+  PALETTE_NAME_MEDIUM_GREY,
 ];

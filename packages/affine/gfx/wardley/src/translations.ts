@@ -22,6 +22,7 @@ import { WARDLEY_ROLES } from './roles.js';
 import { WARDLEY_RULES } from './rules.js';
 import { KODAK_INERTIA_SEED, TEA_SHOP_SEED } from './templates/maps.js';
 import { WARDLEY_TOOLBAR_WORDINGS } from './toolbar/config.js';
+import { WARDLEY_PALETTE_WORDINGS } from './toolbar/node-config.js';
 
 /**
  * The prompt every labelled artefact is created NEXT TO — the fallback IS
@@ -81,6 +82,19 @@ const importRemarkEntries = (): TranslationKeyManifestEntry[] =>
   }));
 
 /**
+ * The nine node-colour-picker swatches' own names (`WARDLEY_PALETTE_WORDINGS`,
+ * `toolbar/node-config.ts`) — chrome, like the toolbar tooltips above: a
+ * swatch's name is re-rendered on every locale switch, never seeded into a
+ * document.
+ */
+const paletteWordingEntries = (): TranslationKeyManifestEntry[] =>
+  WARDLEY_PALETTE_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
+
+/**
  * THIS framework's contribution to the translation-key manifest — every
  * `com.labre.*` key Wardley can hand to `TranslationProvider.t`, derived from
  * the very declarations the editor registers.
@@ -115,6 +129,7 @@ export const wardleyTranslationEntries: TranslationKeyManifestEntry[] =
     legendSeedEntries(),
     toolbarChromeEntries(),
     importRemarkEntries(),
+    paletteWordingEntries(),
     collectTranslationKeys('reading', WARDLEY_READING),
     // The library's own tag pack (`WARDLEY_TAG_DEFS`) — the natures and the
     // Porter competition tags. A host's app-seeded pack needs no entry here:

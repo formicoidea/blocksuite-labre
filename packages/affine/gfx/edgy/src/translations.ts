@@ -26,6 +26,7 @@ import { EDGY_ROLES } from './roles.js';
 import { EDGY_RULES } from './rules.js';
 import { EDGY_TEMPLATE_SEED } from './templates/index.js';
 import { EDGY_TOOLBAR_WORDINGS } from './toolbar/config.js';
+import { EDGY_PALETTE_WORDINGS } from './toolbar/node-config.js';
 
 /**
  * The name every one of the 12 official elements and the 6 Venn zones is
@@ -58,6 +59,18 @@ const legendChromeEntries = (): TranslationKeyManifestEntry[] =>
 /** The toolbar tooltips this framework used to hard-code as English literals. */
 const toolbarChromeEntries = (): TranslationKeyManifestEntry[] =>
   EDGY_TOOLBAR_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
+
+/**
+ * The twelve node-colour-picker swatches' own names
+ * (`EDGY_PALETTE_WORDINGS`, `toolbar/node-config.ts`) — chrome, re-rendered
+ * on every locale switch, never seeded into a document.
+ */
+const paletteWordingEntries = (): TranslationKeyManifestEntry[] =>
+  EDGY_PALETTE_WORDINGS.map(([key, fallback]) => ({
     key,
     fallback,
     source: 'chrome' as const,
@@ -131,6 +144,7 @@ export const edgyTranslationEntries: TranslationKeyManifestEntry[] =
     sceneSeedEntries(),
     legendChromeEntries(),
     toolbarChromeEntries(),
+    paletteWordingEntries(),
     // LAST, and the order is load-bearing: a reading profile carries the
     // framework's own `roles`, so walking it reaches every role key the line
     // above already named. `mergeTranslationEntries` keeps the FIRST
