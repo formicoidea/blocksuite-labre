@@ -107,6 +107,7 @@ export const brushToolbarConfig = {
             .theme=${theme}
             .originalColor=${originalColor}
             .enableCustomColor=${enableCustomColor}
+            .std=${ctx.std}
           >
           </edgeless-color-picker-button>
         `;

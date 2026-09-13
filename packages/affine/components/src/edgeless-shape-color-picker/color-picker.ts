@@ -259,6 +259,7 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                         .value=${value}
                         .theme=${theme}
                         .palettes=${palettes}
+                        .std=${this.std}
                         @select=${onPick}
                       >
                         ${when(enableCustomColor, () => {

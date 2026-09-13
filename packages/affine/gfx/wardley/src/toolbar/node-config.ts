@@ -1,3 +1,4 @@
+import type { NamedPalette } from '@labre/affine-components/color-picker';
 import {
   neutralPalettes,
   paletteColorAction,
@@ -5,11 +6,11 @@ import {
 } from '@labre/affine-gfx-shape';
 import {
   type Color,
-  type Palette,
   type ShapeElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
 import {
+  type ChromeWording,
   type ToolbarActions,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -54,6 +55,67 @@ export function wardleyFillColor(
 }
 
 /**
+ * The nine Wardley swatches' own names, resolved by `resolvePaletteLabel`
+ * (`@labre/affine-components/color-picker`) through each swatch's own
+ * {@link NamedPalette.labelWording} — the framework-agnostic mechanism a
+ * gfx module uses to name a palette without touching `Palette`
+ * (`packages/affine/model`, RED ZONE) or importing another framework.
+ *
+ * Exported so `../translations.ts` can list them in the manifest under
+ * source `chrome`, the same treatment `WARDLEY_TOOLBAR_WORDINGS` already
+ * gets — a swatch's name is toolbar chrome, re-rendered on every locale
+ * switch, never seeded into a document.
+ */
+export const WARDLEY_PALETTE_WORDING_WONDER: ChromeWording = [
+  'com.labre.wardley.palette.wonder',
+  'Wonder',
+];
+export const WARDLEY_PALETTE_WORDING_PEACE: ChromeWording = [
+  'com.labre.wardley.palette.peace',
+  'Peace',
+];
+export const WARDLEY_PALETTE_WORDING_WAR: ChromeWording = [
+  'com.labre.wardley.palette.war',
+  'War',
+];
+export const WARDLEY_PALETTE_WORDING_WONDER_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.wonder-light',
+  'Wonder light',
+];
+export const WARDLEY_PALETTE_WORDING_PEACE_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.peace-light',
+  'Peace light',
+];
+export const WARDLEY_PALETTE_WORDING_WAR_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.war-light',
+  'War light',
+];
+export const WARDLEY_PALETTE_WORDING_RED: ChromeWording = [
+  'com.labre.wardley.palette.wardley-red',
+  'Wardley red',
+];
+export const WARDLEY_PALETTE_WORDING_INERTIA: ChromeWording = [
+  'com.labre.wardley.palette.inertia',
+  'Inertia',
+];
+export const WARDLEY_PALETTE_WORDING_METHOD_GREY: ChromeWording = [
+  'com.labre.wardley.palette.method-grey',
+  'Method grey',
+];
+
+export const WARDLEY_PALETTE_WORDINGS: readonly ChromeWording[] = [
+  WARDLEY_PALETTE_WORDING_WONDER,
+  WARDLEY_PALETTE_WORDING_PEACE,
+  WARDLEY_PALETTE_WORDING_WAR,
+  WARDLEY_PALETTE_WORDING_WONDER_LIGHT,
+  WARDLEY_PALETTE_WORDING_PEACE_LIGHT,
+  WARDLEY_PALETTE_WORDING_WAR_LIGHT,
+  WARDLEY_PALETTE_WORDING_RED,
+  WARDLEY_PALETTE_WORDING_INERTIA,
+  WARDLEY_PALETTE_WORDING_METHOD_GREY,
+];
+
+/**
  * The Wardley **evolution cycle**, surfaced as ready-made swatches in the node
  * colour picker: Wonder / Peace / War, the three climatic phases a component
  * travels through in Simon Wardley's pattern — saturated first, then the light
@@ -64,23 +126,55 @@ export function wardleyFillColor(
  * They are SHORTCUTS, never constraints: nothing in the map reads a colour, so
  * an author is free to ignore them, and the custom picker stays one click away.
  */
-const WARDLEY_PALETTES: Palette[] = [
-  { key: 'Wonder', value: '#3ec9f2' },
-  { key: 'Peace', value: '#5b9cf6' },
-  { key: 'War', value: '#9d6df0' },
-  { key: 'Wonder light', value: '#b9e9fa' },
-  { key: 'Peace light', value: '#c6dbfc' },
-  { key: 'War light', value: '#d9c9fa' },
-  { key: 'Wardley red', value: WARDLEY_RED },
-  { key: 'Inertia', value: INERTIA_COLOR },
-  { key: 'Method grey', value: METHOD_FILL },
+const WARDLEY_PALETTES: NamedPalette[] = [
+  {
+    key: 'Wonder',
+    value: '#3ec9f2',
+    labelWording: WARDLEY_PALETTE_WORDING_WONDER,
+  },
+  {
+    key: 'Peace',
+    value: '#5b9cf6',
+    labelWording: WARDLEY_PALETTE_WORDING_PEACE,
+  },
+  { key: 'War', value: '#9d6df0', labelWording: WARDLEY_PALETTE_WORDING_WAR },
+  {
+    key: 'Wonder light',
+    value: '#b9e9fa',
+    labelWording: WARDLEY_PALETTE_WORDING_WONDER_LIGHT,
+  },
+  {
+    key: 'Peace light',
+    value: '#c6dbfc',
+    labelWording: WARDLEY_PALETTE_WORDING_PEACE_LIGHT,
+  },
+  {
+    key: 'War light',
+    value: '#d9c9fa',
+    labelWording: WARDLEY_PALETTE_WORDING_WAR_LIGHT,
+  },
+  {
+    key: 'Wardley red',
+    value: WARDLEY_RED,
+    labelWording: WARDLEY_PALETTE_WORDING_RED,
+  },
+  {
+    key: 'Inertia',
+    value: INERTIA_COLOR,
+    labelWording: WARDLEY_PALETTE_WORDING_INERTIA,
+  },
+  {
+    key: 'Method grey',
+    value: METHOD_FILL,
+    labelWording: WARDLEY_PALETTE_WORDING_METHOD_GREY,
+  },
 ];
 
 /**
  * From the default editor palette we keep ONLY the neutrals — the historical
  * colours are dropped in favour of the Wardley swatches above.
  */
-export const WARDLEY_PALETTE_LIST: Palette[] = [
+export const WARDLEY_PALETTE_LIST: NamedPalette[] = [
   ...WARDLEY_PALETTES,
   ...neutralPalettes(),
 ];

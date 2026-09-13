@@ -1,8 +1,9 @@
-import type {
-  InterchangeImportContext,
-  InterchangeImportResult,
-  InterchangeNote,
-  SerializedElementProps,
+import {
+  InterchangeImportError,
+  type InterchangeImportContext,
+  type InterchangeImportResult,
+  type InterchangeNote,
+  type SerializedElementProps,
 } from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnNodeKind } from '@labre/affine-model';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
@@ -35,22 +36,33 @@ import { bpmnNodeProps } from './presets.js';
 import { BPMN_ROLE } from './roles.js';
 
 /**
- * The remarks whose wording is FIXED, as `[key, English]` pairs.
+ * The remarks whose wording is FIXED, as `[key, English]` pairs — one entry
+ * per SHAPE of sentence, never one per exact string: a remark that names
+ * something out of the file (`<boundaryEvent>`, an id, a count of lanes)
+ * carries `{{name}}` / `{{count}}` holes in the fallback here, filled at the
+ * call site by `messageParams` (`InterchangeNote.messageParams`) — never by
+ * minting a new key for every value the file happens to carry.
  *
  * A reader is a pure function of text (`docs/adr/0012`, P3) and has no `std`,
- * so it cannot ask the host's catalogue for anything: it declares the key on
- * the note and `reportInterchangeImport` resolves it when it draws the report
- * (`InterchangeNote.messageKey`). The English string stays here and stays the
- * fallback, so the console table and a playground with no catalogue read
- * exactly what they read before.
+ * so it cannot ask the host's catalogue for anything: it declares the key
+ * (and, where the sentence has a hole, the params) on the note, and
+ * `reportInterchangeImport` resolves both when it draws the report
+ * (`InterchangeNote.messageKey` / `.messageParams`). The English string stays
+ * here and stays the fallback, so the console table and a playground with no
+ * catalogue read exactly what they read before: `translateKey` fills a
+ * `{{…}}` hole from `messageParams` even with no `TranslationProvider`
+ * registered (`fillPlaceholders`), so the ENGLISH sentence a call site builds
+ * is unchanged by giving it a key.
  *
- * Only these three and {@link BPMN_QUARANTINE_REASON} (declared further down,
- * with its own key pairing) — every OTHER remark NAMES something out of the
- * file — `<boundaryEvent>`, an id, a count of lanes — and the seam has neither
- * interpolation nor pluralisation. A key for one of those would be a sentence
- * with holes in it that a translator cannot see the shape of, which is the
- * same refusal the interchange count labels already make
- * (`interchange-import.ts`).
+ * Plural wording is the host's: where a count can be 0, 1 or many, the
+ * fallback stays grammatically neutral (`'{{count}} lane(s)…'`) rather than
+ * picking English's own singular/plural — the same rule
+ * `interchange-import.ts`'s own count labels follow.
+ *
+ * `BPMN_QUARANTINE_REASON` (declared further down, with its own key pairing)
+ * is the one exception: its plain string is ALSO written verbatim into
+ * `ForeignInterchange.quarantined[].reason` (data, never translated), so it
+ * cannot become a `[key, english]` pair without breaking that contract.
  *
  * They are contributed to the manifest by `./translations.ts`, with the
  * framework, because they ship in the BPMN bundle rather than in core.
@@ -67,6 +79,81 @@ export const BPMN_IMPORT_REMARKS = {
   mustUnderstand: [
     'com.labre.bpmn.import.remark.must-understand',
     'The file declares an extension that it says MUST be understood to read the model correctly. Labre does not understand it: the import went ahead, and this reading of the process may be wrong.',
+  ],
+  duplicateId: [
+    'com.labre.bpmn.import.remark.duplicate-id',
+    'Two elements in this file share the id "{{id}}", which BPMN requires to be unique across a document. Both were imported; the second will be written back under an id Labre mints.',
+  ],
+  carriedChild: [
+    'com.labre.bpmn.import.remark.carried-child',
+    '<{{tag}}> has no Labre artefact, so it is kept verbatim on the nearest element that has one. It is not drawn, and no validation rule sees it.',
+  ],
+  inventedPoolLayout: [
+    'com.labre.bpmn.import.remark.invented-pool-layout',
+    'The participant "{{name}}" arrived with no diagram, so Labre placed its pool beside the drawing.',
+  ],
+  inventedLaneLayout: [
+    'com.labre.bpmn.import.remark.invented-lane-layout',
+    "{{count}} lane(s) arrived with no diagram, so Labre split the pool into equal bands. The proportions are Labre's and not the file's.",
+  ],
+  undrawnTrigger: [
+    'com.labre.bpmn.import.remark.undrawn-trigger',
+    '<{{tag}}> names its trigger by reference to "{{ref}}", which Labre does not draw. The event was kept whole rather than drawn as a plain one.',
+  ],
+  inventedNodeLayout: [
+    'com.labre.bpmn.import.remark.invented-node-layout',
+    "<{{tag}}> arrived with no diagram, so Labre placed it beside the drawing. Its position is Labre's and not the file's.",
+  ],
+  singleEndedFlow: [
+    'com.labre.bpmn.import.remark.single-ended-flow',
+    '<{{tag}}> names only one of its two ends, so there is no arrow to draw between them. It was left out.',
+  ],
+  danglingFlowEnd: [
+    'com.labre.bpmn.import.remark.dangling-flow-end',
+    '<{{tag}}> runs to {{ends}}, not drawn on this canvas. The flow is kept whole beside them rather than drawn with a loose end.',
+  ],
+  undeclaredShape: [
+    'com.labre.bpmn.import.remark.undeclared-shape',
+    'The diagram draws "{{id}}", which the file does not declare. The shape is kept, and nothing is drawn for it.',
+  ],
+  noProcessResidue: [
+    'com.labre.bpmn.import.remark.no-process-residue',
+    'This file declares {{count}} root element(s) and no process to draw, so there was no artefact for them to be kept on. Nothing was imported.',
+  ],
+  laneDrift: [
+    'com.labre.bpmn.import.remark.lane-drift',
+    'The file lists this artefact in the lane "{{listedLane}}" and draws it in "{{drawnLane}}". Labre reads the drawing: a lane holds what is drawn inside it.',
+  ],
+  inventedRouting: [
+    'com.labre.bpmn.import.remark.invented-routing',
+    '{{count}} flow(s) carry an explicit routing in the file. Labre routes a flow between its two ends and re-routes it whenever they move, so their bend points are not kept.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
+/**
+ * The reader's own refusals, as `[key, English]` pairs — thrown via
+ * {@link InterchangeImportError}, never returned, because none of these say
+ * "this is a file I can partly read" (see `parseDefinitions` and the
+ * choreography refusal, below). Same shape and the same reason as
+ * {@link BPMN_IMPORT_REMARKS}: one entry per shape of refusal, `{{name}}`
+ * holes filled by `InterchangeImportError.messageParams`.
+ */
+export const BPMN_IMPORT_ERRORS = {
+  malformedXml: [
+    'com.labre.bpmn.import.error.malformed-xml',
+    'This file is not well-formed XML, so no BPMN can be read out of it: {{detail}}',
+  ],
+  notDefinitions: [
+    'com.labre.bpmn.import.error.not-definitions',
+    'A BPMN file opens on <definitions>; this one opens on <{{tag}}>.',
+  ],
+  wrongNamespace: [
+    'com.labre.bpmn.import.error.wrong-namespace',
+    'This <definitions> is in "{{namespace}}", not in BPMN 2.0\'s ("{{bpmnNamespace}}"). A DMN decision model and a BPMN process open on the same element name and are not the same file.',
+  ],
+  declinedRootKind: [
+    'com.labre.bpmn.import.error.declined-root-kind',
+    'This file is a BPMN {{kind}}, which Labre does not draw. Only a process or a collaboration can be imported.',
   ],
 } as const satisfies Record<string, readonly [key: string, english: string]>;
 
@@ -429,15 +516,24 @@ function parseDefinitions(source: string): Element {
   const doc = new DOMParser().parseFromString(source, 'application/xml');
   const error = doc.querySelector('parsererror');
   if (error) {
-    throw new Error(
-      `This file is not well-formed XML, so no BPMN can be read out of it: ` +
-        `${(error.textContent ?? '').trim().slice(0, 200)}`
+    const detail = (error.textContent ?? '').trim().slice(0, 200);
+    throw new InterchangeImportError(
+      `This file is not well-formed XML, so no BPMN can be read out of it: ${detail}`,
+      {
+        messageKey: BPMN_IMPORT_ERRORS.malformedXml[0],
+        messageParams: { detail },
+      }
     );
   }
   const root = doc.documentElement;
   if (!root || root.localName !== 'definitions') {
-    throw new Error(
-      `A BPMN file opens on <definitions>; this one opens on <${root?.localName ?? 'nothing'}>.`
+    const tag = root?.localName ?? 'nothing';
+    throw new InterchangeImportError(
+      `A BPMN file opens on <definitions>; this one opens on <${tag}>.`,
+      {
+        messageKey: BPMN_IMPORT_ERRORS.notDefinitions[0],
+        messageParams: { tag },
+      }
     );
   }
   // The NAMESPACE, not the element name — `<definitions>` is also the root of a
@@ -445,10 +541,15 @@ function parseDefinitions(source: string): Element {
   // Without this a `.dmn` imports as an empty board, which is exactly the
   // "three zeroes claiming an empty process" this reader refuses to return.
   if (root.namespaceURI !== BPMN_NS.model) {
-    throw new Error(
-      `This <definitions> is in "${root.namespaceURI ?? 'no namespace'}", not ` +
+    const namespace = root.namespaceURI ?? 'no namespace';
+    throw new InterchangeImportError(
+      `This <definitions> is in "${namespace}", not ` +
         `in BPMN 2.0's ("${BPMN_NS.model}"). A DMN decision model and a BPMN ` +
-        `process open on the same element name and are not the same file.`
+        `process open on the same element name and are not the same file.`,
+      {
+        messageKey: BPMN_IMPORT_ERRORS.wrongNamespace[0],
+        messageParams: { namespace, bpmnNamespace: BPMN_NS.model },
+      }
     );
   }
   return root;
@@ -795,9 +896,14 @@ export function importBpmnXml(
       )
     );
     if (declined) {
-      throw new Error(
-        `This file is a BPMN ${declined.localName}, which Labre does not draw. ` +
-          `Only a process or a collaboration can be imported.`
+      const kind = declined.localName;
+      throw new InterchangeImportError(
+        `This file is a BPMN ${kind}, which Labre does not draw. ` +
+          `Only a process or a collaboration can be imported.`,
+        {
+          messageKey: BPMN_IMPORT_ERRORS.declinedRootKind[0],
+          messageParams: { kind },
+        }
       );
     }
   }
@@ -823,10 +929,9 @@ export function importBpmnXml(
         kind: 'substituted-id',
         sourceId,
         element,
-        message:
-          `Two elements in this file share the id "${sourceId}", which BPMN ` +
-          `requires to be unique across a document. Both were imported; the ` +
-          `second will be written back under an id Labre mints.`,
+        messageKey: BPMN_IMPORT_REMARKS.duplicateId[0],
+        message: `Two elements in this file share the id "${sourceId}", which BPMN requires to be unique across a document. Both were imported; the second will be written back under an id Labre mints.`,
+        messageParams: { id: sourceId },
       });
     }
     seenSourceIds.add(sourceId);
@@ -870,10 +975,9 @@ export function importBpmnXml(
       kind: 'carried',
       element: child.nodeName,
       sourceId,
-      message:
-        `<${child.nodeName}> has no Labre artefact, so it is kept verbatim on ` +
-        `the nearest element that has one. It is not drawn, and no validation ` +
-        `rule sees it.`,
+      messageKey: BPMN_IMPORT_REMARKS.carriedChild[0],
+      message: `<${child.nodeName}> has no Labre artefact, so it is kept verbatim on the nearest element that has one. It is not drawn, and no validation rule sees it.`,
+      messageParams: { tag: child.nodeName },
     });
   };
 
@@ -1047,13 +1151,14 @@ export function importBpmnXml(
     drafts.push(draft);
     if (process) poolOfProcess.set(process, draft);
     if (!bounds) {
+      const name = (draft.props.name as string | undefined) || 'unnamed';
       note({
         kind: 'invented-layout',
         sourceId,
         element: 'participant',
-        message:
-          `The participant "${draft.props.name || 'unnamed'}" arrived with no ` +
-          `diagram, so Labre placed its pool beside the drawing.`,
+        messageKey: BPMN_IMPORT_REMARKS.inventedPoolLayout[0],
+        message: `The participant "${name}" arrived with no diagram, so Labre placed its pool beside the drawing.`,
+        messageParams: { name },
       });
     }
   }
@@ -1228,10 +1333,9 @@ export function importBpmnXml(
         kind: 'invented-layout',
         sourceId: attrOf(laneSet, 'id'),
         element: 'laneSet',
-        message:
-          `${bands.length === 1 ? 'This lane' : `Some of these ${bands.length} lanes`} ` +
-          `arrived with no diagram, so Labre split the pool into equal bands. ` +
-          `The proportions are Labre's and not the file's.`,
+        messageKey: BPMN_IMPORT_REMARKS.inventedLaneLayout[0],
+        message: `${bands.length} lane(s) arrived with no diagram, so Labre split the pool into equal bands. The proportions are Labre's and not the file's.`,
+        messageParams: { count: bands.length },
       });
     }
 
@@ -1325,14 +1429,14 @@ export function importBpmnXml(
     // whole into the carried branch below rather than onto the canvas claiming
     // something the file did not say.
     if (kind === undefined && triggerRef !== undefined) {
+      const ref = triggerRef.textContent?.trim() ?? '';
       note({
         kind: 'warning',
         sourceId,
         element: local,
-        message:
-          `<${local}> names its trigger by reference to ` +
-          `"${triggerRef.textContent?.trim() ?? ''}", which Labre does not ` +
-          `draw. The event was kept whole rather than drawn as a plain one.`,
+        messageKey: BPMN_IMPORT_REMARKS.undrawnTrigger[0],
+        message: `<${local}> names its trigger by reference to "${ref}", which Labre does not draw. The event was kept whole rather than drawn as a plain one.`,
+        messageParams: { tag: local, ref },
       });
     }
 
@@ -1454,9 +1558,9 @@ export function importBpmnXml(
         kind: 'invented-layout',
         sourceId,
         element: local,
-        message:
-          `<${local}> arrived with no diagram, so Labre placed it beside the ` +
-          `drawing. Its position is Labre's and not the file's.`,
+        messageKey: BPMN_IMPORT_REMARKS.inventedNodeLayout[0],
+        message: `<${local}> arrived with no diagram, so Labre placed it beside the drawing. Its position is Labre's and not the file's.`,
+        messageParams: { tag: local },
       });
     }
   };
@@ -1502,9 +1606,9 @@ export function importBpmnXml(
           kind: 'warning',
           sourceId,
           element: local,
-          message:
-            `<${local}> names only one of its two ends, so there is no arrow ` +
-            `to draw between them. It was left out.`,
+          messageKey: BPMN_IMPORT_REMARKS.singleEndedFlow[0],
+          message: `<${local}> names only one of its two ends, so there is no arrow to draw between them. It was left out.`,
+          messageParams: { tag: local },
         });
         continue;
       }
@@ -1527,17 +1631,17 @@ export function importBpmnXml(
             fragmentOf(edgeDi.element)
           );
         }
-        note({
-          kind: 'warning',
-          sourceId,
-          element: local,
-          message:
-            `<${local}> runs to ${dangling.map(end => `"${end}"`).join(' and ')}, ` +
-            `which ${dangling.length === 1 ? 'is' : 'are'} not drawn on this ` +
-            `canvas. The flow is kept whole beside ` +
-            `${dangling.length === 1 ? 'it' : 'them'} rather than drawn with a ` +
-            `loose end.`,
-        });
+        {
+          const ends = dangling.map(end => `"${end}"`).join(' and ');
+          note({
+            kind: 'warning',
+            sourceId,
+            element: local,
+            messageKey: BPMN_IMPORT_REMARKS.danglingFlowEnd[0],
+            message: `<${local}> runs to ${ends}, not drawn on this canvas. The flow is kept whole beside them rather than drawn with a loose end.`,
+            messageParams: { tag: local, ends },
+          });
+        }
         continue;
       }
 
@@ -1727,9 +1831,9 @@ export function importBpmnXml(
         kind: 'warning',
         sourceId: target,
         element: shape.localName,
-        message:
-          `The diagram draws "${target}", which the file does not declare. ` +
-          `The shape is kept, and nothing is drawn for it.`,
+        messageKey: BPMN_IMPORT_REMARKS.undeclaredShape[0],
+        message: `The diagram draws "${target}", which the file does not declare. The shape is kept, and nothing is drawn for it.`,
+        messageParams: { id: target },
       });
     }
   } else if (residue.length > 0) {
@@ -1738,12 +1842,9 @@ export function importBpmnXml(
     // process and no participant has none.
     note({
       kind: 'warning',
-      message:
-        `This file declares ${residue.length} root ` +
-        `${residue.length === 1 ? 'element' : 'elements'} and no process to ` +
-        `draw, so there was no artefact for ` +
-        `${residue.length === 1 ? 'it' : 'them'} to be kept on. Nothing was ` +
-        `imported.`,
+      messageKey: BPMN_IMPORT_REMARKS.noProcessResidue[0],
+      message: `This file declares ${residue.length} root element(s) and no process to draw, so there was no artefact for them to be kept on. Nothing was imported.`,
+      messageParams: { count: residue.length },
     });
   }
 
@@ -1767,10 +1868,12 @@ export function importBpmnXml(
           kind: 'warning',
           sourceId: ref,
           element: 'flowNodeRef',
-          message:
-            `The file lists this artefact in the lane "${band.lane.name}" and ` +
-            `draws it in "${drawnIn.lane.name}". Labre reads the drawing: a ` +
-            `lane holds what is drawn inside it.`,
+          messageKey: BPMN_IMPORT_REMARKS.laneDrift[0],
+          message: `The file lists this artefact in the lane "${band.lane.name ?? ''}" and draws it in "${drawnIn.lane.name ?? ''}". Labre reads the drawing: a lane holds what is drawn inside it.`,
+          messageParams: {
+            listedLane: band.lane.name ?? '',
+            drawnLane: drawnIn.lane.name ?? '',
+          },
         });
       }
     }
@@ -1783,12 +1886,9 @@ export function importBpmnXml(
   if (explicitRoutes > 0) {
     note({
       kind: 'invented-layout',
-      message:
-        `${explicitRoutes} ${explicitRoutes === 1 ? 'flow carries' : 'flows carry'} ` +
-        `an explicit routing in the file. Labre routes a flow between its two ` +
-        `ends and re-routes it whenever they move, so ` +
-        `${explicitRoutes === 1 ? 'its bend points are' : 'their bend points are'} ` +
-        `not kept.`,
+      messageKey: BPMN_IMPORT_REMARKS.inventedRouting[0],
+      message: `${explicitRoutes} flow(s) carry an explicit routing in the file. Labre routes a flow between its two ends and re-routes it whenever they move, so their bend points are not kept.`,
+      messageParams: { count: explicitRoutes },
     });
   }
 

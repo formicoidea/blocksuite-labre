@@ -126,6 +126,7 @@ export const highlighterToolbarConfig = {
             .palettes=${DefaultTheme.StrokeColorShortPalettes}
             .shouldKeepColor=${true}
             .enableCustomColor=${false}
+            .std=${ctx.std}
           >
           </edgeless-color-picker-button>
         `;
