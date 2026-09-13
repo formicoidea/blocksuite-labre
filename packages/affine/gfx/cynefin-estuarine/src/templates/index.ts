@@ -178,6 +178,28 @@ export const ESTUARINE_TEMPLATE_CATEGORY_NAME: ChromeWording = [
 export const CYNEFIN_ESTUARINE_TEMPLATE_CATEGORY_WORDINGS: readonly ChromeWording[] =
   [CYNEFIN_TEMPLATE_CATEGORY_NAME, ESTUARINE_TEMPLATE_CATEGORY_NAME];
 
+/**
+ * The two hand-composed templates' own tile names (`Template.nameKey`):
+ * chrome, resolved by the panel widget every time it opens, never written
+ * into a document — distinct from {@link CYNEFIN_ESTUARINE_TEMPLATE_SEEDS}
+ * above, which the templates WRITE.
+ */
+export const CYNEFIN_TEMPLATE_NAME_DECISION_SORTING: ChromeWording = [
+  'com.labre.cynefin-estuarine.template.decision-sorting',
+  'Decision sorting',
+];
+export const ESTUARINE_TEMPLATE_NAME_CONSTRAINT_MAP: ChromeWording = [
+  'com.labre.cynefin-estuarine.template.constraint-map',
+  'Constraint map',
+];
+
+/** Both tile names, for `translations.ts`'s manifest. */
+export const CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS: readonly ChromeWording[] =
+  [
+    CYNEFIN_TEMPLATE_NAME_DECISION_SORTING,
+    ESTUARINE_TEMPLATE_NAME_CONSTRAINT_MAP,
+  ];
+
 /** Resolve a wording through the host, or its English fallback with no host. */
 function tr(std: BlockStdScope | undefined, wording: ChromeWording): string {
   return std ? translateKey(std, ...wording) : wording[1];
@@ -193,12 +215,14 @@ function tr(std: BlockStdScope | undefined, wording: ChromeWording): string {
 function tpl(
   name: string,
   preview: string,
-  build: (std?: BlockStdScope) => SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
+    nameKey,
     content: makeTemplateSnapshot(build(), name),
     localize: std => makeTemplateSnapshot(build(std), name),
   };
@@ -222,7 +246,8 @@ export const cynefinTemplateCategory: TemplateCategory = {
         s2: sticky(690, 175, tr(std, CYNEFIN_SEED_EXPERT_ANALYSIS)),
         s3: sticky(190, 505, tr(std, CYNEFIN_SEED_ACT_NOW)),
         s4: sticky(690, 505, tr(std, CYNEFIN_SEED_KNOWN_ISSUE)),
-      })
+      }),
+      CYNEFIN_TEMPLATE_NAME_DECISION_SORTING[0]
     ),
     // No name override: it would only restate `addCynefin`'s own
     // `labelFallback` as a second literal the panel could not translate — see
@@ -251,7 +276,8 @@ export const estuarineTemplateCategory: TemplateCategory = {
         c2: caption(390, 420, tr(std, ESTUARINE_SEED_HABIT)),
         h3: hexAt(290, 580),
         c3: caption(290, 580, tr(std, ESTUARINE_SEED_BUDGET)),
-      })
+      }),
+      ESTUARINE_TEMPLATE_NAME_CONSTRAINT_MAP[0]
     ),
     // No name override: same reason as `addCynefin` above.
     templateFromCommand(

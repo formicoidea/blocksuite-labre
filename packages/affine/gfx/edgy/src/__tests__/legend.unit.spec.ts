@@ -1,5 +1,9 @@
 import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  TranslationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
@@ -23,6 +27,37 @@ import { EDGY_ROLE, EDGY_ROLES, EDGY_VERB_ROLE } from '../roles';
  */
 describe('the EDGY auto-legend table derives from the metamodel', () => {
   const entries = EDGY_AUTO_LEGEND.sections.flatMap(s => s.entries);
+
+  it('carries a titleKey for the box title, translated with a host and unchanged without one', () => {
+    expect(EDGY_AUTO_LEGEND.title).toBe('Legend');
+    expect(EDGY_AUTO_LEGEND.titleKey).toBe('com.labre.board.legend.title');
+    const NO_HOST_STD = {
+      getOptional: () => undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(
+        NO_HOST_STD,
+        EDGY_AUTO_LEGEND.titleKey!,
+        EDGY_AUTO_LEGEND.title
+      )
+    ).toBe('Legend');
+    const HOSTED_STD = {
+      getOptional: (id: unknown) =>
+        id === TranslationProvider
+          ? {
+              t: (key: string) =>
+                key === EDGY_AUTO_LEGEND.titleKey ? 'Légende' : undefined,
+            }
+          : undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(
+        HOSTED_STD,
+        EDGY_AUTO_LEGEND.titleKey!,
+        EDGY_AUTO_LEGEND.title
+      )
+    ).toBe('Légende');
+  });
 
   it('groups by zone: the three facets, the intersections, the bases, the relations', () => {
     expect(EDGY_AUTO_LEGEND.sections.map(s => s.title)).toEqual([

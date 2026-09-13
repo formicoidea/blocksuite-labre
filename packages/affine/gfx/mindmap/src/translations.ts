@@ -87,6 +87,28 @@ export const MINDMAP_TOOLTIP: ChromeWording = [
 /** The Templates panel's "Mind Map" category tab (`TemplateCategory.nameKey`). */
 export const MINDMAP_TEMPLATE_CATEGORY = MINDMAP_TOOLTIP;
 
+/**
+ * The four starter templates' own tile names (`Template.nameKey`) — chrome,
+ * resolved by the panel widget every time it opens, distinct from the seeds
+ * ({@link MINDMAP_SEED_WORDINGS}) each starter WRITES into the document.
+ */
+export const MINDMAP_TEMPLATE_NAME_STYLE_1: ChromeWording = [
+  'com.labre.mindmap.template.style-1',
+  'Mind Map — Style 1',
+];
+export const MINDMAP_TEMPLATE_NAME_STYLE_2: ChromeWording = [
+  'com.labre.mindmap.template.style-2',
+  'Mind Map — Style 2',
+];
+export const MINDMAP_TEMPLATE_NAME_STYLE_3: ChromeWording = [
+  'com.labre.mindmap.template.style-3',
+  'Mind Map — Style 3',
+];
+export const MINDMAP_TEMPLATE_NAME_STYLE_4: ChromeWording = [
+  'com.labre.mindmap.template.style-4',
+  'Mind Map — Style 4',
+];
+
 export const MINDMAP_LAYOUT_LABEL: ChromeWording = [
   'com.labre.mindmap.toolbar.layout',
   'Layout',
@@ -154,6 +176,10 @@ export const MINDMAP_ADD_FILE_TOOL: ChromeWording = [
  */
 export const MINDMAP_CHROME_WORDINGS: readonly ChromeWording[] = [
   MINDMAP_TOOLTIP,
+  MINDMAP_TEMPLATE_NAME_STYLE_1,
+  MINDMAP_TEMPLATE_NAME_STYLE_2,
+  MINDMAP_TEMPLATE_NAME_STYLE_3,
+  MINDMAP_TEMPLATE_NAME_STYLE_4,
   MINDMAP_LAYOUT_LABEL,
   MINDMAP_LAYOUT_LEFT,
   MINDMAP_LAYOUT_RADIAL,

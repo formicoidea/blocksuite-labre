@@ -26,6 +26,9 @@ import { BPMN_READINGS } from './reading.js';
 import { BPMN_ROLES } from './roles.js';
 import { BPMN_RULES } from './rules.js';
 import {
+  BPMN_TEMPLATE_NAME_MESSAGE_EXCHANGE,
+  BPMN_TEMPLATE_NAME_SEQUENCE_FLOW,
+  BPMN_TEMPLATE_NAME_SIMPLE_PROCESS,
   MESSAGE_EXCHANGE_SEED,
   SIMPLE_PROCESS_SEED,
 } from './templates/index.js';
@@ -107,6 +110,18 @@ const exampleSeedEntries = (): TranslationKeyManifestEntry[] =>
   ].map(({ key, fallback }) => ({ key, fallback, source: 'seed' as const }));
 
 /**
+ * The three hand-composed cards' own tile names — chrome, not seeds: a
+ * `Template.nameKey`, re-resolved every time the panel opens, never written
+ * into a document. See `templates/index.ts`.
+ */
+const templateNameEntries = (): TranslationKeyManifestEntry[] =>
+  [
+    BPMN_TEMPLATE_NAME_SIMPLE_PROCESS,
+    BPMN_TEMPLATE_NAME_MESSAGE_EXCHANGE,
+    BPMN_TEMPLATE_NAME_SEQUENCE_FLOW,
+  ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
+
+/**
  * THIS framework's contribution to the translation-key manifest — every
  * `com.labre.*` key BPMN can hand to `TranslationProvider.t`, derived from the
  * very declarations the editor registers (never restated).
@@ -135,6 +150,7 @@ export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
     seedEntries(),
     furnitureSeedEntries(),
     exampleSeedEntries(),
+    templateNameEntries(),
     importRemarkEntries(),
     quarantineReasonEntries(),
     exportWarningEntries(),

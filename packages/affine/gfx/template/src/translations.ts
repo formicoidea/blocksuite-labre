@@ -29,10 +29,17 @@ export const TEMPLATE_PANEL_CATEGORY_OTHER: ChromeWording = [
   'Other',
 ];
 
+/** The "Template" senior tool's own button name (`SeniorTool.labelKey`). */
+export const TEMPLATE_SENIOR_TOOL_NAME: ChromeWording = [
+  'com.labre.template.senior-tool.name',
+  'Template',
+];
+
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_PANEL_ADD,
   TEMPLATE_PANEL_CATEGORY_OTHER,
   TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
+  TEMPLATE_SENIOR_TOOL_NAME,
 ];
 
 /**

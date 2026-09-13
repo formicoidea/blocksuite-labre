@@ -169,3 +169,24 @@ habitual query comes up empty. A package registers its own
 `packages/affine/widgets/slash-menu/src/translations.ts`) and lists it in
 `PACKAGE_WORDINGS` (`packages/affine/all/src/translations.ts`) — the same
 "declared once, walked everywhere" rule `CHROME_WORDINGS` already follows.
+
+**Templates-panel tiles** (`packages/affine/gfx/template/src/toolbar/template-type.ts`):
+`Template.nameKey`, resolved by `resolveTemplateName`
+(`./toolbar/resolve-name.ts`) BEFORE the `commandId`-derived path — a
+hand-composed template (a worked scene, an example map) carries no command to
+read a label from, so this is the only seam that reaches its tile's name.
+`name` stays the template's stable English identity (the drag payload, the
+`repeat` key, the search fallback); a framework declares its own `nameKey`
+constants in its `translations.ts`, joining its `…TranslationEntries` under
+source `chrome` — never a framework importing another's.
+
+## A `ServiceProvider` with no `std`
+
+An adapter or transformer (`ClipboardAdapter`, the markdown/HTML importers and
+exporters, a `Store`-level transformer with no editor host) has a
+`ServiceProvider` but no `BlockStdScope` to call `translateKey` with.
+`resolveWording(provider, wording)`
+(`packages/affine/shared/src/adapters/utils/wording.ts`) is `translateKey`'s
+own contract over that narrower type: `provider?.getOptional(TranslationProvider)`
+instead of `std.getOptional`, `undefined` resolving exactly like no host
+registered one.

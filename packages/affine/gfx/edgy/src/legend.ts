@@ -3,7 +3,10 @@ import {
   type AutoLegendSpec,
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  BOARD_LEGEND_TITLE,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 
 import {
   EDGY_DYNAMIC_NODES,
@@ -149,7 +152,10 @@ export const EDGY_LEGEND_CHROME_WORDINGS: readonly ChromeWording[] = [
 ];
 
 export const EDGY_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  // The shared DDD auto-legend box's own generic chrome, resolved through
+  // the same key every board that has one reuses — see `AutoLegendSpec.title`.
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   roles: EDGY_ROLES,
   sections: [
     ...FACET_SECTIONS,

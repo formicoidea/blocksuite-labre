@@ -20,7 +20,16 @@ import { WARDLEY_PROFILES } from './profiles.js';
 import { WARDLEY_READING } from './reading.js';
 import { WARDLEY_ROLES } from './roles.js';
 import { WARDLEY_RULES } from './rules.js';
-import { KODAK_INERTIA_SEED, TEA_SHOP_SEED } from './templates/maps.js';
+import {
+  KODAK_INERTIA_SEED,
+  TEA_SHOP_SEED,
+  WARDLEY_TEMPLATE_NAME_KODAK_INERTIA,
+  WARDLEY_TEMPLATE_NAME_TEA_SHOP,
+} from './templates/maps.js';
+import {
+  WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW,
+  WARDLEY_TEMPLATE_NAME_LINK,
+} from './templates/index.js';
 import { WARDLEY_TOOLBAR_WORDINGS } from './toolbar/config.js';
 
 /**
@@ -72,6 +81,19 @@ const toolbarChromeEntries = (): TranslationKeyManifestEntry[] =>
     source: 'chrome' as const,
   }));
 
+/**
+ * The four hand-composed cards' own tile names — chrome, not seeds: a
+ * `Template.nameKey`, re-resolved every time the panel opens, never written
+ * into a document. See `templates/index.ts` and `templates/maps.ts`.
+ */
+const templateNameEntries = (): TranslationKeyManifestEntry[] =>
+  [
+    WARDLEY_TEMPLATE_NAME_LINK,
+    WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW,
+    WARDLEY_TEMPLATE_NAME_TEA_SHOP,
+    WARDLEY_TEMPLATE_NAME_KODAK_INERTIA,
+  ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
+
 /** The five fixed-wording OWM import remarks ({@link WARDLEY_OWM_IMPORT_REMARKS}). */
 const importRemarkEntries = (): TranslationKeyManifestEntry[] =>
   Object.values(WARDLEY_OWM_IMPORT_REMARKS).map(([key, english]) => ({
@@ -113,6 +135,7 @@ export const wardleyTranslationEntries: TranslationKeyManifestEntry[] =
     axisSeedEntries(),
     exampleSeedEntries(),
     legendSeedEntries(),
+    templateNameEntries(),
     toolbarChromeEntries(),
     importRemarkEntries(),
     collectTranslationKeys('reading', WARDLEY_READING),

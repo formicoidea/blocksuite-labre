@@ -41,6 +41,7 @@ import {
   type ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  BLOCK_NAME_TEXT,
   EditPropsStore,
   TelemetryProvider,
   translateKey,
@@ -68,7 +69,6 @@ import type { EdgelessRootBlockComponent } from './edgeless-root-block.js';
 import {
   DEFAULT_NOTE_CHILD_FLAVOUR,
   DEFAULT_NOTE_CHILD_TYPE,
-  DEFAULT_NOTE_TIP,
 } from './utils/consts.js';
 import { deleteElements } from './utils/crud.js';
 import { isCanvasElement } from './utils/query.js';
@@ -120,7 +120,11 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           this._setEdgelessTool(NoteTool, {
             childFlavour: DEFAULT_NOTE_CHILD_FLAVOUR,
             childType: DEFAULT_NOTE_CHILD_TYPE,
-            tip: DEFAULT_NOTE_TIP,
+            // The overlay's placeholder caption — rendered by
+            // `@labre/affine-gfx-note`'s `NoteTool`, so resolved through the
+            // shared "Text" wording rather than the raw `DEFAULT_NOTE_TIP`
+            // literal.
+            tip: translateKey(this.std, ...BLOCK_NAME_TEXT),
           });
         },
         p: () => {
