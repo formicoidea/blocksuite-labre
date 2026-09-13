@@ -309,6 +309,7 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
           role="listbox"
           .value=${this._background}
           .theme=${this._theme}
+          .std=${this.std}
           .palettes=${DefaultTheme.NoteBackgroundColorPalettes}
           .hasTransparent=${false}
           .columns=${DefaultTheme.NoteBackgroundColorPalettes.length + 1}

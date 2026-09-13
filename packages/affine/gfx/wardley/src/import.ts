@@ -62,10 +62,13 @@ import { WARDLEY_ROLE } from './roles.js';
  * it draws the report (`InterchangeNote.messageKey`). The English string
  * stays here and stays the fallback.
  *
- * Only these five, and the line is drawn exactly where BPMN's is
- * (`gfx/bpmn/src/import.ts`): every OTHER remark below NAMES something out of
- * the file — a line number, a count of carried lines — and the seam has
- * neither interpolation nor pluralisation.
+ * Every remark's fallback is the whole sentence a call site builds — a
+ * `{{name}}` / `{{count}}` hole is filled by `messageParams`
+ * (`InterchangeNote.messageParams`) at the call site, never by minting a new
+ * key for every value the file happens to carry. Plural wording stays
+ * grammatically neutral in the fallback (`'{{count}} line(s)…'`) — the
+ * host's job, the same rule BPMN's own remarks follow
+ * (`gfx/bpmn/src/import.ts`).
  *
  * Contributed to the manifest by `./translations.ts`.
  */
@@ -89,6 +92,14 @@ export const WARDLEY_OWM_IMPORT_REMARKS = {
   linkUndeclaredEnd: [
     'com.labre.wardley.import.remark.link-undeclared-end',
     'a link names this, and no statement in the file declares it. The arrow is in the document and runs to no artefact, so it is invisible on the canvas.',
+  ],
+  unreadableCoordinatesLine: [
+    'com.labre.wardley.import.remark.unreadable-coordinates-line',
+    'line {{line}} declares coordinates this reader cannot make a number of, so they were not used.',
+  ],
+  carriedConstruct: [
+    'com.labre.wardley.import.remark.carried-construct',
+    '{{count}} `{{kind}}` line(s) kept verbatim on the map and written back on the next export. Nothing on this canvas draws them.',
   ],
 } as const satisfies Record<string, readonly [key: string, english: string]>;
 
@@ -468,7 +479,9 @@ export function importWardleyOwm(
           kind: 'warning',
           sourceId: name,
           element,
+          messageKey: WARDLEY_OWM_IMPORT_REMARKS.unreadableCoordinatesLine[0],
           message: `line ${lineIndex + 1} declares coordinates this reader cannot make a number of, so they were not used.`,
+          messageParams: { line: lineIndex + 1 },
         });
       }
       inventedNote(
@@ -672,7 +685,9 @@ export function importWardleyOwm(
     notes.push({
       kind: 'carried',
       element: kind,
-      message: `${count} \`${kind}\` line${count === 1 ? '' : 's'} kept verbatim on the map and written back on the next export. Nothing on this canvas draws ${count === 1 ? 'it' : 'them'}.`,
+      messageKey: WARDLEY_OWM_IMPORT_REMARKS.carriedConstruct[0],
+      message: `${count} \`${kind}\` line(s) kept verbatim on the map and written back on the next export. Nothing on this canvas draws them.`,
+      messageParams: { count, kind },
     });
   }
 

@@ -262,6 +262,7 @@ export function createTextActions<
             .pick=${onPick}
             .color=${color}
             .theme=${theme}
+            .std=${ctx.std}
             .isText=${true}
             .hollowCircle=${true}
             .originalColor=${originalColor}

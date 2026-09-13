@@ -220,6 +220,7 @@ export const connectorToolbarConfig = {
             .hollowCircle=${true}
             .originalColor=${firstModel.stroke}
             .enableCustomColor=${enableCustomColor}
+            .std=${ctx.std}
           >
             <edgeless-line-styles-panel
               slot="other"

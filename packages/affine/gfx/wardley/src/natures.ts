@@ -93,6 +93,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
   packId: 'wardley-core',
   framework: 'wardley',
   label: 'Wardley',
+  labelKey: 'com.labre.wardley.tag-pack.label',
   tags: [
     {
       id: WARDLEY_NATURE_TAG_ID,
@@ -100,6 +101,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
       labelKey: 'com.labre.wardley.tag.nature',
       description:
         'What kind of thing this component is: an activity, data, a practice or knowledge.',
+      descriptionKey: 'com.labre.wardley.tag.nature.description',
       cardinality: 'single',
       appliesTo: [WARDLEY_ROLE.component],
       // No `order`, on either tag of this pack: an absent order sorts by SEED
@@ -114,12 +116,14 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           label: 'Activity',
           labelKey: 'com.labre.wardley.tag.nature.activity',
           description: 'Something that is DONE — a step, a service, a process.',
+          descriptionKey: 'com.labre.wardley.tag.nature.activity.description',
         },
         {
           id: WARDLEY_NATURE.data,
           label: 'Data',
           labelKey: 'com.labre.wardley.tag.nature.data',
           description: 'Something that is RECORDED — a dataset, a register.',
+          descriptionKey: 'com.labre.wardley.tag.nature.data.description',
         },
         {
           id: WARDLEY_NATURE.practice,
@@ -127,12 +131,14 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           labelKey: 'com.labre.wardley.tag.nature.practice',
           description:
             'A way of doing — a method, a convention, an operating model.',
+          descriptionKey: 'com.labre.wardley.tag.nature.practice.description',
         },
         {
           id: WARDLEY_NATURE.knowledge,
           label: 'Knowledge',
           labelKey: 'com.labre.wardley.tag.nature.knowledge',
           description: 'Something that is KNOWN — a model, a theory, a rule.',
+          descriptionKey: 'com.labre.wardley.tag.nature.knowledge.description',
         },
       ],
     },
@@ -142,6 +148,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
       labelKey: 'com.labre.wardley.tag.competition',
       description:
         "Which of Porter's forces this glyph marks: relative competition, a struggle for survival, or a struggle to establish.",
+      descriptionKey: 'com.labre.wardley.tag.competition.description',
       cardinality: 'single',
       appliesTo: [WARDLEY_ROLE.porter],
       values: [
@@ -154,6 +161,8 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           labelKey: 'com.labre.wardley.tag.competition.relative',
           description:
             'Established players competing against one another on a market that exists.',
+          descriptionKey:
+            'com.labre.wardley.tag.competition.relative.description',
         },
         {
           id: WARDLEY_COMPETITION.struggle,
@@ -161,12 +170,16 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           labelKey: 'com.labre.wardley.tag.competition.struggle',
           description:
             'Pressure on a player to stay in a market it is already in.',
+          descriptionKey:
+            'com.labre.wardley.tag.competition.struggle.description',
         },
         {
           id: WARDLEY_COMPETITION.establish,
           label: 'Struggle to establish (E)',
           labelKey: 'com.labre.wardley.tag.competition.establish',
           description: 'Pressure on a newcomer trying to get into a market.',
+          descriptionKey:
+            'com.labre.wardley.tag.competition.establish.description',
         },
       ],
     },

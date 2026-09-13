@@ -17,6 +17,7 @@ import {
 } from './consts.js';
 import { BPMN_EXPORT_WARNING_KEYS } from './export.js';
 import {
+  BPMN_IMPORT_ERRORS,
   BPMN_IMPORT_REMARKS,
   BPMN_QUARANTINE_REASON,
   BPMN_QUARANTINE_REASON_KEY,
@@ -54,6 +55,19 @@ const seedEntries = (): TranslationKeyManifestEntry[] =>
 
 const importRemarkEntries = (): TranslationKeyManifestEntry[] =>
   Object.values(BPMN_IMPORT_REMARKS).map(([key, english]) => ({
+    key,
+    fallback: english,
+    source: 'chrome' as const,
+  }));
+
+/**
+ * The reader's own refusals ({@link BPMN_IMPORT_ERRORS}) — thrown via
+ * `InterchangeImportError`, chrome like the remarks above for the same
+ * reason: re-rendered by the catch site every time, never written into a
+ * document.
+ */
+const importErrorEntries = (): TranslationKeyManifestEntry[] =>
+  Object.values(BPMN_IMPORT_ERRORS).map(([key, english]) => ({
     key,
     fallback: english,
     source: 'chrome' as const,
@@ -152,6 +166,7 @@ export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
     exampleSeedEntries(),
     templateNameEntries(),
     importRemarkEntries(),
+    importErrorEntries(),
     quarantineReasonEntries(),
     exportWarningEntries(),
     // LAST, and the order is load-bearing: a reading profile carries the

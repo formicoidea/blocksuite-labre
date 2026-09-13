@@ -192,6 +192,7 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
             .hasTransparent=${!this.edgeless.store
               .get(FeatureFlagService)
               .getFlag('enable_color_picker')}
+            .std=${this.edgeless.std}
           ></edgeless-color-panel>
         </div>
       </edgeless-slide-menu>

@@ -157,6 +157,7 @@ export class EdgelessShapeMenu extends SignalWatcher(
             .hasTransparent=${!this.edgeless.store
               .get(FeatureFlagService)
               .getFlag('enable_color_picker')}
+            .std=${this.edgeless.std}
             @select=${(e: ColorEvent) => this._setFillColor(e.detail)}
           ></edgeless-color-panel>
         </div>

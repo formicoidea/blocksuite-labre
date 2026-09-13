@@ -181,6 +181,43 @@ export interface InterchangeReport {
   sourceVersion?: string;
 }
 
+/**
+ * A reader's own refusal — THROWN, not returned, because the report's three
+ * counts (`InterchangeReport`) cannot say "this is not a file I can read": a
+ * report of three zeroes would claim an empty document where there was none
+ * (see `importInterchangeFile`, "Failure is an exception, and it says which
+ * one", `interchange-import.ts`).
+ *
+ * Carries the reader's own English sentence as `Error.message`, so every
+ * existing `catch` site that only ever did `error.message` keeps reading
+ * exactly what it read before — plus the same optional key/params pair
+ * {@link InterchangeNote} carries, on the same seam: a reader has no `std`
+ * (`docs/adr/0012`, P3) and cannot translate its own refusal, so the catch
+ * site that DOES have one (`importInterchangeFile`) resolves it exactly as
+ * `remarkLine` resolves a note.
+ *
+ * Optional and additive: a reader that still throws a plain `Error` (or any
+ * other capability's failure) is caught exactly as before — this class only
+ * gives the catch site a SECOND thing to check, never a first requirement.
+ */
+export class InterchangeImportError extends Error {
+  readonly messageKey?: string;
+  readonly messageParams?: Record<string, string | number>;
+
+  constructor(
+    message: string,
+    options?: {
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
+    }
+  ) {
+    super(message);
+    this.name = 'InterchangeImportError';
+    this.messageKey = options?.messageKey;
+    this.messageParams = options?.messageParams;
+  }
+}
+
 /** What the caller tells an exporter about the document it is producing. */
 export interface InterchangeExportContext {
   /**

@@ -74,6 +74,14 @@ export type TagValueDef = {
    */
   labelKey?: string;
   description?: string;
+  /**
+   * i18n key resolved by the host's catalogue, `description` its fallback —
+   * see {@link translateTagDescription}. Optional and additive, on the same
+   * seam as {@link labelKey}: a pack seeded before this field existed (or a
+   * host pack that never sets it) still shows `description` exactly as it
+   * always has.
+   */
+  descriptionKey?: string;
   /** Advisory colour token. The library may ignore it; it never affects layout. */
   color?: string;
   /** Hidden from pickers; still displayed when already present on an element. */
@@ -88,6 +96,8 @@ export type TagDef = {
   /** See {@link TagValueDef.labelKey}. */
   labelKey?: string;
   description?: string;
+  /** See {@link TagValueDef.descriptionKey}. */
+  descriptionKey?: string;
   /** How many values an element may carry for this tag. */
   cardinality: 'single' | 'multi';
   /** A closed list, or `'open'` for free-text values. */
@@ -129,6 +139,13 @@ export type UniverseTagDefs = {
   packId: string;
   framework: FrameworkId;
   label: string;
+  /**
+   * i18n key for the PACK's own `label` — see {@link TagValueDef.labelKey}
+   * for the seam. Optional and additive: a pack seeded before this field
+   * existed (or a host pack that never sets it) still shows `label` exactly
+   * as it always has.
+   */
+  labelKey?: string;
   tags: TagDef[];
 };
 
@@ -144,17 +161,41 @@ export type UniverseTagDefs = {
  * `reading.ts` deliberately does NOT: it matches an external record's words
  * against `label`, which is a comparison and not a display, and the wording it
  * matches against is the one the record itself was written with.
+ *
+ * The same shape resolves a PACK's own `label` too (`UniverseTagDefs.label` /
+ * `.labelKey`): both carry an identical `{ label, labelKey? }` pair, so no
+ * second function is needed for it.
  */
 export function translateTagLabel(
   std: BlockStdScope,
-  def: Pick<TagDef | TagValueDef, 'label' | 'labelKey'>
+  def: Pick<TagDef | TagValueDef | UniverseTagDefs, 'label' | 'labelKey'>
 ): string {
   return def.labelKey ? translateKey(std, def.labelKey, def.label) : def.label;
 }
 
 /**
- * A pack's contribution to the translation-key manifest — every `labelKey` a
- * tag or a tag value declares, paired with `label` as its English fallback.
+ * The DISPLAYED description of a tag def or a tag value def —
+ * {@link translateKey} over {@link TagDef.descriptionKey} /
+ * {@link TagValueDef.descriptionKey} when present, `description` unresolved
+ * otherwise. The mirror of {@link translateTagLabel} for the `description`
+ * field, on the same seam: a def with no `descriptionKey` (a pack seeded
+ * before the field existed, or one that never sets it) keeps showing
+ * `description` exactly as it always has — including `undefined`, when the
+ * def carries no description at all.
+ */
+export function translateTagDescription(
+  std: BlockStdScope,
+  def: Pick<TagDef | TagValueDef, 'description' | 'descriptionKey'>
+): string | undefined {
+  if (!def.descriptionKey) return def.description;
+  return translateKey(std, def.descriptionKey, def.description ?? '');
+}
+
+/**
+ * A pack's contribution to the translation-key manifest — every `labelKey`
+ * (the pack's own, a tag's, or a tag value's) and every `descriptionKey` (a
+ * tag's or a tag value's) it declares, paired with `label` / `description`
+ * as its English fallback.
  *
  * Manual, not `collectTranslationKeys('tag', pack)`: that generic walker pairs
  * a `labelKey` with a sibling `labelFallback` (the roles' / rules' own
@@ -171,9 +212,19 @@ export function tagDefsTranslationEntries(
   pack: UniverseTagDefs
 ): TranslationKeyManifestEntry[] {
   const out: TranslationKeyManifestEntry[] = [];
+  if (pack.labelKey) {
+    out.push({ key: pack.labelKey, fallback: pack.label, source: 'tag' });
+  }
   for (const tag of pack.tags) {
     if (tag.labelKey) {
       out.push({ key: tag.labelKey, fallback: tag.label, source: 'tag' });
+    }
+    if (tag.descriptionKey) {
+      out.push({
+        key: tag.descriptionKey,
+        fallback: tag.description ?? '',
+        source: 'tag',
+      });
     }
     if (tag.values !== 'open') {
       for (const value of tag.values) {
@@ -181,6 +232,13 @@ export function tagDefsTranslationEntries(
           out.push({
             key: value.labelKey,
             fallback: value.label,
+            source: 'tag',
+          });
+        }
+        if (value.descriptionKey) {
+          out.push({
+            key: value.descriptionKey,
+            fallback: value.description ?? '',
             source: 'tag',
           });
         }
