@@ -35,6 +35,22 @@ export type Template = {
   commandId?: string;
 
   /**
+   * i18n key for the DISPLAYED name of a hand-composed template (a worked
+   * scene, an example map) -- the ones {@link commandId} cannot help,
+   * because nothing derives their tile from a command's own label. Resolved
+   * with {@link name} as its fallback, exactly like
+   * {@link TemplateCategory.nameKey} one level up, so registering no
+   * `TranslationProvider` shows `name` letter for letter and a standalone
+   * playground is unaffected.
+   *
+   * Checked BEFORE {@link commandId} in `resolveTemplateName`: a template
+   * that carries both would be a contradiction (its name is either the
+   * command's own wording or a wording of its own, never both), and no
+   * shipped template declares both today.
+   */
+  nameKey?: string;
+
+  /**
    * Rebuild {@link content} in the inserting editor's language — the seeds a
    * template writes into the document (a component's name, a lane's title) go
    * through the translation seam at placement, like a creation action's

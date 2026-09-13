@@ -13,6 +13,10 @@ import {
   MINDMAP_SEED_TOPIC_2,
   MINDMAP_SEED_TOPIC_3,
   MINDMAP_TEMPLATE_CATEGORY,
+  MINDMAP_TEMPLATE_NAME_STYLE_1,
+  MINDMAP_TEMPLATE_NAME_STYLE_2,
+  MINDMAP_TEMPLATE_NAME_STYLE_3,
+  MINDMAP_TEMPLATE_NAME_STYLE_4,
 } from '../translations';
 
 /**
@@ -54,12 +58,14 @@ function seedsFor(std?: BlockStdScope): MindmapSeeds {
 function tpl(
   name: string,
   preview: string,
-  build: (seeds: MindmapSeeds) => SurfaceElementsJSON
+  build: (seeds: MindmapSeeds) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
+    nameKey,
     content: makeTemplateSnapshot(build(EN_SEEDS), name),
     // The seeds a template writes into the document go through the
     // translation seam at placement (ADR 0016); `content` stays the English
@@ -691,22 +697,26 @@ export const mindmapTemplateCategory: TemplateCategory = {
     tpl(
       'Mind Map — Style 1',
       `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="8" y="33" width="40" height="16" rx="5" fill="#53b2ef" fill-opacity="0.18" stroke="#53b2ef" stroke-width="1.6"/><g stroke="#53b2ef" stroke-width="1.4"><path d="M48 41 H72 M72 41 V20 M72 41 V62 M72 20 H96 M72 62 H96"/></g><g fill="#fff" stroke="#53b2ef" stroke-width="1.4"><rect x="96" y="13" width="31" height="13" rx="4"/><rect x="96" y="34" width="31" height="13" rx="4"/><rect x="96" y="55" width="31" height="13" rx="4"/></g></svg>`,
-      buildStyle1
+      buildStyle1,
+      MINDMAP_TEMPLATE_NAME_STYLE_1[0]
     ),
     tpl(
       'Mind Map — Style 2',
       `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="8" y="33" width="40" height="16" rx="5" fill="#53b2ef" fill-opacity="0.18" stroke="#53b2ef" stroke-width="1.6"/><g stroke="#53b2ef" stroke-width="1.4"><path d="M48 41 H72 M72 41 V20 M72 41 V62 M72 20 H96 M72 62 H96"/></g><g fill="#fff" stroke="#53b2ef" stroke-width="1.4"><rect x="96" y="13" width="31" height="13" rx="4"/><rect x="96" y="34" width="31" height="13" rx="4"/><rect x="96" y="55" width="31" height="13" rx="4"/></g></svg>`,
-      buildStyle2
+      buildStyle2,
+      MINDMAP_TEMPLATE_NAME_STYLE_2[0]
     ),
     tpl(
       'Mind Map — Style 3',
       `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="8" y="33" width="40" height="16" rx="5" fill="#53b2ef" fill-opacity="0.18" stroke="#53b2ef" stroke-width="1.6"/><g stroke="#53b2ef" stroke-width="1.4"><path d="M48 41 H72 M72 41 V20 M72 41 V62 M72 20 H96 M72 62 H96"/></g><g fill="#fff" stroke="#53b2ef" stroke-width="1.4"><rect x="96" y="13" width="31" height="13" rx="4"/><rect x="96" y="34" width="31" height="13" rx="4"/><rect x="96" y="55" width="31" height="13" rx="4"/></g></svg>`,
-      buildStyle3
+      buildStyle3,
+      MINDMAP_TEMPLATE_NAME_STYLE_3[0]
     ),
     tpl(
       'Mind Map — Style 4',
       `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="8" y="33" width="40" height="16" rx="5" fill="#53b2ef" fill-opacity="0.18" stroke="#53b2ef" stroke-width="1.6"/><g stroke="#53b2ef" stroke-width="1.4"><path d="M48 41 H72 M72 41 V20 M72 41 V62 M72 20 H96 M72 62 H96"/></g><g fill="#fff" stroke="#53b2ef" stroke-width="1.4"><rect x="96" y="13" width="31" height="13" rx="4"/><rect x="96" y="34" width="31" height="13" rx="4"/><rect x="96" y="55" width="31" height="13" rx="4"/></g></svg>`,
-      buildStyle4
+      buildStyle4,
+      MINDMAP_TEMPLATE_NAME_STYLE_4[0]
     ),
   ],
 };

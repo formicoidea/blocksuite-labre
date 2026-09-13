@@ -195,6 +195,7 @@ const afterMorphCalls: {
   from: Kind;
   to: Kind;
   checkpoints: number;
+  std: unknown;
 }[] = [];
 
 /**
@@ -207,7 +208,7 @@ const COMPOSITE_SPEC: MorphSpec<Kind> = {
   modelType: TestGroup,
   resolveTarget: model =>
     (model as unknown as { child?: GfxPrimitiveElementModel }).child,
-  afterMorph: (model, from, to) => {
+  afterMorph: (model, from, to, std) => {
     afterMorphCalls.push({
       id: model.id,
       from,
@@ -216,6 +217,7 @@ const COMPOSITE_SPEC: MorphSpec<Kind> = {
       // one checkpoint the gesture takes and before any other, so a second
       // `captureSync` — a second ctrl+z — would show up here.
       checkpoints: captureSync.mock.calls.length,
+      std,
     });
   },
 };
@@ -650,7 +652,7 @@ describe('morphToolbarConfig — a composite artefact', () => {
     // One checkpoint for the whole gesture — and the hook saw it already
     // taken, which is what makes its own writes part of the same ctrl+z.
     expect(captureSync).toHaveBeenCalledTimes(1);
-    expect(afterMorphCalls).toEqual([
+    expect(afterMorphCalls.map(({ std: _std, ...rest }) => rest)).toEqual([
       { id: first.group.id, from: 'task', to: 'taskUser', checkpoints: 1 },
       {
         id: second.group.id,
@@ -659,6 +661,15 @@ describe('morphToolbarConfig — a composite artefact', () => {
         checkpoints: 1,
       },
     ]);
+  });
+
+  it('hands afterMorph the gesture\u2019s own std, so a framework can tell a translated placeholder apart', () => {
+    const { group } = composite('task');
+    const ctx = context([group]);
+    applyMorph(ctx, COMPOSITE_SPEC, 'taskUser');
+
+    expect(afterMorphCalls).toHaveLength(1);
+    expect(afterMorphCalls[0].std).toBe(ctx.std);
   });
 
   it('hands afterMorph the SELECTED element, not the resolved one', () => {

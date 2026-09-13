@@ -6,6 +6,7 @@ import {
   templateFromCommand,
 } from '@labre/affine-gfx-template';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
+import type { ChromeWording } from '@labre/affine-shared/services';
 import type { CommandDescriptor } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
@@ -105,16 +106,33 @@ const arrowPreview = (rightwards: boolean) =>
 const areaPreview = (outline: string) =>
   `<svg ${ATTRS} fill="none">${outline}</svg>`;
 
+/**
+ * The two hand-drawn palette swatches' own tile names (`Template.nameKey`):
+ * neither derives from a command, since `linkTool` / `evolutionArrow`
+ * activate a tool rather than draw anything (see `tpl` below and its
+ * docstring).
+ */
+export const WARDLEY_TEMPLATE_NAME_LINK: ChromeWording = [
+  'com.labre.wardley.template.link',
+  'Link',
+];
+export const WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW: ChromeWording = [
+  'com.labre.wardley.template.evolution-arrow',
+  'Evolution arrow',
+];
+
 /** A hand-composed template — what is left once the artefacts are derived. */
 function tpl(
   name: string,
   preview: string,
-  elements: SurfaceElementsJSON
+  elements: SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
+    nameKey,
     content: makeTemplateSnapshot(elements, name),
   };
 }
@@ -227,7 +245,8 @@ export const wardleyTemplateCategory: TemplateCategory = {
           { position: [160, 0] },
           { typed: false }
         ),
-      }
+      },
+      WARDLEY_TEMPLATE_NAME_LINK[0]
     ),
     tpl(
       'Evolution arrow',
@@ -238,7 +257,8 @@ export const wardleyTemplateCategory: TemplateCategory = {
           { position: [160, 0] },
           { evolution: true, typed: false }
         ),
-      }
+      },
+      WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW[0]
     ),
     areaTemplate(
       'wardley.addAreaRect',

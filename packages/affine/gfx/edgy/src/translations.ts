@@ -24,7 +24,13 @@ import { EDGY_PROFILES } from './profiles.js';
 import { EDGY_READING } from './reading.js';
 import { EDGY_ROLES } from './roles.js';
 import { EDGY_RULES } from './rules.js';
-import { EDGY_TEMPLATE_SEED } from './templates/index.js';
+import {
+  EDGY_TEMPLATE_NAME_CUSTOMER_JOURNEY,
+  EDGY_TEMPLATE_NAME_FACETS_OVERVIEW,
+  EDGY_TEMPLATE_NAME_ORGANISATION_CHART,
+  EDGY_TEMPLATE_NAME_SERVICE_BLUEPRINT,
+  EDGY_TEMPLATE_SEED,
+} from './templates/index.js';
 import { EDGY_TOOLBAR_WORDINGS } from './toolbar/config.js';
 
 /**
@@ -84,6 +90,19 @@ const sceneSeedEntries = (): TranslationKeyManifestEntry[] =>
   }));
 
 /**
+ * The four hand-composed scenes' own tile names — chrome, not seeds: a
+ * `Template.nameKey`, re-resolved every time the panel opens, never written
+ * into a document. None of the four derives from a command.
+ */
+const templateNameEntries = (): TranslationKeyManifestEntry[] =>
+  [
+    EDGY_TEMPLATE_NAME_FACETS_OVERVIEW,
+    EDGY_TEMPLATE_NAME_CUSTOMER_JOURNEY,
+    EDGY_TEMPLATE_NAME_SERVICE_BLUEPRINT,
+    EDGY_TEMPLATE_NAME_ORGANISATION_CHART,
+  ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
+
+/**
  * THIS framework's contribution to the translation-key manifest — every
  * `com.labre.*` key EDGY can hand to `TranslationProvider.t`, derived from the
  * very declarations the editor registers.
@@ -129,6 +148,7 @@ export const edgyTranslationEntries: TranslationKeyManifestEntry[] =
     elementAndZoneSeedEntries(),
     verbSeedEntries(),
     sceneSeedEntries(),
+    templateNameEntries(),
     legendChromeEntries(),
     toolbarChromeEntries(),
     // LAST, and the order is load-bearing: a reading profile carries the
