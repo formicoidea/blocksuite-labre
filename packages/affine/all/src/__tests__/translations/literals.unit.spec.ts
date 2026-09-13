@@ -368,6 +368,34 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
     file: 'packages/affine/blocks/paragraph/src/turbo/paragraph-layout-handler.ts',
     text: 'true',
   },
+  // Same false positive: a `…text="true"` data-attribute selector.
+  {
+    file: 'packages/affine/fragments/doc-title/src/doc-title.ts',
+    text: 'true',
+  },
+  {
+    file: 'packages/framework/std/src/inline/components/v-text.ts',
+    text: 'true',
+  },
+  { file: 'packages/framework/std/src/inline/utils/text.ts', text: 'true' },
+
+  // Code fragments captured across a nested template or a string
+  // concatenation, not prose: the linked-doc export adapters' `'untitled'`
+  // fallback expression (headless, no editor to ask — lot L2b's decision) and
+  // the key-name normaliser of the keymap.
+  ...['html.ts', 'markdown.ts', 'plain-text.ts'].map(adapter => ({
+    file: `packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/${adapter}`,
+    text: '+ o.node.props.pageId) ??',
+  })),
+  {
+    file: 'packages/framework/std/src/event/keymap.ts',
+    text: '+ name ); } return normalized; } function modifiers(name: string, event: KeyboardEvent, shift = true) { if (event.altKey) name =',
+  },
+
+  // "Pen" — the brush tool's own senior-tool name: a core tool with no
+  // framework descriptor, hence no labelKey, by the design every core tool
+  // follows (lot L5b); its toolbar tooltip is keyed.
+  { file: 'packages/affine/gfx/brush/src/toolbar/senior-tool.ts', text: 'Pen' },
 
   // The `.bpmn` writer's XML PROLOG — `<?xml version="1.0" encoding="UTF-8"?>`
   // — matched by P3 because it sits after `text: `. It is markup, not prose:

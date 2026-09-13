@@ -33,6 +33,7 @@ export class EdgelessTextMenu extends EdgelessToolbarToolMixin(LitElement) {
             class="one-way"
             .value=${this.color}
             .theme=${this._theme$.value}
+            .std=${this.edgeless.std}
             .palettes=${DefaultTheme.StrokeColorShortPalettes}
             @select=${(e: ColorEvent) => this.onChange({ color: e.detail })}
           ></edgeless-color-panel>

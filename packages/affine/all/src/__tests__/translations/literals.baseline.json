@@ -1,5 +1,14 @@
 {
   "kept": {
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/html.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/markdown.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/plain-text.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
     "packages/affine/blocks/list/src/turbo/list-layout-handler.ts": [
       "true"
     ],
@@ -26,8 +35,14 @@
       "Symbols",
       "Travel & Places"
     ],
+    "packages/affine/fragments/doc-title/src/doc-title.ts": [
+      "true"
+    ],
     "packages/affine/gfx/bpmn/src/export.ts": [
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>n${}n"
+    ],
+    "packages/affine/gfx/brush/src/toolbar/senior-tool.ts": [
+      "Pen"
     ],
     "packages/affine/gfx/c4/src/templates.ts": [
       "C4"
@@ -59,6 +74,15 @@
       "MindMap",
       "Videos",
       "Zip"
+    ],
+    "packages/framework/std/src/event/keymap.ts": [
+      "+ name ); } return normalized; } function modifiers(name: string, event: KeyboardEvent, shift = true) { if (event.altKey) name ="
+    ],
+    "packages/framework/std/src/inline/components/v-text.ts": [
+      "true"
+    ],
+    "packages/framework/std/src/inline/utils/text.ts": [
+      "true"
     ]
   },
   "deferred": {
@@ -657,30 +681,5 @@
       "Youtube"
     ]
   },
-  "pending": {
-    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/html.ts": [
-      "+ o.node.props.pageId) ??"
-    ],
-    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/markdown.ts": [
-      "+ o.node.props.pageId) ??"
-    ],
-    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/plain-text.ts": [
-      "+ o.node.props.pageId) ??"
-    ],
-    "packages/affine/fragments/doc-title/src/doc-title.ts": [
-      "true"
-    ],
-    "packages/affine/gfx/brush/src/toolbar/senior-tool.ts": [
-      "Pen"
-    ],
-    "packages/framework/std/src/event/keymap.ts": [
-      "+ name ); } return normalized; } function modifiers(name: string, event: KeyboardEvent, shift = true) { if (event.altKey) name ="
-    ],
-    "packages/framework/std/src/inline/components/v-text.ts": [
-      "true"
-    ],
-    "packages/framework/std/src/inline/utils/text.ts": [
-      "true"
-    ]
-  }
+  "pending": {}
 }

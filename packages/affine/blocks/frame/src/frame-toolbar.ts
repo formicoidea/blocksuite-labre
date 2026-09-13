@@ -208,6 +208,7 @@ const builtinSurfaceToolbarConfig = {
             .pick=${onPick}
             .color=${background}
             .theme=${theme}
+            .std=${ctx.std}
             .originalColor=${firstModel.props.background}
             .enableCustomColor=${enableCustomColor}
           >
