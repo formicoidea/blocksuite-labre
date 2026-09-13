@@ -1,4 +1,4 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import { type ChromeWording, COLOR_LABEL } from '@labre/affine-shared/services';
 
 /**
  * This package's own wordings, joined into `PACKAGE_WORDINGS` in
@@ -26,15 +26,11 @@ export const BRUSH_TOOLTIP_HIGHLIGHTER: ChromeWording = [
   'Highlighter',
 ];
 
-/** The colour-picker button's label, shared by the brush and highlighter panels. */
-export const BRUSH_LABEL_COLOR: ChromeWording = [
-  'com.labre.brush.label.color',
-  'Color',
-];
+/** An alias (L7 dedupe): the same word as {@link COLOR_LABEL}, one key. */
+export const BRUSH_LABEL_COLOR = COLOR_LABEL;
 
 export const BRUSH_WORDINGS: readonly ChromeWording[] = [
   BRUSH_TOOLTIP_ERASER,
   BRUSH_TOOLTIP_PEN,
   BRUSH_TOOLTIP_HIGHLIGHTER,
-  BRUSH_LABEL_COLOR,
 ];

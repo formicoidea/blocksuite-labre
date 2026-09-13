@@ -268,7 +268,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   // Artefact catalogue sidepanel
   ['com.labre.catalogue.title', 'Artefacts'],
   ['com.labre.catalogue.close', 'Close'],
-  ['com.labre.catalogue.other', 'Other'],
+  // `com.labre.catalogue.other` USED to be here — L7 dedupe moved it to
+  // `chrome.ts` (`CATALOGUE_OTHER`), the same word as the templates-panel's
+  // own "Other" category tab, and its one call site now imports the constant
+  // instead of restating the literal.
   ['com.labre.catalogue.ranked', 'Recent & frequent'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],

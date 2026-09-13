@@ -1,13 +1,13 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  NEW_DOC_LABEL,
+} from '@labre/affine-shared/services';
 
 /* ── The linked-doc embed's own slash-menu items ─────────────────────────
  * (`embed-linked-doc-block/configs/slash-menu.ts`)
  */
 
-export const EMBED_DOC_SLASH_NEW_DOC_NAME: ChromeWording = [
-  'com.labre.embed-doc.slash.new-doc.name',
-  'New Doc',
-];
+export const EMBED_DOC_SLASH_NEW_DOC_NAME = NEW_DOC_LABEL;
 
 export const EMBED_DOC_SLASH_NEW_DOC_DESCRIPTION: ChromeWording = [
   'com.labre.embed-doc.slash.new-doc.description',
@@ -89,7 +89,6 @@ export const EMBED_DOC_CARD_EMPTY_CONTENT: ChromeWording = [
  * there would be dead code, not a real translation path.
  */
 export const EMBED_DOC_WORDINGS: readonly ChromeWording[] = [
-  EMBED_DOC_SLASH_NEW_DOC_NAME,
   EMBED_DOC_SLASH_NEW_DOC_DESCRIPTION,
   EMBED_DOC_SLASH_LINKED_DOC_NAME,
   EMBED_DOC_SLASH_LINKED_DOC_CAPTION,

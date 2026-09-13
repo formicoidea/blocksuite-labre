@@ -1,4 +1,9 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  TOOLBAR_INSERT_INTO_PAGE,
+  TOOLBAR_RENAME,
+  TOOLBAR_UNGROUP,
+} from '@labre/affine-shared/services';
 
 /**
  * The group's own seed: the default title a newly created group is stamped
@@ -25,29 +30,17 @@ export const GROUP_WORDINGS: readonly ChromeWording[] = [GROUP_SEED_NAME];
 
 /* ── The group contextual toolbar, chrome (re-rendered every open) ────── */
 
-export const GROUP_TOOLBAR_INSERT_INTO_PAGE: ChromeWording = [
-  'com.labre.group.toolbar.insert-into-page',
-  'Insert into Page',
-];
+export const GROUP_TOOLBAR_INSERT_INTO_PAGE = TOOLBAR_INSERT_INTO_PAGE;
 
 export const GROUP_TOAST_INSERTED: ChromeWording = [
   'com.labre.group.toast.inserted',
   'Group has been inserted into doc',
 ];
 
-export const GROUP_TOOLBAR_RENAME: ChromeWording = [
-  'com.labre.group.toolbar.rename',
-  'Rename',
-];
+export const GROUP_TOOLBAR_RENAME = TOOLBAR_RENAME;
 
-export const GROUP_TOOLBAR_UNGROUP: ChromeWording = [
-  'com.labre.group.toolbar.ungroup',
-  'Ungroup',
-];
+export const GROUP_TOOLBAR_UNGROUP = TOOLBAR_UNGROUP;
 
 export const GROUP_CHROME_WORDINGS: readonly ChromeWording[] = [
-  GROUP_TOOLBAR_INSERT_INTO_PAGE,
   GROUP_TOAST_INSERTED,
-  GROUP_TOOLBAR_RENAME,
-  GROUP_TOOLBAR_UNGROUP,
 ];

@@ -54,6 +54,7 @@ import {
   SWOT_SEED_STRENGTHS,
   SWOT_SEED_THREATS,
   SWOT_SEED_WEAKNESSES,
+  TEMPLATE_PANEL_CATEGORY_OTHER,
 } from '../translations.js';
 
 /**
@@ -398,7 +399,7 @@ function t(
 
 export const otherTemplateCategory: TemplateCategory = {
   name: 'Other',
-  nameKey: 'com.labre.template.panel.category.other',
+  nameKey: TEMPLATE_PANEL_CATEGORY_OTHER[0],
   templates: [
     t('SWOT', previews.swot, swot),
     t('Kanban board', previews.kanban, kanban),

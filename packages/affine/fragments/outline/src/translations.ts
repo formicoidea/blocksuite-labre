@@ -1,4 +1,16 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  ATTACHMENT_LABEL,
+  BLOCK_TYPE_CODE_BLOCK,
+  type ChromeWording,
+  CHROME_DELETED_DOC,
+  DISPLAY_MODE_BOTH,
+  DISPLAY_MODE_EDGELESS,
+  DISPLAY_MODE_PAGE,
+  DISPLAY_MODE_SHOW_IN,
+  IMAGE_LABEL,
+  PREVIEW_SETTINGS_LABEL,
+  TOOLBAR_SETTINGS,
+} from '@labre/affine-shared/services';
 
 /**
  * The outline (plan) panel's own wordings: the placeholder text a preview
@@ -14,25 +26,16 @@ export const OUTLINE_PLACEHOLDER_BOOKMARK: ChromeWording = [
   'Bookmark',
 ];
 
-export const OUTLINE_PLACEHOLDER_CODE: ChromeWording = [
-  'com.labre.outline.placeholder.code',
-  'Code Block',
-];
+export const OUTLINE_PLACEHOLDER_CODE = BLOCK_TYPE_CODE_BLOCK;
 
 export const OUTLINE_PLACEHOLDER_DATABASE: ChromeWording = [
   'com.labre.outline.placeholder.database',
   'Database',
 ];
 
-export const OUTLINE_PLACEHOLDER_IMAGE: ChromeWording = [
-  'com.labre.outline.placeholder.image',
-  'Image',
-];
+export const OUTLINE_PLACEHOLDER_IMAGE = IMAGE_LABEL;
 
-export const OUTLINE_PLACEHOLDER_ATTACHMENT: ChromeWording = [
-  'com.labre.outline.placeholder.attachment',
-  'Attachment',
-];
+export const OUTLINE_PLACEHOLDER_ATTACHMENT = ATTACHMENT_LABEL;
 
 /* ── Notice banner (edgeless-only content hidden in page mode) ────────── */
 
@@ -73,25 +76,13 @@ export const OUTLINE_HIDDEN_CONTENTS: ChromeWording = [
 
 /* ── Note card ──────────────────────────────────────────────────────────── */
 
-export const OUTLINE_MODE_BOTH: ChromeWording = [
-  'com.labre.outline.card.mode.both',
-  'Both',
-];
+export const OUTLINE_MODE_BOTH = DISPLAY_MODE_BOTH;
 
-export const OUTLINE_MODE_EDGELESS: ChromeWording = [
-  'com.labre.outline.card.mode.edgeless',
-  'Edgeless',
-];
+export const OUTLINE_MODE_EDGELESS = DISPLAY_MODE_EDGELESS;
 
-export const OUTLINE_MODE_PAGE: ChromeWording = [
-  'com.labre.outline.card.mode.page',
-  'Page',
-];
+export const OUTLINE_MODE_PAGE = DISPLAY_MODE_PAGE;
 
-export const OUTLINE_CARD_SHOW_IN: ChromeWording = [
-  'com.labre.outline.card.show-in',
-  'Show in',
-];
+export const OUTLINE_CARD_SHOW_IN = DISPLAY_MODE_SHOW_IN;
 
 export const OUTLINE_CARD_DISPLAY_MODE_TOOLTIP: ChromeWording = [
   'com.labre.outline.card.display-mode-tooltip',
@@ -100,10 +91,7 @@ export const OUTLINE_CARD_DISPLAY_MODE_TOOLTIP: ChromeWording = [
 
 /* ── Block preview ──────────────────────────────────────────────────────── */
 
-export const OUTLINE_PREVIEW_DELETED_DOC: ChromeWording = [
-  'com.labre.outline.preview.deleted-doc',
-  'Deleted doc',
-];
+export const OUTLINE_PREVIEW_DELETED_DOC = CHROME_DELETED_DOC;
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
@@ -116,10 +104,7 @@ export const OUTLINE_TABLE_OF_CONTENTS: ChromeWording = [
   'Table of Contents',
 ];
 
-export const OUTLINE_PREVIEW_SETTINGS_TOOLTIP: ChromeWording = [
-  'com.labre.outline.preview-settings-tooltip',
-  'Preview Settings',
-];
+export const OUTLINE_PREVIEW_SETTINGS_TOOLTIP = PREVIEW_SETTINGS_LABEL;
 
 export const OUTLINE_VISIBILITY_AND_SORT_TOOLTIP: ChromeWording = [
   'com.labre.outline.visibility-and-sort-tooltip',
@@ -128,10 +113,7 @@ export const OUTLINE_VISIBILITY_AND_SORT_TOOLTIP: ChromeWording = [
 
 /* ── Preview settings menu ──────────────────────────────────────────────── */
 
-export const OUTLINE_SETTINGS_LABEL: ChromeWording = [
-  'com.labre.outline.setting-menu.settings',
-  'Settings',
-];
+export const OUTLINE_SETTINGS_LABEL = TOOLBAR_SETTINGS;
 
 export const OUTLINE_SHOW_TYPE_ICON: ChromeWording = [
   'com.labre.outline.setting-menu.show-type-icon',
@@ -145,28 +127,26 @@ export const OUTLINE_OPEN_IN_SIDEBAR_TOOLTIP: ChromeWording = [
   'Open in sidebar',
 ];
 
-/** Every wording this package declares, in the order it renders them. */
+/**
+ * Every wording DECLARED IN THIS FILE (not re-exported from `chrome.ts`), in
+ * the order it renders them. L7 dedupe aliased `OUTLINE_PLACEHOLDER_CODE`/
+ * `_IMAGE`/`_ATTACHMENT`, `OUTLINE_MODE_BOTH`/`_EDGELESS`/`_PAGE`,
+ * `OUTLINE_CARD_SHOW_IN`, `OUTLINE_PREVIEW_DELETED_DOC`,
+ * `OUTLINE_PREVIEW_SETTINGS_TOOLTIP` and `OUTLINE_SETTINGS_LABEL` to
+ * `chrome.ts` wordings — not listed again here, same rule the note/slash-menu
+ * packages' own chrome aliases already follow.
+ */
 export const OUTLINE_WORDINGS: readonly ChromeWording[] = [
   OUTLINE_PLACEHOLDER_BOOKMARK,
-  OUTLINE_PLACEHOLDER_CODE,
   OUTLINE_PLACEHOLDER_DATABASE,
-  OUTLINE_PLACEHOLDER_IMAGE,
-  OUTLINE_PLACEHOLDER_ATTACHMENT,
   OUTLINE_NOTICE_HIDDEN_LABEL,
   OUTLINE_NOTICE_HIDDEN_TEXT,
   OUTLINE_NOTICE_ORGANIZE,
   OUTLINE_EMPTY_PANEL,
   OUTLINE_HIDDEN_CONTENTS,
-  OUTLINE_MODE_BOTH,
-  OUTLINE_MODE_EDGELESS,
-  OUTLINE_MODE_PAGE,
-  OUTLINE_CARD_SHOW_IN,
   OUTLINE_CARD_DISPLAY_MODE_TOOLTIP,
-  OUTLINE_PREVIEW_DELETED_DOC,
   OUTLINE_TABLE_OF_CONTENTS,
-  OUTLINE_PREVIEW_SETTINGS_TOOLTIP,
   OUTLINE_VISIBILITY_AND_SORT_TOOLTIP,
-  OUTLINE_SETTINGS_LABEL,
   OUTLINE_SHOW_TYPE_ICON,
   OUTLINE_OPEN_IN_SIDEBAR_TOOLTIP,
 ];

@@ -12,12 +12,22 @@ import {
   BLOCK_NAME_QUOTE,
   BLOCK_NAME_TEXT,
   BLOCK_NAME_TODO_LIST,
+  BOARD_BORDER_STYLE_LABEL,
   type ChromeWording,
+  DISPLAY_MODE_BOTH,
+  DISPLAY_MODE_EDGELESS,
+  DISPLAY_MODE_PAGE,
+  DISPLAY_MODE_SHOW_IN,
+  FILL_COLOR_LABEL,
   NOTE_SHADOW_BOX,
   NOTE_SHADOW_FILM,
   NOTE_SHADOW_NONE,
   NOTE_SHADOW_PAPER,
   NOTE_SHADOW_STICKER,
+  TEXT_FORMAT_BOLD,
+  TEXT_FORMAT_ITALIC,
+  TEXT_FORMAT_STRIKETHROUGH,
+  TEXT_FORMAT_UNDERLINE,
   TOOLBAR_MOVE_DOWN,
   TOOLBAR_MOVE_UP,
 } from '@labre/affine-shared/services';
@@ -27,7 +37,9 @@ import {
  * the note block's edgeless style panel, its slash-menu tooltip captions,
  * and the surface toolbar's notifications. Words this package shares with
  * ANOTHER of this lot's packages (the block-type names, the shadow options,
- * the two move verbs) live in `chrome.ts` instead and are re-exported or
+ * the two move verbs, and — L7 dedupe — the bold/italic/underline/
+ * strikethrough formats, the border-style label, the fill-colour label and
+ * the display-mode words) live in `chrome.ts` instead and are re-exported or
  * reused here; see the doc comment on each.
  */
 
@@ -73,20 +85,14 @@ export const NOTE_TOOLTIP_BOLD_TEXT: ChromeWording = [
   'Bold Text',
 ];
 
-export const NOTE_TOOLTIP_ITALIC: ChromeWording = [
-  'com.labre.note.tooltip.italic',
-  'Italic',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_ITALIC}, one key. */
+export const NOTE_TOOLTIP_ITALIC = TEXT_FORMAT_ITALIC;
 
-export const NOTE_TOOLTIP_UNDERLINE: ChromeWording = [
-  'com.labre.note.tooltip.underline',
-  'Underline',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_UNDERLINE}, one key. */
+export const NOTE_TOOLTIP_UNDERLINE = TEXT_FORMAT_UNDERLINE;
 
-export const NOTE_TOOLTIP_STRIKETHROUGH: ChromeWording = [
-  'com.labre.note.tooltip.strikethrough',
-  'Strikethrough',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_STRIKETHROUGH}, one key. */
+export const NOTE_TOOLTIP_STRIKETHROUGH = TEXT_FORMAT_STRIKETHROUGH;
 
 /* ── Slash-menu items rendered by THIS package (`./configs/slash-menu.ts`) ─
  * `createConversionItem` / `createTextFormatItem` borrow their `name` from
@@ -98,25 +104,17 @@ export const NOTE_TOOLTIP_STRIKETHROUGH: ChromeWording = [
  * borrowed name up in `NOTE_SLASH_ITEM_NAME_WORDINGS`.
  */
 
-export const NOTE_SLASH_FORMAT_BOLD: ChromeWording = [
-  'com.labre.note.slash-menu.format.bold',
-  'Bold',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_BOLD}, one key. */
+export const NOTE_SLASH_FORMAT_BOLD = TEXT_FORMAT_BOLD;
 
-export const NOTE_SLASH_FORMAT_ITALIC: ChromeWording = [
-  'com.labre.note.slash-menu.format.italic',
-  'Italic',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_ITALIC}, one key. */
+export const NOTE_SLASH_FORMAT_ITALIC = TEXT_FORMAT_ITALIC;
 
-export const NOTE_SLASH_FORMAT_UNDERLINE: ChromeWording = [
-  'com.labre.note.slash-menu.format.underline',
-  'Underline',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_UNDERLINE}, one key. */
+export const NOTE_SLASH_FORMAT_UNDERLINE = TEXT_FORMAT_UNDERLINE;
 
-export const NOTE_SLASH_FORMAT_STRIKETHROUGH: ChromeWording = [
-  'com.labre.note.slash-menu.format.strikethrough',
-  'Strikethrough',
-];
+/** An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_STRIKETHROUGH}, one key. */
+export const NOTE_SLASH_FORMAT_STRIKETHROUGH = TEXT_FORMAT_STRIKETHROUGH;
 
 export const NOTE_OTHER_HEADINGS: ChromeWording = [
   'com.labre.note.slash-menu.other-headings',
@@ -172,10 +170,8 @@ export const NOTE_SHADOW_FLOATING: ChromeWording = [
 
 /* ── Note style panel (`./components/edgeless-note-style-panel.ts`) ─────── */
 
-export const NOTE_STYLE_FILL_COLOR: ChromeWording = [
-  'com.labre.note.style.fill-color',
-  'Fill color',
-];
+/** An alias (L7 dedupe): the same word as {@link FILL_COLOR_LABEL}, one key. */
+export const NOTE_STYLE_FILL_COLOR = FILL_COLOR_LABEL;
 
 export const NOTE_STYLE_SHADOW_SECTION: ChromeWording = [
   'com.labre.note.style.shadow',
@@ -209,17 +205,16 @@ export const NOTE_STYLE_PANEL_LABEL: ChromeWording = [
 
 /* ── Border dropdown (`./components/edgeless-note-border-dropdown-menu.ts`) */
 
-export const NOTE_BORDER_STYLE_LABEL: ChromeWording = [
-  'com.labre.note.border.style-label',
-  'Border style',
-];
+/**
+ * An alias (L7 dedupe): the same word as {@link BOARD_BORDER_STYLE_LABEL},
+ * one key.
+ */
+export const NOTE_BORDER_STYLE_LABEL = BOARD_BORDER_STYLE_LABEL;
 
 /* ── Display-mode dropdown (`./components/edgeless-note-display-mode-dropdown-menu.ts`) */
 
-export const NOTE_DISPLAY_MODE_SHOW_IN: ChromeWording = [
-  'com.labre.note.display-mode.show-in',
-  'Show in',
-];
+/** An alias (L7 dedupe): the same word as {@link DISPLAY_MODE_SHOW_IN}, one key. */
+export const NOTE_DISPLAY_MODE_SHOW_IN = DISPLAY_MODE_SHOW_IN;
 
 export const NOTE_DISPLAY_MODE_LABEL: ChromeWording = [
   'com.labre.note.display-mode.mode-label',
@@ -231,20 +226,14 @@ export const NOTE_DISPLAY_MODE_TOOLTIP: ChromeWording = [
   'Display mode',
 ];
 
-export const NOTE_DISPLAY_MODE_BOTH: ChromeWording = [
-  'com.labre.note.display-mode.both',
-  'Both',
-];
+/** An alias (L7 dedupe): the same word as {@link DISPLAY_MODE_BOTH}, one key. */
+export const NOTE_DISPLAY_MODE_BOTH = DISPLAY_MODE_BOTH;
 
-export const NOTE_DISPLAY_MODE_EDGELESS: ChromeWording = [
-  'com.labre.note.display-mode.edgeless',
-  'Edgeless',
-];
+/** An alias (L7 dedupe): the same word as {@link DISPLAY_MODE_EDGELESS}, one key. */
+export const NOTE_DISPLAY_MODE_EDGELESS = DISPLAY_MODE_EDGELESS;
 
-export const NOTE_DISPLAY_MODE_PAGE: ChromeWording = [
-  'com.labre.note.display-mode.page',
-  'Page',
-];
+/** An alias (L7 dedupe): the same word as {@link DISPLAY_MODE_PAGE}, one key. */
+export const NOTE_DISPLAY_MODE_PAGE = DISPLAY_MODE_PAGE;
 
 /* ── Surface toolbar (`./configs/toolbar.ts`) ─────────────────────────────
  * The two "note is on the page" toasts. The removed-from-page title reuses
@@ -317,9 +306,13 @@ export const NOTE_TOOLBAR_CUSTOMIZED_HEIGHT: ChromeWording = [
  * Every wording DECLARED IN THIS FILE (not re-exported from `chrome.ts`), in
  * declaration order — walked by `PACKAGE_WORDINGS` in
  * `packages/affine/all/src/translations.ts`. The chrome re-exports
- * (`NOTE_MOVE_UP`/`_DOWN`, `NOTE_SHADOW_*` other than `_FLOATING`) are not
- * listed again here, same rule `SLASH_MENU_WORDINGS` already follows for its
- * own chrome aliases.
+ * (`NOTE_MOVE_UP`/`_DOWN`, `NOTE_SHADOW_*` other than `_FLOATING`, and — L7
+ * dedupe — `NOTE_TOOLTIP_ITALIC`/`_UNDERLINE`/`_STRIKETHROUGH`,
+ * `NOTE_SLASH_FORMAT_BOLD`/`_ITALIC`/`_UNDERLINE`/`_STRIKETHROUGH`,
+ * `NOTE_STYLE_FILL_COLOR`, `NOTE_BORDER_STYLE_LABEL`,
+ * `NOTE_DISPLAY_MODE_SHOW_IN`/`_BOTH`/`_EDGELESS`/`_PAGE`) are not listed
+ * again here, same rule `SLASH_MENU_WORDINGS` already follows for its own
+ * chrome aliases.
  */
 export const NOTE_WORDINGS: readonly ChromeWording[] = [
   NOTE_TOOLTIP_HEADING_1,
@@ -329,29 +322,16 @@ export const NOTE_WORDINGS: readonly ChromeWording[] = [
   NOTE_TOOLTIP_HEADING_5,
   NOTE_TOOLTIP_HEADING_6,
   NOTE_TOOLTIP_BOLD_TEXT,
-  NOTE_TOOLTIP_ITALIC,
-  NOTE_TOOLTIP_UNDERLINE,
-  NOTE_TOOLTIP_STRIKETHROUGH,
-  NOTE_SLASH_FORMAT_BOLD,
-  NOTE_SLASH_FORMAT_ITALIC,
-  NOTE_SLASH_FORMAT_UNDERLINE,
-  NOTE_SLASH_FORMAT_STRIKETHROUGH,
   NOTE_OTHER_HEADINGS,
   NOTE_SHADOW_FLOATING,
-  NOTE_STYLE_FILL_COLOR,
   NOTE_STYLE_SHADOW_SECTION,
   NOTE_STYLE_BORDER_SECTION,
   NOTE_STYLE_CORNER_RADIUS,
   NOTE_STYLE_BACK,
   NOTE_STYLE_CUSTOM_COLOR,
   NOTE_STYLE_PANEL_LABEL,
-  NOTE_BORDER_STYLE_LABEL,
-  NOTE_DISPLAY_MODE_SHOW_IN,
   NOTE_DISPLAY_MODE_LABEL,
   NOTE_DISPLAY_MODE_TOOLTIP,
-  NOTE_DISPLAY_MODE_BOTH,
-  NOTE_DISPLAY_MODE_EDGELESS,
-  NOTE_DISPLAY_MODE_PAGE,
   NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
   NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
   NOTE_TOAST_ADDED_TO_PAGE_BODY,

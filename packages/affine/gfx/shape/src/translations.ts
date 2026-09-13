@@ -1,4 +1,5 @@
 import {
+  ADD_TEXT_TOOLTIP,
   type ChromeWording,
   STYLE_GENERAL,
   STYLE_MENU_LABEL,
@@ -57,10 +58,7 @@ export const SHAPE_SWITCH_TYPE_LABEL: ChromeWording = [
   'Switch shape type',
 ];
 
-export const SHAPE_ADD_TEXT_TOOLTIP: ChromeWording = [
-  'com.labre.shape.toolbar.add-text',
-  'Add text',
-];
+export const SHAPE_ADD_TEXT_TOOLTIP = ADD_TEXT_TOOLTIP;
 
 export const SHAPE_EDIT_VERTICES_TOOLTIP: ChromeWording = [
   'com.labre.shape.toolbar.edit-vertices',
@@ -111,7 +109,6 @@ export const SHAPE_WORDINGS: readonly ChromeWording[] = [
   SHAPE_TEXT_FIT_ARIA,
   SHAPE_TEXT_FIT_TOOLTIP,
   SHAPE_SWITCH_TYPE_LABEL,
-  SHAPE_ADD_TEXT_TOOLTIP,
   SHAPE_EDIT_VERTICES_TOOLTIP,
   SHAPE_NAME_SQUARE,
   SHAPE_NAME_ELLIPSE,

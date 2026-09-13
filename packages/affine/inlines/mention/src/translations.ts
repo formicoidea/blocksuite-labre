@@ -1,4 +1,7 @@
-import { type ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  UNKNOWN_LABEL,
+} from '@labre/affine-shared/services';
 
 /** `@labre/affine-inline-mention`'s own wordings — the @-mention chip's states. */
 
@@ -19,10 +22,7 @@ export const MENTION_LOADING: ChromeWording = [
  * member's REAL name (`userInfo$.value.name`) is never translated, only this
  * one word that stands in for it.
  */
-export const MENTION_UNKNOWN_NAME_FALLBACK: ChromeWording = [
-  'com.labre.mention.unknown-name-fallback',
-  'Unknown',
-];
+export const MENTION_UNKNOWN_NAME_FALLBACK = UNKNOWN_LABEL;
 
 /**
  * Every wording declared above, in declaration order — walked by
@@ -32,5 +32,4 @@ export const MENTION_WORDINGS: readonly ChromeWording[] = [
   MENTION_UNKNOWN_MEMBER,
   MENTION_INACTIVE_MEMBER,
   MENTION_LOADING,
-  MENTION_UNKNOWN_NAME_FALLBACK,
 ];

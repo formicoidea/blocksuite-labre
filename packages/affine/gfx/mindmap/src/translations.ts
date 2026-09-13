@@ -1,4 +1,7 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  MINDMAP_NAME,
+} from '@labre/affine-shared/services';
 
 /**
  * The mindmap's own seeds: the captions a freshly placed mindmap is written
@@ -79,10 +82,7 @@ export const MINDMAP_SEED_WORDINGS: readonly ChromeWording[] = [
  * names the mindmap tool — one word, one key, reused across every drawer in
  * this package.
  */
-export const MINDMAP_TOOLTIP: ChromeWording = [
-  'com.labre.mindmap.tooltip',
-  'Mind Map',
-];
+export const MINDMAP_TOOLTIP = MINDMAP_NAME;
 
 /** The Templates panel's "Mind Map" category tab (`TemplateCategory.nameKey`). */
 export const MINDMAP_TEMPLATE_CATEGORY = MINDMAP_TOOLTIP;
@@ -175,7 +175,6 @@ export const MINDMAP_ADD_FILE_TOOL: ChromeWording = [
  * sites rather than re-declared here.
  */
 export const MINDMAP_CHROME_WORDINGS: readonly ChromeWording[] = [
-  MINDMAP_TOOLTIP,
   MINDMAP_TEMPLATE_NAME_STYLE_1,
   MINDMAP_TEMPLATE_NAME_STYLE_2,
   MINDMAP_TEMPLATE_NAME_STYLE_3,

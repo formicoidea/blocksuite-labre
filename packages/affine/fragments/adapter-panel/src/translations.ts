@@ -2,6 +2,7 @@ import {
   type ChromeWording,
   FORMAT_HTML,
   FORMAT_MARKDOWN,
+  PREVIEW_LABEL,
 } from '@labre/affine-shared/services';
 
 /**
@@ -19,10 +20,7 @@ export const ADAPTER_PANEL_SOURCE: ChromeWording = [
   'Source',
 ];
 
-export const ADAPTER_PANEL_PREVIEW: ChromeWording = [
-  'com.labre.adapter-panel.html.preview',
-  'Preview',
-];
+export const ADAPTER_PANEL_PREVIEW = PREVIEW_LABEL;
 
 export const ADAPTER_FORMAT_MARKDOWN = FORMAT_MARKDOWN;
 
@@ -46,7 +44,6 @@ export const ADAPTER_FORMAT_SNAPSHOT: ChromeWording = [
  */
 export const ADAPTER_PANEL_WORDINGS: readonly ChromeWording[] = [
   ADAPTER_PANEL_SOURCE,
-  ADAPTER_PANEL_PREVIEW,
   ADAPTER_FORMAT_PLAINTEXT,
   ADAPTER_FORMAT_SNAPSHOT,
 ];
