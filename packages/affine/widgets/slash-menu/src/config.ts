@@ -19,6 +19,22 @@ import {
 } from '@labre/affine-shared/services';
 
 import { slashMenuToolTips } from './tooltips';
+import {
+  SLASH_MENU_COPY,
+  SLASH_MENU_COPY_DESCRIPTION,
+  SLASH_MENU_DELETE,
+  SLASH_MENU_DELETE_DESCRIPTION,
+  SLASH_MENU_DUPLICATE,
+  SLASH_MENU_DUPLICATE_DESCRIPTION,
+  SLASH_MENU_MOVE_DOWN,
+  SLASH_MENU_MOVE_DOWN_DESCRIPTION,
+  SLASH_MENU_MOVE_UP,
+  SLASH_MENU_MOVE_UP_DESCRIPTION,
+  SLASH_MENU_NOW,
+  SLASH_MENU_TODAY,
+  SLASH_MENU_TOMORROW,
+  SLASH_MENU_YESTERDAY,
+} from './translations';
 import type { SlashMenuConfig } from './types';
 import { formatDate, formatTime } from './utils';
 
@@ -33,6 +49,7 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
     return [
       {
         name: 'Today',
+        nameWording: SLASH_MENU_TODAY,
         icon: TodayIcon(),
         tooltip: slashMenuToolTips['Today'],
         description: formatDate(now),
@@ -43,6 +60,7 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Tomorrow',
+        nameWording: SLASH_MENU_TOMORROW,
         icon: TomorrowIcon(),
         tooltip: slashMenuToolTips['Tomorrow'],
         description: formatDate(tomorrow),
@@ -55,6 +73,7 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Yesterday',
+        nameWording: SLASH_MENU_YESTERDAY,
         icon: YesterdayIcon(),
         tooltip: slashMenuToolTips['Yesterday'],
         description: formatDate(yesterday),
@@ -67,6 +86,7 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Now',
+        nameWording: SLASH_MENU_NOW,
         icon: NowIcon(),
         tooltip: slashMenuToolTips['Now'],
         description: formatTime(now),
@@ -77,7 +97,9 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Move Up',
+        nameWording: SLASH_MENU_MOVE_UP,
         description: 'Shift this line up.',
+        descriptionWording: SLASH_MENU_MOVE_UP_DESCRIPTION,
         icon: ArrowUpBigIcon(),
         tooltip: slashMenuToolTips['Move Up'],
         group: '8_Actions@0',
@@ -99,7 +121,9 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Move Down',
+        nameWording: SLASH_MENU_MOVE_DOWN,
         description: 'Shift this line down.',
+        descriptionWording: SLASH_MENU_MOVE_DOWN_DESCRIPTION,
         icon: ArrowDownBigIcon(),
         tooltip: slashMenuToolTips['Move Down'],
         group: '8_Actions@1',
@@ -116,7 +140,9 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Copy',
+        nameWording: SLASH_MENU_COPY,
         description: 'Copy this line to clipboard.',
+        descriptionWording: SLASH_MENU_COPY_DESCRIPTION,
         icon: CopyIcon(),
         tooltip: slashMenuToolTips['Copy'],
         group: '8_Actions@2',
@@ -135,7 +161,9 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Duplicate',
+        nameWording: SLASH_MENU_DUPLICATE,
         description: 'Create a duplicate of this line.',
+        descriptionWording: SLASH_MENU_DUPLICATE_DESCRIPTION,
         icon: DualLinkIcon(),
         tooltip: slashMenuToolTips['Copy'],
         group: '8_Actions@3',
@@ -176,7 +204,9 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
       },
       {
         name: 'Delete',
+        nameWording: SLASH_MENU_DELETE,
         description: 'Remove this line permanently.',
+        descriptionWording: SLASH_MENU_DELETE_DESCRIPTION,
         searchAlias: ['remove'],
         icon: DeleteIcon(),
         tooltip: slashMenuToolTips['Delete'],

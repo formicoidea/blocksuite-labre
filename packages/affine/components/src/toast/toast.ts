@@ -10,7 +10,7 @@ let ToastContainer: HTMLDivElement | null = null;
 /**
  * @example
  * ```ts
- * toast('Hello World');
+ * toast(host, message);
  * ```
  */
 export const toast = (

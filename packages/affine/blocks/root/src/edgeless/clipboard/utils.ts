@@ -60,7 +60,11 @@ export async function prepareClipboardData(
       return data;
     })
   );
-  const blobs = await encodeClipboardBlobs(job.assetsManager.getAssets());
+  const blobs = await encodeClipboardBlobs(
+    job.assetsManager.getAssets(),
+    undefined,
+    std.provider
+  );
   return {
     snapshot: selected.filter(d => !!d),
     blobs,

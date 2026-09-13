@@ -1,11 +1,22 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import { EditPropsStore } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  TOOLBAR_HIDE_TOOLBAR,
+  TOOLBAR_PLAYBACK_SETTINGS,
+  TOOLBAR_SETTINGS,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { SettingsIcon } from '@blocksuite/icons/lit';
 import type { BlockComponent } from '@labre/std';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+
+import {
+  FRAME_PRESENT_BLACK_BACKGROUND,
+  FRAME_PRESENT_FRAME_ORDER,
+} from '../translations';
 
 export class EdgelessNavigatorSettingButton extends WithDisposable(LitElement) {
   static override styles = css`
@@ -105,10 +116,14 @@ export class EdgelessNavigatorSettingButton extends WithDisposable(LitElement) {
   }
 
   override render() {
+    const { std } = this.edgeless;
+
     return html`
       <edgeless-tool-icon-button
         class="navigator-setting-button"
-        .tooltip=${this.popperShow ? '' : 'Settings'}
+        .tooltip=${this.popperShow
+          ? ''
+          : translateKey(std, ...TOOLBAR_SETTINGS)}
         .iconSize=${'24px'}
         @click=${() => {
           this._navigatorSettingPopper?.toggle();
@@ -125,11 +140,15 @@ export class EdgelessNavigatorSettingButton extends WithDisposable(LitElement) {
         }}
       >
         <div class="item-container header">
-          <div class="text title">Playback Settings</div>
+          <div class="text title">
+            ${translateKey(std, ...TOOLBAR_PLAYBACK_SETTINGS)}
+          </div>
         </div>
 
         <div class="item-container">
-          <div class="text">Black background</div>
+          <div class="text">
+            ${translateKey(std, ...FRAME_PRESENT_BLACK_BACKGROUND)}
+          </div>
 
           <toggle-switch
             .on=${this.blackBackground}
@@ -139,7 +158,7 @@ export class EdgelessNavigatorSettingButton extends WithDisposable(LitElement) {
         </div>
 
         <div class="item-container">
-          <div class="text">Hide toolbar</div>
+          <div class="text">${translateKey(std, ...TOOLBAR_HIDE_TOOLBAR)}</div>
 
           <toggle-switch
             .on=${this.hideToolbar}
@@ -153,7 +172,9 @@ export class EdgelessNavigatorSettingButton extends WithDisposable(LitElement) {
         ${this.includeFrameOrder
           ? html` <div class="divider"></div>
               <div class="item-container header">
-                <div class="text title">Frame Order</div>
+                <div class="text title">
+                  ${translateKey(std, ...FRAME_PRESENT_FRAME_ORDER)}
+                </div>
               </div>
 
               <edgeless-frame-order-menu

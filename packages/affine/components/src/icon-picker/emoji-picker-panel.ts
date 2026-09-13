@@ -1,4 +1,8 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { SearchIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -14,6 +18,12 @@ import {
 import { pushRecent, readRecent, RECENT_EMOJIS_KEY } from './recent-store.js';
 import { panelStyles } from './styles.js';
 import { IconType } from './types.js';
+import {
+  EMOJI_GROUP_WORDINGS,
+  ICON_PICKER_FILTER_PLACEHOLDER,
+  ICON_PICKER_NO_EMOJI_FOUND,
+  ICON_PICKER_RECENT_GROUP,
+} from '../translations.js';
 
 /**
  * The emoji half of the picker: a filter box, a skin-tone menu, a recents row
@@ -30,6 +40,26 @@ export class AffineEmojiPickerPanel extends LitElement {
       }
     `,
   ];
+
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  private _groupLabel(name: string): string {
+    const wording =
+      name === RECENT_GROUP_NAME
+        ? ICON_PICKER_RECENT_GROUP
+        : EMOJI_GROUP_WORDINGS[
+            getEmojiGroups().find(group => group.name === name)?.id ?? ''
+          ];
+    if (!wording) return name;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
+  private _emptyLabel(): string {
+    return this.std
+      ? translateKey(this.std, ...ICON_PICKER_NO_EMOJI_FOUND)
+      : ICON_PICKER_NO_EMOJI_FOUND[1];
+  }
 
   @state()
   private accessor _keyword = '';
@@ -106,7 +136,9 @@ export class AffineEmojiPickerPanel extends LitElement {
   private _renderGroup(name: string, unicodes: string[]) {
     return html`
       <div class="picker-group">
-        <div class="picker-group-name" data-group-name=${name}>${name}</div>
+        <div class="picker-group-name" data-group-name=${name}>
+          ${this._groupLabel(name)}
+        </div>
         <div class="picker-group-grid">
           ${repeat(
             unicodes,
@@ -140,7 +172,9 @@ export class AffineEmojiPickerPanel extends LitElement {
             ${SearchIcon()}
             <input
               type="text"
-              placeholder="Filter..."
+              placeholder=${this.std
+                ? translateKey(this.std, ...ICON_PICKER_FILTER_PLACEHOLDER)
+                : ICON_PICKER_FILTER_PLACEHOLDER[1]}
               .value=${this._keyword}
               @input=${(e: Event) => {
                 this._keyword = (e.target as HTMLInputElement).value;
@@ -196,7 +230,7 @@ export class AffineEmojiPickerPanel extends LitElement {
                     group.emojis.map(emoji => emojiUnicode(emoji, this._skin))
                   )
               )
-            : html`<div class="picker-empty">No emoji found</div>`}
+            : html`<div class="picker-empty">${this._emptyLabel()}</div>`}
         </div>
 
         <footer class="picker-footer">
@@ -212,7 +246,7 @@ export class AffineEmojiPickerPanel extends LitElement {
             group => html`
               <button
                 type="button"
-                title=${group.name}
+                title=${this._groupLabel(group.name)}
                 data-active=${this._activeGroup === group.name}
                 @click=${() => this._jumpTo(group.name)}
               >

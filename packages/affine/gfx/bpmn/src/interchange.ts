@@ -17,6 +17,7 @@ import {
   BpmnPoolElementModel,
   ConnectorElementModel,
 } from '@labre/affine-model';
+import { fillPlaceholders } from '@labre/affine-shared/services';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import {
@@ -151,7 +152,18 @@ const runBpmnXmlExport: InterchangeExporter = (elements, context) => {
     text,
     filename: `${name}${BPMN_XML_EXTENSION}`,
     mime: BPMN_XML_MIME,
-    ...(warnings.length > 0 ? { warnings } : {}),
+    // `InterchangeExportResult.warnings` is `readonly string[]` — a seam this
+    // capability shares with every other format and does not own — so each
+    // KEYED warning (`BpmnExportWarning`, `export.ts`) is resolved to its
+    // English fallback here. This adapter is `std`-free like the exporter it
+    // wraps (P3), so it cannot ask a host's catalogue either; the translated
+    // command path is `exportBpmnXmlFile` (`actions.ts`), which reads the
+    // structured warnings directly instead of going through this capability.
+    ...(warnings.length > 0
+      ? {
+          warnings: warnings.map(w => fillPlaceholders(w.fallback, w.params)),
+        }
+      : {}),
   };
 };
 

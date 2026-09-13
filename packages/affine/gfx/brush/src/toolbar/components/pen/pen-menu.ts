@@ -7,6 +7,7 @@ import {
 import {
   FeatureFlagService,
   ThemeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import type { ColorEvent } from '@labre/affine-shared/utils';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
@@ -22,7 +23,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import { BrushTool } from '../../../brush-tool';
 import { HighlighterTool } from '../../../highlighter-tool';
-import { penInfoMap } from './consts';
+import { penInfoMap, penTipWording } from './consts';
 import type { Pen, PenMap } from './types';
 
 export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
@@ -131,7 +132,10 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
           <edgeless-tool-icon-button
             class="edgeless-brush-button"
             .tooltip=${html`<affine-tooltip-content-with-shortcut
-              data-tip="${penInfoMap.brush.tip}"
+              data-tip="${translateKey(
+                this.edgeless.std,
+                ...penTipWording('brush')
+              )}"
               data-shortcut="${penInfoMap.brush.shortcut}"
             ></affine-tooltip-content-with-shortcut>`}
             .tooltipOffset=${20}
@@ -150,7 +154,10 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
           <edgeless-tool-icon-button
             class="edgeless-highlighter-button"
             .tooltip=${html`<affine-tooltip-content-with-shortcut
-              data-tip="${penInfoMap.highlighter.tip}"
+              data-tip="${translateKey(
+                this.edgeless.std,
+                ...penTipWording('highlighter')
+              )}"
               data-shortcut="${penInfoMap.highlighter.shortcut}"
             ></affine-tooltip-content-with-shortcut>`}
             .tooltipOffset=${20}
@@ -185,6 +192,7 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
             .hasTransparent=${!this.edgeless.store
               .get(FeatureFlagService)
               .getFlag('enable_color_picker')}
+            .std=${this.edgeless.std}
           ></edgeless-color-panel>
         </div>
       </edgeless-slide-menu>

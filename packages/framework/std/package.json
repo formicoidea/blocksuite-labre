@@ -43,7 +43,8 @@
     ".": "./src/index.ts",
     "./gfx": "./src/gfx/index.ts",
     "./effects": "./src/effects.ts",
-    "./inline": "./src/inline/index.ts"
+    "./inline": "./src/inline/index.ts",
+    "./translations": "./src/translations.ts"
   },
   "files": [
     "src",

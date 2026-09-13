@@ -1,10 +1,12 @@
 import { whenHover } from '@labre/affine-components/hover';
 import { Peekable } from '@labre/affine-components/peek';
 import type { ReferenceInfo } from '@labre/affine-model';
-import { DEFAULT_DOC_NAME, REFERENCE_NODE } from '@labre/affine-shared/consts';
+import { REFERENCE_NODE } from '@labre/affine-shared/consts';
 import {
+  DOC_UNTITLED,
   DocDisplayMetaProvider,
   ToolbarRegistryIdentifier,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { affineTextStyles } from '@labre/affine-shared/styles';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
@@ -70,7 +72,7 @@ export class AffineReference extends WithDisposable(ShadowlessElement) {
   `;
 
   get docTitle() {
-    return this.refMeta?.title ?? DEFAULT_DOC_NAME;
+    return this.refMeta?.title ?? translateKey(this.std, ...DOC_UNTITLED);
   }
 
   private readonly _updateRefMeta = (doc: Store) => {

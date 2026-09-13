@@ -9,6 +9,7 @@ import {
   GroupElementModel,
   TextElementModel,
 } from '@labre/affine-model';
+import type { BlockStdScope } from '@labre/std';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
@@ -199,10 +200,11 @@ function rewriteTier(
 function rewriteTiers(
   model: GfxPrimitiveElementModel,
   from: C4NodeKind,
-  to: C4NodeKind
+  to: C4NodeKind,
+  std?: BlockStdScope
 ) {
   rewriteTier(model, C4_ROLE['type-line'], text =>
-    c4MorphedTypeLine(from, to, text)
+    c4MorphedTypeLine(from, to, text, std)
   );
   rewriteTier(model, C4_ROLE.title, text => c4MorphedTitle(from, to, text));
 }

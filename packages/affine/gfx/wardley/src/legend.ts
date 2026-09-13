@@ -11,6 +11,10 @@ import {
   WardleyNodeElementModel,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -72,23 +76,58 @@ const LEGEND_ORDER: LegendType[] = [
   'area',
 ];
 
-/** Default (editable) descriptions for each legend row. */
-const LEGEND_DESC: Record<LegendType, string> = {
-  component: 'Need / capability (activity, practice, data…)',
-  anchor: 'Stakeholder (customer, user…)',
-  market: 'Market (set of actors)',
-  ecosystem: 'Ecosystem',
-  method: 'Component + method (color = phase)',
-  pipeline: 'Pipeline (possible choices for a capability)',
-  link: 'Need relation (parent → child)',
-  arrow: 'Evolution / movement (red = future)',
-  inertia: 'Inertia to change',
-  porter:
+/**
+ * Default (editable) descriptions for each legend row — a `ChromeWording` per
+ * row so the seed a legend writes into the document is resolved through the
+ * host at BUILD time, like every other text `createWardleyLegend` creates.
+ * The fallback is the literal that shipped before these keys existed.
+ */
+const LEGEND_DESC: Record<LegendType, ChromeWording> = {
+  component: [
+    'com.labre.wardley.legend.desc.component',
+    'Need / capability (activity, practice, data…)',
+  ],
+  anchor: [
+    'com.labre.wardley.legend.desc.anchor',
+    'Stakeholder (customer, user…)',
+  ],
+  market: ['com.labre.wardley.legend.desc.market', 'Market (set of actors)'],
+  ecosystem: ['com.labre.wardley.legend.desc.ecosystem', 'Ecosystem'],
+  method: [
+    'com.labre.wardley.legend.desc.method',
+    'Component + method (color = phase)',
+  ],
+  pipeline: [
+    'com.labre.wardley.legend.desc.pipeline',
+    'Pipeline (possible choices for a capability)',
+  ],
+  link: [
+    'com.labre.wardley.legend.desc.link',
+    'Need relation (parent → child)',
+  ],
+  arrow: [
+    'com.labre.wardley.legend.desc.arrow',
+    'Evolution / movement (red = future)',
+  ],
+  inertia: ['com.labre.wardley.legend.desc.inertia', 'Inertia to change'],
+  porter: [
+    'com.labre.wardley.legend.desc.porter',
     "Porter's forces (external competition: R relative, L survival, E establish)",
-  accelerator: 'Accelerator (speeds evolution up)',
-  decelerator: 'Decelerator (slows evolution down)',
-  area: 'Area (zone of the map)',
+  ],
+  accelerator: [
+    'com.labre.wardley.legend.desc.accelerator',
+    'Accelerator (speeds evolution up)',
+  ],
+  decelerator: [
+    'com.labre.wardley.legend.desc.decelerator',
+    'Decelerator (slows evolution down)',
+  ],
+  area: ['com.labre.wardley.legend.desc.area', 'Area (zone of the map)'],
 };
+
+/** Every {@link LEGEND_DESC} wording, for `translations.ts`'s manifest. */
+export const WARDLEY_LEGEND_DESC_WORDINGS: readonly ChromeWording[] =
+  Object.values(LEGEND_DESC);
 
 type GradientVariant = Exclude<
   WardleyBackgroundElementModel['variant'],
@@ -98,23 +137,34 @@ type GradientVariant = Exclude<
 /** Gradient-meaning block, keyed by variant (caption + 2-colour swatch). */
 const LEGEND_GRADIENT: Record<
   GradientVariant,
-  { caption: string; swatch: [string, string] }
+  { caption: ChromeWording; swatch: [string, string] }
 > = {
   opportunity: {
-    caption:
+    caption: [
+      'com.labre.wardley.legend.gradient.opportunity',
       'Opportunity gradient: differential value (green) vs operational value (red).',
+    ],
     swatch: [GRADIENT_GREEN, GRADIENT_RED],
   },
   benefit: {
-    caption: 'Gradient: investment (red) then benefit (green).',
+    caption: [
+      'com.labre.wardley.legend.gradient.benefit',
+      'Gradient: investment (red) then benefit (green).',
+    ],
     swatch: [GRADIENT_RED, GRADIENT_GREEN],
   },
   'evolution-gradient': {
-    caption:
+    caption: [
+      'com.labre.wardley.legend.gradient.evolution',
       "Gradient representing the growth of Wardley's evolution function.",
+    ],
     swatch: [NOTATION_NEUTRALS.divider, NOTATION_NEUTRALS.legendBorder],
   },
 };
+
+/** Every {@link LEGEND_GRADIENT} caption, for `translations.ts`'s manifest. */
+export const WARDLEY_LEGEND_GRADIENT_WORDINGS: readonly ChromeWording[] =
+  Object.values(LEGEND_GRADIENT).map(g => g.caption);
 
 /* ── Porter's five forces: the panel under the rows ───────────────────── */
 
@@ -144,24 +194,57 @@ const PORTER_PANEL = {
 } as const;
 
 /** The four forces the boxes name, north first and then clockwise. */
-const PORTER_FORCES = [
-  'Threat of new entrants',
-  'Bargaining power of customers',
-  'Threat of substitutes',
-  'Bargaining power of suppliers',
-] as const;
+const PORTER_FORCES: readonly ChromeWording[] = [
+  [
+    'com.labre.wardley.legend.porter.force.new-entrants',
+    'Threat of new entrants',
+  ],
+  [
+    'com.labre.wardley.legend.porter.force.customers',
+    'Bargaining power of customers',
+  ],
+  [
+    'com.labre.wardley.legend.porter.force.substitutes',
+    'Threat of substitutes',
+  ],
+  [
+    'com.labre.wardley.legend.porter.force.suppliers',
+    'Bargaining power of suppliers',
+  ],
+];
 
-/** What the panel's own glyph reads: the notation, not one force. */
+/** What the panel's own glyph reads: the notation, not one force — untouched, like the Cynefin A/C letters. */
 const PORTER_PANEL_LETTERS = 'R/L/E';
 
 /** What the letters mean, spelled out under the diagram. */
-const PORTER_CAPTION =
-  'R/L/E = Relative competition, or struggLe for survival, or struggle to Establish';
+const PORTER_CAPTION: ChromeWording = [
+  'com.labre.wardley.legend.porter.caption',
+  'R/L/E = Relative competition, or struggLe for survival, or struggle to Establish',
+];
 
-/** A box in the panel, relative to the panel's top-left, plus its words. */
+/** The legend box's own title. */
+export const WARDLEY_LEGEND_TITLE: ChromeWording = [
+  'com.labre.wardley.legend.title',
+  'Legend',
+];
+
+/** The five-forces panel's own title. */
+export const WARDLEY_LEGEND_PORTER_TITLE: ChromeWording = [
+  'com.labre.wardley.legend.porter.title',
+  "Porter's five forces",
+];
+
+/** Every {@link PORTER_FORCES} wording, plus the caption, for the manifest. */
+export const WARDLEY_LEGEND_PORTER_WORDINGS: readonly ChromeWording[] = [
+  WARDLEY_LEGEND_PORTER_TITLE,
+  ...PORTER_FORCES,
+  PORTER_CAPTION,
+];
+
+/** A box in the panel, relative to the panel's top-left, plus its wording. */
 interface PorterPanelBox {
   xywh: [number, number, number, number];
-  label: string;
+  label: ChromeWording;
 }
 
 interface PorterPanelLayout {
@@ -237,6 +320,19 @@ export function porterPanelLayout(w: number): PorterPanelLayout {
     caption: [p.pad, captionY, inner, p.captionH],
   };
 }
+
+/**
+ * Every wording this file writes onto the canvas, for `translations.ts`'s
+ * manifest contribution — the auto-legend's own title, its rows' captions,
+ * the gradient blocks and the Porter panel, all as `seed` (written into the
+ * document once, at the moment a legend is generated).
+ */
+export const WARDLEY_LEGEND_WORDINGS: readonly ChromeWording[] = [
+  WARDLEY_LEGEND_TITLE,
+  ...WARDLEY_LEGEND_DESC_WORDINGS,
+  ...WARDLEY_LEGEND_GRADIENT_WORDINGS,
+  ...WARDLEY_LEGEND_PORTER_WORDINGS,
+];
 
 /**
  * Build a "Legend" group from real, editable elements (white rect frame +
@@ -633,7 +729,14 @@ export function createWardleyLegend(
 
   // Title.
   ids.push(
-    text('Legend', x0 + PAD, y0 + PAD, W - PAD * 2, TITLE_FS + 6, TITLE_FS)
+    text(
+      translateKey(std, ...WARDLEY_LEGEND_TITLE),
+      x0 + PAD,
+      y0 + PAD,
+      W - PAD * 2,
+      TITLE_FS + 6,
+      TITLE_FS
+    )
   );
 
   // Rows.
@@ -643,7 +746,7 @@ export function createWardleyLegend(
     ids.push(...glyph(t, x0 + PAD + GLYPH_W / 2, cyRow));
     ids.push(
       text(
-        LEGEND_DESC[t],
+        translateKey(std, ...LEGEND_DESC[t]),
         x0 + PAD + GLYPH_W + GAP,
         cyRow - (TEXT_FS + 8) / 2,
         TEXT_W,
@@ -698,7 +801,7 @@ export function createWardleyLegend(
     });
     ids.push(
       text(
-        grad.caption,
+        translateKey(std, ...grad.caption),
         x0 + PAD + GLYPH_W + GAP,
         cyRow - GRAD_ROW_H / 2,
         TEXT_W,
@@ -736,7 +839,16 @@ export function createWardleyLegend(
     );
 
     const [tx, ty, tw, th] = panel.title;
-    ids.push(text("Porter's five forces", px + tx, py + ty, tw, th, p.titleFs));
+    ids.push(
+      text(
+        translateKey(std, ...WARDLEY_LEGEND_PORTER_TITLE),
+        px + tx,
+        py + ty,
+        tw,
+        th,
+        p.titleFs
+      )
+    );
 
     const [cx, cy] = panel.center;
     ids.push(
@@ -800,7 +912,7 @@ export function createWardleyLegend(
       );
       ids.push(
         text(
-          box.label,
+          translateKey(std, ...box.label),
           px + bx + 4,
           py + by + 3,
           bw - 8,
@@ -814,7 +926,7 @@ export function createWardleyLegend(
     const [capX, capY, capW, capH] = panel.caption;
     ids.push(
       text(
-        PORTER_CAPTION,
+        translateKey(std, ...PORTER_CAPTION),
         px + capX,
         py + capY,
         capW,

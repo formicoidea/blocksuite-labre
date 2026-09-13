@@ -1,3 +1,4 @@
+import { createIdentifier } from '@labre/global/di';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { type BlockModel, type BlockViewType, Store } from '@labre/store';
@@ -14,6 +15,12 @@ import type { BlockService } from '../../extension/index.js';
 import { BlockServiceIdentifier } from '../../identifier.js';
 import type { BlockStdScope } from '../../scope/index.js';
 import { BlockSelection } from '../../selection/index.js';
+import {
+  STD_VERSION_MISMATCH_BODY,
+  STD_VERSION_MISMATCH_DATA_VERSION,
+  STD_VERSION_MISMATCH_EDITOR_VERSION,
+  STD_VERSION_MISMATCH_TITLE,
+} from '../../translations.js';
 import { PropTypes, requiredProperties } from '../decorators/index.js';
 import {
   blockComponentSymbol,
@@ -23,6 +30,61 @@ import {
 import { stdContext, storeContext } from './lit-host.js';
 import { ShadowlessElement } from './shadowless-element.js';
 import type { WidgetComponent } from './widget-component.js';
+
+/**
+ * A minimal, LOCAL redeclaration of `@labre/affine-shared/services`'
+ * `TranslationService` — `@labre/std` must never import `@labre/affine-shared`
+ * (the dependency runs the other way), so this card cannot reuse
+ * `TranslationProvider`/`translateKey` directly.
+ *
+ * It still reaches the SAME host-registered service: `createIdentifier` keys
+ * a `Container`/`ServiceProvider` lookup by `identifierName` alone (a plain
+ * string, `packages/framework/global/src/di/identifier.ts`), never by object
+ * identity, so an independent `createIdentifier(..., 'AffineTranslationService')`
+ * call here resolves whatever a host registered under that same name via the
+ * real `TranslationProvider` — see
+ * `../../__tests__/block-component-version-mismatch.unit.spec.ts` for the
+ * proof.
+ */
+interface LocalTranslationService {
+  t(key: string, params?: Record<string, string | number>): string | undefined;
+}
+
+const LocalTranslationProvider = createIdentifier<LocalTranslationService>(
+  'AffineTranslationService'
+);
+
+/** `translateKey`'s own contract, replicated (see {@link LocalTranslationService}). */
+function localTranslate(
+  std: BlockStdScope,
+  key: string,
+  fallback: string
+): string {
+  const resolved = std.getOptional(LocalTranslationProvider)?.t(key);
+  return resolved !== undefined && resolved !== '' ? resolved : fallback;
+}
+
+const [VERSION_MISMATCH_TITLE_KEY, VERSION_MISMATCH_TITLE_FALLBACK] =
+  STD_VERSION_MISMATCH_TITLE;
+const [VERSION_MISMATCH_BODY_KEY, VERSION_MISMATCH_BODY_FALLBACK] =
+  STD_VERSION_MISMATCH_BODY;
+const [
+  VERSION_MISMATCH_EDITOR_VERSION_KEY,
+  VERSION_MISMATCH_EDITOR_VERSION_FALLBACK,
+] = STD_VERSION_MISMATCH_EDITOR_VERSION;
+const [
+  VERSION_MISMATCH_DATA_VERSION_KEY,
+  VERSION_MISMATCH_DATA_VERSION_FALLBACK,
+] = STD_VERSION_MISMATCH_DATA_VERSION;
+
+/** `translateKey`'s own `{{name}}` interpolation, replicated (see above). */
+function fillPlaceholder(
+  template: string,
+  name: string,
+  value: string
+): string {
+  return template.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`), value);
+}
 
 @requiredProperties({
   store: PropTypes.instanceOf(Store),
@@ -260,18 +322,47 @@ export class BlockComponent<
     expectedVersion: number,
     actualVersion: number
   ): TemplateResult {
+    const title = localTranslate(
+      this.std,
+      VERSION_MISMATCH_TITLE_KEY,
+      VERSION_MISMATCH_TITLE_FALLBACK
+    );
+    const body = fillPlaceholder(
+      localTranslate(
+        this.std,
+        VERSION_MISMATCH_BODY_KEY,
+        VERSION_MISMATCH_BODY_FALLBACK
+      ),
+      'flavour',
+      this.model.flavour
+    );
+    const editorVersion = fillPlaceholder(
+      localTranslate(
+        this.std,
+        VERSION_MISMATCH_EDITOR_VERSION_KEY,
+        VERSION_MISMATCH_EDITOR_VERSION_FALLBACK
+      ),
+      'version',
+      String(expectedVersion)
+    );
+    const dataVersion = fillPlaceholder(
+      localTranslate(
+        this.std,
+        VERSION_MISMATCH_DATA_VERSION_KEY,
+        VERSION_MISMATCH_DATA_VERSION_FALLBACK
+      ),
+      'version',
+      String(actualVersion)
+    );
     return html`
       <dl class="version-mismatch-warning" contenteditable="false">
         <dt>
-          <h4>Block Version Mismatched</h4>
+          <h4>${title}</h4>
         </dt>
         <dd>
-          <p>
-            We can not render this <var>${this.model.flavour}</var> block
-            because the version is mismatched.
-          </p>
-          <p>Editor version: <var>${expectedVersion}</var></p>
-          <p>Data version: <var>${actualVersion}</var></p>
+          <p>${body}</p>
+          <p>${editorVersion}</p>
+          <p>${dataVersion}</p>
         </dd>
       </dl>
     `;

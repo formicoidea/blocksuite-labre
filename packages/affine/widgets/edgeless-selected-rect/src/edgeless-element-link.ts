@@ -1,5 +1,6 @@
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import type { RootBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import {
   overlayScale,
   requestThrottledConnectedFrame,
@@ -15,6 +16,11 @@ import { OpenInNewIcon, RightSidebarIcon } from '@blocksuite/icons/lit';
 import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
+
+import {
+  EDGELESS_LINK_OPEN_DOC,
+  EDGELESS_LINK_OPEN_LINK,
+} from './translations.js';
 
 export const EDGELESS_ELEMENT_LINK_WIDGET = 'edgeless-element-link';
 
@@ -183,7 +189,10 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
     if (!target || !rect) return nothing;
 
     const isDoc = Boolean(target.linkedDocId);
-    const label = isDoc ? 'Open linked doc' : 'Open link';
+    const label = translateKey(
+      this.std,
+      ...(isDoc ? EDGELESS_LINK_OPEN_DOC : EDGELESS_LINK_OPEN_LINK)
+    );
 
     return html`<div
       class="open-link-button"

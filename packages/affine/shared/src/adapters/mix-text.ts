@@ -23,7 +23,9 @@ import {
 } from '@labre/store';
 
 import { MarkdownAdapter } from './markdown/markdown';
+import { CHROME_UNTITLED } from '../services/translation-service/chrome.js';
 import { AdapterFactoryIdentifier } from './types/adapter';
+import { resolveWording } from './utils/wording.js';
 
 export type MixText = string;
 
@@ -190,11 +192,12 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
 
   toDocSnapshot(payload: ToDocSnapshotPayload<MixText>): DocSnapshot {
     payload.file = payload.file.replaceAll('\r', '');
+    const untitled = resolveWording(this.provider, CHROME_UNTITLED);
     return {
       type: 'page',
       meta: {
         id: nanoid(),
-        title: 'Untitled',
+        title: untitled,
         createDate: Date.now(),
         tags: [],
       },
@@ -207,7 +210,7 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
             '$blocksuite:internal:text$': true,
             delta: [
               {
-                insert: 'Untitled',
+                insert: untitled,
               },
             ],
           },

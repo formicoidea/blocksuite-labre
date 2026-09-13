@@ -1,9 +1,14 @@
+import { translateKey } from '@labre/affine-shared/services';
+import { isFuzzyMatch } from '@labre/affine-shared/utils';
+import type { BlockStdScope } from '@labre/std';
+
 import type {
   SlashMenuActionItem,
   SlashMenuConfig,
   SlashMenuContext,
   SlashMenuItem,
   SlashMenuSubMenu,
+  SlashMenuTooltip,
 } from './types';
 
 /**
@@ -41,6 +46,59 @@ export function isSubMenuItem(item: SlashMenuItem): item is SlashMenuSubMenu {
 
 export function slashItemClassName({ name }: SlashMenuItem) {
   return name.split(' ').join('-').toLocaleLowerCase();
+}
+
+/**
+ * What an item SAYS, whether it declared a wording or a literal `name`.
+ * Mirrors `toolbarActionLabel`: the widget resolves `nameWording` at render,
+ * `name` stays the English identity used by tests and `searchAlias`.
+ */
+export function resolveSlashItemName(
+  std: BlockStdScope,
+  item: SlashMenuItem
+): string {
+  return item.nameWording ? translateKey(std, ...item.nameWording) : item.name;
+}
+
+/** {@link resolveSlashItemName}, for `description`. */
+export function resolveSlashItemDescription(
+  std: BlockStdScope,
+  item: SlashMenuItem
+): string | undefined {
+  return item.descriptionWording
+    ? translateKey(std, ...item.descriptionWording)
+    : item.description;
+}
+
+/** {@link resolveSlashItemName}, for a tooltip's `caption`. */
+export function resolveSlashTooltipCaption(
+  std: BlockStdScope,
+  tooltip: SlashMenuTooltip
+): string {
+  return tooltip.captionWording
+    ? translateKey(std, ...tooltip.captionWording)
+    : tooltip.caption;
+}
+
+/**
+ * Whether `item` matches a slash-menu search `query` — against its RESOLVED
+ * (translated) name, its English `name`, and its `searchAlias`, so a French
+ * user typing the translated word and a habitual user typing the English one
+ * both find the item. With no `TranslationProvider` the resolved name equals
+ * `name`, so this is unchanged from before wordings existed.
+ */
+export function slashItemMatchesQuery(
+  std: BlockStdScope,
+  item: SlashMenuItem,
+  query: string
+): boolean {
+  const { name, searchAlias = [] } = item;
+  const resolvedName = resolveSlashItemName(std, item);
+  const candidates =
+    resolvedName === name
+      ? [name, ...searchAlias]
+      : [name, resolvedName, ...searchAlias];
+  return candidates.some(str => isFuzzyMatch(str, query));
 }
 
 export function parseGroup(group: NonNullable<SlashMenuItem['group']>) {

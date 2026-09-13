@@ -3,11 +3,13 @@ import {
   LoadingIcon,
   WebIcon16,
 } from '@labre/affine-components/icons';
+import { FAVICON_ALT } from '@labre/affine-components/translations';
 import type { FootNote } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import {
   DocDisplayMetaProvider,
   LinkPreviewServiceIdentifier,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -83,7 +85,12 @@ export class FootNotePopup extends SignalWatcher(WithDisposable(LitElement)) {
       const imageSrc = favicon
         ? this.imageProxyService.buildUrl(favicon)
         : undefined;
-      return imageSrc ? html`<img src=${imageSrc} alt="favicon" />` : WebIcon16;
+      return imageSrc
+        ? html`<img
+            src=${imageSrc}
+            alt="${translateKey(this.std, ...FAVICON_ALT)}"
+          />`
+        : WebIcon16;
     }
     return undefined;
   });

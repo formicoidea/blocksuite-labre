@@ -1,6 +1,7 @@
 import {
   DocModeProvider,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -10,6 +11,10 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import type { CodeBlockComponent } from '../../code-block';
 import { CodeBlockPreviewIdentifier } from '../../code-preview-extension';
+import {
+  CODE_PREVIEW_TOGGLE_CODE,
+  CODE_PREVIEW_TOGGLE_PREVIEW,
+} from '../../translations.js';
 
 export class PreviewButton extends WithDisposable(SignalWatcher(LitElement)) {
   static override styles = css`
@@ -92,7 +97,7 @@ export class PreviewButton extends WithDisposable(SignalWatcher(LitElement)) {
           })}
           @click=${() => this._toggle(false)}
         >
-          Code
+          ${translateKey(this.blockComponent.std, ...CODE_PREVIEW_TOGGLE_CODE)}
         </div>
         <div
           class=${classMap({
@@ -101,7 +106,10 @@ export class PreviewButton extends WithDisposable(SignalWatcher(LitElement)) {
           })}
           @click=${() => this._toggle(true)}
         >
-          Preview
+          ${translateKey(
+            this.blockComponent.std,
+            ...CODE_PREVIEW_TOGGLE_PREVIEW
+          )}
         </div>
       </div>
     `;

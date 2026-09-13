@@ -6,8 +6,13 @@ import {
   NewIcon,
   NotionIcon,
 } from '@labre/affine-components/icons';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { openFilesWith, openSingleFileWith } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType, Schema, Workspace } from '@labre/store';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { query, state } from 'lit/decorators.js';
@@ -15,6 +20,18 @@ import { query, state } from 'lit/decorators.js';
 import { HtmlTransformer } from '../transformers/html.js';
 import { MarkdownTransformer } from '../transformers/markdown.js';
 import { NotionHtmlTransformer } from '../transformers/notion-html.js';
+import {
+  LINKED_DOC_IMPORT,
+  LINKED_DOC_IMPORT_COMING_SOON,
+  LINKED_DOC_IMPORT_FEEDBACK_LINK,
+  LINKED_DOC_IMPORT_FORMAT_NOTION,
+  LINKED_DOC_IMPORT_INTRO,
+  LINKED_DOC_IMPORT_LOADING,
+  LINKED_DOC_IMPORT_NOTION_HELP_TOOLTIP,
+  LINKED_DOC_IMPORT_NOTION_MARKDOWN_DEPRECATED,
+  LINKED_DOC_FORMAT_HTML,
+  LINKED_DOC_FORMAT_MARKDOWN,
+} from '../translations.js';
 import { styles } from './styles.js';
 
 export type OnSuccessHandler = (
@@ -35,7 +52,11 @@ export class ImportDoc extends WithDisposable(LitElement) {
     private readonly extensions: ExtensionType[],
     private readonly onSuccess?: OnSuccessHandler,
     private readonly onFail?: OnFailHandler,
-    private readonly abortController = new AbortController()
+    private readonly abortController = new AbortController(),
+    /** Set by the caller that has one (`config.ts`'s `showImportModal` call) —
+     * optional so this dialog still renders (in English) when created with
+     * none. */
+    private readonly std?: BlockStdScope
   ) {
     super();
 
@@ -47,6 +68,11 @@ export class ImportDoc extends WithDisposable(LitElement) {
     this._startY = 0;
 
     this._onMouseMove = this._onMouseMove.bind(this);
+  }
+
+  /** `translateKey(std, ...wording)` when `std` is available, else the literal. */
+  private _t(wording: ChromeWording): string {
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
   }
 
   private async _importHtml() {
@@ -126,9 +152,7 @@ export class ImportDoc extends WithDisposable(LitElement) {
       });
     needLoading && this.abortController.abort();
     if (hasMarkdown) {
-      this._onFail(
-        'Importing markdown files from Notion is deprecated. Please export your Notion pages as HTML.'
-      );
+      this._onFail(this._t(LINKED_DOC_IMPORT_NOTION_MARKDOWN_DEPRECATED));
       return;
     }
     this._onImportSuccess([entryId], {
@@ -193,13 +217,10 @@ export class ImportDoc extends WithDisposable(LitElement) {
             @mousedown="${this._onMouseDown}"
             @mouseup="${this._onMouseUp}"
           >
-            <div>Import</div>
+            <div>${this._t(LINKED_DOC_IMPORT)}</div>
             <loader-element .width=${'50px'}></loader-element>
           </header>
-          <div>
-            Importing the file may take some time. It depends on document size
-            and complexity.
-          </div>
+          <div>${this._t(LINKED_DOC_IMPORT_LOADING)}</div>
         </div>
       `;
     }
@@ -213,27 +234,27 @@ export class ImportDoc extends WithDisposable(LitElement) {
           <icon-button height="28px" @click="${this._onCloseClick}">
             ${CloseIcon}
           </icon-button>
-          <div>Import</div>
+          <div>${this._t(LINKED_DOC_IMPORT)}</div>
         </header>
         <div>
-          AFFiNE will gradually support more file formats for import.
+          ${this._t(LINKED_DOC_IMPORT_INTRO)}
           <a
             href="https://community.affine.pro/c/feature-requests/import-export"
             target="_blank"
-            >Provide feedback.</a
+            >${this._t(LINKED_DOC_IMPORT_FEEDBACK_LINK)}</a
           >
         </div>
         <div class="button-container">
           <icon-button
             class="button-item"
-            text="Markdown"
+            text="${this._t(LINKED_DOC_FORMAT_MARKDOWN)}"
             @click="${this._importMarkDown}"
           >
             ${ExportToMarkdownIcon}
           </icon-button>
           <icon-button
             class="button-item"
-            text="HTML"
+            text="${this._t(LINKED_DOC_FORMAT_HTML)}"
             @click="${this._importHtml}"
           >
             ${ExportToHTMLIcon}
@@ -242,7 +263,7 @@ export class ImportDoc extends WithDisposable(LitElement) {
         <div class="button-container">
           <icon-button
             class="button-item"
-            text="Notion"
+            text="${this._t(LINKED_DOC_IMPORT_FORMAT_NOTION)}"
             @click="${this._importNotion}"
           >
             ${NotionIcon}
@@ -253,17 +274,18 @@ export class ImportDoc extends WithDisposable(LitElement) {
             >
               ${HelpIcon}
               <affine-tooltip>
-                Learn how to Import your Notion pages into AFFiNE.
+                ${this._t(LINKED_DOC_IMPORT_NOTION_HELP_TOOLTIP)}
               </affine-tooltip>
             </div>
           </icon-button>
-          <icon-button class="button-item" text="Coming soon..." disabled>
+          <icon-button
+            class="button-item"
+            text="${this._t(LINKED_DOC_IMPORT_COMING_SOON)}"
+            disabled
+          >
             ${NewIcon}
           </icon-button>
         </div>
-        <!-- <div class="footer">
-        <div>Migrate from other versions of AFFiNE?</div>
-      </div> -->
       </div>
     `;
   }

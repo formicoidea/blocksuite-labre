@@ -4,7 +4,7 @@ export const PhotoTooltip = html`<svg width="170" height="106" viewBox="0 0 170 
 <g clip-path="url(#clip0_24732_2238)">
 <path d="M168 0H2C0.89543 0 0 0.89543 0 2V104C0 105.105 0.89543 106 2 106H168C169.105 106 170 105.105 170 104V2C170 0.89543 169.105 0 168 0Z" fill="white"/>
 <path d="M168 0H2C0.89543 0 0 0.89543 0 2V104C0 105.105 0.89543 106 2 106H168C169.105 106 170 105.105 170 104V2C170 0.89543 169.105 0 168 0Z" fill="white"/>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0em"><tspan x="10" y="18.2727">Insert a photo.</tspan></text>
+<rect x="10" y="10.7727" width="82.5" height="8" rx="4" fill="#8E8D91" fill-opacity="0.55"/>
 <path d="M191 28H10C8.89543 28 8 28.8954 8 30V113C8 114.105 8.89543 115 10 115H191C192.105 115 193 114.105 193 113V30C193 28.8954 192.105 28 191 28Z" fill="url(#pattern0_24732_2238)"/>
 </g>
 <defs>

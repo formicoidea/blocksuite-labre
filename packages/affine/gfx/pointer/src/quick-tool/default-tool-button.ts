@@ -1,4 +1,5 @@
 import { DefaultTool } from '@labre/affine-block-surface';
+import { translateKey } from '@labre/affine-shared/services';
 import { QuickToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { HandIcon, SelectIcon } from '@blocksuite/icons/lit';
 import { effect } from '@preact/signals-core';
@@ -6,6 +7,7 @@ import { css, html, LitElement } from 'lit';
 import { query } from 'lit/decorators.js';
 
 import { PanTool } from '../tools';
+import { POINTER_TOOLTIP_HAND, POINTER_TOOLTIP_SELECT } from '../translations';
 
 export class EdgelessDefaultToolButton extends QuickToolMixin(LitElement) {
   static override styles = css`
@@ -77,8 +79,14 @@ export class EdgelessDefaultToolButton extends QuickToolMixin(LitElement) {
     const { active } = this;
     const tipInfo =
       type === 'pan'
-        ? { tip: 'Hand', shortcut: 'H' }
-        : { tip: 'Select', shortcut: 'V' };
+        ? {
+            tip: translateKey(this.edgeless.std, ...POINTER_TOOLTIP_HAND),
+            shortcut: 'H',
+          }
+        : {
+            tip: translateKey(this.edgeless.std, ...POINTER_TOOLTIP_SELECT),
+            shortcut: 'V',
+          };
     return html`
       <edgeless-tool-icon-button
         class="edgeless-default-button ${type}"

@@ -29,11 +29,14 @@ import {
   BOARD_REF_HEIGHT,
   BOARD_REF_WIDTH,
   BOUNDARY_LABEL,
+  boundaryLabelKey,
   BOUNDARY_REF_HEIGHT,
   BOUNDARY_REF_WIDTH,
   DESCRIPTION_FONT_SIZE,
   DESCRIPTION_PLACEHOLDER,
+  DESCRIPTION_PLACEHOLDER_KEY,
   NODE_LABEL,
+  nodeLabelKey,
   NODE_PALETTE,
   NODE_SIZE,
   RELATIONSHIP_STROKE,
@@ -46,7 +49,7 @@ import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
 import { C4_AUTO_LEGEND } from './legend';
 import { c4NodeProps } from './presets';
 import { C4_BOUNDARY_ROLE, C4_ROLE, c4BoardRoleKey } from './roles';
-import { C4_TYPE_PLACEHOLDER } from './type-line';
+import { c4TypePlaceholder } from './type-line';
 
 /**
  * Standalone creation/activation actions for the C4 toolbox — the same shape
@@ -179,8 +182,11 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     gfx.layer.generateIndex(),
     C4_ROLE.title,
     // The kind's own label — `Person`, `Web app`. A name and a prompt at once,
-    // which is why the exporter writes it through unchanged.
-    NODE_LABEL[kind],
+    // which is why the exporter writes it through unchanged. Resolved HERE,
+    // once, exactly like a BPMN node's caption (`nodeLabelKey`): content from
+    // the moment it lands, so a component drawn in a translated host starts in
+    // that language.
+    translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind]),
     TITLE_FONT_SIZE,
     // The one tier with weight on it: it is the heading of the box, and at 20px
     // against a 16px sentence the size alone does not carry that.
@@ -192,7 +198,16 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     surface,
     gfx.layer.generateIndex(),
     C4_ROLE['type-line'],
-    C4_TYPE_PLACEHOLDER[kind],
+    // Resolved at placement, like the title above: `c4TypePlaceholder` reads
+    // through the host's catalogue for both halves of the prompt (the
+    // bracketed word AND the technology slot), and `C4TypeLineWatcher`
+    // (`node/type-line-watcher.ts`) now recomputes the canonical line the same
+    // way on every edit commit, so a translated seed here is no longer
+    // reverted to English the first time an author opens and closes the
+    // tier's editor without typing anything. `technologyOfTypeLine` and
+    // `c4StatedTechnology` (`component.ts`) recognise EITHER the English
+    // literal or the host's own resolved word (`type-line.ts`).
+    c4TypePlaceholder(kind, std),
     TYPE_FONT_SIZE,
     FontWeight.Regular,
     paint.text,
@@ -202,7 +217,14 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
     surface,
     gfx.layer.generateIndex(),
     C4_ROLE.description,
-    DESCRIPTION_PLACEHOLDER,
+    // Resolved at placement like the title above. `c4StatedDescription`
+    // (`component.ts`) still compares the stored text against the ENGLISH
+    // `DESCRIPTION_PLACEHOLDER` to read "nothing stated yet" — this lot's own
+    // French proposal for this key is the identical word ('description'), so
+    // the shipped catalogue keeps that comparison true; a host catalogue that
+    // chose a different wording would regain the same residual risk the type
+    // line carries permanently (see `notes`).
+    translateKey(std, DESCRIPTION_PLACEHOLDER_KEY, DESCRIPTION_PLACEHOLDER),
     DESCRIPTION_FONT_SIZE,
     FontWeight.Regular,
     paint.text,
@@ -296,7 +318,10 @@ export function createC4Boundary(
     // role of a boundary drawn before the split and of nothing this editor
     // creates. See the note above.
     role: C4_BOUNDARY_ROLE[variant],
-    name: BOUNDARY_LABEL[variant],
+    // Resolved HERE, once — the boundary's name is exported verbatim
+    // (`export.ts`) with no placeholder comparison, so it is as safe to
+    // translate as a component's title.
+    name: translateKey(std, boundaryLabelKey(variant), BOUNDARY_LABEL[variant]),
     variant,
     xywh: new Bound(
       cx - BOUNDARY_REF_WIDTH / 2,

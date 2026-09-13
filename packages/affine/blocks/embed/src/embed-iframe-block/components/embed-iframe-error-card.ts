@@ -3,6 +3,8 @@ import type { EmbedIframeBlockModel } from '@labre/affine-model';
 import {
   DocModeProvider,
   TelemetryProvider,
+  TOOLBAR_RELOAD,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { WithDisposable } from '@labre/global/lit';
@@ -17,6 +19,10 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import { ERROR_CARD_DEFAULT_HEIGHT } from '../consts';
 import type { EmbedIframeStatusCardOptions } from '../types';
+import {
+  EMBED_IFRAME_ERROR_EDIT,
+  EMBED_IFRAME_ERROR_TITLE,
+} from '../../translations';
 
 const LINK_EDIT_POPUP_OFFSET = 12;
 
@@ -246,7 +252,9 @@ export class EmbedIframeErrorCard extends WithDisposable(LitElement) {
             <span class="error-icon">
               ${InformationIcon({ width: '16px', height: '16px' })}
             </span>
-            <span class="error-title-text">This link couldn’t be loaded.</span>
+            <span class="error-title-text"
+              >${translateKey(this.std, ...EMBED_IFRAME_ERROR_TITLE)}</span
+            >
           </div>
           <div class="error-message">
             ${this.error?.message || 'Failed to load embedded content'}
@@ -259,14 +267,21 @@ export class EmbedIframeErrorCard extends WithDisposable(LitElement) {
                     <span class="icon"
                       >${EditIcon({ width: '16px', height: '16px' })}</span
                     >
-                    <span class="text">Edit</span>
+                    <span class="text"
+                      >${translateKey(
+                        this.std,
+                        ...EMBED_IFRAME_ERROR_EDIT
+                      )}</span
+                    >
                   </div>
                 `}
             <div class="button retry" @click=${this._handleRetry}>
               <span class="icon"
                 >${ResetIcon({ width: '16px', height: '16px' })}</span
               >
-              <span class="text">Reload</span>
+              <span class="text"
+                >${translateKey(this.std, ...TOOLBAR_RELOAD)}</span
+              >
             </div>
           </div>
         </div>

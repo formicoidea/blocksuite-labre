@@ -12,6 +12,7 @@ import {
   type ConnectionOverlay,
   ConnectorPathGenerator,
 } from '@labre/affine-gfx-connector';
+import { MINDMAP_SEED_NEW_NODE } from '@labre/affine-gfx-mindmap/translations';
 import { mountShapeTextEditor } from '@labre/affine-gfx-shape';
 import type {
   Connection,
@@ -27,7 +28,10 @@ import {
   ShapeElementModel,
   shapeMethods,
 } from '@labre/affine-model';
-import { ToolbarRegistryIdentifier } from '@labre/affine-shared/services';
+import {
+  ToolbarRegistryIdentifier,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { SelectedRect } from '@labre/affine-shared/types';
 import {
   handleNativeRangeAtPoint,
@@ -291,7 +295,7 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
       parentNode.id,
       target === 'sibling' ? this.current.id : undefined,
       undefined,
-      undefined
+      { text: translateKey(this.std, ...MINDMAP_SEED_NEW_NODE) }
     );
 
     if (parentNode.detail.collapsed) {

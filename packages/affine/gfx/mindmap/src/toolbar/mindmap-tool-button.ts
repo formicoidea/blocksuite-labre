@@ -22,7 +22,10 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import { translateKey } from '@labre/affine-shared/services';
+
 import { getMindMaps } from './assets.js';
+import { MINDMAP_TOOLTIP } from '../translations.js';
 import {
   type DraggableTool,
   getMindmapRender,
@@ -165,7 +168,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
         });
       },
       onImportMindMap: (bound: Bound) => {
-        return importMindmap(bound).then(mindmap => {
+        return importMindmap(bound, this.edgeless.std).then(mindmap => {
           const id = this.crud.addElement('mindmap', {
             children: mindmap,
             layoutType: mindmap?.layoutType === 'left' ? 1 : 0,
@@ -316,7 +319,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
       .tooltip=${popper
         ? ''
         : this.variant === 'mindmap'
-          ? 'Mind Map'
+          ? translateKey(this.edgeless.std, ...MINDMAP_TOOLTIP)
           : 'Others'}
       .tooltipOffset=${4}
       @click=${this._toggleMenu}

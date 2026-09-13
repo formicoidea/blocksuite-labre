@@ -5,8 +5,14 @@ import {
   roleLabel,
   TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
+import { BOARD_LEGEND_TITLE } from '@labre/affine-shared/services';
 
 import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
+import {
+  CORE_DOMAIN_SEED_LEGEND_MOVEMENT,
+  CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS,
+  CORE_DOMAIN_SEED_LEGEND_TEAM_MODES,
+} from '../translations';
 
 /**
  * What the Core Domain Chart's automatic legend can say — a TABLE, and nothing
@@ -36,11 +42,13 @@ import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles';
  * role.
  */
 export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   roles: CORE_DOMAIN_ROLES,
   sections: [
     {
-      title: 'Sub-domains',
+      title: CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS[1],
+      titleKey: CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS[0],
       entries: CD_SUBDOMAINS.map(preset => ({
         role: CORE_DOMAIN_ROLE[preset.kind],
         row: {
@@ -55,7 +63,8 @@ export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
       // three colours a reader has no key to — so the legend shows the same
       // square with the same letter in it, which is what `LegendRow.letter`
       // exists for.
-      title: 'Team interaction modes',
+      title: CORE_DOMAIN_SEED_LEGEND_TEAM_MODES[1],
+      titleKey: CORE_DOMAIN_SEED_LEGEND_TEAM_MODES[0],
       entries: TEAM_TOPOLOGIES.map(preset => ({
         role: CORE_DOMAIN_ROLE[preset.kind],
         row: {
@@ -67,7 +76,8 @@ export const CORE_DOMAIN_AUTO_LEGEND: AutoLegendSpec = {
       })),
     },
     {
-      title: 'Movement',
+      title: CORE_DOMAIN_SEED_LEGEND_MOVEMENT[1],
+      titleKey: CORE_DOMAIN_SEED_LEGEND_MOVEMENT[0],
       entries: [
         {
           role: CORE_DOMAIN_ROLE.movement,

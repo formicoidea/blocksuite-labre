@@ -45,6 +45,8 @@ import { remarkGfm } from './gfm';
 import { MarkdownPreprocessorManager } from './preprocessor';
 import { remarkCallout } from './remark-plugins/remark-callout';
 import type { Markdown, MarkdownAST } from './type';
+import { CHROME_UNTITLED } from '../../services/translation-service/chrome.js';
+import { resolveWording } from '../utils/wording.js';
 
 type MarkdownToSliceSnapshotPayload = {
   file: Markdown;
@@ -327,6 +329,7 @@ export class MarkdownAdapter extends BaseAdapter<Markdown> {
   ): Promise<DocSnapshot> {
     const markdownFile = this.preprocessorManager.process('doc', payload.file);
     const markdownAst = this._markdownToAst(markdownFile);
+    const untitled = resolveWording(this.provider, CHROME_UNTITLED);
     const blockSnapshotRoot = {
       type: 'block',
       id: nanoid(),
@@ -344,7 +347,7 @@ export class MarkdownAdapter extends BaseAdapter<Markdown> {
       type: 'page',
       meta: {
         id: nanoid(),
-        title: 'Untitled',
+        title: untitled,
         createDate: Date.now(),
         tags: [],
       },
@@ -357,7 +360,7 @@ export class MarkdownAdapter extends BaseAdapter<Markdown> {
             '$blocksuite:internal:text$': true,
             delta: [
               {
-                insert: 'Untitled',
+                insert: untitled,
               },
             ],
           },

@@ -1,4 +1,5 @@
 import { type NoteBlockModel, NoteDisplayMode } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { ArrowDownSmallIcon, InvisibleIcon } from '@blocksuite/icons/lit';
@@ -12,6 +13,13 @@ import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
 import { type TocContext, tocContext } from '../config';
+import {
+  OUTLINE_CARD_DISPLAY_MODE_TOOLTIP,
+  OUTLINE_CARD_SHOW_IN,
+  OUTLINE_MODE_BOTH,
+  OUTLINE_MODE_EDGELESS,
+  OUTLINE_MODE_PAGE,
+} from '../translations';
 import type { SelectEvent } from '../utils/custom-events';
 import type { NoteCardEntity, NoteDropPayload } from '../utils/drag';
 import * as styles from './outline-card.css';
@@ -73,15 +81,16 @@ export class OutlineNoteCard extends SignalWatcher(
   }
 
   private _getCurrentModeLabel(mode: NoteDisplayMode) {
+    const std = this._context.editor$.value.std;
     switch (mode) {
       case NoteDisplayMode.DocAndEdgeless:
-        return 'Both';
+        return translateKey(std, ...OUTLINE_MODE_BOTH);
       case NoteDisplayMode.EdgelessOnly:
-        return 'Edgeless';
+        return translateKey(std, ...OUTLINE_MODE_EDGELESS);
       case NoteDisplayMode.DocOnly:
-        return 'Page';
+        return translateKey(std, ...OUTLINE_MODE_PAGE);
       default:
-        return 'Both';
+        return translateKey(std, ...OUTLINE_MODE_BOTH);
     }
   }
 
@@ -200,9 +209,21 @@ export class OutlineNoteCard extends SignalWatcher(
           }
           <span class=${styles.divider}></span>
           <div class=${styles.displayModeButtonGroup}>
-            <span>Show in</span>
+            <span
+              >${translateKey(
+                this._context.editor$.value.std,
+                ...OUTLINE_CARD_SHOW_IN
+              )}</span
+            >
             <edgeless-tool-icon-button
-              .tooltip=${this._showPopper$.value ? '' : 'Display Mode'}
+              .tooltip=${
+                this._showPopper$.value
+                  ? ''
+                  : translateKey(
+                      this._context.editor$.value.std,
+                      ...OUTLINE_CARD_DISPLAY_MODE_TOOLTIP
+                    )
+              }
               .tipPosition=${'left-start'}
               .iconContainerPadding=${0}
               data-testid="display-mode-button"

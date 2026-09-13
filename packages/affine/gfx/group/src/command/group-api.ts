@@ -3,6 +3,7 @@ import {
   type GroupElementModel,
   MindmapElementModel,
 } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import type { Command } from '@labre/std';
 import {
   batchAddChildren,
@@ -14,6 +15,8 @@ import {
   type GfxModel,
   measureOperation,
 } from '@labre/std/gfx';
+
+import { GROUP_SEED_NAME } from '../translations';
 
 /**
  * Every element that sits at the root of the board, in painting order.
@@ -112,7 +115,10 @@ export const createGroupCommand: Command<
       },
       {} as Record<string, true>
     ),
-    title: `Group ${groups.length + 1}`,
+    // Translated HERE and once: the title is document content the moment it
+    // lands (ADR 0016), so the host's catalogue is asked at placement and
+    // never again — a renamed group keeps its name.
+    title: translateKey(std, ...GROUP_SEED_NAME, { n: groups.length + 1 }),
   });
   if (!groupId) {
     return;

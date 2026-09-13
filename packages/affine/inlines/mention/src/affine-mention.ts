@@ -1,4 +1,4 @@
-import { UserProvider } from '@labre/affine-shared/services';
+import { translateKey, UserProvider } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -11,6 +11,13 @@ import {
 import type { DeltaInsert } from '@labre/store';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
+
+import {
+  MENTION_INACTIVE_MEMBER,
+  MENTION_LOADING,
+  MENTION_UNKNOWN_MEMBER,
+  MENTION_UNKNOWN_NAME_FALLBACK,
+} from './translations.js';
 
 export class AffineMention extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -88,7 +95,9 @@ export class AffineMention extends SignalWatcher(
       data-selected=${this.selected}
       data-type="error"
       class="affine-mention"
-      >@Unknown Member<v-text .str=${ZERO_WIDTH_FOR_EMBED_NODE}></v-text
+      >${translateKey(this.std, ...MENTION_UNKNOWN_MEMBER)}<v-text
+        .str=${ZERO_WIDTH_FOR_EMBED_NODE}
+      ></v-text
     ></span>`;
 
     const userService = this.std.getOptional(UserProvider);
@@ -107,14 +116,17 @@ export class AffineMention extends SignalWatcher(
           data-selected=${this.selected}
           data-type="removed"
           class="affine-mention"
-          >@Inactive Member<v-text .str=${ZERO_WIDTH_FOR_EMBED_NODE}></v-text
+          >${translateKey(this.std, ...MENTION_INACTIVE_MEMBER)}<v-text
+            .str=${ZERO_WIDTH_FOR_EMBED_NODE}
+          ></v-text
         ></span>`;
       } else {
         return html`<span
           data-selected=${this.selected}
           data-type="default"
           class="affine-mention"
-          >@${userInfo$.value.name ?? 'Unknown'}<v-text
+          >@${userInfo$.value.name ??
+          translateKey(this.std, ...MENTION_UNKNOWN_NAME_FALLBACK)}<v-text
             .str=${ZERO_WIDTH_FOR_EMBED_NODE}
           ></v-text
         ></span>`;
@@ -126,7 +138,7 @@ export class AffineMention extends SignalWatcher(
         data-selected=${this.selected}
         data-type="loading"
         class="affine-mention"
-        >@loading<span class="dots"
+        >${translateKey(this.std, ...MENTION_LOADING)}<span class="dots"
           ><span class="dot">.</span><span class="dot">.</span
           ><span class="dot">.</span></span
         ><v-text .str=${ZERO_WIDTH_FOR_EMBED_NODE}></v-text

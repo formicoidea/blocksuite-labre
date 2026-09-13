@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "sessions": {
+    "cf6cfe30-a193-4119-82f3-affec066964b": {
+      "updatedAt": 1789134512750,
+      "files": {
+        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\goofy-nightingale-0f393f\\packages\\affine\\shared\\src\\services\\translation-service\\index.ts": {
+          "editCount": 3,
+          "findings": []
+        },
+        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\goofy-nightingale-0f393f\\packages\\affine\\shared\\src\\__tests__\\services\\translation.unit.spec.ts": {
+          "editCount": 2,
+          "findings": [],
+          "stopBaseline": { "version": 1, "engine": "0.1.5", "counts": {} }
+        },
+        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\goofy-nightingale-0f393f\\packages\\affine\\all\\src\\translations.ts": {
+          "editCount": 3,
+          "findings": []
+        }
+      }
+    }
+  }
+}

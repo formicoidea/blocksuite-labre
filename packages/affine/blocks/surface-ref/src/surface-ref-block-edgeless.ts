@@ -68,6 +68,7 @@ export class EdgelessSurfaceRefBlockComponent extends BlockComponent<SurfaceRefB
         .referenceModel=${this._referenceModel}
         .refFlavour=${this.model.props.refFlavour$.value}
         .inEdgeless=${true}
+        .std=${this.std}
       ></surface-ref-placeholder>
     </div>`;
   }

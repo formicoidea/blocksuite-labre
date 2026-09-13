@@ -12,6 +12,7 @@ import {
   toolbarActionLabel,
   type ToolbarContext,
   type ToolbarModuleConfig,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   CopyIcon,
@@ -26,6 +27,12 @@ import { keyed } from 'lit-html/directives/keyed.js';
 
 import { AffineLink } from '../affine-link';
 import { toggleLinkPopup } from '../link-popup/toggle-link-popup';
+import {
+  LINK_TOOLBAR_COPIED_TOAST,
+  LINK_TOOLBAR_COPY_LINK,
+  LINK_TOOLBAR_EDIT,
+  LINK_TOOLBAR_REMOVE_LINK,
+} from '../../translations.js';
 
 const trackBaseProps = {
   segment: 'doc',
@@ -98,7 +105,7 @@ export const builtinInlineLinkToolbarConfig = {
       actions: [
         {
           id: 'copy-link',
-          tooltip: 'Copy link',
+          tooltipWording: LINK_TOOLBAR_COPY_LINK,
           icon: CopyIcon(),
           run(ctx) {
             const target = ctx.message$.peek()?.element;
@@ -112,7 +119,10 @@ export const builtinInlineLinkToolbarConfig = {
             ctx.reset();
 
             navigator.clipboard.writeText(link).catch(console.error);
-            toast(ctx.host, 'Copied link to clipboard');
+            toast(
+              ctx.host,
+              translateKey(ctx.std, ...LINK_TOOLBAR_COPIED_TOAST)
+            );
 
             ctx.track('CopiedLink', {
               ...trackBaseProps,
@@ -122,7 +132,7 @@ export const builtinInlineLinkToolbarConfig = {
         },
         {
           id: 'edit',
-          tooltip: 'Edit',
+          tooltipWording: LINK_TOOLBAR_EDIT,
           icon: EditIcon(),
           run(ctx) {
             const target = ctx.message$.peek()?.element;
@@ -379,7 +389,7 @@ export const builtinInlineLinkToolbarConfig = {
     {
       placement: ActionPlacement.More,
       id: 'b.remove-link',
-      label: 'Remove link',
+      labelWording: LINK_TOOLBAR_REMOVE_LINK,
       icon: UnlinkIcon(),
       run(ctx) {
         const target = ctx.message$.peek()?.element;

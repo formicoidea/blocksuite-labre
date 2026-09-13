@@ -4,6 +4,11 @@ import { isInsideBlockByFlavour } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
 import { FontIcon } from '@blocksuite/icons/lit';
 
+import {
+  CALLOUT_SLASH_CAPTION,
+  CALLOUT_SLASH_DESCRIPTION,
+  CALLOUT_SLASH_NAME,
+} from '../translations';
 import { calloutTooltip } from './tooltips';
 
 // No `disableWhen` here on purpose. The widget ORs every config's `disableWhen`
@@ -14,11 +19,14 @@ export const calloutSlashMenuConfig: SlashMenuConfig = {
   items: [
     {
       name: 'Callout',
+      nameWording: CALLOUT_SLASH_NAME,
       description: 'Let your words stand out.',
+      descriptionWording: CALLOUT_SLASH_DESCRIPTION,
       icon: FontIcon(),
       tooltip: {
         figure: calloutTooltip,
         caption: 'Callout',
+        captionWording: CALLOUT_SLASH_CAPTION,
       },
       searchAlias: ['callout'],
       group: '0_Basic@9',

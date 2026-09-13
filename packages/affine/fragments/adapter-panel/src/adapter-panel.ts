@@ -1,3 +1,4 @@
+import type { BlockStdScope } from '@labre/affine/std';
 import type { Store, TransformerMiddleware } from '@labre/affine/store';
 import {
   type HtmlAdapter,
@@ -130,6 +131,7 @@ export class AdapterPanel extends SignalWatcher(WithDisposable(LitElement)) {
       htmlContent$: signal(''),
       markdownContent$: signal(''),
       plainTextContent$: signal(''),
+      std: this.std,
     };
   }
 
@@ -162,6 +164,10 @@ export class AdapterPanel extends SignalWatcher(WithDisposable(LitElement)) {
 
   @property({ attribute: false })
   accessor store!: Store;
+
+  /** See `AdapterPanelContext['std']`. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 
   @property({ attribute: false })
   accessor transformerMiddlewares: TransformerMiddleware[] = [];

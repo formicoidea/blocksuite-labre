@@ -1,12 +1,21 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { Placement } from '@floating-ui/dom';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import type { TemplateResult } from 'lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { cache } from 'lit/directives/cache.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import { ICON_BUTTON_COMING_SOON } from '../translations.js';
+
 export class EditorIconButton extends LitElement {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     :host([disabled]),
     :host(:disabled) {
@@ -116,7 +125,11 @@ export class EditorIconButton extends LitElement {
   }
 
   override render() {
-    const tooltip = this.coming ? '(Coming soon)' : this.tooltip;
+    const tooltip = this.coming
+      ? this.std
+        ? translateKey(this.std, ...ICON_BUTTON_COMING_SOON)
+        : ICON_BUTTON_COMING_SOON[1]
+      : this.tooltip;
     const classnames = `icon-container active-mode-${this.activeMode} ${this.hoverState ? 'hovered' : ''}`;
     const padding = this.iconContainerPadding;
     const iconContainerStyles = styleMap({

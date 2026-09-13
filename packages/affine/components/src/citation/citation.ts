@@ -1,6 +1,10 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
 import { baseTheme } from '@toeverything/theme';
+import { consume } from '@lit/context';
 import {
   css,
   html,
@@ -12,7 +16,12 @@ import {
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import { FAVICON_ALT } from '../translations.js';
+
 export class CitationCard extends SignalWatcher(WithDisposable(LitElement)) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     .citation-container {
       width: 100%;
@@ -109,7 +118,10 @@ export class CitationCard extends SignalWatcher(WithDisposable(LitElement)) {
 
   private readonly _IconTemplate = (icon: TemplateResult | string) => {
     if (typeof icon === 'string') {
-      return html`<img src="${icon}" alt="favicon" />`;
+      const alt = this.std
+        ? translateKey(this.std, ...FAVICON_ALT)
+        : FAVICON_ALT[1];
+      return html`<img src="${icon}" alt="${alt}" />`;
     }
     return icon;
   };

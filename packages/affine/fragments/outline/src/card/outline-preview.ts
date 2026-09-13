@@ -8,7 +8,11 @@ import type {
   ParagraphBlockModel,
   RootBlockModel,
 } from '@labre/affine-model';
-import { DocDisplayMetaProvider } from '@labre/affine-shared/services';
+import {
+  DocDisplayMetaProvider,
+  DOC_UNTITLED,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { noop } from '@labre/global/utils';
@@ -20,13 +24,16 @@ import { html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
-import {
-  placeholderMap,
-  previewIconMap,
-  type TocContext,
-  tocContext,
-} from '../config.js';
+import { previewIconMap, type TocContext, tocContext } from '../config.js';
 import { isHeadingBlock, isRootBlock } from '../utils/query.js';
+import {
+  OUTLINE_PLACEHOLDER_ATTACHMENT,
+  OUTLINE_PLACEHOLDER_BOOKMARK,
+  OUTLINE_PLACEHOLDER_CODE,
+  OUTLINE_PLACEHOLDER_DATABASE,
+  OUTLINE_PLACEHOLDER_IMAGE,
+  OUTLINE_PREVIEW_DELETED_DOC,
+} from '../translations.js';
 import * as styles from './outline-preview.css';
 
 function assertType<T>(value: unknown): asserts value is T {
@@ -40,6 +47,10 @@ export class OutlineBlockPreview extends SignalWatcher(
 ) {
   private get _docDisplayMetaService() {
     return this._context.editor$.value.std.get(DocDisplayMetaProvider);
+  }
+
+  private get _std() {
+    return this._context.editor$.value.std;
   }
 
   private _TextBlockPreview(block: ParagraphBlockModel | ListBlockModel) {
@@ -61,7 +72,7 @@ export class OutlineBlockPreview extends SignalWatcher(
           ? LinkedPageIcon({ width: '1.1em', height: '1.1em' })
           : this._docDisplayMetaService.icon(refMeta.id).value;
         const title = unavailable
-          ? 'Deleted doc'
+          ? translateKey(this._std, ...OUTLINE_PREVIEW_DELETED_DOC)
           : this._docDisplayMetaService.title(refMeta.id).value;
 
         return html`<span
@@ -76,7 +87,9 @@ export class OutlineBlockPreview extends SignalWatcher(
               [styles.linkedDocText]: true,
               [styles.linkedDocTextUnavailable]: unavailable,
             })}
-            >${title.length ? title : 'Untitled'}</span
+            >${title.length
+              ? title
+              : translateKey(this._std, ...DOC_UNTITLED)}</span
           ></span
         >`;
       } else {
@@ -150,7 +163,7 @@ export class OutlineBlockPreview extends SignalWatcher(
           <span class="${styles.text} ${styles.textGeneral}"
             >${block.props.title ||
             block.props.url ||
-            placeholderMap['bookmark']}</span
+            translateKey(this._std, ...OUTLINE_PLACEHOLDER_BOOKMARK)}</span
           >
           ${showPreviewIcon
             ? html`<span class=${iconClass}
@@ -162,7 +175,8 @@ export class OutlineBlockPreview extends SignalWatcher(
         assertType<CodeBlockModel>(block);
         return html`
           <span class="${styles.text} ${styles.textGeneral}"
-            >${block.props.language ?? placeholderMap['code']}</span
+            >${block.props.language ??
+            translateKey(this._std, ...OUTLINE_PLACEHOLDER_CODE)}</span
           >
           ${showPreviewIcon
             ? html`<span class=${iconClass}>${previewIconMap['code']}</span>`
@@ -174,7 +188,7 @@ export class OutlineBlockPreview extends SignalWatcher(
           <span class="${styles.text} ${styles.textGeneral}"
             >${block.props.title.toString().length
               ? block.props.title.toString()
-              : placeholderMap['database']}</span
+              : translateKey(this._std, ...OUTLINE_PLACEHOLDER_DATABASE)}</span
           >
           ${showPreviewIcon
             ? html`<span class=${iconClass}>${previewIconMap['table']}</span>`
@@ -186,7 +200,7 @@ export class OutlineBlockPreview extends SignalWatcher(
           <span class="${styles.text} ${styles.textGeneral}"
             >${block.props.caption?.length
               ? block.props.caption
-              : placeholderMap['image']}</span
+              : translateKey(this._std, ...OUTLINE_PLACEHOLDER_IMAGE)}</span
           >
           ${showPreviewIcon
             ? html`<span class=${iconClass}>${previewIconMap['image']}</span>`
@@ -198,7 +212,10 @@ export class OutlineBlockPreview extends SignalWatcher(
           <span class="${styles.text} ${styles.textGeneral}"
             >${block.props.name?.length
               ? block.props.name
-              : placeholderMap['attachment']}</span
+              : translateKey(
+                  this._std,
+                  ...OUTLINE_PLACEHOLDER_ATTACHMENT
+                )}</span
           >
           ${showPreviewIcon
             ? html`<span class=${iconClass}

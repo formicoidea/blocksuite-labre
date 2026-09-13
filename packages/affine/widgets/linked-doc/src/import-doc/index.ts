@@ -1,3 +1,4 @@
+import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType, Schema, Workspace } from '@labre/store';
 
 import {
@@ -14,6 +15,7 @@ export function showImportModal({
   onFail,
   container = document.body,
   abortController = new AbortController(),
+  std,
 }: {
   schema: Schema;
   collection: Workspace;
@@ -23,6 +25,8 @@ export function showImportModal({
   multiple?: boolean;
   container?: HTMLElement;
   abortController?: AbortController;
+  /** See `ImportDoc`'s own constructor param. */
+  std?: BlockStdScope;
 }) {
   const importDoc = new ImportDoc(
     collection,
@@ -30,7 +34,8 @@ export function showImportModal({
     extensions,
     onSuccess,
     onFail,
-    abortController
+    abortController,
+    std
   );
   container.append(importDoc);
   abortController.signal.addEventListener('abort', () => importDoc.remove());

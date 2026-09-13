@@ -21,14 +21,17 @@ import {
   type LinkEventType,
   type OpenDocMode,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CAPTION,
   TOOLBAR_CARD_VIEW,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   TOOLBAR_EMBED_VIEW,
   TOOLBAR_INLINE_VIEW,
+  TOOLBAR_OPEN_THIS_DOC,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -55,6 +58,13 @@ import { keyed } from 'lit/directives/keyed.js';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { EmbedSyncedDocBlockComponent } from '../embed-synced-doc-block';
+import {
+  EMBED_DOC_DUPLICATE_AS_NOTE,
+  EMBED_DOC_DUPLICATE_AS_NOTE_TOOLTIP,
+  EMBED_DOC_INSERT_TO_PAGE,
+  EMBED_DOC_OPEN_DOC,
+} from '../../translations';
+
 const trackBaseProps = {
   category: 'linked doc',
   type: 'embed view',
@@ -82,9 +92,13 @@ const openDocActions = [
     mode: 'open-in-active-view',
     id: 'a.open-in-active-view',
     label: 'Open this doc',
+    labelWording: TOOLBAR_OPEN_THIS_DOC,
     icon: ExpandFullIcon(),
   },
-] as const satisfies (Pick<ToolbarAction, 'id' | 'label' | 'icon'> & {
+] as const satisfies (Pick<
+  ToolbarAction,
+  'id' | 'label' | 'labelWording' | 'icon'
+> & {
   mode: OpenDocMode;
 })[];
 
@@ -107,12 +121,16 @@ const openDocActionGroup = {
         run: (_ctx: ToolbarContext) => block.open({ openMode }),
       };
     });
+    const openDocLabel = translateKey(ctx.std, ...EMBED_DOC_OPEN_DOC);
 
     return html`
       <editor-menu-button
         .contentPadding="${'8px'}"
         .button=${html`
-          <editor-icon-button aria-label="Open doc" .tooltip=${'Open doc'}>
+          <editor-icon-button
+            aria-label=${openDocLabel}
+            .tooltip=${openDocLabel}
+          >
             ${OpenInNewIcon()} ${EditorChevronDown}
           </editor-icon-button>
         `}
@@ -121,17 +139,21 @@ const openDocActionGroup = {
           ${repeat(
             actions,
             action => action.id,
-            ({ label, icon, run, disabled }) => html`
-              <editor-menu-action
-                aria-label=${ifDefined(label)}
-                ?disabled=${ifDefined(
-                  typeof disabled === 'function' ? disabled(ctx) : disabled
-                )}
-                @click=${() => run?.(ctx)}
-              >
-                ${icon}<span class="label">${label}</span>
-              </editor-menu-action>
-            `
+            action => {
+              const label = toolbarActionLabel(ctx.std, action);
+              const { icon, run, disabled } = action;
+              return html`
+                <editor-menu-action
+                  aria-label=${ifDefined(label)}
+                  ?disabled=${ifDefined(
+                    typeof disabled === 'function' ? disabled(ctx) : disabled
+                  )}
+                  @click=${() => run?.(ctx)}
+                >
+                  ${icon}<span class="label">${label}</span>
+                </editor-menu-action>
+              `;
+            }
           )}
         </div>
       </editor-menu-button>
@@ -212,6 +234,7 @@ const conversionsActionGroup = {
 const captionAction = {
   id: 'd.caption',
   tooltip: 'Caption',
+  tooltipWording: TOOLBAR_CAPTION,
   icon: CaptionIcon(),
   run(ctx) {
     const block = ctx.getCurrentBlockByType(EmbedSyncedDocBlockComponent);
@@ -301,7 +324,9 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'b.insert-to-page',
       label: 'Insert to page',
+      labelWording: EMBED_DOC_INSERT_TO_PAGE,
       tooltip: 'Insert to page',
+      tooltipWording: EMBED_DOC_INSERT_TO_PAGE,
       icon: InsertIntoPageIcon(),
       run: ctx => {
         const model = ctx.getCurrentModelByType(EmbedSyncedDocModel);
@@ -336,8 +361,10 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'c.duplicate-as-note',
       label: 'Duplicate as note',
+      labelWording: EMBED_DOC_DUPLICATE_AS_NOTE,
       tooltip:
         'Duplicate as note to create an editable copy, the original remains unchanged.',
+      tooltipWording: EMBED_DOC_DUPLICATE_AS_NOTE_TOOLTIP,
       icon: DuplicateIcon(),
       run: ctx => {
         const { gfx } = ctx;

@@ -3,6 +3,7 @@ import type { FrameBlockModel } from '@labre/affine-model';
 import {
   EditPropsStore,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import type { IPoint, IVec } from '@labre/global/gfx';
 import { Bound, Vec } from '@labre/global/gfx';
@@ -15,6 +16,7 @@ import {
   EdgelessFrameManagerIdentifier,
   type FrameOverlay,
 } from './frame-manager';
+import { FRAME_SEED_NAME } from './translations';
 
 export class FrameTool extends BaseTool {
   static override toolName = 'frame';
@@ -71,7 +73,15 @@ export class FrameTool extends BaseTool {
       const props = this.std
         .get(EditPropsStore)
         .applyLastProps('affine:frame', {
-          title: new Text(new Y.Text(`Frame ${frames.length + 1}`)),
+          // Translated HERE and once, like `EdgelessFrameManager._addFrameBlock`:
+          // the title is document content the moment it lands (ADR 0016).
+          title: new Text(
+            new Y.Text(
+              translateKey(this.std, ...FRAME_SEED_NAME, {
+                n: frames.length + 1,
+              })
+            )
+          ),
           xywh: bound.serialize(),
           // Not the raw back of the stack: a frame drawn on a framework
           // background must sit just above it, or the author draws blind

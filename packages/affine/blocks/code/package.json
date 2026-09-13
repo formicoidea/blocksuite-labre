@@ -44,7 +44,8 @@
     ".": "./src/index.ts",
     "./turbo-painter": "./src/turbo/code-painter.worker.ts",
     "./view": "./src/view.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./translations": "./src/translations.ts"
   },
   "files": [
     "src",

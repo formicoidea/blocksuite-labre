@@ -54,36 +54,14 @@ export const previewIconMap = {
   attachment: AttachmentIcon(_16px),
 };
 
-const paragraphPlaceholderMap: Record<
-  ParagraphBlockModel['props']['type'],
-  string
-> = {
-  quote: 'Quote',
-  text: 'Text Block',
-  h1: 'Heading 1',
-  h2: 'Heading 2',
-  h3: 'Heading 3',
-  h4: 'Heading 4',
-  h5: 'Heading 5',
-  h6: 'Heading 6',
-};
-
-export const placeholderMap = {
-  code: 'Code Block',
-  bulleted: 'Bulleted List',
-  numbered: 'Numbered List',
-  toggle: 'Toggle List',
-  todo: 'Todo',
-  bookmark: 'Bookmark',
-  image: 'Image',
-  database: 'Database',
-  attachment: 'Attachment',
-  ...paragraphPlaceholderMap,
-};
-
-export const headingKeys = new Set(
-  Object.keys(paragraphPlaceholderMap).filter(key => key.startsWith('h'))
-);
+export const headingKeys = new Set<ParagraphBlockModel['props']['type']>([
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+]);
 
 export const outlineSettingsKey = 'outlinePanelSettings';
 

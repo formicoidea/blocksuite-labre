@@ -8,6 +8,13 @@ import {
   TextAlign,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  type ChromeWording,
+  fillPlaceholders,
+  translateKey,
+  type TranslationParams,
+} from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 
 import {
   makeTemplateSnapshot,
@@ -15,6 +22,40 @@ import {
   surfaceText,
 } from '../make-snapshot.js';
 import type { Template, TemplateCategory } from '../toolbar/template-type.js';
+import {
+  BMC_SEED_CHANNELS,
+  BMC_SEED_COST_STRUCTURE,
+  BMC_SEED_CUSTOMER_RELATIONSHIPS,
+  BMC_SEED_CUSTOMER_SEGMENTS,
+  BMC_SEED_DATE,
+  BMC_SEED_DESIGNED_BY,
+  BMC_SEED_DESIGNED_FOR,
+  BMC_SEED_KEY_ACTIVITIES,
+  BMC_SEED_KEY_PARTNERSHIPS,
+  BMC_SEED_KEY_RESOURCES,
+  BMC_SEED_REVENUE_STREAMS,
+  BMC_SEED_TITLE,
+  BMC_SEED_VALUE_PROPOSITIONS,
+  BMC_SEED_VERSION,
+  FISHBONE_SEED_CATEGORY,
+  FISHBONE_SEED_EFFECT,
+  FISHBONE_SEED_ITEM_1,
+  FISHBONE_SEED_ITEM_2,
+  GANTT_SEED_BUILD,
+  GANTT_SEED_DESIGN,
+  GANTT_SEED_DISCOVERY,
+  GANTT_SEED_LAUNCH,
+  GANTT_SEED_WEEK,
+  KANBAN_SEED_CARD,
+  KANBAN_SEED_DOING,
+  KANBAN_SEED_DONE,
+  KANBAN_SEED_TODO,
+  SWOT_SEED_OPPORTUNITIES,
+  SWOT_SEED_STRENGTHS,
+  SWOT_SEED_THREATS,
+  SWOT_SEED_WEAKNESSES,
+  TEMPLATE_PANEL_CATEGORY_OTHER,
+} from '../translations.js';
 
 /**
  * The generic ("Other") diagrams: built ONLY from general BlockSuite shapes
@@ -123,22 +164,33 @@ function line(
   };
 }
 
+/** Resolve a wording through the host, or its English fallback with no host. */
+function tr(
+  std: BlockStdScope | undefined,
+  wording: ChromeWording,
+  params?: TranslationParams
+): string {
+  return std
+    ? translateKey(std, ...wording, params)
+    : fillPlaceholders(wording[1], params);
+}
+
 // ── SWOT (window-mullion quadrant, black labels) ──────────────────────
-function swot(): SurfaceElementsJSON {
+function swot(std?: BlockStdScope): SurfaceElementsJSON {
   const M = { fontSize: 22, weight: FontWeight.Medium } as const;
   return {
     box: rect(0, 0, 520, 340),
     v: line(260, 0, 260, 340),
     h: line(0, 170, 520, 170),
-    s: label(24, 24, 220, 30, 'Strengths', M),
-    w: label(284, 24, 220, 30, 'Weaknesses', M),
-    o: label(24, 194, 220, 30, 'Opportunities', M),
-    t: label(284, 194, 220, 30, 'Threats', M),
+    s: label(24, 24, 220, 30, tr(std, SWOT_SEED_STRENGTHS), M),
+    w: label(284, 24, 220, 30, tr(std, SWOT_SEED_WEAKNESSES), M),
+    o: label(24, 194, 220, 30, tr(std, SWOT_SEED_OPPORTUNITIES), M),
+    t: label(284, 194, 220, 30, tr(std, SWOT_SEED_THREATS), M),
   };
 }
 
 // ── Kanban (To do / Doing / Done) ─────────────────────────────────────
-function kanban(): SurfaceElementsJSON {
+function kanban(std?: BlockStdScope): SurfaceElementsJSON {
   const colOpts = {
     fill: NOTATION_NEUTRALS.cardFill,
     stroke: MUTED,
@@ -150,22 +202,23 @@ function kanban(): SurfaceElementsJSON {
     weight: FontWeight.Medium,
     align: TextAlign.Center,
   } as const;
+  const cardText = tr(std, KANBAN_SEED_CARD);
   const card = (x: number, y: number, fill: string, stroke: string) =>
     rect(x, y, 188, 60, {
       fill,
       stroke,
       sw: 1.5,
       radius: 8,
-      text: 'Card',
+      text: cardText,
       fontSize: 14,
     });
   return {
     c1: rect(0, 0, 220, 420, colOpts),
     c2: rect(244, 0, 220, 420, colOpts),
     c3: rect(488, 0, 220, 420, colOpts),
-    h1: label(0, 16, 220, 24, 'To do', head),
-    h2: label(244, 16, 220, 24, 'Doing', head),
-    h3: label(488, 16, 220, 24, 'Done', head),
+    h1: label(0, 16, 220, 24, tr(std, KANBAN_SEED_TODO), head),
+    h2: label(244, 16, 220, 24, tr(std, KANBAN_SEED_DOING), head),
+    h3: label(488, 16, 220, 24, tr(std, KANBAN_SEED_DONE), head),
     a1: card(16, 56, '#fde6c8', '#e0a23a'),
     a2: card(16, 128, '#fde6c8', '#e0a23a'),
     b1: card(260, 56, '#d6e4fb', '#4574c4'),
@@ -175,7 +228,7 @@ function kanban(): SurfaceElementsJSON {
 }
 
 // ── Business Model Canvas (Strategyzer 9-block layout) ────────────────
-function bmc(): SurfaceElementsJSON {
+function bmc(std?: BlockStdScope): SurfaceElementsJSON {
   const blk = { stroke: DARK, sw: 1.5 } as const;
   const t = (x: number, y: number, s: string) =>
     label(x + 12, y + 12, 180, 22, s, {
@@ -189,12 +242,12 @@ function bmc(): SurfaceElementsJSON {
       color: NOTATION_NEUTRALS.label,
     }),
   });
-  const h1 = hdr(470, 'Designed for');
-  const h2 = hdr(602, 'Designed by');
-  const h3 = hdr(734, 'Date');
-  const h4 = hdr(866, 'Version');
+  const h1 = hdr(470, tr(std, BMC_SEED_DESIGNED_FOR));
+  const h2 = hdr(602, tr(std, BMC_SEED_DESIGNED_BY));
+  const h3 = hdr(734, tr(std, BMC_SEED_DATE));
+  const h4 = hdr(866, tr(std, BMC_SEED_VERSION));
   return {
-    title: label(0, 8, 440, 32, 'Business model canvas', {
+    title: label(0, 8, 440, 32, tr(std, BMC_SEED_TITLE), {
       fontSize: 24,
       weight: FontWeight.Medium,
     }),
@@ -215,22 +268,25 @@ function bmc(): SurfaceElementsJSON {
     cs: rect(800, 56, 196, 300, blk),
     cost: rect(0, 360, 496, 84, blk),
     rev: rect(500, 360, 496, 84, blk),
-    tkp: t(0, 56, 'Key partnerships'),
-    tka: t(200, 56, 'Key activities'),
-    tkr: t(200, 206, 'Key resources'),
-    tvp: t(400, 56, 'Value propositions'),
-    tcr: t(600, 56, 'Customer relationships'),
-    tch: t(600, 206, 'Channels'),
-    tcs: t(800, 56, 'Customer segments'),
-    tcost: t(0, 360, 'Cost structure'),
-    trev: t(500, 360, 'Revenue streams'),
+    tkp: t(0, 56, tr(std, BMC_SEED_KEY_PARTNERSHIPS)),
+    tka: t(200, 56, tr(std, BMC_SEED_KEY_ACTIVITIES)),
+    tkr: t(200, 206, tr(std, BMC_SEED_KEY_RESOURCES)),
+    tvp: t(400, 56, tr(std, BMC_SEED_VALUE_PROPOSITIONS)),
+    tcr: t(600, 56, tr(std, BMC_SEED_CUSTOMER_RELATIONSHIPS)),
+    tch: t(600, 206, tr(std, BMC_SEED_CHANNELS)),
+    tcs: t(800, 56, tr(std, BMC_SEED_CUSTOMER_SEGMENTS)),
+    tcost: t(0, 360, tr(std, BMC_SEED_COST_STRUCTURE)),
+    trev: t(500, 360, tr(std, BMC_SEED_REVENUE_STREAMS)),
   };
 }
 
 // ── Fishbone / Ishikawa (spine + arrowhead bones + CATEGORY/ITEM) ─────
-function fishbone(): SurfaceElementsJSON {
+function fishbone(std?: BlockStdScope): SurfaceElementsJSON {
+  const categoryText = tr(std, FISHBONE_SEED_CATEGORY);
+  const item1Text = tr(std, FISHBONE_SEED_ITEM_1);
+  const item2Text = tr(std, FISHBONE_SEED_ITEM_2);
   const cat = (x: number, y: number) =>
-    rect(x, y, 150, 44, { text: 'CATEGORY', fontSize: 13 });
+    rect(x, y, 150, 44, { text: categoryText, fontSize: 13 });
   const item = (x: number, y: number, n: string) =>
     rect(x, y, 130, 40, {
       stroke: MUTED,
@@ -242,7 +298,10 @@ function fishbone(): SurfaceElementsJSON {
     });
   const out: SurfaceElementsJSON = {
     spine: line(80, 360, 1120, 360, { sw: 6 }),
-    head: rect(1124, 332, 130, 56, { text: 'Effect', fontSize: 16 }),
+    head: rect(1124, 332, 130, 56, {
+      text: tr(std, FISHBONE_SEED_EFFECT),
+      fontSize: 16,
+    }),
   };
   // two rib-groups (junctions at x = 360 and 760)
   [360, 760].forEach((jx, g) => {
@@ -251,17 +310,22 @@ function fishbone(): SurfaceElementsJSON {
     out[`lb${g}`] = line(ox + 200, 470, jx, 362, { sw: 3, arrow: true });
     out[`uc${g}`] = cat(ox + 150, 224);
     out[`lc${g}`] = cat(ox + 150, 452);
-    out[`ui1${g}`] = item(ox + 130, 286, 'ITEM 1');
-    out[`ui2${g}`] = item(ox + 170, 326, 'ITEM 2');
-    out[`li1${g}`] = item(ox + 130, 396, 'ITEM 1');
-    out[`li2${g}`] = item(ox + 170, 356, 'ITEM 2');
+    out[`ui1${g}`] = item(ox + 130, 286, item1Text);
+    out[`ui2${g}`] = item(ox + 170, 326, item2Text);
+    out[`li1${g}`] = item(ox + 130, 396, item1Text);
+    out[`li2${g}`] = item(ox + 170, 356, item2Text);
   });
   return out;
 }
 
 // ── Gantt chart ───────────────────────────────────────────────────────
-function gantt(): SurfaceElementsJSON {
-  const rows = ['Discovery', 'Design', 'Build', 'Launch'];
+function gantt(std?: BlockStdScope): SurfaceElementsJSON {
+  const rows = [
+    tr(std, GANTT_SEED_DISCOVERY),
+    tr(std, GANTT_SEED_DESIGN),
+    tr(std, GANTT_SEED_BUILD),
+    tr(std, GANTT_SEED_LAUNCH),
+  ];
   const bars: [number, number, string][] = [
     [220, 280, '#4574c4'],
     [340, 360, '#2f9e95'],
@@ -276,11 +340,18 @@ function gantt(): SurfaceElementsJSON {
       stroke: NOTATION_NEUTRALS.cardBorder,
       sw: 1,
     });
-    out[`w${i}`] = label(x - 16, 12, 40, 20, `W${i + 1}`, {
-      fontSize: 12,
-      color: NOTATION_NEUTRALS.label,
-      align: TextAlign.Center,
-    });
+    out[`w${i}`] = label(
+      x - 16,
+      12,
+      40,
+      20,
+      tr(std, GANTT_SEED_WEEK, { n: i + 1 }),
+      {
+        fontSize: 12,
+        color: NOTATION_NEUTRALS.label,
+        align: TextAlign.Center,
+      }
+    );
   }
   rows.forEach((name, r) => {
     const y = 56 + r * 52;
@@ -306,26 +377,34 @@ const previews = {
   gantt: `<svg ${ATTRS} fill="none"><path d="M40 14 V70 M62 14 V70 M84 14 V70 M106 14 V70" stroke="${NOTATION_NEUTRALS.cardBorder}"/><rect x="40" y="22" width="34" height="8" rx="2" fill="#4574c4"/><rect x="52" y="36" width="44" height="8" rx="2" fill="#2f9e95"/><rect x="62" y="50" width="50" height="8" rx="2" fill="#d99a2b"/><rect x="84" y="64" width="28" height="8" rx="2" fill="#43a06b"/></svg>`,
 };
 
+/**
+ * A hand-composed template — what is left once the artefacts are derived. The
+ * seeds a template writes into the document go through the translation seam
+ * at placement (ADR 0016); `content` stays the English build, and `localize`
+ * rebuilds the same snapshot with translated seeds.
+ */
 function t(
   name: string,
   preview: string,
-  elements: SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON
 ): Template {
   return {
     name,
     type: 'template',
     preview,
-    content: makeTemplateSnapshot(elements, name),
+    content: makeTemplateSnapshot(build(), name),
+    localize: std => makeTemplateSnapshot(build(std), name),
   };
 }
 
 export const otherTemplateCategory: TemplateCategory = {
   name: 'Other',
+  nameKey: TEMPLATE_PANEL_CATEGORY_OTHER[0],
   templates: [
-    t('SWOT', previews.swot, swot()),
-    t('Kanban board', previews.kanban, kanban()),
-    t('Business model canvas', previews.bmc, bmc()),
-    t('Fishbone (Ishikawa)', previews.fishbone, fishbone()),
-    t('Gantt chart', previews.gantt, gantt()),
+    t('SWOT', previews.swot, swot),
+    t('Kanban board', previews.kanban, kanban),
+    t('Business model canvas', previews.bmc, bmc),
+    t('Fishbone (Ishikawa)', previews.fishbone, fishbone),
+    t('Gantt chart', previews.gantt, gantt),
   ],
 };

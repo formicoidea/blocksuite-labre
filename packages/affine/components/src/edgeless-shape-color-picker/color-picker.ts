@@ -8,9 +8,16 @@ import {
   type ShapeProps,
   type StrokeStyle,
 } from '@labre/affine-model';
+import {
+  BOARD_BORDER_STYLE_LABEL,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { type ColorEvent, stopPropagation } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { batch, signal } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
@@ -29,6 +36,11 @@ import {
 } from '../color-picker';
 import type { LineDetailType } from '../edgeless-line-styles-panel';
 import type { EditorMenuButton } from '../toolbar';
+import {
+  BORDER_COLOR_LABEL,
+  COLOR_LABEL,
+  FILL_COLOR_LABEL,
+} from '../translations.js';
 
 type TabType = 'normal' | 'custom';
 
@@ -45,6 +57,9 @@ type PickerType = {
 export class EdgelessShapeColorPicker extends WithDisposable(
   SignalWatcher(LitElement)
 ) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     .pickers {
       display: flex;
@@ -192,7 +207,14 @@ export class EdgelessShapeColorPicker extends WithDisposable(
         .contentPadding="${tabType === 'normal' ? '8px' : '0px'}"
         @click=${stopPropagation}
         .button=${html`
-          <editor-icon-button aria-label="Color" .tooltip="${'Color'}">
+          <editor-icon-button
+            aria-label="${this.std
+              ? translateKey(this.std, ...COLOR_LABEL)
+              : COLOR_LABEL[1]}"
+            .tooltip="${this.std
+              ? translateKey(this.std, ...COLOR_LABEL)
+              : COLOR_LABEL[1]}"
+          >
             <edgeless-color-button
               .color=${fillColorWithoutAlpha}
             ></edgeless-color-button>
@@ -208,14 +230,18 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                   ${repeat(
                     [
                       {
-                        label: 'Fill color',
+                        label: this.std
+                          ? translateKey(this.std, ...FILL_COLOR_LABEL)
+                          : FILL_COLOR_LABEL[1],
                         type: 'fillColor',
                         value: fillColor,
                         hollowCircle: false,
                         onPick: this.#pickFillColor,
                       },
                       {
-                        label: 'Border color',
+                        label: this.std
+                          ? translateKey(this.std, ...BORDER_COLOR_LABEL)
+                          : BORDER_COLOR_LABEL[1],
                         type: 'strokeColor',
                         value: strokeColor,
                         hollowCircle: true,
@@ -233,6 +259,7 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                         .value=${value}
                         .theme=${theme}
                         .palettes=${palettes}
+                        .std=${this.std}
                         @select=${onPick}
                       >
                         ${when(enableCustomColor, () => {
@@ -256,7 +283,11 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                       </edgeless-color-panel>
                     `
                   )}
-                  <div class="picker-label">Border style</div>
+                  <div class="picker-label">
+                    ${this.std
+                      ? translateKey(this.std, ...BOARD_BORDER_STYLE_LABEL)
+                      : BOARD_BORDER_STYLE_LABEL[1]}
+                  </div>
                   <edgeless-line-styles-panel
                     class="picker"
                     .lineSize=${strokeWidth}

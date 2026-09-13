@@ -7,6 +7,7 @@ import {
   type RootBlockModel,
 } from '@labre/affine-model';
 import { focusTextModel, type RichText } from '@labre/affine-rich-text';
+import { translateKey } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
@@ -14,6 +15,8 @@ import type { Store } from '@labre/store';
 import { effect } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+
+import { DOC_TITLE_PLACEHOLDER } from './translations';
 
 const DOC_BLOCK_CHILD_PADDING = 24;
 
@@ -56,7 +59,7 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
     }
 
     .doc-title-container-empty::before {
-      content: 'Title';
+      content: attr(data-placeholder);
       color: var(--affine-placeholder-color);
       position: absolute;
       opacity: 0.5;
@@ -141,6 +144,12 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
     return this._viewport?.querySelector('editor-host')?.std;
   }
 
+  private get _placeholder() {
+    return this._std
+      ? translateKey(this._std, ...DOC_TITLE_PLACEHOLDER)
+      : DOC_TITLE_PLACEHOLDER[1];
+  }
+
   private get _rootModel() {
     return this.doc.root as RootBlockModel | null;
   }
@@ -211,6 +220,7 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
           ? 'doc-title-container-empty'
           : ''}"
         data-block-is-title="true"
+        data-placeholder=${this._placeholder}
       >
         <rich-text
           .yText=${this._rootModel?.props.title.yText}

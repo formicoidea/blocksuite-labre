@@ -18,6 +18,22 @@ import { html, type TemplateResult } from 'lit';
 
 import { EDGY_AUTO_LEGEND } from '../legend';
 
+/** The two toolbar tooltips this file used to hard-code as English literals. */
+const FACET_LABELS_TOGGLE: ChromeWording = [
+  'com.labre.edgy.toolbar.facet-labels',
+  'Show / hide facet labels',
+];
+const HOVER_SPOTLIGHT_TOGGLE: ChromeWording = [
+  'com.labre.edgy.toolbar.hover-spotlight',
+  'Enable / disable hover spotlight',
+];
+
+/** Every wording above, for `translations.ts`'s manifest contribution. */
+export const EDGY_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
+  FACET_LABELS_TOGGLE,
+  HOVER_SPOTLIGHT_TOGGLE,
+];
+
 const ResizeIcon = html`<svg
   width="24"
   height="24"
@@ -157,7 +173,7 @@ export const edgyToolbarConfig = {
     booleanToggle(
       EdgyFacetsElementModel,
       'b.toggle-labels',
-      'Show / hide facet labels',
+      FACET_LABELS_TOGGLE,
       LabelsIcon,
       'showLabels'
     ),
@@ -185,7 +201,7 @@ export const edgyBoardToolbarConfig = {
     booleanToggle(
       EdgyBoardElementModel,
       'b.toggle-spotlight',
-      'Enable / disable hover spotlight',
+      HOVER_SPOTLIGHT_TOGGLE,
       SpotlightIcon,
       'spotlightEnabled'
     ),

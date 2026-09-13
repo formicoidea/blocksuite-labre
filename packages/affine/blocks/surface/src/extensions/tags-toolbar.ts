@@ -6,6 +6,7 @@ import {
   type ToolbarContext,
   type ToolbarModuleConfig,
   translateKey,
+  translateTagLabel,
 } from '@labre/affine-shared/services';
 import { getRegisteredCommands, runCommand } from '@labre/std';
 import type { RoleDefs } from '@labre/std/gfx';
@@ -245,11 +246,11 @@ function renderSection(
   def: TagDef
 ): TemplateResult {
   const selected = elementTagValues(target.element, def.id);
-  const label = def.label || def.id;
+  const label = translateTagLabel(ctx.std, def) || def.id;
 
   const options = offeredValues(def, selected).map(value => {
     const on = selected.includes(value.id);
-    const valueLabel = value.label || value.id;
+    const valueLabel = translateTagLabel(ctx.std, value) || value.id;
     // `data-toggle` beside `data-option`: the row draws like a native option,
     // but clicking the value in FORCE is how it is un-picked (`toggleValue`),
     // whatever the tag's cardinality. Without it the selected row inherits
@@ -298,7 +299,7 @@ function triggerLabel(ctx: ToolbarContext, target: TagTarget): string {
     const selected = elementTagValues(target.element, def.id);
     return offeredValues(def, selected)
       .filter(value => selected.includes(value.id))
-      .map(value => value.label || value.id);
+      .map(value => translateTagLabel(ctx.std, value) || value.id);
   });
 
   return chosen.length
@@ -306,7 +307,7 @@ function triggerLabel(ctx: ToolbarContext, target: TagTarget): string {
     : // One applicable tag names itself ("Nature"); several fall back to the
       // neutral word, since no single tag name is the truth about the element.
       target.tags.length === 1
-      ? target.tags[0].label || target.tags[0].id
+      ? translateTagLabel(ctx.std, target.tags[0]) || target.tags[0].id
       : translateKey(ctx.std, 'com.labre.tags.toolbar.label', 'Qualify');
 }
 

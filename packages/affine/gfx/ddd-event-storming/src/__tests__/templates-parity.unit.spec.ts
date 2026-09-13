@@ -1,7 +1,8 @@
 import { SHADOW_COLOR } from '@labre/affine-gfx-ddd-shared';
 import { snapshotFromAction } from '@labre/affine-gfx-template';
 import { TextFitMode } from '@labre/affine-model';
-import type { CommandInvocation } from '@labre/std';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope, CommandInvocation } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { eventStormingCommands } from '../commands';
@@ -161,5 +162,58 @@ describe('the board is a declared board', () => {
     expect(elements).toHaveLength(1);
     expect(elements[0].role).toBe(ES_ROLE.board);
     expect(elements[0].resizeEnabled).toBe(true);
+  });
+});
+
+/**
+ * A sticky's caption is a SEED: resolved at placement, through the same
+ * translation seam a derived template already speaks (ADR 0016).
+ */
+describe('a sticky speaks the inserting editor’s language', () => {
+  const hostWith = (t?: (key: string) => string | undefined) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  const textOf = (elements: Record<string, RawElement>) => {
+    const face = Object.values(elements).find(
+      el => el.type === 'shape' && el.fillColor !== SHADOW_COLOR
+    ) as unknown as { text?: { delta?: { insert?: string }[] } };
+    return face?.text?.delta?.[0]?.insert;
+  };
+
+  it('without a provider, the domain-event sticky keeps its English caption', () => {
+    const command = eventStormingCommands.find(
+      c => c.id === 'ddd-event-storming.addDomainEvent'
+    )!;
+    const elements = snapshotFromAction(
+      std => command.run(std, INVOCATION),
+      'domain event'
+    ).blocks.children[0].props.elements as unknown as Record<
+      string,
+      RawElement
+    >;
+    expect(textOf(elements)).toBe('Domain event');
+  });
+
+  it('with a fake provider, the domain-event sticky is written in French', () => {
+    const command = eventStormingCommands.find(
+      c => c.id === 'ddd-event-storming.addDomainEvent'
+    )!;
+    const std = hostWith(key =>
+      key === 'com.labre.ddd-event-storming.seed.domain-event'
+        ? 'Événement de domaine'
+        : undefined
+    );
+    const elements = snapshotFromAction(
+      s => command.run(s, INVOCATION),
+      'domain event',
+      std
+    ).blocks.children[0].props.elements as unknown as Record<
+      string,
+      RawElement
+    >;
+    expect(textOf(elements)).toBe('Événement de domaine');
   });
 });

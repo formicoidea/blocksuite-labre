@@ -1,5 +1,5 @@
 import { NoteDisplayMode } from '@labre/affine-model';
-import { DocModeProvider } from '@labre/affine-shared/services';
+import { DocModeProvider, translateKey } from '@labre/affine-shared/services';
 import { scrollbarStyle } from '@labre/affine-shared/styles';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { TocIcon } from '@blocksuite/icons/lit';
@@ -17,6 +17,10 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { type TocContext, tocContext } from './config.js';
+import {
+  OUTLINE_OPEN_IN_SIDEBAR_TOOLTIP,
+  OUTLINE_TABLE_OF_CONTENTS,
+} from './translations.js';
 import { getHeadingBlocksFromDoc } from './utils/query.js';
 import {
   observeActiveHeadingDuringScroll,
@@ -242,7 +246,10 @@ export class OutlineViewer extends SignalWatcher(
     const toggleOutlinePanelButton =
       this.toggleOutlinePanel !== null
         ? html`<edgeless-tool-icon-button
-            .tooltip=${'Open in sidebar'}
+            .tooltip=${translateKey(
+              this.editor.std,
+              ...OUTLINE_OPEN_IN_SIDEBAR_TOOLTIP
+            )}
             .tipPosition=${'top-end'}
             .activeMode=${'background'}
             @click=${this._toggleOutlinePanel}
@@ -271,7 +278,12 @@ export class OutlineViewer extends SignalWatcher(
         </div>
         <div class="outline-viewer-panel">
           <div class="outline-viewer-item outline-viewer-header">
-            <span>Table of Contents</span>
+            <span
+              >${translateKey(
+                this.editor.std,
+                ...OUTLINE_TABLE_OF_CONTENTS
+              )}</span
+            >
             ${toggleOutlinePanelButton}
           </div>
           ${repeat(

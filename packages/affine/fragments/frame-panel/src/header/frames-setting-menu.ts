@@ -1,9 +1,21 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
+import {
+  DocModeProvider,
+  EditPropsStore,
+  TOOLBAR_HIDE_TOOLBAR,
+  TOOLBAR_PLAYBACK_SETTINGS,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
 import type { EditorHost } from '@labre/std';
 import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
+
+import {
+  FRAME_PANEL_DARK_BACKGROUND,
+  FRAME_PANEL_FILL_SCREEN,
+  FRAME_PANEL_PREVIEW_SETTINGS,
+} from '../translations';
 
 const styles = css`
   :host {
@@ -122,6 +134,8 @@ export class FramesSettingMenu extends WithDisposable(LitElement) {
   }
 
   override render() {
+    const { std } = this.editorHost;
+
     return html`<div
       class="frames-setting-menu-container"
       @click=${(e: MouseEvent) => {
@@ -129,10 +143,14 @@ export class FramesSettingMenu extends WithDisposable(LitElement) {
       }}
     >
       <div class="frames-setting-menu-item">
-        <div class="setting-label">Preview Settings</div>
+        <div class="setting-label">
+          ${translateKey(std, ...FRAME_PANEL_PREVIEW_SETTINGS)}
+        </div>
       </div>
       <div class="frames-setting-menu-item action">
-        <div class="action-label">Fill Screen</div>
+        <div class="action-label">
+          ${translateKey(std, ...FRAME_PANEL_FILL_SCREEN)}
+        </div>
         <div class="toggle-button">
           <toggle-switch
             .on=${this.fillScreen}
@@ -144,10 +162,14 @@ export class FramesSettingMenu extends WithDisposable(LitElement) {
       <menu-divider></menu-divider>
 
       <div class="frames-setting-menu-item">
-        <div class="setting-label">Playback Settings</div>
+        <div class="setting-label">
+          ${translateKey(std, ...TOOLBAR_PLAYBACK_SETTINGS)}
+        </div>
       </div>
       <div class="frames-setting-menu-item action">
-        <div class="action-label">Dark background</div>
+        <div class="action-label">
+          ${translateKey(std, ...FRAME_PANEL_DARK_BACKGROUND)}
+        </div>
         <div class="toggle-button">
           <toggle-switch
             .on=${this.blackBackground}
@@ -156,7 +178,9 @@ export class FramesSettingMenu extends WithDisposable(LitElement) {
         </div>
       </div>
       <div class="frames-setting-menu-item action">
-        <div class="action-label">Hide toolbar</div>
+        <div class="action-label">
+          ${translateKey(std, ...TOOLBAR_HIDE_TOOLBAR)}
+        </div>
         <div class="toggle-button">
           <toggle-switch
             .on=${this.hideToolbar}

@@ -11,9 +11,14 @@ export type OpenDocMode =
 
 // todo: later this will be used to generate the menu items.
 // for now we only use it as a hint for whether or not to show the open doc buttons.
+//
+// `label` was removed here (i18n L7-s2, 2026-09): nothing in the repo ever
+// read it — `embed-linked-doc-block.ts`, the one consumer, calls only
+// `isAllowed(mode)` — so keying two English literals nobody displays would
+// have widened the manifest for no reader. Re-add it (with a key) the day
+// this config actually drives a rendered menu.
 export interface OpenDocConfigItem {
   type: OpenDocMode;
-  label: string;
   icon: TemplateResult<1>;
 }
 export interface OpenDocConfig {
@@ -33,12 +38,10 @@ const defaultConfig: OpenDocConfig = {
   items: [
     {
       type: 'open-in-active-view',
-      label: 'Open this doc',
       icon: ExpandFullIcon(),
     },
     {
       type: 'open-in-center-peek',
-      label: 'Open in center peek',
       icon: CenterPeekIcon(),
     },
   ],

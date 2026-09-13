@@ -1,7 +1,7 @@
 import { EDITOR_ANCHORED_PANEL_Z_INDEX } from '@labre/affine-block-surface';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine-shared/consts';
 import type { RootBlockModel } from '@labre/affine-model';
-import { translateKey } from '@labre/affine-shared/services';
+import { CATALOGUE_OTHER, translateKey } from '@labre/affine-shared/services';
 import { IS_MAC } from '@labre/global/env';
 import {
   type AnyCommandDescriptor,
@@ -452,7 +452,7 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
   private _groupLabel(group: CatalogueGroup): string {
     const { category } = group;
     if (category === null) {
-      return translateKey(this.std, 'com.labre.catalogue.other', 'Other');
+      return translateKey(this.std, ...CATALOGUE_OTHER);
     }
     return translateKey(
       this.std,

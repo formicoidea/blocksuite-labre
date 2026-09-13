@@ -5,7 +5,7 @@ import {
 import { getLineHeight } from '@labre/affine-gfx-text';
 import type { ConnectorElementModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { almostEqual } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, type IVec, Vec } from '@labre/global/gfx';
@@ -23,6 +23,8 @@ import { css, html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
+
+import { CONNECTOR_ADD_TEXT } from '../translations.js';
 
 const HORIZONTAL_PADDING = 2;
 const VERTICAL_PADDING = 2;
@@ -369,7 +371,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
         ${isEmpty
           ? html`
               <span class="edgeless-connector-label-editor-placeholder">
-                Add text
+                ${translateKey(this.std, ...CONNECTOR_ADD_TEXT)}
               </span>
             `
           : nothing}

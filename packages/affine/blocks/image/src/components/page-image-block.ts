@@ -6,6 +6,7 @@ import {
   getPrevBlockCommand,
 } from '@labre/affine-shared/commands';
 import { ImageSelection } from '@labre/affine-shared/selection';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import type { BlockComponent, UIEventStateContext } from '@labre/std';
@@ -20,6 +21,7 @@ import { when } from 'lit/directives/when.js';
 
 import type { ImageBlockComponent } from '../image-block';
 import { ImageResizeManager } from '../image-resize-manager';
+import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from '../translations';
 import { shouldResizeImage } from '../utils';
 import { ImageSelectedRect } from './image-selected-rect';
 
@@ -220,7 +222,10 @@ export class ImageBlockPageComponent extends SignalWatcher(
 
   private _handleError() {
     this.block.resourceController.updateState({
-      errorMessage: 'Failed to download image!',
+      errorMessage: translateKey(
+        this.block.std,
+        ...IMAGE_TOAST_DOWNLOAD_FAILED
+      ),
     });
   }
 
@@ -361,7 +366,9 @@ export class ImageBlockPageComponent extends SignalWatcher(
       : null;
 
     const blobUrl = this.block.blobUrl;
-    const caption = this.block.model.props.caption$.value ?? 'Image';
+    const caption =
+      this.block.model.props.caption$.value ??
+      translateKey(this.block.std, ...IMAGE_LABEL);
     const { loading, error, icon, description, needUpload } = this.state;
 
     return html`

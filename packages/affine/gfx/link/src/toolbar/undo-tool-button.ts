@@ -1,3 +1,4 @@
+import { TOOLBAR_UNDO, translateKey } from '@labre/affine-shared/services';
 import { QuickToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { UndoIcon } from '@blocksuite/icons/lit';
 import { css, html, LitElement } from 'lit';
@@ -30,7 +31,7 @@ export class EdgelessUndoToolButton extends QuickToolMixin(LitElement) {
   override render() {
     return html`<edgeless-tool-icon-button
       .iconContainerPadding="${6}"
-      .tooltip="${'Undo'}"
+      .tooltip="${translateKey(this.edgeless.std, ...TOOLBAR_UNDO)}"
       .tooltipOffset=${17}
       class="edgeless-undo-tool-button"
       @click=${this._onClick}

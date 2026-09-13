@@ -18,6 +18,7 @@ import {
 import {
   NotificationProvider,
   TOAST_FRAME_INSERTED_INTO_PAGE,
+  TOOLBAR_RENAME,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -40,6 +41,12 @@ import type { ExtensionType } from '@labre/store';
 import { html } from 'lit';
 
 import { EdgelessFrameManagerIdentifier } from './frame-manager';
+import {
+  FRAME_TOAST_INSERTED_MESSAGE,
+  FRAME_TOOLBAR_BACKGROUND,
+  FRAME_TOOLBAR_INSERT_INTO_PAGE,
+  FRAME_TOOLBAR_UNGROUP,
+} from './translations';
 
 function getRootBlock(ctx: ToolbarContext): BlockComponent | null {
   const rootModel = ctx.store.root;
@@ -53,7 +60,9 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'a.insert-into-page',
       label: 'Insert into Page',
+      labelWording: FRAME_TOOLBAR_INSERT_INTO_PAGE,
       tooltip: 'Insert into Page',
+      tooltipWording: FRAME_TOOLBAR_INSERT_INTO_PAGE,
       icon: InsertIntoPageIcon(),
       when: ctx => ctx.getSurfaceModelsByType(FrameBlockModel).length === 1,
       run(ctx) {
@@ -93,17 +102,21 @@ const builtinSurfaceToolbarConfig = {
         if (notification) {
           notification.notifyWithUndoAction({
             title: translateKey(ctx.std, ...TOAST_FRAME_INSERTED_INTO_PAGE),
-            message: 'Frame has been inserted into doc',
+            message: translateKey(ctx.std, ...FRAME_TOAST_INSERTED_MESSAGE),
             accent: 'success',
           });
         } else {
-          toast(ctx.host, 'Frame has been inserted into doc');
+          toast(
+            ctx.host,
+            translateKey(ctx.std, ...FRAME_TOAST_INSERTED_MESSAGE)
+          );
         }
       },
     },
     {
       id: 'b.rename',
       tooltip: 'Rename',
+      tooltipWording: TOOLBAR_RENAME,
       icon: EditIcon(),
       when: ctx => ctx.getSurfaceModelsByType(FrameBlockModel).length === 1,
       run(ctx) {
@@ -119,6 +132,7 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'b.ungroup',
       tooltip: 'Ungroup',
+      tooltipWording: FRAME_TOOLBAR_UNGROUP,
       icon: UngroupIcon(),
       run(ctx) {
         const models = ctx.getSurfaceModelsByType(FrameBlockModel);
@@ -190,10 +204,11 @@ const builtinSurfaceToolbarConfig = {
         return html`
           <edgeless-color-picker-button
             class="background"
-            .label="${'Background'}"
+            .label="${translateKey(ctx.std, ...FRAME_TOOLBAR_BACKGROUND)}"
             .pick=${onPick}
             .color=${background}
             .theme=${theme}
+            .std=${ctx.std}
             .originalColor=${firstModel.props.background}
             .enableCustomColor=${enableCustomColor}
           >

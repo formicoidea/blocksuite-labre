@@ -10,6 +10,7 @@ import {
 import {
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { getRootBlock } from '@labre/affine-widget-edgeless-toolbar';
@@ -23,13 +24,21 @@ import { BlockFlavourIdentifier } from '@labre/std';
 
 import { ungroupCommand } from '../command';
 import { mountGroupTitleEditor } from '../text/text';
+import {
+  GROUP_TOAST_INSERTED,
+  GROUP_TOOLBAR_INSERT_INTO_PAGE,
+  GROUP_TOOLBAR_RENAME,
+  GROUP_TOOLBAR_UNGROUP,
+} from '../translations';
 
 export const groupToolbarConfig = {
   actions: [
     {
       id: 'a.insert-into-page',
       label: 'Insert into Page',
+      labelWording: GROUP_TOOLBAR_INSERT_INTO_PAGE,
       tooltip: 'Insert into Page',
+      tooltipWording: GROUP_TOOLBAR_INSERT_INTO_PAGE,
       icon: InsertIntoPageIcon(),
       when: ctx => ctx.getSurfaceModelsByType(GroupElementModel).length === 1,
       run(ctx) {
@@ -64,12 +73,13 @@ export const groupToolbarConfig = {
           lastNoteId
         );
 
-        toast(ctx.host, 'Group has been inserted into doc');
+        toast(ctx.host, translateKey(ctx.std, ...GROUP_TOAST_INSERTED));
       },
     },
     {
       id: 'b.rename',
       tooltip: 'Rename',
+      tooltipWording: GROUP_TOOLBAR_RENAME,
       icon: EditIcon(),
       when: ctx => ctx.getSurfaceModelsByType(GroupElementModel).length === 1,
       run(ctx) {
@@ -85,6 +95,7 @@ export const groupToolbarConfig = {
     {
       id: 'b.ungroup',
       tooltip: 'Ungroup',
+      tooltipWording: GROUP_TOOLBAR_UNGROUP,
       icon: UngroupIcon(),
       run(ctx) {
         const models = ctx.getSurfaceModelsByType(GroupElementModel);

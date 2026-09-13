@@ -47,12 +47,13 @@ const BOARD_PREVIEW = `<svg ${ATTRS} fill="none"><rect x="4" y="6" width="127" h
 
 export const eventStormingTemplateCategory: TemplateCategory = {
   name: 'Event Storming',
+  // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
+  nameKey: 'com.labre.framework.ddd-event-storming',
   templates: [
-    templateFromCommand(
-      byLabel('Event Storming board'),
-      BOARD_PREVIEW,
-      'Event Storming board'
-    ),
+    // No name override: it would only restate the command's own
+    // `labelFallback` as a second literal the panel could not translate — see
+    // `resolveTemplateName`, which reads the command's `labelKey` instead.
+    templateFromCommand(byLabel('Event Storming board'), BOARD_PREVIEW),
     ...ES_STICKIES.map(preset =>
       templateFromCommand(
         byLabel(preset.label),

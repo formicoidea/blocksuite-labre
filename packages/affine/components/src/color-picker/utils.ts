@@ -1,6 +1,11 @@
 // https://www.w3.org/TR/css-color-4/
 
-import type { Color, ColorScheme } from '@labre/affine-model';
+import type { Color, ColorScheme, Palette } from '@labre/affine-model';
+import {
+  PALETTE_NAME_WORDINGS,
+  translateKey,
+} from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import clamp from 'lodash-es/clamp';
 
 import { COLORS, FIRST_COLOR } from './consts.js';
@@ -8,6 +13,7 @@ import type {
   Hsv,
   Hsva,
   ModeType,
+  NamedPalette,
   PickColorType,
   Point,
   Rgb,
@@ -366,3 +372,38 @@ export const adjustColorAlpha = (color: Color, a: number): Color => {
 
   return newColor;
 };
+
+/**
+ * The swatch's DISPLAYED name — what `edgeless-color-panel` shows as the
+ * swatch's visible label and passes on as its `aria-label`.
+ *
+ * Three tiers, checked in order, mirroring `translateTagLabel`
+ * (`universe-tag-defs-service.ts`)'s own "declared key, then declared
+ * fallback, then raw" shape:
+ *
+ * 1. The swatch's OWN {@link NamedPalette.labelWording}, when the palette
+ *    that built it declared one (a framework's own swatches — Wardley's
+ *    "Wonder", EDGY's "Identity"…).
+ * 2. The default theme's {@link PALETTE_NAME_WORDINGS} lookup, keyed by
+ *    `palette.key` (`'Red'`, `'LightBlue'`…) — the one table every
+ *    `DefaultTheme.*Palettes` swatch resolves through.
+ * 3. `palette.key` itself, unresolved — exactly what every colour panel
+ *    displayed before either mechanism existed, so a swatch this function
+ *    has never heard of (a host's own custom palette, a future table) keeps
+ *    reading exactly as it always has.
+ *
+ * `std` is optional: with none (a detached story, a standalone render with
+ * no block context), tier 1 and 2 still resolve to their ENGLISH fallback
+ * (`wording[1]`) rather than the raw key, since that fallback IS the literal
+ * already on screen — only `translateKey`'s host lookup is skipped.
+ */
+export function resolvePaletteLabel(
+  std: BlockStdScope | undefined,
+  palette: Palette | NamedPalette
+): string {
+  const wording =
+    (palette as NamedPalette).labelWording ??
+    PALETTE_NAME_WORDINGS[palette.key];
+  if (!wording) return palette.key;
+  return std ? translateKey(std, ...wording) : wording[1];
+}

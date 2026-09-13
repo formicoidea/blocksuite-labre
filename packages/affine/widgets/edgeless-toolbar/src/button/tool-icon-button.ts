@@ -1,9 +1,13 @@
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import type { Placement } from '@floating-ui/dom';
 import type { TemplateResult } from 'lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { cache } from 'lit/directives/cache.js';
 import { styleMap } from 'lit/directives/style-map.js';
+
+import { EDGELESS_TOOLBAR_COMING_SOON } from '../translations.js';
 
 export class EdgelessToolIconButton extends LitElement {
   static override styles = css`
@@ -97,7 +101,11 @@ export class EdgelessToolIconButton extends LitElement {
   }
 
   override render() {
-    const tooltip = this.coming ? '(Coming soon)' : this.tooltip;
+    const tooltip = this.coming
+      ? this.std
+        ? translateKey(this.std, ...EDGELESS_TOOLBAR_COMING_SOON)
+        : EDGELESS_TOOLBAR_COMING_SOON[1]
+      : this.tooltip;
     const classnames = `icon-container active-mode-${this.activeMode} ${this.hoverState ? 'hovered' : ''}`;
     const padding = this.iconContainerPadding;
     const iconContainerStyles = styleMap({
@@ -189,4 +197,9 @@ export class EdgelessToolIconButton extends LitElement {
 
   @property({ attribute: false })
   accessor withHover: boolean | undefined = undefined;
+
+  /** Set by a caller that has one — optional so this button still renders
+   * (in English) when created with none, as it does today. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 }

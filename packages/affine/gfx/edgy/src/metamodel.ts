@@ -144,6 +144,33 @@ export type EdgyElementName =
 export const edgyElementLabel = (name: EdgyElementName | EdgyZone): string =>
   name.charAt(0).toUpperCase() + name.slice(1);
 
+/**
+ * The i18n key {@link edgyElementLabel} is the English default of — one key
+ * per lowercase name, shared by every surface that writes the word: the "EDGY
+ * dynamic" template (`templates/dynamic.ts`), the Facets overview,
+ * Organisation chart and Customer journey scenes (`templates/index.ts`), and
+ * the facets background's own creation site (`actions.ts`, `EdgyFacetsProps`).
+ * `organisation`, `brand` and `product` are BOTH an element name and an
+ * intersection zone id — one word, one key, exactly the "un mot partagé = une
+ * clé" rule.
+ */
+export const edgyElementLabelKey = (name: EdgyElementName | EdgyZone) =>
+  `com.labre.edgy.seed.${name}`;
+
+/**
+ * The i18n key one of the metamodel's 24 canonical VERBS is the English
+ * default of — drawn raw as a connector label wherever the "EDGY dynamic"
+ * template or a hand-composed scene uses it (`surfaceText(verb)`), sharing one
+ * key per distinct verb string across every surface that writes it.
+ */
+export const edgyVerbSeedKey = (verb: string) =>
+  `com.labre.edgy.seed.verb-${verb.replace(/\s+/g, '-')}`;
+
+/** Every distinct verb {@link EDGY_DYNAMIC_RELATIONS} carries, in table order. */
+export const EDGY_DYNAMIC_VERBS: readonly string[] = [
+  ...new Set(EDGY_DYNAMIC_RELATIONS.map(([, , verb]) => verb)),
+];
+
 export const EDGY_DYNAMIC_NODES: Record<
   EdgyElementName,
   {

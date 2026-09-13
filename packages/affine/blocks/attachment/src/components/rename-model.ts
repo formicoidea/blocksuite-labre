@@ -1,11 +1,12 @@
 import { ConfirmIcon } from '@labre/affine-components/icons';
 import { toast } from '@labre/affine-components/toast';
 import type { AttachmentBlockModel } from '@labre/affine-model';
-import { CitationProvider } from '@labre/affine-shared/services';
+import { CitationProvider, translateKey } from '@labre/affine-shared/services';
 import type { EditorHost } from '@labre/std';
 import { html } from 'lit';
 import { createRef, ref } from 'lit/directives/ref.js';
 
+import { ATTACHMENT_RENAME_EMPTY_NAME } from '../translations';
 import { renameStyles } from './styles';
 
 export const RenameModal = ({
@@ -40,7 +41,10 @@ export const RenameModal = ({
   const onConfirm = () => {
     const newFileName = fileName + extension;
     if (!newFileName) {
-      toast(editorHost, 'File name cannot be empty');
+      toast(
+        editorHost,
+        translateKey(editorHost.std, ...ATTACHMENT_RENAME_EMPTY_NAME)
+      );
       return;
     }
     model.store.updateBlock(model, {

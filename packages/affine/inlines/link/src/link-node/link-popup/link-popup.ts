@@ -1,4 +1,5 @@
 import type { EditorIconButton } from '@labre/affine-components/toolbar';
+import { translateKey } from '@labre/affine-shared/services';
 import type { AffineInlineEditor } from '@labre/affine-shared/types';
 import {
   isValidUrl,
@@ -25,6 +26,12 @@ import { property, query } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 
 import { linkPopupStyle } from './styles';
+import {
+  LINK_POPUP_LINK_LABEL,
+  LINK_POPUP_LINK_PLACEHOLDER,
+  LINK_POPUP_TEXT_LABEL,
+  LINK_POPUP_TEXT_PLACEHOLDER,
+} from '../../translations.js';
 
 export class LinkPopup extends WithDisposable(ShadowlessElement) {
   static override styles = linkPopupStyle;
@@ -47,7 +54,7 @@ export class LinkPopup extends WithDisposable(ShadowlessElement) {
           class="affine-link-popover-input"
           type="text"
           spellcheck="false"
-          placeholder="Paste or type a link"
+          placeholder=${translateKey(this.std, ...LINK_POPUP_LINK_PLACEHOLDER)}
           @paste=${this._updateConfirmBtn}
           @input=${this._updateConfirmBtn}
         />
@@ -83,10 +90,15 @@ export class LinkPopup extends WithDisposable(ShadowlessElement) {
             class="affine-edit-input"
             id="text-input"
             type="text"
-            placeholder="Enter text"
+            placeholder=${translateKey(
+              this.std,
+              ...LINK_POPUP_TEXT_PLACEHOLDER
+            )}
             @input=${this._updateConfirmBtn}
           />
-          <label class="affine-edit-label" for="text-input">Text</label>
+          <label class="affine-edit-label" for="text-input"
+            >${translateKey(this.std, ...LINK_POPUP_TEXT_LABEL)}</label
+          >
         </div>
         <div class="affine-edit-area link">
           <input
@@ -94,10 +106,15 @@ export class LinkPopup extends WithDisposable(ShadowlessElement) {
             class="affine-edit-input"
             type="text"
             spellcheck="false"
-            placeholder="Paste or type a link"
+            placeholder=${translateKey(
+              this.std,
+              ...LINK_POPUP_LINK_PLACEHOLDER
+            )}
             @input=${this._updateConfirmBtn}
           />
-          <label class="affine-edit-label" for="link-input">Link</label>
+          <label class="affine-edit-label" for="link-input"
+            >${translateKey(this.std, ...LINK_POPUP_LINK_LABEL)}</label
+          >
         </div>
         ${this._confirmBtnTemplate()}
       </div>

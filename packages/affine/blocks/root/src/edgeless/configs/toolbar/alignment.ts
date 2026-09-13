@@ -6,6 +6,7 @@ import {
 } from '@labre/affine-block-surface';
 import { EditorChevronDown } from '@labre/affine-components/toolbar';
 import type { ToolbarContext } from '@labre/affine-shared/services';
+import { translateKey } from '@labre/affine-shared/services';
 import type { Menu, MenuItem } from '@labre/affine-widget-edgeless-toolbar';
 import { renderMenuItems } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
@@ -24,6 +25,20 @@ import {
 import type { GfxModel } from '@labre/std/gfx';
 import { html } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
+
+import {
+  ROOT_ALIGN_BOTTOM,
+  ROOT_ALIGN_HORIZONTALLY,
+  ROOT_ALIGN_LEFT,
+  ROOT_ALIGN_RIGHT,
+  ROOT_ALIGN_TOP,
+  ROOT_ALIGN_VERTICALLY,
+  ROOT_ALIGNMENT_MENU_ARIA,
+  ROOT_AUTO_ARRANGE,
+  ROOT_DISTRIBUTE_HORIZONTALLY,
+  ROOT_DISTRIBUTE_VERTICALLY,
+  ROOT_RESIZE_AND_ALIGN,
+} from '../../../translations.js';
 
 enum Alignment {
   None,
@@ -257,15 +272,42 @@ const updateXYWHWith = (ctx: ToolbarContext, model: GfxModel, bound: Bound) => {
   );
 };
 
+/** Every alignment menu item's key, resolved through the host's catalogue. */
+const ALIGNMENT_KEY_WORDING: Partial<
+  Record<Alignment, readonly [string, string]>
+> = {
+  [Alignment.Left]: ROOT_ALIGN_LEFT,
+  [Alignment.Horizontally]: ROOT_ALIGN_HORIZONTALLY,
+  [Alignment.Right]: ROOT_ALIGN_RIGHT,
+  [Alignment.DistributeHorizontally]: ROOT_DISTRIBUTE_HORIZONTALLY,
+  [Alignment.Top]: ROOT_ALIGN_TOP,
+  [Alignment.Vertically]: ROOT_ALIGN_VERTICALLY,
+  [Alignment.Bottom]: ROOT_ALIGN_BOTTOM,
+  [Alignment.DistributeVertically]: ROOT_DISTRIBUTE_VERTICALLY,
+  [Alignment.AutoArrange]: ROOT_AUTO_ARRANGE,
+  [Alignment.AutoResize]: ROOT_RESIZE_AND_ALIGN,
+};
+
+function translatedItems(
+  std: ToolbarContext['std'],
+  items: readonly MenuItem<Alignment>[]
+): MenuItem<Alignment>[] {
+  return items.map(item => {
+    const wording = ALIGNMENT_KEY_WORDING[item.value];
+    return wording ? { ...item, key: translateKey(std, ...wording) } : item;
+  });
+}
+
 export function renderAlignmentMenu(
   ctx: ToolbarContext,
   models: GfxModel[],
   { label, tooltip, icon }: Pick<Menu<Alignment>, 'label' | 'tooltip' | 'icon'>,
   onPick = (type: Alignment) => alignment[type](ctx, models)
 ) {
+  const { std } = ctx;
   return html`
     <editor-menu-button
-      aria-label="alignment-menu"
+      aria-label="${translateKey(std, ...ROOT_ALIGNMENT_MENU_ARIA)}"
       .contentPadding="${'8px'}"
       .button=${html`
         <editor-icon-button
@@ -278,12 +320,12 @@ export function renderAlignmentMenu(
     >
       <div data-orientation="vertical">
         <div style=${styleMap({ display: 'grid', gridGap: '8px', gridTemplateColumns: 'repeat(4, 1fr)' })}>
-          ${renderMenuItems(HORIZONTAL_ALIGNMENT, Alignment.None, onPick)}
-          ${renderMenuItems(VERTICAL_ALIGNMENT, Alignment.None, onPick)}
+          ${renderMenuItems(translatedItems(std, HORIZONTAL_ALIGNMENT), Alignment.None, onPick)}
+          ${renderMenuItems(translatedItems(std, VERTICAL_ALIGNMENT), Alignment.None, onPick)}
         </div>
         <editor-toolbar-separator data-orientation="horizontal"></editor-toolbar-separator>
         <div style=${styleMap({ display: 'grid', gridGap: '8px', gridTemplateColumns: 'repeat(4, 1fr)' })}>
-          ${renderMenuItems(AUTO_ALIGNMENT, Alignment.None, onPick)}
+          ${renderMenuItems(translatedItems(std, AUTO_ALIGNMENT), Alignment.None, onPick)}
         </div>
     </editor-menu-button>
   `;

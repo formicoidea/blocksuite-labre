@@ -8,6 +8,7 @@ import {
   type LinkEventType,
   type TelemetryEvent,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { fontSMStyle, fontXSStyle } from '@labre/affine-shared/styles';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
@@ -29,6 +30,16 @@ import { classMap } from 'lit/directives/class-map.js';
 import { live } from 'lit/directives/live.js';
 
 import { toast } from '../toast';
+import {
+  CANCEL_LABEL,
+  EMBED_CARD_DESCRIPTION_ALIAS_PLACEHOLDER,
+  EMBED_CARD_DESCRIPTION_PLACEHOLDER,
+  EMBED_CARD_TITLE_ALIAS_PLACEHOLDER,
+  EMBED_CARD_TITLE_EMPTY,
+  EMBED_CARD_TITLE_PLACEHOLDER,
+  RESET_LABEL,
+  SAVE_LABEL,
+} from '../translations.js';
 
 export class EmbedCardEditModal extends SignalWatcher(
   WithDisposable(LitElement)
@@ -184,7 +195,7 @@ export class EmbedCardEditModal extends SignalWatcher(
 
     const title = this.title$.value.trim();
     if (title.length === 0) {
-      toast(this.host, 'Title can not be empty');
+      toast(this.host, translateKey(this.host.std, ...EMBED_CARD_TITLE_EMPTY));
       return;
     }
 
@@ -230,17 +241,20 @@ export class EmbedCardEditModal extends SignalWatcher(
   }
 
   get placeholders() {
+    const std = this.host.std;
     if (this.isInternalEmbedModel) {
       return {
-        title: 'Add title alias',
-        description:
-          'Add description alias (empty to inherit document content)',
+        title: translateKey(std, ...EMBED_CARD_TITLE_ALIAS_PLACEHOLDER),
+        description: translateKey(
+          std,
+          ...EMBED_CARD_DESCRIPTION_ALIAS_PLACEHOLDER
+        ),
       };
     }
 
     return {
-      title: 'Write a title',
-      description: 'Write a description...',
+      title: translateKey(std, ...EMBED_CARD_TITLE_PLACEHOLDER),
+      description: translateKey(std, ...EMBED_CARD_DESCRIPTION_PLACEHOLDER),
     };
   }
 
@@ -332,7 +346,7 @@ export class EmbedCardEditModal extends SignalWatcher(
                   .disabled=${this.resetButtonDisabled$.value}
                   @click=${this._onReset}
                 >
-                  Reset
+                  ${translateKey(this.host.std, ...RESET_LABEL)}
                 </button>
               `,
             ],
@@ -346,7 +360,7 @@ export class EmbedCardEditModal extends SignalWatcher(
                   })}
                   @click=${this._hide}
                 >
-                  Cancel
+                  ${translateKey(this.host.std, ...CANCEL_LABEL)}
                 </button>
               `,
             ],
@@ -359,7 +373,7 @@ export class EmbedCardEditModal extends SignalWatcher(
             .disabled=${this.saveButtonDisabled$.value}
             @click=${this._onSave}
           >
-            Save
+            ${translateKey(this.host.std, ...SAVE_LABEL)}
           </button>
         </div>
       </div>

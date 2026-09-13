@@ -24,7 +24,7 @@ import { property, query } from 'lit/decorators.js';
  *   ${UnlinkIcon}
  * </icon-button>`
  *
- * html`<icon-button size="32px" text="HTML" @click=${this._importHtml}>
+ * html`<icon-button size="32px" text="${this.label}" @click=${this._importHtml}>
  *   ${ExportToHTMLIcon}
  * </icon-button>`
  * ```

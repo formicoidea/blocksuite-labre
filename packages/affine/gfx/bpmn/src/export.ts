@@ -918,6 +918,86 @@ export interface BpmnExportOptions {
 }
 
 /**
+ * One warning, KEYED rather than a resolved string — see
+ * {@link BpmnExportOutcome}. `exportBpmnXmlWithWarnings` is pure and has no
+ * `std` to ask a host's catalogue, so it hands back the key, the English
+ * fallback (with `{{name}}` placeholders) and the params to fill them; the
+ * caller that DOES have `std` (`exportBpmnXmlFile`, `actions.ts`) is the one
+ * that calls `translateKey`.
+ */
+export interface BpmnExportWarning {
+  key: string;
+  /** The English default, `{{name}}` placeholders included. */
+  fallback: string;
+  /** Values for the fallback's placeholders — a count, a list of names. */
+  params?: Record<string, string | number>;
+}
+
+/**
+ * The nine export-warning keys, each paired with its English fallback
+ * (`{{name}}` placeholders included) — declared ONCE, here, and read both by
+ * the `if` blocks below (which add the live `params`) and by
+ * `translations.ts`'s manifest (which needs the pair with no board to run
+ * against).
+ */
+// Each fallback below is ONE unbroken literal rather than the `+`-joined
+// pieces an earlier draft used: `manifest.unit.spec.ts`'s drift check reads a
+// key/fallback PAIR as two adjacent literals in one argument list, and a
+// concatenation left it seeing only the first piece — a drift the check
+// itself then (correctly) flagged. A long line is the trade for a fallback
+// the check can actually confirm against the manifest.
+const UNDRAWN_ARTEFACTS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.undrawn',
+  '{{count}} artefact(s) are drawn outside every pool. They are in the file, but most BPMN tools will not draw them: only a pool has a shape to hold them. Draw them inside a pool to make them visible.',
+];
+const DROPPED_MESSAGE_FLOWS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.dropped-message-flows',
+  '{{count}} message flow(s) were left out: a message flow runs between participants, and this board has no pool. Draw the pools it runs between, or say "is followed by" instead.',
+];
+const SUBSTITUTED_IDS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.substituted-ids',
+  '{{count}} element(s) imported from a BPMN file could not keep their original id: it was already taken in this file. A new id was written instead; nothing else changed.',
+];
+const DISPLACED_SHAPES_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.displaced-shapes',
+  '{{count}} shape(s) imported from a BPMN file are kept exactly as the file drew them, and the rest of this drawing has moved since. They will open beside the process rather than inside it. Nothing was lost: they are in the file, at the position the original gave them.',
+];
+const CONTRADICTING_DECLARATIONS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.contradicting-declarations',
+  "This board came from a BPMN file that used {{names}} for something other than what BPMN means by them. Labre writes its own, so the file's declarations were left out rather than allowed to redefine the diagram's own namespaces. They are still in the document. Anything the file wrote under those prefixes is still in the export and will now be read under Labre's meaning of them, which is not the meaning the original had.",
+];
+const DISAGREEING_DECLARATIONS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.disagreeing-declarations',
+  "Two pools on this board disagree about {{names}}: they came from BPMN files that gave the same name two different values. The last was written and the other left out, so matter carried from the first file is now read under the second's meaning. Both are still in the document.",
+];
+const CONFLICTING_IDS_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.conflicting-ids',
+  '{{count}} element(s) imported from a BPMN file could not be written back: {{names}} name(s) an id another imported element had already claimed, and a BPMN id must be unique across a document. The first was kept. The other(s) are still in the document; they are not in this file.',
+];
+const REFUSED_ATTRIBUTE_NAMES_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.refused-attribute-names',
+  '{{count}} carried attribute(s) could not be written back, because their name(s) are not a valid XML name. They are still in the document. This is a sign the payload was edited by something other than a BPMN import.',
+];
+const UNWRITABLE_EDGES_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.unwritable-edges',
+  '{{count}} arrow(s) were left out: BPMN requires both ends of a flow to be named, and they have an end that is loose or attached to something that is not a BPMN artefact.',
+];
+
+/** All nine, for `translations.ts`'s manifest contribution. */
+export const BPMN_EXPORT_WARNING_KEYS: readonly (readonly [string, string])[] =
+  [
+    UNDRAWN_ARTEFACTS_WARNING,
+    DROPPED_MESSAGE_FLOWS_WARNING,
+    SUBSTITUTED_IDS_WARNING,
+    DISPLACED_SHAPES_WARNING,
+    CONTRADICTING_DECLARATIONS_WARNING,
+    DISAGREEING_DECLARATIONS_WARNING,
+    CONFLICTING_IDS_WARNING,
+    REFUSED_ATTRIBUTE_NAMES_WARNING,
+    UNWRITABLE_EDGES_WARNING,
+  ];
+
+/**
  * The document, plus what writing it could not say.
  *
  * Three things the board can hold have no honest place in a `.bpmn` file, and
@@ -930,7 +1010,7 @@ export interface BpmnExportOptions {
 export interface BpmnExportOutcome {
   text: string;
   /** Empty when the board came out whole, which is the usual case. */
-  warnings: string[];
+  warnings: BpmnExportWarning[];
 }
 
 /* ── The plan ─────────────────────────────────────────────────────────── */
@@ -1860,8 +1940,16 @@ export function exportBpmnXmlWithWarnings(
   );
 
   /* ── What the format refused to carry ────────────────────────────── */
+  //
+  // Each warning is a KEY plus its English fallback and params — see
+  // `BpmnExportWarning`. This function stays `std`-free (like every other
+  // pure exporter in the pack), so it cannot ask a host's catalogue itself;
+  // `exportBpmnXmlFile` (`actions.ts`) resolves every one of these through
+  // `translateKey` before showing them. The fallback is deliberately NEUTRAL
+  // on number ("{{count}} element(s)") rather than branching singular/plural
+  // English by hand: pluralisation is the host's, off `count`.
 
-  const warnings: string[] = [];
+  const warnings: BpmnExportWarning[] = [];
 
   // Flow objects drawn beside the pools. They are in the file and correct for
   // any tool that reads the MODEL, and a collaboration plane has no shape to
@@ -1876,23 +1964,13 @@ export function exportBpmnXmlWithWarnings(
       ? planned.filter(node => node.scope === orphanProcess).length
       : 0;
   if (undrawn > 0) {
-    warnings.push(
-      `${undrawn} ${undrawn === 1 ? 'artefact is' : 'artefacts are'} drawn ` +
-        `outside every pool. ${undrawn === 1 ? 'It is' : 'They are'} in the ` +
-        `file, but most BPMN tools will not draw ${undrawn === 1 ? 'it' : 'them'}: ` +
-        `only a pool has a shape to hold ${undrawn === 1 ? 'it' : 'them'}. ` +
-        `Draw ${undrawn === 1 ? 'it' : 'them'} inside a pool to make ` +
-        `${undrawn === 1 ? 'it' : 'them'} visible.`
-    );
+    const [key, fallback] = UNDRAWN_ARTEFACTS_WARNING;
+    warnings.push({ key, fallback, params: { count: undrawn } });
   }
 
   if (droppedMessageFlows > 0) {
-    warnings.push(
-      `${droppedMessageFlows} message ${droppedMessageFlows === 1 ? 'flow was' : 'flows were'} ` +
-        `left out: a message flow runs between participants, and this board ` +
-        `has no pool. Draw the pools it runs between, or say "is followed by" ` +
-        `instead.`
-    );
+    const [key, fallback] = DROPPED_MESSAGE_FLOWS_WARNING;
+    warnings.push({ key, fallback, params: { count: droppedMessageFlows } });
   }
 
   // An id a file gave us that we could not give back (ADR 0012 D3). It happens
@@ -1901,13 +1979,8 @@ export function exportBpmnXmlWithWarnings(
   // file is correct either way; what the author loses is the continuity of one
   // name between the document they imported and the one they are exporting.
   if (minter.substituted > 0) {
-    warnings.push(
-      `${minter.substituted} ${minter.substituted === 1 ? 'element' : 'elements'} ` +
-        `imported from a BPMN file could not keep ` +
-        `${minter.substituted === 1 ? 'its' : 'their'} original id: ` +
-        `${minter.substituted === 1 ? 'it was' : 'they were'} already taken in ` +
-        `this file. A new id was written instead; nothing else changed.`
-    );
+    const [key, fallback] = SUBSTITUTED_IDS_WARNING;
+    warnings.push({ key, fallback, params: { count: minter.substituted } });
   }
 
   // A carried diagram element keeps the source file's own coordinates, and the
@@ -1917,38 +1990,17 @@ export function exportBpmnXmlWithWarnings(
   // once anything has been dragged. Nothing is lost; something is displaced,
   // and the person who clicked Export is the one entitled to hear about it.
   if (carriedPlane.length > 0 && (dx !== 0 || dy !== 0)) {
-    const count = carriedPlane.length;
-    warnings.push(
-      `${count} ${count === 1 ? 'shape' : 'shapes'} imported from a BPMN file ` +
-        `${count === 1 ? 'is' : 'are'} kept exactly as the file drew ` +
-        `${count === 1 ? 'it' : 'them'}, and the rest of this drawing has ` +
-        `moved since. ${count === 1 ? 'It' : 'They'} will open beside the ` +
-        `process rather than inside it. Nothing was lost: ` +
-        `${count === 1 ? 'it is' : 'they are'} in the file, at the position ` +
-        `the original gave ${count === 1 ? 'it' : 'them'}.`
-    );
+    const [key, fallback] = DISPLACED_SHAPES_WARNING;
+    warnings.push({ key, fallback, params: { count: carriedPlane.length } });
   }
 
   if (contradictingDeclarations.length > 0) {
-    const one = contradictingDeclarations.length === 1;
-    warnings.push(
-      `This board came from a BPMN file that used ` +
-        `${contradictingDeclarations.join(' and ')} for something other than ` +
-        `what BPMN means by ${one ? 'it' : 'them'}. ` +
-        `Labre writes its own, so the file's ` +
-        `${one ? 'declaration was' : 'declarations were'} ` +
-        `left out rather than allowed to redefine the diagram's own namespaces. ` +
-        `${one ? 'It is' : 'They are'} still in the document. ` +
-        // The half a reader would otherwise have to work out: the DECLARATION
-        // is what was dropped, and the matter written under it was not — so it
-        // is now read under Labre's binding of the same prefix, which means
-        // something else. That is the larger of the two changes and it was the
-        // silent one.
-        `Anything the file wrote under ` +
-        `${one ? 'that prefix' : 'those prefixes'} is still in the export and ` +
-        `will now be read under Labre's meaning of ` +
-        `${one ? 'it' : 'them'}, which is not the meaning the original had.`
-    );
+    const [key, fallback] = CONTRADICTING_DECLARATIONS_WARNING;
+    warnings.push({
+      key,
+      fallback,
+      params: { names: contradictingDeclarations.join(' and ') },
+    });
   }
 
   // Two pools, two source files, one prefix bound two ways. Last one wins —
@@ -1956,13 +2008,12 @@ export function exportBpmnXmlWithWarnings(
   // be written — but a rebinding nobody was told about is how a fragment comes
   // to mean something else with no trace of when.
   if (disagreeingDeclarations.length > 0) {
-    warnings.push(
-      `Two pools on this board disagree about ` +
-        `${disagreeingDeclarations.join(' and ')}: they came from BPMN files ` +
-        `that gave the same name two different values. The last was written ` +
-        `and the other left out, so matter carried from the first file is now ` +
-        `read under the second's meaning. Both are still in the document.`
-    );
+    const [key, fallback] = DISAGREEING_DECLARATIONS_WARNING;
+    warnings.push({
+      key,
+      fallback,
+      params: { names: disagreeingDeclarations.join(' and ') },
+    });
   }
 
   // A carried element claiming an id another has already written back. The
@@ -1971,16 +2022,15 @@ export function exportBpmnXmlWithWarnings(
   // fragments claiming one id, which is a file that cannot hold both.
   const conflicting = [...new Set(carried.conflictingIds)];
   if (conflicting.length > 0) {
-    const one = conflicting.length === 1;
-    warnings.push(
-      `${conflicting.length} ${one ? 'element' : 'elements'} imported from a ` +
-        `BPMN file could not be written back: ` +
-        `${conflicting.map(id => `"${id}"`).join(', ')} ` +
-        `${one ? 'names an id' : 'name ids'} another imported element had ` +
-        `already claimed, and a BPMN id must be unique across a document. The ` +
-        `first was kept. ${one ? 'The other is' : 'The others are'} still in ` +
-        `the document; ${one ? 'it is' : 'they are'} not in this file.`
-    );
+    const [key, fallback] = CONFLICTING_IDS_WARNING;
+    warnings.push({
+      key,
+      fallback,
+      params: {
+        count: conflicting.length,
+        names: conflicting.map(id => `"${id}"`).join(', '),
+      },
+    });
   }
 
   // An attribute NAME that is not a name. It cannot be written without
@@ -1988,23 +2038,13 @@ export function exportBpmnXmlWithWarnings(
   // only a value — so it is dropped rather than allowed to corrupt the file.
   const refusedNames = [...new Set(carried.refusedNames)];
   if (refusedNames.length > 0) {
-    const one = refusedNames.length === 1;
-    warnings.push(
-      `${refusedNames.length} carried ${one ? 'attribute' : 'attributes'} ` +
-        `could not be written back, because ` +
-        `${one ? 'its name is not' : 'their names are not'} a valid XML name. ` +
-        `${one ? 'It is' : 'They are'} still in the document. This is a sign ` +
-        `the payload was edited by something other than a BPMN import.`
-    );
+    const [key, fallback] = REFUSED_ATTRIBUTE_NAMES_WARNING;
+    warnings.push({ key, fallback, params: { count: refusedNames.length } });
   }
 
   if (unwritableEdges > 0) {
-    warnings.push(
-      `${unwritableEdges} ${unwritableEdges === 1 ? 'arrow was' : 'arrows were'} ` +
-        `left out: BPMN requires both ends of a flow to be named, and ` +
-        `${unwritableEdges === 1 ? 'this one has' : 'these have'} an end that ` +
-        `is loose or attached to something that is not a BPMN artefact.`
-    );
+    const [key, fallback] = UNWRITABLE_EDGES_WARNING;
+    warnings.push({ key, fallback, params: { count: unwritableEdges } });
   }
 
   return {

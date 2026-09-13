@@ -1,4 +1,6 @@
 import type { C4NodeKind } from '@labre/affine-model';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { NODE_SIZE } from '../consts';
@@ -9,10 +11,25 @@ import {
   C4_TYPE_WORD,
   c4MorphedTypeLine,
   c4TypeLine,
+  c4TypePlaceholder,
   normalizeC4TypeLine,
   technologyOfTypeLine,
   TYPE_TECHNOLOGY_PLACEHOLDER,
 } from '../type-line';
+
+/**
+ * A fake host whose catalogue shouts every key back, uppercased — WITHOUT
+ * brackets of its own: several assertions below round-trip a built line back
+ * through `technologyOfTypeLine`, whose bracket-stripping would collide with
+ * a resolved word that carried literal `[`/`]` characters. A real
+ * translation never does either.
+ */
+const shout = (key: string) => key.toUpperCase();
+const hostWith = (t?: (key: string) => string | undefined) =>
+  ({
+    getOptional: (id: unknown) =>
+      id === TranslationProvider && t ? { t } : undefined,
+  }) as unknown as BlockStdScope;
 
 /**
  * The type line, in both directions.
@@ -334,5 +351,86 @@ describe('c4MorphedTypeLine — the caption follows the shape', () => {
         c4MorphedTypeLine(from, to, `  ${C4_TYPE_PLACEHOLDER[from]}  `)
       ).toBe(C4_TYPE_PLACEHOLDER[from]);
     }
+  });
+});
+
+/**
+ * `std` is optional everywhere in this file — with none, every function above
+ * behaves exactly as pinned. This block is the OTHER half: given a host, the
+ * bracketed word and the technology prompt resolve through its catalogue, and
+ * every comparison that decides "is this line untouched?" recognises BOTH the
+ * English literal and the host's own resolved wording (#3 of this lot).
+ */
+describe('with a translating host', () => {
+  const host = hostWith(shout);
+
+  it('c4TypeLine resolves the bracketed word, technology included', () => {
+    expect(c4TypeLine('container', 'Java', host)).toBe(
+      `[${shout('com.labre.c4.type.container')}: Java]`
+    );
+    expect(c4TypeLine('person', undefined, host)).toBe(
+      `[${shout('com.labre.c4.type.person')}]`
+    );
+  });
+
+  it('c4TypePlaceholder gives the fresh prompt in the host’s own words', () => {
+    expect(c4TypePlaceholder('container', host)).toBe(
+      `[${shout('com.labre.c4.type.container')}: ${shout('com.labre.c4.type.technology-placeholder')}]`
+    );
+    expect(c4TypePlaceholder('person', host)).toBe(
+      `[${shout('com.labre.c4.type.person')}]`
+    );
+    // With no host, it is byte-identical to the English constant.
+    expect(c4TypePlaceholder('container')).toBe(C4_TYPE_PLACEHOLDER.container);
+  });
+
+  it('technologyOfTypeLine reads the host’s own word as the notation, not a technology', () => {
+    const translated = c4TypePlaceholder('container', host);
+    expect(technologyOfTypeLine(translated, host)).toBe(
+      shout('com.labre.c4.type.technology-placeholder')
+    );
+    // A host-authored technology still comes back untouched.
+    expect(
+      technologyOfTypeLine(
+        `[${shout('com.labre.c4.type.container')}: Spring]`,
+        host
+      )
+    ).toBe('Spring');
+  });
+
+  it('normalizeC4TypeLine rebuilds the line in the host’s language and stays idempotent', () => {
+    const once = normalizeC4TypeLine('container', 'Java', host);
+    expect(once).toBe(`[${shout('com.labre.c4.type.container')}: Java]`);
+    expect(normalizeC4TypeLine('container', once, host)).toBe(once);
+  });
+
+  it('c4MorphedTypeLine carries an untouched host-language prompt to the target’s own', () => {
+    const containerPrompt = c4TypePlaceholder('container', host);
+    expect(
+      c4MorphedTypeLine('container', 'person', containerPrompt, host)
+    ).toBe(c4TypePlaceholder('person', host));
+    // The ENGLISH placeholder is recognised too, even with a host attached —
+    // a document seeded before these keys existed still morphs correctly.
+    expect(
+      c4MorphedTypeLine(
+        'container',
+        'person',
+        C4_TYPE_PLACEHOLDER.container,
+        host
+      )
+    ).toBe(c4TypePlaceholder('person', host));
+  });
+
+  it('c4MorphedTypeLine re-derives a canonical line, technology and all, in the host’s language', () => {
+    const stated = normalizeC4TypeLine('container', 'React', host);
+    expect(c4MorphedTypeLine('container', 'component', stated, host)).toBe(
+      `[${shout('com.labre.c4.type.component')}: React]`
+    );
+  });
+
+  it('c4MorphedTypeLine leaves the author’s own words exactly as they wrote them', () => {
+    expect(
+      c4MorphedTypeLine('container', 'database', 'see ADR 0042', host)
+    ).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { insertLinkByQuickSearchCommand } from '@labre/affine-block-bookmark';
 import { addImages } from '@labre/affine-block-image';
 import { DefaultTool } from '@labre/affine-block-surface';
 import { MAX_IMAGE_WIDTH } from '@labre/affine-model';
-import { TelemetryProvider } from '@labre/affine-shared/services';
+import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import type { NoteChildrenFlavour } from '@labre/affine-shared/types';
 import {
   getImageFilesFromLocal,
@@ -19,6 +19,11 @@ import { repeat } from 'lit/directives/repeat.js';
 
 import { NoteTool, type NoteToolOption } from '../note-tool.js';
 import { NOTE_MENU_ITEMS } from './note-menu-config.js';
+import {
+  GFX_NOTE_MENU_FILE,
+  GFX_NOTE_MENU_IMAGE,
+  GFX_NOTE_MENU_LINK,
+} from '../translations.js';
 
 export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
   static override styles = css`
@@ -115,7 +120,10 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
           <div class="button-group-container">
             <edgeless-tool-icon-button
               .activeMode=${'background'}
-              .tooltip=${'Image'}
+              .tooltip=${translateKey(
+                this.edgeless.std,
+                ...GFX_NOTE_MENU_IMAGE
+              )}
               @click=${this._addImages}
               .disabled=${this._imageLoading}
             >
@@ -125,7 +133,10 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
             <edgeless-tool-icon-button
               .activeMode=${'background'}
               .tooltip=${html`<affine-tooltip-content-with-shortcut
-                data-tip="${'Link'}"
+                data-tip="${translateKey(
+                  this.edgeless.std,
+                  ...GFX_NOTE_MENU_LINK
+                )}"
                 data-shortcut="${'@'}"
               ></affine-tooltip-content-with-shortcut>`}
               @click=${() => {
@@ -137,7 +148,7 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
 
             <edgeless-tool-icon-button
               .activeMode=${'background'}
-              .tooltip=${'File'}
+              .tooltip=${translateKey(this.edgeless.std, ...GFX_NOTE_MENU_FILE)}
               @click=${async () => {
                 const file = await openSingleFileWith();
                 if (!file) return;
@@ -165,21 +176,27 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
             ${repeat(
               NOTE_MENU_ITEMS,
               item => item.childFlavour,
-              item => html`
-                <edgeless-tool-icon-button
-                  .active=${childType === item.childType}
-                  .activeMode=${'background'}
-                  .tooltip=${item.tooltip}
-                  @click=${() =>
-                    this.onChange({
-                      childFlavour: item.childFlavour,
-                      childType: item.childType,
-                      tip: item.tooltip,
-                    })}
-                >
-                  ${item.icon}
-                </edgeless-tool-icon-button>
-              `
+              item => {
+                const tip = translateKey(
+                  this.edgeless.std,
+                  ...item.tooltipWording
+                );
+                return html`
+                  <edgeless-tool-icon-button
+                    .active=${childType === item.childType}
+                    .activeMode=${'background'}
+                    .tooltip=${tip}
+                    @click=${() =>
+                      this.onChange({
+                        childFlavour: item.childFlavour,
+                        childType: item.childType,
+                        tip,
+                      })}
+                  >
+                    ${item.icon}
+                  </edgeless-tool-icon-button>
+                `;
+              }
             )}
           </div>
         </div>

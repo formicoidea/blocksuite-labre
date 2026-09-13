@@ -2,6 +2,7 @@ import { CommentIcon } from '@blocksuite/icons/lit';
 import { BlockSelection } from '@labre/std';
 import type { BlockModel, Store } from '@labre/store';
 
+import { TOOLBAR_COMMENT } from '../translation-service/chrome.js';
 import type { ToolbarAction } from '../toolbar-service';
 import { type CommentId, CommentProviderIdentifier } from './comment-provider';
 
@@ -24,6 +25,7 @@ export function findCommentedBlocks(store: Store, commentId: CommentId) {
 
 export const blockCommentToolbarButton: Omit<ToolbarAction, 'id'> = {
   tooltip: 'Comment',
+  tooltipWording: TOOLBAR_COMMENT,
   when: ({ std }) => !!std.getOptional(CommentProviderIdentifier),
   icon: CommentIcon(),
   run: ctx => {

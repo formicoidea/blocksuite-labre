@@ -1,13 +1,25 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import { DEFAULT_ICON_COLOR } from './icon-data.js';
 import type { IconPickerTab } from './types.js';
+import {
+  ICON_PICKER_ICONS_GROUP,
+  ICON_PICKER_REMOVE,
+  ICON_PICKER_TAB_EMOJI,
+} from '../translations.js';
 
-const TABS: ReadonlyArray<{ value: IconPickerTab; label: string }> = [
-  { value: 'emoji', label: 'Emoji' },
-  { value: 'icons', label: 'Icons' },
+const TABS: ReadonlyArray<{
+  value: IconPickerTab;
+  wording: readonly [string, string];
+}> = [
+  { value: 'emoji', wording: ICON_PICKER_TAB_EMOJI },
+  { value: 'icons', wording: ICON_PICKER_ICONS_GROUP },
 ];
 
 /**
@@ -24,6 +36,9 @@ const TABS: ReadonlyArray<{ value: IconPickerTab; label: string }> = [
  * ```
  */
 export class AffineIconPicker extends LitElement {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     :host {
       display: flex;
@@ -141,7 +156,9 @@ export class AffineIconPicker extends LitElement {
                 data-active=${this.activeTab === tab.value}
                 @click=${() => (this.activeTab = tab.value)}
               >
-                ${tab.label}
+                ${this.std
+                  ? translateKey(this.std, ...tab.wording)
+                  : tab.wording[1]}
               </button>
             `
           )}
@@ -154,7 +171,9 @@ export class AffineIconPicker extends LitElement {
                 data-testid="icon-picker-remove"
                 @click=${this._remove}
               >
-                Remove
+                ${this.std
+                  ? translateKey(this.std, ...ICON_PICKER_REMOVE)
+                  : ICON_PICKER_REMOVE[1]}
               </button>
             `
           : null}

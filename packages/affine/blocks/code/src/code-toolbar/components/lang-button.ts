@@ -7,6 +7,7 @@ import { ArrowDownIcon } from '@labre/affine-components/icons';
 import {
   DocModeProvider,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -17,6 +18,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import type { CodeBlockComponent } from '../..';
+import { CODE_SEARCH_FOR_LANGUAGE } from '../../translations.js';
 
 export class LanguageListButton extends WithDisposable(
   SignalWatcher(LitElement)
@@ -66,7 +68,10 @@ export class LanguageListButton extends WithDisposable(
     this.onActiveStatusChange(true);
 
     const options: FilterableListOptions = {
-      placeholder: 'Search for a language',
+      placeholder: translateKey(
+        this.blockComponent.std,
+        ...CODE_SEARCH_FOR_LANGUAGE
+      ),
       onSelect: item => {
         const sortedBundledLanguages = this._sortedBundledLanguages;
         const index = sortedBundledLanguages.indexOf(item);

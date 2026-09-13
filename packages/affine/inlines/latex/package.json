@@ -46,7 +46,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./view": "./src/view.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./translations": "./src/translations.ts"
   },
   "files": [
     "src",

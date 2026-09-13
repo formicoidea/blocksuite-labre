@@ -1,10 +1,23 @@
 import { ColorScheme, NoteShadow } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import {
+  NOTE_SHADOW_BOX,
+  NOTE_SHADOW_FILM,
+  NOTE_SHADOW_FLOATING,
+  NOTE_SHADOW_NONE,
+  NOTE_SHADOW_PAPER,
+  NOTE_SHADOW_STICKER,
+} from '../translations.js';
 import { NoteNoShadowIcon, NoteShadowSampleIcon } from './icons';
 
 type Shadow = {
@@ -12,7 +25,7 @@ type Shadow = {
   light: Parameters<typeof styleMap>[0];
   dark: Parameters<typeof styleMap>[0];
   style: Parameters<typeof styleMap>[0];
-  tooltip: string;
+  tooltipWording: ChromeWording;
 };
 
 const SHADOWS: Shadow[] = [
@@ -21,7 +34,7 @@ const SHADOWS: Shadow[] = [
     light: {},
     dark: {},
     style: {},
-    tooltip: 'No shadow',
+    tooltipWording: NOTE_SHADOW_NONE,
   },
   {
     type: NoteShadow.Box,
@@ -37,7 +50,7 @@ const SHADOWS: Shadow[] = [
       boxShadow:
         '0px 0.109px 2.621px var(--note-box-shadow-color-1), 0px 0px 0.874px var(--note-box-shadow-color-2)',
     },
-    tooltip: 'Box shadow',
+    tooltipWording: NOTE_SHADOW_BOX,
   },
   {
     type: NoteShadow.Sticker,
@@ -53,7 +66,7 @@ const SHADOWS: Shadow[] = [
       boxShadow:
         '0px 5.243px 5.68px var(--note-sticker-shadow-color-1), 0px 5.68px 3.932px var(--note-sticker-shadow-color-2)',
     },
-    tooltip: 'Sticker shadow',
+    tooltipWording: NOTE_SHADOW_STICKER,
   },
   {
     type: NoteShadow.Paper,
@@ -69,7 +82,7 @@ const SHADOWS: Shadow[] = [
       border: '2px solid var(--note-paper-shadow-color-2)',
       boxShadow: '0px 0.655px 1.311px var(--note-paper-shadow-color-1)',
     },
-    tooltip: 'Paper shadow',
+    tooltipWording: NOTE_SHADOW_PAPER,
   },
   {
     type: NoteShadow.Float,
@@ -85,7 +98,7 @@ const SHADOWS: Shadow[] = [
       boxShadow:
         '0px 2.84px 6.554px var(--note-float-shadow-color-1), 0px 0px 0.218px var(--note-float-shadow-color-2)',
     },
-    tooltip: 'Floating shadow',
+    tooltipWording: NOTE_SHADOW_FLOATING,
   },
   {
     type: NoteShadow.Film,
@@ -101,7 +114,7 @@ const SHADOWS: Shadow[] = [
       border: '1px solid var(--note-film-shadow-color-1)',
       boxShadow: '2px 2px 0px var(--note-film-shadow-color-2)',
     },
-    tooltip: 'Film shadow',
+    tooltipWording: NOTE_SHADOW_FILM,
   },
 ];
 
@@ -159,13 +172,13 @@ export class EdgelessNoteShadowMenu extends LitElement {
   }
 
   override render() {
-    const { value, theme } = this;
+    const { value, theme, std } = this;
     const isDark = theme === ColorScheme.Dark;
 
     return repeat(
       SHADOWS,
       shadow => shadow.type,
-      ({ type, tooltip, style, light, dark }, index) =>
+      ({ type, tooltipWording, style, light, dark }, index) =>
         html`<div
           class="item"
           ?data-selected="${value === type}"
@@ -174,7 +187,7 @@ export class EdgelessNoteShadowMenu extends LitElement {
           <editor-icon-button
             class="item-icon"
             data-testid="${type.replace('--', '')}"
-            .tooltip=${tooltip}
+            .tooltip=${translateKey(std, ...tooltipWording)}
             .tipPosition="${'bottom'}"
             .iconContainerPadding=${0}
             .hover=${false}
@@ -197,6 +210,10 @@ export class EdgelessNoteShadowMenu extends LitElement {
 
   @property({ attribute: false })
   accessor value!: NoteShadow;
+
+  /** Threaded from `edgeless-note-style-panel.ts`, which already has `std`. */
+  @property({ attribute: false })
+  accessor std!: BlockStdScope;
 }
 
 declare global {

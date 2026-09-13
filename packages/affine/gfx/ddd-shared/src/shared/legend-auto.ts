@@ -1,3 +1,4 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
@@ -67,22 +68,45 @@ export interface AutoLegendEntry {
    * off when the parent row is a fair summary of the whole family.
    */
   exact?: boolean;
+  /**
+   * Static prefix kept literal in front of the role's resolved wording — the
+   * Context Map relationship abbreviation ("PS — Partnership"). Absent for
+   * every other row, whose label IS the role's own wording and nothing else.
+   */
+  labelPrefix?: string;
 }
 
 export interface AutoLegendSectionSpec {
   /** Sub-title, dropped along with the section when none of its rows appear. */
   title?: string;
+  /**
+   * i18n key for {@link title}, resolved through the host's catalogue at
+   * legend-build time when present. Absent for the sections whose title is
+   * generic chrome rather than a framework's own word (`'Legend'`, `'Flow'`…),
+   * which this lot leaves as they are.
+   */
+  titleKey?: string;
   entries: readonly AutoLegendEntry[];
 }
 
 export interface AutoLegendSpec {
   /**
-   * Box title. The three DDD tools all say "Legend" (PO recette, 26/08/2026:
-   * the boxes used to be titled in French, which was the one label in the
-   * library that was — identifiers and fallback wordings are English here, and
-   * the day a host ships a locale pack it translates a key, not a leftover).
+   * Box title. Every framework with an automatic legend says "Legend" (PO
+   * recette, 26/08/2026: the boxes used to be titled in French, which was the
+   * one label in the library that was — identifiers and fallback wordings are
+   * English here, and the day a host ships a locale pack it translates a key,
+   * not a leftover).
    */
   title: string;
+  /**
+   * i18n key for {@link title}, resolved through the host's catalogue at
+   * legend-build time — the same mechanism as
+   * {@link AutoLegendSectionSpec.titleKey}, one level up. Every framework that
+   * says "Legend" reuses `BOARD_LEGEND_TITLE`
+   * (`@labre/affine-shared/services`), since it is the SAME word on every
+   * board that has one — the three DDD boards, EDGY and C4 alike.
+   */
+  titleKey?: string;
   width?: number;
   /**
    * The framework's role vocabulary, so a present role is matched against an
@@ -101,9 +125,64 @@ export interface AutoLegendSpec {
  * A legend row about `es:flow` says "Flow" because that is what the role def
  * says it is called — the table below never restates a label the vocabulary
  * already owns, so renaming a role renames its legend row.
+ *
+ * This is the FALLBACK half only — the English wording a spec bakes in at
+ * declaration time, with no `std` in scope to ask a host's catalogue. The
+ * catalogue is asked afterwards, once, when the legend is actually drawn: see
+ * {@link autoLegendSections}.
  */
 export function roleLabel(roles: RoleDefs, id: RoleId): string {
   return roles[id]?.labelFallback ?? id;
+}
+
+/**
+ * Resolve one row's label through the host's catalogue, at legend-BUILD time
+ * — the one point in this module that has a `std` to ask.
+ *
+ * A row's `label` is baked at spec-declaration time (module scope, no `std`)
+ * as the exact English text a catalogue-less playground must keep showing —
+ * see {@link roleLabel}. Here, if the row's own role carries a `labelKey`, that
+ * baked text becomes the FALLBACK argument of `translateKey` rather than the
+ * final word: a host with a catalogue entry for the key overrides it, and a
+ * host with none gets back the identical string, letter for letter.
+ *
+ * `labelPrefix` rows (the Context Map relationship abbreviations, "PS —
+ * Partnership") are the one case where the row's baked text is not what gets
+ * handed to the catalogue: the role's own `labelFallback` is (the abbreviation
+ * itself is never a translatable word), and the prefix is stitched back on
+ * after translation.
+ */
+function resolveRowLabel(
+  std: BlockStdScope,
+  roles: RoleDefs,
+  entry: AutoLegendEntry
+): string {
+  const def = roles[entry.role];
+  if (!def?.labelKey) return entry.row.label;
+  if (entry.labelPrefix) {
+    const translated = translateKey(
+      std,
+      def.labelKey,
+      def.labelFallback ?? entry.role
+    );
+    return `${entry.labelPrefix} — ${translated}`;
+  }
+  return translateKey(std, def.labelKey, entry.row.label);
+}
+
+/**
+ * Resolve one section's title through the host's catalogue — see
+ * {@link resolveRowLabel}. Absent {@link AutoLegendSectionSpec.titleKey} keeps
+ * the section's title exactly as declared, unresolved: most section titles are
+ * generic chrome ("Legend", "Flow") this lot leaves untranslated.
+ */
+function resolveSectionTitle(
+  std: BlockStdScope,
+  section: AutoLegendSectionSpec
+): string | undefined {
+  return section.titleKey && section.title !== undefined
+    ? translateKey(std, section.titleKey, section.title)
+    : section.title;
 }
 
 /**
@@ -140,10 +219,16 @@ export function rolesInBound(gfx: GfxController, bound: Bound): Set<RoleId> {
  * "Legend" title and no rows), and it is the honest one — a legend of a board
  * with nothing on it lists nothing, rather than inventing the full notation the
  * user has not used.
+ *
+ * `std` resolves each surviving row's label — and each section's title, where
+ * one carries a {@link AutoLegendSectionSpec.titleKey} — through the host's
+ * catalogue (see {@link resolveRowLabel}); a spec whose entries carry no
+ * `labelKey` at all renders byte-identical to what it always has.
  */
 export function autoLegendSections(
   present: ReadonlySet<RoleId>,
-  spec: AutoLegendSpec
+  spec: AutoLegendSpec,
+  std: BlockStdScope
 ): LegendSection[] {
   const sections: LegendSection[] = [];
   for (const section of spec.sections) {
@@ -153,8 +238,12 @@ export function autoLegendSections(
           ? present.has(entry.role)
           : [...present].some(role => roleIsA(role, entry.role, spec.roles))
       )
-      .map(entry => entry.row);
-    if (rows.length) sections.push({ title: section.title, rows });
+      .map(entry => ({
+        ...entry.row,
+        label: resolveRowLabel(std, spec.roles, entry),
+      }));
+    if (rows.length)
+      sections.push({ title: resolveSectionTitle(std, section), rows });
   }
   return sections;
 }
@@ -175,7 +264,10 @@ export function createAutoLegend(
   if (!surface) return undefined;
 
   const bound = Bound.deserialize(background.xywh);
-  const sections = autoLegendSections(rolesInBound(gfx, bound), spec);
+  const sections = autoLegendSections(rolesInBound(gfx, bound), spec, std);
+  const title = spec.titleKey
+    ? translateKey(std, spec.titleKey, spec.title)
+    : spec.title;
   const { height } = measureLegend(sections, spec.width);
 
   std.store.captureSync();
@@ -184,7 +276,7 @@ export function createAutoLegend(
     std,
     bound.x + INSET_X,
     bound.y + bound.h - INSET_BOTTOM - height,
-    { title: spec.title, sections, width: spec.width }
+    { title, sections, width: spec.width }
   );
   gfx.selection.set({ elements: [id], editing: false });
   return id;

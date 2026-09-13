@@ -29,15 +29,23 @@ import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import {
   ASSOCIATION_STROKE,
   ASSOCIATION_WIDTH,
+  LANE_NAME_FALLBACK,
+  LANE_NAME_KEY,
   MESSAGE_STROKE,
   MESSAGE_WIDTH,
   NODE_LABEL,
   nodeLabelKey,
   NODE_SIZE,
+  POOL_NAME_FALLBACK,
+  POOL_NAME_KEY,
   SEQUENCE_STROKE,
   SEQUENCE_WIDTH,
 } from './consts';
-import { BPMN_FORMAT_ID, type BpmnExportBoard } from './export.js';
+import {
+  BPMN_FORMAT_ID,
+  type BpmnExportBoard,
+  exportBpmnXmlWithWarnings,
+} from './export.js';
 import {
   BPMN_SVG_IMPORT,
   BPMN_XML_EXPORT,
@@ -106,8 +114,17 @@ export function createBpmnPool(std: BlockStdScope) {
   // and for the same reason: the shipped cards build their participants from it
   // too, so a pool laid out by a template and one dropped from the toolbox
   // cannot say different things. The gesture owns the BOX and nothing else.
+  //
+  // The NAME is the one exception, and it is written HERE rather than left to
+  // the model's default (`BpmnPoolElementModel.name = 'Pool'`, a red-zone
+  // field: a document created before this key existed keeps its literal
+  // 'Pool' verbatim). Resolved at placement and never again — content from
+  // the moment it lands, exactly like a node's caption.
   const id = surface.addElement(
-    bpmnPoolProps({ xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize() })
+    bpmnPoolProps({
+      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+      name: translateKey(std, POOL_NAME_KEY, POOL_NAME_FALLBACK),
+    })
   );
   finish(gfx, id);
 }
@@ -281,16 +298,16 @@ function writeLanes(
  * Before it, a single lane was indistinguishable from no lane at all, and the
  * gesture looked broken until the second click.
  *
- * ## `Lane N` is DOCUMENT DATA, not vocabulary
+ * ## `Lane N` is a SEED, resolved once at placement
  *
  * The default name is a plain persisted string, exactly like the pool's own
  * `'Pool'` default: it is written into the document by this action and is the
- * user's to rewrite from that moment on. It is deliberately NOT a `labelKey`
- * through the translation seam — a host that ships a French catalogue must not
- * silently retitle a lane an author named, and a name that changed language
- * when the reader's locale did would be a document that says different things
- * to different people. `N` is the count AFTER this lane, so the first is
- * `Lane 1`.
+ * user's to rewrite from that moment on. Since the i18n pass (#278) it goes
+ * through the translation seam exactly as `nodeLabelKey` does for a node's
+ * caption — resolved HERE, once, so a lane added in a translated host starts
+ * in that language, and never re-resolved afterwards: a lane the author has
+ * since renamed is document content, and nothing here revisits it. `{{n}}` is
+ * the count AFTER this lane, so the first is `Lane 1`.
  */
 export function addBpmnLane(std: BlockStdScope): void {
   const pools = bpmnPoolsForLaneEdit(std);
@@ -310,9 +327,14 @@ export function addBpmnLane(std: BlockStdScope): void {
     const size = lanes.length
       ? lanes.reduce((sum, lane) => sum + lane.size, 0) / lanes.length
       : 1;
+    const n = lanes.length + 1;
     writeLanes(std, model, [
       ...lanes,
-      { id: generateElementId(), name: `Lane ${lanes.length + 1}`, size },
+      {
+        id: generateElementId(),
+        name: translateKey(std, LANE_NAME_KEY, LANE_NAME_FALLBACK, { n }),
+        size,
+      },
     ]);
   }
 }
@@ -409,9 +431,8 @@ export function bpmnExportFilename(std: BlockStdScope): string {
  */
 export function exportBpmnXmlFile(std: BlockStdScope): void {
   const elements = gfxOf(std).surface?.elementModels ?? [];
-  const { text, filename, mime, warnings } = BPMN_XML_EXPORT.run(elements, {
-    name: bpmnExportFilename(std),
-  });
+  const name = bpmnExportFilename(std);
+  const { text, filename, mime } = BPMN_XML_EXPORT.run(elements, { name });
   // The charset is the browser's business, not the format's: `mime` is what
   // `.bpmn` IS, and this is how a blob is told to carry it.
   downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
@@ -422,10 +443,24 @@ export function exportBpmnXmlFile(std: BlockStdScope): void {
   // Export is the one person entitled to be told" false in the only place a
   // user stands. A warning is never an error: the file downloaded, and it is
   // valid; what it could not say is what this names.
-  if (!warnings || warnings.length === 0) return;
+  //
+  // Read straight from the PURE exporter rather than through
+  // `BPMN_XML_EXPORT.run` above: the interchange capability's `warnings` is
+  // `readonly string[]` (a seam shared with every other format, resolved to
+  // its English fallback with no `std` to ask), while the STRUCTURED
+  // `BpmnExportWarning[]` — key, fallback, params — is what `translateKey`
+  // needs. Calling the exporter a second time costs nothing beyond CPU (it is
+  // pure and deterministic on the same `elements`/`name`), and keeps the
+  // downloaded bytes on the one door `BPMN_XML_EXPORT.run` already is.
+  const { warnings } = exportBpmnXmlWithWarnings(bpmnBoardFrom(elements), {
+    name,
+  });
+  if (warnings.length === 0) return;
   notifyBpmn(std, {
     title: translateKey(std, EXPORT_WARNINGS_KEY, EXPORT_WARNINGS_FALLBACK),
-    message: warnings.join('\n'),
+    message: warnings
+      .map(w => translateKey(std, w.key, w.fallback, w.params))
+      .join('\n'),
     accent: 'warning',
   });
 }

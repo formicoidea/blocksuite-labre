@@ -167,7 +167,10 @@ The board-placing command declares `board: true` (`board-role.unit.spec.ts`).
 
 **R30. Every user-visible string is a `com.labre.*` key** derived in
 `translations.ts` from the declarations, so the published framework bundle
-is not silently short of keys (`manifest.unit.spec.ts`).
+is not silently short of keys (`manifest.unit.spec.ts`). That includes seeds,
+the text a creation action writes into the document: they are resolved at
+placement, never by changing a model default. A new displayed literal with no
+key fails `literals.unit.spec.ts` (ADR 0016).
 
 ## Packaging
 

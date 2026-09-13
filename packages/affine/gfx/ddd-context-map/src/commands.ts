@@ -6,6 +6,10 @@ import {
   placeDddElement,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
@@ -15,6 +19,25 @@ import {
   createContextMapBoard,
 } from './actions';
 import { CONTEXT_MAP_ROLE } from './roles';
+
+/**
+ * The seeds baked into a placed artefact: the bounded-context bubble's
+ * default caption, and the general-purpose cloud's. The nine relationship
+ * patterns carry no seed of their own — since WS2 the palette ARMS the
+ * connector tool rather than dropping a labelled group, so no word is
+ * written into the document for them any more
+ * (`activateContextMapRelationship`). Declared here, beside the commands that
+ * write them, and imported by `translations.ts` — never the other way, which
+ * would cycle back into `contextMapCommands`.
+ */
+export const CONTEXT_MAP_SEED_BOUNDED_CONTEXT: ChromeWording = [
+  'com.labre.ddd-context-map.seed.bounded-context',
+  'Bounded Context',
+];
+export const CONTEXT_MAP_SEED_CLOUD: ChromeWording = [
+  'com.labre.ddd-context-map.seed.cloud',
+  'System',
+];
 
 /**
  * The Context Map palette as commands: the board, the bounded-context bubble,
@@ -68,10 +91,18 @@ const SPECS: Spec[] = [
     icon: bubbleSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        // The role is what makes a bubble a bounded CONTEXT rather than a blue
-        // pill: every rule in `rules.ts` reads it, and a pill drawn before WS2
-        // carries none and is never evaluated (promesse #71).
-        addBubble(surface, cx, cy, 'Bounded Context', CONTEXT_MAP_ROLE.context)
+        // Translated HERE and once: the caption is document content the
+        // moment it lands (ADR 0016). The role is what makes a bubble a
+        // bounded CONTEXT rather than a blue pill: every rule in `rules.ts`
+        // reads it, and a pill drawn before WS2 carries none and is never
+        // evaluated (promesse #71).
+        addBubble(
+          surface,
+          cx,
+          cy,
+          translateKey(std, ...CONTEXT_MAP_SEED_BOUNDED_CONTEXT),
+          CONTEXT_MAP_ROLE.context
+        )
       ),
   },
   {
@@ -82,7 +113,14 @@ const SPECS: Spec[] = [
     icon: cloudSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        addCloud(surface, std, cx, cy, 'System')
+        // Translated HERE and once, like the bubble above (ADR 0016).
+        addCloud(
+          surface,
+          std,
+          cx,
+          cy,
+          translateKey(std, ...CONTEXT_MAP_SEED_CLOUD)
+        )
       ),
   },
   ...CM_RELATIONSHIPS.map(

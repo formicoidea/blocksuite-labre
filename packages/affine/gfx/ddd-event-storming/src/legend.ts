@@ -5,8 +5,10 @@ import {
   LABEL_COLOR,
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
+import { BOARD_LEGEND_TITLE } from '@labre/affine-shared/services';
 
 import { ES_ROLE, ES_STICKY_ROLE, EVENT_STORMING_ROLES } from './roles';
+import { ES_SEED_LEGEND_FLOW, ES_SEED_LEGEND_STICKIES } from './translations';
 
 /**
  * What the Event Storming board's automatic legend can say — a TABLE, and
@@ -23,11 +25,13 @@ import { ES_ROLE, ES_STICKY_ROLE, EVENT_STORMING_ROLES } from './roles';
  * its own preset (a diamond, not a square) rather than in the table.
  */
 export const EVENT_STORMING_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   roles: EVENT_STORMING_ROLES,
   sections: [
     {
-      title: 'Stickies',
+      title: ES_SEED_LEGEND_STICKIES[1],
+      titleKey: ES_SEED_LEGEND_STICKIES[0],
       entries: [
         ...ES_STICKIES.map(preset => ({
           role: ES_STICKY_ROLE[preset.kind],
@@ -48,7 +52,8 @@ export const EVENT_STORMING_AUTO_LEGEND: AutoLegendSpec = {
       ],
     },
     {
-      title: 'Flow',
+      title: ES_SEED_LEGEND_FLOW[1],
+      titleKey: ES_SEED_LEGEND_FLOW[0],
       entries: [
         {
           role: ES_ROLE.flow,

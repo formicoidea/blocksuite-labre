@@ -37,6 +37,7 @@ import {
   EditPropsStore,
   FeatureFlagService,
   ThemeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   captureEventTarget,
@@ -87,6 +88,12 @@ import {
   PANEL_WIDTH,
   type TARGET_SHAPE_TYPE,
 } from './utils.js';
+import {
+  AUTO_COMPLETE_ADD_SAME_OBJECT,
+  AUTO_COMPLETE_FRAME,
+  AUTO_COMPLETE_NOTE,
+  AUTO_COMPLETE_TEXT,
+} from './translations.js';
 
 export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
   static override styles = css`
@@ -633,7 +640,7 @@ export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
       ${shapeButtons}
 
       <edgeless-tool-icon-button
-        .tooltip=${'Text'}
+        .tooltip=${translateKey(this.std, ...AUTO_COMPLETE_TEXT)}
         .iconSize=${'20px'}
         @pointerenter=${() => this._showOverlay('text')}
         @pointerleave=${() => this._removeOverlay()}
@@ -642,7 +649,7 @@ export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
         ${FontFamilyIcon}
       </edgeless-tool-icon-button>
       <edgeless-tool-icon-button
-        .tooltip=${'Note'}
+        .tooltip=${translateKey(this.std, ...AUTO_COMPLETE_NOTE)}
         .iconSize=${'20px'}
         @pointerenter=${() => this._showOverlay('note')}
         @pointerleave=${() => this._removeOverlay()}
@@ -651,7 +658,7 @@ export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
         ${PageIcon()}
       </edgeless-tool-icon-button>
       <edgeless-tool-icon-button
-        .tooltip=${'Frame'}
+        .tooltip=${translateKey(this.std, ...AUTO_COMPLETE_FRAME)}
         .iconSize=${'20px'}
         @pointerenter=${() => this._showOverlay('frame')}
         @pointerleave=${() => this._removeOverlay()}
@@ -667,7 +674,9 @@ export class EdgelessAutoCompletePanel extends WithDisposable(LitElement) {
         @pointerleave=${() => this._removeOverlay()}
         @click=${() => this._autoComplete(currentSourceType)}
       >
-        <div class="row-button">Add a same object</div>
+        <div class="row-button">
+          ${translateKey(this.std, ...AUTO_COMPLETE_ADD_SAME_OBJECT)}
+        </div>
       </edgeless-tool-icon-button>
     </div>`;
   }

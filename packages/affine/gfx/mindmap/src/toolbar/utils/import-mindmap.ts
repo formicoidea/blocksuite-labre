@@ -1,7 +1,11 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { openSingleFileWith } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type { Bound } from '@labre/global/gfx';
+import type { BlockStdScope } from '@labre/std';
 import c from 'simple-xml-to-json';
+
+import { MINDMAP_SEED_IMPORTED_NODE } from '../../translations';
 
 type MindMapNode = {
   children: MindMapNode[];
@@ -11,7 +15,10 @@ type MindMapNode = {
   layoutType?: 'left' | 'right';
 };
 
-export async function importMindmap(bound: Bound): Promise<MindMapNode> {
+export async function importMindmap(
+  bound: Bound,
+  std: BlockStdScope
+): Promise<MindMapNode> {
   const file = await openSingleFileWith('MindMap');
 
   if (!file) {
@@ -21,9 +28,9 @@ export async function importMindmap(bound: Bound): Promise<MindMapNode> {
   let result;
 
   if (file.name.endsWith('.mm')) {
-    result = await parseMmFile(file);
+    result = await parseMmFile(file, std);
   } else if (file.name.endsWith('.opml') || file.name.endsWith('.xml')) {
-    result = await parseOPMLFile(file);
+    result = await parseOPMLFile(file, std);
   } else {
     throw new BlockSuiteError(ErrorCode.ParsingError, 'Unsupported file type');
   }
@@ -47,8 +54,14 @@ type RawMmNode = {
   };
 };
 
-async function parseMmFile(file: File): Promise<MindMapNode> {
+async function parseMmFile(
+  file: File,
+  std: BlockStdScope
+): Promise<MindMapNode> {
   const content = await readAsText(file);
+  // Translated HERE and once: a node with no text is document content the
+  // moment the import lands (ADR 0016).
+  const untitled = translateKey(std, ...MINDMAP_SEED_IMPORTED_NODE);
 
   try {
     const parsed = c.convertXML(content);
@@ -62,14 +75,14 @@ async function parseMmFile(file: File): Promise<MindMapNode> {
       return node.node.POSITION
         ? {
             layoutType: node.node.POSITION,
-            text: node.node.TEXT ?? 'MINDMAP',
+            text: node.node.TEXT ?? untitled,
             children:
               (node.node.children
                 ?.map(traverse)
                 .filter(node => node) as MindMapNode[]) ?? [],
           }
         : {
-            text: node.node.TEXT ?? 'MINDMAP',
+            text: node.node.TEXT ?? untitled,
             children:
               (node.node.children
                 ?.map(traverse)
@@ -103,8 +116,14 @@ type RawOPMLOutline = {
   };
 };
 
-async function parseOPMLFile(file: File): Promise<MindMapNode> {
+async function parseOPMLFile(
+  file: File,
+  std: BlockStdScope
+): Promise<MindMapNode> {
   const content = await readAsText(file);
+  // Translated HERE and once: a node with no text is document content the
+  // moment the import lands (ADR 0016).
+  const untitled = translateKey(std, ...MINDMAP_SEED_IMPORTED_NODE);
 
   try {
     const parsed = c.convertXML(content);
@@ -116,7 +135,7 @@ async function parseOPMLFile(file: File): Promise<MindMapNode> {
       }
 
       return {
-        text: node.outline?.text ?? 'MINDMAP',
+        text: node.outline?.text ?? untitled,
         children: node.outline.children
           ? (node.outline.children.map(traverse) as MindMapNode[])
           : [],

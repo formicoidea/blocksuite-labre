@@ -1,6 +1,10 @@
 import { type NavigatorMode, PresentTool } from '@labre/affine-block-frame';
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
-import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
+import {
+  DocModeProvider,
+  EditPropsStore,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { WithDisposable } from '@labre/global/lit';
@@ -9,6 +13,12 @@ import type { EditorHost } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+
+import {
+  FRAME_PANEL_ALL_FRAMES_LABEL,
+  FRAME_PANEL_ALL_FRAMES_SETTINGS_TOOLTIP,
+  FRAME_PANEL_PRESENTATION_LABEL,
+} from '../translations';
 
 const styles = css`
   :host {
@@ -181,14 +191,20 @@ export class FramePanelHeader extends WithDisposable(LitElement) {
   }
 
   override render() {
+    const { std } = this.editorHost;
+
     return html`<div class="frame-panel-header">
       <div class="all-frames-setting">
-        <span class="all-frames-setting-label">All frames</span>
+        <span class="all-frames-setting-label"
+          >${translateKey(std, ...FRAME_PANEL_ALL_FRAMES_LABEL)}</span
+        >
         <edgeless-tool-icon-button
           class="all-frames-setting-button ${this._settingPopperShow
             ? 'active'
             : ''}"
-          .tooltip=${this._settingPopperShow ? '' : 'All Frames Settings'}
+          .tooltip=${this._settingPopperShow
+            ? ''
+            : translateKey(std, ...FRAME_PANEL_ALL_FRAMES_SETTINGS_TOOLTIP)}
           .tipPosition=${'top'}
           .active=${this._settingPopperShow}
           .activeMode=${'background'}
@@ -205,7 +221,7 @@ export class FramePanelHeader extends WithDisposable(LitElement) {
       <div class="presentation-button" @click=${this._enterPresentationMode}>
         ${PresentationIcon({ width: '16px', height: '16px' })}<span
           class="presentation-button-label"
-          >Presentation</span
+          >${translateKey(std, ...FRAME_PANEL_PRESENTATION_LABEL)}</span
         >
       </div>
     </div>`;

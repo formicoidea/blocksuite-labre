@@ -1,7 +1,18 @@
-import { NotificationProvider } from '@labre/affine-shared/services';
+import {
+  NotificationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { type BlockStdScope } from '@labre/std';
 
 import { toast } from '../toast/toast.js';
+import {
+  NOTIFY_CLEARED_ALIASES_MESSAGE,
+  NOTIFY_CLEARED_ALIASES_TITLE,
+  NOTIFY_SWITCHED_TO_CARD_MESSAGE,
+  NOTIFY_SWITCHED_TO_CARD_TITLE,
+  NOTIFY_SWITCHED_TO_EMBED_MESSAGE,
+  NOTIFY_SWITCHED_TO_EMBED_TITLE,
+} from '../translations.js';
 
 function notify(std: BlockStdScope, title: string, message: string) {
   const notification = std.getOptional(NotificationProvider);
@@ -23,23 +34,23 @@ function notify(std: BlockStdScope, title: string, message: string) {
 export function notifyLinkedDocSwitchedToCard(std: BlockStdScope) {
   notify(
     std,
-    'View Updated',
-    'The alias modification has disabled sync. The embed has been updated to a card view.'
+    translateKey(std, ...NOTIFY_SWITCHED_TO_CARD_TITLE),
+    translateKey(std, ...NOTIFY_SWITCHED_TO_CARD_MESSAGE)
   );
 }
 
 export function notifyLinkedDocSwitchedToEmbed(std: BlockStdScope) {
   notify(
     std,
-    'Embed View Restored',
-    'Custom alias removed. The linked doc now displays the original title and description.'
+    translateKey(std, ...NOTIFY_SWITCHED_TO_EMBED_TITLE),
+    translateKey(std, ...NOTIFY_SWITCHED_TO_EMBED_MESSAGE)
   );
 }
 
 export function notifyLinkedDocClearedAliases(std: BlockStdScope) {
   notify(
     std,
-    'Reset successful',
-    `Card view has been restored to original doc title and description. All custom aliases have been removed.`
+    translateKey(std, ...NOTIFY_CLEARED_ALIASES_TITLE),
+    translateKey(std, ...NOTIFY_CLEARED_ALIASES_MESSAGE)
   );
 }
