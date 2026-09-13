@@ -1,4 +1,10 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  TOOL_NAME_FRAME,
+  TOOLBAR_CREATE_LINKED_DOC_TITLE,
+  TOOLBAR_RELOAD,
+  TOOLBAR_REMOVE_LINK,
+} from '@labre/affine-shared/services';
 
 /**
  * This package's own wordings, joined into `PACKAGE_WORDINGS` /
@@ -24,16 +30,12 @@ export const ROOT_TOOLBAR_CREATE_TABLE: ChromeWording = [
 ];
 
 /**
- * NOT the same wording as the shared `TOOLBAR_CREATE_LINKED_DOC`
- * (`com.labre.toolbar.create-linked-doc`, "Create linked doc") declared in
- * `chrome.ts`: this block's toolbar button carries its own, differently-cased
- * English literal ("Create Linked Doc"), so reusing the other key would
- * change what a catalogue-less playground shows.
+ * An alias (L7 dedupe): the same Title Case word as
+ * {@link TOOLBAR_CREATE_LINKED_DOC_TITLE}, distinct from the shared
+ * sentence-case `TOOLBAR_CREATE_LINKED_DOC` chrome wording
+ * (`com.labre.toolbar.create-linked-doc`, "Create linked doc").
  */
-export const ROOT_TOOLBAR_CREATE_LINKED_DOC: ChromeWording = [
-  'com.labre.root.toolbar.create-linked-doc',
-  'Create Linked Doc',
-];
+export const ROOT_TOOLBAR_CREATE_LINKED_DOC = TOOLBAR_CREATE_LINKED_DOC_TITLE;
 
 /* ── The edgeless alignment menu (`edgeless/configs/toolbar/alignment.ts`) ── */
 
@@ -89,10 +91,7 @@ export const ROOT_TOOLBAR_RELEASE_FROM_GROUP: ChromeWording = [
   'com.labre.root.toolbar.release-from-group',
   'Release from group',
 ];
-export const ROOT_TOOLBAR_FRAME: ChromeWording = [
-  'com.labre.root.toolbar.frame',
-  'Frame',
-];
+export const ROOT_TOOLBAR_FRAME = TOOL_NAME_FRAME;
 export const ROOT_TOOLBAR_GROUP: ChromeWording = [
   'com.labre.root.toolbar.group',
   'Group',
@@ -124,10 +123,7 @@ export const ROOT_TOOLBAR_SEND_BACKWARD: ChromeWording = [
   'com.labre.root.toolbar.send-backward',
   'Send Backward',
 ];
-export const ROOT_TOOLBAR_RELOAD: ChromeWording = [
-  'com.labre.root.toolbar.reload',
-  'Reload',
-];
+export const ROOT_TOOLBAR_RELOAD = TOOLBAR_RELOAD;
 export const ROOT_TOOLBAR_TURN_INTO_LINKED_DOC: ChromeWording = [
   'com.labre.root.toolbar.turn-into-linked-doc',
   'Turn into linked doc',
@@ -136,10 +132,7 @@ export const ROOT_TOOLBAR_EDIT_LINK: ChromeWording = [
   'com.labre.root.toolbar.edit-link',
   'Edit link',
 ];
-export const ROOT_TOOLBAR_REMOVE_LINK: ChromeWording = [
-  'com.labre.root.toolbar.remove-link',
-  'Remove link',
-];
+export const ROOT_TOOLBAR_REMOVE_LINK = TOOLBAR_REMOVE_LINK;
 
 /* ── The edgeless keyboard shortcuts (`edgeless/edgeless-keyboard.ts`) ─── */
 
@@ -162,11 +155,17 @@ export const ROOT_MINDMAP_SEED_NEW_NODE: ChromeWording = [
   'New node',
 ];
 
+/**
+ * This package's own CHROME wordings — L7 dedupe aliased
+ * `ROOT_TOOLBAR_CREATE_LINKED_DOC`, `ROOT_TOOLBAR_FRAME`, `ROOT_TOOLBAR_RELOAD`
+ * and `ROOT_TOOLBAR_REMOVE_LINK` to `chrome.ts` wordings — not listed again
+ * here, same rule the note/slash-menu packages' own chrome aliases already
+ * follow.
+ */
 export const ROOT_CHROME_WORDINGS: readonly ChromeWording[] = [
   ROOT_TOOLBAR_CONVERSIONS_ARIA,
   ROOT_TOOLBAR_TURN_INTO,
   ROOT_TOOLBAR_CREATE_TABLE,
-  ROOT_TOOLBAR_CREATE_LINKED_DOC,
   ROOT_ALIGNMENT_MENU_ARIA,
   ROOT_ALIGN_LEFT,
   ROOT_ALIGN_HORIZONTALLY,
@@ -179,7 +178,6 @@ export const ROOT_CHROME_WORDINGS: readonly ChromeWording[] = [
   ROOT_AUTO_ARRANGE,
   ROOT_RESIZE_AND_ALIGN,
   ROOT_TOOLBAR_RELEASE_FROM_GROUP,
-  ROOT_TOOLBAR_FRAME,
   ROOT_TOOLBAR_GROUP,
   ROOT_TOOLBAR_ALIGN_OBJECTS,
   ROOT_TOOLBAR_CLICK_TO_UNLOCK,
@@ -187,10 +185,8 @@ export const ROOT_CHROME_WORDINGS: readonly ChromeWording[] = [
   ROOT_TOOLBAR_GROUP_SECTION,
   ROOT_TOOLBAR_BRING_FORWARD,
   ROOT_TOOLBAR_SEND_BACKWARD,
-  ROOT_TOOLBAR_RELOAD,
   ROOT_TOOLBAR_TURN_INTO_LINKED_DOC,
   ROOT_TOOLBAR_EDIT_LINK,
-  ROOT_TOOLBAR_REMOVE_LINK,
   ROOT_TOAST_ZOOM_TO_SELECTION,
 ];
 

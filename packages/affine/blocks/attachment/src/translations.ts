@@ -1,14 +1,16 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  ATTACHMENT_LABEL,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 
 /**
  * The slash-menu "Attachment" item: `nameWording` doubles as its tooltip's
  * `captionWording` (`configs/slash-menu.ts`, `configs/tooltips.ts`) — the same
- * word names the item and captions the illustration.
+ * word names the item and captions the illustration. Declared in `chrome.ts`
+ * (L7 dedupe: also shared with the outline panel's own placeholder for an
+ * untitled attachment) and re-exported here under this package's own name.
  */
-export const ATTACHMENT_SLASH_NAME: ChromeWording = [
-  'com.labre.attachment.slash.name',
-  'Attachment',
-];
+export const ATTACHMENT_SLASH_NAME = ATTACHMENT_LABEL;
 
 export const ATTACHMENT_SLASH_DESCRIPTION: ChromeWording = [
   'com.labre.attachment.slash.description',
@@ -98,7 +100,6 @@ export const ATTACHMENT_BUTTON_RELOAD: ChromeWording = [
  * instead, so they are not restated here.
  */
 export const ATTACHMENT_WORDINGS: readonly ChromeWording[] = [
-  ATTACHMENT_SLASH_NAME,
   ATTACHMENT_SLASH_DESCRIPTION,
   ATTACHMENT_SLASH_PDF_NAME,
   ATTACHMENT_SLASH_PDF_DESCRIPTION,

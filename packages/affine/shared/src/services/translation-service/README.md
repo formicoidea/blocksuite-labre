@@ -128,6 +128,24 @@ keeps only the words several packages share ("Copy", "Card view"). Never write
 an inline `['com.labre.…', '…']` tuple at a call site: the manifest cannot walk
 it.
 
+**One chrome word, one key.** Before declaring a new `ChromeWording`, check
+`chrome.ts` for the same English word — reuse it rather than minting a second
+key for it. If the word is not there yet but a wording elsewhere in the repo
+already carries it under a different key, that is a duplicate, not two
+different words: move the wording to `chrome.ts` (a named constant, added to
+`CHROME_WORDINGS`) and turn every other declaration of it into an alias —
+`export const OLD_NAME = SHARED_NAME;` — so every call site keeps compiling
+under its existing import, and the duplicate key string disappears from the
+source. `packages/affine/all/src/__tests__/translations/manifest.unit.spec.ts`'s
+"one chrome word, one key" test enforces this: it groups every manifest entry
+of source `chrome` by its exact English fallback and fails the moment two
+different keys carry the same word, unless that word is a genuine homonym
+listed in the test's own `KEPT_SEPARATE_CHROME_WORDS` (with a reason). A real
+homonym — the same English spelling, a different meaning at each call site —
+gets added there instead of merged; everything else gets reused. A framework's
+own table is the one exception (frameworks never import each other), so a
+framework-owned duplicate is not something this rule can fix.
+
 ### The other direction: literals with no key
 
 `packages/affine/all/src/__tests__/translations/literals.unit.spec.ts` scans

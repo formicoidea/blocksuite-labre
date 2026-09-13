@@ -1,14 +1,15 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  TOOLBAR_LINK,
+} from '@labre/affine-shared/services';
 
 /**
  * The slash-menu "Link" item: `nameWording` doubles as its tooltip's
  * `captionWording` — the same word names the item and captions the
- * illustration (`configs/slash-menu.ts`).
+ * illustration (`configs/slash-menu.ts`). An alias (L7 dedupe): the same word
+ * as {@link TOOLBAR_LINK}, one key.
  */
-export const BOOKMARK_SLASH_NAME: ChromeWording = [
-  'com.labre.bookmark.slash.name',
-  'Link',
-];
+export const BOOKMARK_SLASH_NAME = TOOLBAR_LINK;
 
 export const BOOKMARK_SLASH_DESCRIPTION: ChromeWording = [
   'com.labre.bookmark.slash.description',
@@ -56,7 +57,6 @@ export const BOOKMARK_RETRIEVE_FAILED: ChromeWording = [
  * `@labre/affine-shared/services` instead, so they are not restated here.
  */
 export const BOOKMARK_WORDINGS: readonly ChromeWording[] = [
-  BOOKMARK_SLASH_NAME,
   BOOKMARK_SLASH_DESCRIPTION,
   BOOKMARK_MODAL_TITLE,
   BOOKMARK_MODAL_DESCRIPTION,

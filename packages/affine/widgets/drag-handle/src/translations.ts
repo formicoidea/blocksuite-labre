@@ -1,4 +1,7 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  EDGELESS_CONTENT_LABEL,
+} from '@labre/affine-shared/services';
 
 /**
  * The drag-and-drop preview's own per-flavour labels, shown on the ghost
@@ -29,11 +32,8 @@ export const DRAG_PREVIEW_EMBED: ChromeWording = [
   'Embed block',
 ];
 
-/** Fallback when the dragged type matches none of the above. */
-export const DRAG_PREVIEW_GENERIC: ChromeWording = [
-  'com.labre.drag-handle.preview.generic',
-  'Edgeless content',
-];
+/** An alias (L7 dedupe): the same word as {@link EDGELESS_CONTENT_LABEL}, one key. */
+export const DRAG_PREVIEW_GENERIC = EDGELESS_CONTENT_LABEL;
 
 /** Every wording this package declares, in the order it renders them. */
 export const DRAG_HANDLE_WORDINGS: readonly ChromeWording[] = [
@@ -42,5 +42,4 @@ export const DRAG_HANDLE_WORDINGS: readonly ChromeWording[] = [
   DRAG_PREVIEW_NOTE,
   DRAG_PREVIEW_FRAME,
   DRAG_PREVIEW_EMBED,
-  DRAG_PREVIEW_GENERIC,
 ];

@@ -1,10 +1,12 @@
 import {
   type ChromeWording,
+  IMAGE_LABEL,
   NOTE_SHADOW_BOX,
   NOTE_SHADOW_FILM,
   NOTE_SHADOW_NONE,
   NOTE_SHADOW_PAPER,
   NOTE_SHADOW_STICKER,
+  TOOL_NAME_NOTE,
   TOOLBAR_LINK,
 } from '@labre/affine-shared/services';
 
@@ -58,10 +60,7 @@ export const GFX_NOTE_DISPLAY_MODE_EDGELESS_ONLY: ChromeWording = [
 
 /* ── `./toolbar/note-menu.ts` — the "add to note" quick-tool row ────────── */
 
-export const GFX_NOTE_MENU_IMAGE: ChromeWording = [
-  'com.labre.gfx-note.menu.image',
-  'Image',
-];
+export const GFX_NOTE_MENU_IMAGE = IMAGE_LABEL;
 
 export const GFX_NOTE_MENU_FILE: ChromeWording = [
   'com.labre.gfx-note.menu.file',
@@ -73,10 +72,7 @@ export const GFX_NOTE_MENU_FILE: ChromeWording = [
  * senior button's own shortcut tooltip, and the quick-tool button's shortcut
  * tooltip) — one wording for all three.
  */
-export const GFX_NOTE_TOOL_LABEL: ChromeWording = [
-  'com.labre.gfx-note.tool.label',
-  'Note',
-];
+export const GFX_NOTE_TOOL_LABEL = TOOL_NAME_NOTE;
 
 /**
  * Every wording DECLARED IN THIS FILE (not re-exported from `chrome.ts`), in
@@ -88,7 +84,5 @@ export const GFX_NOTE_WORDINGS: readonly ChromeWording[] = [
   GFX_NOTE_DISPLAY_MODE_BOTH,
   GFX_NOTE_DISPLAY_MODE_PAGE_ONLY,
   GFX_NOTE_DISPLAY_MODE_EDGELESS_ONLY,
-  GFX_NOTE_MENU_IMAGE,
   GFX_NOTE_MENU_FILE,
-  GFX_NOTE_TOOL_LABEL,
 ];

@@ -1,5 +1,9 @@
 import { ConnectorMode } from '@labre/affine-model';
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  ADD_TEXT_TOOLTIP,
+  type ChromeWording,
+  STYLE_MENU_LABEL,
+} from '@labre/affine-shared/services';
 
 /**
  * This package's own wordings, joined into `PACKAGE_WORDINGS` in
@@ -47,10 +51,7 @@ export const CONNECTOR_LABEL_STROKE_STYLE: ChromeWording = [
   'Stroke style',
 ];
 
-export const CONNECTOR_LABEL_STYLE: ChromeWording = [
-  'com.labre.connector.toolbar.style',
-  'Style',
-];
+export const CONNECTOR_LABEL_STYLE = STYLE_MENU_LABEL;
 
 export const CONNECTOR_LABEL_START_POINT_STYLE: ChromeWording = [
   'com.labre.connector.toolbar.start-point-style',
@@ -81,10 +82,7 @@ export const CONNECTOR_TOOLTIP_CONNECTOR_SHAPE: ChromeWording = [
  * "Add text" — the contextual-toolbar action AND the label editor's own
  * empty-state placeholder say the exact same word, one key.
  */
-export const CONNECTOR_ADD_TEXT: ChromeWording = [
-  'com.labre.connector.label.add-text',
-  'Add text',
-];
+export const CONNECTOR_ADD_TEXT = ADD_TEXT_TOOLTIP;
 
 export const CONNECTOR_WORDINGS: readonly ChromeWording[] = [
   CONNECTOR_MODE_STRAIGHT,
@@ -92,11 +90,9 @@ export const CONNECTOR_WORDINGS: readonly ChromeWording[] = [
   CONNECTOR_MODE_CURVE,
   CONNECTOR_LABEL_CONNECTOR,
   CONNECTOR_LABEL_STROKE_STYLE,
-  CONNECTOR_LABEL_STYLE,
   CONNECTOR_LABEL_START_POINT_STYLE,
   CONNECTOR_TOOLTIP_FLIP_DIRECTION,
   CONNECTOR_LABEL_END_POINT_STYLE,
   CONNECTOR_LABEL_SHAPE,
   CONNECTOR_TOOLTIP_CONNECTOR_SHAPE,
-  CONNECTOR_ADD_TEXT,
 ];
