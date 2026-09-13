@@ -1,4 +1,9 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  DISPLAY_MODE_EDGELESS,
+  EDGELESS_CONTENT_LABEL,
+  MINDMAP_NAME,
+} from '@labre/affine-shared/services';
 
 /**
  * The "/ Mind Map" slash-menu entry's seeds: the root and child node captions
@@ -39,10 +44,7 @@ export const SURFACE_REF_WORDINGS: readonly ChromeWording[] = [
  * happens to read the same but is a different concern (see the module doc
  * above).
  */
-export const SURFACE_REF_SLASH_MINDMAP_NAME: ChromeWording = [
-  'com.labre.surface-ref.slash.mindmap.name',
-  'Mind Map',
-];
+export const SURFACE_REF_SLASH_MINDMAP_NAME = MINDMAP_NAME;
 
 export const SURFACE_REF_SLASH_MINDMAP_DESCRIPTION: ChromeWording = [
   'com.labre.surface-ref.slash.mindmap.description',
@@ -55,10 +57,7 @@ export const SURFACE_REF_SLASH_FRAME_DESCRIPTION: ChromeWording = [
 ];
 
 /** The tooltip caption shared by the mindmap, frame and group list items. */
-export const SURFACE_REF_SLASH_TOOLTIP_EDGELESS: ChromeWording = [
-  'com.labre.surface-ref.slash.tooltip.edgeless',
-  'Edgeless',
-];
+export const SURFACE_REF_SLASH_TOOLTIP_EDGELESS = DISPLAY_MODE_EDGELESS;
 
 /**
  * The "Frame: {{title}}" / "Group: {{title}}" list items — a placed frame's
@@ -96,10 +95,7 @@ export const SURFACE_REF_TYPE_MINDMAP: ChromeWording = [
   'Mind map',
 ];
 
-export const SURFACE_REF_TYPE_EDGELESS: ChromeWording = [
-  'com.labre.surface-ref.type.edgeless',
-  'Edgeless content',
-];
+export const SURFACE_REF_TYPE_EDGELESS = EDGELESS_CONTENT_LABEL;
 
 /** The title shown when the referenced element is missing entirely. */
 export const SURFACE_REF_PLACEHOLDER_NOT_AVAILABLE: ChromeWording = [
@@ -192,15 +188,12 @@ export const SURFACE_REF_TYPE_SENTENCE_WORDINGS: Readonly<
  * `@labre/affine-shared/services` instead, so it is not restated here.
  */
 export const SURFACE_REF_CHROME_WORDINGS: readonly ChromeWording[] = [
-  SURFACE_REF_SLASH_MINDMAP_NAME,
   SURFACE_REF_SLASH_MINDMAP_DESCRIPTION,
   SURFACE_REF_SLASH_FRAME_DESCRIPTION,
-  SURFACE_REF_SLASH_TOOLTIP_EDGELESS,
   SURFACE_REF_SLASH_FRAME_ITEM_NAME,
   SURFACE_REF_SLASH_GROUP_ITEM_NAME,
   SURFACE_REF_TYPE_GROUP,
   SURFACE_REF_TYPE_MINDMAP,
-  SURFACE_REF_TYPE_EDGELESS,
   SURFACE_REF_PLACEHOLDER_NOT_AVAILABLE,
   SURFACE_REF_PLACEHOLDER_DELETED_FRAME,
   SURFACE_REF_PLACEHOLDER_DELETED_GROUP,

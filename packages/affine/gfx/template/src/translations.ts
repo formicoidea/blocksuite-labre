@@ -1,4 +1,7 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  CATALOGUE_OTHER,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 
 /**
  * This package's own wordings, joined into `PACKAGE_WORDINGS` in
@@ -23,11 +26,11 @@ export const TEMPLATE_PANEL_SEARCH_PLACEHOLDER: ChromeWording = [
   'Search file or anything...',
 ];
 
-/** The built-in "Other" category's own tab label. */
-export const TEMPLATE_PANEL_CATEGORY_OTHER: ChromeWording = [
-  'com.labre.template.panel.category.other',
-  'Other',
-];
+/**
+ * The built-in "Other" category's own tab label. An alias (L7 dedupe): the
+ * same word as {@link CATALOGUE_OTHER}, one key.
+ */
+export const TEMPLATE_PANEL_CATEGORY_OTHER = CATALOGUE_OTHER;
 
 /** The "Template" senior tool's own button name (`SeniorTool.labelKey`). */
 export const TEMPLATE_SENIOR_TOOL_NAME: ChromeWording = [
@@ -37,7 +40,6 @@ export const TEMPLATE_SENIOR_TOOL_NAME: ChromeWording = [
 
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_PANEL_ADD,
-  TEMPLATE_PANEL_CATEGORY_OTHER,
   TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
   TEMPLATE_SENIOR_TOOL_NAME,
 ];

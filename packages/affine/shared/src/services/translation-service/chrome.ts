@@ -296,6 +296,30 @@ export const STYLE_MENU_LABEL: ChromeWording = [
   'Style',
 ];
 
+/* ── Text format (L7 dedupe) ──────────────────────────────────────────────
+ * The four inline-text formats a selection toolbar can toggle — said
+ * identically by `@labre/affine-inline-preset`'s own format-bar config (their
+ * original home) and by `blocks/note`'s slash-menu items and tooltip
+ * captions. One key per format, declared here so either package imports it
+ * rather than mints a second key for the same word.
+ */
+export const TEXT_FORMAT_BOLD: ChromeWording = [
+  'com.labre.text-format.bold',
+  'Bold',
+];
+export const TEXT_FORMAT_ITALIC: ChromeWording = [
+  'com.labre.text-format.italic',
+  'Italic',
+];
+export const TEXT_FORMAT_UNDERLINE: ChromeWording = [
+  'com.labre.text-format.underline',
+  'Underline',
+];
+export const TEXT_FORMAT_STRIKETHROUGH: ChromeWording = [
+  'com.labre.text-format.strikethrough',
+  'Strikethrough',
+];
+
 /* ── Font weight / style ────────────────────────────────────────────────── */
 
 /**
@@ -319,10 +343,10 @@ export const FONT_WEIGHT_SEMIBOLD: ChromeWording = [
   'Semibold',
 ];
 
-export const FONT_STYLE_ITALIC: ChromeWording = [
-  'com.labre.font.style.italic',
-  'Italic',
-];
+/**
+ * An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_ITALIC}, one key.
+ */
+export const FONT_STYLE_ITALIC = TEXT_FORMAT_ITALIC;
 
 /* ── Canvas tool names ──────────────────────────────────────────────────── */
 
@@ -801,10 +825,8 @@ export const TOOLBAR_RENAME: ChromeWording = [
  * and the surface-ref slash menu's "insert a blank frame" item all name the
  * same thing.
  */
-export const TOOLBAR_FRAME: ChromeWording = [
-  'com.labre.toolbar.frame',
-  'Frame',
-];
+/** An alias (L7 dedupe): the same word as {@link TOOL_NAME_FRAME}, one key. */
+export const TOOLBAR_FRAME = TOOL_NAME_FRAME;
 
 export const TOOLBAR_SETTINGS: ChromeWording = [
   'com.labre.toolbar.settings',
@@ -865,6 +887,220 @@ export const TOAST_UPLOAD_SIZE_LIMIT: ChromeWording = [
 export const CHROME_LOADING: ChromeWording = [
   'com.labre.chrome.loading',
   'Loading...',
+];
+
+/* ── L7 dedupe: words two or more packages declared under different keys ──
+ *
+ * `.claude/i18n-chantier/dedupe-plan.json` (the closing pass's fixed decision
+ * table) grouped chrome words that turned out to be the SAME English literal
+ * declared under different keys by different packages. For each group this
+ * file now carries the single canonical wording; every package that used to
+ * declare its own copy keeps its constant NAME (so its call sites are
+ * untouched) but the constant now simply points at the wording here
+ * (`export const OLD_NAME = CANONICAL;`), and the duplicate key string is
+ * gone from the source. `manifest.unit.spec.ts`'s "one chrome word, one key"
+ * guard is what keeps a future lot from re-introducing a duplicate.
+ */
+
+/** Was `ICON_BUTTON_COMING_SOON` (`@labre/affine-components`) — unchanged name. */
+export const ICON_BUTTON_COMING_SOON: ChromeWording = [
+  'com.labre.icon-button.coming-soon',
+  '(Coming soon)',
+];
+
+/**
+ * "Add text" — a shape's contextual-toolbar action AND a connector label's
+ * empty-state placeholder. Was `SHAPE_ADD_TEXT_TOOLTIP` (`gfx/shape`).
+ */
+export const ADD_TEXT_TOOLTIP: ChromeWording = [
+  'com.labre.shape.toolbar.add-text',
+  'Add text',
+];
+
+/**
+ * The attachment block's own name — its slash-menu item AND the outline
+ * panel's placeholder for an untitled attachment. Was `ATTACHMENT_SLASH_NAME`
+ * (`blocks/attachment`).
+ */
+export const ATTACHMENT_LABEL: ChromeWording = [
+  'com.labre.attachment.slash.name',
+  'Attachment',
+];
+
+/**
+ * The note block's display-mode dropdown, said identically by the outline
+ * panel's own note-card mode chip. Was `NOTE_DISPLAY_MODE_BOTH` / `_EDGELESS`
+ * / `_PAGE` / `_SHOW_IN` (`blocks/note`).
+ */
+export const DISPLAY_MODE_BOTH: ChromeWording = [
+  'com.labre.note.display-mode.both',
+  'Both',
+];
+export const DISPLAY_MODE_EDGELESS: ChromeWording = [
+  'com.labre.note.display-mode.edgeless',
+  'Edgeless',
+];
+export const DISPLAY_MODE_PAGE: ChromeWording = [
+  'com.labre.note.display-mode.page',
+  'Page',
+];
+export const DISPLAY_MODE_SHOW_IN: ChromeWording = [
+  'com.labre.note.display-mode.show-in',
+  'Show in',
+];
+
+/**
+ * The generic confirm/cancel pair — `@labre/affine-components`'s own modals
+ * AND the embed card's create/edit prompts say the exact same two words. Was
+ * `CONFIRM_LABEL` / `CANCEL_LABEL` (`@labre/affine-components`).
+ */
+export const ACTION_CONFIRM: ChromeWording = [
+  'com.labre.action.confirm',
+  'Confirm',
+];
+export const ACTION_CANCEL: ChromeWording = [
+  'com.labre.action.cancel',
+  'Cancel',
+];
+
+/**
+ * The shape colour picker's "Color" / "Fill color" labels, said identically
+ * by the brush/highlighter panel's own colour button and by the note style
+ * panel's fill-colour control. Was `COLOR_LABEL` / `FILL_COLOR_LABEL`
+ * (`@labre/affine-components`).
+ */
+export const COLOR_LABEL: ChromeWording = ['com.labre.color.label', 'Color'];
+export const FILL_COLOR_LABEL: ChromeWording = [
+  'com.labre.color.fill-color',
+  'Fill color',
+];
+
+/**
+ * "Create Linked Doc" - Title Case, unlike the sentence-case
+ * {@link TOOLBAR_CREATE_LINKED_DOC} above ("Create linked doc"): a different
+ * literal, so it keeps its own key. Said identically by the root block's
+ * edgeless "More" sub-menu AND the generic iframe embed's own toolbar. Was
+ * `ROOT_TOOLBAR_CREATE_LINKED_DOC` (`blocks/root`).
+ */
+export const TOOLBAR_CREATE_LINKED_DOC_TITLE: ChromeWording = [
+  'com.labre.root.toolbar.create-linked-doc',
+  'Create Linked Doc',
+];
+
+/**
+ * "Edgeless content" — the surface-ref placeholder's own generic reference
+ * kind, said identically by the drag-handle preview's fallback label. Was
+ * `SURFACE_REF_TYPE_EDGELESS` (`blocks/surface-ref`).
+ */
+export const EDGELESS_CONTENT_LABEL: ChromeWording = [
+  'com.labre.surface-ref.type.edgeless',
+  'Edgeless content',
+];
+
+/**
+ * "Edit" — the inline link's own toolbar action, said identically by the
+ * generic iframe embed's broken-link error state. Was `LINK_TOOLBAR_EDIT`
+ * (`inlines/link`).
+ */
+export const TOOLBAR_EDIT: ChromeWording = [
+  'com.labre.inline-link.toolbar.edit',
+  'Edit',
+];
+
+/**
+ * "Remove link" — the inline link's own toolbar action, said identically by
+ * the root block's edgeless "More" sub-menu. Was `LINK_TOOLBAR_REMOVE_LINK`
+ * (`inlines/link`).
+ */
+export const TOOLBAR_REMOVE_LINK: ChromeWording = [
+  'com.labre.inline-link.toolbar.remove-link',
+  'Remove link',
+];
+
+/**
+ * The image block's own generic name, said identically by the gfx/note "add
+ * to note" menu and by the outline panel's placeholder for an untitled
+ * image. Was `IMAGE_LABEL` (`blocks/image`).
+ */
+export const IMAGE_LABEL: ChromeWording = ['com.labre.image.label', 'Image'];
+
+/**
+ * "Insert into Page" — a frame's own surface-toolbar action, said identically
+ * by a group's. Was `FRAME_TOOLBAR_INSERT_INTO_PAGE` (`blocks/frame`).
+ */
+export const TOOLBAR_INSERT_INTO_PAGE: ChromeWording = [
+  'com.labre.frame.toolbar.insert-into-page',
+  'Insert into Page',
+];
+
+/**
+ * "Ungroup" — a group's own surface-toolbar action, said identically by a
+ * frame's. Was `GROUP_TOOLBAR_UNGROUP` (`gfx/group`).
+ */
+export const TOOLBAR_UNGROUP: ChromeWording = [
+  'com.labre.group.toolbar.ungroup',
+  'Ungroup',
+];
+
+/**
+ * "Mind Map" as chrome — the mindmap tool's own name (template-panel tab,
+ * senior/quick tool tooltips), said identically by the surface-ref slash
+ * menu's "Mind Map" item. Was `MINDMAP_TOOLTIP` (`gfx/mindmap`).
+ */
+export const MINDMAP_NAME: ChromeWording = [
+  'com.labre.mindmap.tooltip',
+  'Mind Map',
+];
+
+/**
+ * "New Doc" — the "@" menu's own popover group, said identically by the
+ * linked-doc embed's slash-menu item. Was `LINKED_DOC_NEW_DOC`
+ * (`widgets/linked-doc`).
+ */
+export const NEW_DOC_LABEL: ChromeWording = [
+  'com.labre.linked-doc.group.new-doc',
+  'New Doc',
+];
+
+/**
+ * The artefact catalogue sidepanel's "Other" group header (used inline at its
+ * one call site, `widgets/edgeless-toolbar/src/catalogue/artefact-catalogue-widget.ts`),
+ * said identically by the templates-panel's own "Other" category tab. Was a
+ * bare literal in `packages/affine/all/src/translations.ts`'s `CHROME_KEYS`.
+ */
+export const CATALOGUE_OTHER: ChromeWording = [
+  'com.labre.catalogue.other',
+  'Other',
+];
+
+/**
+ * "Preview" — the code block's source/preview toggle, said identically by the
+ * adapter (debug export) panel's own HTML tab toggle. Was
+ * `CODE_PREVIEW_TOGGLE_PREVIEW` (`blocks/code`).
+ */
+export const PREVIEW_LABEL: ChromeWording = [
+  'com.labre.code.preview.toggle-preview',
+  'Preview',
+];
+
+/**
+ * "Preview Settings" — the outline panel's own tooltip, said identically by
+ * the frame panel's settings menu entry. Was `OUTLINE_PREVIEW_SETTINGS_TOOLTIP`
+ * (`fragments/outline`).
+ */
+export const PREVIEW_SETTINGS_LABEL: ChromeWording = [
+  'com.labre.outline.preview-settings-tooltip',
+  'Preview Settings',
+];
+
+/**
+ * The remote cursor's own fallback name for a collaborator with no name, said
+ * identically by the @-mention chip's fallback for an unresolved member's
+ * empty name. Was `REMOTE_SELECTION_UNKNOWN_USER` (`widgets/remote-selection`).
+ */
+export const UNKNOWN_LABEL: ChromeWording = [
+  'com.labre.remote-selection.unknown-user',
+  'Unknown',
 ];
 
 /**
@@ -934,10 +1170,13 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   STYLE_GENERAL,
   STYLE_SCRIBBLED,
   STYLE_MENU_LABEL,
+  TEXT_FORMAT_BOLD,
+  TEXT_FORMAT_ITALIC,
+  TEXT_FORMAT_UNDERLINE,
+  TEXT_FORMAT_STRIKETHROUGH,
   FONT_WEIGHT_LIGHT,
   FONT_WEIGHT_REGULAR,
   FONT_WEIGHT_SEMIBOLD,
-  FONT_STYLE_ITALIC,
   TOOL_NAME_TEXT,
   TOOL_NAME_NOTE,
   TOOL_NAME_FRAME,
@@ -984,7 +1223,6 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   TOOLBAR_DOWNLOAD,
   TOOLBAR_RELOAD,
   TOOLBAR_RENAME,
-  TOOLBAR_FRAME,
   TOOLBAR_SETTINGS,
   TOOLBAR_HIDE_TOOLBAR,
   TOOLBAR_PLAYBACK_SETTINGS,
@@ -996,6 +1234,31 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   TOAST_DOWNLOAD_IN_PROGRESS,
   TOAST_UPLOAD_SIZE_LIMIT,
   CHROME_LOADING,
+
+  ICON_BUTTON_COMING_SOON,
+  ADD_TEXT_TOOLTIP,
+  ATTACHMENT_LABEL,
+  DISPLAY_MODE_BOTH,
+  DISPLAY_MODE_EDGELESS,
+  DISPLAY_MODE_PAGE,
+  DISPLAY_MODE_SHOW_IN,
+  ACTION_CONFIRM,
+  ACTION_CANCEL,
+  COLOR_LABEL,
+  FILL_COLOR_LABEL,
+  TOOLBAR_CREATE_LINKED_DOC_TITLE,
+  EDGELESS_CONTENT_LABEL,
+  TOOLBAR_EDIT,
+  TOOLBAR_REMOVE_LINK,
+  IMAGE_LABEL,
+  TOOLBAR_INSERT_INTO_PAGE,
+  TOOLBAR_UNGROUP,
+  MINDMAP_NAME,
+  NEW_DOC_LABEL,
+  CATALOGUE_OTHER,
+  PREVIEW_LABEL,
+  PREVIEW_SETTINGS_LABEL,
+  UNKNOWN_LABEL,
 
   PALETTE_NAME_RED,
   PALETTE_NAME_ORANGE,

@@ -3,6 +3,7 @@ import {
   DOC_UNTITLED,
   FORMAT_HTML,
   FORMAT_MARKDOWN,
+  NEW_DOC_LABEL,
 } from '@labre/affine-shared/services';
 
 /**
@@ -23,10 +24,7 @@ export const LINKED_DOC_LINK_TO_DOC: ChromeWording = [
   'Link to Doc',
 ];
 
-export const LINKED_DOC_NEW_DOC: ChromeWording = [
-  'com.labre.linked-doc.group.new-doc',
-  'New Doc',
-];
+export const LINKED_DOC_NEW_DOC = NEW_DOC_LABEL;
 
 /**
  * The "Import" item's own wording — shared, verbatim, by the popover's menu
@@ -115,7 +113,6 @@ export const LINKED_DOC_IMPORT_COMING_SOON: ChromeWording = [
 /** Every wording this package DECLARES (see `SHAPE_WORDINGS`'s own note). */
 export const LINKED_DOC_WORDINGS: readonly ChromeWording[] = [
   LINKED_DOC_LINK_TO_DOC,
-  LINKED_DOC_NEW_DOC,
   LINKED_DOC_IMPORT,
   LINKED_DOC_CREATE_DOC,
   LINKED_DOC_IMPORT_SUCCESS_TOAST,

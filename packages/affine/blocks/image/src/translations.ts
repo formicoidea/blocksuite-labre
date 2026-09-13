@@ -1,4 +1,4 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import { type ChromeWording, IMAGE_LABEL } from '@labre/affine-shared/services';
 
 /**
  * The image's own generic name — the slash-menu item, the block's title
@@ -6,9 +6,11 @@ import type { ChromeWording } from '@labre/affine-shared/services';
  * fallback shown when nothing else names the image
  * (`components/page-image-block.ts`, `image-block.ts`,
  * `image-edgeless-block.ts`). One word, one key, reused everywhere it
- * appears verbatim.
+ * appears verbatim — declared in `chrome.ts` (L7 dedupe: also shared with
+ * `gfx/note`'s "add to note" menu and the outline panel's placeholder) and
+ * re-exported here under this package's own name.
  */
-export const IMAGE_LABEL: ChromeWording = ['com.labre.image.label', 'Image'];
+export { IMAGE_LABEL };
 
 export const IMAGE_SLASH_DESCRIPTION: ChromeWording = [
   'com.labre.image.slash.description',
@@ -65,7 +67,6 @@ export const IMAGE_TOAST_READ_SIZE_FAILED: ChromeWording = [
  * `@labre/affine-shared/services` instead, so they are not restated here.
  */
 export const IMAGE_WORDINGS: readonly ChromeWording[] = [
-  IMAGE_LABEL,
   IMAGE_SLASH_DESCRIPTION,
   IMAGE_SLASH_PHOTO_CAPTION,
   IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW,

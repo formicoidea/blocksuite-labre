@@ -1,4 +1,12 @@
-import { type ChromeWording } from '@labre/affine-shared/services';
+import {
+  ACTION_CANCEL,
+  ACTION_CONFIRM,
+  type ChromeWording,
+  COLOR_LABEL,
+  FILL_COLOR_LABEL,
+  ICON_BUTTON_COMING_SOON,
+  TOOLBAR_RELOAD,
+} from '@labre/affine-shared/services';
 
 /**
  * `@labre/affine-components`'s own wordings — the placeholders, aria-labels,
@@ -63,11 +71,7 @@ export const COLOR_PICKER_MODE_DARK: ChromeWording = [
 
 /* ── Shape colour picker ─────────────────────────────────────────────── */
 
-export const COLOR_LABEL: ChromeWording = ['com.labre.color.label', 'Color'];
-export const FILL_COLOR_LABEL: ChromeWording = [
-  'com.labre.color.fill-color',
-  'Fill color',
-];
+export { COLOR_LABEL, FILL_COLOR_LABEL };
 export const BORDER_COLOR_LABEL: ChromeWording = [
   'com.labre.color.border-color',
   'Border color',
@@ -140,14 +144,8 @@ export const EMBED_CARD_DESCRIPTION_PLACEHOLDER: ChromeWording = [
  * already depends on this package) — the exact same words, so one key each
  * rather than a second "Reset"/"Save" minted per package.
  */
-export const CONFIRM_LABEL: ChromeWording = [
-  'com.labre.action.confirm',
-  'Confirm',
-];
-export const CANCEL_LABEL: ChromeWording = [
-  'com.labre.action.cancel',
-  'Cancel',
-];
+export const CONFIRM_LABEL = ACTION_CONFIRM;
+export const CANCEL_LABEL = ACTION_CANCEL;
 export const SAVE_LABEL: ChromeWording = ['com.labre.action.save', 'Save'];
 export const RESET_LABEL: ChromeWording = ['com.labre.action.reset', 'Reset'];
 
@@ -429,10 +427,7 @@ export const RESOURCE_STATUS_RETRY: ChromeWording = [
   'com.labre.resource.status.retry',
   'Retry',
 ];
-export const RESOURCE_STATUS_RELOAD: ChromeWording = [
-  'com.labre.resource.status.reload',
-  'Reload',
-];
+export const RESOURCE_STATUS_RELOAD = TOOLBAR_RELOAD;
 
 /* ── Size (scale) dropdown ────────────────────────────────────────────── */
 
@@ -454,10 +449,7 @@ export const TOGGLE_COLLAPSE_ARIA: ChromeWording = [
 
 /* ── Generic toolbar icon button ──────────────────────────────────────── */
 
-export const ICON_BUTTON_COMING_SOON: ChromeWording = [
-  'com.labre.icon-button.coming-soon',
-  '(Coming soon)',
-];
+export { ICON_BUTTON_COMING_SOON };
 
 /**
  * Every wording declared above, in declaration order — walked by
@@ -473,8 +465,6 @@ export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
   COLOR_PICKER_MODE_NORMAL,
   COLOR_PICKER_MODE_LIGHT,
   COLOR_PICKER_MODE_DARK,
-  COLOR_LABEL,
-  FILL_COLOR_LABEL,
   BORDER_COLOR_LABEL,
   CONTEXT_MENU_NO_RESULTS,
   CONTEXT_MENU_DONE,
@@ -489,8 +479,6 @@ export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
   EMBED_CARD_DESCRIPTION_ALIAS_PLACEHOLDER,
   EMBED_CARD_TITLE_PLACEHOLDER,
   EMBED_CARD_DESCRIPTION_PLACEHOLDER,
-  CONFIRM_LABEL,
-  CANCEL_LABEL,
   SAVE_LABEL,
   RESET_LABEL,
   FILTERABLE_LIST_SEARCH_PLACEHOLDER,
@@ -541,9 +529,7 @@ export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
   RESOURCE_STATUS_UPLOAD_FAILED,
   RESOURCE_STATUS_DOWNLOAD_FAILED,
   RESOURCE_STATUS_RETRY,
-  RESOURCE_STATUS_RELOAD,
   SIZE_LABEL_SCALE,
   TOGGLE_EXPAND_ARIA,
   TOGGLE_COLLAPSE_ARIA,
-  ICON_BUTTON_COMING_SOON,
 ];

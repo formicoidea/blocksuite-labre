@@ -1,8 +1,17 @@
-import { type ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  TOOLBAR_EDIT,
+  TOOLBAR_LINK,
+  TOOLBAR_REMOVE_LINK,
+} from '@labre/affine-shared/services';
 
 /**
  * `@labre/affine-inline-link`'s own wordings — the inline link's toolbar
  * (`configs/toolbar.ts`) and its create/edit popup (`link-popup/link-popup.ts`).
+ * `LINK_TOOLBAR_EDIT` / `LINK_TOOLBAR_REMOVE_LINK` (L7 dedupe: shared verbatim
+ * with the generic iframe embed's error state / the root block's edgeless
+ * "More" sub-menu) are declared once in `chrome.ts` and re-exported here
+ * under this package's own name.
  */
 
 export const LINK_TOOLBAR_COPY_LINK: ChromeWording = [
@@ -13,14 +22,8 @@ export const LINK_TOOLBAR_COPIED_TOAST: ChromeWording = [
   'com.labre.inline-link.toolbar.copied-toast',
   'Copied link to clipboard',
 ];
-export const LINK_TOOLBAR_EDIT: ChromeWording = [
-  'com.labre.inline-link.toolbar.edit',
-  'Edit',
-];
-export const LINK_TOOLBAR_REMOVE_LINK: ChromeWording = [
-  'com.labre.inline-link.toolbar.remove-link',
-  'Remove link',
-];
+export const LINK_TOOLBAR_EDIT = TOOLBAR_EDIT;
+export const LINK_TOOLBAR_REMOVE_LINK = TOOLBAR_REMOVE_LINK;
 
 export const LINK_POPUP_LINK_PLACEHOLDER: ChromeWording = [
   'com.labre.inline-link.popup.link-placeholder',
@@ -34,10 +37,8 @@ export const LINK_POPUP_TEXT_LABEL: ChromeWording = [
   'com.labre.inline-link.popup.text-label',
   'Text',
 ];
-export const LINK_POPUP_LINK_LABEL: ChromeWording = [
-  'com.labre.inline-link.popup.link-label',
-  'Link',
-];
+/** An alias (L7 dedupe): the same word as {@link TOOLBAR_LINK}, one key. */
+export const LINK_POPUP_LINK_LABEL = TOOLBAR_LINK;
 
 /**
  * Every wording declared above, in declaration order — walked by
@@ -46,10 +47,7 @@ export const LINK_POPUP_LINK_LABEL: ChromeWording = [
 export const LINK_WORDINGS: readonly ChromeWording[] = [
   LINK_TOOLBAR_COPY_LINK,
   LINK_TOOLBAR_COPIED_TOAST,
-  LINK_TOOLBAR_EDIT,
-  LINK_TOOLBAR_REMOVE_LINK,
   LINK_POPUP_LINK_PLACEHOLDER,
   LINK_POPUP_TEXT_PLACEHOLDER,
   LINK_POPUP_TEXT_LABEL,
-  LINK_POPUP_LINK_LABEL,
 ];

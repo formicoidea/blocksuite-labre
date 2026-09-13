@@ -1,4 +1,7 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  PREVIEW_SETTINGS_LABEL,
+} from '@labre/affine-shared/services';
 
 /* ── `header/frame-panel-header.ts` ───────────────────────────────────── */
 
@@ -19,10 +22,7 @@ export const FRAME_PANEL_PRESENTATION_LABEL: ChromeWording = [
 
 /* ── `header/frames-setting-menu.ts` ──────────────────────────────────── */
 
-export const FRAME_PANEL_PREVIEW_SETTINGS: ChromeWording = [
-  'com.labre.frame-panel.menu.preview-settings',
-  'Preview Settings',
-];
+export const FRAME_PANEL_PREVIEW_SETTINGS = PREVIEW_SETTINGS_LABEL;
 
 export const FRAME_PANEL_FILL_SCREEN: ChromeWording = [
   'com.labre.frame-panel.menu.fill-screen',
@@ -52,7 +52,6 @@ export const FRAME_PANEL_WORDINGS: readonly ChromeWording[] = [
   FRAME_PANEL_ALL_FRAMES_LABEL,
   FRAME_PANEL_ALL_FRAMES_SETTINGS_TOOLTIP,
   FRAME_PANEL_PRESENTATION_LABEL,
-  FRAME_PANEL_PREVIEW_SETTINGS,
   FRAME_PANEL_FILL_SCREEN,
   FRAME_PANEL_DARK_BACKGROUND,
   FRAME_PANEL_EMPTY_PLACEHOLDER,

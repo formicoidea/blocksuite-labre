@@ -1,4 +1,8 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  TOOLBAR_INSERT_INTO_PAGE,
+  TOOLBAR_UNGROUP,
+} from '@labre/affine-shared/services';
 
 /**
  * The frame's own seed: the default title a newly created frame is stamped
@@ -44,10 +48,7 @@ export const FRAME_DENSE_MENU_SLIDE: ChromeWording = [
 
 /* ── Chrome: the frame's own surface toolbar (`frame-toolbar.ts`) ────────── */
 
-export const FRAME_TOOLBAR_INSERT_INTO_PAGE: ChromeWording = [
-  'com.labre.frame.toolbar.insert-into-page',
-  'Insert into Page',
-];
+export const FRAME_TOOLBAR_INSERT_INTO_PAGE = TOOLBAR_INSERT_INTO_PAGE;
 
 /**
  * The success notification's message body AND the standalone-playground
@@ -59,10 +60,7 @@ export const FRAME_TOAST_INSERTED_MESSAGE: ChromeWording = [
   'Frame has been inserted into doc',
 ];
 
-export const FRAME_TOOLBAR_UNGROUP: ChromeWording = [
-  'com.labre.frame.toolbar.ungroup',
-  'Ungroup',
-];
+export const FRAME_TOOLBAR_UNGROUP = TOOLBAR_UNGROUP;
 
 export const FRAME_TOOLBAR_BACKGROUND: ChromeWording = [
   'com.labre.frame.toolbar.background',
@@ -144,9 +142,7 @@ export const FRAME_PRESENT_BLACK_BACKGROUND: ChromeWording = [
 export const FRAME_CHROME_WORDINGS: readonly ChromeWording[] = [
   FRAME_DENSE_MENU_CUSTOM,
   FRAME_DENSE_MENU_SLIDE,
-  FRAME_TOOLBAR_INSERT_INTO_PAGE,
   FRAME_TOAST_INSERTED_MESSAGE,
-  FRAME_TOOLBAR_UNGROUP,
   FRAME_TOOLBAR_BACKGROUND,
   FRAME_PRESENT_TOOL_TOOLTIP,
   FRAME_PRESENT_PREVIOUS,

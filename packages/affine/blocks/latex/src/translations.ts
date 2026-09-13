@@ -1,4 +1,8 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  EQUATION_EMPTY_LABEL,
+  EQUATION_ERROR_LABEL,
+} from '@labre/affine-shared/services';
 
 /**
  * This package's own wordings, declared beside the code that renders them —
@@ -51,15 +55,9 @@ export const LATEX_TOOLTIP_BLOCK_INTRO: ChromeWording = [
  * it is a different surface (rendered inside the katex container, not the
  * slash menu), so it keeps its own key rather than aliasing.
  */
-export const LATEX_EMPTY_PLACEHOLDER: ChromeWording = [
-  'com.labre.latex.block.empty-placeholder',
-  'Equation',
-];
+export const LATEX_EMPTY_PLACEHOLDER = EQUATION_EMPTY_LABEL;
 
-export const LATEX_ERROR_PLACEHOLDER: ChromeWording = [
-  'com.labre.latex.block.error-placeholder',
-  'Error equation',
-];
+export const LATEX_ERROR_PLACEHOLDER = EQUATION_ERROR_LABEL;
 
 /**
  * Every wording declared above, in declaration order — walked by
@@ -75,6 +73,4 @@ export const LATEX_WORDINGS: readonly ChromeWording[] = [
   LATEX_SLASH_BLOCK_DESCRIPTION,
   LATEX_TOOLTIP_INTRO,
   LATEX_TOOLTIP_BLOCK_INTRO,
-  LATEX_EMPTY_PLACEHOLDER,
-  LATEX_ERROR_PLACEHOLDER,
 ];

@@ -1,5 +1,8 @@
 import {
   type ChromeWording,
+  PREVIEW_LABEL,
+  TOOLBAR_CAPTION,
+  TOOLBAR_COMMENT,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   TOOLBAR_MORE,
@@ -49,10 +52,7 @@ export const CODE_PREVIEW_TOGGLE_CODE: ChromeWording = [
   'Code',
 ];
 
-export const CODE_PREVIEW_TOGGLE_PREVIEW: ChromeWording = [
-  'com.labre.code.preview.toggle-preview',
-  'Preview',
-];
+export const CODE_PREVIEW_TOGGLE_PREVIEW = PREVIEW_LABEL;
 
 /* ── `./code-toolbar/config.ts` — the floating toolbar's buttons ─────────── */
 
@@ -71,16 +71,10 @@ export const CODE_TOOLBAR_COLLAPSE: ChromeWording = [
   'Collapse code',
 ];
 
-export const CODE_TOOLBAR_CAPTION: ChromeWording = [
-  'com.labre.code.toolbar.caption',
-  'Caption',
-];
+export const CODE_TOOLBAR_CAPTION = TOOLBAR_CAPTION;
 
 /** PO decision: "Comment" (code toolbar) gets a key. */
-export const CODE_TOOLBAR_COMMENT: ChromeWording = [
-  'com.labre.code.toolbar.comment',
-  'Comment',
-];
+export const CODE_TOOLBAR_COMMENT = TOOLBAR_COMMENT;
 
 /* ── `./code-toolbar/config.ts` — the "⋮" more menu ───────────────────────── */
 
@@ -114,12 +108,9 @@ export const CODE_WORDINGS: readonly ChromeWording[] = [
   CODE_COPY_FAILED,
   CODE_SEARCH_FOR_LANGUAGE,
   CODE_PREVIEW_TOGGLE_CODE,
-  CODE_PREVIEW_TOGGLE_PREVIEW,
   CODE_TOOLBAR_COPY_CODE,
   CODE_TOOLBAR_EXPAND,
   CODE_TOOLBAR_COLLAPSE,
-  CODE_TOOLBAR_CAPTION,
-  CODE_TOOLBAR_COMMENT,
   CODE_TOOLBAR_CANCEL_WRAP,
   CODE_TOOLBAR_WRAP,
   CODE_TOOLBAR_CANCEL_LINE_NUMBER,

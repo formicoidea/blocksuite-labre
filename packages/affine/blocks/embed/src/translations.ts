@@ -1,18 +1,24 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  ACTION_CANCEL,
+  ACTION_CONFIRM,
+  type ChromeWording,
+  TOOLBAR_CREATE_LINKED_DOC_TITLE,
+  TOOLBAR_EDIT,
+  TOOLBAR_SETTINGS,
+} from '@labre/affine-shared/services';
 
 /**
  * The confirm/cancel pair of the two prompts this package renders — the
  * "create a linked doc" title prompt (`common/render-linked-doc.ts`) and the
  * generic-embed link popup's own confirm button
  * (`embed-iframe-block/components/embed-iframe-link-input-popup.ts`). Both
- * read the exact same two words, so one pair serves both.
+ * read the exact same two words, so one pair serves both. L7 dedupe: the
+ * exact same two words `@labre/affine-components`'s own modals use, so both
+ * now alias the shared `chrome.ts` wording.
  */
-export const EMBED_CONFIRM: ChromeWording = [
-  'com.labre.embed.confirm',
-  'Confirm',
-];
+export const EMBED_CONFIRM = ACTION_CONFIRM;
 
-export const EMBED_CANCEL: ChromeWording = ['com.labre.embed.cancel', 'Cancel'];
+export const EMBED_CANCEL = ACTION_CANCEL;
 
 /* ── "Create a linked doc" prompt (`common/render-linked-doc.ts`) ────────── */
 
@@ -33,10 +39,7 @@ export const EMBED_HTML_EMPTY: ChromeWording = [
   'Empty',
 ];
 
-export const EMBED_HTML_SETTINGS_HEADER: ChromeWording = [
-  'com.labre.embed.html.settings-header',
-  'Settings',
-];
+export const EMBED_HTML_SETTINGS_HEADER = TOOLBAR_SETTINGS;
 
 /* ── The generic iframe embed (`embed-iframe-block/`) ─────────────────── */
 
@@ -55,10 +58,7 @@ export const EMBED_IFRAME_ERROR_TITLE: ChromeWording = [
   'This link couldn’t be loaded.',
 ];
 
-export const EMBED_IFRAME_ERROR_EDIT: ChromeWording = [
-  'com.labre.embed.iframe.error.edit',
-  'Edit',
-];
+export const EMBED_IFRAME_ERROR_EDIT = TOOLBAR_EDIT;
 
 export const EMBED_IFRAME_IDLE_TEXT: ChromeWording = [
   'com.labre.embed.iframe.idle.text',
@@ -106,14 +106,12 @@ export const EMBED_IFRAME_TOOLBAR_ORIGINAL: ChromeWording = [
 ];
 
 /**
- * Title Case, unlike the sentence-case `TOOLBAR_CREATE_LINKED_DOC` chrome
- * wording ("Create linked doc") — a different literal, so it cannot reuse
- * that key without changing what a catalogue-less playground shows.
+ * An alias (L7 dedupe): the same Title Case word as
+ * {@link TOOLBAR_CREATE_LINKED_DOC_TITLE}, distinct from the sentence-case
+ * `TOOLBAR_CREATE_LINKED_DOC` chrome wording ("Create linked doc").
  */
-export const EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC: ChromeWording = [
-  'com.labre.embed.iframe.toolbar.create-linked-doc',
-  'Create Linked Doc',
-];
+export const EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC =
+  TOOLBAR_CREATE_LINKED_DOC_TITLE;
 
 /** The "no link" notification's message (`embed-iframe-block.ts`). */
 export const EMBED_IFRAME_NO_LINK_MESSAGE: ChromeWording = [
@@ -130,16 +128,12 @@ export const EMBED_IFRAME_NO_LINK_MESSAGE: ChromeWording = [
  * are not restated here.
  */
 export const EMBED_WORDINGS: readonly ChromeWording[] = [
-  EMBED_CONFIRM,
-  EMBED_CANCEL,
   EMBED_PROMPT_TITLE_MESSAGE,
   EMBED_DOC_CREATED_UNDO_MESSAGE,
   EMBED_HTML_EMPTY,
-  EMBED_HTML_SETTINGS_HEADER,
   EMBED_IFRAME_SLASH_NAME,
   EMBED_IFRAME_SLASH_DESCRIPTION,
   EMBED_IFRAME_ERROR_TITLE,
-  EMBED_IFRAME_ERROR_EDIT,
   EMBED_IFRAME_IDLE_TEXT,
   EMBED_IFRAME_INVALID_URL_TITLE,
   EMBED_IFRAME_INVALID_URL_MESSAGE,
@@ -149,6 +143,5 @@ export const EMBED_WORDINGS: readonly ChromeWording[] = [
   EMBED_IFRAME_LINK_POPUP_DESCRIPTION,
   EMBED_IFRAME_LINK_POPUP_PLACEHOLDER,
   EMBED_IFRAME_TOOLBAR_ORIGINAL,
-  EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC,
   EMBED_IFRAME_NO_LINK_MESSAGE,
 ];
