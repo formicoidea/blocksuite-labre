@@ -41,13 +41,14 @@ function mountEdgelessProvider(flags: BlockFlags) {
  * bpmn:    `.bpmn` out, `.bpmn` in, `.svg` in — 3.
  * c4:      mermaid out — 1.
  * wardley: `.owm` out, `.owm` in, `.svg` in — 3.
+ * uml:     PlantUML out, XMI out — 2.
  *
  * A framework that adds one adds a TERM here and a row to its own test below —
  * spelled as a sum per framework rather than as a total, so a merge that brings
  * two frameworks together adds two terms instead of silently agreeing on a
  * number that is short by one.
  */
-const DECLARED_CAPABILITIES = 3 + 1 + 3;
+const DECLARED_CAPABILITIES = 3 + 1 + 3 + 2;
 
 describe('the interchange registry is flag-gated tooling', () => {
   test('BPMN declares both directions of `.bpmn`, and the SVG fallback', () => {
@@ -135,6 +136,31 @@ describe('the interchange registry is flag-gated tooling', () => {
       'c4:mermaid:export',
     ]);
     expect(found[0].format.tier).toBe('semantic');
+  });
+
+  test('UML declares both of its writers, and neither reader', () => {
+    const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
+      framework: 'uml',
+    });
+
+    // Two rows because the unit of declaration is the TRIPLE and these are two
+    // FORMATS: XMI 2.5.1 is the OMG's own interchange, PlantUML is the source a
+    // human reads. Sorted by id, so a menu built from this list comes out the
+    // same on every boot.
+    expect(found.map(capability => capability.id)).toEqual([
+      'uml:plantuml:export',
+      'uml:xmi:export',
+    ]);
+    // Both SEMANTIC, and that is the claim being pinned: neither is a picture.
+    // A UML class carries its attributes and operations as text the grammar
+    // parses, and both writers put that model in the file — so both owe the
+    // full preservation contract (`docs/adr/0012`, P2). The asymmetry here is
+    // the DIRECTION: phase 1 writes and cannot read, so there is no
+    // `uml:xmi:import` to pair either with.
+    expect(found.map(capability => capability.format.tier)).toEqual([
+      'semantic',
+      'semantic',
+    ]);
   });
 
   test('it declares nothing at all with the flag off', () => {

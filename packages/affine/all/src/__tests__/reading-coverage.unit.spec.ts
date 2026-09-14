@@ -76,6 +76,14 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   'c4:boundary': 'frame',
   'c4:system-boundary': 'frame',
   'c4:container-boundary': 'frame',
+  'uml:diagram': 'frame',
+  'uml:subject': 'frame',
+  // Declared, never stamped: `uml:classifier` is §9.2's own generalisation, the
+  // parent `uml:class`, `uml:interface` and `uml:enumeration` hang off so a
+  // rule about classifiers reaches all three. No command creates it and no
+  // element carries it, so there is nothing for a profile to read — and the
+  // three concrete children each have one of their own.
+  'uml:classifier': 'an abstract parent nothing is ever drawn as',
   // Wardley's own product decision: the reading is about the VALUE CHAIN.
   // A need has a demand, not a nature; a force and an accelerator press on the
   // chain from outside it; an area is a region; a pipeline's connections go
@@ -116,10 +124,10 @@ describe('every framework ships a reading, not only Wardley', () => {
     .flatMap(defs => Object.values(defs))
     .filter(def => def.kind === 'node');
 
-  test('the eight frameworks each register at least one profile', () => {
-    // Eight descriptors, eight role vocabularies, and every one of them
+  test('the nine frameworks each register at least one profile', () => {
+    // Nine descriptors, nine role vocabularies, and every one of them
     // represented among the registered profiles. The count is derived on both
-    // sides, so a ninth framework arrives here with its own row.
+    // sides, so a tenth framework arrives here with its own row.
     expect(vocabularies).toHaveLength(FRAMEWORK_DESCRIPTORS.length);
 
     const owners = new Set(profiles.map(profile => profile.framework));
