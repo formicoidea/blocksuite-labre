@@ -72,6 +72,26 @@ import {
  * whole blob and `addElement` writes it with everything else, which is the
  * whole-record LWW the field's own contract asks for (D2).
  *
+ * ## The reader's OWN names, and why there is a second map
+ *
+ * A source id is the file's, and there are two things a reader has to point at
+ * that the file never named: an element it MINTED (a framework artefact is
+ * routinely several elements — a shape, its compartments, and the group that
+ * makes them one thing), and the group membership between them. So a reader may
+ * also hand each element a provisional `id` of its own. `surface.addElement`
+ * overwrites it with a nanoid and is documented to, which is precisely what
+ * makes it safe to use as a local name: it reaches no document, and it is read
+ * here and nowhere else.
+ *
+ * A GROUP's `children` are therefore rewritten BEFORE the group is created, out
+ * of the map built so far — which costs nothing and asks the reader for the one
+ * thing it can always give: emit an element before the group that holds it. A
+ * connector is the opposite case (a flow may be written before either of its
+ * ends) and keeps its second pass.
+ *
+ * Source ids win over provisional ones wherever both could answer, so a reader
+ * that mints no local name behaves exactly as it did before this was here.
+ *
  * @param formatId the format whose payload key carries the source ids — the
  *   `id` of the capability's {@link InterchangeFormat}, and the ONLY thing this
  *   function ever knew about BPMN.
@@ -85,8 +105,26 @@ export function materializeInterchangeImport(
   if (!surface) return [];
 
   const bySource = new Map<string, string>();
+  const byLocal = new Map<string, string>();
+  const resolve = (name: string) => bySource.get(name) ?? byLocal.get(name);
+
   const created = elements.map(props => {
-    const id = surface.addElement({ ...props });
+    const written: SerializedElementProps = { ...props };
+    const children = written.children;
+    if (
+      written.type === 'group' &&
+      children !== null &&
+      typeof children === 'object'
+    ) {
+      written.children = Object.fromEntries(
+        Object.keys(children as Record<string, unknown>).map(child => [
+          resolve(child) ?? child,
+          true,
+        ])
+      );
+    }
+
+    const id = surface.addElement(written);
     const carried = props.interchange as
       | Record<string, { id?: string }>
       | undefined;
@@ -95,6 +133,10 @@ export function materializeInterchangeImport(
     // twice: it imports both and says so in a `substituted-id` note, and a flow
     // naming that id means the first of them.
     if (source !== undefined && !bySource.has(source)) bySource.set(source, id);
+    const local = props.id;
+    if (typeof local === 'string' && !byLocal.has(local)) {
+      byLocal.set(local, id);
+    }
     return id;
   });
 
@@ -104,7 +146,7 @@ export function materializeInterchangeImport(
     for (const side of ['source', 'target'] as const) {
       const end = model[side];
       if (end?.id === undefined) continue;
-      model[side] = { ...end, id: bySource.get(end.id) ?? end.id };
+      model[side] = { ...end, id: resolve(end.id) ?? end.id };
     }
   }
   return created;
@@ -307,7 +349,8 @@ export function reportInterchangeImport(
  */
 export async function runInterchangeImportFile(
   std: BlockStdScope,
-  capability: InterchangeImportCapability
+  capability: InterchangeImportCapability,
+  options: InterchangeImportOptions = {}
 ): Promise<void> {
   const gfx = std.get(GfxControllerIdentifier);
   if (!gfx.surface || std.store.readonly) return;
@@ -321,7 +364,32 @@ export async function runInterchangeImportFile(
   // know what they just did.
   if (!file) return;
 
-  await importInterchangeFile(std, capability, file);
+  await importInterchangeFile(std, capability, file, options);
+}
+
+/** What a caller can put between the file's bytes and the declared reader. */
+export interface InterchangeImportOptions {
+  /**
+   * Turn the file's text into the text the reader takes — the seam for a
+   * format whose container is not the document.
+   *
+   * A reader is a PURE, synchronous function of text (`docs/adr/0012` P3), and
+   * that is not negotiable: it is what lets labre-mcp call the same function
+   * the command calls. Some containers put an asynchronous platform API between
+   * the bytes and the document all the same — a `.drawio` file holds its
+   * `<mxGraphModel>` as base64 of a raw deflate, and inflating it needs
+   * `DecompressionStream` (`gfx/uml/src/drawio-decode.ts`, `docs/adr/0019`);
+   * a zipped container would be the next one.
+   *
+   * So the unwrapping happens HERE, where a caller already has an editor and an
+   * `await`, and the reader keeps its purity. Anything this throws is shown as
+   * the import's failure notification, exactly as a reader's own refusal is —
+   * so the sentence it throws should name what is wrong with the file.
+   *
+   * Absent for every format whose file IS its document, which is all of them
+   * bar one.
+   */
+  decode?: (text: string, file: File) => string | Promise<string>;
 }
 
 /**
@@ -364,7 +432,8 @@ export async function runInterchangeImportFile(
 export async function importInterchangeFile(
   std: BlockStdScope,
   capability: InterchangeImportCapability,
-  file: File
+  file: File,
+  options: InterchangeImportOptions = {}
 ): Promise<void> {
   const gfx = std.get(GfxControllerIdentifier);
   if (!gfx.surface || std.store.readonly) return;
@@ -373,7 +442,13 @@ export async function importInterchangeFile(
 
   let result: InterchangeImportResult;
   try {
-    result = capability.run(await file.text(), { name: file.name });
+    const text = await file.text();
+    // The container, opened — see {@link InterchangeImportOptions.decode}. Inside
+    // the same `try` as the reader, deliberately: "this .drawio could not be
+    // inflated" and "this is not a BPMN document" are the same event to the
+    // person who picked the file, and they take the same notification.
+    const source = options.decode ? await options.decode(text, file) : text;
+    result = capability.run(source, { name: file.name });
   } catch (error) {
     notifyImport(std, {
       title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
