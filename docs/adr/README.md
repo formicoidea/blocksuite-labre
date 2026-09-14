@@ -20,6 +20,7 @@ One file per decision. Format and lifecycle in
 | [0013](0013-cynefin-framworks-carries-no-validation-rules.md)  | Cynefin carries no validation rules  | accepted, amended         | A sensemaking frame has no rules to check; reading is not validation.                                        |
 | [0014](0014-senior-submenu-rules.md)                           | Senior sub-menu rules                | accepted, amended         | Cap 13 + 1, declared eligibility, recency and frequency, one mechanism for every framework.                  |
 | [0015](0015-rule-dependency-scope.md)                          | Rule dependency scope                | accepted                  | A rule family declares what its verdict depends on; a rule may only widen it.                                |
+| [0016](0016-hollow-endpoint-styles.md)                         | Hollow endpoint heads                | accepted                  | `PointStyle` is persisted and append-only; an older client paints no head. Hollow heads use the card fill.   |
 
 Related documents that are not ADRs:
 

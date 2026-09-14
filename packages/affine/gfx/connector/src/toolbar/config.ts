@@ -67,8 +67,25 @@ import {
   roleVocabularies,
 } from '../direction/typed-edge';
 import { mountConnectorLabelEditor } from '../text';
+import {
+  EndPointDiamondHollowIcon,
+  EndPointTriangleHollowIcon,
+  StartPointDiamondHollowIcon,
+  StartPointTriangleHollowIcon,
+} from './hollow-endpoint-icons.js';
 
-const FRONT_ENDPOINT_STYLE_LIST = [
+/**
+ * Every `PointStyle` must appear in BOTH lists.
+ *
+ * `renderMenu` paints the menu's trigger with
+ * `renderCurrentMenuItemWith(items, currentValue, 'icon')`, which returns
+ * `undefined` for a value the list does not carry — an unlisted style gives a
+ * blank button, so a connector created by a framework (or imported) with that
+ * head shows an empty endpoint control. There is no test that can catch a
+ * forgotten entry at the type level; `endpoint-style.unit.spec.ts` asserts the
+ * coverage instead.
+ */
+export const FRONT_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.None,
     icon: StartPointIcon(),
@@ -82,6 +99,10 @@ const FRONT_ENDPOINT_STYLE_LIST = [
     icon: StartPointTriangleIcon(),
   },
   {
+    value: PointStyle.TriangleHollow,
+    icon: StartPointTriangleHollowIcon(),
+  },
+  {
     value: PointStyle.Circle,
     icon: StartPointCircleIcon(),
   },
@@ -89,12 +110,20 @@ const FRONT_ENDPOINT_STYLE_LIST = [
     value: PointStyle.Diamond,
     icon: StartPointDiamondIcon(),
   },
+  {
+    value: PointStyle.DiamondHollow,
+    icon: StartPointDiamondHollowIcon(),
+  },
 ] as const satisfies MenuItem<PointStyle>[];
 
-const REAR_ENDPOINT_STYLE_LIST = [
+export const REAR_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.Diamond,
     icon: EndPointDiamondIcon(),
+  },
+  {
+    value: PointStyle.DiamondHollow,
+    icon: EndPointDiamondHollowIcon(),
   },
   {
     value: PointStyle.Circle,
@@ -103,6 +132,10 @@ const REAR_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.Triangle,
     icon: EndPointTriangleIcon(),
+  },
+  {
+    value: PointStyle.TriangleHollow,
+    icon: EndPointTriangleHollowIcon(),
   },
   {
     value: PointStyle.Arrow,
