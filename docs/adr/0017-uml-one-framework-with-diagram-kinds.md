@@ -136,8 +136,37 @@ choice.
   every framework draws with.
 - **Per-end connector labels.** Multiplicities and role names sit at the ENDS of
   an association, not at its middle, and the connector model carries one label.
-  How that is modelled is deferred to **ADR 0018**, to be written; nothing in
-  this pack's phase 1 depends on it.
+  How that is modelled is decided in
+  **[ADR 0018](0018-connector-per-end-labels-deferred.md)**: phase 1 puts the
+  name, the «stereotype» and the include/extend keyword in that one centre
+  label and leaves end multiplicities to free text; the two optional
+  `sourceLabel` / `targetLabel` fields are a phase-2 red-zone change of their
+  own. Nothing in this pack's phase 1 depends on it.
+
+### 7. What this pack does not ship
+
+Four declarations are **absent by decision, not by omission**, and this section
+is what `add-a-framework/01-definition-of-done.md` and
+`understand/05-what-is-a-framework.md` point at when they say "per ADR 0017".
+
+- **Natures** — no level-3 tags (`natures.ts`, ADR 0007, R19). A UML artefact's
+  meaning IS its role: a class is a class, and there is no second axis along
+  which one class differs from another that the notation itself does not already
+  draw. A nature table here would be inventing vocabulary UML does not have.
+- **Nudges** — no quality checklist (`nudges.ts`). UML's own clauses are the
+  checklist, and they are already written as rules with citations; a second,
+  softer list of the same sentences would say the same thing twice, once
+  checkable and once not.
+- **Audit criteria** — no AI audit seam in phase 1. The criteria a framework
+  hands the audit panel are judgements about a model, and §4 above says this
+  engine has no model behind the drawing. Phase 2 may add them for the form
+  questions; nothing is declared now.
+- **Imports** — no importer. The PlantUML and XMI **writers** ship in phase 1
+  (export only); the readers are phase 2, and when they come they owe ADR 0012's
+  full preservation contract D1–D6 — sort every node into mapped / carried /
+  quarantined, carry the residue on the element, keep the file's ids verbatim.
+  That is a chantier of its own, and shipping a lossy reader ahead of it would
+  break the promise the contract exists to make.
 
 ## Consequences
 

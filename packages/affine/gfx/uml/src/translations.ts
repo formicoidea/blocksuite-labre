@@ -9,8 +9,10 @@ import {
 import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommands } from './commands.js';
 import { UML_DIAGRAM_KIND_MENU } from './kinds.js';
+import { UML_PROFILES } from './profiles.js';
 import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
+import { UML_RULES } from './rules.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -30,9 +32,12 @@ import { UML_ROLES } from './roles.js';
  * manifest already names it — which is the whole reason these lists are derived
  * rather than written.
  *
- * Phase 1 declares no RULE and no PROFILE, so neither is walked here: the
- * validation checklist is tranche D's, and a `collectTranslationKeys('rule', …)`
- * over an empty list would be a line that looks like coverage and is not.
+ * The RULES and the two PROFILES are walked after the roles and the backgrounds,
+ * and the order is load-bearing: a rule carries its framework's `roles` and, for
+ * `uml.actor-inside-subject`, the subject's own declaration, so walking the pack
+ * reaches keys those lists already named. `mergeTranslationEntries` keeps the
+ * FIRST occurrence, which is what makes each key report the source it actually
+ * comes from.
  */
 export const umlTranslationEntries: TranslationKeyManifestEntry[] =
   mergeTranslationEntries(
@@ -55,6 +60,10 @@ export const umlTranslationEntries: TranslationKeyManifestEntry[] =
       // two declarations beside it are.
       UML_DIAGRAM_KIND_MENU,
     ]),
+    // AFTER the two groups above — see the header on why the order decides
+    // which source each key is reported under.
+    collectTranslationKeys('rule', UML_RULES),
+    collectTranslationKeys('profile', UML_PROFILES),
     // LAST, and the order is load-bearing: a reading profile carries the
     // framework's own `roles`, so walking it reaches keys the list above
     // already named. `mergeTranslationEntries` keeps the FIRST occurrence,

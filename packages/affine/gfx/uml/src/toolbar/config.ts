@@ -1,4 +1,7 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { UmlDiagramElementModel } from '@labre/affine-model';
 import {
@@ -288,9 +291,9 @@ function pickKind(ctx: ToolbarContext, option: UmlDiagramKindOption) {
  * anything.
  */
 const kindPickerAction = {
-  // After the legend (`b.`) and before the Validation dropdown (`z.`, tranche
-  // D): the kind is a statement about the sheet, read before the level of
-  // requirement applied to it.
+  // After the legend (`b.`) and before the Validation dropdown (`z.`): the kind
+  // is a statement about the sheet, read before the level of requirement
+  // applied to it.
   id: 'c.kind',
   when: (ctx: ToolbarContext) => selectedDiagram(ctx) !== null,
   content(ctx: ToolbarContext) {
@@ -440,17 +443,22 @@ export const umlLegendToolbarConfig = {
  * kind of diagram this sheet is, and leaves the stored frame its handles, its
  * heading and everything already drawn on it.
  *
- * Sorting keeps the row readable across the merge — `b.legend` then `c.kind` —
- * whatever order the modules were registered in.
- *
- * ponytail: the generic Validation dropdown (`z.validation`,
- * `validationToolbarConfig`) belongs in this list and is NOT here yet — the UML
- * rule pack is tranche D. Spreading its actions in is the whole of the change
- * when the rules land, and the `z.` prefix already reserves its place at the end
- * of the row.
+ * Sorting keeps the row readable across the merge — `b.legend`, `c.kind`, then
+ * `z.validation` from {@link validationToolbarConfig} — so the user sees resize,
+ * legend, the diagram's KIND, then the level of requirement, whatever order the
+ * modules were registered in.
  */
 export const umlDiagramToolingToolbarConfig: ToolbarModuleConfig = {
-  actions: [...umlLegendToolbarConfig.actions, kindPickerAction],
+  actions: [
+    ...umlLegendToolbarConfig.actions,
+    // Which of the four UML diagrams this sheet draws — a fact about the frame,
+    // written on the frame, read by `uml.not-admissible-on-kind`.
+    kindPickerAction,
+    // The generic dropdown, not a UML variant of it: the config names no
+    // framework — it reads the registered rules and profiles — so this is the
+    // very same object wardley, bpmn, the context map and C4 register.
+    ...validationToolbarConfig.actions,
+  ],
   when: umlLegendToolbarConfig.when,
 };
 
