@@ -42,6 +42,7 @@ const PO_ORDER = [
   'c4',
   'ddd-core-domain',
   'ddd-context-map',
+  'uml',
 ] as const;
 
 const HERE = dirname(fileURLToPath(import.meta.url));

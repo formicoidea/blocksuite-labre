@@ -37,7 +37,7 @@ BPMN and C4 follow it; **Wardley's OWM export currently declares no
 
 **R6. The legend is a button on the selected board's toolbar**, not a
 command: absent from catalogue, palette and shortcuts (product decision,
-2026-08-27). It emits `FrameworkLegendCreated` by hand. Six of eight
+2026-08-27). It emits `FrameworkLegendCreated` by hand. Seven of nine
 frameworks have one; Cynefin does not by ADR 0013; BPMN's absence is
 undocumented.
 

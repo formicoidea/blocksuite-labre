@@ -14,6 +14,7 @@ import { coreDomainCommands } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingCommands } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyCommands } from '@labre/affine-gfx-edgy';
 import { shapeCommands } from '@labre/affine-gfx-shape';
+import { umlCommands } from '@labre/affine-gfx-uml';
 import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
   type AnyCommandDescriptor,
@@ -59,6 +60,7 @@ const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
   { owner: 'ddd-event-storming', commands: eventStormingCommands },
   { owner: 'ddd-core-domain', commands: coreDomainCommands },
   { owner: 'ddd-context-map', commands: contextMapCommands },
+  { owner: 'uml', commands: umlCommands },
 ];
 
 /**

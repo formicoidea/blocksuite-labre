@@ -87,6 +87,7 @@ export const OPTIONAL_BLOCKS = [
   'ddd-core-domain',
   'ddd-context-map',
   'ddd-templates',
+  'uml',
 ] as const;
 
 export type OptionalBlock = (typeof OPTIONAL_BLOCKS)[number];

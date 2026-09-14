@@ -76,12 +76,12 @@ Plus the data files hosts read: `src/flags.ts` (the list of flag keys),
 The 82 workspace packages are private. `scripts/build-bundles.mjs` generates
 the npm packages under `@formicoidea/`:
 
-| Bundle                                       | Content                                                                                                               |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `@formicoidea/labre-core`                    | the whole editor minus the business frameworks                                                                        |
-| `@formicoidea/labre-framework-<id>`          | one framework: `wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map` |
-| `@formicoidea/labre-ddd-shared`              | helpers shared by the DDD frameworks                                                                                  |
-| `@formicoidea/labre-framework-ddd-aggregate` | DDD template categories only (not a framework: no senior button)                                                      |
+| Bundle                                       | Content                                                                                                                      |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@formicoidea/labre-core`                    | the whole editor minus the business frameworks                                                                               |
+| `@formicoidea/labre-framework-<id>`          | one framework: `wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map`, `uml` |
+| `@formicoidea/labre-ddd-shared`              | helpers shared by the DDD frameworks                                                                                         |
+| `@formicoidea/labre-framework-ddd-aggregate` | DDD template categories only (not a framework: no senior button)                                                             |
 
 The core bundle keeps the same subpaths as the umbrella (`@labre/affine/std`
 becomes `@formicoidea/labre-core/std`). The frameworks are stripped from the
