@@ -46,7 +46,9 @@ the flag was on must paint and stay editable while it is off.
 
 Validation rules and profiles, nudges, legend, interchange, natures. A
 framework that ships none of one kind says so in an ADR (ADR 0013 for
-Cynefin) so that a coverage audit does not report it as missing.
+Cynefin) so that a coverage audit does not report it as missing. UML:
+natures, nudges and audit criteria not shipped, imports in phase 2, per
+ADR 0017.
 
 ## Acceptance by the product owner
 

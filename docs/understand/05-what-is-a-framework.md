@@ -78,6 +78,10 @@ permissive one (Wardley calls it `sketch`), and choosing the default writes
 nothing on the element. A framework may ship no rules at all: Cynefin does,
 by decision (ADR 0013).
 
+Any other declaration a framework omits is declared too, in an ADR, so a
+coverage audit does not report it as missing. UML: natures, nudges and audit
+criteria not shipped, imports in phase 2, per ADR 0017.
+
 Rules run only when a board of the framework exists on the surface. A Wardley
 node on a blank canvas is a sketch, not an error. A node beside a map is
 judged and attributed to the nearest map: that is what the "element outside

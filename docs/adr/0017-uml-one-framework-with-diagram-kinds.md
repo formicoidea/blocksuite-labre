@@ -136,8 +136,12 @@ choice.
   every framework draws with.
 - **Per-end connector labels.** Multiplicities and role names sit at the ENDS of
   an association, not at its middle, and the connector model carries one label.
-  How that is modelled is deferred to **ADR 0018**, to be written; nothing in
-  this pack's phase 1 depends on it.
+  How that is modelled is decided in
+  **[ADR 0018](0018-connector-per-end-labels-deferred.md)**: phase 1 puts the
+  name, the «stereotype» and the include/extend keyword in that one centre
+  label and leaves end multiplicities to free text; the two optional
+  `sourceLabel` / `targetLabel` fields are a phase-2 red-zone change of their
+  own. Nothing in this pack's phase 1 depends on it.
 
 ## Consequences
 
