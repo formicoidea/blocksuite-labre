@@ -245,7 +245,19 @@ export type UmlClassifierKind =
   | 'object'
   // Phase 2 — the two classifiers of a component and a deployment diagram.
   | 'component'
-  | 'artifact';
+  | 'artifact'
+  // …and the one BEHAVIOUR kind that is a divided box rather than a picture.
+  //
+  // §14.2.4 draws a state as a round-cornered rectangle with a NAME
+  // COMPARTMENT ruled off over its internal activities — `entry / …`,
+  // `do / …`, `exit / …` — which is the instance specification's layout with
+  // the corners rounded. It is here and not among the pictures because
+  // `component.ts` files it under `COMPARTMENTED`/`ONE_SPLIT`: the renderer
+  // draws that separator unconditionally, and `model.ts` reads the behaviour
+  // lines off the `uml:attributes` tier. A state created with one tier would
+  // therefore show an empty ruled compartment for ever and could never export
+  // a behaviour, however carefully an author wrote one.
+  | 'state';
 
 /**
  * The kinds the notation draws as a picture rather than as a box.
@@ -284,11 +296,10 @@ export type UmlGlyphKind =
   | 'send-signal'
   | 'accept-event'
   | 'time-event'
-  // …and the STATE MACHINE one (§14.2.4). A state is a rounded box whose
-  // behaviour lines are written UNDER its name rather than in a compartment of
-  // their own — see {@link createUmlNode} — and the rest are the pseudostate
-  // marks, none of which holds a word at all.
-  | 'state'
+  // …and the STATE MACHINE's marks (§14.2.4). The state itself is NOT here: it
+  // is the divided box of {@link UmlClassifierKind}, because that is what the
+  // notation draws and what the renderer and the exporter both read. What is
+  // left is a bullseye and the pseudostates, none of which holds a word at all.
   | 'final-state'
   | 'choice'
   | 'junction'
@@ -391,13 +402,11 @@ function centredBox(gfx: GfxController, kind: UmlNodeKind) {
  * that a user would have to descend through to reach the mark it holds. The
  * SHAPE is what the gesture produced, so the shape is what is selected.
  *
- * The tiered kinds are unaffected, and the one worth naming is the **state**
- * (§14.2.4): it carries a single `uml:label` like every other picture here, and
- * its `entry / …`, `do / …` and `exit / …` lines are written UNDER its name in
- * that same text. One tier rather than a compartment of its own, because the
- * renderer draws the separator when there is more than one line — so the box
- * gains its name compartment exactly when an author writes behaviour into it,
- * and an empty compartment is never drawn on a state that has none.
+ * Every kind that IS labelled here takes exactly one tier, and the one that
+ * would have been the exception does not travel this path at all: a **state**
+ * is a divided box (§14.2.4) and is built by {@link createUmlClassifier}, whose
+ * walk gives it the name compartment and the behaviour compartment the renderer
+ * rules off and the exporter reads.
  */
 export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
   const gfx = gfxOf(std);
@@ -453,9 +462,35 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
 }
 
 /**
+ * What the SECOND compartment says on a fresh artefact, where it is not the
+ * §9.5.4 attribute line every classifier gets.
+ *
+ * Two exceptions and a default, rather than three entries, because the default
+ * is the rule: `+ attribute : Type` is what a divided rectangle's body tier
+ * holds unless the kind's own clause says otherwise.
+ *
+ *  - an **object**'s tier holds SLOTS (§9.8.4) — `attribute = value`, an
+ *    instance giving its classifier's features values rather than redeclaring
+ *    them;
+ *  - a **state**'s holds INTERNAL ACTIVITIES (§14.2.4.4) and is seeded EMPTY.
+ *    That is the one place in this pack where a blank tier is the right
+ *    stencil, and it is the exporter that decides it: `model.ts` reads
+ *    `entry / …`, `do / …` and `exit / …` off these lines and treats a label
+ *    with nothing after it as no behaviour at all, so a seeded `entry / ` would
+ *    be a prompt that reads as content and exports as nothing. §14.2.4's own
+ *    figures draw exactly this — a named state with a ruled-off compartment
+ *    waiting to be filled — and the author types the first line the grammar
+ *    then reads back.
+ */
+const BODY_SEED: Partial<Record<UmlClassifierKind, string>> = {
+  object: UML_SLOTS_SEED,
+  state: '',
+};
+
+/**
  * Create one of the COMPARTMENTED artefacts — a class, an interface, an
- * enumeration, an object, and since phase 2 a component or an artifact — as the
- * shape, its compartments, and the group.
+ * enumeration, an object, and since phase 2 a component, an artifact or a
+ * state — as the shape, its compartments, and the group.
  *
  * ## How many tiers is the LAYOUT's answer, not this file's
  *
@@ -531,7 +566,7 @@ export function createUmlClassifier(
         surface,
         gfx.layer.generateIndex(),
         UML_ROLE.attributes,
-        kind === 'object' ? UML_SLOTS_SEED : UML_ATTRIBUTES_SEED,
+        BODY_SEED[kind] ?? UML_ATTRIBUTES_SEED,
         boxes.attributes,
         { fontSize: UML_BODY_FONT_SIZE, align: TextAlign.Left }
       )

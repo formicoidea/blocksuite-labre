@@ -40,7 +40,7 @@ import {
   UmlSubjectView,
 } from './element-view.js';
 import { UML_INTERCHANGE } from './interchange.js';
-import { UML_MORPH_SPEC } from './morph.js';
+import { UML_BARE_MORPH_SPEC, UML_MORPH_SPEC } from './morph.js';
 import { UmlNodeRendererExtension } from './node/node-renderer.js';
 import { UmlNodeView } from './node/node-view.js';
 import { UML_PROFILES } from './profiles.js';
@@ -222,6 +222,25 @@ export class UmlViewExtension extends ViewExtensionProvider {
             toolbarModuleKey('custom:affine:surface:group', 'uml-morph')
           ),
           config: morphToolbarConfig(UML_MORPH_SPEC),
+        })
+      );
+      // The same dropdown on a BARE UML shape — the routing marks phase 2 added.
+      //
+      // §15.3.4 and §14.2.4 name none of them, so a bullseye, a bar, a diamond
+      // and a crossed circle are created as the shape alone (`actions.ts`) and
+      // a click selects a `umlNode` rather than a group. The widget derives a
+      // surface element's flavour from `model.type`, so their row is
+      // `affine:surface:umlNode`'s and not the group's — which is why this is a
+      // second registration under a second key rather than a widened
+      // `modelType` on the one above. The families, the props and the wording
+      // are shared by reference (`morph.ts`), so the two rows can never offer
+      // different menus.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:umlNode', 'uml-morph')
+          ),
+          config: morphToolbarConfig(UML_BARE_MORPH_SPEC),
         })
       );
       // The same dropdown on a selected RELATIONSHIP. A second registration

@@ -58,7 +58,8 @@ live in one flat category named after the framework
 
 **R9. A board is picked by its border**, a 10 screen-pixel band constant at
 every zoom, plus its title bands (BPMN participant band, C4 title band, UML
-frame heading band).
+frame heading band, UML partition band — on the top or left edge by
+orientation — and UML region band).
 `backgroundIncludesPoint` in
 `packages/affine/model/src/elements/framework-background/hit-test.ts`;
 `framework-background-hit-test.unit.spec.ts`. An already-selected board can

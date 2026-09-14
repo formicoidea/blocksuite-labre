@@ -187,6 +187,11 @@ describe('what a UML diagram is read as', () => {
       'uml-node',
       'uml-device',
       'uml-execution-environment',
+      // …and phase 2's one behaviour artefact that is a DIVIDED BOX: §14.2.4
+      // draws a state with a name compartment ruled off over its internal
+      // activities, so its heading is a `uml:name` exactly as a classifier's
+      // is. Every other behaviour artefact carries one word, or none at all.
+      'uml-state',
     ]);
     for (const profile of UML_READINGS) {
       expect(profile.labelRole, profile.id).toBe(

@@ -438,6 +438,24 @@ describe('the UML behaviour toolbox draws what it declares', () => {
     // holds, whatever order the two were drawn in.
     const group = groupOf(state);
     expect(group).toBeDefined();
+
+    // §14.2.4 draws a state as a DIVIDED box: a name compartment ruled off over
+    // its internal activities. So it arrives with two tiers, not one — the
+    // renderer draws that separator unconditionally, and `model.ts` reads
+    // `entry / …`, `do / …`, `exit / …` off the second one. The behaviour tier
+    // is seeded EMPTY, which is the compartment §14.2.4's own figures draw.
+    const tiers = group!.childElements.filter(
+      (child): child is TextElementModel => child instanceof TextElementModel
+    );
+    expect(tiers.map(tier => tier.role).sort()).toEqual(
+      [UML_ROLE.name, UML_ROLE.attributes].sort()
+    );
+    const nameTier = tiers.find(tier => tier.role === UML_ROLE.name)!;
+    const behaviourTier = tiers.find(
+      tier => tier.role === UML_ROLE.attributes
+    )!;
+    expect(nameTier.text.toString().length).toBeGreaterThan(0);
+    expect(behaviourTier.text.toString()).toBe('');
     expect(
       region.index < group!.index,
       `${region.index} < ${group!.index}`

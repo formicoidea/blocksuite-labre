@@ -51,9 +51,10 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * the other end by id too.
  *
  * `uml:name` for everything whose words a keyword may be written over — the
- * compartmented kinds, the package, the note and the three deployment cubes —
- * and `uml:label` for the artefacts whose one word is a name and nothing else:
- * the actor, the use case, the port and the two interface marks. See `roles.ts`
+ * compartmented kinds (the state among them, since §14.2.4 draws one), the
+ * package, the note and the three deployment cubes — and `uml:label` for the
+ * artefacts whose one word is a name and nothing else: the actor, the use case,
+ * the port, the two interface marks and the activity vocabulary. See `roles.ts`
  * on why the tier is named twice.
  *
  * The split has a second consequence worth stating, because it is the engine's
@@ -386,9 +387,10 @@ export const UML_EXECUTION_ENVIRONMENT_READING = profile(
 /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ── */
 
 /**
- * Every artefact below takes its name off `uml:label`, and thirteen of them
- * have none to take: a control node and a pseudostate are created with no text
- * at all (`actions.ts`), because §15.3.4 and §14.2.4 name none of them. The
+ * Every artefact below takes its name off `uml:label` — except the STATE, which
+ * is a divided box and takes it off `uml:name` — and thirteen of them have none
+ * to take: a control node and a pseudostate are created with no text at all
+ * (`actions.ts`), because §15.3.4 and §14.2.4 name none of them. The
  * profile still declares the tier, and that is deliberate rather than sloppy —
  * `readElement` names the OTHER end of a relation through the SAME profile's
  * `labelRole`, so an action reading "Flows to:" about the decision it points at
@@ -460,10 +462,15 @@ export const UML_TIME_EVENT_READING = profile(
 
 /* ── Phase 2: state machines (§14.2.4) ─────────────────────────────────── */
 
+/**
+ * The one behaviour artefact named off `uml:name` rather than `uml:label`: a
+ * state is a DIVIDED BOX (§14.2.4), so its heading is a name compartment with
+ * the internal activities ruled off below it, exactly as a classifier's is.
+ */
 export const UML_STATE_READING = profile(
   'uml-state',
   UML_ROLE.state,
-  UML_ROLE.label,
+  UML_ROLE.name,
   TRANSITION
 );
 export const UML_FINAL_STATE_READING = profile(

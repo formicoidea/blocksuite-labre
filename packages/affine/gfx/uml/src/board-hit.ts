@@ -1,5 +1,6 @@
 import type { BackgroundRect } from '@labre/affine-block-surface';
 import { backgroundPlot } from '@labre/affine-block-surface';
+import type { UmlPartitionOrientation } from '@labre/affine-model';
 
 import {
   UML_DIAGRAM_FRAME,
@@ -78,10 +79,17 @@ export function umlInDiagramBand(
 
 /* ── The two behaviour frames ──────────────────────────────────────────── */
 
-/** What these functions need of a partition: its box and which way it runs. */
+/**
+ * What these functions need of a partition: its box and which way it runs.
+ *
+ * `orientation` is the MODEL's own union rather than a `string`, so a caller
+ * cannot hand this a lane running some third way the renderer has no band for —
+ * the structural type is what lets a unit test pass a plain object, and the
+ * union is what keeps that object honest.
+ */
 export interface UmlPartitionGeometry {
   deserializedXYWH: readonly number[];
-  orientation?: string;
+  orientation?: UmlPartitionOrientation;
 }
 
 /**

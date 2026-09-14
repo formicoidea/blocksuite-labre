@@ -409,6 +409,7 @@ export const UML_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
   resolveTarget: umlNodeOfGroup,
   kindOf: (model: GfxPrimitiveElementModel) =>
     model instanceof UmlNodeElementModel ? model.kind : undefined,
+  // ↓ everything from here down is SHARED with {@link UML_BARE_MORPH_SPEC}.
   // The SHAPE's role, which is the only role a UML artefact has: the group
   // carries none by design, and the tiers carry roles of their own (`uml:name`,
   // `uml:attributes`, `uml:operations`) that say which COMPARTMENT they are and
@@ -420,4 +421,59 @@ export const UML_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
   labelOf,
   iconOf,
   label: morphLabel('com.labre.morph.toolbar.label', 'Change type'),
+};
+
+/**
+ * The SAME dropdown, on a UML shape that is not inside a group.
+ *
+ * ## Why a second spec exists at all
+ *
+ * Because phase 2 made the pack's own rule about composites untrue for a third
+ * of its artefacts. Until then every UML artefact was a `group` — a shape and
+ * the canvas texts grouped with it — so `modelType: GroupElementModel` was the
+ * whole selection filter. The behaviour vocabulary is not: §15.3.4 and §14.2.4
+ * name none of their routing marks, so a bullseye, a bar, a diamond and a
+ * crossed circle are created as the SHAPE alone (`actions.ts`), and what a
+ * click selects for them is a `umlNode`, never a group.
+ *
+ * `umlNodeOfGroup` refuses a bare shape by design — it is the gate that keeps a
+ * plain lasso and another framework's component out of the menu — so the group
+ * spec resolves nothing for them and three whole families (`activity-final` /
+ * `flow-final`, `shallow-history` / `deep-history`, `entry-point` /
+ * `exit-point`) had a dropdown nobody could ever open.
+ *
+ * ## Why not one spec with a widened `modelType`
+ *
+ * Because the selection filter is not the only thing that differs: the two
+ * specs are registered under two DIFFERENT toolbar flavours. A bare `umlNode`'s
+ * contextual row is `affine:surface:umlNode`'s (the widget derives the flavour
+ * from `model.type`), and a grouped artefact's is `affine:surface:group`'s.
+ * Widening `modelType` to the abstract base would leave the group registration
+ * answering for shapes it will never be handed, and would make its homogeneity
+ * gate — the thing that refuses a group holding two classifiers — apply to a
+ * selection it was not written about. Two registrations, two keys, one table.
+ *
+ * Everything that decides what the menu SAYS and what a pick WRITES is shared
+ * with {@link UML_MORPH_SPEC} by reference, so the two can never offer
+ * different families or write different props.
+ *
+ * `resolveTarget` is absent, which is identity: a bare mark is one element —
+ * what the user selects, what carries the kind and what the patch lands on are
+ * the same object, exactly as they are for a connector. `afterMorph` is absent
+ * too, and that is the notation's doing rather than an omission: `rewriteName`
+ * exists to keep a `uml:name` tier saying what the shape now is, and these
+ * kinds have no tier at all — there is nothing to rewrite, and reaching for one
+ * would be looking for words the specification says are not there.
+ */
+export const UML_BARE_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
+  framework: UML_MORPH_SPEC.framework,
+  families: UML_MORPH_SPEC.families,
+  modelType: UmlNodeElementModel,
+  kindOf: UML_MORPH_SPEC.kindOf,
+  roleOf: UML_MORPH_SPEC.roleOf,
+  propsOf: UML_MORPH_SPEC.propsOf,
+  clearOf: UML_MORPH_SPEC.clearOf,
+  labelOf: UML_MORPH_SPEC.labelOf,
+  iconOf: UML_MORPH_SPEC.iconOf,
+  label: UML_MORPH_SPEC.label,
 };

@@ -555,7 +555,10 @@ const SPECS: Spec[] = [
     category: 'elements',
     element: 'node:state',
     senior: false,
-    run: std => createUmlNode(std, 'state'),
+    // The one behaviour artefact that walks the CLASSIFIER path: §14.2.4 draws
+    // a state as a divided box, so it arrives with a name compartment and the
+    // internal-activities tier the renderer rules off (`actions.ts`).
+    run: std => createUmlClassifier(std, 'state'),
   },
   {
     id: 'addFinalState',

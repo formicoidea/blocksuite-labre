@@ -284,18 +284,33 @@ describe('a behaviour template is the elements the button draws', () => {
     }
   });
 
+  it('gives a state a NAME over its internal-activities tier', () => {
+    // §14.2.4 draws a state as the instance specification's divided box with
+    // rounded corners, and `component.ts` files it as one: the renderer rules
+    // the separator off unconditionally and `model.ts` reads `entry / …`,
+    // `do / …`, `exit / …` off `uml:attributes`. So it is four elements, like a
+    // component and an artifact — and the behaviour tier is seeded EMPTY, which
+    // is what §14.2.4's own figures draw.
+    const entries = Object.entries(named('State'));
+    expect(entries).toHaveLength(4);
+    const roles = entries
+      .map(([, el]) => el.role)
+      .filter((id): id is string => !!id)
+      .sort();
+    expect(roles).toEqual(
+      [UML_ROLE.state, UML_ROLE.name, UML_ROLE.attributes].sort()
+    );
+  });
+
   it('gives the labelled behaviour kinds one `uml:label` and a group', () => {
-    // One tier for all six, and the STATE is the one worth naming: its
-    // `entry / …` lines are written under its name in that same text, so the
-    // renderer draws the name compartment exactly when an author writes
-    // behaviour into it (§14.2.4).
+    // One tier each: a word inside the picture, never a keyword and never a
+    // compartment. The STATE is not among them — see the case above.
     for (const [name, role, kind] of [
       ['Action', UML_ROLE.action, 'action'],
       ['Object node', UML_ROLE['object-node'], 'object-node'],
       ['Send signal', UML_ROLE['send-signal'], 'send-signal'],
       ['Accept event', UML_ROLE['accept-event'], 'accept-event'],
       ['Time event', UML_ROLE['time-event'], 'time-event'],
-      ['State', UML_ROLE.state, 'state'],
     ] as const) {
       const entries = Object.entries(named(name));
       expect(entries, name).toHaveLength(3);

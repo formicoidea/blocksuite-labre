@@ -151,9 +151,13 @@ const CLASSIFIERS: UmlClassifierKind[] = [
   'interface',
   'enumeration',
   'object',
-  // Phase 2: §11.6.4 and §19.3.4 draw both as the classifier rectangle.
+  // Phase 2: §11.6.4 and §19.3.4 draw both as the classifier rectangle…
   'component',
   'artifact',
+  // …and §14.2.4 draws a STATE as that same divided box with rounded corners:
+  // a name compartment ruled off over its internal activities. The one
+  // behaviour kind that is not a picture.
+  'state',
 ];
 const GLYPHS: UmlGlyphKind[] = [
   'package',
@@ -179,8 +183,8 @@ const GLYPHS: UmlGlyphKind[] = [
   'send-signal',
   'accept-event',
   'time-event',
-  // …and the state machine's (§14.2.4).
-  'state',
+  // …and the state machine's marks (§14.2.4). The STATE itself is a divided
+  // box and lives with the classifiers above.
   'final-state',
   'choice',
   'junction',
@@ -397,17 +401,48 @@ describe('what a uml artefact is created as', () => {
   });
 
   it('seeds every compartment with the stencil own prompt', () => {
+    // …and the two exceptions to `+ attribute : Type` are the two the spec
+    // writes differently: an instance gives its features VALUES (§9.8.4), and
+    // a state's internal-activities tier is seeded EMPTY — `model.ts` treats
+    // `entry / ` with nothing after it as no behaviour, so a prompt there would
+    // read as content and export as nothing (§14.2.4.4).
+    const body: Partial<Record<UmlClassifierKind, string>> = {
+      object: UML_SLOTS_SEED,
+      state: '',
+    };
     for (const kind of CLASSIFIERS) {
       const rec = recorder();
       createUmlClassifier(rec.std, kind);
       expect(rec.added[1].text, kind).toBe(UML_NAME_SEED[kind]);
-      expect(rec.added[2].text, kind).toBe(
-        kind === 'object' ? UML_SLOTS_SEED : UML_ATTRIBUTES_SEED
-      );
+      expect(rec.added[2].text, kind).toBe(body[kind] ?? UML_ATTRIBUTES_SEED);
       if (tiersOf(kind).operations) {
         expect(rec.added[3].text, kind).toBe(UML_OPERATIONS_SEED);
       }
     }
+  });
+
+  it('builds a state as a NAME over the internal-activities tier', () => {
+    // The blocker this pairs with: `component.ts` files `state` under
+    // `COMPARTMENTED`/`ONE_SPLIT`, so the renderer rules the separator off
+    // unconditionally, and `model.ts` reads `entry / …`, `do / …`, `exit / …`
+    // from the `uml:attributes` tier. A state created with one tier would show
+    // an empty ruled compartment for ever and could never export a behaviour.
+    const rec = recorder();
+    createUmlClassifier(rec.std, 'state');
+    expect(rec.types()).toEqual(['umlNode', 'text', 'text', 'group']);
+    expect(rec.roles()).toEqual([
+      UML_ROLE_OF_KIND.state,
+      UML_ROLE.name,
+      UML_ROLE.attributes,
+      undefined,
+    ]);
+    expect(rec.added[1].text).toBe(UML_NAME_SEED.state);
+    expect(rec.added[2].text).toBe('');
+    // The behaviour lines are read down their left edge, at body size, and they
+    // wrap inside the box rather than running out over the canvas.
+    expect(rec.added[2].textAlign).toBe(TextAlign.Left);
+    expect(rec.added[2].hasMaxWidth).toBe(true);
+    expect(rec.added[1].hasMaxWidth).toBe(true);
   });
 
   it('writes a tier for each compartment the LAYOUT declares, and no other', () => {
@@ -493,11 +528,10 @@ describe('what a uml artefact is created as', () => {
         named.includes(kind) ? UML_ROLE.name : UML_ROLE.label
       );
     }
-    // The whole behaviour vocabulary is LABELLED, including the state: its
-    // `entry / …` lines are written under its name in that same text rather
-    // than in a compartment of their own, so there is one tier and it is the
-    // one `uml:label` means (§14.2.4).
-    for (const kind of ['action', 'state', 'send-signal'] as const) {
+    // The activity vocabulary is LABELLED throughout — one word, never a
+    // keyword, never a compartment. The STATE is deliberately absent: it is a
+    // divided box and takes a `uml:name`, which the case above this one proves.
+    for (const kind of ['action', 'object-node', 'send-signal'] as const) {
       expect(roleOf(kind), kind).toBe(UML_ROLE.label);
     }
   });

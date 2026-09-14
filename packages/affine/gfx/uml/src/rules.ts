@@ -238,8 +238,10 @@ const UML_ELEMENT_ROLES: readonly RoleId[] = [
 /**
  * Every ordered pair of the element roles — the ALPHABET, and not a grammar.
  *
- * This table sanctions all hundred and forty-four sentences, so a rule holding
- * it judges none of them. It exists so {@link untypedEdge} can say "between two
+ * This table sanctions all four hundred and forty-one sentences — twenty-one
+ * element roles squared, since the behaviour vocabulary joined the alphabet —
+ * so a rule holding it judges none of them. It exists so {@link untypedEdge}
+ * can say "between two
  * UML artefacts" — which is the only thing `flagNeutral` reads a matrix FOR —
  * without inheriting a judgement that belongs to {@link actorActorAssociation}.
  */

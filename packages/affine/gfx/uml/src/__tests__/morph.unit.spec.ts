@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { UML_NODE_BOX } from '../consts.js';
 import { guillemets, UML_NAME_SEED } from '../keywords.js';
 import {
+  UML_BARE_MORPH_SPEC,
   UML_MORPH_FAMILIES,
   UML_MORPH_SPEC,
   umlMorphedName,
@@ -404,6 +405,7 @@ describe('the spec handed to the generic module', () => {
   });
 
   it('names and draws every kind from its own creation command', () => {
+    // (see below for the bare-shape spec, which shares this very table)
     // Reused rather than redrawn, so the dropdown says what the sub-menu entry
     // that draws one says.
     expect(UML_MORPH_SPEC.labelOf('interface')).toEqual({
@@ -413,6 +415,72 @@ describe('the spec handed to the generic module', () => {
     for (const kind of EVERY_KIND) {
       expect(UML_MORPH_SPEC.labelOf(kind).key).toBeTruthy();
       expect(UML_MORPH_SPEC.iconOf(kind)).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * The second registration, and the bug it closes.
+ *
+ * Phase 2's routing marks are created as the SHAPE alone — §15.3.4 and §14.2.4
+ * name none of them — so a click on a bullseye selects a `umlNode` and never a
+ * group. The group spec's `resolveTarget` refuses a bare shape by design, which
+ * is what keeps a plain lasso out of the menu, so three whole families had a
+ * dropdown nobody could open.
+ */
+describe('the bare-shape spec, for the marks that are not in a group', () => {
+  it('is declared on the SHAPE, and resolves it as itself', () => {
+    expect(UML_BARE_MORPH_SPEC.modelType).toBe(UmlNodeElementModel);
+    // Identity: what the user selects, what carries the kind and what the patch
+    // lands on are one object, exactly as they are for a connector.
+    expect(UML_BARE_MORPH_SPEC.resolveTarget).toBeUndefined();
+    // Nothing to rewrite afterwards: `rewriteName` keeps a `uml:name` tier
+    // saying what the shape now is, and these kinds have no tier at all.
+    expect(UML_BARE_MORPH_SPEC.afterMorph).toBeUndefined();
+    expect(UML_BARE_MORPH_SPEC.framework).toBe('uml');
+  });
+
+  it('offers the menu on every unlabelled family, where the group spec cannot', () => {
+    for (const family of [
+      ['activity-final', 'flow-final'],
+      ['shallow-history', 'deep-history'],
+      ['entry-point', 'exit-point'],
+    ] as UmlNodeKind[][]) {
+      for (const kind of family) {
+        const mark = shape(kind);
+        // The group spec resolves nothing for a bare shape — which was the bug.
+        expect(UML_MORPH_SPEC.resolveTarget!(mark), kind).toBeUndefined();
+        // …and this one reads the kind straight off it.
+        expect(UML_BARE_MORPH_SPEC.kindOf(mark), kind).toBe(kind);
+      }
+      expect(UML_BARE_MORPH_SPEC.families).toContainEqual(family);
+    }
+  });
+
+  it('refuses everything that is not one of our shapes', () => {
+    // The gate is `kindOf` alone here, and it is enough: a native shape, a
+    // group, a connector and a diagram frame all fail `instanceof`.
+    for (const alien of [
+      detached(ShapeElementModel, {}),
+      detached(GroupElementModel, { childElements: [] }),
+      detached(UmlDiagramElementModel, {}),
+    ] as GfxPrimitiveElementModel[]) {
+      expect(UML_BARE_MORPH_SPEC.kindOf(alien)).toBeUndefined();
+    }
+  });
+
+  it('shares one table with the group spec, rather than restating it', () => {
+    // By REFERENCE, so the two rows can never offer different families, write
+    // different props or word the control differently.
+    expect(UML_BARE_MORPH_SPEC.families).toBe(UML_MORPH_SPEC.families);
+    expect(UML_BARE_MORPH_SPEC.propsOf).toBe(UML_MORPH_SPEC.propsOf);
+    expect(UML_BARE_MORPH_SPEC.clearOf).toBe(UML_MORPH_SPEC.clearOf);
+    expect(UML_BARE_MORPH_SPEC.roleOf).toBe(UML_MORPH_SPEC.roleOf);
+    expect(UML_BARE_MORPH_SPEC.label).toBe(UML_MORPH_SPEC.label);
+    for (const kind of EVERY_KIND) {
+      expect(UML_BARE_MORPH_SPEC.labelOf(kind)).toEqual(
+        UML_MORPH_SPEC.labelOf(kind)
+      );
     }
   });
 });
