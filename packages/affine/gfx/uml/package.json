@@ -1,0 +1,44 @@
+{
+  "name": "@labre/affine-gfx-uml",
+  "private": true,
+  "description": "Gfx UML pack (class, interface, enumeration, object, package, note, actor, use case, diagram frame, subject) for BlockSuite.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@labre/affine-block-surface": "workspace:*",
+    "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-gfx-connector": "workspace:*",
+    "@labre/affine-gfx-ddd-shared": "workspace:*",
+    "@labre/affine-gfx-pointer": "workspace:*",
+    "@labre/affine-gfx-shape": "workspace:*",
+    "@labre/affine-gfx-template": "workspace:*",
+    "@labre/affine-gfx-text": "workspace:*",
+    "@labre/affine-model": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
+    "lit": "^3.2.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./commands-manifest": "./src/commands-manifest.ts",
+    "./view": "./src/view.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!dist/__tests__"
+  ],
+  "version": "0.40.0"
+}
