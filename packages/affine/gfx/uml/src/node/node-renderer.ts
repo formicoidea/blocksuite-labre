@@ -15,6 +15,9 @@ import {
   UML_PACKAGE_TAB,
   umlCompartmentBoxes,
 } from '../component.js';
+import { isActGlyphKind, paintActGlyph } from './act-glyphs.js';
+import { line, solidRect, TAU } from './paint.js';
+import { isStmGlyphKind, paintStmGlyph } from './stm-glyphs.js';
 
 /**
  * Renderer for a UML node — the glyph layer, and nothing else.
@@ -29,8 +32,18 @@ import {
  * two-tabbed icon (§11.6.4), the artifact's document icon (§19.3.4), the port's
  * square (§11.3.4), the ball and socket of §10.4.4 and the 3-D cube of §19.4.4.
  *
- * One kind needs nothing at all. A `use-case` IS the native ellipse — §18.1.4
- * draws it with no decoration whatever — and drawing anything over it would be
+ * The behaviour families of phase 2 add fourteen more marks, and they live in
+ * two modules of their own — `act-glyphs.ts` for the control nodes of §15.3.4
+ * and the signal shapes of §16.3.4 / §16.10.4, `stm-glyphs.ts` for the final
+ * state and the pseudostates of §14.2.4. The BRANCH stays here, because which
+ * kind gets which picture is this file's subject and the `never` at the end of
+ * `paintGlyph` is what keeps it total; the drawing moved out because a
+ * thousand-line renderer is a file nobody reads the middle of.
+ *
+ * Five kinds need nothing at all. A `use-case` IS the native ellipse (§18.1.4),
+ * an `action` and a `state`'s body the native ROUNDED rect (§15.3.4, §14.2.4),
+ * a `decision` and a `choice` the native diamond, an `object-node` the plain
+ * native rect (§15.4.4) — and drawing anything over any of them would be
  * inventing a notation. An `object` is a class box with a split and a rule under
  * its name, which is the first branch below rather than a picture; so are a
  * `component` and an `artifact`, each with a small icon dropped in the corner of
@@ -58,8 +71,6 @@ import {
  * which is what keeps them recolourable from the same toolbar as every other
  * shape.
  */
-
-const TAU = Math.PI * 2;
 
 /* ── The glyph geometry, as fractions of the node box ──────────────────── */
 
@@ -146,56 +157,6 @@ const INTERFACE_GLYPH = {
   radiusOfHeight: 0.34,
 } as const;
 
-/**
- * Draw the four sides of a rectangle as an explicit path.
- *
- * `ctx.rect` would be one call — and would record nothing a test about WHERE a
- * glyph was drawn can read, on this pack's canvas recorder or on a reviewer's
- * screen. The four segments are the shape.
- */
-function rectPath(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + w, y);
-  ctx.lineTo(x + w, y + h);
-  ctx.lineTo(x, y + h);
-  ctx.closePath();
-}
-
-/** …and paint it as a body: the element's fill, then the element's outline. */
-function solidRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-): void {
-  if (!(w > 0) || !(h > 0)) return;
-  rectPath(ctx, x, y, w, h);
-  ctx.fill();
-  ctx.stroke();
-}
-
-/** Draw one straight segment, skipping a degenerate one. */
-function line(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-}
-
 /* ── The glyphs ────────────────────────────────────────────────────────── */
 
 /**
@@ -227,7 +188,11 @@ function paintGlyph(
     kind === 'enumeration' ||
     kind === 'object' ||
     kind === 'component' ||
-    kind === 'artifact'
+    kind === 'artifact' ||
+    // §14.2.4 rules a state off between its name and its internal activities —
+    // the object's layout exactly, drawn on the native ROUNDED rect the preset
+    // gives it rather than on a square one.
+    kind === 'state'
   ) {
     const boxes = umlCompartmentBoxes(kind, 0, 0, w, h);
     // Full width, edge to edge: §11.4.4 draws a compartment line right across
@@ -437,8 +402,43 @@ function paintGlyph(
     return;
   }
 
-  // ── The use case: the native ellipse, and nothing on it ──────────────
-  if (kind === 'use-case') return;
+  // ── The kinds the SHAPE LAYER draws whole, with nothing painted over ──
+  //
+  // A use case is the native ellipse of §18.1.4; an `action` and the body of a
+  // `state` are the native ROUNDED rect of §15.3.4 and §14.2.4 (`radius` on the
+  // preset, not a glyph); a `decision` and a `choice` are the native diamond;
+  // an `object-node` is the plain native rect of §15.4.4. Drawing anything over
+  // any of them would be inventing a notation.
+  //
+  // `state` is absent from this list because it is handled ABOVE, with the
+  // compartmented kinds: the rounded body is the shape layer's, the rule under
+  // the name is this file's.
+  if (
+    kind === 'use-case' ||
+    kind === 'action' ||
+    kind === 'object-node' ||
+    kind === 'decision' ||
+    kind === 'choice'
+  ) {
+    return;
+  }
+
+  // ── The behaviour marks, by family ───────────────────────────────────
+  //
+  // Delegated rather than inlined: the two families between them are fourteen
+  // pictures, and the branch a reader needs to follow is WHICH KIND GETS WHICH,
+  // not how a bullseye is struck. Each module closes its own switch with a
+  // `never`, so the delegation costs none of the exhaustiveness the last branch
+  // of this function exists for.
+  const box = { x0, y0, x1, y1, bw, bh, w, h };
+  if (isActGlyphKind(kind)) {
+    paintActGlyph(kind, ctx, box);
+    return;
+  }
+  if (isStmGlyphKind(kind)) {
+    paintStmGlyph(kind, ctx, box);
+    return;
+  }
 
   /**
    * Every kind is drawn above, and this is what keeps that true: `kind` is

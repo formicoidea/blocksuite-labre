@@ -152,6 +152,14 @@ export const UML_KEYWORD_PLACEMENT: Readonly<
  *    UNDERLINE is drawn by the renderer and is not in the text: it is notation,
  *    not a character, and an author who retyped the line would otherwise have to
  *    reproduce it.
+ *
+ * ## The empty ones
+ *
+ * Thirteen kinds seed the EMPTY STRING, and that is a statement rather than a
+ * gap: the control nodes of §15.3.4 and the pseudostates of §14.2.4 are marks
+ * with no words in them — a disc, a bar, a bullseye, a cross — so the true
+ * statement about them is silence. {@link UML_UNLABELLED_KINDS} is that fact as
+ * a set, and it is what the creation site and the audit both read.
  */
 export const UML_NAME_SEED: Record<UmlNodeKind, string> = {
   class: 'Class',
@@ -188,7 +196,77 @@ export const UML_NAME_SEED: Record<UmlNodeKind, string> = {
   node: ':Node',
   device: `${guillemets('device')}\n:Device`,
   'execution-environment': `${guillemets('executionEnvironment')}\n:Runtime`,
+  // ── Phase 2, the behaviour artefacts ─────────────────────────────────────
+  // §15.3.4 names an action with a VERB PHRASE, so the seed is the noun the
+  // library uses everywhere for "a thing that happens" — true of the box that
+  // carries it, and replaced by the author's own verb the moment they type.
+  action: 'Action',
+  // §15.4.4: an object node is named after the VALUE that flows through it, and
+  // may carry a `[state]` in brackets after it. The seed is the noun alone —
+  // the bracket is grammar the author reaches for, not a placeholder to delete.
+  'object-node': 'Object',
+  // §16.3.4: the pentagons are named after the signal sent and the event
+  // awaited. Two different words, because they are two different statements.
+  'send-signal': 'Signal',
+  'accept-event': 'Event',
+  // §16.10.4: a time event is written as a time EXPRESSION, and `after (…)` is
+  // the form the specification's own figures use. The ellipsis is part of the
+  // grammar being shown, not a prompt: an author replaces what is inside the
+  // brackets and the sentence stays a sentence.
+  'time-event': 'after (…)',
+  // §14.2.4: a state is named after the CONDITION that holds while the machine
+  // is in it. Same argument as `action`, and the same word the role uses.
+  state: 'State',
+  // ── The unlabelled ones ─────────────────────────────────────────────────
+  // Thirteen empty strings, and every one of them is the notation's own answer:
+  // §15.3.4 and §14.2.4 draw these as MARKS, not as boxes with words in them.
+  // A disc has no name, a bar has no name, a bullseye has no name — and the one
+  // thing that would be wrong here is a seed, because a seed is text the author
+  // then has to find and delete off a 24-unit dot.
+  //
+  // {@link UML_UNLABELLED_KINDS} is the list stated as a set, so a creation site
+  // can ask the question instead of testing a string for emptiness.
+  initial: '',
+  'activity-final': '',
+  'flow-final': '',
+  decision: '',
+  fork: '',
+  'final-state': '',
+  choice: '',
+  junction: '',
+  'shallow-history': '',
+  'deep-history': '',
+  'entry-point': '',
+  'exit-point': '',
+  terminate: '',
 };
+
+/**
+ * The kinds a fresh artefact arrives with NO label text at all.
+ *
+ * Derived from {@link UML_NAME_SEED} rather than listed beside it, because the
+ * two would otherwise be one fact written twice: a kind whose seed is empty IS
+ * a kind with nothing to write, and a hand-kept list is how one of them comes to
+ * say otherwise.
+ *
+ * ## What a caller does with it
+ *
+ * The creation site (`actions.ts`) reads it to decide whether to write a `text`
+ * element into the group at all — a control node or a pseudostate is the SHAPE
+ * and nothing else, and a group holding a 24-unit disc and an empty text box is
+ * a group with an invisible member an author can select by accident.
+ *
+ * The audit reads it too, and that is the more important half: a `label-presence`
+ * rule fires on an artefact that should be named and is not, and firing it on
+ * every decision diamond on the sheet would be the audit reporting the notation
+ * as a defect (`rules.ts`, `uml.unnamed-action` / `uml.unnamed-state`, whose
+ * `appliesTo` is the complement of this set).
+ */
+export const UML_UNLABELLED_KINDS: ReadonlySet<UmlNodeKind> = new Set(
+  (Object.keys(UML_NAME_SEED) as UmlNodeKind[]).filter(
+    kind => UML_NAME_SEED[kind] === ''
+  )
+);
 
 /**
  * The attribute compartment of a fresh classifier — one property in the §9.5.4

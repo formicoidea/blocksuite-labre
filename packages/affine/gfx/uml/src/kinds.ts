@@ -27,10 +27,10 @@ import type { UmlDiagramKind } from '@labre/affine-model';
  * gives no abbreviation for — so every option here writes a value and none of
  * them clears the field.
  *
- * ## Six now, more later, and nothing to migrate
+ * ## Eight now, more later, and nothing to migrate
  *
- * Phase 1 offered four structural diagrams; phase 2 appended `cmp` and `dep` and
- * will append `act` and `stm`; phase 3 appends `sd`. Each arrives as a new
+ * Phase 1 offered four structural diagrams; phase 2 appended `cmp` and `dep`,
+ * then the two behaviour frames `act` and `stm`; phase 3 appends `sd`. Each arrives as a new
  * option over a new VALUE of the same string field (ADR 0017). A frame carrying
  * a kind this
  * build has never heard of still paints its own heading, verbatim — see
@@ -105,6 +105,20 @@ export const UML_DIAGRAM_KIND_MENU: {
       kind: 'dep',
       labelKey: kindKey('dep'),
       labelFallback: 'Deployment diagram',
+    },
+    // Phase 2, the behaviour frames. Last in the list because they are what a
+    // system DOES, and the list teaches the notation in the order an architect
+    // meets it: what the system is made of, what it is built of, where it runs,
+    // and only then how it behaves.
+    {
+      kind: 'act',
+      labelKey: kindKey('act'),
+      labelFallback: 'Activity diagram',
+    },
+    {
+      kind: 'stm',
+      labelKey: kindKey('stm'),
+      labelFallback: 'State machine diagram',
     },
   ],
 };

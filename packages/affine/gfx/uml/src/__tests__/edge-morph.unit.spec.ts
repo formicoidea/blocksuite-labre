@@ -36,14 +36,22 @@ describe('the declared families', () => {
     expect(new Set(FAMILY_MEMBERS).size).toBe(FAMILY_MEMBERS.length);
   });
 
-  it('leaves the anchor out of every family, and nothing else', () => {
+  it('leaves the anchor and the transition out, and nothing else', () => {
     // An anchor joins a note to what it comments on (Annex A): it is not a
     // relationship between classifiers, it carries no semantics, and offering
     // to turn one into a composition would invite a diagram claiming that a
-    // comment owns a class. Every other edge is reachable from its siblings.
-    expect(FAMILY_MEMBERS).not.toContain('anchor');
+    // comment owns a class.
+    //
+    // A transition is alone for the opposite reason: it is drawn EXACTLY like
+    // the two activity edges (§14.2.4.8 and §15.2.4 are one solid open arrow)
+    // and is still not one of them, because it lives on the other diagram. The
+    // swap would put an activity edge on a state machine, which is what the
+    // per-frame admissibility lists exist to refuse — a dropdown must not hand
+    // a user the error the audit is about to report.
+    const ALONE = ['anchor', 'transition'];
+    for (const kind of ALONE) expect(FAMILY_MEMBERS).not.toContain(kind);
     expect([...FAMILY_MEMBERS].sort()).toEqual(
-      UML_EDGE_KINDS.filter(kind => kind !== 'anchor').sort()
+      UML_EDGE_KINDS.filter(kind => !ALONE.includes(kind)).sort()
     );
   });
 
@@ -55,7 +63,30 @@ describe('the declared families', () => {
       // APPENDED, never inserted: the three above keep their index, which is
       // what lets the case below go on naming the dependency family by one.
       'deploy',
+      'control-flow',
     ]);
+  });
+
+  it('groups the two activity edges, which differ only by their ends', () => {
+    // §15.2.4 draws one solid open arrow for both and tells them apart by what
+    // the line runs BETWEEN — a flow that touches an object node is an object
+    // flow. That is a mistake invisible on the canvas, which is the case a
+    // dropdown exists for.
+    expect(UML_EDGE_FAMILIES).toContainEqual(['control-flow', 'object-flow']);
+    expect(UML_EDGE_STYLE['object-flow']).toEqual(
+      UML_EDGE_STYLE['control-flow']
+    );
+    // …a drawing no STRUCTURAL relationship wears: an association is solid with
+    // nothing on it, a dependency is the arrowhead on a dashed line. A
+    // behaviour diagram states an order, so it always points.
+    expect(UML_EDGE_STYLE['control-flow']).not.toEqual(
+      UML_EDGE_STYLE.association
+    );
+    expect(UML_EDGE_STYLE['control-flow']).not.toEqual(
+      UML_EDGE_STYLE.dependency
+    );
+    // The transition is that same arrow and is still in no family of its own.
+    expect(UML_EDGE_STYLE.transition).toEqual(UML_EDGE_STYLE['control-flow']);
   });
 
   it('groups the three that a reader cannot tell apart', () => {

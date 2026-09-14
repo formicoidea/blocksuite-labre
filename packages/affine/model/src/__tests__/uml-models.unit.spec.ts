@@ -5,9 +5,13 @@ import {
   ShapeElementModel,
   UML_DIAGRAM_KIND_TAG,
   UML_FRAME_BAND_HEIGHT,
+  UML_PARTITION_BAND,
+  UML_REGION_BAND,
   UmlDiagramElementModel,
   type UmlDiagramKind,
   UmlNodeElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
   UmlSubjectElementModel,
 } from '../index.js';
 
@@ -107,10 +111,14 @@ beforeAll(() => {
 const PICK = { hitThreshold: 10, zoom: 1 };
 
 describe('the UML element models', () => {
-  it('declares the three persisted types the pack is built on', () => {
+  it('declares the five persisted types the pack is built on', () => {
     expect(detached(UmlDiagramElementModel).type).toBe('umlDiagram');
     expect(detached(UmlNodeElementModel).type).toBe('umlNode');
     expect(detached(UmlSubjectElementModel).type).toBe('umlSubject');
+    // Appended by phase 2's behaviour families: the swimlane of §15.6.4 and
+    // the composite state of §14.2.4.
+    expect(detached(UmlPartitionElementModel).type).toBe('umlPartition');
+    expect(detached(UmlRegionElementModel).type).toBe('umlRegion');
   });
 
   /**
@@ -131,24 +139,43 @@ describe('the UML element models', () => {
     expect(subject.resizeEnabled).toBe(true);
     expect(subject.rotate).toBe(0);
 
+    const partition = detached(UmlPartitionElementModel);
+    expect(partition.name).toBe('Partition');
+    // Vertical by default: a column is the lane nearly every activity diagram
+    // anybody draws is laid out in (§15.6.4).
+    expect(partition.orientation).toBe('vertical');
+    expect(partition.resizeEnabled).toBe(true);
+    expect(partition.rotate).toBe(0);
+
+    const region = detached(UmlRegionElementModel);
+    // `State`, not `Region`: this element IS the composite state on the page.
+    expect(region.name).toBe('State');
+    expect(region.resizeEnabled).toBe(true);
+    expect(region.rotate).toBe(0);
+
     const node = detached(UmlNodeElementModel);
     expect(node.kind).toBe('class');
     expect(node.centerAnchorOnly).toBe(true);
   });
 
-  it('makes both frames passive canvases, and the node a native shape', () => {
-    expect(UmlDiagramElementModel.prototype).toBeInstanceOf(
-      FrameworkBackgroundElementModel
-    );
-    expect(UmlSubjectElementModel.prototype).toBeInstanceOf(
-      FrameworkBackgroundElementModel
-    );
+  it('makes every frame a passive canvas, and the node a native shape', () => {
+    for (const Ctor of [
+      UmlDiagramElementModel,
+      UmlSubjectElementModel,
+      UmlPartitionElementModel,
+      UmlRegionElementModel,
+    ]) {
+      expect(Ctor.prototype).toBeInstanceOf(FrameworkBackgroundElementModel);
+    }
     expect(UmlNodeElementModel.prototype).toBeInstanceOf(ShapeElementModel);
 
     // A connector must never snap to the sheet — nor to the system boundary
-    // drawn on it. The subject is a background like any other (R12).
+    // drawn on it, nor to a swimlane, nor to a composite state. Every one of
+    // them is a background like any other (R12).
     expect(detached(UmlSubjectElementModel).connectable).toBe(false);
     expect(detached(UmlDiagramElementModel).connectable).toBe(false);
+    expect(detached(UmlPartitionElementModel).connectable).toBe(false);
+    expect(detached(UmlRegionElementModel).connectable).toBe(false);
   });
 
   /**
@@ -177,6 +204,10 @@ describe('the UML element models', () => {
       'uc',
       'cmp',
       'dep',
+      // …and the two behaviour frames phase 2 appended after them (`act`,
+      // §15.2.4; `stm`, §14.2.4).
+      'act',
+      'stm',
     ] as UmlDiagramKind[]) {
       stored(diagram).set('kind', kind);
       expect(diagram.kind, kind).toBe(kind);
@@ -190,20 +221,24 @@ describe('the UML element models', () => {
   /**
    * The append-only promise `UmlDiagramKind` makes, seen from an OLDER client.
    *
-   * Phase 2 appended `cmp | dep` and will append `act | stm`; phase 3 appends
-   * `sd`. A frame carrying one this build does not ship — `stm` here — has no
-   * entry in the tag table, and writes its kind VERBATIM rather than dropping it
-   * or falling back to `class`. The document is not rewritten, and the sheet
-   * still says what it is.
+   * Phase 2 appended `cmp | dep` and then `act | stm`; phase 3 appends `sd`. A
+   * frame carrying one this build does not ship — `sd` here, the interaction
+   * frame — has no entry in the tag table, and writes its kind VERBATIM rather
+   * than dropping it or falling back to `class`. The document is not rewritten,
+   * and the sheet still says what it is.
+   *
+   * The echo used to be spelled with `stm`, which this build now ships: the
+   * test moved on to the next unshipped kind rather than being deleted, because
+   * what it pins is the FALLBACK and not any particular string.
    */
   it('writes a kind it has never heard of verbatim in the heading', () => {
     const diagram = detached(UmlDiagramElementModel, {
-      kind: 'stm',
+      kind: 'sd',
       name: 'Order lifecycle',
     });
 
-    expect(UML_DIAGRAM_KIND_TAG).not.toHaveProperty('stm');
-    expect(diagram.heading).toBe('stm Order lifecycle');
+    expect(UML_DIAGRAM_KIND_TAG).not.toHaveProperty('sd');
+    expect(diagram.heading).toBe('sd Order lifecycle');
   });
 
   /**
@@ -385,6 +420,28 @@ describe('the UML element models', () => {
       'node',
       'device',
       'execution-environment',
+      // …and the behaviour artefacts appended after them: the activity family
+      // (§15.3.4, §15.4.4, §16.3.4, §16.10.4)…
+      'action',
+      'initial',
+      'activity-final',
+      'flow-final',
+      'decision',
+      'fork',
+      'object-node',
+      'send-signal',
+      'accept-event',
+      'time-event',
+      // …and the state machine one (§14.2.4).
+      'state',
+      'final-state',
+      'choice',
+      'junction',
+      'shallow-history',
+      'deep-history',
+      'entry-point',
+      'exit-point',
+      'terminate',
     ]) {
       stored(node).set('kind', kind);
       expect(node.kind, kind).toBe(kind);
@@ -395,5 +452,124 @@ describe('the UML element models', () => {
     expect('operations' in carrier).toBe(false);
     expect(stored(node).has('attributes')).toBe(false);
     expect(stored(node).has('operations')).toBe(false);
+  });
+
+  /**
+   * A partition is picked by its BORDER and by its NAME BAND — the same
+   * carve-out the diagram frame makes, on whichever edge its orientation puts
+   * it (§15.6.4).
+   *
+   * It matters more here than on the sheet: a swimlane is TRANSPARENT, so its
+   * header is the only wide part of it a user can take hold of at all.
+   */
+  it('picks a vertical partition by its border and its top band', () => {
+    const lane = detached(UmlPartitionElementModel, {
+      xywh: '[0,0,360,900]',
+      rotate: 0,
+      orientation: 'vertical',
+    });
+
+    // The band, full width, from the top edge down to its own height.
+    expect(lane.includesPoint(180, 4, PICK)).toBe(true);
+    expect(lane.includesPoint(180, UML_PARTITION_BAND - 1, PICK)).toBe(true);
+    expect(lane.includesPoint(350, UML_PARTITION_BAND - 1, PICK)).toBe(true);
+    // …and it stops where it says it stops, which is what lets the actions
+    // drawn in the lane keep their clicks.
+    expect(lane.includesPoint(180, UML_PARTITION_BAND + 20, PICK)).toBe(false);
+    expect(lane.includesPoint(180, 450, PICK)).toBe(false);
+
+    // The border band still answers, all the way round.
+    expect(lane.includesPoint(4, 450, PICK)).toBe(true);
+    expect(lane.includesPoint(356, 450, PICK)).toBe(true);
+    expect(lane.includesPoint(180, 896, PICK)).toBe(true);
+
+    // Outside is still outside.
+    expect(lane.includesPoint(180, -40, PICK)).toBe(false);
+    expect(lane.includesPoint(500, 20, PICK)).toBe(false);
+  });
+
+  /**
+   * …and a HORIZONTAL lane wears its band down the LEFT edge instead.
+   *
+   * The one thing `orientation` changes about the hit test, and the case that
+   * executes the `'left'` branch: without it a row's header would be picked
+   * across its top, where §15.6.4 writes nothing at all.
+   */
+  it('moves the band to the left edge of a horizontal partition', () => {
+    const lane = detached(UmlPartitionElementModel, {
+      xywh: '[0,0,900,360]',
+      rotate: 0,
+      orientation: 'horizontal',
+    });
+
+    // The band, full height, from the left edge across to its own width.
+    expect(lane.includesPoint(4, 180, PICK)).toBe(true);
+    expect(lane.includesPoint(UML_PARTITION_BAND - 1, 180, PICK)).toBe(true);
+    expect(lane.includesPoint(UML_PARTITION_BAND - 1, 350, PICK)).toBe(true);
+    // …and nothing past it.
+    expect(lane.includesPoint(UML_PARTITION_BAND + 20, 180, PICK)).toBe(false);
+    expect(lane.includesPoint(450, 180, PICK)).toBe(false);
+
+    // Across the top, where a VERTICAL lane wears its band and this one wears
+    // nothing — well clear of the border band, which would answer for a reason
+    // that has nothing to do with the header.
+    expect(lane.includesPoint(450, 20, PICK)).toBe(false);
+  });
+
+  /**
+   * The band turns with a rotated lane, and clamps to one dragged smaller than
+   * its own header — the two cases the shared unwind exists for, asserted on
+   * the frame that has two edges to get them wrong on.
+   */
+  it('turns and clamps the partition band', () => {
+    // A 400 × 200 lane turned a quarter turn about its centre (200, 100): it
+    // now spans x ∈ [100, 300], y ∈ [-100, 300], and its header runs UP the
+    // right-hand side.
+    const turned = detached(UmlPartitionElementModel, {
+      xywh: '[0,0,400,200]',
+      rotate: 90,
+      orientation: 'vertical',
+    });
+    // Element-local (200, 18) — the middle of the band — which the quarter turn
+    // carries to (282, 100). Eighteen units in from the rotated right edge, so
+    // the border band is not what answers here.
+    expect(turned.includesPoint(282, 100, PICK)).toBe(true);
+    // Where the UNrotated band used to be there is now nothing.
+    expect(turned.includesPoint(200, 18, PICK)).toBe(false);
+
+    // Squashed shorter than its own header: unclamped, the 36-unit strip would
+    // claim points below the lane's own bottom edge.
+    const squashed = detached(UmlPartitionElementModel, {
+      xywh: '[0,0,400,20]',
+      rotate: 0,
+      orientation: 'vertical',
+    });
+    expect(squashed.includesPoint(200, 10, PICK)).toBe(true);
+    expect(squashed.includesPoint(200, 40, PICK)).toBe(false);
+  });
+
+  /**
+   * The composite state carves out the same band, always across the top:
+   * §14.2.4 writes a state's name there and nowhere else, so unlike a partition
+   * it has no orientation to turn.
+   */
+  it('picks a composite state by its border and its top band', () => {
+    const region = detached(UmlRegionElementModel, {
+      xywh: '[0,0,520,320]',
+      rotate: 0,
+    });
+
+    expect(region.includesPoint(260, 4, PICK)).toBe(true);
+    expect(region.includesPoint(260, UML_REGION_BAND - 1, PICK)).toBe(true);
+    expect(region.includesPoint(260, UML_REGION_BAND + 20, PICK)).toBe(false);
+    // Transparent below the band, so the sub-machine drawn inside keeps its
+    // clicks.
+    expect(region.includesPoint(260, 160, PICK)).toBe(false);
+    // The border, all the way round.
+    expect(region.includesPoint(4, 160, PICK)).toBe(true);
+    expect(region.includesPoint(516, 160, PICK)).toBe(true);
+    expect(region.includesPoint(260, 316, PICK)).toBe(true);
+    // Outside is still outside.
+    expect(region.includesPoint(260, -40, PICK)).toBe(false);
   });
 });

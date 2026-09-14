@@ -9,6 +9,8 @@ import {
 } from '@labre/affine-block-surface';
 import type {
   UmlDiagramElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
   UmlSubjectElementModel,
 } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
@@ -17,17 +19,26 @@ import type { EditorHost, PointerEventState } from '@labre/std';
 import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
-import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
-import { umlInDiagramBand } from './board-hit.js';
+import {
+  UML_DIAGRAM_FRAME,
+  UML_REGION_FRAME,
+  UML_SUBJECT_FRAME,
+  umlPartitionFrame,
+} from './background.js';
+import {
+  umlInDiagramBand,
+  umlInPartitionBand,
+  umlInRegionBand,
+} from './board-hit.js';
 
 /**
- * The one gesture the two UML frames carry: a double-click on the name edits it
+ * The one gesture every UML frame carries: a double-click on the name edits it
  * in place.
  *
- * Both frames are a rectangle with exactly one editable word on it — the
- * diagram's name, the subject's name — so the gesture is written once here and
- * the two views differ only in which declaration they hit-test against and how
- * wide their rename zone is. The simplified version of `C4FrameView`, which is
+ * All four are a rectangle with exactly one editable word on them — the
+ * diagram's name, the subject's, the partition's, the composite state's — so the
+ * gesture is written once here and the views differ only in which declaration
+ * they hit-test against and how wide their rename zone is. The simplified version of `C4FrameView`, which is
  * itself the simplified `BpmnPoolView`: no lanes, no separators, no armed drag.
  *
  * Which labels exist, where they sit and what they SAY all come from the
@@ -40,7 +51,11 @@ import { umlInDiagramBand } from './board-hit.js';
  * frame, whose drawn label is not `name`.
  */
 abstract class UmlFrameView<
-  T extends UmlDiagramElementModel | UmlSubjectElementModel,
+  T extends
+    | UmlDiagramElementModel
+    | UmlSubjectElementModel
+    | UmlPartitionElementModel
+    | UmlRegionElementModel,
 > extends GfxElementModelView<T> {
   /** The declaration this view hit-tests against — the one the renderer paints. */
   protected abstract get def(): FrameworkBackgroundDef;
@@ -276,5 +291,65 @@ export class UmlSubjectView extends UmlFrameView<UmlSubjectElementModel> {
 
   protected override get def(): FrameworkBackgroundDef {
     return UML_SUBJECT_FRAME;
+  }
+}
+
+/**
+ * An activity swimlane (§15.6.4). Double-click ANYWHERE in its name band to
+ * rename it — across the top of a vertical lane, down the left edge of a
+ * horizontal one.
+ *
+ * The band and not the words, the same call the diagram frame makes: a strip you
+ * may only double-click the eight characters of is a target that lies about
+ * where it is. It matters more here than on the sheet, because a partition is
+ * TRANSPARENT: every point that is not its own furniture falls through to the
+ * actions drawn inside it, so the header is the only place a user can take hold
+ * of the lane at all.
+ *
+ * The declaration this hit-tests against is chosen by the element's own
+ * `orientation`, through the one function that makes that choice — so the view,
+ * the renderer and the band helper cannot disagree about which edge the band is
+ * on.
+ */
+export class UmlPartitionView extends UmlFrameView<UmlPartitionElementModel> {
+  static override type: string = 'umlPartition';
+
+  protected override get def(): FrameworkBackgroundDef {
+    return umlPartitionFrame(this.model);
+  }
+
+  protected override _nameAt(
+    hits: readonly BackgroundLabelHit[],
+    lx: number,
+    ly: number
+  ): BackgroundLabelHit | null {
+    const name = hits.find(hit => hit.prop === 'name');
+    if (!name) return null;
+    return umlInPartitionBand(this.model, [lx, ly]) ? name : null;
+  }
+}
+
+/**
+ * A composite state (§14.2.4). Double-click anywhere in its name band to rename
+ * it.
+ *
+ * The partition's story with no orientation to turn: the band is across the top,
+ * always, because that is where §14.2.4 writes a state's name.
+ */
+export class UmlRegionView extends UmlFrameView<UmlRegionElementModel> {
+  static override type: string = 'umlRegion';
+
+  protected override get def(): FrameworkBackgroundDef {
+    return UML_REGION_FRAME;
+  }
+
+  protected override _nameAt(
+    hits: readonly BackgroundLabelHit[],
+    lx: number,
+    ly: number
+  ): BackgroundLabelHit | null {
+    const name = hits.find(hit => hit.prop === 'name');
+    if (!name) return null;
+    return umlInRegionBand(this.model, [lx, ly]) ? name : null;
   }
 }

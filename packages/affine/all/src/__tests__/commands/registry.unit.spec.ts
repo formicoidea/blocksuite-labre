@@ -153,9 +153,24 @@ describe('command registry invariants', () => {
       // pool is still the phase-1 fourteen — `SENIOR_MENU_CAP` exactly — and the
       // curation budget below is met without an over-nomination. Which of the
       // fourteen a component ought to displace is a PO curation point, not a
-      // tranche's to settle (`gfx/uml/src/commands.ts`). A sequence or state
-      // pack is a third tranche and owes this number a re-read.
-      uml: 32,
+      // tranche's to settle (`gfx/uml/src/commands.ts`).
+      //
+      // …and 56 since phase 2's behavioural half (activities and state
+      // machines, ADR 0017's third append): ten activity artefacts (the action,
+      // the five control nodes, the object node and the three signal/event
+      // actions), nine state-machine ones (the state, the final state and the
+      // seven pseudostates), the two behaviour BACKGROUNDS — a partition
+      // (§15.6.4's swimlane) and a region (§14.2.4's composite state), both
+      // filed under `boundaries` beside the subject — and three relationship
+      // tools: control flow, object flow and transition.
+      //
+      // The NOMINATIONS still did not move. All twenty-four decline the senior
+      // row, so the pool is the phase-1 fourteen for the third tranche running
+      // — `SENIOR_MENU_CAP` exactly. At fifty-six catalogue entries against
+      // fourteen seats the row is a PO curation question with usage data behind
+      // it, not something a tranche settles from inside itself. A sequence or
+      // timing pack is a fourth tranche and owes this number a re-read.
+      uml: 56,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -179,9 +194,12 @@ describe('command registry invariants', () => {
     // and refuses to infer a framework from a `.svg`. …and 113 since
     // `wardley.addPorter`, 115 since the two Wardley climate arrows, and 117
     // since the two Wardley zones. …and 138 since the UML pack landed whole,
-    // with twenty-one of its own, and 149 since its phase 2 appended eleven
-    // more — the components and deployment artefacts and their three lines.
-    expect(commands).toHaveLength(149);
+    // with twenty-one of its own, 149 since its phase 2 appended eleven
+    // more — the components and deployment artefacts and their three lines —
+    // and 173 since the same phase's behavioural half appended twenty-four: the
+    // activity and state-machine artefacts, the partition and region
+    // backgrounds, and the control-flow, object-flow and transition tools.
+    expect(commands).toHaveLength(173);
   });
 
   /**

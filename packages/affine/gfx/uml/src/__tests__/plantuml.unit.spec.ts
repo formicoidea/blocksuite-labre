@@ -99,6 +99,8 @@ function emptyModel(
     ports: [],
     artifacts: [],
     nodes: [],
+    activities: [],
+    stateMachines: [],
     relations: [],
     warnings: [],
   };
@@ -507,5 +509,291 @@ describe('several diagrams, and none', () => {
 
   it('writes the smallest document that still parses when nothing is selected', () => {
     expect(exportUmlPlantuml([]).text).toBe('@startuml\n@enduml\n');
+  });
+});
+
+/* ── The behaviour sheets (§15.2.4, §14.2.4) ──────────────────────────── */
+
+const behaviourNode = <K extends string>(id: string, kind: K, name = '') => ({
+  id,
+  name,
+  keywords: [],
+  isAbstract: false,
+  kind,
+});
+
+/**
+ * An activity with two swimlanes, a decision branching into a
+ * named-guarded-weighted flow and an `else`, an object flow, the two signal
+ * glyphs and both kinds of end.
+ */
+function activityDiagram(): UmlModel {
+  const model = emptyModel('act-1', 'act', 'Fulfil an order');
+  model.activities = [
+    {
+      id: 'act-1',
+      name: 'Fulfil an order',
+      nodes: [
+        { ...behaviourNode('i', 'initial'), partitionId: 'lane-sales' },
+        {
+          ...behaviourNode('a', 'action', 'Take the order'),
+          partitionId: 'lane-sales',
+        },
+        { ...behaviourNode('d', 'decision'), partitionId: 'lane-sales' },
+        {
+          ...behaviourNode('o', 'object-node', 'Order'),
+          partitionId: 'lane-store',
+        },
+        {
+          ...behaviourNode('b', 'action', 'Pick the goods'),
+          partitionId: 'lane-store',
+        },
+        behaviourNode('s', 'send-signal', 'Order shipped'),
+        behaviourNode('t', 'time-event', 'after 2 days'),
+        behaviourNode('x', 'flow-final'),
+        behaviourNode('z', 'activity-final'),
+      ],
+      edges: [
+        { kind: 'control-flow', sourceId: 'i', targetId: 'a' },
+        { kind: 'control-flow', sourceId: 'a', targetId: 'd' },
+        {
+          kind: 'control-flow',
+          sourceId: 'd',
+          targetId: 'b',
+          name: 'ready',
+          guard: 'stock > 0',
+          weight: '2',
+        },
+        { kind: 'control-flow', sourceId: 'd', targetId: 'x', guard: 'else' },
+        { kind: 'object-flow', sourceId: 'a', targetId: 'o' },
+        { kind: 'control-flow', sourceId: 'b', targetId: 's' },
+        { kind: 'control-flow', sourceId: 't', targetId: 'z' },
+      ],
+      partitions: [
+        {
+          id: 'lane-sales',
+          name: 'Sales',
+          keywords: [],
+          isAbstract: false,
+          orientation: 'vertical',
+          nodeIds: ['i', 'a', 'd'],
+        },
+        {
+          id: 'lane-store',
+          name: 'Warehouse',
+          keywords: [],
+          isAbstract: false,
+          orientation: 'horizontal',
+          nodeIds: ['o', 'b'],
+        },
+      ],
+    },
+  ];
+  return model;
+}
+
+/** A state machine with a composite state, a history inside it and a choice. */
+function stateMachineDiagram(): UmlModel {
+  const model = emptyModel('stm-1', 'stm', 'Order lifecycle');
+  model.stateMachines = [
+    {
+      id: 'stm-1',
+      name: 'Order lifecycle',
+      regions: [{ id: 'r', name: 'Running', keywords: [], isAbstract: false }],
+      states: [
+        {
+          id: 's1',
+          name: 'Draft',
+          keywords: [],
+          isAbstract: false,
+          entry: ['reserve()'],
+          doActivity: ['poll()'],
+          exit: ['release()'],
+          lines: ['submit [x > 0] / log()'],
+        },
+        {
+          id: 's2',
+          name: 'Placed',
+          keywords: [],
+          isAbstract: false,
+          entry: [],
+          doActivity: [],
+          exit: [],
+          lines: [],
+          regionId: 'r',
+        },
+      ],
+      finalStates: [{ id: 'f', name: '', keywords: [], isAbstract: false }],
+      pseudostates: [
+        { id: 'i', name: '', keywords: [], isAbstract: false, kind: 'initial' },
+        { id: 'c', name: '', keywords: [], isAbstract: false, kind: 'choice' },
+        {
+          id: 'h',
+          name: '',
+          keywords: [],
+          isAbstract: false,
+          kind: 'shallow-history',
+          regionId: 'r',
+        },
+      ],
+      transitions: [
+        { sourceId: 'i', targetId: 's1', triggers: [] },
+        {
+          sourceId: 's1',
+          targetId: 'c',
+          triggers: ['submit', 'after 5 s'],
+          guard: 'stock > 0',
+          effect: 'reserve()',
+        },
+        { sourceId: 'c', targetId: 's2', triggers: [], guard: 'ok' },
+        { sourceId: 's2', targetId: 'f', triggers: ['close'] },
+        { sourceId: 'h', targetId: 's2', triggers: [] },
+      ],
+    },
+  ];
+  return model;
+}
+
+/**
+ * The golden ACTIVITY document.
+ *
+ * Written in PlantUML's STATE-DIAGRAM syntax, and the document says so in its
+ * own comment lines rather than leaving a reader to work it out: the classic
+ * activity syntax is deprecated upstream, and the new one is a structured BLOCK
+ * language that cannot express an arbitrary graph — which is what a whiteboard
+ * draws. What is lost is shape, never structure.
+ */
+const ACTIVITY_GOLDEN = `@startuml
+title act Fulfil an order
+
+' An activity (§15.2.4), written in PlantUML's state-diagram syntax:
+' its structured activity syntax cannot express an arbitrary graph.
+state "Sales" as sales <<partition>> {
+  state "Take the order" as take_the_order
+  state decision <<choice>>
+}
+state "Warehouse" as warehouse <<partition>> {
+  state "Order" as order <<objectNode>>
+  state "Pick the goods" as pick_the_goods
+}
+state "Order shipped" as order_shipped <<signal>>
+state "after 2 days" as after_2_days <<time>>
+state flow_final <<end>>
+
+[*] --> take_the_order
+take_the_order --> decision
+decision --> pick_the_goods : ready [stock > 0] {weight = 2}
+decision --> flow_final : [else]
+take_the_order --> order
+pick_the_goods --> order_shipped
+after_2_days --> [*]
+@enduml
+`;
+
+/** The golden STATE MACHINE document — the syntax's own home ground. */
+const STATE_MACHINE_GOLDEN = `@startuml
+title stm Order lifecycle
+
+state "Draft" as draft
+draft : entry / reserve()
+draft : do / poll()
+draft : exit / release()
+draft : submit [x > 0] / log()
+state choice <<choice>>
+state "Running" as running {
+  state "Placed" as placed
+  state shallow_history <<history>>
+}
+
+[*] --> draft
+draft --> choice : submit, after 5 s [stock > 0] / reserve()
+choice --> placed : [ok]
+placed --> [*] : close
+shallow_history --> placed
+@enduml
+`;
+
+describe('an activity diagram', () => {
+  const puml = exportPlantuml(activityDiagram());
+
+  it('says in the document which syntax it is written in', () => {
+    expect(puml).toContain(
+      "' An activity (§15.2.4), written in PlantUML's state-diagram syntax:"
+    );
+  });
+
+  it('writes the disc and the bullseye as PlantUML’s own terminal marker', () => {
+    // `[*]` is CONTEXTUAL: the source of an arrow draws the filled disc, the
+    // target draws the bullseye — which is exactly what §15.3.4 means by the two
+    // glyphs, so neither is ever declared.
+    expect(puml).toContain('[*] --> take_the_order');
+    expect(puml).toContain('after_2_days --> [*]');
+    expect(puml).not.toContain('as initial');
+  });
+
+  it('borrows the stereotype PlantUML draws, and keeps the word when it draws none', () => {
+    expect(puml).toContain('state decision <<choice>>');
+    expect(puml).toContain('state flow_final <<end>>');
+    // An unknown stereotype renders as the word itself under the name, which is
+    // strictly better than borrowing a shape that means something else.
+    expect(puml).toContain('state "Order" as order <<objectNode>>');
+    expect(puml).toContain('state "Order shipped" as order_shipped <<signal>>');
+    expect(puml).toContain('state "after 2 days" as after_2_days <<time>>');
+  });
+
+  it('draws each swimlane as a box round the actions it holds', () => {
+    // An approximation, and the nearest one PlantUML has: a state diagram has no
+    // lane, and a box keeps the fact §15.6.4's band states — who is responsible.
+    expect(puml).toContain('state "Sales" as sales <<partition>> {');
+    expect(puml).toContain('  state "Take the order" as take_the_order');
+    // …and the flows still cross freely, because every arrow is at the top
+    // level.
+    expect(puml).toContain('decision --> pick_the_goods');
+  });
+
+  it('writes §15.2.4’s three annotations back in the notation’s own syntax', () => {
+    expect(puml).toContain(
+      'decision --> pick_the_goods : ready [stock > 0] {weight = 2}'
+    );
+    expect(puml).toContain('decision --> flow_final : [else]');
+  });
+
+  it('is the golden activity document, byte for byte', () => {
+    expect(puml).toBe(ACTIVITY_GOLDEN);
+  });
+});
+
+describe('a state machine diagram', () => {
+  const puml = exportPlantuml(stateMachineDiagram());
+
+  it('needs no comment line: this IS the syntax for a state machine', () => {
+    expect(puml).not.toContain("' An activity");
+  });
+
+  it('writes §14.2.4.4’s internal activities as PlantUML’s own state lines', () => {
+    expect(puml).toContain('draft : entry / reserve()');
+    expect(puml).toContain('draft : do / poll()');
+    expect(puml).toContain('draft : exit / release()');
+    // …and the internal TRANSITION the author wrote, kept verbatim rather than
+    // dropped.
+    expect(puml).toContain('draft : submit [x > 0] / log()');
+  });
+
+  it('writes the composite state as a block, with its vertices inside', () => {
+    expect(puml).toContain('state "Running" as running {');
+    expect(puml).toContain('  state "Placed" as placed');
+    expect(puml).toContain('  state shallow_history <<history>>');
+  });
+
+  it('writes §14.2.4.8’s label back in the BNF’s own order', () => {
+    expect(puml).toContain(
+      'draft --> choice : submit, after 5 s [stock > 0] / reserve()'
+    );
+    expect(puml).toContain('choice --> placed : [ok]');
+    expect(puml).toContain('placed --> [*] : close');
+  });
+
+  it('is the golden state machine document, byte for byte', () => {
+    expect(puml).toBe(STATE_MACHINE_GOLDEN);
   });
 });

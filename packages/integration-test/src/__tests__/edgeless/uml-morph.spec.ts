@@ -4,6 +4,7 @@ import { applyMorph, morphToolbarConfig } from '@labre/affine/blocks/surface';
 // reach for theirs: `@labre/affine` re-exports the blocks, not the framework
 // modules.
 import {
+  UML_BARE_MORPH_SPEC,
   UML_EDGE_MORPH_SPEC,
   UML_MORPH_SPEC,
   UML_NAME_SEED,
@@ -77,6 +78,33 @@ describe('morphing a UML artefact into a nearby kind', () => {
     const node = umlNodeOfGroup(group);
     expect(node, commandId).toBeDefined();
     return { group, node: node as UmlNodeElementModel };
+  };
+
+  /**
+   * Draw one of phase 2's BARE marks — the routing shapes §15.3.4 and §14.2.4
+   * name none of, which are created as the shape alone and therefore have no
+   * group for `umlNodeOfGroup` to resolve.
+   */
+  const drawBare = async (commandId: string) => {
+    const command = getRegisteredCommands(edgeless.std).find(
+      c => c.id === commandId
+    );
+    expect(command, commandId).toBeDefined();
+    runCommand(edgeless.std, command!, {
+      surface: 'senior-menu',
+      source: 'toolbar:general',
+    });
+    await wait();
+
+    const nodes = surfaceModel().elementModels.filter(
+      (model): model is UmlNodeElementModel =>
+        model instanceof UmlNodeElementModel
+    );
+    const node = nodes[nodes.length - 1];
+    expect(node, commandId).toBeDefined();
+    // The whole point of this fixture: nothing was grouped with it.
+    expect(umlNodeOfGroup(node), commandId).toBeUndefined();
+    return node;
   };
 
   /** One tier of a component, by the role it carries. */
@@ -179,6 +207,15 @@ describe('morphing a UML artefact into a nearby kind', () => {
     ).toContain(
       toolbarModuleKey('custom:affine:surface:connector', 'uml-morph')
     );
+    // …and phase 2's routing marks are neither: they are created as the shape
+    // alone, so the widget derives `affine:surface:umlNode` from `model.type`
+    // and the row a user sees is that one. A third registration, under the same
+    // owner suffix and sharing the same families.
+    expect(
+      registry
+        .modulesFor('custom:affine:surface:umlNode')
+        .map(module => module.id.variant)
+    ).toContain(toolbarModuleKey('custom:affine:surface:umlNode', 'uml-morph'));
   });
 
   test('the morph entry is drawn on the real row of a classifier', async () => {
@@ -187,6 +224,54 @@ describe('morphing a UML artefact into a nearby kind', () => {
 
     expect(toolbar()).not.toBeNull();
     expect(onRow('[data-testid="element-morph"]')).not.toBeNull();
+  });
+
+  test('the morph entry is drawn on the row of a BARE mark too', async () => {
+    // The regression this closes: an activity final is created as the shape
+    // alone, so a click selects a `umlNode` and the group spec resolves
+    // nothing for it — three whole families had a dropdown nobody could open.
+    const mark = await drawBare('uml.addActivityFinal');
+    await selectAndRender(mark.id);
+
+    expect(toolbar()).not.toBeNull();
+    expect(onRow('[data-testid="element-morph"]')).not.toBeNull();
+  });
+
+  /* ── A bare mark becomes its sibling ─────────────────────────────────── */
+
+  test('an activity final becomes a flow final, and nothing moves', async () => {
+    const mark = await drawBare('uml.addActivityFinal');
+    const box = mark.xywh;
+    expect(mark.kind).toBe('activity-final');
+    expect(mark.role).toBe(UML_ROLE['activity-final']);
+
+    applyMorph(select(mark), UML_BARE_MORPH_SPEC, 'flow-final');
+    await wait(200);
+
+    // §15.3.4's distinction, made after the fact: the bullseye ends the whole
+    // activity, the crossed circle ends ONE token. The patch lands on the very
+    // element the user selected — there is no composite to resolve.
+    expect(mark.kind).toBe('flow-final');
+    expect(mark.role).toBe(UML_ROLE['flow-final']);
+    expect(mark.strokeColor).toBe(umlMorphProps('flow-final').strokeColor);
+    // Geometry is the user's, and a mark carries no words for anything to do
+    // to: no group appeared, and none was needed.
+    expect(mark.xywh).toBe(box);
+    expect(umlNodeOfGroup(mark)).toBeUndefined();
+  });
+
+  test('one undo puts the bare mark back', async () => {
+    const mark = await drawBare('uml.addEntryPoint');
+    expect(mark.kind).toBe('entry-point');
+
+    applyMorph(select(mark), UML_BARE_MORPH_SPEC, 'exit-point');
+    await wait(200);
+    expect(mark.kind).toBe('exit-point');
+
+    window.doc.undo();
+    await wait(200);
+    expect(mark.kind).toBe('entry-point');
+    expect(mark.role).toBe(UML_ROLE['entry-point']);
   });
 
   /* ── A classifier becomes another metaclass ──────────────────────────── */

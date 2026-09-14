@@ -14,10 +14,12 @@ import type { UmlBox } from '../component.js';
 import {
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
+  UML_NODE_RADIUS,
   UML_NODE_STROKE_WIDTH,
 } from '../consts.js';
 import {
   GLYPH_BODY_KINDS,
+  ROUNDED_KINDS,
   umlMorphClears,
   umlMorphProps,
   umlNodeProps,
@@ -42,12 +44,18 @@ describe('what a uml shape is created as', () => {
     }
   });
 
-  it('draws a use case as an ellipse and everything else as a rectangle', () => {
-    // §18.1.4. A native `shapeType`, so the platform fills it, strokes it and
-    // hit-tests it with no glyph involved — which is why the use case is NOT a
-    // glyph-bodied kind.
+  it('draws a use case as an ellipse, two kinds as a diamond, the rest as rectangles', () => {
+    // §18.1.4, §15.3.4, §14.2.4. All three are native `shapeType`s, so the
+    // platform fills them, strokes them and hit-tests them with no glyph
+    // involved — which is why none of the three is a glyph-bodied kind.
     expect(umlNodeProps('use-case', BOX).shapeType).toBe('ellipse');
-    for (const kind of ALL_KINDS.filter(k => k !== 'use-case')) {
+    for (const kind of ['decision', 'choice'] as const) {
+      expect(umlNodeProps(kind, BOX).shapeType, kind).toBe('diamond');
+      expect(GLYPH_BODY_KINDS.has(kind), kind).toBe(false);
+    }
+    for (const kind of ALL_KINDS.filter(
+      k => k !== 'use-case' && k !== 'decision' && k !== 'choice'
+    )) {
       expect(umlNodeProps(kind, BOX).shapeType, kind).toBe('rect');
     }
   });
@@ -57,20 +65,45 @@ describe('what a uml shape is created as', () => {
     // a socket and three 3-D cubes: none of them is a native shape, so the
     // shape underneath must paint nothing at all.
     expect([...GLYPH_BODY_KINDS].sort()).toEqual([
+      'accept-event',
+      'activity-final',
       'actor',
+      'deep-history',
       'device',
+      'entry-point',
       'execution-environment',
+      'exit-point',
+      'final-state',
+      'flow-final',
+      'fork',
+      'initial',
+      'junction',
       'node',
       'note',
       'package',
       'port',
       'provided-interface',
       'required-interface',
+      'send-signal',
+      'shallow-history',
+      'terminate',
+      'time-event',
     ]);
-    // The two phase-2 kinds that are NOT on the list, and both look as if they
-    // should be: a component and an artifact are the native filled rectangle
-    // with a small icon painted into the corner (§11.6.4, §19.3.4).
-    for (const kind of ['component', 'artifact'] as const) {
+    // The phase-2 kinds that are NOT on the list, and every one of them looks
+    // as if it should be: a component and an artifact are the native filled
+    // rectangle with a small icon painted into the corner (§11.6.4, §19.3.4);
+    // an action and a state are the native ROUNDED rect (§15.3.4, §14.2.4); a
+    // decision and a choice are the native diamond; an object node is the plain
+    // native rect of §15.4.4.
+    for (const kind of [
+      'component',
+      'artifact',
+      'action',
+      'state',
+      'decision',
+      'choice',
+      'object-node',
+    ] as const) {
       expect(GLYPH_BODY_KINDS.has(kind), kind).toBe(false);
     }
     for (const kind of GLYPH_BODY_KINDS) {
@@ -85,13 +118,26 @@ describe('what a uml shape is created as', () => {
     }
   });
 
-  it('draws every kind with a ruler: no roughness, no rounded corner', () => {
+  it('draws every kind with a ruler, and rounds the two the notation rounds', () => {
     // UML's figures are drawn with an instrument. A hand-drawn roughness would
     // be this pack inventing a house style for a notation that has one.
+    //
+    // The CORNER is a different question, and the notation answers it per
+    // artefact: square for a classifier (§11.4.4), rounded for an action
+    // (§15.3.4) and a state (§14.2.4). So the zero is the classifier's rule
+    // rather than a pack-wide one.
+    expect([...ROUNDED_KINDS].sort()).toEqual(['action', 'state']);
+    for (const kind of ROUNDED_KINDS) {
+      expect(umlNodeProps(kind, BOX).radius, kind).toBe(UML_NODE_RADIUS);
+      // A FRACTION, which is how the native rect renderer reads a value below
+      // 1: of the box's shorter side, so a box dragged to any size keeps its
+      // corner in proportion.
+      expect(UML_NODE_RADIUS, kind).toBeLessThan(1);
+    }
     for (const kind of ALL_KINDS) {
       const props = umlNodeProps(kind, BOX);
       expect(props.roughness, kind).toBe(0);
-      expect(props.radius, kind).toBe(0);
+      if (!ROUNDED_KINDS.has(kind)) expect(props.radius, kind).toBe(0);
       expect(props.shapeStyle, kind).toBe(ShapeStyle.General);
       expect(props.strokeWidth, kind).toBe(UML_NODE_STROKE_WIDTH);
       expect(props.fontFamily, kind).toBe(FontFamily.Inter);

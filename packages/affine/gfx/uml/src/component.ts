@@ -164,6 +164,23 @@ export const UML_BESIDE_LABEL_GAP = 6;
 export const UML_BESIDE_LABEL_WIDTH = 120;
 
 /**
+ * How deep the POINT of a signal pentagon bites into its box (§16.3.4), as a
+ * fraction of the width.
+ *
+ * Exported for the reason {@link UML_PACKAGE_TAB} is: the renderer draws the
+ * pentagon from this number and {@link umlCompartmentBoxes} pulls the label box
+ * back out of the point by it, so a signal's name cannot end up running out
+ * through the tip. One number, two readers.
+ *
+ * The same depth for both shapes, because §16.3.4 draws the same pentagon twice
+ * and merely turns it: a send signal's point sticks OUT of the right edge, an
+ * accept event's bites IN from the left, and a reader tells them apart by which
+ * way the arrow of the silhouette runs. Two depths would make the pair look like
+ * two unrelated shapes.
+ */
+export const UML_SIGNAL_POINT = 0.16;
+
+/**
  * How many lines a use case's label is sized for.
  *
  * Two, where every other label gets one: a use case is named with a VERB PHRASE
@@ -217,6 +234,11 @@ const COMPARTMENTED = new Set<UmlNodeKind>([
   // tiers, one separator — the object's layout exactly.
   'component',
   'artifact',
+  // §14.2.4 draws a state as a round-cornered rectangle with a NAME
+  // COMPARTMENT over its internal activities (`entry /`, `do /`, `exit /`),
+  // ruled off by a line — the object's layout with rounded corners. The one
+  // behaviour kind that is a divided box rather than a picture or a mark.
+  'state',
 ]);
 
 /**
@@ -230,7 +252,21 @@ const COMPARTMENTED = new Set<UmlNodeKind>([
  * The notation draws them the same way, so this module does; the ROLE on the
  * text element is what keeps them apart for everybody else.
  */
-const ONE_SPLIT = new Set<UmlNodeKind>(['object', 'component', 'artifact']);
+const ONE_SPLIT = new Set<UmlNodeKind>([
+  'object',
+  'component',
+  'artifact',
+  // A state's second tier holds its INTERNAL ACTIVITIES (§14.2.4) — the
+  // `entry / …`, `do / …`, `exit / …` lines a machine runs while it rests
+  // there. A fourth statement on the same layout, and the role on the text is
+  // again what keeps it apart from the other three.
+  //
+  // A fresh state's behaviour tier arrives EMPTY, which §14.2.4's own figures
+  // draw: a named state with a ruled-off compartment waiting to be filled. The
+  // alternative — hiding the rule until somebody types — would mean deciding
+  // the layout from the text, which no pure function of a box can do.
+  'state',
+]);
 
 /** The three deployment targets, drawn as the same cube (§19.4.4). */
 const CUBES = new Set<UmlNodeKind>(['node', 'device', 'execution-environment']);
@@ -245,7 +281,15 @@ const CUBES = new Set<UmlNodeKind>(['node', 'device', 'execution-environment']);
  * kinds the notation exempts (§11.3.4, §10.4.4).
  */
 export const UML_BESIDE_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
-  new Set<UmlNodeKind>(['port', 'provided-interface', 'required-interface']);
+  new Set<UmlNodeKind>([
+    'port',
+    'provided-interface',
+    'required-interface',
+    // §16.10.4's hourglass is the fourth, and the notation puts it there too:
+    // the time expression — `after (2 days)` — is written NEXT TO the glyph
+    // because a 40 × 56 hourglass has no inside, exactly like a port.
+    'time-event',
+  ]);
 
 /**
  * The compartments of a node, laid out against its own box.
@@ -285,11 +329,26 @@ export const UML_BESIDE_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
  *    hang a label in;
  *  - **node / device / execution-environment** — inside the cube's FRONT FACE,
  *    the only one of its three faces that is not drawn at an angle (§19.4.4);
- *  - **port / provided-interface / required-interface** — BESIDE the glyph, and
- *    outside the element's own box: a small square and a ball on a stick have
- *    no inside to write in (§11.3.4, §10.4.4). The one place this module
- *    returns a tier that is not contained by the node it belongs to, and
- *    {@link UML_BESIDE_LABEL_KINDS} is how it says so out loud.
+ *  - **port / provided-interface / required-interface / time-event** — BESIDE
+ *    the glyph, and outside the element's own box: a small square, a ball on a
+ *    stick and a 40-unit hourglass have no inside to write in (§11.3.4,
+ *    §10.4.4, §16.10.4). The one place this module returns a tier that is not
+ *    contained by the node it belongs to, and
+ *    {@link UML_BESIDE_LABEL_KINDS} is how it says so out loud;
+ *  - **action / object-node** — centred in the box, which is where §15.3.4 and
+ *    §15.4.4 write a verb phrase and a value's name;
+ *  - **send-signal / accept-event** — centred too, but pulled back out of the
+ *    pentagon's POINT by {@link UML_SIGNAL_POINT}, so the words never run out
+ *    through the tip (§16.3.4).
+ *
+ * ## The ones with no words at all
+ *
+ * The control nodes of §15.3.4 and the pseudostates of §14.2.4 are MARKS — a
+ * disc, a bar, a bullseye, a cross — and carry no tier. They still get a box
+ * back from here, centred, because a box is always computable from a box and a
+ * second return shape would cost every caller a branch. What decides whether a
+ * text element is ever created is `UML_UNLABELLED_KINDS` in `keywords.ts`, and
+ * that is the one authority on the question.
  *
  * ## What this is not
  *
@@ -417,10 +476,36 @@ function glyphLabel(kind: UmlNodeKind, site: GlyphLabelSite): UmlBox {
       return box(UML_TIER_MARGIN, Math.max(0, h - UML_TIER_MARGIN * 2));
     case 'actor':
       return box(h * UML_ACTOR_FIGURE, nameHeight);
+    case 'send-signal':
+    case 'accept-event': {
+      // The pentagon's words are centred like an action's, then pulled back out
+      // of the POINT: a send signal's tip sticks out to the right and an accept
+      // event's notch bites in from the left, so each gives up one side
+      // (§16.3.4). Measured with the same number the renderer draws the tip
+      // from, so a name can never run out through it.
+      const point = w * UML_SIGNAL_POINT;
+      const height = Math.min(nameHeight * USE_CASE_LABEL_LINES, h);
+      const inset = w * UML_TIER_SIDE_INSET;
+      const left = kind === 'accept-event' ? x + point + inset : x + inset;
+      return {
+        x: left,
+        y: y + (h - height) / 2,
+        w: Math.max(0, w - point - inset * 2),
+        h: height,
+      };
+    }
     default: {
-      // The use case, and anything a later phase adds without saying where its
+      // The use case, the action, the object node, every mark that carries no
+      // words at all, and anything a later phase adds without saying where its
       // label goes: centred, which is the answer that is never wrong.
-      const height = nameHeight * USE_CASE_LABEL_LINES;
+      //
+      // Clamped to the element, which the phase-2 marks made necessary: two
+      // lines of 16px face is 45 units and a junction is 16 tall, so an
+      // unclamped box would hang half of itself off the top of the dot and
+      // break the one invariant every other tier keeps — a tier is inside the
+      // node it belongs to, unless {@link UML_BESIDE_LABEL_KINDS} says
+      // otherwise.
+      const height = Math.min(nameHeight * USE_CASE_LABEL_LINES, h);
       return box((h - height) / 2, height);
     }
   }

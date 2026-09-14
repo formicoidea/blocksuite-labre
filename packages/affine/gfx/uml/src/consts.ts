@@ -201,4 +201,144 @@ export const UML_NODE_BOX: Record<UmlNodeKind, { w: number; h: number }> = {
   node: { w: 220, h: 140 },
   device: { w: 220, h: 140 },
   'execution-environment': { w: 220, h: 140 },
+  // ── The activity footprints (phase 2) ──────────────────────────────────
+  // An `action` is WIDER AND SHALLOWER than a class box: §15.3.4 writes a verb
+  // phrase in it — "Vérifier le stock", one line — where a classifier holds a
+  // signature list. 160 × 60 is the box that phrase fits across rather than
+  // down, and it is the module a whole activity diagram is measured in.
+  action: { w: 160, h: 60 },
+  // The control nodes are DOTS AND BARS, not boxes: every one of them is sized
+  // to its own picture, because none of them has words inside it.
+  //
+  //  - `initial` is the filled disc, 24 across — small enough to read as a
+  //    marker rather than as a node, big enough to aim at;
+  //  - `activity-final` and `flow-final` are 28, a touch larger because both
+  //    are a circle with something INSIDE it (a second disc, a cross) and a
+  //    24-unit ring would close up;
+  //  - `decision` is the diamond, square by construction so it stays a diamond;
+  //  - `fork` is the bar — 120 long and 10 thick, the one footprint in the pack
+  //    that is deliberately degenerate in one dimension (§15.3.4 draws a line
+  //    segment, and a bar as tall as it is wide would read as a box).
+  initial: { w: 24, h: 24 },
+  'activity-final': { w: 28, h: 28 },
+  'flow-final': { w: 28, h: 28 },
+  decision: { w: 48, h: 48 },
+  fork: { w: 120, h: 10 },
+  // §15.4.4: a plain rectangle carrying a value. Narrower than an action,
+  // because it holds a NOUN — `Commande [validée]` — and taller than nothing,
+  // because the optional `[state]` goes on a second line.
+  'object-node': { w: 140, h: 60 },
+  // §16.3.4: the two pentagons. The action's own 160 × 60, so a signal sent in
+  // the middle of a flow lines up with the actions either side of it without
+  // anybody resizing anything — the point of the shape is the silhouette, not
+  // the size.
+  'send-signal': { w: 160, h: 60 },
+  'accept-event': { w: 160, h: 60 },
+  // §16.10.4: the hourglass. TALL and narrow, which is what an hourglass is —
+  // and small, because its words are written beside it rather than in it
+  // (`component.ts`), there being no inside to write in.
+  'time-event': { w: 40, h: 56 },
+  // ── The state machine footprints (phase 2) ─────────────────────────────
+  // §14.2.4: a state is the biggest box of the two behaviour families, because
+  // it is the only one with a COMPARTMENT — a name over the internal activities
+  // (`entry /`, `do /`, `exit /`), which is three lines under a heading.
+  state: { w: 180, h: 90 },
+  // The bullseye, drawn exactly like `activity-final` and therefore exactly its
+  // size: two shapes a reader is meant to recognise as the same picture must
+  // not arrive at different sizes.
+  'final-state': { w: 28, h: 28 },
+  // The pseudostates, every one of them a small mark:
+  //
+  //  - `choice` is the diamond again, at 40 rather than the decision's 48 —
+  //    §14.2.4 draws it smaller, and the difference is what keeps an activity's
+  //    decision and a machine's choice from being mistaken for one another;
+  //  - `junction` is the smallest mark in the pack at 16, a filled dot that
+  //    merely joins lines;
+  //  - the two histories are 28, the circle that has to hold an `H` or an `H*`;
+  //  - `entry-point` and `exit-point` are 20 — a hollow circle and a crossed
+  //    one, drawn ON the border of a composite state, so they are sized like
+  //    the port they behave like (§11.3.4's 16 plus room for the cross);
+  //  - `terminate` is the bare X, at the finals' own 28 so a machine's three
+  //    end marks are one size.
+  choice: { w: 40, h: 40 },
+  junction: { w: 16, h: 16 },
+  'shallow-history': { w: 28, h: 28 },
+  'deep-history': { w: 28, h: 28 },
+  'entry-point': { w: 20, h: 20 },
+  'exit-point': { w: 20, h: 20 },
+  terminate: { w: 28, h: 28 },
 };
+
+/* ── The two behaviour frames ──────────────────────────────────────────── */
+
+/**
+ * The size a fresh PARTITION is created at (§15.6.4), in its default VERTICAL
+ * orientation: a column, as tall as the diagram frame it is dropped on and wide
+ * enough for an action box (160) with air either side of it.
+ *
+ * A horizontal partition is created by transposing this, which the creation
+ * site does rather than a second constant: a row is a column turned, and two
+ * pairs of numbers would be two things to keep in step.
+ */
+export const UML_PARTITION_BOX = { w: 360, h: 900 } as const;
+
+/**
+ * The size a fresh composite state is created at (§14.2.4) — the subject's own
+ * footprint, because it is the same kind of object: a rectangle drawn round a
+ * handful of elements that are already there.
+ */
+export const UML_REGION_BOX = { w: 520, h: 320 } as const;
+
+/**
+ * The partition's and the region's inset from their own border — the room the
+ * drawing gives up on the three sides that carry no band.
+ *
+ * The subject's 12, and for the same reason: both are transparent frames drawn
+ * OVER work that is already there, so every unit of margin is a unit of that
+ * work the frame's own furniture sits on top of.
+ */
+export const UML_PARTITION_MARGIN = 12;
+export const UML_REGION_MARGIN = 12;
+
+/** Both frames' outline: solid and thin, exactly as §15.6.4 and §14.2.4 draw them. */
+export const UML_PARTITION_BORDER_WIDTH = 1.5;
+export const UML_REGION_BORDER_WIDTH = 1.5;
+
+/**
+ * The corner radius of a composite state, in MODEL UNITS.
+ *
+ * §14.2.4 draws a state — simple or composite — as a ROUND-CORNERED rectangle,
+ * and a composite state that came back square would read as a subject or a
+ * partition rather than as the state it is. An absolute rather than a fraction,
+ * unlike {@link UML_NODE_RADIUS}, because the framework-background declaration's
+ * `border.radius` is in model units: the primitive draws the card, and the card
+ * is measured in the units the element is.
+ */
+export const UML_REGION_RADIUS = 16;
+
+/**
+ * The name band of a partition and of a composite state — the strip each writes
+ * its name in, owned by `@labre/affine-model` because both hit tests read it.
+ *
+ * Re-exported here so this file stays the one place a reader looks for the
+ * pack's metrics, exactly as {@link UML_FRAME_BAND_HEIGHT} is.
+ */
+export { UML_PARTITION_BAND, UML_REGION_BAND } from '@labre/affine-model';
+
+/* ── Rounded artefacts ─────────────────────────────────────────────────── */
+
+/**
+ * The corner radius of an `action` and of a `state`, as the native shape
+ * renderer reads it: a value below 1 is a FRACTION of the box's shorter side.
+ *
+ * The two round-cornered rectangles of the notation (§15.3.4, §14.2.4), and the
+ * only two places this pack departs from `radius: 0`. That zero is not a house
+ * style to be defended here — it is what §11.4.4 draws for a classifier — and
+ * these two are what §15.3.4 and §14.2.4 draw for their own boxes. A square
+ * action is an action that looks like a class.
+ *
+ * 0.12 of the shorter side: 7 units on a 160 × 60 action, 11 on a 180 × 90
+ * state. Enough to be seen at a glance across a sheet, little enough that the
+ * box is still a box.
+ */
+export const UML_NODE_RADIUS = 0.12;

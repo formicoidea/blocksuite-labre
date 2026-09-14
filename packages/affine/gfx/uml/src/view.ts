@@ -18,17 +18,29 @@ import {
 import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
-import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
+import {
+  UML_DIAGRAM_FRAME,
+  UML_PARTITION_FRAME_V,
+  UML_REGION_FRAME,
+  UML_SUBJECT_FRAME,
+} from './background.js';
 import { umlCommandIcons, umlCommands } from './commands.js';
 import { UML_EDGE_MORPH_SPEC } from './edge-morph.js';
 import { effects } from './effects.js';
 import {
   UmlDiagramRendererExtension,
+  UmlPartitionRendererExtension,
+  UmlRegionRendererExtension,
   UmlSubjectRendererExtension,
 } from './element-renderer.js';
-import { UmlDiagramView, UmlSubjectView } from './element-view.js';
+import {
+  UmlDiagramView,
+  UmlPartitionView,
+  UmlRegionView,
+  UmlSubjectView,
+} from './element-view.js';
 import { UML_INTERCHANGE } from './interchange.js';
-import { UML_MORPH_SPEC } from './morph.js';
+import { UML_BARE_MORPH_SPEC, UML_MORPH_SPEC } from './morph.js';
 import { UmlNodeRendererExtension } from './node/node-renderer.js';
 import { UmlNodeView } from './node/node-view.js';
 import { UML_PROFILES } from './profiles.js';
@@ -39,6 +51,8 @@ import { umlTemplateCategory } from './templates.js';
 import {
   umlDiagramToolbarExtension,
   umlDiagramToolingToolbarExtension,
+  umlPartitionToolbarExtension,
+  umlRegionToolbarExtension,
 } from './toolbar/config.js';
 import { umlSeniorTool } from './toolbar/senior-tool.js';
 
@@ -63,6 +77,14 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
     context.register(UmlDiagramRendererExtension);
     context.register(UmlSubjectView);
     context.register(UmlSubjectRendererExtension);
+    // The two BANDED frames of the behaviour diagrams (phase 2): the activity
+    // partition (§15.6.4) and the composite state's region (§14.2.4). Content
+    // to the letter — a swimlane holds its actions by GEOMETRY, so a document
+    // that loses the frame loses which partition every action was in.
+    context.register(UmlPartitionView);
+    context.register(UmlPartitionRendererExtension);
+    context.register(UmlRegionView);
+    context.register(UmlRegionRendererExtension);
     context.register(UmlNodeView);
     context.register(UmlNodeRendererExtension);
     // The role VOCABULARY, always on. A role is written in the document, not in
@@ -81,12 +103,40 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
       context.register(
         FrameworkBackgroundInteractionExtension(UML_SUBJECT_FRAME)
       );
+      // ONE registration for the partition, even though `background.ts`
+      // declares TWO of them — the column and the row (`UML_PARTITION_FRAME_V`
+      // / `_H`, picked per element by `umlPartitionFrame`). This extension is
+      // keyed on `def.type` alone, so registering the second would not gate the
+      // horizontal lane: it would refuse to mount, on every document, with
+      // `DuplicateServiceDefinitionError`.
+      //
+      // Passing the vertical one is not an arbitrary pick either. What the
+      // extension reads off a declaration is `geometry.resizable`, the FALLBACK
+      // for an element carrying no `resizeEnabled` — and the two declarations
+      // are one factory called twice, so they agree on it by construction. The
+      // orientation changes where the band is, never whether the handles are
+      // offered.
+      context.register(
+        FrameworkBackgroundInteractionExtension(UML_PARTITION_FRAME_V)
+      );
+      context.register(
+        FrameworkBackgroundInteractionExtension(UML_REGION_FRAME)
+      );
       // The selected frame's own row — the resize toggle and the two exports in
       // its "⋮". Always-on for the reason `docs/adr/0009` gives: a stored
       // diagram must keep its handles usable with the UML button switched off,
       // and each "⋮" entry hides itself when its command is absent from the
       // registry, so nothing on the row can be clicked into a no-op.
       context.register(umlDiagramToolbarExtension);
+      // …and the two phase-2 frames' own rows, always-on for the same reason
+      // and with the same contents: the gestures you make on a frame that is
+      // ALREADY THERE. The partition's row carries one more — the orientation
+      // flip — and `toolbar/config.ts` argues at length why a toggle that
+      // writes a stored field still belongs on this side of `docs/adr/0009`:
+      // the flag takes away the ways to CREATE, not the ways to work with what
+      // a document already holds.
+      context.register(umlPartitionToolbarExtension);
+      context.register(umlRegionToolbarExtension);
     }
   }
 }
@@ -172,6 +222,25 @@ export class UmlViewExtension extends ViewExtensionProvider {
             toolbarModuleKey('custom:affine:surface:group', 'uml-morph')
           ),
           config: morphToolbarConfig(UML_MORPH_SPEC),
+        })
+      );
+      // The same dropdown on a BARE UML shape — the routing marks phase 2 added.
+      //
+      // §15.3.4 and §14.2.4 name none of them, so a bullseye, a bar, a diamond
+      // and a crossed circle are created as the shape alone (`actions.ts`) and
+      // a click selects a `umlNode` rather than a group. The widget derives a
+      // surface element's flavour from `model.type`, so their row is
+      // `affine:surface:umlNode`'s and not the group's — which is why this is a
+      // second registration under a second key rather than a widened
+      // `modelType` on the one above. The families, the props and the wording
+      // are shared by reference (`morph.ts`), so the two rows can never offer
+      // different menus.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:umlNode', 'uml-morph')
+          ),
+          config: morphToolbarConfig(UML_BARE_MORPH_SPEC),
         })
       );
       // The same dropdown on a selected RELATIONSHIP. A second registration

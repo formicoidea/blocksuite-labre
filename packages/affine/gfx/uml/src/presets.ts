@@ -15,6 +15,7 @@ import {
   UML_INK,
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
+  UML_NODE_RADIUS,
   UML_NODE_STROKE_WIDTH,
 } from './consts.js';
 import { UML_ROLE_OF_KIND } from './roles.js';
@@ -43,7 +44,7 @@ import { UML_ROLE_OF_KIND } from './roles.js';
  * The kinds whose GLYPH draws the body, so the native shape underneath paints
  * nothing at all.
  *
- * Nine of sixteen, and the node renderer is the authority on which. A package is
+ * Twenty-three of thirty-five, and the node renderer is the authority on which. A package is
  * a tabbed folder (§12.2.4), a note a rectangle with a folded corner (Annex A),
  * an actor a stick figure (§18.1.4) — none of which a native rect can be, so
  * each is created `filled: false` with `StrokeStyle.None` and the renderer
@@ -85,6 +86,73 @@ export const GLYPH_BODY_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
   'node',
   'device',
   'execution-environment',
+  // Phase 2, the behaviour marks. Fourteen more, and every one of them for the
+  // reason the nine above are here — the shape layer cannot draw the body:
+  //
+  //  - `initial`, `junction`, `activity-final`, `flow-final`, `final-state`,
+  //    `shallow-history`, `deep-history`, `entry-point`, `exit-point` are
+  //    CIRCLES with something inside them (a second disc, a cross, a letter) or
+  //    a filled disc at a fixed proportion of the element — an `ellipse`
+  //    shapeType would stretch into an egg and would carry nothing inside it;
+  //  - `fork` is the bar of §15.3.4, drawn to a fixed proportion of the element
+  //    so a fork dragged taller stays a bar rather than becoming a box;
+  //  - `send-signal` and `accept-event` are the convex and concave pentagons of
+  //    §16.3.4, which no `shapeType` has;
+  //  - `time-event` is the hourglass of §16.10.4, two triangles meeting at a
+  //    point;
+  //  - `terminate` is a bare X — nothing but two strokes, and a filled
+  //    rectangle behind it would be a box the notation does not draw.
+  //
+  // NOT on the list, and each looking as if it should be: `action` and `state`
+  // are the native rect with a `radius` (§15.3.4, §14.2.4 — a round-cornered
+  // rectangle IS a native rounded rect); `decision` and `choice` are the native
+  // `diamond` shapeType; `object-node` is the plain native rect of §15.4.4.
+  'initial',
+  'activity-final',
+  'flow-final',
+  'fork',
+  'send-signal',
+  'accept-event',
+  'time-event',
+  'final-state',
+  'junction',
+  'shallow-history',
+  'deep-history',
+  'entry-point',
+  'exit-point',
+  'terminate',
+]);
+
+/**
+ * The kinds the native shape draws with ROUNDED corners.
+ *
+ * Two, and both by the notation's own instruction: §15.3.4 draws an Action as a
+ * round-cornered rectangle and §14.2.4 draws a State as one. They are the only
+ * places this pack departs from `radius: 0`, which is not a house style but what
+ * §11.4.4 draws for a classifier — so the departure is as literal as the rule.
+ *
+ * A native `radius` rather than a glyph, which is what keeps both OFF
+ * {@link GLYPH_BODY_KINDS}: the shape layer fills, strokes, hit-tests and
+ * re-themes a rounded rect for free, and a glyph-drawn one would have to
+ * reimplement all four.
+ */
+export const ROUNDED_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
+  'action',
+  'state',
+]);
+
+/**
+ * The kinds the native shape draws as a DIAMOND.
+ *
+ * §15.3.4's decision/merge node and §14.2.4's choice pseudostate — two different
+ * metaclasses on two different diagrams, drawn as the same diamond, which is why
+ * they share this line and not a role. `diamond` is a native `shapeType`, so the
+ * platform fills it, strokes it and hit-tests it with no glyph involved, exactly
+ * as it does the use case's ellipse.
+ */
+const DIAMOND_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
+  'decision',
+  'choice',
 ]);
 
 /**
@@ -116,21 +184,31 @@ export function umlNodeProps(
     // enumeration are the SAME rectangle, told apart by their keyword line
     // (`./roles.ts`).
     role: UML_ROLE_OF_KIND[kind],
-    // The one kind the platform draws for us that is not a rectangle. §18.1.4
-    // draws a use case as an ellipse, and a native `shapeType` means the
-    // platform fills it, strokes it and hit-tests it with no glyph involved.
-    shapeType: kind === 'use-case' ? 'ellipse' : 'rect',
+    // The kinds the platform draws for us that are not rectangles. §18.1.4
+    // draws a use case as an ellipse; §15.3.4 and §14.2.4 draw a decision and a
+    // choice as a diamond. A native `shapeType` means the platform fills it,
+    // strokes it and hit-tests it with no glyph involved.
+    shapeType:
+      kind === 'use-case'
+        ? 'ellipse'
+        : DIAMOND_KINDS.has(kind)
+          ? 'diamond'
+          : 'rect',
     filled: !glyphBody,
     fillColor: UML_CARD,
     strokeColor: UML_INK,
     strokeWidth: UML_NODE_STROKE_WIDTH,
     strokeStyle: glyphBody ? StrokeStyle.None : StrokeStyle.Solid,
     shapeStyle: ShapeStyle.General,
-    // Zero, everywhere, and not a default worth revisiting: UML's figures are
-    // drawn with a ruler. A hand-drawn roughness or a rounded corner would be
-    // this pack inventing a house style for a notation that has one.
+    // Zero roughness everywhere, and not a default worth revisiting: UML's
+    // figures are drawn with a ruler, and a hand-drawn wobble would be this
+    // pack inventing a house style for a notation that has one.
     roughness: 0,
-    radius: 0,
+    // The corner is a different question, and the notation answers it per
+    // artefact: square for a classifier (§11.4.4), ROUNDED for an action
+    // (§15.3.4) and a state (§14.2.4). So the zero here is the classifier's
+    // rule rather than a pack-wide one — see {@link ROUNDED_KINDS}.
+    radius: ROUNDED_KINDS.has(kind) ? UML_NODE_RADIUS : 0,
     color: UML_INK,
     fontFamily: FontFamily.Inter,
     fontSize: UML_NAME_FONT_SIZE,
@@ -193,7 +271,7 @@ const EVERY_MORPH_KEY = new Set(
  * writes and this one does not.
  *
  * EMPTY for every kind today, because no UML preset spreads anything
- * conditionally: all sixteen write the same key set with different values. Kept
+ * conditionally: all thirty-five write the same key set with different values. Kept
  * anyway, and derived rather than hard-coded to `[]`, for the reason BPMN's and
  * C4's equivalents exist at all — a patch cannot express absence, and the day
  * one kind stops writing a key the previous kind's value would otherwise stay

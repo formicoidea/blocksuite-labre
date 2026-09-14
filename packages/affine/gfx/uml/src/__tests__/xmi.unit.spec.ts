@@ -114,6 +114,8 @@ function emptyModel(
     ports: [],
     artifacts: [],
     nodes: [],
+    activities: [],
+    stateMachines: [],
     relations: [],
     warnings: [],
   };
@@ -391,10 +393,19 @@ const REFERENCE_ATTRS = [
   'utilizedElement',
   'deployedArtifact',
   'location',
+  // The behaviour references (§15.2, §14.2). An activity edge and a transition
+  // each name both of their ends, an AcceptEventAction names the Event its
+  // trigger waits for, and a SendSignalAction names the Signal it sends — the
+  // last two because both are REFERENCES in the metamodel rather than
+  // containments, so both point out of the Activity at a packaged element.
+  'source',
+  'target',
+  'event',
+  'signal',
 ];
 
 /** Attributes that hold a SPACE-SEPARATED list of ids. */
-const REFERENCE_LISTS = ['memberEnd', 'annotatedElement'];
+const REFERENCE_LISTS = ['memberEnd', 'annotatedElement', 'node'];
 
 function parsed(xml: string): Document {
   const document = new DOMParser().parseFromString(xml, 'application/xml');
@@ -433,6 +444,105 @@ function danglingReferences(document: Document): string[] {
   }
   return dangling;
 }
+
+/**
+ * The golden ACTIVITY document (§15.2.4) — the two swimlanes, the guarded and
+ * weighted flow, the minted Signal and TimeEvent, and both kinds of end.
+ */
+const ACTIVITY_GOLDEN = `<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="Shop">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Fulfil an order">
+    <packagedElement xmi:type="uml:Signal" xmi:id="_14" name="Order shipped"/>
+    <packagedElement xmi:type="uml:TimeEvent" xmi:id="_15" name="after 2 days" isRelative="true">
+      <when xmi:type="uml:TimeExpression" xmi:id="_16">
+        <expr xmi:type="uml:LiteralString" xmi:id="_17" value="2 days"/>
+      </when>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Activity" xmi:id="_29" name="Fulfil an order">
+      <node xmi:type="uml:InitialNode" xmi:id="_3"/>
+      <node xmi:type="uml:OpaqueAction" xmi:id="_4" name="Take the order"/>
+      <node xmi:type="uml:DecisionNode" xmi:id="_5"/>
+      <node xmi:type="uml:ObjectNode" xmi:id="_6" name="Order"/>
+      <node xmi:type="uml:OpaqueAction" xmi:id="_7" name="Pick the goods"/>
+      <node xmi:type="uml:SendSignalAction" xmi:id="_8" signal="_14" name="Order shipped"/>
+      <node xmi:type="uml:AcceptEventAction" xmi:id="_9" name="after 2 days">
+        <trigger xmi:type="uml:Trigger" xmi:id="_18" name="after 2 days" event="_15"/>
+      </node>
+      <node xmi:type="uml:FlowFinalNode" xmi:id="_10"/>
+      <node xmi:type="uml:ActivityFinalNode" xmi:id="_11"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_19" source="_3" target="_4"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_20" source="_4" target="_5"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_23" name="ready" source="_5" target="_7">
+        <guard xmi:type="uml:OpaqueExpression" xmi:id="_21" body="stock &gt; 0"/>
+        <weight xmi:type="uml:LiteralInteger" xmi:id="_22" value="2"/>
+      </edge>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_25" source="_5" target="_10">
+        <guard xmi:type="uml:OpaqueExpression" xmi:id="_24" body="else"/>
+      </edge>
+      <edge xmi:type="uml:ObjectFlow" xmi:id="_26" source="_4" target="_6"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_27" source="_7" target="_8"/>
+      <edge xmi:type="uml:ControlFlow" xmi:id="_28" source="_9" target="_11"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_12" name="Sales" node="_3 _4 _5"/>
+      <group xmi:type="uml:ActivityPartition" xmi:id="_13" name="Warehouse" node="_6 _7"/>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="act"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>
+`;
+
+/**
+ * The golden STATE MACHINE document (§14.2.4) — one implicit top region, a
+ * state with all three internal behaviours, a composite state owning its own
+ * region and history, and a transition carrying two triggers, a guard and an
+ * effect.
+ */
+const STATE_MACHINE_GOLDEN = `<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="Shop">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Order lifecycle">
+    <packagedElement xmi:type="uml:StateMachine" xmi:id="_10" name="Order lifecycle">
+      <region xmi:type="uml:Region" xmi:id="_28" name="Order lifecycle">
+        <subvertex xmi:type="uml:State" xmi:id="_4" name="Draft">
+          <entry xmi:type="uml:OpaqueBehavior" xmi:id="_11" name="reserve()" body="reserve()"/>
+          <doActivity xmi:type="uml:OpaqueBehavior" xmi:id="_12" name="poll()" body="poll()"/>
+          <exit xmi:type="uml:OpaqueBehavior" xmi:id="_13" name="release()" body="release()"/>
+        </subvertex>
+        <subvertex xmi:type="uml:FinalState" xmi:id="_6"/>
+        <subvertex xmi:type="uml:Pseudostate" xmi:id="_7" kind="initial"/>
+        <subvertex xmi:type="uml:Pseudostate" xmi:id="_8" kind="choice"/>
+        <subvertex xmi:type="uml:State" xmi:id="_3" name="Running">
+          <region xmi:type="uml:Region" xmi:id="_17" name="Running">
+            <subvertex xmi:type="uml:State" xmi:id="_5" name="Placed"/>
+            <subvertex xmi:type="uml:Pseudostate" xmi:id="_9" kind="shallowHistory"/>
+            <transition xmi:type="uml:Transition" xmi:id="_15" source="_5" target="_6">
+              <trigger xmi:type="uml:Trigger" xmi:id="_14" name="close"/>
+            </transition>
+            <transition xmi:type="uml:Transition" xmi:id="_16" source="_9" target="_5"/>
+          </region>
+        </subvertex>
+        <transition xmi:type="uml:Transition" xmi:id="_18" source="_7" target="_4"/>
+        <transition xmi:type="uml:Transition" xmi:id="_24" source="_4" target="_8">
+          <trigger xmi:type="uml:Trigger" xmi:id="_19" name="submit"/>
+          <trigger xmi:type="uml:Trigger" xmi:id="_20" name="after 5 s"/>
+          <guard xmi:type="uml:Constraint" xmi:id="_21">
+            <specification xmi:type="uml:OpaqueExpression" xmi:id="_22" body="stock &gt; 0"/>
+          </guard>
+          <effect xmi:type="uml:OpaqueBehavior" xmi:id="_23" name="reserve()" body="reserve()"/>
+        </transition>
+        <transition xmi:type="uml:Transition" xmi:id="_27" source="_8" target="_5">
+          <guard xmi:type="uml:Constraint" xmi:id="_25">
+            <specification xmi:type="uml:OpaqueExpression" xmi:id="_26" body="ok"/>
+          </guard>
+        </transition>
+      </region>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="stm"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>
+`;
 
 /* ── Tests ────────────────────────────────────────────────────────────── */
 
@@ -979,5 +1089,364 @@ describe('nothing to say', () => {
     const document = parsed(exportXmi([], {}));
     expect(document.documentElement.tagName).toBe('uml:Model');
     expect(document.documentElement.children).toHaveLength(0);
+  });
+});
+
+/* ── The behaviour sheets (§15.2, §14.2) ──────────────────────────────── */
+
+/**
+ * Every element of a tag whose `xmi:type` is the one asked for.
+ *
+ * Written out rather than left to a `[*|type=…]` attribute selector: happy-dom
+ * does not honour the namespace wildcard, and a selector that silently matches
+ * the first element of the tag would make these assertions pass against the
+ * wrong node.
+ */
+const ofType = (document: Document, tag: string, type: string) =>
+  [...document.querySelectorAll(tag)].filter(
+    element => element.getAttribute('xmi:type') === type
+  );
+
+const behaviourNode = <K extends string>(id: string, kind: K, name = '') => ({
+  id,
+  name,
+  keywords: [],
+  isAbstract: false,
+  kind,
+});
+
+/**
+ * An activity with one of everything the writer has a rule for: a beginning, a
+ * decision branching into a named-and-guarded-and-weighted flow and an `else`,
+ * an object flow onto a data node, the two signal glyphs, the hourglass, and
+ * both kinds of end — laid out in two swimlanes (§15.6.4).
+ */
+function activityDiagram(): UmlModel {
+  const model = emptyModel('act-1', 'act', 'Fulfil an order');
+  model.activities = [
+    {
+      id: 'act-1',
+      name: 'Fulfil an order',
+      nodes: [
+        { ...behaviourNode('i', 'initial'), partitionId: 'lane-sales' },
+        {
+          ...behaviourNode('a', 'action', 'Take the order'),
+          partitionId: 'lane-sales',
+        },
+        { ...behaviourNode('d', 'decision'), partitionId: 'lane-sales' },
+        {
+          ...behaviourNode('o', 'object-node', 'Order'),
+          partitionId: 'lane-store',
+        },
+        {
+          ...behaviourNode('b', 'action', 'Pick the goods'),
+          partitionId: 'lane-store',
+        },
+        behaviourNode('s', 'send-signal', 'Order shipped'),
+        behaviourNode('t', 'time-event', 'after 2 days'),
+        behaviourNode('x', 'flow-final'),
+        behaviourNode('z', 'activity-final'),
+      ],
+      edges: [
+        { kind: 'control-flow', sourceId: 'i', targetId: 'a' },
+        { kind: 'control-flow', sourceId: 'a', targetId: 'd' },
+        {
+          kind: 'control-flow',
+          sourceId: 'd',
+          targetId: 'b',
+          name: 'ready',
+          guard: 'stock > 0',
+          weight: '2',
+        },
+        { kind: 'control-flow', sourceId: 'd', targetId: 'x', guard: 'else' },
+        { kind: 'object-flow', sourceId: 'a', targetId: 'o' },
+        { kind: 'control-flow', sourceId: 'b', targetId: 's' },
+        { kind: 'control-flow', sourceId: 't', targetId: 'z' },
+      ],
+      partitions: [
+        {
+          id: 'lane-sales',
+          name: 'Sales',
+          keywords: [],
+          isAbstract: false,
+          orientation: 'vertical',
+          nodeIds: ['i', 'a', 'd'],
+        },
+        {
+          id: 'lane-store',
+          name: 'Warehouse',
+          keywords: [],
+          isAbstract: false,
+          orientation: 'horizontal',
+          nodeIds: ['o', 'b'],
+        },
+      ],
+    },
+  ];
+  return model;
+}
+
+/**
+ * A state machine with the three shapes that cost the writer something: a state
+ * carrying all three internal behaviours, a COMPOSITE state with its own region
+ * and a history inside it, and a transition carrying two triggers, a guard and
+ * an effect (§14.2.4.8).
+ */
+function stateMachineDiagram(): UmlModel {
+  const model = emptyModel('stm-1', 'stm', 'Order lifecycle');
+  model.stateMachines = [
+    {
+      id: 'stm-1',
+      name: 'Order lifecycle',
+      regions: [{ id: 'r', name: 'Running', keywords: [], isAbstract: false }],
+      states: [
+        {
+          id: 's1',
+          name: 'Draft',
+          keywords: [],
+          isAbstract: false,
+          entry: ['reserve()'],
+          doActivity: ['poll()'],
+          exit: ['release()'],
+          lines: ['submit [x > 0] / log()'],
+        },
+        {
+          id: 's2',
+          name: 'Placed',
+          keywords: [],
+          isAbstract: false,
+          entry: [],
+          doActivity: [],
+          exit: [],
+          lines: [],
+          regionId: 'r',
+        },
+      ],
+      finalStates: [{ id: 'f', name: '', keywords: [], isAbstract: false }],
+      pseudostates: [
+        { id: 'i', name: '', keywords: [], isAbstract: false, kind: 'initial' },
+        { id: 'c', name: '', keywords: [], isAbstract: false, kind: 'choice' },
+        {
+          id: 'h',
+          name: '',
+          keywords: [],
+          isAbstract: false,
+          kind: 'shallow-history',
+          regionId: 'r',
+        },
+      ],
+      transitions: [
+        { sourceId: 'i', targetId: 's1', triggers: [] },
+        {
+          sourceId: 's1',
+          targetId: 'c',
+          triggers: ['submit', 'after 5 s'],
+          guard: 'stock > 0',
+          effect: 'reserve()',
+        },
+        { sourceId: 'c', targetId: 's2', triggers: [], guard: 'ok' },
+        { sourceId: 's2', targetId: 'f', triggers: ['close'] },
+        { sourceId: 'h', targetId: 's2', triggers: [] },
+      ],
+    },
+  ];
+  return model;
+}
+
+describe('an activity diagram', () => {
+  const xml = exportXmi([activityDiagram()], { name: 'Shop' });
+  const document = parsed(xml);
+
+  it('parses, and resolves every reference in it', () => {
+    // `source`, `target`, `node`, `event` and `signal` are the five the
+    // behaviour sheets add, and a dangling one is the same silent, partial
+    // import every other reference in this file is checked against.
+    expect(danglingReferences(document)).toEqual([]);
+  });
+
+  it('writes §15.7’s own metaclass for each glyph', () => {
+    const nodes = [...document.querySelectorAll('node')];
+    expect(nodes.map(each => each.getAttribute('xmi:type'))).toEqual([
+      'uml:InitialNode',
+      'uml:OpaqueAction',
+      'uml:DecisionNode',
+      'uml:ObjectNode',
+      'uml:OpaqueAction',
+      'uml:SendSignalAction',
+      // §16.10.4's hourglass IS an AcceptEventAction: the metamodel has no
+      // `AcceptTimeEventAction`, and inventing one produces a file no importer
+      // can read.
+      'uml:AcceptEventAction',
+      'uml:FlowFinalNode',
+      'uml:ActivityFinalNode',
+    ]);
+  });
+
+  it('leaves the control nodes unnamed, because the notation draws them so', () => {
+    const unnamed = [...document.querySelectorAll('node')].filter(each =>
+      [
+        'uml:InitialNode',
+        'uml:DecisionNode',
+        'uml:FlowFinalNode',
+        'uml:ActivityFinalNode',
+      ].includes(each.getAttribute('xmi:type') ?? '')
+    );
+    expect(unnamed).toHaveLength(4);
+    for (const node of unnamed) {
+      // Never `name=""`: an unnamed element and an element named nothing are
+      // different statements.
+      expect(node.getAttribute('name')).toBeNull();
+    }
+  });
+
+  it('writes the guard as an OpaqueExpression and the weight as a literal', () => {
+    const guarded = [...document.querySelectorAll('edge')].find(
+      each => each.getAttribute('name') === 'ready'
+    )!;
+    expect(guarded.getAttribute('xmi:type')).toBe('uml:ControlFlow');
+    const guard = guarded.querySelector('guard')!;
+    expect(guard.getAttribute('xmi:type')).toBe('uml:OpaqueExpression');
+    expect(guard.getAttribute('body')).toBe('stock > 0');
+    const weight = guarded.querySelector('weight')!;
+    expect(weight.getAttribute('xmi:type')).toBe('uml:LiteralInteger');
+    expect(weight.getAttribute('value')).toBe('2');
+  });
+
+  it('tells the two kinds of flow apart', () => {
+    const kinds = [...document.querySelectorAll('edge')].map(each =>
+      each.getAttribute('xmi:type')
+    );
+    expect(kinds.filter(kind => kind === 'uml:ObjectFlow')).toHaveLength(1);
+    expect(kinds.filter(kind => kind === 'uml:ControlFlow')).toHaveLength(6);
+  });
+
+  it('writes each swimlane as a group naming the nodes it holds', () => {
+    const groups = [...document.querySelectorAll('group')];
+    expect(groups.map(each => each.getAttribute('xmi:type'))).toEqual([
+      'uml:ActivityPartition',
+      'uml:ActivityPartition',
+    ]);
+    expect(groups.map(each => each.getAttribute('name'))).toEqual([
+      'Sales',
+      'Warehouse',
+    ]);
+    // Three nodes in the first lane, two in the second — the idrefs, which the
+    // dangling check above has already resolved.
+    expect(groups[0].getAttribute('node')!.split(' ')).toHaveLength(3);
+    expect(groups[1].getAttribute('node')!.split(' ')).toHaveLength(2);
+  });
+
+  it('mints the Signal and the TimeEvent the actions REFER to', () => {
+    // Both are references in the metamodel, not containments, so both live in
+    // the sheet's package where a reference can reach them.
+    const signal = ofType(document, 'packagedElement', 'uml:Signal')[0];
+    expect(signal.getAttribute('name')).toBe('Order shipped');
+    const event = ofType(document, 'packagedElement', 'uml:TimeEvent')[0];
+    // §13.3.3.4: `after` is a RELATIVE time event, and the expression is what
+    // follows the keyword — writing the keyword into the value would make an
+    // importer wait "after after 2 days".
+    expect(event.getAttribute('isRelative')).toBe('true');
+    expect(event.querySelector('expr')!.getAttribute('value')).toBe('2 days');
+  });
+
+  it('is the golden activity document, byte for byte', () => {
+    expect(xml).toBe(ACTIVITY_GOLDEN);
+  });
+});
+
+describe('a state machine diagram', () => {
+  const xml = exportXmi([stateMachineDiagram()], { name: 'Shop' });
+  const document = parsed(xml);
+
+  it('parses, and resolves every reference in it', () => {
+    expect(danglingReferences(document)).toEqual([]);
+  });
+
+  it('wraps the sheet in one implicit region', () => {
+    // §14.2.4 makes the top region implicit — the frame IS it — so there is
+    // nothing on the canvas to read it off and a flat machine would otherwise
+    // have nowhere to put a single state.
+    const [machine] = ofType(document, 'packagedElement', 'uml:StateMachine');
+    expect(machine.getAttribute('name')).toBe('Order lifecycle');
+    expect([...machine.children].map(child => child.tagName)).toEqual([
+      'region',
+    ]);
+  });
+
+  it('writes a state’s three internal behaviours as OpaqueBehaviors', () => {
+    const draft = [...document.querySelectorAll('subvertex')].find(
+      each => each.getAttribute('name') === 'Draft'
+    )!;
+    expect(draft.getAttribute('xmi:type')).toBe('uml:State');
+    expect([...draft.children].map(child => child.tagName)).toEqual([
+      'entry',
+      'doActivity',
+      'exit',
+    ]);
+    expect(draft.querySelector('entry')!.getAttribute('body')).toBe(
+      'reserve()'
+    );
+    for (const child of draft.children) {
+      expect(child.getAttribute('xmi:type')).toBe('uml:OpaqueBehavior');
+    }
+  });
+
+  it('writes the composite state as a State with a Region of its own', () => {
+    const composite = [...document.querySelectorAll('subvertex')].find(
+      each => each.getAttribute('name') === 'Running'
+    )!;
+    expect(composite.getAttribute('xmi:type')).toBe('uml:State');
+    const region = composite.querySelector('region')!;
+    expect(region.getAttribute('xmi:type')).toBe('uml:Region');
+    // …and the vertices drawn inside it are ITS subvertices, not the machine's.
+    expect(
+      [...region.children]
+        .filter(child => child.tagName === 'subvertex')
+        .map(child => child.getAttribute('name') ?? child.getAttribute('kind'))
+    ).toEqual(['Placed', 'shallowHistory']);
+  });
+
+  it('spells §14.5.7’s PseudostateKind for each glyph', () => {
+    const kinds = [...document.querySelectorAll('subvertex')]
+      .filter(each => each.getAttribute('xmi:type') === 'uml:Pseudostate')
+      .map(each => each.getAttribute('kind'));
+    expect(kinds).toEqual(['initial', 'choice', 'shallowHistory']);
+  });
+
+  it('writes a transition’s triggers, its guard and its effect', () => {
+    const labelled = [...document.querySelectorAll('transition')].find(
+      each => each.querySelectorAll('trigger').length === 2
+    )!;
+    expect(
+      [...labelled.querySelectorAll('trigger')].map(each =>
+        each.getAttribute('name')
+      )
+    ).toEqual(['submit', 'after 5 s']);
+    // `Transition::guard` is a CONSTRAINT, where an ActivityEdge's is a
+    // ValueSpecification — the expression goes in its `specification`.
+    const guard = labelled.querySelector('guard')!;
+    expect(guard.getAttribute('xmi:type')).toBe('uml:Constraint');
+    expect(guard.querySelector('specification')!.getAttribute('body')).toBe(
+      'stock > 0'
+    );
+    expect(labelled.querySelector('effect')!.getAttribute('body')).toBe(
+      'reserve()'
+    );
+  });
+
+  it('owns each transition in the region its SOURCE sits in', () => {
+    // §14.5.12 owns a Transition on a Region, and the source is the vertex the
+    // arc leaves — so the two drawn inside the composite state are written
+    // inside it, which is where §14.2.4 draws them from.
+    const composite = [...document.querySelectorAll('subvertex')].find(
+      each => each.getAttribute('name') === 'Running'
+    )!;
+    expect(
+      composite.querySelector('region')!.querySelectorAll('transition')
+    ).toHaveLength(2);
+  });
+
+  it('is the golden state machine document, byte for byte', () => {
+    expect(xml).toBe(STATE_MACHINE_GOLDEN);
   });
 });

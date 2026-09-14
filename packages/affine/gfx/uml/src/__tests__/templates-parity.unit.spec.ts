@@ -53,10 +53,10 @@ const INVOCATION: CommandInvocation = {
 /**
  * The templates written by hand — none.
  *
- * The palette is the eighteen artefact commands. The twelve relationship TOOLS
- * arm the connector and draw nothing, so they have no artefact to record, and
- * the two exports are not artefact commands at all. A future entry that is not
- * derived has to declare itself here.
+ * The palette is the thirty-nine artefact commands. The fifteen relationship
+ * TOOLS arm the connector and draw nothing, so they have no artefact to record,
+ * and the two exports are not artefact commands at all. A future entry that is
+ * not derived has to declare itself here.
  */
 const HAND_AUTHORED: string[] = [];
 
@@ -80,9 +80,11 @@ describe('the UML palette covers the toolbox', () => {
 
   it('ships one derived template per artefact command', () => {
     // Ten from phase 1, plus phase 2's four component artefacts and four
-    // deployment ones. The three new TOOLS are not here for the reason the nine
-    // before them are not: arming a connector draws nothing.
-    expect(artefacts).toHaveLength(18);
+    // deployment ones, plus its twenty-one behaviour ones (ten of the activity
+    // vocabulary, nine of the state machine, and the partition and region
+    // backgrounds). The six TOOLS phase 2 added are not here for the reason the
+    // nine before them are not: arming a connector draws nothing.
+    expect(artefacts).toHaveLength(39);
     for (const command of artefacts) {
       const derived = templates.filter(
         template => template.commandId === command.id
@@ -250,7 +252,79 @@ describe('a phase-2 picture template is the elements the button draws', () => {
   }
 });
 
-/** The two frames: the sheet and the boundary drawn round part of it. */
+/**
+ * The behaviour marks, which are the first artefacts in this pack that are ONE
+ * element.
+ *
+ * §15.3.4 and §14.2.4 name none of them — an initial node has no name, a fork
+ * has no name, a history mark is an `H` — so creation seeds nothing and there
+ * is no group either, because a group of one element is a wrapper a user would
+ * have to descend through to reach the mark it holds (`actions.ts`).
+ */
+describe('a behaviour template is the elements the button draws', () => {
+  it('drops an unlabelled mark as the shape and nothing else', () => {
+    for (const [name, role, kind] of [
+      ['Initial node', UML_ROLE.initial, 'initial'],
+      ['Activity final', UML_ROLE['activity-final'], 'activity-final'],
+      ['Decision', UML_ROLE.decision, 'decision'],
+      ['Fork', UML_ROLE.fork, 'fork'],
+      ['Final state', UML_ROLE['final-state'], 'final-state'],
+      ['Junction', UML_ROLE.junction, 'junction'],
+      ['Terminate', UML_ROLE.terminate, 'terminate'],
+    ] as const) {
+      const entries = Object.entries(named(name));
+      expect(entries, name).toHaveLength(1);
+      const [, mark] = entries[0];
+      expect(mark.type, name).toBe('umlNode');
+      expect(mark.kind, name).toBe(kind);
+      expect(mark.role, name).toBe(role);
+      // R16 all the same: nothing is written ON the shape, there is simply
+      // nothing to write.
+      expect(mark.text, name).toBeUndefined();
+    }
+  });
+
+  it('gives a state a NAME over its internal-activities tier', () => {
+    // §14.2.4 draws a state as the instance specification's divided box with
+    // rounded corners, and `component.ts` files it as one: the renderer rules
+    // the separator off unconditionally and `model.ts` reads `entry / …`,
+    // `do / …`, `exit / …` off `uml:attributes`. So it is four elements, like a
+    // component and an artifact — and the behaviour tier is seeded EMPTY, which
+    // is what §14.2.4's own figures draw.
+    const entries = Object.entries(named('State'));
+    expect(entries).toHaveLength(4);
+    const roles = entries
+      .map(([, el]) => el.role)
+      .filter((id): id is string => !!id)
+      .sort();
+    expect(roles).toEqual(
+      [UML_ROLE.state, UML_ROLE.name, UML_ROLE.attributes].sort()
+    );
+  });
+
+  it('gives the labelled behaviour kinds one `uml:label` and a group', () => {
+    // One tier each: a word inside the picture, never a keyword and never a
+    // compartment. The STATE is not among them — see the case above.
+    for (const [name, role, kind] of [
+      ['Action', UML_ROLE.action, 'action'],
+      ['Object node', UML_ROLE['object-node'], 'object-node'],
+      ['Send signal', UML_ROLE['send-signal'], 'send-signal'],
+      ['Accept event', UML_ROLE['accept-event'], 'accept-event'],
+      ['Time event', UML_ROLE['time-event'], 'time-event'],
+    ] as const) {
+      const entries = Object.entries(named(name));
+      expect(entries, name).toHaveLength(3);
+      const shape = entries.find(([, el]) => el.type === 'umlNode');
+      expect(shape![1].kind, name).toBe(kind);
+      expect(shape![1].role, name).toBe(role);
+      expect(shape![1].text, name).toBeUndefined();
+      const text = entries.find(([, el]) => el.type === 'text');
+      expect(text![1].role, name).toBe(UML_ROLE.label);
+    }
+  });
+});
+
+/** The frames: the sheet, and the three boundaries drawn round part of it. */
 describe('the frame templates', () => {
   it('the diagram is one sheet, with a kind and a name', () => {
     const entries = Object.entries(named('UML diagram'));
@@ -268,5 +342,24 @@ describe('the frame templates', () => {
     expect(subject.type).toBe('umlSubject');
     expect(subject.role).toBe(UML_ROLE.subject);
     expect(subject.name).toBeTruthy();
+  });
+
+  it('the partition and the region are frames of the same shape', () => {
+    // §15.6.4's swimlane and §14.2.4's composite state: one element each,
+    // carrying a name and nothing else. The partition writes NO `orientation`
+    // — the model's own default is vertical, and a creation restating it would
+    // be a second place for it to be changed (`actions.ts`).
+    for (const [name, type, role] of [
+      ['Partition', 'umlPartition', UML_ROLE.partition],
+      ['Region', 'umlRegion', UML_ROLE.region],
+    ] as const) {
+      const entries = Object.entries(named(name));
+      expect(entries, name).toHaveLength(1);
+      const [, frame] = entries[0];
+      expect(frame.type, name).toBe(type);
+      expect(frame.role, name).toBe(role);
+      expect(frame.name, name).toBeTruthy();
+      expect(frame, name).not.toHaveProperty('orientation');
+    }
   });
 });

@@ -20,7 +20,7 @@ import { umlTranslationEntries } from '../translations.js';
  */
 
 /**
- * The twelve `uml.strict` promotes.
+ * The twenty-one `uml.strict` promotes.
  *
  * Eight restate a normative clause (§9.9.7 twice, §10.4.3, §18.1.3 twice,
  * §19.2.3, §19.3.3, §19.4.3), two are the NAMING rules, one is §11.5.3's
@@ -43,9 +43,30 @@ const PROMOTED = [
   'uml.unnamed-actor-or-use-case',
   'uml.composition-single-owner',
   'uml.not-admissible-on-kind',
+  // The behaviour sheets' arithmetic (§15.3.3, §15.7.19.4, §15.7.11.4,
+  // §14.5.11.4), their two grammars (§15.7.9.4, §14.5.12) and the count of
+  // beginnings — which is a `recommendation` and promoted anyway, so this list
+  // still cannot be called SPECIFICATION.
+  'uml.initial-no-incoming-flow',
+  'uml.initial-no-incoming-transition',
+  'uml.activity-final-no-outgoing',
+  'uml.flow-final-no-outgoing',
+  'uml.final-state-no-outgoing',
+  'uml.decision-incoming-count',
+  'uml.control-flow-endpoints',
+  'uml.transition-endpoints',
+  'uml.initial-single',
 ];
 
-/** The seven that stay an audit at every level — membership, and remarks. */
+/**
+ * The thirteen that stay an audit at every level — membership, and remarks.
+ *
+ * `uml.object-flow-endpoints` is the one worth pausing on: it is an ENDPOINT
+ * rule and every other one is promoted. §15.4.4 lets an action's pins be
+ * elided, a pin IS an ObjectNode, and this canvas has no pin — so the
+ * action-to-action drawing is a legal shorthand and hardening it would hold an
+ * author to something they cannot draw.
+ */
 const PANEL_ONLY = [
   'uml.element-outside-frame',
   'uml.use-case-outside-subject',
@@ -54,6 +75,12 @@ const PANEL_ONLY = [
   'uml.actor-actor-association',
   'uml.untyped-edge',
   'uml.use-case-no-actor',
+  'uml.object-flow-endpoints',
+  'uml.node-in-partition',
+  'uml.shallow-history-outside-region',
+  'uml.deep-history-outside-region',
+  'uml.unreachable-action',
+  'uml.unreachable-state',
 ];
 
 describe('UML validation profiles', () => {
@@ -71,7 +98,7 @@ describe('UML validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = UML_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(19);
+    expect(ruleIds).toHaveLength(34);
     for (const profile of UML_PROFILES) {
       expect(profile.framework).toBe('uml');
       expect(profile.labelKey).toMatch(/^com\.labre\.uml\.profile\./);
@@ -103,16 +130,16 @@ describe('UML validation profiles', () => {
     }
   });
 
-  it('promotes the twelve on the strict profile', () => {
+  it('promotes the twenty-one on the strict profile', () => {
     const [, strict] = UML_PROFILES;
-    expect(PROMOTED).toHaveLength(12);
+    expect(PROMOTED).toHaveLength(21);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
   });
 
   it('keeps the panel-only rules an audit at BOTH levels', () => {
-    expect(PANEL_ONLY).toHaveLength(7);
+    expect(PANEL_ONLY).toHaveLength(13);
     for (const id of PANEL_ONLY) {
       for (const profile of UML_PROFILES) {
         expect(profile.rules[id], `${profile.id}/${id}`).toBe('audit');

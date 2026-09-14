@@ -21,7 +21,7 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
  * What a UML artefact may BECOME — the declaration behind the "Change type"
  * dropdown on a selected component's contextual toolbar.
  *
- * ## Two families, and the kinds that are alone
+ * ## Six families, and the kinds that are alone
  *
  * A class, an interface and an enumeration are THE SAME PICTURE: §9.5.4 draws
  * one divided rectangle for all three and tells them apart by the keyword
@@ -96,6 +96,61 @@ export const UML_MORPH_FAMILIES: readonly (readonly UmlNodeKind[])[] = [
   ['port'],
   ['provided-interface'],
   ['required-interface'],
+  /* ── Phase 2: activities and state machines ──────────────────────────── */
+  // Four families, and every one of them is a PAIR the notation draws as one
+  // picture with one mark changed — which is the only test a family has to
+  // pass here, because a swap inside one must move nothing (the suite proves
+  // the footprint and the silhouette are shared).
+  //
+  //  - §16.3.4 / §16.10.4: a send signal and an accept event are the SAME
+  //    pentagon with its angled edge on the other side, and "did this step send
+  //    the message or wait for it" is the single most common thing to get
+  //    backwards on an activity diagram;
+  //  - §15.3.4: an activity final ends the whole activity, a flow final ends
+  //    ONE token — two circles, a bullseye and a cross, and the distinction is
+  //    a refinement an author makes after the fact;
+  //  - §14.2.4: a shallow history restores the region's last sub-state, a deep
+  //    history restores the whole nested configuration — `H` and `H*`, one
+  //    asterisk apart;
+  //  - §14.2.4: an entry point and an exit point are the circle on a composite
+  //    state's border, hollow or crossed.
+  ['send-signal', 'accept-event'],
+  ['activity-final', 'flow-final'],
+  ['shallow-history', 'deep-history'],
+  ['entry-point', 'exit-point'],
+  // The rest are declared alone, and each refusal is an argument:
+  //
+  //  - an **action** is a rounded rectangle the shape layer draws (§15.2.4),
+  //    where the two signal shapes are pentagons this pack paints itself: a
+  //    family must be silhouette-preserving, and this pair is not. It is the
+  //    obvious candidate for a fifth family the day the three share a drawing;
+  //  - an **initial** node is the one control node with no counterpart — there
+  //    is exactly one per region (§15.3.4), and the swap a modeller wants from
+  //    it is a deletion;
+  //  - a **decision** and a **fork** are a diamond and a bar. §15.3.4 draws
+  //    them differently because they MEAN differently — one token down one
+  //    branch, versus one token down every branch — and a dropdown between two
+  //    different pictures would be this pack inventing an equivalence;
+  //  - a **choice** is the decision's diamond on a state machine and a
+  //    **junction** its filled dot (§14.2.4); neither belongs with the activity
+  //    node it is drawn like, because they are never on the same sheet;
+  //  - an **object node** (§15.4.4) is data, not a step; a **time event**
+  //    (§16.10.4) is the hourglass and nothing else is drawn as one;
+  //  - a **state** is the rounded box of §14.2.4 and a **final state** the
+  //    bullseye that ends it — a named thing and an unnamed one;
+  //  - a **terminate** pseudostate is the cross that kills the machine
+  //    (§14.2.4): there is nothing it is a more precise version of.
+  ['action'],
+  ['initial'],
+  ['decision'],
+  ['fork'],
+  ['object-node'],
+  ['time-event'],
+  ['state'],
+  ['final-state'],
+  ['choice'],
+  ['junction'],
+  ['terminate'],
 ];
 
 /**
@@ -354,6 +409,7 @@ export const UML_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
   resolveTarget: umlNodeOfGroup,
   kindOf: (model: GfxPrimitiveElementModel) =>
     model instanceof UmlNodeElementModel ? model.kind : undefined,
+  // ↓ everything from here down is SHARED with {@link UML_BARE_MORPH_SPEC}.
   // The SHAPE's role, which is the only role a UML artefact has: the group
   // carries none by design, and the tiers carry roles of their own (`uml:name`,
   // `uml:attributes`, `uml:operations`) that say which COMPARTMENT they are and
@@ -365,4 +421,59 @@ export const UML_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
   labelOf,
   iconOf,
   label: morphLabel('com.labre.morph.toolbar.label', 'Change type'),
+};
+
+/**
+ * The SAME dropdown, on a UML shape that is not inside a group.
+ *
+ * ## Why a second spec exists at all
+ *
+ * Because phase 2 made the pack's own rule about composites untrue for a third
+ * of its artefacts. Until then every UML artefact was a `group` — a shape and
+ * the canvas texts grouped with it — so `modelType: GroupElementModel` was the
+ * whole selection filter. The behaviour vocabulary is not: §15.3.4 and §14.2.4
+ * name none of their routing marks, so a bullseye, a bar, a diamond and a
+ * crossed circle are created as the SHAPE alone (`actions.ts`), and what a
+ * click selects for them is a `umlNode`, never a group.
+ *
+ * `umlNodeOfGroup` refuses a bare shape by design — it is the gate that keeps a
+ * plain lasso and another framework's component out of the menu — so the group
+ * spec resolves nothing for them and three whole families (`activity-final` /
+ * `flow-final`, `shallow-history` / `deep-history`, `entry-point` /
+ * `exit-point`) had a dropdown nobody could ever open.
+ *
+ * ## Why not one spec with a widened `modelType`
+ *
+ * Because the selection filter is not the only thing that differs: the two
+ * specs are registered under two DIFFERENT toolbar flavours. A bare `umlNode`'s
+ * contextual row is `affine:surface:umlNode`'s (the widget derives the flavour
+ * from `model.type`), and a grouped artefact's is `affine:surface:group`'s.
+ * Widening `modelType` to the abstract base would leave the group registration
+ * answering for shapes it will never be handed, and would make its homogeneity
+ * gate — the thing that refuses a group holding two classifiers — apply to a
+ * selection it was not written about. Two registrations, two keys, one table.
+ *
+ * Everything that decides what the menu SAYS and what a pick WRITES is shared
+ * with {@link UML_MORPH_SPEC} by reference, so the two can never offer
+ * different families or write different props.
+ *
+ * `resolveTarget` is absent, which is identity: a bare mark is one element —
+ * what the user selects, what carries the kind and what the patch lands on are
+ * the same object, exactly as they are for a connector. `afterMorph` is absent
+ * too, and that is the notation's doing rather than an omission: `rewriteName`
+ * exists to keep a `uml:name` tier saying what the shape now is, and these
+ * kinds have no tier at all — there is nothing to rewrite, and reaching for one
+ * would be looking for words the specification says are not there.
+ */
+export const UML_BARE_MORPH_SPEC: MorphSpec<UmlNodeKind> = {
+  framework: UML_MORPH_SPEC.framework,
+  families: UML_MORPH_SPEC.families,
+  modelType: UmlNodeElementModel,
+  kindOf: UML_MORPH_SPEC.kindOf,
+  roleOf: UML_MORPH_SPEC.roleOf,
+  propsOf: UML_MORPH_SPEC.propsOf,
+  clearOf: UML_MORPH_SPEC.clearOf,
+  labelOf: UML_MORPH_SPEC.labelOf,
+  iconOf: UML_MORPH_SPEC.iconOf,
+  label: UML_MORPH_SPEC.label,
 };

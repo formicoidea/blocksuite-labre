@@ -6,6 +6,9 @@ import {
   type UmlDiagramKind,
   UmlNodeElementModel,
   type UmlNodeKind,
+  UmlPartitionElementModel,
+  type UmlPartitionOrientation,
+  UmlRegionElementModel,
   UmlSubjectElementModel,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
@@ -83,6 +86,55 @@ export function fakeSubject(
     id,
     role: UML_ROLE.subject,
     name: options.name ?? 'Subject',
+    xywh: `[${bound.join(',')}]`,
+    deserializedXYWH: bound,
+    rotate: 0,
+    elementBound: new Bound(...bound),
+  });
+}
+
+/**
+ * An activity PARTITION — a swimlane (§15.6.4), which holds its actions by
+ * geometry and nothing else.
+ *
+ * `resizeEnabled` and `orientation` are stated rather than defaulted, because
+ * they are the two fields the frame's own toolbar row writes: a fixture that
+ * left them off would let a toggle pass its test by reading `undefined` on both
+ * sides of the flip.
+ */
+export function fakePartition(
+  id: string,
+  bound: Box,
+  options: {
+    name?: string;
+    orientation?: UmlPartitionOrientation;
+    resizeEnabled?: boolean;
+  } = {}
+): UmlPartitionElementModel {
+  return define<UmlPartitionElementModel>(UmlPartitionElementModel.prototype, {
+    id,
+    role: UML_ROLE.partition,
+    name: options.name ?? 'Partition',
+    orientation: options.orientation ?? 'vertical',
+    resizeEnabled: options.resizeEnabled ?? true,
+    xywh: `[${bound.join(',')}]`,
+    deserializedXYWH: bound,
+    rotate: 0,
+    elementBound: new Bound(...bound),
+  });
+}
+
+/** A composite state's REGION (§14.2.4): a named rounded rectangle. */
+export function fakeRegion(
+  id: string,
+  bound: Box,
+  options: { name?: string; resizeEnabled?: boolean } = {}
+): UmlRegionElementModel {
+  return define<UmlRegionElementModel>(UmlRegionElementModel.prototype, {
+    id,
+    role: UML_ROLE.region,
+    name: options.name ?? 'Region',
+    resizeEnabled: options.resizeEnabled ?? true,
     xywh: `[${bound.join(',')}]`,
     deserializedXYWH: bound,
     rotate: 0,

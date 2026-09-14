@@ -20,7 +20,16 @@ import { ShapeElementModel } from '../shape/index.js';
  *    hang off it: `provided-interface`, the lollipop, and `required-interface`,
  *    the socket (§10.4.4);
  *  - deployments  — `artifact`, the document icon (§19.3.4), and the three
- *    cubes: `node`, `device` and `execution-environment` (§19.4.4).
+ *    cubes: `node`, `device` and `execution-environment` (§19.4.4);
+ *  - activities   — `action`, the round-cornered rectangle of §15.3.4, the five
+ *    control nodes that route its flow (`initial`, `activity-final`,
+ *    `flow-final`, `decision`, `fork`), the `object-node` of §15.4.4 and the
+ *    three signal and event shapes of §16.3.4 / §16.10.4 (`send-signal`,
+ *    `accept-event`, `time-event`);
+ *  - state machines — `state` and `final-state` (§14.2.4), and the seven
+ *    pseudostates that route transitions: `choice`, `junction`,
+ *    `shallow-history`, `deep-history`, `entry-point`, `exit-point` and
+ *    `terminate`.
  *
  * ## Compatibility
  *
@@ -37,7 +46,8 @@ import { ShapeElementModel } from '../shape/index.js';
  * renderer draws pictures for the kinds it knows and nothing for the rest.
  *
  * The phases that widen it are named in ADR 0017: phase 1 drew the first eight,
- * phase 2 appended the eight below them, and lifelines come in phase 3.
+ * phase 2 appended the eight structural ones below them and then the nineteen
+ * behaviour ones below those, and lifelines come in phase 3.
  */
 export type UmlNodeKind =
   // Classifiers.
@@ -62,7 +72,33 @@ export type UmlNodeKind =
   | 'artifact'
   | 'node'
   | 'device'
-  | 'execution-environment';
+  | 'execution-environment'
+  // Activity artefacts (phase 2): the action of §15.3.4, the control nodes
+  // that route the flow between actions, the object node of §15.4.4 and the
+  // three signal/event actions of §16.3.4 and §16.10.4.
+  | 'action'
+  | 'initial'
+  | 'activity-final'
+  | 'flow-final'
+  | 'decision'
+  | 'fork'
+  | 'object-node'
+  | 'send-signal'
+  | 'accept-event'
+  | 'time-event'
+  // State machine artefacts (phase 2): the state of §14.2.4, its final state,
+  // and the pseudostates that route transitions between states. `initial` is
+  // shared with the activity family above — §14.2.4 and §15.3.4 draw the same
+  // filled disc and mean the same thing by it, one per region.
+  | 'state'
+  | 'final-state'
+  | 'choice'
+  | 'junction'
+  | 'shallow-history'
+  | 'deep-history'
+  | 'entry-point'
+  | 'exit-point'
+  | 'terminate';
 
 /**
  * A UML node. Extends {@link ShapeElementModel} (a native shape) so it inherits
