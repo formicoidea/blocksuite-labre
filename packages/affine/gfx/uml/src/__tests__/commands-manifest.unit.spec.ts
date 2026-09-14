@@ -21,7 +21,7 @@ describe('the uml command inventory', () => {
   const nominated = umlCommands.filter(c => c.surfaces.includes('senior-menu'));
   const catalogue = umlCommands.filter(c => c.surfaces.includes('catalogue'));
 
-  it('declares fifty-six commands, every one of them in the catalogue', () => {
+  it('declares fifty-nine commands, every one of them in the catalogue', () => {
     // Phase 1's twenty-one — ten artefacts (the frame, six classifiers and
     // containers, the actor, the use case, the subject), nine relationship tools
     // and the two exports — plus phase 2's structural eleven: four component
@@ -29,10 +29,14 @@ describe('the uml command inventory', () => {
     // deployment ones (the artifact and the three cubes) and three relationship
     // tools. …and its behavioural twenty-four: ten activity artefacts, nine
     // state-machine ones, the partition and region backgrounds, and the
-    // control-flow, object-flow and transition tools.
-    expect(umlCommands).toHaveLength(56);
-    expect(new Set(umlCommands.map(c => c.id)).size).toBe(56);
-    expect(catalogue).toHaveLength(56);
+    // control-flow, object-flow and transition tools. …and three IMPORTS since
+    // tranche G (`docs/adr/0019`): PlantUML, XMI 2.5.1 and draw.io, three
+    // formats and therefore three rows, because ADR 0012 declares interchange
+    // per framework × format × direction and a picker behind one button would
+    // hide the one thing that differs between them — the tier.
+    expect(umlCommands).toHaveLength(59);
+    expect(new Set(umlCommands.map(c => c.id)).size).toBe(59);
+    expect(catalogue).toHaveLength(59);
 
     for (const command of umlCommands) {
       expect(command.owner, command.id).toBe('uml');
@@ -65,18 +69,24 @@ describe('the uml command inventory', () => {
   });
 
   it('nominates exactly the fourteen of the senior row, in author order', () => {
-    // `SENIOR_MENU_CAP` nominations against a catalogue of fifty-six: UML is
+    // `SENIOR_MENU_CAP` nominations against a catalogue of fifty-nine: UML is
     // past the cap, so the arbitration RUNS and the head of this list is the
     // cold start a new user meets. The order is the one `commands.ts`
     // documents: the sheet, the classifiers, the containers, the use-case
     // shapes, the subject, then the five relationships reached for first.
+    //
+    // …and, since tranche G, one IMPORT at the end (R5, ADR 0019 §7): a board
+    // comes FROM a file and the sub-menu is the first thing a user opens on an
+    // empty canvas. `uml.addNote` is the entry that stood down for it — the
+    // trade is recorded at its declaration as the PO curation point it is —
+    // so the pool is still fourteen rather than a fifteenth nomination the
+    // budget has no room for.
     expect(nominated.map(c => c.id)).toEqual([
       'uml.addDiagram',
       'uml.addClass',
       'uml.addInterface',
       'uml.addEnumeration',
       'uml.addPackage',
-      'uml.addNote',
       'uml.addActor',
       'uml.addUseCase',
       'uml.addSubject',
@@ -85,6 +95,7 @@ describe('the uml command inventory', () => {
       'uml.dependencyTool',
       'uml.includeTool',
       'uml.extendTool',
+      'uml.importXmi',
     ]);
     // The curation budget `registry.unit.spec.ts` enforces across the library,
     // asserted here too because this is the file somebody adding a command
@@ -101,7 +112,7 @@ describe('the uml command inventory', () => {
       ordered,
       () => undefined
     );
-    // Fifty-six over fourteen: unlike C4, this framework does not fit — and
+    // Fifty-nine over fourteen: unlike C4, this framework does not fit — and
     // both halves of phase 2 declined the row whole rather than re-arguing the
     // fourteen from inside their own tranche (`commands.ts`).
     expect(overflow, 'uml no longer overflows — re-read this test').toBe(true);

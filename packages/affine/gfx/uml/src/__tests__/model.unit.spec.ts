@@ -591,3 +591,99 @@ describe('the two glyphs both behaviour sheets draw', () => {
     expect(asMachine.activities).toEqual([]);
   });
 });
+
+/* ── Which sheet a connector belongs to ───────────────────────────────── */
+
+/**
+ * The tranche-F recette's finding, as a test: a board with two frames on it
+ * must not warn about the other frame's lines.
+ *
+ * `umlModelFrom` is handed the WHOLE surface — that is its contract, and what
+ * lets one function read four sheets drawn side by side (ADR 0017) — so every
+ * connector of every diagram arrives in the same list. Before this, each sheet's
+ * export claimed the other's arrows were dangling, and a two-frame board could
+ * not be exported without two spurious warnings on every download.
+ */
+describe('a board with two diagram frames on it', () => {
+  const sheet = (id: string, x: number): UmlSourceElement => ({
+    id,
+    type: 'umlDiagram',
+    kind: 'class',
+    name: id,
+    xywh: `[${x},0,1000,800]`,
+  });
+
+  const line = (
+    id: string,
+    from: string,
+    to: string,
+    box: Box = [0, 0, 0, 0]
+  ): UmlSourceElement => ({
+    id,
+    type: 'connector',
+    role: UML_ROLE.generalization,
+    source: { id: from },
+    target: { id: to },
+    xywh: `[${box.join(',')}]`,
+  });
+
+  const left = sheet('left', 0);
+  const right = sheet('right', 2000);
+  const surface: UmlSourceElement[] = [
+    left,
+    right,
+    ...artefact('a', 'class', UML_ROLE.class, [100, 100, 200, 120], {
+      name: 'A',
+    }),
+    ...artefact('b', 'class', UML_ROLE.class, [400, 100, 200, 120], {
+      name: 'B',
+    }),
+    ...artefact('c', 'class', UML_ROLE.class, [2100, 100, 200, 120], {
+      name: 'C',
+    }),
+    ...artefact('d', 'class', UML_ROLE.class, [2400, 100, 200, 120], {
+      name: 'D',
+    }),
+    line('e1', 'a', 'b'),
+    line('e2', 'c', 'd'),
+  ];
+
+  it('reads each frame with its own lines and warns about neither', () => {
+    const first = umlModelFrom(left, surface);
+    const second = umlModelFrom(right, surface);
+
+    expect(first.classifiers.map(entry => entry.name)).toEqual(['A', 'B']);
+    expect(first.relations).toEqual([
+      { kind: 'generalization', sourceId: 'a', targetId: 'b' },
+    ]);
+    expect(first.warnings).toEqual([]);
+
+    expect(second.classifiers.map(entry => entry.name)).toEqual(['C', 'D']);
+    expect(second.relations).toEqual([
+      { kind: 'generalization', sourceId: 'c', targetId: 'd' },
+    ]);
+    expect(second.warnings).toEqual([]);
+  });
+
+  it('still warns about a line of ITS OWN that dangles', () => {
+    const dangling = [...surface, line('e3', 'a', 'c')];
+    const first = umlModelFrom(left, dangling);
+    const second = umlModelFrom(right, dangling);
+    // One end on each sheet: BOTH are owed the sentence, because each of them
+    // is drawing half of a relationship it cannot write down.
+    expect(first.warnings).toHaveLength(1);
+    expect(first.warnings[0]).toContain('not on this diagram');
+    expect(second.warnings).toHaveLength(1);
+  });
+
+  it('keeps a line attached to nothing on the sheet it was drawn on', () => {
+    // A connector whose ends resolve nowhere has only its own box to answer
+    // with, and its centre says which sheet the author drew it on.
+    const loose = [
+      ...surface,
+      line('e4', 'ghost', 'phantom', [200, 400, 100, 0]),
+    ];
+    expect(umlModelFrom(left, loose).warnings).toHaveLength(1);
+    expect(umlModelFrom(right, loose).warnings).toEqual([]);
+  });
+});

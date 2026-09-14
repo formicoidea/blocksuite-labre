@@ -8,6 +8,7 @@ import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import {
+  UML_DRAWIO_IMPORT,
   UML_INTERCHANGE,
   UML_PLANTUML_EXPORT,
   UML_XMI_EXPORT,
@@ -124,29 +125,39 @@ function mount() {
 /* ── The declaration ──────────────────────────────────────────────────── */
 
 describe('the declaration', () => {
-  it('is the triple, twice, and UML declares no import', () => {
+  it('is the triple, five times over', () => {
     const provider = mount();
 
     expect(UML_PLANTUML_EXPORT.id).toBe('uml:plantuml:export');
     expect(UML_XMI_EXPORT.id).toBe('uml:xmi:export');
+    expect(UML_DRAWIO_IMPORT.id).toBe('uml:drawio:import');
     // Sorted by id, which is what `interchangeCapabilities` promises.
-    expect(interchangeCapabilities(provider, { framework: 'uml' })).toEqual([
-      UML_PLANTUML_EXPORT,
-      UML_XMI_EXPORT,
+    expect(
+      interchangeCapabilities(provider, { framework: 'uml' }).map(
+        capability => capability.id
+      )
+    ).toEqual([
+      'uml:drawio:import',
+      'uml:plantuml:export',
+      'uml:plantuml:import',
+      'uml:xmi:export',
+      'uml:xmi:import',
     ]);
-    // Two writers shipped; nobody has written a reader. The registry says so
-    // rather than letting a caller assume the symmetry.
+    // Three readers since tranche G (`docs/adr/0019`), and one of them has no
+    // writer to pair with: writing a picture back is a re-render, which
+    // `docs/adr/0012` P2 rules out. The registry states the asymmetry rather
+    // than letting a caller assume the symmetry.
     expect(
       interchangeCapabilities(provider, {
         framework: 'uml',
-        direction: 'import',
-      })
-    ).toEqual([]);
+        direction: 'export',
+      }).map(capability => capability.format.id)
+    ).toEqual(['plantuml', 'xmi']);
   });
 
-  it('declares both formats as semantic', () => {
-    // Semantic, so the day an importer lands it owes the full preservation
-    // contract — mapped / carried / quarantined (ADR 0012, P2 and D1).
+  it('declares the two model formats semantic, and draw.io visual', () => {
+    // Semantic, so both directions owe the full preservation contract —
+    // mapped / carried / quarantined (ADR 0012, P2 and D1).
     expect(UML_PLANTUML_EXPORT.format).toEqual({
       id: 'plantuml',
       tier: 'semantic',
@@ -158,6 +169,35 @@ describe('the declaration', () => {
       extensions: ['.xmi', '.uml'],
       mime: 'application/xml',
     });
+    // VISUAL, and the label is the promise rather than modesty: an `mxCell`
+    // says `endArrow=block`, not `uml:Generalization`, so every UML fact read
+    // out of a `.drawio` is a guess made from a style string (ADR 0019 §2).
+    // `.drawio` first because it is what a picker should offer and what the
+    // application writes; the generic `.xml` last, because plenty of exports
+    // land under it and what a file IS is decided by the reader.
+    expect(UML_DRAWIO_IMPORT.format).toEqual({
+      id: 'drawio',
+      tier: 'visual',
+      extensions: ['.drawio', '.drawio.xml', '.xml'],
+      mime: 'application/xml',
+    });
+  });
+
+  it('refuses a compressed payload with a remark, and draws nothing', () => {
+    // The compressed-payload split (ADR 0019 §3): `run` is pure and
+    // synchronous, inflating is neither, so a payload that still needs
+    // `DecompressionStream` is answered with a sentence a caller can act on
+    // rather than with an empty board it cannot explain. The COMMAND decodes
+    // first (`import-command.unit.spec.ts`).
+    const { elements, report } = UML_DRAWIO_IMPORT.run(
+      '<mxfile><diagram id="x">7VhdT6MwFP…</diagram></mxfile>',
+      { name: 'squashed.drawio' }
+    );
+
+    expect(elements.filter(props => props.type !== 'umlDiagram')).toEqual([]);
+    expect(report.mapped).toBe(0);
+    expect(report.notes.map(note => note.kind)).toContain('warning');
+    expect(report.notes[0].message).toContain('compressed payload');
   });
 });
 

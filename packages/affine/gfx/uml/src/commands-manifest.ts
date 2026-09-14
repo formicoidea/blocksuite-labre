@@ -466,4 +466,28 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
   },
+  {
+    id: 'uml.importXmi',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.importXmi',
+    labelFallback: 'Import XMI',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.importPlantuml',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.importPlantuml',
+    labelFallback: 'Import PlantUML',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.importDrawio',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.importDrawio',
+    labelFallback: 'Import draw.io drawing',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
 ];

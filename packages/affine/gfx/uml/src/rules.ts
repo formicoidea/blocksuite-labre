@@ -177,6 +177,28 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  *   phase-3 refinement rather than a limit of the engine — the family already
  *   expresses it — and until it lands the rule is `audit` in both profiles for
  *   that reason as much as for any other.
+ *
+ * ## Two things a HOST reading these findings has to know
+ *
+ * Both came out of the tranche-F recette, both are engine behaviour rather than
+ * anything this file declares, and both make a check-up look wrong to somebody
+ * who does not know them.
+ *
+ * - **a membership finding is attributed to the LANE, not to the sheet.**
+ *   `uml.node-in-partition` and the `*-history-outside-region` pair are
+ *   `element-in-background` rules whose SUBJECT is the band or the composite
+ *   state — that is what "inside" is measured against — so the finding is filed
+ *   under the `uml:partition` or the `uml:region` it is about. A check-up run on
+ *   the FRAME alone therefore shows none of them, and a host that offers "check
+ *   this diagram" by selecting the `umlDiagram` has to include the backgrounds
+ *   drawn on it, or it will report a clean sheet over an action drawn between
+ *   two lanes.
+ * - **a strict profile MOVES a finding, it does not add one.** Promoting a rule
+ *   past `audit` takes it out of the check-up's own list and into the live
+ *   `violations$` path, by the engine's design. So switching `uml.sketch` for
+ *   `uml.strict` makes a check-up report FEWER rows, not more, and the rows that
+ *   left are the ones now drawn on the canvas. A host presenting the two counts
+ *   side by side has to say which is which.
  */
 
 /* ── The alphabets and the grammars ─────────────────────────────────────── */

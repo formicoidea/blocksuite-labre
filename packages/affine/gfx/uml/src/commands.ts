@@ -11,11 +11,17 @@ import {
   createUmlSubject,
   exportUmlPlantumlFile,
   exportUmlXmiFile,
+  importUmlDrawioFile,
+  importUmlPlantumlFile,
+  importUmlXmiFile,
   umlDiagramsForExport,
 } from './actions.js';
 import {
   umlExportPlantumlIcon,
   umlExportXmiIcon,
+  umlImportDrawioIcon,
+  umlImportPlantumlIcon,
+  umlImportXmiIcon,
   UML_TOOLBOX_ICONS,
 } from './toolbar/icons.js';
 
@@ -164,7 +170,20 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:note',
-    senior: true,
+    senior: false,
+    // ponytail: DEMOTED from the nominated fourteen to make room for
+    // `uml.importXmi` (tranche G, `docs/adr/0019`). The budget is fourteen plus
+    // the single over-nomination the PO authorized on 2026-08-28, which BPMN
+    // has spent, so a fifteenth UML nomination would break
+    // `registry.unit.spec.ts` — and an import is the one entry a user wants on
+    // an EMPTY board, which is exactly when the sub-menu is open (the same
+    // ruling that put `bpmn.importXml` in its row). The note is still one click
+    // away behind "More artefacts…".
+    //
+    // Which of the fourteen an import ought to displace is a PO curation point
+    // with usage data behind it, not a tranche's to settle: the note was picked
+    // because it is the only nominated artefact that annotates a diagram rather
+    // than being part of one. Revisit with the phase-2 recette.
     run: std => createUmlNode(std, 'note'),
   },
   /* ── The two shapes a USE-CASE diagram is made of, and their frame ───── */
@@ -789,13 +808,117 @@ const exportCommands: CommandDescriptor[] = [
   },
 ];
 
+/**
+ * The three IMPORTS — where a UML board comes FROM (`docs/adr/0019`).
+ *
+ * ## Three rows, because the unit of declaration is the triple
+ *
+ * ADR 0012 declares interchange per framework × format × direction, so three
+ * formats are three commands and never one command with a format picker. They
+ * are also three different PROMISES, and the promise is made by each command's
+ * own label and description before the picker opens (P2): PlantUML and XMI
+ * carry a MODEL and take the whole preservation contract; draw.io carries a
+ * DRAWING, and every UML fact read out of it is a guess made from a style
+ * string. A picker with three entries behind one button would hide exactly that
+ * difference at exactly the moment it matters.
+ *
+ * ## One nomination, and it cost the note its seat
+ *
+ * R5 puts an import in the senior sub-menu — the same ruling of 2026-08-28 that
+ * nominated `bpmn.importXml`: a board comes from a file, and the sub-menu is
+ * the first thing a user opens on an empty canvas. The budget is
+ * `SENIOR_MENU_CAP` nominations plus the single over-nomination the PO
+ * authorized that day, which BPMN has spent — so UML's fifteenth nomination
+ * would break `registry.unit.spec.ts` rather than merely crowd the row.
+ *
+ * So exactly ONE of the three takes the seat, and it is XMI: it is the OMG's
+ * own interchange format, it is the one every modelling tool writes, and it is
+ * the one that re-imports what this pack exports. The other two sit one click
+ * away in the catalogue behind "More artefacts…". `uml.addNote` is the entry
+ * that stood down for it, with the reasoning recorded at its declaration — a
+ * PO curation point, flagged there rather than settled here.
+ */
+const importCommands: CommandDescriptor[] = [
+  {
+    id: 'uml.importXmi',
+    owner: 'uml',
+    kind: 'action',
+    labelKey: 'com.labre.commands.uml.importXmi',
+    labelFallback: 'Import XMI',
+    descriptionKey: 'com.labre.commands.uml.importXmi.description',
+    descriptionFallback:
+      'Open an XMI 2.5.1 model as a diagram. What Labre cannot draw is kept in the document, and the import says what it was.',
+    category: 'diagrams',
+    iconKey: 'uml.import-xmi',
+    // The one nominated import — see the header. Not the contextual toolbar: a
+    // contextual toolbar is a statement about a SELECTION, and the moment this
+    // is most wanted is on a board with nothing on it.
+    surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
+    order: SPECS.length + 2,
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+    // An import WRITES, so a read-only document is one it cannot run on and the
+    // declaration says so. `'always'` would light the entry on a read-only
+    // board, do nothing when clicked, and put the same untruth into the
+    // serializable manifest a host reads. Nothing has to be SELECTED — which is
+    // the mirror image of the exports beside it — so there is no `when`.
+    availability: 'editable',
+    run: importUmlXmiFile,
+    // `board:` and not `diagram:`: an export names the frame whose toolbar
+    // launched it, and an import is launched with no frame anywhere.
+    telemetry: { framework: 'uml', element: 'board:import-xmi' },
+  },
+  {
+    id: 'uml.importPlantuml',
+    owner: 'uml',
+    kind: 'action',
+    labelKey: 'com.labre.commands.uml.importPlantuml',
+    labelFallback: 'Import PlantUML',
+    descriptionKey: 'com.labre.commands.uml.importPlantuml.description',
+    descriptionFallback:
+      'Open a PlantUML source as a diagram. Lines Labre cannot read are kept in the document, and the import says which.',
+    category: 'diagrams',
+    iconKey: 'uml.import-plantuml',
+    surfaces: ['catalogue', 'palette', 'agent'],
+    order: SPECS.length + 3,
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+    availability: 'editable',
+    run: importUmlPlantumlFile,
+    telemetry: { framework: 'uml', element: 'board:import-plantuml' },
+  },
+  {
+    id: 'uml.importDrawio',
+    owner: 'uml',
+    kind: 'action',
+    labelKey: 'com.labre.commands.uml.importDrawio',
+    labelFallback: 'Import draw.io drawing',
+    descriptionKey: 'com.labre.commands.uml.importDrawio.description',
+    descriptionFallback:
+      'Recognise a draw.io drawing as UML, best effort: the shapes and arrows it understands become a diagram, and it says what it could not read.',
+    category: 'diagrams',
+    iconKey: 'uml.import-drawio',
+    surfaces: ['catalogue', 'palette', 'agent'],
+    order: SPECS.length + 4,
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+    availability: 'editable',
+    run: importUmlDrawioFile,
+    telemetry: { framework: 'uml', element: 'board:import-drawio' },
+  },
+];
+
 export const umlCommands: CommandDescriptor[] = [
   ...toolboxCommands,
   ...exportCommands,
+  ...importCommands,
 ];
 
 export const umlCommandIcons: Record<string, TemplateResult> = {
   ...UML_TOOLBOX_ICONS,
   'uml.export-plantuml': umlExportPlantumlIcon,
   'uml.export-xmi': umlExportXmiIcon,
+  'uml.import-plantuml': umlImportPlantumlIcon,
+  'uml.import-xmi': umlImportXmiIcon,
+  'uml.import-drawio': umlImportDrawioIcon,
 };

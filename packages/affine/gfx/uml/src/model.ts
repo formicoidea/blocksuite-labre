@@ -798,6 +798,13 @@ const UML_SHARED_BEHAVIOUR_KINDS = new Set<string>(['initial', 'fork']);
  * `docs/adr/0010` is explicit that the role IS the statement, so a bare
  * connector relates nothing — but a user who drew a line between two classes
  * and gets a file without it is owed the sentence.
+ *
+ * Neither is said about a connector that is not this sheet's. A line belongs to
+ * this diagram when at least one of its ends resolves to an artefact of it, or —
+ * for a line attached to nothing — when its own centre is inside the sheet.
+ * Anything else is another frame's drawing, and warning about it would mean
+ * every export of a two-frame board complaining about lines that are perfectly
+ * drawn next door.
  */
 export function umlModelFrom(
   diagram: UmlSourceElement,
@@ -1178,6 +1185,25 @@ export function umlModelFrom(
     const to = connector.target?.id;
     const source = from ? artefactOf.get(from) : undefined;
     const target = to ? artefactOf.get(to) : undefined;
+
+    // ── Is this line on THIS sheet at all? ───────────────────────────────
+    //
+    // The element list is the whole surface, not one frame's worth of it, so
+    // every connector of every diagram arrives here. A connector has no centre
+    // of its own until the router has run — its bound is derived from the path
+    // between its two ends, and a freshly loaded document answers `[0,0,0,0]` —
+    // so the reading that decides membership is its ENDS: a line belongs to this
+    // sheet when at least one of them resolves to an artefact of it. Only where
+    // neither does is the connector's own box asked, which catches the one case
+    // the ends cannot — a line the author drew on this sheet and attached to
+    // nothing.
+    //
+    // Without this test a board with two frames warned twice on every export
+    // about connectors that are perfectly drawn on the OTHER sheet (the
+    // tranche-F recette's finding): the ends resolved on neither diagram's
+    // `artefactOf`, so each export claimed the other's lines were dangling.
+    if (!source && !target && !onSheet(connector)) continue;
+
     const kind = connector.role
       ? RELATION_OF_ROLE.get(connector.role)
       : undefined;

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="BlockSuite Playground">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Diagram">
+    <packagedElement xmi:type="uml:Class" xmi:id="_3" name="Class">
+      <ownedAttribute xmi:type="uml:Property" xmi:id="_8" name="attribute" visibility="public">
+        <type xmi:idref="_7"/>
+      </ownedAttribute>
+      <ownedOperation xmi:type="uml:Operation" xmi:id="_10" name="operation" visibility="public">
+        <ownedParameter xmi:type="uml:Parameter" xmi:id="_9" direction="return">
+          <type xmi:idref="_7"/>
+        </ownedParameter>
+      </ownedOperation>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Actor" xmi:id="_4" name="Actor"/>
+    <packagedElement xmi:type="uml:Component" xmi:id="_6" name="Subject">
+      <ownedUseCase xmi:type="uml:UseCase" xmi:id="_5" name="Use case"/>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="class"/>
+    </xmi:Extension>
+  </packagedElement>
+  <packagedElement xmi:type="uml:DataType" xmi:id="_7" name="Type"/>
+</uml:Model>
