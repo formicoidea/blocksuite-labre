@@ -15,17 +15,26 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * so a sheet whose `uml` flag is off keeps every element it has and simply stops
  * being read (ADR 0009).
  *
- * ## EIGHT profiles, one per artefact, because the roles are deliberately flat
+ * ## SIXTEEN profiles, one per artefact, because the roles are deliberately flat
  *
- * There is one chain in the node vocabulary — `uml:classifier` over class,
- * interface and enumeration — and a single profile written on the parent would
- * read all three. It is not used, and the reason is the panel rather than the
- * vocabulary: a profile's `id` is what the DI keys on and what a user sees the
- * reading OF, and "Classifier" is a word the specification uses and an architect
- * does not. Three profiles differing by `id` and `appliesTo` cost three lines
- * and let the panel say "Interface" about an interface.
+ * There are two chains in the node vocabulary — `uml:classifier` over class,
+ * interface and enumeration, and (since phase 2) `uml:node` over device and
+ * execution environment — and a single profile written on either parent would
+ * read its children through `roleIsA`. Neither shortcut is taken, and the reason
+ * is the panel rather than the vocabulary: a profile's `id` is what the DI keys
+ * on and what a user sees the reading OF, and "Classifier" is a word the
+ * specification uses and an architect does not, while "Node" is a word that
+ * would make the panel call a database server something vaguer than the picture
+ * already says. Profiles differing by `id` and `appliesTo` cost three lines each
+ * and let the panel say "Device" about a device.
  *
- * The other five roles are flat by construction (`roles.ts` argues each one), so
+ * `uml:node` is NOT in that argument's exception list, though: unlike
+ * `uml:classifier` it is a role elements really carry — `uml.addNode` draws one
+ * — so it has a profile of its own rather than an entry in
+ * `reading-coverage.unit.spec.ts`'s unread list. A parent that is also a
+ * concrete kind is read as that kind.
+ *
+ * The remaining roles are flat by construction (`roles.ts` argues each one), so
  * they get a profile each with nothing to decide.
  *
  * The two FRAMES are not read: `uml:diagram` is the sheet and `uml:subject` is a
@@ -41,25 +50,36 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * it the panel would print an id at a human, and the relation lines would name
  * the other end by id too.
  *
- * `uml:name` for everything with a name COMPARTMENT, `uml:label` for the two
- * artefacts that have no compartment to have one in — see `roles.ts` on why the
- * tier is named twice.
+ * `uml:name` for everything whose words a keyword may be written over — the
+ * compartmented kinds, the package, the note and the three deployment cubes —
+ * and `uml:label` for the artefacts whose one word is a name and nothing else:
+ * the actor, the use case, the port and the two interface marks. See `roles.ts`
+ * on why the tier is named twice.
+ *
+ * The split has a second consequence worth stating, because it is the engine's
+ * and not this file's: `readElement` names the OTHER end of a relation through
+ * the SAME profile's `labelRole`, so a reading only names its neighbour when the
+ * two agree on a tier. That is why `uml-artifact` and `uml-node` are both
+ * `uml:name` — they read one another through {@link DEPLOY}, and a deployment
+ * that printed an id at the far end would be a panel that answered "where does
+ * this run" with a nanoid.
  *
  * ## One relation per profile, and which one
  *
- * `ReadingProfile.relation` declares ONE typed edge, and UML has nine. The
+ * `ReadingProfile.relation` declares ONE typed edge, and UML has twelve. The
  * choice below is the relation an architect reads that artefact THROUGH, and
  * `roleIsA` does the rest where a chain exists: a profile declaring
  * `uml:association` reads aggregations and compositions too, because the
  * specification makes them associations (§11.5.4).
  *
  * What that leaves unread is stated rather than hidden: a class's
- * generalizations, realizations and dependencies do not appear in its reading,
- * and a use case's `include`/`extend` do not appear in its own. They are on the
- * canvas, they are typed, they are exported and the direction reveal shows them
- * — the panel simply reads one relation at a time, and the association is the
- * one that says who a classifier is connected to at all. Widening this is a
- * change to the engine's contract, not to this file.
+ * generalizations, realizations and dependencies do not appear in its reading, a
+ * use case's `include`/`extend` do not appear in its own, and a node's
+ * communication paths and an artifact's manifestations do not appear in theirs.
+ * They are on the canvas, they are typed, they are exported and the direction
+ * reveal shows them — the panel simply reads one relation at a time, and the
+ * choice each time is the relation that answers "what is this connected to"
+ * first. Widening this is a change to the engine's contract, not to this file.
  *
  * ## No nature, no phase
  *
@@ -131,7 +151,30 @@ const ANCHOR = {
   },
 } as const;
 
-/** One artefact, as a profile. The eight below differ by four fields at most. */
+/**
+ * A DEPLOYMENT (§19.2.4) — the dashed arrow that says where a file runs.
+ *
+ * Directed, and the wording is asymmetric because the two ends are different
+ * KINDS of thing rather than two peers: the source is an artifact (`.war`,
+ * script, image) and the target is a node. So an artifact reads "Deployed on:
+ * AppServer" and the server reads "Hosts: orders.war" — one table, two sentences,
+ * and each is the one its side of the arrow actually wants.
+ */
+const DEPLOY = {
+  edgeRole: UML_ROLE.deploy,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.hosts',
+      labelFallback: 'Hosts',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.deployedOn',
+      labelFallback: 'Deployed on',
+    },
+  },
+} as const;
+
+/** One artefact, as a profile. The sixteen below differ by four fields at most. */
 const profile = (
   id: string,
   appliesTo: string,
@@ -198,6 +241,82 @@ export const UML_USE_CASE_READING = profile(
   ASSOCIATION
 );
 
+/* ── Phase 2: components (§11.6.4, §11.3.4, §10.4.4) ───────────────────── */
+
+/**
+ * A component is read through its DEPENDENCIES, like the package it is often
+ * mistaken for: §11.6.4 wires a component diagram with `«use»` arrows to the
+ * interfaces its neighbours provide, and "what does this need, and who needs it"
+ * is the question the diagram exists to answer.
+ */
+export const UML_COMPONENT_READING = profile(
+  'uml-component',
+  UML_ROLE.component,
+  UML_ROLE.name,
+  DEPENDENCY
+);
+/**
+ * A port is read through the plain connectors drawn from it (§11.3.4): an
+ * assembly or a delegation is an undecorated line, which is to say an
+ * association, and it is the only relation a port ever carries.
+ */
+export const UML_PORT_READING = profile(
+  'uml-port',
+  UML_ROLE.port,
+  UML_ROLE.label,
+  ASSOCIATION
+);
+/** The ball of §10.4.4, read through the assembly line that joins it to a socket. */
+export const UML_PROVIDED_INTERFACE_READING = profile(
+  'uml-provided-interface',
+  UML_ROLE['provided-interface'],
+  UML_ROLE.label,
+  ASSOCIATION
+);
+/** The socket, read through the same line from the other side. */
+export const UML_REQUIRED_INTERFACE_READING = profile(
+  'uml-required-interface',
+  UML_ROLE['required-interface'],
+  UML_ROLE.label,
+  ASSOCIATION
+);
+
+/* ── Phase 2: deployment (§19.2.4, §19.3.4, §19.4.4) ───────────────────── */
+
+/**
+ * An artifact is read through WHERE IT RUNS. Its other relation — the
+ * `«manifest»` arrow to the component it is the physical form of — is the
+ * modelling fact; the deployment is the operational one, and an architect
+ * opening this panel on a `.war` file is asking which server it is on.
+ */
+export const UML_ARTIFACT_READING = profile(
+  'uml-artifact',
+  UML_ROLE.artifact,
+  UML_ROLE.name,
+  DEPLOY
+);
+/** A node is read through WHAT RUNS ON IT — the same table, from the other end. */
+export const UML_NODE_READING = profile(
+  'uml-node',
+  UML_ROLE.node,
+  UML_ROLE.name,
+  DEPLOY
+);
+/** A device: a node that is hardware (§19.4.4), and read as one. */
+export const UML_DEVICE_READING = profile(
+  'uml-device',
+  UML_ROLE.device,
+  UML_ROLE.name,
+  DEPLOY
+);
+/** An execution environment: a node that is software, and read as one. */
+export const UML_EXECUTION_ENVIRONMENT_READING = profile(
+  'uml-execution-environment',
+  UML_ROLE['execution-environment'],
+  UML_ROLE.name,
+  DEPLOY
+);
+
 /** Every UML profile, in the order the view extension registers them. */
 export const UML_READINGS: readonly ReadingProfile[] = [
   UML_CLASS_READING,
@@ -208,4 +327,18 @@ export const UML_READINGS: readonly ReadingProfile[] = [
   UML_NOTE_READING,
   UML_ACTOR_READING,
   UML_USE_CASE_READING,
+  UML_COMPONENT_READING,
+  UML_PORT_READING,
+  UML_PROVIDED_INTERFACE_READING,
+  UML_REQUIRED_INTERFACE_READING,
+  UML_ARTIFACT_READING,
+  // The two SPECIALISATIONS before their parent, and the order is load-bearing:
+  // `readingProfileFor` takes the FIRST profile whose `appliesTo` the element's
+  // role IS A, and `uml:device` is a `uml:node`. With the parent listed first
+  // every device would be read as a node and `uml-device` would never fire —
+  // the one place in this pack where declaration order changes an answer, which
+  // is why `reading.unit.spec.ts` pins it.
+  UML_DEVICE_READING,
+  UML_EXECUTION_ENVIRONMENT_READING,
+  UML_NODE_READING,
 ];

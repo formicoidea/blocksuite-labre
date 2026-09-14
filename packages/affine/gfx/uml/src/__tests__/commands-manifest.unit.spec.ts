@@ -21,12 +21,15 @@ describe('the uml command inventory', () => {
   const nominated = umlCommands.filter(c => c.surfaces.includes('senior-menu'));
   const catalogue = umlCommands.filter(c => c.surfaces.includes('catalogue'));
 
-  it('declares twenty-one commands, every one of them in the catalogue', () => {
-    // Ten artefacts (the frame, six classifiers and containers, the actor, the
-    // use case, the subject), nine relationship tools, and the two exports.
-    expect(umlCommands).toHaveLength(21);
-    expect(new Set(umlCommands.map(c => c.id)).size).toBe(21);
-    expect(catalogue).toHaveLength(21);
+  it('declares thirty-two commands, every one of them in the catalogue', () => {
+    // Phase 1's twenty-one — ten artefacts (the frame, six classifiers and
+    // containers, the actor, the use case, the subject), nine relationship tools
+    // and the two exports — plus phase 2's eleven: four component artefacts (the
+    // component, the port, the ball and the socket), four deployment ones (the
+    // artifact and the three cubes) and three relationship tools.
+    expect(umlCommands).toHaveLength(32);
+    expect(new Set(umlCommands.map(c => c.id)).size).toBe(32);
+    expect(catalogue).toHaveLength(32);
 
     for (const command of umlCommands) {
       expect(command.owner, command.id).toBe('uml');
@@ -59,7 +62,7 @@ describe('the uml command inventory', () => {
   });
 
   it('nominates exactly the fourteen of the senior row, in author order', () => {
-    // `SENIOR_MENU_CAP` nominations against a catalogue of twenty-one: UML is
+    // `SENIOR_MENU_CAP` nominations against a catalogue of thirty-two: UML is
     // past the cap, so the arbitration RUNS and the head of this list is the
     // cold start a new user meets. The order is the one `commands.ts`
     // documents: the sheet, the classifiers, the containers, the use-case
@@ -95,7 +98,9 @@ describe('the uml command inventory', () => {
       ordered,
       () => undefined
     );
-    // Twenty-one over fourteen: unlike C4, this framework does not fit.
+    // Thirty-two over fourteen: unlike C4, this framework does not fit — and
+    // phase 2 declined the row whole rather than re-arguing the fourteen from
+    // inside its own tranche (`commands.ts`).
     expect(overflow, 'uml no longer overflows — re-read this test').toBe(true);
     // Thirteen arbitrated seats plus the permanent "More artefacts…" button.
     expect(commands.length + 1).toBe(SENIOR_MENU_CAP);

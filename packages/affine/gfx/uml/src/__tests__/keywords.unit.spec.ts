@@ -72,6 +72,14 @@ describe('the seeds', () => {
     'note',
     'actor',
     'use-case',
+    'component',
+    'port',
+    'provided-interface',
+    'required-interface',
+    'artifact',
+    'node',
+    'device',
+    'execution-environment',
   ];
 
   it('names every kind', () => {

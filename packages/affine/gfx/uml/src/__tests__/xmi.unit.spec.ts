@@ -5,8 +5,10 @@ import { parseOperation, parseProperty } from '../grammar';
 import { stereotypesOf } from '../keywords';
 import type {
   UmlClassifier,
+  UmlComponentNode,
   UmlModel,
   UmlNodeBase,
+  UmlPort,
   UmlRelation,
   UmlRelationKind,
 } from '../model';
@@ -108,6 +110,10 @@ function emptyModel(
     useCases: [],
     subjects: [],
     notes: [],
+    components: [],
+    ports: [],
+    artifacts: [],
+    nodes: [],
     relations: [],
     warnings: [],
   };
@@ -175,6 +181,63 @@ function useCaseDiagram(): UmlModel {
       relation('include', 'u1', 'u2'),
       relation('extend', 'u3', 'u1'),
       relation('association', 'a2', 'u1'),
+    ],
+  };
+}
+
+/**
+ * A component diagram: two components, one with a port and both kinds of
+ * interface, and the artefact that manifests one of them (§11.6.4, §19.3.4).
+ */
+function componentDiagram(): UmlModel {
+  const port: UmlPort = { ...node('p1', 'http'), ownerId: 'k1' };
+  const cart: UmlComponentNode = {
+    ...node('k1', '«component»\nCart'),
+    ports: [port],
+    provided: ['IOrder'],
+    required: ['IPayment'],
+  };
+  const catalogue: UmlComponentNode = {
+    ...node('k2', '«component»\nCatalogue'),
+    ports: [],
+    // The SAME name as `cart` provides, deliberately: two lollipops are two
+    // Interfaces, each declared by the component that draws it.
+    provided: ['IOrder'],
+    required: [],
+  };
+  return {
+    ...emptyModel('d3', 'cmp', 'Storefront components'),
+    components: [cart, catalogue],
+    ports: [port],
+    artifacts: [node('f1', '«artifact»\ncart.jar')],
+    relations: [
+      relation('manifest', 'f1', 'k1'),
+      relation('dependency', 'k1', 'k2'),
+    ],
+  };
+}
+
+/**
+ * A deployment diagram: a device holding an execution environment, a second
+ * device, an artefact deployed on the first, and the path between them.
+ */
+function deploymentDiagram(): UmlModel {
+  return {
+    ...emptyModel('d4', 'dep', 'Production'),
+    artifacts: [node('f1', '«artifact»\ncart.jar')],
+    nodes: [
+      { ...node('n1', '«device»\nAppServer'), kind: 'device' },
+      {
+        ...node('n2', '«executionEnvironment»\nTomcat'),
+        kind: 'execution-environment',
+      },
+      // A keyword the metamodel has NO slot for, unlike the three above: it
+      // rides in the tool extension rather than being dropped.
+      { ...node('n3', '«legacy»\nDBServer'), kind: 'node' },
+    ],
+    relations: [
+      relation('deploy', 'f1', 'n1'),
+      relation('communication-path', 'n1', 'n3', 'LAN'),
     ],
   };
 }
@@ -321,6 +384,13 @@ const REFERENCE_ATTRS = [
   'addition',
   'extendedCase',
   'classifier',
+  // The structural references (§19.2.2, §19.3.2). `utilizedElement` subsets
+  // `supplier` and `deployedArtifact` does too, `location` subsets `client`:
+  // each is the specific name its metaclass gives an end the general Dependency
+  // already names, and a dangling one is the same silent, partial import.
+  'utilizedElement',
+  'deployedArtifact',
+  'location',
 ];
 
 /** Attributes that hold a SPACE-SEPARATED list of ids. */
@@ -672,6 +742,235 @@ describe('an object diagram', () => {
     expect(slot.querySelector('feature')!.getAttribute('name')).toBe(
       'quantity'
     );
+  });
+});
+
+/* ── The structural sheets (§11.6, §19.3, §19.4) ──────────────────────── */
+
+/**
+ * The second golden, and the one that pins the three decisions a reviewer would
+ * otherwise have to reconstruct from the writer: a lollipop is MINTED as an
+ * interface owned by the component that draws it, a ball is an
+ * `interfaceRealization` and a socket a `uml:Usage`, and a port is an
+ * `ownedAttribute` rather than anything of its own.
+ */
+const COMPONENT_GOLDEN = `<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="Storefront">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Storefront components">
+    <packagedElement xmi:type="uml:Component" xmi:id="_3" name="Cart">
+      <ownedAttribute xmi:type="uml:Port" xmi:id="_4" name="http"/>
+      <packagedElement xmi:type="uml:Interface" xmi:id="_7" name="IOrder"/>
+      <interfaceRealization xmi:type="uml:InterfaceRealization" xmi:id="_8" client="_3" supplier="_7" contract="_7"/>
+      <packagedElement xmi:type="uml:Interface" xmi:id="_9" name="IPayment"/>
+      <packagedElement xmi:type="uml:Usage" xmi:id="_10" client="_3" supplier="_9"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Component" xmi:id="_5" name="Catalogue">
+      <packagedElement xmi:type="uml:Interface" xmi:id="_11" name="IOrder"/>
+      <interfaceRealization xmi:type="uml:InterfaceRealization" xmi:id="_12" client="_5" supplier="_11" contract="_11"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Artifact" xmi:id="_6" name="cart.jar">
+      <manifestation xmi:type="uml:Manifestation" xmi:id="_13" client="_6" supplier="_3" utilizedElement="_3"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Dependency" xmi:id="_14" client="_3" supplier="_5"/>
+    <xmi:Extension extender="labre">
+      <diagram kind="cmp"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>
+`;
+
+/** The third: the three cubes, a deployment, and §19.4.3's association. */
+const DEPLOYMENT_GOLDEN = `<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="Production">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Production">
+    <packagedElement xmi:type="uml:Artifact" xmi:id="_3" name="cart.jar"/>
+    <packagedElement xmi:type="uml:Device" xmi:id="_4" name="AppServer">
+      <deployment xmi:type="uml:Deployment" xmi:id="_7" client="_4" supplier="_3" location="_4" deployedArtifact="_3"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:ExecutionEnvironment" xmi:id="_5" name="Tomcat"/>
+    <packagedElement xmi:type="uml:Node" xmi:id="_6" name="DBServer">
+      <xmi:Extension extender="labre">
+        <keyword name="legacy"/>
+      </xmi:Extension>
+    </packagedElement>
+    <packagedElement xmi:type="uml:CommunicationPath" xmi:id="_8" name="LAN" memberEnd="_9 _10">
+      <ownedEnd xmi:type="uml:Property" xmi:id="_9" association="_8">
+        <type xmi:idref="_4"/>
+      </ownedEnd>
+      <ownedEnd xmi:type="uml:Property" xmi:id="_10" association="_8">
+        <type xmi:idref="_6"/>
+      </ownedEnd>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="dep"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>
+`;
+
+describe('a component diagram', () => {
+  const xml = exportXmi([componentDiagram()], { name: 'Storefront' });
+  const document = parsed(xml);
+
+  it('is the golden document, byte for byte', () => {
+    expect(xml).toBe(COMPONENT_GOLDEN);
+  });
+
+  it('parses, and has no dangling reference', () => {
+    expect(danglingReferences(document)).toEqual([]);
+  });
+
+  it('writes a port as an ownedAttribute of its component', () => {
+    // §11.3.2 makes a Port a Property of the EncapsulatedClassifier, so it has
+    // nowhere else to live — and a writer that made it a packagedElement would
+    // produce a port every importer shows loose in the namespace.
+    const port = document.querySelector('ownedAttribute[name="http"]')!;
+    expect(port.getAttribute('xmi:type')).toBe('uml:Port');
+    expect(port.parentElement!.getAttribute('name')).toBe('Cart');
+  });
+
+  it('writes a lollipop as a realization and a socket as a Usage', () => {
+    // §10.4.4 in as many words: the ball IS an InterfaceRealization dependency
+    // and the socket IS a Usage. Two metaclasses, not one relationship drawn two
+    // ways — collapsing them would lose the direction of every dependency.
+    const cart = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('name') === 'Cart'
+    )!;
+    const realization = cart.querySelector('interfaceRealization')!;
+    const provided = [...cart.children].find(
+      node => node.getAttribute('name') === 'IOrder'
+    )!;
+    expect(provided.getAttribute('xmi:type')).toBe('uml:Interface');
+    expect(realization.getAttribute('contract')).toBe(
+      provided.getAttribute('xmi:id')
+    );
+    expect(realization.getAttribute('client')).toBe(
+      cart.getAttribute('xmi:id')
+    );
+
+    const usage = [...cart.children].find(
+      node => node.getAttribute('xmi:type') === 'uml:Usage'
+    )!;
+    const required = [...cart.children].find(
+      node => node.getAttribute('name') === 'IPayment'
+    )!;
+    expect(usage.getAttribute('supplier')).toBe(
+      required.getAttribute('xmi:id')
+    );
+  });
+
+  it('mints one Interface per lollipop, not one per NAME', () => {
+    // Two components drawing a ball called `IOrder` is two contracts each
+    // declares for itself: a shared interface is drawn ONCE, as a rectangle both
+    // are wired to (§11.6.4's other notation), and merging them here would put a
+    // statement in the file that nobody drew.
+    const interfaces = [...document.querySelectorAll('packagedElement')].filter(
+      node =>
+        node.getAttribute('xmi:type') === 'uml:Interface' &&
+        node.getAttribute('name') === 'IOrder'
+    );
+    expect(interfaces).toHaveLength(2);
+    expect(interfaces[0].parentElement!.getAttribute('name')).toBe('Cart');
+    expect(interfaces[1].parentElement!.getAttribute('name')).toBe('Catalogue');
+  });
+
+  it('owns the manifestation on the artefact that does the manifesting', () => {
+    // §19.3.2: `Artifact::manifestation` subsets `ownedElement`.
+    const artifact = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('xmi:type') === 'uml:Artifact'
+    )!;
+    expect(artifact.getAttribute('name')).toBe('cart.jar');
+    const manifestation = artifact.querySelector('manifestation')!;
+    const cart = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('name') === 'Cart'
+    )!;
+    expect(manifestation.getAttribute('utilizedElement')).toBe(
+      cart.getAttribute('xmi:id')
+    );
+    // …and `supplier` says the same thing in the general Dependency's own
+    // vocabulary, so a reader of either finds the far end.
+    expect(manifestation.getAttribute('supplier')).toBe(
+      cart.getAttribute('xmi:id')
+    );
+  });
+
+  it('does not restate the metaclass as a keyword extension', () => {
+    // `«component»` on the box IS the `uml:Component` beside it, so carrying it
+    // into the tool extension would file a note whose only content is the
+    // element's own type.
+    expect(xml).not.toContain('<keyword name="component"/>');
+    expect(xml).not.toContain('<keyword name="artifact"/>');
+  });
+});
+
+describe('a deployment diagram', () => {
+  const xml = exportXmi([deploymentDiagram()], { name: 'Production' });
+  const document = parsed(xml);
+
+  it('is the golden document, byte for byte', () => {
+    expect(xml).toBe(DEPLOYMENT_GOLDEN);
+  });
+
+  it('parses, and has no dangling reference', () => {
+    expect(danglingReferences(document)).toEqual([]);
+  });
+
+  it('gives each cube the metaclass its keyword states', () => {
+    // §19.4.4 draws all three as the same cube: the keyword is the whole of the
+    // difference, and in the file the difference is the `xmi:type`.
+    const typeOf = (name: string) =>
+      [...document.querySelectorAll('packagedElement')]
+        .find(node => node.getAttribute('name') === name)!
+        .getAttribute('xmi:type');
+    expect(typeOf('AppServer')).toBe('uml:Device');
+    expect(typeOf('Tomcat')).toBe('uml:ExecutionEnvironment');
+    expect(typeOf('DBServer')).toBe('uml:Node');
+  });
+
+  it('owns the deployment on the cube the artefact lands on', () => {
+    // §19.2.2: `Deployment::location` subsets `client` AND `owner`, so the
+    // element is a child of the target and names it back.
+    const server = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('name') === 'AppServer'
+    )!;
+    const artifact = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('xmi:type') === 'uml:Artifact'
+    )!;
+    const deployment = server.querySelector('deployment')!;
+    expect(deployment.getAttribute('deployedArtifact')).toBe(
+      artifact.getAttribute('xmi:id')
+    );
+    expect(deployment.getAttribute('location')).toBe(
+      server.getAttribute('xmi:id')
+    );
+  });
+
+  it('writes a communication path as the association §19.4.3 says it is', () => {
+    const path = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('xmi:type') === 'uml:CommunicationPath'
+    )!;
+    expect(path.getAttribute('name')).toBe('LAN');
+    // Both ends owned by the path itself, exactly as a plain association's are:
+    // a canvas connector states no navigable attribute on either classifier.
+    const ends = [...path.querySelectorAll('ownedEnd')];
+    expect(ends).toHaveLength(2);
+    expect(path.getAttribute('memberEnd')).toBe(
+      ends.map(end => end.getAttribute('xmi:id')).join(' ')
+    );
+  });
+
+  it('keeps a keyword the metamodel has no slot for', () => {
+    // `«device»` is the `uml:Device` beside it and is not restated; `«legacy»`
+    // is an Annex C label the author wrote and the metamodel has nowhere to put,
+    // so it rides in the extension XMI provides for exactly that.
+    const server = [...document.querySelectorAll('packagedElement')].find(
+      node => node.getAttribute('xmi:type') === 'uml:Node'
+    )!;
+    expect(server.getAttribute('name')).toBe('DBServer');
+    expect(server.querySelector('keyword')!.getAttribute('name')).toBe(
+      'legacy'
+    );
+    expect(xml).not.toContain('<keyword name="device"/>');
   });
 });
 

@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   UML_ACTOR_READING,
+  UML_ARTIFACT_READING,
   UML_CLASS_READING,
+  UML_NODE_READING,
   UML_NOTE_READING,
   UML_PACKAGE_READING,
   UML_READINGS,
@@ -117,9 +119,24 @@ describe('what a UML diagram is read as', () => {
     expect(profileOf(UML_ROLE.note)?.id).toBe('uml-note');
     expect(profileOf(UML_ROLE.actor)?.id).toBe('uml-actor');
     expect(profileOf(UML_ROLE['use-case'])?.id).toBe('uml-use-case');
+    expect(profileOf(UML_ROLE.component)?.id).toBe('uml-component');
+    expect(profileOf(UML_ROLE.port)?.id).toBe('uml-port');
+    expect(profileOf(UML_ROLE['provided-interface'])?.id).toBe(
+      'uml-provided-interface'
+    );
+    expect(profileOf(UML_ROLE['required-interface'])?.id).toBe(
+      'uml-required-interface'
+    );
+    expect(profileOf(UML_ROLE.artifact)?.id).toBe('uml-artifact');
+    expect(profileOf(UML_ROLE.node)?.id).toBe('uml-node');
 
     // Ids are unique: the DI keys on them and throws on a duplicate.
     expect(new Set(UML_READINGS.map(p => p.id)).size).toBe(UML_READINGS.length);
+    // Every role a profile applies to is declared once, so no two of them can
+    // quietly answer for the same element.
+    expect(new Set(UML_READINGS.map(p => p.appliesTo)).size).toBe(
+      UML_READINGS.length
+    );
     for (const profile of UML_READINGS) {
       expect(profile.framework, profile.id).toBe('uml');
       expect(profile.roles, profile.id).toBe(UML_ROLES);
@@ -143,12 +160,52 @@ describe('what a UML diagram is read as', () => {
       readElement(actor.node, actor.elements, UML_ACTOR_READING)!.name
     ).toBe('Customer');
 
-    const labelled = new Set(['uml-actor', 'uml-use-case']);
+    // `uml:name` for every artefact whose words a KEYWORD may be written over —
+    // the classifiers, the package, the note, phase 2's component and artifact
+    // (drawn as the same divided rectangle) and the three cubes, whose
+    // `«device»` line is exactly that. `uml:label` for the five whose one word
+    // is a name and nothing else.
+    const named = new Set([
+      'uml-class',
+      'uml-interface',
+      'uml-enumeration',
+      'uml-object',
+      'uml-package',
+      'uml-note',
+      'uml-component',
+      'uml-artifact',
+      'uml-node',
+      'uml-device',
+      'uml-execution-environment',
+    ]);
     for (const profile of UML_READINGS) {
       expect(profile.labelRole, profile.id).toBe(
-        labelled.has(profile.id) ? UML_ROLE.label : UML_ROLE.name
+        named.has(profile.id) ? UML_ROLE.name : UML_ROLE.label
       );
     }
+  });
+
+  /**
+   * The one place in this pack where declaration ORDER changes an answer.
+   *
+   * `readingProfileFor` takes the FIRST profile whose `appliesTo` the element's
+   * role IS A, and `uml:device` and `uml:execution-environment` are both a
+   * `uml:node` (§19.4.4 makes Node their parent). With `uml-node` listed first,
+   * every device would be read as a node and its own profile would never fire —
+   * so the two children are registered ahead of it, and this is what says so.
+   */
+  it('reads a device as a device, not as the node it specialises', () => {
+    expect(profileOf(UML_ROLE.device)?.id).toBe('uml-device');
+    expect(profileOf(UML_ROLE['execution-environment'])?.id).toBe(
+      'uml-execution-environment'
+    );
+    const idsInOrder = UML_READINGS.map(p => p.id);
+    expect(idsInOrder.indexOf('uml-device')).toBeLessThan(
+      idsInOrder.indexOf('uml-node')
+    );
+    expect(idsInOrder.indexOf('uml-execution-environment')).toBeLessThan(
+      idsInOrder.indexOf('uml-node')
+    );
   });
 
   /**
@@ -228,6 +285,42 @@ describe('what a UML diagram is read as', () => {
         );
       }
     }
+  });
+
+  /**
+   * §19.2.4 — the one relation in the pack whose two ends are different KINDS
+   * of thing, so the wording is asymmetric on purpose: the artifact reads
+   * "Deployed on: AppServer" and the server reads "Hosts: orders.war", off one
+   * table read from its two ends.
+   */
+  it('reads a deployment from both ends, in the words each end wants', () => {
+    const deploy = UML_ARTIFACT_READING.relation!;
+    expect(deploy.edgeRole).toBe(UML_ROLE.deploy);
+    expect(deploy.sides.supplier.labelFallback).toBe('Deployed on');
+    expect(deploy.sides.consumer.labelFallback).toBe('Hosts');
+    // The cube reads the very same table: one relation, two sentences.
+    expect(UML_NODE_READING.relation).toBe(deploy);
+
+    const artifact = component(UML_ROLE.artifact, UML_ROLE.name, 'orders.war');
+    const server = component(UML_ROLE.node, UML_ROLE.name, ':AppServer', 's');
+    const relations = readElement(
+      artifact.node,
+      [
+        ...artifact.elements,
+        ...server.elements,
+        // The artifact is the SOURCE: `uml:deploy` reads "is deployed on".
+        element({
+          id: 'd',
+          role: UML_ROLE.deploy,
+          source: 'n',
+          target: 's',
+        }),
+      ],
+      UML_ARTIFACT_READING
+    )!.relations;
+    expect(relations.map(r => [r.otherName, r.side])).toEqual([
+      [':AppServer', 'supplier'],
+    ]);
   });
 
   it('never contradicts the drawing, proposes no nature, reads no phase', () => {

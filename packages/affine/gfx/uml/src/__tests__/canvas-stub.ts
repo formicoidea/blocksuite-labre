@@ -62,6 +62,9 @@ export interface Curve {
   y: number;
   rx: number;
   ry: number;
+  /** Arc angles in radians when the curve came from `arc` (absent for `ellipse`). */
+  start?: number;
+  end?: number;
 }
 
 export function recordingCtx() {
@@ -118,10 +121,14 @@ export function recordingCtx() {
     // of the frame and leaves the save stack unbalanced. A stub that quietly
     // accepted -0.5 would let a renderer pass its tests and blank a real
     // canvas, so this one refuses the same way the browser does.
-    arc: vi.fn((x: number, y: number, r: number) => {
-      if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
-      curves.push({ x, y, rx: r, ry: r });
-    }),
+    arc: vi.fn(
+      (x: number, y: number, r: number, start?: number, end?: number) => {
+        if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
+        // The angles ride along for the one glyph whose meaning is which half
+        // of the circle is drawn: the socket, an open cup (see node-renderer).
+        curves.push({ x, y, rx: r, ry: r, start, end });
+      }
+    ),
     ellipse: vi.fn((x: number, y: number, rx: number, ry: number) => {
       if (rx < 0 || ry < 0) {
         throw new Error(`IndexSizeError: negative radii ${rx}, ${ry}`);

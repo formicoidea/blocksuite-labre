@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import {
   UML_ACTOR_FIGURE,
   UML_ATTRIBUTE_LINES,
+  UML_BESIDE_LABEL_GAP,
+  UML_BESIDE_LABEL_KINDS,
+  UML_BESIDE_LABEL_WIDTH,
+  UML_CUBE_DEPTH,
   UML_NAME_GAP,
   UML_PACKAGE_TAB,
   UML_TIER_LINE_HEIGHT,
@@ -26,6 +30,34 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 
 /** Every kind the model declares, read off a table that is total over it. */
 const ALL_KINDS = Object.keys(UML_NODE_BOX) as UmlNodeKind[];
+
+/** The three deployment targets, whose tiers are laid against the FRONT FACE. */
+const CUBE_KINDS = [
+  'node',
+  'device',
+  'execution-environment',
+] as const satisfies readonly UmlNodeKind[];
+
+/**
+ * The kinds whose one tier is measured against the element's own box — which is
+ * every kind except the cubes (measured against the face they are written in)
+ * and the three glyphs whose label is written OUTSIDE the element entirely.
+ */
+const OWN_BOX_KINDS = ALL_KINDS.filter(
+  kind =>
+    !UML_BESIDE_LABEL_KINDS.has(kind) &&
+    !(CUBE_KINDS as readonly UmlNodeKind[]).includes(kind)
+);
+
+/** Every kind that is a SHAPE the notation draws rather than a divided box. */
+const PICTURE_KINDS: readonly UmlNodeKind[] = [
+  'package',
+  'note',
+  'actor',
+  'use-case',
+  ...CUBE_KINDS,
+  ...UML_BESIDE_LABEL_KINDS,
+];
 
 /** One line of the name face — the unit nearly every offset here is built of. */
 const NAME_LINE = UML_NAME_FONT_SIZE * UML_TIER_LINE_HEIGHT;
@@ -85,8 +117,30 @@ describe('where a uml classifier writes its compartments', () => {
     );
   });
 
+  /**
+   * A component (§11.6.4) and an artifact (§19.3.4) are the object's layout
+   * exactly: a name over ONE body tier. What differs is what the tier holds —
+   * slots, parts, file contents — and that is the ROLE on the text element, not
+   * the geometry.
+   */
+  it.each(['component', 'artifact'] as const)(
+    'lays %s out like an object: name, body, one separator',
+    kind => {
+      const { attributes, operations, splits } = atOrigin(kind);
+      expect(splits).toHaveLength(1);
+      expect(operations).toBeUndefined();
+      expect(attributes).toBeDefined();
+      expect(attributes!.y + attributes!.h).toBeCloseTo(
+        UML_NODE_BOX[kind].h - UML_TIER_MARGIN
+      );
+      // …and the split lands where the object's does, because it is the same
+      // walk down the same box.
+      expect(splits[0]).toBeCloseTo(UML_TIER_MARGIN + NAME_LINE + UML_NAME_GAP);
+    }
+  );
+
   it('insets every compartment by the same proportional gutter', () => {
-    for (const kind of ALL_KINDS) {
+    for (const kind of OWN_BOX_KINDS) {
       const { w } = UML_NODE_BOX[kind];
       const boxes = atOrigin(kind);
       const inset = w * UML_TIER_SIDE_INSET;
@@ -99,9 +153,9 @@ describe('where a uml classifier writes its compartments', () => {
   });
 });
 
-describe('where the four picture kinds write their one label', () => {
+describe('where the picture kinds write their one label', () => {
   it('gives them a single box and no separator at all', () => {
-    for (const kind of ['package', 'note', 'actor', 'use-case'] as const) {
+    for (const kind of PICTURE_KINDS) {
       const boxes = atOrigin(kind);
       expect(boxes.splits, kind).toEqual([]);
       expect(boxes.attributes, kind).toBeUndefined();
@@ -144,14 +198,60 @@ describe('where the four picture kinds write their one label', () => {
     expect(name.y).toBe(UML_TIER_MARGIN);
     expect(name.h).toBeCloseTo(h - UML_TIER_MARGIN * 2);
   });
+
+  /**
+   * §19.4.4: the three deployment targets are one cube, and the name goes in
+   * the FRONT FACE — the only one of its three faces not drawn at an angle.
+   * Two lines, because the seed is a keyword over an instance name.
+   */
+  it.each(CUBE_KINDS)('writes %s inside the cube’s front face', kind => {
+    const { w, h } = UML_NODE_BOX[kind];
+    const depth = Math.min(w, h) * UML_CUBE_DEPTH;
+    const { name } = atOrigin(kind);
+
+    // Below the roof, above the bottom edge, and clear of the right-hand face.
+    expect(name.y).toBeGreaterThanOrEqual(depth);
+    expect(name.y + name.h).toBeLessThanOrEqual(h);
+    expect(name.x + name.w).toBeLessThanOrEqual(w - depth);
+    expect(name.h).toBeCloseTo(NAME_LINE * 2);
+
+    // Centred in the face, not in the element: the gap above the words equals
+    // the gap below them, measured from the face's own top edge.
+    expect(name.y - depth).toBeCloseTo(h - (name.y + name.h));
+  });
+
+  /**
+   * §11.3.4 and §10.4.4: a port is a 16-unit square and an interface glyph is a
+   * ball on a stick, so neither has an inside. The name goes BESIDE the
+   * picture — the one tier in this module that lands outside the element it
+   * belongs to, which is what {@link UML_BESIDE_LABEL_KINDS} exists to declare.
+   */
+  it('writes a port and the two interface glyphs beside themselves', () => {
+    for (const kind of UML_BESIDE_LABEL_KINDS) {
+      const { w, h } = UML_NODE_BOX[kind];
+      const { name } = atOrigin(kind);
+
+      // Clear to the RIGHT of the glyph, by the declared gap.
+      expect(name.x, kind).toBeCloseTo(w + UML_BESIDE_LABEL_GAP);
+      expect(name.w, kind).toBe(UML_BESIDE_LABEL_WIDTH);
+      // …and vertically centred on it, so a 16-unit port and its name read as
+      // one thing.
+      expect(name.y + name.h / 2, kind).toBeCloseTo(h / 2);
+      expect(name.h, kind).toBeCloseTo(NAME_LINE);
+    }
+  });
 });
 
 describe('the compartment layout as a whole', () => {
   it('keeps every box inside the node it belongs to', () => {
-    // The one invariant that holds for all eight kinds: nothing a component
-    // writes may hang outside the shape it is grouped with, or the group's
-    // derived bounds would grow past the picture.
-    for (const kind of ALL_KINDS) {
+    // The invariant that holds for every kind with an INSIDE: nothing a
+    // component writes may hang outside the shape it is grouped with, or the
+    // group's derived bounds would grow past the picture.
+    //
+    // The three exceptions are the notation's own and are declared rather than
+    // discovered: a port's name and an interface glyph's are written beside
+    // them, because a 16-unit square has nowhere to put one (§11.3.4, §10.4.4).
+    for (const kind of ALL_KINDS.filter(k => !UML_BESIDE_LABEL_KINDS.has(k))) {
       const { w, h } = UML_NODE_BOX[kind];
       const boxes = atOrigin(kind);
       for (const box of [boxes.name, boxes.attributes, boxes.operations]) {

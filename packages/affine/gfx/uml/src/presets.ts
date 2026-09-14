@@ -43,7 +43,7 @@ import { UML_ROLE_OF_KIND } from './roles.js';
  * The kinds whose GLYPH draws the body, so the native shape underneath paints
  * nothing at all.
  *
- * Three of eight, and the node renderer is the authority on which. A package is
+ * Nine of sixteen, and the node renderer is the authority on which. A package is
  * a tabbed folder (§12.2.4), a note a rectangle with a folded corner (Annex A),
  * an actor a stick figure (§18.1.4) — none of which a native rect can be, so
  * each is created `filled: false` with `StrokeStyle.None` and the renderer
@@ -51,11 +51,24 @@ import { UML_ROLE_OF_KIND } from './roles.js';
  * off this same model. Both therefore stay editable from the ordinary shape
  * toolbar, exactly like every other node's.
  *
+ * Phase 2 added six more, and every one of them for the same reason:
+ *
+ *  - `node`, `device` and `execution-environment` are the 3-D CUBE of §19.4.4 —
+ *    three faces, two of them parallelograms, which no `shapeType` has;
+ *  - `provided-interface` and `required-interface` are the ball and the socket
+ *    of §10.4.4, each a curve on a stub rather than a filled area;
+ *  - `port` is the one that looks as if a native rect would do (§11.3.4 draws a
+ *    small square), and it is here because the square is the GLYPH: it is drawn
+ *    to a fixed proportion of the element so that a port dragged bigger stays a
+ *    port rather than becoming a box, and it is centred so the name written
+ *    beside it lines up with it.
+ *
  * The USE CASE is deliberately not on the list, and it is the one that looks as
  * if it should be: an ellipse is not a rectangle either — but it is a native
  * `shapeType`, so the platform draws it, fills it and hit-tests it with no glyph
- * involved. A kind is on this list when the SHAPE LAYER cannot draw it, not when
- * it is not a box.
+ * involved. Nor are `component` and `artifact`, which ARE the native filled
+ * rectangle with a small icon painted into the corner. A kind is on this list
+ * when the SHAPE LAYER cannot draw its body, not when it has a glyph.
  *
  * They stay hit-testable across their whole area all the same:
  * `UmlNodeElementModel.includesPoint` forces the interior test regardless of
@@ -66,6 +79,12 @@ export const GLYPH_BODY_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
   'package',
   'note',
   'actor',
+  'port',
+  'provided-interface',
+  'required-interface',
+  'node',
+  'device',
+  'execution-environment',
 ]);
 
 /**
@@ -174,7 +193,7 @@ const EVERY_MORPH_KEY = new Set(
  * writes and this one does not.
  *
  * EMPTY for every kind today, because no UML preset spreads anything
- * conditionally: all eight write the same key set with different values. Kept
+ * conditionally: all sixteen write the same key set with different values. Kept
  * anyway, and derived rather than hard-coded to `[]`, for the reason BPMN's and
  * C4's equivalents exist at all — a patch cannot express absence, and the day
  * one kind stops writing a key the previous kind's value would otherwise stay

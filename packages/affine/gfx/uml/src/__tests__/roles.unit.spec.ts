@@ -25,6 +25,15 @@ const NODE_ROLES = [
   UML_ROLE.note,
   UML_ROLE.actor,
   UML_ROLE['use-case'],
+  // Phase 2 — the component artefacts and the deployment ones.
+  UML_ROLE.component,
+  UML_ROLE.port,
+  UML_ROLE['provided-interface'],
+  UML_ROLE['required-interface'],
+  UML_ROLE.artifact,
+  UML_ROLE.node,
+  UML_ROLE.device,
+  UML_ROLE['execution-environment'],
 ] as const;
 
 const TIER_ROLES = [
@@ -46,10 +55,13 @@ const EDGE_ROLES = [
   UML_ROLE.anchor,
   UML_ROLE.include,
   UML_ROLE.extend,
+  UML_ROLE.deploy,
+  UML_ROLE.manifest,
+  UML_ROLE['communication-path'],
 ] as const;
 
 describe('UML role vocabulary', () => {
-  it('declares nine artefacts, four tiers, two frames and nine relations', () => {
+  it('declares seventeen artefacts, four tiers, two frames and twelve relations', () => {
     expect(Object.keys(UML_ROLES)).toHaveLength(
       NODE_ROLES.length +
         TIER_ROLES.length +
@@ -79,8 +91,8 @@ describe('UML role vocabulary', () => {
       // Parent-less: a tier is one part of one element's label, not an artefact
       // of the model, so nothing written about classifiers may fall on it.
       expect(UML_ROLES[id]?.parent, id).toBeUndefined();
-      // …and no `kind` maps to any of them: the eight artefacts are the eight
-      // artefacts, and the role of a component stays on its SHAPE alone.
+      // …and no `kind` maps to any of them: the artefacts are the artefacts,
+      // and the role of a component stays on its SHAPE alone.
       expect(Object.values(UML_ROLE_OF_KIND), id).not.toContain(id);
     }
   });
@@ -170,7 +182,59 @@ describe('UML role vocabulary', () => {
     );
   });
 
-  it('keeps the other six relations FLAT under nothing', () => {
+  /**
+   * §19.4: a Device and an ExecutionEnvironment ARE Nodes, drawn as the same
+   * cube and told apart by their keyword. The one chain whose PARENT is itself
+   * drawn — a Node is instantiable, unlike the abstract classifier.
+   */
+  it('files the device and the execution environment under the node', () => {
+    expect(UML_ROLES[UML_ROLE.node].parent).toBeUndefined();
+    for (const child of [
+      UML_ROLE.device,
+      UML_ROLE['execution-environment'],
+    ] as const) {
+      expect(UML_ROLES[child].parent, child).toBe(UML_ROLE.node);
+      expect(roleIsA(child, UML_ROLE.node, UML_ROLES), child).toBe(true);
+      expect(roleIsA(UML_ROLE.node, child, UML_ROLES), child).toBe(false);
+    }
+    // Siblings, not a chain: an execution environment is not a device.
+    expect(
+      roleIsA(UML_ROLE['execution-environment'], UML_ROLE.device, UML_ROLES)
+    ).toBe(false);
+    // …and the parent IS a drawing, which is what makes it unlike the
+    // classifier: `kind: 'node'` maps onto it.
+    expect(UML_ROLE_OF_KIND.node).toBe(UML_ROLE.node);
+  });
+
+  /**
+   * The component artefacts are flat, each for a reason the header records: a
+   * component is a structured classifier in the metamodel and its own figure on
+   * the page, and a port, a ball and a socket are parts attached to one rather
+   * than specialisations of it (§11.6.4, §11.3.4, §10.4.4).
+   */
+  it('keeps the component artefacts and the artifact flat', () => {
+    for (const flat of [
+      UML_ROLE.component,
+      UML_ROLE.port,
+      UML_ROLE['provided-interface'],
+      UML_ROLE['required-interface'],
+      UML_ROLE.artifact,
+    ] as const) {
+      expect(UML_ROLES[flat].parent, flat).toBeUndefined();
+      expect(roleIsA(flat, UML_ROLE.classifier, UML_ROLES), flat).toBe(false);
+    }
+    // The two interface glyphs are two STATEMENTS, not one with a flag: a rule
+    // about a required interface left dangling must not reach every lollipop.
+    expect(
+      roleIsA(
+        UML_ROLE['required-interface'],
+        UML_ROLE['provided-interface'],
+        UML_ROLES
+      )
+    ).toBe(false);
+  });
+
+  it('keeps the other nine relations FLAT under nothing', () => {
     // Different metaclasses drawn with different lines (§9.9.4, §10.4.4,
     // §7.8.4, §18.1.4). Flattening what a reader sees as distinct notations
     // would let one rule silently police all of them.
@@ -182,12 +246,22 @@ describe('UML role vocabulary', () => {
       UML_ROLE.anchor,
       UML_ROLE.include,
       UML_ROLE.extend,
+      UML_ROLE.deploy,
+      UML_ROLE.manifest,
+      UML_ROLE['communication-path'],
     ] as const) {
       expect(UML_ROLES[flat].parent, flat).toBeUndefined();
     }
     // A generalization is emphatically not an association.
     expect(
       roleIsA(UML_ROLE.generalization, UML_ROLE.association, UML_ROLES)
+    ).toBe(false);
+    // Nor is a communication path, and that one IS a departure from the
+    // metamodel (§19.4 derives it from Association) made on purpose: it is a
+    // line between two cubes, and the class-diagram association rules have no
+    // business being handed a deployment diagram to police.
+    expect(
+      roleIsA(UML_ROLE['communication-path'], UML_ROLE.association, UML_ROLES)
     ).toBe(false);
   });
 
@@ -205,6 +279,11 @@ describe('UML role vocabulary', () => {
       [UML_ROLE.dependency]: 'depends on',
       [UML_ROLE.include]: 'includes',
       [UML_ROLE.extend]: 'extends',
+      // Both run FROM the artifact: it is the subject of the sentence, and the
+      // arrow lands on what it is deployed on or what it manifests (§19.2.4,
+      // §19.3.4).
+      [UML_ROLE.deploy]: 'is deployed on',
+      [UML_ROLE.manifest]: 'manifests',
     };
     for (const [id, verb] of Object.entries(verbs)) {
       const direction = UML_ROLES[id].direction;
@@ -222,6 +301,9 @@ describe('UML role vocabulary', () => {
     // relationship between two of them.
     expect(UML_ROLES[UML_ROLE.association].direction).toBeUndefined();
     expect(UML_ROLES[UML_ROLE.anchor].direction).toBeUndefined();
+    // …and a communication path draws no arrow either (§19.4.4): two nodes that
+    // can talk to each other, with nothing said about which one starts.
+    expect(UML_ROLES[UML_ROLE['communication-path']].direction).toBeUndefined();
   });
 
   it('gives no node or text role a direction', () => {
@@ -259,16 +341,19 @@ describe('UML_ROLE_OF_KIND', () => {
 
   /**
    * One kind, one role, with none collapsed — unlike C4, where four kinds are a
-   * second DRAWING of a level. Here the eight kinds are eight artefacts of the
-   * specification.
+   * second DRAWING of a level. Here the sixteen kinds are sixteen artefacts of
+   * the specification.
    */
-  it('maps each kind onto its own role, and never onto the parent', () => {
+  it('maps each kind onto its own role, and never onto the abstract parent', () => {
     expect(new Set(Object.values(UML_ROLE_OF_KIND)).size).toBe(
       ALL_KINDS.length
     );
     // `uml:classifier` is an ancestor nothing is ever drawn as: a box stamped
-    // with it would be an artefact the notation has no picture for.
+    // with it would be an artefact the notation has no picture for. It is the
+    // ONLY such role — `uml:node` is a parent too and is drawn, because §19.4
+    // makes a Node instantiable.
     expect(Object.values(UML_ROLE_OF_KIND)).not.toContain(UML_ROLE.classifier);
+    expect(Object.values(UML_ROLE_OF_KIND)).toContain(UML_ROLE.node);
     // …and the three that ARE classifiers still read as such, for free.
     for (const kind of ['class', 'interface', 'enumeration'] as const) {
       expect(

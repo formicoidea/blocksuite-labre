@@ -11,6 +11,7 @@ import {
 
 import {
   UML_ACTOR_FIGURE,
+  UML_CUBE_DEPTH,
   UML_PACKAGE_TAB,
   umlCompartmentBoxes,
 } from '../component.js';
@@ -24,12 +25,16 @@ import {
  * theme. This file then paints, in the element-local frame, only what a
  * rectangle cannot be: the compartment separators of §11.4.4, the underline of
  * an instance's name (§9.8.4), the package's tab (§12.2.4), the note's folded
- * corner (Annex A) and the actor's stick figure (§18.1.4).
+ * corner (Annex A), the actor's stick figure (§18.1.4), the component's
+ * two-tabbed icon (§11.6.4), the artifact's document icon (§19.3.4), the port's
+ * square (§11.3.4), the ball and socket of §10.4.4 and the 3-D cube of §19.4.4.
  *
- * Two kinds need nothing at all. A `use-case` IS the native ellipse — §18.1.4
+ * One kind needs nothing at all. A `use-case` IS the native ellipse — §18.1.4
  * draws it with no decoration whatever — and drawing anything over it would be
- * inventing a notation. And an `object` is a class box with a split and a rule
- * under its name, which is the third branch below rather than a picture.
+ * inventing a notation. An `object` is a class box with a split and a rule under
+ * its name, which is the first branch below rather than a picture; so are a
+ * `component` and an `artifact`, each with a small icon dropped in the corner of
+ * the box the shape layer has already drawn.
  *
  * ## Every offset is READ, never restated
  *
@@ -46,11 +51,12 @@ import {
  * glyph that painted the pack's own ink would silently ignore the user's choice.
  * `presets.ts` is what SEEDS them.
  *
- * The glyph-bodied kinds — `package`, `note`, `actor` — are created unfilled and
- * unstroked (`presets.ts`), so the native rect paints nothing and the glyph IS
- * the body: it fills with the element's `fillColor` and outlines with its
- * `strokeColor`, which is what keeps them recolourable from the same toolbar as
- * every other shape.
+ * The glyph-bodied kinds — `package`, `note`, `actor`, `port`, the two interface
+ * glyphs and the three cubes — are created unfilled and unstroked
+ * (`presets.ts`), so the native rect paints nothing and the glyph IS the body:
+ * it fills with the element's `fillColor` and outlines with its `strokeColor`,
+ * which is what keeps them recolourable from the same toolbar as every other
+ * shape.
  */
 
 const TAU = Math.PI * 2;
@@ -88,6 +94,93 @@ const ACTOR = {
   footY: 0.98,
   footX: 0.12,
 } as const;
+
+/**
+ * The component's own icon (§11.6.4) — the little rectangle with two tabs
+ * sticking out of its left edge, dropped in the top-right corner of the box.
+ *
+ * Fractions of the node box, like every other glyph metric here, so a component
+ * dragged to any size carries an icon in proportion to it. The icon is what
+ * MAKES the box a component: §11.6.4 offers the icon or the `«component»`
+ * keyword, and this pack draws the icon, which is why the name seed writes no
+ * keyword (`keywords.ts`).
+ */
+const COMPONENT_ICON = {
+  /** The icon body, against the box's width and height. */
+  width: 0.16,
+  height: 0.2,
+  /** Its inset from the top-right corner, against the shorter side. */
+  margin: 0.06,
+  /** The two tabs, against the icon body: how far they protrude, how tall. */
+  tabWidth: 0.4,
+  tabHeight: 0.26,
+  /** Where each tab's top edge sits, against the icon body's height. */
+  tabTop: [0.16, 0.58],
+} as const;
+
+/**
+ * The artifact's document icon (§19.3.4) — a small sheet of paper with its
+ * top-right corner turned down, in the same corner as the component's.
+ *
+ * Narrower and taller than the component's icon because it is a PAGE, and a page
+ * read as a square would read as a box.
+ */
+const ARTIFACT_ICON = {
+  width: 0.1,
+  height: 0.19,
+  margin: 0.06,
+  /** The turned-down corner, against the icon's shorter side. */
+  fold: 0.36,
+} as const;
+
+/**
+ * The ball and the socket (§10.4.4), as fractions of the glyph's box.
+ *
+ * One radius from whichever dimension is the tighter, so the ball stays ROUND at
+ * any aspect ratio the element is dragged to — the same rule the actor's head
+ * follows, and for the same reason. What is left under the circle is the STUB:
+ * the short line that, on a real diagram, runs to the component's border.
+ */
+const INTERFACE_GLYPH = {
+  radiusOfWidth: 0.3,
+  radiusOfHeight: 0.34,
+} as const;
+
+/**
+ * Draw the four sides of a rectangle as an explicit path.
+ *
+ * `ctx.rect` would be one call — and would record nothing a test about WHERE a
+ * glyph was drawn can read, on this pack's canvas recorder or on a reviewer's
+ * screen. The four segments are the shape.
+ */
+function rectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
+}
+
+/** …and paint it as a body: the element's fill, then the element's outline. */
+function solidRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): void {
+  if (!(w > 0) || !(h > 0)) return;
+  rectPath(ctx, x, y, w, h);
+  ctx.fill();
+  ctx.stroke();
+}
 
 /** Draw one straight segment, skipping a degenerate one. */
 function line(
@@ -127,12 +220,14 @@ function paintGlyph(
   const bh = y1 - y0;
   if (!(bw > 0) || !(bh > 0)) return;
 
-  // ── The four compartmented kinds: one rule per split ─────────────────
+  // ── The compartmented kinds: one rule per split ──────────────────────
   if (
     kind === 'class' ||
     kind === 'interface' ||
     kind === 'enumeration' ||
-    kind === 'object'
+    kind === 'object' ||
+    kind === 'component' ||
+    kind === 'artifact'
   ) {
     const boxes = umlCompartmentBoxes(kind, 0, 0, w, h);
     // Full width, edge to edge: §11.4.4 draws a compartment line right across
@@ -153,6 +248,11 @@ function paintGlyph(
         line(ctx, name.x, under, name.x + name.w, under);
       }
     }
+
+    // The two kinds whose box is told from a class's by a picture in its
+    // corner, drawn over the body the shape layer has already filled.
+    if (kind === 'component') paintComponentIcon(ctx, x1, y0, bw, bh);
+    if (kind === 'artifact') paintArtifactIcon(ctx, x1, y0, bw, bh);
     return;
   }
 
@@ -244,6 +344,99 @@ function paintGlyph(
     return;
   }
 
+  // ── The port: a small filled square (§11.3.4) ────────────────────────
+  if (kind === 'port') {
+    // A SQUARE, from the shorter side and centred: a port dragged into a
+    // rectangle is still a port, and §11.3.4 draws one square. The whole body,
+    // because the port is created unstroked and unfilled — the glyph is it.
+    const side = Math.min(bw, bh);
+    solidRect(ctx, x0 + (bw - side) / 2, y0 + (bh - side) / 2, side, side);
+    return;
+  }
+
+  // ── The two interface glyphs: a ball, or a socket, on a stub ─────────
+  if (kind === 'provided-interface' || kind === 'required-interface') {
+    const radius = Math.max(
+      0,
+      Math.min(
+        bw * INTERFACE_GLYPH.radiusOfWidth,
+        bh * INTERFACE_GLYPH.radiusOfHeight
+      )
+    );
+    if (!(radius > 0)) return;
+
+    const cx = w / 2;
+    const cy = y0 + radius;
+
+    if (kind === 'provided-interface') {
+      // The lollipop: a CLOSED circle, filled, saying the component offers this
+      // interface (§10.4.4).
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      // The socket: the BOTTOM half of the circle, a cup opening UPWARD — away
+      // from the component the stub below runs to, so a ball can nest in it
+      // (§10.4.4). Its deepest point is (cx, cy + radius), exactly where the
+      // stub starts, so the line meets the back of the cup and not a horn.
+      // Stroked and never filled: it is an arc, and a filled half-disc would
+      // read as a ball cut in two.
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI);
+      ctx.stroke();
+    }
+
+    // The stub: the short line that, on a real diagram, runs from the glyph to
+    // the border of the component it belongs to. Drawn straight DOWN, which is
+    // the one direction that needs no knowledge of where that component is.
+    if (cy + radius < y1) line(ctx, cx, cy + radius, cx, y1);
+    return;
+  }
+
+  // ── The three deployment targets: one 3-D cube (§19.4.4) ─────────────
+  if (
+    kind === 'node' ||
+    kind === 'device' ||
+    kind === 'execution-environment'
+  ) {
+    // Against the ELEMENT box, not the stroke-inset one, and clamped: the front
+    // face has to be the rectangle `component.ts` writes the name inside, and
+    // two files each deriving their own depth is how a name ends up on a roof.
+    const depth = Math.max(
+      0,
+      Math.min(Math.min(w, h) * UML_CUBE_DEPTH, Math.min(bw, bh))
+    );
+    const backX = x1 - depth;
+    const backY = y0 + depth;
+
+    // The top and the right first, the FRONT last: the front face is opaque, so
+    // painting it over the other two closes every join that should not be seen
+    // and leaves the three edges that make the solid read as a solid.
+    if (depth > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x0, backY);
+      ctx.lineTo(x0 + depth, y0);
+      ctx.lineTo(x1, y0);
+      ctx.lineTo(backX, backY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(backX, backY);
+      ctx.lineTo(x1, y0);
+      ctx.lineTo(x1, y1 - depth);
+      ctx.lineTo(backX, y1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    solidRect(ctx, x0, backY, backX - x0, y1 - backY);
+    return;
+  }
+
   // ── The use case: the native ellipse, and nothing on it ──────────────
   if (kind === 'use-case') return;
 
@@ -260,6 +453,86 @@ function paintGlyph(
    */
   const unhandled: never = kind;
   void unhandled;
+}
+
+/* ── The two corner icons ──────────────────────────────────────────────── */
+
+/**
+ * The component icon (§11.6.4): a small rectangle with two tabs protruding from
+ * its LEFT edge, in the top-right corner of the box.
+ *
+ * Painted as three solid bodies rather than as one outline, because that is what
+ * the notation draws — the tabs are little plugs sticking out of the module, and
+ * an author who recolours the component recolours them with it.
+ *
+ * @param x1 the right edge of the body, already inset by half the stroke.
+ * @param y0 its top edge, likewise.
+ */
+function paintComponentIcon(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y0: number,
+  bw: number,
+  bh: number
+): void {
+  const iw = bw * COMPONENT_ICON.width;
+  const ih = bh * COMPONENT_ICON.height;
+  const margin = Math.min(bw, bh) * COMPONENT_ICON.margin;
+  const tabW = iw * COMPONENT_ICON.tabWidth;
+  const tabH = ih * COMPONENT_ICON.tabHeight;
+  // The tabs hang off the left of the body, so the body is indented by their
+  // width: the whole icon still fits inside the margin it was given.
+  const left = x1 - margin - iw;
+  const top = y0 + margin;
+  if (!(iw > 0) || !(ih > 0) || left - tabW < 0) return;
+
+  solidRect(ctx, left, top, iw, ih);
+  for (const at of COMPONENT_ICON.tabTop) {
+    solidRect(ctx, left - tabW / 2, top + ih * at, tabW, tabH);
+  }
+}
+
+/**
+ * The artifact icon (§19.3.4): a sheet of paper with its top-right corner turned
+ * down, in the same corner of the box as the component's.
+ *
+ * The same silhouette as the note glyph, two orders of magnitude smaller and
+ * standing for something else entirely — which is the notation's doing, not a
+ * shortcut: a note is a piece of paper pinned to a diagram, an artifact is a
+ * file the system ships.
+ */
+function paintArtifactIcon(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y0: number,
+  bw: number,
+  bh: number
+): void {
+  const iw = bw * ARTIFACT_ICON.width;
+  const ih = bh * ARTIFACT_ICON.height;
+  const margin = Math.min(bw, bh) * ARTIFACT_ICON.margin;
+  const fold = Math.min(iw, ih) * ARTIFACT_ICON.fold;
+  const left = x1 - margin - iw;
+  const top = y0 + margin;
+  if (!(iw > 0) || !(ih > 0) || left < 0) return;
+
+  ctx.beginPath();
+  ctx.moveTo(left, top);
+  ctx.lineTo(left + iw - fold, top);
+  ctx.lineTo(left + iw, top + fold);
+  ctx.lineTo(left + iw, top + ih);
+  ctx.lineTo(left, top + ih);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // The fold, as two lines — the same way the note draws its own, and for the
+  // same reason: a shaded flap would claim a light source UML has none of.
+  ctx.beginPath();
+  ctx.moveTo(left + iw - fold, top);
+  ctx.lineTo(left + iw - fold, top + fold);
+  ctx.lineTo(left + iw, top + fold);
+  ctx.stroke();
 }
 
 export const umlNode: ElementRenderer<UmlNodeElementModel> = (

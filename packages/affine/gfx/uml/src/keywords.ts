@@ -66,7 +66,7 @@ export type UmlKeywordPlacement =
  * gives it.
  *
  * A SUBSET, declared as one: UML defines some eighty keywords and phase 1 draws
- * four structural diagram families, so the table below is the twelve words that
+ * four structural diagram families, so the table below is the eighteen words that
  * can honestly appear on a class, package, object or use case diagram. Phase 2
  * appends to it; nothing here is rewritten.
  *
@@ -111,6 +111,24 @@ export const UML_KEYWORD_PLACEMENT: Readonly<
   extend: 'dashed-line label',
   // Not Annex C: the `{abstract}` modifier of §9.2.4. See the docblock.
   abstract: 'after name',
+  // ── Appended by phase 2 (components and deployments) ──────────────────
+  // Table C.1, all six, with the placements it gives them:
+  //  - `component`, `artifact`, `device` and `executionEnvironment` are **box
+  //    header** keywords — the word written above the name of the rectangle or
+  //    the cube, which is what makes one cube a Device and the next a plain Node
+  //    (§19.4.4). `component` is the one of the four an author may drop: §11.6.4
+  //    lets the corner ICON stand in for the keyword, and this pack draws the
+  //    icon — so the seed does not write it, and the parser still reads it off a
+  //    component pasted in from a tool that does;
+  //  - `deploy` and `manifest` are **dashed-line labels**, the keyword being the
+  //    only thing on the picture that says which dependency a dashed arrow is
+  //    (§19.2.4, §19.3.4).
+  component: 'box header',
+  artifact: 'box header',
+  device: 'box header',
+  executionEnvironment: 'box header',
+  deploy: 'dashed-line label',
+  manifest: 'dashed-line label',
 };
 
 /* ── What a fresh artefact says ───────────────────────────────────────── */
@@ -144,6 +162,32 @@ export const UML_NAME_SEED: Record<UmlNodeKind, string> = {
   note: 'Note',
   actor: 'Actor',
   'use-case': 'Use case',
+  // ── Phase 2 ──────────────────────────────────────────────────────────────
+  // A component carries NO keyword: §11.6.4 offers the corner icon or the word
+  // `«component»`, and this pack draws the icon, so writing both would say the
+  // same thing twice on one box.
+  component: 'Component',
+  // Lower case, and that is §11.3.4: a port is named like the property it is —
+  // `port`, not `Port` — and the name is written BESIDE the little square,
+  // which is the only place it fits.
+  port: 'port',
+  // §10.4.4 names an interface point after the interface it stands for, and the
+  // `I` prefix is what every tool and every architect writes. Two different
+  // seeds because the two glyphs make two different statements: one offers a
+  // service, the other needs one.
+  'provided-interface': 'IProvided',
+  'required-interface': 'IRequired',
+  // §19.3.4: an artifact is a FILE, so its seed is a file name — the keyword
+  // above it is what the notation puts there, and the extension is what tells a
+  // reader this box is a deployable thing rather than a design one.
+  artifact: `${guillemets('artifact')}\nartifact.jar`,
+  // §19.4.4 names deployment targets as INSTANCES — `:AppServer`, the colon
+  // saying "an unnamed instance of". The cubes are the one place in the pack
+  // that convention applies, and a seed that read `Node` would teach the wrong
+  // one.
+  node: ':Node',
+  device: `${guillemets('device')}\n:Device`,
+  'execution-environment': `${guillemets('executionEnvironment')}\n:Runtime`,
 };
 
 /**

@@ -13,7 +13,14 @@ import { PointStyle, StrokeStyle } from '@labre/affine-model';
  * the std scope, the gfx controller and the surface.
  */
 
-/** The nine edges the phase-1 toolbox arms, by their role's local name. */
+/**
+ * The edges the toolbox arms, by their role's local name.
+ *
+ * APPEND-ONLY, and the three at the bottom are phase 2's: a deployment diagram
+ * is drawn with lines of its own (§19.2.4, §19.3.4, §19.4.4) and they are added
+ * after the nine rather than filed among them, so a union somebody reads top to
+ * bottom still tells the story of how the pack grew.
+ */
 export type UmlEdgeRole =
   | 'association'
   | 'aggregation'
@@ -23,7 +30,11 @@ export type UmlEdgeRole =
   | 'dependency'
   | 'anchor'
   | 'include'
-  | 'extend';
+  | 'extend'
+  // Phase 2 — components and deployment.
+  | 'deploy'
+  | 'manifest'
+  | 'communication-path';
 
 /** The three style props an edge kind actually differs on. */
 export interface UmlEdgeStyle {
@@ -35,7 +46,9 @@ export interface UmlEdgeStyle {
 /**
  * The whole UML line notation, in one table — §11.5.4 (association, aggregation
  * and composition), §9.2.4 (generalization), §10.4.4 (interface realization),
- * §7.8.4 (dependency and anchor) and §18.1.4 (include, extend).
+ * §7.8.4 (dependency and anchor), §18.1.4 (include, extend) and, since phase 2,
+ * §19.2.4 (deployment), §19.3.4 (manifestation) and §19.4.4 (communication
+ * path).
  *
  * ## Three props, and never a fourth
  *
@@ -61,14 +74,16 @@ export interface UmlEdgeStyle {
  *    §10.4.4 draws a realization as the generalization arrow on a broken line,
  *    and that is the only thing that separates them.
  *
- * ## The three that share a look
+ * ## The five that share a look
  *
- * A dependency, an include and an extend are all a dashed line with an open
- * arrowhead, and the specification is explicit that they are told apart by the
- * KEYWORD written on them («use», «include», «extend» — §7.8.4, §18.1.4), not by
- * their drawing. So they share a row here and differ only by the ROLE, which is
- * what the export writes the keyword from. Nothing on the canvas is lost: the
- * role is what the audit, the reading profile and the exporter all read.
+ * A dependency, an include, an extend, a deployment and a manifestation are all
+ * a dashed line with an open arrowhead, and the specification is explicit that
+ * they are told apart by the KEYWORD written on them («use», «include»,
+ * «extend», «deploy», «manifest» — §7.8.4, §18.1.4, §19.2.4, §19.3.4), not by
+ * their drawing: all five ARE Dependencies. So they share a row here and differ
+ * only by the ROLE, which is what the export writes the keyword from. Nothing on
+ * the canvas is lost: the role is what the audit, the reading profile and the
+ * exporter all read.
  *
  * ## The anchor
  *
@@ -120,6 +135,31 @@ export const UML_EDGE_STYLE: Record<UmlEdgeRole, UmlEdgeStyle> = {
   },
   anchor: {
     strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.None,
+  },
+  // A Deployment is a Dependency (§19.2.4): the artifact is the client, the node
+  // the supplier, and the picture is the dashed open arrow every dependency
+  // wears — told apart, as always, by the keyword the export writes from the
+  // role rather than by a drawing of its own.
+  deploy: {
+    strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  // A Manifestation is an Abstraction, and therefore a Dependency too (§19.3.4)
+  // — same line, from the artifact to the component it is the physical form of.
+  manifest: {
+    strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  // A CommunicationPath is an Association between two nodes (§19.4.4), so it is
+  // drawn exactly as one: a plain solid line, and nothing on either end. The
+  // absence of arrowheads is the statement — a network link between two servers
+  // has no client and no supplier, and a head would invent one.
+  'communication-path': {
+    strokeStyle: StrokeStyle.Solid,
     frontEndpointStyle: PointStyle.None,
     rearEndpointStyle: PointStyle.None,
   },

@@ -55,16 +55,30 @@ export const UML_FRAME_BAND_HEIGHT = 44;
  *
  * ## Widening this union is additive
  *
- * Phase 1 ships the four kinds below. Phase 2 appends `cmp | dep | act | stm`
- * and phase 3 appends `sd`, each as a new VALUE of the existing `kind` string
- * field — no new field, no schema change, no migration and no backfill. The
- * same promise `C4NodeKind` and `BpmnNodeKind` already make.
+ * Phase 1 shipped the first four kinds below; phase 2 APPENDED `cmp` and `dep`,
+ * the two structural frames of §11.6.4 and §19.2.4, and will append `act | stm`;
+ * phase 3 appends `sd`. Each arrives as a new VALUE of the existing `kind`
+ * string field — no new field, no schema change, no migration and no backfill.
+ * The same promise `C4NodeKind` and `BpmnNodeKind` already make.
+ *
+ * Appended, never reordered: the union is read as a set of strings by every
+ * consumer, and a document only ever stores one of them, so the ORDER below is a
+ * reading aid. Keeping it chronological is what lets a reviewer see at a glance
+ * which build a value arrived in.
  *
  * A value a client has never seen reads back as the string it is, and
  * {@link UmlDiagramElementModel.heading} writes it verbatim, so a document
  * created by a newer build still shows its own heading on an older one.
  */
-export type UmlDiagramKind = 'class' | 'pkg' | 'obj' | 'uc';
+export type UmlDiagramKind =
+  // Phase 1 — the four structural frames the class family is drawn in.
+  | 'class'
+  | 'pkg'
+  | 'obj'
+  | 'uc'
+  // Phase 2 — components (§11.6.4) and deployments (§19.2.4).
+  | 'cmp'
+  | 'dep';
 
 /**
  * The word written in the heading tag, per kind.
@@ -84,6 +98,10 @@ export const UML_DIAGRAM_KIND_TAG: Partial<Record<UmlDiagramKind, string>> = {
   pkg: 'pkg',
   obj: 'obj',
   uc: 'uc',
+  // Both are Annex A's own abbreviations, written exactly as the Annex writes
+  // them — `cmp` for the component diagram, `dep` for the deployment diagram.
+  cmp: 'cmp',
+  dep: 'dep',
 };
 
 export type UmlDiagramProps = FrameworkBackgroundProps & {
@@ -95,7 +113,8 @@ export type UmlDiagramProps = FrameworkBackgroundProps & {
 
 /**
  * The UML diagram frame: the sheet one diagram is drawn on — a class diagram, a
- * package diagram, an object diagram, a use case diagram. A framework
+ * package diagram, an object diagram, a use case diagram, a component diagram, a
+ * deployment diagram. A framework
  * background like every other one in the library: the user drops nodes on top
  * of it, and a connector never snaps to it.
  *

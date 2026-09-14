@@ -27,11 +27,12 @@ import type { UmlDiagramKind } from '@labre/affine-model';
  * gives no abbreviation for — so every option here writes a value and none of
  * them clears the field.
  *
- * ## Four now, more later, and nothing to migrate
+ * ## Six now, more later, and nothing to migrate
  *
- * Phase 1 offers the four structural diagrams the pack can draw. Phase 2 appends
- * `cmp`, `dep`, `act` and `stm`, phase 3 appends `sd`, each as a new option over
- * a new VALUE of the same string field (ADR 0017). A frame carrying a kind this
+ * Phase 1 offered four structural diagrams; phase 2 appended `cmp` and `dep` and
+ * will append `act` and `stm`; phase 3 appends `sd`. Each arrives as a new
+ * option over a new VALUE of the same string field (ADR 0017). A frame carrying
+ * a kind this
  * build has never heard of still paints its own heading, verbatim — see
  * {@link UmlDiagramElementModel.heading} — and the picker below simply shows no
  * current option rather than silently rewriting it to `class`.
@@ -49,9 +50,10 @@ export interface UmlDiagramKindOption {
 const kindKey = (name: string) => `com.labre.uml.kind.${name}`;
 
 /**
- * The picker, whole: its own heading and its four entries, in the order UML
- * itself teaches them — the classifiers first, then what groups them, then their
- * instances, then what the system is for.
+ * The picker, whole: its own heading and its entries, in the order UML itself
+ * teaches them — the classifiers first, then what groups them, then their
+ * instances, then what the system is for, then what it is built of and where it
+ * runs.
  *
  * One object rather than a loose array plus a stray heading constant, because
  * the manifest walks DECLARATIONS: `umlTranslationEntries` hands this value to
@@ -89,6 +91,20 @@ export const UML_DIAGRAM_KIND_MENU: {
       kind: 'uc',
       labelKey: kindKey('uc'),
       labelFallback: 'Use case diagram',
+    },
+    // Phase 2. Both are Annex A frame kinds with Annex A's own abbreviations,
+    // and they come after the phase-1 four rather than in alphabetical order:
+    // the list teaches the notation in the sequence an architect meets it, and
+    // what a system is BUILT of comes after what it is made of.
+    {
+      kind: 'cmp',
+      labelKey: kindKey('cmp'),
+      labelFallback: 'Component diagram',
+    },
+    {
+      kind: 'dep',
+      labelKey: kindKey('dep'),
+      labelFallback: 'Deployment diagram',
     },
   ],
 };

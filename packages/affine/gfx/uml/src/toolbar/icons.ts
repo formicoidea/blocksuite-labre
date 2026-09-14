@@ -119,6 +119,92 @@ export const umlUseCaseIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24
   <ellipse cx="12" cy="12" rx="9" ry="6" stroke="currentColor" stroke-width="1.6"/>
 </svg>`;
 
+/* ── Phase 2: what a component diagram is made of ───────────────────────── */
+
+/**
+ * Component — the rectangle with the two protruding tabs on its left edge
+ * (§11.6.4). The one classifier UML announces with a MARK rather than with a
+ * keyword, which is why the glyph is the mark and not a box with words in it.
+ */
+export const umlComponentIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="7" y="4.5" width="13" height="15" rx="1.2" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="4" y="7.5" width="6" height="3.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="4" y="13" width="6" height="3.5" rx="0.6" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/**
+ * Port — the small square straddling the border of what owns it (§11.3.4).
+ * FILLED, and drawn half in and half out, because the whole of what a port
+ * means is that it sits ON the boundary: a square inside the box would be a
+ * part, and one outside it would be a neighbour.
+ */
+export const umlPortIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="5" width="13" height="14" rx="1.2" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="13" y="9" width="6" height="6" rx="0.5" fill="currentColor"/>
+</svg>`;
+
+/** Provided interface — the LOLLIPOP: a stub ending in a full circle (§10.4.4). */
+export const umlProvidedInterfaceIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2.5 12 H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="16" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+</svg>`;
+
+/**
+ * Required interface — the SOCKET: the same stub ending in the half circle that
+ * cups a ball (§10.4.4). Open on the side the ball comes from, which is what
+ * makes an assembly read as one joint rather than as two marks that happen to
+ * touch.
+ */
+export const umlRequiredInterfaceIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2.5 12 H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M16.5 7.5 A4.5 4.5 0 0 0 16.5 16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/* ── Phase 2: what a deployment diagram is made of ──────────────────────── */
+
+/**
+ * Artifact — the document with its corner turned down (§19.3.4), told from the
+ * note beside it by the lines written ON it: a note is a comment about the
+ * model, an artifact is a FILE that is part of the system.
+ */
+export const umlArtifactIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5.5 3.5 H14.5 L18.5 7.5 V20.5 H5.5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M14.5 3.5 V7.5 H18.5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M8.5 12 H15.5 M8.5 15.5 H13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+</svg>`;
+
+/** The cube every deployment target is drawn as (§19.4.4) — front, top, side. */
+const cube = 'M3 8 H16 V20 H3 Z';
+const cubeBack = 'M3 8 L7 4 H20 V16 L16 20 M16 8 L20 4';
+
+/** Node — the bare 3D box: a computational resource, and nothing said of it. */
+export const umlNodeIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="${cube}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="${cubeBack}" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Device — the same cube, carrying the filled chip that says this node is a
+ * piece of HARDWARE (§19.4.4's `«device»`, as a mark rather than as a word,
+ * because a 24-unit glyph has no room for a keyword).
+ */
+export const umlDeviceIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="${cube}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="${cubeBack}" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <rect x="6" y="12" width="7" height="4.5" rx="0.6" fill="currentColor"/>
+</svg>`;
+
+/**
+ * Execution environment — the cube with the RUN mark on its face: software that
+ * other software is deployed into (§19.4.4's `«executionEnvironment»`), which is
+ * exactly the distinction from the device beside it.
+ */
+export const umlExecutionEnvironmentIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="${cube}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="${cubeBack}" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M7 11.5 L12.5 14.3 L7 17 Z" fill="currentColor"/>
+</svg>`;
+
 /* ── The relationships: each glyph IS the line the tool draws ───────────── */
 
 /** Association — a plain solid line, undirected (§11.5.4). */
@@ -183,6 +269,37 @@ export const umlExtendIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24"
   <path d="M5.5 4 L8 6.8 L5.5 9.6 M16.5 4 L14 6.8 L16.5 9.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+/**
+ * Deploy — the dashed dependency arrow of §19.2.4, pointed at the NODE it lands
+ * on. The box above it is the target, not decoration: `«deploy»` and
+ * `«manifest»` are the same line, and the only thing that can tell them apart in
+ * a menu row is what sits at the far end.
+ */
+export const umlDeployIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2 16 H16" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2.6" stroke-linecap="round"/>
+  <path d="M12.5 12.4 L19 16 L12.5 19.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="13" y="2.5" width="8" height="7" rx="0.8" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/** Manifest — the same arrow, landing on the artifact's own document glyph. */
+export const umlManifestIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2 16 H16" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2.6" stroke-linecap="round"/>
+  <path d="M12.5 12.4 L19 16 L12.5 19.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13.5 2.5 H18 L20.5 5 V10 H13.5 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M18 2.5 V5 H20.5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Communication path — a plain solid line between two NODES (§19.4.4). The two
+ * boxes are what separates it from the association it is drawn exactly like: a
+ * network link joins machines, and it claims no direction at either end.
+ */
+export const umlCommunicationPathIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 12 H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <rect x="1.5" y="8.5" width="5" height="7" rx="0.8" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="17.5" y="8.5" width="5" height="7" rx="0.8" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
 /* ── The two exports ───────────────────────────────────────────────────── */
 
 /**
@@ -213,8 +330,7 @@ export const umlExportXmiIcon = svg`<svg width="24" height="24" viewBox="0 0 24 
  *
  * The two export glyphs are deliberately NOT here and are added to
  * {@link umlToolbarIcon}'s sibling `umlCommandIcons` in `commands.ts` instead:
- * this record is the nineteen glyphs of things UML DRAWS, and an export draws
- * nothing.
+ * this record is the glyphs of things UML DRAWS, and an export draws nothing.
  */
 export const UML_TOOLBOX_ICONS = {
   'uml.diagram': umlDiagramIcon,
@@ -236,4 +352,16 @@ export const UML_TOOLBOX_ICONS = {
   'uml.anchor': umlAnchorIcon,
   'uml.include': umlIncludeIcon,
   'uml.extend': umlExtendIcon,
+  /* ── Phase 2: components and deployment ────────────────────────────── */
+  'uml.component': umlComponentIcon,
+  'uml.port': umlPortIcon,
+  'uml.provided-interface': umlProvidedInterfaceIcon,
+  'uml.required-interface': umlRequiredInterfaceIcon,
+  'uml.artifact': umlArtifactIcon,
+  'uml.node': umlNodeIcon,
+  'uml.device': umlDeviceIcon,
+  'uml.execution-environment': umlExecutionEnvironmentIcon,
+  'uml.deploy': umlDeployIcon,
+  'uml.manifest': umlManifestIcon,
+  'uml.communication-path': umlCommunicationPathIcon,
 } as const;

@@ -58,17 +58,46 @@ describe('the declared families', () => {
     ]);
   });
 
-  it('leaves the other five alone, and offers no menu for them', () => {
+  it('puts the one BOX UML draws three ways in the second family', () => {
+    // §19.4.4: a node, a device and an execution environment are the SAME cube,
+    // told apart by `«device»` / `«executionEnvironment»` over the name. The
+    // same statement as the classifier family, in a different clause — and it
+    // opens on the plain node for the same reason.
+    expect(UML_MORPH_FAMILIES).toContainEqual([
+      'node',
+      'device',
+      'execution-environment',
+    ]);
+  });
+
+  it('leaves the solitary kinds alone, and offers no menu for them', () => {
     // An object is an instance, a package a namespace, a note a comment, an
-    // actor and a use case a behaviour diagram's furniture. Each is declared
-    // alone — and a family of one has nothing to offer, so the SPEC does not
-    // carry it: a dropdown whose only option is what is already selected is a
-    // control that cannot do anything.
-    for (const kind of ['object', 'package', 'note', 'actor', 'use-case']) {
+    // actor and a use case a behaviour diagram's furniture; a component is
+    // announced by a mark rather than a keyword, an artifact is a file, a port
+    // is a property of its owner, and the ball and the socket are two DIFFERENT
+    // drawings. Each is declared alone — and a family of one has nothing to
+    // offer, so the SPEC does not carry it: a dropdown whose only option is what
+    // is already selected is a control that cannot do anything.
+    for (const kind of [
+      'object',
+      'package',
+      'note',
+      'actor',
+      'use-case',
+      'component',
+      'artifact',
+      'port',
+      'provided-interface',
+      'required-interface',
+    ]) {
       expect(UML_MORPH_FAMILIES).toContainEqual([kind]);
       expect(UML_MORPH_SPEC.families.flat()).not.toContain(kind);
     }
-    expect(UML_MORPH_SPEC.families).toEqual([UML_MORPH_FAMILIES[0]]);
+    // Exactly the families with something to say, in declaration order.
+    expect(UML_MORPH_SPEC.families).toEqual(
+      UML_MORPH_FAMILIES.filter(family => family.length > 1)
+    );
+    expect(UML_MORPH_SPEC.families).toHaveLength(2);
   });
 });
 
@@ -77,17 +106,40 @@ describe('the declared families', () => {
  * the geometry the module promises not to touch is genuinely untouched.
  */
 describe('a family is geometry-preserving by construction', () => {
-  it('shares one footprint across the classifier family', () => {
-    const [first, ...rest] = UML_MORPH_FAMILIES[0];
-    for (const kind of rest) {
-      expect(UML_NODE_BOX[kind]).toEqual(UML_NODE_BOX[first]);
+  it('shares one footprint inside every OFFERED family', () => {
+    // The claim that makes a morph cheap, and it has to hold for the deployment
+    // cubes as well as for the classifiers: a swap inside a family moves
+    // nothing, so nothing has to be laid out again afterwards.
+    for (const family of UML_MORPH_SPEC.families) {
+      const [first, ...rest] = family;
+      for (const kind of rest) {
+        expect(UML_NODE_BOX[kind], `${first} → ${kind}`).toEqual(
+          UML_NODE_BOX[first]
+        );
+      }
     }
   });
 
-  it('shares one silhouette, which is the whole point of the family', () => {
-    // All three are a native filled rectangle: nothing in this family is drawn
-    // by a glyph, so the morph never has to stop or start the shape layer
-    // painting — the keyword line does all the work a reader sees.
+  it('shares one silhouette inside every offered family', () => {
+    // The whole point of a family: nobody in it is drawn differently from
+    // anybody else, so the morph never has to stop or start the shape layer
+    // painting — the keyword line does all the work a reader sees. The
+    // classifiers are native filled rectangles; the cubes are GLYPH-bodied
+    // (`presets.ts`), so their three are alike in the opposite way, and this
+    // asserts the likeness rather than the value.
+    for (const family of UML_MORPH_SPEC.families) {
+      const [first, ...rest] = family;
+      const reference = umlMorphProps(first);
+      for (const kind of rest) {
+        const props = umlMorphProps(kind);
+        for (const key of ['shapeType', 'filled', 'strokeStyle'] as const) {
+          expect(props[key], `${kind}.${key}`).toEqual(reference[key]);
+        }
+      }
+    }
+  });
+
+  it('draws the classifier family as the native filled rectangle', () => {
     for (const kind of UML_MORPH_FAMILIES[0]) {
       const props = umlMorphProps(kind);
       expect(props.shapeType).toBe('rect');
@@ -177,6 +229,28 @@ describe('umlMorphedName — the keyword follows the shape, the name does not', 
     expect(umlMorphedName('class', 'interface', '  Class  ')).toBe(
       UML_NAME_SEED.interface
     );
+  });
+
+  it('stamps the cube with §19.4.4 keyword, and keeps the name typed in it', () => {
+    // The second family, and the same rule: a node has no keyword at all, a
+    // device and an execution environment each have one, and the name — which
+    // on a cube is written INSIDE the front face — is the author's.
+    expect(umlMorphedName('node', 'device', UML_NAME_SEED.node)).toBe(
+      UML_NAME_SEED.device
+    );
+    expect(umlMorphedName('node', 'device', ':AppServer')).toBe(
+      `${guillemets('device')}\n:AppServer`
+    );
+    expect(
+      umlMorphedName('device', 'execution-environment', ':AppServer')?.split(
+        '\n'
+      )
+    ).toEqual(['«executionEnvironment»', ':AppServer']);
+    // …and back to the plain node takes the keyword away, which is what makes
+    // the box mean a Node again.
+    expect(
+      umlMorphedName('device', 'node', `${guillemets('device')}\n:AppServer`)
+    ).toBe(':AppServer');
   });
 
   it('leaves a keyword the author wrote, and writes the new one above it', () => {

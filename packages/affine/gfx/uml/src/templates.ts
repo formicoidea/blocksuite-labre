@@ -22,9 +22,9 @@ import { UML_CARD, UML_DIVIDER, UML_FRAME_INK, UML_INK } from './consts.js';
  * and `__tests__/templates-parity.unit.spec.ts` re-runs each one and compares.
  * The day `createUmlClassifier` changes, the palette changes with it.
  *
- * The nine relationship TOOLS have no template on purpose — they ARM the
- * connector tool and draw nothing, so there is no artefact to record; the two
- * exports are not artefact commands at all.
+ * The relationship TOOLS have no template on purpose — they ARM the connector
+ * tool and draw nothing, so there is no artefact to record; the two exports are
+ * not artefact commands at all.
  */
 
 /** The command a derived template is the picture of. Throws rather than skips. */
@@ -73,6 +73,19 @@ const classifierPreview = (options: {
     .join('');
   return `<svg ${ATTRS} fill="none"><rect x="32" y="${top}" width="71" height="${height}" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${separators}${head}${underline ? `<path d="M44 31 H91" stroke="${UML_INK}" stroke-width="1.6"/>` : ''}${rows}</svg>`;
 };
+
+/**
+ * The 3D box every deployment target is drawn as (§19.4.4) — the back faces
+ * first, the front over them, and whatever mark the kind is told apart by
+ * INSIDE that front face, which is the only face UML writes in.
+ *
+ * One helper for the three, exactly as {@link classifierPreview} is one helper
+ * for four: a node, a device and an execution environment are the same drawing
+ * and a reader who could tell them apart by their silhouette would be reading a
+ * notation UML does not have.
+ */
+const cubePreview = (mark = '') =>
+  `<svg ${ATTRS} fill="none"><path d="M24 26 L42 12 H106 V52 L88 66 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M24 26 H88 V66 H24 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M88 26 L106 12" stroke="${UML_INK}" stroke-width="1.6"/>${line(34, 34, 44, UML_INK)}${mark}</svg>`;
 
 export const umlTemplateCategory: TemplateCategory = {
   name: 'UML',
@@ -128,6 +141,53 @@ export const umlTemplateCategory: TemplateCategory = {
     templateFromCommand(
       byId('uml.addSubject'),
       `<svg ${ATTRS} fill="none"><rect x="12" y="10" width="111" height="60" stroke="${UML_FRAME_INK}" stroke-width="1.6"/>${line(20, 17, 34, UML_FRAME_INK)}<ellipse cx="50" cy="45" rx="24" ry="13" stroke="${UML_DIVIDER}" stroke-width="1.6"/><ellipse cx="97" cy="45" rx="18" ry="11" stroke="${UML_DIVIDER}" stroke-width="1.6"/></svg>`
+    ),
+
+    /* ── Phase 2: components (§11.6.4, §11.3.4, §10.4.4) ─────────────── */
+
+    // The classifier box with the two-tab MARK in its corner — the one
+    // classifier UML announces without a keyword (§11.6.4).
+    templateFromCommand(
+      byId('uml.addComponent'),
+      `<svg ${ATTRS} fill="none"><rect x="30" y="14" width="75" height="52" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M30 30 H105" stroke="${UML_INK}" stroke-width="1.6"/><rect x="88" y="18" width="13" height="9" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="1.4"/><rect x="85" y="19.5" width="6" height="2.5" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="1.2"/><rect x="85" y="23.5" width="6" height="2.5" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="1.2"/>${line(38, 20, 38, UML_INK)}${line(38, 42, 50)}${line(38, 52, 34)}</svg>`
+    ),
+    // The filled square ON the border, and its label beside it: a port's whole
+    // meaning is where it sits (§11.3.4).
+    templateFromCommand(
+      byId('uml.addPort'),
+      `<svg ${ATTRS} fill="none"><rect x="18" y="16" width="56" height="48" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><rect x="66" y="32" width="16" height="16" fill="${UML_INK}"/>${line(88, 38, 30, UML_INK)}</svg>`
+    ),
+    // The lollipop (§10.4.4): a stub ending in the full circle.
+    templateFromCommand(
+      byId('uml.addProvidedInterface'),
+      `<svg ${ATTRS} fill="none"><path d="M22 34 H62" stroke="${UML_INK}" stroke-width="2.4" stroke-linecap="round"/><circle cx="74" cy="34" r="12" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${line(40, 58, 46, UML_INK)}</svg>`
+    ),
+    // The socket: the same stub, ending in the half circle that cups a ball.
+    templateFromCommand(
+      byId('uml.addRequiredInterface'),
+      `<svg ${ATTRS} fill="none"><path d="M22 34 H62" stroke="${UML_INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M74 22 A12 12 0 0 0 74 46" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/>${line(40, 58, 46, UML_INK)}</svg>`
+    ),
+
+    /* ── Phase 2: deployment (§19.3.4, §19.4.4) ──────────────────────── */
+
+    // The document, with words written ON it — which is what tells an artifact
+    // from the note that shares its folded corner.
+    templateFromCommand(
+      byId('uml.addArtifact'),
+      `<svg ${ATTRS} fill="none"><path d="M38 12 H80 L97 29 V68 H38 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2" stroke-linejoin="round"/><path d="M80 12 V29 H97" stroke="${UML_INK}" stroke-width="1.6" stroke-linejoin="round"/>${line(46, 36, 40, UML_INK)}${line(46, 50, 42)}${line(46, 58, 30)}</svg>`
+    ),
+    templateFromCommand(byId('uml.addNode'), cubePreview()),
+    // The chip: this node is HARDWARE.
+    templateFromCommand(
+      byId('uml.addDevice'),
+      cubePreview(
+        `<rect x="34" y="46" width="26" height="11" rx="1.5" fill="${UML_INK}"/>`
+      )
+    ),
+    // The run mark: this node is software other software is deployed INTO.
+    templateFromCommand(
+      byId('uml.addExecutionEnvironment'),
+      cubePreview(`<path d="M34 45 L54 52.5 L34 60 Z" fill="${UML_INK}"/>`)
     ),
   ],
 };
