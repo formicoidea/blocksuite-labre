@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   FrameworkBackgroundElementModel,
@@ -42,6 +42,66 @@ function detached<T>(
 /** What a document would carry for this element — the props actually stored. */
 const stored = (element: unknown) =>
   (element as { _preserved: Map<string, unknown> })._preserved;
+
+/**
+ * The 2-D affine pair `getPointsFromBoundWithRotation` composes a rotation
+ * with.
+ *
+ * happy-dom ships `DOMMatrix` / `DOMPoint` as names without geometry —
+ * `matrixTransform` is simply absent — so the rotation branch of the shared
+ * helper cannot run under the test environment. These are the three operations
+ * it uses and nothing more; the browser's own implementations do the same
+ * arithmetic, which is what makes asserting rotation here worth anything. Same
+ * harness the framework-background hit-test spec installs.
+ */
+class StubMatrix {
+  constructor(
+    public a = 1,
+    public b = 0,
+    public c = 0,
+    public d = 1,
+    public e = 0,
+    public f = 0
+  ) {}
+
+  translateSelf(tx: number, ty: number) {
+    this.e += this.a * tx + this.c * ty;
+    this.f += this.b * tx + this.d * ty;
+    return this;
+  }
+
+  rotateSelf(deg: number) {
+    const rad = (deg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const { a, b, c, d } = this;
+    this.a = a * cos + c * sin;
+    this.b = b * cos + d * sin;
+    this.c = c * cos - a * sin;
+    this.d = d * cos - b * sin;
+    return this;
+  }
+}
+
+class StubPoint {
+  constructor(
+    public x = 0,
+    public y = 0
+  ) {}
+
+  matrixTransform(m: StubMatrix) {
+    return {
+      x: m.a * this.x + m.c * this.y + m.e,
+      y: m.b * this.x + m.d * this.y + m.f,
+    };
+  }
+}
+
+beforeAll(() => {
+  const global = globalThis as Record<string, unknown>;
+  global.DOMMatrix = StubMatrix;
+  global.DOMPoint = StubPoint;
+});
 
 /** What the picking path passes: ten screen pixels, at the current zoom. */
 const PICK = { hitThreshold: 10, zoom: 1 };
@@ -178,6 +238,56 @@ describe('the UML element models', () => {
     // move it.
     expect(diagram.includesPoint(700, -40, PICK)).toBe(false);
     expect(diagram.includesPoint(1600, 20, PICK)).toBe(false);
+  });
+
+  /**
+   * …and the band follows the frame round when the frame is ROTATED.
+   *
+   * The band is axis-aligned INSIDE the frame, not on the canvas, so the hit
+   * test undoes the element rotation about the centre before measuring. This is
+   * the case that executes that unwind: without it the strip would stay pinned
+   * to the top of the screen while the heading it is meant to pick moved away.
+   */
+  it('turns the heading band with a rotated frame', () => {
+    // A 400 × 200 frame turned a quarter turn about its centre (200, 100): it
+    // now measures 200 × 400, so it spans x ∈ [100, 300], y ∈ [-100, 300] and
+    // its heading runs UP the right-hand side.
+    const diagram = detached(UmlDiagramElementModel, {
+      xywh: '[0,0,400,200]',
+      rotate: 90,
+    });
+
+    // The middle of the band — element-local (200, 20), which the quarter turn
+    // carries to (280, 100). Twenty units in from the rotated right edge, so
+    // the border band is not what answers here.
+    expect(diagram.includesPoint(280, 100, PICK)).toBe(true);
+
+    // Where the UNrotated band used to be there is now nothing: element-local
+    // (120, 100) is 100 units below the heading, and 100 from the nearest edge.
+    expect(diagram.includesPoint(200, 20, PICK)).toBe(false);
+  });
+
+  /**
+   * A frame shorter than its own heading — the degenerate case the renderer
+   * clamps too.
+   *
+   * `Math.min(UML_FRAME_BAND_HEIGHT, h)` is what stops the band hanging BELOW a
+   * squashed frame and picking it from empty canvas. Asserted because the
+   * failure is invisible: the strip is not painted there, so only a point test
+   * can catch it.
+   */
+  it('clamps the band to a frame shorter than its own heading', () => {
+    const diagram = detached(UmlDiagramElementModel, {
+      xywh: '[0,0,400,20]',
+      rotate: 0,
+    });
+
+    // Inside the 20-unit frame: picked, as it always was.
+    expect(diagram.includesPoint(200, 10, PICK)).toBe(true);
+
+    // Twenty units BELOW its bottom edge, and out of reach of the border band.
+    // Unclamped, the 44-unit strip would still claim this point.
+    expect(diagram.includesPoint(200, 40, PICK)).toBe(false);
   });
 
   /**

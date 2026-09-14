@@ -9,7 +9,8 @@
   ship no rules, by decision), [0014](0014-senior-submenu-rules.md) (one senior
   button, one sub-menu, one cap per framework),
   [0015](0015-rule-dependency-scope.md) (a rule family declares what its verdict
-  depends on).
+  depends on), [0016](0016-hollow-endpoint-styles.md) (the hollow endpoint
+  styles UML's arrowheads need).
 
 ## Context
 

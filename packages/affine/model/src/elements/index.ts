@@ -77,8 +77,8 @@ export type SurfaceElementModelMap = {
   coreDomain: CoreDomainChartElementModel;
   contextMap: ContextMapBoardElementModel;
   eventStorming: EventStormingBoardElementModel;
-  umlDiagram: UmlDiagramElementModel;
   umlNode: UmlNodeElementModel;
+  umlDiagram: UmlDiagramElementModel;
   umlSubject: UmlSubjectElementModel;
 };
 

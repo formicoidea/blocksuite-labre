@@ -72,8 +72,14 @@ export type UmlDiagramKind = 'class' | 'pkg' | 'obj' | 'uc';
  * A table rather than the raw value so that a kind whose stored discriminant
  * and whose printed tag ever diverge has one place to say so. Today they are
  * the same four strings, and that is worth stating rather than assuming.
+ *
+ * `Partial` on purpose: a frame read off a document carries whatever string was
+ * written there, including a kind from a later phase this build has never heard
+ * of. Typing the lookup as total would make {@link
+ * UmlDiagramElementModel.heading}'s `?? this.kind` fallback look like dead
+ * defensive code, when it is the whole of the append-only promise.
  */
-export const UML_DIAGRAM_KIND_TAG: Record<UmlDiagramKind, string> = {
+export const UML_DIAGRAM_KIND_TAG: Partial<Record<UmlDiagramKind, string>> = {
   class: 'class',
   pkg: 'pkg',
   obj: 'obj',
@@ -137,9 +143,8 @@ export class UmlDiagramElementModel extends FrameworkBackgroundElementModel<UmlD
    * The heading written in the cut-corner tag: `<kind> <name>`.
    *
    * DERIVED, not stored. Nothing here reaches the document: the two halves are
-   * `kind` and `name`, and a rename edits `name` alone — so a frame saved
-   * before this getter existed reads exactly the same heading, and no migration
-   * is owed for a string that was never persisted.
+   * `kind` and `name`, and a rename edits `name` alone — so there is one place
+   * a heading can be changed from, and nothing to keep in step with it.
    *
    * A kind this client does not know — a phase-2 value on a phase-1 build — is
    * written VERBATIM rather than dropped or replaced by the default. The tag
