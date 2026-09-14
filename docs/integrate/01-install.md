@@ -19,6 +19,7 @@ The source packages (`@labre/*`) are private and never on npm.
 | `@formicoidea/labre-framework-ddd-event-storming`, `-ddd-core-domain`, `-ddd-context-map` | the three DDD tools                                                        |
 | `@formicoidea/labre-ddd-shared`                                                           | pulled in by the DDD frameworks                                            |
 | `@formicoidea/labre-framework-ddd-aggregate`                                              | DDD template categories (no senior button)                                 |
+| `@formicoidea/labre-framework-uml`                                                        | UML (class, package, object and use-case diagrams)                         |
 
 Every framework bundle depends on the **exact** core version it was built
 with. Install them together and bump them together.

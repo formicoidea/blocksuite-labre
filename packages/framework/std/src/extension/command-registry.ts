@@ -50,6 +50,7 @@ export const FRAMEWORK_IDS = [
   'ddd-event-storming',
   'ddd-core-domain',
   'ddd-context-map',
+  'uml',
 ] as const;
 export type FrameworkId = (typeof FRAMEWORK_IDS)[number];
 export type CommandOwner = 'core' | FrameworkId;

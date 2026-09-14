@@ -2274,6 +2274,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/lodash-es": "npm:^4.17.12"
+    happy-dom: "npm:^17.4.4"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
     minimatch: "npm:^10.0.1"
@@ -2680,6 +2681,27 @@ __metadata:
     "@labre/std": "workspace:*"
     "@labre/store": "workspace:*"
     rxjs: "npm:^7.8.1"
+  languageName: unknown
+  linkType: soft
+
+"@labre/affine-gfx-uml@workspace:*, @labre/affine-gfx-uml@workspace:packages/affine/gfx/uml":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-gfx-uml@workspace:packages/affine/gfx/uml"
+  dependencies:
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-connector": "workspace:*"
+    "@labre/affine-gfx-ddd-shared": "workspace:*"
+    "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
+    "@labre/affine-gfx-template": "workspace:*"
+    "@labre/affine-gfx-text": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    lit: "npm:^3.2.0"
   languageName: unknown
   linkType: soft
 
@@ -3449,6 +3471,7 @@ __metadata:
     "@labre/affine-gfx-template": "workspace:*"
     "@labre/affine-gfx-text": "workspace:*"
     "@labre/affine-gfx-turbo-renderer": "workspace:*"
+    "@labre/affine-gfx-uml": "workspace:*"
     "@labre/affine-gfx-wardley": "workspace:*"
     "@labre/affine-inline-comment": "workspace:*"
     "@labre/affine-inline-footnote": "workspace:*"

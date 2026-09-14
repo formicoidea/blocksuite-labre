@@ -1,0 +1,189 @@
+import type { ShortcutManifestEntry } from '@labre/std';
+
+/**
+ * The UML commands as SHORTCUT-MANIFEST rows — id, label, chord, scope,
+ * owner — and nothing else.
+ *
+ * DATA ONLY, and that is the whole point (`docs/adr/0008` § Packaging). A
+ * `CommandDescriptor` carries its `run`, so a host settings pane that imported
+ * the package entry to list names and chords would drag the entire action graph
+ * — the grammar, the XMI and PlantUML writers, the surface and gfx deep paths —
+ * into its chunk. This module has type-only imports, so the published bundle
+ * exposes it as `./commands-manifest`: a few hundred bytes that reference
+ * nothing.
+ *
+ * GENERATED-SHAPED, hand-committed: `commands-manifest.unit.spec.ts` asserts
+ * row-for-row equality with `toShortcutManifestEntry` over `umlCommands`, so
+ * this file cannot drift from the commands it projects. Add a command and the
+ * test says exactly what to add here.
+ */
+export const umlCommandsManifest: ShortcutManifestEntry[] = [
+  {
+    id: 'uml.addDiagram',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addDiagram',
+    labelFallback: 'UML diagram',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addClass',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addClass',
+    labelFallback: 'Class',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addInterface',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addInterface',
+    labelFallback: 'Interface',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addEnumeration',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addEnumeration',
+    labelFallback: 'Enumeration',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addPackage',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addPackage',
+    labelFallback: 'Package',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addNote',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addNote',
+    labelFallback: 'Note',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addActor',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addActor',
+    labelFallback: 'Actor',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addUseCase',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addUseCase',
+    labelFallback: 'Use case',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addSubject',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addSubject',
+    labelFallback: 'Subject',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.associationTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.associationTool',
+    labelFallback: 'Association',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.generalizationTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.generalizationTool',
+    labelFallback: 'Generalization',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.dependencyTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.dependencyTool',
+    labelFallback: 'Dependency',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.includeTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.includeTool',
+    labelFallback: 'Include',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.extendTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.extendTool',
+    labelFallback: 'Extend',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.addObject',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.addObject',
+    labelFallback: 'Object',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.aggregationTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.aggregationTool',
+    labelFallback: 'Aggregation',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.compositionTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.compositionTool',
+    labelFallback: 'Composition',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.realizationTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.realizationTool',
+    labelFallback: 'Realization',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.anchorTool',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.anchorTool',
+    labelFallback: 'Anchor',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.exportPlantuml',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.exportPlantuml',
+    labelFallback: 'Export as PlantUML',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'uml.exportXmi',
+    owner: 'uml',
+    labelKey: 'com.labre.commands.uml.exportXmi',
+    labelFallback: 'Export as XMI',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+];

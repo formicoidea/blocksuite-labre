@@ -10,6 +10,7 @@ import { contextMapTranslationEntries } from '@labre/affine-gfx-ddd-context-map'
 import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingTranslationEntries } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyTranslationEntries } from '@labre/affine-gfx-edgy';
+import { umlTranslationEntries } from '@labre/affine-gfx-uml';
 import { wardleyTranslationEntries } from '@labre/affine-gfx-wardley';
 import { CHROME_WORDINGS } from '@labre/affine-shared/services';
 import {
@@ -94,6 +95,7 @@ const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
   { owner: 'ddd-event-storming', entries: eventStormingTranslationEntries },
   { owner: 'ddd-core-domain', entries: coreDomainTranslationEntries },
   { owner: 'ddd-context-map', entries: contextMapTranslationEntries },
+  { owner: 'uml', entries: umlTranslationEntries },
 ];
 
 /**

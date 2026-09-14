@@ -14,7 +14,8 @@
    in two: `<Id>RenderViewExtension` (always on) and `<Id>ViewExtension`
    (flag-gated).
 3. **A flag** in `packages/affine/all/src/flags.ts` (`OPTIONAL_BLOCKS`) and
-   a descriptor in `frameworks.ts`. The flag gates tooling only.
+   a descriptor in `frameworks.ts`: one flag, one descriptor, one drawing
+   (R34). The flag gates tooling only.
 4. **Telemetry** through command descriptors (`telemetry: { framework,
 element, board }`); the board-placing command declares `board: true`.
 5. **Unit tests**, plus an integration spec since it renders on the canvas.
@@ -45,7 +46,9 @@ the flag was on must paint and stay editable while it is off.
 
 Validation rules and profiles, nudges, legend, interchange, natures. A
 framework that ships none of one kind says so in an ADR (ADR 0013 for
-Cynefin) so that a coverage audit does not report it as missing.
+Cynefin) so that a coverage audit does not report it as missing. UML:
+natures, nudges and audit criteria not shipped, imports in phase 2, per
+ADR 0017.
 
 ## Acceptance by the product owner
 

@@ -4,6 +4,7 @@ import {
   ConnectorMode,
   type LocalConnectorElementModel,
 } from '@labre/affine-model';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import type {
   BezierCurveParameters,
   IVec,
@@ -14,6 +15,18 @@ import { getBezierParameters, getBezierTangent, Vec } from '@labre/global/gfx';
 type ConnectorEnd = 'Front' | 'Rear';
 
 export const DEFAULT_ARROW_SIZE = 15;
+
+/**
+ * The interior of a hollow endpoint head (`TriangleHollow`, `DiamondHollow`).
+ *
+ * The notation card fill (R33), NOT a theme-resolved token and NOT
+ * `transparent`: a UML hollow head reads as a white shape sitting on top of the
+ * line it terminates, exactly like the class box it points at — which is itself
+ * painted `NOTATION_NEUTRALS.cardFill` in every theme. `transparent` would let
+ * the connector's own line show through the head; a theme token would turn the
+ * head black-on-black next to a card-white box in a dark host.
+ */
+export const HOLLOW_HEAD_FILL = NOTATION_NEUTRALS.cardFill;
 
 export function getArrowPoints(
   points: PointLocation[],
@@ -128,10 +141,16 @@ export function getDiamondPoints(
 
 export type ArrowOptions = ReturnType<typeof getArrowOptions>;
 
+/**
+ * @param fillColor the interior of a closed head. Defaults to `strokeColor`, so
+ *   a `Triangle` or a `Diamond` stays the solid head it has always been; the
+ *   hollow UML heads pass `HOLLOW_HEAD_FILL` instead.
+ */
 export function getArrowOptions(
   end: ConnectorEnd,
   model: ConnectorElementModel | LocalConnectorElementModel,
-  strokeColor: string
+  strokeColor: string,
+  fillColor: string = strokeColor
 ) {
   const { seed, mode, rough, roughness, strokeWidth, path } = model;
 
@@ -143,7 +162,7 @@ export function getArrowOptions(
     roughness,
     strokeWidth,
     strokeColor,
-    fillColor: strokeColor,
+    fillColor,
     fillStyle: 'solid',
     bezierParameters: getBezierParameters(path),
   };
@@ -161,14 +180,21 @@ export function getRcOptions(options: ArrowOptions) {
   };
 }
 
+/**
+ * @param color the outline colour.
+ * @param fillColor the interior colour. Defaults to `color` — the solid head.
+ *   A hollow head passes the notation card fill, so the outline stays the
+ *   connector's colour while the inside reads as empty.
+ */
 export function renderRoundedPolygon(
   ctx: CanvasRenderingContext2D,
   points: IVec[],
   color: string,
   strokeWidth: number,
-  fill: boolean = true
+  fill: boolean = true,
+  fillColor: string = color
 ) {
-  ctx.fillStyle = color;
+  ctx.fillStyle = fillColor;
   ctx.strokeStyle = color;
   ctx.lineWidth = strokeWidth;
   ctx.lineJoin = 'round';
@@ -225,8 +251,15 @@ export function renderTriangle(
   rc: RoughCanvas,
   options: ArrowOptions
 ) {
-  const { mode, end, bezierParameters, rough, strokeColor, strokeWidth } =
-    options;
+  const {
+    mode,
+    end,
+    bezierParameters,
+    rough,
+    fillColor,
+    strokeColor,
+    strokeWidth,
+  } = options;
   const radians = Math.PI / 6;
   const size = DEFAULT_ARROW_SIZE * (strokeWidth / 2);
   const { points: trianglePoints } = getArrowPoints(
@@ -248,7 +281,14 @@ export function renderTriangle(
       getRcOptions(options)
     );
   } else {
-    renderRoundedPolygon(ctx, trianglePoints, strokeColor, strokeWidth);
+    renderRoundedPolygon(
+      ctx,
+      trianglePoints,
+      strokeColor,
+      strokeWidth,
+      true,
+      fillColor
+    );
   }
 }
 
@@ -258,8 +298,15 @@ export function renderDiamond(
   rc: RoughCanvas,
   options: ArrowOptions
 ) {
-  const { mode, end, rough, bezierParameters, strokeColor, strokeWidth } =
-    options;
+  const {
+    mode,
+    end,
+    rough,
+    bezierParameters,
+    fillColor,
+    strokeColor,
+    strokeWidth,
+  } = options;
   const anchorPoint = getPointWithTangent(points, mode, end, bezierParameters);
   const size = 10 * (strokeWidth / 2);
   const { points: diamondPoints } = getDiamondPoints(anchorPoint, size, end);
@@ -275,7 +322,14 @@ export function renderDiamond(
       getRcOptions(options)
     );
   } else {
-    renderRoundedPolygon(ctx, diamondPoints, strokeColor, strokeWidth);
+    renderRoundedPolygon(
+      ctx,
+      diamondPoints,
+      strokeColor,
+      strokeWidth,
+      true,
+      fillColor
+    );
   }
 }
 

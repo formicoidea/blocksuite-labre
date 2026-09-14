@@ -74,6 +74,10 @@ import { ShapeViewExtension } from '@labre/affine-gfx-shape/view';
 import { TemplateViewExtension } from '@labre/affine-gfx-template/view';
 import { TextViewExtension } from '@labre/affine-gfx-text/view';
 import {
+  UmlRenderViewExtension,
+  UmlViewExtension,
+} from '@labre/affine-gfx-uml/view';
+import {
   WardleyRenderViewExtension,
   WardleyViewExtension,
 } from '@labre/affine-gfx-wardley/view';
@@ -173,6 +177,8 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('ddd-core-domain') ? [DddCoreDomainViewExtension] : []),
     DddContextMapRenderViewExtension,
     ...(on('ddd-context-map') ? [DddContextMapViewExtension] : []),
+    UmlRenderViewExtension,
+    ...(on('uml') ? [UmlViewExtension] : []),
     ...(on('ddd-templates') ? [DddTemplatesViewExtension] : []),
 
     // Block
