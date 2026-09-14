@@ -28,16 +28,21 @@ import { UML_ROLE } from './roles.js';
  * through it is to delete the line, re-drag it between the same two boxes and
  * hope both ends reattach where they were.
  *
- * ## The three families, and why they are three
+ * ## The four families, and why they are four
  *
  * Grouped by what the relationship IS, which is also what the specification
  * groups them by:
  *
- *  - **association, aggregation, composition** — §11.5: one clause, one
- *    metaclass (Association), and the difference is `aggregation` =
- *    none / shared / composite. These three are literally the same model element
- *    with one property changed, which is as close to "the same thing said more
- *    precisely" as UML gets;
+ *  - **association, aggregation, composition, communication path** — §11.5 and
+ *    §19.4.4: one metaclass (Association), and the difference between the first
+ *    three is `aggregation` = none / shared / composite. These are literally the
+ *    same model element with one property changed, which is as close to "the
+ *    same thing said more precisely" as UML gets. A CommunicationPath joins them
+ *    rather than standing alone because §19.4.4 defines it AS an Association
+ *    between nodes and draws it as one — a plain solid line — so a line an
+ *    author drew between two servers and one they drew between two classes are
+ *    the same drawing, and the swap is the correction a reader of a deployment
+ *    diagram actually needs;
  *  - **generalization, realization** — §9.9.7 and §10.4.3: both say "this one
  *    conforms to that one", both are drawn with the hollow triangle, and the
  *    dashed line is the whole visual difference. A designer who drew a
@@ -46,7 +51,16 @@ import { UML_ROLE } from './roles.js';
  *  - **dependency, include, extend** — §7.8 and §18.1.4: all three are
  *    dependencies drawn identically and told apart by their keyword alone, which
  *    is exactly the case where a picture cannot show a mistake and a dropdown
- *    can fix one.
+ *    can fix one;
+ *  - **deploy, manifest** — §19.2.4 and §19.3.4: both are dependencies FROM an
+ *    artifact drawn as that same dashed arrow, and what separates them is which
+ *    end it lands on — a node (this artifact runs there) or a component (this
+ *    artifact IS that component, in the flesh). They are their own family rather
+ *    than three more members of the one above precisely because the confusion is
+ *    between the two of them: an author who dropped a `.war` on a diagram and
+ *    arrowed it at the wrong neighbour has made the one mistake this dropdown
+ *    fixes, and offering them `«include»` alongside would be offering a use-case
+ *    relationship on a deployment diagram.
  *
  * ## The anchor is in no family
  *
@@ -61,18 +75,21 @@ export type UmlEdgeKind = UmlEdgeRole;
 
 /**
  * Every edge kind the pack draws — derived from the style table, which is the
- * one place the nine are enumerated.
+ * one place they are enumerated.
  */
 export const UML_EDGE_KINDS = Object.keys(UML_EDGE_STYLE) as UmlEdgeKind[];
 
-/** See the module docblock: three families, and the anchor in none of them. */
+/** See the module docblock: four families, and the anchor in none of them. */
 export const UML_EDGE_FAMILIES: readonly (readonly UmlEdgeKind[])[] = [
   // Declaration order is menu order, and each family opens on its PLAIN member:
   // the undecorated relationship is the honest first draft and the decorated one
   // is the refinement — the same call the node morph and the sub-menu make.
-  ['association', 'aggregation', 'composition'],
+  ['association', 'aggregation', 'composition', 'communication-path'],
   ['generalization', 'realization'],
   ['dependency', 'include', 'extend'],
+  // APPENDED, never inserted: the three families above keep their index, which
+  // is what lets the suite go on naming the dependency family by position.
+  ['deploy', 'manifest'],
 ];
 
 /**

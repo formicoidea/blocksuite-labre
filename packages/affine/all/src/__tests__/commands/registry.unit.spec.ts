@@ -137,17 +137,25 @@ describe('command registry invariants', () => {
       // 12 since the PO's recette (27/08/2026) removed the palette's static
       // Legend entry — the board's contextual auto-legend is THE legend.
       'ddd-context-map': 12,
-      // 21, and the first framework to arrive already past the cap: ten
-      // artefacts (the diagram frame, the four classifiers, the package, the
+      // 21 at phase 1, and the first framework to arrive already past the cap:
+      // ten artefacts (the diagram frame, the four classifiers, the package, the
       // note, the actor, the use case, the subject), nine relationship tools,
       // and the two exports — PlantUML and XMI 2.5.1, two formats and therefore
-      // two rows (`docs/adr/0012`). Fourteen of the twenty-one nominate the
-      // senior row, which is `SENIOR_MENU_CAP` exactly, so the curation budget
-      // below is met without an over-nomination; the other seven and both
-      // exports decline it and live in the catalogue. UML phase 1 is class,
-      // package, object and use-case diagrams; a sequence or state pack is a
-      // second tranche and owes this number a re-read.
-      uml: 21,
+      // two rows (`docs/adr/0012`).
+      //
+      // …and 32 since phase 2 (components and deployment, ADR 0017's second
+      // append): the component, the port, the provided and required interface
+      // marks, the artifact, the node, the device and the execution environment
+      // — eight artefacts — plus the deploy, manifest and communication-path
+      // tools.
+      //
+      // The NOMINATIONS did not move: all eleven decline the senior row, so the
+      // pool is still the phase-1 fourteen — `SENIOR_MENU_CAP` exactly — and the
+      // curation budget below is met without an over-nomination. Which of the
+      // fourteen a component ought to displace is a PO curation point, not a
+      // tranche's to settle (`gfx/uml/src/commands.ts`). A sequence or state
+      // pack is a third tranche and owes this number a re-read.
+      uml: 32,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -171,8 +179,9 @@ describe('command registry invariants', () => {
     // and refuses to infer a framework from a `.svg`. …and 113 since
     // `wardley.addPorter`, 115 since the two Wardley climate arrows, and 117
     // since the two Wardley zones. …and 138 since the UML pack landed whole,
-    // with twenty-one of its own.
-    expect(commands).toHaveLength(138);
+    // with twenty-one of its own, and 149 since its phase 2 appended eleven
+    // more — the components and deployment artefacts and their three lines.
+    expect(commands).toHaveLength(149);
   });
 
   /**

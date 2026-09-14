@@ -140,6 +140,61 @@ export type UmlPackageNode = UmlNodeBase;
 export type UmlActorNode = UmlNodeBase;
 export type UmlUseCaseNode = UmlNodeBase;
 
+/**
+ * A Port (§11.3) — the small square on an EncapsulatedClassifier's boundary.
+ *
+ * `ownerId` is the surface id of the component (or the node) the square is drawn
+ * ON, and it is GEOMETRY rather than a stored link: §11.3.4 says the symbol "may
+ * be placed either overlapping the boundary of the rectangle symbol denoting
+ * that EncapsulatedClassifier or it may be shown inside the rectangle symbol",
+ * and a canvas has no other statement to read. See {@link umlHostOf} for the
+ * reading and for its tolerance.
+ *
+ * Absent when the author has drawn a port beside every box, which is a port
+ * belonging to nothing — the file writes it nowhere rather than guessing an
+ * owner, and the drawing keeps it.
+ */
+export interface UmlPort extends UmlNodeBase {
+  ownerId?: string;
+}
+
+/**
+ * A Component (§11.6) — the classifier rectangle with the two-tab icon.
+ *
+ * `provided` and `required` are the NAMES read off the lollipops and sockets
+ * drawn against it, not references: §10.4.4 draws a provided Interface as a
+ * circle "labeled with the name of the Interface, attached by a solid line to
+ * the BehavioredClassifier that realizes this Interface", and on this canvas the
+ * glyph carries its own `uml:label` and nothing else. The names are what both
+ * writers need — XMI mints a `uml:Interface` per name, PlantUML declares one —
+ * and what neither can get from an id, because the glyph IS the interface as far
+ * as the drawing is concerned.
+ *
+ * `ports` are the squares on its border, resolved the same geometric way.
+ */
+export interface UmlComponentNode extends UmlNodeBase {
+  ports: UmlPort[];
+  /** Interface names read off the lollipops touching this component. */
+  provided: string[];
+  /** Interface names read off the sockets touching this component. */
+  required: string[];
+}
+
+/** An Artifact (§19.3) — the `«artifact»` rectangle with the document icon. */
+export type UmlArtifactNode = UmlNodeBase;
+
+/**
+ * A Node, a Device or an ExecutionEnvironment (§19.4) — the perspective cube.
+ *
+ * ONE record with a `kind` discriminant rather than three lists, because §19.4.2
+ * makes Device and ExecutionEnvironment specializations of Node and §19.4.4
+ * draws all three as the same cube: the keyword is the difference, and both
+ * writers need exactly that — an `xmi:type` and a PlantUML stereotype.
+ */
+export interface UmlDeploymentNode extends UmlNodeBase {
+  kind: Extract<UmlNodeKind, 'node' | 'device' | 'execution-environment'>;
+}
+
 /** The subject of a use case diagram — the rectangle the cases sit in. */
 export type UmlSubjectBox = UmlNodeBase;
 
@@ -159,6 +214,7 @@ export interface UmlNote extends UmlNodeBase {
  * file somebody exported.
  */
 export type UmlRelationKind =
+  // Phase 1 — the class and use case families.
   | 'association'
   | 'aggregation'
   | 'composition'
@@ -167,7 +223,11 @@ export type UmlRelationKind =
   | 'dependency'
   | 'anchor'
   | 'include'
-  | 'extend';
+  | 'extend'
+  // Phase 2 — the structural families (§19.2.4, §19.3.4, §19.4.4).
+  | 'deploy'
+  | 'manifest'
+  | 'communication-path';
 
 /** One connector, once both of its ends are known artefacts of this diagram. */
 export interface UmlRelation {
@@ -200,6 +260,23 @@ export interface UmlModel {
   useCases: UmlUseCaseNode[];
   subjects: UmlSubjectBox[];
   notes: UmlNote[];
+  /** §11.6 — the component boxes, each carrying its ports and its interfaces. */
+  components: UmlComponentNode[];
+  /**
+   * §11.3 — every port on the sheet, whether or not it found a host.
+   *
+   * Listed here AS WELL AS under its component, and the duplication is on
+   * purpose: the XMI writer walks the components (a `uml:Port` is an
+   * `ownedAttribute`, so it has nowhere else to go) while a reader asking "how
+   * many ports are on this sheet" — a check, a count, a later rule — must not
+   * have to know that a hostless one is invisible from every component. The two
+   * readings hold the SAME record, so they cannot disagree.
+   */
+  ports: UmlPort[];
+  /** §19.3 — the artefacts. */
+  artifacts: UmlArtifactNode[];
+  /** §19.4 — the nodes, devices and execution environments. */
+  nodes: UmlDeploymentNode[];
   relations: UmlRelation[];
   /**
    * What the READING could not make sense of, one line each, in the user's
@@ -235,6 +312,9 @@ const RELATION_ROLE: Record<UmlRelationKind, string> = {
   anchor: UML_ROLE.anchor,
   include: UML_ROLE.include,
   extend: UML_ROLE.extend,
+  deploy: UML_ROLE.deploy,
+  manifest: UML_ROLE.manifest,
+  'communication-path': UML_ROLE['communication-path'],
 };
 
 const RELATION_OF_ROLE = new Map<string, UmlRelationKind>(
@@ -288,6 +368,39 @@ export function umlCentreInside(inner: UmlBox, outer: UmlBox): boolean {
 }
 
 /**
+ * How near a glyph has to be drawn to count as attached to a box, in model
+ * units.
+ *
+ * The one number this file invents, and the reason it is small: §10.4.4 and
+ * §11.3.4 both describe a symbol TOUCHING a rectangle — a lollipop "attached by
+ * a solid line" to the classifier that realizes it, a port "overlapping the
+ * boundary" of the box it is on. Touching is a gap of zero, and a hand drawing
+ * on a canvas misses by a few units, so the tolerance is a couple of grid steps
+ * and not a neighbourhood: an interface glyph parked halfway across the sheet is
+ * not this component's, and a reading that guessed would put an interface in the
+ * file that nobody drew.
+ *
+ * Read by {@link umlHostOf} and by {@link umlBoxGap}'s callers alike, so the
+ * port's owner and the interface's component are decided by the same distance.
+ */
+export const UML_ATTACH_TOLERANCE = 24;
+
+/**
+ * The GAP between two boxes — zero when they touch or overlap, otherwise the
+ * shortest distance from edge to edge.
+ *
+ * Edges, never centres: a lollipop is thirty units across and a component two
+ * hundred, so "nearest centre" would hand a glyph to whichever box happens to be
+ * squattest rather than to the one it is drawn against. The same argument
+ * `gapSquared` makes in the validation engine, one package over.
+ */
+export function umlBoxGap(a: UmlBox, b: UmlBox): number {
+  const dx = Math.max(0, Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w)));
+  const dy = Math.max(0, Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h)));
+  return Math.hypot(dx, dy);
+}
+
+/**
  * The DRAWING area of a diagram frame — the frame minus its heading band.
  *
  * The same carve-out `c4/export.ts` makes with `backgroundPlot`, arrived at from
@@ -299,6 +412,59 @@ export function umlCentreInside(inner: UmlBox, outer: UmlBox): boolean {
 export function umlSheetOf(frame: UmlBox): UmlBox {
   const band = Math.min(UML_FRAME_BAND_HEIGHT, frame.h);
   return { x: frame.x, y: frame.y + band, w: frame.w, h: frame.h - band };
+}
+
+/** The little {@link umlHostOf} needs to know about a candidate host. */
+interface UmlHostCandidate {
+  id: string;
+  bounds?: UmlBox;
+}
+
+/**
+ * Which box a glyph is drawn AGAINST — the one reading that gives a port its
+ * owner and a lollipop its component.
+ *
+ * The nearest host within {@link UML_ATTACH_TOLERANCE}, and `undefined` when
+ * nothing is that near: a port drawn in the middle of the sheet belongs to
+ * nothing, and inventing an owner for it would put a `uml:Port` on a component
+ * the author never drew it on.
+ *
+ * ## The tie-breaks, and why there are two of them
+ *
+ * A component nested inside another (§11.6.4's white-box view) puts a port on
+ * the boundary of BOTH, at a gap of zero from each. The smaller box wins,
+ * because the most-nested container is the one the author was aiming at — the
+ * same reading `containerOf` makes in the two writers. And an exact tie on both
+ * gap and area is broken by the smaller id, never by the order the surface
+ * happened to be walked in: this decides what a FILE says, and a Y.Map rebuilt
+ * on every load does not promise an order.
+ */
+export function umlHostOf<T extends UmlHostCandidate>(
+  glyph: UmlBox | undefined,
+  hosts: readonly T[],
+  tolerance: number = UML_ATTACH_TOLERANCE
+): T | undefined {
+  if (!glyph) return undefined;
+  let best: T | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  let bestArea = Number.POSITIVE_INFINITY;
+  for (const host of hosts) {
+    if (!host.bounds) continue;
+    const gap = umlBoxGap(glyph, host.bounds);
+    if (gap > tolerance) continue;
+    const area = Math.max(0, host.bounds.w) * Math.max(0, host.bounds.h);
+    const better =
+      gap < bestGap ||
+      (gap === bestGap &&
+        (area < bestArea ||
+          (area === bestArea && best !== undefined && host.id < best.id)));
+    if (better) {
+      best = host;
+      bestGap = gap;
+      bestArea = area;
+    }
+  }
+  return best;
 }
 
 /* ── Reading the canvas ───────────────────────────────────────────────── */
@@ -348,6 +514,18 @@ const CLASSIFIER_KINDS = new Set([
  * node: a lasso somebody drew round two classes points at neither in
  * particular, and guessing there would put a relationship in the file that
  * nobody drew.
+ *
+ * ## Two things geometry decides, and nothing else does
+ *
+ * Phase 2 added the only readings in this file that measure one element against
+ * ANOTHER element: which component a PORT sits on (§11.3.4) and which component
+ * a lollipop or a socket is drawn against (§10.4.4, §11.6.4). Both are the
+ * notation's own statement — the specification describes a small symbol placed
+ * on or touching a rectangle, and a whiteboard holds no second link to read — so
+ * the reading is {@link umlHostOf} and the tolerance is
+ * {@link UML_ATTACH_TOLERANCE}. A glyph that touches nothing is kept on the
+ * drawing and written into no file, which is the same call the rest of this
+ * module makes about anything it cannot attribute.
  *
  * ## What is warned about
  *
@@ -412,6 +590,13 @@ export function umlModelFrom(
   const useCases: UmlUseCaseNode[] = [];
   const notes: UmlNote[] = [];
   const subjectBoxes: UmlSubjectBox[] = [];
+  const components: UmlComponentNode[] = [];
+  const ports: UmlPort[] = [];
+  const artifacts: UmlArtifactNode[] = [];
+  const deploymentNodes: UmlDeploymentNode[] = [];
+  /** The lollipops and the sockets, held until every box is known. */
+  const providedGlyphs: UmlNodeBase[] = [];
+  const requiredGlyphs: UmlNodeBase[] = [];
 
   /** Every id that answers for an artefact of this diagram. */
   const artefactOf = new Map<string, string>();
@@ -470,6 +655,34 @@ export function umlModelFrom(
       // read off it, because a note that mentions «create» is a note that
       // mentions it.
       notes.push({ ...base, name: '', keywords: [], body: tiers.name.trim() });
+    } else if (kind === 'component') {
+      // The ports and the interface names are filled in below, once every box
+      // on the sheet is known: they are read by GEOMETRY, and a glyph drawn
+      // before its component would otherwise find nothing to attach to.
+      components.push({ ...base, ports: [], provided: [], required: [] });
+    } else if (kind === 'port') {
+      ports.push(base);
+    } else if (kind === 'provided-interface' || kind === 'required-interface') {
+      // The lollipop and the socket are the only drawn artefacts that are NOT
+      // elements of the model: §10.4.4 draws each as a notation for a
+      // relationship — an InterfaceRealization, a Usage — between the interface
+      // it names and the classifier it touches, and both writers turn it into
+      // exactly that. So it answers for nothing, which is why this branch does
+      // not reach the `artefactOf` line below: a connector dropped on a lollipop
+      // resolves to no artefact, and the warning says the end is not on the
+      // diagram rather than the file carrying a reference to a circle.
+      (kind === 'provided-interface' ? providedGlyphs : requiredGlyphs).push(
+        base
+      );
+      continue;
+    } else if (kind === 'artifact') {
+      artifacts.push(base);
+    } else if (
+      kind === 'node' ||
+      kind === 'device' ||
+      kind === 'execution-environment'
+    ) {
+      deploymentNodes.push({ ...base, kind });
     } else {
       // A kind this build does not draw yet (phase 2 widens the union): it is
       // on the sheet and it answers for itself, but nothing writes it down.
@@ -477,6 +690,55 @@ export function umlModelFrom(
     }
     artefactOf.set(node.id, node.id);
   }
+
+  // ── The structural attachments, once every box on the sheet is known ──
+  //
+  // Two geometric readings, and the only two in this file that are about one
+  // element's position relative to ANOTHER element rather than to a frame.
+  // Neither is a fallback for a link the store could have held: §11.3.4 and
+  // §10.4.4 describe a small symbol drawn ON or AGAINST a rectangle, and on a
+  // whiteboard that is the whole of what the author stated.
+
+  /** A port's host: the component or the cube its square sits on (§11.3.4). */
+  const portHosts: UmlHostCandidate[] = [...components, ...deploymentNodes];
+  const componentById = new Map(
+    components.map(component => [component.id, component])
+  );
+  for (const port of ports) {
+    const host = umlHostOf(port.bounds, portHosts);
+    if (!host) continue;
+    port.ownerId = host.id;
+    // Only a COMPONENT owns a port in the file: `uml:Port` is an
+    // `ownedAttribute` of an EncapsulatedClassifier, and a port drawn on a cube
+    // is a drawing this pack keeps and writes nowhere.
+    componentById.get(host.id)?.ports.push(port);
+  }
+
+  /**
+   * An interface glyph's component: the box it touches, or the component that
+   * owns the PORT it touches — §11.3.4's "A provided Interface may be shown
+   * using the lollipop notation attached to the Port".
+   */
+  const glyphHosts: UmlHostCandidate[] = [...components, ...ports];
+  const attachInterface = (glyph: UmlNodeBase, provided: boolean) => {
+    const name = glyph.name.trim();
+    if (!name) return;
+    const host = umlHostOf(glyph.bounds, glyphHosts);
+    if (!host) return;
+    const owner =
+      componentById.get(host.id) ??
+      componentById.get(ports.find(port => port.id === host.id)?.ownerId ?? '');
+    if (!owner) return;
+    const list = provided ? owner.provided : owner.required;
+    // §11.3.4 lists several interfaces on one lollipop, separated by commas —
+    // and a component that provides the same interface twice says it once.
+    for (const each of name.split(',')) {
+      const trimmed = each.trim();
+      if (trimmed && !list.includes(trimmed)) list.push(trimmed);
+    }
+  };
+  for (const glyph of providedGlyphs) attachInterface(glyph, true);
+  for (const glyph of requiredGlyphs) attachInterface(glyph, false);
 
   for (const subject of subjects) {
     if (!onSheet(subject)) continue;
@@ -560,6 +822,10 @@ export function umlModelFrom(
     useCases,
     subjects: subjectBoxes,
     notes,
+    components,
+    ports,
+    artifacts,
+    nodes: deploymentNodes,
     relations,
     warnings,
   };

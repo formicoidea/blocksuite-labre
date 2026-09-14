@@ -117,6 +117,53 @@ export const UML_PACKAGE_TAB = 0.2;
 export const UML_ACTOR_FIGURE = 0.74;
 
 /**
+ * The DEPTH of the 3-D cube a node, a device and an execution environment are
+ * drawn as (§19.4.4), as a fraction of the box's shorter side.
+ *
+ * A fraction of the SHORTER side rather than of the width, because the depth is
+ * drawn at 45° in both directions: taking it from the width alone would make a
+ * cube dragged wide and flat lose its top face off the top of the element.
+ *
+ * Exported for the reason {@link UML_PACKAGE_TAB} is: the renderer draws the
+ * three faces from this number and {@link umlCompartmentBoxes} writes the name
+ * INSIDE the front one, so a name floating over the cube's roof is what happens
+ * when two files each pick their own depth. 12% is the proportion §19.4.4's own
+ * figures show — enough to read as a solid, little enough to leave the front
+ * face the size of a box.
+ */
+export const UML_CUBE_DEPTH = 0.12;
+
+/**
+ * How many lines the name written in a cube's front face is sized for.
+ *
+ * Two, because a deployment target's seed is a keyword line over an instance
+ * name — `«device»` over `:Device` (§19.4.4) — which is the same pair a
+ * classifier's name compartment holds and the same reason it gets two lines.
+ */
+const CUBE_LABEL_LINES = 2;
+
+/**
+ * The gap between a glyph too small to write in and the name written BESIDE it.
+ *
+ * Three kinds are in that position, and all three by the notation's own doing: a
+ * port is a small square on a border (§11.3.4), and the ball and socket of
+ * §10.4.4 are a curve on a stub. None of them has an inside, so the label goes
+ * next to the picture — which is exactly how the specification's figures write
+ * them.
+ */
+export const UML_BESIDE_LABEL_GAP = 6;
+
+/**
+ * How wide that label is allowed to be before it wraps.
+ *
+ * An absolute rather than a fraction, unlike every other measurement here,
+ * because it is measuring the WORDS and not the glyph: a port dragged twice as
+ * big is a bigger square with the same name beside it, and a name column scaled
+ * to a 16-unit square would be four characters wide.
+ */
+export const UML_BESIDE_LABEL_WIDTH = 120;
+
+/**
  * How many lines a use case's label is sized for.
  *
  * Two, where every other label gets one: a use case is named with a VERB PHRASE
@@ -165,7 +212,40 @@ const COMPARTMENTED = new Set<UmlNodeKind>([
   'interface',
   'enumeration',
   'object',
+  // §11.6.4 and §19.3.4 draw both as a rectangle with a name over a body, the
+  // icon in the corner being the only thing that tells them from a class. Two
+  // tiers, one separator — the object's layout exactly.
+  'component',
+  'artifact',
 ]);
+
+/**
+ * The kinds whose second tier is a BODY rather than a feature list — a name
+ * compartment, one separator, and everything below it.
+ *
+ * Three different statements sharing one layout, and it is worth saying why they
+ * are not one: an object's second tier holds SLOTS (§9.8.4 — an instance has
+ * values, not behaviour), a component's holds its parts or its realized
+ * interfaces (§11.6.4), an artifact's holds what the file contains (§19.3.4).
+ * The notation draws them the same way, so this module does; the ROLE on the
+ * text element is what keeps them apart for everybody else.
+ */
+const ONE_SPLIT = new Set<UmlNodeKind>(['object', 'component', 'artifact']);
+
+/** The three deployment targets, drawn as the same cube (§19.4.4). */
+const CUBES = new Set<UmlNodeKind>(['node', 'device', 'execution-environment']);
+
+/**
+ * The three glyphs with no INSIDE, whose name is therefore written next to them
+ * — outside the element's own box, which nothing else in this module does.
+ *
+ * Exported because that is a fact a caller has to know: a port's label is the
+ * one tier that makes the GROUP bigger than the shape it belongs to, and a test
+ * or a layout asserting "every tier is inside its node" has to say which three
+ * kinds the notation exempts (§11.3.4, §10.4.4).
+ */
+export const UML_BESIDE_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
+  new Set<UmlNodeKind>(['port', 'provided-interface', 'required-interface']);
 
 /**
  * The compartments of a node, laid out against its own box.
@@ -186,20 +266,30 @@ const COMPARTMENTED = new Set<UmlNodeKind>([
  * An `object` walks the same path and stops one tier early: §9.8.4 draws an
  * instance specification as a name compartment over a SLOT compartment, and
  * there is no third. So it gets one split, not two, and the slots take the rest
- * of the box — the tier an author of an object diagram actually types in.
+ * of the box — the tier an author of an object diagram actually types in. A
+ * `component` (§11.6.4) and an `artifact` (§19.3.4) walk exactly the same path,
+ * for exactly the same reason: a name over one body tier.
  *
- * ## The four that are not boxes
+ * ## The ones that are not boxes
  *
- * A package, a note, an actor and a use case are SHAPES the notation draws, not
- * rectangles it divides, so each returns a single label box positioned against
- * its own picture and no splits at all:
+ * A package, a note, an actor, a use case, the three cubes and the three
+ * interface glyphs are SHAPES the notation draws, not rectangles it divides, so
+ * each returns a single label box positioned against its own picture and no
+ * splits at all:
  *
  *  - **package** — under the tab, centred in the body (§12.2.4);
  *  - **note** — the inner rectangle, top-aligned and read left, because a note
  *    holds a sentence rather than a title (Annex A);
  *  - **actor** — under the stick figure, which is where §18.1.4 writes it;
  *  - **use case** — centred in the ellipse, the only shape with no corner to
- *    hang a label in.
+ *    hang a label in;
+ *  - **node / device / execution-environment** — inside the cube's FRONT FACE,
+ *    the only one of its three faces that is not drawn at an angle (§19.4.4);
+ *  - **port / provided-interface / required-interface** — BESIDE the glyph, and
+ *    outside the element's own box: a small square and a ball on a stick have
+ *    no inside to write in (§11.3.4, §10.4.4). The one place this module
+ *    returns a tier that is not contained by the node it belongs to, and
+ *    {@link UML_BESIDE_LABEL_KINDS} is how it says so out loud.
  *
  * ## What this is not
  *
@@ -227,7 +317,10 @@ export function umlCompartmentBoxes(
   });
 
   if (!COMPARTMENTED.has(kind)) {
-    return { name: glyphLabel(kind, box, h, nameHeight), splits: [] };
+    return {
+      name: glyphLabel(kind, { box, x, y, w, h, nameHeight }),
+      splits: [],
+    };
   }
 
   // The walk. `top` is an offset from the node's top edge throughout, which is
@@ -239,9 +332,10 @@ export function umlCompartmentBoxes(
 
   const splits = [top];
 
-  if (kind === 'object') {
-    // An instance specification: name over slots, one line between them, and
-    // the slots take everything down to the bottom margin (§9.8.4).
+  if (ONE_SPLIT.has(kind)) {
+    // A name over a single body tier, one line between them, and the body takes
+    // everything down to the bottom margin: an instance's slots (§9.8.4), a
+    // component's parts (§11.6.4), an artifact's contents (§19.3.4).
     return {
       name,
       attributes: box(top, Math.max(0, h - top - UML_TIER_MARGIN)),
@@ -263,13 +357,55 @@ export function umlCompartmentBoxes(
   };
 }
 
-/** The single label box of the four kinds that are a picture, not a box. */
-function glyphLabel(
-  kind: UmlNodeKind,
-  box: (top: number, height: number) => UmlBox,
-  h: number,
-  nameHeight: number
-): UmlBox {
+/** What a glyph kind's label needs to know about the element it belongs to. */
+interface GlyphLabelSite {
+  /** The insetted tier box, `top` and `height` offsets from the node's top. */
+  box: (top: number, height: number) => UmlBox;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  nameHeight: number;
+}
+
+/** The single label box of every kind that is a picture, not a divided box. */
+function glyphLabel(kind: UmlNodeKind, site: GlyphLabelSite): UmlBox {
+  const { box, x, y, w, h, nameHeight } = site;
+
+  if (CUBES.has(kind)) {
+    // Inside the FRONT FACE, which is the only face a name can be written on:
+    // the other two are drawn at 45° and words on them would be words on a
+    // roof. Centred in it, with the same proportional gutter every other tier
+    // gets — measured against the face's width, not the element's, or a cube
+    // would look padded on the left and flush on the right (§19.4.4).
+    const depth = Math.min(w, h) * UML_CUBE_DEPTH;
+    const faceW = Math.max(0, w - depth);
+    const faceH = Math.max(0, h - depth);
+    const inset = faceW * UML_TIER_SIDE_INSET;
+    const height = Math.min(nameHeight * CUBE_LABEL_LINES, faceH);
+    return {
+      x: x + inset,
+      y: y + depth + (faceH - height) / 2,
+      w: Math.max(0, faceW - inset * 2),
+      h: height,
+    };
+  }
+
+  if (UML_BESIDE_LABEL_KINDS.has(kind)) {
+    // BESIDE the glyph, and deliberately outside the element's own box: a port
+    // is a 16-unit square and a lollipop is a ball on a stick, so there is
+    // nowhere in either of them for a word to go (§11.3.4, §10.4.4). To the
+    // RIGHT and vertically centred on the glyph, which is how the
+    // specification's own figures set them, and the one placement that reads
+    // the same whichever border of a component the port has been dragged onto.
+    return {
+      x: x + w + UML_BESIDE_LABEL_GAP,
+      y: y + (h - nameHeight) / 2,
+      w: UML_BESIDE_LABEL_WIDTH,
+      h: nameHeight,
+    };
+  }
+
   switch (kind) {
     case 'package': {
       const tab = h * UML_PACKAGE_TAB;

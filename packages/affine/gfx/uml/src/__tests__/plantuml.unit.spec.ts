@@ -5,8 +5,10 @@ import { parseOperation, parseProperty } from '../grammar';
 import { stereotypesOf } from '../keywords';
 import type {
   UmlClassifier,
+  UmlComponentNode,
   UmlModel,
   UmlNodeBase,
+  UmlPort,
   UmlRelation,
   UmlRelationKind,
 } from '../model';
@@ -93,8 +95,91 @@ function emptyModel(
     useCases: [],
     subjects: [],
     notes: [],
+    components: [],
+    ports: [],
+    artifacts: [],
+    nodes: [],
     relations: [],
     warnings: [],
+  };
+}
+
+/**
+ * A component diagram: two components — one with a port and both kinds of
+ * interface — and the artefact that manifests it (§11.6.4, §19.3.4).
+ *
+ * The two components provide the same interface NAME on purpose: a `.puml` is a
+ * picture and the picture has one circle, so the writer declares one alias and
+ * draws two realizations onto it. That is where it parts company with the XMI
+ * writer, which mints an Interface per lollipop — and the divergence is the
+ * formats', not a disagreement about the drawing.
+ */
+function componentDiagram(): UmlModel {
+  const port: UmlPort = {
+    ...node('p1', 'http', { x: 292, y: 140, w: 16, h: 16 }),
+    ownerId: 'k1',
+  };
+  const cart: UmlComponentNode = {
+    ...node('k1', '«component»\nCart', { x: 100, y: 100, w: 200, h: 120 }),
+    ports: [port],
+    provided: ['IOrder'],
+    required: ['IPayment'],
+  };
+  const catalogue: UmlComponentNode = {
+    ...node('k2', '«component»\nCatalogue', { x: 500, y: 100, w: 200, h: 120 }),
+    ports: [],
+    provided: ['IOrder'],
+    required: [],
+  };
+  return {
+    ...emptyModel('d3', 'cmp', 'Storefront components'),
+    components: [cart, catalogue],
+    ports: [port],
+    artifacts: [
+      node('f1', '«artifact»\ncart.jar', { x: 100, y: 320, w: 200, h: 120 }),
+    ],
+    relations: [
+      relation('manifest', 'f1', 'k1'),
+      relation('dependency', 'k1', 'k2'),
+    ],
+  };
+}
+
+/** A deployment diagram: the three cubes, a deployment and a network link. */
+function deploymentDiagram(): UmlModel {
+  return {
+    ...emptyModel('d4', 'dep', 'Production'),
+    artifacts: [
+      node('f1', '«artifact»\ncart.jar', { x: 100, y: 400, w: 200, h: 120 }),
+    ],
+    nodes: [
+      {
+        ...node('n1', '«device»\nAppServer', {
+          x: 100,
+          y: 100,
+          w: 220,
+          h: 160,
+        }),
+        kind: 'device',
+      },
+      {
+        ...node('n2', '«executionEnvironment»\nTomcat', {
+          x: 140,
+          y: 140,
+          w: 140,
+          h: 80,
+        }),
+        kind: 'execution-environment',
+      },
+      {
+        ...node('n3', '«legacy»\nDBServer', { x: 600, y: 100, w: 220, h: 160 }),
+        kind: 'node',
+      },
+    ],
+    relations: [
+      relation('deploy', 'f1', 'n1'),
+      relation('communication-path', 'n1', 'n3', 'LAN'),
+    ],
   };
 }
 
@@ -224,6 +309,36 @@ place_order ..> check_stock : <<include>>
 @enduml
 `;
 
+const COMPONENT_GOLDEN = `@startuml
+title cmp Storefront components
+
+component "Cart" as cart
+component "Catalogue" as catalogue
+artifact "cart.jar" as cart_jar
+interface "IOrder" as iorder
+interface "IPayment" as ipayment
+
+iorder <|.. cart
+cart ..> ipayment : <<use>>
+iorder <|.. catalogue
+cart_jar ..> cart : <<manifest>>
+cart ..> catalogue
+@enduml
+`;
+
+const DEPLOYMENT_GOLDEN = `@startuml
+title dep Production
+
+artifact "cart.jar" as cart_jar
+node "AppServer" as appserver <<device>>
+node "Tomcat" as tomcat <<executionEnvironment>>
+node "DBServer" as dbserver <<legacy>>
+
+cart_jar ..> appserver : <<deploy>>
+appserver -- dbserver : LAN
+@enduml
+`;
+
 /* ── Tests ────────────────────────────────────────────────────────────── */
 
 describe('an alias', () => {
@@ -302,6 +417,82 @@ describe('a use case diagram', () => {
 
   it('labels an include with its keyword', () => {
     expect(source).toContain('place_order ..> check_stock : <<include>>');
+  });
+});
+
+describe('a component diagram', () => {
+  const source = exportPlantuml(componentDiagram());
+
+  it('is the golden document, byte for byte', () => {
+    expect(source).toBe(COMPONENT_GOLDEN);
+  });
+
+  it('declares a lollipop as a realization and a socket as a usage', () => {
+    // §10.4.4: the ball IS an InterfaceRealization and the socket IS a Usage,
+    // and Figure 10.11 draws both with the rectangle notation this writer uses.
+    // The `-(` / `)-` operators are newer and their spelling has moved; these
+    // two arrows parse in every version of the renderer.
+    expect(source).toContain('interface "IOrder" as iorder');
+    expect(source).toContain('iorder <|.. cart');
+    expect(source).toContain('cart ..> ipayment : <<use>>');
+  });
+
+  it('declares one interface per NAME, however many balls draw it', () => {
+    // An alias is an identifier: declaring `iorder` twice is a duplicate, and
+    // the picture has one circle whatever the model says.
+    expect(source.match(/^interface "IOrder"/gm)).toHaveLength(1);
+    expect(source).toContain('iorder <|.. catalogue');
+  });
+
+  it('writes the two structural arrows with their keywords', () => {
+    expect(source).toContain('cart_jar ..> cart : <<manifest>>');
+  });
+
+  it('does not repeat the keyword the declaration word already states', () => {
+    // `component "Cart"` needs no `<<component>>` after it: the word IS the
+    // statement, and repeating it would draw the keyword twice on the picture.
+    expect(source).toContain('component "Cart" as cart\n');
+    expect(source).not.toContain('<<component>>');
+    expect(source).not.toContain('<<artifact>>');
+  });
+
+  it('drops the port, and says so nowhere else', () => {
+    // The known omission the writer's header records: `port` inside a
+    // `component … { }` block is a recent addition to the language. What the
+    // port CARRIES is not lost — its lollipops are attributed to the component.
+    expect(source).not.toContain('port');
+    expect(source).not.toContain('http');
+  });
+});
+
+describe('a deployment diagram', () => {
+  const source = exportPlantuml(deploymentDiagram());
+
+  it('is the golden document, byte for byte', () => {
+    expect(source).toBe(DEPLOYMENT_GOLDEN);
+  });
+
+  it('declares every cube as a node, with the keyword as a stereotype', () => {
+    // PlantUML has `node` and has no `device`, and it does not need one:
+    // §19.4.4 itself draws a Device as "a Node graphic with the keyword
+    // «device»", which is exactly this line.
+    expect(source).toContain('node "AppServer" as appserver <<device>>');
+    expect(source).toContain(
+      'node "Tomcat" as tomcat <<executionEnvironment>>'
+    );
+    expect(source).toContain('node "DBServer" as dbserver <<legacy>>');
+  });
+
+  it('writes a deployment as the dashed arrow §19.4.4 offers', () => {
+    // The alternative to nesting the artefact inside the cube, and the one a
+    // line-oriented format can carry without reading geometry.
+    expect(source).toContain('cart_jar ..> appserver : <<deploy>>');
+  });
+
+  it('writes a communication path as a plain association link', () => {
+    // §19.4.4: "depicted using the same as normal Association links" — no head
+    // at either end, because an association is undirected.
+    expect(source).toContain('appserver -- dbserver : LAN');
   });
 });
 

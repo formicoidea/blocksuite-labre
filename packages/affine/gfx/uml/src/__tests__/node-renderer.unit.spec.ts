@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   UML_ACTOR_FIGURE,
+  UML_CUBE_DEPTH,
   UML_PACKAGE_TAB,
   umlCompartmentBoxes,
 } from '../component.js';
@@ -88,6 +89,14 @@ const ALL_KINDS = [
   'note',
   'actor',
   'use-case',
+  'component',
+  'port',
+  'provided-interface',
+  'required-interface',
+  'artifact',
+  'node',
+  'device',
+  'execution-environment',
 ] as const satisfies readonly UmlNodeKind[];
 
 /** Half the stroke width — the inset every body is drawn inside. */
@@ -99,7 +108,7 @@ describe('the UML node glyph layer', () => {
    * case as a plain ellipse, and anything painted over it would be inventing a
    * notation. Every other kind gets a mark.
    */
-  it('draws something on seven kinds, and nothing on the ellipse', () => {
+  it('draws something on fifteen kinds, and nothing on the ellipse', () => {
     for (const kind of ALL_KINDS) {
       rec = recordingCtx();
       const { ops } = draw(kind);
@@ -249,6 +258,176 @@ describe('the UML node glyph layer', () => {
       );
     }
     expect(umlCompartmentBoxes('actor', 0, 0, w, h).name.y).toBe(figureBottom);
+  });
+
+  /**
+   * §11.6.4: a component is the class rectangle with the two-tabbed icon in its
+   * top-right corner — the icon being what MAKES it a component, which is why
+   * its name seed writes no `«component»` keyword.
+   */
+  it('rules the component once and drops its two-tabbed icon in the corner', () => {
+    const { w, h } = UML_NODE_BOX.component;
+    const { splits } = umlCompartmentBoxes('component', 0, 0, w, h);
+    // A name over one body tier (§11.6.4), so ONE separator — a component is
+    // laid out like an object, not like a class.
+    expect(splits).toHaveLength(1);
+
+    const { ops, segments } = draw('component');
+    expect(segments[0]).toEqual({
+      x1: INSET,
+      y1: splits[0],
+      x2: w - INSET,
+      y2: splits[0],
+    });
+    // The separator, then three little BODIES — the icon and its two tabs, each
+    // filled and stroked with the element's own colours, so recolouring the
+    // component recolours them with it.
+    expect(ops).toEqual([
+      'stroke',
+      'fill',
+      'stroke',
+      'fill',
+      'stroke',
+      'fill',
+      'stroke',
+    ]);
+
+    // Every stroke of it in the top-right corner, above the separator: the icon
+    // shares the name compartment and must not land on the words.
+    const icon = segments.slice(1);
+    expect(icon).toHaveLength(9);
+    for (const segment of icon) {
+      expect(Math.min(segment.x1, segment.x2)).toBeGreaterThan(w / 2);
+      expect(Math.max(segment.y1, segment.y2)).toBeLessThan(splits[0]);
+    }
+  });
+
+  /**
+   * §19.3.4: an artifact is the same rectangle with a DOCUMENT icon — a sheet
+   * of paper with its corner turned down, the fold drawn as two lines exactly
+   * as the note's is.
+   */
+  it('gives the artifact a folded-corner document in its corner', () => {
+    const { w, h } = UML_NODE_BOX.artifact;
+    const { splits } = umlCompartmentBoxes('artifact', 0, 0, w, h);
+    expect(splits).toHaveLength(1);
+
+    const { ops, segments } = draw('artifact');
+    // The separator, the little page (filled, then outlined), and the fold
+    // stroked over it — never filled, for the note's own reason.
+    expect(ops).toEqual(['stroke', 'fill', 'stroke', 'stroke']);
+
+    const icon = segments.slice(1);
+    // Four sides of a page with a corner cut off, then the two lines of the
+    // fold.
+    expect(icon).toHaveLength(6);
+    for (const segment of icon) {
+      expect(Math.min(segment.x1, segment.x2)).toBeGreaterThan(w / 2);
+      expect(Math.max(segment.y1, segment.y2)).toBeLessThan(splits[0]);
+    }
+    // The bevel: the page's top edge stops short, and the cut runs down and
+    // right to the fold's own depth.
+    expect(icon[1].x2).toBeGreaterThan(icon[1].x1);
+    expect(icon[1].y2).toBeGreaterThan(icon[1].y1);
+  });
+
+  /**
+   * §11.3.4: a port is a small SQUARE. Square whatever the element's aspect
+   * ratio, because a port dragged into a rectangle is still a port — and
+   * centred, so the name written beside it lines up with it.
+   */
+  it('draws the port as a centred square, at any aspect ratio', () => {
+    const { ops, segments } = draw('port');
+    expect(ops).toEqual(['fill', 'stroke']);
+    expect(segments).toHaveLength(3);
+    const [top, right] = segments;
+    expect(top.x2 - top.x1).toBeCloseTo(right.y2 - right.y1);
+
+    // Dragged wide: the glyph takes the shorter side and sits in the middle.
+    rec = recordingCtx();
+    const wide = draw('port', 0, { w: 60, h: 16 });
+    const [wideTop] = wide.segments;
+    expect(wideTop.x2 - wideTop.x1).toBeCloseTo(16 - INSET * 2);
+    expect(wideTop.x1 - INSET).toBeCloseTo(60 - INSET - wideTop.x2);
+  });
+
+  /**
+   * §10.4.4: the ball and the socket. One offers a service and the other needs
+   * one, and the difference on the page is that a lollipop is a CLOSED filled
+   * circle and a socket an open arc.
+   */
+  it('fills the lollipop’s ball and leaves the socket an open arc', () => {
+    const provided = draw('provided-interface');
+    expect(provided.ops).toEqual(['fill', 'stroke', 'stroke']);
+    expect(provided.curves).toHaveLength(1);
+    // Round at any aspect ratio, like the actor's head, and centred across the
+    // glyph so the stub below it is vertical.
+    expect(provided.curves[0].rx).toBe(provided.curves[0].ry);
+    expect(provided.curves[0].x).toBe(UML_NODE_BOX['provided-interface'].w / 2);
+
+    rec = recordingCtx();
+    const required = draw('required-interface');
+    // Never filled: a filled half-disc would read as a ball cut in two.
+    expect(required.ops).toEqual(['stroke', 'stroke']);
+    expect(required.curves).toHaveLength(1);
+  });
+
+  /** Both hang off a STUB — the short line that runs to the component. */
+  it('hangs both interface glyphs on a vertical stub below the curve', () => {
+    for (const kind of ['provided-interface', 'required-interface'] as const) {
+      rec = recordingCtx();
+      const { curves, segments } = draw(kind);
+      expect(segments, kind).toHaveLength(1);
+      const [stub] = segments;
+      const [ball] = curves;
+      // Straight down, from the bottom of the curve to the bottom of the box.
+      expect(stub.x1, kind).toBeCloseTo(ball.x);
+      expect(stub.x2, kind).toBeCloseTo(ball.x);
+      expect(stub.y1, kind).toBeCloseTo(ball.y + ball.ry);
+      expect(stub.y2, kind).toBeCloseTo(UML_NODE_BOX[kind].h - INSET);
+    }
+  });
+
+  /**
+   * §19.4.4: a node, a device and an execution environment are ONE drawing —
+   * the 3-D cube — told apart by the keyword written in the front face. The
+   * front face is painted LAST, so it closes every join that should not be
+   * seen, and it is the rectangle `component.ts` writes the name inside.
+   */
+  it('draws the three deployment targets as one cube, name in the front face', () => {
+    for (const kind of ['node', 'device', 'execution-environment'] as const) {
+      rec = recordingCtx();
+      const { w, h } = UML_NODE_BOX[kind];
+      const { ops, segments } = draw(kind);
+
+      // Three faces, each filled and outlined: the top, the right, the front.
+      expect(ops, kind).toEqual([
+        'fill',
+        'stroke',
+        'fill',
+        'stroke',
+        'fill',
+        'stroke',
+      ]);
+      expect(segments, kind).toHaveLength(9);
+
+      const depth = Math.min(w, h) * UML_CUBE_DEPTH;
+      // The front face's top edge: the full width of the box less the depth the
+      // solid is turned by, one depth down from the top.
+      expect(segments[6], kind).toEqual({
+        x1: INSET,
+        y1: INSET + depth,
+        x2: w - INSET - depth,
+        y2: INSET + depth,
+      });
+
+      // …and the name sits INSIDE that face, never on the roof. One number
+      // (`UML_CUBE_DEPTH`) owned by `component.ts` is what makes that true.
+      const { name } = umlCompartmentBoxes(kind, 0, 0, w, h);
+      expect(name.y, kind).toBeGreaterThanOrEqual(depth);
+      expect(name.y + name.h, kind).toBeLessThanOrEqual(h);
+      expect(name.x + name.w, kind).toBeLessThanOrEqual(w - depth);
+    }
   });
 
   /**

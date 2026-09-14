@@ -15,13 +15,21 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * frame already set to `strict` simply stops being checked until it comes back —
  * the id stays written, untouched.
  *
- * ## Both tables spell out all SIXTEEN ids
+ * ## Both tables spell out all NINETEEN ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `uml.strict` requires
- * reads sixteen lines here instead of one file per rule, and a rule shipped later
- * cannot join a level in silence.
+ * reads nineteen lines here instead of one file per rule, and a rule shipped
+ * later cannot join a level in silence.
+ *
+ * That is also what phase 2 cost: three rules arrived with the structural sheets
+ * and each had to be placed by hand in BOTH tables. A profile is an override
+ * table and an absent rule keeps its own severity, so a rule forgotten here
+ * would still work — it would simply never harden, and nobody would see the
+ * difference until a user asked why `uml.strict` was quiet about a `«deploy»`
+ * drawn from a component. `profiles.unit.spec.ts` asserts totality for exactly
+ * that reason.
  */
 
 /**
@@ -64,6 +72,9 @@ const sketch: ValidationProfile = {
     'uml.include-endpoints': 'audit',
     'uml.extend-endpoints': 'audit',
     'uml.actor-actor-association': 'audit',
+    'uml.deploy-endpoints': 'audit',
+    'uml.manifest-endpoints': 'audit',
+    'uml.communication-path-endpoints': 'audit',
     'uml.untyped-edge': 'audit',
     'uml.composition-single-owner': 'audit',
     'uml.use-case-no-actor': 'audit',
@@ -75,14 +86,24 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. NINE rules move to `warning`, and the test each one passes is the test
- * this library always applies: whether the diagram might honestly have meant it.
+ * handed. TWELVE rules move to `warning`, and the test each one passes is the
+ * test this library always applies: whether the diagram might honestly have
+ * meant it.
  *
- * Five restate a normative clause and cannot be meant. §9.9.7 makes a
+ * Eight restate a normative clause and cannot be meant. §9.9.7 makes a
  * generalization's ends the same kind and its hierarchy acyclic; §10.4.3 types a
  * realization's far end as an interface; §18.1.3 types both ends of an include
- * and of an extend. A drawing contradicting one of those is a drawing whose
- * author will change it the moment they see it.
+ * and of an extend; §19.2.3 puts an artefact and only an artefact on a node,
+ * §19.3.3 runs a manifestation from the artefact to what it embodies, and
+ * §19.4.3 joins two DeploymentTargets and nothing else with a communication
+ * path. A drawing contradicting one of those is a drawing whose author will
+ * change it the moment they see it.
+ *
+ * The three structural grammars are promoted for a second reason the class-side
+ * five do not have: they are what the XMI writer READS. A `«deploy»` drawn from
+ * a component produces no `deployment` element at all — the writer has no
+ * artefact to name as `deployedArtifact` — so the finding is also the warning
+ * that this diagram will export short.
  *
  * Two are the NAMING rules. An emptied name compartment is not a style
  * preference at the level where somebody has said the sheet is finished: a class
@@ -140,12 +161,16 @@ const strict: ValidationProfile = {
   labelKey: 'com.labre.uml.profile.strict',
   fallback: 'Specification',
   rules: {
-    // The five normative grammars.
+    // The five normative grammars of phase 1…
     'uml.generalization-endpoints': 'warning',
     'uml.generalization-self-loop': 'warning',
     'uml.realization-endpoints': 'warning',
     'uml.include-endpoints': 'warning',
     'uml.extend-endpoints': 'warning',
+    // …and the three phase 2 added, on the same test.
+    'uml.deploy-endpoints': 'warning',
+    'uml.manifest-endpoints': 'warning',
+    'uml.communication-path-endpoints': 'warning',
     // The two naming rules.
     'uml.unnamed-classifier': 'warning',
     'uml.unnamed-actor-or-use-case': 'warning',

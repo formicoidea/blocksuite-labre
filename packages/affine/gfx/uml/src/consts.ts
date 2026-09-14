@@ -163,6 +163,26 @@ export const UML_SUBJECT_BORDER_WIDTH = 1.5;
  *    about a UML actor everybody recognises (§18.1.4);
  *  - `use-case` is the ellipse, wide and shallow so a verb phrase fits across
  *    its widest chord rather than in its corners, which it has none of.
+ *
+ * ## The phase-2 footprints
+ *
+ * A `component` is the class box's own 200 × 120: §11.6.4 draws it as the same
+ * rectangle with an icon in the corner, and a component diagram lines its boxes
+ * up beside a class diagram's without anybody resizing anything.
+ *
+ * The rest are their pictures' own proportions:
+ *
+ *  - `port` is a SMALL SQUARE (§11.3.4) — 16 × 16, the one footprint in the pack
+ *    that is not big enough to write in, which is why its label is placed beside
+ *    it rather than inside it (`component.ts`);
+ *  - the two interface glyphs are 60 × 40, tall enough for a ball or a socket
+ *    over the stub that carries it (§10.4.4) and no wider than the glyph needs —
+ *    their names are written beside them too;
+ *  - `artifact` is the note's 180 × 100: a file name over a line or two of what
+ *    it holds, which is the same amount of writing (§19.3.4);
+ *  - the three cubes share 220 × 140 (§19.4.4). Wider and taller than a class
+ *    box because the 3-D depth eats into both: the FRONT FACE — the only part a
+ *    name can be written in — is what has to end up the size of a box.
  */
 export const UML_NODE_BOX: Record<UmlNodeKind, { w: number; h: number }> = {
   class: { w: 200, h: 120 },
@@ -173,4 +193,12 @@ export const UML_NODE_BOX: Record<UmlNodeKind, { w: number; h: number }> = {
   note: { w: 180, h: 100 },
   actor: { w: 80, h: 120 },
   'use-case': { w: 200, h: 90 },
+  component: { w: 200, h: 120 },
+  port: { w: 16, h: 16 },
+  'provided-interface': { w: 60, h: 40 },
+  'required-interface': { w: 60, h: 40 },
+  artifact: { w: 180, h: 100 },
+  node: { w: 220, h: 140 },
+  device: { w: 220, h: 140 },
+  'execution-environment': { w: 220, h: 140 },
 };

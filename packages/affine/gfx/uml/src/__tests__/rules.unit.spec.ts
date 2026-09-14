@@ -47,15 +47,18 @@ const DEPENDENCY_ON_OBJECT = 'uml.dependency-on-object';
 const INCLUDE_ENDPOINTS = 'uml.include-endpoints';
 const EXTEND_ENDPOINTS = 'uml.extend-endpoints';
 const ACTOR_ACTOR_ASSOCIATION = 'uml.actor-actor-association';
+const DEPLOY_ENDPOINTS = 'uml.deploy-endpoints';
+const MANIFEST_ENDPOINTS = 'uml.manifest-endpoints';
+const COMMUNICATION_PATH_ENDPOINTS = 'uml.communication-path-endpoints';
 const UNTYPED_EDGE = 'uml.untyped-edge';
 const COMPOSITION_SINGLE_OWNER = 'uml.composition-single-owner';
 const USE_CASE_NO_ACTOR = 'uml.use-case-no-actor';
 
 /**
- * The seven rules that restate a NORMATIVE clause — and deliberately not the
- * same list as the nine `uml.strict` promotes (`profiles.unit.spec.ts` owns
- * that one). Provenance and severity are orthogonal: two of these seven stay a
- * remark at every level, and two of the promoted nine are `recommendation`.
+ * The ten rules that restate a NORMATIVE clause — and deliberately not the same
+ * list as the twelve `uml.strict` promotes (`profiles.unit.spec.ts` owns that
+ * one). Provenance and severity are orthogonal: two of these ten stay a remark
+ * at every level, and two of the promoted twelve are `recommendation`.
  */
 const STANDARD_RULES = [
   GENERALIZATION_ENDPOINTS,
@@ -65,6 +68,9 @@ const STANDARD_RULES = [
   EXTEND_ENDPOINTS,
   ACTOR_ACTOR_ASSOCIATION,
   COMPOSITION_SINGLE_OWNER,
+  DEPLOY_ENDPOINTS,
+  MANIFEST_ENDPOINTS,
+  COMMUNICATION_PATH_ENDPOINTS,
 ];
 
 interface Extra {
@@ -136,6 +142,16 @@ const pkg = node(UML_ROLE.package, 200, 130);
 const note = node(UML_ROLE.note, 180, 100);
 const actor = node(UML_ROLE.actor, 80, 120);
 const useCase = node(UML_ROLE['use-case'], 200, 90);
+// The structural vocabulary (phase 2). A port is the 16×16 square of
+// `UML_NODE_BOX.port`; the two interface glyphs are the ball and the socket.
+const component = node(UML_ROLE.component, 220, 120);
+const port = node(UML_ROLE.port, 16, 16);
+const providedInterface = node(UML_ROLE['provided-interface'], 60, 30);
+const requiredInterface = node(UML_ROLE['required-interface'], 60, 30);
+const artifact = node(UML_ROLE.artifact, 200, 120);
+const cube = node(UML_ROLE.node, 220, 160);
+const device = node(UML_ROLE.device, 220, 160);
+const executionEnvironment = node(UML_ROLE['execution-environment'], 220, 160);
 
 /**
  * The name compartment — where a classifier's, an object's, a package's and a
@@ -217,8 +233,41 @@ const conformantUseCase = () => [
   assoc('r', 'p', 'u'),
 ];
 
+/**
+ * A conformant COMPONENT diagram: a component with a port on its border and a
+ * lollipop against it, and an artefact that manifests it (§11.6.4, §19.3.4).
+ */
+const conformantComponent = () => [
+  frame('cmp'),
+  component('c', 200, 200),
+  name('c-name', '«component»\nCart', 210, 210),
+  port('c-port', 412, 250),
+  label('c-port-label', 'http', 440, 244),
+  providedInterface('c-iface', 440, 300),
+  label('c-iface-label', 'IOrder', 510, 300),
+  artifact('a', 700, 200),
+  name('a-name', '«artifact»\ncart.jar', 710, 210),
+  edge('m', UML_ROLE.manifest, 'a', 'c'),
+];
+
+/**
+ * A conformant DEPLOYMENT diagram: two cubes talking, with an artefact deployed
+ * on one of them (§19.4.4's own Figure 19.15).
+ */
+const conformantDeployment = () => [
+  frame('dep'),
+  device('d', 100, 200),
+  name('d-name', '«device»\nAppServer', 110, 210),
+  executionEnvironment('e', 600, 200),
+  name('e-name', '«executionEnvironment»\nTomcat', 610, 210),
+  artifact('a', 100, 500),
+  name('a-name', '«artifact»\ncart.jar', 110, 510),
+  edge('dep', UML_ROLE.deploy, 'a', 'd'),
+  edge('cp', UML_ROLE['communication-path'], 'd', 'e'),
+];
+
 describe('what the framework ships', () => {
-  it('ships exactly the sixteen rules of the pack, in reading order', () => {
+  it('ships exactly the nineteen rules of the pack, in reading order', () => {
     expect(UML_RULES.map(rule => rule.id)).toEqual([
       ELEMENT_OUTSIDE_FRAME,
       NOT_ADMISSIBLE_ON_KIND,
@@ -233,6 +282,9 @@ describe('what the framework ships', () => {
       INCLUDE_ENDPOINTS,
       EXTEND_ENDPOINTS,
       ACTOR_ACTOR_ASSOCIATION,
+      DEPLOY_ENDPOINTS,
+      MANIFEST_ENDPOINTS,
+      COMMUNICATION_PATH_ENDPOINTS,
       UNTYPED_EDGE,
       COMPOSITION_SINGLE_OWNER,
       USE_CASE_NO_ACTOR,
@@ -244,9 +296,10 @@ describe('what the framework ships', () => {
    * them new.
    *
    * The claim `docs/add-a-framework` makes about the seam, tested by the hardest
-   * case available: nine edge roles are nine readings of `relation-endpoints`,
-   * the two frames are the membership families C4 already uses, and the sheet's
-   * own declaration is the `view-admissibility` C4 opened.
+   * case available: twelve edge roles are twelve readings of
+   * `relation-endpoints`, the two frames are the membership families C4 already
+   * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
+   * Phase 2 doubled the vocabulary and the number below did not move.
    */
   it('needs six families, and asks the engine for nothing new', () => {
     expect([...new Set(UML_RULES.map(rule => rule.family))].sort()).toEqual([
@@ -296,7 +349,7 @@ describe('what the framework ships', () => {
     expect(framedBy(UML_ROLE.subject)).toEqual(
       [USE_CASE_OUTSIDE_SUBJECT, ACTOR_INSIDE_SUBJECT].sort()
     );
-    expect(framedBy(UML_ROLE.diagram)).toHaveLength(14);
+    expect(framedBy(UML_ROLE.diagram)).toHaveLength(17);
     for (const rule of UML_RULES) {
       expect(rule.backgroundRole, rule.id).toBeDefined();
     }
@@ -330,7 +383,8 @@ describe('what the framework ships', () => {
         .map(rule => rule.id)
         .sort();
 
-    // The seven that restate a normative sentence, and exactly those.
+    // The ten that restate a normative sentence, and exactly those.
+    expect(STANDARD_RULES).toHaveLength(10);
     expect(byProvenance('standard')).toEqual([...STANDARD_RULES].sort());
     // The three that are OURS — membership on this canvas, a usage remark, and
     // the role-less connector this whiteboard can produce and the notation never
@@ -397,9 +451,11 @@ describe('what the framework ships', () => {
    */
   it('keeps the alphabets and the grammars apart', () => {
     const byId = new Map(UML_RULES.map(rule => [rule.id, rule]));
-    // Six roles, thirty-six ordered pairs: the neutral rule's matrix judges
-    // nothing, which is what makes `flagNeutral` its single verdict.
-    expect(UML_ELEMENT_MATRIX).toHaveLength(36);
+    // Twelve roles, a hundred and forty-four ordered pairs: the neutral rule's
+    // matrix judges nothing, which is what makes `flagNeutral` its single
+    // verdict. Six of the twelve arrived with the structural sheets — a wiring
+    // gesture between two ports is exactly the line §11.6.4 expects to be typed.
+    expect(UML_ELEMENT_MATRIX).toHaveLength(144);
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.allowed).toBe(UML_ELEMENT_MATRIX);
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.flagNeutral).toBeDefined();
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.forbidSelfLoop).toBeUndefined();
@@ -680,6 +736,84 @@ describe('U2 · what each kind of diagram draws', () => {
         NOT_ADMISSIBLE_ON_KIND
       )
     ).toEqual([]);
+  });
+
+  it('accepts a component diagram’s own vocabulary and refuses the cubes', () => {
+    for (const artefact of [
+      component('x', 200, 200),
+      port('x', 200, 200),
+      providedInterface('x', 200, 200),
+      requiredInterface('x', 200, 200),
+      // An interface drawn as a full rectangle instead of a ball — §11.6.4
+      // offers both, "for displaying the full signature".
+      iface('x', 200, 200),
+      klass('x', 200, 200),
+      // The artefacts that manifest a component: §11.6.5's "white box" figure
+      // lists them in a compartment of the component itself.
+      artifact('x', 200, 200),
+      pkg('x', 200, 200),
+      note('x', 200, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('cmp'), artefact]), NOT_ADMISSIBLE_ON_KIND),
+        String(artefact.role)
+      ).toEqual([]);
+    }
+    for (const artefact of [
+      actor('x', 200, 200),
+      useCase('x', 200, 200),
+      subject('x', 200, 200),
+      object('x', 200, 200),
+      // The three cubes, reached through the PARENT role — which is also this
+      // spec's proof that `roles.ts` really parents the device and the
+      // execution environment on `uml:node`.
+      cube('x', 200, 200),
+      device('x', 200, 200),
+      executionEnvironment('x', 200, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('cmp'), artefact]), NOT_ADMISSIBLE_ON_KIND).map(
+          violation => violation.elementIds
+        ),
+        String(artefact.role)
+      ).toEqual([['x']]);
+    }
+  });
+
+  it('accepts a deployment diagram’s own vocabulary and refuses the classifiers', () => {
+    for (const artefact of [
+      cube('x', 200, 200),
+      device('x', 200, 200),
+      executionEnvironment('x', 200, 200),
+      artifact('x', 200, 200),
+      // §19.4.4's Figure 19.16 draws deployed COMPONENT artefacts on a node, so
+      // a component is exactly what belongs on this sheet.
+      component('x', 200, 200),
+      port('x', 200, 200),
+      pkg('x', 200, 200),
+      note('x', 200, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('dep'), artefact]), NOT_ADMISSIBLE_ON_KIND),
+        String(artefact.role)
+      ).toEqual([]);
+    }
+    for (const artefact of [
+      actor('x', 200, 200),
+      useCase('x', 200, 200),
+      subject('x', 200, 200),
+      object('x', 200, 200),
+      klass('x', 200, 200),
+      iface('x', 200, 200),
+      enumeration('x', 200, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('dep'), artefact]), NOT_ADMISSIBLE_ON_KIND).map(
+          violation => violation.elementIds
+        ),
+        String(artefact.role)
+      ).toEqual([['x']]);
+    }
   });
 
   it('judges every kind the picker offers, and only those', () => {
@@ -1214,6 +1348,184 @@ describe('U13 · an association between two actors', () => {
     expect(only(evaluate(conformantClass()), ACTOR_ACTOR_ASSOCIATION)).toEqual(
       []
     );
+  });
+});
+
+describe('U17 · what a deployment may run between', () => {
+  it('flags a «deploy» drawn from a component', () => {
+    // The drawing this rule exists for: what reaches a machine is the artefact,
+    // and the component is what that artefact manifests (§19.3.3).
+    const violations = evaluate([
+      frame('dep'),
+      component('c', 100, 200),
+      cube('n', 600, 200),
+      edge('d', UML_ROLE.deploy, 'c', 'n'),
+    ]);
+    expect(idsOf(violations)).toEqual([DEPLOY_ENDPOINTS]);
+    // The family reports the two ends AND the line, sorted — the finding is
+    // about a sentence, so selecting it selects the whole sentence.
+    expect(violations[0].elementIds).toEqual(['c', 'n', 'd'].sort());
+  });
+
+  it('flags a deployment aimed at anything but a cube', () => {
+    for (const target of [component('t', 600, 200), artifact('t', 600, 200)]) {
+      expect(
+        only(
+          evaluate([
+            frame('dep'),
+            artifact('a', 100, 200),
+            target,
+            edge('d', UML_ROLE.deploy, 'a', 't'),
+          ]),
+          DEPLOY_ENDPOINTS
+        ),
+        String(target.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('says nothing about an artefact deployed on any of the three cubes', () => {
+    for (const target of [
+      cube('n', 600, 200),
+      device('n', 600, 200),
+      executionEnvironment('n', 600, 200),
+    ]) {
+      expect(
+        only(
+          evaluate([
+            frame('dep'),
+            artifact('a', 100, 200),
+            target,
+            edge('d', UML_ROLE.deploy, 'a', 'n'),
+          ]),
+          DEPLOY_ENDPOINTS
+        ),
+        String(target.role)
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing about an end outside the alphabet', () => {
+    // A «deploy» dragged onto a package, a note or a shape somebody thought
+    // with is not a sentence of §19 at all, and the grammar stays out of it.
+    for (const other of [
+      pkg('t', 600, 200),
+      note('t', 600, 200),
+      sketch('t'),
+    ]) {
+      expect(
+        only(
+          evaluate([
+            frame('dep'),
+            artifact('a', 100, 200),
+            other,
+            edge('d', UML_ROLE.deploy, 'a', 't'),
+          ]),
+          DEPLOY_ENDPOINTS
+        ),
+        String(other.role)
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing at all about a conformant deployment diagram', () => {
+    expect(evaluate(conformantDeployment())).toEqual([]);
+  });
+});
+
+describe('U18 · what a manifestation may run between', () => {
+  it('flags a «manifest» aimed at the node instead of the component', () => {
+    const violations = evaluate([
+      frame('dep'),
+      artifact('a', 100, 200),
+      cube('n', 600, 200),
+      edge('m', UML_ROLE.manifest, 'a', 'n'),
+    ]);
+    expect(idsOf(violations)).toEqual([MANIFEST_ENDPOINTS]);
+    expect(violations[0].elementIds).toEqual(['a', 'n', 'm'].sort());
+  });
+
+  it('flags a manifestation drawn the other way round', () => {
+    expect(
+      only(
+        evaluate([
+          frame('cmp'),
+          component('c', 100, 200),
+          artifact('a', 600, 200),
+          edge('m', UML_ROLE.manifest, 'c', 'a'),
+        ]),
+        MANIFEST_ENDPOINTS
+      )
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about an artefact manifesting a component', () => {
+    expect(only(evaluate(conformantComponent()), MANIFEST_ENDPOINTS)).toEqual(
+      []
+    );
+  });
+
+  it('never double-reports with the deployment rule', () => {
+    // Flat sibling roles, one role per edge: the deploy rule reads `uml:deploy`
+    // and this one `uml:manifest`, so a single wrong arrow gets a single
+    // verdict with the words that fit the line the author drew.
+    const violations = evaluate([
+      frame('dep'),
+      artifact('a', 100, 200),
+      cube('n', 600, 200),
+      edge('m', UML_ROLE.manifest, 'a', 'n'),
+    ]);
+    expect(only(violations, DEPLOY_ENDPOINTS)).toEqual([]);
+  });
+});
+
+describe('U19 · what a communication path may run between', () => {
+  it('flags a network line drawn onto an artefact', () => {
+    const violations = evaluate([
+      frame('dep'),
+      cube('n', 100, 200),
+      artifact('a', 600, 200),
+      edge('cp', UML_ROLE['communication-path'], 'n', 'a'),
+    ]);
+    expect(idsOf(violations)).toEqual([COMMUNICATION_PATH_ENDPOINTS]);
+    expect(violations[0].elementIds).toEqual(['n', 'a', 'cp'].sort());
+  });
+
+  it('flags a network line drawn onto a component', () => {
+    expect(
+      only(
+        evaluate([
+          frame('dep'),
+          cube('n', 100, 200),
+          component('c', 600, 200),
+          edge('cp', UML_ROLE['communication-path'], 'n', 'c'),
+        ]),
+        COMMUNICATION_PATH_ENDPOINTS
+      )
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about any two of the three cubes', () => {
+    const cubes = [cube, device, executionEnvironment];
+    for (const from of cubes) {
+      for (const to of cubes) {
+        expect(
+          only(
+            evaluate([
+              frame('dep'),
+              from('n1', 100, 200),
+              to('n2', 600, 200),
+              edge('cp', UML_ROLE['communication-path'], 'n1', 'n2'),
+            ]),
+            COMMUNICATION_PATH_ENDPOINTS
+          )
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('says nothing at all about a conformant component diagram', () => {
+    expect(evaluate(conformantComponent())).toEqual([]);
   });
 });
 

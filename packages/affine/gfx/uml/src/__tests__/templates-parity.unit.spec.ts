@@ -53,10 +53,10 @@ const INVOCATION: CommandInvocation = {
 /**
  * The templates written by hand — none.
  *
- * The palette is the ten artefact commands. The nine relationship TOOLS arm the
- * connector and draw nothing, so they have no artefact to record, and the two
- * exports are not artefact commands at all. A future entry that is not derived
- * has to declare itself here.
+ * The palette is the eighteen artefact commands. The twelve relationship TOOLS
+ * arm the connector and draw nothing, so they have no artefact to record, and
+ * the two exports are not artefact commands at all. A future entry that is not
+ * derived has to declare itself here.
  */
 const HAND_AUTHORED: string[] = [];
 
@@ -79,7 +79,10 @@ describe('the UML palette covers the toolbox', () => {
   const artefacts = umlCommands.filter(command => command.kind === 'artefact');
 
   it('ships one derived template per artefact command', () => {
-    expect(artefacts).toHaveLength(10);
+    // Ten from phase 1, plus phase 2's four component artefacts and four
+    // deployment ones. The three new TOOLS are not here for the reason the nine
+    // before them are not: arming a connector draws nothing.
+    expect(artefacts).toHaveLength(18);
     for (const command of artefacts) {
       const derived = templates.filter(
         template => template.commandId === command.id
@@ -164,7 +167,7 @@ describe('a classifier template is the elements the button draws', () => {
 
   it('gives the object a name and one tier of slots, and nothing else', () => {
     // An instance specification has no operations compartment (§9.8.4), so the
-    // object is the one classifier that is four elements rather than five.
+    // object is four elements rather than five.
     const entries = Object.entries(named('Object'));
     expect(entries).toHaveLength(4);
     const roles = entries
@@ -175,6 +178,76 @@ describe('a classifier template is the elements the button draws', () => {
       [UML_ROLE.object, UML_ROLE.name, UML_ROLE.attributes].sort()
     );
   });
+
+  it('gives a component and an artifact the object own two tiers', () => {
+    // §11.6.4 and §19.3.4 draw both as a name over ONE body compartment, which
+    // is the instance specification's layout with a different mark in the
+    // corner — so both are four elements too.
+    for (const [name, role] of [
+      ['Component', UML_ROLE.component],
+      ['Artifact', UML_ROLE.artifact],
+    ] as const) {
+      const entries = Object.entries(named(name));
+      expect(entries, name).toHaveLength(4);
+      const roles = entries
+        .map(([, el]) => el.role)
+        .filter((id): id is string => !!id)
+        .sort();
+      expect(roles, name).toEqual(
+        [role, UML_ROLE.name, UML_ROLE.attributes].sort()
+      );
+    }
+  });
+});
+
+/**
+ * The phase-2 pictures: one shape, one label, one group — and the label is the
+ * only one of the three a hand-written palette would have got right.
+ */
+describe('a phase-2 picture template is the elements the button draws', () => {
+  const PICTURES: [string, string, string, string][] = [
+    ['Port', UML_ROLE.port, 'port', UML_ROLE.label],
+    [
+      'Provided interface',
+      UML_ROLE['provided-interface'],
+      'provided-interface',
+      UML_ROLE.label,
+    ],
+    [
+      'Required interface',
+      UML_ROLE['required-interface'],
+      'required-interface',
+      UML_ROLE.label,
+    ],
+    // The three cubes are NAMED, not labelled: their seed carries §19.4.4's
+    // keyword line, which is what a name compartment is for and what the morph
+    // rewrites (`actions.ts`).
+    ['Node', UML_ROLE.node, 'node', UML_ROLE.name],
+    ['Device', UML_ROLE.device, 'device', UML_ROLE.name],
+    [
+      'Execution environment',
+      UML_ROLE['execution-environment'],
+      'execution-environment',
+      UML_ROLE.name,
+    ],
+  ];
+
+  for (const [name, role, kind, tier] of PICTURES) {
+    it(`${name} is a bodyless shape, one label and the group over them`, () => {
+      const entries = Object.entries(named(name));
+      expect(entries).toHaveLength(3);
+
+      const shape = entries.find(([, el]) => el.type === 'umlNode');
+      expect(shape![1].kind).toBe(kind);
+      expect(shape![1].role).toBe(role);
+      // NO text on the shape, whatever the picture: R16 applies to a cube and
+      // to a 16-unit square exactly as it applies to a class box.
+      expect(shape![1].text).toBeUndefined();
+
+      const text = entries.find(([, el]) => el.type === 'text');
+      expect(text![1].role).toBe(tier);
+    });
+  }
 });
 
 /** The two frames: the sheet and the boundary drawn round part of it. */

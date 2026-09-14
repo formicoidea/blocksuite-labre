@@ -22,14 +22,14 @@ import {
  * senior sub-menu, the artefact catalogue, the palette, Settings › Shortcuts
  * and the agent (`docs/adr/0008`).
  *
- * ## Twenty-one declared, fourteen nominated — a framework that does NOT fit
+ * ## Thirty-two declared, fourteen nominated — a framework that does NOT fit
  *
- * UML 2.5.1 is the largest notation this library packs, and phase 1 already
- * declares twenty-one commands against a sub-menu of fourteen. So unlike C4 —
- * the framework that fits to the entry — the arbitration RUNS here:
- * `selectSeniorMenuCommands` triggers on `catalogue.length > SENIOR_MENU_CAP`,
- * twenty-one is over fourteen, and the row a user meets is thirteen ranked
- * buttons plus "More artefacts…".
+ * UML 2.5.1 is the largest notation this library packs: phase 1 declared
+ * twenty-one commands against a sub-menu of fourteen, and phase 2 (components
+ * and deployment) appends eleven more. So unlike C4 — the framework that fits to
+ * the entry — the arbitration RUNS here: `selectSeniorMenuCommands` triggers on
+ * `catalogue.length > SENIOR_MENU_CAP`, thirty-two is well over fourteen, and
+ * the row a user meets is thirteen ranked buttons plus "More artefacts…".
  *
  * That makes the head of the NOMINATION list the cold start every new user
  * meets, which is the lesson BPMN learned in a live recette (#144) and the
@@ -47,7 +47,8 @@ import {
  *   4. and everything past the fourteenth slot DECLINES the row rather than
  *      contesting it: the object (an instance diagram is a second reading of a
  *      class diagram, not the first thing anybody draws), the four remaining
- *      relationships, and the two exports.
+ *      relationships, the two exports, and — since phase 2 — the whole of
+ *      components and deployment.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
@@ -297,6 +298,126 @@ const SPECS: Spec[] = [
     senior: false,
     run: std => activateUmlEdge(std, 'anchor'),
   },
+  /* ── Phase 2: components (§11.6.4, §11.3.4, §10.4.4) ─────────────────── */
+  // Every one of the eleven below declines the row, and it is ONE decision
+  // rather than eleven: the phase-1 fourteen are what a user meets on a cold
+  // start, they are the class and use-case diagrams an architect draws first,
+  // and phase 2 does not get to re-argue that from inside its own tranche.
+  // The PO's curation point #1 is where `uml.addComponent` contests a seat —
+  // most likely `uml.addNote`'s — and until it is made the whole of components
+  // and deployment lives in the catalogue, the palette and the agent, which is
+  // the registry's own invariant: the catalogue is the TOTAL surface.
+  {
+    id: 'addComponent',
+    label: 'Component',
+    iconKey: 'uml.component',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:component',
+    senior: false,
+    run: std => createUmlClassifier(std, 'component'),
+  },
+  {
+    id: 'addPort',
+    label: 'Port',
+    iconKey: 'uml.port',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:port',
+    senior: false,
+    run: std => createUmlNode(std, 'port'),
+  },
+  {
+    id: 'addProvidedInterface',
+    label: 'Provided interface',
+    iconKey: 'uml.provided-interface',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:provided-interface',
+    senior: false,
+    run: std => createUmlNode(std, 'provided-interface'),
+  },
+  {
+    id: 'addRequiredInterface',
+    label: 'Required interface',
+    iconKey: 'uml.required-interface',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:required-interface',
+    senior: false,
+    run: std => createUmlNode(std, 'required-interface'),
+  },
+  /* ── Phase 2: deployment (§19.2.4, §19.3.4, §19.4.4) ─────────────────── */
+  {
+    id: 'addArtifact',
+    label: 'Artifact',
+    iconKey: 'uml.artifact',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:artifact',
+    senior: false,
+    run: std => createUmlClassifier(std, 'artifact'),
+  },
+  {
+    id: 'addNode',
+    label: 'Node',
+    iconKey: 'uml.node',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:node',
+    senior: false,
+    run: std => createUmlNode(std, 'node'),
+  },
+  {
+    id: 'addDevice',
+    label: 'Device',
+    iconKey: 'uml.device',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:device',
+    senior: false,
+    run: std => createUmlNode(std, 'device'),
+  },
+  {
+    id: 'addExecutionEnvironment',
+    label: 'Execution environment',
+    iconKey: 'uml.execution-environment',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:execution-environment',
+    senior: false,
+    run: std => createUmlNode(std, 'execution-environment'),
+  },
+  {
+    id: 'deployTool',
+    label: 'Deploy',
+    iconKey: 'uml.deploy',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:deploy',
+    senior: false,
+    run: std => activateUmlEdge(std, 'deploy'),
+  },
+  {
+    id: 'manifestTool',
+    label: 'Manifest',
+    iconKey: 'uml.manifest',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:manifest',
+    senior: false,
+    run: std => activateUmlEdge(std, 'manifest'),
+  },
+  {
+    id: 'communicationPathTool',
+    label: 'Communication path',
+    iconKey: 'uml.communication-path',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:communication-path',
+    senior: false,
+    run: std => activateUmlEdge(std, 'communication-path'),
+  },
 ];
 
 const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
@@ -312,7 +433,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
     : ['catalogue', 'palette', 'agent'],
   order,
   scope: 'edgeless',
-  // Keyless by intent, and at twenty-one commands there is no chord alphabet
+  // Keyless by intent, and at thirty-two commands there is no chord alphabet
   // that would not be arbitrary — still bindable from Settings › Shortcuts,
   // which is what `toShortcutDescriptor` being total buys.
   defaultKeys: { mac: [], other: [] },

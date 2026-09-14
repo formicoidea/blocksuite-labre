@@ -52,6 +52,9 @@ describe('the declared families', () => {
       'association',
       'generalization',
       'dependency',
+      // APPENDED, never inserted: the three above keep their index, which is
+      // what lets the case below go on naming the dependency family by one.
+      'deploy',
     ]);
   });
 
@@ -64,6 +67,32 @@ describe('the declared families', () => {
     for (const kind of rest) {
       expect(UML_EDGE_STYLE[kind]).toEqual(UML_EDGE_STYLE[dependency]);
     }
+  });
+
+  it('files the communication path with the association it IS', () => {
+    // §19.4.4 defines a CommunicationPath as an Association between nodes and
+    // draws it as one, so it joins that family rather than standing alone: the
+    // line an author drew between two servers and the one they drew between two
+    // classes are the same drawing, and the swap is the correction a reader of a
+    // deployment diagram actually needs.
+    expect(UML_EDGE_FAMILIES[0]).toContain('communication-path');
+    expect(UML_EDGE_STYLE['communication-path']).toEqual(
+      UML_EDGE_STYLE.association
+    );
+  });
+
+  it('keeps deploy and manifest in a family of their own', () => {
+    // Both are dependencies FROM an artifact, drawn as that same dashed arrow,
+    // and what separates them is which end it lands on — a node or a component.
+    // The confusion is between the TWO of them, so offering `«include»`
+    // alongside would be offering a use-case relationship on a deployment
+    // diagram.
+    expect(UML_EDGE_FAMILIES).toContainEqual(['deploy', 'manifest']);
+    expect(UML_EDGE_STYLE.deploy).toEqual(UML_EDGE_STYLE.manifest);
+    // …drawn exactly like a plain dependency, and in a different family all the
+    // same: the drawing is the specification's, the grouping is the product's.
+    expect(UML_EDGE_STYLE.deploy).toEqual(UML_EDGE_STYLE.dependency);
+    expect(UML_EDGE_FAMILIES[2]).not.toContain('deploy');
   });
 });
 

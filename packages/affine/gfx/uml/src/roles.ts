@@ -5,8 +5,8 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * UML role vocabulary.
  *
  * A role is the semantic identity of a UML artefact, and here — as in C4 — it is
- * the only thing that carries it. Four of the eight node kinds are drawn as the
- * SAME rectangle: a class, an interface, an enumeration and an object differ by
+ * the only thing that carries it. Four of the sixteen node kinds are drawn as
+ * the SAME rectangle: a class, an interface, an enumeration and an object differ by
  * the keyword written above the name, and a rule that read the shape would find
  * a box and learn nothing. The `kind` discriminant answers a different question
  * (which glyph to paint, which compartments to lay out); the role answers what
@@ -15,7 +15,7 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * Hierarchy is DATA (`parent`), never TS inheritance, and only where UML 2.5.1
  * itself makes the statement.
  *
- * ## The two specialisation chains, and why there are only two
+ * ## The three specialisation chains, and why there are only three
  *
  * **`uml:classifier`** is the spec's own generalisation: §9.2 makes Class,
  * Interface and DataType (of which Enumeration is one) all Classifiers, and the
@@ -48,6 +48,38 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * `uml:anchor` is the note attachment of Annex A — the dotted line that ties a
  * comment to what it comments on. Flat, verbless and undirected.
  *
+ * **`uml:node`** is the third, and it arrived with the deployment artefacts of
+ * phase 2. §19.4 derives both Device and ExecutionEnvironment from Node, and the
+ * notation follows: all three are the same 3-D cube, told apart by a keyword
+ * (`«device»`, `«executionEnvironment»`). So a rule written about what may be
+ * deployed on a node reaches the three for free.
+ *
+ * It differs from `uml:classifier` in one respect, and the difference is the
+ * spec's own: a Node is INSTANTIABLE, so unlike the abstract classifier this
+ * parent is ALSO stamped on elements — `kind: 'node'` maps onto it. A role that
+ * is both a parent and a drawing is unusual in this library, and it is exactly
+ * what §19.4 describes.
+ *
+ * The other phase-2 artefacts are flat, and each for a stated reason.
+ * `uml:component` is a structured Classifier in the metamodel (§11.6) and stays
+ * OUT of `uml:classifier` all the same: the notation draws it as its own figure
+ * — the two-tabbed icon of §11.6.4 — and the class-diagram rules written on
+ * classifiers (a name compartment, features, visibility) are not the sentences a
+ * component diagram is audited by. `uml:artifact` is flat for the reason
+ * `uml:object` is: it is a physical file, not a kind of anything else drawn
+ * here. `uml:port`, `uml:provided-interface` and `uml:required-interface` are
+ * parts and glyphs attached to a component (§11.3.4, §10.4.4), not
+ * specialisations of it.
+ *
+ * `uml:communication-path` is FLAT under nothing, and that is the one place this
+ * file knowingly departs from the metamodel: §19.4 derives CommunicationPath
+ * from Association. The same call the file already makes for include and extend,
+ * which the metamodel derives from DirectedRelationship — what a reader sees is
+ * a DIFFERENT NOTATION between different things (a line between two cubes, not
+ * between two classifiers), and filing it under the association would hand every
+ * class-diagram association rule a deployment diagram to police. Recorded here
+ * rather than left to be rediscovered.
+ *
  * ## The frames
  *
  * `uml:diagram` and `uml:subject` are parent-less, the same call `c4:board`,
@@ -78,6 +110,16 @@ export type UmlRole =
   | 'note'
   | 'actor'
   | 'use-case'
+  // The component artefacts (§11.6.4, §11.3.4, §10.4.4).
+  | 'component'
+  | 'port'
+  | 'provided-interface'
+  | 'required-interface'
+  // The deployment artefacts, and the cube they share (§19.3.4, §19.4.4).
+  | 'artifact'
+  | 'node'
+  | 'device'
+  | 'execution-environment'
   // The written tiers of an artefact's label, as canvas text.
   | 'name'
   | 'attributes'
@@ -95,15 +137,21 @@ export type UmlRole =
   | 'dependency'
   | 'anchor'
   | 'include'
-  | 'extend';
+  | 'extend'
+  // The deployment relationships (§19.2.4, §19.3.4, §19.4.4).
+  | 'deploy'
+  | 'manifest'
+  | 'communication-path';
 
 export type UmlRoleId = `uml:${UmlRole}`;
 
 /**
  * Role ids, keyed by their own name.
  *
- * Keyed by the ROLE and not by the `kind`: UML has eight node kinds and nine
- * node roles, because `uml:classifier` is a parent nothing is ever drawn as.
+ * Keyed by the ROLE and not by the `kind`: UML has sixteen node kinds and
+ * seventeen node roles, because `uml:classifier` is a parent nothing is ever
+ * drawn as. ({@link UML_ROLE.node} is a parent too, and IS drawn — §19.4 makes a
+ * Node instantiable — so it does not add a role of its own.)
  * {@link UML_ROLE_OF_KIND} is the bridge, and it is the only place the two
  * vocabularies meet.
  */
@@ -117,6 +165,14 @@ export const UML_ROLE = {
   note: 'uml:note',
   actor: 'uml:actor',
   'use-case': 'uml:use-case',
+  component: 'uml:component',
+  port: 'uml:port',
+  'provided-interface': 'uml:provided-interface',
+  'required-interface': 'uml:required-interface',
+  artifact: 'uml:artifact',
+  node: 'uml:node',
+  device: 'uml:device',
+  'execution-environment': 'uml:execution-environment',
   name: 'uml:name',
   attributes: 'uml:attributes',
   operations: 'uml:operations',
@@ -132,6 +188,9 @@ export const UML_ROLE = {
   anchor: 'uml:anchor',
   include: 'uml:include',
   extend: 'uml:extend',
+  deploy: 'uml:deploy',
+  manifest: 'uml:manifest',
+  'communication-path': 'uml:communication-path',
 } as const satisfies Record<UmlRole, UmlRoleId>;
 
 /**
@@ -170,8 +229,9 @@ export const umlSubjectRoleKey = roleKey(UML_ROLE.subject);
 
 /**
  * The classifiers (§9.2, §11.4.4) — the compartmented rectangle, and the three
- * keywords that tell its flavours apart — plus the four artefacts that are not
- * classifiers and are drawn as something else entirely.
+ * keywords that tell its flavours apart — plus every artefact that is not a
+ * classifier and is drawn as something else entirely: the four of phase 1, and
+ * the eight components and deployment artefacts phase 2 appended.
  *
  * `uml:classifier` is declared but never stamped on an element: it is the
  * ancestor a rule about naming, about visibility or about features is written
@@ -237,6 +297,71 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: roleKey(UML_ROLE['use-case']),
     labelFallback: 'Use case',
+  },
+  // ── The component artefacts (phase 2) ───────────────────────────────────
+  // §11.6.4: a Component is drawn as a rectangle with the two-tabbed icon in
+  // its top-right corner. Flat, and not under `uml:classifier`: see the header.
+  {
+    id: UML_ROLE.component,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.component),
+    labelFallback: 'Component',
+  },
+  // §11.3.4: a Port is a small square ON the border of the component that owns
+  // it — a part of that component, never a specialisation of it.
+  {
+    id: UML_ROLE.port,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.port),
+    labelFallback: 'Port',
+  },
+  // §10.4.4: the ball-and-socket pair. Two roles rather than one `uml:interface
+  // -point` with a flag, because they are two STATEMENTS — one says a component
+  // offers a service, the other that it needs one — and a rule about a required
+  // interface left dangling must not fall on every lollipop on the sheet.
+  {
+    id: UML_ROLE['provided-interface'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['provided-interface']),
+    labelFallback: 'Provided interface',
+  },
+  {
+    id: UML_ROLE['required-interface'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['required-interface']),
+    labelFallback: 'Required interface',
+  },
+  // ── The deployment artefacts (phase 2) ──────────────────────────────────
+  // §19.3.4: an Artifact is a physical file — drawn as a rectangle with the
+  // document icon, and named `«artifact»` over its own file name.
+  {
+    id: UML_ROLE.artifact,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.artifact),
+    labelFallback: 'Artifact',
+  },
+  // §19.4: the cube, and the two things the spec derives from it. The parent is
+  // itself drawn — a Node is instantiable — which is what makes this chain
+  // different from `uml:classifier`.
+  {
+    id: UML_ROLE.node,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.node),
+    labelFallback: 'Node',
+  },
+  {
+    id: UML_ROLE.device,
+    parent: UML_ROLE.node,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.device),
+    labelFallback: 'Device',
+  },
+  {
+    id: UML_ROLE['execution-environment'],
+    parent: UML_ROLE.node,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['execution-environment']),
+    labelFallback: 'Execution environment',
   },
 ];
 
@@ -459,6 +584,51 @@ const RELATIONSHIP_DEFS: readonly RoleDef[] = [
         'Drag from the extending use case to the base one it may extend.',
     },
   },
+  // ── The deployment relationships (phase 2) ──────────────────────────────
+  // §19.2.4: a Deployment is drawn as a dashed arrow keyworded `«deploy»`, from
+  // the artifact TO the node it runs on. The source is the artifact because the
+  // artifact is the subject of the sentence: `order.jar is deployed on
+  // :AppServer`, never the other way round.
+  {
+    id: UML_ROLE.deploy,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE.deploy),
+    labelFallback: 'Deploy',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE.deploy)}.verb`,
+      verbFallback: 'is deployed on',
+      gestureHintKey: `${roleKey(UML_ROLE.deploy)}.gesture`,
+      gestureHintFallback:
+        'Drag from the artifact to the node it runs on — the arrow lands on the node.',
+    },
+  },
+  // §19.3.4: a Manifestation is the other dashed arrow off an artifact, and it
+  // says what the file IS a physical embodiment of. Same source for the same
+  // reason: `order.jar manifests Ordering`.
+  {
+    id: UML_ROLE.manifest,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE.manifest),
+    labelFallback: 'Manifest',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE.manifest)}.verb`,
+      verbFallback: 'manifests',
+      gestureHintKey: `${roleKey(UML_ROLE.manifest)}.gesture`,
+      gestureHintFallback:
+        'Drag from the artifact to the component it is a physical copy of.',
+    },
+  },
+  // §19.4.4: a CommunicationPath is a plain solid line between two nodes saying
+  // they can exchange messages. UNDIRECTED, and verbless for the reason
+  // `uml:association` is: the notation draws no arrow, so claiming a direction
+  // would put words in the diagram's mouth. Flat under nothing — see the header
+  // on the one place this file departs from the metamodel.
+  {
+    id: UML_ROLE['communication-path'],
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['communication-path']),
+    labelFallback: 'Communication path',
+  },
 ];
 
 const DEFS: readonly RoleDef[] = [
@@ -485,9 +655,9 @@ export const UML_ROLES: RoleDefs = Object.assign(
  * type, so a new kind cannot land without being given a meaning.
  *
  * One kind, one role, with none collapsed — unlike C4, where four kinds are a
- * second DRAWING of a level. Here the eight kinds are eight different artefacts
- * of the specification, and `uml:classifier` — the one role with no kind of its
- * own — is their ancestor rather than one of them.
+ * second DRAWING of a level. Here the sixteen kinds are sixteen different
+ * artefacts of the specification, and `uml:classifier` — the one role with no
+ * kind of its own — is an ancestor rather than one of them.
  */
 export const UML_ROLE_OF_KIND: Record<UmlNodeKind, RoleId> = {
   class: UML_ROLE.class,
@@ -498,4 +668,14 @@ export const UML_ROLE_OF_KIND: Record<UmlNodeKind, RoleId> = {
   note: UML_ROLE.note,
   actor: UML_ROLE.actor,
   'use-case': UML_ROLE['use-case'],
+  component: UML_ROLE.component,
+  port: UML_ROLE.port,
+  'provided-interface': UML_ROLE['provided-interface'],
+  'required-interface': UML_ROLE['required-interface'],
+  artifact: UML_ROLE.artifact,
+  // The one role that is BOTH a parent and a drawing: §19.4 makes Node
+  // instantiable and derives Device and ExecutionEnvironment from it.
+  node: UML_ROLE.node,
+  device: UML_ROLE.device,
+  'execution-environment': UML_ROLE['execution-environment'],
 };

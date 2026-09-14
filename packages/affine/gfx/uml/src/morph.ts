@@ -21,13 +21,20 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
  * What a UML artefact may BECOME — the declaration behind the "Change type"
  * dropdown on a selected component's contextual toolbar.
  *
- * ## One family, and five kinds that are alone
+ * ## Two families, and the kinds that are alone
  *
  * A class, an interface and an enumeration are THE SAME PICTURE: §9.5.4 draws
  * one divided rectangle for all three and tells them apart by the keyword
  * written above the name — `«interface»`, `«enumeration»`, nothing at all. That
  * is the strongest statement of "the same artefact, said more precisely" any
- * notation in this library makes, and it is the whole of the reachable set.
+ * notation in this library makes.
+ *
+ * Phase 2 adds the second, and it is the same statement in a different clause:
+ * a **node**, a **device** and an **execution environment** are ONE 3D box
+ * (§19.4.4), told apart by `«device»` / `«executionEnvironment»` above the name
+ * and by nothing else. A deployment diagram is drawn coarse and then made
+ * precise — "this runs on a server", then "on that server's application
+ * container" — so the swap is the modelling act itself rather than a repair.
  *
  * Everything else is declared alone, and each singleton is a REFUSAL written
  * down rather than an omission to be discovered later:
@@ -39,7 +46,24 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
  *  - a **package** is a namespace (§12.2), not a classifier in it;
  *  - a **note** is a Comment (Annex A) and carries no semantics at all;
  *  - an **actor** and a **use case** belong to a behaviour diagram (§18.1) and
- *    are not structural classifiers.
+ *    are not structural classifiers;
+ *  - a **component** is a Class (§11.6) and would in principle join the first
+ *    family, but it is the one classifier the notation draws with a MARK of its
+ *    own — the two-tab icon in the corner — rather than with a keyword, and a
+ *    component diagram is a different conversation from a class diagram. Left
+ *    alone until a PO asks for the swap;
+ *  - an **artifact** is a physical file (§19.3) — a `.war`, a script, a
+ *    document. Offering to turn one into a class would invite a diagram that
+ *    confuses what a thing IS with what it is deployed AS, which is the very
+ *    distinction the `«manifest»` arrow exists to draw;
+ *  - a **port** is a property of its owner (§11.3), not a classifier standing
+ *    beside it, and it is the only artefact in the pack whose position is part
+ *    of its meaning: it sits ON a border;
+ *  - a **provided interface** and a **required interface** are the ball and the
+ *    socket of §10.4.4 — two DIFFERENT drawings, unlike every family above, and
+ *    a phase-2 pack should not decide by itself that a modeller who drew one
+ *    meant the other. The pair is the obvious candidate for a third family and
+ *    is deliberately left for a product decision.
  *
  * The declaration is therefore TOTAL over `UmlNodeKind` — every kind is named
  * exactly once — which is what lets the unit suite prove that a kind added to
@@ -63,6 +87,15 @@ export const UML_MORPH_FAMILIES: readonly (readonly UmlNodeKind[])[] = [
   ['note'],
   ['actor'],
   ['use-case'],
+  /* ── Phase 2: components and deployment ──────────────────────────────── */
+  // The second family, and it opens on the plain NODE for the same reason the
+  // first opens on the plain class: §19.4.4's keyword is the refinement.
+  ['node', 'device', 'execution-environment'],
+  ['component'],
+  ['artifact'],
+  ['port'],
+  ['provided-interface'],
+  ['required-interface'],
 ];
 
 /**

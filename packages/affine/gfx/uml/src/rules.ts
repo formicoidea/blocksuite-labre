@@ -25,9 +25,11 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * pack cites clauses: §9.9.7 says a generalization's two ends are of the same
  * kind, §10.4.3 types an interface realization's contract, §11.5.3 gives a part
  * at most one composite owner, §18.1.3 types the ends of an include and forbids
- * an association between two actors. Seven rules therefore declare
- * `provenance.source: 'standard'` — the first in this library after BPMN's — and
- * they are the seven a conformance report may present as defects.
+ * an association between two actors, §19.2.3 types a deployment's two ends and
+ * §19.4.3 says a communication path joins two DeploymentTargets. TEN rules
+ * therefore declare `provenance.source: 'standard'` — the first in this library
+ * after BPMN's — and they are the ten a conformance report may present as
+ * defects.
  *
  * The rest are `recommendation` (a reading of the notation the spec draws but
  * does not constrain: which artefacts belong on which KIND of sheet, whether an
@@ -90,10 +92,12 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * frame in: {@link useCaseOutsideSubject} and {@link actorInsideSubject} both
  * need a subject to be inside or outside OF.
  *
- * ## Two questions this pack deliberately does NOT ask
+ * ## Four questions this pack deliberately does NOT ask
  *
- * Not gaps in the notation — gaps in what the engine's eight families can be
- * asked of a v1 UML element.
+ * Not gaps in the notation — gaps in what the engine's families can be asked of
+ * a UML element. The first two are phase 1's; the last two are phase 2's, and
+ * they are the two rules the structural brief asked for and this file could not
+ * honestly write.
  *
  * - **an artefact of any kind drawn outside the frame.** `element-in-background`
  *   names ONE subject role, and UML's vocabulary has no single role meaning "any
@@ -112,6 +116,32 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  *   text there is nothing for a rule to read, and asking for a multiplicity in
  *   the middle of the line would be asking the author to write the notation
  *   wrongly so the tool could check it.
+ * - **a PORT that sits on no component's border** (`uml.port-on-border`,
+ *   §11.3.4). The family that sounds like the answer is `attachment`, and it
+ *   asks a different question in both of its halves. Its `carrierRole` is
+ *   required to be an **edge** role — "posed on" is measured as a distance to a
+ *   PATH, and `evaluateAttachment` warns once and returns nothing for a `node`
+ *   role — so a component, which is a box, can never be a carrier. And its
+ *   `boundaryAxis` names a transition the FRAME declares
+ *   (`FrameworkBackgroundDef.transitionBandWidth`, Wardley's evolution
+ *   frontiers); a `uml:diagram` declares no axis, and the border of an ordinary
+ *   element is not a frontier of the sheet. `element-in-background` cannot stand
+ *   in either: it demands FULL containment, and a port that straddles its
+ *   component's edge — which is §11.3.4's own preferred drawing — is by
+ *   construction not contained. The question is "is this small square within a
+ *   band of that box's outline", and no family expresses a band around an
+ *   arbitrary element. Port ownership is therefore read by GEOMETRY in
+ *   `model.ts`, where the two exporters need it, and left unjudged here.
+ * - **a lollipop or socket attached to nothing** (`uml.interface-near-component`,
+ *   §10.4.4, §11.6.4). The same limit, one glyph over: "the stub touches a
+ *   component or a port" is an adjacency between two boxes, and `attachment`
+ *   measures adjacency to a path. `no-overlap` is the only family that evaluates
+ *   PAIRS and its polarity is the opposite one — it forbids a collision, it
+ *   cannot require a proximity. So the adjacency is read in `model.ts` (a glyph
+ *   within 24 units of a component's box names one of its interfaces) and no
+ *   rule is written on it. Both close the day a family accepts a node carrier or
+ *   a proximity requirement, and neither is worth a family invented for one
+ *   framework.
  */
 
 /* ── The alphabets and the grammars ─────────────────────────────────────── */
@@ -127,6 +157,16 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * pointing at things is what a whiteboard is for. The three TIER roles are
  * absent for the same reason — a line drawn onto an attributes compartment is an
  * annotation.
+ *
+ * ## Phase 2 appended six, and the two frames are still absent
+ *
+ * The component, its port, the two interface glyphs, the artefact and the node
+ * (parent of the device and the execution environment) joined the day the
+ * structural sheets did. They had to: a wiring gesture between two ports and a
+ * quick-connect between two cubes are exactly the drawings §11.6.4 and §19.4.4
+ * expect to be TYPED, and a role-less line between them says nothing to the
+ * grammar, nothing to the degree counts and nothing to either exporter — which
+ * is the whole subject of {@link untypedEdge}.
  */
 const UML_ELEMENT_ROLES: readonly RoleId[] = [
   UML_ROLE.classifier,
@@ -135,14 +175,21 @@ const UML_ELEMENT_ROLES: readonly RoleId[] = [
   UML_ROLE.note,
   UML_ROLE.actor,
   UML_ROLE['use-case'],
+  // Phase 2 — the structural vocabulary. `uml:node` stands for its two children.
+  UML_ROLE.component,
+  UML_ROLE.port,
+  UML_ROLE['provided-interface'],
+  UML_ROLE['required-interface'],
+  UML_ROLE.artifact,
+  UML_ROLE.node,
 ];
 
 /**
  * Every ordered pair of the element roles — the ALPHABET, and not a grammar.
  *
- * This table sanctions all thirty-six sentences, so a rule holding it judges
- * none of them. It exists so {@link untypedEdge} can say "between two UML
- * artefacts" — which is the only thing `flagNeutral` reads a matrix FOR —
+ * This table sanctions all hundred and forty-four sentences, so a rule holding
+ * it judges none of them. It exists so {@link untypedEdge} can say "between two
+ * UML artefacts" — which is the only thing `flagNeutral` reads a matrix FOR —
  * without inheriting a judgement that belongs to {@link actorActorAssociation}.
  */
 export const UML_ELEMENT_MATRIX: readonly EndpointTriplet[] =
@@ -371,6 +418,101 @@ export const UML_USE_CASE_MATRIX: readonly EndpointTriplet[] = [
   },
 ];
 
+/**
+ * What a DEPLOY may run between: an artefact onto a node, and nothing else.
+ *
+ * §19.4.4 draws it as the dashed arrow with the `«deploy»` keyword, and §19.2.3
+ * types its two ends — a DeployedArtifact onto a DeploymentTarget. `uml:node` is
+ * the parent of `uml:device` and `uml:execution-environment` (`roles.ts`), so the
+ * single sentence below reaches all three targets through `roleIsA` rather than
+ * being restated once per cube.
+ *
+ * The second triplet is an ALPHABET entry, the device the file header explains:
+ * a manifestation is a true sentence of §19.3.4, it carries the `uml:manifest`
+ * role and can therefore never sanction a deploy, and its whole effect is to put
+ * `uml:component` into the alphabet this rule speaks. Without it a `«deploy»`
+ * drawn from a component — which is the mistake this rule exists for, since a
+ * component is not what gets deployed, its artefact is — would be outside the
+ * alphabet and silently unjudged.
+ */
+export const UML_DEPLOY_MATRIX: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.deploy,
+    // The PARENT role: a node, a device and an execution environment alike.
+    target: UML_ROLE.node,
+  },
+  // The ALPHABET entry — see the header.
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.manifest,
+    target: UML_ROLE.component,
+  },
+];
+
+/**
+ * What a MANIFEST may run between: an artefact onto the element it embodies.
+ *
+ * §19.3.3 — "An Artifact may embody, or manifest, a number of model elements" —
+ * and §19.3.4 draws it as the dashed open arrow labelled `«manifest»`. The
+ * metamodel's `utilizedElement` is a PackageableElement, so a manifestation may
+ * point at a great many things; this pack draws the one §19.3.5's own figure
+ * draws, "A Manifestation relationship between an Artifact and a Component",
+ * because a component diagram is where a manifestation is drawn at all.
+ *
+ * {@link UML_DEPLOY_MATRIX}'s twin, mirrored: the foreign triplet here is the
+ * DEPLOY, which puts `uml:node` in the alphabet so that a `«manifest»` aimed at
+ * a cube — the same arrow drawn at the wrong end of the deployment story — is a
+ * finding rather than silence.
+ */
+export const UML_MANIFEST_MATRIX: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.manifest,
+    target: UML_ROLE.component,
+  },
+  // The ALPHABET entry — see the header.
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.deploy,
+    target: UML_ROLE.node,
+  },
+];
+
+/**
+ * What a COMMUNICATION PATH may run between: two nodes.
+ *
+ * §19.4.3 is as narrow as a clause gets — "A CommunicationPath is an Association
+ * between two DeploymentTargets, through which they may exchange Signals and
+ * Messages" — and §19.4.4 draws it as the plain association link between two
+ * cubes. One sentence, and `uml:node` on both ends, so a device talking to an
+ * execution environment is sanctioned through the parent role.
+ *
+ * TWO alphabet entries this time, and both are foreign edges: they put
+ * `uml:artifact` and `uml:component` into the alphabet, which is what makes a
+ * network line drawn onto a `.jar` or onto a component box a finding. A
+ * communication path is about MACHINES talking to machines, and the wire drawn
+ * to the software running on one of them is the confusion the rule is for.
+ */
+export const UML_COMMUNICATION_PATH_MATRIX: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.node,
+    edge: UML_ROLE['communication-path'],
+    target: UML_ROLE.node,
+  },
+  // The ALPHABET entries — see the header.
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.deploy,
+    target: UML_ROLE.node,
+  },
+  {
+    source: UML_ROLE.artifact,
+    edge: UML_ROLE.manifest,
+    target: UML_ROLE.component,
+  },
+];
+
 /* ── Membership: is the drawing on the sheet it claims to be on? ────────── */
 
 /**
@@ -394,6 +536,14 @@ export const UML_USE_CASE_MATRIX: readonly EndpointTriplet[] = [
  * of — and an object, a package, a note, an actor or a use case parked outside
  * the frame raises nothing. A narrower rule that is right is worth more than a
  * wider one that guesses.
+ *
+ * Phase 2 widened `appliesTo` by nothing, and that is the same limit rather than
+ * an oversight: a component, a port, an interface glyph, an artefact and a node
+ * have no common ancestor with the three classifiers that does not ALSO reach
+ * the frames and the tiers, and inventing one — `uml:artefact`, say — would be
+ * this pack adding a word to a vocabulary whose whole authority is that every
+ * role in it is the specification's. Six artefacts parked beside the sheet
+ * raised nothing before; twelve do now.
  *
  * ## Silence on a frameless sketch
  *
@@ -433,9 +583,14 @@ const elementOutsideFrame: ValidationRule = {
  * The rule whose subject is the SHEET, and the one the diagram-kind picker
  * exists for. A UML frame does not merely have a name: Annex A writes its
  * heading as `<kind> <name>` — `class Orders`, `uc Checkout` — so every frame
- * states which of the four diagrams it draws, and stating it is not optional the
+ * states which of the six diagrams it draws, and stating it is not optional the
  * way a C4 board's level is (`kinds.ts` says why). The rule reads that statement
  * back and confronts it with what has been drawn.
+ *
+ * Six kinds since phase 2, and the table below grows by APPENDING a key: a
+ * `forbidden` entry is looked up by the frame's own `kind` string, so a kind with
+ * no entry is a sheet this rule has nothing to say about — which is exactly what
+ * a phase-1 build does with a `cmp` frame, and what this build does with `act`.
  *
  * ## The deny-lists, and the much longer list they do not name
  *
@@ -483,7 +638,7 @@ const notAdmissibleOnKind: ValidationRule = {
     'This artefact is not drawn on the kind of diagram the frame says this is.',
   suggestionKey: 'com.labre.uml.validation.not-admissible-on-kind.suggestion',
   suggestionFallback:
-    'The frame’s heading names the diagram — class, pkg, obj or uc — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
+    'The frame’s heading names the diagram — class, pkg, obj, uc, cmp or dep — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
   version: 1,
   provenance: {
     source: 'recommendation',
@@ -511,6 +666,49 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE.classifier,
       ],
       uc: [UML_ROLE.classifier, UML_ROLE.object, UML_ROLE.package],
+      // Phase 2 — the two structural sheets.
+      //
+      // A **component** diagram (§11.6.4) refuses the use case vocabulary and
+      // the instance, for the reasons the class and package lists refuse them,
+      // and it refuses the DEPLOYMENT cubes besides: a node, a device and an
+      // execution environment are §19.4's answer to "where does this run", which
+      // is the question the `dep` sheet is drawn to ask. It admits the component
+      // itself, its ports, the two interface glyphs, an interface drawn as a
+      // full rectangle instead (§11.6.4 offers both), the packages that group
+      // them, the notes, and the ARTEFACTS that manifest a component — §11.6.5's
+      // own "white box" figure lists them in a compartment.
+      cmp: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        UML_ROLE.object,
+        // The PARENT role: a node, a device and an execution environment alike.
+        UML_ROLE.node,
+      ],
+      // A **deployment** diagram (§19.2.4) refuses the use case vocabulary, the
+      // instance and the three CLASSIFIERS: §19 draws machines, the software
+      // environments on them, the artefacts deployed onto those and the
+      // components those artefacts manifest — a class, an interface or an
+      // enumeration on such a sheet is a level the diagram has not zoomed to.
+      //
+      // The three are named one by one where the `obj` list above names their
+      // parent, and that is deliberate rather than untidy. `uml:classifier` is
+      // the spec's own generalisation (§9.2) and the metamodel ALSO makes a
+      // Component (§11.6.2) and an Artifact (§19.3.2) Classifiers; `roles.ts`
+      // declares those two flat, for the reasons it gives, and this list must
+      // not depend on that call going one way — a deployment diagram that
+      // stopped admitting artefacts because the vocabulary was re-parented
+      // would be a rule broken at a distance, by an edit that never mentioned
+      // it. Naming the three compartmented boxes says what the sheet refuses.
+      dep: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        UML_ROLE.object,
+        UML_ROLE.class,
+        UML_ROLE.interface,
+        UML_ROLE.enumeration,
+      ],
     },
   },
 };
@@ -1018,6 +1216,121 @@ const actorActorAssociation: ValidationRule = {
 };
 
 /**
+ * **U17** — a `«deploy»` arrow that does not put an artefact on a node.
+ *
+ * §19.2.3 types the two ends of a Deployment — a DeployedArtifact onto a
+ * DeploymentTarget — and §19.4.4 draws it as the dashed arrow with the keyword.
+ * The one drawing this rule is really for is the arrow from a COMPONENT to a
+ * node: it is the sentence everybody means and the one §19 declines to draw,
+ * because what reaches a machine is the artefact — the jar, the image, the
+ * script — and the component is what that artefact MANIFESTS (§19.3.3). The fix
+ * is one box and two arrows, and the suggestion says so.
+ *
+ * Reads {@link UML_DEPLOY_MATRIX}, whose second triplet is the alphabet entry
+ * that makes the component end a finding rather than silence.
+ */
+const deployEndpoints: ValidationRule = {
+  id: 'uml.deploy-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.deploy-endpoints',
+  messageFallback: 'This deployment does not put an artefact on a node.',
+  suggestionKey: 'com.labre.uml.validation.deploy-endpoints.suggestion',
+  suggestionFallback:
+    'A deployment runs from the artefact — the jar, the image, the script — to the node, device or execution environment it is installed on. If the far end of this arrow is a component, draw the artefact that manifests it and deploy that instead.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §19.2.3 — a Deployment relates a DeployedArtifact to the DeploymentTarget it is deployed on; §19.4.4 draws it as the «deploy» arrow',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE.deploy,
+    allowed: UML_DEPLOY_MATRIX,
+  },
+};
+
+/**
+ * **U18** — a `«manifest»` arrow that does not run from an artefact to a
+ * component.
+ *
+ * §19.3.3: the Artifact owns the Manifestations, each representing the
+ * utilization of some model element, and §19.3.5's figure draws the one this
+ * notation is used for — an artefact and the component it embodies. An arrow
+ * drawn the other way round, or one aimed at the NODE the artefact happens to
+ * sit on, is the deployment story told with the wrong word.
+ *
+ * {@link deployEndpoints}' twin, and the two never double-report: an edge
+ * carries one role, `uml:deploy` and `uml:manifest` are flat siblings, and each
+ * rule reads its own.
+ */
+const manifestEndpoints: ValidationRule = {
+  id: 'uml.manifest-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.manifest-endpoints',
+  messageFallback:
+    'This manifestation does not run from an artefact to a component.',
+  suggestionKey: 'com.labre.uml.validation.manifest-endpoints.suggestion',
+  suggestionFallback:
+    'A manifestation says "this file embodies that component", so it leaves the artefact and arrives on the component. If what you meant is where the file is installed, draw a deployment to the node instead.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §19.3.3 — an Artifact owns its Manifestations, each the utilization of a PackageableElement; §19.3.4 draws it as the «manifest» arrow',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE.manifest,
+    allowed: UML_MANIFEST_MATRIX,
+  },
+};
+
+/**
+ * **U19** — a communication path drawn to something that is not a node.
+ *
+ * §19.4.3, and one of the few clauses in the whole specification that types a
+ * relationship in a single sentence: a CommunicationPath is an Association
+ * between two DeploymentTargets. A network line drawn to a `.jar` or to a
+ * component box is the confusion this rule is for — the SOFTWARE does not talk
+ * to a machine, the machine it runs on does, and the drawing that says otherwise
+ * has skipped the node.
+ *
+ * Both ends are `uml:node`, so a device connected to an execution environment is
+ * sanctioned through the parent role and never mentioned.
+ */
+const communicationPathEndpoints: ValidationRule = {
+  id: 'uml.communication-path-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.communication-path-endpoints',
+  messageFallback: 'This communication path has an end that is not a node.',
+  suggestionKey:
+    'com.labre.uml.validation.communication-path-endpoints.suggestion',
+  suggestionFallback:
+    'A communication path joins two machines — nodes, devices or execution environments — so that they can exchange messages. Draw it between the two cubes, and let the deployment arrows say which software sits on each.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §19.4.3 — a CommunicationPath is an Association between two DeploymentTargets, through which they may exchange Signals and Messages',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE['communication-path'],
+    allowed: UML_COMMUNICATION_PATH_MATRIX,
+  },
+};
+
+/**
  * **U14** — a plain connector between two UML artefacts.
  *
  * The gap every other rule in this file falls through, and C4's `untyped-link`
@@ -1189,18 +1502,22 @@ const useCaseNoActor: ValidationRule = {
 };
 
 /**
- * The pack, whole: sixteen rules over six families.
+ * The pack, whole: nineteen rules over six families.
  *
- * Sixteen and not the brief's seventeen ids because the actor's name and the use
- * case's name are ONE rule: they are the same tier role, and two rules on one
- * role report one emptied word twice (see {@link unnamedActorOrUseCase}).
+ * Sixteen in phase 1, and not that brief's seventeen ids because the actor's
+ * name and the use case's name are ONE rule: they are the same tier role, and
+ * two rules on one role report one emptied word twice (see
+ * {@link unnamedActorOrUseCase}). Phase 2 appended three — the grammars of the
+ * three edges the structural sheets draw — and skipped two the engine cannot be
+ * asked (see the file header's third and fourth deliberate silences).
  *
- * Six families, and not one of them new: UML is the largest notation this library
- * carries and it asked the engine for nothing — the nine edge roles are nine
- * readings of `relation-endpoints`, the two frames are the membership families C4
- * already uses, and the sheet's own declaration is the `view-admissibility` C4
- * opened. That is the claim `docs/add-a-framework` makes about the seam, tested
- * by the hardest case available.
+ * Six families, and STILL not one of them new after a second notation's worth of
+ * artefacts: UML is the largest pack this library carries and it has asked the
+ * engine for nothing — the twelve edge roles are twelve readings of
+ * `relation-endpoints`, the two frames are the membership families C4 already
+ * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
+ * That is the claim `docs/add-a-framework` makes about the seam, tested by the
+ * hardest case available.
  */
 export const UML_RULES: readonly ValidationRule[] = [
   // Membership: is the drawing on the sheet it claims to be on?
@@ -1219,6 +1536,9 @@ export const UML_RULES: readonly ValidationRule[] = [
   includeEndpoints,
   extendEndpoints,
   actorActorAssociation,
+  deployEndpoints,
+  manifestEndpoints,
+  communicationPathEndpoints,
   untypedEdge,
   // Degree: how many lines may reach one artefact?
   compositionSingleOwner,

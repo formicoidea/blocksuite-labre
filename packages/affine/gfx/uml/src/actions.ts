@@ -140,15 +140,76 @@ export function createUmlSubject(std: BlockStdScope) {
 
 /* ── The artefacts ─────────────────────────────────────────────────────── */
 
-/** The four kinds drawn as a divided rectangle (§9.2.4, §9.8.4). */
+/**
+ * The kinds drawn as a divided rectangle (§9.2.4, §9.8.4, §11.6.4, §19.3.4).
+ *
+ * Phase 2 adds two, and both are boxes rather than pictures for the reason the
+ * first four are: a **component** is a Class (§11.6) drawn as a classifier
+ * rectangle with the two-tab mark in its corner, and an **artifact** is a
+ * classifier drawn as a rectangle with a document mark in the same corner and
+ * `«artifact»` over the name (§19.3.4). Neither mark replaces the box — they
+ * are stamped ON it — so both walk the compartment path and arrive with the
+ * tiers their kind is worth.
+ */
 export type UmlClassifierKind =
   | 'class'
   | 'interface'
   | 'enumeration'
-  | 'object';
+  | 'object'
+  // Phase 2 — the two classifiers of a component and a deployment diagram.
+  | 'component'
+  | 'artifact';
 
-/** The four kinds the notation draws as a picture rather than as a box. */
-export type UmlGlyphKind = 'package' | 'note' | 'actor' | 'use-case';
+/**
+ * The kinds the notation draws as a picture rather than as a box.
+ *
+ * Phase 2 adds six, and each earns its place here by having no compartment to
+ * divide: a **port** is a filled square on a border (§11.3.4), a **provided**
+ * and a **required interface** are the ball and the socket on a stub (§10.4.4),
+ * and a **node**, a **device** and an **execution environment** are the 3D box
+ * of §19.4.4 — a drawing with a front face, a top and a side, not a rectangle
+ * with lines across it.
+ */
+export type UmlGlyphKind =
+  | 'package'
+  | 'note'
+  | 'actor'
+  | 'use-case'
+  // Phase 2 — components…
+  | 'port'
+  | 'provided-interface'
+  | 'required-interface'
+  // …and deployment.
+  | 'node'
+  | 'device'
+  | 'execution-environment';
+
+/**
+ * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
+ *
+ * The line between the two is drawn by `roles.ts` and it is not about having a
+ * rectangle: `uml:name` is the tier a KEYWORD may be written on and the grammar
+ * reads back, `uml:label` is a name and nothing else. So:
+ *
+ *  - a **package** name is a namespace, parseable and qualified (§12.2.4), and a
+ *    **note**'s text is what the exporter writes as the comment's body;
+ *  - the three **deployment cubes** are named INSIDE their front face, over a
+ *    keyword line — `«device»`, `«executionEnvironment»` (§19.4.4) — which is
+ *    exactly what a name compartment is for. It is also load-bearing rather than
+ *    tidy: the morph's `afterMorph` rewrites `uml:name` and only that, so a cube
+ *    labelled instead of named would morph into a device that never said so.
+ *
+ * Everything else here carries a LABEL: a port's word sits beside a 16-unit
+ * square and the two interface marks' beside a ball and a socket, none of them
+ * inside anything, and none of them ever carrying a keyword.
+ */
+const NAMED_GLYPHS = new Set<UmlGlyphKind>([
+  'package',
+  'note',
+  'node',
+  'device',
+  'execution-environment',
+]);
 
 /**
  * Where the viewport centre puts a node of this kind.
@@ -164,27 +225,35 @@ function centredBox(gfx: GfxController, kind: UmlNodeKind) {
 }
 
 /**
- * Create one of the four SINGLE-LABEL artefacts — a package, a note, an actor
- * or a use case — as the shape, its one word-bearing child, and the group that
- * makes the two one thing.
+ * Create one of the SINGLE-LABEL artefacts — a package, a note, an actor, a use
+ * case, and since phase 2 a port, the two interface marks and the three
+ * deployment cubes — as the shape, its one word-bearing child, and the group
+ * that makes the two one thing.
  *
  * ## Why three elements and not one shape carrying text
  *
  * R16: a label is a free text element grouped with the shape, never text ON the
- * shape. The pack has to obey it here even though these four have only one tier,
+ * shape. The pack has to obey it here even though these have only one tier,
  * because a classifier next door has three — and two mechanisms for "the words
  * on a UML artefact" would mean two editors, two toolbars and two sets of rules
  * for the same gesture. One click selects the artefact, a second descends into
  * its label.
  *
- * ## `uml:name` for two of them, `uml:label` for the other two
+ * ## `uml:name` for five of them, `uml:label` for the rest
  *
- * A package and a note carry a NAME in the sense the grammar means: a package
- * name is a namespace, parseable and qualified (§12.2.4), and a note's text is
- * what the exporter writes as the comment's body. An actor and a use case carry
- * a LABEL, which is a name and nothing else — no keywords, no visibility, no
- * signature. Keeping them apart is what lets the exporter read a tier without
- * first asking what shape it is under.
+ * See {@link NAMED_GLYPHS}: a package, a note and the three cubes carry a NAME
+ * the grammar parses a keyword off; a port, a ball and a socket carry a LABEL.
+ * Keeping them apart is what lets the exporter read a tier without first asking
+ * what shape it is under.
+ *
+ * ## The label is where the notation puts it, and that is not this file's call
+ *
+ * The box comes out of {@link umlCompartmentBoxes}, which is where every
+ * "beside the glyph" and "inside the front face" decision is written down: a
+ * port's label sits next to the square rather than on it (the square is 16
+ * units, and words do not fit in it), an interface mark's sits beside the ball
+ * or the socket, and a cube's sits in its FRONT FACE, which is the only part of
+ * a 3D box §19.4.4 writes in. Creation reads the answer; it does not have one.
  *
  * ## The alignments
  *
@@ -208,7 +277,7 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
   });
 
   const { name: box } = umlCompartmentBoxes(kind, x, y, w, h);
-  const isLabel = kind === 'actor' || kind === 'use-case';
+  const isLabel = !NAMED_GLYPHS.has(kind);
   const textId = addTier(
     surface,
     gfx.layer.generateIndex(),
@@ -239,8 +308,18 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
 }
 
 /**
- * Create one of the four COMPARTMENTED artefacts — a class, an interface, an
- * enumeration or an object — as the shape, its compartments, and the group.
+ * Create one of the COMPARTMENTED artefacts — a class, an interface, an
+ * enumeration, an object, and since phase 2 a component or an artifact — as the
+ * shape, its compartments, and the group.
+ *
+ * ## How many tiers is the LAYOUT's answer, not this file's
+ *
+ * The walk below writes a tier for each box `umlCompartmentBoxes` returns and
+ * for no other, which is what lets two kinds be added to the notation without a
+ * line changing here: a component and an artifact arrive with the name tier and
+ * the one body tier §11.6.4 and §19.3.4 draw them with, because that is what the
+ * layout hands over. The alternative — a table of tier counts in this file —
+ * would be a second statement of the geometry, and the first one to drift.
  *
  * ## Four or five elements, and the object is the four
  *
@@ -339,8 +418,8 @@ export function createUmlClassifier(
 /* ── The relationships ─────────────────────────────────────────────────── */
 
 /**
- * The nine edges the toolbox arms, and the style each wears, are ONE table — and
- * it lives in `./edge-styles.js` so the morph that retypes a connector somebody
+ * The edges the toolbox arms, and the style each wears, are ONE table — and it
+ * lives in `./edge-styles.js` so the morph that retypes a connector somebody
  * already drew reads the very rows this tool writes. Re-exported here because
  * the union is what {@link activateUmlEdge} takes, and a caller holding this
  * module should not have to know which file it was written in.
@@ -350,13 +429,14 @@ export type { UmlEdgeRole };
 /**
  * Arm the native connector tool, pre-styled for one UML relationship.
  *
- * ## One function for nine edges, where C4 and BPMN wrote one each
+ * ## One function for every edge, where C4 and BPMN wrote one each
  *
- * Because UML has nine and they differ on three props out of a table that is
- * otherwise identical — the same mode, the same ink, the same weight. Nine
- * near-identical functions would be nine places for a stroke width to drift, and
- * {@link UML_EDGE_STYLE} is the notation itself, which is the thing worth
- * reading.
+ * Because UML has twelve of them and they differ on three props out of a table
+ * that is otherwise identical — the same mode, the same ink, the same weight. A
+ * dozen near-identical functions would be a dozen places for a stroke width to
+ * drift, and {@link UML_EDGE_STYLE} is the notation itself, which is the thing
+ * worth reading. It is also what made phase 2 free: `deploy`, `manifest` and
+ * `communication-path` arm through this function without a line changing in it.
  *
  * ## STRAIGHT, always
  *
@@ -422,7 +502,7 @@ export function umlDiagramsSelected(
  * kind of thing — a gesture that writes elements — and because a unit test can
  * drive it without a toolbar.
  *
- * A legend earns its place in UML more than in most packs: the notation's nine
+ * A legend earns its place in UML more than in most packs: the notation's dozen
  * relationships differ by a diamond's fill and a triangle's outline, and a
  * reader who is not fluent in §11.5.4 cannot tell a shared aggregation from a
  * composition without a key on the sheet.

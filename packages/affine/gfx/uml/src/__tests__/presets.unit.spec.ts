@@ -52,10 +52,27 @@ describe('what a uml shape is created as', () => {
     }
   });
 
-  it('hands the body to the glyph for the package, the note and the actor', () => {
-    // A tabbed folder, a folded corner and a stick figure: none of them is a
-    // native shape, so the shape underneath must paint nothing at all.
-    expect([...GLYPH_BODY_KINDS].sort()).toEqual(['actor', 'note', 'package']);
+  it('hands the body to the glyph for every shape the platform cannot draw', () => {
+    // A tabbed folder, a folded corner, a stick figure, a small square, a ball,
+    // a socket and three 3-D cubes: none of them is a native shape, so the
+    // shape underneath must paint nothing at all.
+    expect([...GLYPH_BODY_KINDS].sort()).toEqual([
+      'actor',
+      'device',
+      'execution-environment',
+      'node',
+      'note',
+      'package',
+      'port',
+      'provided-interface',
+      'required-interface',
+    ]);
+    // The two phase-2 kinds that are NOT on the list, and both look as if they
+    // should be: a component and an artifact are the native filled rectangle
+    // with a small icon painted into the corner (§11.6.4, §19.3.4).
+    for (const kind of ['component', 'artifact'] as const) {
+      expect(GLYPH_BODY_KINDS.has(kind), kind).toBe(false);
+    }
     for (const kind of GLYPH_BODY_KINDS) {
       const props = umlNodeProps(kind, BOX);
       expect(props.filled, kind).toBe(false);

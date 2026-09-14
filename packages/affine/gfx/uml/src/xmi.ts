@@ -1,7 +1,10 @@
 import type { UmlBox } from './component.js';
 import type { UmlMultiplicity, UmlOperation, UmlProperty } from './grammar.js';
 import {
+  type UmlArtifactNode,
   type UmlClassifier,
+  type UmlComponentNode,
+  type UmlDeploymentNode,
   type UmlModel,
   type UmlNodeBase,
   type UmlRelation,
@@ -121,6 +124,39 @@ const METACLASS_KEYWORDS = new Set([
 
 /** Annex C keywords that make a Dependency a Usage (§7.8.4, Table C.1). */
 const USAGE_KEYWORDS = new Set(['use', 'call', 'create', 'instantiate']);
+
+/**
+ * The `xmi:type` each deployment cube is serialized as (§19.4.2).
+ *
+ * Three metaclasses for one glyph: §19.4.4 draws a Device as "a Node graphic
+ * with the keyword «device»" and an ExecutionEnvironment as a Node annotated
+ * with its own, so the cube is the same drawing and the TYPE is the whole of the
+ * difference. Total over the discriminant, so a fourth cube cannot land without
+ * being given a metaclass.
+ */
+const DEPLOYMENT_TYPE: Record<UmlDeploymentNode['kind'], string> = {
+  node: 'uml:Node',
+  device: 'uml:Device',
+  'execution-environment': 'uml:ExecutionEnvironment',
+};
+
+/**
+ * The keywords the structural metaclasses already state.
+ *
+ * `«component»` on a component box, `«artifact»` on an artefact, `«device»` on a
+ * device: each is the stencil's own seed (`keywords.ts`), each is what the
+ * `xmi:type` beside it says, and carrying it into the extension as well would
+ * file a tool-specific note whose only content is the element's own metaclass.
+ * The same reading {@link METACLASS_KEYWORDS} makes for the classifiers.
+ */
+const STRUCTURAL_KEYWORDS = new Set([
+  'component',
+  'artifact',
+  'node',
+  'device',
+  'executionenvironment',
+  'execution environment',
+]);
 
 export interface UmlXmiOptions {
   /** The `uml:Model`'s own name — the caller's document name. */
@@ -257,6 +293,19 @@ function planOf(models: readonly UmlModel[], ids: Ids): XmiPlan {
     for (const node of model.useCases) claim(node);
     for (const node of model.subjects) claim(node);
     for (const note of model.notes) claim(note);
+    // Phase 2, appended AFTER the phase-1 claims and never interleaved with
+    // them: the ids are minted in the order they are asked for, so a model with
+    // no structural artefacts mints none here and exports to exactly the bytes
+    // it exported to before these four lines existed. That is what makes a
+    // golden document a regression test rather than a chore.
+    for (const component of model.components) {
+      claim(component);
+      // A port is an `ownedAttribute` and therefore referenceable: §11.6.4's own
+      // figure wires a Dependency between two of them.
+      for (const port of component.ports) claim(port);
+    }
+    for (const artifact of model.artifacts) claim(artifact);
+    for (const node of model.nodes) claim(node);
   }
 
   // A type the author named that is neither a UML PrimitiveType nor a box on any
@@ -462,10 +511,11 @@ function operationElement(operation: UmlOperation, plan: XmiPlan): XmlElement {
  * The keywords that merely restate the metaclass are not extended — see
  * {@link METACLASS_KEYWORDS}.
  */
-function keywordExtension(keywords: readonly string[]): XmlElement | undefined {
-  const extra = keywords.filter(
-    keyword => !METACLASS_KEYWORDS.has(keyword.toLowerCase())
-  );
+function keywordExtension(
+  keywords: readonly string[],
+  stated: ReadonlySet<string> = METACLASS_KEYWORDS
+): XmlElement | undefined {
+  const extra = keywords.filter(keyword => !stated.has(keyword.toLowerCase()));
   if (extra.length === 0) return undefined;
   return el(
     'xmi:Extension',
@@ -652,6 +702,222 @@ function useCaseElement(
   );
 }
 
+/* ── Structural artefacts (§11.6, §19.3, §19.4) ───────────────────────── */
+
+/**
+ * One component as a `packagedElement`, with its ports and its two kinds of
+ * interface.
+ *
+ * ## The interfaces are MINTED, and that is the whole difficulty
+ *
+ * A lollipop on this canvas is a circle with a name written beside it — §10.4.4
+ * draws exactly that, and nothing else — so the model holds a STRING where XMI
+ * needs an element. There is no honest alternative to minting one: an
+ * `InterfaceRealization`'s `contract` is typed `Interface` in the metamodel, so
+ * a realization pointing at nothing is a reference no importer can resolve, and
+ * dropping the lollipop would throw away the only statement the author made
+ * about what the component offers.
+ *
+ * The minted `uml:Interface` is a `packagedElement` of the COMPONENT rather than
+ * of the diagram's package, which §11.6.4's "packaged elements" compartment is
+ * the notation for: it is the component's own declaration of the contract it
+ * realizes, and putting it at the sheet level would make two components that
+ * both provide `IOrder` look like one shared interface the author never drew.
+ * Two components providing the same name therefore produce two Interfaces, and
+ * that is the honest reading of two lollipops — a drawing that means one
+ * interface draws it once and wires both components to it, which is the
+ * rectangle notation §11.6.4 offers for exactly this case.
+ *
+ * ## Provided is an `interfaceRealization`, required is a `uml:Usage`
+ *
+ * §10.4.4 in as many words: the ball notation IS an InterfaceRealization
+ * dependency from the classifier to the interface, and the socket IS a Usage
+ * dependency. So the two glyphs are not two decorations on one relationship,
+ * they are two different metaclasses, and a writer that collapsed them would
+ * lose the direction of every dependency on the sheet.
+ */
+function componentElement(
+  component: UmlComponentNode,
+  plan: XmiPlan
+): XmlElement {
+  const id = plan.idOf.get(component.id)!;
+  const children: XmlElement[] = [];
+
+  for (const port of component.ports) {
+    const portId = plan.idOf.get(port.id);
+    if (!portId) continue;
+    children.push(
+      el('ownedAttribute', {
+        'xmi:type': 'uml:Port',
+        'xmi:id': portId,
+        // §11.3.4: "The name of a Port may be suppressed. Every depiction of an
+        // unnamed Port denotes a different Port from any other Port." So an
+        // unnamed square is a port with no `name` attribute, never a port called
+        // the empty string.
+        ...(port.name ? { name: port.name } : {}),
+      })
+    );
+  }
+
+  for (const name of component.provided) {
+    const interfaceId = plan.ids.mint();
+    children.push(
+      el('packagedElement', {
+        'xmi:type': 'uml:Interface',
+        'xmi:id': interfaceId,
+        name,
+      }),
+      el('interfaceRealization', {
+        'xmi:type': 'uml:InterfaceRealization',
+        'xmi:id': plan.ids.mint(),
+        client: id,
+        supplier: interfaceId,
+        contract: interfaceId,
+      })
+    );
+  }
+  for (const name of component.required) {
+    const interfaceId = plan.ids.mint();
+    children.push(
+      el('packagedElement', {
+        'xmi:type': 'uml:Interface',
+        'xmi:id': interfaceId,
+        name,
+      }),
+      el('packagedElement', {
+        'xmi:type': 'uml:Usage',
+        'xmi:id': plan.ids.mint(),
+        client: id,
+        supplier: interfaceId,
+      })
+    );
+  }
+
+  const extension = keywordExtension(component.keywords, STRUCTURAL_KEYWORDS);
+  if (extension) children.push(extension);
+
+  return el(
+    'packagedElement',
+    {
+      'xmi:type': 'uml:Component',
+      'xmi:id': id,
+      name: component.name,
+      ...(component.isAbstract ? { isAbstract: 'true' } : {}),
+    },
+    children
+  );
+}
+
+/**
+ * One artefact, with the Manifestations it OWNS (§19.3.2).
+ *
+ * The manifestation is a child rather than a sibling because the metamodel says
+ * so — `Artifact::manifestation` subsets `ownedElement` — and because it is
+ * meaningless detached from the file that does the manifesting, exactly as a
+ * Generalization is meaningless detached from the specific classifier.
+ *
+ * Three attributes for two facts: `utilizedElement` subsets `supplier` and both
+ * have to be written, because `utilizedElement` is the name the Manifestation
+ * metaclass gives the end and `supplier` is the one `Dependency` gives it, and
+ * an importer reading only the general form would otherwise find the dependency
+ * empty.
+ */
+function artifactElement(
+  artifact: UmlArtifactNode,
+  model: UmlModel,
+  plan: XmiPlan
+): XmlElement {
+  const id = plan.idOf.get(artifact.id)!;
+  const children: XmlElement[] = [];
+
+  for (const relation of model.relations) {
+    if (relation.kind !== 'manifest' || relation.sourceId !== artifact.id) {
+      continue;
+    }
+    const utilized = plan.idOf.get(relation.targetId);
+    if (!utilized) continue;
+    children.push(
+      el('manifestation', {
+        'xmi:type': 'uml:Manifestation',
+        'xmi:id': plan.ids.mint(),
+        ...(relation.label ? { name: relation.label } : {}),
+        client: id,
+        supplier: utilized,
+        utilizedElement: utilized,
+      })
+    );
+  }
+
+  const extension = keywordExtension(artifact.keywords, STRUCTURAL_KEYWORDS);
+  if (extension) children.push(extension);
+
+  return el(
+    'packagedElement',
+    {
+      'xmi:type': 'uml:Artifact',
+      'xmi:id': id,
+      name: artifact.name,
+    },
+    children
+  );
+}
+
+/**
+ * One node, device or execution environment, with the Deployments it OWNS.
+ *
+ * `Deployment::location` subsets both `client` and `owner` — the target is where
+ * the deployment LIVES in the metamodel — so the element is a child of the cube
+ * and names it back, and `deployedArtifact` subsets `supplier` the way
+ * `utilizedElement` does one metaclass over. Writing all four is the same
+ * belt-and-braces {@link artifactElement} explains: the specific names are what
+ * a UML importer reads, the general ones are what a generic XMI reader reads,
+ * and they cannot disagree because they are minted from one id.
+ *
+ * §19.2.4 also allows the artefacts to be drawn INSIDE the cube instead of being
+ * joined to it by an arrow. This writer reads the arrow alone: nesting is
+ * geometry, and the two ways of saying it produce the same `deployment` element,
+ * so the day the canvas learns to read a nested artefact nothing in this
+ * function changes.
+ */
+function deploymentNodeElement(
+  node: UmlDeploymentNode,
+  model: UmlModel,
+  plan: XmiPlan
+): XmlElement {
+  const id = plan.idOf.get(node.id)!;
+  const children: XmlElement[] = [];
+
+  for (const relation of model.relations) {
+    if (relation.kind !== 'deploy' || relation.targetId !== node.id) continue;
+    const artifact = plan.idOf.get(relation.sourceId);
+    if (!artifact) continue;
+    children.push(
+      el('deployment', {
+        'xmi:type': 'uml:Deployment',
+        'xmi:id': plan.ids.mint(),
+        ...(relation.label ? { name: relation.label } : {}),
+        client: id,
+        supplier: artifact,
+        location: id,
+        deployedArtifact: artifact,
+      })
+    );
+  }
+
+  const extension = keywordExtension(node.keywords, STRUCTURAL_KEYWORDS);
+  if (extension) children.push(extension);
+
+  return el(
+    'packagedElement',
+    {
+      'xmi:type': DEPLOYMENT_TYPE[node.kind],
+      'xmi:id': id,
+      name: node.name,
+    },
+    children
+  );
+}
+
 /* ── Relationships that are packaged elements ─────────────────────────── */
 
 /**
@@ -678,7 +944,12 @@ function useCaseElement(
  */
 function associationElement(
   relation: UmlRelation,
-  plan: XmiPlan
+  plan: XmiPlan,
+  // §19.4.3: "A CommunicationPath is an Association between two
+  // DeploymentTargets". A specialization of Association, drawn as one and
+  // structured as one, so it takes this writer whole and differs by its
+  // metaclass alone — which is the entire content of this parameter.
+  type = 'uml:Association'
 ): XmlElement | undefined {
   const source = plan.idOf.get(relation.sourceId);
   const target = plan.idOf.get(relation.targetId);
@@ -697,7 +968,7 @@ function associationElement(
   return el(
     'packagedElement',
     {
-      'xmi:type': 'uml:Association',
+      'xmi:type': type,
       'xmi:id': id,
       ...(relation.label ? { name: relation.label } : {}),
       memberEnd: `${sourceEnd} ${targetEnd}`,
@@ -874,6 +1145,21 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
       children.push(useCaseElement(useCase, model, plan));
     }
   }
+  // The structural artefacts, flat at the sheet's own package. Unlike a class,
+  // none of them is attributed to a drawn PACKAGE: §12.2.4's containment is a
+  // statement about namespaces made by drawing a box round a classifier, and a
+  // component diagram drawn inside a package frame is a drawing this pack does
+  // not read that way yet. What the cubes DO contain is written as deployments,
+  // which is a reference rather than a nesting.
+  for (const component of model.components) {
+    children.push(componentElement(component, plan));
+  }
+  for (const artifact of model.artifacts) {
+    children.push(artifactElement(artifact, model, plan));
+  }
+  for (const node of model.nodes) {
+    children.push(deploymentNodeElement(node, model, plan));
+  }
 
   // Relationships that are packaged elements in their own right, owned by the
   // diagram's package: the nearest common namespace of their two ends, which
@@ -895,10 +1181,19 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
             ? undefined
             : realizationElement(relation, plan);
         break;
+      case 'communication-path':
+        // §19.4.3 — an Association between two DeploymentTargets, and an
+        // Association is a packaged element in its own right.
+        element = associationElement(relation, plan, 'uml:CommunicationPath');
+        break;
       // Written by the element that OWNS them, above.
       case 'generalization':
       case 'include':
       case 'extend':
+      // …and the two structural dependencies, owned by the artefact that
+      // manifests and by the cube that hosts (§19.3.2, §19.2.2).
+      case 'manifest':
+      case 'deploy':
       // Not a model relationship at all: an anchor attaches a Comment, and it
       // is written as that Comment's `annotatedElement`.
       case 'anchor':

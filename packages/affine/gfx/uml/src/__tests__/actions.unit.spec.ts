@@ -34,6 +34,7 @@ import {
   UML_NODE_BOX,
   UML_SUBJECT_BOX,
 } from '../consts.js';
+import { umlCompartmentBoxes } from '../component.js';
 import { umlSafeFilename } from '../filename.js';
 import {
   UML_ATTRIBUTES_SEED,
@@ -145,9 +146,40 @@ const CLASSIFIERS: UmlClassifierKind[] = [
   'interface',
   'enumeration',
   'object',
+  // Phase 2: §11.6.4 and §19.3.4 draw both as the classifier rectangle.
+  'component',
+  'artifact',
 ];
-const GLYPHS: UmlGlyphKind[] = ['package', 'note', 'actor', 'use-case'];
+const GLYPHS: UmlGlyphKind[] = [
+  'package',
+  'note',
+  'actor',
+  'use-case',
+  // Phase 2: the square on a border, the ball, the socket and the three cubes.
+  'port',
+  'provided-interface',
+  'required-interface',
+  'node',
+  'device',
+  'execution-environment',
+];
 const ALL_KINDS = [...CLASSIFIERS, ...GLYPHS] as UmlNodeKind[];
+
+/**
+ * The two unions above are the WHOLE pack, and this is what says so.
+ *
+ * Derived against `UML_NODE_BOX`, which is total over `UmlNodeKind` by its type:
+ * a kind added to the model without a creation path lands here rather than in a
+ * reviewer's diff, which is what the append-only phases of ADR 0017 need.
+ */
+describe('the two creation paths cover the notation', () => {
+  it('partitions every node kind into a box or a picture, once', () => {
+    expect([...ALL_KINDS].sort()).toEqual(
+      (Object.keys(UML_NODE_BOX) as UmlNodeKind[]).sort()
+    );
+    expect(new Set(ALL_KINDS).size).toBe(ALL_KINDS.length);
+  });
+});
 
 /** The box an action wrote, as numbers. */
 const boxOf = (props: Record<string, unknown>) =>
@@ -244,6 +276,33 @@ describe('what a uml artefact is created as', () => {
     expect(rec.added[2].text).toBe(UML_SLOTS_SEED);
   });
 
+  /**
+   * The classifiers whose second tier is a BODY and whose third does not exist:
+   * an instance's slots (§9.8.4), a component's parts (§11.6.4), an artifact's
+   * contents (§19.3.4). Derived from the LAYOUT rather than restated, so this
+   * file cannot disagree with `umlCompartmentBoxes` about how many tiers a kind
+   * has — which is the one way the creation walk can be wrong.
+   */
+  const tiersOf = (kind: UmlNodeKind) =>
+    umlCompartmentBoxes(kind, 0, 0, 200, 120);
+
+  it('builds the two-tier classifiers as name over ONE body tier', () => {
+    // §11.6.4 and §19.3.4: a component and an artifact are the object's layout
+    // — a name compartment, one separator, and everything below it — with the
+    // corner icon doing the work the keyword does elsewhere.
+    for (const kind of ['component', 'artifact'] as const) {
+      const rec = recorder();
+      createUmlClassifier(rec.std, kind);
+      expect(rec.types(), kind).toEqual(['umlNode', 'text', 'text', 'group']);
+      expect(rec.roles(), kind).toEqual([
+        UML_ROLE_OF_KIND[kind],
+        UML_ROLE.name,
+        UML_ROLE.attributes,
+        undefined,
+      ]);
+    }
+  });
+
   it('seeds every compartment with the stencil own prompt', () => {
     for (const kind of CLASSIFIERS) {
       const rec = recorder();
@@ -252,9 +311,27 @@ describe('what a uml artefact is created as', () => {
       expect(rec.added[2].text, kind).toBe(
         kind === 'object' ? UML_SLOTS_SEED : UML_ATTRIBUTES_SEED
       );
-      if (kind !== 'object') {
+      if (tiersOf(kind).operations) {
         expect(rec.added[3].text, kind).toBe(UML_OPERATIONS_SEED);
       }
+    }
+  });
+
+  it('writes a tier for each compartment the LAYOUT declares, and no other', () => {
+    // The whole of how the creation walk decides how many text elements to
+    // write: it reads the boxes and writes one per box. A kind added to the
+    // notation therefore arrives with the tiers its drawing has, without a line
+    // changing in `actions.ts` — which is what made phase 2 free.
+    for (const kind of CLASSIFIERS) {
+      const boxes = tiersOf(kind);
+      const expected =
+        1 + (boxes.attributes ? 1 : 0) + (boxes.operations ? 1 : 0);
+      const rec = recorder();
+      createUmlClassifier(rec.std, kind);
+      expect(
+        rec.types().filter(type => type === 'text'),
+        kind
+      ).toHaveLength(expected);
     }
   });
 
@@ -272,7 +349,7 @@ describe('what a uml artefact is created as', () => {
     }
   });
 
-  it('builds the four picture kinds as shape, one label, group', () => {
+  it('builds every picture kind as shape, one label, group', () => {
     for (const kind of GLYPHS) {
       const rec = recorder();
       createUmlNode(rec.std, kind);
@@ -281,18 +358,47 @@ describe('what a uml artefact is created as', () => {
     }
   });
 
-  it('calls a package and a note a NAME, an actor and a use case a LABEL', () => {
-    // A package name is a namespace and a note's text is a comment body: both
-    // are parsed. An actor and a use case carry a name and nothing else.
+  it('calls a tier a NAME when a keyword may go on it, a LABEL otherwise', () => {
+    // A package name is a namespace, a note's text is a comment body, and a
+    // cube's line carries `«device»` / `«executionEnvironment»` over the name
+    // (§19.4.4) — all three are parsed, and the morph's keyword rewrite reaches
+    // `uml:name` and only that. A port's word, a ball's and a socket's are a
+    // name and nothing else, written OUTSIDE the glyph, and never a keyword.
     const roleOf = (kind: UmlGlyphKind) => {
       const rec = recorder();
       createUmlNode(rec.std, kind);
       return rec.added[1].role;
     };
-    expect(roleOf('package')).toBe(UML_ROLE.name);
-    expect(roleOf('note')).toBe(UML_ROLE.name);
-    expect(roleOf('actor')).toBe(UML_ROLE.label);
-    expect(roleOf('use-case')).toBe(UML_ROLE.label);
+    const named: UmlGlyphKind[] = [
+      'package',
+      'note',
+      'node',
+      'device',
+      'execution-environment',
+    ];
+    for (const kind of GLYPHS) {
+      expect(roleOf(kind), kind).toBe(
+        named.includes(kind) ? UML_ROLE.name : UML_ROLE.label
+      );
+    }
+  });
+
+  it('puts a keyword only on tiers the morph can rewrite', () => {
+    // The trap this pairs with: `afterMorph` rewrites `uml:name`, so a kind
+    // seeded with a keyword line on a `uml:label` would morph into something
+    // whose words never said what it had become. Asserted over the WHOLE pack,
+    // because the next phase appends kinds to the same two unions.
+    for (const kind of ALL_KINDS) {
+      const rec = recorder();
+      if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
+        createUmlClassifier(rec.std, kind as UmlClassifierKind);
+      } else {
+        createUmlNode(rec.std, kind as UmlGlyphKind);
+      }
+      const seeded = UML_NAME_SEED[kind].split('\n')[0];
+      if (!seeded.startsWith('«')) continue;
+      expect(rec.added[1].role, kind).toBe(UML_ROLE.name);
+    }
   });
 
   it('reads a note left, because a note holds a sentence', () => {
@@ -302,7 +408,8 @@ describe('what a uml artefact is created as', () => {
       return rec.added[1].textAlign;
     };
     expect(alignOf('note')).toBe(TextAlign.Left);
-    for (const kind of ['package', 'actor', 'use-case'] as const) {
+    for (const kind of GLYPHS) {
+      if (kind === 'note') continue;
       expect(alignOf(kind), kind).toBe(TextAlign.Center);
     }
   });
@@ -410,6 +517,10 @@ describe('what a uml relationship tool is armed with', () => {
     'anchor',
     'include',
     'extend',
+    // Phase 2 — §19.2.4, §19.3.4, §19.4.4.
+    'deploy',
+    'manifest',
+    'communication-path',
   ];
 
   it('draws every UML line straight, in one ink, at one weight', () => {
@@ -474,13 +585,13 @@ describe('what a uml relationship tool is armed with', () => {
     });
   });
 
-  it('draws dependency, include and extend alike, told apart by the role', () => {
-    // §7.8.4 and §18.1.4 are explicit: the three are one drawing — a dashed
-    // line with an open arrowhead — distinguished by the KEYWORD written on
-    // them. So the role is the only thing that differs, and it is what the
-    // export writes the keyword from.
+  it('draws every dependency alike, told apart by the role', () => {
+    // §7.8.4, §18.1.4, §19.2.4 and §19.3.4 are explicit: all five ARE
+    // Dependencies and are one drawing — a dashed line with an open arrowhead —
+    // distinguished by the KEYWORD written on them. So the role is the only
+    // thing that differs, and it is what the export writes the keyword from.
     const dependency = armed('dependency');
-    for (const role of ['include', 'extend'] as const) {
+    for (const role of ['include', 'extend', 'deploy', 'manifest'] as const) {
       const edge = armed(role);
       expect(edge.style, role).toEqual(dependency.style);
       expect(edge.options.role, role).not.toBe(dependency.options.role);
@@ -491,12 +602,26 @@ describe('what a uml relationship tool is armed with', () => {
     });
   });
 
-  it('gives each of the nine a look no other one has, or a role that differs', () => {
-    // Nine edges, seven drawings: only the include/extend/dependency trio share
-    // one, and they are the trio the spec says share one.
+  it('draws a communication path as the association it IS', () => {
+    // §19.4.4 defines a CommunicationPath as an Association between nodes, so
+    // it is drawn as one: solid, and nothing on either end. The picture is
+    // deliberately not its own — the ROLE is what says these are two servers
+    // rather than two classes, and it is what the exporter writes from.
+    expect(armed('communication-path').style).toEqual(
+      armed('association').style
+    );
+    expect(armed('communication-path').options.role).not.toBe(
+      armed('association').options.role
+    );
+  });
+
+  it('gives each of the twelve a look no other has, or a role that differs', () => {
+    // Twelve edges, seven drawings: the five dependencies share one and the
+    // communication path shares the association's, and both groups are the ones
+    // the specification says share a drawing.
     const looks = ALL_EDGES.map(role => JSON.stringify(armed(role).style));
     expect(new Set(looks).size).toBe(7);
-    expect(new Set(ALL_EDGES.map(role => UML_ROLE[role])).size).toBe(9);
+    expect(new Set(ALL_EDGES.map(role => UML_ROLE[role])).size).toBe(12);
   });
 });
 

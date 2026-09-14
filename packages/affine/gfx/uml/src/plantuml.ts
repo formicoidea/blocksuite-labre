@@ -1,6 +1,7 @@
 import { parseCompartment } from './grammar.js';
 import {
   type UmlClassifier,
+  type UmlDeploymentNode,
   type UmlModel,
   type UmlNodeBase,
   type UmlRelation,
@@ -33,6 +34,19 @@ import {
  * unusual modifier, a qualified redefinition — so the parser is used where
  * PlantUML needs STRUCTURE it cannot infer (an enumeration's literals, an
  * object's slots) and nowhere else.
+ *
+ * ## The one thing it drops, said out loud
+ *
+ * A PORT. §11.3.4's small square has a place in the XMI file — it is an
+ * `ownedAttribute` of its component, with an id other elements can point at —
+ * and in a `.puml` it would have to be a `port` declaration inside a
+ * `component … { }` block, which is a recent addition to the language and not
+ * one every renderer in a repository's toolchain has. What the port CARRIES is
+ * not lost: the lollipops and sockets drawn on it are attributed to its
+ * component by `model.ts` and written below, so the picture still says which
+ * contracts the component offers and needs. Only the square itself goes, and
+ * the day the `port` syntax is safe to assume it is four lines here and a
+ * golden.
  *
  * ## Pure
  *
@@ -130,6 +144,43 @@ const DECLARED_KEYWORDS = new Set([
 ]);
 
 /**
+ * The same, for the structural declarations — plus the two §19.4.4 writes as a
+ * stereotype rather than as a word of its own.
+ *
+ * `component Cart` needs no `<<component>>` and `artifact "cart.jar"` no
+ * `<<artifact>>`: the declaration word is the statement, and the stencil seeds
+ * the keyword into the name tier (`keywords.ts`) precisely so the CANVAS draws
+ * it. `device` and `executionEnvironment` are here because this writer emits
+ * them from the node's KIND — see {@link deploymentStereotype} — so leaving them
+ * in the keyword list would draw the word twice on the rendered picture.
+ */
+const STRUCTURAL_KEYWORDS = new Set([
+  'component',
+  'artifact',
+  'node',
+  'device',
+  'executionenvironment',
+  'execution environment',
+]);
+
+/**
+ * What a cube is declared as — always `node`, with the keyword as a stereotype.
+ *
+ * PlantUML's component-diagram vocabulary has `node` and has no `device`, so a
+ * writer that took §19.4.4's words literally would emit a line no renderer
+ * parses. It does not need to: §19.4.4 itself says a Device is drawn as "a Node
+ * graphic with the keyword «device»" and an ExecutionEnvironment as "a Node
+ * annotated with the keyword «executionEnvironment»", which is a `node`
+ * declaration carrying a stereotype — the same picture, in the format's own
+ * grammar, with nothing invented and nothing lost.
+ */
+function deploymentStereotype(kind: UmlDeploymentNode['kind']): string {
+  return kind === 'node'
+    ? ''
+    : ` <<${kind === 'device' ? 'device' : 'executionEnvironment'}>>`;
+}
+
+/**
  * A compartment line, guarded for the one character that could end a block.
  *
  * PlantUML closes a member block on a line that is exactly `}`. A compartment
@@ -193,6 +244,18 @@ function relationLine(
       return `${source} ..> ${target} : <<include>>`;
     case 'extend':
       return `${source} ..> ${target} : <<extend>>`;
+    case 'deploy':
+      // §19.4.4's own alternative to nesting the artefact inside the cube: "a
+      // dashed arrow with the keyword «deploy»", from the artefact to the node.
+      return `${source} ..> ${target} : <<deploy>>`;
+    case 'manifest':
+      // §19.3.4: notated as an Abstraction — a dashed line with an open
+      // arrow-head — labelled with the keyword.
+      return `${source} ..> ${target} : <<manifest>>`;
+    case 'communication-path':
+      // §19.4.4: "depicted using the same as normal Association links", and an
+      // association is undirected, so the line carries no head either way.
+      return `${source} -- ${target}${label}`;
     default: {
       // Exhaustive: a relationship added to the union with no arrow to draw it
       // fails the build here rather than vanishing from a file.
@@ -238,6 +301,9 @@ export function exportPlantuml(model: UmlModel): string {
   const subjects = model.subjects.map(declare);
   const actors = model.actors.map(declare);
   const useCases = model.useCases.map(declare);
+  const components = model.components.map(declare);
+  const artifacts = model.artifacts.map(declare);
+  const cubes = model.nodes.map(declare);
   const notes = model.notes.map((note, index) => {
     const alias = minter.mint(note.name || `note${index + 1}`);
     aliasOf.set(note.id, alias);
@@ -384,6 +450,91 @@ export function exportPlantuml(model: UmlModel): string {
       );
     }
   }
+  // ── The structural sheets (§11.6.4, §19.3.4, §19.4.4) ────────────────
+  //
+  // Declared after the class-side artefacts and before the relations, for the
+  // reason the whole function is ordered this way: PlantUML resolves an arrow by
+  // alias, and an element declared after the line referring to it renders as a
+  // bare box.
+  for (const component of components) {
+    lines.push(
+      `component "${toPlantumlLabel(component.node.name) || UNNAMED}" as ${component.alias}${stereotypes(
+        component.node.keywords.filter(
+          keyword => !STRUCTURAL_KEYWORDS.has(keyword.toLowerCase())
+        )
+      )}`
+    );
+  }
+  for (const artifact of artifacts) {
+    lines.push(
+      `artifact "${toPlantumlLabel(artifact.node.name) || UNNAMED}" as ${artifact.alias}${stereotypes(
+        artifact.node.keywords.filter(
+          keyword => !STRUCTURAL_KEYWORDS.has(keyword.toLowerCase())
+        )
+      )}`
+    );
+  }
+  for (const cube of cubes) {
+    const node = cube.node as UmlDeploymentNode;
+    lines.push(
+      `node "${toPlantumlLabel(node.name) || UNNAMED}" as ${cube.alias}${deploymentStereotype(
+        node.kind
+      )}${stereotypes(
+        node.keywords.filter(
+          keyword => !STRUCTURAL_KEYWORDS.has(keyword.toLowerCase())
+        )
+      )}`
+    );
+  }
+
+  // The lollipops and the sockets, as the two dependencies §10.4.4 says they
+  // ARE.
+  //
+  // One `interface` declaration per NAME across the sheet, because that is what
+  // an alias is: two components providing `IOrder` are two arrows onto one
+  // declared identifier, and declaring it twice would be a duplicate-alias
+  // error. This is where PlantUML and XMI part company on purpose — the XMI
+  // writer mints an Interface per lollipop, since a file has to say which
+  // component declares which contract, while a `.puml` is a picture and the
+  // picture has one circle.
+  //
+  // The arrows are `i <|.. c` and `c ..> i` rather than the `-(` / `)-` lollipop
+  // operators: the realization and the usage arrows are the notation §10.4.4's
+  // own Figure 10.11 gives for the same two facts, they are the two this file
+  // already writes for a class diagram, and they parse in every version of the
+  // renderer. The ball-and-socket operators are newer and their spelling has
+  // changed; a file nobody can render is worth less than one drawn slightly
+  // plainer.
+  const interfaceAlias = new Map<string, string>();
+  const interfaceLines: string[] = [];
+  const wiring: string[] = [];
+  const aliasForInterface = (name: string): string => {
+    const known = interfaceAlias.get(name);
+    if (known) return known;
+    const alias = minter.mint(name);
+    interfaceAlias.set(name, alias);
+    interfaceLines.push(`interface "${toPlantumlLabel(name)}" as ${alias}`);
+    return alias;
+  };
+  // `components` is `model.components.map(declare)`, so the two stay in step by
+  // index — no lookup, and no way for them to drift.
+  for (const [index, component] of components.entries()) {
+    const node = model.components[index];
+    for (const name of node.provided) {
+      // "This component realizes that contract" — the dashed hollow triangle,
+      // which is what a ball on a stub means (§10.4.4).
+      wiring.push(`${aliasForInterface(name)} <|.. ${component.alias}`);
+    }
+    for (const name of node.required) {
+      // "This component uses that contract" — the socket, which §10.4.4 draws
+      // as a Usage dependency and Figure 10.11 labels «use».
+      wiring.push(
+        `${component.alias} ..> ${aliasForInterface(name)} : <<use>>`
+      );
+    }
+  }
+  lines.push(...interfaceLines);
+
   for (const note of notes) {
     // The block form rather than `note "…" as N`: a note is prose and routinely
     // several lines, and the one-line form has nowhere to put the second one.
@@ -402,7 +553,8 @@ export function exportPlantuml(model: UmlModel): string {
       return source && target ? relationLine(relation, source, target) : '';
     })
     .filter(Boolean);
-  if (relations.length > 0) lines.push('', ...relations);
+  const drawn = [...wiring, ...relations];
+  if (drawn.length > 0) lines.push('', ...drawn);
 
   lines.push('@enduml');
   return `${lines.join('\n')}\n`;
