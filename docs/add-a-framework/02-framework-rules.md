@@ -57,7 +57,8 @@ live in one flat category named after the framework
 ## Boards
 
 **R9. A board is picked by its border**, a 10 screen-pixel band constant at
-every zoom, plus its title bands (BPMN participant band, C4 title band).
+every zoom, plus its title bands (BPMN participant band, C4 title band, UML
+frame heading band).
 `backgroundIncludesPoint` in
 `packages/affine/model/src/elements/framework-background/hit-test.ts`;
 `framework-background-hit-test.unit.spec.ts`. An already-selected board can
@@ -80,8 +81,8 @@ lanes). Ties go to the smaller id. Nothing moves with a board.
 never frame content.
 
 **R13. Resize is a per-board toggle** (`resizeEnabled`) exposed on its
-toolbar. No minimum size is enforced; C4 clamps a board shorter than its
-header instead.
+toolbar. No minimum size is enforced; C4 — and the UML frame — clamps a board
+shorter than its header instead.
 
 **R14. Extend `FrameworkBackgroundElementModel`; never copy its overrides.**
 Boards that re-implemented them were skipped by `instanceof` and dropped
@@ -197,5 +198,19 @@ scale** (Wardley's `INERTIA_COLOR`, `LINK_GREY`, `WARDLEY_RED`): a change of
 ink would otherwise orphan every element already drawn with it. Pinned by
 `notation.unit.spec.ts` (affine-shared) and an assertion in every module that
 reads the scale (its background, consts, legend or template spec).
+
+## Identity: one framework is one drawing
+
+**R34. A framework is one drawing.** Split into several frameworks when the
+boards are distinct sheets with disjoint vocabularies that never mix on one
+surface: DDD is event storming, core domain chart and context map — three
+boards, three buttons, three flags. Keep one framework when the notations share
+one frame and one sheet, and an artefact of one has a meaning when dropped on
+the board of the other: UML draws classes, use cases and activities under one
+`<kind> <name>` heading, so it is one framework and the kind is a field of the
+board. Admissibility ("a use case has no place on a class diagram") is then a
+`view-admissibility` rule, not a second framework. Practical test: "can I drop
+an artefact of A on a board of B and have it mean something?" Yes → one
+framework. Convention, no test enforces it (ADR 0017).
 
 Next: [03-anatomy.md](03-anatomy.md).

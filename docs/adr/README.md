@@ -21,6 +21,7 @@ One file per decision. Format and lifecycle in
 | [0014](0014-senior-submenu-rules.md)                           | Senior sub-menu rules                | accepted, amended         | Cap 13 + 1, declared eligibility, recency and frequency, one mechanism for every framework.                  |
 | [0015](0015-rule-dependency-scope.md)                          | Rule dependency scope                | accepted                  | A rule family declares what its verdict depends on; a rule may only widen it.                                |
 | [0016](0016-hollow-endpoint-styles.md)                         | Hollow endpoint heads                | accepted                  | `PointStyle` is persisted and append-only; an older client paints no head. Hollow heads use the card fill.   |
+| [0017](0017-uml-one-framework-with-diagram-kinds.md)           | UML is one framework                 | accepted                  | One senior button, one flag; the diagram kind is a field on the board. Scope by phase; no metamodel checked. |
 
 Related documents that are not ADRs:
 

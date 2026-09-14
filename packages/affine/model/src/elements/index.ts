@@ -26,6 +26,11 @@ import type { MindmapElementModel } from './mindmap/index.js';
 import type { ShapeElementModel } from './shape/index.js';
 import type { TextElementModel } from './text/index.js';
 import type {
+  UmlDiagramElementModel,
+  UmlNodeElementModel,
+  UmlSubjectElementModel,
+} from './uml/index.js';
+import type {
   WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 } from './wardley/index.js';
@@ -46,6 +51,7 @@ export * from './highlighter/index.js';
 export * from './mindmap/index.js';
 export * from './shape/index.js';
 export * from './text/index.js';
+export * from './uml/index.js';
 export * from './wardley/index.js';
 
 export type SurfaceElementModelMap = {
@@ -71,6 +77,9 @@ export type SurfaceElementModelMap = {
   coreDomain: CoreDomainChartElementModel;
   contextMap: ContextMapBoardElementModel;
   eventStorming: EventStormingBoardElementModel;
+  umlNode: UmlNodeElementModel;
+  umlDiagram: UmlDiagramElementModel;
+  umlSubject: UmlSubjectElementModel;
 };
 
 export type SurfaceTextModelMap = {
