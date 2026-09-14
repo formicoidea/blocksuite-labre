@@ -125,5 +125,6 @@ aggregation.
 - **`createArrowMarker` and the two toolbar lists became exported** so the spec
   can observe them. They stay internal to the package (not re-exported from its
   entry points).
-- **The connector package's vitest config gained `environment: 'happy-dom'`** —
-  the marker assertions build real SVG nodes.
+- **Only the new spec runs in a DOM.** The marker assertions build real SVG
+  nodes, so that one file carries a `@vitest-environment happy-dom` pragma; the
+  package's other specs stay on the default `node` environment.

@@ -12,6 +12,24 @@ import { DEFAULT_ARROW_SIZE, HOLLOW_HEAD_FILL } from '../utils.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/**
+ * The outline width of a hollow head, in the marker's own `viewBox` units.
+ *
+ * Pinned rather than inherited. A marker declares `markerUnits="strokeWidth"`
+ * and a `0 0 20 20` viewBox mapped onto `markerWidth`, so one viewBox unit is
+ * already a fixed fraction of the connector's `strokeWidth` — the outline
+ * scales with the line without this attribute existing, and `1` is exactly the
+ * SVG default the solid heads get implicitly today. Nothing changes visually.
+ *
+ * It is set only on the hollow heads because they are the only ones where the
+ * value is observable: a solid head paints `fill` and `stroke` in the same
+ * colour, so its outline is invisible either way. On a hollow head the outline
+ * IS the head. Leaving it to a default that a future `stroke-width` on the
+ * `<svg>`, the `<defs>`, or the marker itself would override means the UML
+ * heads could silently thicken or vanish; the solid twins would not notice.
+ */
+const HOLLOW_HEAD_STROKE_WIDTH = 1;
+
 interface PathBounds {
   minX: number;
   minY: number;
@@ -143,6 +161,7 @@ export function createArrowMarker(
       );
       path.setAttribute('fill', HOLLOW_HEAD_FILL);
       path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', String(HOLLOW_HEAD_STROKE_WIDTH));
       marker.append(path);
       break;
     }
@@ -169,6 +188,7 @@ export function createArrowMarker(
       path.setAttribute('d', 'M 10 6 L 14 10 L 10 14 L 6 10 Z');
       path.setAttribute('fill', HOLLOW_HEAD_FILL);
       path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', String(HOLLOW_HEAD_STROKE_WIDTH));
       marker.append(path);
       break;
     }

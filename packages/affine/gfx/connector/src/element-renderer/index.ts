@@ -202,11 +202,14 @@ function renderEndpoint(
   stroke: string
 ) {
   const arrowOptions = getArrowOptions(end, model, stroke);
-  const hollowOptions = { ...arrowOptions, fillColor: HOLLOW_HEAD_FILL };
 
   // No `default` on purpose: `PointStyle` is a persisted, append-only enum, so
   // a build older than a member paints no head rather than throwing or drawing
   // a wrong one. See the enum's docblock in `@labre/affine-model`.
+  //
+  // The hollow spread lives inside its own case: this runs once per endpoint
+  // per frame, and a solid head — or `None`, the default on the front of every
+  // connector — should not allocate an options object it never reads.
   switch (style) {
     case 'Arrow':
       renderArrow(location, ctx, rc, arrowOptions);
@@ -215,7 +218,10 @@ function renderEndpoint(
       renderTriangle(location, ctx, rc, arrowOptions);
       break;
     case 'TriangleHollow':
-      renderTriangle(location, ctx, rc, hollowOptions);
+      renderTriangle(location, ctx, rc, {
+        ...arrowOptions,
+        fillColor: HOLLOW_HEAD_FILL,
+      });
       break;
     case 'Circle':
       renderCircle(location, ctx, rc, arrowOptions);
@@ -224,7 +230,10 @@ function renderEndpoint(
       renderDiamond(location, ctx, rc, arrowOptions);
       break;
     case 'DiamondHollow':
-      renderDiamond(location, ctx, rc, hollowOptions);
+      renderDiamond(location, ctx, rc, {
+        ...arrowOptions,
+        fillColor: HOLLOW_HEAD_FILL,
+      });
       break;
   }
 }

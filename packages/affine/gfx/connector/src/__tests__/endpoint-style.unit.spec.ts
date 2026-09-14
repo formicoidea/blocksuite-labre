@@ -1,4 +1,12 @@
+/**
+ * `createArrowMarker` builds real SVG nodes, so this file — and only this file
+ * — needs a DOM. The rest of the package's specs stay on the default `node`
+ * environment.
+ *
+ * @vitest-environment happy-dom
+ */
 import { ConnectorMode, PointStyle } from '@labre/affine-model';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import { type IVec, PointLocation } from '@labre/global/gfx';
 import { describe, expect, test } from 'vitest';
 
@@ -46,6 +54,12 @@ function fakeContext() {
 }
 
 describe('endpoint arrow options', () => {
+  test('a hollow head is filled from the one neutral scale (R33)', () => {
+    // Not a theme token and not `transparent`: the head has to read as the
+    // card it points at, in every theme. See docs/adr/0016.
+    expect(HOLLOW_HEAD_FILL).toBe(NOTATION_NEUTRALS.cardFill);
+  });
+
   test('a solid head fills with its own stroke colour', () => {
     const options = getArrowOptions('Rear', fakeModel(), STROKE);
 
@@ -110,6 +124,9 @@ describe('createArrowMarker', () => {
     expect(shape.getAttribute('fill')).toBe(HOLLOW_HEAD_FILL);
     expect(shape.getAttribute('stroke')).toBe(STROKE);
     expect(shape.getAttribute('fill')).not.toBe(shape.getAttribute('stroke'));
+    // On a hollow head the outline is the head, so its width is pinned rather
+    // than left to a default something upstream could override.
+    expect(shape.getAttribute('stroke-width')).toBe('1');
   });
 
   test.each([PointStyle.Triangle, PointStyle.Diamond, PointStyle.Arrow])(
