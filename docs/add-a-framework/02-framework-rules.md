@@ -6,6 +6,20 @@ enforces it, so you can check rather than trust.**
 Where a rule is enforced by a test, the test is named. Where it is a
 convention with no test yet, it says so.
 
+## Identity: one framework is one drawing
+
+**R34. A framework is one drawing.** Split into several frameworks when the
+boards are distinct sheets with disjoint vocabularies that never mix on one
+surface: DDD is event storming, core domain chart and context map — three
+boards, three buttons, three flags. Keep one framework when the notations share
+one frame and one sheet, and an artefact of one has a meaning when dropped on
+the board of the other: UML draws classes, use cases and activities under one
+`<kind> <name>` heading, so it is one framework and the kind is a field of the
+board. Admissibility ("a use case has no place on a class diagram") is then a
+`view-admissibility` rule, not a second framework. Practical test: "can I drop
+an artefact of A on a board of B and have it mean something?" Yes → one
+framework. Convention, no test enforces it (ADR 0017).
+
 ## Tooling: the senior button and its menu
 
 **R1. One senior button per framework, one icon, in descriptor order.**

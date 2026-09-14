@@ -14,7 +14,8 @@
    in two: `<Id>RenderViewExtension` (always on) and `<Id>ViewExtension`
    (flag-gated).
 3. **A flag** in `packages/affine/all/src/flags.ts` (`OPTIONAL_BLOCKS`) and
-   a descriptor in `frameworks.ts`. The flag gates tooling only.
+   a descriptor in `frameworks.ts`: one flag, one descriptor, one drawing
+   (R34). The flag gates tooling only.
 4. **Telemetry** through command descriptors (`telemetry: { framework,
 element, board }`); the board-placing command declares `board: true`.
 5. **Unit tests**, plus an integration spec since it renders on the canvas.
