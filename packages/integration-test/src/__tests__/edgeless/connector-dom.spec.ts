@@ -126,6 +126,40 @@ describe('Connector rendering with DOM renderer', () => {
     expect(markers?.length).toBeGreaterThan(0);
   });
 
+  test('should render hollow endpoints with a fill that differs from the stroke', async () => {
+    const surfaceView = getSurface(window.doc, window.editor);
+    const surfaceModel = surfaceView.model;
+
+    const connectorId = surfaceModel.addElement({
+      type: 'connector',
+      source: { position: [100, 100] },
+      target: { position: [200, 200] },
+      stroke: '#000000',
+      frontEndpointStyle: 'DiamondHollow',
+      rearEndpointStyle: 'TriangleHollow',
+    });
+
+    await wait(100);
+
+    const connectorElement = surfaceView.renderRoot.querySelector(
+      `[data-element-id="${connectorId}"]`
+    );
+    const markerPaths =
+      connectorElement?.querySelectorAll<SVGPathElement>('defs marker path');
+
+    expect(markerPaths?.length).toBe(2);
+
+    // The UML reading: the outline stays the connector's colour, the interior
+    // is the notation card fill. See docs/adr/0016.
+    for (const markerPath of markerPaths!) {
+      const fill = markerPath.getAttribute('fill');
+      const stroke = markerPath.getAttribute('stroke');
+
+      expect(fill).not.toBeNull();
+      expect(fill).not.toBe(stroke);
+    }
+  });
+
   test('should remove connector DOM node when element is deleted', async () => {
     const surfaceView = getSurface(window.doc, window.editor);
     const surfaceModel = surfaceView.model;

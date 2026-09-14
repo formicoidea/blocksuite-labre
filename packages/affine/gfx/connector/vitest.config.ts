@@ -5,5 +5,7 @@ export default defineConfig({
     root: './packages/affine/gfx/connector',
     include: ['src/__tests__/**/*.unit.spec.ts'],
     testTimeout: 1000,
+    // `createArrowMarker` builds real SVG nodes with `document.createElementNS`.
+    environment: 'happy-dom',
   },
 });
