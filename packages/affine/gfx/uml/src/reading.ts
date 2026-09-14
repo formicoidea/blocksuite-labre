@@ -15,7 +15,7 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * so a sheet whose `uml` flag is off keeps every element it has and simply stops
  * being read (ADR 0009).
  *
- * ## SIXTEEN profiles, one per artefact, because the roles are deliberately flat
+ * ## THIRTY-SEVEN profiles, one per artefact, because the roles are flat
  *
  * There are two chains in the node vocabulary — `uml:classifier` over class,
  * interface and enumeration, and (since phase 2) `uml:node` over device and
@@ -37,11 +37,11 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * The remaining roles are flat by construction (`roles.ts` argues each one), so
  * they get a profile each with nothing to decide.
  *
- * The two FRAMES are not read: `uml:diagram` is the sheet and `uml:subject` is a
- * rectangle drawn round part of it, and
- * `packages/affine/all/src/__tests__/reading-coverage.unit.spec.ts` records both
- * as such so the coverage test does not ask a sheet to read itself back as a
- * sentence.
+ * The FRAMES are not read: `uml:diagram` is the sheet, and `uml:subject`,
+ * `uml:partition` and `uml:region` are rectangles drawn round part of it, and
+ * `packages/affine/all/src/__tests__/reading-coverage.unit.spec.ts` records all
+ * four as such so the coverage test does not ask a sheet to read itself back as
+ * a sentence.
  *
  * ## The name lives on a separate element
  *
@@ -174,7 +174,73 @@ const DEPLOY = {
   },
 } as const;
 
-/** One artefact, as a profile. The sixteen below differ by four fields at most. */
+/**
+ * A CONTROL FLOW (§15.2.4) — the arrow that says which step comes next.
+ *
+ * Directed, and the wording is the plainest in the pack on purpose: an activity
+ * diagram answers one question — what happens after this — and the panel should
+ * answer it in the words a reader would use rather than in the metamodel's.
+ */
+const FLOW = {
+  edgeRole: UML_ROLE['control-flow'],
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.flowsFrom',
+      labelFallback: 'Flows from',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.flowsTo',
+      labelFallback: 'Flows to',
+    },
+  },
+} as const;
+
+/**
+ * An OBJECT FLOW (§15.4.4) — the same arrow, carrying data rather than a token.
+ *
+ * Its own table rather than a reading through {@link FLOW}, because the two
+ * roles are filed FLAT in `roles.ts`: an object flow is not a control flow, it
+ * is the other kind of activity edge, and a profile declaring the one would
+ * never reach the other. The data node is the one artefact that wants this
+ * table, which is exactly the one artefact that has it.
+ */
+const OBJECT_FLOW = {
+  edgeRole: UML_ROLE['object-flow'],
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.producedBy',
+      labelFallback: 'Produced by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.consumedBy',
+      labelFallback: 'Consumed by',
+    },
+  },
+} as const;
+
+/**
+ * A TRANSITION (§14.2.4.8) — what takes the machine from one state to the next.
+ *
+ * Distinct from {@link FLOW} rather than sharing its wording, because the two
+ * sentences are genuinely different: an activity's arrow says what happens
+ * NEXT, a state machine's says what this thing BECOMES, and the `trigger
+ * [guard] / effect` written on the line is the answer to "when".
+ */
+const TRANSITION = {
+  edgeRole: UML_ROLE.transition,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.transitionsFrom',
+      labelFallback: 'Entered from',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.transitionsTo',
+      labelFallback: 'Transitions to',
+    },
+  },
+} as const;
+
+/** One artefact, as a profile. The thirty-seven below differ by four fields at most. */
 const profile = (
   id: string,
   appliesTo: string,
@@ -317,6 +383,168 @@ export const UML_EXECUTION_ENVIRONMENT_READING = profile(
   DEPLOY
 );
 
+/* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ── */
+
+/**
+ * Every artefact below takes its name off `uml:label`, and thirteen of them
+ * have none to take: a control node and a pseudostate are created with no text
+ * at all (`actions.ts`), because §15.3.4 and §14.2.4 name none of them. The
+ * profile still declares the tier, and that is deliberate rather than sloppy —
+ * `readElement` names the OTHER end of a relation through the SAME profile's
+ * `labelRole`, so an action reading "Flows to:" about the decision it points at
+ * agrees with the decision's own profile on where a name would be if there were
+ * one. Declaring a different tier on the unnamed ones would break that
+ * agreement for no gain.
+ */
+export const UML_ACTION_READING = profile(
+  'uml-action',
+  UML_ROLE.action,
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_INITIAL_READING = profile(
+  'uml-initial',
+  UML_ROLE.initial,
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_ACTIVITY_FINAL_READING = profile(
+  'uml-activity-final',
+  UML_ROLE['activity-final'],
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_FLOW_FINAL_READING = profile(
+  'uml-flow-final',
+  UML_ROLE['flow-final'],
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_DECISION_READING = profile(
+  'uml-decision',
+  UML_ROLE.decision,
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_FORK_READING = profile(
+  'uml-fork',
+  UML_ROLE.fork,
+  UML_ROLE.label,
+  FLOW
+);
+/** The one artefact of the pack read through the DATA that passes through it. */
+export const UML_OBJECT_NODE_READING = profile(
+  'uml-object-node',
+  UML_ROLE['object-node'],
+  UML_ROLE.label,
+  OBJECT_FLOW
+);
+export const UML_SEND_SIGNAL_READING = profile(
+  'uml-send-signal',
+  UML_ROLE['send-signal'],
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_ACCEPT_EVENT_READING = profile(
+  'uml-accept-event',
+  UML_ROLE['accept-event'],
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_TIME_EVENT_READING = profile(
+  'uml-time-event',
+  UML_ROLE['time-event'],
+  UML_ROLE.label,
+  FLOW
+);
+
+/* ── Phase 2: state machines (§14.2.4) ─────────────────────────────────── */
+
+export const UML_STATE_READING = profile(
+  'uml-state',
+  UML_ROLE.state,
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_FINAL_STATE_READING = profile(
+  'uml-final-state',
+  UML_ROLE['final-state'],
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_CHOICE_READING = profile(
+  'uml-choice',
+  UML_ROLE.choice,
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_JUNCTION_READING = profile(
+  'uml-junction',
+  UML_ROLE.junction,
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_SHALLOW_HISTORY_READING = profile(
+  'uml-shallow-history',
+  UML_ROLE['shallow-history'],
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_DEEP_HISTORY_READING = profile(
+  'uml-deep-history',
+  UML_ROLE['deep-history'],
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_ENTRY_POINT_READING = profile(
+  'uml-entry-point',
+  UML_ROLE['entry-point'],
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_EXIT_POINT_READING = profile(
+  'uml-exit-point',
+  UML_ROLE['exit-point'],
+  UML_ROLE.label,
+  TRANSITION
+);
+export const UML_TERMINATE_READING = profile(
+  'uml-terminate',
+  UML_ROLE.terminate,
+  UML_ROLE.label,
+  TRANSITION
+);
+
+/**
+ * The two PARENTS, and the reason they are read at all.
+ *
+ * `uml:control-node` and `uml:pseudostate` are the generalisations §15.3.4 and
+ * §14.2.4 give their routing marks, and rules are written on them so that one
+ * declaration reaches five children (`rules.ts`). Nothing is ever drawn AS one
+ * — every creation command stamps a concrete role — so each of these profiles
+ * is a floor rather than an answer: it exists so that a routing mark added to
+ * the pack in a later phase is readable from the day its role is filed under
+ * its parent, instead of falling through to no reading at all and failing
+ * `reading-coverage` in `affine/all`.
+ *
+ * Registered LAST, after every child, for the reason `uml-node` is: the engine
+ * takes the FIRST profile whose `appliesTo` the element's role IS A, so a
+ * parent listed early would answer for all five of its children and none of
+ * them would ever use its own.
+ */
+export const UML_CONTROL_NODE_READING = profile(
+  'uml-control-node',
+  UML_ROLE['control-node'],
+  UML_ROLE.label,
+  FLOW
+);
+export const UML_PSEUDOSTATE_READING = profile(
+  'uml-pseudostate',
+  UML_ROLE.pseudostate,
+  UML_ROLE.label,
+  TRANSITION
+);
+
 /** Every UML profile, in the order the view extension registers them. */
 export const UML_READINGS: readonly ReadingProfile[] = [
   UML_CLASS_READING,
@@ -341,4 +569,29 @@ export const UML_READINGS: readonly ReadingProfile[] = [
   UML_DEVICE_READING,
   UML_EXECUTION_ENVIRONMENT_READING,
   UML_NODE_READING,
+  /* ── Phase 2: activities and state machines ──────────────────────────── */
+  UML_ACTION_READING,
+  UML_INITIAL_READING,
+  UML_ACTIVITY_FINAL_READING,
+  UML_FLOW_FINAL_READING,
+  UML_DECISION_READING,
+  UML_FORK_READING,
+  UML_OBJECT_NODE_READING,
+  UML_SEND_SIGNAL_READING,
+  UML_ACCEPT_EVENT_READING,
+  UML_TIME_EVENT_READING,
+  UML_STATE_READING,
+  UML_FINAL_STATE_READING,
+  UML_CHOICE_READING,
+  UML_JUNCTION_READING,
+  UML_SHALLOW_HISTORY_READING,
+  UML_DEEP_HISTORY_READING,
+  UML_ENTRY_POINT_READING,
+  UML_EXIT_POINT_READING,
+  UML_TERMINATE_READING,
+  // The two PARENTS last, after every child — the same rule the deployment
+  // cubes above obey, and for the same reason: the engine takes the FIRST
+  // profile the element's role IS A.
+  UML_CONTROL_NODE_READING,
+  UML_PSEUDOSTATE_READING,
 ];

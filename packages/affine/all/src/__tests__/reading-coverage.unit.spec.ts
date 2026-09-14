@@ -78,6 +78,11 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   'c4:container-boundary': 'frame',
   'uml:diagram': 'frame',
   'uml:subject': 'frame',
+  // §15.6.4's swimlane and §14.2.4's composite state: both are rectangles drawn
+  // ROUND part of the drawing, and what belongs to one is read back from where
+  // an element sits. A band is not an artefact any more than a sheet is.
+  'uml:partition': 'frame',
+  'uml:region': 'frame',
   // Declared, never stamped: `uml:classifier` is §9.2's own generalisation, the
   // parent `uml:class`, `uml:interface` and `uml:enumeration` hang off so a
   // rule about classifiers reaches all three. No command creates it and no

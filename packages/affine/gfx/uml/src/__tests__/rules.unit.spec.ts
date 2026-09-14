@@ -53,9 +53,24 @@ const COMMUNICATION_PATH_ENDPOINTS = 'uml.communication-path-endpoints';
 const UNTYPED_EDGE = 'uml.untyped-edge';
 const COMPOSITION_SINGLE_OWNER = 'uml.composition-single-owner';
 const USE_CASE_NO_ACTOR = 'uml.use-case-no-actor';
+const NODE_IN_PARTITION = 'uml.node-in-partition';
+const SHALLOW_HISTORY_OUTSIDE_REGION = 'uml.shallow-history-outside-region';
+const DEEP_HISTORY_OUTSIDE_REGION = 'uml.deep-history-outside-region';
+const INITIAL_SINGLE = 'uml.initial-single';
+const INITIAL_NO_INCOMING_FLOW = 'uml.initial-no-incoming-flow';
+const INITIAL_NO_INCOMING_TRANSITION = 'uml.initial-no-incoming-transition';
+const ACTIVITY_FINAL_NO_OUTGOING = 'uml.activity-final-no-outgoing';
+const FLOW_FINAL_NO_OUTGOING = 'uml.flow-final-no-outgoing';
+const FINAL_STATE_NO_OUTGOING = 'uml.final-state-no-outgoing';
+const DECISION_INCOMING_COUNT = 'uml.decision-incoming-count';
+const CONTROL_FLOW_ENDPOINTS = 'uml.control-flow-endpoints';
+const OBJECT_FLOW_ENDPOINTS = 'uml.object-flow-endpoints';
+const TRANSITION_ENDPOINTS = 'uml.transition-endpoints';
+const UNREACHABLE_ACTION = 'uml.unreachable-action';
+const UNREACHABLE_STATE = 'uml.unreachable-state';
 
 /**
- * The ten rules that restate a NORMATIVE clause — and deliberately not the same
+ * The seventeen rules that restate a NORMATIVE clause — and deliberately not the same
  * list as the twelve `uml.strict` promotes (`profiles.unit.spec.ts` owns that
  * one). Provenance and severity are orthogonal: two of these ten stay a remark
  * at every level, and two of the promoted twelve are `recommendation`.
@@ -71,6 +86,15 @@ const STANDARD_RULES = [
   DEPLOY_ENDPOINTS,
   MANIFEST_ENDPOINTS,
   COMMUNICATION_PATH_ENDPOINTS,
+  // The behaviour sheets' arithmetic and their two grammars — §15.3.3,
+  // §15.7.19.4 twice, §15.7.11.4, §15.7.9.4, §14.5.11.4 and §14.5.12.
+  INITIAL_NO_INCOMING_FLOW,
+  ACTIVITY_FINAL_NO_OUTGOING,
+  FLOW_FINAL_NO_OUTGOING,
+  FINAL_STATE_NO_OUTGOING,
+  DECISION_INCOMING_COUNT,
+  CONTROL_FLOW_ENDPOINTS,
+  TRANSITION_ENDPOINTS,
 ];
 
 interface Extra {
@@ -152,6 +176,34 @@ const artifact = node(UML_ROLE.artifact, 200, 120);
 const cube = node(UML_ROLE.node, 220, 160);
 const device = node(UML_ROLE.device, 220, 160);
 const executionEnvironment = node(UML_ROLE['execution-environment'], 220, 160);
+// The behaviour vocabulary (phase 2). The control nodes are the small glyphs of
+// `UML_NODE_BOX`; the two frames are declared below with the subject.
+const action = node(UML_ROLE.action, 180, 80);
+const initialNode = node(UML_ROLE.initial, 24, 24);
+const activityFinal = node(UML_ROLE['activity-final'], 32, 32);
+const flowFinal = node(UML_ROLE['flow-final'], 32, 32);
+const decision = node(UML_ROLE.decision, 60, 60);
+const fork = node(UML_ROLE.fork, 100, 8);
+const objectNode = node(UML_ROLE['object-node'], 160, 60);
+const sendSignal = node(UML_ROLE['send-signal'], 160, 60);
+const acceptEvent = node(UML_ROLE['accept-event'], 160, 60);
+const timeEvent = node(UML_ROLE['time-event'], 40, 60);
+const stateNode = node(UML_ROLE.state, 180, 90);
+const finalState = node(UML_ROLE['final-state'], 32, 32);
+const choice = node(UML_ROLE.choice, 60, 60);
+const junction = node(UML_ROLE.junction, 16, 16);
+const shallowHistory = node(UML_ROLE['shallow-history'], 28, 28);
+const deepHistory = node(UML_ROLE['deep-history'], 28, 28);
+const entryPoint = node(UML_ROLE['entry-point'], 16, 16);
+const terminate = node(UML_ROLE.terminate, 24, 24);
+
+/** §15.6.4's swimlane: a tall band down the left of the sheet. */
+const partition = (id = 'lane', x = 100, y = 100) =>
+  element(id, [x, y, 400, 700], UML_ROLE.partition);
+
+/** §14.2.4's composite state, drawn as the box its sub-states sit in. */
+const region = (id = 'r', x = 100, y = 100) =>
+  element(id, [x, y, 400, 400], UML_ROLE.region);
 
 /**
  * The name compartment — where a classifier's, an object's, a package's and a
@@ -266,8 +318,39 @@ const conformantDeployment = () => [
   edge('cp', UML_ROLE['communication-path'], 'd', 'e'),
 ];
 
+/**
+ * A conformant ACTIVITY: one beginning, two actions in a chain, one end
+ * (§15.2.4's own figure, minus the lanes it does not have to draw).
+ */
+const conformantActivity = () => [
+  frame('act'),
+  initialNode('i', 100, 200),
+  action('a', 300, 200),
+  label('a-label', 'Receive order', 300, 340),
+  action('b', 600, 200),
+  label('b-label', 'Ship order', 600, 340),
+  activityFinal('z', 900, 200),
+  edge('e1', UML_ROLE['control-flow'], 'i', 'a'),
+  edge('e2', UML_ROLE['control-flow'], 'a', 'b'),
+  edge('e3', UML_ROLE['control-flow'], 'b', 'z'),
+];
+
+/** A conformant STATE MACHINE: the same chain in §14.2.4's vocabulary. */
+const conformantStateMachine = () => [
+  frame('stm'),
+  initialNode('i', 100, 200),
+  stateNode('s1', 300, 200),
+  name('s1-name', 'Draft', 300, 340),
+  stateNode('s2', 600, 200),
+  name('s2-name', 'Placed', 600, 340),
+  finalState('z', 900, 200),
+  edge('t1', UML_ROLE.transition, 'i', 's1'),
+  edge('t2', UML_ROLE.transition, 's1', 's2'),
+  edge('t3', UML_ROLE.transition, 's2', 'z'),
+];
+
 describe('what the framework ships', () => {
-  it('ships exactly the nineteen rules of the pack, in reading order', () => {
+  it('ships exactly the thirty-four rules of the pack, in reading order', () => {
     expect(UML_RULES.map(rule => rule.id)).toEqual([
       ELEMENT_OUTSIDE_FRAME,
       NOT_ADMISSIBLE_ON_KIND,
@@ -288,6 +371,21 @@ describe('what the framework ships', () => {
       UNTYPED_EDGE,
       COMPOSITION_SINGLE_OWNER,
       USE_CASE_NO_ACTOR,
+      NODE_IN_PARTITION,
+      SHALLOW_HISTORY_OUTSIDE_REGION,
+      DEEP_HISTORY_OUTSIDE_REGION,
+      INITIAL_SINGLE,
+      INITIAL_NO_INCOMING_FLOW,
+      INITIAL_NO_INCOMING_TRANSITION,
+      ACTIVITY_FINAL_NO_OUTGOING,
+      FLOW_FINAL_NO_OUTGOING,
+      FINAL_STATE_NO_OUTGOING,
+      DECISION_INCOMING_COUNT,
+      CONTROL_FLOW_ENDPOINTS,
+      OBJECT_FLOW_ENDPOINTS,
+      TRANSITION_ENDPOINTS,
+      UNREACHABLE_ACTION,
+      UNREACHABLE_STATE,
     ]);
   });
 
@@ -301,13 +399,19 @@ describe('what the framework ships', () => {
    * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
    * Phase 2 doubled the vocabulary and the number below did not move.
    */
-  it('needs six families, and asks the engine for nothing new', () => {
+  it('needs eight families, and asks the engine for nothing new', () => {
+    // The two the behaviour sheets added are BPMN's, registered here with UML's
+    // own roles and nothing else: a machine with two beginnings and a ring of
+    // states nothing enters are the same two questions a pool with two start
+    // events and an unreachable task ask.
     expect([...new Set(UML_RULES.map(rule => rule.family))].sort()).toEqual([
       'edge-degree',
       'element-in-background',
       'element-in-zone',
       'label-presence',
+      'reachability',
       'relation-endpoints',
+      'role-count',
       'view-admissibility',
     ]);
   });
@@ -349,7 +453,13 @@ describe('what the framework ships', () => {
     expect(framedBy(UML_ROLE.subject)).toEqual(
       [USE_CASE_OUTSIDE_SUBJECT, ACTOR_INSIDE_SUBJECT].sort()
     );
-    expect(framedBy(UML_ROLE.diagram)).toHaveLength(17);
+    // The lane and the composite state are the two frames the behaviour sheets
+    // added, and each carries exactly the membership rules written on it.
+    expect(framedBy(UML_ROLE.partition)).toEqual([NODE_IN_PARTITION]);
+    expect(framedBy(UML_ROLE.region)).toEqual(
+      [SHALLOW_HISTORY_OUTSIDE_REGION, DEEP_HISTORY_OUTSIDE_REGION].sort()
+    );
+    expect(framedBy(UML_ROLE.diagram)).toHaveLength(29);
     for (const rule of UML_RULES) {
       expect(rule.backgroundRole, rule.id).toBeDefined();
     }
@@ -384,14 +494,19 @@ describe('what the framework ships', () => {
         .sort();
 
     // The ten that restate a normative sentence, and exactly those.
-    expect(STANDARD_RULES).toHaveLength(10);
+    expect(STANDARD_RULES).toHaveLength(17);
     expect(byProvenance('standard')).toEqual([...STANDARD_RULES].sort());
     // The three that are OURS — membership on this canvas, a usage remark, and
     // the role-less connector this whiteboard can produce and the notation never
     // anticipated. Each says so in the citation itself, so a reader of the
     // bubble is never told UML forbids what UML does not.
     expect(byProvenance('labre-convention')).toEqual(
-      [ELEMENT_OUTSIDE_FRAME, USE_CASE_NO_ACTOR, UNTYPED_EDGE].sort()
+      [
+        ELEMENT_OUTSIDE_FRAME,
+        USE_CASE_NO_ACTOR,
+        UNTYPED_EDGE,
+        NODE_IN_PARTITION,
+      ].sort()
     );
     for (const rule of UML_RULES) {
       const { source, reference } = rule.provenance!;
@@ -434,8 +549,16 @@ describe('what the framework ships', () => {
     // compartments: a real-time rule of this family would re-evaluate on every
     // keystroke in every one of them.
     const onDemand = UML_RULES.filter(rule => rule.moment === 'on-demand');
+    // …and the two GRAPH WALKS, which are off it for a different reason: a
+    // reachability sweep is O(V + E), cannot be made incremental even in
+    // principle, and answers a question somebody asks about a finished diagram.
     expect(onDemand.map(rule => rule.id).sort()).toEqual(
-      [UNNAMED_CLASSIFIER, UNNAMED_ACTOR_OR_USE_CASE].sort()
+      [
+        UNNAMED_CLASSIFIER,
+        UNNAMED_ACTOR_OR_USE_CASE,
+        UNREACHABLE_ACTION,
+        UNREACHABLE_STATE,
+      ].sort()
     );
     // Absent everywhere else, which is what `'realtime'` means: the default is
     // never restated, so nobody has to wonder whether an omission was a choice.
@@ -455,7 +578,9 @@ describe('what the framework ships', () => {
     // matrix judges nothing, which is what makes `flagNeutral` its single
     // verdict. Six of the twelve arrived with the structural sheets — a wiring
     // gesture between two ports is exactly the line §11.6.4 expects to be typed.
-    expect(UML_ELEMENT_MATRIX).toHaveLength(144);
+    // Twenty-one roles now, and the nine the behaviour sheets added are why a
+    // quick-connected wire between two actions is a finding.
+    expect(UML_ELEMENT_MATRIX).toHaveLength(441);
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.allowed).toBe(UML_ELEMENT_MATRIX);
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.flagNeutral).toBeDefined();
     expect(byId.get(UNTYPED_EDGE)?.endpoints?.forbidSelfLoop).toBeUndefined();
@@ -838,11 +963,13 @@ describe('U2 · what each kind of diagram draws', () => {
   });
 
   it('says nothing about a kind this build does not know', () => {
-    // A phase-2 value on a phase-1 build, or an import. An unrecognised kind is
-    // a kind the rule has nothing to say about, never a reason to guess.
+    // A LATER phase's value on this build, or an import. An unrecognised kind is
+    // a kind the rule has nothing to say about, never a reason to guess — which
+    // is exactly what a phase-1 build did with the `cmp` frame and a phase-2 one
+    // with `act`, and what this build does with the sequence diagram's `sd`.
     expect(
       only(
-        evaluate([frame('act'), klass('x', 200, 200), actor('y', 500, 200)]),
+        evaluate([frame('sd'), klass('x', 200, 200), actor('y', 500, 200)]),
         NOT_ADMISSIBLE_ON_KIND
       )
     ).toEqual([]);
@@ -1740,5 +1867,631 @@ describe('where the level of requirement can be chosen', () => {
     expect(
       umlDiagramToolingToolbarConfig.actions.map(action => action.id)
     ).toEqual(['b.legend', 'c.kind', 'z.validation']);
+  });
+});
+
+/* ── The behaviour sheets (§15.2.4, §14.2.4) ──────────────────────────── */
+
+describe('U20 · an action outside every swimlane', () => {
+  it('flags an action drawn between the lanes', () => {
+    const violations = evaluate([
+      frame('act'),
+      partition('lane', 100, 100),
+      action('a', 700, 200),
+      label('a-label', 'Ship it', 700, 340),
+    ]);
+    expect(idsOf(violations)).toEqual([NODE_IN_PARTITION]);
+    expect(violations[0].elementIds).toEqual(['a']);
+    // Attributed to the LANE the arbitration would be made on.
+    expect(violations[0].backgroundId).toBe('lane');
+  });
+
+  it('says nothing when the action is in a lane', () => {
+    expect(
+      only(
+        evaluate([
+          frame('act'),
+          partition('lane', 100, 100),
+          action('a', 140, 200),
+          label('a-label', 'Ship it', 140, 340),
+        ]),
+        NODE_IN_PARTITION
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing at all on a sheet with no lane on it', () => {
+    // Most activity diagrams never draw one, and those are finished diagrams.
+    expect(
+      only(
+        evaluate([
+          frame('act'),
+          action('a', 700, 200),
+          label('a-label', 'Ship it', 700, 340),
+        ]),
+        NODE_IN_PARTITION
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about the control nodes between two lanes', () => {
+    // §15.6.4 draws a fork bar spanning lanes and a decision on a boundary. The
+    // rule is written on the ACTION alone, and that narrowing is deliberate.
+    for (const glyph of [
+      decision('x', 700, 200),
+      fork('x', 700, 200),
+      objectNode('x', 700, 200),
+    ]) {
+      expect(
+        only(
+          evaluate([frame('act'), partition('lane', 100, 100), glyph]),
+          NODE_IN_PARTITION
+        ),
+        String(glyph.role)
+      ).toEqual([]);
+    }
+  });
+});
+
+describe('U21–U22 · a history outside every composite state', () => {
+  it('flags each of the two histories drawn on the bare sheet', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          region('r', 100, 100),
+          shallowHistory('h', 900, 600),
+        ])
+      )
+    ).toEqual([SHALLOW_HISTORY_OUTSIDE_REGION]);
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          region('r', 100, 100),
+          deepHistory('h', 900, 600),
+        ])
+      )
+    ).toEqual([DEEP_HISTORY_OUTSIDE_REGION]);
+  });
+
+  it('reports one bracket per history, never two', () => {
+    // TWO rules for one sentence, and the reason they compose: an element
+    // carries ONE role, so exactly one of the pair can ever be about it.
+    const violations = evaluate([
+      frame('stm'),
+      region('r', 100, 100),
+      shallowHistory('h1', 900, 600),
+      deepHistory('h2', 1100, 600),
+    ]);
+    expect(idsOf(violations)).toEqual(
+      [SHALLOW_HISTORY_OUTSIDE_REGION, DEEP_HISTORY_OUTSIDE_REGION].sort()
+    );
+  });
+
+  it('says nothing when the history is inside the composite state', () => {
+    expect(
+      evaluate([
+        frame('stm'),
+        region('r', 100, 100),
+        shallowHistory('h', 200, 200),
+      ])
+    ).toEqual([]);
+  });
+
+  it('says nothing about the pseudostates that are not histories', () => {
+    // The rules cannot be written on `uml:pseudostate`: that parent reaches the
+    // choice, the junction, the two connection points and the terminate cross,
+    // none of which is confined to a region.
+    for (const glyph of [
+      choice('x', 900, 600),
+      junction('x', 900, 600),
+      entryPoint('x', 900, 600),
+      terminate('x', 900, 600),
+    ]) {
+      expect(
+        evaluate([frame('stm'), region('r', 100, 100), glyph]),
+        String(glyph.role)
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing at all on a sheet with no composite state', () => {
+    expect(evaluate([frame('stm'), shallowHistory('h', 900, 600)])).toEqual([]);
+  });
+});
+
+describe('U23 · how many beginnings one sheet draws', () => {
+  it('flags the second filled disc, on the frame', () => {
+    const violations = only(
+      evaluate([
+        frame('stm'),
+        initialNode('i1', 200, 200),
+        initialNode('i2', 600, 200),
+      ]),
+      INITIAL_SINGLE
+    );
+    expect(violations).toHaveLength(1);
+    // No disc is at fault — there are simply two — so `role-count` raises on the
+    // frame, which is where the arbitration lives.
+    expect(violations[0].backgroundId).toBe('frame');
+  });
+
+  it('says nothing about one, and nothing about none', () => {
+    expect(
+      only(
+        evaluate([frame('stm'), initialNode('i1', 200, 200)]),
+        INITIAL_SINGLE
+      )
+    ).toEqual([]);
+    expect(only(evaluate([frame('act')]), INITIAL_SINGLE)).toEqual([]);
+  });
+});
+
+describe('U24–U25 · nothing arrives at the beginning', () => {
+  it('flags a control flow into the disc, and a transition into it', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('act'),
+          initialNode('i', 200, 200),
+          action('a', 600, 200),
+          label('a-label', 'Ship it', 600, 340),
+          edge('e', UML_ROLE['control-flow'], 'a', 'i'),
+        ])
+      )
+    ).toContain(INITIAL_NO_INCOMING_FLOW);
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          initialNode('i', 200, 200),
+          stateNode('s', 600, 200),
+          name('s-name', 'Draft', 600, 340),
+          edge('e', UML_ROLE.transition, 's', 'i'),
+        ])
+      )
+    ).toContain(INITIAL_NO_INCOMING_TRANSITION);
+  });
+
+  it('counts only its OWN edge role, so neither rule reports the other s arrow', () => {
+    // `edge-degree` counts one role: the two halves never see each other's
+    // edges, which is what makes the pair one requirement rather than two
+    // brackets on one glyph.
+    const flow = idsOf(
+      evaluate([
+        frame('act'),
+        initialNode('i', 200, 200),
+        action('a', 600, 200),
+        label('a-label', 'Ship it', 600, 340),
+        edge('e', UML_ROLE['control-flow'], 'a', 'i'),
+      ])
+    );
+    expect(flow.filter(id => id === INITIAL_NO_INCOMING_TRANSITION)).toEqual(
+      []
+    );
+  });
+
+  it('says nothing about the arrow that LEAVES the disc', () => {
+    expect(evaluate(conformantActivity())).toEqual([]);
+  });
+});
+
+describe('U26–U28 · nothing leaves an end', () => {
+  it('flags a control flow off an activity final and off a flow final', () => {
+    for (const [glyph, ruleId] of [
+      [activityFinal('z', 900, 200), ACTIVITY_FINAL_NO_OUTGOING],
+      [flowFinal('z', 900, 200), FLOW_FINAL_NO_OUTGOING],
+    ] as const) {
+      expect(
+        idsOf(
+          evaluate([
+            frame('act'),
+            action('a', 600, 200),
+            label('a-label', 'Ship it', 600, 340),
+            glyph,
+            edge('e', UML_ROLE['control-flow'], 'z', 'a'),
+          ])
+        ),
+        ruleId
+      ).toContain(ruleId);
+    }
+  });
+
+  it('flags a transition off a final state', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          stateNode('s', 200, 200),
+          name('s-name', 'Draft', 200, 340),
+          finalState('z', 900, 200),
+          edge('e', UML_ROLE.transition, 'z', 's'),
+        ])
+      )
+    ).toContain(FINAL_STATE_NO_OUTGOING);
+  });
+
+  it('says nothing about the arrow that ARRIVES at an end', () => {
+    expect(evaluate(conformantActivity())).toEqual([]);
+    expect(evaluate(conformantStateMachine())).toEqual([]);
+  });
+
+  it('says nothing about a decision or a fork, which are control nodes too', () => {
+    // The rules cannot be written on `uml:control-node`: that parent covers the
+    // four glyphs a flow legitimately leaves.
+    for (const glyph of [decision('d', 900, 200), fork('d', 900, 200)]) {
+      expect(
+        idsOf(
+          evaluate([
+            frame('act'),
+            action('a', 600, 200),
+            label('a-label', 'Ship it', 600, 340),
+            glyph,
+            edge('e', UML_ROLE['control-flow'], 'd', 'a'),
+          ])
+        ).filter(id => id.endsWith('-no-outgoing')),
+        String(glyph.role)
+      ).toEqual([]);
+    }
+  });
+});
+
+describe('U29 · how many flows arrive at a decision', () => {
+  it('flags the third arrow, and not the second', () => {
+    const sheet = (count: number) => [
+      frame('act'),
+      decision('d', 600, 200),
+      ...Array.from({ length: count }, (_unused, index) => [
+        action(`a${index}`, 100 + index * 220, 500),
+        label(`a${index}-label`, `Step ${index}`, 100 + index * 220, 640),
+        edge(`e${index}`, UML_ROLE['control-flow'], `a${index}`, 'd'),
+      ]).flat(),
+    ];
+    // §15.7.11.4 allows TWO: the flow the decision branches, and the
+    // `decisionInputFlow` carrying the value its guards test.
+    expect(only(evaluate(sheet(2)), DECISION_INCOMING_COUNT)).toEqual([]);
+    expect(only(evaluate(sheet(3)), DECISION_INCOMING_COUNT)).toHaveLength(1);
+  });
+
+  it('asks for no floor, so a diamond nobody has joined up yet is silent', () => {
+    expect(
+      only(
+        evaluate([frame('act'), decision('d', 600, 200)]),
+        DECISION_INCOMING_COUNT
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('U30 · what a control flow may run between', () => {
+  it('flags a control flow with an object node at one end', () => {
+    // §15.7.9.4's own case, and the one with an exception the notation cannot
+    // draw — which is why the rule's suggestion names it.
+    expect(
+      idsOf(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          objectNode('o', 600, 200),
+          label('o-label', 'Order', 600, 340),
+          edge('e', UML_ROLE['control-flow'], 'a', 'o'),
+        ])
+      )
+    ).toContain(CONTROL_FLOW_ENDPOINTS);
+  });
+
+  it('flags a control flow dragged onto a state, and onto a class', () => {
+    for (const far of [
+      [stateNode('s', 600, 200), name('s-name', 'Draft', 600, 340)],
+      [klass('s', 600, 200), name('s-name', 'Order', 600, 340)],
+    ]) {
+      expect(
+        idsOf(
+          evaluate([
+            frame('act'),
+            action('a', 200, 200),
+            label('a-label', 'Pick', 200, 340),
+            ...far,
+            edge('e', UML_ROLE['control-flow'], 'a', 's'),
+          ])
+        )
+      ).toContain(CONTROL_FLOW_ENDPOINTS);
+    }
+  });
+
+  it('says nothing about a flow between two actions, or through a control node', () => {
+    expect(evaluate(conformantActivity())).toEqual([]);
+  });
+
+  it('says nothing about a control flow onto a sticky note', () => {
+    // The alphabet gate: a line drawn onto a rectangle somebody thought with is
+    // pointing at something, and pointing at things is what a whiteboard is for.
+    expect(
+      only(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          sketch('n', 600, 200),
+          edge('e', UML_ROLE['control-flow'], 'a', 'n'),
+        ]),
+        CONTROL_FLOW_ENDPOINTS
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('U31 · an object flow that touches no data', () => {
+  it('flags an object flow between two actions', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          action('b', 600, 200),
+          label('b-label', 'Pack', 600, 340),
+          edge('e', UML_ROLE['object-flow'], 'a', 'b'),
+        ])
+      )
+    ).toContain(OBJECT_FLOW_ENDPOINTS);
+  });
+
+  it('says nothing when one end IS an object node', () => {
+    expect(
+      only(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          objectNode('o', 600, 200),
+          label('o-label', 'Order', 600, 340),
+          edge('e', UML_ROLE['object-flow'], 'a', 'o'),
+        ]),
+        OBJECT_FLOW_ENDPOINTS
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('U32 · what a transition may run between', () => {
+  it('flags a transition dragged onto the activity diamond', () => {
+    // A decision is §15.3.4's branch where §14.2.4's is the choice — the
+    // commonest confusion between the two behaviour sheets.
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          stateNode('s', 200, 200),
+          name('s-name', 'Draft', 200, 340),
+          decision('d', 600, 200),
+          edge('e', UML_ROLE.transition, 's', 'd'),
+        ])
+      )
+    ).toContain(TRANSITION_ENDPOINTS);
+  });
+
+  it('says nothing about a transition onto a CHOICE, or onto a fork', () => {
+    for (const glyph of [choice('x', 600, 200), fork('x', 600, 200)]) {
+      expect(
+        only(
+          evaluate([
+            frame('stm'),
+            stateNode('s', 200, 200),
+            name('s-name', 'Draft', 200, 340),
+            glyph,
+            edge('e', UML_ROLE.transition, 's', 'x'),
+          ]),
+          TRANSITION_ENDPOINTS
+        ),
+        String(glyph.role)
+      ).toEqual([]);
+    }
+  });
+
+  it('leaves the two DEGREE mistakes to the degree rules alone', () => {
+    // A transition into the initial disc is wrong, and exactly one rule says so:
+    // the matrix over the vertices is the full square precisely so that one drag
+    // to fix gets one bracket.
+    const violations = idsOf(
+      evaluate([
+        frame('stm'),
+        initialNode('i', 200, 200),
+        stateNode('s', 600, 200),
+        name('s-name', 'Draft', 600, 340),
+        edge('e', UML_ROLE.transition, 's', 'i'),
+      ])
+    );
+    expect(violations).toContain(INITIAL_NO_INCOMING_TRANSITION);
+    expect(violations).not.toContain(TRANSITION_ENDPOINTS);
+  });
+});
+
+describe('U33–U34 · what no walk from the beginning reaches', () => {
+  it('flags a ring of actions nothing enters', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('act'),
+          initialNode('i', 100, 200),
+          action('a', 300, 200),
+          label('a-label', 'Pick', 300, 340),
+          edge('e0', UML_ROLE['control-flow'], 'i', 'a'),
+          // …and a ring beside it, entered from nowhere.
+          action('r1', 600, 500),
+          label('r1-label', 'Wait', 600, 640),
+          action('r2', 900, 500),
+          label('r2-label', 'Retry', 900, 640),
+          edge('e1', UML_ROLE['control-flow'], 'r1', 'r2'),
+          edge('e2', UML_ROLE['control-flow'], 'r2', 'r1'),
+        ])
+      ).filter(id => id === UNREACHABLE_ACTION)
+    ).toHaveLength(2);
+  });
+
+  it('flags a ring of states nothing enters', () => {
+    expect(
+      idsOf(
+        evaluate([
+          frame('stm'),
+          initialNode('i', 100, 200),
+          stateNode('s', 300, 200),
+          name('s-name', 'Draft', 300, 340),
+          edge('e0', UML_ROLE.transition, 'i', 's'),
+          stateNode('r1', 600, 500),
+          name('r1-name', 'Held', 600, 640),
+          stateNode('r2', 900, 500),
+          name('r2-name', 'Void', 900, 640),
+          edge('e1', UML_ROLE.transition, 'r1', 'r2'),
+          edge('e2', UML_ROLE.transition, 'r2', 'r1'),
+        ])
+      ).filter(id => id === UNREACHABLE_STATE)
+    ).toHaveLength(2);
+  });
+
+  it('says nothing about a second branch nobody drew a disc for', () => {
+    // `implicitRoots`: an action nothing points at IS a beginning, which is what
+    // keeps this rule off every activity in the thirty seconds before its
+    // initial node goes down.
+    expect(
+      only(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          action('b', 600, 200),
+          label('b-label', 'Pack', 600, 340),
+          edge('e', UML_ROLE['control-flow'], 'a', 'b'),
+        ]),
+        UNREACHABLE_ACTION
+      )
+    ).toEqual([]);
+  });
+
+  it('runs only on DEMAND, never on the drawing path', () => {
+    const ring = [
+      frame('act'),
+      initialNode('i', 100, 200),
+      action('a', 300, 200),
+      label('a-label', 'Pick', 300, 340),
+      edge('e0', UML_ROLE['control-flow'], 'i', 'a'),
+      action('r1', 600, 500),
+      label('r1-label', 'Wait', 600, 640),
+      action('r2', 900, 500),
+      label('r2-label', 'Retry', 900, 640),
+      edge('e1', UML_ROLE['control-flow'], 'r1', 'r2'),
+      edge('e2', UML_ROLE['control-flow'], 'r2', 'r1'),
+    ];
+    expect(idsOf(drawing(ring))).not.toContain(UNREACHABLE_ACTION);
+    expect(idsOf(checkup(ring))).toContain(UNREACHABLE_ACTION);
+  });
+});
+
+describe('U2 · what the two behaviour sheets draw', () => {
+  it('refuses the state machine vocabulary on an activity sheet', () => {
+    for (const glyph of [
+      stateNode('x', 300, 200),
+      finalState('x', 300, 200),
+      choice('x', 300, 200),
+      shallowHistory('x', 300, 200),
+      region('x', 300, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('act'), glyph]), NOT_ADMISSIBLE_ON_KIND),
+        String(glyph.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('refuses the activity vocabulary on a state machine sheet', () => {
+    for (const glyph of [
+      action('x', 300, 200),
+      activityFinal('x', 300, 200),
+      flowFinal('x', 300, 200),
+      decision('x', 300, 200),
+      objectNode('x', 300, 200),
+      sendSignal('x', 300, 200),
+      acceptEvent('x', 300, 200),
+      timeEvent('x', 300, 200),
+      partition('x', 300, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('stm'), glyph]), NOT_ADMISSIBLE_ON_KIND),
+        String(glyph.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('admits the two glyphs BOTH sheets draw, on both of them', () => {
+    // §15.3.4 and §14.2.4 draw the same disc and the same bar. One role carries
+    // both, so neither deny-list may name it — and the `stm` list therefore
+    // spells the activity glyphs out one by one instead of naming their parent.
+    for (const kind of ['act', 'stm']) {
+      for (const glyph of [initialNode('x', 300, 200), fork('x', 300, 200)]) {
+        expect(
+          only(evaluate([frame(kind), glyph]), NOT_ADMISSIBLE_ON_KIND),
+          `${kind}/${String(glyph.role)}`
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('refuses the structural and use case vocabularies on both', () => {
+    for (const kind of ['act', 'stm']) {
+      for (const glyph of [
+        actor('x', 300, 200),
+        useCase('x', 300, 200),
+        klass('x', 300, 200),
+        component('x', 300, 200),
+        cube('x', 300, 200),
+      ]) {
+        expect(
+          only(evaluate([frame(kind), glyph]), NOT_ADMISSIBLE_ON_KIND),
+          `${kind}/${String(glyph.role)}`
+        ).toHaveLength(1);
+      }
+    }
+  });
+
+  it('admits the notes and the packages, which every sheet is allowed', () => {
+    for (const kind of ['act', 'stm']) {
+      for (const glyph of [note('x', 300, 200), pkg('x', 300, 200)]) {
+        expect(
+          only(evaluate([frame(kind), glyph]), NOT_ADMISSIBLE_ON_KIND),
+          `${kind}/${String(glyph.role)}`
+        ).toEqual([]);
+      }
+    }
+  });
+});
+
+describe('the two conformant behaviour sheets', () => {
+  it('says nothing at all about a conformant activity diagram', () => {
+    expect(evaluate(conformantActivity())).toEqual([]);
+  });
+
+  it('says nothing at all about a conformant state machine diagram', () => {
+    expect(evaluate(conformantStateMachine())).toEqual([]);
+  });
+
+  it('flags a quick-connected wire between two actions', () => {
+    // The ELEMENT alphabet grew with the behaviour vocabulary, and this is why:
+    // a line the author drew between two actions and never typed says nothing to
+    // either grammar, nothing to the degree counts and nothing to either
+    // exporter.
+    expect(
+      idsOf(
+        evaluate([
+          frame('act'),
+          action('a', 200, 200),
+          label('a-label', 'Pick', 200, 340),
+          action('b', 600, 200),
+          label('b-label', 'Pack', 600, 340),
+          wire('w', 'a', 'b'),
+        ])
+      )
+    ).toEqual([UNTYPED_EDGE]);
   });
 });

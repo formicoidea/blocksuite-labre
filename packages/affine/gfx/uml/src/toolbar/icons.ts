@@ -205,6 +205,223 @@ export const umlExecutionEnvironmentIcon = svg`<svg width="24" height="24" viewB
   <path d="M7 11.5 L12.5 14.3 L7 17 Z" fill="currentColor"/>
 </svg>`;
 
+/* ── Phase 2: what an ACTIVITY diagram is made of (§15, §16) ────────────── */
+
+/**
+ * Action — the round-cornered rectangle of §15.2.4, and the one shape of an
+ * activity diagram that holds a sentence. The corners are the whole of what
+ * tells it from a class box at this size, so they are drawn generously.
+ */
+export const umlActionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="7" width="18" height="10" rx="4" stroke="currentColor" stroke-width="1.6"/>
+</svg>`;
+
+/**
+ * Initial node — the FILLED disc where a flow begins (§15.3.4), with the first
+ * arrow leaving it. One per region, and the arrow is what says the disc is a
+ * start rather than a junction.
+ */
+export const umlInitialIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="7" cy="12" r="4.5" fill="currentColor"/>
+  <path d="M12.5 12 H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M16.5 9 L20 12 L16.5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Activity final — the BULLSEYE that ends the whole activity (§15.3.4): every
+ * token in it stops, not only the one that arrived.
+ */
+export const umlActivityFinalIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>
+  <circle cx="12" cy="12" r="4.5" fill="currentColor"/>
+</svg>`;
+
+/**
+ * Flow final — the circle with the CROSS through it (§15.3.4): this one token
+ * ends here and the rest of the activity carries on. The distinction the
+ * bullseye beside it cannot draw, and the one everybody forgets exists.
+ */
+export const umlFlowFinalIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8.5 8.5 L15.5 15.5 M15.5 8.5 L8.5 15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Decision — the diamond one token leaves by ONE branch (§15.3.4). The two
+ * outgoing stubs are the glyph's argument: a bare diamond is a shape, a diamond
+ * with a choice coming out of it is a decision.
+ */
+export const umlDecisionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 12 L14 6.5 L19 12 L14 17.5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M2.5 12 H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Fork — the filled BAR one token leaves by every branch at once (§15.3.4),
+ * which is exactly the difference from the diamond above: concurrency, not
+ * choice. Drawn with the two outgoing lines, because a bar on its own is a rule.
+ */
+export const umlForkIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="4" width="3.5" height="16" rx="0.6" fill="currentColor"/>
+  <path d="M3 12 H10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M13.5 8 H20 M13.5 16 H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Object node — the plain rectangle DATA travels through (§15.4.4), drawn with
+ * the flow entering and leaving it. The arrows are not decoration: an object
+ * node is told from every other rectangle on the sheet by sitting ON a flow.
+ */
+export const umlObjectNodeIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="7" y="8" width="10" height="8" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M2.5 12 H7 M17 12 H21.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Send signal — the CONVEX pentagon of §16.3.4: a box with its right edge
+ * pushed out into a point, which is the message leaving.
+ */
+export const umlSendSignalIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 7 H15 L20 12 L15 17 H3 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Accept event — the CONCAVE pentagon of §16.10.4: the same box with its LEFT
+ * edge notched IN, the cup the message arrives into. The pair is the one thing
+ * on an activity diagram a reader tells apart by silhouette alone, which is why
+ * the two glyphs are deliberately mirror images.
+ */
+export const umlAcceptEventIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 7 H21 V17 H3 L8 12 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>`;
+
+/** Time event — the HOURGLASS that fires when its moment comes (§16.10.4). */
+export const umlTimeEventIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 4 H18 L6 20 H18" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6 4 L18 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Partition — the swimlane (§15.6.4): two bands with a name strip on top, which
+ * is what a vertical partition set actually looks like. The strip is the half
+ * of the drawing that matters — a lane with no heading is a line.
+ */
+export const umlPartitionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="4" width="18" height="16" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M3 9 H21 M12 4 V20" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/* ── Phase 2: what a STATE MACHINE is made of (§14.2.4) ─────────────────── */
+
+/**
+ * State — the round-cornered box with a NAME BAND (§14.2.4). The separator is
+ * what tells it from the action it shares a silhouette with: an action is one
+ * sentence, a state is a name over the `entry` / `do` / `exit` lines below it.
+ */
+export const umlStateIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="5" width="18" height="14" rx="4" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M3 11 H21" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/**
+ * Final state — the bullseye that ends the machine (§14.2.4).
+ *
+ * The SAME drawing as the activity final beside it, deliberately: §14.2.4 and
+ * §15.3.4 both draw a filled circle inside a ring, and inventing a difference
+ * would be this pack teaching a notation UML does not have. What separates them
+ * is the role and the sheet they are legal on — a final state on an activity
+ * diagram is what the per-frame admissibility lists refuse.
+ */
+export const umlFinalStateIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>
+  <circle cx="12" cy="12" r="4.5" fill="currentColor"/>
+</svg>`;
+
+/**
+ * Choice — the diamond a transition branches at (§14.2.4), and the state
+ * machine's twin of the activity decision: the same drawing, on the other
+ * diagram, for the same reason the two finals share theirs.
+ */
+export const umlChoiceIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 12 L14 6.5 L19 12 L14 17.5 Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M2.5 12 H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Junction — the small filled dot several transitions MERGE at (§14.2.4). The
+ * three incoming stubs are what tells it from the initial node's disc: an
+ * initial has one arrow out and nothing in, a junction is a knot.
+ */
+export const umlJunctionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="3.5" fill="currentColor"/>
+  <path d="M3 6 L9 10.5 M3 18 L9 13.5 M15.5 12 H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`;
+
+/** The `H` of a history pseudostate, drawn as strokes rather than set as type. */
+const historyH = 'M9 8.5 V15.5 M15 8.5 V15.5 M9 12 H15';
+
+/**
+ * Shallow history — the `H` in a circle (§14.2.4): re-enter this region at the
+ * sub-state it was last in.
+ */
+export const umlShallowHistoryIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="${historyH}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Deep history — the same `H` with the ASTERISK (§14.2.4): restore the whole
+ * nested configuration, not only the top level. One star apart, which is why
+ * the circle is drawn smaller here to make room for it rather than redrawn.
+ */
+export const umlDeepHistoryIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="10.5" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M7.5 8.5 V15.5 M13.5 8.5 V15.5 M7.5 12 H13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M19.5 4.5 V9.5 M17.3 5.8 L21.7 8.2 M21.7 5.8 L17.3 8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Entry point — the hollow circle ON a composite state's border (§14.2.4): the
+ * named way IN. The border is drawn because the mark means nothing off it.
+ */
+export const umlEntryPointIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 3.5 V20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M2.5 12 H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+</svg>`;
+
+/**
+ * Exit point — the same circle on the same border, CROSSED (§14.2.4): the named
+ * way out.
+ */
+export const umlExitPointIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 3.5 V20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M16 12 H21.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M9.5 9.5 L14.5 14.5 M14.5 9.5 L9.5 14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Terminate — the bare CROSS (§14.2.4): the machine stops here and nothing
+ * else runs. No circle round it, which is the whole of what tells it from the
+ * flow final and from the exit point.
+ */
+export const umlTerminateIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Region — the composite state (§14.2.4): the rounded box with its name band
+ * and a sub-machine inside it. The two little states are the point — a region
+ * is a container, and a glyph of an empty rounded box would be the state's.
+ */
+export const umlRegionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2.5" y="4" width="19" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M2.5 9 H21.5" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="5.5" y="12" width="5.5" height="4.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+  <rect x="13" y="12" width="5.5" height="4.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+</svg>`;
+
 /* ── The relationships: each glyph IS the line the tool draws ───────────── */
 
 /** Association — a plain solid line, undirected (§11.5.4). */
@@ -300,6 +517,40 @@ export const umlCommunicationPathIcon = svg`<svg width="24" height="24" viewBox=
   <rect x="17.5" y="8.5" width="5" height="7" rx="0.8" stroke="currentColor" stroke-width="1.4"/>
 </svg>`;
 
+/**
+ * Control flow — the SOLID line with an open arrowhead (§15.2.4). The look no
+ * structural relationship wears: a behaviour diagram states an order and
+ * therefore always points.
+ */
+export const umlControlFlowIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 12 H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M14.5 8.4 L21 12 L14.5 15.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Object flow — the same arrow, with the DATA on it. §15.2.4 draws no line of
+ * its own for an object flow and tells it apart by what the flow runs between,
+ * so the glyph says that rather than inventing a dash: the little rectangle is
+ * the object node the line passes through.
+ */
+export const umlObjectFlowIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2 12 H8 M14 12 H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M14.5 8.4 L21 12 L14.5 15.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="8" y="9" width="6" height="6" stroke="currentColor" stroke-width="1.4"/>
+</svg>`;
+
+/**
+ * Transition — the same arrow again (§14.2.4.8), carrying its LABEL: the
+ * `trigger [guard] / effect` written over the line is the whole of what a state
+ * machine's arrow says, and the only thing that separates this glyph from the
+ * control flow above it.
+ */
+export const umlTransitionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 16 H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M14.5 12.4 L21 16 L14.5 19.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 7 H16 M5 10.5 H12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+</svg>`;
+
 /* ── The two exports ───────────────────────────────────────────────────── */
 
 /**
@@ -364,4 +615,29 @@ export const UML_TOOLBOX_ICONS = {
   'uml.deploy': umlDeployIcon,
   'uml.manifest': umlManifestIcon,
   'uml.communication-path': umlCommunicationPathIcon,
+  /* ── Phase 2: activities and state machines ────────────────────────── */
+  'uml.action': umlActionIcon,
+  'uml.initial': umlInitialIcon,
+  'uml.activity-final': umlActivityFinalIcon,
+  'uml.flow-final': umlFlowFinalIcon,
+  'uml.decision': umlDecisionIcon,
+  'uml.fork': umlForkIcon,
+  'uml.object-node': umlObjectNodeIcon,
+  'uml.send-signal': umlSendSignalIcon,
+  'uml.accept-event': umlAcceptEventIcon,
+  'uml.time-event': umlTimeEventIcon,
+  'uml.partition': umlPartitionIcon,
+  'uml.state': umlStateIcon,
+  'uml.final-state': umlFinalStateIcon,
+  'uml.choice': umlChoiceIcon,
+  'uml.junction': umlJunctionIcon,
+  'uml.shallow-history': umlShallowHistoryIcon,
+  'uml.deep-history': umlDeepHistoryIcon,
+  'uml.entry-point': umlEntryPointIcon,
+  'uml.exit-point': umlExitPointIcon,
+  'uml.terminate': umlTerminateIcon,
+  'uml.region': umlRegionIcon,
+  'uml.control-flow': umlControlFlowIcon,
+  'uml.object-flow': umlObjectFlowIcon,
+  'uml.transition': umlTransitionIcon,
 } as const;

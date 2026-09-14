@@ -3,7 +3,11 @@
  *
  * ## What these read
  *
- * Three BNFs, transcribed from UML 2.5.1 and cited where they are used:
+ * Six BNFs, transcribed from UML 2.5.1 and cited where they are used. The first
+ * three are phase 1's, and they are the STRUCTURAL half — what a compartment of
+ * a classifier says. The last three arrived with the behaviour sheets and are
+ * the same discipline applied to a LINE rather than to a box: what a transition,
+ * an activity edge and a state's internal compartment say.
  *
  *  - **§9.5.4** (printed p. 113) — a Property:
  *    `[<visibility>] [`/`] <name> [`:` <prop-type>] [`[` <multiplicity-range> `]`]
@@ -15,6 +19,16 @@
  *    `[<direction>] <parameter-name> `:` <type-expression>
  *     [`[`<multiplicity-range>`]`] [`=` <default>]`
  *  - **§7.5.4** (p. 34) — a multiplicity range: `[ <lower> `..` ] <upper>`
+ *  - **§14.2.4.8** (p. 331) — a Transition label:
+ *    `[<trigger> [`,` <trigger>]*] [`[` <guard> `]`] [`/` <behavior-expression>]`,
+ *    with `<trigger>` from §13.3.4 (p. 293): a call or signal event's name, a
+ *    `when` change event, an `after` / `at` time event, or the bare `all`
+ *  - **§15.2.4** (p. 379) — an ActivityEdge's annotations: a name near the
+ *    arrow, a guard "as text in square brackets near tail of the line", and
+ *    `weight-annotation ::= `{` `weight` `=` <value-specification> `}``
+ *  - **§14.2.4.4** (p. 320) — a State's internal activities:
+ *    `<behavior-type-label> [`/` <behavior-expression>]`, the label being one of
+ *    `entry`, `do` and `exit`
  *
  * ## Why they never throw
  *
@@ -464,4 +478,369 @@ export function parseCompartment(text: string | undefined | null): string[] {
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0 && line !== '...' && line !== '…');
+}
+
+/* ── Behaviour: the transition label (§14.2.4.8) and its triggers (§13.3.4) ─ */
+
+/**
+ * WHICH of §13.3.4's five notations a trigger is written in.
+ *
+ * `call-or-signal` is one value for two metaclasses, and the specification is
+ * the reason: "SignalEvent triggers and CallEvent triggers are not
+ * distinguishable by syntax and must be discriminated by their declaration
+ * elsewhere" (§14.2.4.8). A canvas holds no such declaration, so a parser that
+ * returned one of the two would be inventing the half of the fact the notation
+ * does not carry. The XMI writer therefore mints the one metaclass that is true
+ * of both readings, and the drawing keeps what the author typed.
+ */
+export type UmlTriggerKind =
+  | 'call-or-signal'
+  | 'any-receive'
+  | 'change'
+  | 'relative-time'
+  | 'absolute-time';
+
+/** One `<trigger>` of §13.3.4, classified and kept whole. */
+export interface UmlTrigger {
+  kind: UmlTriggerKind;
+  /** The trigger as the author wrote it, trimmed — what a writer prints back. */
+  text: string;
+  /**
+   * What follows the KEYWORD: `5 seconds` after an `after`, `Jan 1` after an
+   * `at`, `stock = 0` after a `when`. Absent for `all`, which has no argument,
+   * and for a call or signal event, whose payload is {@link UmlTrigger.name}.
+   */
+  expression?: string;
+  /** The Operation's or the Signal's name — a call or signal event only. */
+  name?: string;
+  /** `(a, b)`'s contents, verbatim — §13.3.4's `<assignment-specification>`. */
+  assignment?: string;
+}
+
+/** `after` / `at` / `when`, as a leading keyword of a trigger. */
+const TRIGGER_KEYWORD = /^(after|at|when)\b\s*/i;
+
+/**
+ * One trigger, classified per §13.3.4.
+ *
+ * Total and never throwing, exactly like every parser above it: a word the
+ * clause has no notation for is a `call-or-signal`, which is the reading
+ * §14.2.4.8 itself gives to an undecorated name. So the fallback is the
+ * specification's own default rather than an error state.
+ *
+ * The keywords are matched case-insensitively and reported LOWERCASE in
+ * {@link UmlTrigger.kind} while {@link UmlTrigger.text} keeps the author's
+ * capitals: the classification is a fact about the notation, the text is a fact
+ * about the drawing, and neither should be made to speak for the other.
+ */
+export function parseTrigger(raw: string): UmlTrigger {
+  const text = raw.trim();
+
+  // §13.3.4: "Any AnyReceiveEvent is denoted by `all`". A bare word, and the
+  // only trigger with nothing after it.
+  if (text.toLowerCase() === 'all') return { kind: 'any-receive', text };
+
+  const keyword = TRIGGER_KEYWORD.exec(text);
+  if (keyword) {
+    const word = keyword[1].toLowerCase();
+    const expression = text.slice(keyword[0].length).trim();
+    const kind: UmlTriggerKind =
+      word === 'when'
+        ? 'change'
+        : word === 'after'
+          ? 'relative-time'
+          : 'absolute-time';
+    // `after` with nothing after it is a keyword somebody is still typing: the
+    // kind is what the word says, and the expression is simply not stated yet.
+    return { kind, text, ...(expression ? { expression } : {}) };
+  }
+
+  // `<name> ['(' [<assignment-specification>] ')']` — §13.3.4's call and signal
+  // events, which share one syntax and are told apart nowhere on a drawing.
+  const open = text.indexOf('(');
+  if (open >= 0 && text.endsWith(')')) {
+    const name = text.slice(0, open).trim();
+    const assignment = text.slice(open + 1, -1).trim();
+    return {
+      kind: 'call-or-signal',
+      text,
+      ...(name ? { name } : {}),
+      ...(assignment ? { assignment } : {}),
+    };
+  }
+  return {
+    kind: 'call-or-signal',
+    text,
+    ...(text ? { name: text } : {}),
+  };
+}
+
+/**
+ * The inside of a `[…]` guard — `undefined` when there is nothing in it.
+ *
+ * The brackets are OPTIONAL on the way in, for the same reason
+ * {@link parseMultiplicity} strips its own: the same guard is written both ways
+ * depending on where it sits. §15.2.4 puts an activity edge's guard in brackets
+ * beside the line and §14.2.4.8 puts a transition's in brackets inside the
+ * label, while a caller that has already split a label on its brackets holds the
+ * bare expression. One parser, both call sites.
+ */
+export function parseGuard(raw: string | undefined | null): string | undefined {
+  if (raw === null || raw === undefined) return undefined;
+  const inner = String(raw).trim().replace(/^\[/, '').replace(/\]$/, '').trim();
+  return inner ? inner : undefined;
+}
+
+/** A transition label, as §14.2.4.8's three optional parts. */
+export interface UmlTransitionLabel {
+  /** `<trigger> [',' <trigger>]*`, in order, each trimmed and verbatim. */
+  triggers: string[];
+  /** `'[' <guard> ']'`, without its brackets. */
+  guard?: string;
+  /** `'/' <behavior-expression>` — an expression, kept exactly as written. */
+  effect?: string;
+}
+
+/**
+ * The index of the first character at BRACKET DEPTH ZERO that satisfies a test,
+ * from `start` — `-1` when there is none.
+ *
+ * Depth-counted over `[`, `(` and `{` together, which is what makes the three
+ * parts of a transition label separable at all: a guard holds `[a/b > 1]` and a
+ * call event holds `raise(a, b)`, so a naive `indexOf('/')` cuts one of them in
+ * half. The same discipline {@link matchingParen} and {@link splitParameters}
+ * already hold for an operation line.
+ */
+function indexAtTopLevel(
+  text: string,
+  start: number,
+  test: (char: string) => boolean
+): number {
+  let depth = 0;
+  for (let index = start; index < text.length; index++) {
+    const char = text[index];
+    // Tested BEFORE the depth is adjusted, so that an OPENING bracket can be
+    // what is looked for: the guard's own `[` is at depth zero, and a version
+    // that counted it first would never see one.
+    if (depth === 0 && test(char)) return index;
+    if (char === '[' || char === '(' || char === '{') depth++;
+    else if (char === ']' || char === ')' || char === '}') depth--;
+  }
+  return -1;
+}
+
+/** A top-level split on `,` — the `<trigger> [',' <trigger>]*` of §14.2.4.8. */
+function splitTriggers(list: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const char of list) {
+    if (char === '[' || char === '(' || char === '{') depth++;
+    else if (char === ']' || char === ')' || char === '}') depth--;
+    if (char === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current);
+  return parts.map(part => part.trim()).filter(part => part.length > 0);
+}
+
+/**
+ * One transition label, per §14.2.4.8:
+ *
+ * `[<trigger> [',' <trigger>]*] ['[' <guard> ']'] ['/' <behavior-expression>]`
+ *
+ * Every part is optional and an empty label is a legal transition — §14.2.4.8's
+ * outermost brackets say so, and a completion transition (one that fires when
+ * its source state finishes) is written with no label at all. So the empty
+ * string parses to `{ triggers: [] }` rather than to a trigger named nothing.
+ *
+ * ## Read left to right, and anchored on the GUARD
+ *
+ * The guard is the only part with a delimiter at both ends, so it is found
+ * first: the first top-level `[` opens it and its matching `]` closes it.
+ * Everything before is the trigger list, and the first top-level `/` after it
+ * opens the effect. A label with no guard splits on its first top-level `/`
+ * instead, which is the same rule with the anchor missing.
+ *
+ * ## The one degradation, stated
+ *
+ * A bare change event holding a slash — `when x/2 > 1`, with no guard and no
+ * effect — reads its `/` as the effect separator and comes back as the trigger
+ * `when x` with the effect `2 > 1`. §13.3.4's `<value-specification>` is an
+ * arbitrary expression and the notation gives it no delimiters, so no reading of
+ * a flat string can tell the two apart; bracketing the expression, which is
+ * legal, resolves it. Stated here rather than discovered in an export.
+ */
+export function parseTransition(
+  label: string | undefined | null
+): UmlTransitionLabel {
+  const text =
+    label === null || label === undefined ? '' : String(label).trim();
+  if (!text) return { triggers: [] };
+
+  const guardOpen = indexAtTopLevel(text, 0, char => char === '[');
+  let head = text;
+  let guard: string | undefined;
+  let tail = '';
+
+  if (guardOpen >= 0) {
+    // The matching `]` — depth-counted from the `[` itself, so a guard holding
+    // an indexed expression (`[a[0] > 1]`) closes where the author closed it.
+    let depth = 0;
+    let guardClose = -1;
+    for (let index = guardOpen; index < text.length; index++) {
+      const char = text[index];
+      if (char === '[') depth++;
+      else if (char === ']') {
+        depth--;
+        if (depth === 0) {
+          guardClose = index;
+          break;
+        }
+      }
+    }
+    head = text.slice(0, guardOpen);
+    if (guardClose >= 0) {
+      guard = parseGuard(text.slice(guardOpen + 1, guardClose));
+      tail = text.slice(guardClose + 1);
+    } else {
+      // An unclosed `[` is a guard somebody is still typing. Everything after it
+      // is the guard, and there is no effect to find.
+      guard = parseGuard(text.slice(guardOpen + 1));
+      tail = '';
+    }
+  } else {
+    const slash = indexAtTopLevel(text, 0, char => char === '/');
+    if (slash >= 0) {
+      head = text.slice(0, slash);
+      tail = text.slice(slash);
+    }
+  }
+
+  let effect: string | undefined;
+  const slash = indexAtTopLevel(tail, 0, char => char === '/');
+  if (slash >= 0) {
+    const written = tail.slice(slash + 1).trim();
+    if (written) effect = written;
+  }
+
+  return {
+    triggers: splitTriggers(head),
+    ...(guard ? { guard } : {}),
+    ...(effect ? { effect } : {}),
+  };
+}
+
+/* ── Behaviour: the activity edge's annotations (§15.2.4) ─────────────────── */
+
+/** What an activity edge's label says — §15.2.4's name, guard and weight. */
+export interface UmlActivityEdgeLabel {
+  /** The edge's own name, "notated near the arrow" (§15.2.4). */
+  name?: string;
+  /** "Guards are shown as text in square brackets near tail of the line." */
+  guard?: string;
+  /**
+   * `{weight = <value-specification>}`, as the VALUE alone.
+   *
+   * A string rather than a number because §15.2.4's own grammar admits `*` for
+   * an unlimited weight and a ValueSpecification for everything else — an
+   * expression, a constant, the name of a Property. The same call
+   * {@link UmlMultiplicity} makes about `*`, one clause over.
+   */
+  weight?: string;
+}
+
+/** `{weight = 3}` — §15.2.4's `weight-annotation`, however it is spaced. */
+const WEIGHT_ANNOTATION = /^weight\s*=\s*(.+)$/i;
+
+/**
+ * One activity edge's centre label, split into what §15.2.4 writes around a
+ * line.
+ *
+ * Three annotations sharing one text, because this canvas gives a connector ONE
+ * label (`docs/adr/0018`) where the notation places three things at three points
+ * along the arrow. The delimiters are the notation's own — brackets for the
+ * guard, braces for the weight — so an author who writes
+ * `ready [stock > 0] {weight = 2}` gets all three read back, and one who writes
+ * only a word gets a named edge.
+ *
+ * Whatever is left once the bracketed and braced groups are lifted out is the
+ * NAME, which is why a label with no delimiters is a name and not a guard: a
+ * guard is bracketed in §15.2.4 and inventing one from a bare word would put a
+ * condition in a file that the drawing does not show.
+ *
+ * A braced group that is not a `weight-annotation` — `{stream}`, `{ordered}` —
+ * is dropped rather than folded into the name: it is notation this pack does not
+ * model, and gluing it onto the edge's name would rename the edge.
+ */
+export function parseActivityEdge(
+  label: string | undefined | null
+): UmlActivityEdgeLabel {
+  const text =
+    label === null || label === undefined ? '' : String(label).trim();
+  if (!text) return {};
+
+  let guard: string | undefined;
+  let weight: string | undefined;
+
+  let rest = text.replace(/\{([^}]*)\}/g, (_whole, group: string) => {
+    const annotation = WEIGHT_ANNOTATION.exec(group.trim());
+    if (annotation && weight === undefined) weight = annotation[1].trim();
+    return ' ';
+  });
+  rest = rest.replace(/\[([^\]]*)\]/g, (_whole, group: string) => {
+    if (guard === undefined) guard = parseGuard(group);
+    return ' ';
+  });
+
+  const name = rest.replace(/\s+/g, ' ').trim();
+  return {
+    ...(name ? { name } : {}),
+    ...(guard ? { guard } : {}),
+    ...(weight ? { weight } : {}),
+  };
+}
+
+/* ── Behaviour: a state's internal activities (§14.2.4.4) ─────────────────── */
+
+/** Which of §14.2.4.4's three `<behavior-type-label>`s a line carries. */
+export type UmlStateBehaviorKind = 'entry' | 'do' | 'exit';
+
+/** One line of a state's internal activities compartment. */
+export interface UmlStateBehavior {
+  kind: UmlStateBehaviorKind;
+  /**
+   * `<behavior-expression>` — absent when the author wrote the label and no
+   * expression, which is a line somebody is halfway through.
+   */
+  expression?: string;
+}
+
+/**
+ * `entry / x`, `do / y`, `exit / z` — §14.2.4.4's internal activities.
+ *
+ * `undefined` for every other line, and that is what makes the reading safe: a
+ * state's compartment holds internal TRANSITIONS too (§14.2.4.4's next
+ * compartment, `{<trigger>}* ['[' <guard> ']'] [/<behavior-expression>]`) and
+ * ordinary prose besides. Only the three labels the clause names are lifted out;
+ * everything else stays a line of the compartment, which is what
+ * {@link parseCompartment} already hands over.
+ *
+ * The separator is optional on the way in — `entry x` reads as `entry / x` —
+ * because the slash is the one character of this syntax an author routinely
+ * forgets, and the label alone is unambiguous about what the rest of the line
+ * is.
+ */
+export function parseStateBehavior(line: string): UmlStateBehavior | undefined {
+  const match = /^(entry|do|exit)\b\s*(?:\/\s*)?(.*)$/i.exec(line.trim());
+  if (!match) return undefined;
+  const expression = match[2].trim();
+  return {
+    kind: match[1].toLowerCase() as UmlStateBehaviorKind,
+    ...(expression ? { expression } : {}),
+  };
 }

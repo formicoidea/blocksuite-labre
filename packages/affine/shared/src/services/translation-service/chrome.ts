@@ -180,6 +180,23 @@ export const BOARD_RESIZE_TOGGLE: ChromeWording = [
 ];
 
 /**
+ * The orientation toggle a BANDED background carries: the one gesture that
+ * turns a frame drawn in columns into the same frame drawn in rows.
+ *
+ * Declared beside the resize toggle for the same reason and with the same
+ * scope: it names a behaviour of the frame primitive — where the name band
+ * sits and which way the bands run — rather than anything a notation calls its
+ * own. A UML activity partition is the first frame to use it (§15.6.4 draws
+ * swimlanes either way and says the choice means nothing); a BPMN pool is the
+ * obvious second, and a second key for it would be a second tooltip for one
+ * word.
+ */
+export const BOARD_ORIENTATION_TOGGLE: ChromeWording = [
+  'com.labre.board.toolbar.orientation-toggle',
+  'Vertical / horizontal bands',
+];
+
+/**
  * The legend button, in the two wordings the boards actually use: the notation
  * boards say "notation", Wardley says "components".
  *
@@ -230,6 +247,7 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   LINKED_DOC_EMPTY_PREVIEW,
   SYNCED_DOC_EMPTY_PREVIEW,
   BOARD_RESIZE_TOGGLE,
+  BOARD_ORIENTATION_TOGGLE,
   BOARD_LEGEND_NOTATION,
   BOARD_LEGEND_COMPONENTS,
 ];

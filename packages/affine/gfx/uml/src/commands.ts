@@ -6,6 +6,8 @@ import {
   createUmlClassifier,
   createUmlDiagram,
   createUmlNode,
+  createUmlPartition,
+  createUmlRegion,
   createUmlSubject,
   exportUmlPlantumlFile,
   exportUmlXmiFile,
@@ -22,14 +24,16 @@ import {
  * senior sub-menu, the artefact catalogue, the palette, Settings › Shortcuts
  * and the agent (`docs/adr/0008`).
  *
- * ## Thirty-two declared, fourteen nominated — a framework that does NOT fit
+ * ## Fifty-six declared, fourteen nominated — a framework that does NOT fit
  *
- * UML 2.5.1 is the largest notation this library packs: phase 1 declared
- * twenty-one commands against a sub-menu of fourteen, and phase 2 (components
- * and deployment) appends eleven more. So unlike C4 — the framework that fits to
- * the entry — the arbitration RUNS here: `selectSeniorMenuCommands` triggers on
- * `catalogue.length > SENIOR_MENU_CAP`, thirty-two is well over fourteen, and
- * the row a user meets is thirteen ranked buttons plus "More artefacts…".
+ * UML 2.5.1 is the largest notation this library packs, by a distance: phase 1
+ * declared twenty-one commands against a sub-menu of fourteen, phase 2's
+ * structural half (components and deployment) appended eleven, and its
+ * behavioural half (activities and state machines) appends twenty-four more. So
+ * unlike C4 — the framework that fits to the entry — the arbitration RUNS here:
+ * `selectSeniorMenuCommands` triggers on `catalogue.length > SENIOR_MENU_CAP`,
+ * fifty-six is four times fourteen, and the row a user meets is thirteen ranked
+ * buttons plus "More artefacts…".
  *
  * That makes the head of the NOMINATION list the cold start every new user
  * meets, which is the lesson BPMN learned in a live recette (#144) and the
@@ -48,7 +52,7 @@ import {
  *      contesting it: the object (an instance diagram is a second reading of a
  *      class diagram, not the first thing anybody draws), the four remaining
  *      relationships, the two exports, and — since phase 2 — the whole of
- *      components and deployment.
+ *      components, deployment, activities and state machines.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
@@ -418,6 +422,265 @@ const SPECS: Spec[] = [
     senior: false,
     run: std => activateUmlEdge(std, 'communication-path'),
   },
+  /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ─ */
+  // The same ONE decision the eleven above made, restated for twenty-four: the
+  // senior row is the phase-1 fourteen, and a behaviour tranche does not get to
+  // re-argue it from inside itself either. At fifty-six catalogue entries the
+  // row would be arbitrary whatever it held, and the honest place for that
+  // arbitration is a PO curation point with the usage data in front of it —
+  // which is also why `uml.addAction`, the single most-drawn shape of an
+  // activity diagram, declines a seat it would plainly deserve. Everything is
+  // reachable: the catalogue is the TOTAL surface, and the palette and the
+  // agent carry all fifty-six.
+  {
+    id: 'addAction',
+    label: 'Action',
+    iconKey: 'uml.action',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:action',
+    senior: false,
+    run: std => createUmlNode(std, 'action'),
+  },
+  {
+    id: 'addInitial',
+    label: 'Initial node',
+    iconKey: 'uml.initial',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:initial',
+    senior: false,
+    run: std => createUmlNode(std, 'initial'),
+  },
+  {
+    id: 'addActivityFinal',
+    label: 'Activity final',
+    iconKey: 'uml.activity-final',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:activity-final',
+    senior: false,
+    run: std => createUmlNode(std, 'activity-final'),
+  },
+  {
+    id: 'addFlowFinal',
+    label: 'Flow final',
+    iconKey: 'uml.flow-final',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:flow-final',
+    senior: false,
+    run: std => createUmlNode(std, 'flow-final'),
+  },
+  {
+    id: 'addDecision',
+    label: 'Decision',
+    iconKey: 'uml.decision',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:decision',
+    senior: false,
+    run: std => createUmlNode(std, 'decision'),
+  },
+  {
+    id: 'addFork',
+    label: 'Fork',
+    iconKey: 'uml.fork',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:fork',
+    senior: false,
+    run: std => createUmlNode(std, 'fork'),
+  },
+  {
+    id: 'addObjectNode',
+    label: 'Object node',
+    iconKey: 'uml.object-node',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:object-node',
+    senior: false,
+    run: std => createUmlNode(std, 'object-node'),
+  },
+  {
+    id: 'addSendSignal',
+    label: 'Send signal',
+    iconKey: 'uml.send-signal',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:send-signal',
+    senior: false,
+    run: std => createUmlNode(std, 'send-signal'),
+  },
+  {
+    id: 'addAcceptEvent',
+    label: 'Accept event',
+    iconKey: 'uml.accept-event',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:accept-event',
+    senior: false,
+    run: std => createUmlNode(std, 'accept-event'),
+  },
+  {
+    id: 'addTimeEvent',
+    label: 'Time event',
+    iconKey: 'uml.time-event',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:time-event',
+    senior: false,
+    run: std => createUmlNode(std, 'time-event'),
+  },
+  {
+    // A swimlane is filed under `boundaries` for the reason the subject is: it
+    // is neither an element of the model nor the sheet the model is drawn on,
+    // it is a band drawn ROUND part of the drawing, and what belongs to it is
+    // read back from where things sit (§15.6.4).
+    id: 'addPartition',
+    label: 'Partition',
+    iconKey: 'uml.partition',
+    kind: 'artefact',
+    category: 'boundaries',
+    element: 'boundary:partition',
+    senior: false,
+    run: createUmlPartition,
+  },
+  /* ── Phase 2: state machines (§14.2.4) ───────────────────────────────── */
+  {
+    id: 'addState',
+    label: 'State',
+    iconKey: 'uml.state',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:state',
+    senior: false,
+    run: std => createUmlNode(std, 'state'),
+  },
+  {
+    id: 'addFinalState',
+    label: 'Final state',
+    iconKey: 'uml.final-state',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:final-state',
+    senior: false,
+    run: std => createUmlNode(std, 'final-state'),
+  },
+  {
+    id: 'addChoice',
+    label: 'Choice',
+    iconKey: 'uml.choice',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:choice',
+    senior: false,
+    run: std => createUmlNode(std, 'choice'),
+  },
+  {
+    id: 'addJunction',
+    label: 'Junction',
+    iconKey: 'uml.junction',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:junction',
+    senior: false,
+    run: std => createUmlNode(std, 'junction'),
+  },
+  {
+    id: 'addShallowHistory',
+    label: 'Shallow history',
+    iconKey: 'uml.shallow-history',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:shallow-history',
+    senior: false,
+    run: std => createUmlNode(std, 'shallow-history'),
+  },
+  {
+    id: 'addDeepHistory',
+    label: 'Deep history',
+    iconKey: 'uml.deep-history',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:deep-history',
+    senior: false,
+    run: std => createUmlNode(std, 'deep-history'),
+  },
+  {
+    id: 'addEntryPoint',
+    label: 'Entry point',
+    iconKey: 'uml.entry-point',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:entry-point',
+    senior: false,
+    run: std => createUmlNode(std, 'entry-point'),
+  },
+  {
+    id: 'addExitPoint',
+    label: 'Exit point',
+    iconKey: 'uml.exit-point',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:exit-point',
+    senior: false,
+    run: std => createUmlNode(std, 'exit-point'),
+  },
+  {
+    id: 'addTerminate',
+    label: 'Terminate',
+    iconKey: 'uml.terminate',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:terminate',
+    senior: false,
+    run: std => createUmlNode(std, 'terminate'),
+  },
+  {
+    // A composite state, as the container it is drawn as (§14.2.4) — and a
+    // `boundaries` entry for the same reason the partition beside it is one:
+    // what is IN a region is read back from geometry, never from a list.
+    id: 'addRegion',
+    label: 'Region',
+    iconKey: 'uml.region',
+    kind: 'artefact',
+    category: 'boundaries',
+    element: 'boundary:region',
+    senior: false,
+    run: createUmlRegion,
+  },
+  /* ── Phase 2: the behaviour lines ────────────────────────────────────── */
+  {
+    id: 'controlFlowTool',
+    label: 'Control flow',
+    iconKey: 'uml.control-flow',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:control-flow',
+    senior: false,
+    run: std => activateUmlEdge(std, 'control-flow'),
+  },
+  {
+    id: 'objectFlowTool',
+    label: 'Object flow',
+    iconKey: 'uml.object-flow',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:object-flow',
+    senior: false,
+    run: std => activateUmlEdge(std, 'object-flow'),
+  },
+  {
+    id: 'transitionTool',
+    label: 'Transition',
+    iconKey: 'uml.transition',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:transition',
+    senior: false,
+    run: std => activateUmlEdge(std, 'transition'),
+  },
 ];
 
 const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
@@ -433,7 +696,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
     : ['catalogue', 'palette', 'agent'],
   order,
   scope: 'edgeless',
-  // Keyless by intent, and at thirty-two commands there is no chord alphabet
+  // Keyless by intent, and at fifty-six commands there is no chord alphabet
   // that would not be arbitrary — still bindable from Settings › Shortcuts,
   // which is what `toShortcutDescriptor` being total buys.
   defaultKeys: { mac: [], other: [] },

@@ -10,6 +10,7 @@ import {
   UML_CUBE_DEPTH,
   UML_NAME_GAP,
   UML_PACKAGE_TAB,
+  UML_SIGNAL_POINT,
   UML_TIER_LINE_HEIGHT,
   UML_TIER_MARGIN,
   UML_TIER_SIDE_INSET,
@@ -26,6 +27,7 @@ import {
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
 } from '../consts.js';
+import { UML_UNLABELLED_KINDS } from '../keywords.js';
 import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 
 /** Every kind the model declares, read off a table that is total over it. */
@@ -39,14 +41,25 @@ const CUBE_KINDS = [
 ] as const satisfies readonly UmlNodeKind[];
 
 /**
+ * The two signal pentagons, whose tier is pulled back out of the POINT and so
+ * is neither the element's full insetted width nor a face's (§16.3.4).
+ */
+const SIGNAL_KINDS = [
+  'send-signal',
+  'accept-event',
+] as const satisfies readonly UmlNodeKind[];
+
+/**
  * The kinds whose one tier is measured against the element's own box — which is
- * every kind except the cubes (measured against the face they are written in)
- * and the three glyphs whose label is written OUTSIDE the element entirely.
+ * every kind except the cubes (measured against the face they are written in),
+ * the four glyphs whose label is written OUTSIDE the element entirely, and the
+ * two pentagons whose label gives up the width of their point.
  */
 const OWN_BOX_KINDS = ALL_KINDS.filter(
   kind =>
     !UML_BESIDE_LABEL_KINDS.has(kind) &&
-    !(CUBE_KINDS as readonly UmlNodeKind[]).includes(kind)
+    !(CUBE_KINDS as readonly UmlNodeKind[]).includes(kind) &&
+    !(SIGNAL_KINDS as readonly UmlNodeKind[]).includes(kind)
 );
 
 /** Every kind that is a SHAPE the notation draws rather than a divided box. */
@@ -57,6 +70,24 @@ const PICTURE_KINDS: readonly UmlNodeKind[] = [
   'use-case',
   ...CUBE_KINDS,
   ...UML_BESIDE_LABEL_KINDS,
+  // Phase 2, the behaviour artefacts — every one of them but the `state`,
+  // which is the one divided box of the two families (§14.2.4).
+  'action',
+  'object-node',
+  ...SIGNAL_KINDS,
+  'initial',
+  'activity-final',
+  'flow-final',
+  'decision',
+  'fork',
+  'final-state',
+  'choice',
+  'junction',
+  'shallow-history',
+  'deep-history',
+  'entry-point',
+  'exit-point',
+  'terminate',
 ];
 
 /** One line of the name face — the unit nearly every offset here is built of. */
@@ -138,6 +169,23 @@ describe('where a uml classifier writes its compartments', () => {
       expect(splits[0]).toBeCloseTo(UML_TIER_MARGIN + NAME_LINE + UML_NAME_GAP);
     }
   );
+
+  /**
+   * §14.2.4: a state is a name compartment over its INTERNAL ACTIVITIES — the
+   * `entry / …`, `do / …`, `exit / …` lines a machine runs while it rests
+   * there. The object's layout exactly, and the one behaviour kind that is a
+   * divided box rather than a picture or a mark.
+   */
+  it('lays a state out like an object: name, behaviour, one separator', () => {
+    const { attributes, operations, splits } = atOrigin('state');
+    expect(splits).toHaveLength(1);
+    expect(operations).toBeUndefined();
+    expect(attributes).toBeDefined();
+    expect(attributes!.y + attributes!.h).toBeCloseTo(
+      UML_NODE_BOX.state.h - UML_TIER_MARGIN
+    );
+    expect(splits[0]).toBeCloseTo(UML_TIER_MARGIN + NAME_LINE + UML_NAME_GAP);
+  });
 
   it('insets every compartment by the same proportional gutter', () => {
     for (const kind of OWN_BOX_KINDS) {
@@ -226,7 +274,7 @@ describe('where the picture kinds write their one label', () => {
    * picture — the one tier in this module that lands outside the element it
    * belongs to, which is what {@link UML_BESIDE_LABEL_KINDS} exists to declare.
    */
-  it('writes a port and the two interface glyphs beside themselves', () => {
+  it('writes a port, the two interface glyphs and the hourglass beside themselves', () => {
     for (const kind of UML_BESIDE_LABEL_KINDS) {
       const { w, h } = UML_NODE_BOX[kind];
       const { name } = atOrigin(kind);
@@ -240,6 +288,76 @@ describe('where the picture kinds write their one label', () => {
       expect(name.h, kind).toBeCloseTo(NAME_LINE);
     }
   });
+
+  /**
+   * §15.3.4 and §15.4.4: an action's verb phrase and an object node's value
+   * name are written INSIDE the box, centred — the use case's answer, on a
+   * rectangle instead of an ellipse.
+   */
+  it.each(['action', 'object-node'] as const)(
+    'centres %s in its own box',
+    kind => {
+      const { w, h } = UML_NODE_BOX[kind];
+      const { name } = atOrigin(kind);
+      expect(name.y).toBeCloseTo(h - (name.y + name.h));
+      expect(name.x).toBeCloseTo(w * UML_TIER_SIDE_INSET);
+      expect(name.x + name.w).toBeCloseTo(w - w * UML_TIER_SIDE_INSET);
+    }
+  );
+
+  /**
+   * §16.3.4: the pentagons' words are pulled back out of the POINT — the tip a
+   * send signal sticks out to the right, the notch an accept event bites in
+   * from the left — measured with the very number the renderer draws that point
+   * from, so a name can never run out through it.
+   */
+  it('pulls a signal label back out of its own point', () => {
+    const { w } = UML_NODE_BOX['send-signal'];
+    const point = w * UML_SIGNAL_POINT;
+    const inset = w * UML_TIER_SIDE_INSET;
+
+    const send = atOrigin('send-signal').name;
+    // Flush left, and short of the tip on the right.
+    expect(send.x).toBeCloseTo(inset);
+    expect(send.x + send.w).toBeCloseTo(w - point - inset);
+
+    const accept = atOrigin('accept-event').name;
+    // The mirror: clear of the notch on the left, flush right.
+    expect(accept.x).toBeCloseTo(point + inset);
+    expect(accept.x + accept.w).toBeCloseTo(w - inset);
+
+    // Same column width for both, because it is the same pentagon turned.
+    expect(send.w).toBeCloseTo(accept.w);
+  });
+
+  /**
+   * The control nodes of §15.3.4 and the pseudostates of §14.2.4 carry NO
+   * words: a disc, a bar, a bullseye and a cross have nothing written in them.
+   *
+   * `umlCompartmentBoxes` still hands back a box — a box is always computable
+   * from a box — and the authority on whether a text element is ever created is
+   * `UML_UNLABELLED_KINDS`. What this pins is that the box it hands back is
+   * CLAMPED to the mark: two lines of a 16px face is 45 units and a junction is
+   * 16 tall, so an unclamped tier would hang half of itself off the top of the
+   * dot.
+   */
+  it('clamps the box of a mark that carries no words at all', () => {
+    for (const kind of UML_UNLABELLED_KINDS) {
+      const { w, h } = UML_NODE_BOX[kind];
+      const { name, splits } = atOrigin(kind);
+      expect(splits, kind).toEqual([]);
+      expect(name.y, kind).toBeGreaterThanOrEqual(0);
+      expect(name.y + name.h, kind).toBeLessThanOrEqual(h + 0.001);
+      expect(name.x + name.w, kind).toBeLessThanOrEqual(w + 0.001);
+      // Centred, whatever is left of it.
+      expect(name.y, kind).toBeCloseTo(h - (name.y + name.h));
+    }
+    // Not vacuous, and not the whole pack either: thirteen marks out of
+    // thirty-five kinds.
+    expect(UML_UNLABELLED_KINDS.size).toBe(13);
+    expect(UML_UNLABELLED_KINDS.has('action')).toBe(false);
+    expect(UML_UNLABELLED_KINDS.has('state')).toBe(false);
+  });
 });
 
 describe('the compartment layout as a whole', () => {
@@ -248,7 +366,7 @@ describe('the compartment layout as a whole', () => {
     // component writes may hang outside the shape it is grouped with, or the
     // group's derived bounds would grow past the picture.
     //
-    // The three exceptions are the notation's own and are declared rather than
+    // The four exceptions are the notation's own and are declared rather than
     // discovered: a port's name and an interface glyph's are written beside
     // them, because a 16-unit square has nowhere to put one (§11.3.4, §10.4.4).
     for (const kind of ALL_KINDS.filter(k => !UML_BESIDE_LABEL_KINDS.has(k))) {

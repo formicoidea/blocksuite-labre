@@ -4,15 +4,31 @@ import {
 } from '@labre/affine-model';
 import { describe, expect, it, vi } from 'vitest';
 
-import { umlDiagramBand, umlInDiagramBand } from '../board-hit.js';
+import {
+  umlDiagramBand,
+  umlInDiagramBand,
+  umlInPartitionBand,
+  umlInRegionBand,
+  umlPartitionBand,
+  umlRegionBand,
+} from '../board-hit.js';
 import {
   UML_DIAGRAM_BOX,
   UML_DIAGRAM_MARGIN,
   UML_NAME_FONT_SIZE,
+  UML_PARTITION_BAND,
+  UML_PARTITION_BOX,
+  UML_REGION_BAND,
+  UML_REGION_BOX,
   UML_SUBJECT_BOX,
   UML_SUBJECT_MARGIN,
 } from '../consts.js';
-import { UmlDiagramView, UmlSubjectView } from '../element-view.js';
+import {
+  UmlDiagramView,
+  UmlPartitionView,
+  UmlRegionView,
+  UmlSubjectView,
+} from '../element-view.js';
 
 /**
  * A UML frame is SELECTED by its border (issue #194) — and the name written on
@@ -171,5 +187,177 @@ describe('where a UML subject answers the pointer', () => {
     // Across the top, where the diagram frame wears its band — and where a
     // subject wears nothing, because it has no heading to write in one.
     expect(at(subject(), { x: BW / 2, y: 30 })).toBe(false);
+  });
+});
+
+/* ── The two behaviour frames ──────────────────────────────────────────── */
+
+/** A partition or composite state view over a detached model of the given box. */
+function behaviourFrame(
+  Ctor: typeof UmlPartitionView | typeof UmlRegionView,
+  {
+    name,
+    w,
+    h,
+    orientation,
+  }: { name: string; w: number; h: number; orientation?: string }
+) {
+  const model = {
+    id: 'frame',
+    name,
+    orientation,
+    deserializedXYWH: [0, 0, w, h],
+    x: 0,
+    y: 0,
+    w,
+    h,
+    rotate: 0,
+    isLocked: () => false,
+    includesPoint: (x: number, y: number, options: object) =>
+      backgroundIncludesPoint({ x: 0, y: 0, w, h, rotate: 0 }, x, y, options),
+  };
+
+  const gfx = {
+    viewport: { toModelCoord: (x: number, y: number) => [x, y] },
+    selection: { set: vi.fn() },
+    std: {
+      store: { captureSync: vi.fn(), readonly: false },
+      get: () => ({ updateElement: vi.fn() }),
+      getOptional: () => null,
+    },
+  };
+
+  const view = new Ctor(model as never, gfx as never);
+  view.onCreated();
+  return view;
+}
+
+const atPoint = (
+  view: ReturnType<typeof behaviourFrame>,
+  p: { x: number; y: number }
+): boolean => view.includesPoint(p.x, p.y, PICK as never, null as never);
+
+describe('where a UML partition answers the pointer', () => {
+  const W = UML_PARTITION_BOX.w;
+  const H = UML_PARTITION_BOX.h;
+
+  const column = () =>
+    behaviourFrame(UmlPartitionView, {
+      name: 'Vendeur',
+      w: W,
+      h: H,
+      orientation: 'vertical',
+    });
+
+  const row = () =>
+    behaviourFrame(UmlPartitionView, {
+      name: 'Vendeur',
+      w: H,
+      h: W,
+      orientation: 'horizontal',
+    });
+
+  it('answers over the WHOLE header band of a column, words or no words', () => {
+    // The band is what the model picks, so the click that selects the lane and
+    // the click that renames it are the same click. It matters more here than
+    // on the sheet: a partition is transparent, so the header is the only wide
+    // part of it a user can take hold of.
+    expect(atPoint(column(), { x: W / 2, y: 4 })).toBe(true);
+    expect(atPoint(column(), { x: W / 2, y: UML_PARTITION_BAND - 1 })).toBe(
+      true
+    );
+    expect(
+      umlInPartitionBand(
+        { deserializedXYWH: [0, 0, W, H], orientation: 'vertical' },
+        [W / 2, UML_PARTITION_BAND - 1]
+      )
+    ).toBe(true);
+  });
+
+  it('lets the lane go below its header, so the actions in it get the click', () => {
+    expect(atPoint(column(), { x: W / 2, y: UML_PARTITION_BAND + 20 })).toBe(
+      false
+    );
+    expect(atPoint(column(), { x: W / 2, y: H / 2 })).toBe(false);
+    // …and still answers on its border, straight from the model.
+    expect(atPoint(column(), { x: 4, y: H / 2 })).toBe(true);
+  });
+
+  /**
+   * A ROW wears its header down the left edge instead — the one thing
+   * `orientation` changes, and the case that proves the view asks the same
+   * function the renderer does rather than assuming a top band.
+   */
+  it('moves the row’s rename zone to the left edge', () => {
+    expect(atPoint(row(), { x: 4, y: W / 2 })).toBe(true);
+    expect(atPoint(row(), { x: UML_PARTITION_BAND - 1, y: W / 2 })).toBe(true);
+    expect(atPoint(row(), { x: UML_PARTITION_BAND + 20, y: W / 2 })).toBe(
+      false
+    );
+    // Across the top, where a COLUMN wears its band and a row wears nothing —
+    // well clear of the border band, which would answer for another reason.
+    expect(atPoint(row(), { x: H / 2, y: 20 })).toBe(false);
+  });
+
+  it('reads the band off the declaration, and clamps a degenerate lane', () => {
+    const band = umlPartitionBand({
+      deserializedXYWH: [0, 0, W, H],
+      orientation: 'vertical',
+    })!;
+    // The band IS the deep margin, full width — one number, the model's.
+    expect(band).toEqual({ x: 0, y: 0, w: W, h: UML_PARTITION_BAND });
+
+    // A row's band is the same thickness, turned onto the other edge.
+    const left = umlPartitionBand({
+      deserializedXYWH: [0, 0, H, W],
+      orientation: 'horizontal',
+    })!;
+    expect(left).toEqual({ x: 0, y: 0, w: UML_PARTITION_BAND, h: W });
+
+    // Dragged shorter than its own header: clamped to what there is, the way
+    // the renderer clamps.
+    expect(
+      umlPartitionBand({
+        deserializedXYWH: [0, 0, W, 20],
+        orientation: 'vertical',
+      })!.h
+    ).toBe(20);
+
+    // Nothing at all is not a band.
+    expect(umlPartitionBand({ deserializedXYWH: [0, 0, 0, 0] })).toBeNull();
+  });
+});
+
+describe('where a UML composite state answers the pointer', () => {
+  const W = UML_REGION_BOX.w;
+  const H = UML_REGION_BOX.h;
+
+  const region = () =>
+    behaviourFrame(UmlRegionView, { name: 'Commande', w: W, h: H });
+
+  it('answers over its whole name band, and nowhere else inside', () => {
+    expect(atPoint(region(), { x: W / 2, y: 4 })).toBe(true);
+    expect(atPoint(region(), { x: W / 2, y: UML_REGION_BAND - 1 })).toBe(true);
+    // Below the band the sub-machine keeps its clicks.
+    expect(atPoint(region(), { x: W / 2, y: UML_REGION_BAND + 20 })).toBe(
+      false
+    );
+    expect(atPoint(region(), { x: W / 2, y: H / 2 })).toBe(false);
+    // The border still answers.
+    expect(atPoint(region(), { x: 4, y: H / 2 })).toBe(true);
+  });
+
+  it('reads the band off the declaration, and clamps a degenerate frame', () => {
+    expect(umlRegionBand({ deserializedXYWH: [0, 0, W, H] })).toEqual({
+      x: 0,
+      y: 0,
+      w: W,
+      h: UML_REGION_BAND,
+    });
+    expect(umlRegionBand({ deserializedXYWH: [0, 0, W, 20] })!.h).toBe(20);
+    expect(umlRegionBand({ deserializedXYWH: [0, 0, 0, 0] })).toBeNull();
+    expect(
+      umlInRegionBand({ deserializedXYWH: [0, 0, W, H] }, [W / 2, 10])
+    ).toBe(true);
   });
 });

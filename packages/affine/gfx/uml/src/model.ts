@@ -17,9 +17,12 @@ import {
 import {
   type UmlOperation,
   type UmlProperty,
+  parseActivityEdge,
   parseCompartment,
   parseOperation,
   parseProperty,
+  parseStateBehavior,
+  parseTransition,
 } from './grammar.js';
 import { stereotypesOf } from './keywords.js';
 import { UML_ROLE } from './roles.js';
@@ -70,6 +73,8 @@ export interface UmlSourceElement extends UmlComponentElement {
   kind?: string;
   name?: unknown;
   heading?: unknown;
+  /** Which way a `umlPartition`'s band runs (§15.6.4). */
+  orientation?: string;
   xywh?: string;
   deserializedXYWH?: readonly number[];
   elementBound?: { x: number; y: number; w: number; h: number };
@@ -227,7 +232,21 @@ export type UmlRelationKind =
   // Phase 2 — the structural families (§19.2.4, §19.3.4, §19.4.4).
   | 'deploy'
   | 'manifest'
-  | 'communication-path';
+  | 'communication-path'
+  // Phase 2 — the behaviour families (§15.2.4, §14.2.4.8).
+  //
+  // Read here AS RELATIONS even though neither writer emits one from
+  // {@link UmlModel.relations}: a control flow, an object flow and a transition
+  // are written by the Activity and the StateMachine that own them
+  // ({@link UmlActivity.edges}, {@link UmlStateMachine.transitions}). They are
+  // in this union all the same, because the union is what
+  // {@link RELATION_OF_ROLE} reads a connector's ROLE against — a kind missing
+  // here would make every flow on an activity sheet look like an untyped
+  // connector, warn the author about a line they typed correctly, and export
+  // nothing.
+  | 'control-flow'
+  | 'object-flow'
+  | 'transition';
 
 /** One connector, once both of its ends are known artefacts of this diagram. */
 export interface UmlRelation {
@@ -242,6 +261,190 @@ export interface UmlRelation {
   targetId: string;
   /** The connector's own centre text, when it carries one. */
   label?: string;
+}
+
+/* ── The behaviour IR (§15.2.4 activities, §14.2.4 state machines) ────────── */
+
+/** The ten glyphs an `act` sheet draws — §15.3.4, §15.4.4, §16.3.4, §16.10.4. */
+export type UmlActivityNodeKind = Extract<
+  UmlNodeKind,
+  | 'action'
+  | 'initial'
+  | 'activity-final'
+  | 'flow-final'
+  | 'decision'
+  | 'fork'
+  | 'object-node'
+  | 'send-signal'
+  | 'accept-event'
+  | 'time-event'
+>;
+
+/**
+ * One node of an Activity — the glyph, its words, and the lane it is drawn in.
+ *
+ * ONE record with a `kind` discriminant rather than ten lists, for the reason
+ * {@link UmlDeploymentNode} gives: §15.7 makes all ten ActivityNodes and both
+ * writers need exactly the discriminant — an `xmi:type` and a PlantUML
+ * stereotype. A list per glyph would be ten fields the writers would have to
+ * concatenate back into one traversal order.
+ */
+export interface UmlActivityNode extends UmlNodeBase {
+  kind: UmlActivityNodeKind;
+  /**
+   * The surface id of the `umlPartition` whose box holds this node's centre —
+   * §15.6.4's swimlane, read at EXPORT time from geometry and never stored.
+   *
+   * The same reading {@link UmlPort.ownerId} gets, and for the same reason: a
+   * partition is a band drawn across the sheet, membership is which band a glyph
+   * sits in, and a canvas holds no second statement about it. Absent for a node
+   * drawn between the lanes, or on a sheet with no lanes at all — which is most
+   * of them.
+   */
+  partitionId?: string;
+}
+
+/** One ActivityEdge — the arrow, and the three things §15.2.4 writes on it. */
+export interface UmlActivityEdge {
+  /** §15.7.9 / §15.7.11 — which of the two kinds of token travels. */
+  kind: Extract<UmlRelationKind, 'control-flow' | 'object-flow'>;
+  sourceId: string;
+  targetId: string;
+  /** The edge's own name, "notated near the arrow". */
+  name?: string;
+  /** The `[…]` guard, without its brackets — §15.2.4's own notation. */
+  guard?: string;
+  /** `{weight = …}`'s value, as written — see {@link UmlActivityEdgeLabel}. */
+  weight?: string;
+}
+
+/** An ActivityPartition (§15.6) — the swimlane, and what is drawn in it. */
+export interface UmlPartition extends UmlNodeBase {
+  /** Which way the band runs. A column unless the author turned it. */
+  orientation: 'vertical' | 'horizontal';
+  /**
+   * The activity nodes whose centres it holds, in document order.
+   *
+   * Listed on the partition AS WELL AS named by each node's
+   * {@link UmlActivityNode.partitionId}, and the duplication is the one
+   * {@link UmlModel.ports} already explains: the XMI writer walks the lane (an
+   * `ActivityPartition` carries `node` idrefs, so it needs the list) while a
+   * reader asking which lane one action is in must not have to scan every lane
+   * to find out. Both readings are built from one pass, so they cannot disagree.
+   */
+  nodeIds: string[];
+}
+
+/**
+ * One Activity — the whole of what an `act` sheet says.
+ *
+ * A frame is ONE Activity: §15.2.4 draws the border and the name in the upper
+ * left corner, Annex A replaces that border with the diagram frame, and that is
+ * exactly the frame this model was read off. So the id and the name are the
+ * sheet's own, and a second activity on one canvas is a second frame — the same
+ * reading ADR 0017 makes about every other UML sheet.
+ */
+export interface UmlActivity {
+  /** The diagram frame's surface id — the Activity IS the sheet. */
+  id: string;
+  name: string;
+  nodes: UmlActivityNode[];
+  edges: UmlActivityEdge[];
+  partitions: UmlPartition[];
+}
+
+/** The nine glyphs §14.2.4 routes transitions through. */
+export type UmlPseudostateKind = Extract<
+  UmlNodeKind,
+  | 'initial'
+  | 'choice'
+  | 'junction'
+  | 'shallow-history'
+  | 'deep-history'
+  | 'entry-point'
+  | 'exit-point'
+  | 'terminate'
+  | 'fork'
+>;
+
+/** A Region (§14.2.4) — the composite state, drawn as a box round its parts. */
+export interface UmlRegion extends UmlNodeBase {
+  /**
+   * The region this one is drawn inside — §14.2.4's nested composite state.
+   *
+   * Geometry, most-nested first, exactly as a package inside a package is read
+   * (`xmi.ts`'s `containerOf`). Absent for a region at the top level of the
+   * sheet, which is where most of them are.
+   */
+  parentId?: string;
+}
+
+/** A State (§14.2.4.4) — the rounded box and its internal activities. */
+export interface UmlState extends UmlNodeBase {
+  /** `entry / …` lines, in order, as the expressions alone. */
+  entry: string[];
+  /** `do / …` lines — the metamodel's `doActivity`. */
+  doActivity: string[];
+  /** `exit / …` lines. */
+  exit: string[];
+  /**
+   * Every line of the compartment that is NONE of the three — an internal
+   * transition (§14.2.4.4's second compartment), a constraint, a note to self.
+   *
+   * Carried rather than dropped for the reason {@link UmlClassifier.lines}
+   * exists: the author typed it, so something has to be able to write it back,
+   * and a writer that silently lost a compartment would be the worst kind of
+   * lossy export. Neither writer has a metamodel slot for it today; PlantUML
+   * prints it as a state line.
+   */
+  lines: string[];
+  /** The composite state whose box holds its centre — {@link UmlRegion}. */
+  regionId?: string;
+}
+
+/** A FinalState (§14.2.4.5) — the bullseye a machine stops at. */
+export interface UmlFinalState extends UmlNodeBase {
+  regionId?: string;
+}
+
+/** A Pseudostate (§14.2.4.6) — a vertex that routes rather than one that is. */
+export interface UmlPseudostate extends UmlNodeBase {
+  kind: UmlPseudostateKind;
+  regionId?: string;
+}
+
+/** One Transition (§14.2.4.8) — its two ends and its label, parsed. */
+export interface UmlTransition {
+  sourceId: string;
+  targetId: string;
+  /** `<trigger> [',' <trigger>]*`, verbatim and in order. */
+  triggers: string[];
+  /** The `[…]` guard, without its brackets. */
+  guard?: string;
+  /** The `/ <behavior-expression>` effect, as written. */
+  effect?: string;
+}
+
+/**
+ * One StateMachine — the whole of what an `stm` sheet says.
+ *
+ * {@link UmlActivity}'s twin, and it carries its vertices in FOUR lists rather
+ * than one discriminated list because the metamodel does: a State owns
+ * behaviours and regions, a FinalState owns neither and forbids both
+ * (§14.5.11.4), and a Pseudostate is a `kind` attribute on one metaclass. Three
+ * different `xmi:type`s with three different shapes is three lists; ten
+ * identically shaped ActivityNodes is one.
+ */
+export interface UmlStateMachine {
+  /** The diagram frame's surface id — the StateMachine IS the sheet. */
+  id: string;
+  name: string;
+  /** The composite states, outermost and nested alike. */
+  regions: UmlRegion[];
+  states: UmlState[];
+  finalStates: UmlFinalState[];
+  pseudostates: UmlPseudostate[];
+  transitions: UmlTransition[];
 }
 
 /** One diagram, as everything the writers need and nothing else. */
@@ -277,6 +480,20 @@ export interface UmlModel {
   artifacts: UmlArtifactNode[];
   /** §19.4 — the nodes, devices and execution environments. */
   nodes: UmlDeploymentNode[];
+  /**
+   * §15.2 — the Activity this sheet draws, or nothing.
+   *
+   * A LIST holding zero or one entry rather than an optional field, and the
+   * shape is what makes both writers a loop instead of a branch: every other
+   * artefact on this model is a list, `for (const activity of model.activities)`
+   * reads identically to `for (const component of model.components)`, and a
+   * sheet that draws no flow contributes nothing without either writer testing
+   * for it. Populated when the sheet holds an activity NODE or an activity EDGE
+   * — a lone arrow is still something the author drew.
+   */
+  activities: UmlActivity[];
+  /** §14.2 — the StateMachine this sheet draws, or nothing. The same shape. */
+  stateMachines: UmlStateMachine[];
   relations: UmlRelation[];
   /**
    * What the READING could not make sense of, one line each, in the user's
@@ -315,6 +532,9 @@ const RELATION_ROLE: Record<UmlRelationKind, string> = {
   deploy: UML_ROLE.deploy,
   manifest: UML_ROLE.manifest,
   'communication-path': UML_ROLE['communication-path'],
+  'control-flow': UML_ROLE['control-flow'],
+  'object-flow': UML_ROLE['object-flow'],
+  transition: UML_ROLE.transition,
 };
 
 const RELATION_OF_ROLE = new Map<string, UmlRelationKind>(
@@ -493,6 +713,49 @@ const CLASSIFIER_KINDS = new Set([
   'object',
 ]);
 
+/** The glyphs only an ACTIVITY draws — §15.3.4, §15.4.4, §16.3.4, §16.10.4. */
+const ACTIVITY_ONLY_KINDS = new Set<string>([
+  'action',
+  'activity-final',
+  'flow-final',
+  'decision',
+  'object-node',
+  'send-signal',
+  'accept-event',
+  'time-event',
+]);
+
+/** The pseudostates only a STATE MACHINE draws — §14.2.4.6. */
+const PSEUDOSTATE_ONLY_KINDS = new Set<string>([
+  'choice',
+  'junction',
+  'shallow-history',
+  'deep-history',
+  'entry-point',
+  'exit-point',
+  'terminate',
+]);
+
+/**
+ * The two glyphs BOTH behaviour sheets draw, and the one ambiguity this file
+ * has to resolve rather than report.
+ *
+ * §15.3.4 and §14.2.4 draw the same filled disc and the same solid bar and mean
+ * the same thing by each — a beginning, a split or a join — which is why
+ * `roles.ts` gives each ONE role instead of two. A role is a statement about
+ * meaning and the meaning is genuinely the same; an EXPORT, though, has to put
+ * the disc in an `uml:Activity` or in a `uml:StateMachine`, and those are two
+ * different metaclasses in two different packages.
+ *
+ * So the sheet's own heading decides: on an `stm` frame the disc is a
+ * `Pseudostate kind="initial"` and the bar a `Pseudostate kind="fork"`, and
+ * everywhere else they are an `InitialNode` and a `ForkNode`. Annex A makes that
+ * heading a required part of the frame (`kinds.ts`), so the statement is always
+ * there to read — and it is the author's own, which is the only thing that could
+ * honestly settle this.
+ */
+const UML_SHARED_BEHAVIOUR_KINDS = new Set<string>(['initial', 'fork']);
+
 /**
  * One diagram, read off a flat element list.
  *
@@ -556,6 +819,9 @@ export function umlModelFrom(
   const nodes: UmlSourceElement[] = [];
   const subjects: UmlSourceElement[] = [];
   const connectors: UmlSourceElement[] = [];
+  /** §15.6.4's swimlanes and §14.2.4's composite states — the two new frames. */
+  const partitionElements: UmlSourceElement[] = [];
+  const regionElements: UmlSourceElement[] = [];
 
   for (const element of elements) {
     if (Array.isArray(element.childIds)) {
@@ -563,6 +829,8 @@ export function umlModelFrom(
     }
     if (element.type === 'umlNode') nodes.push(element);
     else if (element.type === 'umlSubject') subjects.push(element);
+    else if (element.type === 'umlPartition') partitionElements.push(element);
+    else if (element.type === 'umlRegion') regionElements.push(element);
     else if (element.type === 'connector') connectors.push(element);
   }
 
@@ -584,6 +852,14 @@ export function umlModelFrom(
     };
   };
 
+  /**
+   * What the frame SAYS it draws — read before the nodes, because two glyphs
+   * are shared between the behaviour sheets and the sheet's own heading is what
+   * tells them apart (see {@link UML_SHARED_BEHAVIOUR_KINDS}).
+   */
+  const diagramKind = (diagram.kind as UmlDiagramKind | undefined) ?? 'class';
+  const readsAsStateMachine = diagramKind === 'stm';
+
   const classifiers: UmlClassifier[] = [];
   const packages: UmlPackageNode[] = [];
   const actors: UmlActorNode[] = [];
@@ -594,6 +870,10 @@ export function umlModelFrom(
   const ports: UmlPort[] = [];
   const artifacts: UmlArtifactNode[] = [];
   const deploymentNodes: UmlDeploymentNode[] = [];
+  const activityNodes: UmlActivityNode[] = [];
+  const states: UmlState[] = [];
+  const finalStates: UmlFinalState[] = [];
+  const pseudostates: UmlPseudostate[] = [];
   /** The lollipops and the sockets, held until every box is known. */
   const providedGlyphs: UmlNodeBase[] = [];
   const requiredGlyphs: UmlNodeBase[] = [];
@@ -683,9 +963,51 @@ export function umlModelFrom(
       kind === 'execution-environment'
     ) {
       deploymentNodes.push({ ...base, kind });
+    } else if (
+      ACTIVITY_ONLY_KINDS.has(kind) ||
+      (UML_SHARED_BEHAVIOUR_KINDS.has(kind) && !readsAsStateMachine)
+    ) {
+      activityNodes.push({ ...base, kind: kind as UmlActivityNodeKind });
+    } else if (kind === 'state') {
+      // §14.2.4.4's internal activities compartment. It is the `uml:attributes`
+      // tier — the same tier a class writes its properties in, reused because a
+      // state's compartment is the second one down and the creation site seeds
+      // it with `entry / …`. Every line that is NOT one of the three labels
+      // stays in `lines`, so an internal transition somebody wrote survives.
+      const entry: string[] = [];
+      const doActivity: string[] = [];
+      const exit: string[] = [];
+      const lines: string[] = [];
+      for (const line of parseCompartment(tiers.attributes)) {
+        const behavior = parseStateBehavior(line);
+        if (!behavior) {
+          lines.push(line);
+          continue;
+        }
+        // A label with nothing after it is a line somebody is halfway through,
+        // and an empty behaviour expression is not a behaviour: it is kept as a
+        // line of the compartment rather than written into a file as a Behavior
+        // with no body.
+        if (!behavior.expression) {
+          lines.push(line);
+          continue;
+        }
+        if (behavior.kind === 'entry') entry.push(behavior.expression);
+        else if (behavior.kind === 'do') doActivity.push(behavior.expression);
+        else exit.push(behavior.expression);
+      }
+      states.push({ ...base, entry, doActivity, exit, lines });
+    } else if (kind === 'final-state') {
+      finalStates.push(base);
+    } else if (
+      PSEUDOSTATE_ONLY_KINDS.has(kind) ||
+      (UML_SHARED_BEHAVIOUR_KINDS.has(kind) && readsAsStateMachine)
+    ) {
+      pseudostates.push({ ...base, kind: kind as UmlPseudostateKind });
     } else {
-      // A kind this build does not draw yet (phase 2 widens the union): it is
-      // on the sheet and it answers for itself, but nothing writes it down.
+      // A kind this build does not draw yet (a later phase widens the union):
+      // it is on the sheet and it answers for itself, but nothing writes it
+      // down.
       continue;
     }
     artefactOf.set(node.id, node.id);
@@ -753,6 +1075,91 @@ export function umlModelFrom(
     artefactOf.set(subject.id, subject.id);
   }
 
+  // ── The two behaviour FRAMES, and what they hold ──────────────────────
+  //
+  // Neither is registered in `artefactOf`, and that is the lollipop's precedent
+  // rather than an omission: a swimlane and a composite state are furniture the
+  // author draws responsibility and nesting with, so a flow dropped on one
+  // relates nothing. The warning an author gets for a control flow ending on a
+  // lane is then the right one — an end that is not on the diagram — instead of
+  // a file carrying an arrow into a band.
+
+  const partitions: UmlPartition[] = [];
+  for (const partition of partitionElements) {
+    if (!onSheet(partition)) continue;
+    const bounds = umlBoundsOf(partition);
+    partitions.push({
+      id: partition.id,
+      name: umlTierText(partition.name),
+      keywords: [],
+      isAbstract: false,
+      // The model defaults it, and a fixture that states nothing means the
+      // default rather than an absent band.
+      orientation:
+        partition.orientation === 'horizontal' ? 'horizontal' : 'vertical',
+      nodeIds: [],
+      ...(bounds ? { bounds } : {}),
+    });
+  }
+
+  const regions: UmlRegion[] = [];
+  for (const region of regionElements) {
+    if (!onSheet(region)) continue;
+    const bounds = umlBoundsOf(region);
+    regions.push({
+      id: region.id,
+      name: umlTierText(region.name),
+      keywords: [],
+      isAbstract: false,
+      ...(bounds ? { bounds } : {}),
+    });
+  }
+
+  /** The smallest frame whose box holds a centre — most-nested wins. */
+  const frameOf = <T extends UmlNodeBase>(
+    element: UmlNodeBase,
+    frames: readonly T[],
+    strictlyLarger = false
+  ): T | undefined => {
+    const bounds = element.bounds;
+    if (!bounds) return undefined;
+    const own = Math.max(0, bounds.w) * Math.max(0, bounds.h);
+    let best: T | undefined;
+    let bestArea = Number.POSITIVE_INFINITY;
+    for (const candidate of frames) {
+      const box = candidate.bounds;
+      if (candidate.id === element.id || !box) continue;
+      if (!umlCentreInside(bounds, box)) continue;
+      const area = Math.max(0, box.w) * Math.max(0, box.h);
+      if (strictlyLarger && area <= own) continue;
+      if (area < bestArea) {
+        best = candidate;
+        bestArea = area;
+      }
+    }
+    return best;
+  };
+
+  const partitionById = new Map(partitions.map(lane => [lane.id, lane]));
+  for (const node of activityNodes) {
+    const lane = frameOf(node, partitions);
+    if (!lane) continue;
+    node.partitionId = lane.id;
+    partitionById.get(lane.id)?.nodeIds.push(node.id);
+  }
+
+  // §14.2.4's nesting: a composite state drawn inside a composite state. The
+  // strict-area test is what makes it an order rather than a cycle — the same
+  // guard `containerOf` holds for a package inside a package.
+  for (const region of regions) {
+    const parent = frameOf(region, regions, true);
+    if (parent) region.parentId = parent.id;
+  }
+  for (const vertex of [...states, ...finalStates, ...pseudostates]) {
+    const region = frameOf(vertex, regions);
+    if (region) vertex.regionId = region.id;
+  }
+
   // Each part of a node's group answers for the node — but only where the group
   // holds exactly one. See the docblock.
   for (const group of groups) {
@@ -801,12 +1208,81 @@ export function umlModelFrom(
     });
   }
 
-  const kind = (diagram.kind as UmlDiagramKind | undefined) ?? 'class';
+  const kind = diagramKind;
   const name = umlTierText(diagram.name);
   const heading =
     typeof diagram.heading === 'string' && diagram.heading
       ? diagram.heading
       : `${UML_DIAGRAM_KIND_TAG[kind] ?? kind} ${name}`.trim();
+
+  // ── The two behaviours, assembled ─────────────────────────────────────
+  //
+  // The edges are PROJECTED from `relations` rather than read again: one pass
+  // over the connectors resolved every end, applied every attribution rule and
+  // raised every warning, and a second pass could only disagree with it. What is
+  // added here is the LABEL grammar — §15.2.4's guard and weight, §14.2.4.8's
+  // triggers, guard and effect — which is the one thing a flow says that a
+  // structural relationship does not.
+
+  const activityEdges: UmlActivityEdge[] = [];
+  const transitions: UmlTransition[] = [];
+  for (const relation of relations) {
+    if (relation.kind === 'control-flow' || relation.kind === 'object-flow') {
+      const annotations = parseActivityEdge(relation.label);
+      activityEdges.push({
+        kind: relation.kind,
+        sourceId: relation.sourceId,
+        targetId: relation.targetId,
+        ...annotations,
+      });
+    } else if (relation.kind === 'transition') {
+      const label = parseTransition(relation.label);
+      transitions.push({
+        sourceId: relation.sourceId,
+        targetId: relation.targetId,
+        ...label,
+      });
+    }
+  }
+
+  // A sheet holds a behaviour when it holds a GLYPH of it or a LINE of it: an
+  // author who has drawn two arrows and no boxes yet has still said something,
+  // and a writer that dropped it would lose the drawing rather than summarise
+  // it. A sheet holding neither contributes an empty list and neither writer
+  // emits a word.
+  const activities: UmlActivity[] =
+    activityNodes.length > 0 ||
+    activityEdges.length > 0 ||
+    partitions.length > 0
+      ? [
+          {
+            id: diagram.id,
+            name,
+            nodes: activityNodes,
+            edges: activityEdges,
+            partitions,
+          },
+        ]
+      : [];
+
+  const stateMachines: UmlStateMachine[] =
+    states.length > 0 ||
+    finalStates.length > 0 ||
+    pseudostates.length > 0 ||
+    transitions.length > 0 ||
+    regions.length > 0
+      ? [
+          {
+            id: diagram.id,
+            name,
+            regions,
+            states,
+            finalStates,
+            pseudostates,
+            transitions,
+          },
+        ]
+      : [];
 
   return {
     diagram: {
@@ -826,6 +1302,8 @@ export function umlModelFrom(
     ports,
     artifacts,
     nodes: deploymentNodes,
+    activities,
+    stateMachines,
     relations,
     warnings,
   };

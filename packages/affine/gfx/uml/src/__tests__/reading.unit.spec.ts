@@ -24,8 +24,18 @@ import { UML_ROLE, UML_ROLES } from '../roles.js';
  * `uml:association` reads the diamonds too.
  */
 
-/** The frames: the sheet and the subject drawn on it. Not artefacts. */
-const FRAME_ROLES: string[] = [UML_ROLE.diagram, UML_ROLE.subject];
+/**
+ * The frames: the sheet, and the three boundaries drawn on it — the use-case
+ * subject (§18.1.4), the activity partition (§15.6.4) and the composite state's
+ * region (§14.2.4). Not artefacts: what belongs to each is read back from where
+ * an element SITS, which is the opposite of being read itself.
+ */
+const FRAME_ROLES: string[] = [
+  UML_ROLE.diagram,
+  UML_ROLE.subject,
+  UML_ROLE.partition,
+  UML_ROLE.region,
+];
 
 /**
  * The one node role that is READ THROUGH another: `uml:classifier` is an
@@ -206,6 +216,56 @@ describe('what a UML diagram is read as', () => {
     expect(idsInOrder.indexOf('uml-execution-environment')).toBeLessThan(
       idsInOrder.indexOf('uml-node')
     );
+  });
+
+  /**
+   * The same rule, for the two parents phase 2's behaviour half declares.
+   *
+   * `uml:control-node` and `uml:pseudostate` are generalisations nothing is
+   * ever drawn as — rules are written on them so one declaration reaches five
+   * children — and each has a profile all the same, as a FLOOR: a routing mark
+   * added in a later phase is readable from the day its role is filed under its
+   * parent. Registered last, or every child would be answered for by its parent.
+   */
+  it('reads each routing mark as itself, never as the parent it hangs off', () => {
+    const idsInOrder = UML_READINGS.map(p => p.id);
+    for (const [child, parent] of [
+      ['uml-initial', 'uml-control-node'],
+      ['uml-decision', 'uml-control-node'],
+      ['uml-fork', 'uml-control-node'],
+      ['uml-choice', 'uml-pseudostate'],
+      ['uml-junction', 'uml-pseudostate'],
+      ['uml-terminate', 'uml-pseudostate'],
+    ]) {
+      expect(idsInOrder.indexOf(child), child).toBeLessThan(
+        idsInOrder.indexOf(parent)
+      );
+    }
+    expect(profileOf(UML_ROLE.initial)?.id).toBe('uml-initial');
+    expect(profileOf(UML_ROLE.choice)?.id).toBe('uml-choice');
+  });
+
+  /**
+   * The three behaviour relations, and why they are three tables rather than
+   * one: an activity's arrow says what happens NEXT, a state machine's says
+   * what this thing BECOMES, and an object flow says who produced the data.
+   */
+  it('words the behaviour relations as the diagram each belongs to would', () => {
+    const flow = profileOf(UML_ROLE.action)!.relation!;
+    expect(flow.edgeRole).toBe(UML_ROLE['control-flow']);
+    expect(flow.sides.supplier.labelFallback).toBe('Flows to');
+    expect(flow.sides.consumer.labelFallback).toBe('Flows from');
+
+    // An object flow is filed FLAT beside the control flow rather than under
+    // it, so the data node needs a table of its own or it would read nothing.
+    const data = profileOf(UML_ROLE['object-node'])!.relation!;
+    expect(data.edgeRole).toBe(UML_ROLE['object-flow']);
+    expect(data.sides.supplier.labelFallback).toBe('Consumed by');
+
+    const transition = profileOf(UML_ROLE.state)!.relation!;
+    expect(transition.edgeRole).toBe(UML_ROLE.transition);
+    expect(transition.sides.supplier.labelFallback).toBe('Transitions to');
+    expect(transition.sides.consumer.labelFallback).toBe('Entered from');
   });
 
   /**

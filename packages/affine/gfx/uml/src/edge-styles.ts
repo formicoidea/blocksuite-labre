@@ -34,7 +34,12 @@ export type UmlEdgeRole =
   // Phase 2 — components and deployment.
   | 'deploy'
   | 'manifest'
-  | 'communication-path';
+  | 'communication-path'
+  // Phase 2 — behaviour: the two edges an ACTIVITY is wired with (§15.2.4) and
+  // the one a STATE MACHINE is (§14.2.4.8).
+  | 'control-flow'
+  | 'object-flow'
+  | 'transition';
 
 /** The three style props an edge kind actually differs on. */
 export interface UmlEdgeStyle {
@@ -162,5 +167,42 @@ export const UML_EDGE_STYLE: Record<UmlEdgeRole, UmlEdgeStyle> = {
     strokeStyle: StrokeStyle.Solid,
     frontEndpointStyle: PointStyle.None,
     rearEndpointStyle: PointStyle.None,
+  },
+  // ── Behaviour: the third drawing this table has ever needed ────────────────
+  //
+  // §15.2.4 draws an ActivityEdge as a SOLID line with an OPEN ARROWHEAD, and
+  // §14.2.4.8 draws a Transition as exactly the same line. That is a look no
+  // structural relationship wears: an association is solid with nothing on it,
+  // a dependency is the arrowhead on a DASHED line. The distinction matters and
+  // is the specification's own — a behaviour diagram states an ORDER of things
+  // and therefore always points, where a class diagram states a relationship
+  // and mostly does not.
+  //
+  // Control flow and object flow share the row, as the five dependencies above
+  // share theirs and for the same reason: §15.2.4 tells them apart by what sits
+  // at the ENDS of the line — an object node at one end makes it an object flow
+  // — not by a decoration on the line, and the ROLE is what the audit and the
+  // exporter read that from. (An object flow drawn between two pins can be
+  // shown with the pins collapsed into a rectangle on the line; that is a
+  // §15.4.4 shorthand for the NODES, not a second line style, so it does not
+  // belong here.)
+  'control-flow': {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  'object-flow': {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  // A Transition (§14.2.4.8) is the same arrow, and the `trigger [guard] /
+  // effect` it carries is written on the line as its centre label rather than
+  // drawn into it — which is why this row is a copy of the two above and the
+  // grammar, not the style table, is where that syntax lives.
+  transition: {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
   },
 };

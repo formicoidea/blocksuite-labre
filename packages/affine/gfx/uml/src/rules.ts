@@ -26,10 +26,14 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * kind, §10.4.3 types an interface realization's contract, §11.5.3 gives a part
  * at most one composite owner, §18.1.3 types the ends of an include and forbids
  * an association between two actors, §19.2.3 types a deployment's two ends and
- * §19.4.3 says a communication path joins two DeploymentTargets. TEN rules
- * therefore declare `provenance.source: 'standard'` — the first in this library
- * after BPMN's — and they are the ten a conformance report may present as
- * defects.
+ * §19.4.3 says a communication path joins two DeploymentTargets. The behaviour
+ * sheets cite seven more, and they are the arithmetic ones: §15.3.3 gives an
+ * initial node no incoming edge, §15.7.19.4 gives a final node no outgoing one,
+ * §15.7.11.4 caps a decision at two incoming edges, §15.7.9.4 keeps an object
+ * node off a control flow, §14.5.11.4 gives a final state no outgoing transition
+ * and §14.5.12 types a transition's two ends. SEVENTEEN rules therefore declare
+ * `provenance.source: 'standard'` — the most in this library by a distance — and
+ * they are the seventeen a conformance report may present as defects.
  *
  * The rest are `recommendation` (a reading of the notation the spec draws but
  * does not constrain: which artefacts belong on which KIND of sheet, whether an
@@ -45,7 +49,8 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * `uml.sketch` — keeps it there. A class diagram is drawn boxes-first,
  * arrows-second, words-last, and for the whole of that the drawing contradicts
  * half this file. `uml.strict` is the level somebody chooses once the diagram is
- * a deliverable, and it promotes the nine rules that restate the specification
+ * a deliverable, and it promotes the twenty-one rules that restate the
+ * specification
  * or the sheet's own declaration (`profiles.ts`).
  *
  * `blocking-overridable` appears nowhere: nothing downstream implements a
@@ -92,12 +97,14 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * frame in: {@link useCaseOutsideSubject} and {@link actorInsideSubject} both
  * need a subject to be inside or outside OF.
  *
- * ## Four questions this pack deliberately does NOT ask
+ * ## Seven questions this pack deliberately does NOT ask
  *
  * Not gaps in the notation — gaps in what the engine's families can be asked of
- * a UML element. The first two are phase 1's; the last two are phase 2's, and
- * they are the two rules the structural brief asked for and this file could not
- * honestly write.
+ * a UML element. The first two are phase 1's; the next two are the structural
+ * sheets', and they are the two rules that brief asked for and this file could
+ * not honestly write. The last three are the behaviour sheets', and two of them
+ * are the same shape: a rule the brief asked for that ALREADY EXISTS under
+ * another name, and would have reported one mistake twice.
  *
  * - **an artefact of any kind drawn outside the frame.** `element-in-background`
  *   names ONE subject role, and UML's vocabulary has no single role meaning "any
@@ -142,6 +149,34 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  *   rule is written on it. Both close the day a family accepts a node carrier or
  *   a proximity requirement, and neither is worth a family invented for one
  *   framework.
+ * - **an ACTION with no name** (`uml.unnamed-action`) and **a STATE with no
+ *   name** (`uml.unnamed-state`). Both are already reported, and adding them
+ *   would report them twice. `label-presence` reads an element's OWN words and
+ *   names one subject role, so the subject of a naming rule is the TIER and
+ *   never the shape it is grouped with — which is why
+ *   {@link unnamedActorOrUseCase} is one rule for two artefacts and says so at
+ *   length. An action, an object node and the three signal artefacts carry
+ *   `uml:label`, so an emptied one is already that rule's finding; a state
+ *   carries `uml:name`, so an emptied one is already {@link unnamedClassifier}'s.
+ *   A second rule on either tier would put two brackets and two suggestions on
+ *   one word to fix, one of which would always be about the wrong shape —
+ *   exactly the failure the existing pair was collapsed to avoid.
+ *
+ *   What IS wrong is the wording: "This actor or use case has no name" is the
+ *   sentence an author of an emptied action reads. The fix is a rename of the
+ *   two existing rules to the tier they are actually about
+ *   (`uml.unnamed-label`, `uml.unnamed-name`) with the words widened to match,
+ *   which touches their ids, their message keys, both profiles and the host
+ *   catalogues — a change worth making on its own rather than smuggled in
+ *   beside fifteen new rules. Recorded here so it stays a decision.
+ * - **one beginning per REGION** rather than per sheet. §14.5.6.4 bounds the
+ *   initial vertex per Region and a state machine with three composite states
+ *   legitimately draws four discs; `role-count` counts per instance of ONE
+ *   frame, so {@link initialSingle} counts per `uml:diagram` and the per-region
+ *   count is a second rule of the same family against `uml:region`. It is a
+ *   phase-3 refinement rather than a limit of the engine — the family already
+ *   expresses it — and until it lands the rule is `audit` in both profiles for
+ *   that reason as much as for any other.
  */
 
 /* ── The alphabets and the grammars ─────────────────────────────────────── */
@@ -182,6 +217,22 @@ const UML_ELEMENT_ROLES: readonly RoleId[] = [
   UML_ROLE['required-interface'],
   UML_ROLE.artifact,
   UML_ROLE.node,
+  // Phase 2 — the BEHAVIOUR vocabulary, and the same argument a third time: a
+  // quick-connect between two actions, or between two states, is the drawing
+  // §15.2.4 and §14.2.4 expect to be a control flow and a transition. A line
+  // carrying no role between them says nothing to either grammar, nothing to the
+  // degree counts, nothing to the two reachability walks and nothing to either
+  // exporter. `uml:control-node` stands for its five children and
+  // `uml:pseudostate` for its seven.
+  UML_ROLE.action,
+  UML_ROLE['control-node'],
+  UML_ROLE['object-node'],
+  UML_ROLE['send-signal'],
+  UML_ROLE['accept-event'],
+  UML_ROLE['time-event'],
+  UML_ROLE.state,
+  UML_ROLE['final-state'],
+  UML_ROLE.pseudostate,
 ];
 
 /**
@@ -638,7 +689,7 @@ const notAdmissibleOnKind: ValidationRule = {
     'This artefact is not drawn on the kind of diagram the frame says this is.',
   suggestionKey: 'com.labre.uml.validation.not-admissible-on-kind.suggestion',
   suggestionFallback:
-    'The frame’s heading names the diagram — class, pkg, obj, uc, cmp or dep — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
+    'The frame’s heading names the diagram — class, pkg, obj, uc, cmp, dep, act or stm — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
   version: 1,
   provenance: {
     source: 'recommendation',
@@ -708,6 +759,77 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE.class,
         UML_ROLE.interface,
         UML_ROLE.enumeration,
+      ],
+      // Phase 2 — the two BEHAVIOUR sheets, and the first pair whose deny-lists
+      // are mostly about EACH OTHER.
+      //
+      // An **activity** (§15.2.4) refuses the use case vocabulary, the instance,
+      // the classifiers and the structural artefacts, for the reasons every list
+      // above refuses them — and it refuses the STATE MACHINE vocabulary, which
+      // is the half that earns its place: §14.2.4 and §15.3.4 draw a rounded
+      // rectangle each and a diamond each, the two sheets sit next to each other
+      // in one menu, and a state drawn among actions is the confusion this pair
+      // of diagrams produces every time. `uml:pseudostate` reaches the choice,
+      // the junction, the two histories, the two connection points and the
+      // terminate cross in one entry.
+      //
+      // What it ADMITS is the whole activity vocabulary, the swimlanes, the
+      // notes and the packages — and the initial disc and the fork bar, which
+      // are NOT refused on either sheet because one role carries both notations
+      // (`roles.ts`).
+      act: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        UML_ROLE.object,
+        // The PARENT role: a class, an interface and an enumeration alike.
+        UML_ROLE.classifier,
+        UML_ROLE.component,
+        UML_ROLE.port,
+        UML_ROLE['provided-interface'],
+        UML_ROLE['required-interface'],
+        UML_ROLE.artifact,
+        // The PARENT role: a node, a device and an execution environment alike.
+        UML_ROLE.node,
+        // The state machine's own vocabulary — see above.
+        UML_ROLE.state,
+        UML_ROLE['final-state'],
+        UML_ROLE.pseudostate,
+        UML_ROLE.region,
+      ],
+      // A **state machine** (§14.2.4) refuses the same strangers and the
+      // ACTIVITY vocabulary, named glyph by glyph rather than through
+      // `uml:control-node`: that parent covers the initial disc and the fork bar
+      // as well, and both of those are §14.2.4's own notation. A deny-list
+      // written on the parent would refuse the two artefacts a state machine
+      // most needs — which is exactly the rule broken at a distance the `dep`
+      // list above spells its three classifiers out to avoid.
+      //
+      // The DECISION is refused and the CHOICE is not, and the pair is the
+      // reason this list exists at all: they are the same diamond, one per
+      // sheet, and swapping them is one click in the morph menu.
+      stm: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        UML_ROLE.object,
+        UML_ROLE.classifier,
+        UML_ROLE.component,
+        UML_ROLE.port,
+        UML_ROLE['provided-interface'],
+        UML_ROLE['required-interface'],
+        UML_ROLE.artifact,
+        UML_ROLE.node,
+        // The activity's own vocabulary, one by one — see above.
+        UML_ROLE.action,
+        UML_ROLE['activity-final'],
+        UML_ROLE['flow-final'],
+        UML_ROLE.decision,
+        UML_ROLE['object-node'],
+        UML_ROLE['send-signal'],
+        UML_ROLE['accept-event'],
+        UML_ROLE['time-event'],
+        UML_ROLE.partition,
       ],
     },
   },
@@ -1501,23 +1623,906 @@ const useCaseNoActor: ValidationRule = {
   },
 };
 
+/* ── Behaviour: the alphabets and the grammars of the two flow sheets ────── */
+
 /**
- * The pack, whole: nineteen rules over six families.
+ * The ACTIVITY vertices — what a flow may be drawn between on an `act` sheet.
+ *
+ * `uml:control-node` stands for its five children by declaration (`roles.ts`),
+ * so the initial disc, the two finals, the decision diamond and the fork bar
+ * arrive through `roleIsA` rather than as five entries. The object node is
+ * deliberately NOT here: §15.7.9.4 keeps it off a control flow, which is the
+ * whole content of {@link UML_CONTROL_FLOW_MATRIX}.
+ */
+const UML_ACTIVITY_VERTEX_ROLES: readonly RoleId[] = [
+  UML_ROLE.action,
+  UML_ROLE['control-node'],
+  UML_ROLE['send-signal'],
+  UML_ROLE['accept-event'],
+  UML_ROLE['time-event'],
+];
+
+/**
+ * The STATE MACHINE vertices — §14.5.12's "source Vertex" and "target Vertex".
+ *
+ * `uml:pseudostate` stands for the choice, the junction, the two histories, the
+ * two connection points and the terminate cross. `uml:initial` is named beside
+ * it rather than through it, because `roles.ts` files the initial disc under
+ * `uml:control-node` — the same glyph means the same thing on both sheets, and
+ * the vocabulary says so once instead of declaring it twice. `uml:fork` is here
+ * for the same cross-family reason: §14.2.4 draws the fork and join bars in a
+ * state machine and §15.3.4 draws them in an activity, and one role carries both.
+ */
+const UML_STATE_VERTEX_ROLES: readonly RoleId[] = [
+  UML_ROLE.state,
+  UML_ROLE['final-state'],
+  UML_ROLE.pseudostate,
+  UML_ROLE.initial,
+  UML_ROLE.fork,
+];
+
+/**
+ * ALPHABET entries for the state-machine vocabulary, carried by the two ACTIVITY
+ * grammars.
+ *
+ * The device the file header explains, applied across the two behaviour sheets:
+ * these are true sentences of §14.5.12 carrying the `uml:transition` role, so
+ * `inMatrix` — which matches a triplet's edge with `roleIsA` — can never let one
+ * sanction a control flow or an object flow. Their whole effect is to put
+ * `uml:state`, `uml:final-state` and `uml:pseudostate` into the alphabet the two
+ * activity rules speak, which is what makes "a control flow dragged onto a
+ * state" a finding rather than silence.
+ */
+const UML_STATE_ALPHABET: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.state,
+    edge: UML_ROLE.transition,
+    target: UML_ROLE.state,
+  },
+  {
+    source: UML_ROLE.state,
+    edge: UML_ROLE.transition,
+    target: UML_ROLE['final-state'],
+  },
+  {
+    source: UML_ROLE.pseudostate,
+    edge: UML_ROLE.transition,
+    target: UML_ROLE.state,
+  },
+];
+
+/**
+ * ALPHABET entries for the activity vocabulary, carried by the TRANSITION
+ * grammar — the mirror of {@link UML_STATE_ALPHABET}.
+ *
+ * Three foreign sentences putting `uml:action`, `uml:control-node` and
+ * `uml:object-node` into the alphabet {@link transitionEndpoints} speaks. The
+ * control-node entry is the one that earns its place twice over: it is what makes
+ * a transition drawn onto a DECISION diamond a finding, because a decision is
+ * §15.3.4's branch and `uml:choice` is §14.2.4's — two glyphs that look alike,
+ * mean the same thing on two different sheets, and are the commonest confusion
+ * this pair of diagrams produces.
+ */
+const UML_ACTIVITY_ALPHABET: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.action,
+    edge: UML_ROLE['control-flow'],
+    target: UML_ROLE['control-node'],
+  },
+  {
+    source: UML_ROLE['object-node'],
+    edge: UML_ROLE['object-flow'],
+    target: UML_ROLE.action,
+  },
+  // …and the class-side vocabulary, so a behaviour edge dragged onto a class is
+  // judged rather than ignored. `uml:classifier` reaches all three of them.
+  {
+    source: UML_ROLE.classifier,
+    edge: UML_ROLE.association,
+    target: UML_ROLE.classifier,
+  },
+];
+
+/**
+ * What a CONTROL FLOW may run between: the activity vertices, and never an
+ * object node.
+ *
+ * §15.7.9.4 is one of the few constraints in Clause 15 that OCL can state in a
+ * line — "ControlFlows may not have ObjectNodes at either end, except for
+ * ObjectNodes with control type" — and the exception is the reason the rule that
+ * holds this table stays a remark rather than a defect: `isControlType` is a
+ * property of the metamodel with no notation at all (§15.4.4 draws the same
+ * rectangle either way), so a canvas cannot say which of the two an author meant.
+ * The table therefore reports the drawing the specification's own default
+ * forbids, and the rule's suggestion names the exception.
+ *
+ * Twenty-five sentences over five roles, plus the four alphabet entries: the
+ * grammar judges WHICH vertices, never how many edges reach one. The counts are
+ * {@link initialNoIncomingFlow}, {@link activityFinalNoOutgoing},
+ * {@link flowFinalNoOutgoing} and {@link decisionIncomingCount}, and keeping the
+ * two apart is what stops one wrong arrow being reported twice.
+ */
+export const UML_CONTROL_FLOW_MATRIX: readonly EndpointTriplet[] = [
+  ...UML_ACTIVITY_VERTEX_ROLES.flatMap(source =>
+    UML_ACTIVITY_VERTEX_ROLES.map(target => ({
+      source,
+      edge: UML_ROLE['control-flow'],
+      target,
+    }))
+  ),
+  // The ALPHABET entries — the state-machine vocabulary, and the class-side one.
+  ...UML_STATE_ALPHABET,
+  {
+    source: UML_ROLE.classifier,
+    edge: UML_ROLE.association,
+    target: UML_ROLE.classifier,
+  },
+  // …and the object node, named by a sentence of the OTHER flow so that it is in
+  // the alphabet and outside the grammar. Without it a control flow drawn onto a
+  // rectangle of data would be unjudged, which is the one drawing §15.7.9.4
+  // actually names.
+  {
+    source: UML_ROLE['object-node'],
+    edge: UML_ROLE['object-flow'],
+    target: UML_ROLE.action,
+  },
+];
+
+/**
+ * What an OBJECT FLOW may run between: something, and an object node.
+ *
+ * §15.7.11.4's `same_upper_bounds` states the shape of it — "ObjectNodes
+ * connected by an ObjectFlow, with optionally intervening ControlNodes" — so an
+ * object flow is a line between DATA, routed through control nodes where it
+ * forks or merges. One end being an object node is the loosest honest reading of
+ * that, and it is the one drawn here: the strict reading (both ends) would indict
+ * the object node that feeds a decision, which §15.7.11.4 explicitly allows.
+ *
+ * ## Why the rule that holds this stays a remark at every level
+ *
+ * §15.4.4 draws an action's PINS as small squares on its border and says in as
+ * many words that they may be elided, in which case the object flow is drawn
+ * from one action straight to the other. A pin IS an ObjectNode, so that drawing
+ * is a legal elision of a conformant model and not a defect — and this canvas
+ * has no pin. So the finding is "there is no data node on this flow", which is a
+ * reading worth offering and never a conformance defect, and `uml.strict` leaves
+ * it at `audit` for that reason alone (`profiles.ts`).
+ */
+const UML_OBJECT_FLOW_ENDS: readonly RoleId[] = [
+  ...UML_ACTIVITY_VERTEX_ROLES,
+  UML_ROLE['object-node'],
+];
+
+export const UML_OBJECT_FLOW_MATRIX: readonly EndpointTriplet[] = [
+  ...UML_OBJECT_FLOW_ENDS.map(target => ({
+    source: UML_ROLE['object-node'],
+    edge: UML_ROLE['object-flow'],
+    target,
+  })),
+  ...UML_OBJECT_FLOW_ENDS.filter(
+    source => source !== UML_ROLE['object-node']
+  ).map(source => ({
+    source,
+    edge: UML_ROLE['object-flow'],
+    target: UML_ROLE['object-node'],
+  })),
+  // The ALPHABET entries — the state-machine vocabulary, and the class-side one.
+  ...UML_STATE_ALPHABET,
+  {
+    source: UML_ROLE.classifier,
+    edge: UML_ROLE.association,
+    target: UML_ROLE.classifier,
+  },
+];
+
+/**
+ * What a TRANSITION may run between: the vertices of a state machine, and
+ * nothing else.
+ *
+ * §14.5.12 in one sentence — "A Transition is a single directed arc originating
+ * from a single source Vertex and terminating on a single target Vertex" — and a
+ * Vertex is a State, a FinalState or a Pseudostate (§14.5.14). So the table is
+ * the full square over {@link UML_STATE_VERTEX_ROLES}: twenty-five sentences,
+ * judging WHICH vertices and not how many arcs reach one.
+ *
+ * ## The square is deliberate, and it is what stops the double report
+ *
+ * A transition INTO an initial disc and a transition OUT OF a final state are
+ * both wrong, and both are already said — by {@link initialNoIncomingTransition}
+ * and {@link finalStateNoOutgoing}, each of which names the side the author has
+ * to act on. Removing those two sentences from this table would make the same
+ * arrow off-matrix as well, and the user would get two brackets and two
+ * suggestions for one drag to fix. The DEGREE rules own the counts; this table
+ * owns the vocabulary.
+ */
+export const UML_TRANSITION_MATRIX: readonly EndpointTriplet[] = [
+  ...UML_STATE_VERTEX_ROLES.flatMap(source =>
+    UML_STATE_VERTEX_ROLES.map(target => ({
+      source,
+      edge: UML_ROLE.transition,
+      target,
+    }))
+  ),
+  // The ALPHABET entries — the activity vocabulary, and the class-side one.
+  ...UML_ACTIVITY_ALPHABET,
+];
+
+/* ── Behaviour: membership in a lane and in a composite state ───────────── */
+
+/**
+ * **U20** — an action drawn outside every partition, while partitions exist.
+ *
+ * §15.6.4 draws an ActivityPartition as a swimlane: a band across the sheet with
+ * a name at its head, holding the actions whoever the band names is responsible
+ * for. The lanes are what the diagram is FOR once they are drawn — a reader
+ * follows the flow across them to see where responsibility changes hands — and
+ * an action floating between two of them belongs to nobody.
+ *
+ * ## The family is `element-in-background`, and the silence is the whole point
+ *
+ * {@link useCaseOutsideSubject}'s arrangement one notation over: a partition on
+ * the board is the frame, an action contained by NONE of them is the finding,
+ * and a board with no partition at all is total silence. Most activity diagrams
+ * never draw a lane, and those are complete diagrams — the rule speaks only once
+ * an author has said that responsibility is part of what this sheet shows.
+ *
+ * ## Written on the ACTION, and the limit that follows
+ *
+ * `element-in-background` names one subject role. The control nodes, the object
+ * nodes and the three signal artefacts drawn between the lanes raise nothing —
+ * and that is the right narrowing rather than a shortfall: §15.6.3 attributes
+ * BEHAVIOUR to a partition, a decision diamond routing a flow between two lanes
+ * is routinely drawn on the boundary on purpose, and a fork bar spanning three
+ * lanes is §15.6.4's own figure. The action is the artefact a lane is about.
+ */
+const nodeInPartition: ValidationRule = {
+  id: 'uml.node-in-partition',
+  framework: 'uml',
+  family: 'element-in-background',
+  severity: 'audit',
+  appliesTo: UML_ROLE.action,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.node-in-partition',
+  messageFallback: 'This action sits outside every partition.',
+  suggestionKey: 'com.labre.uml.validation.node-in-partition.suggestion',
+  suggestionFallback:
+    'The swimlanes say who is responsible for each step. Move the action into the lane that owns it, or stretch the lane round it — a diagram that draws lanes is read by following the flow across them.',
+  version: 1,
+  provenance: {
+    source: 'labre-convention',
+    reference:
+      'Labre convention — OMG UML 2.5.1 §15.6.4 draws the swimlane; requiring an action to be inside one once lanes exist is membership on this canvas',
+  },
+  backgroundRole: UML_ROLE.partition,
+};
+
+/**
+ * **U21 / U22** — a history pseudostate drawn outside every composite state.
+ *
+ * §14.2.3: a shallow history "represents the most recent active substate of its
+ * containing Region" and a deep history the most recent configuration of the
+ * whole sub-machine. Both are statements ABOUT a region, and a region on this
+ * canvas is the `umlRegion` box the author drew (`roles.ts` records why the
+ * composite state IS the frame). An `H` circle floating on the top-level sheet
+ * therefore remembers the history of nothing.
+ *
+ * ## TWO rules for one sentence, and the reason is the family
+ *
+ * `element-in-background` names ONE subject role, and the vocabulary has no
+ * parent meaning "a history": `uml:shallow-history` and `uml:deep-history` are
+ * flat siblings under `uml:pseudostate`, which also covers the choice, the
+ * junction, the two connection points and the terminate cross — none of which is
+ * confined to a region. A rule written on the parent would indict every choice
+ * diamond on a flat state machine, which is most of them.
+ *
+ * So the pack ships the sentence twice, and nothing is reported twice: an element
+ * carries one role, so exactly one of the two can ever be about it. The same
+ * split {@link initialNoIncomingFlow} and {@link initialNoIncomingTransition}
+ * make for the other reason a family names one thing at a time.
+ *
+ * The provenance is `recommendation` rather than `standard` because the step from
+ * §14.2.3's OWNERSHIP to this canvas's CONTAINMENT is ours: the metamodel says
+ * the Pseudostate belongs to a Region, and reading a drawn box as that ownership
+ * is the reading `roles.ts` chose, not a clause.
+ */
+const shallowHistoryOutsideRegion: ValidationRule = {
+  id: 'uml.shallow-history-outside-region',
+  framework: 'uml',
+  family: 'element-in-background',
+  severity: 'audit',
+  appliesTo: UML_ROLE['shallow-history'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.shallow-history-outside-region',
+  messageFallback: 'This history is drawn outside every composite state.',
+  suggestionKey:
+    'com.labre.uml.validation.shallow-history-outside-region.suggestion',
+  suggestionFallback:
+    'A history remembers where a composite state was when it was last left, so it has to be drawn inside the one it remembers. Move the H into the composite state, or draw the composite state round it.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §14.2.3 — a shallowHistory Pseudostate represents the most recent active substate of its containing Region',
+  },
+  backgroundRole: UML_ROLE.region,
+};
+
+const deepHistoryOutsideRegion: ValidationRule = {
+  id: 'uml.deep-history-outside-region',
+  framework: 'uml',
+  family: 'element-in-background',
+  severity: 'audit',
+  appliesTo: UML_ROLE['deep-history'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.deep-history-outside-region',
+  messageFallback: 'This deep history is drawn outside every composite state.',
+  suggestionKey:
+    'com.labre.uml.validation.deep-history-outside-region.suggestion',
+  suggestionFallback:
+    'A deep history restores the whole configuration a composite state was last in, so it has to be drawn inside the one it restores. Move the H* into the composite state, or draw the composite state round it.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §14.2.3 — a deepHistory Pseudostate represents the most recent active state configuration of its containing Region',
+  },
+  backgroundRole: UML_ROLE.region,
+};
+
+/* ── Behaviour: how many beginnings, and how many lines reach one ───────── */
+
+/**
+ * **U23** — a second filled disc on one sheet.
+ *
+ * The one rule in this pack whose authority differs between the two sheets it
+ * speaks on, and it says so rather than picking the flattering half:
+ *
+ *  - on a **state machine**, §14.5.6.4 is normative and arithmetic — "A Region
+ *    can have at most one initial Vertex";
+ *  - on an **activity**, §15.3.3 says the opposite in as many words — "An
+ *    Activity may have more than one InitialNode", each one starting a concurrent
+ *    flow.
+ *
+ * So the provenance is `recommendation`: a second disc on an activity sheet is a
+ * drawing the specification permits, and most of the ones anybody draws are a
+ * disc the author forgot to delete rather than a deliberate concurrent start. The
+ * rule offers the reading and never claims UML forbids it, which is the whole
+ * point of the field.
+ *
+ * ## Counted per DIAGRAM, and the refinement that is not phase 2's
+ *
+ * §14.5.6.4's bound is per REGION, and a state machine with three composite
+ * states legitimately holds four initial discs — one for the top level and one
+ * inside each. `role-count` counts per instance of ONE frame, named by
+ * `backgroundRole`, and this rule names the diagram: the per-region reading needs
+ * the same bound counted against `uml:region` instances as well, which is a
+ * second rule of the same family and a PHASE 3 refinement. Until it lands a
+ * composite state with its own beginning is a finding here, which is the wrong
+ * verdict on a right drawing — and the reason this rule is `audit` in the default
+ * profile like everything else, rather than something a user has to argue with.
+ *
+ * The finding lands on the FRAME, because no disc is at fault: there are simply
+ * two, and `role-count` raises on the instance so an arbitration made on one
+ * sheet covers that sheet alone.
+ */
+const initialSingle: ValidationRule = {
+  id: 'uml.initial-single',
+  framework: 'uml',
+  family: 'role-count',
+  severity: 'audit',
+  // No `appliesTo`: `role-count` names its subject in `roleCount.subject`, and
+  // the finding is about the frame rather than about any one element.
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.initial-single',
+  messageFallback: 'This sheet draws more than one beginning.',
+  suggestionKey: 'com.labre.uml.validation.initial-single.suggestion',
+  suggestionFallback:
+    'A state machine region has at most one initial vertex, and a reader looks for one place the behaviour starts. Keep the disc the flow really begins at and delete the others — unless the sheet is an activity deliberately starting several concurrent flows, which UML allows.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §14.5.6.4 — "A Region can have at most one initial Vertex"; §15.3.3 allows an Activity more than one InitialNode, so on an activity sheet this is a reading rather than a clause',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  roleCount: {
+    subject: UML_ROLE.initial,
+    max: 1,
+  },
+};
+
+/**
+ * **U24** — a control flow pointing AT the disc the flow begins at.
+ *
+ * §15.3.3, verbatim: "An InitialNode shall not have any incoming ActivityEdges."
+ * An arrow into the black disc is almost always an arrow drawn the wrong way
+ * round, and the fix is one drag.
+ *
+ * ## Two rules, one sentence, and the family is the reason
+ *
+ * `edge-degree` counts ONE edge role. The same disc is §14.2.4's initial
+ * Pseudostate on a state machine, where the arrow that must not exist is a
+ * TRANSITION and not a control flow, so the requirement is two counts over two
+ * vocabularies. They never double-report — an edge carries one role, and the two
+ * roles are flat siblings — and they carry different authority, which is the
+ * second reason to keep them apart: §15.3.3 states the activity half outright,
+ * while the state machine half is a reading of §14.2.3 (see
+ * {@link initialNoIncomingTransition}).
+ *
+ * ## The object flow is not counted, and that is deliberate
+ *
+ * §15.3.3's next sentence — "The outgoing ActivityEdges of an InitialNode must
+ * all be ControlFlows" — would make an object flow at either end of a disc a
+ * finding too. It is not asked here: a third rule would be a third bracket on the
+ * same glyph, and an object flow drawn onto a control node is already
+ * {@link objectFlowEndpoints}' business through its own matrix.
+ */
+const initialNoIncomingFlow: ValidationRule = {
+  id: 'uml.initial-no-incoming-flow',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE.initial,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.initial-no-incoming-flow',
+  messageFallback: 'A control flow points at the node this activity begins at.',
+  suggestionKey: 'com.labre.uml.validation.initial-no-incoming-flow.suggestion',
+  suggestionFallback:
+    'The filled disc is where the flow starts, so nothing arrives at it. Turn the arrow round, or point it at the first action instead — and if the flow really does come back here, it comes back to that action.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §15.3.3 — "An InitialNode shall not have any incoming ActivityEdges"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE['control-flow'],
+    maxIn: 0,
+  },
+};
+
+/**
+ * **U25** — a transition pointing AT the disc a state machine begins at.
+ *
+ * {@link initialNoIncomingFlow}'s twin over the state machine vocabulary. §14.2.3
+ * describes the initial Pseudostate as "a starting point for a Region; that is,
+ * it is the point from which execution begins", and §14.5.6.4 gives it at most
+ * one OUTGOING transition — the clause constrains what leaves and says nothing
+ * about what arrives, because a Vertex nothing can reach is not a case the
+ * metamodel needed to exclude.
+ *
+ * So the provenance is `recommendation` where its activity twin is `standard`,
+ * and the two rules are a small demonstration of why the field exists: the same
+ * drawing, the same fix, and one of them is a conformance defect while the other
+ * is the tool being helpful.
+ */
+const initialNoIncomingTransition: ValidationRule = {
+  id: 'uml.initial-no-incoming-transition',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE.initial,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.initial-no-incoming-transition',
+  messageFallback:
+    'A transition points at the node this state machine begins at.',
+  suggestionKey:
+    'com.labre.uml.validation.initial-no-incoming-transition.suggestion',
+  suggestionFallback:
+    'The filled disc is where the machine starts, so nothing transitions into it. Point the arrow at the state the machine should return to instead.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §14.2.3 — an initial Pseudostate is the point from which execution begins; §14.5.6.4 constrains what leaves it and not what arrives',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE.transition,
+    maxIn: 0,
+  },
+};
+
+/**
+ * **U26 / U27** — a flow leaving a node that ends one.
+ *
+ * §15.7.19.4, verbatim and for both of them: "A FinalNode has no outgoing
+ * ActivityEdges." An activity final stops every flow in the activity and a flow
+ * final destroys the one token that reached it — in neither case is there
+ * anything left to leave.
+ *
+ * TWO rules again, and this time because the vocabulary is flat where the
+ * metamodel is not: §15.7.19 makes ActivityFinalNode and FlowFinalNode two
+ * FinalNodes, and `roles.ts` files both directly under `uml:control-node`
+ * alongside the initial disc, the decision and the fork — so there is no
+ * ancestor meaning "a final" that does not also reach the four glyphs a flow
+ * legitimately leaves. Naming the two is the only reading that is right about
+ * both.
+ *
+ * Their sentences differ, and deliberately: what a reader has to understand is
+ * different. An arrow off an activity final says the author thinks the activity
+ * continues; an arrow off a flow final says they think one branch does.
+ */
+const activityFinalNoOutgoing: ValidationRule = {
+  id: 'uml.activity-final-no-outgoing',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE['activity-final'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.activity-final-no-outgoing',
+  messageFallback: 'A control flow leaves the node this activity ends at.',
+  suggestionKey:
+    'com.labre.uml.validation.activity-final-no-outgoing.suggestion',
+  suggestionFallback:
+    'The bullseye stops every flow in the activity, so nothing continues past it. Draw the arrow from the last action instead — or, if only this branch ends here, use the flow final (the circle with the cross).',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §15.7.19.4 — "A FinalNode has no outgoing ActivityEdges"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE['control-flow'],
+    maxOut: 0,
+  },
+};
+
+const flowFinalNoOutgoing: ValidationRule = {
+  id: 'uml.flow-final-no-outgoing',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE['flow-final'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.flow-final-no-outgoing',
+  messageFallback: 'A control flow leaves the node this branch ends at.',
+  suggestionKey: 'com.labre.uml.validation.flow-final-no-outgoing.suggestion',
+  suggestionFallback:
+    'The circle with the cross destroys the token that reaches it, so this branch stops there. Draw the arrow from the action before it, or delete the flow final if the branch does carry on.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §15.7.19.4 — "A FinalNode has no outgoing ActivityEdges"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE['control-flow'],
+    maxOut: 0,
+  },
+};
+
+/**
+ * **U28** — a transition leaving a final state.
+ *
+ * §14.5.11.4, verbatim: "A FinalState cannot have any outgoing Transitions." The
+ * same shape as the two above, one notation over, and the same one-drag fix.
+ */
+const finalStateNoOutgoing: ValidationRule = {
+  id: 'uml.final-state-no-outgoing',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE['final-state'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.final-state-no-outgoing',
+  messageFallback: 'A transition leaves this final state.',
+  suggestionKey: 'com.labre.uml.validation.final-state-no-outgoing.suggestion',
+  suggestionFallback:
+    'A final state is where the machine stops, so nothing transitions out of it. Draw the transition from the state before it — and if the machine really does carry on, this is not the end.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §14.5.11.4 — "A FinalState cannot have any outgoing Transitions"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE.transition,
+    maxOut: 0,
+  },
+};
+
+/**
+ * **U29** — a decision diamond fed by three arrows.
+ *
+ * §15.7.11.4, and it is arithmetic: "A DecisionNode has one or two incoming
+ * ActivityEdges and at least one outgoing ActivityEdge." TWO rather than one,
+ * because the second incoming edge has a job — §15.3.4's `decisionInputFlow`
+ * carries the value the guards are evaluated against — and a diamond with three
+ * arrows into it is a merge somebody drew as a decision.
+ *
+ * ## `maxIn: 2`, and not the `maxIn: 1` a reader might expect
+ *
+ * Worth stating because the id would let you assume otherwise and because the
+ * brief this rule was written from asked for one. The clause says two, the second
+ * one is a real and named feature of the notation, and data that contradicts the
+ * clause it cites is the one thing this pack cannot ship. The id names the
+ * QUESTION — how many arrive — rather than the bound.
+ *
+ * ## The floor is not asked for
+ *
+ * "At least one incoming" would fire on every diamond for the whole of the time
+ * between dropping it and joining it up, which is the definition of a rule that
+ * argues with a croquis. The ceiling is the half that reports a mistake rather
+ * than an unfinished drawing.
+ */
+const decisionIncomingCount: ValidationRule = {
+  id: 'uml.decision-incoming-count',
+  framework: 'uml',
+  family: 'edge-degree',
+  severity: 'audit',
+  appliesTo: UML_ROLE.decision,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.decision-incoming-count',
+  messageFallback: 'More than two control flows arrive at this decision.',
+  suggestionKey: 'com.labre.uml.validation.decision-incoming-count.suggestion',
+  suggestionFallback:
+    'A decision takes the flow it branches and, at most, a second one carrying the value its guards test. If these arrows are branches coming back together, draw a merge — the same diamond, with the arrows leaving it joined into one.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §15.7.11.4 — "A DecisionNode has one or two incoming ActivityEdges and at least one outgoing ActivityEdge"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  degree: {
+    edgeRole: UML_ROLE['control-flow'],
+    // TWO, which is what the clause says — see the header on why the id does not
+    // name the bound.
+    maxIn: 2,
+  },
+};
+
+/* ── Behaviour: what each flow may run between ──────────────────────────── */
+
+/**
+ * **U30** — a control flow with an object node, a state or a class at one end.
+ *
+ * §15.7.9.4's `object_nodes` constraint, and the alphabet entries that let this
+ * rule reach the two confusions a mixed board actually produces: a control flow
+ * dragged onto a STATE (the state machine sheet's vocabulary, one tool away in
+ * the same menu) and a control flow dragged onto a CLASS.
+ *
+ * The object node is the clause's own case and the one with an exception: an
+ * ObjectNode whose `isControlType` is true may sit on a control flow, and
+ * §15.4.4 gives that property no notation at all, so a drawing cannot state it.
+ * The suggestion names the exception rather than hiding it, which is what keeps
+ * the finding honest at `audit` — and what makes this the endpoint rule a reader
+ * may reasonably overrule.
+ */
+const controlFlowEndpoints: ValidationRule = {
+  id: 'uml.control-flow-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.control-flow-endpoints',
+  messageFallback:
+    'This control flow runs between artefacts an activity does not route control through.',
+  suggestionKey: 'com.labre.uml.validation.control-flow-endpoints.suggestion',
+  suggestionFallback:
+    'A control flow joins actions, control nodes and the signal artefacts. Draw an object flow if what travels is data, a transition if these are states — and if this really is a control-typed object node, the notation has no way of saying so and the remark can be waived.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §15.7.9.4 — "ControlFlows may not have ObjectNodes at either end, except for ObjectNodes with control type"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE['control-flow'],
+    allowed: UML_CONTROL_FLOW_MATRIX,
+  },
+};
+
+/**
+ * **U31** — an object flow that touches no data.
+ *
+ * §15.7.11.4's `same_upper_bounds` describes an object flow as a line between
+ * ObjectNodes "with optionally intervening ControlNodes", so at least one end of
+ * one is data. See {@link UML_OBJECT_FLOW_MATRIX} for why the reading is the
+ * loose one, why the rule is a `recommendation` and why `uml.strict` is the one
+ * endpoint rule it leaves alone: §15.4.4's elided PINS make the action-to-action
+ * drawing a legal shorthand, and this canvas has no pin to draw.
+ */
+const objectFlowEndpoints: ValidationRule = {
+  id: 'uml.object-flow-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.object-flow-endpoints',
+  messageFallback: 'Neither end of this object flow is a data node.',
+  suggestionKey: 'com.labre.uml.validation.object-flow-endpoints.suggestion',
+  suggestionFallback:
+    'An object flow carries something: draw the object node it carries between the two actions, and name what travels. If what you meant is "this happens, then that happens", draw a control flow instead.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §15.7.11.4 — ObjectNodes connected by an ObjectFlow, with optionally intervening ControlNodes; §15.4.4 elides the Pins that would be those nodes, so the action-to-action drawing is a shorthand rather than a defect',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE['object-flow'],
+    allowed: UML_OBJECT_FLOW_MATRIX,
+  },
+};
+
+/**
+ * **U32** — a transition drawn onto something that is not a vertex.
+ *
+ * §14.5.12: a Transition runs from one Vertex to another, and a Vertex is a
+ * State, a FinalState or a Pseudostate. The finding worth having is the one the
+ * alphabet entries buy — a transition dragged onto a DECISION diamond, which is
+ * §15.3.4's branch where §14.2.4's is the `<<choice>>`, and the commonest
+ * confusion between these two sheets by a distance.
+ *
+ * See {@link UML_TRANSITION_MATRIX} for why the table over the vertices is the
+ * full square rather than a grammar: the counts are owned by the degree rules,
+ * and one wrong arrow gets one bracket.
+ */
+const transitionEndpoints: ValidationRule = {
+  id: 'uml.transition-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.transition-endpoints',
+  messageFallback:
+    'This transition runs between artefacts a state machine has no transitions between.',
+  suggestionKey: 'com.labre.uml.validation.transition-endpoints.suggestion',
+  suggestionFallback:
+    'A transition joins states, final states and the pseudostates that route between them. A diamond on a state machine is the choice pseudostate, not the activity decision — swap it, or draw a control flow if this sheet is really an activity.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §14.5.12 — "A Transition is a single directed arc originating from a single source Vertex and terminating on a single target Vertex"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE.transition,
+    allowed: UML_TRANSITION_MATRIX,
+  },
+};
+
+/* ── Behaviour: can the flow get there at all? ──────────────────────────── */
+
+/**
+ * **U33 / U34** — an action, or a state, no walk from the beginning ever
+ * reaches.
+ *
+ * The orphan question, and the first one this pack asks that no amount of
+ * looking at an element or at one line can answer: an action with a perfectly
+ * good control flow on either side is still unreachable if the chain it belongs
+ * to never starts anywhere. BPMN's `unreachable-step` is the same rule one
+ * notation over, and the reasoning it records applies here whole.
+ *
+ * `implicitRoots` is on, and it is what makes the rules shippable: a node nothing
+ * points at IS a beginning whether or not anybody drew the disc, so a second
+ * branch drawn beside the first — and every activity in the thirty seconds before
+ * its initial node goes down — is left alone. What survives is the real defect: a
+ * RING entered from nowhere, where every step is pointed at and no walk reaches
+ * any of them.
+ *
+ * ## Two rules, for the two vocabularies
+ *
+ * `reachability` follows ONE edge role, so the activity walk (control flow) and
+ * the state machine walk (transition) are two declarations. Both start from
+ * `uml:initial`, which is the one role the two sheets genuinely share, and both
+ * are silent on a board carrying none of either kind of root.
+ *
+ * ## The subjects are the ACTION and the STATE, and nothing else
+ *
+ * `reachability` names one subject role. The object nodes, the signal artefacts
+ * and the pseudostates are not walked for — a narrower rule that is right is
+ * worth more than a wider one that guesses, and the artefact a reader asks "how
+ * do we get here?" about is the step and the state.
+ *
+ * ## `on-demand`, for BPMN's reason exactly
+ *
+ * A graph sweep is O(V + E), rebuilds its adjacency every evaluation and cannot
+ * be made incremental even in principle — reachability is global, so re-pointing
+ * one arrow can orphan or rescue an arbitrary number of steps nowhere near it. It
+ * stays out of the drawing budget and runs when somebody asks whether the diagram
+ * is finished, which is also the only moment the answer is worth anything.
+ */
+const unreachableAction: ValidationRule = {
+  id: 'uml.unreachable-action',
+  framework: 'uml',
+  family: 'reachability',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.unreachable-action',
+  messageFallback: 'No flow from the beginning of this activity reaches here.',
+  suggestionKey: 'com.labre.uml.validation.unreachable-action.suggestion',
+  suggestionFallback:
+    'Follow the control flows back from this action: somewhere the chain stops, or an arrow points the wrong way. Join it to the flow, or delete it if it no longer happens.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Best practice — OMG UML 2.5.1 §15.3.3 seeds the flow at the InitialNodes and requires the reachability of nobody',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  reachability: {
+    rootRole: UML_ROLE.initial,
+    subjectRole: UML_ROLE.action,
+    edgeRole: UML_ROLE['control-flow'],
+    // An action nothing points at IS a beginning, whether or not anybody drew
+    // the disc — see the header.
+    implicitRoots: true,
+  },
+};
+
+const unreachableState: ValidationRule = {
+  id: 'uml.unreachable-state',
+  framework: 'uml',
+  family: 'reachability',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.unreachable-state',
+  messageFallback:
+    'No transition from the beginning of this machine reaches here.',
+  suggestionKey: 'com.labre.uml.validation.unreachable-state.suggestion',
+  suggestionFallback:
+    'Follow the transitions back from this state: somewhere the chain stops, or an arrow points the wrong way. Join it to the machine, or delete it if the machine can no longer be in it.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'Best practice — OMG UML 2.5.1 §14.2.3 seeds execution at the initial Pseudostate and requires the reachability of nobody',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  reachability: {
+    rootRole: UML_ROLE.initial,
+    subjectRole: UML_ROLE.state,
+    edgeRole: UML_ROLE.transition,
+    implicitRoots: true,
+  },
+};
+
+/**
+ * The pack, whole: thirty-four rules over eight families.
  *
  * Sixteen in phase 1, and not that brief's seventeen ids because the actor's
  * name and the use case's name are ONE rule: they are the same tier role, and
  * two rules on one role report one emptied word twice (see
- * {@link unnamedActorOrUseCase}). Phase 2 appended three — the grammars of the
- * three edges the structural sheets draw — and skipped two the engine cannot be
- * asked (see the file header's third and fourth deliberate silences).
+ * {@link unnamedActorOrUseCase}). The structural sheets appended three — the
+ * grammars of the three edges they draw — and skipped two the engine cannot be
+ * asked. The BEHAVIOUR sheets appended fifteen, which is the largest single
+ * addition this library has taken: an activity and a state machine are the two
+ * diagrams UML constrains arithmetically, so where a class diagram's pack is
+ * mostly a vocabulary these are counts, degrees and a graph walk.
  *
- * Six families, and STILL not one of them new after a second notation's worth of
- * artefacts: UML is the largest pack this library carries and it has asked the
- * engine for nothing — the twelve edge roles are twelve readings of
- * `relation-endpoints`, the two frames are the membership families C4 already
- * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
- * That is the claim `docs/add-a-framework` makes about the seam, tested by the
- * hardest case available.
+ * ## Eight families, and the two new ones are new to the PACK, not to the engine
+ *
+ * `role-count` and `reachability` are BPMN's, registered here with UML's own
+ * roles and nothing else: a state machine with two beginnings and a ring of
+ * states nothing enters are the same two questions a pool with two start events
+ * and an unreachable task ask. So the claim `docs/add-a-framework` makes about
+ * the seam survives the largest notation in the library twice over — the
+ * fifteen edge roles are fifteen readings of `relation-endpoints`, the four
+ * frames are the membership families C4 already uses, and the sheet's own
+ * declaration is the `view-admissibility` C4 opened.
+ *
+ * ## Several rules say one sentence twice, and the reason is always the same
+ *
+ * Five pairs — the two histories, the two initial-node counts, the two finals,
+ * the two reachability walks — are one requirement declared twice because the
+ * family that answers it names ONE role: one subject role, or one edge role.
+ * They never double-report (an element carries one role, an edge carries one
+ * role, and each pair's two halves are flat siblings), and each half carries the
+ * sentence and the authority its own half of the notation has. Where the pair
+ * could have been collapsed by inventing an ancestor role, it was not: this
+ * vocabulary's whole authority is that every role in it is the specification's.
  */
 export const UML_RULES: readonly ValidationRule[] = [
   // Membership: is the drawing on the sheet it claims to be on?
@@ -1543,4 +2548,23 @@ export const UML_RULES: readonly ValidationRule[] = [
   // Degree: how many lines may reach one artefact?
   compositionSingleOwner,
   useCaseNoActor,
+  // Behaviour — membership: is the drawing in the lane, in the region?
+  nodeInPartition,
+  shallowHistoryOutsideRegion,
+  deepHistoryOutsideRegion,
+  // Behaviour — counts: how many beginnings, how many lines reach one glyph?
+  initialSingle,
+  initialNoIncomingFlow,
+  initialNoIncomingTransition,
+  activityFinalNoOutgoing,
+  flowFinalNoOutgoing,
+  finalStateNoOutgoing,
+  decisionIncomingCount,
+  // Behaviour — grammar: what each flow may run between.
+  controlFlowEndpoints,
+  objectFlowEndpoints,
+  transitionEndpoints,
+  // Behaviour — the graph: can the flow get there at all?
+  unreachableAction,
+  unreachableState,
 ];

@@ -3,10 +3,16 @@ import {
   validationToolbarConfig,
 } from '@labre/affine-block-surface';
 import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
-import { UmlDiagramElementModel } from '@labre/affine-model';
+import {
+  UmlDiagramElementModel,
+  UmlPartitionElementModel,
+  type UmlPartitionOrientation,
+  UmlRegionElementModel,
+} from '@labre/affine-model';
 import {
   ActionPlacement,
   BOARD_LEGEND_NOTATION,
+  BOARD_ORIENTATION_TOGGLE,
   BOARD_RESIZE_TOGGLE,
   TelemetryProvider,
   type ToolbarContext,
@@ -482,3 +488,172 @@ export const umlDiagramToolingToolbarExtension = ToolbarModuleExtension({
  * It has no kind picker either, and for a plainer reason: §18.1.4 gives the
  * subject one rectangle with one name and nothing to choose between.
  */
+
+/* ── Phase 2: the two banded frames of the behaviour diagrams ───────────── */
+
+/**
+ * The two arrows of the orientation toggle — the bands turned a quarter turn.
+ *
+ * Drawn inline, as every other glyph on this row is and for the same reason:
+ * `@labre/affine-components` is not a dependency of this package and two paths
+ * are not worth making it one.
+ */
+const OrientationIcon = html`<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 4h5v16H4zM15 4h5v16h-5z" />
+  <path d="M11.5 9.5l1 1 1-1M12.5 10.5v3" />
+</svg>`;
+
+/**
+ * The resize toggle, for a frame that is neither the diagram nor the subject.
+ *
+ * Written once for the two phase-2 backgrounds rather than a third time inline:
+ * a partition and a region toggle the very same declared field on the very same
+ * primitive, and the only thing that differs between their two rows is which
+ * model class the selection is filtered by.
+ *
+ * `a.` sorts it first, exactly as it does on the diagram's row, so the merged
+ * row reads the same wherever the modules were registered.
+ */
+function resizeToggle<
+  T extends abstract new (...args: never[]) => {
+    id: string;
+    resizeEnabled: boolean;
+  },
+>(klass: T) {
+  return {
+    id: 'a.toggle-resize',
+    tooltipWording: BOARD_RESIZE_TOGGLE,
+    icon: ResizeIcon,
+    active(ctx: ToolbarContext) {
+      const models = ctx.getSurfaceModelsByType(klass);
+      return models.length > 0 && models.every(model => model.resizeEnabled);
+    },
+    run(ctx: ToolbarContext) {
+      const models = ctx.getSurfaceModelsByType(klass);
+      if (!models.length) return;
+      const enable = !models.every(model => model.resizeEnabled);
+      ctx.std.store.captureSync();
+      const crud = ctx.std.get(EdgelessCRUDIdentifier);
+      for (const model of models) {
+        crud.updateElement(model.id, { resizeEnabled: enable });
+      }
+    },
+  };
+}
+
+/**
+ * The ACTIVITY PARTITION's row: the resize toggle, and the one thing a swimlane
+ * can be said differently — which way its bands run.
+ *
+ * ## Why the orientation toggle is ALWAYS-ON
+ *
+ * It writes a stored field, so it is not obviously tooling — and that is exactly
+ * the question `docs/adr/0009` makes people ask. The answer is the one the
+ * resize toggle already gives: this is a GESTURE ON A SELECTED ELEMENT, not a
+ * way to put a new one on the canvas. A partition drawn while the `uml` flag was
+ * on must stay usable with it off — moved, stretched, renamed, and turned the
+ * right way round for the sheet it sits on — because every one of those is
+ * something the author does to a thing that is already there.
+ *
+ * The line the ADR actually draws is between the ways to CREATE and the ways to
+ * work with what exists. `resizeEnabled` writes content too (it is a field of
+ * the model, undoable like any other); so does the rename on a double-click; so
+ * does dragging the frame. What the flag takes away is the button that adds a
+ * partition in the first place, and the menu it lives in.
+ *
+ * ## Why a toggle and not a two-option dropdown
+ *
+ * §15.6.4 gives the orientation no meaning: a partition drawn in columns and the
+ * same partition drawn in rows say the same thing, and the choice is made
+ * against the sheet — a wide activity diagram wants rows, a tall one wants
+ * columns. Two mutually exclusive values with no semantics between them are a
+ * flip, and a dropdown would spend a menu on a question whose two answers are
+ * "this way" and "the other way". The C4 level picker is a dropdown because
+ * there are four levels and each MEANS something.
+ *
+ * `active` reports HORIZONTAL — the value that is not the default — so the
+ * button reads as pressed exactly when the author has turned the bands.
+ *
+ * ponytail: the flip writes `orientation` and nothing else. It does not swap the
+ * frame's width and height, so a tall partition turned horizontal is a wide band
+ * stack in a tall box until the author drags it — the notation has nothing to
+ * say about the box, and guessing a new one is a gesture the user did not ask
+ * for and cannot half-undo.
+ */
+export const umlPartitionToolbarConfig = {
+  actions: [
+    resizeToggle(UmlPartitionElementModel),
+    {
+      // After the resize toggle, before anything a later phase hangs off the
+      // `custom:` twin — the row reads resize, then orientation.
+      id: 'b.orientation',
+      tooltipWording: BOARD_ORIENTATION_TOGGLE,
+      icon: OrientationIcon,
+      active(ctx: ToolbarContext) {
+        const models = ctx.getSurfaceModelsByType(UmlPartitionElementModel);
+        return (
+          models.length > 0 &&
+          models.every(model => model.orientation === 'horizontal')
+        );
+      },
+      run(ctx: ToolbarContext) {
+        const models = ctx.getSurfaceModelsByType(UmlPartitionElementModel);
+        if (!models.length) return;
+        // One click, one answer for the whole selection: turn them all
+        // horizontal unless they already all are, in which case turn them back.
+        // The same rule the resize toggle follows, and the reason a mixed
+        // selection converges instead of alternating.
+        const next: UmlPartitionOrientation = models.every(
+          model => model.orientation === 'horizontal'
+        )
+          ? 'vertical'
+          : 'horizontal';
+        ctx.std.store.captureSync();
+        const crud = ctx.std.get(EdgelessCRUDIdentifier);
+        for (const model of models) {
+          crud.updateElement(model.id, { orientation: next });
+        }
+      },
+    },
+  ],
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(UmlPartitionElementModel).length > 0,
+} as const satisfies ToolbarModuleConfig;
+
+export const umlPartitionToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('affine:surface:umlPartition'),
+  config: umlPartitionToolbarConfig,
+});
+
+/**
+ * The REGION's row: the resize toggle, and nothing else.
+ *
+ * A region is a composite state's inside (§14.2.4) — one rounded rectangle with
+ * one name compartment and sub-states drawn in it. It has no orientation: its
+ * band is its name compartment, which §14.2.4 puts at the top and nowhere else,
+ * and there is no second reading of the same picture to flip to. So the row is
+ * the one entry every framework background carries, and the rename is on the
+ * band under a double-click (`element-view.ts`) as it is on all the others.
+ *
+ * Registered as its own module rather than folded into the partition's because
+ * `renderToolbar` merges BY FLAVOUR: these are two element types, so two rows.
+ */
+export const umlRegionToolbarConfig = {
+  actions: [resizeToggle(UmlRegionElementModel)],
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(UmlRegionElementModel).length > 0,
+} as const satisfies ToolbarModuleConfig;
+
+export const umlRegionToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('affine:surface:umlRegion'),
+  config: umlRegionToolbarConfig,
+});

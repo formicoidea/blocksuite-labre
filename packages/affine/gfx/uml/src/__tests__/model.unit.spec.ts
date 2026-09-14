@@ -315,3 +315,279 @@ describe('the structural relations', () => {
     ]);
   });
 });
+
+/* ── The behaviour sheets (§15.2.4, §14.2.4) ──────────────────────────── */
+
+/** The same flat reading, on a frame that declares the kind under test. */
+const readOn = (kind: string, elements: UmlSourceElement[]) =>
+  umlModelFrom(diagram(kind), [diagram(kind), ...elements]);
+
+const action = (id: string, box: Box, label: string) =>
+  artefact(id, 'action', UML_ROLE.action, box, { label });
+
+const stateBox = (
+  id: string,
+  box: Box,
+  name: string,
+  behaviours?: string
+): UmlSourceElement[] => {
+  const parts = artefact(id, 'state', UML_ROLE.state, box, { name });
+  if (behaviours === undefined) return parts;
+  // §14.2.4.4's internal activities live in the SECOND tier, which is the one a
+  // class writes its properties in — `uml:attributes`, reused because a state's
+  // compartment is the second one down.
+  const tier: UmlSourceElement = {
+    id: `${id}-attrs`,
+    type: 'text',
+    role: UML_ROLE.attributes,
+    text: behaviours,
+  };
+  const group = parts[parts.length - 1];
+  return [
+    ...parts.slice(0, -1),
+    tier,
+    {
+      ...group,
+      childIds: [...(group.childIds ?? []), tier.id],
+    },
+  ];
+};
+
+const glyph = (id: string, kind: string, role: string, box: Box) =>
+  artefact(id, kind, role, box);
+
+const swimlane = (
+  id: string,
+  box: Box,
+  name: string,
+  orientation?: string
+): UmlSourceElement => ({
+  id,
+  type: 'umlPartition',
+  role: UML_ROLE.partition,
+  name,
+  ...(orientation ? { orientation } : {}),
+  xywh: `[${box.join(',')}]`,
+});
+
+const composite = (id: string, box: Box, name: string): UmlSourceElement => ({
+  id,
+  type: 'umlRegion',
+  role: UML_ROLE.region,
+  name,
+  xywh: `[${box.join(',')}]`,
+});
+
+const flow = (
+  id: string,
+  role: string,
+  from: string,
+  to: string,
+  text?: string
+): UmlSourceElement => ({
+  id,
+  type: 'connector',
+  role,
+  source: { id: from },
+  target: { id: to },
+  ...(text === undefined ? {} : { text }),
+  xywh: '[0,0,0,0]',
+});
+
+describe('an activity sheet', () => {
+  it('reads the ten glyphs and the two flows off their roles', () => {
+    const model = readOn('act', [
+      ...glyph('i', 'initial', UML_ROLE.initial, [100, 100, 24, 24]),
+      ...action('a', [200, 100, 180, 80], 'Receive order'),
+      ...glyph(
+        'o',
+        'object-node',
+        UML_ROLE['object-node'],
+        [500, 100, 160, 60]
+      ),
+      ...glyph(
+        'z',
+        'activity-final',
+        UML_ROLE['activity-final'],
+        [800, 100, 32, 32]
+      ),
+      flow('e1', UML_ROLE['control-flow'], 'i', 'a'),
+      flow('e2', UML_ROLE['object-flow'], 'a', 'o'),
+      flow('e3', UML_ROLE['control-flow'], 'a', 'z'),
+    ]);
+    const [activity] = model.activities;
+    expect(activity.nodes.map(node => node.kind)).toEqual([
+      'initial',
+      'action',
+      'object-node',
+      'activity-final',
+    ]);
+    expect(activity.edges.map(edge => edge.kind)).toEqual([
+      'control-flow',
+      'object-flow',
+      'control-flow',
+    ]);
+    // …and the sheet holds no state machine at all.
+    expect(model.stateMachines).toEqual([]);
+    expect(model.warnings).toEqual([]);
+  });
+
+  it('reads §15.2.4’s guard and weight off the arrow’s one label', () => {
+    const model = readOn('act', [
+      ...action('a', [100, 100, 180, 80], 'Pick'),
+      ...action('b', [500, 100, 180, 80], 'Pack'),
+      flow(
+        'e',
+        UML_ROLE['control-flow'],
+        'a',
+        'b',
+        'ready [stock > 0] {weight = 2}'
+      ),
+    ]);
+    expect(model.activities[0].edges[0]).toEqual({
+      kind: 'control-flow',
+      sourceId: 'a',
+      targetId: 'b',
+      name: 'ready',
+      guard: 'stock > 0',
+      weight: '2',
+    });
+    // The same connector is still a RELATION, carrying its label untouched: the
+    // edges are projected from that one pass, never read a second time.
+    expect(model.relations[0].label).toBe('ready [stock > 0] {weight = 2}');
+  });
+
+  it('puts each action in the lane whose box holds its centre', () => {
+    const model = readOn('act', [
+      swimlane('lane1', [100, 100, 400, 700], 'Sales'),
+      swimlane('lane2', [500, 100, 400, 700], 'Warehouse', 'horizontal'),
+      ...action('a', [140, 200, 180, 80], 'Take the order'),
+      ...action('b', [540, 200, 180, 80], 'Pick the goods'),
+      // …and one drawn between the lanes, which belongs to nobody.
+      ...action('c', [1000, 200, 180, 80], 'Invoice'),
+    ]);
+    const [activity] = model.activities;
+    expect(
+      activity.partitions.map(lane => [lane.name, lane.orientation])
+    ).toEqual([
+      ['Sales', 'vertical'],
+      ['Warehouse', 'horizontal'],
+    ]);
+    expect(activity.partitions.map(lane => lane.nodeIds)).toEqual([
+      ['a'],
+      ['b'],
+    ]);
+    // The two readings hold the same fact, which is why they cannot disagree.
+    const partitionOf = new Map(
+      activity.nodes.map(node => [node.id, node.partitionId])
+    );
+    expect(partitionOf.get('a')).toBe('lane1');
+    expect(partitionOf.get('b')).toBe('lane2');
+    expect(partitionOf.get('c')).toBeUndefined();
+  });
+
+  it('writes no lane membership when no lane is drawn', () => {
+    const model = readOn('act', [...action('a', [140, 200, 180, 80], 'Pick')]);
+    expect(model.activities[0].partitions).toEqual([]);
+    expect(model.activities[0].nodes[0].partitionId).toBeUndefined();
+  });
+});
+
+describe('a state machine sheet', () => {
+  it('parses §14.2.4.4’s entry, do and exit lines, and keeps the rest', () => {
+    const model = readOn('stm', [
+      ...stateBox(
+        's',
+        [100, 100, 180, 90],
+        'Draft',
+        'entry / reserve()\ndo / poll()\nexit / release()\nsubmit [x > 0] / log()'
+      ),
+    ]);
+    const [state] = model.stateMachines[0].states;
+    expect(state.name).toBe('Draft');
+    expect(state.entry).toEqual(['reserve()']);
+    expect(state.doActivity).toEqual(['poll()']);
+    expect(state.exit).toEqual(['release()']);
+    // An INTERNAL TRANSITION is §14.2.4.4's next compartment and not one of the
+    // three labels: kept verbatim rather than dropped.
+    expect(state.lines).toEqual(['submit [x > 0] / log()']);
+  });
+
+  it('parses §14.2.4.8’s three parts off a transition’s label', () => {
+    const model = readOn('stm', [
+      ...stateBox('s1', [100, 100, 180, 90], 'Draft'),
+      ...stateBox('s2', [500, 100, 180, 90], 'Placed'),
+      flow(
+        't',
+        UML_ROLE.transition,
+        's1',
+        's2',
+        'submit, all [stock > 0] / reserve()'
+      ),
+    ]);
+    expect(model.stateMachines[0].transitions).toEqual([
+      {
+        sourceId: 's1',
+        targetId: 's2',
+        triggers: ['submit', 'all'],
+        guard: 'stock > 0',
+        effect: 'reserve()',
+      },
+    ]);
+  });
+
+  it('puts each vertex in the composite state whose box holds its centre', () => {
+    const model = readOn('stm', [
+      composite('c', [100, 100, 600, 500], 'Running'),
+      composite('c2', [150, 150, 300, 200], 'Paused'),
+      ...stateBox('inner', [200, 180, 180, 90], 'Held'),
+      ...stateBox('outer', [900, 100, 180, 90], 'Idle'),
+      ...glyph(
+        'h',
+        'shallow-history',
+        UML_ROLE['shallow-history'],
+        [500, 400, 28, 28]
+      ),
+    ]);
+    const machine = model.stateMachines[0];
+    // §14.2.4's nesting, most-nested first and strictly larger, so two boxes
+    // drawn on top of each other cannot each claim the other.
+    expect(
+      machine.regions.map(region => [region.name, region.parentId])
+    ).toEqual([
+      ['Running', undefined],
+      ['Paused', 'c'],
+    ]);
+    const regionOf = new Map(
+      machine.states.map(state => [state.name, state.regionId])
+    );
+    expect(regionOf.get('Held')).toBe('c2');
+    expect(regionOf.get('Idle')).toBeUndefined();
+    expect(machine.pseudostates[0].regionId).toBe('c');
+  });
+});
+
+describe('the two glyphs both behaviour sheets draw', () => {
+  it('reads the disc and the bar by what the FRAME says it is', () => {
+    // §15.3.4 and §14.2.4 draw the same filled disc and the same bar and mean
+    // the same thing by each, so `roles.ts` gives each one role. An export has
+    // to choose a metaclass all the same, and the sheet's own heading — which
+    // Annex A makes a required part of the frame — is what chooses.
+    const ink = [
+      ...glyph('i', 'initial', UML_ROLE.initial, [100, 100, 24, 24]),
+      ...glyph('f', 'fork', UML_ROLE.fork, [300, 100, 100, 8]),
+    ];
+    const asActivity = readOn('act', ink);
+    expect(asActivity.activities[0].nodes.map(node => node.kind)).toEqual([
+      'initial',
+      'fork',
+    ]);
+    expect(asActivity.stateMachines).toEqual([]);
+
+    const asMachine = readOn('stm', ink);
+    expect(
+      asMachine.stateMachines[0].pseudostates.map(each => each.kind)
+    ).toEqual(['initial', 'fork']);
+    expect(asMachine.activities).toEqual([]);
+  });
+});

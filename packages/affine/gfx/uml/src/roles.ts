@@ -80,9 +80,37 @@ import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
  * class-diagram association rule a deployment diagram to police. Recorded here
  * rather than left to be rediscovered.
  *
+ * **`uml:control-node`** and **`uml:pseudostate`** are the fourth and fifth,
+ * and they arrived with the behaviour artefacts of phase 2. §15.3.4 groups the
+ * five shapes that ROUTE an activity's flow (initial, activity final, flow
+ * final, decision, fork) under ControlNode, and §14.2.4 groups the seven that
+ * route a state machine's transitions (choice, junction, the two histories,
+ * entry and exit points, terminate) under Pseudostate. Both parents are
+ * ABSTRACT — stamped on nothing, like `uml:classifier` and unlike `uml:node` —
+ * because the sentences they exist for ("carries no name", "is never where the
+ * machine rests") are true of all of them and of none of them in particular.
+ *
+ * `uml:initial` is filed under `uml:control-node` because §15.3.4 puts it
+ * there, and it is ALSO the role a state machine's initial pseudostate carries:
+ * §14.2.4 draws the identical filled disc and means the identical thing by it.
+ * That cross-family reading is deliberate — one rule, `uml.initial-single`,
+ * then polices both diagrams — and it is recorded on the def so nobody later
+ * "fixes" it by splitting the two.
+ *
+ * `uml:action` and `uml:state` are FLAT, and pointedly not each other's
+ * relatives although both are drawn as a round-cornered rectangle: an action is
+ * work that happens, a state is a condition that holds. `uml:object-node` is
+ * flat for the reason `uml:object` is, and is not the same role as it: an
+ * instance specification and a value flowing between actions are different
+ * metaclasses sharing a rectangle. `uml:final-state` is flat and drawn exactly
+ * like `uml:activity-final`, kept apart because a rule about one must never be
+ * handed the other.
+ *
  * ## The frames
  *
- * `uml:diagram` and `uml:subject` are parent-less, the same call `c4:board`,
+ * `uml:diagram`, `uml:subject`, `uml:partition` (the swimlane of §15.6.4) and
+ * `uml:region` (the composite state of §14.2.4) are parent-less, the same call
+ * `c4:board`,
  * `wardley:map` and `bpmn:pool` all make: they are the FRAME the elements are
  * drawn in and drawn round, and a rule written on the artefacts must never fall
  * on the sheet holding them. They are declared `kind: 'node'` for the same
@@ -120,6 +148,31 @@ export type UmlRole =
   | 'node'
   | 'device'
   | 'execution-environment'
+  // The activity artefacts, and the parent the five routing shapes share
+  // (§15.3.4, §15.4.4, §16.3.4, §16.10.4).
+  | 'control-node'
+  | 'action'
+  | 'initial'
+  | 'activity-final'
+  | 'flow-final'
+  | 'decision'
+  | 'fork'
+  | 'object-node'
+  | 'send-signal'
+  | 'accept-event'
+  | 'time-event'
+  // The state machine artefacts, and the parent the seven routing shapes
+  // share (§14.2.4).
+  | 'state'
+  | 'final-state'
+  | 'pseudostate'
+  | 'choice'
+  | 'junction'
+  | 'shallow-history'
+  | 'deep-history'
+  | 'entry-point'
+  | 'exit-point'
+  | 'terminate'
   // The written tiers of an artefact's label, as canvas text.
   | 'name'
   | 'attributes'
@@ -128,6 +181,8 @@ export type UmlRole =
   // The frames.
   | 'diagram'
   | 'subject'
+  | 'partition'
+  | 'region'
   // The relationships.
   | 'association'
   | 'aggregation'
@@ -141,17 +196,22 @@ export type UmlRole =
   // The deployment relationships (§19.2.4, §19.3.4, §19.4.4).
   | 'deploy'
   | 'manifest'
-  | 'communication-path';
+  | 'communication-path'
+  // The behaviour relationships (§15.2.4, §14.2.4.8).
+  | 'control-flow'
+  | 'object-flow'
+  | 'transition';
 
 export type UmlRoleId = `uml:${UmlRole}`;
 
 /**
  * Role ids, keyed by their own name.
  *
- * Keyed by the ROLE and not by the `kind`: UML has sixteen node kinds and
- * seventeen node roles, because `uml:classifier` is a parent nothing is ever
- * drawn as. ({@link UML_ROLE.node} is a parent too, and IS drawn — §19.4 makes a
- * Node instantiable — so it does not add a role of its own.)
+ * Keyed by the ROLE and not by the `kind`: UML has thirty-five node kinds and
+ * thirty-eight node roles, because `uml:classifier`, `uml:control-node` and
+ * `uml:pseudostate` are parents nothing is ever drawn as. ({@link
+ * UML_ROLE.node} is a parent too, and IS drawn — §19.4 makes a Node
+ * instantiable — so it does not add a role of its own.)
  * {@link UML_ROLE_OF_KIND} is the bridge, and it is the only place the two
  * vocabularies meet.
  */
@@ -173,12 +233,35 @@ export const UML_ROLE = {
   node: 'uml:node',
   device: 'uml:device',
   'execution-environment': 'uml:execution-environment',
+  'control-node': 'uml:control-node',
+  action: 'uml:action',
+  initial: 'uml:initial',
+  'activity-final': 'uml:activity-final',
+  'flow-final': 'uml:flow-final',
+  decision: 'uml:decision',
+  fork: 'uml:fork',
+  'object-node': 'uml:object-node',
+  'send-signal': 'uml:send-signal',
+  'accept-event': 'uml:accept-event',
+  'time-event': 'uml:time-event',
+  state: 'uml:state',
+  'final-state': 'uml:final-state',
+  pseudostate: 'uml:pseudostate',
+  choice: 'uml:choice',
+  junction: 'uml:junction',
+  'shallow-history': 'uml:shallow-history',
+  'deep-history': 'uml:deep-history',
+  'entry-point': 'uml:entry-point',
+  'exit-point': 'uml:exit-point',
+  terminate: 'uml:terminate',
   name: 'uml:name',
   attributes: 'uml:attributes',
   operations: 'uml:operations',
   label: 'uml:label',
   diagram: 'uml:diagram',
   subject: 'uml:subject',
+  partition: 'uml:partition',
+  region: 'uml:region',
   association: 'uml:association',
   aggregation: 'uml:aggregation',
   composition: 'uml:composition',
@@ -191,6 +274,9 @@ export const UML_ROLE = {
   deploy: 'uml:deploy',
   manifest: 'uml:manifest',
   'communication-path': 'uml:communication-path',
+  'control-flow': 'uml:control-flow',
+  'object-flow': 'uml:object-flow',
+  transition: 'uml:transition',
 } as const satisfies Record<UmlRole, UmlRoleId>;
 
 /**
@@ -226,6 +312,12 @@ export const umlDiagramRoleKey = roleKey(UML_ROLE.diagram);
 
 /** The subject's own key, read by `createUmlSubject` to seed its name. */
 export const umlSubjectRoleKey = roleKey(UML_ROLE.subject);
+
+/** The partition's own key, read by `createUmlPartition` to seed its name. */
+export const umlPartitionRoleKey = roleKey(UML_ROLE.partition);
+
+/** The composite state's own key, read by `createUmlRegion` to seed its name. */
+export const umlRegionRoleKey = roleKey(UML_ROLE.region);
 
 /**
  * The classifiers (§9.2, §11.4.4) — the compartmented rectangle, and the three
@@ -363,6 +455,188 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
     labelKey: roleKey(UML_ROLE['execution-environment']),
     labelFallback: 'Execution environment',
   },
+  // ── The activity artefacts (phase 2) ────────────────────────────────────
+  // §15.3.4: an Action is the round-cornered rectangle work is written in. Flat
+  // — it is the only thing on an activity diagram that DOES anything, and the
+  // control nodes below route between actions rather than specialise them.
+  {
+    id: UML_ROLE.action,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.action),
+    labelFallback: 'Action',
+  },
+  // §15.3.4: the ControlNodes. An abstract parent, stamped on nothing, for the
+  // reason `uml:classifier` is one: "a control node carries no name" and "a
+  // control flow may end on a control node" are sentences about the five of
+  // them at once, and restating each five times is how four of them stay right.
+  {
+    id: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['control-node']),
+    labelFallback: 'Control node',
+  },
+  // The filled disc where a flow begins. Filed under the control node because
+  // §15.3.4 puts it there — and USED on state machines too, where §14.2.4 draws
+  // the identical disc and means the identical thing (one per region, no
+  // incoming edge). That cross-family reading is deliberate and recorded here:
+  // a rule written on `uml:initial` fires on both diagrams, which is what the
+  // two specifications between them say.
+  {
+    id: UML_ROLE.initial,
+    parent: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.initial),
+    labelFallback: 'Initial node',
+  },
+  {
+    id: UML_ROLE['activity-final'],
+    parent: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['activity-final']),
+    labelFallback: 'Activity final',
+  },
+  {
+    id: UML_ROLE['flow-final'],
+    parent: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['flow-final']),
+    labelFallback: 'Flow final',
+  },
+  {
+    id: UML_ROLE.decision,
+    parent: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.decision),
+    labelFallback: 'Decision',
+  },
+  // §15.3.4 draws a fork and a join as the SAME bar and tells them apart by how
+  // many edges run in and out. One role, therefore: two would be this
+  // vocabulary claiming a distinction the picture does not carry, and a rule
+  // that wants it can count the edges.
+  {
+    id: UML_ROLE.fork,
+    parent: UML_ROLE['control-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.fork),
+    labelFallback: 'Fork / join',
+  },
+  // §15.4.4: an ObjectNode is the DATA that flows between actions, drawn as a
+  // plain rectangle. NOT a control node — it is what moves, not what routes —
+  // and not an `uml:object` either: an object diagram's instance specification
+  // and an activity's object node are different metaclasses that happen to
+  // share a rectangle, which is exactly the trap this vocabulary avoids.
+  {
+    id: UML_ROLE['object-node'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['object-node']),
+    labelFallback: 'Object node',
+  },
+  // §16.3.4: the two invocation shapes, drawn as the convex and the concave
+  // pentagon. Flat and separate, because they are two statements — one sends,
+  // the other waits — and the notation gives each its own silhouette.
+  {
+    id: UML_ROLE['send-signal'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['send-signal']),
+    labelFallback: 'Send signal',
+  },
+  {
+    id: UML_ROLE['accept-event'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['accept-event']),
+    labelFallback: 'Accept event',
+  },
+  // §16.10.4: the hourglass — an AcceptEventAction whose trigger is a
+  // TimeEvent. A role of its own rather than a flag on `uml:accept-event`,
+  // because the notation draws a different picture for it and a reader tells
+  // "waits for an order" from "waits two days" by that picture alone.
+  {
+    id: UML_ROLE['time-event'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['time-event']),
+    labelFallback: 'Time event',
+  },
+  // ── The state machine artefacts (phase 2) ───────────────────────────────
+  // §14.2.4: a State is the round-cornered rectangle a machine rests in. Flat,
+  // and emphatically not under `uml:action`: an action is work that happens, a
+  // state is a condition that holds, and the two share a silhouette and
+  // nothing else.
+  {
+    id: UML_ROLE.state,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.state),
+    labelFallback: 'State',
+  },
+  // The bullseye. Drawn identically to `uml:activity-final` and kept a separate
+  // role all the same, because the two are different metaclasses on different
+  // diagrams: a FinalState is a vertex a transition lands on, an
+  // ActivityFinalNode stops every flow in the activity. A rule about one must
+  // not be handed the other.
+  {
+    id: UML_ROLE['final-state'],
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['final-state']),
+    labelFallback: 'Final state',
+  },
+  // §14.2.4: the Pseudostates. The state machine's own abstract parent, the
+  // counterpart of `uml:control-node` and stamped on nothing for the same
+  // reason: "a pseudostate carries no name" and "a pseudostate is never where a
+  // machine rests" are sentences about all seven at once.
+  {
+    id: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.pseudostate),
+    labelFallback: 'Pseudostate',
+  },
+  {
+    id: UML_ROLE.choice,
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.choice),
+    labelFallback: 'Choice',
+  },
+  {
+    id: UML_ROLE.junction,
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.junction),
+    labelFallback: 'Junction',
+  },
+  {
+    id: UML_ROLE['shallow-history'],
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['shallow-history']),
+    labelFallback: 'Shallow history',
+  },
+  {
+    id: UML_ROLE['deep-history'],
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['deep-history']),
+    labelFallback: 'Deep history',
+  },
+  {
+    id: UML_ROLE['entry-point'],
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['entry-point']),
+    labelFallback: 'Entry point',
+  },
+  {
+    id: UML_ROLE['exit-point'],
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE['exit-point']),
+    labelFallback: 'Exit point',
+  },
+  {
+    id: UML_ROLE.terminate,
+    parent: UML_ROLE.pseudostate,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.terminate),
+    labelFallback: 'Terminate',
+  },
 ];
 
 /**
@@ -445,6 +719,27 @@ const FRAME_DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: roleKey(UML_ROLE.subject),
     labelFallback: 'Subject',
+  },
+  // §15.6.4: the swimlane. A frame and not an artefact, for the reason the
+  // subject is one — it says who is responsible for the actions drawn in it,
+  // and a rule written about actions must not fall on the lane holding them.
+  // Membership is geometry at read time (R11), never a stored list.
+  {
+    id: UML_ROLE.partition,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.partition),
+    labelFallback: 'Partition',
+  },
+  // §14.2.4: the composite state. A frame, although it IS a state — the one
+  // place this vocabulary files a model element as furniture, and it does so
+  // because the picture is furniture: a rectangle drawn round a sub-machine,
+  // with the sub-states inside it by geometry. A rule about states is written
+  // on `uml:state`, which this is deliberately not a child of.
+  {
+    id: UML_ROLE.region,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.region),
+    labelFallback: 'Composite state',
   },
 ];
 
@@ -629,6 +924,57 @@ const RELATIONSHIP_DEFS: readonly RoleDef[] = [
     labelKey: roleKey(UML_ROLE['communication-path']),
     labelFallback: 'Communication path',
   },
+  // ── The behaviour relationships (phase 2) ───────────────────────────────
+  // §15.2.4: the two ActivityEdges. Both are a solid line with an open arrow,
+  // and both read "flows to" — what tells them apart is what is AT THE ENDS: a
+  // control flow sequences two actions, an object flow carries a value into or
+  // out of one. Two roles rather than one with a flag, because "an object flow
+  // must touch an object node" is a sentence that has to reach one of them and
+  // not the other.
+  {
+    id: UML_ROLE['control-flow'],
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['control-flow']),
+    labelFallback: 'Control flow',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['control-flow'])}.verb`,
+      verbFallback: 'flows to',
+      gestureHintKey: `${roleKey(UML_ROLE['control-flow'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the action that finishes to the one that starts next — the arrow lands on the next.',
+    },
+  },
+  {
+    id: UML_ROLE['object-flow'],
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['object-flow']),
+    labelFallback: 'Object flow',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['object-flow'])}.verb`,
+      verbFallback: 'flows to',
+      gestureHintKey: `${roleKey(UML_ROLE['object-flow'])}.gesture`,
+      gestureHintFallback:
+        'Drag from where the value comes from to where it is consumed.',
+    },
+  },
+  // §14.2.4.8: a Transition — the arrow between two vertices of a state
+  // machine, labelled `trigger [guard] / effect`. FLAT under nothing and not a
+  // sibling of the two flows above: an activity edge carries a token between
+  // actions, a transition fires a machine from one state into another, and the
+  // rules that police the two have different endpoint tables.
+  {
+    id: UML_ROLE.transition,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE.transition),
+    labelFallback: 'Transition',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE.transition)}.verb`,
+      verbFallback: 'transitions to',
+      gestureHintKey: `${roleKey(UML_ROLE.transition)}.gesture`,
+      gestureHintFallback:
+        'Drag from the state the machine leaves to the state it enters.',
+    },
+  },
 ];
 
 const DEFS: readonly RoleDef[] = [
@@ -655,9 +1001,10 @@ export const UML_ROLES: RoleDefs = Object.assign(
  * type, so a new kind cannot land without being given a meaning.
  *
  * One kind, one role, with none collapsed — unlike C4, where four kinds are a
- * second DRAWING of a level. Here the sixteen kinds are sixteen different
- * artefacts of the specification, and `uml:classifier` — the one role with no
- * kind of its own — is an ancestor rather than one of them.
+ * second DRAWING of a level. Here the thirty-five kinds are thirty-five
+ * different artefacts of the specification, and the three roles with no kind of
+ * their own — `uml:classifier`, `uml:control-node`, `uml:pseudostate` — are
+ * ancestors rather than any of them.
  */
 export const UML_ROLE_OF_KIND: Record<UmlNodeKind, RoleId> = {
   class: UML_ROLE.class,
@@ -678,4 +1025,26 @@ export const UML_ROLE_OF_KIND: Record<UmlNodeKind, RoleId> = {
   node: UML_ROLE.node,
   device: UML_ROLE.device,
   'execution-environment': UML_ROLE['execution-environment'],
+  // ── The activity artefacts (phase 2) ────────────────────────────────────
+  action: UML_ROLE.action,
+  // Shared by `act` and `stm`: the same disc, the same meaning. See the def.
+  initial: UML_ROLE.initial,
+  'activity-final': UML_ROLE['activity-final'],
+  'flow-final': UML_ROLE['flow-final'],
+  decision: UML_ROLE.decision,
+  fork: UML_ROLE.fork,
+  'object-node': UML_ROLE['object-node'],
+  'send-signal': UML_ROLE['send-signal'],
+  'accept-event': UML_ROLE['accept-event'],
+  'time-event': UML_ROLE['time-event'],
+  // ── The state machine artefacts (phase 2) ───────────────────────────────
+  state: UML_ROLE.state,
+  'final-state': UML_ROLE['final-state'],
+  choice: UML_ROLE.choice,
+  junction: UML_ROLE.junction,
+  'shallow-history': UML_ROLE['shallow-history'],
+  'deep-history': UML_ROLE['deep-history'],
+  'entry-point': UML_ROLE['entry-point'],
+  'exit-point': UML_ROLE['exit-point'],
+  terminate: UML_ROLE.terminate,
 };

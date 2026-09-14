@@ -34,6 +34,29 @@ const NODE_ROLES = [
   UML_ROLE.node,
   UML_ROLE.device,
   UML_ROLE['execution-environment'],
+  // Phase 2 — the activity artefacts and their abstract parent.
+  UML_ROLE['control-node'],
+  UML_ROLE.action,
+  UML_ROLE.initial,
+  UML_ROLE['activity-final'],
+  UML_ROLE['flow-final'],
+  UML_ROLE.decision,
+  UML_ROLE.fork,
+  UML_ROLE['object-node'],
+  UML_ROLE['send-signal'],
+  UML_ROLE['accept-event'],
+  UML_ROLE['time-event'],
+  // Phase 2 — the state machine artefacts and theirs.
+  UML_ROLE.state,
+  UML_ROLE['final-state'],
+  UML_ROLE.pseudostate,
+  UML_ROLE.choice,
+  UML_ROLE.junction,
+  UML_ROLE['shallow-history'],
+  UML_ROLE['deep-history'],
+  UML_ROLE['entry-point'],
+  UML_ROLE['exit-point'],
+  UML_ROLE.terminate,
 ] as const;
 
 const TIER_ROLES = [
@@ -43,7 +66,13 @@ const TIER_ROLES = [
   UML_ROLE.label,
 ] as const;
 
-const FRAME_ROLES = [UML_ROLE.diagram, UML_ROLE.subject] as const;
+const FRAME_ROLES = [
+  UML_ROLE.diagram,
+  UML_ROLE.subject,
+  // Phase 2 — the swimlane of §15.6.4 and the composite state of §14.2.4.
+  UML_ROLE.partition,
+  UML_ROLE.region,
+] as const;
 
 const EDGE_ROLES = [
   UML_ROLE.association,
@@ -58,10 +87,14 @@ const EDGE_ROLES = [
   UML_ROLE.deploy,
   UML_ROLE.manifest,
   UML_ROLE['communication-path'],
+  // Phase 2 — the two activity edges and the state machine transition.
+  UML_ROLE['control-flow'],
+  UML_ROLE['object-flow'],
+  UML_ROLE.transition,
 ] as const;
 
 describe('UML role vocabulary', () => {
-  it('declares seventeen artefacts, four tiers, two frames and twelve relations', () => {
+  it('declares thirty-eight artefacts, four tiers, four frames and fifteen relations', () => {
     expect(Object.keys(UML_ROLES)).toHaveLength(
       NODE_ROLES.length +
         TIER_ROLES.length +
@@ -234,7 +267,125 @@ describe('UML role vocabulary', () => {
     ).toBe(false);
   });
 
-  it('keeps the other nine relations FLAT under nothing', () => {
+  /**
+   * §15.3.4: the five shapes that ROUTE an activity's flow are all
+   * ControlNodes. An abstract parent, like `uml:classifier` and unlike
+   * `uml:node`: nothing is ever drawn as a bare control node.
+   */
+  it('files the five control nodes under the control node', () => {
+    expect(UML_ROLES[UML_ROLE['control-node']].parent).toBeUndefined();
+    for (const child of [
+      UML_ROLE.initial,
+      UML_ROLE['activity-final'],
+      UML_ROLE['flow-final'],
+      UML_ROLE.decision,
+      UML_ROLE.fork,
+    ] as const) {
+      expect(UML_ROLES[child].parent, child).toBe(UML_ROLE['control-node']);
+      expect(roleIsA(child, UML_ROLE['control-node'], UML_ROLES), child).toBe(
+        true
+      );
+      expect(roleIsA(UML_ROLE['control-node'], child, UML_ROLES), child).toBe(
+        false
+      );
+    }
+    // The action is what an activity DOES, not what routes it: a rule about
+    // control nodes must not reach it.
+    expect(roleIsA(UML_ROLE.action, UML_ROLE['control-node'], UML_ROLES)).toBe(
+      false
+    );
+    // Nor is an object node one — it is the value that moves (§15.4.4).
+    expect(
+      roleIsA(UML_ROLE['object-node'], UML_ROLE['control-node'], UML_ROLES)
+    ).toBe(false);
+  });
+
+  /**
+   * §14.2.4: the seven routing vertices of a state machine are Pseudostates —
+   * the other abstract parent, and the counterpart of the control node.
+   */
+  it('files the seven pseudostates under the pseudostate', () => {
+    expect(UML_ROLES[UML_ROLE.pseudostate].parent).toBeUndefined();
+    for (const child of [
+      UML_ROLE.choice,
+      UML_ROLE.junction,
+      UML_ROLE['shallow-history'],
+      UML_ROLE['deep-history'],
+      UML_ROLE['entry-point'],
+      UML_ROLE['exit-point'],
+      UML_ROLE.terminate,
+    ] as const) {
+      expect(UML_ROLES[child].parent, child).toBe(UML_ROLE.pseudostate);
+      expect(roleIsA(child, UML_ROLE.pseudostate, UML_ROLES), child).toBe(true);
+    }
+    // A state is where the machine RESTS, and a final state is where it stops:
+    // neither is a pseudostate, and a rule about "carries no name" must not
+    // fall on either.
+    expect(roleIsA(UML_ROLE.state, UML_ROLE.pseudostate, UML_ROLES)).toBe(
+      false
+    );
+    expect(
+      roleIsA(UML_ROLE['final-state'], UML_ROLE.pseudostate, UML_ROLES)
+    ).toBe(false);
+  });
+
+  /**
+   * `uml:initial` is filed under the CONTROL NODE and is the role a state
+   * machine's initial pseudostate carries too — §14.2.4 and §15.3.4 draw the
+   * same disc and mean the same thing by it, so one rule polices both.
+   *
+   * Asserted because it is the one cross-family reading in the vocabulary, and
+   * the one somebody would otherwise "fix" by adding a second role.
+   */
+  it('shares the initial node between the two behaviour families', () => {
+    expect(UML_ROLE_OF_KIND.initial).toBe(UML_ROLE.initial);
+    expect(roleIsA(UML_ROLE.initial, UML_ROLE['control-node'], UML_ROLES)).toBe(
+      true
+    );
+    // …and it is NOT also filed under the pseudostate: one parent, and the
+    // sharing lives in the kind that maps onto it rather than in the tree.
+    expect(roleIsA(UML_ROLE.initial, UML_ROLE.pseudostate, UML_ROLES)).toBe(
+      false
+    );
+  });
+
+  /**
+   * An action and a state are the same round-cornered rectangle and are
+   * emphatically not relatives: one is work that happens, the other a condition
+   * that holds. The same call the file makes for the object and the classifier.
+   */
+  it('keeps the action, the state and the two look-alikes apart', () => {
+    for (const flat of [
+      UML_ROLE.action,
+      UML_ROLE.state,
+      UML_ROLE['object-node'],
+      UML_ROLE['final-state'],
+      UML_ROLE['send-signal'],
+      UML_ROLE['accept-event'],
+      UML_ROLE['time-event'],
+    ] as const) {
+      expect(UML_ROLES[flat].parent, flat).toBeUndefined();
+    }
+    expect(roleIsA(UML_ROLE.state, UML_ROLE.action, UML_ROLES)).toBe(false);
+    expect(roleIsA(UML_ROLE.action, UML_ROLE.state, UML_ROLES)).toBe(false);
+    // An activity's object node is not an object diagram's instance
+    // specification: two metaclasses sharing a rectangle.
+    expect(roleIsA(UML_ROLE['object-node'], UML_ROLE.object, UML_ROLES)).toBe(
+      false
+    );
+    // A final state is drawn exactly like an activity final and is a different
+    // thing: the picture is shared, the role is not.
+    expect(
+      roleIsA(UML_ROLE['final-state'], UML_ROLE['activity-final'], UML_ROLES)
+    ).toBe(false);
+    // A time event is an accept event whose trigger is a clock — and it gets
+    // its own role because the notation gives it its own picture.
+    expect(
+      roleIsA(UML_ROLE['time-event'], UML_ROLE['accept-event'], UML_ROLES)
+    ).toBe(false);
+  });
+
+  it('keeps the other twelve relations FLAT under nothing', () => {
     // Different metaclasses drawn with different lines (§9.9.4, §10.4.4,
     // §7.8.4, §18.1.4). Flattening what a reader sees as distinct notations
     // would let one rule silently police all of them.
@@ -249,9 +400,21 @@ describe('UML role vocabulary', () => {
       UML_ROLE.deploy,
       UML_ROLE.manifest,
       UML_ROLE['communication-path'],
+      UML_ROLE['control-flow'],
+      UML_ROLE['object-flow'],
+      UML_ROLE.transition,
     ] as const) {
       expect(UML_ROLES[flat].parent, flat).toBeUndefined();
     }
+    // A transition is not an activity edge: a token moving between actions and
+    // a machine firing from one state to another are different sentences with
+    // different endpoint tables, drawn with the same arrow.
+    expect(
+      roleIsA(UML_ROLE.transition, UML_ROLE['control-flow'], UML_ROLES)
+    ).toBe(false);
+    expect(
+      roleIsA(UML_ROLE['object-flow'], UML_ROLE['control-flow'], UML_ROLES)
+    ).toBe(false);
     // A generalization is emphatically not an association.
     expect(
       roleIsA(UML_ROLE.generalization, UML_ROLE.association, UML_ROLES)
@@ -284,6 +447,12 @@ describe('UML role vocabulary', () => {
       // §19.3.4).
       [UML_ROLE.deploy]: 'is deployed on',
       [UML_ROLE.manifest]: 'manifests',
+      // §15.2.4: both activity edges read the same way — the difference is at
+      // the ENDS, not in the verb.
+      [UML_ROLE['control-flow']]: 'flows to',
+      [UML_ROLE['object-flow']]: 'flows to',
+      // §14.2.4.8: a machine leaves one state and enters another.
+      [UML_ROLE.transition]: 'transitions to',
     };
     for (const [id, verb] of Object.entries(verbs)) {
       const direction = UML_ROLES[id].direction;
@@ -341,18 +510,24 @@ describe('UML_ROLE_OF_KIND', () => {
 
   /**
    * One kind, one role, with none collapsed — unlike C4, where four kinds are a
-   * second DRAWING of a level. Here the sixteen kinds are sixteen artefacts of
+   * second DRAWING of a level. Here the thirty-five kinds are thirty-five artefacts of
    * the specification.
    */
   it('maps each kind onto its own role, and never onto the abstract parent', () => {
     expect(new Set(Object.values(UML_ROLE_OF_KIND)).size).toBe(
       ALL_KINDS.length
     );
-    // `uml:classifier` is an ancestor nothing is ever drawn as: a box stamped
-    // with it would be an artefact the notation has no picture for. It is the
-    // ONLY such role — `uml:node` is a parent too and is drawn, because §19.4
-    // makes a Node instantiable.
-    expect(Object.values(UML_ROLE_OF_KIND)).not.toContain(UML_ROLE.classifier);
+    // `uml:classifier`, `uml:control-node` and `uml:pseudostate` are ancestors
+    // nothing is ever drawn as: a box stamped with one would be an artefact the
+    // notation has no picture for. They are the ONLY such roles — `uml:node` is
+    // a parent too and is drawn, because §19.4 makes a Node instantiable.
+    for (const abstract of [
+      UML_ROLE.classifier,
+      UML_ROLE['control-node'],
+      UML_ROLE.pseudostate,
+    ] as const) {
+      expect(Object.values(UML_ROLE_OF_KIND), abstract).not.toContain(abstract);
+    }
     expect(Object.values(UML_ROLE_OF_KIND)).toContain(UML_ROLE.node);
     // …and the three that ARE classifiers still read as such, for free.
     for (const kind of ['class', 'interface', 'enumeration'] as const) {

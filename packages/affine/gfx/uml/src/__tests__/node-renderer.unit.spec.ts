@@ -5,6 +5,7 @@ import {
   UML_ACTOR_FIGURE,
   UML_CUBE_DEPTH,
   UML_PACKAGE_TAB,
+  UML_SIGNAL_POINT,
   umlCompartmentBoxes,
 } from '../component.js';
 import { UML_NODE_BOX } from '../consts.js';
@@ -97,6 +98,39 @@ const ALL_KINDS = [
   'node',
   'device',
   'execution-environment',
+  'action',
+  'initial',
+  'activity-final',
+  'flow-final',
+  'decision',
+  'fork',
+  'object-node',
+  'send-signal',
+  'accept-event',
+  'time-event',
+  'state',
+  'final-state',
+  'choice',
+  'junction',
+  'shallow-history',
+  'deep-history',
+  'entry-point',
+  'exit-point',
+  'terminate',
+] as const satisfies readonly UmlNodeKind[];
+
+/**
+ * The kinds the SHAPE LAYER draws whole, with nothing painted over them: the
+ * native ellipse of §18.1.4, the native rounded rects of §15.3.4 and §14.2.4
+ * (`action`; a `state`'s BODY, though its compartment rule is this layer's), the
+ * native diamonds of §15.3.4 and §14.2.4, and the plain native rect of §15.4.4.
+ */
+const NO_GLYPH_KINDS = [
+  'use-case',
+  'action',
+  'object-node',
+  'decision',
+  'choice',
 ] as const satisfies readonly UmlNodeKind[];
 
 /** Half the stroke width — the inset every body is drawn inside. */
@@ -104,17 +138,25 @@ const INSET = 1;
 
 describe('the UML node glyph layer', () => {
   /**
-   * The use case is the one kind with nothing drawn on it: §18.1.4 draws a use
-   * case as a plain ellipse, and anything painted over it would be inventing a
-   * notation. Every other kind gets a mark.
+   * Five kinds have nothing drawn on them, and every one of them because the
+   * SHAPE LAYER already draws the whole figure: the ellipse of §18.1.4, the
+   * rounded rect of §15.3.4, the diamond, the plain rect of §15.4.4. Anything
+   * painted over one of them would be inventing a notation. Every other kind
+   * gets a mark.
+   *
+   * A `state` is NOT among them although its body is a native rounded rect:
+   * §14.2.4 rules it off between its name and its internal activities, and that
+   * rule is this layer's.
    */
-  it('draws something on fifteen kinds, and nothing on the ellipse', () => {
+  it('draws something on thirty kinds, and nothing on the five the shape layer finishes', () => {
+    const bare = new Set<UmlNodeKind>(NO_GLYPH_KINDS);
     for (const kind of ALL_KINDS) {
       rec = recordingCtx();
       const { ops } = draw(kind);
-      if (kind === 'use-case') expect(ops, kind).toEqual([]);
+      if (bare.has(kind)) expect(ops, kind).toEqual([]);
       else expect(ops.length, kind).toBeGreaterThan(0);
     }
+    expect(ALL_KINDS.length - bare.size).toBe(30);
   });
 
   /**
@@ -459,6 +501,256 @@ describe('the UML node glyph layer', () => {
       ['rotate', 30],
       ['translate', -w / 2, -h / 2],
     ]);
+  });
+
+  /* ── The activity marks (§15.3.4, §16.3.4, §16.10.4) ──────────────────── */
+
+  /**
+   * §15.3.4: a flow begins at a FILLED disc. Ink-filled and not paper-filled,
+   * which is the whole of what makes it read as a start rather than as an entry
+   * point — and the ink is the MODEL's, so recolouring the node recolours it.
+   */
+  it('strikes the initial node as one ink-filled disc', () => {
+    const { w, h } = UML_NODE_BOX.initial;
+    const { ops, curves, fills } = draw('initial');
+    expect(ops).toEqual(['fill', 'stroke']);
+    expect(curves).toHaveLength(1);
+    expect(curves[0].rx).toBe(curves[0].ry);
+    expect(curves[0].x).toBe(w / 2);
+    expect(curves[0].y).toBe(h / 2);
+    // The element's STROKE colour, used as a fill: a solid mark is drawn in the
+    // ink, and the paper is put back afterwards.
+    expect(fills).toEqual([STROKE]);
+  });
+
+  /**
+   * §15.3.4 and §14.2.4 draw the SAME bullseye for an activity final and a
+   * final state — a ring with a solid bull in it. Two roles, one picture, and
+   * the picture must not diverge: a reader who saw two proportions would look
+   * for a meaning in the difference.
+   */
+  it.each(['activity-final', 'final-state'] as const)(
+    'draws %s as a ring with an ink bull, rim first',
+    kind => {
+      const { w, h } = UML_NODE_BOX[kind];
+      const { ops, curves, fills } = draw(kind);
+      // Rim (paper, then outline), then bull (ink, then outline).
+      expect(ops, kind).toEqual(['fill', 'stroke', 'fill', 'stroke']);
+      expect(curves, kind).toHaveLength(2);
+      const [rim, bull] = curves;
+      expect(rim.x, kind).toBe(w / 2);
+      expect(rim.y, kind).toBe(h / 2);
+      expect(bull.x, kind).toBe(rim.x);
+      expect(bull.rx, kind).toBeLessThan(rim.rx);
+      // A moat between them: the bull is a touch over half the rim.
+      expect(bull.rx / rim.rx, kind).toBeLessThan(0.7);
+      expect(fills, kind).toEqual([FILL, STROKE]);
+    }
+  );
+
+  it('draws the same bullseye for an activity final and a final state', () => {
+    // Same footprint and same proportions — the two are one drawing.
+    expect(UML_NODE_BOX['final-state']).toEqual(UML_NODE_BOX['activity-final']);
+    const activity = draw('activity-final').curves.map(c => c.rx);
+    rec = recordingCtx();
+    const state = draw('final-state').curves.map(c => c.rx);
+    expect(state).toEqual(activity);
+  });
+
+  /** §15.3.4: a flow final stops ONE flow — a circle with an X inside it. */
+  it('draws the flow final as a circle with a cross in it', () => {
+    const { w, h } = UML_NODE_BOX['flow-final'];
+    const { ops, curves, segments } = draw('flow-final');
+    expect(ops).toEqual(['fill', 'stroke', 'stroke', 'stroke']);
+    expect(curves).toHaveLength(1);
+    // Two strokes, crossing at the centre and inside the rim.
+    expect(segments).toHaveLength(2);
+    for (const arm of segments) {
+      expect((arm.x1 + arm.x2) / 2).toBeCloseTo(w / 2);
+      expect((arm.y1 + arm.y2) / 2).toBeCloseTo(h / 2);
+      expect(Math.abs(arm.x2 - arm.x1) / 2).toBeLessThan(curves[0].rx);
+    }
+  });
+
+  /**
+   * §15.3.4: a fork and a join are the same BAR, told apart by how many edges
+   * run in and out of it — so there is one drawing, and it is the whole
+   * element: a bar dragged longer is how an author fits more flows onto it.
+   */
+  it('fills the fork bar edge to edge, in ink', () => {
+    const { w, h } = UML_NODE_BOX.fork;
+    const { ops, segments, fills } = draw('fork');
+    expect(ops).toEqual(['fill', 'stroke']);
+    expect(fills).toEqual([STROKE]);
+    expect(segments).toHaveLength(3);
+    expect(segments[0]).toEqual({
+      x1: INSET,
+      y1: INSET,
+      x2: w - INSET,
+      y2: INSET,
+    });
+    // Degenerate in one dimension on purpose: §15.3.4 draws a line segment.
+    expect(h).toBeLessThan(w / 4);
+  });
+
+  /**
+   * §16.3.4: the two pentagons are the same shape TURNED — a tip that sticks
+   * out to the right for a signal leaving, a notch that bites in from the left
+   * for one arriving. Both drawn from the number `component.ts` pulls the label
+   * back by, so a name can never run out through the point.
+   */
+  it('points the send signal right and notches the accept event on the left', () => {
+    const { w, h } = UML_NODE_BOX['send-signal'];
+    const point = w * UML_SIGNAL_POINT;
+
+    const send = draw('send-signal');
+    expect(send.ops).toEqual(['fill', 'stroke']);
+    // Five vertices, so four recorded runs (the closing edge is `closePath`),
+    // and the tip is the only thing reaching the right edge.
+    expect(send.segments).toHaveLength(4);
+    const tip = send.segments.find(s => s.x2 === w - INSET);
+    expect(tip).toBeDefined();
+    expect(tip!.y2).toBeCloseTo(h / 2);
+    expect(tip!.x1).toBeCloseTo(w - INSET - point);
+
+    rec = recordingCtx();
+    const accept = draw('accept-event');
+    expect(accept.ops).toEqual(['fill', 'stroke']);
+    expect(accept.segments).toHaveLength(4);
+    // The notch: a vertex on the LEFT, one point deep, halfway down.
+    const notch = accept.segments.find(s => s.x2 === INSET + point);
+    expect(notch).toBeDefined();
+    expect(notch!.y2).toBeCloseTo(h / 2);
+  });
+
+  /**
+   * §16.10.4: the hourglass. Two closed triangles meeting at a point rather
+   * than one crossed path, because a single bow-tie fills by the even-odd rule
+   * on some canvases and by the non-zero rule on others — and an hourglass that
+   * is sometimes hollow is not a notation.
+   */
+  it('draws the time event as two triangles meeting at a waist', () => {
+    const { w, h } = UML_NODE_BOX['time-event'];
+    const { ops, segments } = draw('time-event');
+    expect(ops).toEqual(['fill', 'stroke', 'fill', 'stroke']);
+    // Three vertices each, so two recorded runs per triangle (the closing edge
+    // is `closePath`).
+    expect(segments).toHaveLength(4);
+    // Both triangles touch the centre of the box — the waist they meet at.
+    const waist = segments.filter(
+      s =>
+        (Math.abs(s.x2 - w / 2) < 0.001 && Math.abs(s.y2 - h / 2) < 0.001) ||
+        (Math.abs(s.x1 - w / 2) < 0.001 && Math.abs(s.y1 - h / 2) < 0.001)
+    );
+    expect(waist).toHaveLength(2);
+    // Tall and narrow, which is what an hourglass is.
+    expect(h).toBeGreaterThan(w);
+  });
+
+  /* ── The state machine marks (§14.2.4) ────────────────────────────────── */
+
+  /**
+   * §14.2.4: a state is the native ROUNDED rect with one rule across it,
+   * between its name and its internal activities — the object's own layout,
+   * read from `umlCompartmentBoxes` so the rule sits exactly where the tiers
+   * meet.
+   */
+  it('rules a state once, between its name and its behaviour', () => {
+    const { w, h } = UML_NODE_BOX.state;
+    const { splits } = umlCompartmentBoxes('state', 0, 0, w, h);
+    expect(splits).toHaveLength(1);
+
+    const { ops, segments } = draw('state');
+    expect(ops).toEqual(['stroke']);
+    expect(segments).toEqual([
+      { x1: INSET, y1: splits[0], x2: w - INSET, y2: splits[0] },
+    ]);
+  });
+
+  /** §14.2.4: a junction is the plainest mark in the pack — a small ink dot. */
+  it('draws the junction as one small ink dot', () => {
+    const { ops, curves, fills } = draw('junction');
+    expect(ops).toEqual(['fill', 'stroke']);
+    expect(curves).toHaveLength(1);
+    expect(fills).toEqual([STROKE]);
+    // Smaller than the initial disc it would otherwise be mistaken for.
+    expect(UML_NODE_BOX.junction.w).toBeLessThan(UML_NODE_BOX.initial.w);
+  });
+
+  /**
+   * §14.2.4: the two histories are a circle with a LETTER in it — `H` for
+   * shallow, `H*` for deep, and the star is the entire difference on the page.
+   */
+  it('writes H in a shallow history and H* in a deep one', () => {
+    const { w, h } = UML_NODE_BOX['shallow-history'];
+
+    const shallow = draw('shallow-history');
+    expect(shallow.ops).toEqual(['fill', 'stroke', 'fillText']);
+    expect(shallow.curves).toHaveLength(1);
+    expect(shallow.texts).toHaveLength(1);
+    expect(shallow.texts[0].text).toBe('H');
+    // Centred in the circle, in the element's ink.
+    expect(shallow.texts[0].x).toBeCloseTo(w / 2);
+    expect(shallow.texts[0].y).toBeCloseTo(h / 2);
+    expect(shallow.texts[0].align).toBe('center');
+    expect(shallow.texts[0].baseline).toBe('middle');
+    expect(shallow.texts[0].color).toBe(STROKE);
+
+    rec = recordingCtx();
+    const deep = draw('deep-history');
+    expect(deep.texts[0].text).toBe('H*');
+  });
+
+  /**
+   * §14.2.4: an entry point is a hollow circle — a door — and an exit point the
+   * same circle with a cross in it. A FILLED entry point would read as an
+   * initial node, which is the mistake this pins.
+   */
+  it('leaves the entry point hollow and crosses the exit point', () => {
+    const entry = draw('entry-point');
+    expect(entry.ops).toEqual(['fill', 'stroke']);
+    expect(entry.curves).toHaveLength(1);
+    // The element's PAPER, never its ink: that is what makes it a door.
+    expect(entry.fills).toEqual([FILL]);
+    expect(entry.segments).toEqual([]);
+
+    rec = recordingCtx();
+    const exit = draw('exit-point');
+    expect(exit.ops).toEqual(['fill', 'stroke', 'stroke', 'stroke']);
+    expect(exit.curves).toHaveLength(1);
+    expect(exit.fills).toEqual([FILL]);
+    expect(exit.segments).toHaveLength(2);
+  });
+
+  /**
+   * §14.2.4: a terminate is two crossed strokes and NOTHING else — no rim, no
+   * box. A circle round them would make it an exit point.
+   */
+  it('draws the terminate as a bare X, corner to corner', () => {
+    const { w, h } = UML_NODE_BOX.terminate;
+    const { ops, curves, segments } = draw('terminate');
+    expect(ops).toEqual(['stroke', 'stroke']);
+    expect(curves).toEqual([]);
+    expect(segments).toEqual([
+      { x1: INSET, y1: INSET, x2: w - INSET, y2: h - INSET },
+      { x1: w - INSET, y1: INSET, x2: INSET, y2: h - INSET },
+    ]);
+  });
+
+  /**
+   * Every solid mark puts the paper back when it is done.
+   *
+   * The one thing a fill swap can get wrong, and it shows up two shapes away
+   * from its cause: a glyph that left `fillStyle` on the ink would paint the
+   * next element's body black. Asserted on the bullseye, which is the only
+   * glyph that draws a paper mark AFTER an ink one.
+   */
+  it('restores the paper after painting an ink mark', () => {
+    const { fills } = draw('activity-final');
+    expect(fills).toEqual([FILL, STROKE]);
+    // …and a second draw on the same context starts from paper again.
+    rec = recordingCtx();
+    expect(draw('entry-point').fills).toEqual([FILL]);
   });
 
   /**

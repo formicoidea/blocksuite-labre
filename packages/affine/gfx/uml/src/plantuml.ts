@@ -1,10 +1,13 @@
 import { parseCompartment } from './grammar.js';
 import {
+  type UmlActivityEdge,
+  type UmlActivityNode,
   type UmlClassifier,
   type UmlDeploymentNode,
   type UmlModel,
   type UmlNodeBase,
   type UmlRelation,
+  type UmlTransition,
   umlCentreInside,
 } from './model.js';
 
@@ -256,6 +259,15 @@ function relationLine(
       // §19.4.4: "depicted using the same as normal Association links", and an
       // association is undirected, so the line carries no head either way.
       return `${source} -- ${target}${label}`;
+    case 'control-flow':
+    case 'object-flow':
+    case 'transition':
+      // Written by the ACTIVITY and the STATE MACHINE sections of the document
+      // rather than here: both are drawn in PlantUML's state-diagram syntax, and
+      // a behaviour arrow's label carries a guard, a weight or a trigger list
+      // that this function has no parsed form of. The empty string is filtered
+      // out by the caller, exactly as an unresolved end already is.
+      return '';
     default: {
       // Exhaustive: a relationship added to the union with no arrow to draw it
       // fails the build here rather than vanishing from a file.
@@ -263,6 +275,129 @@ function relationLine(
       throw new Error(`unhandled UML relation: ${String(never)}`);
     }
   }
+}
+
+/* ── Behaviour: the two flow sheets (§15.2.4, §14.2.4) ────────────────── */
+
+/**
+ * PlantUML's own marker for a beginning and an end — never an alias.
+ *
+ * `[*]` is CONTEXTUAL in PlantUML: read as the source of an arrow it draws the
+ * filled disc, read as the target it draws the bullseye. That is exactly what
+ * §15.3.4 and §14.2.4 mean by the two glyphs, and it is why an initial node and
+ * a final node are never declared here — they have no alias to declare, and
+ * `[*] --> Draft` says the whole of it.
+ */
+const PLANTUML_TERMINAL = '[*]';
+
+/**
+ * Which PlantUML state stereotype draws each behaviour glyph — and, where it
+ * draws none, which word is kept instead.
+ *
+ * ## Why BOTH sheets are written in the state-diagram syntax
+ *
+ * The decision this file makes for the behaviour half, stated once and cited
+ * wherever it shows:
+ *
+ *  - PlantUML's **classic activity syntax** (`(*) --> "Action"`) is deprecated
+ *    upstream and no longer rendered by current versions. A file nobody can
+ *    render is worth less than one drawn slightly plainer — the same call the
+ *    lollipop operators got, a hundred lines up.
+ *  - PlantUML's **new activity syntax** (`start`, `:Action;`,
+ *    `if (c) then … else … endif`, `fork` / `fork again` / `end fork`, `stop`)
+ *    is a STRUCTURED BLOCK language. It can express a tree of nested blocks and
+ *    nothing else, while a whiteboard draws arbitrary directed graphs: an arrow
+ *    back three steps, two branches rejoining somewhere neither block contains,
+ *    a decision whose arms end in different final nodes. A writer using it would
+ *    have to reshape or refuse most real drawings, and reshaping a drawing is
+ *    the one thing an exporter must never do.
+ *  - The **state-diagram syntax** IS a general directed graph — `A --> B : …`,
+ *    `[*] --> A`, `state X <<choice>>`, `state C { … }` — so every graph this
+ *    canvas can draw comes out whole, and it is the NATIVE syntax for half the
+ *    job anyway.
+ *
+ * So an activity sheet is written in a notation one step away from its own, and
+ * the document says so in a comment line rather than leaving a reader to work it
+ * out. What is lost is shape, never structure: every node, every arrow, every
+ * guard and every lane is in the file.
+ *
+ * ## What each glyph becomes
+ *
+ * The stereotypes PlantUML actually implements are used where one fits —
+ * `<<choice>>` for a diamond, `<<fork>>` for a bar, `<<history>>` and
+ * `<<deepHistory>>` for the two H circles, `<<entryPoint>>` / `<<exitPoint>>`
+ * for the connection points, `<<end>>` for a stop. Everything else takes a
+ * stereotype PlantUML does not know, which it renders as the word itself under
+ * the name: an object node reads «objectNode», a signal reads «signal». That is
+ * strictly better than borrowing a shape that means something else, because the
+ * reader is told what the glyph was instead of being shown the wrong one.
+ *
+ * Two conflations are worth naming because a reader will notice them: a JUNCTION
+ * borrows the choice diamond (§14.2.4.6 draws a small filled circle, PlantUML
+ * has no such glyph, and both are a branch) and a TERMINATE borrows `<<end>>`
+ * (§14.2.4.6 draws a cross, PlantUML has no cross, and both stop the machine).
+ */
+const PLANTUML_STATE_STEREOTYPE: Readonly<Record<string, string>> = {
+  // The activity glyphs.
+  'flow-final': 'end',
+  decision: 'choice',
+  fork: 'fork',
+  'object-node': 'objectNode',
+  'send-signal': 'signal',
+  'accept-event': 'accept',
+  'time-event': 'time',
+  // The pseudostates.
+  choice: 'choice',
+  junction: 'choice',
+  'shallow-history': 'history',
+  'deep-history': 'deepHistory',
+  'entry-point': 'entryPoint',
+  'exit-point': 'exitPoint',
+  terminate: 'end',
+};
+
+/** `A --> B : label`, with the label left off when there is nothing to say. */
+function arrowLine(source: string, target: string, label: string): string {
+  const written = label.trim();
+  return written
+    ? `${source} --> ${target} : ${toPlantumlLabel(written)}`
+    : `${source} --> ${target}`;
+}
+
+/**
+ * §15.2.4's three annotations, back in one string — `name [guard] {weight = w}`.
+ *
+ * Re-spelled in the notation's own syntax rather than printed as a record,
+ * because a PlantUML label is read by a HUMAN looking at the picture: the
+ * brackets and the braces are what tell them which of the three each part is,
+ * and they are the same delimiters the author typed on the canvas.
+ */
+function activityEdgeLabel(edge: UmlActivityEdge): string {
+  const parts: string[] = [];
+  if (edge.name) parts.push(edge.name);
+  if (edge.guard) parts.push(`[${edge.guard}]`);
+  if (edge.weight) parts.push(`{weight = ${edge.weight}}`);
+  return parts.join(' ');
+}
+
+/**
+ * §14.2.4.8's label, back in one string —
+ * `trigger1, trigger2 [guard] / effect`.
+ *
+ * The same round trip as {@link activityEdgeLabel}, and the reason it is a round
+ * trip at all rather than the author's own text passed through: the model holds
+ * the parsed parts (an importer needs them apart), and printing them back in the
+ * BNF's own order is what makes a label the author typed loosely — a guard
+ * before its trigger, a missing space — come out spelled the way §14.2.4.8
+ * spells it.
+ */
+function transitionLabel(transition: UmlTransition): string {
+  const parts: string[] = [];
+  if (transition.triggers.length > 0)
+    parts.push(transition.triggers.join(', '));
+  if (transition.guard) parts.push(`[${transition.guard}]`);
+  if (transition.effect) parts.push(`/ ${transition.effect}`);
+  return parts.join(' ');
 }
 
 /* ── The document ─────────────────────────────────────────────────────── */
@@ -535,6 +670,217 @@ export function exportPlantuml(model: UmlModel): string {
   }
   lines.push(...interfaceLines);
 
+  // ── The behaviour sheets (§15.2.4, §14.2.4) ──────────────────────────
+  //
+  // Written in PlantUML's STATE-DIAGRAM syntax, both of them — see
+  // {@link PLANTUML_STATE_STEREOTYPE} for the whole argument, and the comment
+  // line this emits for an activity so a reader of the file is told rather than
+  // left to work it out.
+  //
+  // Declared here, after everything else and before the arrows, for the reason
+  // the whole function is ordered this way: PlantUML resolves an arrow by alias.
+  const activity = model.activities[0];
+  const machine = model.stateMachines[0];
+  const behaviourLines: string[] = [];
+  const behaviourArrows: string[] = [];
+
+  /** A state declaration — the quoted form when there is a name to quote. */
+  const stateLine = (
+    alias: string,
+    label: string,
+    stereotype: string | undefined,
+    indent: string
+  ): string => {
+    const tail = stereotype ? ` <<${stereotype}>>` : '';
+    const written = toPlantumlLabel(label);
+    return written
+      ? `${indent}state "${written}" as ${alias}${tail}`
+      : // A control node carries no words (§15.3.4 draws none), and
+        // `state "" as D` is a box with an empty name rather than an unnamed
+        // one. The bare form is what PlantUML has for exactly this.
+        `${indent}state ${alias}${tail}`;
+  };
+
+  if (activity) {
+    behaviourLines.push(
+      "' An activity (§15.2.4), written in PlantUML's state-diagram syntax:",
+      "' its structured activity syntax cannot express an arbitrary graph."
+    );
+
+    const terminalKind = (kind: string) =>
+      kind === 'initial' || kind === 'activity-final';
+    for (const node of activity.nodes) {
+      // The disc and the bullseye ARE `[*]`, read from either end — see
+      // {@link PLANTUML_TERMINAL}. Nothing to mint and nothing to declare.
+      aliasOf.set(
+        node.id,
+        terminalKind(node.kind)
+          ? PLANTUML_TERMINAL
+          : minter.mint(node.name || node.kind)
+      );
+    }
+
+    const activityNodeLine = (node: UmlActivityNode, indent: string) =>
+      terminalKind(node.kind)
+        ? []
+        : [
+            stateLine(
+              aliasOf.get(node.id)!,
+              node.name,
+              PLANTUML_STATE_STEREOTYPE[node.kind],
+              indent
+            ),
+          ];
+
+    // The swimlanes, as composite boxes. An approximation and it says so: a
+    // state diagram has no lane, §15.6.4's band is the nearest thing PlantUML
+    // draws to one, and a box round the actions of one lane keeps the fact the
+    // lane states — who is responsible for what. The flows still cross freely,
+    // because every arrow is written at the TOP level below.
+    for (const partition of activity.partitions) {
+      const alias = minter.mint(partition.name || 'partition');
+      aliasOf.set(partition.id, alias);
+      const inside = activity.nodes.filter(
+        node => node.partitionId === partition.id
+      );
+      const head = stateLine(alias, partition.name, 'partition', '');
+      const inner = inside.flatMap(node => activityNodeLine(node, '  '));
+      behaviourLines.push(
+        ...(inner.length === 0 ? [head] : [`${head} {`, ...inner, '}'])
+      );
+    }
+    for (const node of activity.nodes) {
+      if (node.partitionId) continue;
+      behaviourLines.push(...activityNodeLine(node, ''));
+    }
+
+    for (const edge of activity.edges) {
+      const source = aliasOf.get(edge.sourceId);
+      const target = aliasOf.get(edge.targetId);
+      if (!source || !target) continue;
+      behaviourArrows.push(arrowLine(source, target, activityEdgeLabel(edge)));
+    }
+  }
+
+  if (machine) {
+    // A vertex at the TOP of the sheet gets PlantUML's own terminal marker; one
+    // drawn inside a composite state gets a declared box with `<<start>>` or
+    // `<<end>>` instead.
+    //
+    // The reason is `[*]`'s scoping: PlantUML reads it against the block the
+    // line is written in, and this writer emits every transition at the top
+    // level so that one crossing out of a composite state still resolves. A
+    // nested `[*]` would therefore render as the MACHINE's beginning rather than
+    // the composite state's, which is a different statement. A declared box is
+    // always right, at the cost of a circle drawn as a labelled node.
+    const terminalOf = (
+      vertex: { id: string; regionId?: string },
+      kind: string
+    ) =>
+      vertex.regionId === undefined && (kind === 'initial' || kind === 'final')
+        ? PLANTUML_TERMINAL
+        : undefined;
+
+    for (const state of machine.states) {
+      aliasOf.set(state.id, minter.mint(state.name || 'state'));
+    }
+    for (const region of machine.regions) {
+      aliasOf.set(region.id, minter.mint(region.name || 'state'));
+    }
+    for (const final of machine.finalStates) {
+      aliasOf.set(
+        final.id,
+        terminalOf(final, 'final') ?? minter.mint(final.name || 'final')
+      );
+    }
+    for (const pseudo of machine.pseudostates) {
+      aliasOf.set(
+        pseudo.id,
+        terminalOf(pseudo, pseudo.kind) ??
+          minter.mint(pseudo.name || pseudo.kind)
+      );
+    }
+
+    /** One region's contents — its vertices, and the composite states in it. */
+    const regionLines = (
+      regionId: string | undefined,
+      indent: string
+    ): string[] => {
+      const out: string[] = [];
+      for (const state of machine.states) {
+        if (state.regionId !== regionId) continue;
+        const alias = aliasOf.get(state.id)!;
+        out.push(stateLine(alias, state.name, undefined, indent));
+        // §14.2.4.4's internal activities, in PlantUML's own `S : …` form —
+        // which is the same line UML writes inside the second compartment.
+        for (const body of state.entry) {
+          out.push(`${indent}${alias} : entry / ${toPlantumlLabel(body)}`);
+        }
+        for (const body of state.doActivity) {
+          out.push(`${indent}${alias} : do / ${toPlantumlLabel(body)}`);
+        }
+        for (const body of state.exit) {
+          out.push(`${indent}${alias} : exit / ${toPlantumlLabel(body)}`);
+        }
+        // Everything else the author wrote in that compartment — an internal
+        // transition, a constraint — kept verbatim rather than dropped.
+        for (const line of state.lines) {
+          out.push(`${indent}${alias} : ${toPlantumlLabel(line)}`);
+        }
+      }
+      for (const final of machine.finalStates) {
+        if (final.regionId !== regionId) continue;
+        const alias = aliasOf.get(final.id)!;
+        if (alias === PLANTUML_TERMINAL) continue;
+        out.push(stateLine(alias, final.name, 'end', indent));
+      }
+      for (const pseudo of machine.pseudostates) {
+        if (pseudo.regionId !== regionId) continue;
+        const alias = aliasOf.get(pseudo.id)!;
+        if (alias === PLANTUML_TERMINAL) continue;
+        out.push(
+          stateLine(
+            alias,
+            pseudo.name,
+            pseudo.kind === 'initial'
+              ? 'start'
+              : PLANTUML_STATE_STEREOTYPE[pseudo.kind],
+            indent
+          )
+        );
+      }
+      for (const region of machine.regions) {
+        if (region.parentId !== regionId) continue;
+        const head = stateLine(
+          aliasOf.get(region.id)!,
+          region.name,
+          undefined,
+          indent
+        );
+        const inner = regionLines(region.id, `${indent}  `);
+        out.push(
+          ...(inner.length === 0
+            ? [head]
+            : [`${head} {`, ...inner, `${indent}}`])
+        );
+      }
+      return out;
+    };
+
+    behaviourLines.push(...regionLines(undefined, ''));
+
+    for (const transition of machine.transitions) {
+      const source = aliasOf.get(transition.sourceId);
+      const target = aliasOf.get(transition.targetId);
+      if (!source || !target) continue;
+      behaviourArrows.push(
+        arrowLine(source, target, transitionLabel(transition))
+      );
+    }
+  }
+
+  if (behaviourLines.length > 0) lines.push(...behaviourLines);
+
   for (const note of notes) {
     // The block form rather than `note "…" as N`: a note is prose and routinely
     // several lines, and the one-line form has nowhere to put the second one.
@@ -553,7 +899,7 @@ export function exportPlantuml(model: UmlModel): string {
       return source && target ? relationLine(relation, source, target) : '';
     })
     .filter(Boolean);
-  const drawn = [...wiring, ...relations];
+  const drawn = [...wiring, ...relations, ...behaviourArrows];
   if (drawn.length > 0) lines.push('', ...drawn);
 
   lines.push('@enduml');

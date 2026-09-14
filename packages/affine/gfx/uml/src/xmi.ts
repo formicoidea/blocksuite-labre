@@ -1,13 +1,25 @@
 import type { UmlBox } from './component.js';
-import type { UmlMultiplicity, UmlOperation, UmlProperty } from './grammar.js';
 import {
+  type UmlMultiplicity,
+  type UmlOperation,
+  type UmlProperty,
+  parseTrigger,
+} from './grammar.js';
+import {
+  type UmlActivity,
+  type UmlActivityEdge,
+  type UmlActivityNode,
+  type UmlActivityNodeKind,
   type UmlArtifactNode,
   type UmlClassifier,
   type UmlComponentNode,
   type UmlDeploymentNode,
   type UmlModel,
   type UmlNodeBase,
+  type UmlPseudostateKind,
+  type UmlRegion,
   type UmlRelation,
+  type UmlStateMachine,
   umlCentreInside,
 } from './model.js';
 import {
@@ -306,6 +318,27 @@ function planOf(models: readonly UmlModel[], ids: Ids): XmiPlan {
     }
     for (const artifact of model.artifacts) claim(artifact);
     for (const node of model.nodes) claim(node);
+    // The behaviour sheets, appended after the structural claims and never
+    // interleaved with them, for the reason the four lines above give: a model
+    // with no flow on it mints nothing here and exports to exactly the bytes it
+    // exported to before these lines existed.
+    //
+    // Everything a REFERENCE can reach is claimed. An activity edge names its
+    // two ends, a partition lists its nodes, a transition names its source and
+    // its target, and a composite state is pointed at by nothing but is a
+    // `uml:State` all the same — so every drawn glyph gets an id and the
+    // minted-on-the-spot ones (the edges, the triggers, the regions) are exactly
+    // the elements nothing refers to.
+    for (const activity of model.activities) {
+      for (const node of activity.nodes) claim(node);
+      for (const partition of activity.partitions) claim(partition);
+    }
+    for (const machine of model.stateMachines) {
+      for (const region of machine.regions) claim(region);
+      for (const state of machine.states) claim(state);
+      for (const final of machine.finalStates) claim(final);
+      for (const pseudo of machine.pseudostates) claim(pseudo);
+    }
   }
 
   // A type the author named that is neither a UML PrimitiveType nor a box on any
@@ -918,6 +951,551 @@ function deploymentNodeElement(
   );
 }
 
+/* ── Behaviour artefacts (§15.2, §14.2) ───────────────────────────────── */
+
+/**
+ * The metaclass each activity glyph is written as — §15.7's own names.
+ *
+ * `uml:OpaqueAction` for the rounded rectangle, because that is the Action a
+ * drawing states: §16.2 makes OpaqueAction the one whose behaviour is given as
+ * a text nobody has to interpret, which is exactly what a box with a sentence in
+ * it says. Every stronger reading — a CallBehaviorAction, a CallOperationAction
+ * — would need a Behavior or an Operation to point at, and the drawing names
+ * none.
+ *
+ * `uml:ForkNode` for the bar, and the join is NOT told apart here: §15.3.4
+ * draws one bar for both and `roles.ts` gives it one role, so the file says what
+ * the picture says. An importer counting the edges gets the same answer a reader
+ * does.
+ *
+ * `Record<UmlActivityNodeKind, string>` and therefore compile-total: a glyph
+ * appended to the union with no metaclass to write it as fails the build here
+ * rather than vanishing from a file.
+ */
+const ACTIVITY_NODE_TYPE: Record<UmlActivityNodeKind, string> = {
+  action: 'uml:OpaqueAction',
+  initial: 'uml:InitialNode',
+  'activity-final': 'uml:ActivityFinalNode',
+  'flow-final': 'uml:FlowFinalNode',
+  decision: 'uml:DecisionNode',
+  fork: 'uml:ForkNode',
+  'object-node': 'uml:ObjectNode',
+  'send-signal': 'uml:SendSignalAction',
+  'accept-event': 'uml:AcceptEventAction',
+  // §16.10.4's hourglass IS an AcceptEventAction — the one whose trigger names a
+  // TimeEvent. The metamodel has no `AcceptTimeEventAction`, and inventing one
+  // would produce a file no importer can read.
+  'time-event': 'uml:AcceptEventAction',
+};
+
+/** The `kind` attribute §14.5.7's PseudostateKind enumeration spells. */
+const PSEUDOSTATE_KIND: Record<UmlPseudostateKind, string> = {
+  initial: 'initial',
+  choice: 'choice',
+  junction: 'junction',
+  'shallow-history': 'shallowHistory',
+  'deep-history': 'deepHistory',
+  'entry-point': 'entryPoint',
+  'exit-point': 'exitPoint',
+  terminate: 'terminate',
+  // §14.2.4 draws the fork and the join as one bar, like §15.3.4 does. One role,
+  // one PseudostateKind written, and the edges say which it is.
+  fork: 'fork',
+};
+
+/** An `OpaqueExpression` carrying a body — §8.3's text-valued specification. */
+function opaqueExpression(
+  tag: string,
+  body: string,
+  plan: XmiPlan
+): XmlElement {
+  return el(tag, {
+    'xmi:type': 'uml:OpaqueExpression',
+    'xmi:id': plan.ids.mint(),
+    body,
+  });
+}
+
+/** An `OpaqueBehavior` carrying a body — a state's entry, do or exit. */
+function opaqueBehavior(tag: string, body: string, plan: XmiPlan): XmlElement {
+  return el(tag, {
+    'xmi:type': 'uml:OpaqueBehavior',
+    'xmi:id': plan.ids.mint(),
+    name: body,
+    body,
+  });
+}
+
+/**
+ * Everything an activity writes BESIDE itself, and the Signals it shares.
+ *
+ * A SendSignalAction's `signal` and a SignalEvent's `signal` are REFERENCES in
+ * the metamodel, not containments, so the Signal has to exist somewhere a
+ * reference can reach — and a Signal is a PackageableElement, so that somewhere
+ * is the diagram's own package rather than the Activity. Hence the side list:
+ * {@link activityElements} returns the Activity plus whatever it had to mint,
+ * and the package writer splices them in.
+ *
+ * Minted once per NAME within one sheet, because two `Order placed` glyphs are
+ * one signal: that is what the name means, and two elements would make an
+ * importer show two unrelated events with the same label.
+ */
+interface BehaviourSideElements {
+  /** `packagedElement`s the sheet has to carry for the references to resolve. */
+  extras: XmlElement[];
+  /** Signal name → its `xmi:id`, so one name mints one Signal. */
+  signals: Map<string, string>;
+}
+
+function signalIdFor(
+  name: string,
+  side: BehaviourSideElements,
+  plan: XmiPlan
+): string {
+  const known = side.signals.get(name);
+  if (known) return known;
+  const id = plan.ids.mint();
+  side.signals.set(name, id);
+  side.extras.push(
+    el('packagedElement', {
+      'xmi:type': 'uml:Signal',
+      'xmi:id': id,
+      name,
+    })
+  );
+  return id;
+}
+
+/**
+ * One activity node as an `<node>` of its Activity.
+ *
+ * The three event-shaped glyphs are the only ones that cost more than a line,
+ * and each costs what the metamodel charges:
+ *
+ *  - a **send signal** names the Signal it sends (§16.3.3), which is a
+ *    reference, so the Signal is minted beside the Activity;
+ *  - an **accept event** carries a Trigger whose Event is a SignalEvent
+ *    (§16.10.3) — a reference again, so both the event and its signal are
+ *    minted beside;
+ *  - a **time event** carries a Trigger whose Event is a TimeEvent, and its
+ *    `when` IS a containment (`{subsets ownedElement}`), so the TimeExpression
+ *    is written inside it. `isRelative` comes from the glyph's own words through
+ *    {@link parseTrigger}: `after` is relative, `at` is absolute, and §13.3.4
+ *    says so in exactly those terms.
+ *
+ * A control node writes NO `name` attribute. §15.3.4 gives the disc, the
+ * bullseye, the crossed circle, the diamond and the bar no label at all, and the
+ * creation site draws none, so an empty `name=""` would be this writer inventing
+ * a nameless element where the notation has an unnamed one.
+ */
+function activityNodeElement(
+  node: UmlActivityNode,
+  side: BehaviourSideElements,
+  plan: XmiPlan
+): XmlElement {
+  const id = plan.idOf.get(node.id)!;
+  const name = node.name.trim();
+  const children: XmlElement[] = [];
+  const attrs: XmlAttrs = {
+    'xmi:type': ACTIVITY_NODE_TYPE[node.kind],
+    'xmi:id': id,
+  };
+
+  if (node.kind === 'send-signal') {
+    attrs.signal = signalIdFor(name || 'Signal', side, plan);
+  } else if (node.kind === 'accept-event') {
+    const eventId = plan.ids.mint();
+    side.extras.push(
+      el('packagedElement', {
+        'xmi:type': 'uml:SignalEvent',
+        'xmi:id': eventId,
+        ...(name ? { name } : {}),
+        signal: signalIdFor(name || 'Signal', side, plan),
+      })
+    );
+    children.push(
+      el('trigger', {
+        'xmi:type': 'uml:Trigger',
+        'xmi:id': plan.ids.mint(),
+        ...(name ? { name } : {}),
+        event: eventId,
+      })
+    );
+  } else if (node.kind === 'time-event') {
+    const trigger = parseTrigger(name);
+    const eventId = plan.ids.mint();
+    side.extras.push(
+      el(
+        'packagedElement',
+        {
+          'xmi:type': 'uml:TimeEvent',
+          'xmi:id': eventId,
+          ...(name ? { name } : {}),
+          // §13.3.3.4: `after` is a relative TimeEvent, `at` an absolute one.
+          // Written only when TRUE, like every other boolean in this file.
+          ...(trigger.kind === 'relative-time' ? { isRelative: 'true' } : {}),
+        },
+        [
+          el(
+            'when',
+            { 'xmi:type': 'uml:TimeExpression', 'xmi:id': plan.ids.mint() },
+            [
+              el('expr', {
+                'xmi:type': 'uml:LiteralString',
+                'xmi:id': plan.ids.mint(),
+                // The TimeExpression, without the keyword that classified it —
+                // `after 5 s` is a relative event whose expression is `5 s`, and
+                // writing the keyword into the value would make an importer
+                // wait "after after 5 s".
+                value: trigger.expression ?? name,
+              }),
+            ]
+          ),
+        ]
+      )
+    );
+    children.push(
+      el('trigger', {
+        'xmi:type': 'uml:Trigger',
+        'xmi:id': plan.ids.mint(),
+        ...(name ? { name } : {}),
+        event: eventId,
+      })
+    );
+  }
+
+  // The control nodes stay unnamed — see the header.
+  const named =
+    node.kind === 'initial' ||
+    node.kind === 'activity-final' ||
+    node.kind === 'flow-final' ||
+    node.kind === 'decision' ||
+    node.kind === 'fork'
+      ? {}
+      : name
+        ? { name }
+        : {};
+
+  return el('node', { ...attrs, ...named }, children);
+}
+
+/**
+ * One activity edge as an `<edge>` of its Activity.
+ *
+ * `guard` and `weight` are both `{subsets ownedElement}` on ActivityEdge, so
+ * both are written as CHILDREN — a guard as the OpaqueExpression §15.2.4's
+ * bracketed text is, a weight as a LiteralInteger when it is a plain number and
+ * a LiteralUnlimitedNatural when the author wrote `*`. §15.2.4 admits any
+ * ValueSpecification there; anything this writer cannot read as a number goes
+ * through as an OpaqueExpression, which keeps the author's words and asks an
+ * importer to interpret them.
+ *
+ * An end this sheet has no id for is an edge the file cannot carry, and it is
+ * skipped rather than written with a dangling reference — the same call
+ * {@link associationElement} makes. `umlModelFrom` has already warned the
+ * author about it.
+ */
+function activityEdgeElement(
+  edge: UmlActivityEdge,
+  plan: XmiPlan
+): XmlElement | undefined {
+  const source = plan.idOf.get(edge.sourceId);
+  const target = plan.idOf.get(edge.targetId);
+  if (!source || !target) return undefined;
+
+  const children: XmlElement[] = [];
+  if (edge.guard) children.push(opaqueExpression('guard', edge.guard, plan));
+  if (edge.weight) {
+    const weight = edge.weight.trim();
+    children.push(
+      weight === '*'
+        ? el('weight', {
+            'xmi:type': 'uml:LiteralUnlimitedNatural',
+            'xmi:id': plan.ids.mint(),
+            value: '*',
+          })
+        : /^\d+$/.test(weight)
+          ? el('weight', {
+              'xmi:type': 'uml:LiteralInteger',
+              'xmi:id': plan.ids.mint(),
+              value: weight,
+            })
+          : opaqueExpression('weight', weight, plan)
+    );
+  }
+
+  return el(
+    'edge',
+    {
+      'xmi:type':
+        edge.kind === 'object-flow' ? 'uml:ObjectFlow' : 'uml:ControlFlow',
+      'xmi:id': plan.ids.mint(),
+      ...(edge.name ? { name: edge.name } : {}),
+      source,
+      target,
+    },
+    children
+  );
+}
+
+/**
+ * One Activity as a `packagedElement`, and whatever it had to mint beside
+ * itself.
+ *
+ * The partitions are `group`s — §15.6.2 makes ActivityPartition an
+ * ActivityGroup, and `Activity::group` is where a group lives — each listing the
+ * nodes it holds as a space-separated `node` idref list, which is how XMI writes
+ * a multi-valued reference. The membership itself came from geometry
+ * (`model.ts`), so a lane the author widened takes the actions it now covers and
+ * the file follows the drawing.
+ *
+ * `isReadOnly`, `isSingleExecution` and the pre/post-conditions of §15.2.4 are
+ * not written: the notation states none of them on this canvas, and a default
+ * spelled out is a fact nobody stated.
+ */
+function activityElements(activity: UmlActivity, plan: XmiPlan): XmlElement[] {
+  const side: BehaviourSideElements = { extras: [], signals: new Map() };
+  const children: XmlElement[] = [];
+
+  for (const node of activity.nodes) {
+    children.push(activityNodeElement(node, side, plan));
+  }
+  for (const edge of activity.edges) {
+    const element = activityEdgeElement(edge, plan);
+    if (element) children.push(element);
+  }
+  for (const partition of activity.partitions) {
+    const nodes = partition.nodeIds
+      .map(nodeId => plan.idOf.get(nodeId))
+      .filter((nodeId): nodeId is string => Boolean(nodeId));
+    children.push(
+      el('group', {
+        'xmi:type': 'uml:ActivityPartition',
+        'xmi:id': plan.idOf.get(partition.id)!,
+        name: partition.name,
+        ...(nodes.length > 0 ? { node: nodes.join(' ') } : {}),
+      })
+    );
+  }
+
+  return [
+    ...side.extras,
+    el(
+      'packagedElement',
+      {
+        'xmi:type': 'uml:Activity',
+        'xmi:id': plan.ids.mint(),
+        name: activity.name,
+      },
+      children
+    ),
+  ];
+}
+
+/** One state's vertices, as the `<subvertex>`es of the region that holds them. */
+function subvertexElements(
+  machine: UmlStateMachine,
+  regionId: string | undefined,
+  plan: XmiPlan
+): XmlElement[] {
+  const children: XmlElement[] = [];
+
+  for (const state of machine.states) {
+    if (state.regionId !== regionId) continue;
+    const inner: XmlElement[] = [];
+    for (const body of state.entry) {
+      inner.push(opaqueBehavior('entry', body, plan));
+    }
+    for (const body of state.doActivity) {
+      inner.push(opaqueBehavior('doActivity', body, plan));
+    }
+    for (const body of state.exit) {
+      inner.push(opaqueBehavior('exit', body, plan));
+    }
+    children.push(
+      el(
+        'subvertex',
+        {
+          'xmi:type': 'uml:State',
+          'xmi:id': plan.idOf.get(state.id)!,
+          name: state.name,
+        },
+        inner
+      )
+    );
+  }
+
+  for (const final of machine.finalStates) {
+    if (final.regionId !== regionId) continue;
+    children.push(
+      el('subvertex', {
+        'xmi:type': 'uml:FinalState',
+        'xmi:id': plan.idOf.get(final.id)!,
+        // §14.2.4.5 draws the bullseye with no name, and the creation site
+        // writes none. A named one is an author who named it.
+        ...(final.name.trim() ? { name: final.name } : {}),
+      })
+    );
+  }
+
+  for (const pseudo of machine.pseudostates) {
+    if (pseudo.regionId !== regionId) continue;
+    children.push(
+      el('subvertex', {
+        'xmi:type': 'uml:Pseudostate',
+        'xmi:id': plan.idOf.get(pseudo.id)!,
+        ...(pseudo.name.trim() ? { name: pseudo.name } : {}),
+        kind: PSEUDOSTATE_KIND[pseudo.kind],
+      })
+    );
+  }
+
+  // The COMPOSITE states drawn inside this region. Each is a `uml:State` with a
+  // Region of its own — §14.2.4's decomposition compartment, and the shape
+  // `roles.ts` records the canvas draws as a frame.
+  for (const region of machine.regions) {
+    if (region.parentId !== regionId) continue;
+    children.push(
+      el(
+        'subvertex',
+        {
+          'xmi:type': 'uml:State',
+          'xmi:id': plan.idOf.get(region.id)!,
+          name: region.name,
+        },
+        [regionElement(machine, region, plan)]
+      )
+    );
+  }
+
+  return children;
+}
+
+/** One `<region>` — its vertices, and the transitions that run between them. */
+function regionElement(
+  machine: UmlStateMachine,
+  region: UmlRegion | undefined,
+  plan: XmiPlan
+): XmlElement {
+  const regionId = region?.id;
+  const children: XmlElement[] = subvertexElements(machine, regionId, plan);
+
+  // A transition belongs to the region its SOURCE is in — §14.5.12 owns a
+  // Transition on a Region, and the source is the vertex the arc leaves. A
+  // transition crossing out of a composite state is therefore written inside it,
+  // which is where §14.2.4 draws it from.
+  const regionOfVertex = new Map<string, string | undefined>();
+  for (const state of machine.states) {
+    regionOfVertex.set(state.id, state.regionId);
+  }
+  for (const final of machine.finalStates) {
+    regionOfVertex.set(final.id, final.regionId);
+  }
+  for (const pseudo of machine.pseudostates) {
+    regionOfVertex.set(pseudo.id, pseudo.regionId);
+  }
+  for (const nested of machine.regions) {
+    regionOfVertex.set(nested.id, nested.parentId);
+  }
+
+  for (const transition of machine.transitions) {
+    if (regionOfVertex.get(transition.sourceId) !== regionId) continue;
+    const source = plan.idOf.get(transition.sourceId);
+    const target = plan.idOf.get(transition.targetId);
+    if (!source || !target) continue;
+
+    const inner: XmlElement[] = [];
+    for (const trigger of transition.triggers) {
+      // A Trigger's `event` is a reference and this drawing names no Event
+      // declaration — §14.2.4.8 says as much, "SignalEvent triggers and
+      // CallEvent triggers are not distinguishable by syntax and must be
+      // discriminated by their declaration elsewhere". So the Trigger carries
+      // the author's word as its NAME and points at nothing, which an importer
+      // can bind and this writer cannot honestly guess.
+      inner.push(
+        el('trigger', {
+          'xmi:type': 'uml:Trigger',
+          'xmi:id': plan.ids.mint(),
+          name: trigger,
+        })
+      );
+    }
+    if (transition.guard) {
+      // `Transition::guard` is a CONSTRAINT (`{subsets ownedElement}`), not a
+      // ValueSpecification — which is where it differs from an ActivityEdge's,
+      // one clause over. The expression goes in its `specification`.
+      inner.push(
+        el(
+          'guard',
+          { 'xmi:type': 'uml:Constraint', 'xmi:id': plan.ids.mint() },
+          [opaqueExpression('specification', transition.guard, plan)]
+        )
+      );
+    }
+    if (transition.effect) {
+      inner.push(opaqueBehavior('effect', transition.effect, plan));
+    }
+
+    children.push(
+      el(
+        'transition',
+        {
+          'xmi:type': 'uml:Transition',
+          'xmi:id': plan.ids.mint(),
+          source,
+          target,
+        },
+        inner
+      )
+    );
+  }
+
+  return el(
+    'region',
+    {
+      'xmi:type': 'uml:Region',
+      // A Region is minted rather than claimed: the canvas draws the COMPOSITE
+      // STATE (which is claimed, above) and never the region inside it, and the
+      // top region of a machine is one §14.2.4 makes implicit — the frame IS it.
+      // Nothing refers to a Region by id, so nothing needs it planned.
+      'xmi:id': plan.ids.mint(),
+      name: region ? region.name : machine.name,
+    },
+    children
+  );
+}
+
+/**
+ * One StateMachine as a `packagedElement`.
+ *
+ * ONE top-level Region, always, and the sheet's vertices that sit inside no
+ * drawn composite state are its subvertices. §14.2.4 makes the top region
+ * implicit — the frame IS it — so there is nothing on the canvas to read it off,
+ * and a machine with no region drawn would otherwise have nowhere to put a
+ * single state.
+ *
+ * Orthogonal regions — two or more side by side inside one composite state,
+ * separated by a dashed line — are a PHASE 3 refinement and this writer cannot
+ * produce one: the canvas draws a composite state as a single `umlRegion` box
+ * (`roles.ts` records the arbitration), so every composite state here has
+ * exactly one region. What is written is always a legal StateMachine; it is
+ * simply never an orthogonal one.
+ */
+function stateMachineElement(
+  machine: UmlStateMachine,
+  plan: XmiPlan
+): XmlElement {
+  return el(
+    'packagedElement',
+    {
+      'xmi:type': 'uml:StateMachine',
+      'xmi:id': plan.ids.mint(),
+      name: machine.name,
+    },
+    [regionElement(machine, undefined, plan)]
+  );
+}
+
 /* ── Relationships that are packaged elements ─────────────────────────── */
 
 /**
@@ -1160,6 +1738,16 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
   for (const node of model.nodes) {
     children.push(deploymentNodeElement(node, model, plan));
   }
+  // The two behaviours. Each is a `packagedElement` of the sheet's own package —
+  // an Activity and a StateMachine are both Behaviors and both PackageableElements
+  // — and the Activity brings with it the Signals and Events its action glyphs
+  // had to reference (see {@link BehaviourSideElements}).
+  for (const activity of model.activities) {
+    children.push(...activityElements(activity, plan));
+  }
+  for (const machine of model.stateMachines) {
+    children.push(stateMachineElement(machine, plan));
+  }
 
   // Relationships that are packaged elements in their own right, owned by the
   // diagram's package: the nearest common namespace of their two ends, which
@@ -1194,6 +1782,13 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
       // manifests and by the cube that hosts (§19.3.2, §19.2.2).
       case 'manifest':
       case 'deploy':
+      // …and the three behaviour edges, owned by the Activity and the
+      // StateMachine that hold them: `Activity::edge` and `Region::transition`
+      // are both containments, so a control flow written here as well would be
+      // the same arrow in the file twice.
+      case 'control-flow':
+      case 'object-flow':
+      case 'transition':
       // Not a model relationship at all: an anchor attaches a Comment, and it
       // is written as that Comment's `annotatedElement`.
       case 'anchor':

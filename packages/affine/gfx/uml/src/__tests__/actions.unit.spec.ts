@@ -19,6 +19,8 @@ import {
   createUmlDiagram,
   createUmlLegend,
   createUmlNode,
+  createUmlPartition,
+  createUmlRegion,
   createUmlSubject,
   type UmlClassifierKind,
   type UmlEdgeRole,
@@ -32,6 +34,8 @@ import {
   UML_DIAGRAM_BOX,
   UML_EDGE_WIDTH,
   UML_NODE_BOX,
+  UML_PARTITION_BOX,
+  UML_REGION_BOX,
   UML_SUBJECT_BOX,
 } from '../consts.js';
 import { umlCompartmentBoxes } from '../component.js';
@@ -41,6 +45,7 @@ import {
   UML_NAME_SEED,
   UML_OPERATIONS_SEED,
   UML_SLOTS_SEED,
+  UML_UNLABELLED_KINDS,
 } from '../keywords.js';
 import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 
@@ -162,8 +167,47 @@ const GLYPHS: UmlGlyphKind[] = [
   'node',
   'device',
   'execution-environment',
+  // Phase 2, behaviour: the activity vocabulary (§15.2.4, §15.3.4, §15.4.4,
+  // §16.3.4, §16.10.4)…
+  'action',
+  'initial',
+  'activity-final',
+  'flow-final',
+  'decision',
+  'fork',
+  'object-node',
+  'send-signal',
+  'accept-event',
+  'time-event',
+  // …and the state machine's (§14.2.4).
+  'state',
+  'final-state',
+  'choice',
+  'junction',
+  'shallow-history',
+  'deep-history',
+  'entry-point',
+  'exit-point',
+  'terminate',
 ];
 const ALL_KINDS = [...CLASSIFIERS, ...GLYPHS] as UmlNodeKind[];
+
+/**
+ * The pictures the notation draws with NO word on them — derived, never
+ * restated, so a kind added to {@link UML_UNLABELLED_KINDS} is covered here on
+ * the day it lands rather than on the day somebody notices.
+ */
+const UNLABELLED = GLYPHS.filter(kind => UML_UNLABELLED_KINDS.has(kind));
+const LABELLED_GLYPHS = GLYPHS.filter(kind => !UML_UNLABELLED_KINDS.has(kind));
+
+/** Whichever of the two creation paths this kind travels. */
+const create = (std: BlockStdScope, kind: UmlNodeKind) => {
+  if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
+    createUmlClassifier(std, kind as UmlClassifierKind);
+  } else {
+    createUmlNode(std, kind as UmlGlyphKind);
+  }
+};
 
 /**
  * The two unions above are the WHOLE pack, and this is what says so.
@@ -209,8 +253,18 @@ describe('the diagram frame and the subject', () => {
     expect(rec.selected()).toEqual(['element-1']);
   });
 
-  it('writes whichever of the four kinds the caller asked for', () => {
-    for (const kind of ['class', 'pkg', 'obj', 'uc'] as const) {
+  it('writes whichever of the diagram kinds the caller asked for', () => {
+    for (const kind of [
+      'class',
+      'pkg',
+      'obj',
+      'uc',
+      'cmp',
+      'dep',
+      // Phase 2's behaviour sheets.
+      'act',
+      'stm',
+    ] as const) {
       const rec = recorder();
       createUmlDiagram(rec.std, kind);
       expect(rec.added[0].kind, kind).toBe(kind);
@@ -231,6 +285,45 @@ describe('the diagram frame and the subject', () => {
     expect(rec.added[0]).not.toHaveProperty('kind');
     expect(rec.added[0]).not.toHaveProperty('variant');
     expect(boxOf(rec.added[0])[2]).toBe(UML_SUBJECT_BOX.w);
+  });
+
+  it('creates a partition without restating the orientation default', () => {
+    // §15.6.4's swimlane. The model's own default is vertical — §15.6.4's
+    // figures are columns, which is also how a left-to-right flow reads — and
+    // the creation writes NO `orientation` at all: a site restating a default
+    // is a second place for it to be changed, and the band's own toolbar is
+    // where an author turns a column into a row.
+    const rec = recorder();
+    createUmlPartition(rec.std);
+    expect(rec.added).toHaveLength(1);
+    expect(rec.added[0]).toMatchObject({
+      type: 'umlPartition',
+      role: UML_ROLE.partition,
+      name: 'Partition',
+    });
+    expect(rec.added[0]).not.toHaveProperty('orientation');
+    expect(boxOf(rec.added[0])).toEqual([
+      -UML_PARTITION_BOX.w / 2,
+      -UML_PARTITION_BOX.h / 2,
+      UML_PARTITION_BOX.w,
+      UML_PARTITION_BOX.h,
+    ]);
+    expect(rec.selected()).toEqual(['element-1']);
+  });
+
+  it('creates a region — the composite state, as its container', () => {
+    // §14.2.4. A composite state IS the region here; a state with two or more
+    // ORTHOGONAL regions separated by dashed lines is a phase-3 refinement
+    // rather than something this element can be stretched into.
+    const rec = recorder();
+    createUmlRegion(rec.std);
+    expect(rec.added).toHaveLength(1);
+    expect(rec.added[0]).toMatchObject({
+      type: 'umlRegion',
+      role: UML_ROLE.region,
+      name: 'Region',
+    });
+    expect(boxOf(rec.added[0])[2]).toBe(UML_REGION_BOX.w);
   });
 });
 
@@ -349,12 +442,31 @@ describe('what a uml artefact is created as', () => {
     }
   });
 
-  it('builds every picture kind as shape, one label, group', () => {
-    for (const kind of GLYPHS) {
+  it('builds every LABELLED picture kind as shape, one label, group', () => {
+    for (const kind of LABELLED_GLYPHS) {
       const rec = recorder();
       createUmlNode(rec.std, kind);
       expect(rec.types(), kind).toEqual(['umlNode', 'text', 'group']);
       expect(rec.added[1].text, kind).toBe(UML_NAME_SEED[kind]);
+    }
+  });
+
+  it('drops an unlabelled mark as the SHAPE, with no words and no group', () => {
+    // §15.3.4 and §14.2.4 name none of the routing marks — an initial node has
+    // no name, a fork has no name, a history mark is an `H` — so a stencil that
+    // seeded one would be putting a word on the picture that the notation says
+    // is not there, and the `label-presence` audits would be right to complain
+    // about it forever. No text, and therefore no group: a group of one element
+    // is a wrapper a user would have to descend through to reach the mark.
+    expect(UNLABELLED.length).toBeGreaterThan(0);
+    for (const kind of UNLABELLED) {
+      const rec = recorder();
+      createUmlNode(rec.std, kind);
+      expect(rec.types(), kind).toEqual(['umlNode']);
+      expect(rec.added[0], kind).not.toHaveProperty('text');
+      // The SHAPE is what the gesture produced, so the shape is what is
+      // selected — there is nothing above it to select instead.
+      expect(rec.selected(), kind).toEqual(['element-1']);
     }
   });
 
@@ -376,10 +488,17 @@ describe('what a uml artefact is created as', () => {
       'device',
       'execution-environment',
     ];
-    for (const kind of GLYPHS) {
+    for (const kind of LABELLED_GLYPHS) {
       expect(roleOf(kind), kind).toBe(
         named.includes(kind) ? UML_ROLE.name : UML_ROLE.label
       );
+    }
+    // The whole behaviour vocabulary is LABELLED, including the state: its
+    // `entry / …` lines are written under its name in that same text rather
+    // than in a compartment of their own, so there is one tier and it is the
+    // one `uml:label` means (§14.2.4).
+    for (const kind of ['action', 'state', 'send-signal'] as const) {
+      expect(roleOf(kind), kind).toBe(UML_ROLE.label);
     }
   });
 
@@ -389,12 +508,9 @@ describe('what a uml artefact is created as', () => {
     // whose words never said what it had become. Asserted over the WHOLE pack,
     // because the next phase appends kinds to the same two unions.
     for (const kind of ALL_KINDS) {
+      if (UML_UNLABELLED_KINDS.has(kind)) continue;
       const rec = recorder();
-      if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
-        createUmlClassifier(rec.std, kind as UmlClassifierKind);
-      } else {
-        createUmlNode(rec.std, kind as UmlGlyphKind);
-      }
+      create(rec.std, kind);
       const seeded = UML_NAME_SEED[kind].split('\n')[0];
       if (!seeded.startsWith('«')) continue;
       expect(rec.added[1].role, kind).toBe(UML_ROLE.name);
@@ -408,7 +524,7 @@ describe('what a uml artefact is created as', () => {
       return rec.added[1].textAlign;
     };
     expect(alignOf('note')).toBe(TextAlign.Left);
-    for (const kind of GLYPHS) {
+    for (const kind of LABELLED_GLYPHS) {
       if (kind === 'note') continue;
       expect(alignOf(kind), kind).toBe(TextAlign.Center);
     }
@@ -417,11 +533,7 @@ describe('what a uml artefact is created as', () => {
   it('drops a shape with no words in it, whatever the kind (R16)', () => {
     for (const kind of ALL_KINDS) {
       const rec = recorder();
-      if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
-        createUmlClassifier(rec.std, kind as UmlClassifierKind);
-      } else {
-        createUmlNode(rec.std, kind as UmlGlyphKind);
-      }
+      create(rec.std, kind);
       expect(rec.added[0], kind).not.toHaveProperty('text');
       // Anything written on the shape would be a second, invisible name.
       expect(rec.added[0].kind, kind).toBe(kind);
@@ -454,11 +566,7 @@ describe('what a uml artefact is created as', () => {
   it('centres the artefact on the viewport, at its kind own footprint', () => {
     for (const kind of ALL_KINDS) {
       const rec = recorder();
-      if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
-        createUmlClassifier(rec.std, kind as UmlClassifierKind);
-      } else {
-        createUmlNode(rec.std, kind as UmlGlyphKind);
-      }
+      create(rec.std, kind);
       const { w, h } = UML_NODE_BOX[kind];
       expect(boxOf(rec.added[0]), kind).toEqual(
         JSON.parse(new Bound(-w / 2, -h / 2, w, h).serialize())
@@ -471,12 +579,10 @@ describe('what a uml artefact is created as', () => {
     // above it — and two elements sharing an index sort by id, which is a
     // nanoid. The group is written after them so its derived bounds cover them.
     for (const kind of ALL_KINDS) {
+      // …except the marks that are ONE element: there is nothing to group.
+      if (UML_UNLABELLED_KINDS.has(kind)) continue;
       const rec = recorder();
-      if ((CLASSIFIERS as UmlNodeKind[]).includes(kind)) {
-        createUmlClassifier(rec.std, kind as UmlClassifierKind);
-      } else {
-        createUmlNode(rec.std, kind as UmlGlyphKind);
-      }
+      create(rec.std, kind);
       const group = rec.added[rec.added.length - 1];
       expect(group.type, kind).toBe('group');
       expect(Object.keys(group.children as object).sort(), kind).toEqual(
@@ -499,8 +605,11 @@ describe('what a uml artefact is created as', () => {
     } as unknown as BlockStdScope;
     expect(() => createUmlDiagram(std)).not.toThrow();
     expect(() => createUmlSubject(std)).not.toThrow();
+    expect(() => createUmlPartition(std)).not.toThrow();
+    expect(() => createUmlRegion(std)).not.toThrow();
     expect(() => createUmlClassifier(std, 'class')).not.toThrow();
     expect(() => createUmlNode(std, 'note')).not.toThrow();
+    expect(() => createUmlNode(std, 'initial')).not.toThrow();
   });
 });
 
@@ -521,6 +630,10 @@ describe('what a uml relationship tool is armed with', () => {
     'deploy',
     'manifest',
     'communication-path',
+    // Phase 2, behaviour — §15.2.4 and §14.2.4.8.
+    'control-flow',
+    'object-flow',
+    'transition',
   ];
 
   it('draws every UML line straight, in one ink, at one weight', () => {
@@ -615,13 +728,34 @@ describe('what a uml relationship tool is armed with', () => {
     );
   });
 
-  it('gives each of the twelve a look no other has, or a role that differs', () => {
-    // Twelve edges, seven drawings: the five dependencies share one and the
-    // communication path shares the association's, and both groups are the ones
-    // the specification says share a drawing.
+  it('draws the behaviour edges as the solid arrow no structure wears', () => {
+    // §15.2.4 draws an ActivityEdge as a solid line with an OPEN arrowhead, and
+    // §14.2.4.8 draws a Transition as the same line. That look belongs to no
+    // structural relationship: an association is solid with nothing on it, a
+    // dependency is the arrowhead on a DASHED line. A behaviour diagram states
+    // an ORDER and therefore always points.
+    const flow = armed('control-flow');
+    expect(flow.style).toMatchObject({
+      strokeStyle: StrokeStyle.Solid,
+      frontEndpointStyle: PointStyle.None,
+      rearEndpointStyle: PointStyle.Arrow,
+    });
+    for (const role of ['object-flow', 'transition'] as const) {
+      expect(armed(role).style, role).toEqual(flow.style);
+      expect(armed(role).options.role, role).not.toBe(flow.options.role);
+    }
+    expect(flow.style).not.toEqual(armed('association').style);
+    expect(flow.style).not.toEqual(armed('dependency').style);
+  });
+
+  it('gives each of the fifteen a look no other has, or a role that differs', () => {
+    // Fifteen edges, eight drawings: the five dependencies share one, the
+    // communication path shares the association's, and the three behaviour
+    // edges share the eighth — every group being one the specification itself
+    // says shares a drawing.
     const looks = ALL_EDGES.map(role => JSON.stringify(armed(role).style));
-    expect(new Set(looks).size).toBe(7);
-    expect(new Set(ALL_EDGES.map(role => UML_ROLE[role])).size).toBe(12);
+    expect(new Set(looks).size).toBe(8);
+    expect(new Set(ALL_EDGES.map(role => UML_ROLE[role])).size).toBe(15);
   });
 });
 

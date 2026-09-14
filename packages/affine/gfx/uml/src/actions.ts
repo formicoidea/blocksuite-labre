@@ -27,6 +27,8 @@ import {
   UML_INK,
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
+  UML_PARTITION_BOX,
+  UML_REGION_BOX,
   UML_SUBJECT_BOX,
 } from './consts.js';
 import { UML_EDGE_STYLE, type UmlEdgeRole } from './edge-styles.js';
@@ -37,10 +39,16 @@ import {
   UML_NAME_SEED,
   UML_OPERATIONS_SEED,
   UML_SLOTS_SEED,
+  UML_UNLABELLED_KINDS,
 } from './keywords.js';
 import { UML_AUTO_LEGEND } from './legend.js';
 import { umlNodeProps, umlTextProps } from './presets.js';
-import { UML_ROLE, umlDiagramRoleKey, umlSubjectRoleKey } from './roles.js';
+import {
+  UML_ROLE,
+  umlDiagramRoleKey,
+  umlRoleKey,
+  umlSubjectRoleKey,
+} from './roles.js';
 
 /**
  * Standalone creation/activation actions for the UML toolbox — the same shape
@@ -138,6 +146,85 @@ export function createUmlSubject(std: BlockStdScope) {
   finish(gfx, id);
 }
 
+/**
+ * The two behaviour BACKGROUNDS, named through the same seam the subject is.
+ *
+ * `umlRoleKey` rather than a `umlPartitionRoleKey` export, and it is the same
+ * string either way (`roles.ts` derives both from the role's local name): a
+ * default name is asked for ONCE, at creation, and it is the author's content
+ * from that moment on — so the call site needs the key and nothing else.
+ */
+const umlPartitionRoleKey = umlRoleKey('partition');
+const umlRegionRoleKey = umlRoleKey('region');
+
+/**
+ * Create an activity PARTITION — a swimlane (§15.6.4), the band an activity
+ * diagram draws round the steps one participant is responsible for.
+ *
+ * ## Why a background and not a field on the frame
+ *
+ * Because membership is GEOMETRIC and partitions nest and overlap: §15.6.4 lets
+ * a diagram be cut vertically by role and horizontally by phase at the same
+ * time, and an action belongs to whichever bands its centre falls in. A list of
+ * lane names on `umlDiagram` could express neither, and adding a field to a
+ * shipped model is the red zone `docs/adr/0009` guards. So a partition is an
+ * element like the subject beside it, read at audit and export time by centre
+ * containment (R11).
+ *
+ * ## VERTICAL, and it is a default rather than a preference
+ *
+ * §15.6.4's own figures are drawn as vertical columns, which is also the way a
+ * left-to-right flow reads: the steps travel across the lanes rather than down
+ * them. The model's own default says so, and this site deliberately writes no
+ * `orientation` at all — a creation that restated the default would be a second
+ * place for it to be changed, and the band's own toolbar is where an author
+ * turns a column into a row.
+ */
+export function createUmlPartition(std: BlockStdScope) {
+  const gfx = gfxOf(std);
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { w, h } = UML_PARTITION_BOX;
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+  const id = surface.addElement({
+    type: 'umlPartition',
+    role: UML_ROLE.partition,
+    name: translateKey(std, umlPartitionRoleKey, 'Partition'),
+    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+  });
+  finish(gfx, id);
+}
+
+/**
+ * Create a REGION — the rounded, named rectangle a composite state is drawn as
+ * (§14.2.4), and the container its sub-states sit inside.
+ *
+ * A composite state IS a region here rather than a `state` node holding
+ * regions, and the simplification is deliberate and has a ceiling worth
+ * stating: §14.2.4 draws a composite state as a rounded rectangle with its name
+ * in a band at the top and its sub-machine below, which is exactly this
+ * element. What it does NOT give is a state with two or more ORTHOGONAL regions
+ * separated by dashed lines — that is one state drawn as several boxes, and it
+ * is a phase-3 refinement rather than something this element can be stretched
+ * into.
+ */
+export function createUmlRegion(std: BlockStdScope) {
+  const gfx = gfxOf(std);
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { w, h } = UML_REGION_BOX;
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+  const id = surface.addElement({
+    type: 'umlRegion',
+    role: UML_ROLE.region,
+    name: translateKey(std, umlRegionRoleKey, 'Region'),
+    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+  });
+  finish(gfx, id);
+}
+
 /* ── The artefacts ─────────────────────────────────────────────────────── */
 
 /**
@@ -182,7 +269,34 @@ export type UmlGlyphKind =
   // …and deployment.
   | 'node'
   | 'device'
-  | 'execution-environment';
+  | 'execution-environment'
+  // Phase 2 — the ACTIVITY vocabulary (§15.2.4, §15.3.4, §15.4.4, §16.3.4,
+  // §16.10.4). Every one of them is a picture: a rounded rectangle, a disc, a
+  // bullseye, a diamond, a bar, a pentagon, an hourglass. None has a
+  // compartment to divide, which is the only question this union asks.
+  | 'action'
+  | 'initial'
+  | 'activity-final'
+  | 'flow-final'
+  | 'decision'
+  | 'fork'
+  | 'object-node'
+  | 'send-signal'
+  | 'accept-event'
+  | 'time-event'
+  // …and the STATE MACHINE one (§14.2.4). A state is a rounded box whose
+  // behaviour lines are written UNDER its name rather than in a compartment of
+  // their own — see {@link createUmlNode} — and the rest are the pseudostate
+  // marks, none of which holds a word at all.
+  | 'state'
+  | 'final-state'
+  | 'choice'
+  | 'junction'
+  | 'shallow-history'
+  | 'deep-history'
+  | 'entry-point'
+  | 'exit-point'
+  | 'terminate';
 
 /**
  * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
@@ -260,6 +374,30 @@ function centredBox(gfx: GfxController, kind: UmlNodeKind) {
  * Centred, except the NOTE. A note holds a sentence rather than a title (Annex
  * A), and a centred paragraph of three lines is the one thing on a UML diagram
  * that reads as a poem.
+ *
+ * ## The kinds that get no words at all, and no group either
+ *
+ * Phase 2's behaviour vocabulary is the first in this pack with artefacts that
+ * carry NOTHING: a filled disc, a bullseye, a bar, a cross. §15.3.4 and §14.2.4
+ * name none of them — an initial node has no name, a fork has no name, a
+ * history mark is an `H` and a final state is a target — and a stencil that
+ * seeded one would be putting a word on the picture that the notation says is
+ * not there, which the `label-presence` audits would then be right to complain
+ * about forever.
+ *
+ * {@link UML_UNLABELLED_KINDS} is that list, and creation READS it rather than
+ * restating it: those kinds arrive as the shape and nothing else — no text, and
+ * therefore no group, because a group of one element is a wrapper round nothing
+ * that a user would have to descend through to reach the mark it holds. The
+ * SHAPE is what the gesture produced, so the shape is what is selected.
+ *
+ * The tiered kinds are unaffected, and the one worth naming is the **state**
+ * (§14.2.4): it carries a single `uml:label` like every other picture here, and
+ * its `entry / …`, `do / …` and `exit / …` lines are written UNDER its name in
+ * that same text. One tier rather than a compartment of its own, because the
+ * renderer draws the separator when there is more than one line — so the box
+ * gains its name compartment exactly when an author writes behaviour into it,
+ * and an empty compartment is never drawn on a state that has none.
  */
 export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
   const gfx = gfxOf(std);
@@ -275,6 +413,13 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
     ...umlNodeProps(kind, { xywh: new Bound(x, y, w, h).serialize() }),
     index: gfx.layer.generateIndex(),
   });
+
+  // The marks the notation draws without a word on them: the shape IS the
+  // artefact, so there is nothing to group it with and nothing to seed.
+  if (UML_UNLABELLED_KINDS.has(kind)) {
+    finish(gfx, shapeId);
+    return;
+  }
 
   const { name: box } = umlCompartmentBoxes(kind, x, y, w, h);
   const isLabel = !NAMED_GLYPHS.has(kind);

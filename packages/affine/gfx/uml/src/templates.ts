@@ -87,6 +87,33 @@ const classifierPreview = (options: {
 const cubePreview = (mark = '') =>
   `<svg ${ATTRS} fill="none"><path d="M24 26 L42 12 H106 V52 L88 66 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M24 26 H88 V66 H24 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M88 26 L106 12" stroke="${UML_INK}" stroke-width="1.6"/>${line(34, 34, 44, UML_INK)}${mark}</svg>`;
 
+/**
+ * The BULLSEYE — a filled disc inside a ring.
+ *
+ * One helper for two entries, and it is the same argument {@link cubePreview}
+ * makes for three: §15.3.4's activity final and §14.2.4's final state are ONE
+ * drawing, and a palette that gave them two would be teaching a distinction UML
+ * does not draw. What separates them is the role and the sheet each is legal
+ * on, which the audit reads and a preview cannot show.
+ */
+const bullseyePreview = () =>
+  `<svg ${ATTRS} fill="none"><circle cx="67.5" cy="40" r="22" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><circle cx="67.5" cy="40" r="12" fill="${UML_INK}"/></svg>`;
+
+/**
+ * The DIAMOND one token leaves by a single branch — §15.3.4's decision and
+ * §14.2.4's choice, which are again one drawing on two diagrams.
+ */
+const diamondPreview = () =>
+  `<svg ${ATTRS} fill="none"><path d="M67.5 14 L98 40 L67.5 66 L37 40 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2" stroke-linejoin="round"/><path d="M12 40 H37" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/><path d="M98 40 H123" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+/**
+ * The `H` in its circle (§14.2.4) — drawn as strokes rather than set as type,
+ * so the preview does not depend on a font being loaded. `mark` is the deep
+ * history's asterisk, and the only difference between the two.
+ */
+const historyPreview = (mark = '') =>
+  `<svg ${ATTRS} fill="none"><circle cx="60" cy="40" r="22" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M51 29 V51 M69 29 V51 M51 40 H69" stroke="${UML_INK}" stroke-width="2.4" stroke-linecap="round"/>${mark}</svg>`;
+
 export const umlTemplateCategory: TemplateCategory = {
   name: 'UML',
   templates: [
@@ -188,6 +215,107 @@ export const umlTemplateCategory: TemplateCategory = {
     templateFromCommand(
       byId('uml.addExecutionEnvironment'),
       cubePreview(`<path d="M34 45 L54 52.5 L34 60 Z" fill="${UML_INK}"/>`)
+    ),
+
+    /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16) ────────── */
+
+    // The round-cornered rectangle a step is drawn as.
+    templateFromCommand(
+      byId('uml.addAction'),
+      `<svg ${ATTRS} fill="none"><rect x="26" y="22" width="83" height="36" rx="14" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${line(44, 38, 47, UML_INK)}</svg>`
+    ),
+    // The filled disc, and the first arrow out of it.
+    templateFromCommand(
+      byId('uml.addInitial'),
+      `<svg ${ATTRS} fill="none"><circle cx="42" cy="40" r="13" fill="${UML_INK}"/><path d="M58 40 H92" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/><path d="M85 34 L95 40 L85 46" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+    ),
+    // The bullseye: every token stops.
+    templateFromCommand(byId('uml.addActivityFinal'), bullseyePreview()),
+    // The circle with the cross: THIS token stops, the activity carries on.
+    templateFromCommand(
+      byId('uml.addFlowFinal'),
+      `<svg ${ATTRS} fill="none"><circle cx="67.5" cy="40" r="22" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M57 29.5 L78 50.5 M78 29.5 L57 50.5" stroke="${UML_INK}" stroke-width="2.4" stroke-linecap="round"/></svg>`
+    ),
+    // One token, ONE branch.
+    templateFromCommand(byId('uml.addDecision'), diamondPreview()),
+    // One token, EVERY branch: the filled bar, with the flows through it.
+    templateFromCommand(
+      byId('uml.addFork'),
+      `<svg ${ATTRS} fill="none"><rect x="60" y="12" width="9" height="56" rx="2" fill="${UML_INK}"/><path d="M22 40 H60" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/><path d="M69 26 H112 M69 54 H112" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/></svg>`
+    ),
+    // Data ON a flow, which is the only thing that tells it from a class box.
+    templateFromCommand(
+      byId('uml.addObjectNode'),
+      `<svg ${ATTRS} fill="none"><rect x="45" y="26" width="45" height="28" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${line(54, 38, 28, UML_INK)}<path d="M14 40 H45 M90 40 H121" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/></svg>`
+    ),
+    // The convex pentagon: the message leaving.
+    templateFromCommand(
+      byId('uml.addSendSignal'),
+      `<svg ${ATTRS} fill="none"><path d="M24 22 H92 L110 40 L92 58 H24 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2" stroke-linejoin="round"/>${line(38, 38, 44, UML_INK)}</svg>`
+    ),
+    // The concave one: the cup it arrives into. Deliberately its mirror.
+    templateFromCommand(
+      byId('uml.addAcceptEvent'),
+      `<svg ${ATTRS} fill="none"><path d="M22 22 H111 V58 H22 L40 40 Z" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2" stroke-linejoin="round"/>${line(50, 38, 44, UML_INK)}</svg>`
+    ),
+    // The hourglass.
+    templateFromCommand(
+      byId('uml.addTimeEvent'),
+      `<svg ${ATTRS} fill="none"><path d="M50 12 H85 L50 68 H85" stroke="${UML_INK}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M50 12 L85 68" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/></svg>`
+    ),
+    // The swimlanes, and the heading strip that makes them lanes rather than
+    // lines (§15.6.4).
+    templateFromCommand(
+      byId('uml.addPartition'),
+      `<svg ${ATTRS} fill="none"><rect x="12" y="10" width="111" height="60" stroke="${UML_FRAME_INK}" stroke-width="1.6"/><path d="M12 24 H123 M67.5 10 V70" stroke="${UML_FRAME_INK}" stroke-width="1.4"/>${line(22, 15, 28, UML_FRAME_INK)}${line(78, 15, 28, UML_FRAME_INK)}<rect x="24" y="36" width="34" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/><rect x="78" y="36" width="34" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/></svg>`
+    ),
+
+    /* ── Phase 2: state machines (§14.2.4) ───────────────────────────── */
+
+    // The rounded box with a name band: a name over the behaviour lines below.
+    templateFromCommand(
+      byId('uml.addState'),
+      `<svg ${ATTRS} fill="none"><rect x="26" y="14" width="83" height="52" rx="14" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M26 34 H109" stroke="${UML_INK}" stroke-width="1.6"/>${line(44, 22, 47, UML_INK)}${line(38, 42, 56)}${line(38, 52, 44)}</svg>`
+    ),
+    // The bullseye again: §14.2.4 and §15.3.4 draw one circle, so this pack
+    // draws one too — the ROLE is what says which sheet it is legal on.
+    templateFromCommand(byId('uml.addFinalState'), bullseyePreview()),
+    // The decision's diamond, on the other diagram.
+    templateFromCommand(byId('uml.addChoice'), diamondPreview()),
+    // The knot several transitions merge at.
+    templateFromCommand(
+      byId('uml.addJunction'),
+      `<svg ${ATTRS} fill="none"><circle cx="67.5" cy="40" r="11" fill="${UML_INK}"/><path d="M20 18 L58 34 M20 62 L58 46 M79 40 H116" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/></svg>`
+    ),
+    // `H` — come back to the sub-state this region was last in.
+    templateFromCommand(byId('uml.addShallowHistory'), historyPreview()),
+    // `H*` — come back to the whole nested configuration.
+    templateFromCommand(
+      byId('uml.addDeepHistory'),
+      historyPreview(
+        `<path d="M104 24 V40 M97 28 L111 36 M111 28 L97 36" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/>`
+      )
+    ),
+    // The named way IN, and the border it means nothing off.
+    templateFromCommand(
+      byId('uml.addEntryPoint'),
+      `<svg ${ATTRS} fill="none"><path d="M67.5 8 V72" stroke="${UML_INK}" stroke-width="2"/><path d="M22 40 H55" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/><circle cx="67.5" cy="40" r="11" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/></svg>`
+    ),
+    // …and the named way out, crossed.
+    templateFromCommand(
+      byId('uml.addExitPoint'),
+      `<svg ${ATTRS} fill="none"><path d="M67.5 8 V72" stroke="${UML_INK}" stroke-width="2"/><path d="M80 40 H113" stroke="${UML_INK}" stroke-width="2" stroke-linecap="round"/><circle cx="67.5" cy="40" r="11" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M60.5 33 L74.5 47 M74.5 33 L60.5 47" stroke="${UML_INK}" stroke-width="1.8" stroke-linecap="round"/></svg>`
+    ),
+    // The bare cross: no circle round it, which is the whole of what tells it
+    // from the flow final and from the exit point.
+    templateFromCommand(
+      byId('uml.addTerminate'),
+      `<svg ${ATTRS} fill="none"><path d="M46 19 L89 61 M89 19 L46 61" stroke="${UML_INK}" stroke-width="3" stroke-linecap="round"/></svg>`
+    ),
+    // The composite state: the container, with a sub-machine in it.
+    templateFromCommand(
+      byId('uml.addRegion'),
+      `<svg ${ATTRS} fill="none"><rect x="12" y="10" width="111" height="60" rx="10" stroke="${UML_FRAME_INK}" stroke-width="1.6"/><path d="M12 26 H123" stroke="${UML_FRAME_INK}" stroke-width="1.4"/>${line(22, 15, 32, UML_FRAME_INK)}<rect x="26" y="38" width="32" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/><rect x="78" y="38" width="32" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/><path d="M58 47 H78" stroke="${UML_DIVIDER}" stroke-width="1.6"/></svg>`
     ),
   ],
 };

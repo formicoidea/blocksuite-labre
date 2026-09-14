@@ -89,6 +89,24 @@ describe('the declared families', () => {
       'port',
       'provided-interface',
       'required-interface',
+      // …and phase 2's behaviour singletons. An action is the shape layer's own
+      // rounded rectangle where the two signal pentagons are glyph-bodied; a
+      // decision and a fork are a diamond and a bar, and §15.3.4 draws them
+      // differently because they MEAN differently; a choice and a junction are
+      // their state-machine twins and never share a sheet with them; an object
+      // node is data rather than a step; a state is named and a final state is
+      // not; a terminate is nothing's refinement.
+      'action',
+      'initial',
+      'decision',
+      'fork',
+      'object-node',
+      'time-event',
+      'state',
+      'final-state',
+      'choice',
+      'junction',
+      'terminate',
     ]) {
       expect(UML_MORPH_FAMILIES).toContainEqual([kind]);
       expect(UML_MORPH_SPEC.families.flat()).not.toContain(kind);
@@ -97,7 +115,23 @@ describe('the declared families', () => {
     expect(UML_MORPH_SPEC.families).toEqual(
       UML_MORPH_FAMILIES.filter(family => family.length > 1)
     );
-    expect(UML_MORPH_SPEC.families).toHaveLength(2);
+    expect(UML_MORPH_SPEC.families).toHaveLength(6);
+  });
+
+  it('pairs the behaviour marks the notation draws as one picture', () => {
+    // Four pairs, each of them one mark apart: the pentagon facing out or in
+    // (§16.3.4 / §16.10.4), the bullseye or the cross (§15.3.4), `H` or `H*`,
+    // the border circle hollow or crossed (§14.2.4). Every one of them is a
+    // mistake a reader cannot see and a dropdown can fix.
+    for (const family of [
+      ['send-signal', 'accept-event'],
+      ['activity-final', 'flow-final'],
+      ['shallow-history', 'deep-history'],
+      ['entry-point', 'exit-point'],
+    ]) {
+      expect(UML_MORPH_FAMILIES).toContainEqual(family);
+      expect(UML_MORPH_SPEC.families).toContainEqual(family);
+    }
   });
 });
 

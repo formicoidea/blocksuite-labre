@@ -8,7 +8,13 @@ import {
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from '../background.js';
+import {
+  UML_DIAGRAM_FRAME,
+  UML_PARTITION_FRAME_H,
+  UML_PARTITION_FRAME_V,
+  UML_REGION_FRAME,
+  UML_SUBJECT_FRAME,
+} from '../background.js';
 import {
   UML_DIAGRAM_MARGIN,
   UML_FRAME_BAND_HEIGHT,
@@ -17,14 +23,24 @@ import {
   UML_FRAME_TAG_CUT,
   UML_FRAME_TAG_FOOT,
   UML_NAME_FONT_SIZE,
+  UML_PARTITION_BAND,
+  UML_PARTITION_BOX,
+  UML_REGION_BAND,
+  UML_REGION_BOX,
+  UML_REGION_RADIUS,
   UML_SUBJECT_MARGIN,
 } from '../consts.js';
-import { umlDiagram, umlSubject } from '../element-renderer.js';
+import {
+  umlDiagram,
+  umlPartition,
+  umlRegion,
+  umlSubject,
+} from '../element-renderer.js';
 import { UML_ROLE } from '../roles.js';
 import { recordingCtx, stubMatrix } from './canvas-stub.js';
 
 /**
- * The two UML frames, as DECLARATIONS and as pictures.
+ * The UML frames, as DECLARATIONS and as pictures.
  *
  * A declaration is data, so most of what can go wrong with one is a typo: a
  * colour naming a palette entry that does not exist paints loud magenta and
@@ -81,6 +97,12 @@ const measured = (text: string, size: number) => text.length * size * 0.5;
 describe.each([
   ['diagram', UML_DIAGRAM_FRAME, 'heading'],
   ['subject', UML_SUBJECT_FRAME, 'name'],
+  // The two behaviour frames of phase 2, the partition in both orientations:
+  // a lane turned on its side is a second DECLARATION, not a variant, so it
+  // has to walk the same checks as any other.
+  ['vertical partition', UML_PARTITION_FRAME_V, 'name'],
+  ['horizontal partition', UML_PARTITION_FRAME_H, 'name'],
+  ['composite state', UML_REGION_FRAME, 'name'],
 ] as const)(
   'the UML %s declaration',
   (_name, def: FrameworkBackgroundDef, prop: string) => {
@@ -143,8 +165,11 @@ describe.each([
         expect(zone.fill, zone.id).toBeUndefined();
         expect(zone.rect).toEqual({ x: 0, y: 0, w: 1, h: 1 });
       }
-      // Neither frame has variants: a UML frame is one rectangle with one
-      // heading, and §18.1.4 gives the subject no flavours at all.
+      // No frame has variants: a UML frame is one rectangle with one heading,
+      // §18.1.4 gives the subject no flavours at all, and a partition's
+      // orientation is TWO DECLARATIONS rather than a variant — a side band's
+      // edge and the geometry's deep margin are not things `variantProp` can
+      // vary (see `background.ts`).
       expect(def.variantProp).toBeUndefined();
       for (const text of backgroundTexts(def)) {
         expect(text.variants, text.id).toBeUndefined();
@@ -326,5 +351,138 @@ describe('the UML subject', () => {
   it('is the subject role, and the umlSubject element type', () => {
     expect(UML_SUBJECT_FRAME.type).toBe('umlSubject');
     expect(UML_SUBJECT_FRAME.role).toBe(UML_ROLE.subject);
+  });
+});
+
+describe('the UML partition', () => {
+  const W = UML_PARTITION_BOX.w;
+  const H = UML_PARTITION_BOX.h;
+
+  const lane = (orientation: string, w: number = W, h: number = H) =>
+    render(umlPartition, { name: 'Vendeur', orientation }, w, h);
+
+  it('is a transparent lane with a ruled-off header', () => {
+    const rec = lane('vertical');
+
+    // NO fill anywhere: a swimlane is drawn OVER a flow, and an opaque card
+    // would hide the actions it is attributing.
+    expect(rec.fills).toEqual([]);
+    expect(rec.rects).toEqual([]);
+    // The band's divider and the frame's border. The divider is what makes a
+    // column of actions read as belonging to somebody (§15.6.4) — and it is
+    // the one thing a partition has that the diagram frame's band deliberately
+    // does not.
+    //
+    // Divider FIRST: a side band is painted with the card — over its fill,
+    // under its border — so the frame closes over the strip rather than being
+    // cut by it.
+    expect(rec.strokes).toEqual([
+      NOTATION_NEUTRALS.divider,
+      NOTATION_NEUTRALS.frameInk,
+    ]);
+    expect(rec.dashes).toEqual([]);
+    // Square: a rounded lane would read as a composite state.
+    expect(rec.paths[0].r).toBe(0);
+  });
+
+  it('writes the lane name across the top of a vertical partition', () => {
+    const rec = lane('vertical');
+    const [name] = rec.texts;
+
+    expect(rec.texts).toHaveLength(1);
+    expect(name.text).toBe('Vendeur');
+    expect(name.vertical).toBe(false);
+    // INSIDE the band, above the plot it reserves.
+    expect(name.y).toBeGreaterThan(0);
+    expect(name.y).toBeLessThan(UML_PARTITION_BAND);
+    expect(name.color).toBe(NOTATION_NEUTRALS.frameInk);
+  });
+
+  /**
+   * …and a HORIZONTAL lane moves the whole header to the left edge — the band,
+   * the divider and the words.
+   *
+   * The case the two declarations exist for: `variantProp` selects washes and
+   * zones, and neither a side band's edge nor the geometry's deep margin is
+   * something it can vary, so the renderer picks a declaration off the
+   * element's own prop.
+   */
+  it('moves the header to the left edge of a horizontal partition', () => {
+    const rec = lane('horizontal', H, W);
+    const [name] = rec.texts;
+
+    expect(rec.texts).toHaveLength(1);
+    expect(name.text).toBe('Vendeur');
+    // Written in the LEFT band: left of where the plot starts, and clear of
+    // the top the vertical lane writes across.
+    expect(name.x).toBeLessThan(UML_PARTITION_BAND);
+    expect(name.y).toBeLessThan(UML_PARTITION_BAND * 2);
+  });
+
+  /**
+   * An orientation this build has never heard of paints the VERTICAL lane
+   * rather than nothing — the promise the diagram frame's heading makes about
+   * an unknown kind, kept for the other prop a document can carry a newer value
+   * of.
+   */
+  it('falls back to the vertical lane for an orientation it does not know', () => {
+    const known = lane('vertical');
+    const unknown = lane('diagonal');
+    expect(unknown.texts[0].x).toBe(known.texts[0].x);
+    expect(unknown.texts[0].y).toBe(known.texts[0].y);
+    // …and an element carrying no orientation at all draws one too.
+    const absent = render(umlPartition, { name: 'Vendeur' }, W, H);
+    expect(absent.texts[0].y).toBe(known.texts[0].y);
+  });
+
+  it('is the partition role, and the umlPartition element type', () => {
+    for (const def of [UML_PARTITION_FRAME_V, UML_PARTITION_FRAME_H]) {
+      expect(def.type).toBe('umlPartition');
+      expect(def.role).toBe(UML_ROLE.partition);
+    }
+    // One persisted type for both: the orientation is a PROP on the element,
+    // not a second kind of element.
+    expect(UML_PARTITION_FRAME_V.type).toBe(UML_PARTITION_FRAME_H.type);
+  });
+});
+
+describe('the UML composite state', () => {
+  const W = UML_REGION_BOX.w;
+  const H = UML_REGION_BOX.h;
+
+  it('is a transparent ROUNDED frame with a ruled-off name compartment', () => {
+    const rec = render(umlRegion, { name: 'Commande' }, W, H);
+
+    // Transparent, like every frame drawn over work that is already there.
+    expect(rec.fills).toEqual([]);
+    expect(rec.rects).toEqual([]);
+    // The name compartment's rule, then the frame over it — §14.2.4 rules a
+    // composite state off under its name exactly as a simple state is ruled off
+    // above its internal activities.
+    expect(rec.strokes).toEqual([
+      NOTATION_NEUTRALS.divider,
+      NOTATION_NEUTRALS.frameInk,
+    ]);
+    expect(rec.dashes).toEqual([]);
+    // ROUNDED, and that is the whole point of it: §14.2.4 draws every state
+    // with rounded corners, and a square one would read as a partition.
+    expect(rec.paths[0].r).toBe(UML_REGION_RADIUS);
+    expect(UML_REGION_RADIUS).toBeGreaterThan(0);
+  });
+
+  it('writes the state name in its band', () => {
+    const rec = render(umlRegion, { name: 'Commande' }, W, H);
+    const [name] = rec.texts;
+
+    expect(rec.texts).toHaveLength(1);
+    expect(name.text).toBe('Commande');
+    expect(name.y).toBeGreaterThan(0);
+    expect(name.y).toBeLessThan(UML_REGION_BAND);
+    expect(name.color).toBe(NOTATION_NEUTRALS.frameInk);
+  });
+
+  it('is the region role, and the umlRegion element type', () => {
+    expect(UML_REGION_FRAME.type).toBe('umlRegion');
+    expect(UML_REGION_FRAME.role).toBe(UML_ROLE.region);
   });
 });

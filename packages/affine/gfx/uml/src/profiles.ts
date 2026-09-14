@@ -15,7 +15,7 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * frame already set to `strict` simply stops being checked until it comes back —
  * the id stays written, untouched.
  *
- * ## Both tables spell out all NINETEEN ids
+ * ## Both tables spell out all THIRTY-FOUR ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
@@ -24,7 +24,8 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * later cannot join a level in silence.
  *
  * That is also what phase 2 cost: three rules arrived with the structural sheets
- * and each had to be placed by hand in BOTH tables. A profile is an override
+ * and fifteen more with the behaviour ones, and every one had to be placed by
+ * hand in BOTH tables. A profile is an override
  * table and an absent rule keeps its own severity, so a rule forgotten here
  * would still work — it would simply never harden, and nobody would see the
  * difference until a user asked why `uml.strict` was quiet about a `«deploy»`
@@ -78,6 +79,22 @@ const sketch: ValidationProfile = {
     'uml.untyped-edge': 'audit',
     'uml.composition-single-owner': 'audit',
     'uml.use-case-no-actor': 'audit',
+    // The behaviour sheets — fifteen more, and every one of them here too.
+    'uml.node-in-partition': 'audit',
+    'uml.shallow-history-outside-region': 'audit',
+    'uml.deep-history-outside-region': 'audit',
+    'uml.initial-single': 'audit',
+    'uml.initial-no-incoming-flow': 'audit',
+    'uml.initial-no-incoming-transition': 'audit',
+    'uml.activity-final-no-outgoing': 'audit',
+    'uml.flow-final-no-outgoing': 'audit',
+    'uml.final-state-no-outgoing': 'audit',
+    'uml.decision-incoming-count': 'audit',
+    'uml.control-flow-endpoints': 'audit',
+    'uml.object-flow-endpoints': 'audit',
+    'uml.transition-endpoints': 'audit',
+    'uml.unreachable-action': 'audit',
+    'uml.unreachable-state': 'audit',
   },
 };
 
@@ -86,8 +103,8 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. TWELVE rules move to `warning`, and the test each one passes is the
- * test this library always applies: whether the diagram might honestly have
+ * handed. TWENTY-ONE rules move to `warning`, and the test each one passes is
+ * the test this library always applies: whether the diagram might honestly have
  * meant it.
  *
  * Eight restate a normative clause and cannot be meant. §9.9.7 makes a
@@ -116,7 +133,7 @@ const sketch: ValidationProfile = {
  * document, and the author has already spoken, which makes it the easiest
  * promotion in the table.
  *
- * ## The seven that do NOT move, and why the table spells them out
+ * ## The thirteen that do NOT move, and why the table spells them out
  *
  * `uml.element-outside-frame`, `uml.use-case-outside-subject`,
  * `uml.actor-inside-subject`, `uml.dependency-on-object`,
@@ -177,6 +194,26 @@ const strict: ValidationProfile = {
     // §11.5.3's arithmetic, and the sheet's own declaration.
     'uml.composition-single-owner': 'warning',
     'uml.not-admissible-on-kind': 'warning',
+    // The behaviour sheets' ARITHMETIC — the clauses a drawing cannot mean.
+    // §15.3.3 gives an initial node no incoming edge, §15.7.19.4 gives a final
+    // node no outgoing one, §14.5.11.4 says the same of a final state, and
+    // §15.7.11.4 caps a decision at two incoming edges. Each of these describes
+    // a drawing that cannot execute, which is the same test the class-side
+    // promotions pass.
+    'uml.initial-no-incoming-flow': 'warning',
+    'uml.initial-no-incoming-transition': 'warning',
+    'uml.activity-final-no-outgoing': 'warning',
+    'uml.flow-final-no-outgoing': 'warning',
+    'uml.final-state-no-outgoing': 'warning',
+    'uml.decision-incoming-count': 'warning',
+    // …their two GRAMMARS, on the same test as every other endpoint rule.
+    'uml.control-flow-endpoints': 'warning',
+    'uml.transition-endpoints': 'warning',
+    // …and the count of beginnings, which is `recommendation` and promoted
+    // anyway: a second filled disc is legal in an activity and forbidden in a
+    // state machine region, and at the level where somebody has said the sheet
+    // is finished the reader is entitled to be asked which of the two this is.
+    'uml.initial-single': 'warning',
     // The seven that do not move — see the header.
     'uml.element-outside-frame': 'audit',
     'uml.use-case-outside-subject': 'audit',
@@ -185,6 +222,29 @@ const strict: ValidationProfile = {
     'uml.actor-actor-association': 'audit',
     'uml.untyped-edge': 'audit',
     'uml.use-case-no-actor': 'audit',
+    // …and the six the behaviour sheets add to that list.
+    //
+    // `uml.object-flow-endpoints` is the ONE endpoint rule this level leaves
+    // alone, and the reason is §15.4.4: an action's pins may be elided, a pin IS
+    // an ObjectNode, and the action-to-action drawing is therefore a legal
+    // shorthand of a conformant model rather than a defect. This canvas has no
+    // pin to draw, so promoting it would harden a remark the author cannot act
+    // on.
+    'uml.object-flow-endpoints': 'audit',
+    // The three MEMBERSHIP rules, for the reason the class-side three stay
+    // here: where a glyph sits on the canvas is a drawing decision, and each has
+    // a reading under which the author is right — an action parked between two
+    // lanes while the lanes are being redrawn, a history placed beside the
+    // composite state it belongs to because the box is too small.
+    'uml.node-in-partition': 'audit',
+    'uml.shallow-history-outside-region': 'audit',
+    'uml.deep-history-outside-region': 'audit',
+    // The two graph walks. "Nothing reaches this" is true of most of a diagram
+    // for most of the time it is being drawn, and it is already `on-demand` for
+    // that reason (`rules.ts`) — a level of requirement that hardened it would
+    // be hardening a question somebody has to ASK before it is answered.
+    'uml.unreachable-action': 'audit',
+    'uml.unreachable-state': 'audit',
   },
 };
 

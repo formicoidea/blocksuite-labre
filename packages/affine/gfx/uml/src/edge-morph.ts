@@ -62,14 +62,26 @@ import { UML_ROLE } from './roles.js';
  *    fixes, and offering them `«include»` alongside would be offering a use-case
  *    relationship on a deployment diagram.
  *
- * ## The anchor is in no family
+ *  - **control flow, object flow** — §15.2.4: one drawing (a solid open arrow),
+ *    told apart by what the line runs BETWEEN rather than by anything on it.
  *
- * Deliberately, and it is the edge equivalent of C4's `component`: an anchor
- * joins a note to what it comments on (Annex A). It is not a relationship
- * between classifiers at all, it carries no semantics, and offering to turn one
- * into a composition would invite a diagram claiming that a comment owns a
- * class. A kind in no family never offers the menu, so an anchor's toolbar is
- * the plain connector's.
+ * ## The anchor and the transition are in no family
+ *
+ * Deliberately, and the anchor is the edge equivalent of C4's `component`: an
+ * anchor joins a note to what it comments on (Annex A). It is not a
+ * relationship between classifiers at all, it carries no semantics, and
+ * offering to turn one into a composition would invite a diagram claiming that
+ * a comment owns a class. A kind in no family never offers the menu, so an
+ * anchor's toolbar is the plain connector's.
+ *
+ * A TRANSITION is alone for the opposite reason: it is drawn exactly like the
+ * two activity edges beside it (§14.2.4.8 and §15.2.4 are the same solid open
+ * arrow), and it is still not one of them, because it lives on the other
+ * diagram. A state machine's arrow joins two STATES and carries
+ * `trigger [guard] / effect`; an activity's joins two ACTIONS and carries a
+ * guard. Offering the swap would put an activity edge on a state machine, which
+ * is what the per-frame admissibility lists exist to refuse — a dropdown must
+ * not hand a user the error the audit is about to report.
  */
 export type UmlEdgeKind = UmlEdgeRole;
 
@@ -94,6 +106,13 @@ export const UML_EDGE_FAMILIES: readonly (readonly UmlEdgeKind[])[] = [
   // APPENDED, never inserted: the three families above keep their index, which
   // is what lets the suite go on naming the dependency family by position.
   ['deploy', 'manifest'],
+  // §15.2.4 — the two ACTIVITY edges, and the fifth family. Both are the same
+  // solid open arrow and the specification tells them apart by what the line
+  // runs BETWEEN: a flow that touches an object node is an object flow, every
+  // other one is a control flow. That is precisely the mistake a modeller makes
+  // — drawing the arrow through a data object and leaving it typed as control —
+  // and it is invisible on the canvas, which is the case a dropdown exists for.
+  ['control-flow', 'object-flow'],
 ];
 
 /**
