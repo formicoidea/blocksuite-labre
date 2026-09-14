@@ -370,6 +370,11 @@ describe('the UML node glyph layer', () => {
     // Never filled: a filled half-disc would read as a ball cut in two.
     expect(required.ops).toEqual(['stroke', 'stroke']);
     expect(required.curves).toHaveLength(1);
+    // The cup is the BOTTOM half of the circle (0 → π), opening upward, so its
+    // deepest point is where the stub below starts: the line meets the back of
+    // the cup, not a horn (§10.4.4, the ball nests in the socket).
+    expect(required.curves[0].start).toBe(0);
+    expect(required.curves[0].end).toBe(Math.PI);
   });
 
   /** Both hang off a STUB — the short line that runs to the component. */

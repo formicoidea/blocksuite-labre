@@ -66,7 +66,7 @@ export type UmlKeywordPlacement =
  * gives it.
  *
  * A SUBSET, declared as one: UML defines some eighty keywords and phase 1 draws
- * four structural diagram families, so the table below is the twelve words that
+ * four structural diagram families, so the table below is the eighteen words that
  * can honestly appear on a class, package, object or use case diagram. Phase 2
  * appends to it; nothing here is rewritten.
  *

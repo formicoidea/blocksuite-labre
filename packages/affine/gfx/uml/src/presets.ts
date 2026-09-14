@@ -193,7 +193,7 @@ const EVERY_MORPH_KEY = new Set(
  * writes and this one does not.
  *
  * EMPTY for every kind today, because no UML preset spreads anything
- * conditionally: all eight write the same key set with different values. Kept
+ * conditionally: all sixteen write the same key set with different values. Kept
  * anyway, and derived rather than hard-coded to `[]`, for the reason BPMN's and
  * C4's equivalents exist at all — a patch cannot express absence, and the day
  * one kind stops writing a key the previous kind's value would otherwise stay

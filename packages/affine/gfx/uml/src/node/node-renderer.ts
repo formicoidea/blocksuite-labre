@@ -376,11 +376,14 @@ function paintGlyph(
       ctx.fill();
       ctx.stroke();
     } else {
-      // The socket: a half circle OPEN TO THE RIGHT — the cup that receives a
-      // ball. Stroked and never filled: it is an arc, and a filled half-disc
-      // would read as a ball cut in two.
+      // The socket: the BOTTOM half of the circle, a cup opening UPWARD — away
+      // from the component the stub below runs to, so a ball can nest in it
+      // (§10.4.4). Its deepest point is (cx, cy + radius), exactly where the
+      // stub starts, so the line meets the back of the cup and not a horn.
+      // Stroked and never filled: it is an arc, and a filled half-disc would
+      // read as a ball cut in two.
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, Math.PI / 2, Math.PI * 1.5);
+      ctx.arc(cx, cy, radius, 0, Math.PI);
       ctx.stroke();
     }
 

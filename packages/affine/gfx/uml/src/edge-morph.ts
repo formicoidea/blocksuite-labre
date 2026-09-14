@@ -84,6 +84,10 @@ export const UML_EDGE_FAMILIES: readonly (readonly UmlEdgeKind[])[] = [
   // Declaration order is menu order, and each family opens on its PLAIN member:
   // the undecorated relationship is the honest first draft and the decorated one
   // is the refinement — the same call the node morph and the sub-menu make.
+  // `communication-path` sits here because it is DRAWN as an association
+  // (§19.4.4) — while `roles.ts` files `uml:communication-path` flat, outside
+  // `uml:association`, so that association rules and readings never reach a
+  // deployment sheet. Two answers, two questions (drawing vs rule reach).
   ['association', 'aggregation', 'composition', 'communication-path'],
   ['generalization', 'realization'],
   ['dependency', 'include', 'extend'],
