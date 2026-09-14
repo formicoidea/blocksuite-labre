@@ -56,8 +56,9 @@ export const UML_FRAME_BAND_HEIGHT = 44;
  * ## Widening this union is additive
  *
  * Phase 1 shipped the first four kinds below; phase 2 APPENDED `cmp` and `dep`,
- * the two structural frames of §11.6.4 and §19.2.4, and will append `act | stm`;
- * phase 3 appends `sd`. Each arrives as a new VALUE of the existing `kind`
+ * the two structural frames of §11.6.4 and §19.2.4, then `act` and `stm`, the
+ * two behaviour frames of §15.2.4 and §14.2.4; phase 3 appends `sd`. Each
+ * arrives as a new VALUE of the existing `kind`
  * string field — no new field, no schema change, no migration and no backfill.
  * The same promise `C4NodeKind` and `BpmnNodeKind` already make.
  *
@@ -78,7 +79,12 @@ export type UmlDiagramKind =
   | 'uc'
   // Phase 2 — components (§11.6.4) and deployments (§19.2.4).
   | 'cmp'
-  | 'dep';
+  | 'dep'
+  // Phase 2 — the two behaviour frames: activities (§15.2.4) and state
+  // machines (§14.2.4). Both are Annex A frame kinds with Annex A's own
+  // abbreviations.
+  | 'act'
+  | 'stm';
 
 /**
  * The word written in the heading tag, per kind.
@@ -102,6 +108,12 @@ export const UML_DIAGRAM_KIND_TAG: Partial<Record<UmlDiagramKind, string>> = {
   // them — `cmp` for the component diagram, `dep` for the deployment diagram.
   cmp: 'cmp',
   dep: 'dep',
+  // Annex A's own abbreviations again — `act` for the activity diagram, `stm`
+  // for the state machine diagram. `stm` is the one tag in the table that is
+  // NOT the kind spelled out: Annex A's frame kind is the two words `state
+  // machine`, and `stm` is the abbreviation it gives in their place.
+  act: 'act',
+  stm: 'stm',
 };
 
 export type UmlDiagramProps = FrameworkBackgroundProps & {

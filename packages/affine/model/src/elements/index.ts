@@ -28,6 +28,8 @@ import type { TextElementModel } from './text/index.js';
 import type {
   UmlDiagramElementModel,
   UmlNodeElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
   UmlSubjectElementModel,
 } from './uml/index.js';
 import type {
@@ -80,6 +82,8 @@ export type SurfaceElementModelMap = {
   umlNode: UmlNodeElementModel;
   umlDiagram: UmlDiagramElementModel;
   umlSubject: UmlSubjectElementModel;
+  umlPartition: UmlPartitionElementModel;
+  umlRegion: UmlRegionElementModel;
 };
 
 export type SurfaceTextModelMap = {
