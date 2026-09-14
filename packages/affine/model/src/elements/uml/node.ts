@@ -4,9 +4,8 @@ import { field } from '@labre/std/gfx';
 import { ShapeElementModel } from '../shape/index.js';
 
 /**
- * The UML artefacts the pack draws — phase 1, the four structural diagrams
- * (class, package, object, use case). Each maps onto a native shape, decorated
- * by a glyph where the notation asks for one:
+ * The UML artefacts the pack draws. Each maps onto a native shape, decorated by
+ * a glyph where the notation asks for one:
  *
  *  - classifiers  — `class`, `interface` and `enumeration`, the compartmented
  *    rectangle of UML 2.5.1 §11.4, distinguished by the keyword above the name;
@@ -15,18 +14,30 @@ import { ShapeElementModel } from '../shape/index.js';
  *  - containers   — `package`, the tabbed folder (§12.2);
  *  - annotations  — `note`, the folded-corner rectangle of Annex A;
  *  - use cases    — `actor`, the stick figure, and `use-case`, the ellipse
- *    (§18.1).
+ *    (§18.1);
+ *  - components   — `component`, the rectangle with the two-tabbed icon in its
+ *    corner (§11.6.4), its `port` (§11.3.4), and the two interface glyphs that
+ *    hang off it: `provided-interface`, the lollipop, and `required-interface`,
+ *    the socket (§10.4.4);
+ *  - deployments  — `artifact`, the document icon (§19.3.4), and the three
+ *    cubes: `node`, `device` and `execution-environment` (§19.4.4).
  *
  * ## Compatibility
  *
- * This union is only ever WIDENED, and it is widened with new VALUES of the
- * existing `kind` string field — no new field, no schema change, no migration
- * and no backfill. The same promise `C4NodeKind` and `BpmnNodeKind` make: a
- * diagram drawn today carries one of the eight values below, loads unchanged on
- * a build that ships more of them, and paints exactly as it always did.
+ * This union is only ever WIDENED — appended to, never reordered — and it is
+ * widened with new VALUES of the existing `kind` string field: no new field, no
+ * schema change, no migration and no backfill. The same promise `C4NodeKind`
+ * and `BpmnNodeKind` make: a diagram drawn today carries one of the values
+ * below, loads unchanged on a build that ships more of them, and paints exactly
+ * as it always did.
  *
- * The phases that widen it are named in ADR 0017: components and deployment
- * artefacts in phase 2, lifelines in phase 3.
+ * What an OLDER build does with a kind it has never heard of is the other half
+ * of that promise: the element is a native shape, so it still paints its own
+ * box, its own colours and its own words — it simply gets no glyph, because the
+ * renderer draws pictures for the kinds it knows and nothing for the rest.
+ *
+ * The phases that widen it are named in ADR 0017: phase 1 drew the first eight,
+ * phase 2 appended the eight below them, and lifelines come in phase 3.
  */
 export type UmlNodeKind =
   // Classifiers.
@@ -41,7 +52,17 @@ export type UmlNodeKind =
   | 'note'
   // Use case artefacts.
   | 'actor'
-  | 'use-case';
+  | 'use-case'
+  // Component artefacts (phase 2).
+  | 'component'
+  | 'port'
+  | 'provided-interface'
+  | 'required-interface'
+  // Deployment artefacts (phase 2).
+  | 'artifact'
+  | 'node'
+  | 'device'
+  | 'execution-environment';
 
 /**
  * A UML node. Extends {@link ShapeElementModel} (a native shape) so it inherits

@@ -167,9 +167,17 @@ describe('the UML element models', () => {
     stored(diagram).set('name', 'Login');
     expect(diagram.heading).toBe('uc Login');
 
-    // Every phase-1 kind reads straight back off what a document carries, and
-    // writes the tag the table names.
-    for (const kind of ['class', 'pkg', 'obj', 'uc'] as UmlDiagramKind[]) {
+    // Every kind the build ships reads straight back off what a document
+    // carries, and writes the tag the table names — the phase-1 four and the
+    // two Annex A frames phase 2 appended (`cmp`, §11.6.4; `dep`, §19.2.4).
+    for (const kind of [
+      'class',
+      'pkg',
+      'obj',
+      'uc',
+      'cmp',
+      'dep',
+    ] as UmlDiagramKind[]) {
       stored(diagram).set('kind', kind);
       expect(diagram.kind, kind).toBe(kind);
       expect(diagram.heading, kind).toBe(`${UML_DIAGRAM_KIND_TAG[kind]} Login`);
@@ -182,10 +190,10 @@ describe('the UML element models', () => {
   /**
    * The append-only promise `UmlDiagramKind` makes, seen from an OLDER client.
    *
-   * Phase 2 appends `cmp | dep | act | stm` and phase 3 appends `sd`. A frame
-   * carrying one of those, opened on a build that ships only phase 1, has no
-   * entry in the tag table — and writes its kind VERBATIM rather than dropping
-   * it or falling back to `class`. The document is not rewritten, and the sheet
+   * Phase 2 appended `cmp | dep` and will append `act | stm`; phase 3 appends
+   * `sd`. A frame carrying one this build does not ship — `stm` here — has no
+   * entry in the tag table, and writes its kind VERBATIM rather than dropping it
+   * or falling back to `class`. The document is not rewritten, and the sheet
    * still says what it is.
    */
   it('writes a kind it has never heard of verbatim in the heading', () => {
@@ -366,6 +374,17 @@ describe('the UML element models', () => {
       'note',
       'actor',
       'use-case',
+      // Appended by phase 2 — the component artefacts (§11.6.4, §11.3.4,
+      // §10.4.4) and the deployment ones (§19.3.4, §19.4.4). Same field, same
+      // schema, new values.
+      'component',
+      'port',
+      'provided-interface',
+      'required-interface',
+      'artifact',
+      'node',
+      'device',
+      'execution-environment',
     ]) {
       stored(node).set('kind', kind);
       expect(node.kind, kind).toBe(kind);
