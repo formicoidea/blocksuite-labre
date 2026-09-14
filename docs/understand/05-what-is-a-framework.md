@@ -4,7 +4,7 @@
 that the editor turns into tooling.**
 
 Frameworks today: Wardley maps, EDGY, BPMN, C4, Cynefin/Estuarine, DDD event
-storming, DDD core domain chart, DDD context map. All live under
+storming, DDD core domain chart, DDD context map, UML. All live under
 `packages/affine/gfx/<id>`. Wardley is the reference implementation.
 
 ## The board
@@ -88,7 +88,7 @@ its board" finding is for.
 ```
  whiteboard toolbar
  ┌──────────────────────────────────────────────────────────────┐
- │ … [Wardley] [EDGY] [BPMN] [C4] [Cynefin] [DDD…]              │  senior row (order = FRAMEWORK_DESCRIPTORS)
+ │ … [Wardley] [EDGY] [BPMN] [C4] [Cynefin] [DDD…] [UML]        │  senior row (order = FRAMEWORK_DESCRIPTORS)
  └──────────┬───────────────────────────────────────────────────┘
             ▼ click
  ┌──────────────────────────────┐
