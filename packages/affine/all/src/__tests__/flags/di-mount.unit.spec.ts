@@ -71,7 +71,7 @@ describe('the whole view layer mounts in one container', () => {
     expect(() => collide.setup(container)).toThrowError(/already exists/);
   });
 
-  test('the group row carries six modules, from five owners', () => {
+  test('the group row carries seven modules, from six owners', () => {
     const modules = toolbarModules(mount('edgeless'));
     const forGroup = [...modules.keys()].filter(
       variant => toolbarModuleFlavour(variant) === 'custom:affine:surface:group'
@@ -79,10 +79,10 @@ describe('the whole view layer mounts in one container', () => {
 
     // Wardley's qualification dropdown, under the bare flavour…
     expect(forGroup).toContain('custom:affine:surface:group');
-    // …and the four morphs, each under an owner-suffixed variant that cannot
-    // collide with it — nor with each other — while all five are merged into
+    // …and the five morphs, each under an owner-suffixed variant that cannot
+    // collide with it — nor with each other — while all six are merged into
     // the same row. Every one of those frameworks builds its artefact as a
-    // native group, so five contributors on one flavour is the shipped
+    // native group, so six contributors on one flavour is the shipped
     // configuration and not a hypothetical one.
     //
     // Note that MODULES and OWNERS have stopped matching: Wardley holds two of
@@ -105,15 +105,18 @@ describe('the whole view layer mounts in one container', () => {
     expect(forGroup).toContain(
       toolbarModuleKey('custom:affine:surface:group', 'ddd-core-domain-morph')
     );
-    expect(forGroup).toHaveLength(5);
+    expect(forGroup).toContain(
+      toolbarModuleKey('custom:affine:surface:group', 'uml-morph')
+    );
+    expect(forGroup).toHaveLength(6);
     // The native group operations sit on the other group key, untouched — the
-    // fifth owner, and the one a stored group needs whatever the flags say.
+    // seventh module, and the one a stored group needs whatever the flags say.
     expect([...modules.keys()]).toContain('affine:surface:group');
   });
 
   test('a flavour claimed only by contributors still has a row', () => {
     // `{wardley: false}` is a real configuration, and it leaves
-    // `custom:affine:surface:group` with NO bare module: only the three morphs
+    // `custom:affine:surface:group` with NO bare module: only the four morphs
     // of the OTHER frameworks. Wardley's own two go together — the flag owns
     // the qualification dropdown and the morph alike — which is why turning one
     // framework off is what empties the bare key rather than thinning the row.
@@ -129,7 +132,7 @@ describe('the whole view layer mounts in one container', () => {
     const flavour = 'custom:affine:surface:group';
 
     // In `extensions/view.ts` registration order — event storming, then C4,
-    // then core domain — because that is what `modulesFor` returns and pinning
+    // then core domain, then UML — because that is what `modulesFor` returns and pinning
     // it costs nothing. It is not an order a user can observe: `renderToolbar`
     // merges these modules' actions BY ID and sorts on that, so the row reads
     // the same whichever framework registered first.
@@ -139,6 +142,7 @@ describe('the whole view layer mounts in one container', () => {
       toolbarModuleKey(flavour, 'ddd-event-storming-morph'),
       toolbarModuleKey(flavour, 'c4-morph'),
       toolbarModuleKey(flavour, 'ddd-core-domain-morph'),
+      toolbarModuleKey(flavour, 'uml-morph'),
     ]);
     expect(registry.getModuleBy(flavour)).toBeNull();
     // …and the native group operations, on the other group key, are untouched.

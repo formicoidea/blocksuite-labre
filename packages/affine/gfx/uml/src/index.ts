@@ -21,12 +21,24 @@ export * from './background.js';
 export * from './board-hit.js';
 export * from './component.js';
 export * from './consts.js';
+// The two morph declarations and the line table they read. Headless data: what a
+// classifier and a relationship may BECOME, which kinds are reachable from
+// which, and the patch each is worth. The toolbar module that draws them is
+// `./view.js`; these are what it is parameterized by, and what the unit and
+// integration suites exercise without one.
+export * from './edge-morph.js';
+export * from './edge-styles.js';
 export * from './keywords.js';
 export * from './kinds.js';
 export * from './legend.js';
+export * from './morph.js';
 export * from './presets.js';
 export * from './reading.js';
 export * from './roles.js';
+
+/* ── What a finished diagram is HELD TO: the rule pack and its two levels ─ */
+export * from './profiles.js';
+export * from './rules.js';
 
 /* ── What it can be READ as: the grammar, the IR and the two writers ────── */
 export * from './export.js';

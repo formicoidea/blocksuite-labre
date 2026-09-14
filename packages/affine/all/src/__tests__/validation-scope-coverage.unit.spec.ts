@@ -9,6 +9,7 @@ import { CONTEXT_MAP_RULES } from '@labre/affine-gfx-ddd-context-map';
 import { CORE_DOMAIN_RULES } from '@labre/affine-gfx-ddd-core-domain';
 import { EVENT_STORMING_RULES } from '@labre/affine-gfx-ddd-event-storming';
 import { EDGY_RULES } from '@labre/affine-gfx-edgy';
+import { UML_RULES } from '@labre/affine-gfx-uml';
 import { WARDLEY_RULES } from '@labre/affine-gfx-wardley';
 import { describe, expect, test } from 'vitest';
 
@@ -27,6 +28,7 @@ const PACKS: Readonly<Record<string, readonly ValidationRule[]>> = {
   wardley: WARDLEY_RULES,
   bpmn: BPMN_RULES,
   c4: C4_RULES,
+  uml: UML_RULES,
   edgy: EDGY_RULES,
   'ddd-event-storming': EVENT_STORMING_RULES,
   'ddd-context-map': CONTEXT_MAP_RULES,

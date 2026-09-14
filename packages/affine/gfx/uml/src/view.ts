@@ -1,18 +1,26 @@
 import {
   FrameworkBackgroundInteractionExtension,
   InterchangeExtension,
+  morphToolbarConfig,
   ReadingProfileExtension,
+  ValidationProfileExtension,
+  ValidationRuleExtension,
 } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { TemplateCategoryExtension } from '@labre/affine-gfx-template';
-import { CommandExtension } from '@labre/std';
+import {
+  ToolbarModuleExtension,
+  toolbarModuleKey,
+} from '@labre/affine-shared/services';
+import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommandIcons, umlCommands } from './commands.js';
+import { UML_EDGE_MORPH_SPEC } from './edge-morph.js';
 import { effects } from './effects.js';
 import {
   UmlDiagramRendererExtension,
@@ -20,10 +28,13 @@ import {
 } from './element-renderer.js';
 import { UmlDiagramView, UmlSubjectView } from './element-view.js';
 import { UML_INTERCHANGE } from './interchange.js';
+import { UML_MORPH_SPEC } from './morph.js';
 import { UmlNodeRendererExtension } from './node/node-renderer.js';
 import { UmlNodeView } from './node/node-view.js';
+import { UML_PROFILES } from './profiles.js';
 import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
+import { UML_RULES } from './rules.js';
 import { umlTemplateCategory } from './templates.js';
 import {
   umlDiagramToolbarExtension,
@@ -115,6 +126,13 @@ export class UmlViewExtension extends ViewExtensionProvider {
       for (const reading of UML_READINGS) {
         context.register(ReadingProfileExtension(reading));
       }
+      // The review checklist and its two levels of requirement — DATA, like the
+      // roles and the readings above (`rules.ts`, `profiles.ts`). Tooling in the
+      // sense `docs/adr/0009` means: with the flag off a stored diagram keeps
+      // painting and simply stops being checked, and a frame already set to the
+      // strict level keeps that id written, untouched.
+      context.register(ValidationRuleExtension(UML_RULES));
+      context.register(ValidationProfileExtension(UML_PROFILES));
       context.register(umlSeniorTool);
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(umlTemplateCategory));
@@ -126,6 +144,51 @@ export class UmlViewExtension extends ViewExtensionProvider {
       // are gated by this one flag and there is no reason to spend a second
       // registration on them.
       context.register(umlDiagramToolingToolbarExtension);
+      // The "Change type" dropdown on a selected CLASSIFIER's contextual
+      // toolbar — the generic module, parameterized by UML's own families.
+      //
+      // ## Why the key carries an owner
+      //
+      // A UML artefact is a native `group`, so the row the toolbar draws for it
+      // is the GROUP's row, merged from `affine:surface:group`,
+      // `custom:affine:surface:group` and the two surface wildcards. Both group
+      // keys were claimed long ago — the first by the native group operations
+      // (rename, ungroup), the second by Wardley's qualification dropdown — and
+      // C4's morph is already hanging off a third. `toolbarModuleKey` is what
+      // lifts the ceiling of two contributors per element: the module is
+      // registered under the distinct variant
+      // `custom:affine:surface:group#uml-morph` and the registry hands it to the
+      // same row (`toolbar-service/registry.ts`).
+      //
+      // ## Why here
+      //
+      // In the flag-gated half, because a morph is TOOLING: a classifier drawn
+      // while the flag was on keeps its kind, its role, its colours, its words
+      // and its place in every rule when the flag goes off — it just stops being
+      // something the toolbar offers to say differently (`docs/adr/0009`).
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:group', 'uml-morph')
+          ),
+          config: morphToolbarConfig(UML_MORPH_SPEC),
+        })
+      );
+      // The same dropdown on a selected RELATIONSHIP. A second registration
+      // rather than a second family inside the first, because the two speak
+      // about different element types: a classifier is a group, a relationship
+      // is a connector, and `modelType` is what each spec filters the selection
+      // with. The connector's own row is always-on (stroke, ends, routing) and
+      // this is an addition to it, so it takes the `custom:` twin under the same
+      // owner suffix.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:connector', 'uml-morph')
+          ),
+          config: morphToolbarConfig(UML_EDGE_MORPH_SPEC),
+        })
+      );
     }
   }
 }
