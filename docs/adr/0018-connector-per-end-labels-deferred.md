@@ -38,11 +38,17 @@ is built around that singularity:
   `packages/affine/gfx/connector/src/element-renderer/index.ts` (l. 241-259) is
   called from exactly **one** site (l. 111-120), after a single clip rect
   punched out of the line at l. 71-75 so the stroke does not run under the text.
-- the editor — `mountConnectorLabelEditor` in
-  `packages/affine/gfx/connector/src/text/edgeless-connector-label-editor.ts`
-  (l. 31-71) seeds `text` / `labelXYWH` / `labelOffset` when they are missing and
-  mounts one `EdgelessConnectorLabelEditor` bound to the connector; the
-  double-click path in `view/view.ts` (l. 50-60) has no notion of _which_ label
+- the editor — `mountConnectorLabelEditor` seeds `text` / `labelXYWH` /
+  `labelOffset` when they are missing and mounts one
+  `EdgelessConnectorLabelEditor` bound to the connector. It exists **twice**:
+  `packages/affine/gfx/connector/src/text/edgeless-connector-label-editor.ts:31`
+  and a byte-alike copy at
+  `packages/affine/gfx/connector/src/text/text.ts:15`, which is the one the
+  package's `text/index.ts` barrel re-exports. Between them they have **three**
+  call sites — `toolbar/config.ts:464` and
+  `packages/affine/blocks/root/src/edgeless/edgeless-keyboard.ts:383` (both
+  through the barrel, i.e. the `text.ts` copy) and `view/view.ts:54` (importing
+  the other file directly). None of the three has any notion of _which_ label
   was hit, because there is only one.
 
 Nothing here is UML-specific, and nothing here is wrong. It is a connector with
@@ -85,7 +91,11 @@ When the demand justifies the red zone, the shape is already known:
    the line the way the centre one does.
 3. **Editor** — `mountConnectorLabelEditor` gains a **selector** (`'center'`,
    `'source'`, `'target'`) chosen from the hit point, since a double-click can
-   now land on three boxes.
+   now land on three boxes. That is a signature change at **three call sites**,
+   and its **two copies have to be unified first** — shipping the selector on
+   one of `text.ts` / `edgeless-connector-label-editor.ts` and not the other
+   would give a connector whose end labels are editable from the toolbar and the
+   keyboard but not from a double-click, or the reverse.
 4. **Exports** — the PlantUML and XMI writers read the two new fields and emit
    real multiplicities; until then they emit none.
 

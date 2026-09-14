@@ -132,6 +132,12 @@ element. Changing profile leaves granted exceptions alone.
 A lone node is a sketch. A node beside a map _is_ judged and attributed to
 the nearest map: that is the "element outside its board" finding. Rules
 match roles, never shape types (`backgroundRole` through `roleIsA`).
+Known gap: a rule names **one** `appliesTo` role, so a framework whose
+vocabulary has no single "any artefact" role cannot cover all of it — UML's
+`element-outside-frame` and `composition-single-owner` apply to
+`uml:classifier` only, and an actor, use case, object, package or note beside
+the frame is silence (`gfx/uml/src/rules.ts` docblock). It closes the day a
+family accepts several subject roles.
 
 **R23. A rule family declares its dependency scope** (`RULE_SCOPES`, ADR
 0015). A rule may widen it, never narrow it. A new family without a scope
