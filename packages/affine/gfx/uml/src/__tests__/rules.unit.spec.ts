@@ -114,8 +114,8 @@ interface Extra {
   profile?: string;
   kind?: string;
   /** The connector's per-END labels (ADR 0020) — what §11.5.4 writes there. */
-  sourceLabelText?: string;
-  targetLabelText?: string;
+  sourceLabel?: string;
+  targetLabel?: string;
 }
 
 function element(
@@ -134,11 +134,11 @@ function element(
         }
       : {}),
     ...(extra.text !== undefined ? { text: extra.text } : {}),
-    ...(extra.sourceLabelText !== undefined
-      ? { sourceLabelText: extra.sourceLabelText }
+    ...(extra.sourceLabel !== undefined
+      ? { sourceLabel: extra.sourceLabel }
       : {}),
-    ...(extra.targetLabelText !== undefined
-      ? { targetLabelText: extra.targetLabelText }
+    ...(extra.targetLabel !== undefined
+      ? { targetLabel: extra.targetLabel }
       : {}),
     ...(extra.profile !== undefined
       ? { validationProfile: extra.profile }
@@ -1439,8 +1439,8 @@ describe('U38 · a multiplicity at an association end (§7.5.4, §11.5.4)', () =
     element('assoc', [300, 250, 300, 1], UML_ROLE.association, {
       source: 'a',
       target: 'b',
-      ...(ends.source !== undefined ? { sourceLabelText: ends.source } : {}),
-      ...(ends.target !== undefined ? { targetLabelText: ends.target } : {}),
+      ...(ends.source !== undefined ? { sourceLabel: ends.source } : {}),
+      ...(ends.target !== undefined ? { targetLabel: ends.target } : {}),
     }),
   ];
 
@@ -1529,7 +1529,7 @@ describe('U38 · a multiplicity at an association end (§7.5.4, §11.5.4)', () =
             element('assoc', [300, 250, 300, 1], role, {
               source: 'a',
               target: 'b',
-              targetLabelText: '1..n',
+              targetLabel: '1..n',
             }),
           ]),
           MULTIPLICITY_SYNTAX
