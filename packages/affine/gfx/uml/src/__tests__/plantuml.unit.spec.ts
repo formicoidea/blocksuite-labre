@@ -4,6 +4,7 @@ import { exportUmlPlantuml } from '../export';
 import { parseOperation, parseProperty } from '../grammar';
 import {
   umlSequenceColumn,
+  umlSequenceDestruction,
   umlSequenceExecution,
   umlSequenceFragment,
   umlSequenceSlot,
@@ -1002,5 +1003,74 @@ describe('a sequence diagram, as PlantUML', () => {
     expect(text.indexOf('activate web')).toBeLessThan(
       text.indexOf('deactivate web')
     );
+  });
+});
+
+/**
+ * A DELETE message drawn inside a fragment, and the cross it ends on.
+ *
+ * The one message whose far end is not a lifeline: it lands on a
+ * DestructionOccurrenceSpecification, and a fragment's coverage is a list of
+ * LIFELINES. Read literally, the arrow then happens on a spine no fragment
+ * covers, and the pair is written after `end` — leaving an `opt` with nothing in
+ * it and a `destroy` outside the branch that performs it. `umlInteractionTimeline`
+ * resolves a cross to the spine it sits on for exactly this reason.
+ */
+describe('a delete message inside a fragment', () => {
+  const column = [0, 1].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+
+  const closing = (): UmlModel => ({
+    ...emptyModel('sd2', 'sd', 'Closing'),
+    interactions: [
+      {
+        id: 'sd2',
+        name: 'Closing',
+        lifelines: [
+          { ...node('l1', 'a'), bounds: column[0] },
+          { ...node('l2', 'b'), bounds: column[1] },
+        ],
+        messages: [
+          {
+            id: 'm1',
+            kind: 'message-delete',
+            sourceId: 'l1',
+            targetId: 'd1',
+            label: 'close()',
+            y: at(1),
+          },
+        ],
+        fragments: [
+          {
+            ...node('f1', 'g'),
+            operator: 'opt',
+            operands: [{ guard: 'g', y0: at(0), y1: at(3) }],
+            coveredLifelineIds: ['l1', 'l2'],
+            bounds: umlSequenceFragment([column[0], column[1]], at(0), at(3)),
+          },
+        ],
+        executions: [],
+        destructions: [
+          {
+            ...node('d1', ''),
+            lifelineId: 'l2',
+            y: at(2),
+            bounds: umlSequenceDestruction(column[1], at(2)),
+          },
+        ],
+      },
+    ],
+  });
+
+  it('writes the arrow and its destroy inside the block, indented', () => {
+    const lines = exportUmlPlantuml([closing()]).text.split('\n');
+    const opened = lines.indexOf('opt [g]');
+    const closed = lines.indexOf('end');
+    expect(opened).toBeGreaterThan(-1);
+    expect(closed).toBeGreaterThan(opened);
+    expect(lines.slice(opened + 1, closed)).toEqual([
+      '  a -> b : close()',
+      '  destroy b',
+    ]);
   });
 });

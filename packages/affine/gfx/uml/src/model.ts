@@ -2015,15 +2015,27 @@ const TIMELINE_RANK: Record<UmlTimelineEntry['at'], number> = {
 export function umlInteractionTimeline(
   interaction: UmlInteraction
 ): UmlTimelineEntry[] {
-  const lifelineOfExecution = new Map(
-    interaction.executions.map(execution => [
-      execution.id,
-      execution.lifelineId,
-    ])
-  );
-  /** The spine an end of a message is on — a lifeline, or a bar's lifeline. */
+  /**
+   * The spine an end of a message is on.
+   *
+   * A message end names a LIFELINE, an execution bar or a destruction cross
+   * (§17.4.4 attaches a MessageEnd to an occurrence, and the canvas draws all
+   * three), and only a lifeline id is in a fragment's `coveredLifelineIds`. So
+   * the other two are resolved to the spine they sit on before containment is
+   * measured — without it a delete message is read as happening on a spine no
+   * fragment covers, and every `destroy` drawn inside an `opt` is written
+   * outside it, leaving the fragment empty.
+   */
+  const lifelineOfMark = new Map<string, string | undefined>([
+    ...interaction.executions.map(
+      execution => [execution.id, execution.lifelineId] as const
+    ),
+    ...interaction.destructions.map(
+      destruction => [destruction.id, destruction.lifelineId] as const
+    ),
+  ]);
   const spineOf = (id: string): string | undefined =>
-    lifelineOfExecution.has(id) ? lifelineOfExecution.get(id) : id;
+    lifelineOfMark.has(id) ? lifelineOfMark.get(id) : id;
 
   const covers = new Map(
     interaction.fragments.map(fragment => [

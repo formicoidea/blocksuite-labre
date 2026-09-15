@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { parseOperation, parseProperty } from '../grammar';
 import {
   umlSequenceColumn,
+  umlSequenceDestruction,
   umlSequenceExecution,
   umlSequenceFragment,
   umlSequenceSlot,
@@ -1780,5 +1781,78 @@ describe('a sequence diagram, as XMI', () => {
   it('parses as XML', () => {
     const parsed = new DOMParser().parseFromString(text, 'application/xml');
     expect(parsed.getElementsByTagName('parsererror')).toHaveLength(0);
+  });
+});
+
+/**
+ * A delete message drawn INSIDE a fragment, and the cross it ends on.
+ *
+ * §17.6.4 owns the fragments of an operand, so an arrow drawn in a branch and
+ * the destruction it causes are `<fragment>` children of that
+ * `<operand>` — not siblings of the CombinedFragment. The one message whose far
+ * end is not a lifeline is the one this can go wrong for: a fragment's coverage
+ * lists LIFELINES, and a cross read as a spine of its own belongs to no
+ * fragment (`umlInteractionTimeline` resolves it to the spine it sits on).
+ */
+describe('a delete message inside a fragment, as XMI', () => {
+  const column = [0, 1].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+
+  const closing = (): UmlModel => ({
+    ...emptyModel('sd3', 'sd', 'Closing'),
+    interactions: [
+      {
+        id: 'sd3',
+        name: 'Closing',
+        lifelines: [
+          { ...node('l1', 'a'), bounds: column[0] },
+          { ...node('l2', 'b'), bounds: column[1] },
+        ],
+        messages: [
+          {
+            id: 'm1',
+            kind: 'message-delete',
+            sourceId: 'l1',
+            targetId: 'd1',
+            label: 'close()',
+            y: at(1),
+          },
+        ],
+        fragments: [
+          {
+            ...node('f1', 'g'),
+            operator: 'opt',
+            operands: [{ guard: 'g', y0: at(0), y1: at(3) }],
+            coveredLifelineIds: ['l1', 'l2'],
+            bounds: umlSequenceFragment([column[0], column[1]], at(0), at(3)),
+          },
+        ],
+        executions: [],
+        destructions: [
+          {
+            ...node('d1', ''),
+            lifelineId: 'l2',
+            y: at(2),
+            bounds: umlSequenceDestruction(column[1], at(2)),
+          },
+        ],
+      },
+    ],
+  });
+
+  it('owns the occurrences and the destruction from the operand', () => {
+    const text = exportXmi([closing()]);
+    const operand =
+      /<operand xmi:type="uml:InteractionOperand"[\s\S]*?<\/operand>/.exec(
+        text
+      );
+    expect(operand).not.toBeNull();
+    const inside = operand![0];
+    expect(
+      inside.match(/<fragment xmi:type="uml:MessageOccurrenceSpecification"/g)
+    ).toHaveLength(2);
+    expect(inside).toContain(
+      '<fragment xmi:type="uml:DestructionOccurrenceSpecification"'
+    );
   });
 });

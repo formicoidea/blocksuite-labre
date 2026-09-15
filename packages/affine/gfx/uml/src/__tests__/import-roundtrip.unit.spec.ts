@@ -897,6 +897,48 @@ describe('the phase-3 export, off disk', () => {
   });
 });
 
+/* ── A destroy inside a branch ────────────────────────────────────────── */
+
+/**
+ * The `destroy` an `opt` performs, out and back.
+ *
+ * The one arrow whose far end is not a lifeline: §17.4.4's delete message lands
+ * on a DestructionOccurrenceSpecification, and a fragment's coverage is a list
+ * of LIFELINES. A writer that measured containment against the cross's own id
+ * found no fragment covering it and wrote the pair after `end`, leaving the
+ * branch empty — a `.puml` that says the participant is closed unconditionally
+ * where the author said it is closed only under the guard.
+ */
+describe('a destroy drawn inside an opt', () => {
+  const SOURCE = [
+    '@startuml',
+    'title sd Closing',
+    '',
+    'participant "a" as a',
+    'participant "b" as b',
+    '',
+    'opt [g]',
+    '  a -> b : close()',
+    '  destroy b',
+    'end',
+    '@enduml',
+    '',
+  ].join('\n');
+
+  it('writes both lines inside the block, indented', () => {
+    const { models } = importPlantuml(SOURCE);
+    expect(exportUmlPlantuml(models).text).toBe(SOURCE);
+  });
+
+  it('is a fixed point through the board as well', () => {
+    const { models } = importPlantuml(SOURCE);
+    expect(exportUmlPlantuml(materializeAndRead(models)).text).toBe(SOURCE);
+    expect(exportUmlXmi(materializeAndRead(models)).text).toBe(
+      exportUmlXmi(models).text
+    );
+  });
+});
+
 /* ── The sheet itself: materialize → read → the same file ─────────────── */
 
 describe('a sequence sheet, drawn on a board and read back off it', () => {
