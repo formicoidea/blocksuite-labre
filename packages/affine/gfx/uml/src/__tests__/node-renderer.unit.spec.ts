@@ -9,7 +9,11 @@ import {
   umlCompartmentBoxes,
   umlStackHeight,
 } from '../component.js';
-import { UML_NODE_BOX } from '../consts.js';
+import {
+  UML_LIFELINE_DASH,
+  UML_LIFELINE_HEAD,
+  UML_NODE_BOX,
+} from '../consts.js';
 import { umlNode } from '../node/node-renderer.js';
 import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 import { recordingCtx, stubMatrix } from './canvas-stub.js';
@@ -119,6 +123,9 @@ const ALL_KINDS = [
   'entry-point',
   'exit-point',
   'terminate',
+  'lifeline',
+  'execution',
+  'destruction',
 ] as const satisfies readonly UmlNodeKind[];
 
 /**
@@ -133,6 +140,9 @@ const NO_GLYPH_KINDS = [
   'object-node',
   'decision',
   'choice',
+  // §17.2.4's ExecutionSpecification: a thin FILLED rectangle on a lifeline's
+  // spine, which is a native rect and nothing more.
+  'execution',
 ] as const satisfies readonly UmlNodeKind[];
 
 /** Half the stroke width — the inset every body is drawn inside. */
@@ -140,17 +150,17 @@ const INSET = 1;
 
 describe('the UML node glyph layer', () => {
   /**
-   * Five kinds have nothing drawn on them, and every one of them because the
+   * Six kinds have nothing drawn on them, and every one of them because the
    * SHAPE LAYER already draws the whole figure: the ellipse of §18.1.4, the
-   * rounded rect of §15.3.4, the diamond, the plain rect of §15.4.4. Anything
-   * painted over one of them would be inventing a notation. Every other kind
-   * gets a mark.
+   * rounded rect of §15.3.4, the diamond, the plain rect of §15.4.4, and
+   * §17.2.4's execution bar. Anything painted over one of them would be
+   * inventing a notation. Every other kind gets a mark.
    *
    * A `state` is NOT among them although its body is a native rounded rect:
    * §14.2.4 rules it off between its name and its internal activities, and that
    * rule is this layer's.
    */
-  it('draws something on thirty kinds, and nothing on the five the shape layer finishes', () => {
+  it('draws something on thirty-two kinds, and nothing on the six the shape layer finishes', () => {
     const bare = new Set<UmlNodeKind>(NO_GLYPH_KINDS);
     for (const kind of ALL_KINDS) {
       rec = recordingCtx();
@@ -158,7 +168,7 @@ describe('the UML node glyph layer', () => {
       if (bare.has(kind)) expect(ops, kind).toEqual([]);
       else expect(ops.length, kind).toBeGreaterThan(0);
     }
-    expect(ALL_KINDS.length - bare.size).toBe(30);
+    expect(ALL_KINDS.length - bare.size).toBe(32);
   });
 
   /**
@@ -906,5 +916,120 @@ describe('the separators, read off the tiers', () => {
     // …and the underline follows the two-line name down, rather than sitting
     // where a one-line name used to end.
     expect(segments[1].y1).toBe(boxes.name.y + boxes.name.h);
+  });
+});
+
+/**
+ * The three interaction marks of phase 3 (§17.2.4, §17.3.4).
+ *
+ * The lifeline is the one glyph in the pack drawn OUTSIDE the element it
+ * belongs to, so these assertions are about the two things that makes true:
+ * where the head lands relative to a 16-unit column, and that the spine below it
+ * is dashed.
+ */
+describe('the interaction marks', () => {
+  /**
+   * §17.3.4: a named head over a dashed spine. The head is 160 wide against a
+   * 16-wide element, centred on it and flush with its top — so it overhangs by
+   * 72 units on each side, which is exactly what the model's own
+   * `elementBound` and `includesPoint` overrides exist to account for.
+   */
+  it('draws the lifeline head centred on the column and flush with its top', () => {
+    const { w } = UML_NODE_BOX.lifeline;
+    const { segments, ops } = draw('lifeline');
+
+    const left = (w - UML_LIFELINE_HEAD.w) / 2;
+    const right = left + UML_LIFELINE_HEAD.w;
+    const bottom = UML_LIFELINE_HEAD.h;
+
+    // The head, as a body: fill then stroke, which is what keeps an unfilled,
+    // unstroked native rect from showing through (`presets.ts`).
+    expect(ops.slice(0, 2)).toEqual(['fill', 'stroke']);
+    // Three segments make the rect — the fourth side is `closePath`.
+    expect(segments.slice(0, 3)).toEqual([
+      { x1: left, y1: 0, x2: right, y2: 0 },
+      { x1: right, y1: 0, x2: right, y2: bottom },
+      { x1: right, y1: bottom, x2: left, y2: bottom },
+    ]);
+    expect(left).toBeLessThan(0);
+    expect(right).toBeGreaterThan(w);
+  });
+
+  /**
+   * …and the spine: down the column's CENTRE, from the head's bottom edge to
+   * the bottom of the element, dashed. The dash is the whole notation — an
+   * unbroken line would read as a relationship rather than as the passage of
+   * time.
+   */
+  it('drops a dashed spine down the column centre', () => {
+    const { w, h } = UML_NODE_BOX.lifeline;
+    const { segments, dashes } = draw('lifeline');
+
+    expect(segments.at(-1)).toEqual({
+      x1: w / 2,
+      y1: UML_LIFELINE_HEAD.h,
+      x2: w / 2,
+      y2: h,
+    });
+    expect(dashes).toEqual([[...UML_LIFELINE_DASH]]);
+  });
+
+  /**
+   * The spine's dash belongs to the SPINE and to nothing after it: a glyph that
+   * left a pattern set would dash the next element the renderer paints.
+   */
+  it('puts the dash pattern back after the spine', () => {
+    const { ctx, dashes } = draw('lifeline');
+    expect(dashes).toHaveLength(1);
+    expect(ctx.getLineDash()).toEqual([]);
+  });
+
+  /**
+   * A lifeline dragged SHORTER than its own head keeps a head, cut down to what
+   * there is — the degenerate case the model's hit test clamps too — and drops
+   * the spine rather than drawing one upward.
+   */
+  it('clamps the head to a column shorter than it, and draws no spine', () => {
+    const { segments } = draw('lifeline', 0, { w: 16, h: 30 });
+    expect(segments).toHaveLength(3);
+    expect(segments[1]).toMatchObject({ y1: 0, y2: 30 });
+  });
+
+  /**
+   * §17.2.4: the destruction X — two crossing strokes and nothing else. Drawn
+   * at 45°, centred, so the arms reach the corners of the square the mark is.
+   */
+  it('draws the destruction as two crossing strokes and no body', () => {
+    const { w, h } = UML_NODE_BOX.destruction;
+    const { segments, ops } = draw('destruction');
+
+    expect(ops).toEqual(['stroke', 'stroke']);
+    expect(segments).toHaveLength(2);
+
+    const [cx, cy] = [w / 2, h / 2];
+    for (const segment of segments) {
+      // Both diagonals are centred on the mark…
+      expect((segment.x1 + segment.x2) / 2).toBeCloseTo(cx);
+      expect((segment.y1 + segment.y2) / 2).toBeCloseTo(cy);
+      // …and both are diagonal, which is what makes the pair an X and not a
+      // plus sign.
+      expect(Math.abs(segment.x2 - segment.x1)).toBeCloseTo(
+        Math.abs(segment.y2 - segment.y1)
+      );
+    }
+    // The two run in opposite directions: one down-right, one down-left.
+    expect(
+      Math.sign(segments[0].x2 - segments[0].x1) *
+        Math.sign(segments[1].x2 - segments[1].x1)
+    ).toBe(-1);
+  });
+
+  /**
+   * §17.2.4 draws an ExecutionSpecification as a thin filled rectangle, which
+   * IS a native rect: the glyph layer paints nothing over it, exactly as it
+   * paints nothing over an action or an object node.
+   */
+  it('leaves the execution bar entirely to the shape layer', () => {
+    expect(draw('execution').ops).toEqual([]);
   });
 });

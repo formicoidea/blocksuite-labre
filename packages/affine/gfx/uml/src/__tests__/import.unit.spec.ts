@@ -11,6 +11,10 @@ import {
   UML_IMPORT_SLOT,
   umlDrawnEdges,
   umlElementsFromModel,
+  umlSequenceColumn,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
 } from '../import';
 import { UML_XMI_IMPORT } from '../interchange';
 import {
@@ -60,6 +64,7 @@ function emptyModel(name: string): UmlModel {
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -1200,5 +1205,170 @@ describe('an XMI document, imported through the capability', () => {
         { x: subject.x, y: subject.y, w: subject.w, h: subject.h }
       )
     ).toBe(true);
+  });
+});
+
+/* ── §17 — a sequence sheet, materialized ─────────────────────────────── */
+
+/**
+ * The one sheet whose materialization is NOT "a box per record and a line
+ * between them".
+ *
+ * A message is anchored at a HEIGHT on a spine (§17.4.4), not at the centre of
+ * two boxes, and a lifeline is a narrow column with its head painted over the
+ * top of it. Both are what the rest of the pack reads back: `model.ts` orders the
+ * conversation by the heights the anchors give it, so a materializer that
+ * centred every arrow would import a sequence diagram whose export is one
+ * horizontal line.
+ */
+function sequenceModel(): UmlModel {
+  const column = [0, 1].map(index => umlSequenceColumn(index, 400));
+  const at = (slot: number) => umlSequenceSlot(slot);
+  return {
+    ...emptyModel('Checkout'),
+    diagram: {
+      id: 'sd1',
+      kind: 'sd',
+      name: 'Checkout',
+      heading: 'sd Checkout',
+    },
+    interactions: [
+      {
+        id: 'sd1',
+        name: 'Checkout',
+        lifelines: [
+          {
+            id: 'l1',
+            name: 'customer',
+            keywords: [],
+            isAbstract: false,
+            bounds: column[0],
+          },
+          {
+            id: 'l2',
+            name: 'web',
+            type: 'Storefront',
+            keywords: [],
+            isAbstract: false,
+            bounds: column[1],
+          },
+        ],
+        messages: [
+          {
+            id: 'm1',
+            kind: 'message-sync',
+            sourceId: 'l1',
+            targetId: 'l2',
+            label: 'browse()',
+            y: at(0),
+          },
+        ],
+        fragments: [
+          {
+            id: 'f1',
+            name: 'signed in',
+            keywords: [],
+            isAbstract: false,
+            operator: 'opt',
+            operands: [{ guard: 'signed in', y0: at(1), y1: at(3) }],
+            coveredLifelineIds: ['l1', 'l2'],
+            bounds: umlSequenceFragment(column, at(1), at(3)),
+          },
+        ],
+        executions: [
+          {
+            id: 'x1',
+            name: '',
+            keywords: [],
+            isAbstract: false,
+            lifelineId: 'l2',
+            y0: at(1),
+            y1: at(2),
+            bounds: umlSequenceExecution(column[1], at(1), at(2)),
+          },
+        ],
+        destructions: [],
+      },
+    ],
+  };
+}
+
+describe('materializing a sequence sheet', () => {
+  const { elements } = umlElementsFromModel([sequenceModel()], {
+    formatId: 'plantuml',
+  });
+  const of = (type: string) =>
+    elements.filter(element => element.type === type);
+
+  it('draws a frame, two lifelines, a bar and a fragment', () => {
+    expect(of('umlDiagram')[0]).toMatchObject({ kind: 'sd' });
+    const nodes = of('umlNode');
+    expect(nodes.map(each => each.kind)).toEqual([
+      'lifeline',
+      'lifeline',
+      'execution',
+    ]);
+    expect(of('umlFragment')[0]).toMatchObject({
+      role: UML_ROLE.fragment,
+      operator: 'opt',
+      // IN BRACKETS: the canvas text is exactly what an author would type, and
+      // §17.6.4.4 prints a guard in brackets. The writers take one pair off
+      // again (`umlGuardText`), so the file still says `opt [signed in]`.
+      name: '[signed in]',
+    });
+  });
+
+  it('writes the head as one `uml:lifeline-ident` tier, grouped with the column', () => {
+    // Not `uml:label`: §17.3.4 prints a grammar for a head and none for an
+    // actor's word, so the two tiers are two roles (`roles.ts`).
+    const tiers = elements.filter(
+      element =>
+        element.type === 'text' && element.role === UML_ROLE['lifeline-ident']
+    );
+    expect(tiers.map(each => each.text)).toEqual([
+      'customer',
+      'web : Storefront',
+    ]);
+    // The bar carries no words at all (`UML_UNLABELLED_KINDS`), so it is a
+    // shape and not a group: §17.2.4 draws nothing in it.
+    expect(of('group')).toHaveLength(2);
+  });
+
+  it('anchors the message on the facing edges, at the height it happens', () => {
+    const [connector] = of('connector');
+    expect(connector).toMatchObject({ role: UML_ROLE['message-sync'] });
+    const source = connector.source as { position: number[] };
+    const target = connector.target as { position: number[] };
+    // Left column to right column: off the right edge, onto the left edge.
+    expect(source.position[0]).toBe(1);
+    expect(target.position[0]).toBe(0);
+    // Same height on both, and NOT the centre — which is the whole point.
+    expect(source.position[1]).toBeCloseTo(target.position[1]);
+    expect(source.position[1]).not.toBe(0.5);
+  });
+
+  it('writes no operand list for a fragment with a single band', () => {
+    expect(of('umlFragment')[0].operands).toBeUndefined();
+  });
+
+  it('writes the operand weights of a fragment that has two', () => {
+    const model = sequenceModel();
+    const [fragment] = model.interactions[0].fragments;
+    fragment.operands = [
+      { guard: 'yes', y0: 0, y1: 40 },
+      { guard: 'no', y0: 40, y1: 160 },
+    ];
+    const { elements: drawn } = umlElementsFromModel([model], {
+      formatId: 'plantuml',
+    });
+    const written = drawn.find(element => element.type === 'umlFragment')!;
+    expect(written.operands).toEqual([
+      { id: 'f1-operand-1', name: '[yes]', size: 40 },
+      { id: 'f1-operand-2', name: '[no]', size: 120 },
+    ]);
+    // …and the declared guard is cleared: on a SPLIT fragment the conditions
+    // live in the bands, and the two labels are anchored in the same corner
+    // (`background.ts`), so writing both would paint the guard twice.
+    expect(written.name).toBe('');
   });
 });

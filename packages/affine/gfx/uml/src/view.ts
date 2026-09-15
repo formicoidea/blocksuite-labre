@@ -20,6 +20,7 @@ import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import {
   UML_DIAGRAM_FRAME,
+  UML_FRAGMENT_FRAME,
   UML_PARTITION_FRAME_V,
   UML_REGION_FRAME,
   UML_SUBJECT_FRAME,
@@ -29,12 +30,14 @@ import { UML_EDGE_MORPH_SPEC } from './edge-morph.js';
 import { effects } from './effects.js';
 import {
   UmlDiagramRendererExtension,
+  UmlFragmentRendererExtension,
   UmlPartitionRendererExtension,
   UmlRegionRendererExtension,
   UmlSubjectRendererExtension,
 } from './element-renderer.js';
 import {
   UmlDiagramView,
+  UmlFragmentView,
   UmlPartitionView,
   UmlRegionView,
   UmlSubjectView,
@@ -52,6 +55,8 @@ import { umlTemplateCategory } from './templates.js';
 import {
   umlDiagramToolbarExtension,
   umlDiagramToolingToolbarExtension,
+  umlFragmentToolbarExtension,
+  umlFragmentToolingToolbarExtension,
   umlPartitionToolbarExtension,
   umlRegionToolbarExtension,
 } from './toolbar/config.js';
@@ -86,6 +91,11 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
     context.register(UmlPartitionRendererExtension);
     context.register(UmlRegionView);
     context.register(UmlRegionRendererExtension);
+    // The COMBINED FRAGMENT of §17.6.4 (phase 3) — content to the letter, like
+    // the two frames above it: an `alt` holds its messages by GEOMETRY, so a
+    // document that loses the frame loses which branch every exchange was in.
+    context.register(UmlFragmentView);
+    context.register(UmlFragmentRendererExtension);
     context.register(UmlNodeView);
     context.register(UmlNodeRendererExtension);
     // The role VOCABULARY, always on. A role is written in the document, not in
@@ -123,6 +133,9 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
       context.register(
         FrameworkBackgroundInteractionExtension(UML_REGION_FRAME)
       );
+      context.register(
+        FrameworkBackgroundInteractionExtension(UML_FRAGMENT_FRAME)
+      );
       // The selected frame's own row — the resize toggle and the two exports in
       // its "⋮". Always-on for the reason `docs/adr/0009` gives: a stored
       // diagram must keep its handles usable with the UML button switched off,
@@ -138,6 +151,11 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
       // a document already holds.
       context.register(umlPartitionToolbarExtension);
       context.register(umlRegionToolbarExtension);
+      // …and phase 3's, on the same terms: a stored combined fragment keeps its
+      // handles with the UML button off. The two gestures that CREATE — adding
+      // an operand, declaring which kind of fragment this is — are in the
+      // flag-gated module below.
+      context.register(umlFragmentToolbarExtension);
       // Keeps a classifier's box big enough for the words an author types into
       // it: when an edit into a compartment commits, the stack is re-measured,
       // the node grows if it no longer fits and the tiers move to the boxes the
@@ -204,6 +222,11 @@ export class UmlViewExtension extends ViewExtensionProvider {
       // are gated by this one flag and there is no reason to spend a second
       // registration on them.
       context.register(umlDiagramToolingToolbarExtension);
+      // The COMBINED FRAGMENT's flag-gated row, through the same `custom:`
+      // slot: the add-operand button and the operator picker. Both create —
+      // one puts a band on the canvas, the other declares how the box is to be
+      // read — which is the line `docs/adr/0009` draws (`toolbar/config.ts`).
+      context.register(umlFragmentToolingToolbarExtension);
       // The "Change type" dropdown on a selected CLASSIFIER's contextual
       // toolbar — the generic module, parameterized by UML's own families.
       //

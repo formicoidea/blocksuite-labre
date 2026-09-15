@@ -2,10 +2,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseOperation, parseProperty } from '../grammar';
+import {
+  umlSequenceColumn,
+  umlSequenceDestruction,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
+} from '../import';
 import { stereotypesOf } from '../keywords';
 import type {
   UmlClassifier,
   UmlComponentNode,
+  UmlMessage,
+  UmlMessageKind,
   UmlModel,
   UmlNodeBase,
   UmlPort,
@@ -116,6 +125,7 @@ function emptyModel(
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -1587,5 +1597,262 @@ describe('an association whose ends are adorned', () => {
     );
     expect(plain).not.toContain('lowerValue');
     expect(plain).not.toContain('visibility');
+  });
+});
+
+/* ── §17 — the sequence sheet ─────────────────────────────────────────── */
+
+/**
+ * One conversation with one of everything §17 draws: three participants (one of
+ * them an actor and one carrying a type), all five arrows, a bar, a cross, an
+ * `alt` with two guarded operands and a `ref` inside the first of them.
+ *
+ * The heights are the invented layout's own slots, one per EVENT — which is
+ * what the two sequence importers write and what makes the order the writer
+ * emits reproducible: see `umlSequenceSlot`.
+ */
+function sequenceDiagram(): UmlModel {
+  const column = [0, 1, 2].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+  const say = (
+    id: string,
+    kind: UmlMessageKind,
+    sourceId: string,
+    targetId: string,
+    label: string,
+    slot: number
+  ): UmlMessage => ({ id, kind, sourceId, targetId, label, y: at(slot) });
+
+  return {
+    ...emptyModel('sd1', 'sd', 'Checkout'),
+    interactions: [
+      {
+        id: 'sd1',
+        name: 'Checkout',
+        lifelines: [
+          { ...node('l1', 'Customer'), keywords: ['actor'], bounds: column[0] },
+          { ...node('l2', 'web'), type: 'Storefront', bounds: column[1] },
+          { ...node('l3', 'orders'), bounds: column[2] },
+        ],
+        messages: [
+          say('m1', 'message-sync', 'l1', 'l2', 'browse()', 0),
+          say('m2', 'message-async', 'l2', 'l3', 'openBasket()', 2),
+          say('m3', 'message-reply', 'l3', 'l2', 'basket', 3),
+          say('m4', 'message-create', 'l2', 'l3', 'new()', 6),
+          say('m5', 'message-delete', 'l2', 'd1', 'close()', 9),
+        ],
+        fragments: [
+          {
+            ...node('f1', 'signed in'),
+            operator: 'alt',
+            operands: [
+              { guard: 'signed in', y0: at(4), y1: at(7) },
+              { guard: 'else', y0: at(7), y1: at(8) },
+            ],
+            coveredLifelineIds: ['l2', 'l3'],
+            bounds: umlSequenceFragment([column[1], column[2]], at(4), at(8)),
+          },
+          {
+            ...node('f2', 'Authorise payment'),
+            operator: 'ref',
+            operands: [{ y0: at(5), y1: at(6) }],
+            coveredLifelineIds: ['l2', 'l3'],
+            bounds: umlSequenceFragment([column[1], column[2]], at(5), at(6)),
+          },
+        ],
+        executions: [
+          {
+            ...node('x1', ''),
+            lifelineId: 'l2',
+            y0: at(1),
+            y1: at(10),
+            bounds: umlSequenceExecution(column[1], at(1), at(10)),
+          },
+        ],
+        destructions: [{ ...node('d1', ''), lifelineId: 'l3', y: at(11) }],
+      },
+    ],
+  };
+}
+
+describe('a sequence diagram, as XMI', () => {
+  const text = exportXmi([sequenceDiagram()]);
+
+  it('writes the Interaction as a packagedElement of the sheet package', () => {
+    expect(text).toContain('<packagedElement xmi:type="uml:Interaction"');
+    expect(text).toContain('name="Checkout"');
+  });
+
+  it('writes one Lifeline per participant, with §17.3.4 type beside it', () => {
+    expect(text.match(/<lifeline xmi:type="uml:Lifeline"/g)).toHaveLength(3);
+    expect(text).toContain('<represents name="Storefront"/>');
+    expect(text).toContain('<keyword name="actor"/>');
+  });
+
+  it('writes a pair of MessageOccurrenceSpecifications per arrow, in time order', () => {
+    const occurrences = [
+      ...text.matchAll(
+        /<fragment xmi:type="uml:MessageOccurrenceSpecification"[^>]*message="([^"]+)"/g
+      ),
+    ].map(match => match[1]);
+    expect(occurrences).toHaveLength(10);
+    // Each message is named by exactly two occurrences — §17.4.4's send and
+    // receive — and both are written where the arrow was drawn.
+    for (const id of new Set(occurrences)) {
+      expect(occurrences.filter(each => each === id)).toHaveLength(2);
+    }
+  });
+
+  it('writes §17.4.3 messageSort for each of the five arrows', () => {
+    expect(
+      [...text.matchAll(/messageSort="([^"]+)"/g)].map(match => match[1])
+    ).toEqual([
+      'synchCall',
+      'asynchCall',
+      'reply',
+      'createMessage',
+      'deleteMessage',
+    ]);
+    expect(text).toMatch(/<message xmi:type="uml:Message"[^>]*sendEvent="_/);
+    expect(text).toMatch(/<message xmi:type="uml:Message"[^>]*receiveEvent="_/);
+  });
+
+  it('writes the bar as an execution between two occurrences (§17.2.4)', () => {
+    expect(
+      text.match(/<fragment xmi:type="uml:ExecutionOccurrenceSpecification"/g)
+    ).toHaveLength(2);
+    expect(text).toMatch(
+      /<fragment xmi:type="uml:BehaviorExecutionSpecification"[^>]*start="_[0-9]+" finish="_[0-9]+"\/>/
+    );
+  });
+
+  it('writes the cross as a DestructionOccurrenceSpecification', () => {
+    expect(text).toMatch(
+      /<fragment xmi:type="uml:DestructionOccurrenceSpecification"[^>]*covered="_[0-9]+"\/>/
+    );
+  });
+
+  it('writes the alt with its operator, its operands and their guards', () => {
+    expect(text).toContain('interactionOperator="alt"');
+    expect(
+      text.match(/<operand xmi:type="uml:InteractionOperand"/g)
+    ).toHaveLength(2);
+    expect(text).toContain('<guard xmi:type="uml:InteractionConstraint"');
+    expect(text).toMatch(
+      /<specification xmi:type="uml:LiteralString" xmi:id="_[0-9]+" value="signed in"\/>/
+    );
+  });
+
+  it('writes the ref as an InteractionUse naming what it refers to', () => {
+    expect(text).toMatch(
+      /<fragment xmi:type="uml:InteractionUse"[^>]*name="Authorise payment"/
+    );
+    expect(text).toMatch(
+      /<fragment xmi:type="uml:InteractionUse"[^>]*covered="_[0-9]+ _[0-9]+"/
+    );
+  });
+
+  it('resolves refersTo when another sheet declares that interaction', () => {
+    const payment: UmlModel = {
+      ...emptyModel('sd2', 'sd', 'Authorise payment'),
+      interactions: [
+        {
+          id: 'sd2',
+          name: 'Authorise payment',
+          lifelines: [{ ...node('p1', 'psp') }],
+          messages: [],
+          fragments: [],
+          executions: [],
+          destructions: [],
+        },
+      ],
+    };
+    const both = exportXmi([sequenceDiagram(), payment]);
+    const use =
+      /<fragment xmi:type="uml:InteractionUse"[^>]*refersTo="([^"]+)"/.exec(
+        both
+      );
+    expect(use).not.toBeNull();
+    expect(both).toContain(
+      `<packagedElement xmi:type="uml:Interaction" xmi:id="${use![1]}" name="Authorise payment">`
+    );
+  });
+
+  it('parses as XML', () => {
+    const parsed = new DOMParser().parseFromString(text, 'application/xml');
+    expect(parsed.getElementsByTagName('parsererror')).toHaveLength(0);
+  });
+});
+
+/**
+ * A delete message drawn INSIDE a fragment, and the cross it ends on.
+ *
+ * §17.6.4 owns the fragments of an operand, so an arrow drawn in a branch and
+ * the destruction it causes are `<fragment>` children of that
+ * `<operand>` — not siblings of the CombinedFragment. The one message whose far
+ * end is not a lifeline is the one this can go wrong for: a fragment's coverage
+ * lists LIFELINES, and a cross read as a spine of its own belongs to no
+ * fragment (`umlInteractionTimeline` resolves it to the spine it sits on).
+ */
+describe('a delete message inside a fragment, as XMI', () => {
+  const column = [0, 1].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+
+  const closing = (): UmlModel => ({
+    ...emptyModel('sd3', 'sd', 'Closing'),
+    interactions: [
+      {
+        id: 'sd3',
+        name: 'Closing',
+        lifelines: [
+          { ...node('l1', 'a'), bounds: column[0] },
+          { ...node('l2', 'b'), bounds: column[1] },
+        ],
+        messages: [
+          {
+            id: 'm1',
+            kind: 'message-delete',
+            sourceId: 'l1',
+            targetId: 'd1',
+            label: 'close()',
+            y: at(1),
+          },
+        ],
+        fragments: [
+          {
+            ...node('f1', 'g'),
+            operator: 'opt',
+            operands: [{ guard: 'g', y0: at(0), y1: at(3) }],
+            coveredLifelineIds: ['l1', 'l2'],
+            bounds: umlSequenceFragment([column[0], column[1]], at(0), at(3)),
+          },
+        ],
+        executions: [],
+        destructions: [
+          {
+            ...node('d1', ''),
+            lifelineId: 'l2',
+            y: at(2),
+            bounds: umlSequenceDestruction(column[1], at(2)),
+          },
+        ],
+      },
+    ],
+  });
+
+  it('owns the occurrences and the destruction from the operand', () => {
+    const text = exportXmi([closing()]);
+    const operand =
+      /<operand xmi:type="uml:InteractionOperand"[\s\S]*?<\/operand>/.exec(
+        text
+      );
+    expect(operand).not.toBeNull();
+    const inside = operand![0];
+    expect(
+      inside.match(/<fragment xmi:type="uml:MessageOccurrenceSpecification"/g)
+    ).toHaveLength(2);
+    expect(inside).toContain(
+      '<fragment xmi:type="uml:DestructionOccurrenceSpecification"'
+    );
   });
 });

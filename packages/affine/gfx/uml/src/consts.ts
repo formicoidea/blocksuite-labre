@@ -1,4 +1,8 @@
 import type { UmlNodeKind } from '@labre/affine-model';
+// The lifeline's column height is a MODEL constant (the element's own bound
+// override reads it), and it is also this file's footprint for the kind — so it
+// is imported as well as re-exported below.
+import { UML_LIFELINE_SPINE } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 
 /**
@@ -267,6 +271,27 @@ export const UML_NODE_BOX: Record<UmlNodeKind, { w: number; h: number }> = {
   'entry-point': { w: 20, h: 20 },
   'exit-point': { w: 20, h: 20 },
   terminate: { w: 28, h: 28 },
+  // ── The interaction footprints (phase 3) ───────────────────────────────
+  // §17.3.4: a lifeline is a NARROW TALL COLUMN — the element IS the spine, and
+  // the head is painted over its top by the glyph layer (see
+  // {@link UML_LIFELINE_HEAD}). 16 wide so a message's native perimeter anchors
+  // land 8 units either side of the dashed line rather than 80, which is the
+  // whole reason the element is not head-shaped; 600 tall because that is a
+  // sheet's worth of conversation at the 40-unit rhythm messages are drawn on.
+  //
+  // The one footprint in the pack that is SMALLER than its own picture, and the
+  // model says so in as many words: `UmlNodeElementModel.elementBound` and
+  // `.includesPoint` both widen to the head.
+  lifeline: { w: 16, h: UML_LIFELINE_SPINE },
+  // §17.2.4: the ExecutionSpecification, a thin bar sat ON the spine. 12 wide —
+  // a touch narrower than the 16-unit column, so a bar dropped on a lifeline
+  // reads as sitting on the line rather than as replacing it. 80 tall is two
+  // messages' worth of "busy", which is what an author drags longer or shorter.
+  execution: { w: 12, h: 80 },
+  // §17.2.4: the destruction X. A SQUARE, like every other bare cross in the
+  // pack (`terminate`, `flow-final`), at the size a mark drawn over a 16-unit
+  // column has to be to be seen against it.
+  destruction: { w: 24, h: 24 },
 };
 
 /* ── The two behaviour frames ──────────────────────────────────────────── */
@@ -324,6 +349,119 @@ export const UML_REGION_RADIUS = 16;
  * pack's metrics, exactly as {@link UML_FRAME_BAND_HEIGHT} is.
  */
 export { UML_PARTITION_BAND, UML_REGION_BAND } from '@labre/affine-model';
+
+/* ── The interaction artefacts (phase 3) ───────────────────────────────── */
+
+/**
+ * The lifeline's head box and the height of its column, owned by
+ * `@labre/affine-model` because the ELEMENT's own `elementBound` and
+ * `includesPoint` read them: §17.3.4's head is 160 wide over a 16-wide column,
+ * so the picture overflows the box the platform knows about and the model has
+ * to say so.
+ *
+ * Re-exported here so this file stays the one place a reader looks for the
+ * pack's metrics, exactly as {@link UML_FRAME_BAND_HEIGHT} is.
+ */
+export { UML_LIFELINE_HEAD, UML_LIFELINE_SPINE } from '@labre/affine-model';
+
+/**
+ * The dash pattern of a lifeline's SPINE, in model units (§17.3.4).
+ *
+ * 6 on, 6 off: even, because the spine is a TIMELINE rather than a relationship
+ * — nothing about it points one way — and long enough to read as a dashed line
+ * rather than as a dotted one at the zoom a whole sequence diagram is viewed
+ * at.
+ */
+export const UML_LIFELINE_DASH = [6, 6] as const;
+
+/** The spine's own weight: lighter than the head, which is a box and not a line. */
+export const UML_LIFELINE_SPINE_WIDTH = 1.5;
+
+/**
+ * The size a fresh combined fragment is created at (§17.6.4).
+ *
+ * Wide enough to cover three lifelines at the 200-unit spacing a sequence
+ * diagram is laid out on, and tall enough for the three or four exchanges an
+ * `alt` is actually drawn round. The same pair the model seeds its `xywh` with,
+ * and the declaration reads it from here.
+ */
+export const UML_FRAGMENT_BOX = { w: 600, h: 260 } as const;
+
+/**
+ * The fragment's inset from its own border on the three sides that carry no
+ * tag — the subject's and the partition's 12, and for the same reason: a
+ * transparent frame drawn over work that is already there spends every unit of
+ * margin on somebody else's drawing.
+ */
+export const UML_FRAGMENT_MARGIN = 12;
+
+/** Its outline: solid and thin, exactly as §17.6.4 draws it. */
+export const UML_FRAGMENT_BORDER_WIDTH = 1.5;
+
+/**
+ * The dashed line between two operands (§17.6.4).
+ *
+ * A LONGER dash than the lifeline's, on purpose: the two are drawn on the same
+ * sheet, crossing each other, and a reader has to tell "this participant exists
+ * but is idle" from "the alternative below is a different case".
+ */
+export const UML_FRAGMENT_OPERAND_DASH = [10, 6] as const;
+
+/**
+ * The fragment's operator band — the strip its pentagon is drawn in, owned by
+ * `@labre/affine-model` because the fragment's hit test reads it.
+ *
+ * Re-exported for the reason every other band is.
+ */
+export { UML_FRAGMENT_BAND } from '@labre/affine-model';
+
+/**
+ * The guard written in an operand's own corner, and its inset from the
+ * operand's top-left.
+ *
+ * Smaller than a name: §17.6.4 writes `[x > 0]` as a condition, not as a
+ * heading, and a guard set at the frame heading's 20px would compete with the
+ * operator word two lines above it.
+ */
+export const UML_FRAGMENT_GUARD_FONT_SIZE = UML_BODY_FONT_SIZE;
+export const UML_FRAGMENT_GUARD_INSET = 8;
+
+/**
+ * How close to an operand separator the pointer counts as being ON it, in model
+ * units either side.
+ *
+ * The BPMN pool's own grab half-width, and deliberately: the two gestures are
+ * the same gesture on the same kind of line, and a user who has learnt one
+ * should not find the other fussier. 12 is wide enough to aim at with a mouse
+ * and narrow enough that it does not swallow the messages drawn either side of
+ * it.
+ */
+export const UML_OPERAND_GRAB = 12;
+
+/**
+ * The GUARD's rename target: the corner box a double-click on an operand's
+ * `[condition]` has to land in.
+ *
+ * Deliberately a CORNER and not the whole band (see `board-hit.ts`): an
+ * operand's guard is written over the messages it governs, so a zone covering
+ * the operand would take every double-click meant for them. Wide enough for a
+ * realistic condition at the guard's own size, and one line tall plus the inset
+ * it is anchored by.
+ */
+export const UML_OPERAND_GUARD_WIDTH = 180;
+export const UML_OPERAND_GUARD_HEIGHT =
+  UML_FRAGMENT_GUARD_FONT_SIZE + UML_FRAGMENT_GUARD_INSET * 2;
+
+/**
+ * The smallest an operand may be dragged, in model units at the fragment's own
+ * reference height — converted to a weight against that fragment's total, so a
+ * fragment stretched taller keeps the same VISIBLE floor.
+ *
+ * 48 is the guard line plus room for one message under it: an operand smaller
+ * than that holds nothing, and the separator that made it is no longer a
+ * division of anything.
+ */
+export const UML_OPERAND_MIN_HEIGHT = 48;
 
 /* ── Rounded artefacts ─────────────────────────────────────────────────── */
 

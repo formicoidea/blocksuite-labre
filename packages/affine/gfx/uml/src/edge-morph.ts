@@ -65,7 +65,10 @@ import { UML_ROLE } from './roles.js';
  *  - **control flow, object flow** — §15.2.4: one drawing (a solid open arrow),
  *    told apart by what the line runs BETWEEN rather than by anything on it.
  *
- * ## The anchor and the transition are in no family
+ *  - **synchronous, asynchronous and reply messages** — §17.4.4: one line, told
+ *    apart by a filled head, an open head and a dash. See the declaration.
+ *
+ * ## The anchor, the transition and the two placed messages are in no family
  *
  * Deliberately, and the anchor is the edge equivalent of C4's `component`: an
  * anchor joins a note to what it comments on (Annex A). It is not a
@@ -82,6 +85,17 @@ import { UML_ROLE } from './roles.js';
  * guard. Offering the swap would put an activity edge on a state machine, which
  * is what the per-frame admissibility lists exist to refuse — a dropdown must
  * not hand a user the error the audit is about to report.
+ *
+ * A CREATE and a DELETE message are alone for a third reason, and it is about
+ * WHERE THE LINE LANDS rather than about what it looks like. §17.4.4 draws a
+ * create message exactly like a reply and a delete message exactly like a
+ * synchronous call, and what makes each of them what it is, is its far end: a
+ * create arrives on the HEAD of the lifeline it brings into existence, and a
+ * delete arrives at a destruction cross. Offering them in the family above
+ * would let one click retype an ordinary call as a creation whose target is a
+ * spine — a line the drawing cannot show as wrong and `uml.message-endpoints`
+ * is about to report. The swap a modeller actually wants there is to move the
+ * end, which the canvas already does.
  */
 export type UmlEdgeKind = UmlEdgeRole;
 
@@ -113,6 +127,19 @@ export const UML_EDGE_FAMILIES: readonly (readonly UmlEdgeKind[])[] = [
   // — drawing the arrow through a data object and leaving it typed as control —
   // and it is invisible on the canvas, which is the case a dropdown exists for.
   ['control-flow', 'object-flow'],
+  // §17.4.4 — the three MESSAGES an interaction is mostly made of, and the
+  // sixth family. This is the case the edge morph exists for, more clearly than
+  // any family above it: the three are one line told apart by a FILLED head, an
+  // open head and a dash, the distinction is the whole semantics of a sequence
+  // diagram — does the caller wait, or not — and it is exactly what a modeller
+  // gets backwards while laying out a conversation. Redrawing the line would
+  // cost both ends, which on a sequence diagram is the HEIGHT the message
+  // happens at as well as which participants it runs between.
+  //
+  // `message-sync` opens it, as every family above opens on its plain member:
+  // a call whose caller waits is what `a -> b` means everywhere, and the other
+  // two are the refinements.
+  ['message-sync', 'message-async', 'message-reply'],
 ];
 
 /**

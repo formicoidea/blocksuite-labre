@@ -9,6 +9,8 @@ import {
 } from '@labre/affine-block-surface';
 import type {
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
+  UmlFragmentOperand,
   UmlPartitionElementModel,
   UmlRegionElementModel,
   UmlSubjectElementModel,
@@ -21,15 +23,20 @@ import { GfxElementModelView } from '@labre/std/gfx';
 
 import {
   UML_DIAGRAM_FRAME,
+  UML_FRAGMENT_FRAME,
   UML_REGION_FRAME,
   UML_SUBJECT_FRAME,
   umlPartitionFrame,
 } from './background.js';
 import {
+  umlFragmentOperands,
   umlInDiagramBand,
   umlInPartitionBand,
   umlInRegionBand,
+  umlOperandBoundaryAt,
+  umlOperandGuardAt,
 } from './board-hit.js';
+import { UML_OPERAND_MIN_HEIGHT } from './consts.js';
 
 /**
  * The one gesture every UML frame carries: a double-click on the name edits it
@@ -55,7 +62,8 @@ abstract class UmlFrameView<
     | UmlDiagramElementModel
     | UmlSubjectElementModel
     | UmlPartitionElementModel
-    | UmlRegionElementModel,
+    | UmlRegionElementModel
+    | UmlFragmentElementModel,
 > extends GfxElementModelView<T> {
   /** The declaration this view hit-tests against — the one the renderer paints. */
   protected abstract get def(): FrameworkBackgroundDef;
@@ -158,24 +166,68 @@ abstract class UmlFrameView<
     host: EditorHost
   ): boolean {
     if (super.includesPoint(x, y, options, host)) return true;
-    return this._labelAt(x, y) !== null;
+    return this._renameTargetAt(x, y) !== null;
   }
 
-  private _onDblClick(e: PointerEventState): void {
-    if (this.gfx.std.store.readonly || this.model.isLocked()) return;
+  /** Whether this frame may be written to at all. */
+  protected get _writable(): boolean {
+    return !this.gfx.std.store.readonly && !this.model.isLocked();
+  }
+
+  /**
+   * What a double-click at this MODEL-space point would rename: the words to
+   * open on, and where to write them back.
+   *
+   * A hook rather than a fixed answer, because one frame has more than one name
+   * on it: a combined fragment carries a guard per OPERAND (§17.6.4), and each
+   * of them is written in its own corner. Every other frame has exactly one
+   * editable word, so the default below is the whole of their story — the
+   * declaration's `name` label, committed to `name`.
+   */
+  protected _renameTargetAt(
+    mx: number,
+    my: number
+  ): { current: string; commit: (value: string) => void } | null {
+    const hit = this._labelAt(mx, my);
+    if (!hit) return null;
+    return {
+      current: this._editable(hit),
+      commit: value => this._writeName(value),
+    };
+  }
+
+  /**
+   * The ordinary rename: `name`, and never the drawn label's own prop — the
+   * diagram frame paints a DERIVED heading, and a getter is not somewhere a
+   * rename can land.
+   */
+  protected _writeName(value: string): void {
+    this.gfx.std.store.captureSync();
+    this.gfx.std
+      .get(EdgelessCRUDIdentifier)
+      .updateElement(this.model.id, { name: value });
+  }
+
+  protected _onDblClick(e: PointerEventState): void {
+    if (!this._writable) return;
 
     const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
-    const hit = this._labelAt(mx, my);
-    if (!hit) return;
+    const target = this._renameTargetAt(mx, my);
+    if (!target) return;
 
-    this._openEditor(this._editable(hit), e);
+    this._openEditor(target.current, e, target.commit);
   }
 
   /**
    * @param current the words the editor opens on — see {@link _editable}. Always
    * the author's own half of the label, never the notation's.
+   * @param commit where the edited words go — see {@link _renameTargetAt}.
    */
-  private _openEditor(current: string, e: PointerEventState): void {
+  protected _openEditor(
+    current: string,
+    e: PointerEventState,
+    commit: (value: string) => void
+  ): void {
     this._closeEditor();
 
     const input = document.createElement('input');
@@ -206,7 +258,7 @@ abstract class UmlFrameView<
     input.focus();
     input.select();
 
-    const commit = () => {
+    const onCommit = () => {
       // Guard against re-entrancy: removing the input fires `blur`, which would
       // otherwise call `commit` a second time.
       if (this._editor !== input) return;
@@ -215,28 +267,23 @@ abstract class UmlFrameView<
       // Opening an editor is not renaming: an untouched value would push an
       // empty entry onto undo and freeze the drawn wording as the user's own.
       if (value === current) return;
-      this.gfx.std.store.captureSync();
-      // `name` and never the drawn label's own prop: the diagram frame paints a
-      // DERIVED heading, and a getter is not somewhere a rename can land.
-      this.gfx.std
-        .get(EdgelessCRUDIdentifier)
-        .updateElement(this.model.id, { name: value });
+      commit(value);
     };
 
     input.addEventListener('keydown', ev => {
       ev.stopPropagation();
       if (ev.key === 'Enter') {
         ev.preventDefault();
-        commit();
+        onCommit();
       } else if (ev.key === 'Escape') {
         ev.preventDefault();
         this._closeEditor();
       }
     });
-    input.addEventListener('blur', commit);
+    input.addEventListener('blur', onCommit);
   }
 
-  private _closeEditor(): void {
+  protected _closeEditor(): void {
     if (!this._editor) return;
     const input = this._editor;
     this._editor = null;
@@ -351,5 +398,285 @@ export class UmlRegionView extends UmlFrameView<UmlRegionElementModel> {
     const name = hits.find(hit => hit.prop === 'name');
     if (!name) return null;
     return umlInRegionBand(this.model, [lx, ly]) ? name : null;
+  }
+}
+
+/**
+ * A COMBINED FRAGMENT (§17.6.4). Two gestures of its own, on top of the rename
+ * every UML frame carries:
+ *
+ * - **dblclick on a GUARD** — the `[condition]` written in an operand's
+ *   top-left corner — edits that guard in place. On an unsplit fragment there
+ *   is one, and it is the element's own `name`; once the box has been cut into
+ *   operands each of them carries its own, in `operands[i].name`;
+ * - **drag on an internal operand SEPARATOR** moves the dashed line, taking
+ *   from one operand and giving to the other.
+ *
+ * ## The operator is NOT renamed here
+ *
+ * Double-clicking the pentagon does nothing, deliberately. `operator` is a
+ * closed discriminant of thirteen values (§17.6.4 plus §17.7.4's `ref`) and it
+ * is picked from the toolbar; a free-text editor over it would let an author
+ * type `altt` and lose every rule, every reading and every export that keys on
+ * the word. The same call the diagram frame's `kind` already makes.
+ *
+ * ## How the separator drag takes the gesture
+ *
+ * Armed, exactly as `BpmnPoolView`'s is and for the reason stated there:
+ * `GfxElementModelView.dispatch` reports a drag as handled whenever a handler
+ * is REGISTERED, so a permanent `dragstart` would make the fragment
+ * undraggable. The handlers are attached while the pointer is over a separator
+ * of a SELECTED fragment and detached the moment it is not.
+ *
+ * ponytail: a ROTATED fragment is not accounted for — the pointer is converted
+ * to element-local coordinates by subtraction, so the separator boxes assume an
+ * upright frame. The same reserve `board-hit.ts` documents; nothing rotates a
+ * framework background today.
+ */
+export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
+  static override type: string = 'umlFragment';
+
+  /** The separator the pointer is over, and the handlers armed for it. */
+  private _armed: { index: number; disposers: (() => void)[] } | null = null;
+
+  /** Everything a separator drag needs, frozen at `dragstart`. */
+  private _drag: {
+    index: number;
+    operands: readonly UmlFragmentOperand[];
+    /** Sum of the weights — the constant the two neighbours share. */
+    total: number;
+    /** Plot height in model units, i.e. what one unit of weight is worth. */
+    plotHeight: number;
+    /** Floor, already expressed as a weight. */
+    minWeight: number;
+  } | null = null;
+
+  protected override get def(): FrameworkBackgroundDef {
+    return UML_FRAGMENT_FRAME;
+  }
+
+  override onCreated(): void {
+    super.onCreated();
+    this.on('pointermove', e => this._updateHover(e));
+    this.on('pointerdown', e => this._updateHover(e));
+    this.on('pointerleave', () => this._leave());
+  }
+
+  override onDestroyed(): void {
+    this._leave();
+    super.onDestroyed();
+  }
+
+  /* ── The rename targets ────────────────────────────────────────────── */
+
+  /**
+   * The operand guards first, the declaration's own label second.
+   *
+   * The order is the order the gestures win in, and it only matters on a SPLIT
+   * fragment: the first operand's corner is the very corner the declared
+   * `guard` label is anchored in. The operand takes it, because on a split
+   * fragment the guards live in `operands` and `name` has been moved into the
+   * first of them (`background.ts` states the contract) — handing the
+   * double-click to `name` would open an editor on a string nothing paints.
+   */
+  protected override _renameTargetAt(
+    mx: number,
+    my: number
+  ): { current: string; commit: (value: string) => void } | null {
+    const [ex, ey] = this.model.deserializedXYWH;
+    const index = umlOperandGuardAt(this.model, [mx - ex, my - ey]);
+    if (index !== null) {
+      const operand = this._operands()[index];
+      if (operand) {
+        return {
+          current: operand.name ?? '',
+          commit: value => this._writeGuard(index, value),
+        };
+      }
+    }
+    return super._renameTargetAt(mx, my);
+  }
+
+  private _operands(): readonly UmlFragmentOperand[] {
+    const stored = this.model.operands;
+    return Array.isArray(stored) ? stored : [];
+  }
+
+  /**
+   * Write one operand's guard, dropping the key entirely when it is cleared.
+   *
+   * The same shape `renameBpmnLane` writes: an absent `name` is an unguarded
+   * operand — which is what an `else` branch with no condition is — and an
+   * empty string left in the array would be a key that means nothing and
+   * paints nothing.
+   */
+  private _writeGuard(index: number, value: string): void {
+    const operands = this._operands();
+    const operand = operands[index];
+    if (!operand) return;
+
+    const trimmed = value.trim();
+    if ((operand.name ?? '') === trimmed) return;
+
+    const next = operands.map((entry, i) =>
+      i === index
+        ? {
+            id: entry.id,
+            ...(trimmed ? { name: trimmed } : {}),
+            size: entry.size,
+          }
+        : entry
+    );
+    this.gfx.std.store.captureSync();
+    this.gfx.std
+      .get(EdgelessCRUDIdentifier)
+      .updateElement(this.model.id, { operands: next });
+  }
+
+  /* ── The separator drag ────────────────────────────────────────────── */
+
+  /**
+   * A fragment is SELECTED by its border and its operator band — but the
+   * internal operand separators are twelve-unit strips in the middle of the
+   * plot, and they must still receive their pointer events.
+   *
+   * Not a selection zone: a click between two messages still goes to whatever
+   * is under it, because picking asks the MODEL. This only decides where the
+   * fragment's own gestures are heard.
+   */
+  override includesPoint(
+    x: number,
+    y: number,
+    options: PointTestOptions,
+    host: EditorHost
+  ): boolean {
+    if (super.includesPoint(x, y, options, host)) return true;
+    const [ex, ey] = this.model.deserializedXYWH;
+    return umlOperandBoundaryAt(this.model, [x - ex, y - ey]) !== null;
+  }
+
+  private _leave(): void {
+    this._disarm();
+    if (!this._drag) this.gfx.cursor$.value = 'default';
+  }
+
+  private _localPoint(e: PointerEventState): [number, number] {
+    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
+    const [ex, ey] = this.model.deserializedXYWH;
+    return [mx - ex, my - ey];
+  }
+
+  /** One pass over the pointer: the cursor, and whether a drag is armed. */
+  private _updateHover(e: PointerEventState): void {
+    const local = this._localPoint(e);
+    const selected = this.gfx.selection.selectedIds.includes(this.model.id);
+
+    if (this._writable && selected) {
+      const index = umlOperandBoundaryAt(this.model, local);
+      if (index !== null) {
+        // Reasserted on every move rather than only on arrival: the cursor is
+        // shared with the resize handles and the tools, and whoever set it last
+        // wins — so the one that is still true says so again.
+        this.gfx.cursor$.value = 'ns-resize';
+        if (this._armed?.index !== index) {
+          this._disarm();
+          this._armed = {
+            index,
+            disposers: [
+              this.on('dragstart', () => this._onDragStart()),
+              this.on('dragmove', evt => this._onDragMove(evt)),
+              this.on('dragend', () => this._onDragEnd()),
+            ],
+          };
+        }
+        return;
+      }
+    }
+    this._disarm();
+
+    // A guard announces itself, selected or not: finding out that a condition
+    // can be changed should not cost a click first.
+    const overGuard =
+      this._writable && umlOperandGuardAt(this.model, local) !== null;
+    this.gfx.cursor$.value = overGuard ? 'text' : 'default';
+  }
+
+  private _disarm(): void {
+    // Never mid-gesture: the pointer leaves the separator as soon as the drag
+    // starts moving, and disarming there would drop it on its first step.
+    if (this._drag) return;
+    if (!this._armed) return;
+    this._armed.disposers.forEach(dispose => dispose());
+    this._armed = null;
+  }
+
+  private _onDragStart(): void {
+    const index = this._armed?.index;
+    const geometry = umlFragmentOperands(this.model);
+    if (index === undefined || !geometry || !this._writable) return;
+
+    const operands = this._operands();
+    if (!operands[index - 1] || !operands[index]) return;
+
+    const total = operands.reduce((sum, operand) => sum + operand.size, 0);
+    if (!(total > 0)) return;
+
+    this._drag = {
+      index,
+      operands: operands.map(operand => ({ ...operand })),
+      total,
+      plotHeight: geometry.plot.height,
+      // The floor is a HEIGHT the user can see, stated in the model units of a
+      // fragment at its reference height and converted to a weight against this
+      // fragment's own total — so a fragment stretched to twice the height
+      // keeps the same visible floor, which is the point of weights.
+      minWeight: (UML_OPERAND_MIN_HEIGHT / geometry.plot.height) * total,
+    };
+    // Local writes until the release: the intermediate weights repaint the
+    // canvas but never reach the document, so the whole drag is ONE undo step.
+    this.model.stash('operands');
+  }
+
+  private _onDragMove(e: PointerEventState): void {
+    const drag = this._drag;
+    if (!drag) return;
+
+    // The travel SINCE the drag started, in view pixels (`e.delta` is the step
+    // since the last move, which is not the same thing), converted to model
+    // units. Always recomputed from the FROZEN pair rather than nudged: a nudge
+    // would accumulate the clamp and drift away from the pointer.
+    const dy = (e.y - e.start.y) / (this.gfx.viewport.zoom || 1);
+    const perUnit = drag.total / drag.plotHeight;
+
+    const above = drag.operands[drag.index - 1];
+    const below = drag.operands[drag.index];
+    const pair = above.size + below.size;
+
+    // The pair's total is invariant: the separator takes from one and gives to
+    // the other, so no operand the user is not touching changes size.
+    const wanted = above.size + dy * perUnit;
+    const floor = Math.min(drag.minWeight, pair / 2);
+    const nextAbove = Math.max(floor, Math.min(pair - floor, wanted));
+
+    this.model.operands = drag.operands.map((operand, i) =>
+      i === drag.index - 1
+        ? { ...operand, size: nextAbove }
+        : i === drag.index
+          ? { ...operand, size: pair - nextAbove }
+          : operand
+    );
+  }
+
+  private _onDragEnd(): void {
+    const drag = this._drag;
+    this._drag = null;
+    if (!drag) return;
+
+    // Before the commit, not after: `pop` writes straight into the Y.Map, and
+    // without a boundary here a separator moved within half a second of the
+    // previous edit would be undone together with it.
+    this.gfx.std.store.captureSync();
+    this.model.pop('operands');
+    this._disarm();
   }
 }

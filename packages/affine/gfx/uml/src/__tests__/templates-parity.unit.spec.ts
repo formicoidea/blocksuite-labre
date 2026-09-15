@@ -53,9 +53,9 @@ const INVOCATION: CommandInvocation = {
 /**
  * The templates written by hand — none.
  *
- * The palette is the thirty-nine artefact commands. The fifteen relationship
+ * The palette is the forty-four artefact commands. The twenty relationship
  * TOOLS arm the connector and draw nothing, so they have no artefact to record,
- * and the two exports are not artefact commands at all. A future entry that is
+ * and the two exports and three imports are not artefact commands at all. A future entry that is
  * not derived has to declare itself here.
  */
 const HAND_AUTHORED: string[] = [];
@@ -84,7 +84,12 @@ describe('the UML palette covers the toolbox', () => {
     // vocabulary, nine of the state machine, and the partition and region
     // backgrounds). The six TOOLS phase 2 added are not here for the reason the
     // nine before them are not: arming a connector draws nothing.
-    expect(artefacts).toHaveLength(39);
+    //
+    // …and five from phase 3: the lifeline, the execution bar and the
+    // destruction cross of §17.2.4, and the two spellings of §17.6.4's frame —
+    // the combined fragment and the interaction use. Its five MESSAGE tools are
+    // absent for the same reason every tool before them is.
+    expect(artefacts).toHaveLength(44);
     for (const command of artefacts) {
       const derived = templates.filter(
         template => template.commandId === command.id

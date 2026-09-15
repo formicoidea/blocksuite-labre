@@ -57,6 +57,10 @@ const NODE_ROLES = [
   UML_ROLE['entry-point'],
   UML_ROLE['exit-point'],
   UML_ROLE.terminate,
+  // Phase 3 — the interaction artefacts of §17.2.4 and §17.3.4.
+  UML_ROLE.lifeline,
+  UML_ROLE.execution,
+  UML_ROLE.destruction,
 ] as const;
 
 const TIER_ROLES = [
@@ -64,6 +68,10 @@ const TIER_ROLES = [
   UML_ROLE.attributes,
   UML_ROLE.operations,
   UML_ROLE.label,
+  // Phase 3 — §17.3.4's lifeline HEAD, split off the shared label tier so the
+  // two questions a tier is asked can be asked of a head without being asked of
+  // an actor's word (`roles.ts`).
+  UML_ROLE['lifeline-ident'],
 ] as const;
 
 const FRAME_ROLES = [
@@ -72,6 +80,11 @@ const FRAME_ROLES = [
   // Phase 2 — the swimlane of §15.6.4 and the composite state of §14.2.4.
   UML_ROLE.partition,
   UML_ROLE.region,
+  // Phase 3 — the combined fragment of §17.6.4 and one operand of it. The
+  // operand is DECLARED and never stamped: it is an instance zone of the
+  // fragment's own plot, so a rule about what may sit in one has a name.
+  UML_ROLE.fragment,
+  UML_ROLE.operand,
 ] as const;
 
 const EDGE_ROLES = [
@@ -91,10 +104,17 @@ const EDGE_ROLES = [
   UML_ROLE['control-flow'],
   UML_ROLE['object-flow'],
   UML_ROLE.transition,
+  // Phase 3 — the five messages of §17.4.4 and the parent they share.
+  UML_ROLE.message,
+  UML_ROLE['message-sync'],
+  UML_ROLE['message-async'],
+  UML_ROLE['message-reply'],
+  UML_ROLE['message-create'],
+  UML_ROLE['message-delete'],
 ] as const;
 
 describe('UML role vocabulary', () => {
-  it('declares thirty-eight artefacts, four tiers, four frames and fifteen relations', () => {
+  it('declares forty-one artefacts, four tiers, six frames and twenty-one relations', () => {
     expect(Object.keys(UML_ROLES)).toHaveLength(
       NODE_ROLES.length +
         TIER_ROLES.length +

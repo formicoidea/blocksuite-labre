@@ -14,7 +14,17 @@ import {
 } from '../component.js';
 import { UML_ROLE } from '../roles.js';
 
-/** The four tier roles an edit can commit into. */
+/**
+ * The four tier roles an edit can commit into.
+ *
+ * `uml:lifeline-ident` is deliberately NOT among them, and it is the one tier
+ * this set leaves out: §17.3.4's head is painted at a fixed size across the top
+ * of a 16-wide column (`consts.ts`, `UML_LIFELINE_HEAD`), so no amount of typing
+ * in it can change the element's box — a lifeline resizes in HEIGHT and that is
+ * the spine's length, not the words'. Accepting it as a trigger would mean
+ * asking {@link umlStackHeight} a question it answers `null` to on every
+ * keystroke, which is the work this set exists to avoid.
+ */
 const TIER_ROLES: ReadonlySet<string> = new Set([
   UML_ROLE.name,
   UML_ROLE.attributes,

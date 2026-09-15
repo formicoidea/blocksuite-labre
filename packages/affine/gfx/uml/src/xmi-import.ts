@@ -4,10 +4,18 @@ import type {
   InterchangeReport,
   SerializedElementProps,
 } from '@labre/affine-block-surface';
-import type { UmlDiagramKind } from '@labre/affine-model';
+import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
 import type { UmlBox } from './component.js';
+import {
+  UML_SD_EVENT_STEP,
+  umlSequenceColumn,
+  umlSequenceDestruction,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
+} from './import.js';
 import {
   type UmlAssociationEnd,
   type UmlMultiplicity,
@@ -26,6 +34,12 @@ import type {
   UmlClassifier,
   UmlComponentNode,
   UmlDeploymentNode,
+  UmlDestruction,
+  UmlExecution,
+  UmlInteraction,
+  UmlInteractionOperand,
+  UmlLifeline,
+  UmlMessageKind,
   UmlModel,
   UmlNodeBase,
   UmlPartition,
@@ -901,6 +915,7 @@ function emptyModel(id: string, name: string): UmlModel {
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -1501,6 +1516,499 @@ function readStateMachine(
   return machine;
 }
 
+/* ── Interactions (§17) ───────────────────────────────────────────────── */
+
+/** §17.4.3's `messageSort`, read back to the arrow §17.4.4 draws for it. */
+const MESSAGE_KIND_OF_SORT: Readonly<Record<string, UmlMessageKind>> = {
+  synchCall: 'message-sync',
+  asynchCall: 'message-async',
+  asynchSignal: 'message-async',
+  reply: 'message-reply',
+  createMessage: 'message-create',
+  deleteMessage: 'message-delete',
+};
+
+/** The metaclasses §17.2.4 draws as the bar on a spine, whatever the tool. */
+const EXECUTION_TYPES = new Set([
+  'BehaviorExecutionSpecification',
+  'ActionExecutionSpecification',
+  'ExecutionSpecification',
+]);
+
+/** §17.6.4's operators, as a set — what an `interactionOperator` is checked against. */
+const FRAGMENT_OPERATORS = new Set<string>([
+  'alt',
+  'opt',
+  'loop',
+  'par',
+  'break',
+  'critical',
+  'seq',
+  'strict',
+  'neg',
+  'assert',
+  'ignore',
+  'consider',
+]);
+
+/** One `<fragment>` list, while it is being read: what covers what, and when. */
+interface InteractionPass {
+  /** Occurrence id → the lifeline it covers and the height it sits at. */
+  occurrence: Map<string, { covered?: string; y: number }>;
+  /** The slot cursor — one per event, top to bottom. See `UML_SD_EVENT_STEP`. */
+  slot: number;
+}
+
+/**
+ * One `uml:Interaction`, read — §17's whole vocabulary in one pass.
+ *
+ * ## Why the ORDER of the fragment list is the whole of it
+ *
+ * §17.2.4 makes an Interaction's `fragment` an ORDERED collection and says the
+ * order is time. A file therefore states the sequence and no heights, and a
+ * canvas states heights and no sequence, so this reader turns one into the
+ * other: every event in the list takes the next slot,
+ * {@link UML_SD_EVENT_STEP} below the last, and `model.ts` reads the order back
+ * off those heights. A slot per EVENT — not per message — is what keeps an
+ * `activate` written between two arrows between them on the way back.
+ *
+ * ## What each metaclass becomes
+ *
+ * A pair of `MessageOccurrenceSpecification`s is ONE arrow and takes ONE slot:
+ * they are the two ends of the same horizontal line (§17.4.4). An
+ * `ExecutionOccurrenceSpecification` is the top or the bottom of a bar, and the
+ * `BehaviorExecutionSpecification` between them carries no slot of its own — it
+ * is the bar, and the bar is the space between its two occurrences. A
+ * `DestructionOccurrenceSpecification` is the cross. A `CombinedFragment` is the
+ * rectangle: it takes a slot for its top, one for each `else` after the first
+ * operand, and one for its bottom.
+ */
+function readInteraction(
+  ctx: Context,
+  draft: Draft,
+  node: XmlNode,
+  id: string
+): UmlInteraction {
+  const interaction: UmlInteraction = {
+    id,
+    name: xmlAttr(node, 'name') ?? '',
+    lifelines: [],
+    messages: [],
+    fragments: [],
+    executions: [],
+    destructions: [],
+  };
+  const pass: InteractionPass = { occurrence: new Map(), slot: 0 };
+  const take = () => umlSequenceSlot(pass.slot++);
+
+  const columnOf = new Map<string, number>();
+  for (const child of xmlChildren(node, 'lifeline')) {
+    consume(ctx, child);
+    const lifelineId = map(ctx, child);
+    carryUnknownAttrs(ctx, child, lifelineId, lifelineId, [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'represents',
+      'coveredBy',
+    ]);
+    const record: UmlLifeline = {
+      ...readBase(ctx, child, lifelineId),
+      ...lifelineTypeOf(ctx, child),
+    };
+    columnOf.set(lifelineId, interaction.lifelines.length);
+    interaction.lifelines.push(record);
+    own(draft, lifelineId);
+  }
+
+  /** The bars, with their two occurrences still unresolved. */
+  const bars: { record: UmlExecution; start?: string; finish?: string }[] = [];
+  /** Message id → the slot its FIRST occurrence took — see the docblock. */
+  const seen = new Map<string, number>();
+
+  const readFragments = (parent: XmlNode): { covered: Set<string> } => {
+    const touched = new Set<string>();
+    for (const child of xmlChildren(parent, 'fragment')) {
+      const meta = metaOf(child) ?? '';
+      consume(ctx, child);
+
+      if (meta === 'MessageOccurrenceSpecification') {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+          'message',
+        ]);
+        const covered = xmlAttr(child, 'covered')?.split(/\s+/)[0];
+        const message = xmlAttr(child, 'message');
+        // The SECOND occurrence of a message is the other end of the same
+        // horizontal line (§17.4.4), so it shares the slot rather than taking
+        // one — otherwise every arrow would come back twice as far apart as the
+        // file drew it.
+        const y = message && seen.has(message) ? seen.get(message)! : take();
+        if (message) seen.set(message, y);
+        pass.occurrence.set(fragmentId, { ...(covered ? { covered } : {}), y });
+        if (covered) touched.add(covered);
+        continue;
+      }
+
+      if (meta === 'ExecutionOccurrenceSpecification') {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+          'execution',
+        ]);
+        const covered = xmlAttr(child, 'covered')?.split(/\s+/)[0];
+        pass.occurrence.set(fragmentId, {
+          ...(covered ? { covered } : {}),
+          y: take(),
+        });
+        if (covered) touched.add(covered);
+        continue;
+      }
+
+      if (EXECUTION_TYPES.has(meta)) {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+          'start',
+          'finish',
+        ]);
+        const covered = xmlAttr(child, 'covered')?.split(/\s+/)[0];
+        const record: UmlExecution = {
+          ...readBase(ctx, child, fragmentId),
+          ...(covered ? { lifelineId: covered } : {}),
+          y0: 0,
+          y1: 0,
+        };
+        interaction.executions.push(record);
+        own(draft, fragmentId);
+        bars.push({
+          record,
+          ...(xmlAttr(child, 'start')
+            ? { start: xmlAttr(child, 'start')! }
+            : {}),
+          ...(xmlAttr(child, 'finish')
+            ? { finish: xmlAttr(child, 'finish')! }
+            : {}),
+        });
+        if (covered) touched.add(covered);
+        continue;
+      }
+
+      if (meta === 'DestructionOccurrenceSpecification') {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+        ]);
+        const covered = xmlAttr(child, 'covered')?.split(/\s+/)[0];
+        const record: UmlDestruction = {
+          ...readBase(ctx, child, fragmentId),
+          ...(covered ? { lifelineId: covered } : {}),
+          y: take(),
+        };
+        interaction.destructions.push(record);
+        pass.occurrence.set(fragmentId, {
+          ...(covered ? { covered } : {}),
+          y: record.y,
+        });
+        own(draft, fragmentId);
+        if (covered) touched.add(covered);
+        continue;
+      }
+
+      if (meta === 'InteractionUse') {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+          'refersTo',
+        ]);
+        const covered = (xmlAttr(child, 'covered') ?? '')
+          .split(/\s+/)
+          .filter(Boolean);
+        const y0 = take();
+        const y1 = take();
+        // §17.7.4's `refersTo` points at an Interaction that may be on another
+        // sheet of this document; the NAME is what a board can draw, so the
+        // reference is resolved to one when the file declares it and the
+        // element's own name is kept otherwise.
+        const refersTo = xmlAttr(child, 'refersTo');
+        const named =
+          xmlAttr(child, 'name') ??
+          (refersTo ? nameOfId(ctx, refersTo) : undefined) ??
+          '';
+        interaction.fragments.push({
+          ...readBase(ctx, child, fragmentId),
+          name: named,
+          operator: 'ref',
+          operands: [{ y0, y1 }],
+          coveredLifelineIds: covered,
+          bounds: { x: 0, y: y0, w: 0, h: Math.max(1, y1 - y0) },
+        });
+        own(draft, fragmentId);
+        for (const each of covered) touched.add(each);
+        continue;
+      }
+
+      if (meta === 'CombinedFragment') {
+        const fragmentId = map(ctx, child);
+        carryUnknownAttrs(ctx, child, fragmentId, fragmentId, [
+          'xmi:type',
+          'type',
+          'xmi:id',
+          'id',
+          'name',
+          'covered',
+          'interactionOperator',
+        ]);
+        const stated = xmlAttr(child, 'interactionOperator') ?? 'seq';
+        const operator = (
+          FRAGMENT_OPERATORS.has(stated) ? stated : 'alt'
+        ) as UmlFragmentOperator;
+        if (!FRAGMENT_OPERATORS.has(stated)) {
+          // CARRIED, and not merely mentioned (ADR 0012 D1): the word is the
+          // one thing this fragment said that the drawing cannot, so it rides
+          // along on the element's foreign payload. `interactionOperator` is in
+          // the understood list above — a word the pentagon DOES draw is not
+          // foreign matter — so the carry is written here, where it is.
+          carryAttr(ctx, fragmentId, fragmentId, 'interactionOperator', stated);
+          note(ctx, {
+            kind: 'warning',
+            element: child.name,
+            sourceId: fragmentId,
+            message:
+              `This combined fragment's operator is "${stated}", which UML ` +
+              `2.5.1 §17.6.4 does not list. It is drawn as an "alt" and the ` +
+              `file's own word is kept beside it.`,
+          });
+        }
+        const declared = (xmlAttr(child, 'covered') ?? '')
+          .split(/\s+/)
+          .filter(Boolean);
+        const y0 = take();
+        const bands: UmlInteractionOperand[] = [];
+        const inside = new Set<string>(declared);
+        const operands = xmlChildren(child, 'operand');
+        for (const [index, operand] of operands.entries()) {
+          consume(ctx, operand);
+          map(ctx, operand);
+          const opened = index === 0 ? y0 : take();
+          const guardNode = xmlChild(operand, 'guard');
+          consume(ctx, guardNode);
+          const specification = guardNode
+            ? xmlChild(guardNode, 'specification')
+            : undefined;
+          consume(ctx, specification);
+          const guard = (
+            (specification
+              ? (xmlAttr(specification, 'value') ??
+                xmlAttr(specification, 'body') ??
+                specification.text)
+              : undefined) ??
+            (guardNode
+              ? (xmlAttr(guardNode, 'name') ?? guardNode.text)
+              : undefined) ??
+            ''
+          ).trim();
+          const held = readFragments(operand);
+          for (const each of held.covered) inside.add(each);
+          bands.push({ ...(guard ? { guard } : {}), y0: opened, y1: 0 });
+        }
+        if (bands.length === 0) bands.push({ y0, y1: 0 });
+        const y1 = take();
+        for (const [index, band] of bands.entries()) {
+          band.y1 = index + 1 < bands.length ? bands[index + 1].y0 : y1;
+        }
+        interaction.fragments.push({
+          ...readBase(ctx, child, fragmentId),
+          name: bands[0]?.guard ?? '',
+          operator,
+          operands: bands,
+          coveredLifelineIds: [...inside],
+          bounds: { x: 0, y: y0, w: 0, h: Math.max(1, y1 - y0) },
+        });
+        own(draft, fragmentId);
+        for (const each of inside) touched.add(each);
+        continue;
+      }
+
+      // Anything else in the ordered list — a StateInvariant, a
+      // ContinuationSpecification, a coregion — is out of scope (ADR 0022) and
+      // is left for the sweep to quarantine verbatim.
+      ctx.consumed.delete(child);
+    }
+    return { covered: touched };
+  };
+
+  readFragments(node);
+
+  for (const bar of bars) {
+    const start = bar.start ? pass.occurrence.get(bar.start) : undefined;
+    const finish = bar.finish ? pass.occurrence.get(bar.finish) : undefined;
+    bar.record.y0 = start?.y ?? 0;
+    bar.record.y1 = finish?.y ?? bar.record.y0 + UML_SD_EVENT_STEP;
+    if (!bar.record.lifelineId) {
+      const covered = start?.covered ?? finish?.covered;
+      if (covered) bar.record.lifelineId = covered;
+    }
+  }
+
+  for (const child of xmlChildren(node, 'message')) {
+    consume(ctx, child);
+    const messageId = map(ctx, child);
+    carryUnknownAttrs(ctx, child, messageId, messageId, [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'messageSort',
+      'sendEvent',
+      'receiveEvent',
+      'connector',
+    ]);
+    const send = xmlAttr(child, 'sendEvent');
+    const receive = xmlAttr(child, 'receiveEvent');
+    const from = send ? pass.occurrence.get(send) : undefined;
+    const to = receive ? pass.occurrence.get(receive) : undefined;
+    if (!from?.covered || !to?.covered) {
+      note(ctx, {
+        kind: 'warning',
+        element: child.name,
+        sourceId: messageId,
+        message:
+          `A message in "${interaction.name}" names an occurrence this sheet ` +
+          `has no lifeline for, so it is not drawn. The file still says it, ` +
+          `and nothing was removed from the document.`,
+      });
+      continue;
+    }
+    const sort = xmlAttr(child, 'messageSort') ?? 'synchCall';
+    const label = xmlAttr(child, 'name');
+    // §17.4.4 draws a deleteMessage ENDING on the cross, and that is what the
+    // board draws too: the arrow's target is the destruction, not the spine.
+    const cross = interaction.destructions.find(
+      record => record.lifelineId === to.covered && record.y >= from.y
+    );
+    const kind = MESSAGE_KIND_OF_SORT[sort] ?? 'message-sync';
+    interaction.messages.push({
+      id: messageId,
+      kind,
+      sourceId: from.covered,
+      targetId: kind === 'message-delete' && cross ? cross.id : to.covered,
+      ...(label ? { label } : {}),
+      y: from.y,
+    });
+  }
+  // §17.4.4: top to bottom is time. The `<message>` list is not ordered by the
+  // metamodel — the `fragment` list is — so the order comes off the occurrences.
+  interaction.messages.sort((a, b) => a.y - b.y);
+
+  /* ── The geometry the file does not carry ──────────────────────────── */
+
+  const height = umlSequenceSlot(pass.slot) + UML_SD_EVENT_STEP;
+  const columns = new Map<string, UmlBox>();
+  for (const lifeline of interaction.lifelines) {
+    const box = umlSequenceColumn(columnOf.get(lifeline.id) ?? 0, height);
+    lifeline.bounds = box;
+    columns.set(lifeline.id, box);
+  }
+  for (const record of interaction.executions) {
+    const column = record.lifelineId
+      ? columns.get(record.lifelineId)
+      : undefined;
+    if (column) {
+      record.bounds = umlSequenceExecution(column, record.y0, record.y1);
+    }
+  }
+  for (const record of interaction.destructions) {
+    const column = record.lifelineId
+      ? columns.get(record.lifelineId)
+      : undefined;
+    if (column) record.bounds = umlSequenceDestruction(column, record.y);
+  }
+  for (const record of interaction.fragments) {
+    const covered = record.coveredLifelineIds
+      .map(each => columns.get(each))
+      .filter((box): box is UmlBox => box !== undefined);
+    const y0 = record.bounds?.y ?? 0;
+    const y1 = y0 + (record.bounds?.h ?? UML_SD_EVENT_STEP);
+    record.bounds = umlSequenceFragment(
+      covered.length > 0 ? covered : [...columns.values()],
+      y0,
+      y1
+    );
+    if (record.coveredLifelineIds.length === 0) {
+      record.coveredLifelineIds = interaction.lifelines.map(each => each.id);
+    }
+  }
+  return interaction;
+}
+
+/**
+ * §17.3.4's `: <Type>` half of a lifeline head, wherever the file put it.
+ *
+ * `Lifeline::represents` is a ConnectableElement, so a tool that has one writes
+ * an idref and this reader resolves it to a NAME — which is what a head can
+ * draw. Our own writer has no Property to point at and files the type under
+ * `xmi:Extension` instead (XMI 2.5.1 §7.9), so that is read too, and the head
+ * comes back exactly as it went out.
+ */
+function lifelineTypeOf(ctx: Context, node: XmlNode): { type?: string } {
+  for (const child of node.children) {
+    if (!isLabreExtension(child)) continue;
+    const represents = xmlChild(child, 'represents');
+    const named = represents ? xmlAttr(represents, 'name') : undefined;
+    if (named) {
+      consume(ctx, represents);
+      if (child.children.every(entry => ctx.consumed.has(entry))) {
+        consume(ctx, child);
+      }
+      return { type: named };
+    }
+  }
+  // A tool that HAS a ConnectableElement to point at: §17.3.4's `: <Type>` is
+  // then the type of that Property, not its name — `anOrder : Order` is a
+  // property called `anOrder` typed by `Order`, and the head writes the second.
+  // A Property with no type says nothing a head can draw, so nothing is
+  // invented.
+  const represents = xmlAttr(node, 'represents');
+  const property = represents ? ctx.byId.get(represents) : undefined;
+  const typed =
+    property &&
+    (xmlAttr(property, 'type') ??
+      (xmlChild(property, 'type')
+        ? refOf(xmlChild(property, 'type')!)
+        : undefined));
+  const named = typed ? nameOfId(ctx, typed) : undefined;
+  return named ? { type: named } : {};
+}
 /* ── One package ──────────────────────────────────────────────────────── */
 
 /**
@@ -1712,6 +2220,16 @@ function readPackage(
       );
       continue;
     }
+
+    if (meta === 'Interaction') {
+      consume(ctx, child);
+      const interactionId = map(ctx, child);
+      carryUnknownAttrs(ctx, child, interactionId);
+      draft.model.interactions.push(
+        readInteraction(ctx, draft, child, interactionId)
+      );
+      continue;
+    }
   }
 }
 
@@ -1798,6 +2316,10 @@ function declaredDiagramKind(
 
 /** What the package DECLARES, when nothing said which frame it was drawn as. */
 function inferDiagramKind(model: UmlModel): UmlDiagramKind {
+  // An Interaction first: §17.2.4's sheet is the one that draws its
+  // participants as lifelines, and a `uml:Actor` referenced by one would
+  // otherwise make it look like a use case diagram.
+  if (model.interactions.length > 0) return 'sd';
   if (model.useCases.length > 0 || model.actors.length > 0) return 'uc';
   if (model.activities.length > 0) return 'act';
   if (model.stateMachines.length > 0) return 'stm';

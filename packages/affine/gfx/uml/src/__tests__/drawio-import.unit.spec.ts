@@ -526,3 +526,125 @@ describe('an mxfile whose diagram was saved uncompressed', () => {
     expect(read.model.classifiers.map(entry => entry.name)).toEqual(['A']);
   });
 });
+
+/* ── §17 — draw.io's sequence stencil, best effort (ADR 0019) ─────────── */
+
+/**
+ * A sequence drawing in draw.io's own shapes, read as far as a STYLE STRING can
+ * be read.
+ *
+ * Hand-written rather than corpus, and it is the one fixture in this file that
+ * is: draw.io ships no sequence template, and its sequence shapes are drawn by
+ * hand out of the UML stencil. What the reader has to go on is
+ * `shape=umlLifeline`, `shape=umlDestroy`, a `shape=umlFrame` whose label opens
+ * with an operator, a narrow box parented to a participant, and the two things
+ * §17.4.4 says tell its arrows apart — the dash and the head.
+ */
+const SEQUENCE = `<mxGraphModel dx="800" dy="600" grid="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="ll1" value="customer : Customer" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=1;collapsible=0;" vertex="1" parent="1">
+      <mxGeometry x="40" y="40" width="100" height="400" as="geometry"/>
+    </mxCell>
+    <mxCell id="ll2" value="web" style="shape=umlLifeline;perimeter=lifelinePerimeter;container=1;collapsible=0;" vertex="1" parent="1">
+      <mxGeometry x="240" y="40" width="100" height="400" as="geometry"/>
+    </mxCell>
+    <mxCell id="x1" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="ll2">
+      <mxGeometry x="45" y="100" width="10" height="120" as="geometry"/>
+    </mxCell>
+    <mxCell id="f1" value="alt [signed in]" style="shape=umlFrame;html=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="140" width="340" height="180" as="geometry"/>
+    </mxCell>
+    <mxCell id="d1" value="" style="shape=umlDestroy;html=1;" vertex="1" parent="1">
+      <mxGeometry x="275" y="380" width="30" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="m1" value="browse()" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="1" source="ll1" target="ll2">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="90" y="120" as="sourcePoint"/>
+        <mxPoint x="290" y="120" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="m2" value="ok" style="html=1;endArrow=open;dashed=1;" edge="1" parent="1" source="ll2" target="ll1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="290" y="200" as="sourcePoint"/>
+        <mxPoint x="90" y="200" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="m3" value="ping()" style="html=1;endArrow=open;" edge="1" parent="1" source="ll1" target="ll2">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="90" y="260" as="sourcePoint"/>
+        <mxPoint x="290" y="260" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+  </root>
+</mxGraphModel>`;
+
+describe('a sequence drawing', () => {
+  const { model } = importDrawio(SEQUENCE, { name: 'Checkout' });
+  const [interaction] = model.interactions;
+
+  it('is read as a sequence sheet, not as a class one', () => {
+    expect(model.diagram.kind).toBe('sd');
+    expect(model.classifiers).toEqual([]);
+  });
+
+  it('reads `shape=umlLifeline` as a participant, head grammar and all', () => {
+    expect(interaction.lifelines).toEqual([
+      expect.objectContaining({
+        id: 'll1',
+        name: 'customer',
+        type: 'Customer',
+      }),
+      expect.objectContaining({ id: 'll2', name: 'web' }),
+    ]);
+  });
+
+  it('turns the drawn box into the narrow column our element is', () => {
+    // draw.io draws the head and the spine as one 100-wide box; the element is
+    // the spine, centred on it, and that is where a message attaches.
+    const [, web] = interaction.lifelines;
+    expect(web.bounds).toEqual({ x: 282, y: 40, w: 16, h: 400 });
+  });
+
+  it('reads a narrow box parented to a participant as §17.2.4 bar', () => {
+    expect(interaction.executions).toEqual([
+      expect.objectContaining({
+        id: 'x1',
+        lifelineId: 'll2',
+        // Relative to the CELL draw.io drew, not to the column we made of it.
+        y0: 140,
+        y1: 260,
+      }),
+    ]);
+  });
+
+  it('reads `shape=umlDestroy` as the cross, on the spine it sits on', () => {
+    expect(interaction.destructions).toEqual([
+      expect.objectContaining({ id: 'd1', lifelineId: 'll2', y: 395 }),
+    ]);
+  });
+
+  it('reads a frame whose label opens with an operator as a fragment', () => {
+    expect(interaction.fragments).toEqual([
+      expect.objectContaining({
+        id: 'f1',
+        operator: 'alt',
+        name: 'signed in',
+        coveredLifelineIds: ['ll1', 'll2'],
+      }),
+    ]);
+    // …and a frame whose label does NOT is still §12.2.4's folder.
+    expect(model.packages).toEqual([]);
+  });
+
+  it('tells the arrows apart by the dash and the head (§17.4.4)', () => {
+    expect(
+      interaction.messages.map(each => [each.kind, each.label, each.y])
+    ).toEqual([
+      ['message-sync', 'browse()', 120],
+      ['message-reply', 'ok', 200],
+      ['message-async', 'ping()', 260],
+    ]);
+  });
+});

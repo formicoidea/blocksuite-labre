@@ -70,7 +70,12 @@ live in one flat category named after the framework
 **R9. A board is picked by its border**, a 10 screen-pixel band constant at
 every zoom, plus its title bands (BPMN participant band, C4 title band, UML
 frame heading band, UML partition band — on the top or left edge by
-orientation — and UML region band).
+orientation — and UML region band). A board's inner zones follow the same
+shape whatever the notation calls them: after the activity partition, UML's
+second zone is the combined fragment's **operand band** — horizontal, separated
+by a dashed line per §17.6.4.1, added from the fragment's toolbar as a lane is
+added to a BPMN pool (ADR
+[0022](../adr/0022-uml-sequence-diagrams-scope.md) §3).
 `backgroundIncludesPoint` in
 `packages/affine/model/src/elements/framework-background/hit-test.ts`;
 `framework-background-hit-test.unit.spec.ts`. An already-selected board can

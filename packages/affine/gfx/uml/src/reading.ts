@@ -15,7 +15,7 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * so a sheet whose `uml` flag is off keeps every element it has and simply stops
  * being read (ADR 0009).
  *
- * ## THIRTY-SEVEN profiles, one per artefact, because the roles are flat
+ * ## FORTY profiles, one per artefact, because the roles are flat
  *
  * There are two chains in the node vocabulary — `uml:classifier` over class,
  * interface and enumeration, and (since phase 2) `uml:node` over device and
@@ -38,10 +38,11 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * they get a profile each with nothing to decide.
  *
  * The FRAMES are not read: `uml:diagram` is the sheet, and `uml:subject`,
- * `uml:partition` and `uml:region` are rectangles drawn round part of it, and
- * `packages/affine/all/src/__tests__/reading-coverage.unit.spec.ts` records all
- * four as such so the coverage test does not ask a sheet to read itself back as
- * a sentence.
+ * `uml:partition`, `uml:region` and — since phase 3 — `uml:fragment` and the
+ * `uml:operand` bands inside it are rectangles drawn round part of it, and
+ * `packages/affine/all/src/__tests__/reading-coverage.unit.spec.ts` records
+ * every one of them as such so the coverage test does not ask a sheet to read
+ * itself back as a sentence.
  *
  * ## The name lives on a separate element
  *
@@ -241,7 +242,40 @@ const TRANSITION = {
   },
 } as const;
 
-/** One artefact, as a profile. The thirty-seven below differ by four fields at most. */
+/**
+ * A MESSAGE (§17.4.4) — what one participant asks another to do.
+ *
+ * Its own table rather than a reading through {@link FLOW}, and the two roles
+ * are filed apart for the same reason the object flow is: a message is not a
+ * control flow, it is the other thing an arrow can be, and a profile declaring
+ * the one would never reach the other.
+ *
+ * Declared on the PARENT `uml:message`, which is what makes one table answer
+ * for all five: `roleIsA` files `uml:message-sync`, `-async`, `-reply`,
+ * `-create` and `-delete` under it (`roles.ts`), so a lifeline reads every
+ * message drawn on it whichever of the five an author typed it as. The
+ * alternative — five tables, one per drawing — would make a participant's
+ * reading depend on whether the call it received happened to be asynchronous.
+ *
+ * The wording is asymmetric and deliberately in the reader's words rather than
+ * the metamodel's: the question a sequence diagram answers about a participant
+ * is who talks to it and who it talks to.
+ */
+const MESSAGE = {
+  edgeRole: UML_ROLE.message,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.receivesFrom',
+      labelFallback: 'Receives from',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.sendsTo',
+      labelFallback: 'Sends to',
+    },
+  },
+} as const;
+
+/** One artefact, as a profile. The forty below differ by four fields at most. */
 const profile = (
   id: string,
   appliesTo: string,
@@ -522,6 +556,54 @@ export const UML_TERMINATE_READING = profile(
   TRANSITION
 );
 
+/* ── Phase 3: sequence diagrams (§17.2.4, §17.4.4) ─────────────────────── */
+
+/**
+ * A LIFELINE is read through the MESSAGES drawn on it — which is the whole of
+ * what a sequence diagram says about a participant: who calls it, and what it
+ * calls in turn (§17.4.4).
+ *
+ * `uml:lifeline-ident`, and neither of the two tiers it might have been:
+ * §17.3.4 writes `<name> : <Type>` in the head as a plain identifier, with no
+ * keyword over it and none allowed — so it is not a `uml:name`, which is the
+ * tier a keyword is written on — and the clause prints a BNF for it, which no
+ * clause does for an actor's word, so it is not a `uml:label` either
+ * (`roles.ts`). `parseLifelineIdent` is what reads that line back, and this
+ * profile names the tier it reads.
+ */
+export const UML_LIFELINE_READING = profile(
+  'uml-lifeline',
+  UML_ROLE.lifeline,
+  UML_ROLE['lifeline-ident'],
+  MESSAGE
+);
+/**
+ * An EXECUTION and a DESTRUCTION are read through the same table, and both are
+ * marks the notation writes nothing on (§17.2.4).
+ *
+ * They are read at all because a message may LAND on either: §17.4.4 lets a
+ * call arrive on the execution it starts, and a delete message arrives at the
+ * cross. Both declare `uml:lifeline-ident` — the tier NEITHER of them carries —
+ * and that is the rule phase 2 states for every unnamed artefact, applied here:
+ * `readElement` names the far end of a relation through the SUBJECT's
+ * `labelRole`, so a bar and the lifeline it answers have to agree on where a
+ * name is. Declaring `uml:label` here instead would leave every participant
+ * nameless in the panel opened on a bar, and a reading that says a message came
+ * from nowhere is worse than one that says nothing.
+ */
+export const UML_EXECUTION_READING = profile(
+  'uml-execution',
+  UML_ROLE.execution,
+  UML_ROLE['lifeline-ident'],
+  MESSAGE
+);
+export const UML_DESTRUCTION_READING = profile(
+  'uml-destruction',
+  UML_ROLE.destruction,
+  UML_ROLE['lifeline-ident'],
+  MESSAGE
+);
+
 /**
  * The two PARENTS, and the reason they are read at all.
  *
@@ -596,6 +678,10 @@ export const UML_READINGS: readonly ReadingProfile[] = [
   UML_ENTRY_POINT_READING,
   UML_EXIT_POINT_READING,
   UML_TERMINATE_READING,
+  /* ── Phase 3: sequence diagrams ──────────────────────────────────────── */
+  UML_LIFELINE_READING,
+  UML_EXECUTION_READING,
+  UML_DESTRUCTION_READING,
   // The two PARENTS last, after every child — the same rule the deployment
   // cubes above obey, and for the same reason: the engine takes the FIRST
   // profile the element's role IS A.

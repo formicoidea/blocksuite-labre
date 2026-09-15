@@ -36,7 +36,7 @@ describe('the declared families', () => {
     expect(new Set(FAMILY_MEMBERS).size).toBe(FAMILY_MEMBERS.length);
   });
 
-  it('leaves the anchor and the transition out, and nothing else', () => {
+  it('leaves the anchor, the transition and the two placed messages out, and nothing else', () => {
     // An anchor joins a note to what it comments on (Annex A): it is not a
     // relationship between classifiers, it carries no semantics, and offering
     // to turn one into a composition would invite a diagram claiming that a
@@ -48,7 +48,16 @@ describe('the declared families', () => {
     // swap would put an activity edge on a state machine, which is what the
     // per-frame admissibility lists exist to refuse — a dropdown must not hand
     // a user the error the audit is about to report.
-    const ALONE = ['anchor', 'transition'];
+    //
+    // A CREATE and a DELETE message are alone for a third reason, and it is
+    // about where the line LANDS rather than what it looks like: §17.4.4 draws
+    // a create exactly like a reply and a delete exactly like a synchronous
+    // call, and what makes each of them what it is, is its far end — the HEAD
+    // of the lifeline it brings into existence, and a destruction cross.
+    // Offering them in the message family would let one click retype an
+    // ordinary call as a creation whose target is a spine: a line the drawing
+    // cannot show as wrong and `uml.message-endpoints` is about to report.
+    const ALONE = ['anchor', 'transition', 'message-create', 'message-delete'];
     for (const kind of ALONE) expect(FAMILY_MEMBERS).not.toContain(kind);
     expect([...FAMILY_MEMBERS].sort()).toEqual(
       UML_EDGE_KINDS.filter(kind => !ALONE.includes(kind)).sort()
@@ -64,6 +73,9 @@ describe('the declared families', () => {
       // what lets the case below go on naming the dependency family by one.
       'deploy',
       'control-flow',
+      // Phase 3's, appended in the same way: §17.4.4's three DRAWN messages,
+      // opening on the synchronous call — what `a -> b` means everywhere.
+      'message-sync',
     ]);
   });
 

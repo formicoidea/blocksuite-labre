@@ -6,6 +6,13 @@ import {
   UML_DIAGRAM_MARGIN,
   UML_DIVIDER,
   UML_FONT_FAMILY,
+  UML_FRAGMENT_BAND,
+  UML_FRAGMENT_BORDER_WIDTH,
+  UML_FRAGMENT_BOX,
+  UML_FRAGMENT_GUARD_FONT_SIZE,
+  UML_FRAGMENT_GUARD_INSET,
+  UML_FRAGMENT_MARGIN,
+  UML_FRAGMENT_OPERAND_DASH,
   UML_FRAME_BAND_HEIGHT,
   UML_FRAME_BORDER_WIDTH,
   UML_FRAME_HEADING_FONT_SIZE,
@@ -436,6 +443,168 @@ export const UML_REGION_FRAME: FrameworkBackgroundDef = {
           anchor: { x: 0, y: 0, dy: -UML_REGION_BAND / 3 },
           style: {
             size: UML_NAME_FONT_SIZE,
+            weight: 600,
+            color: '@frame',
+          },
+        },
+      },
+    ],
+  },
+};
+
+/* ── The combined fragment ─────────────────────────────────────────────── */
+
+/**
+ * The COMBINED FRAGMENT (§17.6.4): the rectangle drawn round part of a
+ * conversation with `alt`, `loop` or `opt` in its corner — and, under the `ref`
+ * operator, §17.7.4's InteractionUse.
+ *
+ * TRANSPARENT, like the subject and the partition and for exactly the same
+ * reason: it is drawn over lifelines and messages that are already there, and
+ * an opaque card would hide the conversation it is qualifying. SOLID border,
+ * because §17.6.4 draws one unbroken rectangle — the only dashed lines in the
+ * picture are the ones BETWEEN the operands.
+ *
+ * ## The band paints nothing, like the diagram frame's
+ *
+ * And for the same reason: §17.6.4 draws the operator in Annex A's own
+ * cut-corner pentagon, and a rule ruled right across the fragment under it
+ * would be a line the notation does not have. The band exists to place the word
+ * and to reserve the top margin; what a reader sees is the pentagon, drawn by
+ * `withUmlFrameTag` over this declaration's own label — which is why the label
+ * binds `operator` and why the tag carries no words of its own.
+ *
+ * ## The guard, and the one contract the operands keep
+ *
+ * `name` is the guard of the fragment's FIRST operand — `[x > 0]`, `[else]` —
+ * or, under `ref`, the name of the interaction referred to. It is written in
+ * the plot's top-left corner, which is where §17.6.4 puts an operand's guard,
+ * and it is a declared ZONE label so the frame view's rename gesture reaches
+ * it exactly as it reaches the subject's name.
+ *
+ * Once the fragment is SPLIT, the guards live in `operands` and nowhere else:
+ * the instance-zone label below writes each operand's own, and the first of
+ * them occupies the very corner `name` is written in. The contract the "add
+ * operand" action keeps (`actions.ts`) is therefore that splitting a fragment
+ * MOVES `name` into `operands[0].name` and clears it — one guard, one place,
+ * and no corner with two strings in it.
+ */
+export const UML_FRAGMENT_FRAME: FrameworkBackgroundDef = {
+  type: 'umlFragment',
+  role: UML_ROLE.fragment,
+  geometry: {
+    width: UML_FRAGMENT_BOX.w,
+    height: UML_FRAGMENT_BOX.h,
+    // Stretched round whatever part of the conversation it has been drawn
+    // about, which is never the same shape twice.
+    lockAspectRatio: false,
+    resizable: true,
+    // Only the top margin is deep: it IS the operator band, the diagram
+    // frame's own arrangement.
+    margin: {
+      top: UML_FRAGMENT_BAND,
+      right: UML_FRAGMENT_MARGIN,
+      bottom: UML_FRAGMENT_MARGIN,
+      left: UML_FRAGMENT_MARGIN,
+    },
+  },
+  zones: [
+    {
+      id: 'guard',
+      rect: { x: 0, y: 0, w: 1, h: 1 },
+      label: {
+        id: 'guard',
+        // The author's own words, and only those — there is no vocabulary to
+        // fall back to for a condition somebody has not written yet.
+        prop: 'name',
+        // Top-left INSIDE the plot, one line down: the anchor is a BASELINE,
+        // and §17.6.4 writes a guard in the operand's own corner.
+        anchor: {
+          x: 0,
+          y: 0,
+          dx: UML_FRAGMENT_GUARD_INSET,
+          dy: UML_FRAGMENT_GUARD_FONT_SIZE + UML_FRAGMENT_GUARD_INSET,
+        },
+        style: {
+          size: UML_FRAGMENT_GUARD_FONT_SIZE,
+          weight: 600,
+          color: '@frame',
+        },
+      },
+    },
+  ],
+  /**
+   * The OPERANDS — the bands §17.6.4 cuts an `alt` or a `par` into, separated
+   * by dashed lines.
+   *
+   * The BPMN pool's lanes, to the letter: an instance partition on the
+   * declaration, weights rather than heights so a fragment dragged taller
+   * redistributes instead of leaving a gap, and the CORNER placement for the
+   * guard because that is where §17.6.4 writes one. A pool's lanes take the
+   * band placement instead, and the difference is the notation's: a lane name
+   * is a title written down a strip, an operand's guard is a condition written
+   * in a corner over the messages it governs.
+   */
+  instanceZones: {
+    prop: 'operands',
+    // Horizontal bands, top to bottom in array order: time runs down a
+    // sequence diagram, and an operand is a stretch of it.
+    stack: 'y',
+    // A namespace, so an operand a user guards `else` can never shadow the
+    // declared `guard` zone above.
+    idPrefix: 'operand',
+    // DASHED, and the one dashed line in the fragment: §17.6.4 rules its
+    // operands off with a broken line precisely so the rectangle round them
+    // stays a single unbroken frame.
+    divider: {
+      color: '@divider',
+      width: UML_FRAGMENT_BORDER_WIDTH,
+      dash: [...UML_FRAGMENT_OPERAND_DASH],
+    },
+    label: {
+      // The corner placement — no `band`. See the note above.
+      dx: UML_FRAGMENT_GUARD_INSET,
+      dy: UML_FRAGMENT_GUARD_FONT_SIZE + UML_FRAGMENT_GUARD_INSET,
+      style: {
+        size: UML_FRAGMENT_GUARD_FONT_SIZE,
+        weight: 600,
+        color: '@frame',
+      },
+    },
+  },
+  chrome: {
+    fontFamily: UML_FONT_FAMILY,
+    palette: {
+      frame: UML_FRAME_INK,
+      divider: UML_DIVIDER,
+    },
+    surface: {
+      // NO fill — this is the transparent one.
+      border: {
+        color: '@frame',
+        width: UML_FRAGMENT_BORDER_WIDTH,
+        // Square: §17.6.4 draws a plain rectangle, and a rounded one would
+        // read as a composite state.
+        radius: 0,
+      },
+    },
+    sideBands: [
+      {
+        // No `fill` and no `divider`, exactly as the diagram frame's heading
+        // band declares none: what a reader sees is the pentagon.
+        side: 'top',
+        label: {
+          id: 'operator',
+          // The word itself — `alt`, `loop`, `ref`. NOT a derived heading: a
+          // fragment has one word in its tag, and the guard is written in the
+          // operand rather than beside the operator.
+          prop: 'operator',
+          // `y: 0` is the band's INNER edge; a negative `dy` walks back up into
+          // it. A third of the band clears the descenders, which is the
+          // diagram frame's own arithmetic.
+          anchor: { x: 0, y: 0, dy: -UML_FRAGMENT_BAND / 3 },
+          style: {
+            size: UML_FRAME_HEADING_FONT_SIZE,
             weight: 600,
             color: '@frame',
           },

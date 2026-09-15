@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkEndLabelMultiplicity,
+  checkLifelineIdent,
+  checkMessageLabel,
   checkMultiplicity,
   checkOperationLine,
   checkPropertyLine,
@@ -12,6 +14,8 @@ import {
   parseCompartment,
   parseEndLabel,
   parseGuard,
+  parseLifelineIdent,
+  parseMessageLabel,
   parseMultiplicity,
   parseOperation,
   parseProperty,
@@ -767,5 +771,230 @@ describe('checkMultiplicity and checkEndLabelMultiplicity (§7.5.4, §11.5.4)', 
     expect(checkEndLabelMultiplicity('1st choice')).toEqual({ ok: true });
     expect(parseEndLabel('1st choice').multiplicity).toBeUndefined();
     expect(checkEndLabelMultiplicity('')).toEqual({ ok: true });
+  });
+});
+
+describe('parseLifelineIdent (§17.3.4)', () => {
+  it('reads the three parts, together and apart', () => {
+    expect(parseLifelineIdent('o : Order')).toEqual({
+      name: 'o',
+      type: 'Order',
+    });
+    expect(parseLifelineIdent('o')).toEqual({ name: 'o' });
+    // The anonymous participant of a known type — the clause makes the name
+    // optional and the figures use it constantly.
+    expect(parseLifelineIdent(': Order')).toEqual({ type: 'Order' });
+    expect(parseLifelineIdent('accounts[k] : Account')).toEqual({
+      name: 'accounts',
+      type: 'Account',
+      selector: 'k',
+    });
+    expect(parseLifelineIdent('accounts[k]')).toEqual({
+      name: 'accounts',
+      selector: 'k',
+    });
+  });
+
+  it('keeps `self` as the name it is', () => {
+    // §17.3.4's own alternative. It is words, not a flag: nothing in this
+    // library reads a "this is the enclosing object" bit.
+    expect(parseLifelineIdent('self')).toEqual({ name: 'self' });
+  });
+
+  it('splits on the FIRST top-level colon and counts brackets', () => {
+    expect(parseLifelineIdent('o : Map[String, Int]')).toEqual({
+      name: 'o',
+      type: 'Map[String, Int]',
+    });
+    // A selector carrying a colon of its own stays whole.
+    expect(parseLifelineIdent('accounts[k : Key]')).toEqual({
+      name: 'accounts',
+      selector: 'k : Key',
+    });
+  });
+
+  it('degrades rather than throws', () => {
+    expect(parseLifelineIdent('')).toEqual({});
+    expect(parseLifelineIdent(undefined)).toEqual({});
+    expect(parseLifelineIdent(null)).toEqual({});
+    // A head the grammar cannot see structure in is a lifeline NAMED exactly
+    // what the author wrote — the module's degradation contract.
+    expect(parseLifelineIdent('???')).toEqual({ name: '???' });
+    // Nothing after the colon: the type is lost, the name is kept.
+    expect(parseLifelineIdent('o :')).toEqual({ name: 'o' });
+    // An empty selector is no selector.
+    expect(parseLifelineIdent('accounts[]')).toEqual({ name: 'accounts' });
+  });
+});
+
+describe('parseMessageLabel (§17.4.4)', () => {
+  it('reads a REQUEST label', () => {
+    expect(parseMessageLabel('place')).toEqual({ name: 'place' });
+    expect(parseMessageLabel('place()')).toEqual({ name: 'place', args: [] });
+    expect(parseMessageLabel('place(order, now)')).toEqual({
+      name: 'place',
+      args: ['order', 'now'],
+    });
+    // §17.4.4's named and wildcard arguments travel RAW: four spellings, and
+    // what a writer does with them differs per format.
+    expect(parseMessageLabel('place(item = book, -)')).toEqual({
+      name: 'place',
+      args: ['item = book', '-'],
+    });
+  });
+
+  it('reads a REPLY label, with both of its extra parts', () => {
+    expect(parseMessageLabel('r = place(order) : Receipt')).toEqual({
+      name: 'place',
+      assign: 'r',
+      args: ['order'],
+      returnValue: 'Receipt',
+    });
+    expect(parseMessageLabel('r = place')).toEqual({
+      name: 'place',
+      assign: 'r',
+    });
+    expect(parseMessageLabel('place : Receipt')).toEqual({
+      name: 'place',
+      returnValue: 'Receipt',
+    });
+  });
+
+  it('tells an EMPTY list from no list at all', () => {
+    // §17.4.4 says the parentheses are not part of the argument list, so the
+    // two spellings are two things an author typed differently.
+    expect(parseMessageLabel('place').args).toBeUndefined();
+    expect(parseMessageLabel('place()').args).toEqual([]);
+  });
+
+  it('counts brackets rather than guessing', () => {
+    // The `)` that closes the list, not the last one on the line.
+    expect(parseMessageLabel('place(at(1, 2), now) : ok')).toEqual({
+      name: 'place',
+      args: ['at(1, 2)', 'now'],
+      returnValue: 'ok',
+    });
+    // A comparison is not the assignment §17.4.4 puts before the name.
+    expect(parseMessageLabel('check(a == b)')).toEqual({
+      name: 'check',
+      args: ['a == b'],
+    });
+    expect(parseMessageLabel('ok = check(a >= b)')).toEqual({
+      name: 'check',
+      assign: 'ok',
+      args: ['a >= b'],
+    });
+  });
+
+  it('degrades rather than throws', () => {
+    expect(parseMessageLabel('')).toEqual({ name: '' });
+    expect(parseMessageLabel(undefined)).toEqual({ name: '' });
+    expect(parseMessageLabel(null)).toEqual({ name: '' });
+    // The §17.4.4 shorthand keeps its character — the fragment it stands for is
+    // not drawn on this canvas (ADR 0022).
+    expect(parseMessageLabel('*')).toEqual({ name: '*' });
+    // An unclosed list is a label somebody is still typing: the parentheses
+    // never match, so nothing is peeled and the whole line is the name.
+    expect(parseMessageLabel('place(order')).toEqual({ name: 'place(order' });
+  });
+});
+
+describe('checkLifelineIdent (§17.3.4, strict)', () => {
+  it('accepts an EMPTY head — `uml.unnamed-lifeline` owns that question', () => {
+    expect(checkLifelineIdent('')).toEqual({ ok: true });
+    expect(checkLifelineIdent(undefined)).toEqual({ ok: true });
+    expect(checkLifelineIdent(null)).toEqual({ ok: true });
+  });
+
+  it('accepts every head the clause spells', () => {
+    for (const head of [
+      'o',
+      'o : Order',
+      ': Order',
+      'self',
+      'accounts[k] : Account',
+      'o : Map[String, Int]',
+    ]) {
+      expect(checkLifelineIdent(head), head).toEqual({ ok: true });
+    }
+  });
+
+  it('reports what the lenient parse LOSES', () => {
+    // A `:` with nothing behind it: the type is gone from the record.
+    expect(checkLifelineIdent('o :').ok).toBe(false);
+    expect(parseLifelineIdent('o :').type).toBeUndefined();
+    // An empty selector: the brackets are gone from the record.
+    expect(checkLifelineIdent('accounts[]').ok).toBe(false);
+    expect(parseLifelineIdent('accounts[]').selector).toBeUndefined();
+    // A bracket still open.
+    expect(checkLifelineIdent('accounts[k').ok).toBe(false);
+    // Neither a name nor a type left.
+    expect(checkLifelineIdent('[k]').ok).toBe(false);
+  });
+
+  it('reports a MESSAGE label typed into the head', () => {
+    const verdict = checkLifelineIdent('place(order)');
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain('parentheses');
+  });
+
+  /**
+   * The one check here that is stricter than "the parse lost something", and the
+   * reason it is allowed to be: `parseLifelineIdent` takes everything past the
+   * first top-level `:` as the type, so `: :` comes back as a participant whose
+   * CLASS is the character ":" — nothing was lost, and nothing was read either.
+   * §17.3.4's production has one colon, and this counts them.
+   */
+  it('reports a head carrying a SECOND colon', () => {
+    for (const head of [': :', 'o : Order : Extra', 'a::b']) {
+      const verdict = checkLifelineIdent(head);
+      expect(verdict.ok, head).toBe(false);
+      expect(verdict.reason, head).toContain('two');
+    }
+    // …and a colon inside the type's own brackets is not a second one: the
+    // depth count is what tells a map's key type from a malformed head.
+    expect(checkLifelineIdent('o : Map[K : V]')).toEqual({ ok: true });
+  });
+});
+
+describe('checkMessageLabel (§17.4.4, strict)', () => {
+  it('accepts an EMPTY label — an unlabelled arrow is legal', () => {
+    expect(checkMessageLabel('')).toEqual({ ok: true });
+    expect(checkMessageLabel(undefined)).toEqual({ ok: true });
+    expect(checkMessageLabel(null)).toEqual({ ok: true });
+  });
+
+  it('accepts every label the two productions spell', () => {
+    for (const label of [
+      'place',
+      'place()',
+      'place(order)',
+      'place(item = book, -)',
+      'r = place(order) : Receipt',
+      'place : Receipt',
+      'check(a == b)',
+      // §17.4.4's shorthand for "a message of any type".
+      '*',
+    ]) {
+      expect(checkMessageLabel(label), label).toEqual({ ok: true });
+    }
+  });
+
+  it('reports what the lenient parse LOSES', () => {
+    // A bracket still open — a label somebody is mid-word on.
+    expect(checkMessageLabel('place(order').ok).toBe(false);
+    // An argument between two commas: the file holds two where three were typed.
+    expect(checkMessageLabel('place(a,,b)').ok).toBe(false);
+    expect(parseMessageLabel('place(a,,b)').args).toEqual(['a', 'b']);
+    // A `:` with nothing behind it, with and without a list.
+    expect(checkMessageLabel('place() :').ok).toBe(false);
+    expect(checkMessageLabel('place :').ok).toBe(false);
+    // An `=` with nothing in front of it.
+    expect(checkMessageLabel('= place').ok).toBe(false);
+    expect(parseMessageLabel('= place').assign).toBeUndefined();
+    // Text after the `)` that is neither a return value nor nothing.
+    expect(checkMessageLabel('place() then reply').ok).toBe(false);
+    // No name left at all.
+    expect(checkMessageLabel('r =').ok).toBe(false);
   });
 });

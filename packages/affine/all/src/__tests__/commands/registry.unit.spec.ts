@@ -184,7 +184,25 @@ describe('command registry invariants', () => {
       // over-nomination the only one in the library. Which of the fourteen an
       // import ought to displace is a PO curation point; the choice is recorded
       // at `uml.addNote`'s declaration for them to overturn.
-      uml: 59,
+      //
+      // …and 69 since phase 3's SEQUENCE diagrams (ADR 0017's fourth append,
+      // §17): three artefacts on the sheet — the lifeline, the execution bar
+      // and the destruction cross (§17.2.4) — two frames filed under
+      // `boundaries` beside the subject and the partition, the combined
+      // fragment and the interaction use it is the `ref` spelling of (§17.6.4,
+      // §17.7.4), and five relationship tools, which is the widest a single
+      // tranche has ever added: §17.4.4 gives a message five drawings and tells
+      // three of them apart BY the drawing (a filled head, an open head, a
+      // dash).
+      //
+      // The NOMINATIONS did not move again: all ten decline the senior row, so
+      // the pool is the phase-1 fourteen plus tranche G's one-for-one swap —
+      // `SENIOR_MENU_CAP` exactly. `uml.addLifeline` has the strongest claim on
+      // a seat of anything declining one here (a sequence diagram is the
+      // second-most-drawn UML diagram), and at sixty-nine catalogue entries
+      // against fourteen seats that is a PO curation question with usage data
+      // behind it rather than a tranche's to settle.
+      uml: 69,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -215,7 +233,10 @@ describe('command registry invariants', () => {
     // backgrounds, and the control-flow, object-flow and transition tools.
     // …and 176 since UML's three imports — PlantUML, XMI and draw.io
     // (`docs/adr/0019`).
-    expect(commands).toHaveLength(176);
+    //
+    // …and 186 since UML's SEQUENCE diagrams (phase 3, §17): three artefacts,
+    // two frames and five message tools.
+    expect(commands).toHaveLength(186);
   });
 
   /**

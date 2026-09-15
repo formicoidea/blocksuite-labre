@@ -84,7 +84,11 @@ export type UmlDiagramKind =
   // machines (§14.2.4). Both are Annex A frame kinds with Annex A's own
   // abbreviations.
   | 'act'
-  | 'stm';
+  | 'stm'
+  // Phase 3 — interactions (§17.2.4). Annex A's frame kind is the word
+  // `interaction`, and `sd` is the abbreviation it gives in its place: the tag
+  // every tool writes and every architect reads on a sequence diagram.
+  | 'sd';
 
 /**
  * The word written in the heading tag, per kind.
@@ -114,6 +118,9 @@ export const UML_DIAGRAM_KIND_TAG: Partial<Record<UmlDiagramKind, string>> = {
   // machine`, and `stm` is the abbreviation it gives in their place.
   act: 'act',
   stm: 'stm',
+  // Annex A's abbreviation for the interaction frame, and the third tag in the
+  // table that is not the kind spelled out: the frame kind is `interaction`.
+  sd: 'sd',
 };
 
 export type UmlDiagramProps = FrameworkBackgroundProps & {

@@ -173,16 +173,23 @@ export type UmlRole =
   | 'entry-point'
   | 'exit-point'
   | 'terminate'
+  // The interaction artefacts (§17.2.4, §17.3.4).
+  | 'lifeline'
+  | 'execution'
+  | 'destruction'
   // The written tiers of an artefact's label, as canvas text.
   | 'name'
   | 'attributes'
   | 'operations'
   | 'label'
+  | 'lifeline-ident'
   // The frames.
   | 'diagram'
   | 'subject'
   | 'partition'
   | 'region'
+  | 'fragment'
+  | 'operand'
   // The relationships.
   | 'association'
   | 'aggregation'
@@ -200,15 +207,22 @@ export type UmlRole =
   // The behaviour relationships (§15.2.4, §14.2.4.8).
   | 'control-flow'
   | 'object-flow'
-  | 'transition';
+  | 'transition'
+  // The interaction relationships (§17.4.4), and the parent the five share.
+  | 'message'
+  | 'message-sync'
+  | 'message-async'
+  | 'message-reply'
+  | 'message-create'
+  | 'message-delete';
 
 export type UmlRoleId = `uml:${UmlRole}`;
 
 /**
  * Role ids, keyed by their own name.
  *
- * Keyed by the ROLE and not by the `kind`: UML has thirty-five node kinds and
- * thirty-eight node roles, because `uml:classifier`, `uml:control-node` and
+ * Keyed by the ROLE and not by the `kind`: UML has thirty-eight node kinds and
+ * forty-one node roles, because `uml:classifier`, `uml:control-node` and
  * `uml:pseudostate` are parents nothing is ever drawn as. ({@link
  * UML_ROLE.node} is a parent too, and IS drawn — §19.4 makes a Node
  * instantiable — so it does not add a role of its own.)
@@ -254,14 +268,20 @@ export const UML_ROLE = {
   'entry-point': 'uml:entry-point',
   'exit-point': 'uml:exit-point',
   terminate: 'uml:terminate',
+  lifeline: 'uml:lifeline',
+  execution: 'uml:execution',
+  destruction: 'uml:destruction',
   name: 'uml:name',
   attributes: 'uml:attributes',
   operations: 'uml:operations',
   label: 'uml:label',
+  'lifeline-ident': 'uml:lifeline-ident',
   diagram: 'uml:diagram',
   subject: 'uml:subject',
   partition: 'uml:partition',
   region: 'uml:region',
+  fragment: 'uml:fragment',
+  operand: 'uml:operand',
   association: 'uml:association',
   aggregation: 'uml:aggregation',
   composition: 'uml:composition',
@@ -277,6 +297,12 @@ export const UML_ROLE = {
   'control-flow': 'uml:control-flow',
   'object-flow': 'uml:object-flow',
   transition: 'uml:transition',
+  message: 'uml:message',
+  'message-sync': 'uml:message-sync',
+  'message-async': 'uml:message-async',
+  'message-reply': 'uml:message-reply',
+  'message-create': 'uml:message-create',
+  'message-delete': 'uml:message-delete',
 } as const satisfies Record<UmlRole, UmlRoleId>;
 
 /**
@@ -318,6 +344,16 @@ export const umlPartitionRoleKey = roleKey(UML_ROLE.partition);
 
 /** The composite state's own key, read by `createUmlRegion` to seed its name. */
 export const umlRegionRoleKey = roleKey(UML_ROLE.region);
+
+/**
+ * The combined fragment's own key.
+ *
+ * Unlike the four above it seeds NO name — §17.6.4 writes a guard only where
+ * there is one, so `UmlFragmentElementModel.name` starts empty — and the key is
+ * exported for the toolbar and the templates, which still have to call the
+ * thing something in the user's language.
+ */
+export const umlFragmentRoleKey = roleKey(UML_ROLE.fragment);
 
 /**
  * The classifiers (§9.2, §11.4.4) — the compartmented rectangle, and the three
@@ -637,6 +673,38 @@ const ELEMENT_DEFS: readonly RoleDef[] = [
     labelKey: roleKey(UML_ROLE.terminate),
     labelFallback: 'Terminate',
   },
+  // ── The interaction artefacts (phase 3) ─────────────────────────────────
+  // §17.3.4: the participant column — a named head over a dashed spine. FLAT
+  // under nothing, and pointedly not a child of `uml:object` although its name
+  // is written with the same `name : Type` grammar (§17.3.4 reuses §9.8.4's
+  // ident): an instance specification is a thing that exists, a lifeline is a
+  // thing that TAKES PART, and the rules that police the two share nothing.
+  {
+    id: UML_ROLE.lifeline,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.lifeline),
+    labelFallback: 'Lifeline',
+  },
+  // §17.2.4's ExecutionSpecification: the thin bar drawn ON a spine saying the
+  // participant is busy for that stretch of the conversation. A node of its
+  // own rather than a decoration of the lifeline, because a lifeline may carry
+  // several and they nest — and because the author positions each one by hand.
+  {
+    id: UML_ROLE.execution,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.execution),
+    labelFallback: 'Execution',
+  },
+  // §17.2.4's DestructionOccurrenceSpecification: the X that ends a lifeline.
+  // Flat, and not a child of `uml:terminate` although both are drawn as a bare
+  // cross: a terminate pseudostate kills a state MACHINE, a destruction ends
+  // one PARTICIPANT's life in one interaction.
+  {
+    id: UML_ROLE.destruction,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.destruction),
+    labelFallback: 'Destruction',
+  },
 ];
 
 /**
@@ -692,6 +760,31 @@ const TIER_DEFS: readonly RoleDef[] = [
     labelKey: roleKey(UML_ROLE.label),
     labelFallback: 'Label',
   },
+  // §17.3.4's LIFELINE HEAD, and the reason it is a fourth tier rather than a
+  // fourth user of `uml:label`.
+  //
+  // What is written in a lifeline's head is not a name: it is a
+  // `<lifelineident>` — `order : Order`, `self`, `customers[i] : Customer` — a
+  // production the clause prints a BNF for and `parseLifelineIdent` reads back.
+  // An actor's word and a use case's phrase are prose, and the clause that
+  // draws them prints no grammar at all. Filing all three under `uml:label`
+  // would mean the two questions a tier can be asked — "is anything written
+  // here" and "does what is written parse" — could only ever be asked of the
+  // three together: the spelling rule would indict `Place an order (fast)` on
+  // an ellipse, and the naming rule would tell an author of a sequence diagram
+  // that their lifeline is an unnamed use case.
+  //
+  // FLAT, with no `parent: UML_ROLE.label`, and that is the same statement made
+  // once more: `roleIsA` would put every rule written on the label tier back on
+  // the head, which is precisely what splitting the tier was for. Hierarchy in
+  // this vocabulary is only ever the specification's own, and §17.3.4 makes a
+  // lifeline ident a kind of nothing.
+  {
+    id: UML_ROLE['lifeline-ident'],
+    kind: 'text',
+    labelKey: roleKey(UML_ROLE['lifeline-ident']),
+    labelFallback: 'Lifeline identifier',
+  },
 ];
 
 /**
@@ -740,6 +833,30 @@ const FRAME_DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: roleKey(UML_ROLE.region),
     labelFallback: 'Composite state',
+  },
+  // §17.6.4: the COMBINED FRAGMENT — the rectangle drawn round part of a
+  // conversation with `alt`, `loop` or `opt` in its corner — and, under the
+  // `ref` operator, §17.7.4's InteractionUse. A frame for the reason the
+  // partition is one: it says something ABOUT the messages inside it, and a
+  // rule written on messages must not fall on the box round them. What it
+  // holds is geometry at read time (R11), never a stored list.
+  {
+    id: UML_ROLE.fragment,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.fragment),
+    labelFallback: 'Combined fragment',
+  },
+  // One OPERAND of that fragment — the band between two dashed separators, with
+  // its own guard. Declared and never stamped on an element, exactly as
+  // `uml:classifier` is: an operand is an INSTANCE ZONE of the fragment's own
+  // plot (the mechanism the BPMN pool's lanes use), so the only thing that
+  // carries this id is a reported zone. It is here so a rule about what may sit
+  // in an operand has a name to be written against.
+  {
+    id: UML_ROLE.operand,
+    kind: 'node',
+    labelKey: roleKey(UML_ROLE.operand),
+    labelFallback: 'Operand',
   },
 ];
 
@@ -975,6 +1092,99 @@ const RELATIONSHIP_DEFS: readonly RoleDef[] = [
         'Drag from the state the machine leaves to the state it enters.',
     },
   },
+  // ── The interaction relationships (phase 3) ─────────────────────────────
+  // §17.4.4: a Message. The PARENT is verbless, exactly as `uml:association`
+  // is, and for a sharper version of the same reason — the five children below
+  // say five different things ("calls", "sends", "replies to", "creates",
+  // "destroys") and a default verb on the parent would be a sixth, claimed by
+  // whichever of them a rule happened to reach through it.
+  //
+  // The SOURCE is the sender on all five, without exception. That is the one
+  // thing a reader of a sequence diagram may never have to guess: the arrow
+  // points at the receiver, the line's height is when it happens, and a
+  // message drawn the wrong way round is the opposite exchange.
+  {
+    id: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE.message),
+    labelFallback: 'Message',
+  },
+  {
+    id: UML_ROLE['message-sync'],
+    parent: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['message-sync']),
+    labelFallback: 'Synchronous message',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['message-sync'])}.verb`,
+      verbFallback: 'calls',
+      gestureHintKey: `${roleKey(UML_ROLE['message-sync'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the sender to the receiver — the filled arrowhead lands on the receiver.',
+    },
+  },
+  {
+    id: UML_ROLE['message-async'],
+    parent: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['message-async']),
+    labelFallback: 'Asynchronous message',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['message-async'])}.verb`,
+      verbFallback: 'sends',
+      gestureHintKey: `${roleKey(UML_ROLE['message-async'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the sender to the receiver — the open arrowhead says the sender does not wait.',
+    },
+  },
+  // The dashed line back. Its source is still the SENDER — the participant the
+  // reply comes FROM, which is the one that was called — so an author draws
+  // every message the same way round and the notation sorts itself out.
+  {
+    id: UML_ROLE['message-reply'],
+    parent: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['message-reply']),
+    labelFallback: 'Reply message',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['message-reply'])}.verb`,
+      verbFallback: 'replies to',
+      gestureHintKey: `${roleKey(UML_ROLE['message-reply'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the participant that was called back to the one that called it.',
+    },
+  },
+  // §17.4.4's createMessage: the dashed arrow that lands on a lifeline's HEAD,
+  // drawn at the height the participant comes into existence.
+  {
+    id: UML_ROLE['message-create'],
+    parent: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['message-create']),
+    labelFallback: 'Create message',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['message-create'])}.verb`,
+      verbFallback: 'creates',
+      gestureHintKey: `${roleKey(UML_ROLE['message-create'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the sender to the head of the lifeline it brings into existence.',
+    },
+  },
+  // …and its opposite: the message whose arrival ends a life, drawn to the X.
+  {
+    id: UML_ROLE['message-delete'],
+    parent: UML_ROLE.message,
+    kind: 'edge',
+    labelKey: roleKey(UML_ROLE['message-delete']),
+    labelFallback: 'Delete message',
+    direction: {
+      verbKey: `${roleKey(UML_ROLE['message-delete'])}.verb`,
+      verbFallback: 'destroys',
+      gestureHintKey: `${roleKey(UML_ROLE['message-delete'])}.gesture`,
+      gestureHintFallback:
+        'Drag from the sender to the destruction mark that ends the receiver.',
+    },
+  },
 ];
 
 const DEFS: readonly RoleDef[] = [
@@ -1001,7 +1211,7 @@ export const UML_ROLES: RoleDefs = Object.assign(
  * type, so a new kind cannot land without being given a meaning.
  *
  * One kind, one role, with none collapsed — unlike C4, where four kinds are a
- * second DRAWING of a level. Here the thirty-five kinds are thirty-five
+ * second DRAWING of a level. Here the thirty-eight kinds are thirty-eight
  * different artefacts of the specification, and the three roles with no kind of
  * their own — `uml:classifier`, `uml:control-node`, `uml:pseudostate` — are
  * ancestors rather than any of them.
@@ -1047,4 +1257,8 @@ export const UML_ROLE_OF_KIND: Record<UmlNodeKind, RoleId> = {
   'entry-point': UML_ROLE['entry-point'],
   'exit-point': UML_ROLE['exit-point'],
   terminate: UML_ROLE.terminate,
+  // ── The interaction artefacts (phase 3) ─────────────────────────────────
+  lifeline: UML_ROLE.lifeline,
+  execution: UML_ROLE.execution,
+  destruction: UML_ROLE.destruction,
 };

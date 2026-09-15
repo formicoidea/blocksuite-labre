@@ -551,6 +551,114 @@ export const umlTransitionIcon = svg`<svg width="24" height="24" viewBox="0 0 24
   <path d="M5 7 H16 M5 10.5 H12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
 </svg>`;
 
+/* ── Phase 3: what a SEQUENCE diagram is made of (§17.2.4, §17.4.4) ────── */
+
+/**
+ * Lifeline — the named head with the dashed spine falling out of it (§17.2.4).
+ *
+ * The dashes are the half that matters: a head on its own is a class box, and
+ * what makes a lifeline a lifeline is that time runs down the line under it.
+ */
+export const umlLifelineIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="3.5" width="14" height="7" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M12 10.5 V21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2.4 2.4"/>
+</svg>`;
+
+/**
+ * Execution specification — the thin BAR sat on a spine (§17.2.4): the stretch
+ * of the diagram during which this participant is doing something. Drawn ON the
+ * dashes, because a bar floating beside a lifeline means nothing at all.
+ */
+export const umlExecutionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 3 V21" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.4 2.4"/>
+  <rect x="9.5" y="7" width="5" height="10" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.5"/>
+</svg>`;
+
+/**
+ * Destruction occurrence — the CROSS that ends a lifeline (§17.2.4). The spine
+ * stops at it, which is the whole statement: nothing happens to this
+ * participant afterwards.
+ */
+export const umlDestructionIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 3 V13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.4 2.4"/>
+  <path d="M7 13 L17 21 M17 13 L7 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+
+/**
+ * Combined fragment — the rectangle with the PENTAGON tag in its corner
+ * (§17.6.4), and the dashed rule that separates two operands.
+ *
+ * The cut corner and the dashed line are the two things the notation draws and
+ * nothing else does: a plain rectangle is a subject, a region or a partition.
+ */
+export const umlFragmentIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="4" width="18" height="16" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M3 4 H10 L12 6.5 V9 H3 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M3 14.5 H21" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.5 2.5"/>
+</svg>`;
+
+/**
+ * Interaction use — the same frame with `ref` in its tag (§17.7.4), drawn here
+ * as the ARROW out of the box: the glyph has no room for three letters at 24
+ * units, and "this happens somewhere else" is what the reader has to take from
+ * it. No dashed rule, which is the one thing that tells it from the fragment
+ * above: a `ref` has no operands to separate.
+ */
+export const umlInteractionUseIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="4" width="18" height="16" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M3 4 H10 L12 6.5 V9 H3 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M8.5 16 L16 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M12.5 12 L16.5 12.4 L16 16.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Synchronous message — a solid line with a FILLED arrowhead (§17.4.4): the
+ * caller waits, and the black triangle is the whole of what says so.
+ */
+export const umlMessageSyncIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 12 H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M15 8 L21.5 12 L15 16 Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Asynchronous message — the same solid line with an OPEN stick arrowhead: the
+ * caller does not wait. The one pair in this pack where getting the head's fill
+ * backwards inverts the meaning of every call on the sheet.
+ */
+export const umlMessageAsyncIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 12 H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M15 7.8 L21 12 L15 16.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/** Reply — the open head on a DASHED line, travelling back (§17.4.4). */
+export const umlMessageReplyIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M21 12 H4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2.6"/>
+  <path d="M9 7.8 L3 12 L9 16.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/**
+ * Create message — the dashed arrow landing on a lifeline's HEAD (§17.4.4).
+ * The box at the end is the point: a create message is the one message that
+ * does not arrive on a spine, because the spine does not exist until it does.
+ */
+export const umlMessageCreateIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2 10 H12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 2.6"/>
+  <path d="M9.5 6.6 L13.5 10 L9.5 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="14" y="6.5" width="8" height="7" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M18 13.5 V21" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="2.2 2.2"/>
+</svg>`;
+
+/**
+ * Delete message — the call that ends at the X (§17.4.4). The solid line with
+ * the filled head is the ordinary call; the cross is what makes it a deletion,
+ * and it is drawn here because the LINE alone cannot say so.
+ */
+export const umlMessageDeleteIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M2 12 H11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M10 8.8 L14 12 L10 15.2 Z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+  <path d="M15.5 8 L22 16 M22 8 L15.5 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+</svg>`;
+
 /* ── The two exports ───────────────────────────────────────────────────── */
 
 /**
@@ -672,4 +780,15 @@ export const UML_TOOLBOX_ICONS = {
   'uml.control-flow': umlControlFlowIcon,
   'uml.object-flow': umlObjectFlowIcon,
   'uml.transition': umlTransitionIcon,
+  /* ── Phase 3: sequence diagrams ────────────────────────────────────── */
+  'uml.lifeline': umlLifelineIcon,
+  'uml.execution': umlExecutionIcon,
+  'uml.destruction': umlDestructionIcon,
+  'uml.fragment': umlFragmentIcon,
+  'uml.interaction-use': umlInteractionUseIcon,
+  'uml.message-sync': umlMessageSyncIcon,
+  'uml.message-async': umlMessageAsyncIcon,
+  'uml.message-reply': umlMessageReplyIcon,
+  'uml.message-create': umlMessageCreateIcon,
+  'uml.message-delete': umlMessageDeleteIcon,
 } as const;

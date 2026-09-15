@@ -20,6 +20,7 @@ import {
   ShapeElementModel,
   TextElementModel,
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
   UmlNodeElementModel,
   UmlPartitionElementModel,
   UmlRegionElementModel,
@@ -58,6 +59,7 @@ export const elementsCtorMap = {
   umlSubject: UmlSubjectElementModel,
   umlPartition: UmlPartitionElementModel,
   umlRegion: UmlRegionElementModel,
+  umlFragment: UmlFragmentElementModel,
 };
 
 export {
@@ -83,6 +85,7 @@ export {
   SurfaceElementModel,
   TextElementModel,
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
   UmlNodeElementModel,
   UmlPartitionElementModel,
   UmlRegionElementModel,
@@ -119,6 +122,7 @@ export enum CanvasElementType {
   UMLSUBJECT = 'umlSubject',
   UMLPARTITION = 'umlPartition',
   UMLREGION = 'umlRegion',
+  UMLFRAGMENT = 'umlFragment',
 }
 
 export type ElementModelMap = {
@@ -149,6 +153,7 @@ export type ElementModelMap = {
   ['umlSubject']: UmlSubjectElementModel;
   ['umlPartition']: UmlPartitionElementModel;
   ['umlRegion']: UmlRegionElementModel;
+  ['umlFragment']: UmlFragmentElementModel;
 };
 
 export function isCanvasElementType(type: string): type is CanvasElementType {

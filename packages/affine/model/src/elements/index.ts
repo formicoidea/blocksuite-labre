@@ -27,6 +27,7 @@ import type { ShapeElementModel } from './shape/index.js';
 import type { TextElementModel } from './text/index.js';
 import type {
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
   UmlNodeElementModel,
   UmlPartitionElementModel,
   UmlRegionElementModel,
@@ -84,6 +85,7 @@ export type SurfaceElementModelMap = {
   umlSubject: UmlSubjectElementModel;
   umlPartition: UmlPartitionElementModel;
   umlRegion: UmlRegionElementModel;
+  umlFragment: UmlFragmentElementModel;
 };
 
 export type SurfaceTextModelMap = {

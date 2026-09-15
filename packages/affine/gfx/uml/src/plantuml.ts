@@ -1,3 +1,5 @@
+import type { UmlFragmentOperator } from '@labre/affine-model';
+
 import {
   type UmlAssociationEnd,
   formatActivityEdgeLabel,
@@ -9,10 +11,15 @@ import {
   type UmlActivityNode,
   type UmlClassifier,
   type UmlDeploymentNode,
+  type UmlInteraction,
+  type UmlLifeline,
+  type UmlMessageKind,
   type UmlModel,
   type UmlNodeBase,
   type UmlRelation,
+  type UmlTimelineEntry,
   umlCentreInside,
+  umlInteractionTimeline,
 } from './model.js';
 
 /**
@@ -293,6 +300,16 @@ function relationLine(
       // §19.4.4: "depicted using the same as normal Association links", and an
       // association is undirected, so the line carries no head either way.
       return `${from} -- ${to}${label}`;
+    case 'message-sync':
+    case 'message-async':
+    case 'message-reply':
+    case 'message-create':
+    case 'message-delete':
+      // Written by the INTERACTION section, for the reason the behaviour edges
+      // below are written by theirs — and one more besides: a message's place
+      // in the document is its place in TIME (§17.4.4), so it cannot be emitted
+      // from a list of relations at all. See {@link sequenceDocument}.
+      return '';
     case 'control-flow':
     case 'object-flow':
     case 'transition':
@@ -411,6 +428,223 @@ function arrowLine(source: string, target: string, label: string): string {
  * and one grammar spelled in two files is how a guard comes back without its
  * brackets.
  */
+
+/* ── Sequence: the arrows, the words and the blocks (§17) ─────────────── */
+
+/**
+ * §17.4.4's five arrows, in PlantUML's own spelling.
+ *
+ * The specification tells the first three apart BY THE DRAWING and PlantUML
+ * draws exactly those three: a filled head for a synchronous call, an open one
+ * for an asynchronous send, a dashed line for a reply. The other two share a
+ * drawing with the synchronous call and are told apart by what the line REACHES
+ * — a `create` lands on a participant's head, a `delete` on a cross — so each is
+ * written as the plain arrow plus the one keyword PlantUML has for that fact
+ * (`create` before it, `destroy` after it). See {@link sequenceLines}.
+ */
+const PLANTUML_MESSAGE_ARROW: Record<UmlMessageKind, string> = {
+  'message-sync': '->',
+  'message-async': '->>',
+  'message-reply': '-->',
+  'message-create': '->',
+  'message-delete': '->',
+};
+
+/**
+ * §17.6.4's interaction operators, as the block PlantUML opens for each.
+ *
+ * Six of the twelve are keywords of the language; the rest are written as
+ * `group <operator>`, which is PlantUML's own generic block and renders the word
+ * in exactly the pentagon §17.6.4 asks for. The alternative — dropping them —
+ * would export a `neg` as a plain `alt` and say the opposite of what the author
+ * drew.
+ *
+ * `ref` is not a block at all (§17.7.4 is a one-line reference, not an operator)
+ * and is written by {@link sequenceLines} as `ref over …`.
+ */
+const PLANTUML_FRAGMENT_BLOCK: Record<UmlFragmentOperator, string> = {
+  alt: 'alt',
+  opt: 'opt',
+  loop: 'loop',
+  par: 'par',
+  break: 'break',
+  critical: 'critical',
+  seq: 'group seq',
+  strict: 'group strict',
+  neg: 'group neg',
+  assert: 'group assert',
+  ignore: 'group ignore',
+  consider: 'group consider',
+  ref: 'ref',
+};
+
+/**
+ * Is this participant drawn as a STICK FIGURE?
+ *
+ * §17.3.4 draws every lifeline head as a rectangle and says nothing about
+ * actors; every sequence diagram in the wild draws the human at the left as one
+ * all the same, and PlantUML has a word for it. So the question is asked of the
+ * author's own statement and of nothing else: the classifier the lifeline is an
+ * instance of is called `Actor`, or the head carries the Annex C keyword. A
+ * participant is what falls through, which is what §17.3.4 draws.
+ */
+function isActorLifeline(lifeline: UmlLifeline): boolean {
+  if ((lifeline.type ?? '').trim().toLowerCase() === 'actor') return true;
+  return lifeline.keywords.some(
+    keyword => keyword.trim().toLowerCase() === 'actor'
+  );
+}
+
+/** `[guard]` — §17.6.4's InteractionConstraint, with the brackets it is drawn in. */
+function guardSuffix(guard: string | undefined): string {
+  const written = toPlantumlLabel(guard ?? '');
+  return written ? ` [${written}]` : '';
+}
+
+/**
+ * One Interaction as the lines of a PlantUML sequence diagram — the
+ * participants, then the conversation.
+ *
+ * The conversation is walked off {@link umlInteractionTimeline}, which is what
+ * makes the nesting come out right: an `alt` is `alt … else … end` round exactly
+ * the entries drawn in its bands, and the tree is built once, in `model.ts`, so
+ * the XMI writer's `InteractionOperand` nesting and this one's keywords cannot
+ * disagree about which branch a message is in.
+ */
+function sequenceLines(
+  interaction: UmlInteraction,
+  minter: AliasMinter,
+  aliasOf: Map<string, string>
+): { declarations: string[]; body: string[] } {
+  const declarations: string[] = [];
+
+  /** The lifeline an end of a message is on — a spine, or a bar's spine. */
+  const spineOf = new Map<string, string>();
+  for (const lifeline of interaction.lifelines) {
+    spineOf.set(lifeline.id, lifeline.id);
+  }
+  for (const execution of interaction.executions) {
+    if (execution.lifelineId) spineOf.set(execution.id, execution.lifelineId);
+  }
+  for (const destruction of interaction.destructions) {
+    if (destruction.lifelineId) {
+      spineOf.set(destruction.id, destruction.lifelineId);
+    }
+  }
+
+  for (const lifeline of interaction.lifelines) {
+    const alias = minter.mint(lifeline.name || lifeline.type || 'participant');
+    aliasOf.set(lifeline.id, alias);
+    // §17.3.4's `<name> : <Type>` written back whole: the head is one
+    // compartment, and splitting it out into two declarations is not something
+    // PlantUML has a slot for.
+    const stated = lifeline.type
+      ? `${lifeline.name} : ${lifeline.type}`
+      : lifeline.name;
+    const word = isActorLifeline(lifeline) ? 'actor' : 'participant';
+    declarations.push(
+      `${word} "${toPlantumlLabel(stated) || UNNAMED}" as ${alias}`
+    );
+  }
+
+  /** The alias an end of a message resolves to, or nothing to point at. */
+  const endAlias = (id: string): string | undefined => {
+    const spine = spineOf.get(id);
+    return spine ? aliasOf.get(spine) : undefined;
+  };
+
+  // A destruction a DELETE message already accounted for: §17.4.4 draws the
+  // cross as the end of that message, and PlantUML writes one `destroy` for the
+  // pair. Written twice, the picture would end the participant twice.
+  const crosses = new Set(interaction.destructions.map(each => each.id));
+  const consumed = new Set<string>();
+  for (const message of interaction.messages) {
+    if (message.kind === 'message-delete' && crosses.has(message.targetId)) {
+      consumed.add(message.targetId);
+    }
+  }
+
+  const body: string[] = [];
+  const write = (entries: readonly UmlTimelineEntry[], indent: string) => {
+    for (const entry of entries) {
+      switch (entry.at) {
+        case 'message': {
+          const { message } = entry;
+          const from = endAlias(message.sourceId);
+          const to = endAlias(message.targetId);
+          // An end this document has no participant for: there is nothing to
+          // draw between, exactly as an unresolved relation end is skipped.
+          if (!from || !to) break;
+          const label = message.label
+            ? ` : ${toPlantumlLabel(message.label)}`
+            : '';
+          // §17.4.4: a createMessage lands on the HEAD of a participant that
+          // does not exist yet, and `create` is PlantUML's word for that.
+          if (message.kind === 'message-create') {
+            body.push(`${indent}create ${to}`);
+          }
+          body.push(
+            `${indent}${from} ${PLANTUML_MESSAGE_ARROW[message.kind]} ${to}${label}`
+          );
+          if (message.kind === 'message-delete') {
+            body.push(`${indent}destroy ${to}`);
+          }
+          break;
+        }
+        case 'execution-start': {
+          const alias = endAlias(entry.execution.id);
+          if (alias) body.push(`${indent}activate ${alias}`);
+          break;
+        }
+        case 'execution-finish': {
+          const alias = endAlias(entry.execution.id);
+          if (alias) body.push(`${indent}deactivate ${alias}`);
+          break;
+        }
+        case 'destruction': {
+          if (consumed.has(entry.destruction.id)) break;
+          const alias = endAlias(entry.destruction.id);
+          if (alias) body.push(`${indent}destroy ${alias}`);
+          break;
+        }
+        case 'fragment': {
+          const { fragment, operands } = entry;
+          if (fragment.operator === 'ref') {
+            // §17.7.4's InteractionUse: one line naming the interaction and the
+            // lifelines it runs over. It opens no block — an InteractionUse has
+            // no contents — so anything drawn over it is written after it, at
+            // the same level, rather than being lost.
+            const over = fragment.coveredLifelineIds
+              .map(id => aliasOf.get(id))
+              .filter((alias): alias is string => Boolean(alias));
+            const named = toPlantumlLabel(fragment.name);
+            if (over.length > 0) {
+              body.push(
+                `${indent}ref over ${over.join(', ')}${named ? ` : ${named}` : ''}`
+              );
+            }
+            for (const band of operands) write(band.entries, indent);
+            break;
+          }
+          const [first, ...rest] = operands;
+          body.push(
+            `${indent}${PLANTUML_FRAGMENT_BLOCK[fragment.operator]}${guardSuffix(first?.operand.guard)}`
+          );
+          write(first?.entries ?? [], `${indent}  `);
+          for (const band of rest) {
+            body.push(`${indent}else${guardSuffix(band.operand.guard)}`);
+            write(band.entries, `${indent}  `);
+          }
+          body.push(`${indent}end`);
+          break;
+        }
+      }
+    }
+  };
+  write(umlInteractionTimeline(interaction), '');
+
+  return { declarations, body };
+}
 
 /* ── The document ─────────────────────────────────────────────────────── */
 
@@ -895,6 +1129,17 @@ export function exportPlantuml(model: UmlModel): string {
 
   if (behaviourLines.length > 0) lines.push(...behaviourLines);
 
+  // ── The sequence sheet (§17.2.4) ─────────────────────────────────────
+  //
+  // Declared here with the other artefacts and written at the end with the
+  // other arrows, for the reason the whole function is ordered this way:
+  // PlantUML resolves a participant by alias.
+  const interaction = model.interactions[0];
+  const sequence = interaction
+    ? sequenceLines(interaction, minter, aliasOf)
+    : { declarations: [], body: [] };
+  if (sequence.declarations.length > 0) lines.push(...sequence.declarations);
+
   for (const note of notes) {
     // The block form rather than `note "…" as N`: a note is prose and routinely
     // several lines, and the one-line form has nowhere to put the second one.
@@ -913,7 +1158,7 @@ export function exportPlantuml(model: UmlModel): string {
       return source && target ? relationLine(relation, source, target) : '';
     })
     .filter(Boolean);
-  const drawn = [...wiring, ...relations, ...behaviourArrows];
+  const drawn = [...wiring, ...relations, ...behaviourArrows, ...sequence.body];
   if (drawn.length > 0) lines.push('', ...drawn);
 
   lines.push('@enduml');

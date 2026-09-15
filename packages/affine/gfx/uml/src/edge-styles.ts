@@ -39,7 +39,19 @@ export type UmlEdgeRole =
   // the one a STATE MACHINE is (§14.2.4.8).
   | 'control-flow'
   | 'object-flow'
-  | 'transition';
+  | 'transition'
+  // Phase 3 — the five MESSAGES a sequence diagram is made of (§17.4.4). Five
+  // rows where the behaviour edges took three, because §17.4.4 is the one
+  // clause of the specification that tells its lines apart BY THE DRAWING: a
+  // filled arrowhead is a synchronous call, an open one is asynchronous, a
+  // dashed line is a reply. The role still carries the meaning — `create` and
+  // `delete` share a drawing with two of the three — but here the drawing is
+  // half of it.
+  | 'message-sync'
+  | 'message-async'
+  | 'message-reply'
+  | 'message-create'
+  | 'message-delete';
 
 /** The three style props an edge kind actually differs on. */
 export interface UmlEdgeStyle {
@@ -204,5 +216,56 @@ export const UML_EDGE_STYLE: Record<UmlEdgeRole, UmlEdgeStyle> = {
     strokeStyle: StrokeStyle.Solid,
     frontEndpointStyle: PointStyle.None,
     rearEndpointStyle: PointStyle.Arrow,
+  },
+  // ── Phase 3: the MESSAGES of a sequence diagram (§17.4.4) ─────────────────
+  //
+  // The one place in this table where the DRAWING carries the meaning rather
+  // than merely accompanying it. §17.4.4 is explicit, and the three shapes are
+  // the whole vocabulary of an interaction:
+  //
+  //  - a SYNCHRONOUS call is a solid line with a FILLED arrowhead — the caller
+  //    waits, and the black triangle is what says so;
+  //  - an ASYNCHRONOUS message is a solid line with an OPEN (stick) arrowhead —
+  //    the caller does not wait, and the open head is the difference;
+  //  - a REPLY is a DASHED line with an open arrowhead, travelling back.
+  //
+  // `Triangle` and `Arrow` are the library's filled triangle and its open
+  // stick head, which is exactly the pair §17.4.4 draws. Getting them the wrong
+  // way round would make every call on the diagram say the opposite of what the
+  // author meant — the one notation mistake in this pack that a reader cannot
+  // recover from, because nothing else on the line says which it is.
+  'message-sync': {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Triangle,
+  },
+  'message-async': {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  'message-reply': {
+    strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  // A CREATE message (§17.4.4) is drawn as a dashed line with an open arrowhead
+  // landing on the HEAD of the lifeline it brings into existence — the same
+  // drawing as a reply, and told apart by the role and by where it lands, which
+  // is `rules.ts`'s business rather than this table's.
+  'message-create': {
+    strokeStyle: StrokeStyle.Dash,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  // A DELETE message is an ordinary call that happens to end at the X of a
+  // destruction occurrence (§17.4.4): the line is the synchronous one, and the
+  // cross at its end is a separate mark the author drops on the spine. So it
+  // shares the sync row rather than inventing a drawing the specification does
+  // not have.
+  'message-delete': {
+    strokeStyle: StrokeStyle.Solid,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Triangle,
   },
 };

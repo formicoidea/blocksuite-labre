@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   UML_DIAGRAM_FRAME,
+  UML_FRAGMENT_FRAME,
   UML_PARTITION_FRAME_H,
   UML_PARTITION_FRAME_V,
   UML_REGION_FRAME,
@@ -17,6 +18,11 @@ import {
 } from '../background.js';
 import {
   UML_DIAGRAM_MARGIN,
+  UML_FRAGMENT_BAND,
+  UML_FRAGMENT_BORDER_WIDTH,
+  UML_FRAGMENT_BOX,
+  UML_FRAGMENT_MARGIN,
+  UML_FRAGMENT_OPERAND_DASH,
   UML_FRAME_BAND_HEIGHT,
   UML_FRAME_BORDER_WIDTH,
   UML_FRAME_HEADING_FONT_SIZE,
@@ -32,6 +38,7 @@ import {
 } from '../consts.js';
 import {
   umlDiagram,
+  umlFragment,
   umlPartition,
   umlRegion,
   umlSubject,
@@ -484,5 +491,221 @@ describe('the UML composite state', () => {
   it('is the region role, and the umlRegion element type', () => {
     expect(UML_REGION_FRAME.type).toBe('umlRegion');
     expect(UML_REGION_FRAME.role).toBe(UML_ROLE.region);
+  });
+});
+
+/**
+ * The COMBINED FRAGMENT (§17.6.4) — the second frame in the pack to wear Annex
+ * A's pentagon, and the first to carry an INSTANCE partition.
+ *
+ * It sits outside the shared `describe.each` above rather than joining it,
+ * because it breaks two of that block's assertions on purpose: it declares
+ * `instanceZones` (a fragment is cut into operands BY ITS AUTHOR, which is
+ * exactly what an instance partition is for), and it carries two labels rather
+ * than one — the operator in the tag and the guard in the plot. Both are
+ * asserted below in their own right.
+ */
+describe('the UML combined fragment', () => {
+  const W = UML_FRAGMENT_BOX.w;
+  const H = UML_FRAGMENT_BOX.h;
+
+  const split = [
+    { id: 'a', name: '[stock > 0]', size: 1 },
+    { id: 'b', name: '[else]', size: 1 },
+  ];
+
+  it('resolves every colour it names', () => {
+    const palette = UML_FRAGMENT_FRAME.chrome?.palette ?? {};
+    const refs = paletteRefs(UML_FRAGMENT_FRAME);
+    expect(refs.length).toBeGreaterThan(0);
+    for (const ref of refs) {
+      expect(Object.keys(palette), `@${ref}`).toContain(ref);
+    }
+    for (const value of Object.values(palette)) {
+      expect(value.startsWith('@')).toBe(false);
+    }
+  });
+
+  it('is the fragment role, and the umlFragment element type', () => {
+    expect(UML_FRAGMENT_FRAME.type).toBe('umlFragment');
+    expect(UML_FRAGMENT_FRAME.role).toBe(UML_ROLE.fragment);
+    expect(UML_FRAGMENT_FRAME.geometry.lockAspectRatio).toBe(false);
+    expect(UML_FRAGMENT_FRAME.geometry.resizable).toBe(true);
+    // The band's thickness is the margin it covers and never a second number —
+    // and the model's own hit test reads the very same one.
+    expect(UML_FRAGMENT_FRAME.geometry.margin.top).toBe(UML_FRAGMENT_BAND);
+  });
+
+  /**
+   * Transparent and SOLID: §17.6.4 draws one unbroken rectangle over a
+   * conversation that is already there, and the only broken lines in the
+   * picture are the ones BETWEEN the operands.
+   */
+  it('is a transparent frame with a solid square border', () => {
+    const rec = render(umlFragment, { operator: 'alt' }, W, H);
+
+    expect(rec.fills).toEqual([]);
+    expect(rec.rects).toEqual([]);
+    // The frame, then the tag drawn round the operator.
+    expect(rec.strokes).toEqual([
+      NOTATION_NEUTRALS.frameInk,
+      NOTATION_NEUTRALS.frameInk,
+    ]);
+    // No dash at all while the fragment is unsplit.
+    expect(rec.dashes).toEqual([]);
+    expect(rec.paths[0].r).toBe(0);
+  });
+
+  /**
+   * The word in the tag is the OPERATOR, and it is the whole of what a fragment
+   * says: `alt` and `loop` are one picture and two entirely different
+   * statements.
+   */
+  it('writes the operator in the tag, and nothing else in the band', () => {
+    for (const operator of ['alt', 'loop', 'ref'] as const) {
+      const rec = render(umlFragment, { operator }, W, H);
+      const [tag] = rec.texts;
+      expect(tag.text, operator).toBe(operator);
+      expect(tag.vertical).toBe(false);
+      expect(tag.x).toBe(UML_FRAGMENT_MARGIN);
+      expect(tag.y).toBeGreaterThan(0);
+      expect(tag.y).toBeLessThan(UML_FRAGMENT_BAND);
+      expect(tag.color).toBe(NOTATION_NEUTRALS.frameInk);
+    }
+  });
+
+  /**
+   * …and the pentagon is drawn round it: four segments and a `closePath`, the
+   * fifth edge being the frame's own left border, which the tag shares.
+   */
+  it('cuts the tag corner and sizes it to the measured operator', () => {
+    const rec = render(umlFragment, { operator: 'alt' }, W, H);
+    const inset = UML_FRAGMENT_BORDER_WIDTH / 2;
+    const w =
+      measured('alt', UML_FRAME_HEADING_FONT_SIZE) + UML_FRAGMENT_MARGIN * 2;
+    const h = UML_FRAGMENT_BAND - UML_FRAME_TAG_FOOT;
+    const right = inset + w;
+    const bottom = inset + h;
+
+    expect(rec.segments).toEqual([
+      { x1: inset, y1: inset, x2: right, y2: inset },
+      { x1: right, y1: inset, x2: right, y2: bottom - UML_FRAME_TAG_CUT },
+      {
+        x1: right,
+        y1: bottom - UML_FRAME_TAG_CUT,
+        x2: right - UML_FRAME_TAG_CUT,
+        y2: bottom,
+      },
+      { x1: right - UML_FRAME_TAG_CUT, y1: bottom, x2: inset, y2: bottom },
+    ]);
+  });
+
+  /**
+   * The band paints NOTHING of its own — no tint, no divider — exactly as the
+   * diagram frame's does not: what a reader sees there is the pentagon.
+   */
+  it('reserves the operator band without painting one', () => {
+    const bands = UML_FRAGMENT_FRAME.chrome?.sideBands ?? [];
+    expect(bands).toHaveLength(1);
+    expect(bands[0].side).toBe('top');
+    expect(bands[0].fill).toBeUndefined();
+    expect(bands[0].divider).toBeUndefined();
+    expect(bands[0].label?.prop).toBe('operator');
+  });
+
+  /**
+   * The OPERANDS: the BPMN pool's lanes, with two differences the notation
+   * dictates — the separators are DASHED (§17.6.4 rules its operands off with a
+   * broken line so the frame round them stays unbroken), and the guard is
+   * written in the operand's CORNER rather than down a title strip.
+   */
+  it('declares its operands as a dashed instance partition', () => {
+    const zones = UML_FRAGMENT_FRAME.instanceZones;
+    expect(zones?.prop).toBe('operands');
+    expect(zones?.stack).toBe('y');
+    expect(zones?.idPrefix).toBe('operand');
+    expect(zones?.divider?.dash).toEqual([...UML_FRAGMENT_OPERAND_DASH]);
+    // The corner placement — no title strip. See the header.
+    expect(zones?.label?.band).toBeUndefined();
+  });
+
+  it('rules a dashed separator between two operands, and writes both guards', () => {
+    const rec = render(umlFragment, { operator: 'alt', operands: split }, W, H);
+
+    // One separator for two operands — the outer edges are the frame's own.
+    expect(rec.dashes).toEqual([[...UML_FRAGMENT_OPERAND_DASH]]);
+    // …drawn across the plot, halfway down it, the two weights being equal.
+    const plot = { y0: UML_FRAGMENT_BAND, y1: H - UML_FRAGMENT_MARGIN };
+    const separator = rec.segments.find(
+      segment => segment.y1 === segment.y2 && segment.x1 < segment.x2
+    );
+    expect(separator?.y1).toBeCloseTo((plot.y0 + plot.y1) / 2);
+
+    // The operator, then a guard per operand.
+    expect(rec.texts.map(text => text.text)).toEqual([
+      'alt',
+      '[stock > 0]',
+      '[else]',
+    ]);
+  });
+
+  /**
+   * ONE guard per band, whatever the document holds.
+   *
+   * The contract `background.ts` states and `actions.ts` keeps: splitting a
+   * fragment MOVES `name` into `operands[0].name` and clears it. A document
+   * that carries BOTH — an older board, or a reader that wrote the guard in two
+   * places — would otherwise paint two strings in the very same corner, the
+   * declared `name` label and operand zero's, one over the other. This is the
+   * assertion that says the corner holds one string.
+   */
+  it('writes one guard per band when a split fragment still names one', () => {
+    const rec = render(
+      umlFragment,
+      { operator: 'alt', name: '[stock > 0]', operands: split },
+      W,
+      H
+    );
+
+    expect(rec.texts.map(text => text.text)).toEqual([
+      'alt',
+      '[stock > 0]',
+      '[else]',
+    ]);
+  });
+
+  /**
+   * Both labels are editable-label HITS — the operator so a future gesture can
+   * find it, the guard because the frame view's rename lands on it. The view
+   * takes only `name`: an operator is a closed discriminant picked from the
+   * toolbar, not free text (see `element-view.ts`).
+   */
+  it('carries the operator and the guard as its two labels', () => {
+    const hits = backgroundLabelHits(
+      UML_FRAGMENT_FRAME,
+      { operator: 'alt', name: '[stock > 0]' },
+      W,
+      H
+    );
+    expect(hits.map(hit => hit.prop).sort()).toEqual(['name', 'operator']);
+    const guard = hits.find(hit => hit.prop === 'name')!;
+    expect(
+      hitTestBackgroundLabel(
+        hits,
+        (guard.minX + guard.maxX) / 2,
+        (guard.minY + guard.maxY) / 2
+      )?.prop
+    ).toBe('name');
+  });
+
+  /** A fragment is a graph's frame like every other: no axis, no wash, no tint. */
+  it('declares no axis and no frame of reference', () => {
+    expect(UML_FRAGMENT_FRAME.axes).toBeUndefined();
+    expect(UML_FRAGMENT_FRAME.chrome?.washes).toBeUndefined();
+    expect(UML_FRAGMENT_FRAME.variantProp).toBeUndefined();
+    for (const zone of UML_FRAGMENT_FRAME.zones ?? []) {
+      expect(zone.fill, zone.id).toBeUndefined();
+      expect(zone.rect).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+    }
   });
 });

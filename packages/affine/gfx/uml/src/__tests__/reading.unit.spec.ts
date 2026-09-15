@@ -25,16 +25,19 @@ import { UML_ROLE, UML_ROLES } from '../roles.js';
  */
 
 /**
- * The frames: the sheet, and the three boundaries drawn on it — the use-case
- * subject (§18.1.4), the activity partition (§15.6.4) and the composite state's
- * region (§14.2.4). Not artefacts: what belongs to each is read back from where
- * an element SITS, which is the opposite of being read itself.
+ * The frames: the sheet, and the boundaries drawn on it — the use-case subject
+ * (§18.1.4), the activity partition (§15.6.4), the composite state's region
+ * (§14.2.4) and, since phase 3, the combined fragment (§17.6.4) with the
+ * operand bands inside it. Not artefacts: what belongs to each is read back
+ * from where an element SITS, which is the opposite of being read itself.
  */
 const FRAME_ROLES: string[] = [
   UML_ROLE.diagram,
   UML_ROLE.subject,
   UML_ROLE.partition,
   UML_ROLE.region,
+  UML_ROLE.fragment,
+  UML_ROLE.operand,
 ];
 
 /**
@@ -193,10 +196,25 @@ describe('what a UML diagram is read as', () => {
       // is. Every other behaviour artefact carries one word, or none at all.
       'uml-state',
     ]);
+    // …and phase 3's THIRD tier, which is neither: §17.3.4 prints a grammar for
+    // what goes in a lifeline's head, so the head is `uml:lifeline-ident` and
+    // the spelling rule written on it indicts nothing an actor ever wrote
+    // (`roles.ts`). The bar and the cross declare the same tier although they
+    // carry no words at all — `readElement` names the far end of a relation
+    // through the SUBJECT's `labelRole`, so a panel opened on an execution has
+    // to look for a participant's name where a participant keeps it.
+    const identified = new Set([
+      'uml-lifeline',
+      'uml-execution',
+      'uml-destruction',
+    ]);
     for (const profile of UML_READINGS) {
-      expect(profile.labelRole, profile.id).toBe(
-        named.has(profile.id) ? UML_ROLE.name : UML_ROLE.label
-      );
+      const expected = named.has(profile.id)
+        ? UML_ROLE.name
+        : identified.has(profile.id)
+          ? UML_ROLE['lifeline-ident']
+          : UML_ROLE.label;
+      expect(profile.labelRole, profile.id).toBe(expected);
     }
   });
 

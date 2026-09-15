@@ -2,23 +2,48 @@ import type { InterchangeNote } from '@labre/affine-block-surface';
 import {
   UML_DIAGRAM_KIND_TAG,
   type UmlDiagramKind,
+  type UmlFragmentOperator,
   type UmlNodeKind,
 } from '@labre/affine-model';
 
-import { UML_NODE_BOX, UML_REGION_BOX, UML_SUBJECT_BOX } from './consts.js';
+import type { UmlBox } from './component.js';
+import {
+  UML_FRAGMENT_BOX,
+  UML_NODE_BOX,
+  UML_REGION_BOX,
+  UML_SUBJECT_BOX,
+} from './consts.js';
 import {
   type UmlAssociationEnd,
   parseEndLabel,
+  parseLifelineIdent,
   parseOperation,
   parseProperty,
   parseTransition,
 } from './grammar.js';
-import { umlInventLayout } from './import.js';
+import {
+  UML_SD_COLUMN_GAP,
+  UML_SD_EVENT_STEP,
+  UML_SD_FRAGMENT_PADDING,
+  umlInventLayout,
+  umlSequenceColumn,
+  umlSequenceDestruction,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
+} from './import.js';
 import { stereotypesOf } from './keywords.js';
 import { ADORNED_RELATION_KINDS } from './model.js';
 import type {
   UmlClassifier,
+  UmlCombinedFragment,
   UmlDeploymentNode,
+  UmlDestruction,
+  UmlExecution,
+  UmlInteraction,
+  UmlLifeline,
+  UmlMessage,
+  UmlMessageKind,
   UmlModel,
   UmlNodeBase,
   UmlNote,
@@ -377,6 +402,7 @@ function blankModel(id: string): UmlModel {
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -1053,6 +1079,14 @@ function footprints(model: UmlModel) {
     for (const record of machine.finalStates) node(record, 'final-state');
     for (const record of machine.pseudostates) node(record, record.kind);
   }
+  for (const interaction of model.interactions) {
+    for (const record of interaction.lifelines) node(record, 'lifeline');
+    for (const record of interaction.executions) node(record, 'execution');
+    for (const record of interaction.destructions) node(record, 'destruction');
+    for (const record of interaction.fragments) {
+      out.push({ id: record.id, size: UML_FRAGMENT_BOX });
+    }
+  }
   for (const record of model.notes) node(record, 'note');
   return out;
 }
@@ -1129,14 +1163,723 @@ export function importPlantuml(source: string): UmlPlantumlImport {
   // in the ecosystem treats as optional.
   if (blocks.length === 0) blocks.push(lines);
 
-  const models = blocks.map((block, index) => parseBlock(block, index, note));
+  // Which of PlantUML's languages each block is written in, decided ONCE per
+  // block rather than line by line: `A --> B` is an association on a class
+  // diagram and a reply on a sequence diagram, and nothing but the block as a
+  // whole can say which (see {@link looksSequential}).
+  const models = blocks.map((block, index) =>
+    looksSequential(block)
+      ? parseSequenceBlock(block, index, note)
+      : parseBlock(block, index, note)
+  );
   for (const model of models) {
     if (footprints(model).length === 0) continue;
     notes.push({
       kind: 'invented-layout',
       sourceId: model.diagram.id,
-      message: `PlantUML carries no coordinates, so "${model.diagram.heading}" was laid out by Labre — in rows by generalization depth, with every container sized to fit what it holds. The positions are ours, not the file's.`,
+      // A sequence sheet is laid out by a different rule, and says so: §17.4.4
+      // makes the vertical axis TIME, so the order of the file's lines is the
+      // one thing about the drawing that is the author's, and the columns and
+      // the spacing are ours.
+      message:
+        model.interactions.length > 0
+          ? `PlantUML carries no coordinates, so "${model.diagram.heading}" was laid out by Labre — the participants side by side in the order the file declares them, and one step down the page per message. The ORDER is the file's; the positions are ours.`
+          : `PlantUML carries no coordinates, so "${model.diagram.heading}" was laid out by Labre — in rows by generalization depth, with every container sized to fit what it holds. The positions are ours, not the file's.`,
     });
   }
   return { models, notes };
+}
+
+/* ── Sequence diagrams (§17) ──────────────────────────────────────────── */
+
+/**
+ * The words that can only be a SEQUENCE diagram.
+ *
+ * A `.puml` does not say which of PlantUML's dozen languages a block is written
+ * in; the renderer works it out from the lines, and so does this. Every entry
+ * here is a keyword no other PlantUML diagram uses, which is what makes the test
+ * cheap and honest — an `actor` on its own is NOT in the list, because a use
+ * case diagram declares one too.
+ */
+const SEQUENCE_KEYWORD =
+  /^(participant|activate|deactivate|autonumber|destroy|create|alt|opt|loop|par|break|critical|ref\s+over|hide\s+footbox)\b/i;
+
+/**
+ * The arrow spellings that can ONLY be a message.
+ *
+ * Narrower than {@link sequenceArrow}, and the difference is the whole
+ * ambiguity: `A --> B` is a message on a sequence diagram and an ASSOCIATION on
+ * a class diagram, and the double dash is what both languages use. A SINGLE dash
+ * (`->`, `<-`) and a DOUBLED head (`->>`, `<<-`) are the two spellings no other
+ * PlantUML diagram writes, so they are the two this test asks about — a block
+ * whose only arrows are `-->` is read as a class diagram, which is what it
+ * almost always is.
+ */
+const SEQUENCE_ONLY_ARROW = /^(?:<<-{1,2}|-{1,2}>>|<-|->)$/;
+
+/**
+ * §17.4.4's five arrows, as PlantUML spells them — and the one function that
+ * tells a message from a class-diagram relationship.
+ *
+ * The drawing IS the reading, exactly as §17.4.4 says: a dashed line is a reply,
+ * an open (doubled) head is an asynchronous send, and a plain solid head is a
+ * synchronous call. `reversed` says the sender is on the RIGHT, which is what
+ * `<-` means.
+ *
+ * `undefined` for anything else — `<|--`, `o--`, `..>` — so a class diagram read
+ * by mistake as a sequence one still finds no messages in it.
+ */
+function sequenceArrow(
+  token: string
+): { kind: UmlMessageKind; reversed: boolean } | undefined {
+  const matched = /^(<<?)?(-{1,2})(>>?)?$/.exec(token);
+  if (!matched) return undefined;
+  const [, left, dashes, right] = matched;
+  // One head, never two and never none: `--` on its own is a class diagram's
+  // association, and `<->` is not a message either.
+  if ((left && right) || (!left && !right)) return undefined;
+  const open = left === '<<' || right === '>>';
+  const dashed = dashes.length >= 2;
+  return {
+    kind: dashed ? 'message-reply' : open ? 'message-async' : 'message-sync',
+    reversed: Boolean(left),
+  };
+}
+
+/** §17.6.4's operators, read back off the block keyword that opened them. */
+const FRAGMENT_OPERATOR_OF_WORD: Readonly<Record<string, UmlFragmentOperator>> =
+  {
+    alt: 'alt',
+    opt: 'opt',
+    loop: 'loop',
+    par: 'par',
+    break: 'break',
+    critical: 'critical',
+    seq: 'seq',
+    strict: 'strict',
+    neg: 'neg',
+    assert: 'assert',
+    ignore: 'ignore',
+    consider: 'consider',
+  };
+
+/**
+ * The declarations that can only be a CLASS diagram — §9's classifiers and
+ * §12's package.
+ *
+ * The veto on the arrow test below. PlantUML accepts `A -> B` inside a class
+ * block as a **directed association**, so the single dash is not the sequence's
+ * alone once a block has declared a classifier: a file that says `class A`,
+ * `class B` and `A -> B` is two classes and an arrow between them, and reading
+ * it as a conversation would turn two types into two participants. A block that
+ * declares a classifier AND writes `participant` is still a sequence — the
+ * keyword list is evidence of its own and this only narrows the arrow.
+ */
+const CLASSIFIER_DECLARATION =
+  /^(?:abstract\s+)?(?:class|interface|enum|enumeration|entity|package|namespace)\s+\S/i;
+
+/** Is this block written in PlantUML's sequence language? */
+function looksSequential(lines: readonly string[]): boolean {
+  const declaresClassifier = lines.some(raw =>
+    CLASSIFIER_DECLARATION.test(raw.trim())
+  );
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("'")) continue;
+    const title = /^title\s+(\S+)/i.exec(line);
+    if (title && KIND_OF_TAG.get(title[1]) === 'sd') return true;
+    if (SEQUENCE_KEYWORD.test(line)) return true;
+    if (declaresClassifier) continue;
+    const arrow = ARROW.exec(` ${line.replaceAll(DIRECTION_HINT, '--')} `);
+    if (arrow && SEQUENCE_ONLY_ARROW.test(arrow[1])) return true;
+  }
+  return false;
+}
+
+/** A guard, however the author bracketed it: `[x > 0]` and `x > 0` are one. */
+function unbracket(text: string | undefined): string | undefined {
+  const written = (text ?? '').trim();
+  if (!written) return undefined;
+  const inside = /^\[(.*)\]$/.exec(written);
+  const guard = (inside ? inside[1] : written).trim();
+  return guard || undefined;
+}
+
+/**
+ * The lifelines a fragment covers, as the RECTANGLE covers them: every column
+ * from the leftmost participant it touches to the rightmost, in declaration
+ * order.
+ *
+ * PlantUML names no coverage — it is derived from what the block's events
+ * touch — and the file may well touch the first and third participants and not
+ * the second. §17.6.4 draws ONE box round them, and a box reaching from the
+ * first to the third is drawn over the second whether the text mentions it or
+ * not. The span is therefore the honest reading, and the one that makes the
+ * file, the drawing and a re-export agree: `model.ts` reads coverage off the
+ * canvas as "the spine runs through the box", so a gapped list read here would
+ * come back filled in and the second export would not be the first.
+ */
+function coveredSpan(
+  order: readonly string[],
+  touched: ReadonlySet<string>
+): string[] {
+  const indices = order
+    .map((id, index) => (touched.has(id) ? index : -1))
+    .filter(index => index >= 0);
+  if (indices.length === 0) return [];
+  return order.slice(indices[0], indices[indices.length - 1] + 1);
+}
+
+/** §17.3.4's `<name> ['[' <selector> ']'] [':' <type>]`, as the IR holds it. */
+function lifelineIdentOf(text: string): { name: string; type?: string } {
+  const ident = parseLifelineIdent(text);
+  const name = ident.selector
+    ? `${ident.name ?? ''}[${ident.selector}]`
+    : (ident.name ?? '');
+  return { name, ...(ident.type ? { type: ident.type } : {}) };
+}
+
+/** One combined fragment, while its block is still open. */
+interface OpenFragment {
+  record: UmlCombinedFragment;
+  /** The slot each operand opened at, and the guard written on it. */
+  bands: { y0: number; guard?: string }[];
+  covered: Set<string>;
+}
+
+/**
+ * One `@startuml … @enduml` block written in the sequence language, read.
+ *
+ * A separate pass from {@link parseBlock} and not a mode inside it, because the
+ * two languages disagree about the same characters: `A --> B` is an association
+ * on a class diagram and a REPLY on a sequence diagram, and a reader that tried
+ * to be both would have to guess line by line instead of once per block.
+ *
+ * ## Where the coordinates come from
+ *
+ * Nowhere in the file — PlantUML carries none — so they are invented, and
+ * invented in the one shape that survives a round trip: the participants are
+ * columns {@link UML_SD_COLUMN_GAP} apart in declaration order, and every EVENT
+ * gets a slot of its own, {@link UML_SD_EVENT_STEP} below the last. A slot per
+ * event rather than per message is what stops an `activate` written after an
+ * arrow from coming back before it.
+ */
+function parseSequenceBlock(
+  lines: readonly string[],
+  blockIndex: number,
+  note: (entry: InterchangeNote) => void
+): UmlModel {
+  const model = blankModel(`plantuml-${blockIndex + 1}`);
+  const interaction: UmlInteraction = {
+    id: model.diagram.id,
+    name: '',
+    lifelines: [],
+    messages: [],
+    fragments: [],
+    executions: [],
+    destructions: [],
+  };
+  let minted = 0;
+  let slot = 0;
+  /** The next slot, consumed. */
+  const take = () => umlSequenceSlot(slot++);
+  /** The current height, without consuming a slot — for what is not an event. */
+  const here = () => umlSequenceSlot(slot);
+
+  const byAlias = new Map<string, UmlLifeline>();
+  const columnOf = new Map<string, number>();
+  /** The spines each fragment ended up covering, kept until the columns exist. */
+  const fragmentSpan = new Map<string, string[]>();
+  let titleKind: UmlDiagramKind | undefined;
+
+  /**
+   * The lifeline an alias names — declared, or minted on first use.
+   *
+   * PlantUML declares participants implicitly all the time (`Alice -> Bob` with
+   * no `participant` line above it), and the column order is the order they are
+   * first mentioned in, which is exactly what this map records. A declaration
+   * that catches up with an implicit mention updates the SAME record, so every
+   * message already read still points at it.
+   */
+  const lifelineOf = (
+    alias: string,
+    declaration?: Declaration
+  ): UmlLifeline => {
+    const known = byAlias.get(alias);
+    if (known) {
+      if (declaration) {
+        const stated = stereotypesOf(declaration.label);
+        const ident = lifelineIdentOf(stated.name);
+        known.name = ident.name;
+        known.keywords = [...declaration.stereotypes, ...stated.keywords];
+        if (ident.type) known.type = ident.type;
+      }
+      return known;
+    }
+    const stated = declaration
+      ? stereotypesOf(declaration.label)
+      : { name: alias, keywords: [] as string[], isAbstract: false };
+    const ident = lifelineIdentOf(stated.name);
+    const record: UmlLifeline = {
+      id: alias,
+      name: ident.name,
+      keywords: declaration
+        ? [...declaration.stereotypes, ...stated.keywords]
+        : stated.keywords,
+      isAbstract: stated.isAbstract,
+      ...(ident.type ? { type: ident.type } : {}),
+    };
+    byAlias.set(alias, record);
+    columnOf.set(record.id, interaction.lifelines.length);
+    interaction.lifelines.push(record);
+    return record;
+  };
+
+  /** Every open `alt`, outermost first. */
+  const open: OpenFragment[] = [];
+  /** Every open `activate`, by lifeline — PlantUML nests them. */
+  const running = new Map<string, UmlExecution[]>();
+
+  /** Everything an event touches is covered by every fragment it is inside. */
+  const touch = (...ids: (string | undefined)[]) => {
+    for (const fragment of open) {
+      for (const id of ids) if (id) fragment.covered.add(id);
+    }
+  };
+
+  let pendingCreate: string | undefined;
+  /** The arrow written immediately above, for `destroy` to claim (§17.4.4). */
+  let lastMessage: UmlMessage | undefined;
+
+  const closeFragment = () => {
+    const fragment = open.pop();
+    if (!fragment) return;
+    const y1 = take();
+    const covered =
+      fragment.covered.size > 0
+        ? coveredSpan(
+            interaction.lifelines.map(lifeline => lifeline.id),
+            fragment.covered
+          )
+        : interaction.lifelines.map(lifeline => lifeline.id);
+    fragment.record.coveredLifelineIds = covered;
+    fragment.record.operands = fragment.bands.map((band, index) => ({
+      ...(band.guard ? { guard: band.guard } : {}),
+      y0: band.y0,
+      y1: index + 1 < fragment.bands.length ? fragment.bands[index + 1].y0 : y1,
+    }));
+    const y0 = fragment.bands[0]?.y0 ?? y1;
+    fragment.record.bounds = { x: 0, y: y0, w: 0, h: Math.max(1, y1 - y0) };
+    fragmentSpan.set(fragment.record.id, covered);
+    // A nested fragment's coverage is its parent's too — the parent's box has
+    // to reach round everything drawn inside it.
+    touch(...covered);
+  };
+
+  const readMessage = (line: string): boolean => {
+    const { head, label } = splitLabel(line);
+    const text = head.replaceAll(DIRECTION_HINT, '--').trim();
+    const arrow = ARROW.exec(` ${text} `);
+    if (!arrow) return false;
+    const spelling = sequenceArrow(arrow[1]);
+    if (!spelling) return false;
+
+    const cut = text.indexOf(` ${arrow[1]} `);
+    if (cut < 0) return false;
+    const left = text
+      .slice(0, cut)
+      .trim()
+      .replace(/^"(.*)"$/, '$1');
+    let right = text.slice(cut + arrow[1].length + 2).trim();
+
+    // §17.4.4's two shorthands, written after the arrow's target: `**` creates
+    // the participant, `!!` destroys it. `++` and `--` are PlantUML's own for
+    // an activation, which is §17.2.4's bar.
+    let creates = false;
+    let destroys = false;
+    let activates = false;
+    let deactivates = false;
+    for (;;) {
+      const tail = /^(.*?)\s*(\*\*|!!|\+\+|--)$/.exec(right);
+      if (!tail) break;
+      right = tail[1].trim();
+      if (tail[2] === '**') creates = true;
+      else if (tail[2] === '!!') destroys = true;
+      else if (tail[2] === '++') activates = true;
+      else deactivates = true;
+    }
+    right = right.replace(/^"(.*)"$/, '$1');
+    if (!left || !right) return false;
+
+    const from = lifelineOf(spelling.reversed ? right : left);
+    const to = lifelineOf(spelling.reversed ? left : right);
+    touch(from.id, to.id);
+
+    const kind =
+      creates || pendingCreate === to.id ? 'message-create' : spelling.kind;
+    pendingCreate = undefined;
+
+    const message: UmlMessage = {
+      id: `${model.diagram.id}-message-${++minted}`,
+      kind,
+      sourceId: from.id,
+      targetId: to.id,
+      ...(label ? { label } : {}),
+      y: take(),
+    };
+    interaction.messages.push(message);
+    lastMessage = message;
+
+    if (destroys) {
+      const record: UmlDestruction = {
+        id: `${model.diagram.id}-destruction-${++minted}`,
+        name: '',
+        keywords: [],
+        isAbstract: false,
+        lifelineId: to.id,
+        y: take(),
+      };
+      interaction.destructions.push(record);
+      message.kind = 'message-delete';
+      message.targetId = record.id;
+      lastMessage = undefined;
+    }
+    if (activates) {
+      const record: UmlExecution = {
+        id: `${model.diagram.id}-execution-${++minted}`,
+        name: '',
+        keywords: [],
+        isAbstract: false,
+        lifelineId: to.id,
+        y0: take(),
+        y1: 0,
+      };
+      interaction.executions.push(record);
+      const stack = running.get(to.id);
+      if (stack) stack.push(record);
+      else running.set(to.id, [record]);
+    }
+    if (deactivates) {
+      const record = running.get(from.id)?.pop();
+      if (record) record.y1 = take();
+    }
+    return true;
+  };
+
+  const readSequenceNote = (line: string): boolean => {
+    if (!/^(note|rnote|hnote)\b/i.test(line)) return false;
+    const { head, label } = splitLabel(line);
+    const anchored =
+      /^(?:note|rnote|hnote)\s+(?:(?:left|right)\s+of|over)\s+([^:]+)$/i.exec(
+        head.trim()
+      );
+    const record: UmlNote = {
+      id: `${model.diagram.id}-note-${++minted}`,
+      name: '',
+      keywords: [],
+      isAbstract: false,
+      body: label ?? '',
+      // Clear of the conversation, to the right of the last column: a note is
+      // prose about the exchange rather than part of it, and a box dropped on a
+      // spine would be read as a participant.
+      bounds: {
+        x:
+          interaction.lifelines.length * UML_SD_COLUMN_GAP +
+          UML_SD_FRAGMENT_PADDING,
+        y: here(),
+        ...UML_NODE_BOX.note,
+      },
+    };
+    model.notes.push(record);
+    if (anchored) {
+      for (const each of anchored[1].split(',')) {
+        const alias = each.trim().replace(/^"(.*)"$/, '$1');
+        if (!alias) continue;
+        model.relations.push({
+          kind: 'anchor',
+          sourceId: record.id,
+          targetId: lifelineOf(alias).id,
+        });
+      }
+    }
+    return true;
+  };
+
+  const readParticipant = (line: string): boolean => {
+    const worded =
+      /^(participant|actor|boundary|control|entity|database|collections|queue)\b\s*(.*)$/i.exec(
+        line
+      );
+    if (!worded) return false;
+    const declaration = parseDeclaration(worded[2]);
+    if (!declaration) return false;
+    const word = worded[1].toLowerCase();
+    const alias = declaration.alias || declaration.label;
+    if (!alias) return false;
+    const lifeline = lifelineOf(alias, declaration);
+    // §17.3.4 draws every head as a rectangle; PlantUML's `actor` draws a stick
+    // figure, and the word is the author's own statement that this participant
+    // is a person. Kept as the Annex C keyword `plantuml.ts` reads back.
+    if (
+      word !== 'participant' &&
+      !lifeline.keywords.some(each => each.toLowerCase() === word)
+    ) {
+      lifeline.keywords = [...lifeline.keywords, word];
+    }
+    return true;
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("'")) continue;
+
+    const title = /^title\s+(.+)$/i.exec(line);
+    if (title) {
+      const words = title[1].trim().split(/\s+/);
+      const tagged = KIND_OF_TAG.get(words[0]);
+      if (tagged && words.length > 1) {
+        titleKind = tagged;
+        model.diagram.name = words.slice(1).join(' ');
+      } else {
+        model.diagram.name = title[1].trim();
+      }
+      continue;
+    }
+
+    if (/^autonumber\b/i.test(line)) {
+      note({
+        kind: 'carried',
+        element: 'autonumber',
+        message: `"${line}" numbers the messages as the renderer draws them. A Labre board writes no numbers on its arrows, so the directive is recorded here and not applied.`,
+      });
+      continue;
+    }
+
+    if (
+      /^skinparam\b/i.test(line) ||
+      line.startsWith('!') ||
+      /^(hide|show)\b/i.test(line) ||
+      /^==.*==$/.test(line) ||
+      line === '...' ||
+      /^newpage\b/i.test(line)
+    ) {
+      note({
+        kind: 'carried',
+        element: line.split(/\s+/)[0],
+        message: `"${line}" says how to DRAW the diagram. Labre's canvas has a look of its own, so the directive is recorded here and not applied.`,
+      });
+      continue;
+    }
+
+    // ── The blocks §17.6.4 draws as a rectangle with a pentagon ────────
+    const block = /^(alt|opt|loop|par|break|critical|group)\b\s*(.*)$/i.exec(
+      line
+    );
+    if (block) {
+      const word = block[1].toLowerCase();
+      const tail = block[2].trim();
+      // `group <operator>` is PlantUML's generic block and is what
+      // `plantuml.ts` writes for the six operators the language has no keyword
+      // for. The first word of its text is read back as the operator when it
+      // names one, and is the fragment's guard when it does not.
+      const generic = word === 'group' ? /^(\S+)\s*(.*)$/.exec(tail) : null;
+      const named = generic ? generic[1].toLowerCase() : word;
+      const operator = FRAGMENT_OPERATOR_OF_WORD[named];
+      const guard = unbracket(
+        operator && generic ? generic[2] : generic ? tail : tail
+      );
+      const y0 = take();
+      const record: UmlCombinedFragment = {
+        id: `${model.diagram.id}-fragment-${++minted}`,
+        name: guard ?? '',
+        keywords: [],
+        isAbstract: false,
+        operator: operator ?? 'alt',
+        operands: [],
+        coveredLifelineIds: [],
+      };
+      interaction.fragments.push(record);
+      open.push({
+        record,
+        bands: [{ y0, ...(guard ? { guard } : {}) }],
+        covered: new Set(),
+      });
+      lastMessage = undefined;
+      continue;
+    }
+
+    const separator = /^else\b\s*(.*)$/i.exec(line);
+    if (separator) {
+      const current = open[open.length - 1];
+      if (current) {
+        const guard = unbracket(separator[1]);
+        current.bands.push({ y0: take(), ...(guard ? { guard } : {}) });
+      }
+      lastMessage = undefined;
+      continue;
+    }
+
+    if (/^end\b/i.test(line)) {
+      closeFragment();
+      lastMessage = undefined;
+      continue;
+    }
+
+    // §17.7.4's InteractionUse — `ref over a, b : Name`.
+    const reference = /^ref\s+over\s+([^:]+)(?::\s*(.*))?$/i.exec(line);
+    if (reference) {
+      const over = reference[1]
+        .split(',')
+        .map(each => each.trim().replace(/^"(.*)"$/, '$1'))
+        .filter(Boolean)
+        .map(alias => lifelineOf(alias).id);
+      const y0 = take();
+      const y1 = take();
+      const record: UmlCombinedFragment = {
+        id: `${model.diagram.id}-fragment-${++minted}`,
+        name: (reference[2] ?? '').trim(),
+        keywords: [],
+        isAbstract: false,
+        operator: 'ref',
+        operands: [{ y0, y1 }],
+        coveredLifelineIds: over,
+        bounds: { x: 0, y: y0, w: 0, h: Math.max(1, y1 - y0) },
+      };
+      interaction.fragments.push(record);
+      fragmentSpan.set(record.id, over);
+      touch(...over);
+      lastMessage = undefined;
+      continue;
+    }
+
+    // ── The bar §17.2.4 draws on a spine ───────────────────────────────
+    const activation = /^(activate|deactivate)\s+(\S+)/i.exec(line);
+    if (activation) {
+      const lifeline = lifelineOf(activation[2].replace(/^"(.*)"$/, '$1'));
+      touch(lifeline.id);
+      if (activation[1].toLowerCase() === 'activate') {
+        const record: UmlExecution = {
+          id: `${model.diagram.id}-execution-${++minted}`,
+          name: '',
+          keywords: [],
+          isAbstract: false,
+          lifelineId: lifeline.id,
+          y0: take(),
+          y1: 0,
+        };
+        interaction.executions.push(record);
+        const stack = running.get(lifeline.id);
+        if (stack) stack.push(record);
+        else running.set(lifeline.id, [record]);
+      } else {
+        const record = running.get(lifeline.id)?.pop();
+        if (record) record.y1 = take();
+      }
+      lastMessage = undefined;
+      continue;
+    }
+
+    const created = /^create\s+(?:participant\s+|actor\s+)?(\S+)/i.exec(line);
+    if (created) {
+      // `create b` says the NEXT arrow lands on a participant that does not
+      // exist yet (§17.4.4's createMessage). It is not an event of its own.
+      pendingCreate = lifelineOf(created[1].replace(/^"(.*)"$/, '$1')).id;
+      continue;
+    }
+
+    const destroyed = /^destroy\s+(\S+)/i.exec(line);
+    if (destroyed) {
+      const lifeline = lifelineOf(destroyed[1].replace(/^"(.*)"$/, '$1'));
+      touch(lifeline.id);
+      const record: UmlDestruction = {
+        id: `${model.diagram.id}-destruction-${++minted}`,
+        name: '',
+        keywords: [],
+        isAbstract: false,
+        lifelineId: lifeline.id,
+        y: take(),
+      };
+      interaction.destructions.push(record);
+      // §17.4.4 draws a deleteMessage as an arrow ENDING on the cross, and
+      // PlantUML writes the pair as two lines. An arrow written immediately
+      // above, onto this very participant, is that message — which is what
+      // makes the round trip exact, since `plantuml.ts` emits exactly that pair.
+      if (
+        lastMessage &&
+        lastMessage.kind === 'message-sync' &&
+        lastMessage.targetId === lifeline.id
+      ) {
+        lastMessage.kind = 'message-delete';
+        lastMessage.targetId = record.id;
+      }
+      lastMessage = undefined;
+      continue;
+    }
+
+    if (readSequenceNote(line)) continue;
+    if (readMessage(line)) continue;
+    if (readParticipant(line)) continue;
+
+    note({
+      kind: 'carried',
+      message: `Labre does not read "${line}", so it is not on the board. The line is recorded here exactly as the file wrote it.`,
+    });
+  }
+
+  /* ── Finishing the sheet ───────────────────────────────────────────── */
+
+  // A block the file never closed: §17.6.4's rectangle still has a bottom, and
+  // the bottom of the drawing is where it is.
+  while (open.length > 0) closeFragment();
+  for (const stack of running.values()) {
+    for (const record of stack) {
+      if (record.y1 === 0) record.y1 = umlSequenceSlot(slot);
+    }
+  }
+
+  const height = umlSequenceSlot(slot) + UML_SD_EVENT_STEP;
+  const columns = new Map<string, UmlBox>();
+  for (const lifeline of interaction.lifelines) {
+    const box = umlSequenceColumn(columnOf.get(lifeline.id) ?? 0, height);
+    lifeline.bounds = box;
+    columns.set(lifeline.id, box);
+  }
+  for (const record of interaction.executions) {
+    const column = record.lifelineId
+      ? columns.get(record.lifelineId)
+      : undefined;
+    if (column) {
+      record.bounds = umlSequenceExecution(column, record.y0, record.y1);
+    }
+  }
+  for (const record of interaction.destructions) {
+    const column = record.lifelineId
+      ? columns.get(record.lifelineId)
+      : undefined;
+    if (column) record.bounds = umlSequenceDestruction(column, record.y);
+  }
+  for (const record of interaction.fragments) {
+    const span = fragmentSpan.get(record.id) ?? record.coveredLifelineIds;
+    const covered = span
+      .map(id => columns.get(id))
+      .filter((box): box is UmlBox => box !== undefined);
+    const y0 = record.bounds?.y ?? 0;
+    const y1 = y0 + (record.bounds?.h ?? UML_SD_EVENT_STEP);
+    record.bounds = umlSequenceFragment(
+      covered.length > 0 ? covered : [...columns.values()],
+      y0,
+      y1
+    );
+    if (record.coveredLifelineIds.length === 0) {
+      record.coveredLifelineIds = interaction.lifelines.map(each => each.id);
+    }
+  }
+
+  const kind: UmlDiagramKind = titleKind ?? 'sd';
+  model.diagram.kind = kind;
+  model.diagram.heading =
+    `${UML_DIAGRAM_KIND_TAG[kind] ?? kind} ${model.diagram.name}`.trim();
+  interaction.name = model.diagram.name;
+  model.interactions.push(interaction);
+  return model;
 }

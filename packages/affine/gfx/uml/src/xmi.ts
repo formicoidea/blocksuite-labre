@@ -15,13 +15,17 @@ import {
   type UmlClassifier,
   type UmlComponentNode,
   type UmlDeploymentNode,
+  type UmlInteraction,
+  type UmlMessageKind,
   type UmlModel,
   type UmlNodeBase,
   type UmlPseudostateKind,
   type UmlRegion,
   type UmlRelation,
   type UmlStateMachine,
+  type UmlTimelineEntry,
   umlCentreInside,
+  umlInteractionTimeline,
 } from './model.js';
 import {
   type XmlAttrs,
@@ -241,6 +245,17 @@ interface XmiPlan {
   classifierByName: Map<string, string>;
   /** Surface element id → the classifier kind, for the realization reading. */
   kindOf: Map<string, UmlClassifier['kind']>;
+  /**
+   * Interaction NAME → `xmi:id`, first declaration wins — what a §17.7.4
+   * `ref` resolves against.
+   *
+   * By NAME and not by id, because that is what the notation gives: an
+   * InteractionUse's box carries the name of the interaction it stands for, and
+   * a canvas holds no link from one sheet to another. Two sheets called the
+   * same thing are one name in one `uml:Model`, and document order is the
+   * tie-break everything else in this framework breaks on.
+   */
+  interactionByName: Map<string, string>;
   /** A type name nothing on the canvas answers for → its minted DataType. */
   synthesized: Map<string, string>;
 }
@@ -278,6 +293,7 @@ function planOf(models: readonly UmlModel[], ids: Ids): XmiPlan {
     idOf: new Map(),
     classifierByName: new Map(),
     kindOf: new Map(),
+    interactionByName: new Map(),
     synthesized: new Map(),
   };
 
@@ -339,6 +355,38 @@ function planOf(models: readonly UmlModel[], ids: Ids): XmiPlan {
       for (const state of machine.states) claim(state);
       for (const final of machine.finalStates) claim(final);
       for (const pseudo of machine.pseudostates) claim(pseudo);
+    }
+    // Phase 3, appended after the phase-2 claims for the reason those were
+    // appended after phase 1's: a model with no conversation on it mints
+    // nothing here and exports to exactly the bytes it exported to before these
+    // lines existed.
+    //
+    // The Interaction takes the SHEET's own id, not one of its own: §17.2.4
+    // draws the interaction as the frame, so the package and the Interaction are
+    // two elements of one sheet and each needs an id — hence the mint here
+    // beside, rather than reusing the package's.
+    for (const interaction of model.interactions) {
+      plan.idOf.set(`${interaction.id}#interaction`, ids.mint());
+      if (
+        interaction.name &&
+        !plan.interactionByName.has(interaction.name.trim())
+      ) {
+        plan.interactionByName.set(
+          interaction.name.trim(),
+          plan.idOf.get(`${interaction.id}#interaction`)!
+        );
+      }
+      for (const lifeline of interaction.lifelines) claim(lifeline);
+      for (const execution of interaction.executions) claim(execution);
+      for (const destruction of interaction.destructions) claim(destruction);
+      for (const fragment of interaction.fragments) claim(fragment);
+      // A message is claimed like an artefact: its two occurrences point back
+      // at it, and an occurrence written before the message it names is the
+      // ordinary case (§17.4 owns the Messages on the Interaction, the
+      // occurrences in the ordered fragment list).
+      for (const message of interaction.messages) {
+        plan.idOf.set(message.id, ids.mint());
+      }
     }
   }
 
@@ -1497,6 +1545,298 @@ function stateMachineElement(
   );
 }
 
+/* ── Interactions (§17) ───────────────────────────────────────────────── */
+
+/**
+ * §17.4.3's `messageSort`, which is the one attribute that says WHAT KIND of
+ * message an arrow is.
+ *
+ * A total map over {@link UmlMessageKind}, so a sixth arrow added to the union
+ * fails the build here rather than exporting as a synchronous call.
+ */
+const MESSAGE_SORT: Record<UmlMessageKind, string> = {
+  'message-sync': 'synchCall',
+  'message-async': 'asynchCall',
+  'message-reply': 'reply',
+  'message-create': 'createMessage',
+  'message-delete': 'deleteMessage',
+};
+
+/**
+ * One Interaction as a `packagedElement` — its lifelines, the ordered account of
+ * what happens on it, and its messages.
+ *
+ * ## The shape, and why the fragments are a tree
+ *
+ * §17.4.4's arrow is TWO things in the metamodel: a `Message`, owned by the
+ * Interaction, and a pair of `MessageOccurrenceSpecification`s, which are
+ * InteractionFragments and therefore live in the ORDERED `fragment` list that IS
+ * the sequence. So the `<fragment>`s are written in time order, each pointing
+ * back at its message, and the `<message>`s follow — which is where §17.4 puts
+ * them (`Interaction::message` is a containment of its own) and what lets an
+ * occurrence refer to one that has not been written yet.
+ *
+ * A CombinedFragment is a fragment like any other, and its operands OWN the
+ * fragments drawn in their bands (§17.6.4). That nesting is
+ * {@link umlInteractionTimeline}'s, computed once for both writers, which is why
+ * an `alt`'s two branches hold the same messages here as they do in the `.puml`.
+ *
+ * ## What is written for an ExecutionSpecification
+ *
+ * Three elements, because the metamodel needs three: an
+ * `ExecutionOccurrenceSpecification` where the bar starts, a
+ * `BehaviorExecutionSpecification` pointing at both ends, and a second
+ * occurrence where it finishes. §17.2.4's `start` and `finish` are
+ * OccurrenceSpecifications, not heights, and a bar written with neither would be
+ * an activation attached to no moment in the conversation.
+ */
+function interactionElement(
+  interaction: UmlInteraction,
+  plan: XmiPlan
+): XmlElement {
+  const children: XmlElement[] = [];
+
+  for (const lifeline of interaction.lifelines) {
+    // §17.3.4's `: <Type>` half, and the one fact about a lifeline the
+    // metamodel has nowhere to put: `Lifeline::represents` wants a
+    // ConnectableElement — a Property of the enclosing Classifier — and a
+    // whiteboard has drawn no such Property. The author wrote a type NAME in a
+    // head. So it travels where XMI 2.5.1 §7.9 puts what a tool knows and the
+    // metamodel does not model, exactly as an Annex C keyword does, and comes
+    // back as the same half of the same compartment.
+    const extension =
+      keywordExtension(lifeline.keywords) ??
+      (lifeline.type ? el('xmi:Extension', { extender: EXTENDER }) : undefined);
+    if (extension && lifeline.type) {
+      extension.children.push(el('represents', { name: lifeline.type }));
+    }
+    children.push(
+      el(
+        'lifeline',
+        {
+          'xmi:type': 'uml:Lifeline',
+          'xmi:id': plan.idOf.get(lifeline.id)!,
+          name: lifeline.name,
+        },
+        extension ? [extension] : []
+      )
+    );
+  }
+
+  /** The `xmi:id` of the LIFELINE an end of a message is drawn on. */
+  const spineOf = new Map<string, string>();
+  for (const lifeline of interaction.lifelines) {
+    const id = plan.idOf.get(lifeline.id);
+    if (id) spineOf.set(lifeline.id, id);
+  }
+  for (const execution of interaction.executions) {
+    const id = execution.lifelineId
+      ? plan.idOf.get(execution.lifelineId)
+      : undefined;
+    if (id) spineOf.set(execution.id, id);
+  }
+  for (const destruction of interaction.destructions) {
+    const id = destruction.lifelineId
+      ? plan.idOf.get(destruction.lifelineId)
+      : undefined;
+    if (id) spineOf.set(destruction.id, id);
+  }
+
+  // Minted before the walk, because a BehaviorExecutionSpecification names the
+  // occurrence it FINISHES at and that occurrence is written further down the
+  // list. Two passes rather than a patched string — the reason `planOf` exists.
+  const startOf = new Map<string, string>();
+  const finishOf = new Map<string, string>();
+  for (const execution of interaction.executions) {
+    startOf.set(execution.id, plan.ids.mint());
+    finishOf.set(execution.id, plan.ids.mint());
+  }
+
+  const sendOf = new Map<string, string>();
+  const receiveOf = new Map<string, string>();
+  for (const message of interaction.messages) {
+    sendOf.set(message.id, plan.ids.mint());
+    receiveOf.set(message.id, plan.ids.mint());
+  }
+
+  const fragmentsOf = (entries: readonly UmlTimelineEntry[]): XmlElement[] => {
+    const out: XmlElement[] = [];
+    for (const entry of entries) {
+      switch (entry.at) {
+        case 'message': {
+          const { message } = entry;
+          const from = spineOf.get(message.sourceId);
+          const to = spineOf.get(message.targetId);
+          const owned = plan.idOf.get(message.id)!;
+          // An occurrence covers exactly one lifeline (§17.2.4), so an end this
+          // sheet has no lifeline for writes no occurrence — and the Message
+          // below writes no `sendEvent` for it either.
+          if (from) {
+            out.push(
+              el('fragment', {
+                'xmi:type': 'uml:MessageOccurrenceSpecification',
+                'xmi:id': sendOf.get(message.id)!,
+                covered: from,
+                message: owned,
+              })
+            );
+          }
+          if (to) {
+            out.push(
+              el('fragment', {
+                'xmi:type': 'uml:MessageOccurrenceSpecification',
+                'xmi:id': receiveOf.get(message.id)!,
+                covered: to,
+                message: owned,
+              })
+            );
+          }
+          break;
+        }
+        case 'execution-start': {
+          const { execution } = entry;
+          const covered = spineOf.get(execution.id);
+          out.push(
+            el('fragment', {
+              'xmi:type': 'uml:ExecutionOccurrenceSpecification',
+              'xmi:id': startOf.get(execution.id)!,
+              ...(covered ? { covered } : {}),
+            }),
+            el('fragment', {
+              'xmi:type': 'uml:BehaviorExecutionSpecification',
+              'xmi:id': plan.idOf.get(execution.id)!,
+              ...(covered ? { covered } : {}),
+              start: startOf.get(execution.id)!,
+              finish: finishOf.get(execution.id)!,
+            })
+          );
+          break;
+        }
+        case 'execution-finish': {
+          const covered = spineOf.get(entry.execution.id);
+          out.push(
+            el('fragment', {
+              'xmi:type': 'uml:ExecutionOccurrenceSpecification',
+              'xmi:id': finishOf.get(entry.execution.id)!,
+              ...(covered ? { covered } : {}),
+            })
+          );
+          break;
+        }
+        case 'destruction': {
+          const covered = spineOf.get(entry.destruction.id);
+          out.push(
+            el('fragment', {
+              'xmi:type': 'uml:DestructionOccurrenceSpecification',
+              'xmi:id': plan.idOf.get(entry.destruction.id)!,
+              ...(covered ? { covered } : {}),
+            })
+          );
+          break;
+        }
+        case 'fragment': {
+          const { fragment, operands } = entry;
+          const covered = fragment.coveredLifelineIds
+            .map(id => plan.idOf.get(id))
+            .filter((id): id is string => Boolean(id));
+          if (fragment.operator === 'ref') {
+            // §17.7.4's InteractionUse. `refersTo` when another sheet of this
+            // document declares an Interaction of that name — which is the
+            // whole point of a `ref` — and the NAME alone when nothing here
+            // answers for it, because the author still said which interaction
+            // they meant.
+            const refersTo = plan.interactionByName.get(fragment.name.trim());
+            out.push(
+              el('fragment', {
+                'xmi:type': 'uml:InteractionUse',
+                'xmi:id': plan.idOf.get(fragment.id)!,
+                ...(fragment.name ? { name: fragment.name } : {}),
+                ...(covered.length > 0 ? { covered: covered.join(' ') } : {}),
+                ...(refersTo ? { refersTo } : {}),
+              })
+            );
+            // An InteractionUse owns no fragments, so anything drawn over it is
+            // written beside it rather than lost.
+            for (const band of operands) out.push(...fragmentsOf(band.entries));
+            break;
+          }
+          out.push(
+            el(
+              'fragment',
+              {
+                'xmi:type': 'uml:CombinedFragment',
+                'xmi:id': plan.idOf.get(fragment.id)!,
+                ...(covered.length > 0 ? { covered: covered.join(' ') } : {}),
+                interactionOperator: fragment.operator,
+              },
+              operands.map(band => {
+                const inner: XmlElement[] = [];
+                const guard = (band.operand.guard ?? '').trim();
+                if (guard) {
+                  inner.push(
+                    el(
+                      'guard',
+                      {
+                        'xmi:type': 'uml:InteractionConstraint',
+                        'xmi:id': plan.ids.mint(),
+                      },
+                      [
+                        el('specification', {
+                          'xmi:type': 'uml:LiteralString',
+                          'xmi:id': plan.ids.mint(),
+                          value: guard,
+                        }),
+                      ]
+                    )
+                  );
+                }
+                inner.push(...fragmentsOf(band.entries));
+                return el(
+                  'operand',
+                  {
+                    'xmi:type': 'uml:InteractionOperand',
+                    'xmi:id': plan.ids.mint(),
+                  },
+                  inner
+                );
+              })
+            )
+          );
+          break;
+        }
+      }
+    }
+    return out;
+  };
+
+  children.push(...fragmentsOf(umlInteractionTimeline(interaction)));
+
+  for (const message of interaction.messages) {
+    const from = spineOf.get(message.sourceId);
+    const to = spineOf.get(message.targetId);
+    children.push(
+      el('message', {
+        'xmi:type': 'uml:Message',
+        'xmi:id': plan.idOf.get(message.id)!,
+        ...(message.label ? { name: message.label } : {}),
+        messageSort: MESSAGE_SORT[message.kind],
+        ...(from ? { sendEvent: sendOf.get(message.id)! } : {}),
+        ...(to ? { receiveEvent: receiveOf.get(message.id)! } : {}),
+      })
+    );
+  }
+
+  return el(
+    'packagedElement',
+    {
+      'xmi:type': 'uml:Interaction',
+      'xmi:id': plan.idOf.get(`${interaction.id}#interaction`)!,
+      name: interaction.name,
+    },
+    children
+  );
+}
+
 /* ── Relationships that are packaged elements ─────────────────────────── */
 
 /**
@@ -1799,6 +2139,12 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
   for (const machine of model.stateMachines) {
     children.push(stateMachineElement(machine, plan));
   }
+  // §17.2 — the Interaction, a Behavior and a PackageableElement like the other
+  // two, and written after them for the reason they were written after the
+  // structural artefacts: appended, never interleaved.
+  for (const interaction of model.interactions) {
+    children.push(interactionElement(interaction, plan));
+  }
 
   // Relationships that are packaged elements in their own right, owned by the
   // diagram's package: the nearest common namespace of their two ends, which
@@ -1840,6 +2186,14 @@ function diagramPackage(model: UmlModel, plan: XmiPlan): XmlElement {
       case 'control-flow':
       case 'object-flow':
       case 'transition':
+      // …and the five MESSAGES, owned by the Interaction that holds them
+      // (`Interaction::message`) and written there in the ORDER §17.4.4 draws
+      // them in, which is a fact a list of relations does not carry.
+      case 'message-sync':
+      case 'message-async':
+      case 'message-reply':
+      case 'message-create':
+      case 'message-delete':
       // Not a model relationship at all: an anchor attaches a Comment, and it
       // is written as that Comment's `annotatedElement`.
       case 'anchor':

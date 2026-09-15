@@ -82,6 +82,8 @@ export function recordingCtx() {
 
   let mx = 0;
   let my = 0;
+  /** The dash pattern currently in force — what `getLineDash` hands back. */
+  let currentDash: number[] = [];
   // Vertical text is drawn at the origin of a translated + rotated frame.
   let frame: { x: number; y: number } | null = null;
   let rotated = false;
@@ -148,8 +150,16 @@ export function recordingCtx() {
       rects.push({ x, y, w, h, fill: ctx.fillStyle });
     }),
     setLineDash: vi.fn((dash: number[]) => {
+      currentDash = [...dash];
       if (dash.length) dashes.push(dash);
     }),
+    /**
+     * The counterpart Canvas2D has and the copies this file comes from never
+     * needed: §17.3.4's lifeline spine is the pack's first DASHED glyph, and a
+     * glyph that sets a dash puts the previous one back rather than clearing it
+     * — a restore-to-empty would be a renderer deciding what its caller had.
+     */
+    getLineDash: vi.fn(() => [...currentDash]),
     save: vi.fn(),
     restore: vi.fn(() => {
       frame = null;

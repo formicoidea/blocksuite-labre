@@ -69,6 +69,7 @@ describe('what a uml shape is created as', () => {
       'activity-final',
       'actor',
       'deep-history',
+      'destruction',
       'device',
       'entry-point',
       'execution-environment',
@@ -78,6 +79,7 @@ describe('what a uml shape is created as', () => {
       'fork',
       'initial',
       'junction',
+      'lifeline',
       'node',
       'note',
       'package',
@@ -103,6 +105,10 @@ describe('what a uml shape is created as', () => {
       'decision',
       'choice',
       'object-node',
+      // …and the phase-3 one: §17.2.4 draws an ExecutionSpecification as a
+      // thin FILLED rectangle on a lifeline's spine, which is a native rect
+      // and nothing more.
+      'execution',
     ] as const) {
       expect(GLYPH_BODY_KINDS.has(kind), kind).toBe(false);
     }

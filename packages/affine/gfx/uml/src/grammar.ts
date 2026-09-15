@@ -3,12 +3,14 @@
  *
  * ## What these read
  *
- * Seven BNFs, transcribed from UML 2.5.1 and cited where they are used. The
+ * Nine BNFs, transcribed from UML 2.5.1 and cited where they are used. The
  * first three are phase 1's, and they are the STRUCTURAL half — what a
  * compartment of a classifier says. Three more arrived with the behaviour sheets
  * and are the same discipline applied to a LINE rather than to a box: what a
  * transition, an activity edge and a state's internal compartment say. The
- * seventh is what is written beside ONE END of a line.
+ * seventh is what is written beside ONE END of a line. The last two are the
+ * sequence sheet's, and they are the same discipline applied to an INTERACTION:
+ * what a lifeline's head says and what an arrow between two of them says.
  *
  *  - **§9.5.4** (printed p. 113) — a Property:
  *    `[<visibility>] [`/`] <name> [`:` <prop-type>] [`[` <multiplicity-range> `]`]
@@ -33,6 +35,12 @@
  *  - **§14.2.4.4** (p. 320) — a State's internal activities:
  *    `<behavior-type-label> [`/` <behavior-expression>]`, the label being one of
  *    `entry`, `do` and `exit`
+ *  - **§17.3.4** (p. 572) — a Lifeline head:
+ *    `[<connectable-element-name> [`[` <selector> `]`]] [`:`
+ *     <connectable-element-type>] [<decomposition>]`, or the bare `self`
+ *  - **§17.4.4** (p. 576) — a Message label, request and reply together:
+ *    `[<assignment-target> `=`] <message-name> [`(` [<argument-list>] `)`]
+ *     [`:` <value-specification>]`, or the bare `*`
  *
  * ## Why they never throw
  *
@@ -1417,4 +1425,365 @@ export function checkEndLabelMultiplicity(
   const token = head[1].replace(/^\[/, '').replace(/\]$/, '').trim();
   if (!RANGE_ATTEMPT.test(token)) return OK;
   return checkMultiplicity(token);
+}
+
+/* ── Lifeline ident (§17.3.4) and message label (§17.4.4) ─────────────── */
+
+/**
+ * What a LIFELINE's head says, per §17.3.4 —
+ * `[<name> ['[' <selector> ']']] [':' <type>]`.
+ *
+ * Every part is optional, and the specification means it: `: Order` is an
+ * anonymous participant of a known type, `o` is a named one of no stated type,
+ * and `self` is the object that encloses the Interaction (which this parser
+ * reads as a lifeline NAMED `self` — the grammar's own alternative, kept as
+ * words rather than promoted to a flag nothing here would read).
+ *
+ * `<decomposition>` — §17.3.4's trailing `ref <interactionident> [strict]` — is
+ * NOT modelled: an interaction use is drawn on this canvas as a fragment with
+ * the `ref` operator (ADR 0022), so a decomposition written into a head has no
+ * second home and stays part of whichever part it was typed into.
+ */
+export interface UmlLifelineIdent {
+  /** `<connectable-element-name>`. Absent when the head names no participant. */
+  name?: string;
+  /** `<connectable-element-type>` — what follows the `:`. */
+  type?: string;
+  /** `<selector>` — the expression inside the `[ ]` after the name. */
+  selector?: string;
+}
+
+/**
+ * One lifeline head, per §17.3.4.
+ *
+ * Peeled from the RIGHT like every other parser here: the `:` type first (the
+ * last of the three parts), then the trailing `[ ]` selector, and what is left
+ * is the name. Splitting on the FIRST top-level `:` keeps a type expression that
+ * carries one of its own (`: Map[String, Int]`) whole, and the depth count is
+ * what keeps a selector holding a colon (`accounts[k : Key]`) out of the split.
+ *
+ * Degrades like the rest of this module: a head the grammar cannot see structure
+ * in is a lifeline NAMED exactly what the author wrote, and an empty head is an
+ * empty record rather than a throw — §17.3.4 says a `<lifelineident>` cannot be
+ * empty, and reporting that is `label-presence`'s job and not a parser's.
+ */
+export function parseLifelineIdent(
+  text: string | undefined | null
+): UmlLifelineIdent {
+  const trimmed =
+    text === null || text === undefined ? '' : String(text).trim();
+  if (!trimmed) return {};
+
+  let rest = trimmed;
+
+  let type: string | undefined;
+  const colon = indexAtTopLevel(rest, 0, char => char === ':');
+  if (colon >= 0) {
+    const named = rest.slice(colon + 1).trim();
+    if (named) type = named;
+    rest = rest.slice(0, colon).trim();
+  }
+
+  let selector: string | undefined;
+  // The same trailing `[…]` group §9.5.4 puts a multiplicity in; here the clause
+  // is §17.3.4 and what is inside is a `<selector>` expression. One regex, two
+  // productions — the shape is genuinely the same, and a second copy of it under
+  // a second name would be two things to keep in step.
+  const selectorMatch = MULTIPLICITY_GROUP.exec(rest);
+  if (selectorMatch) {
+    const inside = selectorMatch[1].trim();
+    if (inside) selector = inside;
+    rest = rest.slice(0, selectorMatch.index).trim();
+  }
+
+  const ident: UmlLifelineIdent = {};
+  if (rest) ident.name = rest;
+  if (type) ident.type = type;
+  if (selector) ident.selector = selector;
+  return ident;
+}
+
+/**
+ * What a MESSAGE's label says, per §17.4.4 — the request and the reply
+ * productions read as ONE shape, because an arrow on this canvas carries one
+ * text and the reader is not told which of the two grammars to use.
+ *
+ * `<request-message-label> ::= <message-name> ['(' [<input-argument-list>] ')']`
+ * is the reply production minus the assignment target and the return value, so a
+ * parser for the wider one reads both and a request label simply comes back with
+ * those two absent. The rule that reads this (`uml.message-syntax`) is written
+ * on `uml:message`, the parent of all five sorts, for exactly that reason.
+ */
+export interface UmlMessageLabel {
+  /** `<assignment-target>` — what is written before the `=`. */
+  assign?: string;
+  /**
+   * `<message-name>`. Always present, `''` when the label has none: the checker
+   * is what reports that, and a caller writing a file wants one slot to read.
+   */
+  name: string;
+  /**
+   * The argument list, RAW and in order — `[]` for `m()`, absent for `m`.
+   *
+   * The distinction is the clause's own: §17.4.4 says an empty pair of
+   * parentheses may still be written after the name, so "no list at all" and
+   * "an empty list" are two things an author typed differently and a writer
+   * should be able to tell apart.
+   *
+   * Each entry is the text between two top-level commas, trimmed — never parsed
+   * further. §17.4.4 admits four spellings of an argument (`v`, `-`, `n = v`,
+   * `n : v`) and what a writer does with them differs per format, so the split
+   * is shared and the reading is not.
+   */
+  args?: string[];
+  /** `<value-specification>` — what follows the `:` at the very end. */
+  returnValue?: string;
+}
+
+/**
+ * A top-level split on `,` that KEEPS the empty parts.
+ *
+ * {@link splitParameters} drops them, which is right for a WRITER — an author
+ * mid-comma has not typed a parameter yet — and is exactly what a CHECKER has to
+ * see: `place(a,,b)` is a label whose file will hold two arguments where three
+ * commas' worth were typed.
+ */
+function rawArguments(list: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const char of list) {
+    if (char === '(' || char === '[' || char === '{') depth++;
+    else if (char === ')' || char === ']' || char === '}') depth--;
+    if (char === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current);
+  return parts;
+}
+
+/**
+ * The index of §17.4.4's assignment `=` at bracket depth zero — `-1` when the
+ * label has none.
+ *
+ * Skips the COMPARISONS an argument or a value specification may hold: `==`,
+ * `!=`, `<=` and `>=` are part of an expression, and taking one for the
+ * assignment would cut a label in half at a character the author meant as
+ * arithmetic.
+ */
+function assignmentIndex(text: string): number {
+  let from = 0;
+  for (;;) {
+    const found = indexAtTopLevel(text, from, char => char === '=');
+    if (found < 0) return -1;
+    const before = text[found - 1];
+    const after = text[found + 1];
+    if (
+      after !== '=' &&
+      before !== '=' &&
+      before !== '!' &&
+      before !== '<' &&
+      before !== '>'
+    ) {
+      return found;
+    }
+    from = found + 1;
+  }
+}
+
+/**
+ * One message label, per §17.4.4.
+ *
+ * The parentheses are the anchor, exactly as they are for an operation
+ * ({@link parseOperation}): everything before the `(` is the assignment target
+ * and the name, everything inside is the argument list, and everything after is
+ * the optional `: <value-specification>`. A label with no parentheses is split
+ * on its first top-level `:` instead, so `ok : true` still says what it says.
+ *
+ * `*` — §17.4.4's shorthand for "a message of any type" — comes back as a
+ * message NAMED `*`. That is the degradation contract of this module rather than
+ * a reading of the clause: the shorthand stands for a combined fragment this
+ * canvas does not draw (ADR 0022), so the honest thing is to keep the author's
+ * character and let the writers pass it through.
+ */
+export function parseMessageLabel(
+  text: string | undefined | null
+): UmlMessageLabel {
+  const trimmed =
+    text === null || text === undefined ? '' : String(text).trim();
+  if (!trimmed) return { name: '' };
+
+  let rest = trimmed;
+  let args: string[] | undefined;
+  let returnValue: string | undefined;
+
+  const open = rest.indexOf('(');
+  const close = open >= 0 ? matchingParen(rest, open) : -1;
+  if (open >= 0 && close >= 0) {
+    args = splitParameters(rest.slice(open + 1, close));
+    const tail = rest.slice(close + 1).trim();
+    if (tail.startsWith(':')) {
+      const value = tail.slice(1).trim();
+      if (value) returnValue = value;
+    }
+    rest = rest.slice(0, open).trim();
+  } else {
+    const colon = indexAtTopLevel(rest, 0, char => char === ':');
+    if (colon >= 0) {
+      const value = rest.slice(colon + 1).trim();
+      if (value) returnValue = value;
+      rest = rest.slice(0, colon).trim();
+    }
+  }
+
+  let assign: string | undefined;
+  const equals = assignmentIndex(rest);
+  if (equals >= 0) {
+    const target = rest.slice(0, equals).trim();
+    if (target) assign = target;
+    rest = rest.slice(equals + 1).trim();
+  }
+
+  const label: UmlMessageLabel = { name: rest };
+  if (assign) label.assign = assign;
+  if (args !== undefined) label.args = args;
+  if (returnValue) label.returnValue = returnValue;
+  return label;
+}
+
+/**
+ * One lifeline head, checked against §17.3.4 —
+ * `[<name> ['[' <selector> ']']] [':' <type>]`.
+ *
+ * Built on {@link parseLifelineIdent} and changing nothing about it. An empty
+ * head is `ok` here even though §17.3.4 says a `<lifelineident>` cannot be
+ * empty: the family that calls this never passes an empty line, and "this
+ * lifeline has no name" is a question `label-presence` already asks with its own
+ * id and its own sentence (`uml.unnamed-lifeline`). Two rules reporting one
+ * emptied head would be two brackets on one word to fix.
+ *
+ * ## The parenthesis case
+ *
+ * `place(order)` typed into a lifeline head is a MESSAGE label written on the
+ * wrong artefact, which is the same mistake — and the same sentence — that
+ * {@link checkPropertyLine} catches when an operation is typed into an attribute
+ * compartment. §17.3.4 gives a head no parentheses at all.
+ */
+export function checkLifelineIdent(
+  line: string | undefined | null
+): UmlSyntaxCheck {
+  const text = line === null || line === undefined ? '' : String(line).trim();
+  if (!text) return OK;
+  if (unbalanced(text)) return bad('a bracket is never closed');
+  // §17.3.4's own alternative, whole and on its own.
+  if (text === 'self') return OK;
+
+  const colon = indexAtTopLevel(text, 0, char => char === ':');
+  if (colon >= 0 && text.slice(colon + 1).trim() === '') {
+    return bad('nothing follows the ":"');
+  }
+
+  // …and ONE colon, which is the production's own count: §17.3.4 writes
+  // `[<name>] [: <class-name>]` and nothing after the class name. A second
+  // top-level colon does not make the parse throw — `parseLifelineIdent` takes
+  // everything past the first one as the type, which is how `: :` comes back as
+  // a participant of class ":" — so this is the one case where the check is
+  // stricter than "the parse lost something", and it is stricter about a
+  // character rather than about a spelling. The bracketed depth is what keeps a
+  // type expression carrying its own colon (`: Map[K : V]`) out of it.
+  if (colon >= 0) {
+    const type = text.slice(colon + 1);
+    if (indexAtTopLevel(type, 0, char => char === ':') >= 0) {
+      return bad('a lifeline head carries one ":", and this one has two');
+    }
+  }
+
+  const head = colon >= 0 ? text.slice(0, colon).trim() : text;
+  if (head.includes('(')) {
+    return bad(
+      'a lifeline head carries no parentheses — this reads as a message label'
+    );
+  }
+
+  const selectorMatch = MULTIPLICITY_GROUP.exec(head);
+  if (selectorMatch && selectorMatch[1].trim() === '') {
+    return bad('the [ ] selector is empty');
+  }
+
+  const ident = parseLifelineIdent(text);
+  if (ident.name === undefined && ident.type === undefined) {
+    return bad('there is no name and no type');
+  }
+  return OK;
+}
+
+/**
+ * One message label, checked against §17.4.4 — the request and the reply
+ * productions together, since the arrow carries one text.
+ *
+ * Built on {@link parseMessageLabel} and changing nothing about it. An EMPTY
+ * label is `ok`, and that is the clause's own reading twice over: §17.4.4 makes
+ * the label optional, and a sequence diagram is drawn arrows-first with the
+ * words added afterwards. `*` is `ok` for the same reason
+ * {@link parseMessageLabel} keeps it — it is a spelling the specification
+ * prints.
+ *
+ * Reports exactly the four ways the lenient parse LOSES something: a bracket
+ * still open, an argument between two commas, text after the `)` that is neither
+ * a return value nor nothing, and a `:` or an `=` with nothing on the side that
+ * has to carry words.
+ */
+export function checkMessageLabel(
+  line: string | undefined | null
+): UmlSyntaxCheck {
+  const text = line === null || line === undefined ? '' : String(line).trim();
+  if (!text) return OK;
+  if (text === '*') return OK;
+  if (unbalanced(text)) return bad('a bracket is never closed');
+
+  let head = text;
+  const open = text.indexOf('(');
+  // An unclosed `(` never reaches here: `unbalanced` has already answered.
+  const close = open >= 0 ? matchingParen(text, open) : -1;
+  if (open >= 0 && close >= 0) {
+    const list = text.slice(open + 1, close);
+    if (
+      list.trim() !== '' &&
+      rawArguments(list).some(part => part.trim() === '')
+    ) {
+      return bad('an argument between two commas is empty');
+    }
+
+    const tail = text.slice(close + 1).trim();
+    if (tail !== '' && !tail.startsWith(':')) {
+      return bad('the text after the ")" is neither a ":" value nor nothing');
+    }
+    if (tail.startsWith(':') && tail.slice(1).trim() === '') {
+      return bad('nothing follows the ":"');
+    }
+    head = text.slice(0, open).trim();
+  } else {
+    const colon = indexAtTopLevel(text, 0, char => char === ':');
+    if (colon >= 0) {
+      if (text.slice(colon + 1).trim() === '') {
+        return bad('nothing follows the ":"');
+      }
+      head = text.slice(0, colon).trim();
+    }
+  }
+
+  const equals = assignmentIndex(head);
+  if (equals >= 0) {
+    if (head.slice(0, equals).trim() === '') {
+      return bad('nothing precedes the "="');
+    }
+    head = head.slice(equals + 1).trim();
+  }
+
+  if (head === '') return bad('there is no message name');
+  return OK;
 }

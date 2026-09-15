@@ -9,6 +9,7 @@ import {
   TextAlign,
   type UmlDiagramKind,
   UmlDiagramElementModel,
+  type UmlFragmentOperator,
   type UmlNodeKind,
 } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
@@ -22,11 +23,16 @@ import {
   type SurfaceBlockModel,
 } from '@labre/std/gfx';
 
-import { type UmlBox, umlCompartmentBoxes } from './component.js';
+import {
+  type UmlBox,
+  umlCompartmentBoxes,
+  umlLabelRoleOf,
+} from './component.js';
 import {
   UML_BODY_FONT_SIZE,
   UML_DIAGRAM_BOX,
   UML_EDGE_WIDTH,
+  UML_FRAGMENT_BOX,
   UML_INK,
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
@@ -235,6 +241,87 @@ export function createUmlRegion(std: BlockStdScope) {
   finish(gfx, id);
 }
 
+/* ── Phase 3: the combined fragment (§17.6.4) and the interaction use ───── */
+
+/**
+ * Create a COMBINED FRAGMENT — the box §17.6.4 draws round the part of an
+ * interaction that only happens sometimes, or happens repeatedly, or happens in
+ * parallel with something else.
+ *
+ * ## Why the operator is a parameter and the name is not a title
+ *
+ * §17.6.4 draws the fragment as a rectangle with a pentagon tag in its
+ * top-left corner holding the INTERACTION OPERATOR — `alt`, `opt`, `loop`,
+ * `par` — and that word is what the frame IS. It is written here rather than
+ * left to the model's default for the same reason `createUmlDiagram` writes a
+ * kind: the tag has to have something in it from the first frame the author
+ * draws, and the picker on the fragment's own row is what changes it
+ * afterwards.
+ *
+ * ## Nothing is NAMED, which is the one place this frame differs from the other
+ * three
+ *
+ * A diagram, a subject, a partition and a region are all seeded with a default
+ * name through the translation seam. This one is not, and the model says why in
+ * as many words: its `name` is the GUARD of the first operand — §17.6.4's
+ * `[condition]` — or, under `ref`, the name of the interaction being referred
+ * to (§17.7.4), and the notation draws a guard only where there is one. An
+ * `alt` born carrying `[condition]` would be a condition the author never
+ * wrote, sitting on the picture until somebody noticed and deleted it. So the
+ * field is left at the model's empty default and the author writes the guard
+ * into the band on a double-click, exactly as a state's behaviour compartment
+ * is seeded empty for the same reason (§14.2.4).
+ *
+ * ## One frame, no operands
+ *
+ * A fresh fragment has ONE zone and therefore no `operands` at all — the same
+ * promise a BPMN pool makes about its lanes, and the same bytes: nothing is
+ * written until the author asks for a second operand from the row, and the
+ * dashed separator §17.6.4 draws appears with it. An `alt` with one branch is
+ * the honest first draft of an `alt`, and a stencil that seeded two would be
+ * putting a branch on the sheet nobody asked for.
+ */
+export function createUmlFragment(
+  std: BlockStdScope,
+  operator: UmlFragmentOperator = 'alt'
+) {
+  const gfx = gfxOf(std);
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { w, h } = UML_FRAGMENT_BOX;
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+  const id = surface.addElement({
+    type: 'umlFragment',
+    role: UML_ROLE.fragment,
+    operator,
+    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+  });
+  finish(gfx, id);
+}
+
+/**
+ * Create an INTERACTION USE — §17.7.4's `ref` frame, the box that says "and
+ * here the sequence described on another sheet happens".
+ *
+ * The same element as {@link createUmlFragment} with a different operator, and
+ * that is §17.7.4's own doing rather than an economy: an InteractionUse is
+ * drawn as the very rectangle a combined fragment is, with `ref` in the
+ * pentagon instead of `alt`, and the name of the referenced interaction in the
+ * fragment's own `name` — which this pack anchors where every other guard is
+ * written, at the top-left of the plot, rather than centred as §17.7.4's figure
+ * draws it. Giving it an element of its own would mean two things to
+ * select, two rows, two sets of rules and two exporters for one picture.
+ *
+ * It has a COMMAND of its own all the same, because it is a different modelling
+ * act: an author reaching for `ref` is pointing at another diagram, not
+ * branching this one, and making them draw an `alt` and then change the
+ * operator would be hiding a gesture behind a dropdown.
+ */
+export function createUmlInteractionUse(std: BlockStdScope) {
+  createUmlFragment(std, 'ref');
+}
+
 /* ── The artefacts ─────────────────────────────────────────────────────── */
 
 /**
@@ -317,7 +404,21 @@ export type UmlGlyphKind =
   | 'deep-history'
   | 'entry-point'
   | 'exit-point'
-  | 'terminate';
+  | 'terminate'
+  // Phase 3 — the SEQUENCE vocabulary (§17.2.4). Three more pictures, and not
+  // one of them is a rectangle with lines across it:
+  //
+  //  - a **lifeline** is a named head with a dashed spine falling out of it,
+  //    and the element is the SPINE — the head is painted across the top of a
+  //    16-unit column so that a message can attach at the height it happens at.
+  //    Its `uml:lifeline-ident` goes in the head, which is the only part a word
+  //    fits in (`component.ts`, {@link UML_HEAD_LABEL_KINDS});
+  //  - an **execution** is a thin bar sat on that spine, and a **destruction**
+  //    is the cross that ends it. Both are marks: {@link UML_UNLABELLED_KINDS}
+  //    carries them, so both arrive as the shape and nothing else.
+  | 'lifeline'
+  | 'execution'
+  | 'destruction';
 
 /**
  * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
@@ -445,7 +546,10 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
   const textId = addTier(
     surface,
     gfx.layer.generateIndex(),
-    isLabel ? UML_ROLE.label : UML_ROLE.name,
+    // WHICH label role is the kind's own answer, not this file's: a lifeline's
+    // head carries `uml:lifeline-ident` and every other single word carries
+    // `uml:label` (`component.ts`, {@link umlLabelRoleOf}).
+    isLabel ? umlLabelRoleOf(kind) : UML_ROLE.name,
     UML_NAME_SEED[kind],
     box,
     {

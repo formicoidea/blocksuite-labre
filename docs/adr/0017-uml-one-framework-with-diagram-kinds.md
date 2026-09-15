@@ -61,11 +61,11 @@ than a flag that removes the tool.
 
 ### 2. Scope, by kind and by phase
 
-| Phase         | Kinds                                                                          |
-| ------------- | ------------------------------------------------------------------------------ |
-| 1 (this pack) | class, package (`pkg`), object (`obj`), use case (`uc`)                        |
-| 2             | component (`cmp`), deployment (`dep`), activity (`act`), state machine (`stm`) |
-| 3             | interaction / sequence (`sd`)                                                  |
+| Phase         | Kinds                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| 1 (this pack) | class, package (`pkg`), object (`obj`), use case (`uc`)                                       |
+| 2             | component (`cmp`), deployment (`dep`), activity (`act`), state machine (`stm`)                |
+| 3             | interaction / sequence (`sd`) — shipped, scope in [0022](0022-uml-sequence-diagrams-scope.md) |
 
 Each phase **appends values** to `UmlDiagramKind` and `UmlNodeKind`. Appending a
 value to a string union is additive: no new field, no schema change, no
@@ -186,3 +186,18 @@ is what `add-a-framework/01-definition-of-done.md` and
   should have stayed one will not be stopped by CI; they will be stopped, if at
   all, at review. That is accepted: the alternative is a test that has to encode
   what a notation means.
+
+## Amendments
+
+**2026-09-15 (tranche I).** Phase 3 shipped, and §2's table is now complete:
+the nine kinds are `class`, `pkg`, `obj`, `uc`, `cmp`, `dep`, `act`, `stm` and
+`sd`. What `sd` covers, what it deliberately leaves out (gates, lost and found
+messages, coregions, continuations, state invariants, duration and time
+constraints, general ordering, nested-fragment semantics, `refersTo`
+resolution) and why a lifeline is modelled as a narrow column are recorded in
+[0022](0022-uml-sequence-diagrams-scope.md). The permanent exclusions of §2
+stand unchanged; 0022 restates the two of them that §17 draws inside its own
+clause (interaction overview and timing) so a reader of that clause finds them.
+§7's "no importer in phase 1" was already closed by
+[0019](0019-uml-import-formats.md); phase 3 adds no capability, only sequence
+content to the three formats already declared.

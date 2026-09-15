@@ -1,7 +1,11 @@
 import {
   UML_DIAGRAM_KIND_TAG,
+  UML_FRAGMENT_BAND,
   UML_FRAME_BAND_HEIGHT,
+  UML_LIFELINE_HEAD,
   type UmlDiagramKind,
+  type UmlFragmentOperand,
+  type UmlFragmentOperator,
   type UmlNodeKind,
 } from '@labre/affine-model';
 
@@ -21,6 +25,7 @@ import {
   parseActivityEdge,
   parseCompartment,
   parseEndLabel,
+  parseLifelineIdent,
   parseOperation,
   parseProperty,
   parseStateBehavior,
@@ -82,9 +87,23 @@ export interface UmlSourceElement extends UmlComponentElement {
   elementBound?: { x: number; y: number; w: number; h: number };
   /** A group's members. */
   childIds?: readonly string[];
-  /** A connector's ends. */
-  source?: { id?: string } | null;
-  target?: { id?: string } | null;
+  /**
+   * A connector's ends.
+   *
+   * `position` is the RELATIVE point the end is anchored at on the element it
+   * touches — `[0.5, 0.5]` for a centre anchor, `[0, 0.35]` for a message
+   * attached a third of the way down a lifeline's left edge. Read for one thing
+   * only, and it is the thing a sequence diagram is made of: §17.4.4 says the
+   * HEIGHT an arrow is drawn at is WHEN it happens, and that height is stored
+   * here rather than derived — a connector's own bound is computed by the router
+   * and reads `[0,0,0,0]` on a freshly loaded document.
+   */
+  source?: { id?: string; position?: readonly number[] } | null;
+  target?: { id?: string; position?: readonly number[] } | null;
+  /** A `umlFragment`'s interaction operator (§17.6.4). */
+  operator?: string;
+  /** A `umlFragment`'s operand bands, top to bottom (§17.6.4). */
+  operands?: readonly UmlFragmentOperand[];
   /**
    * The two PER-END labels of a connector (ADR 0020), beside `text`.
    *
@@ -257,7 +276,21 @@ export type UmlRelationKind =
   // nothing.
   | 'control-flow'
   | 'object-flow'
-  | 'transition';
+  | 'transition'
+  // Phase 3 — the five MESSAGES of §17.4.4.
+  //
+  // In this union for the reason the three behaviour edges above are, and the
+  // reason is the same sentence: {@link RELATION_OF_ROLE} is what a connector's
+  // role is read against, so a message missing here would make every arrow on a
+  // sequence sheet look like an untyped connector, warn an author about a line
+  // they drew correctly, and export nothing. Neither writer emits one from
+  // {@link UmlModel.relations} — a message is written by the
+  // {@link UmlInteraction} that owns it, where its POSITION IN TIME is known.
+  | 'message-sync'
+  | 'message-async'
+  | 'message-reply'
+  | 'message-create'
+  | 'message-delete';
 
 /** One connector, once both of its ends are known artefacts of this diagram. */
 export interface UmlRelation {
@@ -490,6 +523,158 @@ export interface UmlStateMachine {
   transitions: UmlTransition[];
 }
 
+/* ── The interaction IR (§17.2.4 sequence diagrams) ───────────────────────── */
+
+/**
+ * §17.4.3's `messageSort`, as the five arrows an `sd` sheet is drawn with.
+ *
+ * A projection of {@link UmlRelationKind} rather than a union of its own, for
+ * the reason {@link UmlActivityEdge.kind} is one: a message IS a connector on
+ * the canvas, read off the same role table in the same pass, and two spellings
+ * of the same five words would be two things to keep in step.
+ */
+export type UmlMessageKind = Extract<
+  UmlRelationKind,
+  | 'message-sync'
+  | 'message-async'
+  | 'message-reply'
+  | 'message-create'
+  | 'message-delete'
+>;
+
+/**
+ * A Lifeline (§17.3) — the participant column: a named head over a dashed
+ * spine.
+ *
+ * `name` and `type` are the two halves of §17.3.4's `<name> : <Type>`, split by
+ * `parseLifelineIdent` — the same grammar `keywords.ts` seeds a fresh head
+ * with. `type` is absent when the author wrote a bare participant name, which
+ * is most of them.
+ */
+export interface UmlLifeline extends UmlNodeBase {
+  /** The Classifier this participant is an instance of (§17.3.4). */
+  type?: string;
+}
+
+/**
+ * One Message (§17.4) — its two ends, its label, and WHEN it happens.
+ *
+ * ## Why `y` is on the record and the list is sorted by it
+ *
+ * Because on a sequence diagram the vertical axis IS time (§17.4.4: "every line
+ * fragment is either horizontal or downwards"), and every writer needs the
+ * order rather than the height: XMI serializes a pair of
+ * `MessageOccurrenceSpecification`s per message and an Interaction's `fragment`
+ * list is READ IN ORDER, PlantUML's whole syntax is one message per line top to
+ * bottom. So the canvas's one statement about sequence — the height an arrow was
+ * drawn at — is turned into an order here, once, and the writers take a list.
+ *
+ * `sourceId` and `targetId` are the ids the connector actually resolves to,
+ * which is a LIFELINE or an EXECUTION ({@link UmlExecution}): §17.4.4 draws an
+ * arrow onto the bar as readily as onto the spine, and a reading that snapped
+ * every end to a lifeline would lose which activation the author aimed at.
+ * A writer that needs the covering lifeline resolves it through
+ * {@link UmlExecution.lifelineId}.
+ */
+export interface UmlMessage {
+  /** The connector's own surface id — what a report names it by. */
+  id: string;
+  kind: UmlMessageKind;
+  sourceId: string;
+  targetId: string;
+  /** The connector's centre text: §17.4.4's message label, as written. */
+  label?: string;
+  /** The height it is drawn at — see the docblock. */
+  y: number;
+}
+
+/**
+ * One InteractionOperand (§17.6.4) — a horizontal band of a combined fragment,
+ * separated from the next by a dashed line.
+ *
+ * `guard` is §17.6.4's `[…]` InteractionConstraint WITHOUT its brackets, the
+ * same way {@link UmlActivityEdge.guard} and {@link UmlTransition.guard} carry
+ * theirs: the brackets are the notation's delimiter, and a writer that had to
+ * strip them would be parsing its own model. The canvas keeps them — they are
+ * what the author typed and what the renderer paints — and
+ * {@link umlGuardText} takes exactly one pair off on the way in here.
+ *
+ * `y0` and `y1` are the band's own top and bottom in canvas units, because that
+ * is what decides which messages are inside WHICH operand — an `alt`'s two
+ * branches are told apart by nothing else.
+ */
+export interface UmlInteractionOperand {
+  guard?: string;
+  y0: number;
+  y1: number;
+}
+
+/**
+ * A CombinedFragment (§17.6) — the rectangle with an operator in its corner —
+ * and, under the `ref` operator, §17.7's InteractionUse.
+ *
+ * ONE record for both, because the canvas draws one element for both
+ * (`UmlFragmentElementModel`): §17.7.4's InteractionUse is the same rectangle
+ * with the same pentagon, and every tool offers it from the same menu. The
+ * writers branch on `operator === 'ref'`, which is one line each.
+ *
+ * `name` is the fragment's own word — the first operand's guard on an `alt`,
+ * the referenced interaction's name on a `ref`.
+ *
+ * `coveredLifelineIds` is GEOMETRY, like every other membership in this file:
+ * a fragment covers the lifelines whose spine runs through it, because that is
+ * what §17.6.4 draws and a canvas holds no second statement about it.
+ */
+export interface UmlCombinedFragment extends UmlNodeBase {
+  operator: UmlFragmentOperator;
+  operands: UmlInteractionOperand[];
+  coveredLifelineIds: string[];
+}
+
+/**
+ * An ExecutionSpecification (§17.2.4) — the thin bar saying the participant is
+ * busy between two occurrences.
+ *
+ * `lifelineId` is the spine the bar sits ON, resolved by measuring
+ * ({@link umlLifelineAt}): a bar is a plain node and the canvas holds no
+ * parent link, exactly as a port's owner and a lollipop's component are read by
+ * measuring. Absent for a bar drawn off every spine — which is on the drawing
+ * and in no file.
+ */
+export interface UmlExecution extends UmlNodeBase {
+  lifelineId?: string;
+  /** The occurrence it starts at. */
+  y0: number;
+  /** The occurrence it finishes at. */
+  y1: number;
+}
+
+/** A DestructionOccurrenceSpecification (§17.2.4) — the X a lifeline ends at. */
+export interface UmlDestruction extends UmlNodeBase {
+  lifelineId?: string;
+  y: number;
+}
+
+/**
+ * One Interaction — the whole of what an `sd` sheet says.
+ *
+ * {@link UmlActivity}'s and {@link UmlStateMachine}'s twin, down to the reading
+ * that the FRAME IS THE INTERACTION: §17.2.4 draws the interaction as a
+ * rectangle with `sd <name>` in its corner, which is Annex A's frame, which is
+ * the frame this model was read off.
+ */
+export interface UmlInteraction {
+  /** The diagram frame's surface id — the Interaction IS the sheet. */
+  id: string;
+  name: string;
+  lifelines: UmlLifeline[];
+  /** ORDERED by `y`: top to bottom is earlier to later (§17.4.4). */
+  messages: UmlMessage[];
+  fragments: UmlCombinedFragment[];
+  executions: UmlExecution[];
+  destructions: UmlDestruction[];
+}
+
 /** One diagram, as everything the writers need and nothing else. */
 export interface UmlModel {
   diagram: {
@@ -537,6 +722,8 @@ export interface UmlModel {
   activities: UmlActivity[];
   /** §14.2 — the StateMachine this sheet draws, or nothing. The same shape. */
   stateMachines: UmlStateMachine[];
+  /** §17.2 — the Interaction this sheet draws, or nothing. The same shape. */
+  interactions: UmlInteraction[];
   relations: UmlRelation[];
   /**
    * What the READING could not make sense of, one line each, in the user's
@@ -578,7 +765,21 @@ const RELATION_ROLE: Record<UmlRelationKind, string> = {
   'control-flow': UML_ROLE['control-flow'],
   'object-flow': UML_ROLE['object-flow'],
   transition: UML_ROLE.transition,
+  'message-sync': UML_ROLE['message-sync'],
+  'message-async': UML_ROLE['message-async'],
+  'message-reply': UML_ROLE['message-reply'],
+  'message-create': UML_ROLE['message-create'],
+  'message-delete': UML_ROLE['message-delete'],
 };
+
+/** The five message kinds, as a set — what tells a message from a relation. */
+const MESSAGE_KINDS: ReadonlySet<UmlRelationKind> = new Set<UmlRelationKind>([
+  'message-sync',
+  'message-async',
+  'message-reply',
+  'message-create',
+  'message-delete',
+]);
 
 const RELATION_OF_ROLE = new Map<string, UmlRelationKind>(
   Object.entries(RELATION_ROLE).map(([kind, role]) => [
@@ -678,7 +879,7 @@ export function umlSheetOf(frame: UmlBox): UmlBox {
 }
 
 /** The little {@link umlHostOf} needs to know about a candidate host. */
-interface UmlHostCandidate {
+export interface UmlHostCandidate {
   id: string;
   bounds?: UmlBox;
 }
@@ -728,6 +929,158 @@ export function umlHostOf<T extends UmlHostCandidate>(
     }
   }
   return best;
+}
+
+/* ── The sequence sheet's own geometry (§17.2.4) ──────────────────────── */
+
+/**
+ * The x of a lifeline's SPINE — the dashed line everything on a sequence sheet
+ * is measured against.
+ *
+ * The centre of the element's own box, which is the column and not the head:
+ * `UmlNodeElementModel` makes a lifeline a narrow tall column so that the
+ * connector layer's native anchors land on the spine, and paints the 160-wide
+ * head over the top of it. So the spine is the column's own centre line, and
+ * this function exists so that the four readers below cannot each decide that
+ * differently.
+ */
+export function umlSpineX(lifeline: UmlBox): number {
+  return lifeline.x + lifeline.w / 2;
+}
+
+/**
+ * How far off a spine a bar or a cross may be drawn and still be ON it.
+ *
+ * Half the HEAD's width, and it is the notation's own number rather than a
+ * guess: §17.2.4 draws an ExecutionSpecification as a bar centred on the spine
+ * and a destruction as a cross centred on it, so the honest tolerance is "nearer
+ * to this spine than to any other", and lifelines laid out at the 200-unit
+ * spacing of an invented sequence layout are 200 apart. 80 is inside that by a
+ * comfortable margin, so a bar dropped a little off centre finds its own
+ * lifeline and a bar dropped between two finds neither.
+ */
+export const UML_SPINE_TOLERANCE = UML_LIFELINE_HEAD.w / 2;
+
+/**
+ * Which lifeline a bar or a cross is drawn ON — {@link umlHostOf}'s twin for
+ * §17.2.4's two glyphs.
+ *
+ * A different reading from `umlHostOf` and deliberately so: a port is attached
+ * to a box by TOUCHING it, and a bar is attached to a spine by SITTING ON it —
+ * one is an edge-to-edge gap, the other a distance from one vertical line. The
+ * nearest spine within {@link UML_SPINE_TOLERANCE} wins; an exact tie is broken
+ * by the smaller id, never by the order the surface happened to be walked in,
+ * for the reason `umlHostOf` gives: this decides what a FILE says.
+ *
+ * `undefined` when nothing is that near — a bar drawn between two spines belongs
+ * to neither, and inventing an owner for it would put an execution on a
+ * participant the author never drew it on.
+ */
+export function umlLifelineAt<T extends UmlHostCandidate>(
+  glyph: UmlBox | undefined,
+  lifelines: readonly T[]
+): T | undefined {
+  if (!glyph) return undefined;
+  const cx = glyph.x + glyph.w / 2;
+  let best: T | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  for (const lifeline of lifelines) {
+    if (!lifeline.bounds) continue;
+    const gap = Math.abs(cx - umlSpineX(lifeline.bounds));
+    if (gap > UML_SPINE_TOLERANCE) continue;
+    if (gap < bestGap || (gap === bestGap && best && lifeline.id < best.id)) {
+      best = lifeline;
+      bestGap = gap;
+    }
+  }
+  return best;
+}
+
+/**
+ * The operand bands of a combined fragment, as boxes — §17.6.4's horizontal
+ * slices, separated by dashed lines.
+ *
+ * The operator BAND is carved off the top first (`UML_FRAGMENT_BAND`), exactly
+ * as `umlSheetOf` carves the frame's heading off: the pentagon is the
+ * fragment's own chrome, and a guard written over it is on the furniture rather
+ * than in an operand.
+ *
+ * `size` is a relative WEIGHT (`UmlFragmentOperand`), so the bands are the body
+ * divided in proportion — a fragment dragged taller keeps its operands' shares.
+ * A fragment that declares no operands is ONE operand, which is what every
+ * `opt`, every `loop` and every `ref` is, and its guard is the fragment's own
+ * `name`.
+ */
+/**
+ * A guard as the IR spells it — §17.6.4's condition with ONE surrounding pair
+ * of brackets taken off.
+ *
+ * The canvas text is exactly what the author types, and §17.6.4.4 prints the
+ * condition **in brackets**: `[x > 0]`, `[else]`. So the brackets are stored,
+ * the renderer paints them verbatim, and the delimiter is stripped HERE, once,
+ * for both writers — PlantUML writes its own `[…]` back round the condition and
+ * XMI writes a bare `LiteralString`, and neither should have to parse the
+ * model it is given.
+ *
+ * Tolerant in both directions, because a guard is free text an author types:
+ * `x > 0` typed without brackets is the same condition and exports identically,
+ * and `[[x > 0]]` gives up exactly one pair. Only a pair that actually
+ * SURROUNDS the condition is taken — `[a] or [b]` opens and closes twice, and
+ * dropping its outer characters would turn a sentence inside out.
+ */
+export function umlGuardText(written: string | undefined): string {
+  const text = (written ?? '').trim();
+  if (text.length < 2 || !text.startsWith('[') || !text.endsWith(']')) {
+    return text;
+  }
+  let depth = 0;
+  for (const [index, character] of [...text].entries()) {
+    if (character === '[') depth += 1;
+    else if (character === ']') {
+      depth -= 1;
+      if (depth === 0 && index < text.length - 1) return text;
+    }
+  }
+  return depth === 0 ? text.slice(1, -1).trim() : text;
+}
+
+export function umlOperandBands(
+  box: UmlBox,
+  operands: readonly UmlFragmentOperand[] | undefined,
+  name: string
+): UmlInteractionOperand[] {
+  const band = Math.min(UML_FRAGMENT_BAND, box.h);
+  const top = box.y + band;
+  const body = Math.max(0, box.h - band);
+  const guardOf = (index: number, written: string | undefined) => {
+    // …and the brackets come OFF here (see {@link umlGuardText}): the canvas
+    // holds `[x > 0]` because that is what §17.6.4 draws and what the author
+    // typed, and the IR holds the condition.
+    const guard = umlGuardText(written ?? (index === 0 ? name : ''));
+    return guard ? { guard } : {};
+  };
+
+  if (!operands || operands.length === 0) {
+    return [{ ...guardOf(0, undefined), y0: top, y1: top + body }];
+  }
+
+  const weights = operands.map(operand =>
+    Number.isFinite(operand.size) && operand.size > 0 ? operand.size : 1
+  );
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const bands: UmlInteractionOperand[] = [];
+  let y = top;
+  for (const [index, operand] of operands.entries()) {
+    // The LAST band is closed on the box rather than on the running sum, so
+    // rounding cannot leave a sliver of the fragment in no operand at all.
+    const next =
+      index === operands.length - 1
+        ? top + body
+        : y + (body * weights[index]) / total;
+    bands.push({ ...guardOf(index, operand.name), y0: y, y1: next });
+    y = next;
+  }
+  return bands;
 }
 
 /* ── Reading the canvas ───────────────────────────────────────────────── */
@@ -872,15 +1225,24 @@ export function umlModelFrom(
   /** §15.6.4's swimlanes and §14.2.4's composite states — the two new frames. */
   const partitionElements: UmlSourceElement[] = [];
   const regionElements: UmlSourceElement[] = [];
+  /** §17.6.4's combined fragments — phase 3's frame. */
+  const fragmentElements: UmlSourceElement[] = [];
+  /** Every element's own box, by its own id — what a message's height is read
+   * off (a connector's end names the ELEMENT it touches, which may be a tier or
+   * a group rather than the node the end resolves to). */
+  const boxOfElement = new Map<string, UmlBox>();
 
   for (const element of elements) {
     if (Array.isArray(element.childIds)) {
       groups.push({ id: element.id, childIds: element.childIds });
     }
+    const box = umlBoundsOf(element);
+    if (box) boxOfElement.set(element.id, box);
     if (element.type === 'umlNode') nodes.push(element);
     else if (element.type === 'umlSubject') subjects.push(element);
     else if (element.type === 'umlPartition') partitionElements.push(element);
     else if (element.type === 'umlRegion') regionElements.push(element);
+    else if (element.type === 'umlFragment') fragmentElements.push(element);
     else if (element.type === 'connector') connectors.push(element);
   }
 
@@ -888,9 +1250,12 @@ export function umlModelFrom(
   const tiersOf = (node: UmlSourceElement) => {
     const group = umlGroupOf(node.id, groups);
     const component: UmlComponent = group ? siblingsOf(group, elements) : {};
-    // `label` is the actor's and the use case's tier and `name` the
-    // classifier's — one of the two, never both (`component.ts`).
-    const named = component.name ?? component.label;
+    // `label` is the actor's and the use case's tier, `name` the classifier's
+    // and `ident` §17.3.4's lifeline head — one of the three, never two
+    // (`component.ts`). The head is read here rather than anywhere special
+    // because a lifeline's name IS its head: `parseLifelineIdent` takes the
+    // line this returns and splits it into the participant and its classifier.
+    const named = component.name ?? component.label ?? component.ident;
     return {
       // The shape's own inner text is a FALLBACK and not a source: a node whose
       // group was released, or whose tiers were deleted, still states its name
@@ -921,6 +1286,9 @@ export function umlModelFrom(
   const artifacts: UmlArtifactNode[] = [];
   const deploymentNodes: UmlDeploymentNode[] = [];
   const activityNodes: UmlActivityNode[] = [];
+  const lifelines: UmlLifeline[] = [];
+  const executions: UmlExecution[] = [];
+  const destructions: UmlDestruction[] = [];
   const states: UmlState[] = [];
   const finalStates: UmlFinalState[] = [];
   const pseudostates: UmlPseudostate[] = [];
@@ -1018,6 +1386,39 @@ export function umlModelFrom(
       (UML_SHARED_BEHAVIOUR_KINDS.has(kind) && !readsAsStateMachine)
     ) {
       activityNodes.push({ ...base, kind: kind as UmlActivityNodeKind });
+    } else if (kind === 'lifeline') {
+      // §17.3.4's `<name> : <Type>` — the one compartment a lifeline has, and
+      // the same grammar §11.6.4 gives an instance. `keywords` and `isAbstract`
+      // are `stereotypesOf`'s, read off the head like any other name tier.
+      const ident = parseLifelineIdent(base.name);
+      lifelines.push({
+        ...base,
+        // The `[<selector>]` §17.3.4 allows between the name and the colon is
+        // kept ON the name rather than given a field of its own: it is part of
+        // WHICH participant this is — `customers[3]` is one of a set — and
+        // neither writer has a slot for it (`Lifeline::selector` is a
+        // ValueSpecification, and a whiteboard has drawn no expression). Folded
+        // back here, the head survives out and in; split out, it would be a
+        // third field two writers would drop.
+        name: ident.selector
+          ? `${ident.name ?? ''}[${ident.selector}]`
+          : (ident.name ?? ''),
+        ...(ident.type ? { type: ident.type } : {}),
+      });
+    } else if (kind === 'execution') {
+      // The bar's own extent IS the pair of occurrences it runs between
+      // (§17.2.4): the top is the start, the bottom the finish. The lifeline it
+      // sits on is measured below, once every spine on the sheet is known.
+      executions.push({
+        ...base,
+        y0: bounds ? bounds.y : 0,
+        y1: bounds ? bounds.y + bounds.h : 0,
+      });
+    } else if (kind === 'destruction') {
+      destructions.push({
+        ...base,
+        y: bounds ? bounds.y + bounds.h / 2 : 0,
+      });
     } else if (kind === 'state') {
       // §14.2.4.4's internal activities compartment. It is the `uml:attributes`
       // tier — the same tier a class writes its properties in, reused because a
@@ -1165,6 +1566,73 @@ export function umlModelFrom(
     });
   }
 
+  // ── The interaction's geometry (§17.2.4, §17.6.4) ─────────────────────
+  //
+  // Two readings, both by MEASURING, and both for the reason §11.3.4's port and
+  // §10.4.4's lollipop are read that way: the notation draws a mark ON a line
+  // and a rectangle AROUND a group of lines, and a whiteboard holds no second
+  // statement about either. A bar off every spine and a fragment over no
+  // lifeline are kept on the drawing and written into no file.
+
+  for (const execution of executions) {
+    const lifeline = umlLifelineAt(execution.bounds, lifelines);
+    if (lifeline) execution.lifelineId = lifeline.id;
+  }
+  for (const destruction of destructions) {
+    const lifeline = umlLifelineAt(destruction.bounds, lifelines);
+    if (lifeline) destruction.lifelineId = lifeline.id;
+  }
+
+  const fragments: UmlCombinedFragment[] = [];
+  for (const fragment of fragmentElements) {
+    if (!onSheet(fragment)) continue;
+    const box = umlBoundsOf(fragment);
+    const written = umlTierText(fragment.name);
+    const operator =
+      (fragment.operator as UmlFragmentOperator | undefined) ?? 'alt';
+    // A fragment COVERS the lifelines whose spine runs through it (§17.6.4),
+    // ordered left to right — which is the order `ref over a, b` is written in
+    // and the order a reader's eye takes them in.
+    const covered = box
+      ? lifelines
+          .filter(lifeline => {
+            const spine = lifeline.bounds
+              ? umlSpineX(lifeline.bounds)
+              : undefined;
+            return (
+              spine !== undefined && spine >= box.x && spine <= box.x + box.w
+            );
+          })
+          .sort((a, b) => {
+            const gap = umlSpineX(a.bounds!) - umlSpineX(b.bounds!);
+            return gap !== 0 ? gap : a.id < b.id ? -1 : 1;
+          })
+          .map(lifeline => lifeline.id)
+      : [];
+    fragments.push({
+      id: fragment.id,
+      name: written,
+      keywords: [],
+      isAbstract: false,
+      ...(box ? { bounds: box } : {}),
+      // The model defaults it, and a fixture that states nothing means the
+      // default rather than a fragment with no word in its pentagon.
+      operator,
+      // A `ref`'s `name` is the INTERACTION it refers to (§17.7.4), never a
+      // guard, so it is not handed to the operand it would otherwise become the
+      // condition of. Every other operator's `name` is the first operand's
+      // guard, which is what `UmlFragmentElementModel.name` says it is.
+      operands: box
+        ? umlOperandBands(
+            box,
+            fragment.operands,
+            operator === 'ref' ? '' : written
+          )
+        : [{ y0: 0, y1: 0 }],
+      coveredLifelineIds: covered,
+    });
+  }
+
   /** The smallest frame whose box holds a centre — most-nested wins. */
   const frameOf = <T extends UmlNodeBase>(
     element: UmlNodeBase,
@@ -1223,6 +1691,8 @@ export function umlModelFrom(
   }
 
   const relations: UmlRelation[] = [];
+  /** §17.4's arrows, with the height each was drawn at. See {@link UmlMessage}. */
+  const messages: UmlMessage[] = [];
   for (const connector of connectors) {
     const from = connector.source?.id;
     const to = connector.target?.id;
@@ -1288,7 +1758,30 @@ export function umlModelFrom(
       ...(sourceEnd ? { sourceEnd } : {}),
       ...(targetEnd ? { targetEnd } : {}),
     });
+
+    if (MESSAGE_KINDS.has(kind)) {
+      messages.push({
+        id: connector.id,
+        kind: kind as UmlMessageKind,
+        sourceId: source,
+        targetId: target,
+        ...(label ? { label } : {}),
+        y: umlMessageHeight(
+          connector,
+          from ? boxOfElement.get(from) : undefined,
+          to ? boxOfElement.get(to) : undefined
+        ),
+      });
+    }
   }
+
+  // §17.4.4: "every line fragment is either horizontal or downwards" — the
+  // vertical axis is time, so the ORDER is what every writer needs and the
+  // height is what the canvas stated. Sorted once, here, with document order
+  // breaking a tie: two messages drawn at exactly the same height are two the
+  // author did not order, and a sort that reordered them on every export would
+  // make a golden file flap.
+  messages.sort((a, b) => a.y - b.y);
 
   const kind = diagramKind;
   const name = umlTierText(diagram.name);
@@ -1347,6 +1840,25 @@ export function umlModelFrom(
         ]
       : [];
 
+  const interactions: UmlInteraction[] =
+    lifelines.length > 0 ||
+    messages.length > 0 ||
+    fragments.length > 0 ||
+    executions.length > 0 ||
+    destructions.length > 0
+      ? [
+          {
+            id: diagram.id,
+            name,
+            lifelines,
+            messages,
+            fragments,
+            executions,
+            destructions,
+          },
+        ]
+      : [];
+
   const stateMachines: UmlStateMachine[] =
     states.length > 0 ||
     finalStates.length > 0 ||
@@ -1386,9 +1898,271 @@ export function umlModelFrom(
     nodes: deploymentNodes,
     activities,
     stateMachines,
+    interactions,
     relations,
     warnings,
   };
+}
+
+/**
+ * The HEIGHT one message was drawn at — §17.4.4's whole statement about time.
+ *
+ * Read off the connector's stored END POSITIONS first, and that is the point of
+ * the function: a connector's own bound is DERIVED by the router from the path
+ * between its ends, and a freshly loaded document answers `[0,0,0,0]` until
+ * something paints. A `position` is in the store, so an export run against a
+ * document nobody has opened orders the conversation exactly as an export run
+ * against a board on screen does.
+ *
+ * Both ends when both are anchored, because §17.4.4 draws a message as a
+ * horizontal line and the two ends agree; the midpoint is what a message drawn
+ * slightly sloping means. One end when only one is anchored. The connector's own
+ * box when neither is — a message the author dragged onto empty canvas — and
+ * zero when there is nothing at all to read, which puts it first and says so by
+ * being obviously at the top.
+ */
+function umlMessageHeight(
+  connector: UmlSourceElement,
+  from: UmlBox | undefined,
+  to: UmlBox | undefined
+): number {
+  const at = (
+    end: { position?: readonly number[] } | null | undefined,
+    box: UmlBox | undefined
+  ): number | undefined => {
+    const t = end?.position?.[1];
+    if (!box || typeof t !== 'number' || !Number.isFinite(t)) return undefined;
+    return box.y + t * box.h;
+  };
+  const head = at(connector.source, from);
+  const tail = at(connector.target, to);
+  if (head !== undefined && tail !== undefined) return (head + tail) / 2;
+  if (head !== undefined) return head;
+  if (tail !== undefined) return tail;
+
+  const bounds = umlBoundsOf(connector);
+  if (bounds && (bounds.w !== 0 || bounds.h !== 0)) {
+    return bounds.y + bounds.h / 2;
+  }
+  return 0;
+}
+
+/* ── The interaction, as a TIMELINE (§17.2.4) ─────────────────────────── */
+
+/**
+ * One thing that happens on a sequence sheet, at the height it happens at.
+ *
+ * A discriminated union over the five, and a TREE rather than a list: a combined
+ * fragment carries the entries drawn inside each of its operands, which is what
+ * §17.6.4 makes it — an `InteractionOperand` OWNS the fragments in its band, and
+ * PlantUML's `alt … else … end` is the same nesting spelled with keywords.
+ */
+export type UmlTimelineEntry =
+  | { at: 'message'; y: number; message: UmlMessage }
+  | { at: 'execution-start'; y: number; execution: UmlExecution }
+  | { at: 'execution-finish'; y: number; execution: UmlExecution }
+  | { at: 'destruction'; y: number; destruction: UmlDestruction }
+  | {
+      at: 'fragment';
+      y: number;
+      fragment: UmlCombinedFragment;
+      operands: UmlTimelineOperand[];
+    };
+
+/** One operand's band and what is drawn in it. */
+export interface UmlTimelineOperand {
+  operand: UmlInteractionOperand;
+  entries: UmlTimelineEntry[];
+}
+
+/**
+ * Which entry comes first when two were drawn at exactly the same height.
+ *
+ * Only a hand-drawn board ever ties — an invented layout gives every event a
+ * slot of its own — and the order is the one a reader would write the lines in:
+ * the fragment that CONTAINS the moment opens first, then the arrow, then the
+ * bar it starts, then the bar it ends, and last the cross that ends the
+ * participant.
+ */
+const TIMELINE_RANK: Record<UmlTimelineEntry['at'], number> = {
+  fragment: 0,
+  message: 1,
+  'execution-start': 2,
+  'execution-finish': 3,
+  destruction: 4,
+};
+
+/**
+ * One Interaction as the ordered, nested account of what happens on it — the
+ * reading BOTH writers take, so that a `.puml` and an XMI file can never
+ * disagree about the order of a conversation.
+ *
+ * ## What decides that something is INSIDE a fragment
+ *
+ * Two things, and both are what §17.6.4 draws: the moment falls inside the
+ * fragment's box VERTICALLY, and the fragment COVERS the lifeline it happens on
+ * ({@link UmlCombinedFragment.coveredLifelineIds}). The second is what stops an
+ * `alt` drawn over two of five participants from swallowing a message exchanged
+ * between the other three at the same height — which a y-only test would, and
+ * which would put an arrow in a branch nobody drew it in.
+ *
+ * The innermost matching fragment wins, measured by AREA, exactly as `umlHostOf`
+ * and `containerOf` decide every other containment in this framework.
+ *
+ * Pure and total: every message, bar and cross of the interaction comes back
+ * exactly once, whether it landed in a fragment or at the top level.
+ */
+export function umlInteractionTimeline(
+  interaction: UmlInteraction
+): UmlTimelineEntry[] {
+  /**
+   * The spine an end of a message is on.
+   *
+   * A message end names a LIFELINE, an execution bar or a destruction cross
+   * (§17.4.4 attaches a MessageEnd to an occurrence, and the canvas draws all
+   * three), and only a lifeline id is in a fragment's `coveredLifelineIds`. So
+   * the other two are resolved to the spine they sit on before containment is
+   * measured — without it a delete message is read as happening on a spine no
+   * fragment covers, and every `destroy` drawn inside an `opt` is written
+   * outside it, leaving the fragment empty.
+   */
+  const lifelineOfMark = new Map<string, string | undefined>([
+    ...interaction.executions.map(
+      execution => [execution.id, execution.lifelineId] as const
+    ),
+    ...interaction.destructions.map(
+      destruction => [destruction.id, destruction.lifelineId] as const
+    ),
+  ]);
+  const spineOf = (id: string): string | undefined =>
+    lifelineOfMark.has(id) ? lifelineOfMark.get(id) : id;
+
+  const covers = new Map(
+    interaction.fragments.map(fragment => [
+      fragment.id,
+      new Set(fragment.coveredLifelineIds),
+    ])
+  );
+  const areaOf = (fragment: UmlCombinedFragment) =>
+    fragment.bounds
+      ? Math.max(0, fragment.bounds.w) * Math.max(0, fragment.bounds.h)
+      : Number.POSITIVE_INFINITY;
+
+  /**
+   * The innermost fragment a moment on these spines falls in.
+   *
+   * `exclude` is the fragment being placed itself, so that a fragment cannot
+   * claim to contain itself; a fragment nested in another is placed against the
+   * outer one by its own top edge.
+   */
+  const fragmentAt = (
+    y: number,
+    spines: readonly (string | undefined)[],
+    exclude?: UmlCombinedFragment
+  ): UmlCombinedFragment | undefined => {
+    let best: UmlCombinedFragment | undefined;
+    let bestArea = Number.POSITIVE_INFINITY;
+    for (const fragment of interaction.fragments) {
+      if (fragment === exclude || !fragment.bounds) continue;
+      const box = fragment.bounds;
+      if (y < box.y || y > box.y + box.h) continue;
+      if (exclude?.bounds && areaOf(fragment) <= areaOf(exclude)) continue;
+      const covered = covers.get(fragment.id)!;
+      const named = spines.filter((id): id is string => Boolean(id));
+      // A fragment covering NO lifeline of this moment is a rectangle drawn
+      // beside the conversation, not round it.
+      if (named.length > 0 && !named.every(id => covered.has(id))) continue;
+      const area = areaOf(fragment);
+      if (
+        area < bestArea ||
+        (area === bestArea && best && fragment.id < best.id)
+      ) {
+        best = fragment;
+        bestArea = area;
+      }
+    }
+    return best;
+  };
+
+  /** Which operand band of a fragment holds this height — the last that opens. */
+  const bandAt = (fragment: UmlCombinedFragment, y: number): number => {
+    let index = 0;
+    for (const [at, operand] of fragment.operands.entries()) {
+      if (y >= operand.y0) index = at;
+    }
+    return index;
+  };
+
+  const built = new Map<
+    string,
+    Extract<UmlTimelineEntry, { at: 'fragment' }>
+  >();
+  for (const fragment of interaction.fragments) {
+    built.set(fragment.id, {
+      at: 'fragment',
+      y: fragment.bounds ? fragment.bounds.y : 0,
+      fragment,
+      operands: fragment.operands.map(operand => ({ operand, entries: [] })),
+    });
+  }
+
+  const root: UmlTimelineEntry[] = [];
+  const place = (
+    entry: UmlTimelineEntry,
+    spines: readonly (string | undefined)[],
+    self?: UmlCombinedFragment
+  ) => {
+    const host = fragmentAt(entry.y, spines, self);
+    if (!host) {
+      root.push(entry);
+      return;
+    }
+    const container = built.get(host.id)!;
+    const band = container.operands[bandAt(host, entry.y)];
+    if (band) band.entries.push(entry);
+    else root.push(entry);
+  };
+
+  // Outermost first, so a nested fragment's own container already exists when
+  // the fragments inside it are placed. Ordering by area is what makes that
+  // true whatever order the canvas was walked in.
+  for (const fragment of [...interaction.fragments].sort(
+    (a, b) => areaOf(b) - areaOf(a)
+  )) {
+    place(built.get(fragment.id)!, fragment.coveredLifelineIds, fragment);
+  }
+
+  for (const message of interaction.messages) {
+    place({ at: 'message', y: message.y, message }, [
+      spineOf(message.sourceId),
+      spineOf(message.targetId),
+    ]);
+  }
+  for (const execution of interaction.executions) {
+    place({ at: 'execution-start', y: execution.y0, execution }, [
+      execution.lifelineId,
+    ]);
+    place({ at: 'execution-finish', y: execution.y1, execution }, [
+      execution.lifelineId,
+    ]);
+  }
+  for (const destruction of interaction.destructions) {
+    place({ at: 'destruction', y: destruction.y, destruction }, [
+      destruction.lifelineId,
+    ]);
+  }
+
+  const order = (entries: UmlTimelineEntry[]): UmlTimelineEntry[] => {
+    const sorted = [...entries].sort(
+      (a, b) => a.y - b.y || TIMELINE_RANK[a.at] - TIMELINE_RANK[b.at]
+    );
+    for (const entry of sorted) {
+      if (entry.at !== 'fragment') continue;
+      for (const band of entry.operands) band.entries = order(band.entries);
+    }
+    return sorted;
+  };
+  return order(root);
 }
 
 /**

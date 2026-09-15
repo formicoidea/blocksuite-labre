@@ -504,3 +504,251 @@ describe('uml:plantuml:import', () => {
     expect(result.report.mapped).toBe(1);
   });
 });
+
+/* ── §17 — the sequence language ──────────────────────────────────────── */
+
+/**
+ * The sequence reader, and the one decision it has to make before reading a
+ * line: WHICH PlantUML language is this block written in?
+ *
+ * `A --> B` is an association on a class diagram and a reply on a sequence one,
+ * and the two readings produce entirely different models. The block is therefore
+ * classified once, on the keywords and the two arrow spellings no other PlantUML
+ * diagram uses (`looksSequential`), and every test below starts from there.
+ */
+const interactionOf = (source: string) => {
+  const [model] = importPlantuml(source).models;
+  expect(model.interactions).toHaveLength(1);
+  return { model, interaction: model.interactions[0] };
+};
+
+describe('the sequence syntax', () => {
+  it('reads a block with a bare `->` as a sequence diagram', () => {
+    const { model, interaction } = interactionOf('Alice -> Bob : hi');
+    expect(model.diagram.kind).toBe('sd');
+    expect(interaction.lifelines.map(each => each.name)).toEqual([
+      'Alice',
+      'Bob',
+    ]);
+    expect(interaction.messages[0]).toMatchObject({
+      kind: 'message-sync',
+      sourceId: 'Alice',
+      targetId: 'Bob',
+      label: 'hi',
+    });
+  });
+
+  it('leaves a class diagram whose only arrows are `-->` alone', () => {
+    const [model] = importPlantuml('class A\nclass B\nA --> B').models;
+    expect(model.interactions).toEqual([]);
+    expect(model.classifiers).toHaveLength(2);
+  });
+
+  /**
+   * …and the bare `->` is not the sequence's alone either, once a block has
+   * DECLARED a classifier: PlantUML reads `A -> B` inside a class block as a
+   * directed association, and two classes are not two participants.
+   */
+  it.each([
+    'class A\nclass B\nA -> B',
+    'interface A\nclass B\nA -> B',
+    'abstract class A\nclass B\nA -> B',
+    'enum A\nclass B\nA -> B',
+    'package P {\n  class A\n}\nclass B\nA -> B',
+  ])('reads a declared classifier with a bare `->` as a class diagram', src => {
+    const [model] = importPlantuml(src).models;
+    expect(model.diagram.kind).toBe('class');
+    expect(model.interactions).toEqual([]);
+    expect(model.classifiers.map(each => each.name)).toContain('B');
+    expect(model.relations.map(each => each.kind)).toEqual(['association']);
+  });
+
+  it('still reads a sequence that happens to name a package', () => {
+    // The veto narrows the ARROW test and nothing else: `participant` is
+    // evidence of its own.
+    const { interaction } = interactionOf('participant a\npackage P\na -> b');
+    expect(interaction.messages).toHaveLength(1);
+  });
+
+  const ARROWS: [string, string][] = [
+    ['a -> b', 'message-sync'],
+    ['a ->> b', 'message-async'],
+    ['a --> b', 'message-reply'],
+    ['a -->> b', 'message-reply'],
+  ];
+  for (const [line, kind] of ARROWS) {
+    it(`reads "${line}" as a ${kind}`, () => {
+      const { interaction } = interactionOf(`participant a\n${line}`);
+      expect(interaction.messages[0]).toMatchObject({
+        kind,
+        sourceId: 'a',
+        targetId: 'b',
+      });
+    });
+  }
+
+  it('turns a reversed arrow round, sender first', () => {
+    const { interaction } = interactionOf('participant a\nb <- a : pong');
+    expect(interaction.messages[0]).toMatchObject({
+      kind: 'message-sync',
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    // The COLUMN order stays the order the file mentions them in — `a` is
+    // declared first, so `a` is the left-hand participant.
+    expect(interaction.lifelines.map(each => each.id)).toEqual(['a', 'b']);
+  });
+
+  it('declares a participant implicitly on its first mention', () => {
+    const { interaction } = interactionOf('a -> b : one\nc -> a : two');
+    expect(interaction.lifelines.map(each => each.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('keeps the word an `actor` was declared with, and its type', () => {
+    const { interaction } = interactionOf(
+      'actor "Customer" as c\nparticipant "web : Storefront" as w\nc -> w : go()'
+    );
+    expect(interaction.lifelines[0].keywords).toEqual(['actor']);
+    expect(interaction.lifelines[1]).toMatchObject({
+      name: 'web',
+      type: 'Storefront',
+    });
+  });
+
+  it('reads `activate` and `deactivate` as one bar over what is between', () => {
+    const { interaction } = interactionOf(
+      'a -> b : go()\nactivate b\nb -> b : work()\nb --> a : done\ndeactivate b'
+    );
+    const [bar] = interaction.executions;
+    expect(bar.lifelineId).toBe('b');
+    const inside = interaction.messages.filter(
+      each => each.y > bar.y0 && each.y < bar.y1
+    );
+    expect(inside.map(each => each.label)).toEqual(['work()', 'done']);
+  });
+
+  it('closes a bar the file never deactivated', () => {
+    const { interaction } = interactionOf('a -> b : go()\nactivate b');
+    expect(interaction.executions[0].y1).toBeGreaterThan(
+      interaction.executions[0].y0
+    );
+  });
+
+  it('reads `create` and `destroy` as the two special arrows of §17.4.4', () => {
+    const { interaction } = interactionOf(
+      'a -> b : one\ncreate c\nb -> c : new()\nb -> c : close()\ndestroy c'
+    );
+    expect(interaction.messages.map(each => each.kind)).toEqual([
+      'message-sync',
+      'message-create',
+      'message-delete',
+    ]);
+    expect(interaction.destructions).toHaveLength(1);
+    expect(interaction.messages[2].targetId).toBe(
+      interaction.destructions[0].id
+    );
+  });
+
+  it('reads the `**` and `!!` shorthands the same way', () => {
+    const { interaction } = interactionOf('a -> b ** : new()\na -> b !! : bye');
+    expect(interaction.messages.map(each => each.kind)).toEqual([
+      'message-create',
+      'message-delete',
+    ]);
+  });
+
+  it('reads `++` as the bar it opens', () => {
+    const { interaction } = interactionOf(
+      'a -> b ++ : go()\nb --> a -- : done'
+    );
+    expect(interaction.executions).toHaveLength(1);
+    expect(interaction.executions[0].lifelineId).toBe('b');
+  });
+
+  const BLOCKS: [string, string][] = [
+    ['alt yes', 'alt'],
+    ['opt [maybe]', 'opt'],
+    ['loop twice', 'loop'],
+    ['par', 'par'],
+    ['break [oops]', 'break'],
+    ['critical', 'critical'],
+    ['group neg never', 'neg'],
+  ];
+  for (const [line, operator] of BLOCKS) {
+    it(`opens "${line}" as a ${operator} fragment`, () => {
+      const { interaction } = interactionOf(`${line}\na -> b : go()\nend`);
+      expect(interaction.fragments[0].operator).toBe(operator);
+    });
+  }
+
+  it('cuts an `alt` into one band per `else`, each with its guard', () => {
+    const { interaction } = interactionOf(
+      'alt [signed in]\na -> b : one\nelse [signed out]\na -> b : two\nend'
+    );
+    const [fragment] = interaction.fragments;
+    expect(fragment.operands.map(each => each.guard)).toEqual([
+      'signed in',
+      'signed out',
+    ]);
+    expect(fragment.coveredLifelineIds).toEqual(['a', 'b']);
+    const [first, second] = interaction.messages;
+    expect(first.y).toBeLessThan(fragment.operands[0].y1);
+    expect(second.y).toBeGreaterThan(fragment.operands[1].y0);
+  });
+
+  it('nests a fragment drawn inside another', () => {
+    const { interaction } = interactionOf(
+      'alt [outer]\nloop [inner]\na -> b : go()\nend\nend'
+    );
+    const [outer, inner] = interaction.fragments;
+    expect(outer.operator).toBe('alt');
+    expect(inner.operator).toBe('loop');
+    expect(inner.bounds!.y).toBeGreaterThan(outer.bounds!.y);
+    expect(inner.bounds!.y + inner.bounds!.h).toBeLessThan(
+      outer.bounds!.y + outer.bounds!.h
+    );
+  });
+
+  it('closes a block the file never ended', () => {
+    const { interaction } = interactionOf('alt [never closed]\na -> b : go()');
+    expect(interaction.fragments[0].operands[0].y1).toBeGreaterThan(
+      interaction.fragments[0].operands[0].y0
+    );
+  });
+
+  it('reads `ref over` as the interaction use of §17.7.4', () => {
+    const { interaction } = interactionOf(
+      'participant a\nparticipant b\nref over a, b : Authorise'
+    );
+    expect(interaction.fragments[0]).toMatchObject({
+      operator: 'ref',
+      name: 'Authorise',
+      coveredLifelineIds: ['a', 'b'],
+    });
+  });
+
+  it('anchors a note to the participant it is written of', () => {
+    const { model, interaction } = interactionOf(
+      'a -> b : go()\nnote right of b : it is idempotent'
+    );
+    expect(model.notes[0].body).toBe('it is idempotent');
+    expect(model.relations).toEqual([
+      { kind: 'anchor', sourceId: model.notes[0].id, targetId: 'b' },
+    ]);
+    // Clear of the conversation: a note is prose about it, not part of it.
+    expect(model.notes[0].bounds!.x).toBeGreaterThan(
+      Math.max(...interaction.lifelines.map(each => each.bounds!.x))
+    );
+  });
+
+  it('records `autonumber` rather than applying it', () => {
+    const { notes } = importPlantuml('autonumber\na -> b : go()');
+    expect(notes.some(entry => entry.kind === 'carried')).toBe(true);
+  });
+
+  it('says the layout is its own and the ORDER the file’s', () => {
+    const { notes } = importPlantuml('a -> b : go()');
+    const invented = notes.find(entry => entry.kind === 'invented-layout');
+    expect(invented!.message).toContain('one step down the page per message');
+  });
+});
