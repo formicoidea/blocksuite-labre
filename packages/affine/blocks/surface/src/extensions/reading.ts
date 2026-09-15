@@ -192,8 +192,36 @@ export interface ReadingProfile {
     tagId: string;
     conventions: readonly ReadingNamingConvention[];
   };
-  /** The typed edge whose two ends the relation reading walks. */
+  /**
+   * The typed edge whose two ends the relation reading walks — the one the
+   * artefact is read THROUGH, and the one the panel lists first.
+   */
   relation?: ReadingRelationDef;
+  /**
+   * The OTHER typed edges the same artefact is read through, read after
+   * {@link relation} and listed under their own wordings.
+   *
+   * Absent for every framework whose artefacts carry one kind of line: a
+   * Wardley component has a dependency, a BPMN task a sequence flow, and a
+   * second table there would be a heading with nothing under it.
+   *
+   * It exists because UML's artefacts carry a DOZEN kinds of line, and the
+   * panel answering with one of them reads as an answer rather than as a
+   * selection: the PO's recette of 2026-09-14 (O8) opened the reading on a use
+   * case whose only link was an `«include»` and was told "No typed link touches
+   * this component", which the drawing plainly contradicted. One relation per
+   * profile was a deliberate narrowing (`gfx/uml/src/reading.ts` argued it and
+   * named what it left unread); what the recette established is that a reader
+   * cannot tell a narrowing from a failure, because the panel says the same
+   * thing in both cases.
+   *
+   * Every table is INDEPENDENT: its own `edgeRole`, its own two wordings, its
+   * own `geometry` claim. `roleIsA` still applies to each, so a table declared
+   * on a parent role reaches its children and two tables must not overlap — an
+   * edge matching both would be listed twice. Order is the order the panel
+   * reads them in, so the first is the question the artefact answers first.
+   */
+  alsoRelations?: readonly ReadingRelationDef[];
   /** The frame the phase is read from. */
   frame?: {
     backgroundRole: RoleId;
@@ -220,14 +248,54 @@ export interface ReadingProfile {
 /** Where the other end of a typed edge sits, relative to the subject. */
 export type ReadingRelationSide = 'consumer' | 'supplier';
 
+/**
+ * Every relation table a profile declares, in reading order.
+ *
+ * One function so the engine and the panel cannot disagree about what a profile
+ * declares — the bug that shape of duplication always produces is a table read
+ * into {@link ElementReading.relations} and never drawn, or a heading drawn
+ * over nothing.
+ */
+export function readingRelationDefs(
+  profile: ReadingProfile
+): readonly ReadingRelationDef[] {
+  const first = profile.relation;
+  const rest = profile.alsoRelations ?? [];
+  if (!first) return rest;
+  return rest.length === 0 ? [first] : [first, ...rest];
+}
+
 /** One typed edge touching the subject, read with the ADR 0010 convention. */
 export interface ReadingRelation {
   /** The edge element. */
   edgeId: string;
+  /**
+   * The `edgeRole` of the TABLE that matched — the role the profile DECLARED,
+   * never the edge's own, which may be a specialisation of it (a UML
+   * composition read through `uml:association`, §11.5.4).
+   *
+   * It is what lets the panel put each relation under the wording it was read
+   * with once a profile declares several tables. One reading, one table, and
+   * the tables never overlap: {@link readingRelationDefs} documents that as the
+   * declaring framework's obligation.
+   */
+  relationRole: RoleId;
   /** The element at the other end. */
   otherId: string;
   /** Its name, when it has one — for the panel, which must not print ids. */
   otherName: string;
+  /**
+   * What the connector writes at the SUBJECT's end, and at the other end —
+   * `undefined` when the author wrote nothing there, which is the ordinary
+   * case (ADR 0020).
+   *
+   * Two spellings of the same fact rather than `sourceLabel`/`targetLabel`,
+   * because the reading is written from the subject outwards and a panel
+   * saying "Associated with: OrderLine (1..*)" must not have to work out which
+   * end of the arrow it is standing on.
+   */
+  ownEndLabel?: string;
+  otherEndLabel?: string;
   /**
    * What the OTHER element is to the subject. ADR 0010 § 2 tier 2: on a
    * `wardley:dependency`, `source` is the consumer and `target` is what it
@@ -552,7 +620,36 @@ function endpointsOf(
 }
 
 /**
- * Every typed edge touching the subject, read as a relation.
+ * What a connector writes at one of its two ends, when it writes anything.
+ *
+ * A UML multiplicity is the case this exists for (`0..*` on the far end of an
+ * association), and the shape is ADR 0020's: two optional `Y.Text` props on the
+ * connector, empty when the author never opened the editor. Read defensively —
+ * the reading is handed plain element models by unit tests as readily as live
+ * ones — and blank-trimmed, because a text the user emptied is not a label.
+ */
+function endLabelOf(
+  edge: GfxPrimitiveElementModel,
+  end: 'source' | 'target'
+): string | undefined {
+  const raw = (edge as unknown as Record<string, unknown>)[
+    end === 'source' ? 'sourceLabel' : 'targetLabel'
+  ];
+  if (raw === undefined || raw === null) return undefined;
+  const text = String(raw).trim();
+  return text.length > 0 ? text : undefined;
+}
+
+/**
+ * Every typed edge touching the subject, read as a relation — one pass per
+ * table the profile declares ({@link readingRelationDefs}).
+ *
+ * The tables are walked in DECLARATION order rather than the elements being
+ * walked once and each edge matched against every table, so the panel's
+ * sections come out in the order their framework wrote them and an artefact
+ * read through four kinds of line reads its first kind first. The cost is one
+ * pass over the surface per table, which is what it already was when a profile
+ * could only declare one.
  *
  * An edge with an unbound end is skipped, exactly as ADR 0010 requires of W4:
  * releasing the link tool over empty canvas produces one, and a stroke that
@@ -563,50 +660,58 @@ function readRelations(
   elements: readonly GfxPrimitiveElementModel[],
   profile: ReadingProfile
 ): ReadingRelation[] {
-  const relation = profile.relation;
-  if (!relation) return [];
+  const defs = readingRelationDefs(profile);
+  if (defs.length === 0) return [];
 
   const byId = new Map(elements.map(el => [el.id, el]));
   const [, subjectY] = centreOf(element.elementBound);
   const relations: ReadingRelation[] = [];
 
-  for (const edge of elements) {
-    if (edge.role === undefined) continue;
-    if (!roleIsA(edge.role, relation.edgeRole, profile.roles)) continue;
+  for (const relation of defs) {
+    for (const edge of elements) {
+      if (edge.role === undefined) continue;
+      if (!roleIsA(edge.role, relation.edgeRole, profile.roles)) continue;
 
-    const ends = endpointsOf(edge);
-    if (!ends) continue;
+      const ends = endpointsOf(edge);
+      if (!ends) continue;
 
-    const isSource = ends.source === element.id;
-    const isTarget = ends.target === element.id;
-    // A self-loop states nothing about an order and would report the subject as
-    // its own supplier.
-    if (isSource === isTarget) continue;
+      const isSource = ends.source === element.id;
+      const isTarget = ends.target === element.id;
+      // A self-loop states nothing about an order and would report the subject
+      // as its own supplier.
+      if (isSource === isTarget) continue;
 
-    const otherId = isSource ? ends.target : ends.source;
-    const other = byId.get(otherId);
-    if (!other) continue;
+      const otherId = isSource ? ends.target : ends.source;
+      const other = byId.get(otherId);
+      if (!other) continue;
 
-    const side: ReadingRelationSide = isSource ? 'supplier' : 'consumer';
-    const [, otherY] = centreOf(other.elementBound);
-    // `y` grows downwards, so "higher on the map" is a SMALLER y. A supplier is
-    // expected below the subject, a consumer above it — but only on a board
-    // whose framework CLAIMED that axis says something (`geometry`). Two BPMN
-    // tasks side by side contradict nothing.
-    const contradictsGeometry =
-      relation.geometry !== 'vertical'
-        ? false
-        : side === 'supplier'
-          ? otherY < subjectY - GEOMETRY_EPSILON
-          : otherY > subjectY + GEOMETRY_EPSILON;
+      const side: ReadingRelationSide = isSource ? 'supplier' : 'consumer';
+      const [, otherY] = centreOf(other.elementBound);
+      // `y` grows downwards, so "higher on the map" is a SMALLER y. A supplier
+      // is expected below the subject, a consumer above it — but only on a
+      // board whose framework CLAIMED that axis says something (`geometry`).
+      // Two BPMN tasks side by side contradict nothing.
+      const contradictsGeometry =
+        relation.geometry !== 'vertical'
+          ? false
+          : side === 'supplier'
+            ? otherY < subjectY - GEOMETRY_EPSILON
+            : otherY > subjectY + GEOMETRY_EPSILON;
 
-    relations.push({
-      edgeId: edge.id,
-      otherId,
-      otherName: readName(other, profile),
-      side,
-      contradictsGeometry,
-    });
+      const ownEndLabel = endLabelOf(edge, isSource ? 'source' : 'target');
+      const otherEndLabel = endLabelOf(edge, isSource ? 'target' : 'source');
+
+      relations.push({
+        edgeId: edge.id,
+        relationRole: relation.edgeRole,
+        otherId,
+        otherName: readName(other, profile),
+        side,
+        contradictsGeometry,
+        ...(ownEndLabel !== undefined ? { ownEndLabel } : {}),
+        ...(otherEndLabel !== undefined ? { otherEndLabel } : {}),
+      });
+    }
   }
   return relations;
 }

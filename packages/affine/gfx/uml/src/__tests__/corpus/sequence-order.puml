@@ -1,0 +1,42 @@
+@startuml
+title Checkout — placing an order
+
+actor "Customer" as customer
+participant "web : Storefront" as web
+participant "orders : OrderService" as orders
+database "inventory : StockDB" as stock
+
+autonumber
+
+customer -> web : browse()
+activate web
+
+web ->> orders : openBasket()
+activate orders
+orders --> web : basket
+deactivate orders
+
+loop [for each line]
+  web -> stock : reserve(sku, qty)
+  activate stock
+  stock --> web : reservation
+  deactivate stock
+end
+
+alt [basket is not empty]
+  customer -> web : checkout()
+  create receipt
+  web -> receipt : new(total)
+  ref over web, orders : Authorise payment
+  web --> customer : confirmation
+else [basket is empty]
+  web --> customer : nothing to check out
+end
+
+opt [customer signed out]
+  web -> receipt : close()
+  destroy receipt
+end
+
+deactivate web
+@enduml

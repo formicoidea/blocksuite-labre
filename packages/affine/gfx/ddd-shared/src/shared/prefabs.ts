@@ -470,7 +470,7 @@ export function addCloud(
 }
 
 export interface LegendRow {
-  swatch: 'dot' | 'square' | 'line';
+  swatch: 'dot' | 'square' | 'line' | 'glyph' | 'edge';
   color: string;
   letter?: string;
   label: string;
@@ -482,10 +482,63 @@ export interface LegendRow {
    * notation it documents.
    */
   dashed?: boolean;
+  /**
+   * `glyph` and `edge` swatches: the props of the element to draw in the swatch
+   * box, with its GEOMETRY left out — `xywh` for a glyph, the two endpoint
+   * positions for an edge, both filled in by the layout below.
+   *
+   * The seam a framework reaches for when a coloured square is not a fair
+   * picture of what it draws. The three DDD packs and EDGY are colour keys and
+   * want none of it; UML is the opposite case and the PO's recette of
+   * 2026-09-15 is why — "il n'y a que des rectangles pour class et actors alors
+   * qu'ils ont des pictos bien particuliers". UML defines no palette, so the
+   * SILHOUETTE is the whole of its key: a class is a divided box, an actor a
+   * stick figure, a use case an ellipse, an aggregation a hollow diamond.
+   *
+   * The element is a real canvas element, painted by the framework's own
+   * renderer at swatch size, so a legend row cannot drift away from the artefact
+   * it documents — nothing here draws a second copy of anybody's notation.
+   *
+   * ponytail: a swatch must carry NO `role`. A legend is drawn ON the board it
+   * describes, and the auto-legend detects what is present by role — a swatch
+   * with one on it would list itself the next time a legend was generated.
+   */
+  props?: Record<string, unknown>;
+  /**
+   * `glyph` swatches: the artefact's own aspect ratio, so a portrait picture (an
+   * actor, a lifeline) is drawn portrait and a landscape one (a class) is drawn
+   * landscape. Fitted INSIDE the swatch box and centred; 1 when absent.
+   */
+  aspect?: number;
 }
 export interface LegendSection {
   title?: string;
   rows: LegendRow[];
+}
+
+/**
+ * A swatch the FRAMEWORK described: its props, plus the geometry the layout
+ * decides. Cast in one place because the props arrive as data — a table in a
+ * framework module, not a literal this file can type — and the surface's own
+ * factory is what validates them.
+ */
+function addSwatchElement(
+  surface: Surface,
+  props: Record<string, unknown>
+): string {
+  return surface.addElement(
+    props as Parameters<Surface['addElement']>[0] & { type: string }
+  );
+}
+
+/** How the box is laid out, for a legend whose swatches are not 16-unit chips. */
+export interface LegendLayout {
+  width?: number;
+  /** Row pitch; the swatch is drawn centred in it. Defaults to 28. */
+  rowHeight?: number;
+  /** Swatch box, defaults to a 16 × 16 chip. */
+  swatchWidth?: number;
+  swatchHeight?: number;
 }
 
 /**
@@ -512,7 +565,7 @@ const LEGEND_METRICS = {
  */
 export function measureLegend(
   sections: readonly LegendSection[],
-  width?: number
+  layout: LegendLayout = {}
 ): { width: number; height: number } {
   const { DEFAULT_W, PAD, TITLE_H, SUB_H, ROW_H } = LEGEND_METRICS;
   let subs = 0;
@@ -522,8 +575,9 @@ export function measureLegend(
     rows += s.rows.length;
   }
   return {
-    width: width ?? DEFAULT_W,
-    height: PAD * 2 + TITLE_H + subs * SUB_H + rows * ROW_H,
+    width: layout.width ?? DEFAULT_W,
+    height:
+      PAD * 2 + TITLE_H + subs * SUB_H + rows * (layout.rowHeight ?? ROW_H),
   };
 }
 
@@ -537,10 +591,14 @@ export function addLegend(
   std: BlockStdScope,
   x: number,
   y: number,
-  opts: { title: string; sections: LegendSection[]; width?: number }
+  opts: { title: string; sections: LegendSection[] } & LegendLayout
 ): string {
-  const { PAD, TITLE_H, SUB_H, ROW_H, SW } = LEGEND_METRICS;
-  const { width: W, height: H } = measureLegend(opts.sections, opts.width);
+  const { PAD, TITLE_H, SUB_H, SW } = LEGEND_METRICS;
+  const ROW_H = opts.rowHeight ?? LEGEND_METRICS.ROW_H;
+  /** The swatch COLUMN: as wide as the widest sample any row may draw. */
+  const SWW = opts.swatchWidth ?? SW;
+  const SWH = opts.swatchHeight ?? SW;
+  const { width: W, height: H } = measureLegend(opts.sections, opts);
 
   const ids: string[] = [
     addShape(surface, x, y, W, H, {
@@ -634,6 +692,40 @@ export function addLegend(
             radius: 1,
           })
         );
+      } else if (row.swatch === 'glyph') {
+        // The artefact itself, at swatch size: its own aspect fitted inside the
+        // swatch box and centred, so a portrait picture stays portrait.
+        const aspect = row.aspect && row.aspect > 0 ? row.aspect : 1;
+        const gw = Math.min(SWW, SWH * aspect);
+        const gh = gw / aspect;
+        ids.push(
+          addSwatchElement(surface, {
+            ...row.props,
+            xywh: new Bound(
+              sx + (SWW - gw) / 2,
+              midY - gh / 2,
+              gw,
+              gh
+            ).serialize(),
+          })
+        );
+      } else if (row.swatch === 'edge') {
+        // A real connector across the swatch column, so the endpoint the
+        // notation puts on the line — a hollow diamond, a hollow triangle, a
+        // stick head — is drawn by the connector renderer rather than guessed at.
+        ids.push(
+          addSwatchElement(surface, {
+            mode: ConnectorMode.Straight,
+            stroke: row.color,
+            strokeWidth: 1.5,
+            frontEndpointStyle: PointStyle.None,
+            rearEndpointStyle: PointStyle.None,
+            ...row.props,
+            type: 'connector',
+            source: { position: [sx, midY] },
+            target: { position: [sx + SWW, midY] },
+          })
+        );
       } else {
         ids.push(
           addShape(surface, sx, midY - 2, SW, 4, { fill: row.color, radius: 1 })
@@ -642,9 +734,9 @@ export function addLegend(
       ids.push(
         addText(
           surface,
-          sx + SW + 10,
+          sx + SWW + 10,
           midY - LABEL_FONT_SIZE / 2,
-          W - PAD * 2 - SW - 10,
+          W - PAD * 2 - SWW - 10,
           row.label,
           LABEL_COLOR,
           LABEL_FONT,

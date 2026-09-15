@@ -8,9 +8,27 @@ import {
 import { PointLocation, SVGPathBuilder } from '@labre/global/gfx';
 
 import { isConnectorWithLabel } from '../../connector-manager.js';
-import { DEFAULT_ARROW_SIZE } from '../utils.js';
+import { DEFAULT_ARROW_SIZE, HOLLOW_HEAD_FILL } from '../utils.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * The outline width of a hollow head, in the marker's own `viewBox` units.
+ *
+ * Pinned rather than inherited. A marker declares `markerUnits="strokeWidth"`
+ * and a `0 0 20 20` viewBox mapped onto `markerWidth`, so one viewBox unit is
+ * already a fixed fraction of the connector's `strokeWidth` — the outline
+ * scales with the line without this attribute existing, and `1` is exactly the
+ * SVG default the solid heads get implicitly today. Nothing changes visually.
+ *
+ * It is set only on the hollow heads because they are the only ones where the
+ * value is observable: a solid head paints `fill` and `stroke` in the same
+ * colour, so its outline is invisible either way. On a hollow head the outline
+ * IS the head. Leaving it to a default that a future `stroke-width` on the
+ * `<svg>`, the `<defs>`, or the marker itself would override means the UML
+ * heads could silently thicken or vanish; the solid twins would not notice.
+ */
+const HOLLOW_HEAD_STROKE_WIDTH = 1;
 
 interface PathBounds {
   minX: number;
@@ -19,9 +37,20 @@ interface PathBounds {
   maxY: number;
 }
 
+/**
+ * Which of a connector's three captions a retained `<div>` belongs to.
+ *
+ * `center` is the connector's own name; `source` / `target` are the end labels
+ * (ADR 0020). Keyed rather than indexed so a connector that gains a target
+ * label does not renumber the node the centre one is already using.
+ */
+type LabelSlot = 'center' | 'source' | 'target';
+
+const LABEL_SLOTS: readonly LabelSlot[] = ['center', 'source', 'target'];
+
 type RetainedConnectorDom = {
   defs: SVGDefsElement;
-  label: HTMLDivElement | null;
+  labels: Partial<Record<LabelSlot, HTMLDivElement>>;
   path: SVGPathElement;
   svg: SVGSVGElement;
 };
@@ -86,7 +115,12 @@ function createConnectorPath(
   return pathBuilder.build();
 }
 
-function createArrowMarker(
+/**
+ * Exported for `src/__tests__/endpoint-style.unit.spec.ts`: the hollow heads are
+ * defined by the fact that `fill` and `stroke` differ, which is only observable
+ * on the marker node this builds.
+ */
+export function createArrowMarker(
   id: string,
   style: PointStyle,
   color: string,
@@ -105,6 +139,8 @@ function createArrowMarker(
   marker.setAttribute('orient', 'auto');
   marker.setAttribute('markerUnits', 'strokeWidth');
 
+  // No `default`, as on the canvas side: an unknown persisted `PointStyle`
+  // yields an empty marker rather than a wrong head.
   switch (style) {
     case 'Arrow': {
       const path = document.createElementNS(SVG_NS, 'path');
@@ -128,6 +164,18 @@ function createArrowMarker(
       marker.append(path);
       break;
     }
+    case 'TriangleHollow': {
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute(
+        'd',
+        isStart ? 'M 20 7 L 12 10 L 20 13 Z' : 'M 0 7 L 8 10 L 0 13 Z'
+      );
+      path.setAttribute('fill', HOLLOW_HEAD_FILL);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', String(HOLLOW_HEAD_STROKE_WIDTH));
+      marker.append(path);
+      break;
+    }
     case 'Circle': {
       const circle = document.createElementNS(SVG_NS, 'circle');
       circle.setAttribute('cx', '10');
@@ -143,6 +191,15 @@ function createArrowMarker(
       path.setAttribute('d', 'M 10 6 L 14 10 L 10 14 L 6 10 Z');
       path.setAttribute('fill', color);
       path.setAttribute('stroke', color);
+      marker.append(path);
+      break;
+    }
+    case 'DiamondHollow': {
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', 'M 10 6 L 14 10 L 10 14 L 6 10 Z');
+      path.setAttribute('fill', HOLLOW_HEAD_FILL);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', String(HOLLOW_HEAD_STROKE_WIDTH));
       marker.append(path);
       break;
     }
@@ -177,42 +234,73 @@ function getRetainedConnectorDom(element: HTMLElement): RetainedConnectorDom {
   svg.append(defs, path);
   element.replaceChildren(svg);
 
-  const retained = {
+  const retained: RetainedConnectorDom = {
     svg,
     defs,
     path,
-    label: null,
+    labels: {},
   };
   retainedConnectorDom.set(element, retained);
 
   return retained;
 }
 
-function getOrCreateLabelElement(retained: RetainedConnectorDom) {
-  if (retained.label) {
-    return retained.label;
+function getOrCreateLabelElement(
+  retained: RetainedConnectorDom,
+  slot: LabelSlot
+) {
+  const existing = retained.labels[slot];
+  if (existing) {
+    return existing;
   }
 
   const label = document.createElement('div');
-  retained.svg.insertAdjacentElement('afterend', label);
-  retained.label = label;
+  // Appended after the `<svg>` rather than inserted directly behind it, so the
+  // three captions land in slot order instead of in reverse creation order.
+  // Every one of them is absolutely positioned, so document order is a
+  // debugging convenience, not a layout decision.
+  (retained.svg.parentElement ?? retained.svg).append(label);
+  retained.labels[slot] = label;
 
   return label;
+}
+
+/**
+ * The text and box one slot paints, or `null` when that caption is absent.
+ *
+ * The DOM twin of `paintedLabels` on the canvas side: same three slots, same
+ * `labelStyle` shared by all three, so the two renderers cannot disagree about
+ * what a connector is showing.
+ */
+function labelContent(model: ConnectorElementModel, slot: LabelSlot) {
+  if (slot === 'center') {
+    return isConnectorWithLabel(model) && model.labelXYWH
+      ? { text: model.text?.toString() ?? '', xywh: model.labelXYWH }
+      : null;
+  }
+
+  const xywh = model.endLabelXYWH(slot);
+  return model.hasEndLabel(slot) && xywh
+    ? { text: model.endLabelText(slot)?.toString() ?? '', xywh }
+    : null;
 }
 
 function renderConnectorLabel(
   model: ConnectorElementModel,
   retained: RetainedConnectorDom,
   renderer: DomRenderer,
-  zoom: number
+  zoom: number,
+  slot: LabelSlot
 ) {
-  if (!isConnectorWithLabel(model) || !model.labelXYWH) {
-    retained.label?.remove();
-    retained.label = null;
+  const content = labelContent(model, slot);
+
+  if (!content) {
+    retained.labels[slot]?.remove();
+    delete retained.labels[slot];
     return;
   }
 
-  const [lx, ly, lw, lh] = model.labelXYWH;
+  const [lx, ly, lw, lh] = content.xywh;
   const {
     labelStyle: {
       color,
@@ -224,7 +312,7 @@ function renderConnectorLabel(
     },
   } = model;
 
-  const labelElement = getOrCreateLabelElement(retained);
+  const labelElement = getOrCreateLabelElement(retained, slot);
   labelElement.style.position = 'absolute';
   labelElement.style.left = `${lx * zoom}px`;
   labelElement.style.top = `${ly * zoom}px`;
@@ -257,7 +345,7 @@ function renderConnectorLabel(
   labelElement.style.wordWrap = 'break-word';
 
   // Add text content
-  labelElement.textContent = model.text ? model.text.toString() : '';
+  labelElement.textContent = content.text;
 }
 
 /**
@@ -396,6 +484,9 @@ export const connectorDomRenderer = (
   element.style.overflow = 'visible';
   element.style.pointerEvents = 'none';
 
-  // Render label if present
-  renderConnectorLabel(model, retained, renderer, zoom);
+  // Render each caption that is present — the centre name and the two end
+  // labels — and drop the node of any that is not.
+  for (const slot of LABEL_SLOTS) {
+    renderConnectorLabel(model, retained, renderer, zoom, slot);
+  }
 };

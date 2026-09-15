@@ -1,5 +1,6 @@
 import {
   ReadingProfileIdentifier,
+  readingRelationDefs,
   type ReadingProfile,
 } from '@labre/affine-block-surface';
 import { ViewExtensionManager } from '@labre/affine-ext-loader';
@@ -76,6 +77,25 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   'c4:boundary': 'frame',
   'c4:system-boundary': 'frame',
   'c4:container-boundary': 'frame',
+  'uml:diagram': 'frame',
+  'uml:subject': 'frame',
+  // §15.6.4's swimlane and §14.2.4's composite state: both are rectangles drawn
+  // ROUND part of the drawing, and what belongs to one is read back from where
+  // an element sits. A band is not an artefact any more than a sheet is.
+  'uml:partition': 'frame',
+  'uml:region': 'frame',
+  // §17.6.4's combined fragment and the operand bands inside it: the same
+  // answer, one clause later. A fragment is a rectangle drawn ROUND part of an
+  // interaction and an operand is a slice of its plot, and what is inside
+  // either is read back from where an occurrence sits.
+  'uml:fragment': 'frame',
+  'uml:operand': 'frame',
+  // Declared, never stamped: `uml:classifier` is §9.2's own generalisation, the
+  // parent `uml:class`, `uml:interface` and `uml:enumeration` hang off so a
+  // rule about classifiers reaches all three. No command creates it and no
+  // element carries it, so there is nothing for a profile to read — and the
+  // three concrete children each have one of their own.
+  'uml:classifier': 'an abstract parent nothing is ever drawn as',
   // Wardley's own product decision: the reading is about the VALUE CHAIN.
   // A need has a demand, not a nature; a force and an accelerator press on the
   // chain from outside it; an area is a region; a pipeline's connections go
@@ -116,10 +136,10 @@ describe('every framework ships a reading, not only Wardley', () => {
     .flatMap(defs => Object.values(defs))
     .filter(def => def.kind === 'node');
 
-  test('the eight frameworks each register at least one profile', () => {
-    // Eight descriptors, eight role vocabularies, and every one of them
+  test('the nine frameworks each register at least one profile', () => {
+    // Nine descriptors, nine role vocabularies, and every one of them
     // represented among the registered profiles. The count is derived on both
-    // sides, so a ninth framework arrives here with its own row.
+    // sides, so a tenth framework arrives here with its own row.
     expect(vocabularies).toHaveLength(FRAMEWORK_DESCRIPTORS.length);
 
     const owners = new Set(profiles.map(profile => profile.framework));
@@ -164,26 +184,52 @@ describe('every framework ships a reading, not only Wardley', () => {
   test('only Wardley claims a vertical reading of its board', () => {
     // `geometry` turns on the contradiction note and the value-flow section,
     // both of which are statements about a VALUE CHAIN. Everybody else declares
-    // none and the panel keeps quiet — the decision, pinned.
+    // none and the panel keeps quiet — the decision, pinned. Over EVERY table,
+    // not just the first: a profile may declare several since tranche J.
     expect(
       profiles
-        .filter(profile => profile.relation?.geometry === 'vertical')
+        .filter(profile =>
+          readingRelationDefs(profile).some(def => def.geometry === 'vertical')
+        )
         .map(profile => profile.id)
     ).toEqual(['wardley']);
   });
 
-  test('a profile that reads a relation names both of its sides', () => {
+  test('a profile that reads a relation names both sides of every table', () => {
     // A side with no wording is a group of names under no heading. The engine
     // hides it rather than inventing one, so the omission would be silent.
     for (const profile of profiles) {
-      const relation = profile.relation;
-      if (!relation) continue;
-      for (const side of ['consumer', 'supplier'] as const) {
-        const wording = relation.sides[side];
-        expect(wording?.labelKey, `${profile.id}/${side}`).toMatch(
-          /^com\.labre\./
+      for (const relation of readingRelationDefs(profile)) {
+        for (const side of ['consumer', 'supplier'] as const) {
+          const wording = relation.sides[side];
+          const where = `${profile.id}/${relation.edgeRole}/${side}`;
+          expect(wording?.labelKey, where).toMatch(/^com\.labre\./);
+          expect(wording?.labelFallback, where).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  /**
+   * Two tables on one profile must not both answer for one edge, or the panel
+   * lists it twice — once under each heading.
+   *
+   * The engine cannot enforce it (it would have to resolve every framework's
+   * role graph at registration time, and a profile is data), so it is a
+   * declaration rule and this is where the library checks it. UML is the only
+   * framework that declares more than one table today, and the trap is real
+   * there: `uml:aggregation` and `uml:composition` are both a `uml:association`
+   * (§11.5.4).
+   */
+  test('no profile declares two tables one edge could answer to', () => {
+    for (const profile of profiles) {
+      const roles = readingRelationDefs(profile).map(def => def.edgeRole);
+      expect(new Set(roles).size, profile.id).toBe(roles.length);
+      for (const role of roles) {
+        const shadowed = roles.filter(
+          other => other !== role && roleIsA(role, other, profile.roles)
         );
-        expect(wording?.labelFallback, `${profile.id}/${side}`).toBeTruthy();
+        expect(shadowed, `${profile.id}: ${role}`).toEqual([]);
       }
     }
   });

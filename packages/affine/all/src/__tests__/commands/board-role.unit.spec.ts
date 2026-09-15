@@ -39,6 +39,11 @@ describe('board role', () => {
       c4: ['board'],
       'ddd-core-domain': ['background'],
       'ddd-context-map': ['board'],
+      // The UML frame is `umlDiagram` in the document and `board` on the wire:
+      // the table reads `telemetry.element`, and every framework's sheet
+      // reports under the same word so "boards created per framework" is one
+      // ratio rather than nine.
+      uml: ['board'],
     });
   });
 

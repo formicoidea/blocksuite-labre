@@ -35,6 +35,7 @@ import {
   type TextStyleProps,
 } from '../../consts/index';
 import { type Color, DefaultTheme } from '../../themes/index';
+import { type ConnectorLabelEnd, connectorEndNear } from './end-label.js';
 
 export type SerializedConnection = {
   id?: string;
@@ -77,6 +78,17 @@ export type ConnectorLabelProps = {
   labelOffset?: ConnectorLabelOffsetProps;
   labelStyle?: TextStyleProps;
   labelConstraints?: ConnectorLabelConstraintsProps;
+
+  /**
+   * The two END labels — a multiplicity, a role name, a qualifier — each
+   * anchored beside the endpoint it belongs to. See ADR 0020; they are FLAT
+   * rather than two nested records for the reason spelled out on the
+   * accessors.
+   */
+  sourceLabel?: Y.Text;
+  sourceLabelXYWH?: XYWH;
+  targetLabel?: Y.Text;
+  targetLabelXYWH?: XYWH;
 };
 
 export type SerializedConnectorElement = SerializedElement & {
@@ -119,6 +131,9 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     if (this.hasLabel()) {
       bounds = bounds.unite(Bound.fromXYWH(this.labelXYWH!));
     }
+    for (const box of this.endLabelBoxes()) {
+      bounds = bounds.unite(Bound.fromXYWH(box));
+    }
     return bounds;
   }
 
@@ -131,6 +146,16 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
       props.text = new Y.Text(props.text);
     }
 
+    // The two end labels take the same courtesy the centre one does: a caller
+    // may hand a plain string and get a `Y.Text` on the element.
+    if (typeof props.sourceLabel === 'string') {
+      props.sourceLabel = new Y.Text(props.sourceLabel);
+    }
+
+    if (typeof props.targetLabel === 'string') {
+      props.targetLabel = new Y.Text(props.targetLabel);
+    }
+
     return props;
   }
 
@@ -140,7 +165,10 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
       (this.hasLabel() &&
         Bound.fromXYWH(this.labelXYWH!).points.some(p =>
           bounds.containsPoint(p)
-        ))
+        )) ||
+      this.endLabelBoxes().some(box =>
+        Bound.fromXYWH(box).points.some(p => bounds.containsPoint(p))
+      )
     );
   }
 
@@ -161,6 +189,17 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
         end,
         Bound.fromXYWH(this.labelXYWH!).points
       );
+    }
+
+    if (!intersected) {
+      for (const box of this.endLabelBoxes()) {
+        intersected = linePolylineIntersects(
+          start,
+          end,
+          Bound.fromXYWH(box).points
+        );
+        if (intersected) break;
+      }
     }
 
     return intersected;
@@ -306,6 +345,128 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     );
   }
 
+  /** The content of one end's label, or `undefined` when it has none. */
+  endLabelText(end: ConnectorLabelEnd): Y.Text | undefined {
+    return end === 'source' ? this.sourceLabel : this.targetLabel;
+  }
+
+  /** The box of one end's label, or `undefined` when nothing placed it yet. */
+  endLabelXYWH(end: ConnectorLabelEnd): XYWH | undefined {
+    return end === 'source' ? this.sourceLabelXYWH : this.targetLabelXYWH;
+  }
+
+  /**
+   * Whether one end carries a label that should be PAINTED — the end-label
+   * twin of `hasLabel()`, gated on the same `labelDisplay` (one switch hides
+   * every caption on a connector, which is what the toolbar's toggle means)
+   * and on `endLabelEditing` instead of `labelEditing`, so mounting the editor
+   * on one end does not blank the other two labels.
+   */
+  hasEndLabel(end: ConnectorLabelEnd) {
+    const text = this.endLabelText(end);
+    return Boolean(
+      this.endLabelEditing !== end &&
+        this.labelDisplay &&
+        this.endLabelXYWH(end) &&
+        text &&
+        text.length
+    );
+  }
+
+  hasSourceLabel() {
+    return this.hasEndLabel('source');
+  }
+
+  hasTargetLabel() {
+    return this.hasEndLabel('target');
+  }
+
+  /** The boxes of the end labels that are currently painted, in end order. */
+  endLabelBoxes(): XYWH[] {
+    const boxes: XYWH[] = [];
+    if (this.hasSourceLabel()) boxes.push(this.sourceLabelXYWH!);
+    if (this.hasTargetLabel()) boxes.push(this.targetLabelXYWH!);
+    return boxes;
+  }
+
+  endLabelIncludesPoint(end: ConnectorLabelEnd, point: IVec) {
+    return (
+      this.hasEndLabel(end) &&
+      Bound.fromXYWH(this.endLabelXYWH(end)!).isPointInBound(point)
+    );
+  }
+
+  sourceLabelIncludesPoint(point: IVec) {
+    return this.endLabelIncludesPoint('source', point);
+  }
+
+  targetLabelIncludesPoint(point: IVec) {
+    return this.endLabelIncludesPoint('target', point);
+  }
+
+  /**
+   * Whether a point is reaching for one of the ENDS — the arrowhead, and the
+   * label that belongs beside it whether or not it exists yet.
+   *
+   * ## Why a hairline has to claim more than itself
+   *
+   * A connector is a stroke a few units wide, so its hit test is the line and
+   * nothing else — and an end label is the one thing on a connector that a user
+   * aims at BEFORE it exists (`docs/adr/0018`: they aim at the arrowhead). The
+   * picker that turns a double-click into "the source label" was written
+   * generously for exactly that, and it never got the chance: past `8` units off
+   * the stroke (plus half its width when the caller asks for a threshold —
+   * {@link includesPoint}'s own tolerance) nothing answered here, so the event
+   * reached no view at all and the editor's double-click-on-empty-canvas handler
+   * dropped a text block at the arrowhead instead. A text box appears, it is not
+   * the label, and the contextual menu's own entry works — which is precisely
+   * what the PO reported on 14/09/2026.
+   *
+   * ## …and why only a connector a FRAMEWORK typed claims it
+   *
+   * A `CONNECTOR_END_LABEL_GRAB` disc around each endpoint is a large
+   * thing to take out of the canvas, and the only gesture that needs it is the
+   * one that opens an END label — which is a notation's caption, never a plain
+   * arrow's. A connector carrying a `role` is exactly a connector some framework
+   * wrote (`uml:association`, `bpmn:sequenceFlow`); a generalist one keeps the
+   * hairline it has always had, so a double-click beside a whiteboard arrow
+   * still means "add text here" and a click there still reaches whatever is
+   * under it.
+   *
+   * ## …and why it gives the bound element right of way
+   *
+   * An endpoint sits ON the border of the node it is attached to, so half of
+   * every grab disc is INSIDE that node — and a node's body is the target of its
+   * own gestures (a UML classifier opens its name compartment there). Claiming
+   * that half would take the gesture away from the artefact and give it to the
+   * line touching it. So the disc stops at the bound element's own box, and what
+   * is left is the half the notation writes a multiplicity in: outside the box,
+   * beside the arrowhead.
+   *
+   * Resolved through the surface rather than remembered, and BOTH ways: a
+   * canvas element by id, and a BLOCK — a note, an image, an embed, a frame —
+   * through the store, because those are ends a framework binds too and the
+   * element resolver alone answers `undefined` for every one of them. It did,
+   * and the whole disc was then claimed inside the note. `null` is for an end
+   * bound to NOTHING: an unattached end is a free arrowhead in open canvas, and
+   * the whole disc around it is the author's target.
+   */
+  endGrabIncludesPoint(point: IVec): boolean {
+    if (this.role === undefined) return false;
+
+    const end = connectorEndNear(this.absolutePath, point);
+    if (!end) return false;
+
+    const id = this[end].id;
+    const boundTo = id
+      ? (this.surface?.getElementById(id) ??
+        (this.surface?.store.getBlock(id)?.model as
+          | { elementBound?: Bound }
+          | undefined))
+      : null;
+    return !boundTo?.elementBound?.isPointInBound(point);
+  }
+
   override includesPoint(
     x: number,
     y: number,
@@ -313,7 +474,12 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
   ): boolean {
     const currentPoint: IVec = [x, y];
 
-    if (this.labelIncludesPoint(currentPoint as IVec)) {
+    if (
+      this.labelIncludesPoint(currentPoint as IVec) ||
+      this.sourceLabelIncludesPoint(currentPoint) ||
+      this.targetLabelIncludesPoint(currentPoint) ||
+      this.endGrabIncludesPoint(currentPoint)
+    ) {
       return true;
     }
 
@@ -372,6 +538,21 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     if (this.hasLabel()) {
       const [x, y, w, h] = this.labelXYWH!;
       this.labelXYWH = [x + offset[0], y + offset[1], w, h];
+    }
+
+    // The end labels ride along. Dragging the whole connector moves BOTH of
+    // its endpoints by the same offset, so "an end label follows its endpoint"
+    // and "translate by the connector's offset" are the same movement here;
+    // they part company only when a single endpoint moves, which is the path
+    // generator's business, not this one's.
+    if (this.hasSourceLabel()) {
+      const [x, y, w, h] = this.sourceLabelXYWH!;
+      this.sourceLabelXYWH = [x + offset[0], y + offset[1], w, h];
+    }
+
+    if (this.hasTargetLabel()) {
+      const [x, y, w, h] = this.targetLabelXYWH!;
+      this.targetLabelXYWH = [x + offset[0], y + offset[1], w, h];
     }
   }
 
@@ -509,6 +690,18 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
   @local()
   accessor labelEditing: boolean = false;
 
+  /**
+   * The end whose label is currently open in the DOM editor, if any — the
+   * end-label twin of `labelEditing`, and `@local()` for the same reason: it
+   * is a property of this client's editing session, not of the document.
+   *
+   * One selector rather than two booleans because only one label can be edited
+   * at a time, and because it is the same `'source' | 'target'` the editor's
+   * `which` argument carries.
+   */
+  @local()
+  accessor endLabelEditing: ConnectorLabelEnd | null = null;
+
   @field()
   accessor mode: ConnectorMode = DEFAULT_CONNECTOR_MODE;
 
@@ -539,6 +732,46 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     position: [0, 0],
   };
 
+  /**
+   * The content of the label beside the SOURCE end — a multiplicity, a role
+   * name, a qualifier. `undefined` on every connector that has none, which is
+   * almost all of them.
+   *
+   * ### Why four flat fields and not two records
+   *
+   * A `Y.Text` nested inside a `Y.Map` inside the element's map would not be
+   * observed. The bridge that republishes a text edit as an element update is
+   * `watchText` in `syncElementFromY`
+   * (`packages/framework/std/src/gfx/model/surface/element-model.ts`): it walks
+   * the element's OWN `Y.Map`, and subscribes to every top-level value that is
+   * `instanceof Y.Text` — the centre `text` gets its observation from there and
+   * from nowhere else, which is why `text` carries no `@observe` decorator.
+   *
+   * Keeping the two end texts as top-level keys therefore buys the exact same
+   * observation, for free, on the exact same code path: type into an end label
+   * and the connector repaints, on this client and on every peer. A nested
+   * record would have needed an `@observe` bridge of its own, a second way of
+   * doing the one thing the centre label already does. ADR 0020.
+   *
+   * ### Absent by default
+   *
+   * `undefined` means the key is never written into the Y.Map at all (see the
+   * `@field()` `init`), so a connector that has no end label serialises
+   * byte-identically to one created before these fields existed: no migration,
+   * and an older build opens the document as a connector with two keys it does
+   * not read.
+   */
+  @field()
+  accessor sourceLabel: Y.Text | undefined = undefined;
+
+  /**
+   * The box of the source-end label, in the same absolute coordinates as
+   * `labelXYWH`. Absent until something places it — the pure default is
+   * `connectorEndLabelBox(path, 'source', size)`.
+   */
+  @field()
+  accessor sourceLabelXYWH: XYWH | undefined = undefined;
+
   @field()
   accessor stroke: Color = DefaultTheme.connectorColor;
 
@@ -552,6 +785,21 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
   accessor target: Connection = {
     position: [0, 0],
   };
+
+  /**
+   * The content of the label beside the TARGET end. See `sourceLabel` for why
+   * this is a flat `Y.Text` and what its absence guarantees.
+   */
+  @field()
+  accessor targetLabel: Y.Text | undefined = undefined;
+
+  /**
+   * The box of the target-end label, in the same absolute coordinates as
+   * `labelXYWH`. Absent until something places it — the pure default is
+   * `connectorEndLabelBox(path, 'target', size)`.
+   */
+  @field()
+  accessor targetLabelXYWH: XYWH | undefined = undefined;
 
   /**
    * The content of the label.

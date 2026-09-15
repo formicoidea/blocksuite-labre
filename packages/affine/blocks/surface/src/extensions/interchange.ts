@@ -77,6 +77,24 @@ export type InterchangeDirection = 'import' | 'export';
  * One element as it is handed to `surface.addElement` — the exact shape the
  * store already takes, so an importer's output is written with no translation
  * step in between and no live model in sight.
+ *
+ * ## The provisional `id`, and how a reader points at itself
+ *
+ * A reader names things the FILE named through `interchange[formatId].id`, and
+ * that is the identity `materializeInterchangeImport` remaps endpoints from. It
+ * is not enough on its own: a framework artefact is routinely several elements
+ * the file never mentioned — a shape, its compartment texts, and the group that
+ * makes them one thing — so a reader may also put an `id` of its own on each
+ * element. `surface.addElement` OVERWRITES it with a nanoid and is documented
+ * to, which is exactly what makes it safe as a local name: it reaches no
+ * document, it is read by the materializer and nowhere else, and it cannot
+ * collide with a real surface id. Two rules make it work — a reader emits an
+ * element BEFORE any group that holds it (a group's `children` are rewritten
+ * from the map built so far, in one pass, rather than deferred like a
+ * connector's two ends), and a SOURCE id wins wherever both could answer, so a
+ * reader that mints no local name behaves exactly as it did before this
+ * existed. A provisional name used twice resolves to the FIRST element that
+ * claimed it, and the import says so in a `substituted-id` note.
  */
 export type SerializedElementProps = Record<string, unknown> & { type: string };
 

@@ -67,6 +67,12 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
    * frame, and the usage measure it reads is the whole point — a list cached
    * across openings would show the user yesterday's ranking of what they did
    * this morning.
+   *
+   * "Per render" is only worth anything if reopening the row IS a render, and
+   * for a while it was not: `createPopper` hands a cached element back rather
+   * than building a new one, so the row re-showed the DOM of its last opening
+   * and a command that had just earned its seat waited for a reload. The reopen
+   * path now requests an update; this getter is what it exists to re-ask.
    */
   private get _selection() {
     const std = this.edgeless.std;
@@ -168,6 +174,7 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
             ${commands.map(
               command =>
                 html`<edgeless-tool-icon-button
+                  data-command-id=${command.id}
                   .tooltip=${this._tooltip(command)}
                   @click=${() => this._invoke(command)}
                 >

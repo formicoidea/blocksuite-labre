@@ -95,6 +95,77 @@ describe('a background never covers what is drawn on it', () => {
   });
 });
 
+/**
+ * The recette of 2026-09-15 (PO, UML): "au déplacement ou au redimensionnement
+ * le board passe au premier plan, occultant ainsi les objets qui sont inclus
+ * dedans".
+ *
+ * A UML diagram frame holds inner BACKGROUNDS of its own — a subject, a
+ * partition, a composite state, a combined fragment — and a C4 board holds
+ * boundaries. Each is drawn inside the sheet and therefore above it, so the
+ * "superposed boards" clause read the sheet as buried under its own content and
+ * raised it on every move. When the inner background was the topmost element of
+ * the stack, the opaque sheet landed at the very front.
+ */
+describe('a sheet is never raised above the backgrounds drawn on it', () => {
+  /** An inner background — a UML subject on a diagram frame. */
+  const inner = (
+    index: string,
+    xywh = '[900,600,380,260]'
+  ): StackedElement => ({
+    index,
+    xywh,
+    isBackground: true,
+  });
+
+  it('leaves a moved frame under the inner background it encloses', () => {
+    expect(stackingIndexFor(board('Zz'), [inner('a3')])).toBeNull();
+  });
+
+  it('does not fly to the front over its own artefacts', () => {
+    // The recette's stack exactly: two classes, then a subject drawn on an
+    // empty corner of the sheet, then the sheet is moved.
+    expect(
+      stackingIndexFor(board('Zz'), [node('a1'), node('a2'), inner('a3')])
+    ).toBeNull();
+  });
+
+  it('still raises a peer board of the same size', () => {
+    // Two boards dropped on the same spot enclose each other, which is no
+    // statement at all: they are peers and the old answer stands.
+    const index = stackingIndexFor(board('a0'), [board('a2')])!;
+    expect(index > 'a2').toBe(true);
+  });
+
+  it('still raises a frame that merely OVERLAPS another background', () => {
+    // Half on, half off: neither is the other's sheet.
+    const other = board('a2', '[800,0,1600,1000]');
+    const index = stackingIndexFor(board('a0'), [other])!;
+    expect(index > 'a2').toBe(true);
+  });
+
+  it('clears a peer board without climbing over its own content', () => {
+    // The half the carve-out first missed: the frame IS buried (a peer board it
+    // merely overlaps sits above it), so it is raised — and the depth it was
+    // raised to was read off the whole stack, whose topmost overlapping
+    // background is the frame's own inner subject. Above the peer, below the
+    // subject, is the only answer that is both rules at once.
+    const peer = board('a2', '[800,0,1600,1000]');
+    const index = stackingIndexFor(board('a0'), [peer, inner('a4')])!;
+
+    expect(index).not.toBeNull();
+    expect(index > 'a2').toBe(true);
+    expect(index < 'a4').toBe(true);
+  });
+
+  it('still lowers a sheet dropped over free artefacts', () => {
+    // The carve-out touches `buried` alone: a sheet that lids what was drawn
+    // before it is still a lid and still goes under it.
+    const index = stackingIndexFor(board('a3'), [node('a1'), node('a2')])!;
+    expect(index < 'a1').toBe(true);
+  });
+});
+
 describe('the rule is idempotent, which is what makes undo safe', () => {
   const cases: [string, StackedElement, StackedElement[]][] = [
     ['an artefact raised off a floor', node('a0'), [board('a1')]],

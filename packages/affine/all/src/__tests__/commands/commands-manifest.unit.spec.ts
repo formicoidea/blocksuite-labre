@@ -12,6 +12,8 @@ import { eventStormingCommands } from '@labre/affine-gfx-ddd-event-storming';
 import { eventStormingCommandsManifest } from '@labre/affine-gfx-ddd-event-storming/commands-manifest';
 import { edgyCommands } from '@labre/affine-gfx-edgy';
 import { edgyCommandsManifest } from '@labre/affine-gfx-edgy/commands-manifest';
+import { umlCommands } from '@labre/affine-gfx-uml';
+import { umlCommandsManifest } from '@labre/affine-gfx-uml/commands-manifest';
 import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import { wardleyCommandsManifest } from '@labre/affine-gfx-wardley/commands-manifest';
 import {
@@ -105,6 +107,12 @@ const CASES: Case[] = [
     dir: 'ddd-context-map',
     commands: contextMapCommands,
     manifest: contextMapCommandsManifest,
+  },
+  {
+    id: 'uml',
+    dir: 'uml',
+    commands: umlCommands,
+    manifest: umlCommandsManifest,
   },
 ];
 

@@ -1,0 +1,12 @@
+@startuml
+title sd Diagram
+
+participant "a : A" as a
+participant "b : B" as b
+
+loop [x > 0]
+  a -> b : doIt(x)
+  b --> a : ok
+else [else]
+end
+@enduml

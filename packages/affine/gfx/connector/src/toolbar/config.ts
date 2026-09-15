@@ -19,6 +19,8 @@ import {
   StrokeStyle,
 } from '@labre/affine-model';
 import {
+  CONNECTOR_SOURCE_LABEL,
+  CONNECTOR_TARGET_LABEL,
   type ToolbarContext,
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
@@ -67,8 +69,25 @@ import {
   roleVocabularies,
 } from '../direction/typed-edge';
 import { mountConnectorLabelEditor } from '../text';
+import {
+  EndPointDiamondHollowIcon,
+  EndPointTriangleHollowIcon,
+  StartPointDiamondHollowIcon,
+  StartPointTriangleHollowIcon,
+} from './hollow-endpoint-icons.js';
 
-const FRONT_ENDPOINT_STYLE_LIST = [
+/**
+ * Every `PointStyle` must appear in BOTH lists.
+ *
+ * `renderMenu` paints the menu's trigger with
+ * `renderCurrentMenuItemWith(items, currentValue, 'icon')`, which returns
+ * `undefined` for a value the list does not carry — an unlisted style gives a
+ * blank button, so a connector created by a framework (or imported) with that
+ * head shows an empty endpoint control. There is no test that can catch a
+ * forgotten entry at the type level; `endpoint-style.unit.spec.ts` asserts the
+ * coverage instead.
+ */
+export const FRONT_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.None,
     icon: StartPointIcon(),
@@ -82,6 +101,10 @@ const FRONT_ENDPOINT_STYLE_LIST = [
     icon: StartPointTriangleIcon(),
   },
   {
+    value: PointStyle.TriangleHollow,
+    icon: StartPointTriangleHollowIcon(),
+  },
+  {
     value: PointStyle.Circle,
     icon: StartPointCircleIcon(),
   },
@@ -89,12 +112,20 @@ const FRONT_ENDPOINT_STYLE_LIST = [
     value: PointStyle.Diamond,
     icon: StartPointDiamondIcon(),
   },
+  {
+    value: PointStyle.DiamondHollow,
+    icon: StartPointDiamondHollowIcon(),
+  },
 ] as const satisfies MenuItem<PointStyle>[];
 
-const REAR_ENDPOINT_STYLE_LIST = [
+export const REAR_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.Diamond,
     icon: EndPointDiamondIcon(),
+  },
+  {
+    value: PointStyle.DiamondHollow,
+    icon: EndPointDiamondHollowIcon(),
   },
   {
     value: PointStyle.Circle,
@@ -103,6 +134,10 @@ const REAR_ENDPOINT_STYLE_LIST = [
   {
     value: PointStyle.Triangle,
     icon: EndPointTriangleIcon(),
+  },
+  {
+    value: PointStyle.TriangleHollow,
+    icon: EndPointTriangleHollowIcon(),
   },
   {
     value: PointStyle.Arrow,
@@ -431,6 +466,42 @@ export const connectorToolbarConfig = {
         mountConnectorLabelEditor(model, rootBlock);
       },
     },
+    /**
+     * The two END labels (`docs/adr/0018` phase 2).
+     *
+     * After the caption and its style controls, because that is the order the
+     * notation itself has: an association is named in the middle and adorned at
+     * its ends. Each entry appears only while its own end is bare — an end
+     * label that exists is edited by double-clicking it, exactly as the caption
+     * is, and `g.text` has always hidden itself on the same rule.
+     *
+     * Wordings, not literals: the row is a host's UI, and a hard-coded "Source
+     * label" is the one word a translated editor cannot translate (#183).
+     */
+    ...(['source', 'target'] as const).map<ToolbarGenericAction>(end => ({
+      id: end === 'source' ? 'h.source-label' : 'h.target-label',
+      tooltipWording:
+        end === 'source' ? CONNECTOR_SOURCE_LABEL : CONNECTOR_TARGET_LABEL,
+      labelWording:
+        end === 'source' ? CONNECTOR_SOURCE_LABEL : CONNECTOR_TARGET_LABEL,
+      icon: AddTextIcon(),
+      when(ctx: ToolbarContext) {
+        const models = ctx.getSurfaceModelsByType(ConnectorElementModel);
+        if (models.length !== 1) return false;
+        return end === 'source'
+          ? !models[0].sourceLabel
+          : !models[0].targetLabel;
+      },
+      run(ctx: ToolbarContext) {
+        const model = ctx.getCurrentModelByType(ConnectorElementModel);
+        if (!model) return;
+
+        const rootBlock = getRootBlock(ctx);
+        if (!rootBlock) return;
+
+        mountConnectorLabelEditor(model, rootBlock, undefined, { which: end });
+      },
+    })),
     // id: `g.text`
     ...createTextActions(
       ConnectorElementModel,

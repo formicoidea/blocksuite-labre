@@ -3,6 +3,7 @@ import {
   type BrushElementModel,
   type Connection,
   ConnectorElementModel,
+  type ConnectorLabelEnd,
   ConnectorMode,
   DEFAULT_POLYGON_VERTICES,
   GroupElementModel,
@@ -12,7 +13,7 @@ import {
 } from '@labre/affine-model';
 import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
 import { BlockSuiteError } from '@labre/global/exceptions';
-import type { IBound, IVec, IVec3 } from '@labre/global/gfx';
+import type { IBound, IVec, IVec3, XYWH } from '@labre/global/gfx';
 import {
   almostEqual,
   Bound,
@@ -228,6 +229,57 @@ function computePerimeterPointForCenterAnchor(
 
 export function isConnectorWithLabel(model: GfxModel | GfxLocalElementModel) {
   return model instanceof ConnectorElementModel && model.hasLabel();
+}
+
+/**
+ * The end-label twin of `isConnectorWithLabel`: a connector carrying a painted
+ * label beside its `source` / `target` endpoint.
+ *
+ * A `LocalConnectorElementModel` has no labels at all — it is the preview a
+ * drag paints — so the `instanceof` is the guard, exactly as above.
+ */
+export function isConnectorWithEndLabel(
+  model: GfxModel | GfxLocalElementModel,
+  end: ConnectorLabelEnd
+) {
+  return model instanceof ConnectorElementModel && model.hasEndLabel(end);
+}
+
+/**
+ * Translates one end label's box by how far its endpoint moved, so the label
+ * keeps the position the author gave it RELATIVE to that end.
+ *
+ * `ConnectorPathGenerator.updatePath` is the only caller: the label follows the
+ * end on every re-route, and on nothing else.
+ */
+function followEndpoint(
+  model: ConnectorElementModel,
+  end: ConnectorLabelEnd,
+  previousPath: PointLocation[]
+) {
+  const box = model.endLabelXYWH(end);
+  if (!box || !model.hasEndLabel(end)) return;
+
+  const nextPath = model.absolutePath;
+  if (nextPath.length === 0 || previousPath.length === 0) return;
+
+  const endpointOf = (path: PointLocation[]) =>
+    end === 'source' ? path[0] : path[path.length - 1];
+  const from = endpointOf(previousPath);
+  const to = endpointOf(nextPath);
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+
+  if (dx === 0 && dy === 0) return;
+
+  const [x, y, w, h] = box;
+  const moved: XYWH = [x + dx, y + dy, w, h];
+
+  if (end === 'source') {
+    model.sourceLabelXYWH = moved;
+  } else {
+    model.targetLabelXYWH = moved;
+  }
 }
 
 export function calculateNearestLocation(
@@ -1490,6 +1542,11 @@ export class ConnectorPathGenerator extends PathGenerator {
       return p.setVec(Vec.sub(p, [bound.x, bound.y]));
     });
 
+    // Captured before the assignment below rebuilds it: the end labels are
+    // re-anchored by how far THEIR endpoint travelled, which is only knowable
+    // against the path this call replaces.
+    const previousPath = connector.absolutePath;
+
     connector.updatingPath = true;
     // the property assignment order matters
     connector.xywh = bound.serialize();
@@ -1507,6 +1564,25 @@ export class ConnectorPathGenerator extends PathGenerator {
         );
         const [, , w, h] = model.labelXYWH!;
         model.labelXYWH = [cx - w / 2, cy - h / 2, w, h];
+      }
+    }
+
+    // The end labels follow THEIR OWN endpoint, not the connector's centre.
+    // Dragging one of the two nodes moves one end and leaves the other where
+    // it was: re-deriving both boxes from the offset distance (what the centre
+    // label does) would recentre them, and translating both by the element's
+    // delta would slide the far one off its line. Translating each by its
+    // endpoint's delta is the only rule under which a `0..*` typed beside an
+    // end stays beside that end — and the only one that preserves a box the
+    // author dragged somewhere else. Same persistence gate as above: these are
+    // `@field()`s too, so a watching peer must not write them.
+    if (connector instanceof ConnectorElementModel) {
+      const mayPersist =
+        (options?.persistLabelXYWH ?? true) &&
+        !connector.surface?.store?.readonly;
+      if (mayPersist) {
+        followEndpoint(connector, 'source', previousPath);
+        followEndpoint(connector, 'target', previousPath);
       }
     }
 
