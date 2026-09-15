@@ -1,8 +1,12 @@
 import { autoLegendSections, roleLabel } from '@labre/affine-gfx-ddd-shared';
+import { PointStyle, StrokeStyle, type UmlNodeKind } from '@labre/affine-model';
 import type { RoleId } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
+import { UML_NODE_BOX } from '../consts.js';
+import { UML_EDGE_STYLE, type UmlEdgeRole } from '../edge-styles.js';
 import { UML_AUTO_LEGEND } from '../legend.js';
+import { umlNodeProps } from '../presets.js';
 import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from '../roles.js';
 
 /**
@@ -167,9 +171,95 @@ describe('what a drawn sheet puts in its legend', () => {
       UML_ROLE.fragment,
     ]);
     // None of the four has a body — each is a rectangle drawn ROUND part of the
-    // sheet — so none of them may carry a filled swatch.
+    // sheet — so none of them may carry a FILLED swatch. An outline is what
+    // they are, and what the swatch draws.
     for (const entry of frames.entries) {
-      expect(entry.row.swatch, entry.role).toBe('line');
+      expect(entry.row.swatch, entry.role).toBe('glyph');
+      expect(entry.row.props?.filled, entry.role).toBe(false);
+    }
+  });
+});
+
+/**
+ * The recette of 2026-09-15: « les pictogrammes de la légende ne sont pas
+ * correctement importés. Il n'y a que des rectangles pour class et actors alors
+ * qu'ils ont des pictos bien particuliers ».
+ *
+ * A key of identical white chips documents nothing in a notation that defines no
+ * palette: UML tells its artefacts apart by SILHOUETTE, so every row has to draw
+ * the artefact. These check that each row carries the pack's OWN declaration
+ * rather than a picture of its own — the drawing itself is the node renderer's
+ * and the connector renderer's, and `node-glyph-scale.unit.spec.ts` is where it
+ * is asserted.
+ */
+describe('every legend row draws the artefact it names', () => {
+  const rowOf = (role: RoleId) =>
+    entries.find(entry => entry.role === role)!.row;
+
+  it('draws a node row with the preset the toolbox creates it with', () => {
+    const row = rowOf(UML_ROLE.class);
+    expect(row.swatch).toBe('glyph');
+    expect(row.props?.type).toBe('umlNode');
+    expect(row.props?.kind).toBe('class');
+    // Same shape family, same colours, same stroke — one declaration
+    // (`presets.ts`), so a restyle reaches the legend on its own.
+    const preset = umlNodeProps('class', { xywh: '[0,0,0,0]' });
+    expect(row.props?.shapeType).toBe(preset.shapeType);
+    expect(row.props?.fillColor).toBe(preset.fillColor);
+    expect(row.props?.strokeColor).toBe(preset.strokeColor);
+  });
+
+  it('never stamps a ROLE on a swatch', () => {
+    // A legend is drawn ON the frame it documents and the scan is by role: a
+    // swatch carrying one would list itself the next time a legend was made.
+    for (const entry of entries) {
+      expect(entry.row.props?.role, entry.role).toBeUndefined();
+    }
+  });
+
+  it('gives each picture the artefact’s own footprint', () => {
+    // An actor is drawn portrait, a class landscape, a fork as a bar — the
+    // aspect is `UML_NODE_BOX`'s and not a number picked here.
+    const aspect = (kind: UmlNodeKind) =>
+      UML_NODE_BOX[kind].w / UML_NODE_BOX[kind].h;
+    expect(rowOf(UML_ROLE.actor).aspect).toBe(aspect('actor'));
+    expect(rowOf(UML_ROLE.class).aspect).toBe(aspect('class'));
+    expect(rowOf(UML_ROLE.fork).aspect).toBe(aspect('fork'));
+    expect(rowOf(UML_ROLE.actor).aspect!).toBeLessThan(1);
+    expect(rowOf(UML_ROLE.class).aspect!).toBeGreaterThan(1);
+  });
+
+  it('draws a relation row with the line the toolbox arms', () => {
+    // The diamonds, the triangles and the heads §11.5.4 / §9.2.4 / §17.4.4 draw
+    // — read off `UML_EDGE_STYLE`, which is the table the tool and the morph
+    // already share, so a legend can never show an end the tool does not draw.
+    for (const [role, style] of Object.entries(UML_EDGE_STYLE)) {
+      const row = rowOf(UML_ROLE[role as UmlEdgeRole]);
+      expect(row.swatch, role).toBe('edge');
+      expect(row.props, role).toEqual(style);
+      expect(row.dashed ?? false, role).toBe(
+        style.strokeStyle === StrokeStyle.Dash
+      );
+    }
+    // …and the two that used to be a bare bar now carry their diamond.
+    expect(rowOf(UML_ROLE.aggregation).props?.frontEndpointStyle).toBe(
+      PointStyle.DiamondHollow
+    );
+    expect(rowOf(UML_ROLE.composition).props?.frontEndpointStyle).toBe(
+      PointStyle.Diamond
+    );
+    expect(rowOf(UML_ROLE.generalization).props?.rearEndpointStyle).toBe(
+      PointStyle.TriangleHollow
+    );
+  });
+
+  it('leaves no row drawing a plain chip', () => {
+    // The regression this file exists for, stated as the PO stated it: not one
+    // "rectangle" left standing in for a picture.
+    for (const entry of entries) {
+      expect(entry.row.swatch, entry.role).not.toBe('square');
+      expect(entry.row.swatch, entry.role).not.toBe('dot');
+      expect(entry.row.swatch, entry.role).not.toBe('line');
     }
   });
 });

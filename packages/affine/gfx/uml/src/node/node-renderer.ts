@@ -16,6 +16,7 @@ import {
   umlCompartmentBoxes,
   type UmlCompartmentBoxes,
   umlComponentSiblings,
+  umlStackHeight,
 } from '../component.js';
 import { isActGlyphKind, paintActGlyph } from './act-glyphs.js';
 import { line, solidRect, TAU } from './paint.js';
@@ -567,6 +568,53 @@ function paintArtifactIcon(
 type UmlSeparators = Pick<UmlCompartmentBoxes, 'name' | 'splits'>;
 
 /**
+ * The stencil stack, in PROPORTION when the box is too short to hold it.
+ *
+ * `umlCompartmentBoxes` is written in absolute units — an 8-unit margin, a 16px
+ * name line, a 6-unit gap, three 13px attribute lines — because a classifier at
+ * its own size must be ruled where the specification rules it, whatever it has
+ * been dragged to. A box SHORTER than the stack those absolutes need is the one
+ * case they cannot answer: every separator lands past the bottom edge,
+ * {@link paintGlyph} clips them all, and a class drawn small is a bare
+ * rectangle with no compartments — the picture the notation is told apart BY.
+ *
+ * So under its natural height the stack is scaled rather than clipped. Nothing
+ * moves at or above that height: `squeeze` is 1 and every offset is the number
+ * it always was.
+ *
+ * ## A RENDER-time answer, and only that
+ *
+ * The squeeze lives here rather than in `component.ts` on purpose. What
+ * `umlCompartmentBoxes` answers is where a node's TEXT TIERS go, and the
+ * caller that asks with line counts — `UmlCompartmentWatcher` — reads an
+ * overflowing stack as its cue to GROW the node, which is the right answer for
+ * words an author has typed. This asks a different question: where does the
+ * renderer stroke a rule INSIDE the body it has, on a box nothing is going to
+ * grow. A legend swatch is that box, and so is any node an author has dragged
+ * under its own stack.
+ */
+function umlSqueezedBoxes(
+  kind: UmlNodeKind,
+  w: number,
+  h: number
+): UmlCompartmentBoxes {
+  const natural = umlStackHeight(kind, {});
+  if (!natural || !(natural > 0) || h >= natural) {
+    return umlCompartmentBoxes(kind, 0, 0, w, h);
+  }
+  // Laid out at the height the stencil wants, then scaled into the box it has
+  // — so the three tiers keep the proportions §11.4.4 draws them in rather
+  // than each being clamped on its own.
+  const squeeze = h / natural;
+  const full = umlCompartmentBoxes(kind, 0, 0, w, natural);
+  return {
+    ...full,
+    name: { ...full.name, y: full.name.y * squeeze, h: full.name.h * squeeze },
+    splits: full.splits.map(split => split * squeeze),
+  };
+}
+
+/**
  * The compartment layout to stroke this node's separators from: the one its
  * TIERS describe if they can be reached, and the default stack otherwise.
  *
@@ -602,7 +650,7 @@ export function umlNodeCompartments(
   w: number,
   h: number
 ): UmlSeparators {
-  const defaults = umlCompartmentBoxes(model.kind, 0, 0, w, h);
+  const defaults = umlSqueezedBoxes(model.kind, w, h);
   const group = model.group;
   // No splits at all is a kind that is a PICTURE (a package, an actor, a cube):
   // there are no compartments to read off, and nothing below would mean

@@ -1,16 +1,22 @@
-import { readElement, readingProfileFor } from '@labre/affine-block-surface';
+import {
+  readElement,
+  readingProfileFor,
+  readingRelationDefs,
+} from '@labre/affine-block-surface';
 import { Bound } from '@labre/global/gfx';
-import { GfxPrimitiveElementModel } from '@labre/std/gfx';
+import { GfxPrimitiveElementModel, roleIsA } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import {
   UML_ACTOR_READING,
   UML_ARTIFACT_READING,
   UML_CLASS_READING,
+  UML_INTERFACE_READING,
   UML_NODE_READING,
   UML_NOTE_READING,
   UML_PACKAGE_READING,
   UML_READINGS,
+  UML_USE_CASE_READING,
 } from '../reading.js';
 import { UML_ROLE, UML_ROLES } from '../roles.js';
 
@@ -54,6 +60,9 @@ type Stub = {
   text?: string;
   source?: string;
   target?: string;
+  /** What the connector writes at each end — a UML multiplicity (ADR 0020). */
+  sourceLabel?: string;
+  targetLabel?: string;
   children?: GfxPrimitiveElementModel[];
 };
 
@@ -64,6 +73,8 @@ function element({
   text,
   source,
   target,
+  sourceLabel,
+  targetLabel,
   children,
 }: Stub): GfxPrimitiveElementModel {
   const el = Object.create(
@@ -79,6 +90,8 @@ function element({
   define('elementBound', new Bound(...bound));
   if (source !== undefined) define('source', { id: source });
   if (target !== undefined) define('target', { id: target });
+  if (sourceLabel !== undefined) define('sourceLabel', sourceLabel);
+  if (targetLabel !== undefined) define('targetLabel', targetLabel);
   if (children) define('childElements', children);
   return el;
 }
@@ -325,7 +338,9 @@ describe('what a UML diagram is read as', () => {
           source: 'i',
           target: 'n',
         }),
-        // A generalization is NOT an association, and must not be read as one.
+        // A generalization is NOT an association: it is read, since the class
+        // profile declares a table for it too, but under its OWN wording and
+        // after the associations rather than among them.
         element({
           id: 'r3',
           role: UML_ROLE.generalization,
@@ -336,10 +351,14 @@ describe('what a UML diagram is read as', () => {
       UML_CLASS_READING
     )!.relations;
 
-    expect(relations.map(r => [r.otherName, r.side])).toEqual([
-      ['OrderLine', 'supplier'],
-      ['Payable', 'consumer'],
+    expect(relations.map(r => [r.relationRole, r.otherName, r.side])).toEqual([
+      [UML_ROLE.association, 'OrderLine', 'supplier'],
+      [UML_ROLE.association, 'Payable', 'consumer'],
+      [UML_ROLE.generalization, 'Payable', 'supplier'],
     ]);
+    // The diamond is reported under the role the PROFILE declared, never under
+    // its own: the panel groups by table, and `uml:composition` names no table.
+    expect(relations[0].edgeId).toBe('r1');
   });
 
   /**
@@ -359,13 +378,243 @@ describe('what a UML diagram is read as', () => {
 
     expect(UML_NOTE_READING.relation!.edgeRole).toBe(UML_ROLE.anchor);
 
-    // Every side names a key as well as a wording: a host with a catalogue
-    // always wins, a catalogue-less playground still reads.
+    // Every side of every table names a key as well as a wording: a host with a
+    // catalogue always wins, a catalogue-less playground still reads.
     for (const profile of UML_READINGS) {
-      for (const side of Object.values(profile.relation!.sides)) {
-        expect(side.labelKey, profile.id).toMatch(
-          /^com\.labre\.uml\.reading\.relations\./
+      for (const def of readingRelationDefs(profile)) {
+        for (const side of Object.values(def.sides)) {
+          expect(side.labelKey, profile.id).toMatch(
+            /^com\.labre\.uml\.reading\.relations\./
+          );
+        }
+      }
+    }
+  });
+
+  /**
+   * O8 of the PO's recette of 2026-09-14, in the words it was reported in:
+   * « la fonction "Read this component" ne produit rien pour "Parent-child
+   * relation" … les liens sont typés et pourtant il n'y a pas de relation de
+   * décrite. »
+   *
+   * The scenario is the recette's own: an actor associated with a use case, and
+   * that use case including a second one. Before this tranche the panel opened
+   * on « Payer » said "No typed link touches this component" — a use case whose
+   * one link was an `«include»`, typed, exported and drawn, and invisible to the
+   * reading because a profile could declare only ONE table.
+   */
+  it('reads the use-case diagram the PO drew, line by line', () => {
+    const client = component(UML_ROLE.actor, UML_ROLE.label, 'Client', 'a');
+    const order = component(
+      UML_ROLE['use-case'],
+      UML_ROLE.label,
+      'Commander',
+      'u1'
+    );
+    const pay = component(UML_ROLE['use-case'], UML_ROLE.label, 'Payer', 'u2');
+    const coupon = component(
+      UML_ROLE['use-case'],
+      UML_ROLE.label,
+      'Appliquer un coupon',
+      'u3'
+    );
+
+    const board = [
+      ...client.elements,
+      ...order.elements,
+      ...pay.elements,
+      ...coupon.elements,
+      // The actor is the source of the association — undirected, so the side is
+      // read but the wording is the same at both ends (§11.5.4).
+      element({
+        id: 'e1',
+        role: UML_ROLE.association,
+        source: 'a',
+        target: 'u1',
+      }),
+      // §18.1.4: the arrow runs FROM the base use case TO the included one.
+      element({ id: 'e2', role: UML_ROLE.include, source: 'u1', target: 'u2' }),
+      // …and the extend runs the other way, from the extending behaviour to the
+      // base one it may extend.
+      element({ id: 'e3', role: UML_ROLE.extend, source: 'u3', target: 'u1' }),
+    ];
+
+    const read = (
+      subject: GfxPrimitiveElementModel,
+      profile = UML_USE_CASE_READING
+    ) =>
+      readElement(subject, board, profile)!.relations.map(r => [
+        r.relationRole,
+        r.side,
+        r.otherName,
+      ]);
+
+    // The actor, which is where the PO opened the panel first.
+    expect(read(client.node, UML_ACTOR_READING)).toEqual([
+      [UML_ROLE.association, 'supplier', 'Commander'],
+    ]);
+
+    // The base use case: three lines, in the order the profile declares its
+    // tables — the association it serves first, then what it includes, then
+    // what extends it.
+    expect(read(order.node)).toEqual([
+      [UML_ROLE.association, 'consumer', 'Client'],
+      [UML_ROLE.include, 'supplier', 'Payer'],
+      [UML_ROLE.extend, 'consumer', 'Appliquer un coupon'],
+    ]);
+
+    // The included one — the reading that used to be empty.
+    expect(read(pay.node)).toEqual([
+      [UML_ROLE.include, 'consumer', 'Commander'],
+    ]);
+    expect(read(coupon.node)).toEqual([
+      [UML_ROLE.extend, 'supplier', 'Commander'],
+    ]);
+  });
+
+  /**
+   * The taxonomy a class diagram is half made of, and the one relation whose
+   * two ends are the two halves of one sentence.
+   */
+  it('reads a generalization and a realization off a classifier', () => {
+    const payment = component(UML_ROLE.class, UML_ROLE.name, 'Payment', 'p');
+    const card = component(UML_ROLE.class, UML_ROLE.name, 'CardPayment', 'c');
+    const payable = component(
+      UML_ROLE.interface,
+      UML_ROLE.name,
+      'Payable',
+      'i'
+    );
+
+    const board = [
+      ...payment.elements,
+      ...card.elements,
+      ...payable.elements,
+      // §9.9.7: the triangle lands on the GENERAL end, so the source is the
+      // specific classifier.
+      element({
+        id: 'g',
+        role: UML_ROLE.generalization,
+        source: 'c',
+        target: 'p',
+      }),
+      element({
+        id: 'r',
+        role: UML_ROLE.realization,
+        source: 'p',
+        target: 'i',
+      }),
+    ];
+
+    expect(
+      readElement(card.node, board, UML_CLASS_READING)!.relations.map(r => [
+        r.relationRole,
+        r.side,
+        r.otherName,
+      ])
+    ).toEqual([[UML_ROLE.generalization, 'supplier', 'Payment']]);
+
+    // The superclass reads the SAME edge from the other end, and a realization
+    // besides: two tables, two sentences, one panel.
+    expect(
+      readElement(payment.node, board, UML_CLASS_READING)!.relations.map(r => [
+        r.relationRole,
+        r.side,
+        r.otherName,
+      ])
+    ).toEqual([
+      [UML_ROLE.generalization, 'consumer', 'CardPayment'],
+      [UML_ROLE.realization, 'supplier', 'Payable'],
+    ]);
+
+    // …and the interface reads the realization from ITS end.
+    expect(
+      readElement(payable.node, board, UML_INTERFACE_READING)!.relations.map(
+        r => [r.relationRole, r.side, r.otherName]
+      )
+    ).toEqual([[UML_ROLE.realization, 'consumer', 'Payment']]);
+  });
+
+  /**
+   * ADR 0020's end labels, which on a class diagram are the MULTIPLICITIES —
+   * the one thing an association says beyond "these two are related".
+   *
+   * Read from the SUBJECT outwards: the panel opened on `Order` wants `1..*`
+   * (what the other end says) and not `1` (what its own end says), because the
+   * sentence it prints is about the other end.
+   */
+  it('reads the multiplicity written on the far end of an association', () => {
+    const order = component(UML_ROLE.class, UML_ROLE.name, 'Order', 'o');
+    const line = component(UML_ROLE.class, UML_ROLE.name, 'OrderLine', 'l');
+    const board = [
+      ...order.elements,
+      ...line.elements,
+      element({
+        id: 'e',
+        role: UML_ROLE.association,
+        source: 'o',
+        target: 'l',
+        sourceLabel: '1',
+        targetLabel: '1..*',
+      }),
+    ];
+
+    const [fromOrder] = readElement(
+      order.node,
+      board,
+      UML_CLASS_READING
+    )!.relations;
+    expect(fromOrder.otherEndLabel).toBe('1..*');
+    expect(fromOrder.ownEndLabel).toBe('1');
+
+    // …and the same edge, read from the other end, swaps them.
+    const [fromLine] = readElement(
+      line.node,
+      board,
+      UML_CLASS_READING
+    )!.relations;
+    expect(fromLine.otherEndLabel).toBe('1');
+    expect(fromLine.ownEndLabel).toBe('1..*');
+
+    // An association nobody wrote a multiplicity on says nothing rather than
+    // an empty pair of brackets.
+    const bare = readElement(
+      order.node,
+      [
+        ...order.elements,
+        ...line.elements,
+        element({
+          id: 'e',
+          role: UML_ROLE.association,
+          source: 'o',
+          target: 'l',
+          sourceLabel: '   ',
+        }),
+      ],
+      UML_CLASS_READING
+    )!.relations[0];
+    expect(bare.otherEndLabel).toBeUndefined();
+    expect(bare.ownEndLabel).toBeUndefined();
+  });
+
+  /**
+   * The rule the engine cannot enforce and this pack has to keep: two tables on
+   * one profile must not both match one edge, or the panel lists it twice.
+   *
+   * `uml:aggregation` and `uml:composition` are the case that would break it —
+   * both are a `uml:association` (§11.5.4) — so no profile may declare one of
+   * them beside the parent. Asserted over the whole pack rather than over the
+   * four classifiers, so a table added to a later phase is caught here.
+   */
+  it('declares no two tables one edge could answer to', () => {
+    for (const profile of UML_READINGS) {
+      const roles = readingRelationDefs(profile).map(def => def.edgeRole);
+      expect(new Set(roles).size, profile.id).toBe(roles.length);
+      for (const role of roles) {
+        const covered = roles.filter(
+          other => other !== role && roleIsA(role, other, UML_ROLES)
         );
+        expect(covered, `${profile.id}: ${role}`).toEqual([]);
       }
     }
   });
@@ -410,7 +659,9 @@ describe('what a UML diagram is read as', () => {
     // Nothing in UML gives a coordinate a meaning: a class drawn above the one
     // it uses is the ordinary way round, and so is the other way.
     for (const profile of UML_READINGS) {
-      expect(profile.relation?.geometry, profile.id).toBeUndefined();
+      for (const def of readingRelationDefs(profile)) {
+        expect(def.geometry, `${profile.id}: ${def.edgeRole}`).toBeUndefined();
+      }
       expect(profile.nature, profile.id).toBeUndefined();
       expect(profile.frame, profile.id).toBeUndefined();
     }

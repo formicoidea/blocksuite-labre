@@ -137,3 +137,28 @@ Container()` threw "illegal constructor" and the page hung.
     instance), synthetic keydown events do not drive the dispatcher. Use the
     integration suite for keyboard paths, and read app state rather than
     subscribing to it.
+
+25. **A compartment sized by the author's newlines.** A framework tier is
+    created with `hasMaxWidth`, so the canvas renderer WRAPS a long signature
+    before it paints it — and a layout that counted `\n` put a six-line stack
+    back into a three-line box, through the separator under it.
+    _Rule:_ a compartment is sized by what is PAINTED. Measure with the
+    renderer's own `wrapText` and `getLineHeight` (`gfx/text`), never a line
+    count.
+
+26. **An emptied tier deleted out of its own group.** The canvas text editor
+    deletes a text committed empty, which is right for a text somebody
+    abandoned and wrong for a COMPARTMENT: the classifier lost its name
+    compartment and the next double-click fell through to the shape's own
+    invisible inner text.
+    _Rule:_ a text carrying a `role` and a fixed width is a compartment tier. It
+    survives being emptied, placeholder and all; a roled label with no
+    `hasMaxWidth` — a Wardley label, a BPMN name — is still deleted.
+
+27. **A generous grab the dispatcher never honoured.** Connector end labels
+    were picked within 24 units of an arrowhead, but a connector's hit test is
+    its LINE — 8 units off the stroke, plus half its width — so anywhere past
+    that the double-click reached no view at all and the editor's add-text-here
+    handler answered it instead.
+    _Rule:_ a gesture's reach is the element's `includesPoint`, not the
+    picker's. Widening one without the other writes dead code.

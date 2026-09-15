@@ -19,7 +19,10 @@ import {
   isCommandAvailable,
   SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
-import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
+import {
+  createPopper,
+  edgelessToolbarSlotsContext,
+} from '@labre/affine/widgets/edgeless-toolbar';
 import { ContextProvider } from '@lit/context';
 import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -274,13 +277,16 @@ type UmlMenuElement = HTMLElement & {
  * `SENIOR_MENU_CAP` is 14 and is what an owner may nominate;
  * `SENIOR_MENU_RANKED_SLOTS` is 13 and is what an overflowed popover paints,
  * beside the permanent "More artefacts…" button. UML nominates exactly
- * fourteen, so one of them is invisible at cold start — and when
- * `uml.importXmi` landed it was authored fourteenth, which made it precisely
- * the one nobody could reach. A unit test on the declaration could not see
- * that: the declaration was correct and the row was still wrong.
+ * fourteen, so one of them is invisible at cold start — and which one that is
+ * is a product decision a unit test on a declaration cannot see. Since the PO's
+ * recette of 2026-09-14 it is `uml.importXmi`: the same `order` field feeds the
+ * sub-menu and the catalogue, and the seat it held cost the catalogue its
+ * first section (O7). ADR 0014 § R3 is the rule that settles it — a cold row of
+ * drawing tools, an import that surfaces through use.
  *
- * So this mounts the real popover with the usage store cleared, which is a
- * first contact, and reads the selection the component itself computed.
+ * So this mounts the real popover twice: once with the usage store cleared,
+ * which is a first contact, and once with a single import recorded, which is
+ * what the nomination is FOR.
  */
 describe('the UML sub-menu seats the import', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -332,24 +338,14 @@ describe('the UML sub-menu seats the import', () => {
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
-  test('the thirteen a first-time user meets include Import XMI, second', () => {
+  test('the thirteen a first-time user meets are the drawing tools', () => {
     const ids = menu.commands.map(command => command.id);
 
     expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
-    // The blocker, pinned where it was missed: a fourteenth nomination renders
-    // nowhere, and an import a user cannot see is an import they do not have.
-    expect(ids).toContain('uml.importXmi');
-    // The sheet, then the file it can come from — the two things anybody does
-    // to an empty canvas (ADR 0019 §7).
-    expect(ids.slice(0, 2)).toEqual(['uml.addDiagram', 'uml.importXmi']);
-    // …and the seat it cost: the LAST authored nomination falls off the
-    // cold-start row, one click away behind "More artefacts…".
-    expect(ids).not.toContain('uml.extendTool');
     // Membership is what the ranking decides; POSITION is always the authored
     // order, so the row does not reshuffle under the cursor.
     expect(ids).toEqual([
       'uml.addDiagram',
-      'uml.importXmi',
       'uml.addClass',
       'uml.addInterface',
       'uml.addEnumeration',
@@ -361,6 +357,149 @@ describe('the UML sub-menu seats the import', () => {
       'uml.generalizationTool',
       'uml.dependencyTool',
       'uml.includeTool',
+      'uml.extendTool',
     ]);
+    // The fourteenth nomination waits its turn, and since tranche J that is the
+    // XMI import rather than the extend tool. The trade is the PO's recette of
+    // 2026-09-14 (O7): one `order` serves the sub-menu AND the catalogue, and
+    // the second seat this command held put it — with the four interchange
+    // commands beside it — in the catalogue's first section, above every
+    // artefact UML draws. ADR 0014 § R3 says which reading wins: "the
+    // cold-start row favours drawing tools; import buttons surface through
+    // use". The next test is the "through use" half.
+    expect(ids).not.toContain('uml.importXmi');
+  });
+
+  /**
+   * The nomination is not decoration: it is what lets usage seat the command.
+   *
+   * Exactly BPMN's test, on UML's import — an export declines the row and can
+   * never be voted in, a nominated import is one use away from it. Without this
+   * the fourteenth nomination would be a declaration nothing could ever
+   * exercise, which is the objection tranche G raised and this pair answers.
+   */
+  test('one import seats it, and no number of exports seats an export', async () => {
+    const exportCommand = getCommandsForSurface(
+      edgeless.std,
+      'uml',
+      'catalogue'
+    ).find(command => command.id === 'uml.exportXmi')!;
+    expect(exportCommand.surfaces).not.toContain('senior-menu');
+
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({
+        'uml.exportXmi': { c: 100, t: Date.now() },
+        'uml.importXmi': { c: 1, t: Date.now() },
+      })
+    );
+    menu.requestUpdate();
+    await menu.updateComplete;
+    await wait(0);
+
+    const ids = menu.commands.map(command => command.id);
+    expect(ids).toContain('uml.importXmi');
+    expect(ids).not.toContain('uml.exportXmi');
+    // …and it lands in AUTHORED order, which is last: the row is re-sorted
+    // after the ranking, so nothing a user reached for jumps to the front.
+    expect(ids.at(-1)).toBe('uml.importXmi');
+    expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  });
+});
+
+/**
+ * …and the row has to re-rank when it is REOPENED, not when the page is
+ * reloaded (recette PO, 2026-09-15, D1).
+ *
+ * The test above proves the ranking; it proves it through `requestUpdate()`,
+ * which is a render the user never asks for. What the user does is close the
+ * toolbox and open it again — and `createPopper` caches the popover per
+ * reference and hands the SAME element back, so the row re-showed the DOM of
+ * its last opening and the seat the import had just earned was invisible until
+ * a reload.
+ *
+ * So this drives the reopen itself, through the shipped `createPopper` a senior
+ * button calls, and reads the RENDERED buttons rather than the getter behind
+ * them — the getter was never the thing that was stale.
+ */
+describe('reopening a senior row re-ranks it', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+  let host!: HTMLElement;
+  let reference!: HTMLElement;
+
+  beforeEach(async () => {
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    // What `createPopper` asks of a senior BUTTON: a shadow root to append the
+    // popover into. The toolbar's resize slot, which the inner slide menu
+    // consumes through Lit context, is provided above it.
+    host = document.createElement('div');
+    new ContextProvider(host, {
+      context: edgelessToolbarSlotsContext,
+      initialValue: { resize: new Subject<{ w: number; h: number }>() },
+    });
+    reference = document.createElement('div');
+    reference.attachShadow({ mode: 'open' });
+    host.append(reference);
+    document.body.append(host);
+
+    return () => {
+      host.remove();
+      cleanup();
+    };
+  });
+
+  const open = () =>
+    // The tag is cast for the same reason the mount above uses
+    // `createElement`: the popover is a custom element `effects()` registers,
+    // and its `HTMLElementTagNameMap` entry is declared in a module this spec
+    // does not import.
+    createPopper(
+      'edgeless-uml-menu' as keyof HTMLElementTagNameMap,
+      reference,
+      {
+        setProps: element => {
+          (element as unknown as UmlMenuElement).edgeless = edgeless;
+        },
+      }
+    );
+
+  /** The ids the row actually PAINTED, off the rendered buttons. */
+  const paintedIds = (menu: UmlMenuElement) =>
+    Array.from(
+      menu.shadowRoot?.querySelectorAll<HTMLElement>('[data-command-id]') ?? []
+    ).map(button => button.dataset.commandId);
+
+  test('one import, and the reopened row shows it without a reload', async () => {
+    const first = open();
+    const menu = first.element as unknown as UmlMenuElement;
+    await menu.updateComplete;
+    await wait(0);
+
+    expect(paintedIds(menu)).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+    expect(paintedIds(menu)).not.toContain('uml.importXmi');
+
+    // One import, recorded the way `CommandUsage` records it.
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({ 'uml.importXmi': { c: 1, t: Date.now() } })
+    );
+
+    first.dispose();
+    const second = open();
+    // The cached element, which is the whole point: this is the path the
+    // recette walked, not a fresh mount that could never have been stale.
+    expect(second.element).toBe(first.element);
+
+    // A SINGLE update settles it. `updateComplete` resolves `false` when
+    // another update was requested while this one ran, so this is also the
+    // no-render-loop assertion.
+    expect(await menu.updateComplete).toBe(true);
+    await wait(0);
+
+    expect(paintedIds(menu)).toContain('uml.importXmi');
+    expect(paintedIds(menu)).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 });

@@ -170,9 +170,12 @@ describe('the three import commands', () => {
       expect(command!.owner, id).toBe('uml');
       expect(command!.scope, id).toBe('edgeless');
       // Filed with the exports they are the other half of: the two directions
-      // of one format are one subject, and `diagrams` is the section the frame
-      // and its files already share in this pack.
-      expect(command!.category, id).toBe('diagrams');
+      // of one format are one subject, and `interchange` is the section BPMN
+      // and Wardley already file theirs under. They shipped under `diagrams` —
+      // the section the FRAME is filed under — which put them in the first
+      // section of the catalogue, above every artefact (PO recette of
+      // 2026-09-14, O7).
+      expect(command!.category, id).toBe('interchange');
       // Nothing has to be SELECTED — the mirror image of the exports, which are
       // `'selection'` — and there is no `when` to narrow it. It WRITES, so a
       // read-only document is one it cannot run on and the declaration says so

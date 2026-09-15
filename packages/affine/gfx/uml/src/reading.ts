@@ -66,22 +66,38 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * that printed an id at the far end would be a panel that answered "where does
  * this run" with a nanoid.
  *
- * ## One relation per profile, and which one
+ * ## SEVERAL relations per profile, and which one comes first
  *
- * `ReadingProfile.relation` declares ONE typed edge, and UML has twelve. The
- * choice below is the relation an architect reads that artefact THROUGH, and
- * `roleIsA` does the rest where a chain exists: a profile declaring
- * `uml:association` reads aggregations and compositions too, because the
- * specification makes them associations (§11.5.4).
+ * `ReadingProfile.relation` names the relation an architect reads that artefact
+ * THROUGH — the question it answers first — and `ReadingProfile.alsoRelations`
+ * names the others, in the order the panel lists them. `roleIsA` does the rest
+ * where a chain exists: a table declaring `uml:association` reads aggregations
+ * and compositions too, because the specification makes them associations
+ * (§11.5.4), and nothing has to restate the diamonds.
  *
- * What that leaves unread is stated rather than hidden: a class's
- * generalizations, realizations and dependencies do not appear in its reading, a
- * use case's `include`/`extend` do not appear in its own, and a node's
- * communication paths and an artifact's manifestations do not appear in theirs.
- * They are on the canvas, they are typed, they are exported and the direction
- * reveal shows them — the panel simply reads one relation at a time, and the
- * choice each time is the relation that answers "what is this connected to"
- * first. Widening this is a change to the engine's contract, not to this file.
+ * Phases 1 to 3 declared ONE table each, which was a narrowing this file argued
+ * for and named the cost of: a class's generalizations, realizations and
+ * dependencies went unread, a use case's `include` and `extend` went unread,
+ * and so did a node's communication paths and an artifact's manifestations.
+ * The PO's recette of 2026-09-14 (O8) is what overturned it, and the finding is
+ * not that the narrowing was wrong but that it is INVISIBLE: the panel says
+ * "No typed link touches this component" whether a framework declined to read
+ * the line or failed to, and a use case whose only link is an `«include»`
+ * therefore reads as an unconnected box on a diagram that plainly connects it.
+ * A reader cannot tell a choice from a bug, so the choice had to go.
+ *
+ * Every table below is one the notation draws and this canvas types. Two rules
+ * govern the lists: they must not OVERLAP (an edge matching two tables would be
+ * listed twice — which is why no profile declares both `uml:association` and
+ * one of its specialisations), and the FIRST is the relation that answers "what
+ * is this connected to" first.
+ *
+ * One line is still read from ONE end on purpose, and it is the only one: the
+ * `uml:anchor` of Annex A, which the NOTE reads and the artefact it comments on
+ * does not. It is not a relation between two model elements — it is a comment
+ * pinned to one — and a class reading "Attached to:" followed by the whole
+ * first line of somebody's note would be the panel quoting prose at a reader
+ * who asked what the class is connected to.
  *
  * ## No nature, no phase
  *
@@ -111,6 +127,146 @@ const ASSOCIATION = {
     supplier: {
       labelKey: 'com.labre.uml.reading.relations.associated',
       labelFallback: 'Associated with',
+    },
+  },
+} as const;
+
+/**
+ * A GENERALIZATION (§9.9.4) — the hollow triangle, read as the taxonomy it is.
+ *
+ * Directed, and the two sides are the two halves of one sentence an architect
+ * says out loud: the source is the specific classifier and the target the
+ * general one (`roles.ts` fixes that, and the triangle lands on the general
+ * end), so a subclass reads "Specializes: Payment" and the superclass reads
+ * "Specialized by: CardPayment, Transfer".
+ *
+ * The wording is the reader's rather than the metamodel's — "generalizes" is a
+ * word the specification uses about the relationship and nobody uses about a
+ * class — and it is asymmetric because the two ends are genuinely not peers.
+ */
+const GENERALIZATION = {
+  edgeRole: UML_ROLE.generalization,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.specializedBy',
+      labelFallback: 'Specialized by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.specializes',
+      labelFallback: 'Specializes',
+    },
+  },
+} as const;
+
+/**
+ * A REALIZATION (§10.4.4) — the dashed line with the hollow triangle, from a
+ * class to the interface it implements.
+ *
+ * Its own table rather than a reading through {@link GENERALIZATION}: the two
+ * roles are filed FLAT in `roles.ts` (a realization is not a kind of
+ * generalization, it is the other thing a hollow triangle can mean), and the
+ * sentence is different — a class does not BECOME its interface, it promises to
+ * answer for it.
+ */
+const REALIZATION = {
+  edgeRole: UML_ROLE.realization,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.realizedBy',
+      labelFallback: 'Realized by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.realizes',
+      labelFallback: 'Realizes',
+    },
+  },
+} as const;
+
+/**
+ * An INCLUDE (§18.1.4) — the `«include»` arrow from the base use case to the
+ * behaviour it always performs.
+ *
+ * The wording is the role's own verb (`roles.ts`: "includes"), said from each
+ * end: the base reads "Includes: Pay", the included one reads "Included by:
+ * Order". §18.1.3 makes both ends use cases, so neither sentence can be about
+ * anything else.
+ */
+const INCLUDE = {
+  edgeRole: UML_ROLE.include,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.includedBy',
+      labelFallback: 'Included by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.includes',
+      labelFallback: 'Includes',
+    },
+  },
+} as const;
+
+/**
+ * An EXTEND (§18.1.4) — the `«extend»` arrow, and the one relation of the pack
+ * whose arrow points AT what it is about.
+ *
+ * `roles.ts` draws it from the EXTENDING use case to the base one, which is the
+ * specification's direction and the opposite of the include's, so the wordings
+ * are swapped with respect to {@link INCLUDE} rather than copied: the extending
+ * behaviour reads "Extends: Order", the base reads "Extended by: ApplyCoupon".
+ */
+const EXTEND = {
+  edgeRole: UML_ROLE.extend,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.extendedBy',
+      labelFallback: 'Extended by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.extends',
+      labelFallback: 'Extends',
+    },
+  },
+} as const;
+
+/**
+ * A MANIFESTATION (§19.3.4) — the dashed arrow that says what a file IS.
+ *
+ * The other half of {@link DEPLOY}: an artifact reads "Manifests: Ordering"
+ * and the component reads "Manifested by: ordering.jar", off one table read
+ * from its two ends. Asymmetric for the same reason the deployment is — the
+ * source is a physical file and the target a piece of the model.
+ */
+const MANIFEST = {
+  edgeRole: UML_ROLE.manifest,
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.manifestedBy',
+      labelFallback: 'Manifested by',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.manifests',
+      labelFallback: 'Manifests',
+    },
+  },
+} as const;
+
+/**
+ * A COMMUNICATION PATH (§19.4.4) — the plain line between two nodes.
+ *
+ * Undirected, exactly like {@link ASSOCIATION} and for the same reason: the
+ * notation draws no arrow, so both sides say the same thing and the panel
+ * claims nothing the drawing declines to.
+ */
+const COMMUNICATION_PATH = {
+  edgeRole: UML_ROLE['communication-path'],
+  sides: {
+    consumer: {
+      labelKey: 'com.labre.uml.reading.relations.communicatesWith',
+      labelFallback: 'Communicates with',
+    },
+    supplier: {
+      labelKey: 'com.labre.uml.reading.relations.communicatesWith',
+      labelFallback: 'Communicates with',
     },
   },
 } as const;
@@ -275,12 +431,20 @@ const MESSAGE = {
   },
 } as const;
 
-/** One artefact, as a profile. The forty below differ by four fields at most. */
+/**
+ * One artefact, as a profile. The forty below differ by five fields at most.
+ *
+ * `also` is variadic rather than an array argument because most entries pass
+ * none and the ones that pass some pass two or three: `profile('uml-use-case',
+ * …, ASSOCIATION, INCLUDE, EXTEND)` reads as the list of lines a use case
+ * carries, which is what it is.
+ */
 const profile = (
   id: string,
   appliesTo: string,
   labelRole: string,
-  relation: ReadingProfile['relation']
+  relation: ReadingProfile['relation'],
+  ...also: readonly NonNullable<ReadingProfile['relation']>[]
 ): ReadingProfile => ({
   id,
   framework: 'uml',
@@ -288,32 +452,55 @@ const profile = (
   appliesTo,
   labelRole,
   relation,
+  ...(also.length > 0 ? { alsoRelations: also } : {}),
 });
 
+/**
+ * The FOUR lines a class diagram draws off a classifier, in the order §11 and
+ * §9 put them: the association first (it is what a class diagram is mostly
+ * made of), then the taxonomy, then the contract, then the `«use»` arrow.
+ *
+ * The four are declared once and shared by the four classifier profiles, which
+ * is the same argument `roles.ts` makes about the chain: a class, an interface,
+ * an enumeration and an object carry the same lines, and four copies of this
+ * list would be four places for a wording to drift.
+ */
 export const UML_CLASS_READING = profile(
   'uml-class',
   UML_ROLE.class,
   UML_ROLE.name,
-  ASSOCIATION
+  ASSOCIATION,
+  GENERALIZATION,
+  REALIZATION,
+  DEPENDENCY
 );
 export const UML_INTERFACE_READING = profile(
   'uml-interface',
   UML_ROLE.interface,
   UML_ROLE.name,
-  ASSOCIATION
+  ASSOCIATION,
+  GENERALIZATION,
+  REALIZATION,
+  DEPENDENCY
 );
 export const UML_ENUMERATION_READING = profile(
   'uml-enumeration',
   UML_ROLE.enumeration,
   UML_ROLE.name,
-  ASSOCIATION
+  ASSOCIATION,
+  GENERALIZATION,
+  REALIZATION,
+  DEPENDENCY
 );
 /** An instance, read through the links between instances (§9.8.4). */
 export const UML_OBJECT_READING = profile(
   'uml-object',
   UML_ROLE.object,
   UML_ROLE.name,
-  ASSOCIATION
+  ASSOCIATION,
+  GENERALIZATION,
+  REALIZATION,
+  DEPENDENCY
 );
 export const UML_PACKAGE_READING = profile(
   'uml-package',
@@ -332,14 +519,28 @@ export const UML_ACTOR_READING = profile(
   'uml-actor',
   UML_ROLE.actor,
   UML_ROLE.label,
-  ASSOCIATION
+  ASSOCIATION,
+  GENERALIZATION
 );
-/** A use case is read through the actors it serves, not through its includes. */
+/**
+ * A use case is read through the actors it serves FIRST — which is the question
+ * a use-case diagram exists to answer — and then through the two arrows §18.1.4
+ * draws between use cases.
+ *
+ * The include and the extend are the PO's O8 in its plainest form: a use case
+ * reached only through an `«include»` had a typed line on the canvas, in the
+ * export and in the direction reveal, and a panel that said "No typed link
+ * touches this component". A generalization between use cases is legal
+ * (§18.1.3) and is here for the same reason.
+ */
 export const UML_USE_CASE_READING = profile(
   'uml-use-case',
   UML_ROLE['use-case'],
   UML_ROLE.label,
-  ASSOCIATION
+  ASSOCIATION,
+  INCLUDE,
+  EXTEND,
+  GENERALIZATION
 );
 
 /* ── Phase 2: components (§11.6.4, §11.3.4, §10.4.4) ───────────────────── */
@@ -349,12 +550,19 @@ export const UML_USE_CASE_READING = profile(
  * mistaken for: §11.6.4 wires a component diagram with `«use»` arrows to the
  * interfaces its neighbours provide, and "what does this need, and who needs it"
  * is the question the diagram exists to answer.
+ *
+ * Then through the two other lines that reach it: the `«manifest»` arrows that
+ * say which files embody it (§19.3.4 — the far end of {@link MANIFEST}, whose
+ * near end the artifact reads) and the realizations §10.4.4 draws from a
+ * component to an interface it provides.
  */
 export const UML_COMPONENT_READING = profile(
   'uml-component',
   UML_ROLE.component,
   UML_ROLE.name,
-  DEPENDENCY
+  DEPENDENCY,
+  MANIFEST,
+  REALIZATION
 );
 /**
  * A port is read through the plain connectors drawn from it (§11.3.4): an
@@ -385,37 +593,46 @@ export const UML_REQUIRED_INTERFACE_READING = profile(
 /* ── Phase 2: deployment (§19.2.4, §19.3.4, §19.4.4) ───────────────────── */
 
 /**
- * An artifact is read through WHERE IT RUNS. Its other relation — the
- * `«manifest»` arrow to the component it is the physical form of — is the
- * modelling fact; the deployment is the operational one, and an architect
- * opening this panel on a `.war` file is asking which server it is on.
+ * An artifact is read through WHERE IT RUNS, and then through WHAT IT IS.
+ *
+ * The order is the reader's rather than the metamodel's: the `«manifest»` arrow
+ * to the component a file is the physical form of is the modelling fact, the
+ * deployment is the operational one, and an architect opening this panel on a
+ * `.war` file is asking which server it is on before asking anything else.
  */
 export const UML_ARTIFACT_READING = profile(
   'uml-artifact',
   UML_ROLE.artifact,
   UML_ROLE.name,
-  DEPLOY
+  DEPLOY,
+  MANIFEST
 );
-/** A node is read through WHAT RUNS ON IT — the same table, from the other end. */
+/**
+ * A node is read through WHAT RUNS ON IT — the same table, from the other end —
+ * and then through the nodes it can TALK TO (§19.4.4).
+ */
 export const UML_NODE_READING = profile(
   'uml-node',
   UML_ROLE.node,
   UML_ROLE.name,
-  DEPLOY
+  DEPLOY,
+  COMMUNICATION_PATH
 );
 /** A device: a node that is hardware (§19.4.4), and read as one. */
 export const UML_DEVICE_READING = profile(
   'uml-device',
   UML_ROLE.device,
   UML_ROLE.name,
-  DEPLOY
+  DEPLOY,
+  COMMUNICATION_PATH
 );
 /** An execution environment: a node that is software, and read as one. */
 export const UML_EXECUTION_ENVIRONMENT_READING = profile(
   'uml-execution-environment',
   UML_ROLE['execution-environment'],
   UML_ROLE.name,
-  DEPLOY
+  DEPLOY,
+  COMMUNICATION_PATH
 );
 
 /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ── */

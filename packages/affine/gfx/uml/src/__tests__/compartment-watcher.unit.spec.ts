@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   UML_ATTRIBUTE_LINES,
+  UML_TIER_SIDE_INSET,
   umlCompartmentBoxes,
   umlStackHeight,
   type UmlTierLines,
@@ -33,6 +34,28 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
  * `integration-test/edgeless/uml-compartments.spec.ts`'s job.
  */
 
+/**
+ * The one thing a fake document cannot state: how WIDE a word is.
+ *
+ * `umlTierWrapper` is the renderer's own `wrapText` over a canvas measurer, and
+ * `happy-dom` has no `measureText` worth the name — so it is replaced by an
+ * arithmetic one that breaks a line at a fixed character width. Two properties
+ * of the real one are kept, because the fit depends on both: it answers
+ * `undefined` for an element that states no FACE (which every fixture below but
+ * one does, so they are measured by their newlines exactly as before), and it
+ * counts VISUAL lines for one that does.
+ *
+ * The real wrapper is proved where a real canvas exists —
+ * `integration-test/edgeless/uml-compartments.spec.ts`.
+ */
+vi.mock('../node/tier-metrics.js', () => ({
+  umlTierWrapper: (face: { fontSize?: number }, width: number) => {
+    const size = face.fontSize;
+    if (size === undefined || !(width > 0)) return undefined;
+    return (line: string) => Math.ceil((line.length * size) / width) || 1;
+  },
+}));
+
 /* ── The fake document ─────────────────────────────────────────────────── */
 
 interface FakeElement {
@@ -42,6 +65,10 @@ interface FakeElement {
   text?: string;
   kind?: UmlNodeKind;
   xywh: string;
+  /** The face, when a fixture wants its words MEASURED rather than counted. */
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string;
   readonly deserializedXYWH: [number, number, number, number];
   childIds?: string[];
   isLocked(): boolean;
@@ -185,6 +212,31 @@ describe('how many lines a tier holds', () => {
     expect(umlTierLineCount(undefined)).toBe(1);
     expect(umlTierLineCount(null)).toBe(1);
   });
+
+  /**
+   * The PO's recette of 14/09/2026, at the level the mistake was made.
+   *
+   * A tier is created with `hasMaxWidth`, so the canvas renderer BREAKS a long
+   * signature at the compartment's width before it paints it — and a count that
+   * saw only the author's newlines told the watcher a three-line compartment
+   * would do for six painted lines. Measured on a 200-unit class: the editor had
+   * grown the box to 93 units while the author typed, and the commit put it back
+   * to 54.6, painting the remainder through the separator under it.
+   *
+   * The wrapper is injected, so what is proved here is the ARITHMETIC — the real
+   * one is `umlTierWrapper`, and it is the renderer's own `wrapText`.
+   */
+  it('counts the lines the renderer WRAPS, not just the ones typed', () => {
+    // Anything past ten characters takes a second visual line.
+    const wrap = (line: string) => Math.ceil(line.length / 10) || 1;
+
+    expect(umlTierLineCount('+ a : A', wrap)).toBe(1);
+    expect(umlTierLineCount('+ findByCustomerIdAndStatus() : X', wrap)).toBe(4);
+    // Typed newlines and wrapped ones add up, line by line.
+    expect(umlTierLineCount('+ a : A\n+ findByCustomerId() : X', wrap)).toBe(4);
+    // A blank line is still a line, whatever a measurer says about it.
+    expect(umlTierLineCount('\n\n', wrap)).toBe(3);
+  });
 });
 
 describe('how tall a stack has to be', () => {
@@ -301,6 +353,52 @@ describe('when an edit into a compartment commits', () => {
     // One gesture, one undo entry.
     expect(store.captureSync).toHaveBeenCalledTimes(1);
     expect(store.transact).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The PO's recette of 14/09/2026: ONE typed attribute line, too long for the
+   * compartment, which the canvas renderer therefore paints as several.
+   *
+   * Before this, the count was the author's newlines — so the watcher saw one
+   * line, sized the compartment for one, and put back a box the editor had
+   * already (correctly) grown. The wrapped remainder was painted through the
+   * separator and into the operations compartment.
+   *
+   * The tier carries a FACE here and nowhere else in this file, because that is
+   * what makes it measurable at all: an element nothing has painted has no
+   * wrapping.
+   */
+  it('grows for the lines the renderer WRAPS, not just the ones typed', () => {
+    const { node, name, attributes, operations, group } = parts;
+    const [, , w] = node.deserializedXYWH;
+    const tierWidth = w - w * UML_TIER_SIDE_INSET * 2;
+    // 60 characters at 13px in a 168-unit compartment: five painted lines by the
+    // fake wrapper's arithmetic, and one line by a newline count.
+    attributes.text = '+'.repeat(60);
+    attributes.fontSize = 13;
+    attributes.fontFamily = 'Inter';
+    attributes.fontWeight = '400';
+    const painted = Math.ceil((60 * 13) / tierWidth);
+    expect(painted).toBeGreaterThan(1);
+
+    const { commit } = mount([node, name, attributes, operations, group]);
+    commit(attributes.id);
+
+    const lines: UmlTierLines = {
+      name: 1,
+      attributes: painted,
+      operations: 1,
+    };
+    const height = umlStackHeight('class', lines)!;
+    expect(node.deserializedXYWH[3]).toBeCloseTo(height, 6);
+    // The compartment itself is tall enough for what is in it — which is the
+    // half the author sees: the separator sits UNDER the last painted line.
+    const boxes = umlCompartmentBoxes('class', 0, 0, w, height, lines);
+    expect(boxOf(attributes)).toBe(serialize(boxes.attributes!));
+    expect(boxes.attributes!.h).toBeGreaterThan(
+      umlCompartmentBoxes('class', 0, 0, w, height, { ...lines, attributes: 1 })
+        .attributes!.h
+    );
   });
 
   /**

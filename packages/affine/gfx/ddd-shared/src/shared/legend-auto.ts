@@ -10,6 +10,7 @@ import {
 
 import {
   addLegend,
+  type LegendLayout,
   type LegendRow,
   type LegendSection,
   measureLegend,
@@ -31,7 +32,10 @@ import {
  * - **the glyphs are the DDD house prefab** ({@link addLegend}), not hand-drawn
  *   element-by-element replicas of the artefacts. The three DDD frameworks
  *   already document themselves with swatch rows, and a second visual language
- *   for the same job would be one too many.
+ *   for the same job would be one too many. A notation whose key IS its
+ *   silhouettes says so per row instead — `LegendRow`'s `glyph` and `edge`
+ *   swatches draw the framework's own element at swatch size, which is UML's
+ *   case and nobody else's today.
  *
  * A framework contributes nothing but a TABLE: which role puts which row in the
  * legend. Everything else — scanning the perimeter, resolving specialisations,
@@ -75,7 +79,7 @@ export interface AutoLegendSectionSpec {
   entries: readonly AutoLegendEntry[];
 }
 
-export interface AutoLegendSpec {
+export interface AutoLegendSpec extends LegendLayout {
   /**
    * Box title. The three DDD tools all say "Legend" (PO recette, 26/08/2026:
    * the boxes used to be titled in French, which was the one label in the
@@ -83,7 +87,6 @@ export interface AutoLegendSpec {
    * the day a host ships a locale pack it translates a key, not a leftover).
    */
   title: string;
-  width?: number;
   /**
    * The framework's role vocabulary, so a present role is matched against an
    * entry's role THROUGH the specialisation chain: an entry written on a parent
@@ -176,7 +179,16 @@ export function createAutoLegend(
 
   const bound = Bound.deserialize(background.xywh);
   const sections = autoLegendSections(rolesInBound(gfx, bound), spec);
-  const { height } = measureLegend(sections, spec.width);
+  // The spec IS the layout — a framework that draws its rows as pictures rather
+  // than as chips says so once, and the measurement and the drawing read the
+  // same numbers.
+  const layout: LegendLayout = {
+    width: spec.width,
+    rowHeight: spec.rowHeight,
+    swatchWidth: spec.swatchWidth,
+    swatchHeight: spec.swatchHeight,
+  };
+  const { height } = measureLegend(sections, layout);
 
   std.store.captureSync();
   const id = addLegend(
@@ -184,7 +196,7 @@ export function createAutoLegend(
     std,
     bound.x + INSET_X,
     bound.y + bound.h - INSET_BOTTOM - height,
-    { title: spec.title, sections, width: spec.width }
+    { title: spec.title, sections, ...layout }
   );
   gfx.selection.set({ elements: [id], editing: false });
   return id;

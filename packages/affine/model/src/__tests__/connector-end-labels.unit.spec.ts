@@ -30,13 +30,20 @@ function connector(id = 'connector-1') {
   // real document and every nested `Y.Text` behaves like a stored one.
   elements.set(id, yMap);
 
-  // The two things a surface owes an element model: somewhere to transact, and
-  // the decorator state `@field()` / `@derive()` read on every write.
+  // What the surface owes an element model: somewhere to transact, the
+  // decorator state `@field()` / `@derive()` read on every write, and the two
+  // RESOLVERS a bound endpoint goes through — canvas elements by id, blocks
+  // through the store. Two maps rather than one, because that split is exactly
+  // what `endGrabIncludesPoint` has to bridge.
+  const canvasElements = new Map<string, { elementBound: Bound }>();
+  const blocks = new Map<string, { model: { elementBound: Bound } }>();
   const surface = {
     _decoratorState: { creating: false, deriving: false, skipField: false },
+    getElementById: (id: string) => canvasElements.get(id) ?? null,
     store: {
       readonly: false,
       transact: (fn: () => void) => doc.transact(fn),
+      getBlock: (id: string) => blocks.get(id),
     },
   };
 
@@ -48,7 +55,7 @@ function connector(id = 'connector-1') {
     onChange: () => {},
   });
 
-  return { doc, model, yMap };
+  return { blocks, canvasElements, doc, model, yMap };
 }
 
 /** The keys a connector actually writes into the document. */
@@ -206,6 +213,79 @@ describe('geometry', () => {
 
     expect(model.sourceLabelXYWH).toEqual([-10, -15, 40, 20]);
     expect(model.targetLabelXYWH).toEqual([210, 125, 40, 20]);
+  });
+});
+
+/**
+ * The grab disc beside each endpoint — the half of ADR 0020 that lives in the
+ * HIT TEST rather than in the document (lesson 27, and the amendment of
+ * 2026-09-15).
+ *
+ * Three things have to be true at once, and each was wrong on its own before
+ * this spec: a plain whiteboard arrow must NOT swallow a double-click twelve
+ * units off its head, a connector a framework typed must, and neither may claim
+ * the half of its disc that lies inside the thing the end is bound to — a note
+ * as much as a shape.
+ */
+describe('the end grab disc', () => {
+  const horizontal = () => [
+    PointLocation.fromVec([0, 0]),
+    PointLocation.fromVec([100, 0]),
+  ];
+
+  /** Beside the target arrowhead: inside the 24-unit grab, past the 8 the line answers for. */
+  const besideTheHead: [number, number] = [100, 12];
+
+  test('a connector no framework typed keeps its hairline', () => {
+    const { model } = connector();
+    model.absolutePath = horizontal();
+
+    expect(model.endGrabIncludesPoint(besideTheHead)).toBe(false);
+    // …and the line's own tolerance is unchanged: 8 units, and 12 is past it.
+    expect(model.includesPoint(...besideTheHead)).toBe(false);
+    expect(model.includesPoint(100, 6)).toBe(true);
+  });
+
+  test('a connector a framework typed claims it', () => {
+    const { model } = connector();
+    model.role = 'uml:association';
+    model.absolutePath = horizontal();
+
+    expect(model.endGrabIncludesPoint(besideTheHead)).toBe(true);
+    expect(model.includesPoint(...besideTheHead)).toBe(true);
+    // Beyond the disc it is a hairline again, role or no role.
+    expect(model.endGrabIncludesPoint([100, 30])).toBe(false);
+  });
+
+  test('the disc stops at a BLOCK the end is bound to', () => {
+    // A note, an image, an embed, a frame: the resolver that only knew canvas
+    // elements answered `undefined` for every one of them, so the connector
+    // claimed the whole disc — including the half drawn inside the note, where
+    // the note's own gestures live.
+    const { blocks, model } = connector();
+    model.role = 'uml:association';
+    model.absolutePath = horizontal();
+    model.target = { id: 'note-1' };
+    blocks.set('note-1', {
+      model: { elementBound: new Bound(90, -40, 200, 80) },
+    });
+
+    expect(model.endGrabIncludesPoint(besideTheHead)).toBe(false);
+    // Outside the note, still within reach of the head: the notation's half.
+    expect(model.endGrabIncludesPoint([85, 10])).toBe(true);
+  });
+
+  test('the disc stops at a canvas element the end is bound to', () => {
+    const { canvasElements, model } = connector();
+    model.role = 'uml:association';
+    model.absolutePath = horizontal();
+    model.target = { id: 'class-1' };
+    canvasElements.set('class-1', {
+      elementBound: new Bound(90, -40, 200, 80),
+    });
+
+    expect(model.endGrabIncludesPoint(besideTheHead)).toBe(false);
+    expect(model.endGrabIncludesPoint([85, 10])).toBe(true);
   });
 });
 

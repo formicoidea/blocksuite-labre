@@ -38,6 +38,21 @@ export function createPopper<T extends keyof HTMLElementTagNameMap>(
     const popper = elMap.get(tagName);
     if (popper) {
       popper.cancel?.();
+      // The cached element is handed back with the DOM it rendered the LAST
+      // time it opened, and a menu whose content depends on anything but its
+      // own properties never recomputes it. The senior rows do: an
+      // `EdgelessCommandMenu` ranks its buttons by command usage, read per
+      // render precisely so the row reflects what the user did this morning —
+      // and the PO's recette of 2026-09-15 found that a command that had just
+      // earned its seat (`uml.importXmi`, one import in) only appeared after a
+      // reload, because reopening the row re-showed yesterday's DOM.
+      //
+      // One update per reopen, requested from the toggle and not from a render,
+      // so there is no loop: Lit coalesces it into the next microtask and the
+      // menu's own `render()` is what reads the measure again.
+      (
+        popper.element as Partial<{ requestUpdate: () => void }>
+      ).requestUpdate?.();
       requestAnimationFrame(() => animateEnter(popper.element));
       return popper as MenuPopper<HTMLElementTagNameMap[T]>;
     }

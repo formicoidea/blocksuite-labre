@@ -35,8 +35,17 @@ describe('a connector carries a label at each end', () => {
     return cleanup;
   });
 
-  /** Two boxes far enough apart that the line between them is open space. */
-  const addConnector = async () => {
+  /**
+   * Two boxes far enough apart that the line between them is open space.
+   *
+   * `role` is what makes the connector a NOTATION's — a `uml:association`
+   * rather than a whiteboard arrow — and since tranche J that is what decides
+   * whether it claims the grab discs beside its arrowheads. Left off by default
+   * on purpose: most of the cases below aim AT the line, where a plain
+   * connector has always answered, and the two cases that aim beside it are the
+   * ones that say which connector each answer belongs to.
+   */
+  const addConnector = async (role?: string) => {
     const surface = getSurface(window.doc, window.editor).model;
     const sourceId = surface.addElement({
       type: 'shape',
@@ -51,6 +60,7 @@ describe('a connector carries a label at each end', () => {
     const connectorId = surface.addElement({
       type: 'connector',
       mode: ConnectorMode.Straight,
+      role,
       source: { id: sourceId },
       target: { id: targetId },
     });
@@ -135,6 +145,34 @@ describe('a connector carries a label at each end', () => {
     return [point[0], point[1]];
   };
 
+  /**
+   * A point `offset` model units to the SIDE of the line, `along` units in from
+   * `end` — where a user aiming at an arrowhead actually lands.
+   *
+   * A connector is a hairline: the pointer is almost never ON it, and
+   * `docs/adr/0018` sized the end-label grab at 24 units precisely because the
+   * thing being aimed at is the arrowhead rather than a box that does not exist
+   * yet.
+   */
+  const besideEnd = (
+    connector: ConnectorElementModel,
+    end: 'source' | 'target',
+    along: number,
+    offset: number
+  ): IVec => {
+    const on = nearEnd(connector, end, along);
+    const path = connector.absolutePath;
+    const [from, toward] =
+      end === 'source'
+        ? [path[0], path[1] ?? path[path.length - 1]]
+        : [path[path.length - 1], path[path.length - 2] ?? path[0]];
+    const dx = toward[0] - from[0];
+    const dy = toward[1] - from[1];
+    const len = Math.hypot(dx, dy) || 1;
+    // The unit normal to the segment.
+    return [on[0] + (-dy / len) * offset, on[1] + (dx / len) * offset];
+  };
+
   /** Types into the open editor's label and commits it the way a blur does. */
   const commit = async (text: string) => {
     const editor = labelEditor();
@@ -167,6 +205,101 @@ describe('a connector carries a label at each end', () => {
     expect(connector.sourceLabel?.toString()).toBe('0..*');
     expect(connector.targetLabel).toBeUndefined();
     expect(connector.text).toBeUndefined();
+  });
+
+  /**
+   * The PO's recette of 14/09/2026: « la zone de texte apparaît mais il n'est
+   * pas possible de taper dedans. Pourtant quand j'utilise la commande du menu
+   * contextuel ça fonctionne. »
+   *
+   * Two things had to be true for that, and only one of them was tested. The
+   * editor has to MOUNT — which the cases above prove, for a double-click that
+   * lands on the line — and the caret has to end up in it, which nothing
+   * asserted: every case here commits by writing into the `Y.Text` directly,
+   * which a keyboard cannot do. So this one goes through the contenteditable the
+   * user types into.
+   */
+  test('the caret lands in the editor a double-click opened', async () => {
+    const { connector } = await addConnector();
+
+    await doubleClick(nearEnd(connector, 'source', 8));
+    const editor = labelEditor();
+    expect(editor?.which).toBe('source');
+
+    const container = editor!.inlineEditorContainer!;
+    expect(container.contains(document.activeElement)).toBe(true);
+
+    // The keystrokes a user makes, through the inline editor's own input path:
+    // `beforeinput` is what the editor binds to its event source, and it can
+    // only resolve an inline range if the caret is really in this editor. A
+    // mounted-but-unfocused overlay swallows this exactly as it swallowed the
+    // PO's typing.
+    container.dispatchEvent(
+      new InputEvent('beforeinput', {
+        inputType: 'insertText',
+        data: '0..*',
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    await wait(100);
+    expect(connector.sourceLabel?.toString()).toBe('0..*');
+
+    await closeEditor();
+    expect(connector.sourceLabel?.toString()).toBe('0..*');
+  });
+
+  /**
+   * …and the other half of the same observation: WHERE the gesture is answered.
+   *
+   * `CONNECTOR_END_LABEL_GRAB` is 24 model units and `docs/adr/0018` says why —
+   * the label is not there yet, so the target is the arrowhead. But the
+   * dispatcher only ever handed the connector view a double-click that its own
+   * hit test answered, which for a hairline is the line itself: 8 units, plus
+   * half the stroke. Past that the event reached nobody, `getElementByPoint`
+   * answered null, and `DblClickAddEdgelessText` took it for a double-click on
+   * empty canvas and dropped a text block at the arrowhead — a text box that
+   * appears and is not the label.
+   *
+   * A NOTATION's connector, since tranche J: a disc of 24 units around each
+   * endpoint is a large thing to take out of the canvas, and only the gesture
+   * that opens an end label needs it. The next case is the other side of that.
+   */
+  test('a double-click BESIDE the arrowhead still opens that end', async () => {
+    const { connector } = await addConnector('uml:association');
+    const blocks = () =>
+      window.doc.getModelsByFlavour('affine:edgeless-text').length;
+    expect(blocks()).toBe(0);
+
+    // Twelve units off the line: well inside the grab, well outside anything a
+    // hairline's own hit test answers.
+    await doubleClick(besideEnd(connector, 'target', 8, 12));
+
+    expect(labelEditor()?.which).toBe('target');
+    // …and nothing was written on the canvas to stand in for it.
+    expect(blocks()).toBe(0);
+
+    await commit('1');
+    expect(connector.targetLabel?.toString()).toBe('1');
+  });
+
+  /**
+   * …and a WHITEBOARD arrow keeps its hairline.
+   *
+   * The grab disc is the notation's, not every connector's: a plain arrow that
+   * claimed 24 units around each end would take a double-click meant for the
+   * canvas — "add text here", which is what it has always meant out there — and
+   * answer it with a multiplicity field on a line that has no multiplicities.
+   */
+  test('a connector no framework typed does not claim the disc', async () => {
+    const { connector } = await addConnector();
+
+    await doubleClick(besideEnd(connector, 'target', 8, 12));
+
+    expect(labelEditor()).toBeNull();
+    expect(connector.targetLabel).toBeUndefined();
+    // On the LINE it still answers exactly as it always did — which is the next
+    // test but one, on a connector built the same way.
   });
 
   test('a double-click near the target end opens the other one', async () => {

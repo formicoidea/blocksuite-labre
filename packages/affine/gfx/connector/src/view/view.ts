@@ -1,4 +1,5 @@
 import {
+  CONNECTOR_END_LABEL_GRAB,
   type ConnectorElementModel,
   LocalShapeElementModel,
 } from '@labre/affine-model';
@@ -26,14 +27,15 @@ import {
 
 /**
  * How close to an endpoint a double-click has to land to mean "the label of
- * THAT end" — in model units, so it is a constant on the board and not on the
- * screen (zooming out does not widen the target).
+ * THAT end" (`docs/adr/0018` phase 2).
  *
- * `docs/adr/0018` phase 2. Deliberately generous: the end label a user is
- * reaching for is usually not there yet, so there is no box to aim at, and the
- * thing they aim at instead is the arrowhead.
+ * Re-exported rather than declared: the number is the model's now, because the
+ * connector's own HIT TEST has to claim the same discs — a gesture the
+ * dispatcher never delivers is a gesture no picker gets to interpret
+ * (`connectorEndNear`, and the PO's recette of 14/09/2026). Kept exported here
+ * because this is where every caller has always reached for it.
  */
-export const CONNECTOR_END_LABEL_GRAB = 24;
+export { CONNECTOR_END_LABEL_GRAB };
 
 /** What {@link pickConnectorLabelWhich} needs, and nothing more. */
 export type ConnectorLabelHitTarget = {
@@ -108,6 +110,31 @@ export class ConnectorElementView extends GfxElementModelView<ConnectorElementMo
 
   override onCreated(): void {
     super.onCreated();
+
+    // What the GRID must offer before any hit test is asked. The grid indexes a
+    // connector by its `responseBound` — the box of its PATH — and the end-label
+    // grab discs stick out of it by up to `CONNECTOR_END_LABEL_GRAB`, so without
+    // this nothing is ever a candidate out there and
+    // `ConnectorElementModel.endGrabIncludesPoint` never gets asked. It widens
+    // the CANDIDATE set only: what is picked, hovered and selected is still
+    // decided by the model's own `includesPoint`.
+    //
+    // Set from the view rather than defaulted on the model because it is a
+    // LOCAL fact about this peer's pointer, which is exactly what
+    // `responseExtension` is for — nothing about it is written to the document.
+    //
+    // NOT gated on the model's `role`, although `endGrabIncludesPoint` is
+    // (a generalist connector keeps its hairline). Two reasons, and both are
+    // about `onCreated` running exactly once: a connector acquires its role
+    // AFTER creation often enough — an import writes the element then types it,
+    // a morph retypes it, a paste re-creates it — and a halo decided at that one
+    // moment would be missing for every one of those. And it costs nothing to
+    // keep: the extension widens the CANDIDATE set only, and the authority on
+    // what a point actually hits is the model, which now declines.
+    this.model.responseExtension = [
+      CONNECTOR_END_LABEL_GRAB,
+      CONNECTOR_END_LABEL_GRAB,
+    ];
 
     this._initLabelMoving();
   }
