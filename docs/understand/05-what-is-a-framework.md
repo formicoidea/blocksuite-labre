@@ -4,7 +4,10 @@
 that the editor turns into tooling.**
 
 Frameworks today: Wardley maps, EDGY, BPMN, C4, Cynefin/Estuarine, DDD event
-storming, DDD core domain chart, DDD context map, UML. All live under
+storming, DDD core domain chart, DDD context map, UML — one framework carrying
+nine diagram kinds (`class`, `pkg`, `obj`, `uc`, `cmp`, `dep`, `act`, `stm`,
+`sd`) as a field of its board, per ADR
+[0017](../adr/0017-uml-one-framework-with-diagram-kinds.md). All live under
 `packages/affine/gfx/<id>`. Wardley is the reference implementation.
 
 ## The board

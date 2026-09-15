@@ -287,3 +287,19 @@ overturned with usage data behind it after the phase-2 recette.
 3. **Per-end labels** (ADR 0018) would turn five `carried` remarks per real
    class diagram into drawn multiplicities. Until then, every reader records the
    end each one belonged to rather than dropping it.
+
+## Amendments
+
+**2026-09-15 (tranche I).** Phase 3 adds **no capability and no format id**:
+the five rows of §1 stand. What changes is what each of the three formats
+carries for a kind that did not exist when they were written — `uml:Interaction`
+and its occurrence specifications in XMI, `participant` / `->` / `alt … else …
+end` / `ref over` in PlantUML, `shape=umlLifeline` and `umlDestroy` best effort
+in draw.io. The per-format sequence table is ADR
+[0022](0022-uml-sequence-diagrams-scope.md) §6, which also records the one place
+§5's invented layout is not a loss: a PlantUML sequence has no geometry, and the
+invented y order IS the model, so it round-trips from the first export rather
+than from the second.
+
+**Open question 3 is closed** by ADR [0020](0020-connector-end-labels.md): the
+readers write `sourceLabel` / `targetLabel` instead of carrying end text.

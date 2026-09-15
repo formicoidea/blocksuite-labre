@@ -26,6 +26,7 @@ One file per decision. Format and lifecycle in
 | [0019](0019-uml-import-formats.md)                             | UML reads three formats              | accepted                  | PlantUML and XMI in both directions, draw.io in only and `visual`; the compressed payload is the command's.  |
 | [0020](0020-connector-end-labels.md)                           | Connector end labels                 | accepted                  | Four flat optional fields; absent by default, so no migration. An end label follows its own endpoint.        |
 | [0021](0021-label-syntax-rule-family.md)                       | `label-syntax` rule family           | accepted                  | The first family whose verdict is the framework's own parser; `element` scope; per line, ellipsis dropped.   |
+| [0022](0022-uml-sequence-diagrams-scope.md)                    | UML sequence diagrams                | accepted                  | Kind `sd`: a lifeline is a narrow column, a fragment is a board with operand zones, time is y. Gates out.    |
 
 Related documents that are not ADRs:
 

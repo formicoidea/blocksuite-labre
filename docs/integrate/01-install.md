@@ -8,18 +8,18 @@ copy of each in your build.**
 The library is published as generated bundles under the `@formicoidea` scope.
 The source packages (`@labre/*`) are private and never on npm.
 
-| Package                                                                                   | Gives you                                                                  |
-| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `@formicoidea/labre-core`                                                                 | the whole editor: text blocks, whiteboard, base shapes, mindmap, database… |
-| `@formicoidea/labre-framework-wardley`                                                    | Wardley maps                                                               |
-| `@formicoidea/labre-framework-edgy`                                                       | EDGY                                                                       |
-| `@formicoidea/labre-framework-bpmn`                                                       | BPMN                                                                       |
-| `@formicoidea/labre-framework-c4`                                                         | C4                                                                         |
-| `@formicoidea/labre-framework-cynefin`                                                    | Cynefin / Estuarine                                                        |
-| `@formicoidea/labre-framework-ddd-event-storming`, `-ddd-core-domain`, `-ddd-context-map` | the three DDD tools                                                        |
-| `@formicoidea/labre-ddd-shared`                                                           | pulled in by the DDD frameworks                                            |
-| `@formicoidea/labre-framework-ddd-aggregate`                                              | DDD template categories (no senior button)                                 |
-| `@formicoidea/labre-framework-uml`                                                        | UML (class, package, object and use-case diagrams)                         |
+| Package                                                                                   | Gives you                                                                                                           |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `@formicoidea/labre-core`                                                                 | the whole editor: text blocks, whiteboard, base shapes, mindmap, database…                                          |
+| `@formicoidea/labre-framework-wardley`                                                    | Wardley maps                                                                                                        |
+| `@formicoidea/labre-framework-edgy`                                                       | EDGY                                                                                                                |
+| `@formicoidea/labre-framework-bpmn`                                                       | BPMN                                                                                                                |
+| `@formicoidea/labre-framework-c4`                                                         | C4                                                                                                                  |
+| `@formicoidea/labre-framework-cynefin`                                                    | Cynefin / Estuarine                                                                                                 |
+| `@formicoidea/labre-framework-ddd-event-storming`, `-ddd-core-domain`, `-ddd-context-map` | the three DDD tools                                                                                                 |
+| `@formicoidea/labre-ddd-shared`                                                           | pulled in by the DDD frameworks                                                                                     |
+| `@formicoidea/labre-framework-ddd-aggregate`                                              | DDD template categories (no senior button)                                                                          |
+| `@formicoidea/labre-framework-uml`                                                        | UML, nine diagram kinds: class, package, object, use case, component, deployment, activity, state machine, sequence |
 
 Every framework bundle depends on the **exact** core version it was built
 with. Install them together and bump them together.
