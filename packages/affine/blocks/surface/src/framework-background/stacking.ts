@@ -97,10 +97,12 @@ export function indexOverBackgrounds(
  *    is still below every artefact already drawn there. Otherwise nothing.
  * 2. `element` IS a background. If another background it overlaps sits above
  *    it, the same raise applies — superposed boards stack in the order they
- *    were placed, each still under its own artefacts. Otherwise, if it covers
- *    an artefact it overlaps, it is acting as a lid: lower it to just above
- *    the floor it lies on, or to the back of the surface when it lies on bare
- *    canvas. Otherwise nothing.
+ *    were placed, each still under its own artefacts — unless it ENCLOSES that
+ *    background, in which case it is the sheet the other is drawn on and stays
+ *    under it ({@link encloses}). Otherwise, if it covers an artefact it
+ *    overlaps, it is acting as a lid: lower it to just above the floor it lies
+ *    on, or to the back of the surface when it lies on bare canvas. Otherwise
+ *    nothing.
  *
  * `siblings` are the OTHER top-level elements of the surface — canvas elements
  * and blocks alike, since the surface paints both by index — with `element`
@@ -132,7 +134,10 @@ export function stackingIndexFor(
   );
 
   const buried = overlapping.some(
-    sibling => sibling.isBackground && sibling.index > element.index
+    sibling =>
+      sibling.isBackground &&
+      sibling.index > element.index &&
+      !encloses(element, box, sibling)
   );
   const lidding =
     element.isBackground &&
@@ -149,6 +154,37 @@ export function stackingIndexFor(
       : null;
 
   return next === element.index ? null : next;
+}
+
+/**
+ * Whether `element` is the SHEET `sibling` is drawn on — a background that
+ * strictly encloses another background.
+ *
+ * The carve-out the "superposed boards" clause needs, and the recette of
+ * 2026-09-15 is what named it: a UML diagram frame holds inner backgrounds of
+ * its own — a use case subject (§18.1.4), an activity partition (§15.6.4), a
+ * composite state (§14.2.4), a combined fragment (§17.6.4) — and a C4 board
+ * holds boundaries. Every one of them is drawn INSIDE the sheet and therefore
+ * above it, which made the sheet permanently "buried" under its own content:
+ * moving or resizing it raised it just above the topmost background it
+ * overlapped, and when that background was the topmost element of the stack the
+ * opaque sheet went to the very front and hid everything drawn on it.
+ *
+ * Two superposed PEER boards are a different gesture and keep the old answer.
+ * The discriminator is containment and not mere overlap: a sheet is bigger than
+ * what is drawn on it, so `element` is its floor only when it wholly encloses
+ * it AND covers more ground than it. Equal boxes — two boards dropped on the
+ * same spot — enclose each other, which is no statement at all, so they are
+ * peers and the raise still applies.
+ */
+function encloses(
+  element: StackedElement,
+  box: Bound,
+  sibling: StackedElement
+): boolean {
+  if (!element.isBackground) return false;
+  const inner = Bound.deserialize(sibling.xywh);
+  return box.contains(inner) && inner.w * inner.h < box.w * box.h;
 }
 
 /** A key below every sibling: the back of the surface. */
