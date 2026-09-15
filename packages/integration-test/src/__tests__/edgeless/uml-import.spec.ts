@@ -274,13 +274,16 @@ type UmlMenuElement = HTMLElement & {
  * `SENIOR_MENU_CAP` is 14 and is what an owner may nominate;
  * `SENIOR_MENU_RANKED_SLOTS` is 13 and is what an overflowed popover paints,
  * beside the permanent "More artefacts…" button. UML nominates exactly
- * fourteen, so one of them is invisible at cold start — and when
- * `uml.importXmi` landed it was authored fourteenth, which made it precisely
- * the one nobody could reach. A unit test on the declaration could not see
- * that: the declaration was correct and the row was still wrong.
+ * fourteen, so one of them is invisible at cold start — and which one that is
+ * is a product decision a unit test on a declaration cannot see. Since the PO's
+ * recette of 2026-09-14 it is `uml.importXmi`: the same `order` field feeds the
+ * sub-menu and the catalogue, and the seat it held cost the catalogue its
+ * first section (O7). ADR 0014 § R3 is the rule that settles it — a cold row of
+ * drawing tools, an import that surfaces through use.
  *
- * So this mounts the real popover with the usage store cleared, which is a
- * first contact, and reads the selection the component itself computed.
+ * So this mounts the real popover twice: once with the usage store cleared,
+ * which is a first contact, and once with a single import recorded, which is
+ * what the nomination is FOR.
  */
 describe('the UML sub-menu seats the import', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -332,24 +335,14 @@ describe('the UML sub-menu seats the import', () => {
     expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
   });
 
-  test('the thirteen a first-time user meets include Import XMI, second', () => {
+  test('the thirteen a first-time user meets are the drawing tools', () => {
     const ids = menu.commands.map(command => command.id);
 
     expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
-    // The blocker, pinned where it was missed: a fourteenth nomination renders
-    // nowhere, and an import a user cannot see is an import they do not have.
-    expect(ids).toContain('uml.importXmi');
-    // The sheet, then the file it can come from — the two things anybody does
-    // to an empty canvas (ADR 0019 §7).
-    expect(ids.slice(0, 2)).toEqual(['uml.addDiagram', 'uml.importXmi']);
-    // …and the seat it cost: the LAST authored nomination falls off the
-    // cold-start row, one click away behind "More artefacts…".
-    expect(ids).not.toContain('uml.extendTool');
     // Membership is what the ranking decides; POSITION is always the authored
     // order, so the row does not reshuffle under the cursor.
     expect(ids).toEqual([
       'uml.addDiagram',
-      'uml.importXmi',
       'uml.addClass',
       'uml.addInterface',
       'uml.addEnumeration',
@@ -361,6 +354,52 @@ describe('the UML sub-menu seats the import', () => {
       'uml.generalizationTool',
       'uml.dependencyTool',
       'uml.includeTool',
+      'uml.extendTool',
     ]);
+    // The fourteenth nomination waits its turn, and since tranche J that is the
+    // XMI import rather than the extend tool. The trade is the PO's recette of
+    // 2026-09-14 (O7): one `order` serves the sub-menu AND the catalogue, and
+    // the second seat this command held put it — with the four interchange
+    // commands beside it — in the catalogue's first section, above every
+    // artefact UML draws. ADR 0014 § R3 says which reading wins: "the
+    // cold-start row favours drawing tools; import buttons surface through
+    // use". The next test is the "through use" half.
+    expect(ids).not.toContain('uml.importXmi');
+  });
+
+  /**
+   * The nomination is not decoration: it is what lets usage seat the command.
+   *
+   * Exactly BPMN's test, on UML's import — an export declines the row and can
+   * never be voted in, a nominated import is one use away from it. Without this
+   * the fourteenth nomination would be a declaration nothing could ever
+   * exercise, which is the objection tranche G raised and this pair answers.
+   */
+  test('one import seats it, and no number of exports seats an export', async () => {
+    const exportCommand = getCommandsForSurface(
+      edgeless.std,
+      'uml',
+      'catalogue'
+    ).find(command => command.id === 'uml.exportXmi')!;
+    expect(exportCommand.surfaces).not.toContain('senior-menu');
+
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({
+        'uml.exportXmi': { c: 100, t: Date.now() },
+        'uml.importXmi': { c: 1, t: Date.now() },
+      })
+    );
+    menu.requestUpdate();
+    await menu.updateComplete;
+    await wait(0);
+
+    const ids = menu.commands.map(command => command.id);
+    expect(ids).toContain('uml.importXmi');
+    expect(ids).not.toContain('uml.exportXmi');
+    // …and it lands in AUTHORED order, which is last: the row is re-sorted
+    // after the ranking, so nothing a user reached for jumps to the front.
+    expect(ids.at(-1)).toBe('uml.importXmi');
+    expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 });

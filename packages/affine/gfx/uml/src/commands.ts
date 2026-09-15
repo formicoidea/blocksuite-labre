@@ -51,26 +51,26 @@ import {
  *   1. the DIAGRAM first — the sheet has to exist before anything can be put on
  *      it, and a first-time user who reaches for a class before a diagram draws
  *      a class on the void;
- *   2. then the IMPORT, in the second seat — see below, it is the one position
- *      that actually renders;
- *   3. then the classifiers a class diagram is mostly made of (class,
+ *   2. then the classifiers a class diagram is mostly made of (class,
  *      interface, enumeration), then the containers and annotations (package),
  *      then the two shapes a USE-CASE diagram is made of (actor, use case) and
  *      the subject frame drawn round them;
- *   4. then the five relationships an author reaches for first — association,
+ *   3. then the five relationships an author reaches for first — association,
  *      generalization, dependency, and the two use-case ones;
- *   5. and everything past the fourteenth slot DECLINES the row rather than
+ *   4. and everything past the fourteenth slot DECLINES the row rather than
  *      contesting it: the object (an instance diagram is a second reading of a
  *      class diagram, not the first thing anybody draws), the four remaining
- *      relationships, the two exports, the other two imports, and — since
- *      phase 2 — the whole of components, deployment, activities and state
- *      machines, and since phase 3 the whole of sequence diagrams.
+ *      relationships, and — since phase 2 — the whole of components,
+ *      deployment, activities and state machines, and since phase 3 the whole
+ *      of sequence diagrams;
+ *   5. and the INTERCHANGE last, after every artefact and every relation of
+ *      every kind: the two exports, then the three imports. See below.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
  * the PO having to arbitrate an over-nomination.
  *
- * ## Fourteen nominated, THIRTEEN rendered — and why the import is second
+ * ## Fourteen nominated, THIRTEEN rendered — and which one waits
  *
  * The cap and the row are not the same number. `SENIOR_MENU_CAP` is 14 and is
  * what an owner may NOMINATE; what an overflowed row RENDERS is
@@ -80,18 +80,22 @@ import {
  * THIRTEEN of this list and the fourteenth is invisible until somebody uses
  * it**.
  *
- * `uml.importXmi` was authored fourteenth when it landed (tranche G) and was
- * therefore the one nomination no new user could ever see — which is the whole
- * of what nominating it was for. It sits second now: a board comes FROM a file,
- * and the two things a user does to an empty canvas are draw a sheet and open
- * one. The command that falls off the cold-start row instead is the LAST
- * authored nomination, `uml.extendTool` — the rarer of the two use-case
- * relationships, one click away in the catalogue, and the honest thing to
- * spend a seat that only thirteen commands can hold.
+ * That fourteenth is `uml.importXmi`, and it is a deliberate choice rather than
+ * an oversight. Tranche G had authored it SECOND, so that the one nomination
+ * R5 buys an import would render cold; the PO's recette of 2026-09-14 read the
+ * consequence at the other end and rejected it — an import sitting two rows
+ * from the top of the catalogue, above every artefact the framework draws, in a
+ * section headed "Diagrams" it does not belong to. The catalogue order and the
+ * sub-menu order are ONE authored order (`getCommandsForSurface` sorts both by
+ * `CommandDescriptor.order`), so the two readings cannot both be had, and ADR
+ * 0014 § R3 already says which one wins: "the cold-start row favours drawing
+ * tools; import buttons surface through use". `uml.importXmi` keeps its
+ * nomination and climbs into the row the first time anybody opens a file;
+ * `uml.extendTool` — the fourteenth authored nomination before this change —
+ * is back on the cold row.
  *
- * `bpmn.importXml` is authored LAST among BPMN's nominations and has the same
- * gap; it is out of this tranche's scope, and `bpmn.spec.ts` only ever asserts
- * its row with usage seeded.
+ * `bpmn.importXml` is authored LAST among BPMN's nominations for the same
+ * reason, and `bpmn.spec.ts` only ever asserts its row with usage seeded.
  *
  * ## Why the aggregation / composition / realization / anchor tools decline
  *
@@ -117,6 +121,10 @@ interface Spec {
    * one, a typed line a `relations` one, and the subject a `boundaries` one —
    * a subject is neither an element of the model nor the sheet it is drawn on,
    * exactly as a C4 boundary is neither.
+   *
+   * The fifth section every other framework has — `interchange` — is not in
+   * this union because nothing in {@link SPECS} draws a file: the exports and
+   * the imports declare it themselves, below.
    */
   category: 'diagrams' | 'elements' | 'boundaries' | 'relations';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
@@ -857,15 +865,15 @@ const SPECS: Spec[] = [
 ];
 
 /**
- * The authored slot the senior row's IMPORT sits in — second, between the
- * diagram frame and the class.
+ * The authored slot the first INTERCHANGE command sits in — straight after the
+ * last artefact, with no gap anywhere before it.
  *
- * A named constant rather than a literal because two things have to agree about
- * it and they are three hundred lines apart: `uml.importXmi`'s descriptor, and
- * the shift below that leaves the slot empty. The header says why it is this
- * slot and not the fourteenth.
+ * A named constant rather than five literals because six declarations three
+ * hundred lines apart have to agree about it: the toolbox's own `order`, and
+ * the two exports and three imports that follow it. The header says why the
+ * whole block is last.
  */
-const UML_IMPORT_ROW_ORDER = 1;
+const UML_INTERCHANGE_ORDER = SPECS.length;
 
 const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   id: `uml.${spec.id}`,
@@ -878,11 +886,10 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   surfaces: spec.senior
     ? ['senior-menu', 'catalogue', 'palette', 'agent']
     : ['catalogue', 'palette', 'agent'],
-  // The sheet keeps slot 0 and everything after it shifts by one, which leaves
-  // {@link UML_IMPORT_ROW_ORDER} free for the import. A gap rather than a
-  // fractional order: `order` is sorted numerically on four surfaces and a
-  // `0.5` in the middle of it is a thing the next author has to decode.
-  order: index === 0 ? 0 : index + 1,
+  // Authored order, with no gap in it: the artefacts run 0…SPECS.length-1 and
+  // the interchange block starts at {@link UML_INTERCHANGE_ORDER}. The gap that
+  // used to reserve slot 1 for the XMI import is gone with the reason for it.
+  order: index,
   scope: 'edgeless',
   // Keyless by intent, and at sixty-nine commands there is no chord alphabet
   // that would not be arbitrary — still bindable from Settings › Shortcuts,
@@ -922,6 +929,17 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
  * which is not a category claim but the registry's own invariant: the catalogue
  * is the TOTAL surface.
  *
+ * ## The section they are filed under
+ *
+ * `interchange`, which is where BPMN and Wardley already file theirs and which
+ * is therefore the section a host that translated the header once has already
+ * translated. UML shipped them under `diagrams` — the section its FRAME is
+ * filed under — and the consequence was the one the PO's recette of 2026-09-14
+ * reported: `groupCommandsByCategory` orders sections by the order their
+ * category is first MET, so five interchange commands sat inside the first
+ * section of the catalogue, above every artefact the framework draws. Their own
+ * section, authored last, puts them where the other two frameworks put theirs.
+ *
  * On the frame's own row they sit in the "⋮" rather than as buttons, and in the
  * ALWAYS-ON toolbar module — the entry hides itself when the command is absent
  * from the registry (the `when` guard every `commandAction` carries), so with
@@ -938,12 +956,13 @@ const exportCommands: CommandDescriptor[] = [
     descriptionKey: 'com.labre.commands.uml.exportPlantuml.description',
     descriptionFallback:
       'Download the selected diagram as PlantUML source, ready to paste into any PlantUML renderer.',
-    category: 'diagrams',
+    category: 'interchange',
     iconKey: 'uml.export-plantuml',
     surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
-    // `+ 1` because the toolbox's own orders run 0 then 2…SPECS.length — the
-    // gap that reserves {@link UML_IMPORT_ROW_ORDER} costs one at this end too.
-    order: SPECS.length + 1,
+    // First of the interchange block, which is first of the EXPORTS: the PO's
+    // reading of 2026-09-14 puts what leaves the board before what arrives on
+    // an empty one.
+    order: UML_INTERCHANGE_ORDER,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'selection',
@@ -963,10 +982,10 @@ const exportCommands: CommandDescriptor[] = [
     descriptionKey: 'com.labre.commands.uml.exportXmi.description',
     descriptionFallback:
       'Download the selected diagram as XMI 2.5.1, the OMG interchange format every UML tool reads.',
-    category: 'diagrams',
+    category: 'interchange',
     iconKey: 'uml.export-xmi',
     surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
-    order: SPECS.length + 2,
+    order: UML_INTERCHANGE_ORDER + 1,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'selection',
@@ -1005,6 +1024,11 @@ const exportCommands: CommandDescriptor[] = [
  * away in the catalogue behind "More artefacts…". `uml.addNote` is the entry
  * that stood down for it, with the reasoning recorded at its declaration — a
  * PO curation point, flagged there rather than settled here.
+ *
+ * The seat is a nomination and not a cold-start button: authored last, it is
+ * the fourteenth of fourteen nominations and the row renders thirteen, so it
+ * appears the first time the user reaches for it (ADR 0014 § R3) and not
+ * before. The header states the arbitration that put it there.
  */
 const importCommands: CommandDescriptor[] = [
   {
@@ -1016,17 +1040,19 @@ const importCommands: CommandDescriptor[] = [
     descriptionKey: 'com.labre.commands.uml.importXmi.description',
     descriptionFallback:
       'Open an XMI 2.5.1 model as a diagram. What Labre cannot draw is kept in the document, and the import says what it was.',
-    category: 'diagrams',
+    category: 'interchange',
     iconKey: 'uml.import-xmi',
     // The one nominated import — see the header. Not the contextual toolbar: a
     // contextual toolbar is a statement about a SELECTION, and the moment this
     // is most wanted is on a board with nothing on it.
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
-    // SECOND, not last. What an overflowed row renders is thirteen, not the
-    // fourteen an owner may nominate, and with no usage recorded that is the
-    // first thirteen of the authored order — so a fourteenth nomination is one
-    // no new user ever sees. See the header.
-    order: UML_IMPORT_ROW_ORDER,
+    // Authored LAST among the nominations, which is what makes it the one of
+    // the fourteen an overflowed row's thirteen slots leave out until somebody
+    // uses it (ADR 0014 § R3). The alternative — the second slot it held from
+    // tranche G until the PO's recette of 2026-09-14 — buys the cold row at the
+    // price of the catalogue, because one `order` serves both surfaces. See the
+    // header.
+    order: UML_INTERCHANGE_ORDER + 2,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     // An import WRITES, so a read-only document is one it cannot run on and the
@@ -1049,10 +1075,10 @@ const importCommands: CommandDescriptor[] = [
     descriptionKey: 'com.labre.commands.uml.importPlantuml.description',
     descriptionFallback:
       'Open a PlantUML source as a diagram. Lines Labre cannot read are kept in the document, and the import says which.',
-    category: 'diagrams',
+    category: 'interchange',
     iconKey: 'uml.import-plantuml',
     surfaces: ['catalogue', 'palette', 'agent'],
-    order: SPECS.length + 3,
+    order: UML_INTERCHANGE_ORDER + 3,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'editable',
@@ -1068,10 +1094,10 @@ const importCommands: CommandDescriptor[] = [
     descriptionKey: 'com.labre.commands.uml.importDrawio.description',
     descriptionFallback:
       'Recognise a draw.io drawing as UML, best effort: the shapes and arrows it understands become a diagram, and it says what it could not read.',
-    category: 'diagrams',
+    category: 'interchange',
     iconKey: 'uml.import-drawio',
     surfaces: ['catalogue', 'palette', 'agent'],
-    order: SPECS.length + 4,
+    order: UML_INTERCHANGE_ORDER + 4,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'editable',

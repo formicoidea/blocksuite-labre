@@ -92,20 +92,21 @@ describe('the uml command inventory', () => {
     // documents: the sheet, the classifiers, the containers, the use-case
     // shapes, the subject, then the five relationships reached for first.
     //
-    // …and, since tranche G, one IMPORT in the SECOND seat (R5, ADR 0019 §7):
-    // a board comes FROM a file and the sub-menu is the first thing a user
-    // opens on an empty canvas. `uml.addNote` is the entry that stood down for
-    // it — the trade is recorded at its declaration as the PO curation point it
-    // is — so the pool is still fourteen rather than a fifteenth nomination the
-    // budget has no room for.
+    // …and, since tranche G, one IMPORT (R5, ADR 0019 §7): a board comes FROM a
+    // file and the sub-menu is the first thing a user opens on an empty canvas.
+    // `uml.addNote` is the entry that stood down for it — the trade is recorded
+    // at its declaration as the PO curation point it is — so the pool is still
+    // fourteen rather than a fifteenth nomination the budget has no room for.
     //
-    // Second and not fourteenth, and the position is the whole of whether the
-    // nomination does anything: an overflowed row renders THIRTEEN
-    // (`SENIOR_MENU_RANKED_SLOTS`) and the cold start is the first thirteen of
-    // this list, so a fourteenth nomination is one no new user can see.
+    // It is authored LAST, and that is the trade tranche J made: one `order`
+    // serves the sub-menu and the catalogue alike, so the second seat it held
+    // from tranche G also put it — and the four interchange commands beside it
+    // — above every artefact in the catalogue, which is what the PO's recette
+    // of 2026-09-14 rejected (O7). The catalogue wins, and the row follows ADR
+    // 0014 § R3: "the cold-start row favours drawing tools; import buttons
+    // surface through use".
     expect(nominated.map(c => c.id)).toEqual([
       'uml.addDiagram',
-      'uml.importXmi',
       'uml.addClass',
       'uml.addInterface',
       'uml.addEnumeration',
@@ -118,11 +119,65 @@ describe('the uml command inventory', () => {
       'uml.dependencyTool',
       'uml.includeTool',
       'uml.extendTool',
+      'uml.importXmi',
     ]);
     // The curation budget `registry.unit.spec.ts` enforces across the library,
     // asserted here too because this is the file somebody adding a command
     // reads: a fifteenth nomination is a PO decision, not a merge.
     expect(nominated).toHaveLength(SENIOR_MENU_CAP);
+  });
+
+  /**
+   * O7 of the PO's recette of 2026-09-14, verbatim: « Les imports et exports
+   * devraient être à la fin du catalogue. »
+   *
+   * The catalogue sidepanel does NOT lay its entries out in authored order: it
+   * groups them by `category` and shows the groups in the order each category
+   * is first MET along the order-sorted list (`groupCommandsByCategory`). So an
+   * interchange command filed under `diagrams` — the section the FRAME is filed
+   * under, which is met at order 0 — lands in the first section of the panel
+   * whatever its own order is, which is what the PO saw: five of the six rows
+   * of "Diagrams" were an import or an export, above every artefact UML draws.
+   *
+   * The grouping is re-derived here rather than imported, because the widget
+   * that owns it sits above this package; it is three lines and it is the
+   * behaviour this test is about.
+   */
+  it('files the interchange in its own section, last in the catalogue', () => {
+    const sections: string[] = [];
+    const rows = new Map<string, string[]>();
+    for (const command of catalogue) {
+      const category = command.category ?? '(none)';
+      if (!rows.has(category)) {
+        rows.set(category, []);
+        sections.push(category);
+      }
+      rows.get(category)!.push(command.id);
+    }
+
+    // The four artefact sections in the order UML draws them, then the fifth —
+    // the one BPMN and Wardley already file their own imports and exports
+    // under, so a host that translated the header once has translated it for
+    // every framework.
+    expect(sections).toEqual([
+      'diagrams',
+      'elements',
+      'boundaries',
+      'relations',
+      'interchange',
+    ]);
+    // Exports first, then imports: what leaves a board you have, before what
+    // arrives on one you do not.
+    expect(rows.get('interchange')).toEqual([
+      'uml.exportPlantuml',
+      'uml.exportXmi',
+      'uml.importXmi',
+      'uml.importPlantuml',
+      'uml.importDrawio',
+    ]);
+    // …and the first section is the SHEET alone, which is the whole of what a
+    // "Diagrams" heading should hold.
+    expect(rows.get('diagrams')).toEqual(['uml.addDiagram']);
   });
 
   it('overflows, and renders a capped row with the way to the rest', () => {
@@ -143,18 +198,30 @@ describe('the uml command inventory', () => {
 
     // THE COLD START, which is the row every new user meets: no usage recorded,
     // both ranking axes collapse to authored order, thirteen survive out of
-    // fourteen nominated. The import has to be among them or nominating it did
-    // nothing at all — this is the recette blocker that moved it to the second
-    // seat, and the assertion that keeps it there.
+    // fourteen nominated. Thirteen DRAWING tools, which is what ADR 0014 § R3
+    // says a cold row is for.
     const ids = commands.map(c => c.id);
-    expect(ids).toHaveLength(13);
-    expect(ids).toContain('uml.importXmi');
-    expect(ids[1]).toBe('uml.importXmi');
+    expect(ids).toEqual([
+      'uml.addDiagram',
+      'uml.addClass',
+      'uml.addInterface',
+      'uml.addEnumeration',
+      'uml.addPackage',
+      'uml.addActor',
+      'uml.addUseCase',
+      'uml.addSubject',
+      'uml.associationTool',
+      'uml.generalizationTool',
+      'uml.dependencyTool',
+      'uml.includeTool',
+      'uml.extendTool',
+    ]);
     // …and the one that falls off is the LAST authored nomination, named here
-    // so the trade is visible rather than discovered: the rarer of the two
-    // use-case relationships, one click away in the catalogue.
-    expect(ids).not.toContain('uml.extendTool');
-    expect(nominated.at(-1)!.id).toBe('uml.extendTool');
+    // so the trade is visible rather than discovered: the XMI import, which
+    // keeps its seat and takes it the first time anybody opens a file. See the
+    // nomination test above for why the catalogue won this arbitration.
+    expect(ids).not.toContain('uml.importXmi');
+    expect(nominated.at(-1)!.id).toBe('uml.importXmi');
 
     // …and nothing is unreachable, which is what the catalogue is for.
     expect(ordered).toHaveLength(umlCommands.length);

@@ -42,6 +42,9 @@ const ROLES: RoleDefs = {
   'test:anchor': { id: 'test:anchor', kind: 'node' },
   'test:label': { id: 'test:label', kind: 'node' },
   'test:dependency': { id: 'test:dependency', kind: 'edge' },
+  // A SECOND kind of line, flat beside the first: what a profile declaring
+  // several relation tables reads through its extra ones.
+  'test:realizes': { id: 'test:realizes', kind: 'edge' },
   'test:map': { id: 'test:map', kind: 'node' },
 };
 
@@ -152,6 +155,9 @@ type Stub = {
   text?: string;
   source?: string;
   target?: string;
+  /** What the connector writes at each end (ADR 0020). */
+  sourceLabel?: string;
+  targetLabel?: string;
   children?: GfxPrimitiveElementModel[];
 };
 
@@ -169,6 +175,8 @@ function element({
   text,
   source,
   target,
+  sourceLabel,
+  targetLabel,
   children,
 }: Stub): GfxPrimitiveElementModel {
   const el = Object.create(
@@ -184,6 +192,8 @@ function element({
   define('elementBound', new Bound(...bound));
   if (source !== undefined) define('source', { id: source });
   if (target !== undefined) define('target', { id: target });
+  if (sourceLabel !== undefined) define('sourceLabel', sourceLabel);
+  if (targetLabel !== undefined) define('targetLabel', targetLabel);
   if (children) define('childElements', children);
   return el;
 }
@@ -357,6 +367,115 @@ describe('the parent-child relations', () => {
     });
 
     expect(read(me, [other, dangling, neutral, loop])!.relations).toEqual([]);
+  });
+
+  /**
+   * A profile may declare SEVERAL tables, and the reading keeps them apart.
+   *
+   * The engine shipped with one table per profile, which the panel then
+   * rendered as two lines — one per side. A framework whose artefacts carry
+   * several kinds of line (UML: association, generalization, `«include»`,
+   * `«deploy»`…) had eleven of its twelve relations silently unread, and the
+   * panel said "No typed link touches this component" over a canvas full of
+   * typed links (PO recette of 2026-09-14, O8). What makes the extra tables
+   * usable downstream is {@link ReadingRelation.relationRole}: it names the
+   * DECLARED role, so the panel can put each relation under the wording it was
+   * read with.
+   */
+  it('reads every table a profile declares, and says which it read', () => {
+    const multi: ReadingProfile = {
+      ...FLAT_PROFILE,
+      id: 'test-multi',
+      alsoRelations: [
+        {
+          edgeRole: 'test:realizes',
+          sides: {
+            consumer: { labelKey: 'k.realized', labelFallback: 'Realized by' },
+            supplier: { labelKey: 'k.realizes', labelFallback: 'Realizes' },
+          },
+        },
+      ],
+    };
+
+    const me = subject();
+    const below = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+    });
+    const board = [
+      me,
+      below,
+      element({ id: 'e2', role: 'test:realizes', source: 'me', target: 'db' }),
+      element({
+        id: 'e1',
+        role: 'test:dependency',
+        source: 'me',
+        target: 'db',
+      }),
+    ];
+
+    // DECLARATION order, not board order: the primary table first, then the
+    // extra ones, which is what makes the panel's sections come out in the
+    // order the framework wrote them.
+    expect(
+      readElement(me, board, multi)!.relations.map(r => [
+        r.relationRole,
+        r.edgeId,
+      ])
+    ).toEqual([
+      ['test:dependency', 'e1'],
+      ['test:realizes', 'e2'],
+    ]);
+
+    // …and a profile that declares ONE table answers exactly as it always did,
+    // with the primary role named.
+    expect(
+      readElement(me, board, FLAT_PROFILE)!.relations.map(r => r.relationRole)
+    ).toEqual(['test:dependency']);
+  });
+
+  /**
+   * ADR 0020's per-end labels, read from the SUBJECT outwards.
+   *
+   * `ownEndLabel`/`otherEndLabel` rather than source/target, because the panel
+   * prints one sentence about the OTHER end and must not have to work out which
+   * end of the arrow it is standing on. Absent — never `''` — when the author
+   * wrote nothing, so a renderer can test for presence.
+   */
+  it('reads what the connector writes at each of its two ends', () => {
+    const me = subject();
+    const other = element({
+      id: 'db',
+      role: 'test:component',
+      bound: [100, 400, 20, 20],
+    });
+    const edge = element({
+      id: 'e1',
+      role: 'test:dependency',
+      source: 'me',
+      target: 'db',
+      sourceLabel: '1',
+      targetLabel: '0..*',
+    });
+
+    expect(
+      readElement(me, [me, other, edge], FLAT_PROFILE)!.relations[0]
+    ).toMatchObject({ ownEndLabel: '1', otherEndLabel: '0..*' });
+    expect(
+      readElement(other, [me, other, edge], FLAT_PROFILE)!.relations[0]
+    ).toMatchObject({ ownEndLabel: '0..*', otherEndLabel: '1' });
+
+    const bare = element({
+      id: 'e2',
+      role: 'test:dependency',
+      source: 'me',
+      target: 'db',
+      targetLabel: '  ',
+    });
+    const read = readElement(me, [me, other, bare], FLAT_PROFILE)!.relations[0];
+    expect(read.ownEndLabel).toBeUndefined();
+    expect(read.otherEndLabel).toBeUndefined();
   });
 
   it('names each side with the FRAMEWORK’s own two words', () => {

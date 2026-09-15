@@ -83,7 +83,11 @@ be dragged from anywhere inside (`ignoreTransparent: false`). Double-click in
 a label zone edits the label.
 
 **R10. A board is a floor, never a lid.** Anything overlapping a board is
-kept above it; boards can stack and each stays under its own artefacts.
+kept above it; boards can stack and each stays under its own artefacts — but a
+board that wholly ENCLOSES another board is the sheet that one is drawn on and
+stays under it, so a frame holding inner backgrounds (UML subject, partition,
+region, fragment; C4 boundary) is not raised over them when it is moved or
+resized.
 Framework-agnostic, idempotent (undo-safe), ignores remote changes, never
 restacks nested elements.
 `packages/affine/blocks/surface/src/framework-background/stacking.ts`;
@@ -176,6 +180,17 @@ finding; persisted profile ids and ticks stay written, unread.
 **R25. A framework may ship no rules, by decision.** Cynefin/Estuarine (ADR
 0013). Reading is not validation: every framework ships a reading profile
 (`reading-coverage.unit.spec.ts`).
+
+A profile reads AS MANY typed edges as the notation draws — `relation` is the
+one it is read through first, `alsoRelations` the rest — and no two of its
+tables may answer for one edge (`roleIsA` overlap; checked by
+`reading-coverage.unit.spec.ts`). One table per profile was the original
+contract and the PO's UML recette of 2026-09-14 retired it: the panel says
+"No typed link touches this component" both when a framework declined to read a
+line and when it could not, so a use case whose one link was an `«include»`
+read as unconnected. Each table names its own two wordings; the panel groups by
+table, and a connector's per-end labels (ADR 0020 — a UML multiplicity) ride
+with the far end's name.
 
 **R26. The validation of a 500-element map fits in one 16 ms frame**, asserted
 by `validation.bench.unit.spec.ts`; flag-off costs under 0.05 ms.
