@@ -15,16 +15,17 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * frame already set to `strict` simply stops being checked until it comes back —
  * the id stays written, untouched.
  *
- * ## Both tables spell out all THIRTY-EIGHT ids
+ * ## Both tables spell out all FORTY-TWO ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `uml.strict` requires
- * reads twenty-five lines here instead of one file per rule, and a rule shipped
+ * reads twenty-nine lines here instead of one file per rule, and a rule shipped
  * later cannot join a level in silence.
  *
- * That is also what phase 2 cost: three rules arrived with the structural sheets
- * and fifteen more with the behaviour ones, and every one had to be placed by
+ * That is also what the later phases cost: three rules arrived with the
+ * structural sheets, fifteen more with the behaviour ones and four with the
+ * sequence one, and every one had to be placed by
  * hand in BOTH tables. A profile is an override
  * table and an absent rule keeps its own severity, so a rule forgotten here
  * would still work — it would simply never harden, and nobody would see the
@@ -100,6 +101,14 @@ const sketch: ValidationProfile = {
     'uml.transition-endpoints': 'audit',
     'uml.unreachable-action': 'audit',
     'uml.unreachable-state': 'audit',
+    // The sequence sheet — four, which is every requirement of Clause 17 this
+    // library has a family for (`rules.ts` names the four it does not): what a
+    // message runs between, what its label says, and the two questions a
+    // lifeline's own head is asked.
+    'uml.message-endpoints': 'audit',
+    'uml.message-syntax': 'audit',
+    'uml.unnamed-lifeline': 'audit',
+    'uml.lifeline-ident-syntax': 'audit',
   },
 };
 
@@ -108,11 +117,11 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. TWENTY-FIVE rules move to `warning`, and the test each one passes is
+ * handed. TWENTY-NINE rules move to `warning`, and the test each one passes is
  * the test this library always applies: whether the diagram might honestly have
  * meant it.
  *
- * Eight restate a normative clause and cannot be meant. §9.9.7 makes a
+ * Nine restate a normative clause and cannot be meant. §9.9.7 makes a
  * generalization's ends the same kind and its hierarchy acyclic; §10.4.3 types a
  * realization's far end as an interface; §18.1.3 types both ends of an include
  * and of an extend; §19.2.3 puts an artefact and only an artefact on a node,
@@ -127,12 +136,12 @@ const sketch: ValidationProfile = {
  * artefact to name as `deployedArtifact` — so the finding is also the warning
  * that this diagram will export short.
  *
- * Two are the NAMING rules. An emptied name compartment is not a style
+ * Three are the NAMING rules. An emptied name compartment is not a style
  * preference at the level where somebody has said the sheet is finished: a class
  * with no name is a class nothing in the model can refer to, and the export
  * writes it as nothing at all.
  *
- * Four are the SPELLING rules (ADR 0021), and they are the only promotions in
+ * Six are the SPELLING rules (ADR 0021), and they are the only promotions in
  * this table the EXPORTER corroborates. Each fires exactly when `grammar.ts`
  * lost something the author wrote — a `:` with no type, an operation with no
  * parameter list, a bound the file cannot hold — so the finding is also the
@@ -238,6 +247,28 @@ const strict: ValidationProfile = {
     // state machine region, and at the level where somebody has said the sheet
     // is finished the reader is entitled to be asked which of the two this is.
     'uml.initial-single': 'warning',
+    // The SEQUENCE sheet's two, and both of them move.
+    //
+    // `uml.message-endpoints` is an endpoint grammar and passes the test every
+    // other one in this table passes: §17.4.4 says a delete message "must end in
+    // a DestructionOccurrenceSpecification", and a message drawn between a
+    // participant and a class is a sentence an interaction cannot mean.
+    // `uml.message-syntax` is the fifth SPELLING rule and is promoted for the
+    // reason the other four are — it fires exactly when `grammar.ts` lost
+    // something the author wrote, so the finding is also the warning that the
+    // exported file will say less than the picture does.
+    'uml.message-endpoints': 'warning',
+    'uml.message-syntax': 'warning',
+    // …and the lifeline's own two, on the same two tests. `uml.unnamed-lifeline`
+    // is the third NAMING rule and moves with the other two: a participant with
+    // no name makes every arrow on the sheet a sentence with a hole in it, and
+    // at the level where somebody has said the diagram is a deliverable that is
+    // not a matter of taste. `uml.lifeline-ident-syntax` is the sixth SPELLING
+    // rule and moves for the reason all five others do — it fires exactly when
+    // `checkLifelineIdent` lost something the author wrote, which is to say when
+    // the exported participant will carry a name the picture does not show.
+    'uml.unnamed-lifeline': 'warning',
+    'uml.lifeline-ident-syntax': 'warning',
     // The seven that do not move — see the header.
     'uml.element-outside-frame': 'audit',
     'uml.use-case-outside-subject': 'audit',

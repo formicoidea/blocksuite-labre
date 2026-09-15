@@ -20,7 +20,7 @@ import {
 import { umlDiagramToolingToolbarConfig } from '../toolbar/config.js';
 
 /**
- * The sixteen UML rules, rule by rule — and above all what each of them stays
+ * The forty UML rules, rule by rule — and above all what each of them stays
  * SILENT about. Silence is the expensive half: a rule that fires on a croquis is
  * a rule the workshop switches off, and a UML diagram is drawn as a croquis for
  * most of its life.
@@ -72,9 +72,13 @@ const OBJECT_FLOW_ENDPOINTS = 'uml.object-flow-endpoints';
 const TRANSITION_ENDPOINTS = 'uml.transition-endpoints';
 const UNREACHABLE_ACTION = 'uml.unreachable-action';
 const UNREACHABLE_STATE = 'uml.unreachable-state';
+const MESSAGE_ENDPOINTS = 'uml.message-endpoints';
+const MESSAGE_SYNTAX = 'uml.message-syntax';
+const UNNAMED_LIFELINE = 'uml.unnamed-lifeline';
+const LIFELINE_IDENT_SYNTAX = 'uml.lifeline-ident-syntax';
 
 /**
- * The seventeen rules that restate a NORMATIVE clause — and deliberately not the same
+ * The twenty-four rules that restate a NORMATIVE clause — and deliberately not the same
  * list as the twelve `uml.strict` promotes (`profiles.unit.spec.ts` owns that
  * one). Provenance and severity are orthogonal: two of these ten stay a remark
  * at every level, and two of the promoted twelve are `recommendation`.
@@ -105,6 +109,15 @@ const STANDARD_RULES = [
   OPERATION_SYNTAX,
   TRANSITION_SYNTAX,
   MULTIPLICITY_SYNTAX,
+  // ...and the SEQUENCE sheet's two, both §17.4.4: what a delete message
+  // must end in, and the two label productions an arrow may carry.
+  MESSAGE_ENDPOINTS,
+  MESSAGE_SYNTAX,
+  // ...and §17.3.4's own production, the sixth spelling rule: what may be
+  // written in a lifeline's head. `uml.unnamed-lifeline` is deliberately NOT
+  // here — an empty head is a `recommendation`, exactly as an empty name
+  // compartment and an empty actor's word are.
+  LIFELINE_IDENT_SYNTAX,
 ];
 
 interface Extra {
@@ -272,7 +285,7 @@ const sketch = (id: string, x = 100, y = 700) => element(id, [x, y, 180, 120]);
 /**
  * The DRAWING pass, as the manager runs it: rules AND profiles, always.
  *
- * `uml.sketch` is the default and holds all sixteen rules at `audit`, so on a
+ * `uml.sketch` is the default and holds all forty-two rules at `audit`, so on a
  * sheet nobody raised THIS RETURNS NOTHING — which is the point: a diagram drawn
  * boxes-first is not measured on every gesture (PF7.6).
  */
@@ -386,7 +399,7 @@ const conformantStateMachine = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the thirty-eight rules of the pack, in reading order', () => {
+  it('ships exactly the forty-two rules of the pack, in reading order', () => {
     expect(UML_RULES.map(rule => rule.id)).toEqual([
       ELEMENT_OUTSIDE_FRAME,
       NOT_ADMISSIBLE_ON_KIND,
@@ -426,18 +439,23 @@ describe('what the framework ships', () => {
       TRANSITION_ENDPOINTS,
       UNREACHABLE_ACTION,
       UNREACHABLE_STATE,
+      MESSAGE_ENDPOINTS,
+      MESSAGE_SYNTAX,
+      UNNAMED_LIFELINE,
+      LIFELINE_IDENT_SYNTAX,
     ]);
   });
 
   /**
-   * SIX families for the largest notation the library carries — and not one of
-   * them new.
+   * NINE families for the largest notation the library carries, and exactly one
+   * of them new.
    *
    * The claim `docs/add-a-framework` makes about the seam, tested by the hardest
-   * case available: twelve edge roles are twelve readings of
-   * `relation-endpoints`, the two frames are the membership families C4 already
+   * case available: seventeen edge roles are seventeen readings of
+   * `relation-endpoints`, the five frames are the membership families C4 already
    * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
-   * Phase 2 doubled the vocabulary and the number below did not move.
+   * Phase 2 doubled the vocabulary and added one family; phase 3 added a sheet,
+   * five artefacts and five edges, and the number below did not move at all.
    */
   it('needs nine families, and asks the engine for ONE new one', () => {
     // The two the behaviour sheets added are BPMN's, registered here with UML's
@@ -503,7 +521,7 @@ describe('what the framework ships', () => {
     expect(framedBy(UML_ROLE.region)).toEqual(
       [SHALLOW_HISTORY_OUTSIDE_REGION, DEEP_HISTORY_OUTSIDE_REGION].sort()
     );
-    expect(framedBy(UML_ROLE.diagram)).toHaveLength(33);
+    expect(framedBy(UML_ROLE.diagram)).toHaveLength(37);
     for (const rule of UML_RULES) {
       expect(rule.backgroundRole, rule.id).toBeDefined();
     }
@@ -537,8 +555,8 @@ describe('what the framework ships', () => {
         .map(rule => rule.id)
         .sort();
 
-    // The ten that restate a normative sentence, and exactly those.
-    expect(STANDARD_RULES).toHaveLength(21);
+    // The twenty-four that restate a normative sentence, and exactly those.
+    expect(STANDARD_RULES).toHaveLength(24);
     expect(byProvenance('standard')).toEqual([...STANDARD_RULES].sort());
     // The three that are OURS — membership on this canvas, a usage remark, and
     // the role-less connector this whiteboard can produce and the notation never
@@ -606,6 +624,12 @@ describe('what the framework ships', () => {
         OPERATION_SYNTAX,
         TRANSITION_SYNTAX,
         MULTIPLICITY_SYNTAX,
+        // ...and the fifth, which reads a message arrow's centre label.
+        MESSAGE_SYNTAX,
+        // ...and the LIFELINE's two, which are words in a head somebody types
+        // into: the third naming rule and the sixth spelling one.
+        UNNAMED_LIFELINE,
+        LIFELINE_IDENT_SYNTAX,
         UNREACHABLE_ACTION,
         UNREACHABLE_STATE,
       ].sort()
@@ -1015,11 +1039,16 @@ describe('U2 · what each kind of diagram draws', () => {
   it('says nothing about a kind this build does not know', () => {
     // A LATER phase's value on this build, or an import. An unrecognised kind is
     // a kind the rule has nothing to say about, never a reason to guess — which
-    // is exactly what a phase-1 build did with the `cmp` frame and a phase-2 one
-    // with `act`, and what this build does with the sequence diagram's `sd`.
+    // is exactly what a phase-1 build did with the `cmp` frame, a phase-2 one
+    // with `act` and this one does with `sd`.
+    //
+    // The witness moves every time a phase lands, which is the point: `sd` was
+    // it until phase 3, and `sd` is now in the table. Annex A's interaction
+    // OVERVIEW is the next kind out of scope (`docs/adr/0022`), so it is the
+    // honest unknown to test with today.
     expect(
       only(
-        evaluate([frame('sd'), klass('x', 200, 200), actor('y', 500, 200)]),
+        evaluate([frame('ovr'), klass('x', 200, 200), actor('y', 500, 200)]),
         NOT_ADMISSIBLE_ON_KIND
       )
     ).toEqual([]);
@@ -2868,5 +2897,481 @@ describe('the two conformant behaviour sheets', () => {
         ])
       )
     ).toEqual([UNTYPED_EDGE]);
+  });
+});
+
+/* ── Phase 3: the sequence sheet ────────────────────────────────────────── */
+
+/**
+ * §17.3.4's participant: the narrow tall COLUMN the renderer paints a head
+ * across the top of and a dashed spine down the middle of.
+ *
+ * Sixteen units wide and six hundred tall, which is what makes the two rules
+ * below interesting and the two that are missing impossible: every message on a
+ * lifeline attaches somewhere on the same column, so the element's own bounds say
+ * nothing at all about WHEN any of them happens (`rules.ts`, and `docs/adr/0022`).
+ */
+const lifeline = node(UML_ROLE.lifeline, 16, 600);
+/** §17.3.4's activation bar — the thin rectangle sat on a spine. */
+const execution = node(UML_ROLE.execution, 12, 80);
+/** §17.4.4's X — where a delete message has to land. */
+const destruction = node(UML_ROLE.destruction, 24, 24);
+/**
+ * §17.3.4's lifeline HEAD — the third written tier, and not {@link label}.
+ *
+ * A head is a `<lifelineident>`, a production the clause prints a BNF for, so it
+ * carries `uml:lifeline-ident` and an actor's word carries `uml:label`. The two
+ * rules written on this role are U41 and U42 below; the two written on the other
+ * one can no longer reach a lifeline, which is what the split was for.
+ */
+const ident = (id: string, text = 'c : Customer', x = 130, y = 110) =>
+  element(id, [x, y, 160, 24], UML_ROLE['lifeline-ident'], { text });
+
+/** §17.6.4's combined fragment, drawn round the messages it applies to. */
+const fragment = (id = 'frag', x = 100, y = 150) =>
+  element(id, [x, y, 600, 300], UML_ROLE.fragment);
+
+/** A message of whichever sort, between whichever two ends. */
+const message = (id: string, role: string, source: string, target: string) =>
+  element(id, [200, 250, 300, 1], role, { source, target });
+
+const sync = (id: string, source: string, target: string) =>
+  message(id, UML_ROLE['message-sync'], source, target);
+
+/** A message carrying a label — what `uml.message-syntax` reads. */
+const labelledMessage = (id: string, text: string) =>
+  element(id, [200, 250, 300, 1], UML_ROLE['message-sync'], {
+    source: 'a',
+    target: 'b',
+    text,
+  });
+
+/**
+ * A conformant SEQUENCE diagram: two participants, a call and its reply.
+ *
+ * No execution bars and no fragment, because that is how one is drawn first:
+ * §17.3.4 makes the activation optional notation, and a sketch of a protocol is
+ * two columns and three arrows.
+ */
+const conformantSequence = (): GfxPrimitiveElementModel[] => [
+  frame('sd'),
+  lifeline('a', 200, 100),
+  ident('a-ident', 'c : Customer', 130, 110),
+  lifeline('b', 600, 100),
+  ident('b-ident', 'o : Order', 530, 110),
+  sync('m1', 'a', 'b'),
+  message('m2', UML_ROLE['message-reply'], 'b', 'a'),
+];
+
+describe('U39 — what a message may run between (§17.4.4)', () => {
+  it('says nothing about a call between two participants, however drawn', () => {
+    // Lifeline to lifeline, execution to execution, and the two mixtures: the
+    // same call at four levels of detail, and a grammar that admitted one of
+    // them would be indicting the drawing for being unfinished.
+    for (const [source, target] of [
+      ['a', 'b'],
+      ['ea', 'eb'],
+      ['a', 'eb'],
+      ['ea', 'b'],
+    ]) {
+      expect(
+        only(
+          evaluate([
+            frame('sd'),
+            lifeline('a', 200, 100),
+            lifeline('b', 600, 100),
+            execution('ea', 202, 200),
+            execution('eb', 602, 260),
+            sync('m', source, target),
+          ]),
+          MESSAGE_ENDPOINTS
+        ),
+        `${source}→${target}`
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing about a participant calling ITSELF', () => {
+    // §17.4.4 in as many words: "The send and receive events may both be on the
+    // same lifeline." The notation's own figure for a nested activation.
+    expect(
+      only(
+        evaluate([frame('sd'), lifeline('a', 200, 100), sync('m', 'a', 'a')]),
+        MESSAGE_ENDPOINTS
+      )
+    ).toEqual([]);
+  });
+
+  it('lets a CREATE message land on a lifeline and nowhere else', () => {
+    const board = (target: string) => [
+      frame('sd'),
+      lifeline('a', 200, 100),
+      lifeline('b', 600, 100),
+      execution('eb', 602, 260),
+      message('m', UML_ROLE['message-create'], 'a', target),
+    ];
+    // §17.4.4 draws it to the HEAD of the participant it brings into existence.
+    expect(only(evaluate(board('b')), MESSAGE_ENDPOINTS)).toEqual([]);
+    // There is nothing to be executing on a participant that does not exist yet.
+    expect(only(evaluate(board('eb')), MESSAGE_ENDPOINTS)).toHaveLength(1);
+  });
+
+  it('lets a DELETE message land on a destruction, and tolerates the lifeline', () => {
+    const board = (target: string) => [
+      frame('sd'),
+      lifeline('a', 200, 100),
+      lifeline('b', 600, 100),
+      destruction('x', 596, 500),
+      execution('eb', 602, 260),
+      message('m', UML_ROLE['message-delete'], 'a', target),
+    ];
+    // The clause's own sentence: it "must end in a
+    // DestructionOccurrenceSpecification".
+    expect(only(evaluate(board('x')), MESSAGE_ENDPOINTS)).toEqual([]);
+    // The tolerance, and it is deliberate: the arrow is drawn first and the
+    // cross dropped on its end afterwards.
+    expect(only(evaluate(board('b')), MESSAGE_ENDPOINTS)).toEqual([]);
+    // A participant carrying on after it has been destroyed is the finding worth
+    // having.
+    expect(only(evaluate(board('eb')), MESSAGE_ENDPOINTS)).toHaveLength(1);
+  });
+
+  it('reports a message dragged onto a CLASS or an ACTOR', () => {
+    for (const stranger of [klass('x', 900, 200), actor('x', 900, 200)]) {
+      expect(
+        only(
+          evaluate([
+            frame('sd'),
+            lifeline('a', 200, 100),
+            stranger,
+            sync('m', 'a', 'x'),
+          ]),
+          MESSAGE_ENDPOINTS
+        ),
+        String(stranger.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('stays silent about a message onto something outside its ALPHABET', () => {
+    // A note, and a rectangle somebody thought with: pointing at things is what
+    // a whiteboard is for (PRD principle 8).
+    for (const neutral of [note('x', 900, 200), sketch('x', 900, 200)]) {
+      expect(
+        only(
+          evaluate([
+            frame('sd'),
+            lifeline('a', 200, 100),
+            neutral,
+            sync('m', 'a', 'x'),
+          ]),
+          MESSAGE_ENDPOINTS
+        ),
+        String(neutral.role)
+      ).toEqual([]);
+    }
+  });
+});
+
+describe('U40 — what a message label says (§17.4.4)', () => {
+  const board = (text: string) => [
+    frame('sd'),
+    lifeline('a', 200, 100),
+    lifeline('b', 600, 100),
+    labelledMessage('m', text),
+  ];
+
+  it('says nothing about a label either production spells', () => {
+    for (const text of [
+      // An unlabelled arrow: the clause makes the label optional, and a
+      // sequence diagram is drawn arrows-first.
+      '',
+      'place',
+      'place()',
+      'place(order, now)',
+      'r = place(order) : Receipt',
+      // The clause's own shorthand for "a message of any type".
+      '*',
+    ]) {
+      expect(only(evaluate(board(text)), MESSAGE_SYNTAX), text).toEqual([]);
+    }
+  });
+
+  it('reports a label the lenient parse would lose something from', () => {
+    for (const text of ['place(order', 'place(a,,b)', 'r =', 'place() :']) {
+      expect(only(evaluate(board(text)), MESSAGE_SYNTAX), text).toHaveLength(1);
+    }
+  });
+
+  it('quotes the offending label and says why', () => {
+    const [finding] = only(evaluate(board('place(a,,b)')), MESSAGE_SYNTAX);
+    expect(finding.messageFallback).toContain('place(a,,b)');
+    expect(finding.messageFallback).toContain('empty');
+  });
+
+  it('reads the whole label as ONE expression', () => {
+    // `perLine: false`: §17.4.4's label is a single production, so an author who
+    // wraps a long one onto a second line has written one label and not two.
+    expect(
+      only(evaluate(board('r = place(order,\n now) : Receipt')), MESSAGE_SYNTAX)
+    ).toEqual([]);
+  });
+});
+
+/**
+ * U41–U42 · the lifeline HEAD, and the tier split they exist for.
+ *
+ * Until phase 3 a head carried `uml:label` — the actor's and the use case's tier
+ * — and neither question below could be asked of it without being asked of them
+ * too: an emptied head came out as "this actor or use case has no name", and a
+ * head grammar would have indicted `Place an order (fast)` on every ellipse in
+ * the library. `uml:lifeline-ident` is that tier split off, FLAT, so `roleIsA`
+ * never walks between the two (`roles.ts`), and these are the assertions that
+ * say the split holds in both directions.
+ */
+describe('U41 — a lifeline with nothing in its head (§17.3.4)', () => {
+  const board = (text: string) => [
+    frame('sd'),
+    lifeline('a', 200, 100),
+    ident('a-ident', text),
+  ];
+
+  it('flags an emptied head ONCE, and only as a lifeline', () => {
+    const found = checkup(board(''));
+    expect(only(found, UNNAMED_LIFELINE).map(v => v.elementIds)).toEqual([
+      ['a-ident'],
+    ]);
+    // The other half of the split: the actor's rule is written on `uml:label`
+    // and a head is not one, so the emptied word is reported by one rule with
+    // one sentence — which is what this pack refuses to do twice.
+    expect(only(found, UNNAMED_ACTOR_OR_USE_CASE)).toEqual([]);
+  });
+
+  it('says nothing about a head somebody has written in', () => {
+    for (const text of ['order : Order', 'customer', ': Order', 'self']) {
+      expect(only(checkup(board(text)), UNNAMED_LIFELINE), text).toEqual([]);
+    }
+  });
+
+  it('leaves an actor and a use case to U6', () => {
+    for (const artefact of [actor('x', 900, 200), useCase('x', 900, 200)]) {
+      const found = checkup([frame('uc'), artefact, label('x-label', '')]);
+      expect(only(found, UNNAMED_LIFELINE), String(artefact.role)).toEqual([]);
+      expect(
+        only(found, UNNAMED_ACTOR_OR_USE_CASE),
+        String(artefact.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('says nothing on the drawing path', () => {
+    expect(only(drawing(board('')), UNNAMED_LIFELINE)).toEqual([]);
+  });
+});
+
+describe('U42 — what a lifeline head says (§17.3.4)', () => {
+  const board = (text: string) => [
+    frame('sd'),
+    lifeline('a', 200, 100),
+    ident('a-ident', text),
+  ];
+
+  it('says nothing about a head the production spells', () => {
+    for (const text of [
+      'order : Order',
+      'customer',
+      ': Order',
+      'customers[i] : Customer',
+      // §17.3.4's own alternative, whole and on its own.
+      'self',
+      // An empty head is U41's question, and two rules on one word to fix is
+      // the thing this pack refuses everywhere.
+      '',
+    ]) {
+      expect(only(evaluate(board(text)), LIFELINE_IDENT_SYNTAX), text).toEqual(
+        []
+      );
+    }
+  });
+
+  it('reports a head the lenient parse would lose something from', () => {
+    for (const text of ['order :', 'place(order)', 'customers[] : Customer']) {
+      expect(
+        only(evaluate(board(text)), LIFELINE_IDENT_SYNTAX),
+        text
+      ).toHaveLength(1);
+    }
+    // The brief's own case: a colon with nothing on either side of it.
+    expect(only(evaluate(board(': :')), LIFELINE_IDENT_SYNTAX)).toHaveLength(1);
+  });
+
+  it('never reaches a use case, whatever is written in one', () => {
+    // The finding this rule exists NOT to make: parentheses break a head and
+    // are perfectly ordinary in the name of a behaviour (§18.1.4).
+    expect(
+      only(
+        evaluate([
+          frame('uc'),
+          useCase('x', 900, 200),
+          label('x-label', 'Place an order (fast)'),
+        ]),
+        LIFELINE_IDENT_SYNTAX
+      )
+    ).toEqual([]);
+  });
+
+  it('quotes the offending head and says why', () => {
+    const [finding] = only(evaluate(board('order :')), LIFELINE_IDENT_SYNTAX);
+    expect(finding.messageFallback).toContain('order :');
+  });
+});
+
+describe('the `sd` sheet admits its own vocabulary and nothing else', () => {
+  it('admits the five artefacts §17 draws, and the note', () => {
+    for (const glyph of [
+      lifeline('x', 300, 200),
+      execution('x', 300, 200),
+      destruction('x', 300, 200),
+      fragment('x', 300, 200),
+      note('x', 300, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('sd'), glyph]), NOT_ADMISSIBLE_ON_KIND),
+        String(glyph.role)
+      ).toEqual([]);
+    }
+  });
+
+  it('refuses every other sheet’s vocabulary, the PACKAGE included', () => {
+    for (const glyph of [
+      actor('x', 300, 200),
+      useCase('x', 300, 200),
+      subject('x', 300, 200),
+      klass('x', 300, 200),
+      object('x', 300, 200),
+      // …which `act` and `stm` admit and this sheet does not: an artefact that
+      // is not a participant has no position on an axis of TIME.
+      pkg('x', 300, 200),
+      component('x', 300, 200),
+      cube('x', 300, 200),
+      artifact('x', 300, 200),
+      action('x', 300, 200),
+      // The PARENT entries: one for the activity's routing glyphs…
+      decision('x', 300, 200),
+      initialNode('x', 300, 200),
+      fork('x', 300, 200),
+      // …and one for the state machine's.
+      stateNode('x', 300, 200),
+      choice('x', 300, 200),
+      region('x', 300, 200),
+      partition('x', 300, 200),
+    ]) {
+      expect(
+        only(evaluate([frame('sd'), glyph]), NOT_ADMISSIBLE_ON_KIND),
+        String(glyph.role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('refuses a MESSAGE on every sheet that is not `sd`', () => {
+    // The brief's case, and the first EDGE role the admissibility table names:
+    // a message arrow's whole notation is an axis of time, and a class diagram
+    // does not have one.
+    for (const kind of [
+      'class',
+      'pkg',
+      'obj',
+      'uc',
+      'cmp',
+      'dep',
+      'act',
+      'stm',
+    ]) {
+      // The arrow alone: a class beside it would be refused by the `obj` and
+      // `dep` lists too, and the count would stop saying what it is about.
+      expect(
+        only(
+          evaluate([frame(kind), sync('m', 'a', 'b')]),
+          NOT_ADMISSIBLE_ON_KIND
+        ),
+        kind
+      ).toHaveLength(1);
+    }
+  });
+
+  it('refuses the sequence ARTEFACTS on every sheet that is not `sd`', () => {
+    for (const kind of [
+      'class',
+      'pkg',
+      'obj',
+      'uc',
+      'cmp',
+      'dep',
+      'act',
+      'stm',
+    ]) {
+      for (const glyph of [
+        lifeline('x', 300, 200),
+        execution('x', 300, 200),
+        destruction('x', 300, 200),
+        fragment('x', 300, 200),
+      ]) {
+        expect(
+          only(evaluate([frame(kind), glyph]), NOT_ADMISSIBLE_ON_KIND),
+          `${kind}/${String(glyph.role)}`
+        ).toHaveLength(1);
+      }
+    }
+  });
+});
+
+describe('the conformant sequence sheet, and the rule that is NOT there', () => {
+  it('says nothing at all about a conformant sequence diagram', () => {
+    expect(evaluate(conformantSequence())).toEqual([]);
+  });
+
+  it('says nothing about an UPWARD message either — and that is the gap', () => {
+    // §17.4.4: "The line must be such that every line fragment is either
+    // horizontal or downwards when traversed from send event to receive event."
+    // The pack does not check it, and this test pins the reason rather than the
+    // wish: `relative-order-along-axis` compares the two ends' element BOUNDS
+    // along an axis the frame declares, and a lifeline is a full-height column
+    // whose centre is the same wherever a message attaches. The two boards below
+    // are indistinguishable to every family in the engine (`docs/adr/0022`).
+    const upward = [
+      frame('sd'),
+      lifeline('a', 200, 100),
+      lifeline('b', 600, 100),
+      execution('ea', 202, 400),
+      execution('eb', 602, 200),
+      // Drawn from low on `a` up to high on `b`: time running backwards.
+      sync('m', 'ea', 'eb'),
+    ];
+    expect(evaluate(upward)).toEqual([]);
+    // …and a horizontal one, which is legal and must stay silent whatever the
+    // gap is closed with.
+    const horizontal = [
+      frame('sd'),
+      lifeline('a', 200, 100),
+      lifeline('b', 600, 100),
+      execution('ea', 202, 200),
+      execution('eb', 602, 200),
+      sync('m', 'ea', 'eb'),
+    ];
+    expect(evaluate(horizontal)).toEqual([]);
+  });
+
+  it('says nothing about an execution bar parked OFF every spine', () => {
+    // The second recorded gap: `attachment` measures a distance to a PATH and a
+    // lifeline is a node, so "this bar sits on that spine" is not a question any
+    // family asks (`docs/adr/0022`).
+    expect(
+      evaluate([
+        frame('sd'),
+        lifeline('a', 200, 100),
+        label('a-label', 'c : Customer', 130, 110),
+        execution('e', 900, 300),
+      ])
+    ).toEqual([]);
   });
 });

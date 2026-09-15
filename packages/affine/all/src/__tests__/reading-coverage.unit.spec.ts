@@ -83,6 +83,12 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   // an element sits. A band is not an artefact any more than a sheet is.
   'uml:partition': 'frame',
   'uml:region': 'frame',
+  // §17.6.4's combined fragment and the operand bands inside it: the same
+  // answer, one clause later. A fragment is a rectangle drawn ROUND part of an
+  // interaction and an operand is a slice of its plot, and what is inside
+  // either is read back from where an occurrence sits.
+  'uml:fragment': 'frame',
+  'uml:operand': 'frame',
   // Declared, never stamped: `uml:classifier` is §9.2's own generalisation, the
   // parent `uml:class`, `uml:interface` and `uml:enumeration` hang off so a
   // rule about classifiers reaches all three. No command creates it and no

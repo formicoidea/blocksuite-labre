@@ -1,16 +1,19 @@
 import {
   EdgelessCRUDIdentifier,
+  generateElementId,
   validationToolbarConfig,
 } from '@labre/affine-block-surface';
 import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import {
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
   UmlPartitionElementModel,
   type UmlPartitionOrientation,
   UmlRegionElementModel,
 } from '@labre/affine-model';
 import {
   ActionPlacement,
+  BOARD_ADD_BAND,
   BOARD_LEGEND_NOTATION,
   BOARD_ORIENTATION_TOGGLE,
   BOARD_RESIZE_TOGGLE,
@@ -27,7 +30,12 @@ import {
 } from '@labre/std';
 import { html, nothing, type TemplateResult } from 'lit';
 
-import { UML_DIAGRAM_KIND_MENU, type UmlDiagramKindOption } from '../kinds.js';
+import {
+  UML_DIAGRAM_KIND_MENU,
+  UML_FRAGMENT_OPERATOR_MENU,
+  type UmlDiagramKindOption,
+  type UmlFragmentOperatorOption,
+} from '../kinds.js';
 import { UML_AUTO_LEGEND } from '../legend.js';
 
 import { umlExportPlantumlIcon, umlExportXmiIcon } from './icons.js';
@@ -656,4 +664,349 @@ export const umlRegionToolbarConfig = {
 export const umlRegionToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:umlRegion'),
   config: umlRegionToolbarConfig,
+});
+
+/* ── Phase 3: the COMBINED FRAGMENT's two rows (§17.6.4) ────────────────── */
+
+/**
+ * The COMBINED FRAGMENT's always-on row: the resize toggle, and nothing else.
+ *
+ * The same argument the region's makes, and the same one entry: a fragment is a
+ * rectangle drawn round part of an interaction, and a document that holds one
+ * must keep it movable and stretchable with the UML button switched off
+ * (`docs/adr/0009`). What the flag takes away is the two gestures below.
+ */
+export const umlFragmentToolbarConfig = {
+  actions: [resizeToggle(UmlFragmentElementModel)],
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(UmlFragmentElementModel).length > 0,
+} as const satisfies ToolbarModuleConfig;
+
+export const umlFragmentToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('affine:surface:umlFragment'),
+  config: umlFragmentToolbarConfig,
+});
+
+/** One operand of a fragment, as the model stores it — read off the model. */
+type UmlFragmentOperand = NonNullable<
+  UmlFragmentElementModel['operands']
+>[number];
+
+/**
+ * The fragments an operand gesture acts on: every one of the current selection
+ * that is not locked, on an editable document.
+ *
+ * Lifted from `bpmnPoolsForLaneEdit`, filter for filter and for the same
+ * reasons: EVERY selected fragment rather than the single one (a gesture that
+ * says what it did on each beats an entry that vanishes on a lasso), and the
+ * read-only and lock filters because this is about to write.
+ */
+function umlFragmentsForOperandEdit(
+  ctx: ToolbarContext
+): UmlFragmentElementModel[] {
+  if (ctx.std.store.readonly) return [];
+  return ctx
+    .getSurfaceModelsByType(UmlFragmentElementModel)
+    .filter(model => !model.isLocked());
+}
+
+/** A fragment's operand list, as an array whatever the document holds. */
+const operandsOf = (
+  model: UmlFragmentElementModel
+): readonly UmlFragmentOperand[] =>
+  Array.isArray(model.operands) ? model.operands : [];
+
+/**
+ * Append an operand to every selected fragment — the second branch of an
+ * `alt`, the `else` of a `par`, the next case of a fragment that has one
+ * (§17.6.4).
+ *
+ * ## Why the first click writes TWO
+ *
+ * Because §17.6.4's picture is unambiguous and BPMN's lane gesture is the wrong
+ * analogy here. A pool with no lanes is a pool; a pool with one lane is a pool
+ * with a lane drawn in it, and both are legal BPMN. A combined fragment with no
+ * `operands` is the ONE-operand fragment §17.6.4 draws — a box with a tag and
+ * no dashed rule — and what an author asks for by pressing this is the SECOND
+ * branch, with the separator between the two. Writing one zone would divide the
+ * fragment into a single band and draw nothing at all.
+ *
+ * So the first press seeds the operand that was implicit plus the new one, and
+ * every press after it appends a single band. Equal shares throughout: the
+ * average of what is there is the weight that leaves the existing operands the
+ * same size relative to each other, and gives the newcomer the room a typical
+ * one has.
+ *
+ * ## No guard is invented, and the operator is not restated
+ *
+ * A new band arrives with no `name` at all, which is the decision the model
+ * records for the fragment's own guard and the same one for the same reason:
+ * §17.6.4 writes a condition in an operand's corner only where there is one,
+ * and a band born carrying `[condition]` would be a guard the author never
+ * wrote. The first operand, made explicit here, carries whatever guard the
+ * fragment already had — nothing is invented and nothing is lost.
+ *
+ * Nothing here touches `operator` either: which kind of fragment this is is one
+ * statement about the whole box, and the picker beside this button is where it
+ * is made.
+ *
+ * ## Nothing moves
+ *
+ * Messages already drawn inside the fragment do NOT move. Membership here is
+ * geometric — an occurrence is "in" an operand because it falls in that band —
+ * so the bands simply redraw around what is there, and the line an author drew
+ * still lands where they drew it. The same promise `removeBpmnLane` makes, for
+ * the same reason.
+ */
+function addUmlOperand(ctx: ToolbarContext): void {
+  const fragments = umlFragmentsForOperandEdit(ctx);
+  if (fragments.length === 0) return;
+
+  // Before the writes: one capture for the whole gesture is what makes several
+  // fragments take their operand in a single undo step.
+  ctx.std.store.captureSync();
+  const crud = ctx.std.get(EdgelessCRUDIdentifier);
+
+  for (const model of fragments) {
+    const operands = operandsOf(model);
+    const size = operands.length
+      ? operands.reduce((sum, operand) => sum + operand.size, 0) /
+        operands.length
+      : 1;
+    // The implicit first operand, made explicit — see the header. A fragment
+    // that already declares its zones simply gains one.
+    const existing = operands.length
+      ? operands
+      : [{ id: generateElementId(), name: model.name || undefined, size }];
+    crud.updateElement(model.id, {
+      operands: [...existing, { id: generateElementId(), size }],
+    });
+  }
+}
+
+/**
+ * The two arrows and the rule between them: an operand being added under the
+ * one that is there.
+ *
+ * Drawn inline like every other glyph on this row, for the reason
+ * {@link ResizeIcon} and {@link OrientationIcon} give — this package does not
+ * depend on `@labre/affine-components`, and one path is not worth making it.
+ */
+const AddOperandIcon = html`<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 4h16v16H4z" />
+  <path d="M4 12h16" stroke-dasharray="2.5 2.5" />
+  <path d="M12 14.5v4M10 16.5h4" />
+</svg>`;
+
+/**
+ * Which kind of combined fragment this is — the operator picker (§17.6.4).
+ *
+ * The same control as the diagram frame's kind picker, on the other frame, and
+ * it is the same argument: a closed set of mutually exclusive values with a
+ * current one is a MENU, not a row of buttons, and the trigger names the value
+ * in force so a reader of the row knows what the box claims without opening
+ * anything. `UML_FRAGMENT_OPERATOR_MENU` is DATA (`operators.ts`), walked by the
+ * translation manifest exactly as the diagram's table is.
+ *
+ * ## Why the operator is a picker and not a morph
+ *
+ * A morph retypes an ELEMENT — it rewrites the props that make a rectangle look
+ * like an interface rather than a class. An operator changes one field of one
+ * element and changes no prop at all: the box is the same box, the border is
+ * the same border, and what moves is the word in the pentagon. There is nothing
+ * for a family declaration to declare.
+ *
+ * ## `ref` is in the menu, and that is deliberate
+ *
+ * An interaction use is this element with `ref` in the tag (§17.7.4), so it is
+ * one of the values the field takes and hiding it here would mean an author who
+ * drew an `alt` and meant a `ref` has to delete the box and draw another. The
+ * command that creates one is separate because it is a different modelling act
+ * (`actions.ts`); the field is one field.
+ */
+const operatorPickerAction = {
+  // After the add-operand button (`b.`) and before the Validation dropdown
+  // (`z.`), which is the diagram frame's own ordering: what the frame IS, then
+  // the level of requirement applied to it.
+  id: 'c.operator',
+  when: (ctx: ToolbarContext) => selectedFragment(ctx) !== null,
+  content(ctx: ToolbarContext) {
+    const fragment = selectedFragment(ctx);
+    if (!fragment) return null;
+
+    const menuLabel = translateKey(
+      ctx.std,
+      UML_FRAGMENT_OPERATOR_MENU.labelKey,
+      UML_FRAGMENT_OPERATOR_MENU.labelFallback
+    );
+    const wordsFor = (option: UmlFragmentOperatorOption) =>
+      translateKey(ctx.std, option.labelKey, option.labelFallback);
+    // A fragment carrying an operator this build does not know — an import, a
+    // later phase's value — shows the menu's own heading rather than silently
+    // reading as an `alt`.
+    const current = UML_FRAGMENT_OPERATOR_MENU.options.find(
+      option => option.operator === fragment.operator
+    );
+
+    const options = UML_FRAGMENT_OPERATOR_MENU.options.map(option => {
+      const selected = option.operator === fragment.operator;
+      return html`<editor-menu-action
+        data-option
+        data-testid="uml-operator-option"
+        data-operator=${option.operator}
+        data-selected=${selected ? 'true' : nothing}
+        aria-label=${wordsFor(option)}
+        aria-pressed=${selected}
+        @click=${() => pickOperator(ctx, option)}
+      >
+        <span class="label">${wordsFor(option)}</span>
+        ${selected ? CheckIcon : nothing}
+      </editor-menu-action>`;
+    });
+
+    return html`<editor-menu-button
+      data-testid="uml-operator-entry"
+      .contentPadding=${'8px'}
+      .button=${html`
+        <editor-icon-button
+          data-testid="uml-operator-button"
+          aria-label=${menuLabel}
+          .tooltip=${menuLabel}
+          .justify=${'space-between'}
+          .labelHeight=${'20px'}
+        >
+          <span class="label"
+            >${current === undefined ? menuLabel : wordsFor(current)}</span
+          >
+          ${ChevronDownIcon}
+        </editor-icon-button>
+      `}
+    >
+      <div
+        data-testid="uml-operator-menu"
+        data-orientation="vertical"
+        data-size="large"
+      >
+        <div
+          role="group"
+          aria-label=${menuLabel}
+          style="display: flex; flex-direction: column;"
+        >
+          ${options}
+        </div>
+      </div>
+    </editor-menu-button>`;
+  },
+};
+
+/**
+ * The fragment the operator picker is about, or `null` — ONE of them, for the
+ * reason {@link selectedDiagram} gives: an operator is one statement about one
+ * box, and a selection spanning two has no honest current value to show.
+ */
+function selectedFragment(ctx: ToolbarContext): UmlFragmentElementModel | null {
+  const models = ctx.getSurfaceModels();
+  if (models.length !== 1) return null;
+  const [model] = models;
+  return model instanceof UmlFragmentElementModel ? model : null;
+}
+
+/**
+ * Put the fragment on `option`, and report it.
+ *
+ * The same three rules `pickKind` follows: `captureSync` first so one click is
+ * one undo, written through {@link EdgelessCRUDIdentifier} because the tag is
+ * DERIVED from the field and the surface has to repaint it, and a choice that
+ * changes nothing writes nothing and reports nothing.
+ *
+ * The guard is NOT rewritten. `name` holds the author's own `[condition]` (or
+ * the name of the interaction a `ref` points at), and a picker that cleared it
+ * on the way from `alt` to `opt` would be taking away words somebody typed —
+ * the very rule the node morph's `afterMorph` is written round.
+ */
+function pickOperator(ctx: ToolbarContext, option: UmlFragmentOperatorOption) {
+  const fragment = selectedFragment(ctx);
+  if (!fragment) return;
+  const previous = fragment.operator;
+  if (previous === option.operator) return;
+
+  ctx.std.store.captureSync();
+  ctx.std
+    .get(EdgelessCRUDIdentifier)
+    .updateElement(fragment.id, { operator: option.operator });
+
+  // The same event and the same wire values the diagram's kind picker emits:
+  // "the author said which kind of thing this frame is" is one metric on a
+  // dashboard, and `level` is the field it is reported in. `control` is what
+  // separates the two — `kind` for the sheet, `operator` for the fragment.
+  ctx.std.getOptional(TelemetryProvider)?.track('FrameworkViewLevelSet', {
+    page: 'whiteboard editor',
+    segment: 'element toolbar',
+    module: 'uml toolbox',
+    control: 'operator',
+    framework: 'uml',
+    level: option.operator,
+    previousLevel: previous,
+  });
+}
+
+/**
+ * The fragment's FLAG-GATED row: add an operand, pick the operator, and the
+ * generic Validation dropdown.
+ *
+ * ## Why the two gestures are here and the resize toggle is not
+ *
+ * The line `docs/adr/0009` draws is between the ways to CREATE and the ways to
+ * work with what already exists, and these two fall on the creating side of it:
+ * adding an operand puts a band on the canvas that was not there (the same
+ * thing `bpmn.addLane` does, and BPMN gates it with its own flag through the
+ * command registry), and the operator picker declares how the drawing is to be
+ * READ — which is what the ADR calls tooling in as many words, and where the
+ * diagram frame's kind picker already sits.
+ *
+ * With the `uml` flag off a stored fragment keeps its operator written, keeps
+ * painting its pentagon and its dashed rules, keeps every band it has and keeps
+ * its handles. What goes away is the button that adds a band and the menu that
+ * changes the word.
+ *
+ * ## One module, for the reason the diagram's row is one module
+ *
+ * `renderToolbar` merges four slots per element and `ToolbarModuleExtension`
+ * binds by DI variant, so a second module claiming
+ * `custom:affine:surface:umlFragment` throws before the editor finishes setting
+ * up. Both entries are gated by the same flag and appear together or not at
+ * all, so one module is the honest grouping rather than a workaround.
+ */
+export const umlFragmentToolingToolbarConfig: ToolbarModuleConfig = {
+  actions: [
+    {
+      // After the resize toggle (`a.`, from the always-on module) and before
+      // the operator picker — the row reads resize, add a branch, say which
+      // kind of branching this is.
+      id: 'b.add-operand',
+      tooltipWording: BOARD_ADD_BAND,
+      icon: AddOperandIcon,
+      run: addUmlOperand,
+    },
+    operatorPickerAction,
+    // The generic dropdown, not a UML variant of it — the very same object
+    // every framework frame registers.
+    ...validationToolbarConfig.actions,
+  ],
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModelsByType(UmlFragmentElementModel).length > 0,
+};
+
+export const umlFragmentToolingToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:umlFragment'),
+  config: umlFragmentToolingToolbarConfig,
 });

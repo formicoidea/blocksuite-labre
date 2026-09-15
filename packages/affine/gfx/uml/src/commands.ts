@@ -5,6 +5,8 @@ import {
   activateUmlEdge,
   createUmlClassifier,
   createUmlDiagram,
+  createUmlFragment,
+  createUmlInteractionUse,
   createUmlNode,
   createUmlPartition,
   createUmlRegion,
@@ -30,16 +32,17 @@ import {
  * senior sub-menu, the artefact catalogue, the palette, Settings › Shortcuts
  * and the agent (`docs/adr/0008`).
  *
- * ## Fifty-six declared, fourteen nominated — a framework that does NOT fit
+ * ## Sixty-nine declared, fourteen nominated — a framework that does NOT fit
  *
  * UML 2.5.1 is the largest notation this library packs, by a distance: phase 1
  * declared twenty-one commands against a sub-menu of fourteen, phase 2's
- * structural half (components and deployment) appended eleven, and its
- * behavioural half (activities and state machines) appends twenty-four more. So
- * unlike C4 — the framework that fits to the entry — the arbitration RUNS here:
- * `selectSeniorMenuCommands` triggers on `catalogue.length > SENIOR_MENU_CAP`,
- * fifty-six is four times fourteen, and the row a user meets is thirteen ranked
- * buttons plus "More artefacts…".
+ * structural half (components and deployment) appended eleven, its behavioural
+ * half (activities and state machines) twenty-four more, and phase 3's sequence
+ * diagrams append ten. So unlike C4 — the framework that fits to the entry —
+ * the arbitration RUNS here: `selectSeniorMenuCommands` triggers on
+ * `catalogue.length > SENIOR_MENU_CAP`, sixty-nine is nearly five times
+ * fourteen, and the row a user meets is thirteen ranked buttons plus
+ * "More artefacts…".
  *
  * That makes the head of the NOMINATION list the cold start every new user
  * meets, which is the lesson BPMN learned in a live recette (#144) and the
@@ -61,7 +64,7 @@ import {
  *      class diagram, not the first thing anybody draws), the four remaining
  *      relationships, the two exports, the other two imports, and — since
  *      phase 2 — the whole of components, deployment, activities and state
- *      machines.
+ *      machines, and since phase 3 the whole of sequence diagrams.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
@@ -470,13 +473,13 @@ const SPECS: Spec[] = [
   /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ─ */
   // The same ONE decision the eleven above made, restated for twenty-four: the
   // senior row is the phase-1 fourteen, and a behaviour tranche does not get to
-  // re-argue it from inside itself either. At fifty-six catalogue entries the
+  // re-argue it from inside itself either. At this many catalogue entries the
   // row would be arbitrary whatever it held, and the honest place for that
   // arbitration is a PO curation point with the usage data in front of it —
   // which is also why `uml.addAction`, the single most-drawn shape of an
   // activity diagram, declines a seat it would plainly deserve. Everything is
   // reachable: the catalogue is the TOTAL surface, and the palette and the
-  // agent carry all fifty-six.
+  // agent carry every one of them.
   {
     id: 'addAction',
     label: 'Action',
@@ -729,6 +732,128 @@ const SPECS: Spec[] = [
     senior: false,
     run: std => activateUmlEdge(std, 'transition'),
   },
+  /* ── Phase 3: sequence diagrams (§17.2.4, §17.4.4, §17.6.4, §17.7.4) ─── */
+  // The same ONE decision phases 2 and 2b made, restated for ten: the senior
+  // row is the phase-1 fourteen and a sequence tranche does not get to
+  // re-argue it from inside itself either. `uml.addLifeline` is the entry with
+  // the strongest claim on a seat — a sequence diagram is the second-most-drawn
+  // UML diagram after the class diagram — and it is a PO curation point with
+  // usage data behind it rather than this tranche's to take. Everything is
+  // reachable: the catalogue is the TOTAL surface, and the palette and the
+  // agent carry all sixty-nine.
+  {
+    id: 'addLifeline',
+    label: 'Lifeline',
+    iconKey: 'uml.lifeline',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:lifeline',
+    senior: false,
+    run: std => createUmlNode(std, 'lifeline'),
+  },
+  {
+    id: 'addExecution',
+    label: 'Execution',
+    iconKey: 'uml.execution',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:execution',
+    senior: false,
+    run: std => createUmlNode(std, 'execution'),
+  },
+  {
+    id: 'addDestruction',
+    label: 'Destruction',
+    iconKey: 'uml.destruction',
+    kind: 'artefact',
+    category: 'elements',
+    element: 'node:destruction',
+    senior: false,
+    run: std => createUmlNode(std, 'destruction'),
+  },
+  {
+    // A combined fragment is filed under `boundaries` for the reason the
+    // partition and the region are: it is neither an element of the model nor
+    // the sheet the model is drawn on, it is a box drawn ROUND part of the
+    // drawing, and what is inside it is read back from where things sit
+    // (§17.6.4).
+    id: 'addFragment',
+    label: 'Combined fragment',
+    iconKey: 'uml.fragment',
+    kind: 'artefact',
+    category: 'boundaries',
+    element: 'boundary:fragment',
+    senior: false,
+    // Wrapped rather than passed by reference, the same call `uml.addDiagram`
+    // makes: `run` is called `(std, invocation)` and `createUmlFragment` takes
+    // `(std, operator = 'alt')`, so handing it over bare would make the
+    // invocation object the fragment's OPERATOR.
+    run: std => createUmlFragment(std),
+  },
+  {
+    // The same element with `ref` in its tag (§17.7.4) — a command of its own
+    // because it is a different modelling act: pointing at another diagram
+    // rather than branching this one. See `createUmlInteractionUse`.
+    id: 'addInteractionUse',
+    label: 'Interaction use',
+    iconKey: 'uml.interaction-use',
+    kind: 'artefact',
+    category: 'boundaries',
+    element: 'boundary:interaction-use',
+    senior: false,
+    run: createUmlInteractionUse,
+  },
+  /* ── Phase 3: the five message lines ─────────────────────────────────── */
+  {
+    id: 'messageSyncTool',
+    label: 'Synchronous message',
+    iconKey: 'uml.message-sync',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:message-sync',
+    senior: false,
+    run: std => activateUmlEdge(std, 'message-sync'),
+  },
+  {
+    id: 'messageAsyncTool',
+    label: 'Asynchronous message',
+    iconKey: 'uml.message-async',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:message-async',
+    senior: false,
+    run: std => activateUmlEdge(std, 'message-async'),
+  },
+  {
+    id: 'messageReplyTool',
+    label: 'Reply message',
+    iconKey: 'uml.message-reply',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:message-reply',
+    senior: false,
+    run: std => activateUmlEdge(std, 'message-reply'),
+  },
+  {
+    id: 'messageCreateTool',
+    label: 'Create message',
+    iconKey: 'uml.message-create',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:message-create',
+    senior: false,
+    run: std => activateUmlEdge(std, 'message-create'),
+  },
+  {
+    id: 'messageDeleteTool',
+    label: 'Delete message',
+    iconKey: 'uml.message-delete',
+    kind: 'tool',
+    category: 'relations',
+    element: 'connector:message-delete',
+    senior: false,
+    run: std => activateUmlEdge(std, 'message-delete'),
+  },
 ];
 
 /**
@@ -759,7 +884,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   // `0.5` in the middle of it is a thing the next author has to decode.
   order: index === 0 ? 0 : index + 1,
   scope: 'edgeless',
-  // Keyless by intent, and at fifty-six commands there is no chord alphabet
+  // Keyless by intent, and at sixty-nine commands there is no chord alphabet
   // that would not be arbitrary — still bindable from Settings › Shortcuts,
   // which is what `toShortcutDescriptor` being total buys.
   defaultKeys: { mac: [], other: [] },

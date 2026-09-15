@@ -32,6 +32,9 @@ export * from './keywords.js';
 export * from './kinds.js';
 export * from './legend.js';
 export * from './morph.js';
+// The combined fragment's operator table — the picker's DATA, and the words
+// `§17.6.4`'s pentagon tag is offered under. Headless like `kinds.ts` beside it.
+export * from './operators.js';
 export * from './presets.js';
 export * from './reading.js';
 export * from './roles.js';

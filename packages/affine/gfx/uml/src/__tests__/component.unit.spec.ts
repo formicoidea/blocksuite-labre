@@ -8,6 +8,7 @@ import {
   UML_BESIDE_LABEL_KINDS,
   UML_BESIDE_LABEL_WIDTH,
   UML_CUBE_DEPTH,
+  UML_HEAD_LABEL_KINDS,
   UML_NAME_GAP,
   UML_PACKAGE_TAB,
   UML_SIGNAL_POINT,
@@ -58,6 +59,10 @@ const SIGNAL_KINDS = [
 const OWN_BOX_KINDS = ALL_KINDS.filter(
   kind =>
     !UML_BESIDE_LABEL_KINDS.has(kind) &&
+    // …and the lifeline, whose one tier is measured against the HEAD the
+    // renderer draws across the top of a 16-unit column rather than against
+    // the column itself (§17.2.4).
+    !UML_HEAD_LABEL_KINDS.has(kind) &&
     !(CUBE_KINDS as readonly UmlNodeKind[]).includes(kind) &&
     !(SIGNAL_KINDS as readonly UmlNodeKind[]).includes(kind)
 );
@@ -88,6 +93,11 @@ const PICTURE_KINDS: readonly UmlNodeKind[] = [
   'entry-point',
   'exit-point',
   'terminate',
+  // Phase 3, the sequence artefacts (§17.2.4): a head with a spine, a bar on
+  // one, and the cross that ends one. Not a compartment between them.
+  ...UML_HEAD_LABEL_KINDS,
+  'execution',
+  'destruction',
 ];
 
 /** One line of the name face — the unit nearly every offset here is built of. */
@@ -352,9 +362,11 @@ describe('where the picture kinds write their one label', () => {
       // Centred, whatever is left of it.
       expect(name.y, kind).toBeCloseTo(h - (name.y + name.h));
     }
-    // Not vacuous, and not the whole pack either: thirteen marks out of
-    // thirty-five kinds.
-    expect(UML_UNLABELLED_KINDS.size).toBe(13);
+    // Not vacuous, and not the whole pack either: fifteen marks — phase 2's
+    // thirteen control nodes and pseudostates, plus §17.2.4's execution bar and
+    // destruction cross, which the notation names no more than it names a
+    // bullseye.
+    expect(UML_UNLABELLED_KINDS.size).toBe(15);
     expect(UML_UNLABELLED_KINDS.has('action')).toBe(false);
     expect(UML_UNLABELLED_KINDS.has('state')).toBe(false);
   });
@@ -366,10 +378,14 @@ describe('the compartment layout as a whole', () => {
     // component writes may hang outside the shape it is grouped with, or the
     // group's derived bounds would grow past the picture.
     //
-    // The four exceptions are the notation's own and are declared rather than
+    // The exceptions are the notation's own and are declared rather than
     // discovered: a port's name and an interface glyph's are written beside
-    // them, because a 16-unit square has nowhere to put one (§11.3.4, §10.4.4).
-    for (const kind of ALL_KINDS.filter(k => !UML_BESIDE_LABEL_KINDS.has(k))) {
+    // them, because a 16-unit square has nowhere to put one (§11.3.4, §10.4.4),
+    // and a lifeline's is written in the HEAD the renderer draws across the top
+    // of its spine, which is wider than the spine (§17.2.4).
+    for (const kind of ALL_KINDS.filter(
+      k => !UML_BESIDE_LABEL_KINDS.has(k) && !UML_HEAD_LABEL_KINDS.has(k)
+    )) {
       const { w, h } = UML_NODE_BOX[kind];
       const boxes = atOrigin(kind);
       for (const box of [boxes.name, boxes.attributes, boxes.operations]) {

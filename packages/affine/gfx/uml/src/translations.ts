@@ -9,6 +9,7 @@ import {
 import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommands } from './commands.js';
 import { UML_DIAGRAM_KIND_MENU } from './kinds.js';
+import { UML_FRAGMENT_OPERATOR_MENU } from './operators.js';
 import { UML_PROFILES } from './profiles.js';
 import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
@@ -59,6 +60,12 @@ export const umlTranslationEntries: TranslationKeyManifestEntry[] =
       // names of the values it can take, and the table is walked exactly as the
       // two declarations beside it are.
       UML_DIAGRAM_KIND_MENU,
+      // …and, since phase 3, which kind of COMBINED FRAGMENT a box declares it
+      // is (§17.6.4). Filed here with the diagram's own table and for the same
+      // reason: `operator` is a prop of a background element, these are the
+      // names of the values it can take, and the table is walked exactly as the
+      // three declarations beside it are.
+      UML_FRAGMENT_OPERATOR_MENU,
     ]),
     // AFTER the two groups above — see the header on why the order decides
     // which source each key is reported under.

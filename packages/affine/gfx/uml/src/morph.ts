@@ -151,6 +151,24 @@ export const UML_MORPH_FAMILIES: readonly (readonly UmlNodeKind[])[] = [
   ['choice'],
   ['junction'],
   ['terminate'],
+  /* ── Phase 3: the sequence vocabulary (§17.2.4) ──────────────────────── */
+  // Three more singletons, and the three refusals are the plainest in the
+  // table: these are not variations on one picture, they are the three
+  // different things an interaction is drawn with.
+  //
+  //  - a **lifeline** is the participant itself — a head with a spine, and the
+  //    only element on the sheet a message may attach to. There is nothing it
+  //    is a more precise version of, and turning one into anything else would
+  //    orphan every message drawn on it;
+  //  - an **execution** is a bar ON a spine and a **destruction** is a cross on
+  //    one. Both are marks, both are positioned by geometry, and what they mean
+  //    is where they sit (§17.2.4) — "this participant is busy here" and "this
+  //    participant ends here". A dropdown between them would be offering to
+  //    turn a stretch of activity into an ending, which is not a refinement of
+  //    anything: it is a different fact about a different moment.
+  ['lifeline'],
+  ['execution'],
+  ['destruction'],
 ];
 
 /**

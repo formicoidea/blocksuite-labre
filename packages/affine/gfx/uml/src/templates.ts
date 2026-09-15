@@ -317,5 +317,42 @@ export const umlTemplateCategory: TemplateCategory = {
       byId('uml.addRegion'),
       `<svg ${ATTRS} fill="none"><rect x="12" y="10" width="111" height="60" rx="10" stroke="${UML_FRAME_INK}" stroke-width="1.6"/><path d="M12 26 H123" stroke="${UML_FRAME_INK}" stroke-width="1.4"/>${line(22, 15, 32, UML_FRAME_INK)}<rect x="26" y="38" width="32" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/><rect x="78" y="38" width="32" height="18" rx="7" stroke="${UML_DIVIDER}" stroke-width="1.6"/><path d="M58 47 H78" stroke="${UML_DIVIDER}" stroke-width="1.6"/></svg>`
     ),
+
+    /* ── Phase 3: sequence diagrams (§17.2.4, §17.6.4, §17.7.4) ──────── */
+
+    // The head with its name, and the DASHED spine falling out of it — the
+    // half a reader recognises a sequence diagram by, because time runs down
+    // it. Two of them, with a message between, so the preview shows what a
+    // lifeline is FOR rather than a box with a dotted tail.
+    templateFromCommand(
+      byId('uml.addLifeline'),
+      `<svg ${ATTRS} fill="none"><rect x="14" y="8" width="46" height="20" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${line(22, 16, 30, UML_INK)}<path d="M37 28 V74" stroke="${UML_INK}" stroke-width="1.6" stroke-dasharray="5 5"/><rect x="75" y="8" width="46" height="20" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/>${line(83, 16, 30, UML_INK)}<path d="M98 28 V74" stroke="${UML_INK}" stroke-width="1.6" stroke-dasharray="5 5"/><path d="M37 48 H92" stroke="${UML_DIVIDER}" stroke-width="1.6"/><path d="M92 44 L99 48 L92 52 Z" fill="${UML_DIVIDER}"/></svg>`
+    ),
+    // The bar ON the spine: the stretch of the conversation this participant
+    // spends doing something (§17.2.4). Drawn over the dashes, because a bar
+    // beside a lifeline states nothing.
+    templateFromCommand(
+      byId('uml.addExecution'),
+      `<svg ${ATTRS} fill="none"><path d="M67.5 6 V74" stroke="${UML_INK}" stroke-width="1.6" stroke-dasharray="5 5"/><rect x="61" y="22" width="13" height="38" fill="${UML_CARD}" stroke="${UML_INK}" stroke-width="2"/><path d="M28 30 H61" stroke="${UML_DIVIDER}" stroke-width="1.6"/><path d="M74 52 H107" stroke="${UML_DIVIDER}" stroke-width="1.6"/></svg>`
+    ),
+    // The cross the spine stops at: nothing happens to this participant after
+    // it (§17.2.4). The dashes ABOVE and none below is the whole statement.
+    templateFromCommand(
+      byId('uml.addDestruction'),
+      `<svg ${ATTRS} fill="none"><path d="M67.5 6 V40" stroke="${UML_INK}" stroke-width="1.6" stroke-dasharray="5 5"/><path d="M53 26 L82 55 M82 26 L53 55" stroke="${UML_INK}" stroke-width="3" stroke-linecap="round"/><path d="M18 40 H50" stroke="${UML_DIVIDER}" stroke-width="1.6"/><path d="M44 36 L51 40 L44 44 Z" fill="${UML_DIVIDER}"/></svg>`
+    ),
+    // The frame with the PENTAGON tag, and the dashed rule that separates two
+    // operands (§17.6.4) — the two marks nothing else in the pack draws.
+    templateFromCommand(
+      byId('uml.addFragment'),
+      `<svg ${ATTRS} fill="none"><rect x="12" y="8" width="111" height="64" stroke="${UML_FRAME_INK}" stroke-width="1.6"/><path d="M12 8 H44 L52 17 V26 H12 Z" fill="${UML_CARD}" stroke="${UML_FRAME_INK}" stroke-width="1.6" stroke-linejoin="round"/>${line(18, 14, 24, UML_FRAME_INK)}${line(60, 32, 30, UML_FRAME_INK)}<path d="M12 46 H123" stroke="${UML_FRAME_INK}" stroke-width="1.4" stroke-dasharray="5 4"/>${line(60, 56, 30, UML_DIVIDER)}</svg>`
+    ),
+    // The same frame with `ref` in its tag and the name of the interaction it
+    // points at in the middle (§17.7.4) — and NO dashed rule, which is what
+    // tells it from the fragment above: a `ref` has no operands.
+    templateFromCommand(
+      byId('uml.addInteractionUse'),
+      `<svg ${ATTRS} fill="none"><rect x="12" y="8" width="111" height="64" stroke="${UML_FRAME_INK}" stroke-width="1.6"/><path d="M12 8 H44 L52 17 V26 H12 Z" fill="${UML_CARD}" stroke="${UML_FRAME_INK}" stroke-width="1.6" stroke-linejoin="round"/>${line(18, 14, 24, UML_FRAME_INK)}${line(46, 42, 56, UML_INK)}</svg>`
+    ),
   ],
 };

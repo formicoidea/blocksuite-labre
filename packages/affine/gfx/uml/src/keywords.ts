@@ -217,6 +217,19 @@ export const UML_NAME_SEED: Record<UmlNodeKind, string> = {
   // §14.2.4: a state is named after the CONDITION that holds while the machine
   // is in it. Same argument as `action`, and the same word the role uses.
   state: 'State',
+  // ── Phase 3, the sequence diagram ────────────────────────────────────────
+  // §17.3.4 writes a lifeline's head as `<name> [: <Type>]` — the participant's
+  // own name, then the classifier it is an instance of. The seed is the
+  // OBJECT's, word for word, and that is the specification's doing rather than
+  // a copy: a lifeline IS an instance of a classifier taking part in an
+  // interaction, and §9.8.4's `object : Class` is the same grammar. An author
+  // who has met one has met the other, and `parseLifelineIdent` reads exactly
+  // this line back.
+  //
+  // NOT underlined, unlike §9.8.4's instance specification: §17.3.4 draws the
+  // head plain, and a rule that underlined it would be this pack applying one
+  // clause's notation to another's.
+  lifeline: 'lifeline : Class',
   // ── The unlabelled ones ─────────────────────────────────────────────────
   // Thirteen empty strings, and every one of them is the notation's own answer:
   // §15.3.4 and §14.2.4 draw these as MARKS, not as boxes with words in them.
@@ -239,6 +252,14 @@ export const UML_NAME_SEED: Record<UmlNodeKind, string> = {
   'entry-point': '',
   'exit-point': '',
   terminate: '',
+  // …and phase 3 adds two more, for the same reason and out of the same clause:
+  // §17.2.4 draws an ExecutionSpecification as a thin BAR on a lifeline's spine
+  // and a DestructionOccurrence as a CROSS on it. Neither is named — what the
+  // reader learns from them is "this participant is busy here" and "this
+  // participant ends here", and both facts are the mark's position on the
+  // spine. A seed under either would be a word to delete off a 12-unit bar.
+  execution: '',
+  destruction: '',
 };
 
 /**

@@ -197,6 +197,26 @@ export const BOARD_ORIENTATION_TOGGLE: ChromeWording = [
 ];
 
 /**
+ * The gesture that divides a banded background one band further — the button a
+ * frame carrying zones offers next to the two above.
+ *
+ * Declared here with them, and for the third time for the same reason: it names
+ * a behaviour of the generic frame primitive (a background whose `instanceZones`
+ * are a list the author grows) rather than anything a notation calls its own. A
+ * UML combined fragment is the first frame to use it — §17.6.4's second operand
+ * is a band added to a box that has one — and a BPMN pool's lane is the obvious
+ * second the day it stops reaching this through a command of its own.
+ *
+ * "Band" and not "operand" or "lane": the word has to be true of every frame
+ * that offers the button, and each notation's own noun is already written on
+ * the element the button is attached to.
+ */
+export const BOARD_ADD_BAND: ChromeWording = [
+  'com.labre.board.toolbar.add-band',
+  'Add a band',
+];
+
+/**
  * The legend button, in the two wordings the boards actually use: the notation
  * boards say "notation", Wardley says "components".
  *
@@ -271,6 +291,7 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   SYNCED_DOC_EMPTY_PREVIEW,
   BOARD_RESIZE_TOGGLE,
   BOARD_ORIENTATION_TOGGLE,
+  BOARD_ADD_BAND,
   BOARD_LEGEND_NOTATION,
   BOARD_LEGEND_COMPONENTS,
   CONNECTOR_SOURCE_LABEL,

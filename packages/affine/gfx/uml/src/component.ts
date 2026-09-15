@@ -1,7 +1,11 @@
 import type { UmlNodeKind } from '@labre/affine-model';
 
-import { UML_BODY_FONT_SIZE, UML_NAME_FONT_SIZE } from './consts.js';
-import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
+import {
+  UML_BODY_FONT_SIZE,
+  UML_LIFELINE_HEAD,
+  UML_NAME_FONT_SIZE,
+} from './consts.js';
+import { UML_ROLE, UML_ROLE_OF_KIND, type UmlRoleId } from './roles.js';
 
 /**
  * A UML component — the SHAPE and its own words, grouped.
@@ -195,6 +199,16 @@ export const UML_SIGNAL_POINT = 0.16;
  */
 const USE_CASE_LABEL_LINES = 2;
 
+/**
+ * How many lines a lifeline's head is sized for.
+ *
+ * Two, and the same argument the cube's makes: §17.3.4's head holds
+ * `<name> : <Type>`, which is one line until a participant's type is long
+ * enough to wrap — and a head that clipped the classifier would be a lifeline
+ * that does not say what it is an instance of.
+ */
+const LIFELINE_LABEL_LINES = 2;
+
 /* ── Where the compartments go ─────────────────────────────────────────── */
 
 /** A box in the same units and origin as the node's own. */
@@ -353,6 +367,62 @@ export const UML_BESIDE_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
     // because a 40 × 56 hourglass has no inside, exactly like a port.
     'time-event',
   ]);
+
+/**
+ * The kinds whose one tier is written in a HEAD drawn wider than the element
+ * itself — today the lifeline, and it is the second and last way a tier is
+ * allowed outside its own box.
+ *
+ * ## Why a lifeline is shaped like this at all
+ *
+ * §17.2.4 draws a lifeline as a NAMED BOX with a dashed line falling out of the
+ * bottom of it, and the dashed line is the part that matters: a message is
+ * attached to it at the height where it happens, and an execution bar sits on
+ * it. So the ELEMENT is the spine — a narrow, tall column whose left and right
+ * perimeters are where the connector layer puts an anchor — and the head is a
+ * rectangle the renderer draws across the top of it, centred, overflowing it by
+ * the same amount on each side (`consts.ts`, `UML_LIFELINE_HEAD`).
+ *
+ * That makes the head the one place the participant's name can go. Writing it
+ * inside a 16-unit column would be writing it on the dashes.
+ *
+ * ## Why it is not {@link UML_BESIDE_LABEL_KINDS}
+ *
+ * Because it is not beside anything: a port's name sits to the RIGHT of a glyph
+ * that has no inside, and a lifeline's name sits IN a head the renderer draws.
+ * The two would share nothing but the fact that a bounding box has to allow for
+ * them, and folding them together would give a lifeline a label floating 6
+ * units off the spine. Two sets, two placements, one invariant each.
+ */
+export const UML_HEAD_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
+  new Set<UmlNodeKind>(['lifeline']);
+
+/**
+ * WHICH tier role a kind's single word carries, for every kind whose word is a
+ * label rather than a name compartment.
+ *
+ * The companion of {@link glyphLabel}: that answers where the one tier GOES,
+ * this answers what it IS, and the two questions have had the same shape since
+ * the lifeline arrived — a placement chosen per kind and a role chosen per
+ * kind, which is exactly one table each.
+ *
+ * Today it says one thing: a lifeline's head carries `uml:lifeline-ident` and
+ * everything else carries `uml:label`. §17.3.4 prints a BNF for what goes in
+ * that head (`parseLifelineIdent` reads it back) and §18.1.4 prints none for an
+ * actor's word, so the two tiers answer "does this parse" differently and a
+ * single role could only ever have asked them the same question (`roles.ts`).
+ *
+ * It does NOT answer for the compartmented kinds or for the five glyphs named
+ * rather than labelled (`actions.ts`, `NAMED_GLYPHS`): those carry `uml:name`,
+ * which is a different statement — a tier a keyword may be written over — and a
+ * helper that folded all three answers together would be a second place to
+ * decide what the grammar reads.
+ */
+export function umlLabelRoleOf(kind: UmlNodeKind): UmlRoleId {
+  return UML_HEAD_LABEL_KINDS.has(kind)
+    ? UML_ROLE['lifeline-ident']
+    : UML_ROLE.label;
+}
 
 /**
  * The compartments of a node, laid out against its own box.
@@ -575,6 +645,28 @@ function glyphLabel(kind: UmlNodeKind, site: GlyphLabelSite): UmlBox {
     };
   }
 
+  if (UML_HEAD_LABEL_KINDS.has(kind)) {
+    // Inside the HEAD, which is the only part of a lifeline that is a box: the
+    // rest of the element is a dashed spine 16 units wide (§17.2.4). The head
+    // is centred on the column and flush with its top, so its left edge is a
+    // negative offset from the element's own — the one measurement in this
+    // module that reaches to the LEFT of the node it belongs to.
+    //
+    // The same proportional gutter every other tier gets, measured against the
+    // HEAD's width rather than the element's — the cube's argument, for the
+    // same reason: a 16-unit inset would be the whole column.
+    const headW = UML_LIFELINE_HEAD.w;
+    const headH = Math.min(UML_LIFELINE_HEAD.h, h);
+    const inset = headW * UML_TIER_SIDE_INSET;
+    const height = Math.min(nameHeight * LIFELINE_LABEL_LINES, headH);
+    return {
+      x: x + (w - headW) / 2 + inset,
+      y: y + (headH - height) / 2,
+      w: Math.max(0, headW - inset * 2),
+      h: height,
+    };
+  }
+
   if (UML_BESIDE_LABEL_KINDS.has(kind)) {
     // BESIDE the glyph, and deliberately outside the element's own box: a port
     // is a 16-unit square and a lollipop is a ball on a stick, so there is
@@ -675,6 +767,15 @@ export interface UmlComponent {
   attributes?: UmlComponentElement;
   operations?: UmlComponentElement;
   label?: UmlComponentElement;
+  /**
+   * §17.3.4's lifeline head — a fifth slot rather than a fifth user of
+   * {@link UmlComponent.label}, for the reason `roles.ts` splits the tier: what
+   * is written here is a production with a grammar, and what is written in a
+   * label is prose. A caller that wants "the word this artefact goes by",
+   * whatever tier holds it, asks for `name ?? label ?? ident` — three tiers,
+   * never both.
+   */
+  ident?: UmlComponentElement;
 }
 
 /**
@@ -732,6 +833,7 @@ export function umlComponentSiblings(
     else if (role === UML_ROLE.attributes) component.attributes ??= element;
     else if (role === UML_ROLE.operations) component.operations ??= element;
     else if (role === UML_ROLE.label) component.label ??= element;
+    else if (role === UML_ROLE['lifeline-ident']) component.ident ??= element;
   }
 
   return component;

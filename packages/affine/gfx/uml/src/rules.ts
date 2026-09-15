@@ -7,6 +7,8 @@ import type { RoleId } from '@labre/std/gfx';
 import { UML_SUBJECT_FRAME } from './background.js';
 import {
   checkEndLabelMultiplicity,
+  checkLifelineIdent,
+  checkMessageLabel,
   checkOperationLine,
   checkPropertyLine,
   checkTransitionLabel,
@@ -662,6 +664,36 @@ const elementOutsideFrame: ValidationRule = {
 };
 
 /**
+ * The five SEQUENCE artefacts, as one entry for the eight deny-lists that all
+ * refuse the same five (§17.2.4, §17.3.4, §17.4.4, §17.6.4).
+ *
+ * Spread into each list rather than named eight times, and that is a departure
+ * from how the `act` and `stm` lists are written — they spell their strangers
+ * out one by one, on purpose, because each of them refuses a DIFFERENT subset of
+ * the other's routing glyphs and a shared constant would have hidden which. Here
+ * the subset is identical in all eight, and writing it once is what makes it
+ * impossible for a ninth sheet to be added with four of the five.
+ *
+ * ## `uml:message` is the first EDGE role this table names, and it belongs
+ *
+ * Every other entry in `forbidden` is a node or a frame, which is a gap in the
+ * eight lists rather than a reading of the family: `evaluateViewAdmissibility`
+ * judges any element carrying a role, and a connector carries one and has
+ * bounds. A message arrow is also the one edge in this vocabulary whose meaning
+ * is entirely about the sheet it is on — §17.4.4 reads it against a vertical
+ * axis of TIME — so a message drawn across a class diagram is not an edge of the
+ * wrong type between two boxes, it is an arrow whose whole notation is missing.
+ * The parent role reaches all five sorts in one entry.
+ */
+const UML_SEQUENCE_ROLES: readonly RoleId[] = [
+  UML_ROLE.lifeline,
+  UML_ROLE.execution,
+  UML_ROLE.destruction,
+  UML_ROLE.fragment,
+  UML_ROLE.message,
+];
+
+/**
  * **U2** — an artefact drawn on a sheet whose own heading says it is a different
  * diagram.
  *
@@ -672,10 +704,10 @@ const elementOutsideFrame: ValidationRule = {
  * way a C4 board's level is (`kinds.ts` says why). The rule reads that statement
  * back and confronts it with what has been drawn.
  *
- * Six kinds since phase 2, and the table below grows by APPENDING a key: a
+ * Nine kinds since phase 3, and the table below grows by APPENDING a key: a
  * `forbidden` entry is looked up by the frame's own `kind` string, so a kind with
  * no entry is a sheet this rule has nothing to say about — which is exactly what
- * a phase-1 build does with a `cmp` frame, and what this build does with `act`.
+ * a phase-1 build does with a `cmp` frame, and a phase-2 build with an `sd` one.
  *
  * ## The deny-lists, and the much longer list they do not name
  *
@@ -723,12 +755,12 @@ const notAdmissibleOnKind: ValidationRule = {
     'This artefact is not drawn on the kind of diagram the frame says this is.',
   suggestionKey: 'com.labre.uml.validation.not-admissible-on-kind.suggestion',
   suggestionFallback:
-    'The frame’s heading names the diagram — class, pkg, obj, uc, cmp, dep, act or stm — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
+    'The frame’s heading names the diagram — class, pkg, obj, uc, cmp, dep, act, stm or sd — and each draws its own vocabulary. Move the artefact to a sheet that draws it, or change the frame’s kind to the one it really shows.',
   version: 1,
   provenance: {
     source: 'recommendation',
     reference:
-      'OMG UML 2.5.1 — Annex A (diagram kinds and frame headings), §9.8.4 (object diagrams), §12.2.4 (package diagrams), §18.1.4 (use case diagrams)',
+      'OMG UML 2.5.1 — Annex A (diagram kinds and frame headings), §9.8.4 (object diagrams), §12.2.4 (package diagrams), §18.1.4 (use case diagrams), §17.2.4 (sequence diagrams)',
   },
   backgroundRole: UML_ROLE.diagram,
   admissibility: {
@@ -736,12 +768,25 @@ const notAdmissibleOnKind: ValidationRule = {
     // it; nothing in between knows the word "UML".
     levelProp: 'kind',
     forbidden: {
-      class: [UML_ROLE.actor, UML_ROLE['use-case'], UML_ROLE.subject],
+      class: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        // Phase 3 — the SEQUENCE vocabulary, refused by every sheet that is not
+        // `sd`. A lifeline, an execution bar, a destruction cross, a combined
+        // fragment and a message arrow are §17's own notation, and the spine of
+        // a lifeline draws TIME running down the page — the one frame of
+        // reference the other eight sheets explicitly do not have
+        // (`background.ts`: "a UML diagram is a GRAPH"). So they are refused
+        // everywhere else, and the seven lists below name the same five.
+        ...UML_SEQUENCE_ROLES,
+      ],
       pkg: [
         UML_ROLE.actor,
         UML_ROLE['use-case'],
         UML_ROLE.subject,
         UML_ROLE.object,
+        ...UML_SEQUENCE_ROLES,
       ],
       obj: [
         UML_ROLE.actor,
@@ -749,8 +794,14 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE.subject,
         // The PARENT role: a class, an interface and an enumeration alike.
         UML_ROLE.classifier,
+        ...UML_SEQUENCE_ROLES,
       ],
-      uc: [UML_ROLE.classifier, UML_ROLE.object, UML_ROLE.package],
+      uc: [
+        UML_ROLE.classifier,
+        UML_ROLE.object,
+        UML_ROLE.package,
+        ...UML_SEQUENCE_ROLES,
+      ],
       // Phase 2 — the two structural sheets.
       //
       // A **component** diagram (§11.6.4) refuses the use case vocabulary and
@@ -769,6 +820,7 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE.object,
         // The PARENT role: a node, a device and an execution environment alike.
         UML_ROLE.node,
+        ...UML_SEQUENCE_ROLES,
       ],
       // A **deployment** diagram (§19.2.4) refuses the use case vocabulary, the
       // instance and the three CLASSIFIERS: §19 draws machines, the software
@@ -793,6 +845,7 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE.class,
         UML_ROLE.interface,
         UML_ROLE.enumeration,
+        ...UML_SEQUENCE_ROLES,
       ],
       // Phase 2 — the two BEHAVIOUR sheets, and the first pair whose deny-lists
       // are mostly about EACH OTHER.
@@ -830,6 +883,7 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE['final-state'],
         UML_ROLE.pseudostate,
         UML_ROLE.region,
+        ...UML_SEQUENCE_ROLES,
       ],
       // A **state machine** (§14.2.4) refuses the same strangers and the
       // ACTIVITY vocabulary, named glyph by glyph rather than through
@@ -864,6 +918,66 @@ const notAdmissibleOnKind: ValidationRule = {
         UML_ROLE['accept-event'],
         UML_ROLE['time-event'],
         UML_ROLE.partition,
+        ...UML_SEQUENCE_ROLES,
+      ],
+      // Phase 3 — the SEQUENCE sheet (§17.2.4), and the STRICTEST list in the
+      // table by some distance.
+      //
+      // Every other kind here refuses a neighbouring vocabulary and admits its
+      // own plus whatever a whiteboard is made of. An `sd` frame refuses all
+      // EIGHT of the others, and the reason is the sheet's frame of reference
+      // rather than its vocabulary: a sequence diagram's vertical axis is TIME
+      // (§17.4.4 — "every line fragment is either horizontal or downwards when
+      // traversed from send event to receive event"), and an artefact that is
+      // not a participant has no position on it. A class dropped between two
+      // lifelines is not a class at the wrong level of detail, the way an
+      // instance on a package diagram is; it is a box the reader cannot date.
+      //
+      // So the list is every role the other lists name, plus the two behaviour
+      // vocabularies, plus the PACKAGE — which `act` and `stm` admit and this
+      // sheet does not, for the reason above. What is left is what §17 draws:
+      // the lifeline, the execution bar, the destruction cross, the combined
+      // fragment and the five message arrows — and the NOTE, which every sheet
+      // in this table admits because Annex A draws one on all of them.
+      //
+      // `uml:control-node` and `uml:pseudostate` are named as PARENTS here
+      // where the `act` and `stm` lists spell their children out. Those two
+      // lists had to: each sheet draws half the other's routing glyphs, so a
+      // deny-list on a parent would have refused the notation the author came
+      // for. This sheet draws none of them, which makes the parent the honest
+      // entry — and keeps the list from growing every time a routing glyph is
+      // added to a diagram this one has nothing to do with.
+      sd: [
+        UML_ROLE.actor,
+        UML_ROLE['use-case'],
+        UML_ROLE.subject,
+        UML_ROLE.object,
+        UML_ROLE.package,
+        // The PARENT role: a class, an interface and an enumeration alike.
+        UML_ROLE.classifier,
+        UML_ROLE.component,
+        UML_ROLE.port,
+        UML_ROLE['provided-interface'],
+        UML_ROLE['required-interface'],
+        UML_ROLE.artifact,
+        // The PARENT role: a node, a device and an execution environment alike.
+        UML_ROLE.node,
+        // The activity's vocabulary — the parent reaches the initial disc, the
+        // two finals, the decision and the fork bar in one entry.
+        UML_ROLE.action,
+        UML_ROLE['control-node'],
+        UML_ROLE['object-node'],
+        UML_ROLE['send-signal'],
+        UML_ROLE['accept-event'],
+        UML_ROLE['time-event'],
+        UML_ROLE.partition,
+        // …and the state machine's, the parent reaching the choice, the
+        // junction, the two histories, the two connection points and the
+        // terminate cross.
+        UML_ROLE.state,
+        UML_ROLE['final-state'],
+        UML_ROLE.pseudostate,
+        UML_ROLE.region,
       ],
     },
   },
@@ -2682,8 +2796,313 @@ const unreachableState: ValidationRule = {
   },
 };
 
+/* ── The interaction: what a message may run between ────────────────────── */
+
 /**
- * The pack, whole: thirty-eight rules over nine families.
+ * The two artefacts a message may start from and land on — §17.4.4's sender and
+ * receiver MessageEnds, as this canvas draws them.
+ *
+ * A LIFELINE is the participant itself, and an EXECUTION is the bar drawn on its
+ * spine while it is doing something (§17.3.4: "apply a thin gray or white
+ * rectangle that covers the Lifeline line"). Both are legal ends of the same
+ * arrow, and which of the two an author aims at is a matter of how much detail
+ * the drawing is carrying: the same call is drawn lifeline-to-lifeline on a
+ * sketch and execution-to-execution once the activations are in. A grammar that
+ * admitted one and not the other would indict half the sequence diagrams ever
+ * drawn for being drawn at the wrong level of detail.
+ *
+ * The DESTRUCTION is deliberately not here: it is not an end a message may
+ * generally reach, it is the end a DELETE message must reach, which is a
+ * sentence of its own below.
+ */
+const UML_MESSAGE_ENDS: readonly RoleId[] = [
+  UML_ROLE.lifeline,
+  UML_ROLE.execution,
+];
+
+/**
+ * The three message sorts whose ends §17.4.4 constrains no further than "a
+ * sender and a receiver": a synchronous call, an asynchronous one and a reply.
+ */
+const UML_PLAIN_MESSAGE_ROLES: readonly RoleId[] = [
+  UML_ROLE['message-sync'],
+  UML_ROLE['message-async'],
+  UML_ROLE['message-reply'],
+];
+
+/**
+ * ALPHABET entries for the message grammar — the class-side and use-case
+ * vocabularies, carried as true sentences of THEIR OWN edges.
+ *
+ * The device {@link UML_STATE_ALPHABET} explains, one sheet further on: these
+ * triplets carry `uml:association`, so `inMatrix` — which matches a triplet's
+ * edge with `roleIsA` — can never let one sanction a message. Their whole effect
+ * is to put `uml:classifier`, `uml:actor` and `uml:use-case` into the alphabet
+ * the message rule speaks, which is what makes "a message dragged onto a class"
+ * and "a message dragged onto an actor" findings rather than silence.
+ *
+ * The ACTOR is the one that earns its place. Every drawing tool in the world
+ * puts a stick figure at the left of a sequence diagram, and §17.3.4 does give a
+ * lifeline head "a shape that is based on the classifier for the part" — so an
+ * author reaching for the actor tool on an `sd` sheet is making a reasonable
+ * mistake about THIS canvas, where a participant is a lifeline whatever it
+ * represents. Being in the alphabet is what lets the finding say so.
+ */
+const UML_INTERACTION_ALPHABET: readonly EndpointTriplet[] = [
+  {
+    source: UML_ROLE.actor,
+    edge: UML_ROLE.association,
+    target: UML_ROLE['use-case'],
+  },
+  {
+    source: UML_ROLE.classifier,
+    edge: UML_ROLE.association,
+    target: UML_ROLE.classifier,
+  },
+];
+
+/**
+ * What a MESSAGE may run between, sort by sort — §17.4.4, which is the one place
+ * in Clause 17 where the notation constrains an ARROW's ends rather than its
+ * shape.
+ *
+ * Three of the five sorts are the full square over {@link UML_MESSAGE_ENDS}: a
+ * call, a signal and a reply run from a participant to a participant, and the
+ * clause says nothing more. The other two each carry a sentence the
+ * specification states outright:
+ *
+ *  - a **create** message "has a dashed line with an open arrow head" and is
+ *    drawn to the HEAD of the lifeline it brings into existence (§17.4.4,
+ *    Figure 17.13), so its target is a LIFELINE and never an execution — there
+ *    is nothing to be executing on a participant that does not exist yet;
+ *  - a **delete** message "must end in a DestructionOccurrenceSpecification"
+ *    (§17.4.4, quoted in the rule's provenance), which is the X this canvas
+ *    draws as `uml:destruction`. The LIFELINE is admitted beside it, and that is
+ *    a deliberate tolerance rather than a reading of the clause: an author draws
+ *    the arrow first and drops the cross on its end afterwards, and a grammar
+ *    that indicted the intermediate state would be indicting the gesture.
+ *    `uml.strict` promotes this rule, so the tolerance is the same at both
+ *    levels — the finding that is worth having is the delete drawn onto an
+ *    EXECUTION, which is a participant carrying on after it has been destroyed.
+ *
+ * Self-loops are NOT forbidden, and §17.4.4 is explicit about why: "The send and
+ * receive events may both be on the same lifeline." A participant calling itself
+ * is the notation's own figure for a nested activation.
+ */
+export const UML_MESSAGE_MATRIX: readonly EndpointTriplet[] = [
+  ...UML_PLAIN_MESSAGE_ROLES.flatMap(edge =>
+    UML_MESSAGE_ENDS.flatMap(source =>
+      UML_MESSAGE_ENDS.map(target => ({ source, edge, target }))
+    )
+  ),
+  ...UML_MESSAGE_ENDS.map(source => ({
+    source,
+    edge: UML_ROLE['message-create'],
+    target: UML_ROLE.lifeline,
+  })),
+  ...UML_MESSAGE_ENDS.flatMap(source =>
+    [UML_ROLE.destruction, UML_ROLE.lifeline].map(target => ({
+      source,
+      edge: UML_ROLE['message-delete'],
+      target,
+    }))
+  ),
+  ...UML_INTERACTION_ALPHABET,
+];
+
+/**
+ * **U39** — a message drawn between artefacts an interaction does not exchange
+ * messages between.
+ *
+ * `edgeRole: uml:message` — the PARENT of the five sorts — so one rule covers a
+ * call, a signal, a reply, a create and a delete, and the matrix above is what
+ * tells them apart: each triplet names a specialised edge role, and `inMatrix`
+ * matches it with `roleIsA`, so a create's sentence can never sanction a delete.
+ *
+ * One id rather than five, for the reason every other endpoint rule in this file
+ * is one id: the five sorts are one grammar with one gesture to fix it — re-point
+ * an end — and five rules would be five lines in both profile tables and five
+ * sentences saying the same thing about the same drag.
+ *
+ * ## What it stays silent about
+ *
+ * A message with a free end, a message onto a NOTE, onto a sticky, onto a
+ * rectangle somebody thought with: the alphabet is the participants plus the two
+ * foreign vocabularies {@link UML_INTERACTION_ALPHABET} names, and everything
+ * outside it is a sketch (PRD principle 8). And a message from a participant to
+ * ITSELF, which §17.4.4 draws on purpose.
+ */
+const messageEndpoints: ValidationRule = {
+  id: 'uml.message-endpoints',
+  framework: 'uml',
+  family: 'relation-endpoints',
+  severity: 'audit',
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.message-endpoints',
+  messageFallback:
+    'This message runs between artefacts an interaction does not exchange messages between.',
+  suggestionKey: 'com.labre.uml.validation.message-endpoints.suggestion',
+  suggestionFallback:
+    'A message joins two participants — a lifeline, or the execution bar drawn on one. A create message lands on the head of the lifeline it brings into existence, and a delete message ends on the cross that destroys it. If this participant is an actor, draw it as a lifeline: a sequence sheet has one kind of participant.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §17.4.4 — "An object deletion Message (messageSort equals deleteMessage) must end in a DestructionOccurrenceSpecification", and §17.3.4 on what a Lifeline and an ExecutionSpecification are',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  endpoints: {
+    edgeRole: UML_ROLE.message,
+    allowed: UML_MESSAGE_MATRIX,
+  },
+};
+
+/**
+ * **U40** — a message label that does not parse.
+ *
+ * The fifth `label-syntax` rule (ADR 0021), and the first written on a CONNECTOR's
+ * centre label since `uml.transition-syntax`. `appliesTo: uml:message` reaches
+ * all five sorts for free — they specialise it — which is exactly right here:
+ * §17.4.4 prints ONE label grammar for the request sorts and one for the reply,
+ * the second being the first plus an assignment target and a return value, and
+ * `checkMessageLabel` reads both because an arrow carries one text and nothing
+ * on the canvas tells a reader which of the two productions to use.
+ *
+ * `perLine: false`, like the transition label and for the same reason: §17.4.4's
+ * label is a single production, not a list, and an author who wraps
+ * `r = place(order, now) : Receipt` onto a second line has written one label.
+ *
+ * ## What it stays silent about
+ *
+ * An UNLABELLED arrow — §17.4.4 makes the label optional and a sequence diagram
+ * is drawn arrows-first — and `*`, which is a spelling the clause prints. See
+ * `grammar.ts` for the four things it does report, each of them a case where the
+ * lenient parse the exporters read LOST something the author typed.
+ */
+const messageSyntax: ValidationRule = {
+  id: 'uml.message-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE.message,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.message-syntax',
+  messageFallback: 'This message label does not parse:',
+  suggestionKey: 'com.labre.uml.validation.message-syntax.suggestion',
+  suggestionFallback:
+    'A message is labelled "place(order)", and a reply "r = place(order) : Receipt" — the assignment, the arguments and the returned value are each optional, and an arrow with no label at all is legal.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §17.4.4 — <request-message-label> ::= <message-name> [( [<input-argument-list>] )], <reply-message-label> ::= [<assignment-target> =] <message-name> [( [<output-argument-list>] )] [: <value-specification>]',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: { parse: checkMessageLabel, perLine: false },
+};
+
+/**
+ * **U41** — a lifeline whose head has been emptied.
+ *
+ * The THIRD `label-presence` rule, and the one that made the tier vocabulary
+ * grow: until phase 3 a lifeline's head carried `uml:label`, the actor's and the
+ * use case's tier, and a rule written on that tier could not tell the three
+ * apart. Which made both halves of the naming question wrong at once — an
+ * emptied head was reported as "this actor or use case has no name", and an
+ * author of a sequence diagram was told to write "Customer" in a box that wants
+ * `order : Order`. `uml:lifeline-ident` is that tier split off (`roles.ts`), and
+ * this is one of the two rules the split exists for.
+ *
+ * ONE rule, one subject role, and no overlap with {@link unnamedActorOrUseCase}
+ * by construction: the new role is FLAT, so `roleIsA` never walks from one to
+ * the other and an emptied head is reported here and nowhere else.
+ *
+ * ## What it stays silent about
+ *
+ * A head somebody deleted outright rather than emptied — the same known limit
+ * {@link unnamedClassifier} documents, and for the same reason: there is no text
+ * on the sheet for a `label-presence` rule to be about.
+ */
+const unnamedLifeline: ValidationRule = {
+  id: 'uml.unnamed-lifeline',
+  framework: 'uml',
+  family: 'label-presence',
+  severity: 'audit',
+  appliesTo: UML_ROLE['lifeline-ident'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.unnamed-lifeline',
+  messageFallback: 'This lifeline has no participant in its head.',
+  suggestionKey: 'com.labre.uml.validation.unnamed-lifeline.suggestion',
+  suggestionFallback:
+    'Write who is taking part — "order : Order", "customer", or just ": Order" for an anonymous instance. Every arrow on this sheet is read as a sentence about the head it leaves and the head it reaches, and an empty one leaves both halves unsaid.',
+  version: 1,
+  provenance: {
+    source: 'recommendation',
+    reference:
+      'OMG UML 2.5.1 §17.3.4 — a Lifeline is drawn as a named rectangle with a dashed line descending from it',
+  },
+  // On-demand for the reason the other two naming rules are: a head is what a
+  // user changes by TYPING, and real-time would re-evaluate on every keystroke.
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  label: { present: true },
+};
+
+/**
+ * **U42** — a lifeline head that does not parse.
+ *
+ * The SIXTH `label-syntax` rule (ADR 0021), and the second half of the tier
+ * split. §17.3.4 prints a BNF — `<lifelineident> ::= ([<connectable-element-name>
+ * [\[<selector>\]]] [: <class-name>] | 'self')` — which is exactly the kind of
+ * claim this family exists to make, and `checkLifelineIdent` is the checker the
+ * IMPORTERS and the two exporters already read the head with. So a finding here
+ * is the line that will leave the sheet less structured than it was drawn: a
+ * head the grammar cannot split is a lifeline whose `name` and `type` go into
+ * the XMI and the PlantUML as one opaque string.
+ *
+ * `perLine: false`, like the transition and the message labels: §17.3.4's
+ * production is one line, not a list, and a head wrapped onto two is one head.
+ *
+ * ## Why it could not be written on `uml:label`
+ *
+ * `Place an order (fast)` is a perfectly good use case name and a broken
+ * lifeline head — parentheses in a head read as a message label, which is what
+ * `checkLifelineIdent` says about them. A rule on the shared tier would have
+ * indicted every parenthesised ellipse on every use case diagram in the library
+ * (`roles.ts`).
+ *
+ * ## What it stays silent about
+ *
+ * An EMPTY head, which is {@link unnamedLifeline}'s question and carries its own
+ * sentence — two rules on one word to fix is the thing this pack refuses
+ * everywhere — and `self`, which §17.3.4 prints as an alternative of the
+ * production itself.
+ */
+const lifelineIdentSyntax: ValidationRule = {
+  id: 'uml.lifeline-ident-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE['lifeline-ident'],
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.lifeline-ident-syntax',
+  messageFallback: 'This lifeline head does not parse:',
+  suggestionKey: 'com.labre.uml.validation.lifeline-ident-syntax.suggestion',
+  suggestionFallback:
+    'A head is written "name : Class" — "order : Order", "customer", ": Order" for an anonymous participant, "customers[i] : Customer" for one of many, or "self". The name and the class are each optional; the colon between them is not decoration.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      "OMG UML 2.5.1 §17.3.4 — <lifelineident> ::= ([<connectable-element-name> ['[' <selector> ']']] [: <class-name>] | 'self')",
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: { parse: checkLifelineIdent, perLine: false },
+};
+/**
+ * The pack, whole: forty-two rules over nine families.
  *
  * Sixteen in phase 1, and not that brief's seventeen ids because the actor's
  * name and the use case's name are ONE rule: they are the same tier role, and
@@ -2695,11 +3114,26 @@ const unreachableState: ValidationRule = {
  * diagrams UML constrains arithmetically, so where a class diagram's pack is
  * mostly a vocabulary these are counts, degrees and a graph walk.
  *
+ * The SEQUENCE sheet appended four, and all four are families this pack already
+ * had — which says something about the notation rather than about the effort:
+ * an interaction's whole grammar is "who may exchange a message with whom",
+ * "what a message label says", and the two questions any tier is asked about
+ * the words in a lifeline's head. Those last two are the ones that cost a role:
+ * `uml:lifeline-ident` exists because §17.3.4 prints a BNF for a head and
+ * §18.1.4 prints none for an actor's word, and one tier carrying both would have
+ * had to ask them the same question (`roles.ts`, {@link unnamedLifeline}). The
+ * four requirements Clause 17 states that this library CANNOT state — a message
+ * never traversed upwards (§17.4.4), an execution bar sat on a lifeline's spine
+ * (§17.3.4), a create message landing on a head, an operand's guard written in
+ * brackets (§17.6.4) — are each a geometry no family expresses, and they are
+ * recorded in `docs/adr/0022` rather than approximated here. A rule that fires
+ * on the wrong thing costs more than a requirement nobody checks.
+ *
  * ## The ninth family is new to the ENGINE, and it is the only one that is
  *
- * `label-syntax` (`docs/adr/0021`) arrived with the four spelling rules below,
- * and it is the first family this library has added for a reason no table could
- * meet: a notation's GRAMMAR is a parser, and the four clauses these rules cite
+ * `label-syntax` (`docs/adr/0021`) arrived with four spelling rules and carries
+ * six, and it is the first family this library has added for a reason no table
+ * could meet: a notation's GRAMMAR is a parser, and the clauses these rules cite
  * are already written as one in `grammar.ts` for the exporters. The family owns
  * the walk; the pack owns the reading. Everything else the fifteen roles of
  * phase 2 needed, the engine already had.
@@ -2774,4 +3208,12 @@ export const UML_RULES: readonly ValidationRule[] = [
   // Behaviour — the graph: can the flow get there at all?
   unreachableAction,
   unreachableState,
+  // The interaction: what a message runs between, and what its label says…
+  messageEndpoints,
+  messageSyntax,
+  // …and the two questions a lifeline's own head is asked, which are the two
+  // questions every tier in this pack is asked: does it say anything, and does
+  // what it says parse.
+  unnamedLifeline,
+  lifelineIdentSyntax,
 ];

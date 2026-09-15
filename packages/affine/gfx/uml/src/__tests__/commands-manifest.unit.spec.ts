@@ -31,7 +31,7 @@ describe('the uml command inventory', () => {
     umlCommands.filter(c => c.surfaces.includes('catalogue'))
   );
 
-  it('declares fifty-nine commands, every one of them in the catalogue', () => {
+  it('declares sixty-nine commands, every one of them in the catalogue', () => {
     // Phase 1's twenty-one — ten artefacts (the frame, six classifiers and
     // containers, the actor, the use case, the subject), nine relationship tools
     // and the two exports — plus phase 2's structural eleven: four component
@@ -44,9 +44,16 @@ describe('the uml command inventory', () => {
     // formats and therefore three rows, because ADR 0012 declares interchange
     // per framework × format × direction and a picker behind one button would
     // hide the one thing that differs between them — the tier.
-    expect(umlCommands).toHaveLength(59);
-    expect(new Set(umlCommands.map(c => c.id)).size).toBe(59);
-    expect(catalogue).toHaveLength(59);
+    //
+    // …and phase 3's ten (§17): three artefacts on the sheet — the lifeline,
+    // the execution bar and the destruction cross — two frames (the combined
+    // fragment and the interaction use it is the `ref` spelling of), and five
+    // message tools, which is the widest a single tranche has added. §17.4.4
+    // gives a message five drawings and tells three of them apart BY the
+    // drawing, which is why they are five rows and not one with an option.
+    expect(umlCommands).toHaveLength(69);
+    expect(new Set(umlCommands.map(c => c.id)).size).toBe(69);
+    expect(catalogue).toHaveLength(69);
 
     for (const command of umlCommands) {
       expect(command.owner, command.id).toBe('uml');

@@ -193,6 +193,13 @@ const GLYPHS: UmlGlyphKind[] = [
   'entry-point',
   'exit-point',
   'terminate',
+  // Phase 3, the sequence vocabulary (§17.2.4). All three are pictures: a head
+  // over a dashed spine, a thin bar sat on one, and the cross that ends one.
+  // Not a compartment between them — and the last two carry no word either,
+  // which {@link UML_UNLABELLED_KINDS} says and this list does not restate.
+  'lifeline',
+  'execution',
+  'destruction',
 ];
 const ALL_KINDS = [...CLASSIFIERS, ...GLYPHS] as UmlNodeKind[];
 
@@ -523,9 +530,16 @@ describe('what a uml artefact is created as', () => {
       'device',
       'execution-environment',
     ];
+    // …and the LIFELINE is a third answer, not a second: §17.3.4 prints a BNF
+    // for what goes in a head, so it carries `uml:lifeline-ident` and the two
+    // rules written on that role reach no actor and no use case (`roles.ts`).
     for (const kind of LABELLED_GLYPHS) {
       expect(roleOf(kind), kind).toBe(
-        named.includes(kind) ? UML_ROLE.name : UML_ROLE.label
+        named.includes(kind)
+          ? UML_ROLE.name
+          : kind === 'lifeline'
+            ? UML_ROLE['lifeline-ident']
+            : UML_ROLE.label
       );
     }
     // The activity vocabulary is LABELLED throughout — one word, never a

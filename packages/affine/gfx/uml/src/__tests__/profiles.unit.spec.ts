@@ -20,11 +20,11 @@ import { umlTranslationEntries } from '../translations.js';
  */
 
 /**
- * The twenty-five `uml.strict` promotes.
+ * The twenty-nine `uml.strict` promotes.
  *
  * Eight restate a normative clause (§9.9.7 twice, §10.4.3, §18.1.3 twice,
- * §19.2.3, §19.3.3, §19.4.3), two are the NAMING rules, four are the SPELLING
- * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4), one is §11.5.3's
+ * §19.2.3, §19.3.3, §19.4.3), three are the NAMING rules, six are the SPELLING
+ * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4, §17.4.4, §17.3.4), one is §11.5.3's
  * arithmetic and one is the sheet's own declaration. Named for what the PROFILE
  * does and not for where the rules come from: `uml.dependency-on-object` and
  * `uml.actor-actor-association` also cite the specification and are NOT
@@ -63,6 +63,17 @@ const PROMOTED = [
   'uml.operation-syntax',
   'uml.transition-syntax',
   'uml.multiplicity-syntax',
+  // ...and the SEQUENCE sheet's two, which are one more of each: an endpoint
+  // grammar (§17.4.4 on what a delete message must end in) and a fifth spelling
+  // rule (§17.4.4's two label productions).
+  'uml.message-endpoints',
+  'uml.message-syntax',
+  // ...and the LIFELINE's own two, which are a third naming rule and a sixth
+  // spelling one. Both are written on `uml:lifeline-ident` — the tier §17.3.4's
+  // head got to itself — so neither can be reached by a rule about an actor's
+  // word, which is the whole reason the role exists (`roles.ts`).
+  'uml.unnamed-lifeline',
+  'uml.lifeline-ident-syntax',
 ];
 
 /**
@@ -105,7 +116,7 @@ describe('UML validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = UML_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(38);
+    expect(ruleIds).toHaveLength(42);
     for (const profile of UML_PROFILES) {
       expect(profile.framework).toBe('uml');
       expect(profile.labelKey).toMatch(/^com\.labre\.uml\.profile\./);
@@ -137,9 +148,9 @@ describe('UML validation profiles', () => {
     }
   });
 
-  it('promotes the twenty-five on the strict profile', () => {
+  it('promotes the twenty-nine on the strict profile', () => {
     const [, strict] = UML_PROFILES;
-    expect(PROMOTED).toHaveLength(25);
+    expect(PROMOTED).toHaveLength(29);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
