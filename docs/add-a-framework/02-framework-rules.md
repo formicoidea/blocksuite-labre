@@ -111,8 +111,10 @@ morphs are registered on `GroupElementModel`.
 
 **R16. Labels are free-text elements grouped with the shape, never text on
 the shape.** The preset refuses to write `text`; the label has its own role
-(`wardley:label`, kind `text`). Two declared exceptions: the Porter glyph's
-letter and an area's name.
+(`wardley:label`, kind `text`). Three declared exceptions: the Porter glyph's
+letter, an area's name, and a connector's labels — the centre `text` and the
+two end labels of ADR 0020 are fields of the connector, because a label that
+must follow a moving endpoint cannot be a sibling in a group.
 
 **R17. One preset per artefact**, in `presets.ts`, read by creation and by
 morph. Creation sites and morphs never restate sizes or fonts.
@@ -153,7 +155,14 @@ family accepts several subject roles.
 
 **R23. A rule family declares its dependency scope** (`RULE_SCOPES`, ADR
 0015). A rule may widen it, never narrow it. A new family without a scope
-line fails to compile.
+line fails to compile. Sixteen families today; the sixteenth is
+`label-syntax` (ADR 0021), the only one whose verdict is a FUNCTION the
+framework ships rather than a table the engine interprets — a notation's
+grammar is a parser, and `gfx/uml/src/grammar.ts` is already that parser for
+the exporters. It is `'element'`-scoped (the subject's own words), judges each
+non-blank, non-elided line unless `perLine: false`, and a rule of it is not
+serializable: a declaration whose `parse` is missing evaluates nothing and
+warns once.
 
 **R24. Rules, profiles, nudges, reading, interchange, audit criteria are
 tooling**: registered from the flag-gated extension. Flag off means no
