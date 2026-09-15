@@ -14,7 +14,7 @@ import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { importDrawio, UML_DRAWIO_FORMAT_ID } from './drawio-import.js';
 import { exportUmlPlantuml, exportUmlXmi } from './export.js';
 import { umlSafeFilename } from './filename.js';
-import { umlElementsFromModel } from './import.js';
+import { umlDrawnEdges, umlElementsFromModel } from './import.js';
 import { type UmlModel, type UmlSourceElement, umlModelFrom } from './model.js';
 import { importPlantuml } from './plantuml-import.js';
 import { importXmi, umlElementsWithForeign } from './xmi-import.js';
@@ -168,10 +168,22 @@ export const UML_PLANTUML_EXPORT: InterchangeExportCapability = {
  * would claim the reader mapped one node more than the source had. Relations
  * are, because a relationship is something the file said and the board now
  * draws.
+ *
+ * The lines are counted through {@link umlDrawnEdges} rather than as
+ * `relations.length`, which is the same list the materializer walks: a behaviour
+ * edge may live on the Activity or the StateMachine instead (an XMI `<edge>` is
+ * a child of its Activity), and counting one list while drawing two would report
+ * an activity sheet as having no arrows on it.
  */
 function umlMappedCount(model: UmlModel): number {
-  const machine = model.stateMachines[0];
-  const activity = model.activities[0];
+  // Every activity and every state machine, not the first of each. `activities`
+  // and `stateMachines` are LISTS holding zero or one today (`model.ts` says
+  // why: a list makes both writers a loop instead of a branch), and a `[0]`
+  // here would be a count that quietly went wrong the day a sheet carried two —
+  // the one failure mode a report has, which is being believed.
+  const sum = (counts: readonly number[]) =>
+    counts.reduce((total, count) => total + count, 0);
+
   return (
     model.classifiers.length +
     model.packages.length +
@@ -183,14 +195,21 @@ function umlMappedCount(model: UmlModel): number {
     model.ports.length +
     model.artifacts.length +
     model.nodes.length +
-    (activity ? activity.nodes.length + activity.partitions.length : 0) +
-    (machine
-      ? machine.regions.length +
-        machine.states.length +
-        machine.finalStates.length +
-        machine.pseudostates.length
-      : 0) +
-    model.relations.length
+    sum(
+      model.activities.map(
+        activity => activity.nodes.length + activity.partitions.length
+      )
+    ) +
+    sum(
+      model.stateMachines.map(
+        machine =>
+          machine.regions.length +
+          machine.states.length +
+          machine.finalStates.length +
+          machine.pseudostates.length
+      )
+    ) +
+    umlDrawnEdges(model).length
   );
 }
 
@@ -285,10 +304,17 @@ export const UML_XMI_EXPORT: InterchangeExportCapability = {
  * XMI file earns, because the format carries no coordinates — are appended.
  */
 const runUmlXmiImport: InterchangeImporter = (source, context) => {
-  const { models, layout, foreign, report } = importXmi(source, context);
+  const { models, layout, containment, foreign, report } = importXmi(
+    source,
+    context
+  );
   const materialized = umlElementsFromModel(models, {
     formatId: UML_XMI_FORMAT.id,
-    layout: { boxes: layout },
+    // The boxes AND the nesting: an XMI model states containment structurally
+    // and this canvas states it geometrically, so the invented layout is what
+    // turns `packagedElement` back into a class drawn inside its package
+    // (`import.ts`, `UmlLayoutHints.containment`).
+    layout: { boxes: layout, containment },
   });
   return {
     elements: umlElementsWithForeign(
@@ -366,16 +392,9 @@ const runUmlDrawioImport: InterchangeImporter = (source, context) => {
     elements: materialized.elements,
     report: {
       // What became a drawn, editable artefact — the shapes and the connectors
-      // the reader recognised. The frame is not counted: nothing in the file
-      // was a frame, Labre mints it, and a count that included it would claim
-      // the reader mapped one node more than the file had.
-      mapped:
-        model.classifiers.length +
-        model.packages.length +
-        model.actors.length +
-        model.useCases.length +
-        model.notes.length +
-        model.relations.length,
+      // the reader recognised, counted by the same function the two semantic
+      // readers use so three formats cannot report the same board differently.
+      mapped: umlMappedCount(model),
       carried: all.filter(note => note.kind === 'carried').length,
       // Nothing, ever, and it is a fact about the TIER rather than an omission.
       // Quarantine means "kept in the document and deliberately not re-emitted"

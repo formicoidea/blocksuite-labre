@@ -11,7 +11,17 @@ import {
   GroupElementModel,
   UmlNodeElementModel,
 } from '@labre/affine/model';
-import { getRegisteredCommands, isCommandAvailable } from '@labre/affine/std';
+import { COMMAND_USAGE_KEY } from '@labre/affine/shared/services';
+import {
+  type AnyCommandDescriptor,
+  getCommandsForSurface,
+  getRegisteredCommands,
+  isCommandAvailable,
+  SENIOR_MENU_RANKED_SLOTS,
+} from '@labre/affine/std';
+import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
+import { ContextProvider } from '@lit/context';
+import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 // The corpus, as a string: a browser-mode spec has no `node:fs`, and the unit
@@ -158,7 +168,13 @@ describe('a UML file becomes a board', () => {
     // renderer paints the arrowhead from and what the exporter reads back.
     expect(connectorsBy(UML_ROLE.aggregation)).toHaveLength(4);
     expect(connectorsBy(UML_ROLE.dependency)).toHaveLength(2);
+    // One generalization, painted with the role the renderer draws a hollow
+    // triangle from — even though the FILE draws a filled one: this 2013 file
+    // writes `endArrow=block` with no `endFill`, and `block` is the UML
+    // stencil's head, so the relationship is read and the drawing is what the
+    // report remarks on (ADR 0019 §2).
     expect(connectorsBy(UML_ROLE.generalization)).toHaveLength(1);
+    expect(connectorsBy(UML_ROLE.association)).toHaveLength(0);
   });
 
   test('every imported connector ends on an element this surface holds', async () => {
@@ -235,5 +251,116 @@ describe('a UML file becomes a board', () => {
       group => `${group.elementBound.x},${group.elementBound.y}`
     );
     expect(new Set(corners).size).toBe(corners.length);
+  });
+});
+
+/**
+ * The UML sub-menu popover. Not exported by the framework package — it is a
+ * custom element `effects()` registers — so it is reached the way the senior
+ * button reaches it, by tag name (`bpmn.spec.ts` does the same).
+ */
+type UmlMenuElement = HTMLElement & {
+  edgeless: EdgelessRootBlockComponent;
+  updateComplete: Promise<unknown>;
+  requestUpdate: () => void;
+  /** `EdgelessCommandMenu`'s own selection — what `render()` maps to buttons. */
+  commands: AnyCommandDescriptor[];
+};
+
+/**
+ * The RENDERED row, which is the only surface on which "nominated" means
+ * anything (recette blocker G-1).
+ *
+ * `SENIOR_MENU_CAP` is 14 and is what an owner may nominate;
+ * `SENIOR_MENU_RANKED_SLOTS` is 13 and is what an overflowed popover paints,
+ * beside the permanent "More artefacts…" button. UML nominates exactly
+ * fourteen, so one of them is invisible at cold start — and when
+ * `uml.importXmi` landed it was authored fourteenth, which made it precisely
+ * the one nobody could reach. A unit test on the declaration could not see
+ * that: the declaration was correct and the row was still wrong.
+ *
+ * So this mounts the real popover with the usage store cleared, which is a
+ * first contact, and reads the selection the component itself computed.
+ */
+describe('the UML sub-menu seats the import', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+  let menu!: UmlMenuElement;
+  let menuHost!: HTMLElement;
+
+  beforeEach(async () => {
+    // The usage measure is what the ranking reads and it persists across tests
+    // in a file. Start from silence, so the row is the cold-start thirteen
+    // rather than whatever an earlier scenario happened to click.
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    // Mounted the way the senior button mounts it. Its inner slide menu
+    // consumes the toolbar's resize slot through Lit context, which a
+    // standalone mount has to provide.
+    menu = document.createElement(
+      'edgeless-uml-menu'
+    ) as unknown as UmlMenuElement;
+    menu.edgeless = edgeless;
+    menuHost = document.createElement('div');
+    new ContextProvider(menuHost, {
+      context: edgelessToolbarSlotsContext,
+      initialValue: { resize: new Subject<{ w: number; h: number }>() },
+    });
+    menuHost.append(menu);
+    document.body.append(menuHost);
+    await menu.updateComplete;
+    await wait(0);
+
+    return () => {
+      menuHost.remove();
+      cleanup();
+    };
+  });
+
+  const buttons = () =>
+    Array.from(
+      menu.shadowRoot?.querySelectorAll<HTMLElement>(
+        'edgeless-tool-icon-button'
+      ) ?? []
+    );
+
+  test('overflows to thirteen ranked slots plus More artefacts', () => {
+    expect(
+      getCommandsForSurface(edgeless.std, 'uml', 'senior-menu')
+    ).toHaveLength(14);
+    expect(buttons()).toHaveLength(SENIOR_MENU_RANKED_SLOTS + 1);
+  });
+
+  test('the thirteen a first-time user meets include Import XMI, second', () => {
+    const ids = menu.commands.map(command => command.id);
+
+    expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+    // The blocker, pinned where it was missed: a fourteenth nomination renders
+    // nowhere, and an import a user cannot see is an import they do not have.
+    expect(ids).toContain('uml.importXmi');
+    // The sheet, then the file it can come from — the two things anybody does
+    // to an empty canvas (ADR 0019 §7).
+    expect(ids.slice(0, 2)).toEqual(['uml.addDiagram', 'uml.importXmi']);
+    // …and the seat it cost: the LAST authored nomination falls off the
+    // cold-start row, one click away behind "More artefacts…".
+    expect(ids).not.toContain('uml.extendTool');
+    // Membership is what the ranking decides; POSITION is always the authored
+    // order, so the row does not reshuffle under the cursor.
+    expect(ids).toEqual([
+      'uml.addDiagram',
+      'uml.importXmi',
+      'uml.addClass',
+      'uml.addInterface',
+      'uml.addEnumeration',
+      'uml.addPackage',
+      'uml.addActor',
+      'uml.addUseCase',
+      'uml.addSubject',
+      'uml.associationTool',
+      'uml.generalizationTool',
+      'uml.dependencyTool',
+      'uml.includeTool',
+    ]);
   });
 });

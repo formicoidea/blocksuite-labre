@@ -134,6 +134,21 @@ export interface UmlXmiImport {
   /** Where the file's own diagram interchange, if any, drew each source id. */
   layout: UmlXmiLayout;
   /**
+   * What the file declares INSIDE what — child source id → container source id.
+   *
+   * An XMI model states containment structurally (`packagedElement`,
+   * `ownedUseCase`) and, unless it carries a `umldi` diagram, says nothing at
+   * all about where any of it is drawn. On this canvas containment IS geometry —
+   * `xmi.ts`'s own `containerOf` reads it back off the boxes — so the statement
+   * has to reach the materializer's invented layout or it is lost on the first
+   * export: a package imported empty, and every class of it laid out beside it.
+   *
+   * Handed over rather than applied here for the reason {@link foreign} is: this
+   * reader has no layout engine, and the one that has is shared with the other
+   * two formats.
+   */
+  containment: Record<string, string>;
+  /**
    * Foreign matter, by the source id of the element it rides on (D2).
    *
    * The materializer owns the id map — it is the only thing that knows which
@@ -335,6 +350,8 @@ interface Context {
   /** Elements that became an artefact, and the source id it rides under. */
   scopeOf: Map<XmlNode, string>;
   counts: { mapped: number; carried: number; quarantined: number };
+  /** What the file declares inside what — see {@link UmlXmiImport.containment}. */
+  containment: Record<string, string>;
   /** `_g1`, `_g2`, … for an element the file gave no id. */
   minted: number;
 }
@@ -1469,8 +1486,13 @@ function readPackage(
   node: XmlNode,
   containerId?: string
 ): void {
-  const contained = () => {
-    if (containerId) draft.nested += 1;
+  const contained = (childId: string) => {
+    if (!containerId) return;
+    draft.nested += 1;
+    // Recorded as well as counted: the count is what the report says, and the
+    // pair is what the invented layout needs to DRAW the nesting rather than
+    // apologise for it (`import.ts`, `UmlLayoutHints.containment`).
+    ctx.containment[childId] = containerId;
   };
   for (const child of node.children) {
     if (isLabreExtension(child)) continue;
@@ -1512,7 +1534,7 @@ function readPackage(
       carryUnknownAttrs(ctx, child, useCaseId);
       draft.model.useCases.push(readUseCase(ctx, draft, child, useCaseId));
       own(draft, useCaseId);
-      contained();
+      contained(useCaseId);
       continue;
     }
 
@@ -1522,7 +1544,7 @@ function readPackage(
       carryUnknownAttrs(ctx, child, packageId);
       draft.model.packages.push(readBase(ctx, child, packageId));
       own(draft, packageId);
-      contained();
+      contained(packageId);
       readPackage(ctx, draft, child, packageId);
       continue;
     }
@@ -1532,7 +1554,7 @@ function readPackage(
       const classifierId = map(ctx, child);
       carryUnknownAttrs(ctx, child, classifierId);
       readClassifier(ctx, draft, child, meta, classifierId);
-      contained();
+      contained(classifierId);
       continue;
     }
 
@@ -1824,6 +1846,7 @@ export function importXmi(
     consumed: new Set(),
     scopeOf: new Map(),
     counts: { mapped: 0, carried: 0, quarantined: 0 },
+    containment: {},
     minted: 0,
   };
 
@@ -1845,6 +1868,7 @@ export function importXmi(
     return {
       models: [],
       layout: {},
+      containment: {},
       foreign: {},
       report: { mapped: 0, carried: 0, quarantined: 0, notes: ctx.notes },
     };
@@ -2002,10 +2026,27 @@ export function importXmi(
     }
   }
 
+  // The behaviour edges, counted once they are known to be DRAWN.
+  //
+  // An `<edge>` and a `<transition>` are children of the Activity and the
+  // StateMachine rather than elements with an id of their own, so `map()` — the
+  // one place `mapped` is incremented — never sees them. Counted here, after the
+  // pass that drops the ones running off the sheet, so the report says how many
+  // arrows the board has rather than how many the file wrote.
+  for (const model of models) {
+    for (const activity of model.activities) {
+      ctx.counts.mapped += activity.edges.length;
+    }
+    for (const machine of model.stateMachines) {
+      ctx.counts.mapped += machine.transitions.length;
+    }
+  }
+
   const version = xmlAttr(root, 'version');
   return {
     models,
     layout: ctx.layout,
+    containment: ctx.containment,
     foreign: ctx.foreign,
     report: {
       mapped: ctx.counts.mapped,

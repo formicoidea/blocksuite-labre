@@ -103,6 +103,17 @@ class StubSurface {
   getElementById(id: string): unknown {
     return this.models.get(id);
   }
+
+  /**
+   * What is already drawn — which is how the pipeline decides where to put a
+   * board that is arriving.
+   *
+   * A connector answers a zero box here exactly as it does on a real surface,
+   * so a stub cannot accidentally prove that the offset ignores them.
+   */
+  get elementModels(): { elementBound: Bound }[] {
+    return [...this.models.values()] as { elementBound: Bound }[];
+  }
 }
 
 function stubEditor(options: { notify?: boolean; readonly?: boolean } = {}) {
@@ -223,6 +234,58 @@ describe('materializing an import', () => {
     expect(connector.target?.id).toBe(first);
   });
 
+  it('names a provisional id a reader handed out twice, and keeps first-wins', () => {
+    // The reader's OWN names (see `SerializedElementProps`): a framework
+    // artefact is several elements the file never mentioned, so a reader may
+    // put an `id` of its own on each. A duplicated one is the reader's mistake
+    // rather than the file's, and nothing else in the pipeline is in a position
+    // to notice it — so the materializer is, and says so.
+    const { std, surface } = stubEditor();
+    const notes: { kind: string; elementId?: string; message: string }[] = [];
+
+    const [first, second, group] = materializeInterchangeImport(
+      std,
+      'owm',
+      [
+        { type: 'shape', id: 'local-1' },
+        { type: 'shape', id: 'local-1' },
+        { type: 'group', children: { 'local-1': true } },
+      ],
+      { onNote: note => notes.push(note) }
+    );
+
+    // Both are on the board — nothing is dropped for sharing a name…
+    expect(second).not.toBe(first);
+    // …and the group holds the FIRST of them, which is what the remark says.
+    expect(surface.added[2].children).toEqual({ [first]: true });
+    expect(group).toBeTruthy();
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].kind).toBe('substituted-id');
+    // The element the name did NOT resolve to, so a reader chasing the remark
+    // has the one that lost.
+    expect(notes[0].elementId).toBe(second);
+    expect(notes[0].message).toContain('local-1');
+  });
+
+  it('says nothing when every provisional id is its own', () => {
+    const { std } = stubEditor();
+    const notes: unknown[] = [];
+
+    materializeInterchangeImport(
+      std,
+      'owm',
+      [
+        { type: 'shape', id: 'local-1' },
+        { type: 'shape', id: 'local-2' },
+        { type: 'group', children: { 'local-1': true, 'local-2': true } },
+      ],
+      { onNote: note => notes.push(note) }
+    );
+
+    expect(notes).toEqual([]);
+  });
+
   it('leaves an end it cannot resolve exactly as the file wrote it', () => {
     // An unresolvable name a reader can go and look up in the source file beats
     // one this function quietly invented: the connector routes to an empty path
@@ -247,6 +310,80 @@ describe('materializing an import', () => {
 });
 
 /* ── The report ───────────────────────────────────────────────────────── */
+
+/* ── Beside what is already drawn ─────────────────────────────────────── */
+
+/**
+ * The defect: importing the same file twice put the second board exactly on top
+ * of the first.
+ *
+ * A reader writes the coordinates its FILE gave it and has no surface to look
+ * at, so no reader could have fixed this and every framework had it. The rule
+ * the pipeline already states — "what arrives is a NEW board, never a merge" —
+ * is only true if the new one lands somewhere the old one is not.
+ */
+describe('where an imported board lands', () => {
+  const box = (formatId: string, sourceId: string, xywh: string): Props => ({
+    ...element('shape', formatId, sourceId),
+    xywh,
+  });
+
+  it('keeps the file’s own coordinates on an empty canvas', () => {
+    const { std, surface } = stubEditor();
+    materializeInterchangeImport(std, 'fmt', [
+      box('fmt', 'a', '[0,0,100,50]'),
+      box('fmt', 'b', '[200,40,100,50]'),
+    ]);
+    expect(surface.added.map(props => props.xywh)).toEqual([
+      '[0,0,100,50]',
+      '[200,40,100,50]',
+    ]);
+  });
+
+  it('puts a second import beside the first, geometry intact', () => {
+    const { std, surface } = stubEditor();
+    materializeInterchangeImport(std, 'fmt', [box('fmt', 'a', '[0,0,100,50]')]);
+    materializeInterchangeImport(std, 'fmt', [
+      box('fmt', 'c', '[0,0,100,50]'),
+      box('fmt', 'd', '[200,40,100,50]'),
+    ]);
+
+    const second = surface.added.slice(1).map(props => String(props.xywh));
+    const first = Bound.deserialize(String(surface.added[0].xywh));
+    const left = Bound.deserialize(second[0]);
+    const right = Bound.deserialize(second[1]);
+
+    // Clear of everything already drawn, and no closer than the gap.
+    expect(left.x).toBeGreaterThanOrEqual(first.x + first.w);
+    // The board is MOVED, never redrawn: the 200 units between the two
+    // elements of the arriving file are still 200 units.
+    expect(right.x - left.x).toBe(200);
+    expect(right.y - left.y).toBe(40);
+  });
+
+  it('moves a connector end that carries a position rather than an anchor', () => {
+    const { std, surface } = stubEditor();
+    materializeInterchangeImport(std, 'fmt', [box('fmt', 'a', '[0,0,100,50]')]);
+    materializeInterchangeImport(std, 'fmt', [
+      box('fmt', 'c', '[0,0,100,50]'),
+      {
+        ...element('connector', 'fmt', 'e1'),
+        // A free end — an absolute point, not a fraction of a shape's box.
+        source: { position: [10, 20] },
+        // An anchored one, which must NOT be touched: `[0.5, 0.5]` is the
+        // centre of whatever it names, at any coordinate on the canvas.
+        target: { id: 'c', position: [0.5, 0.5] },
+      },
+    ]);
+
+    const drawn = Bound.deserialize(String(surface.added[1].xywh));
+    const connector = surface.added[2];
+    expect(connector.source).toEqual({
+      position: [10 + drawn.x, 20 + drawn.y],
+    });
+    expect(connector.target).toEqual({ id: 'c', position: [0.5, 0.5] });
+  });
+});
 
 describe('reporting an import', () => {
   const report = (overrides: Partial<InterchangeReport> = {}) => ({

@@ -97,6 +97,20 @@ class StubSurface {
   getElementById(id: string): unknown {
     return this.models.get(id);
   }
+
+  /**
+   * What is already drawn — read by the pipeline to land an import BESIDE an
+   * existing board rather than on top of it.
+   *
+   * Empty on the first import, which is every case in this file, so nothing
+   * here moves: the offset is computed once before the writes, and a surface
+   * with nothing on it keeps the file's own coordinates. Present all the same,
+   * because a real surface answers it and a stub that did not made the shipped
+   * function throw.
+   */
+  get elementModels(): unknown[] {
+    return [...this.models.values()];
+  }
 }
 
 function stubEditor(options: { notify?: boolean; readonly?: boolean } = {}) {

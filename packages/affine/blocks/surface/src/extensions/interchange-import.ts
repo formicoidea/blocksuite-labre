@@ -5,7 +5,7 @@ import {
 } from '@labre/affine-shared/services';
 import { openSingleFileWithSpec } from '@labre/affine-shared/utils';
 import type { ServiceProvider } from '@labre/global/di';
-import { type Bound, getCommonBound } from '@labre/global/gfx';
+import { Bound, getCommonBound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
@@ -92,6 +92,14 @@ import {
  * Source ids win over provisional ones wherever both could answer, so a reader
  * that mints no local name behaves exactly as it did before this was here.
  *
+ * ## Beside what is already drawn
+ *
+ * A reader writes the coordinates its FILE gave it, so importing the same file
+ * twice put the second board exactly on top of the first. The offset is applied
+ * here, once, for every framework, because the only thing that knows what the
+ * canvas already holds is the function doing the writing — see
+ * {@link importOffset}, and note that an empty surface is left alone.
+ *
  * @param formatId the format whose payload key carries the source ids — the
  *   `id` of the capability's {@link InterchangeFormat}, and the ONLY thing this
  *   function ever knew about BPMN.
@@ -99,17 +107,22 @@ import {
 export function materializeInterchangeImport(
   std: BlockStdScope,
   formatId: string,
-  elements: readonly SerializedElementProps[]
+  elements: readonly SerializedElementProps[],
+  options: { onNote?: (note: InterchangeNote) => void } = {}
 ): string[] {
   const surface = std.get(GfxControllerIdentifier).surface;
   if (!surface) return [];
+
+  const shift = importOffset(surface.elementModels, elements);
 
   const bySource = new Map<string, string>();
   const byLocal = new Map<string, string>();
   const resolve = (name: string) => bySource.get(name) ?? byLocal.get(name);
 
   const created = elements.map(props => {
-    const written: SerializedElementProps = { ...props };
+    const written: SerializedElementProps = shift
+      ? translateProps(props, shift)
+      : { ...props };
     const children = written.children;
     if (
       written.type === 'group' &&
@@ -133,9 +146,24 @@ export function materializeInterchangeImport(
     // twice: it imports both and says so in a `substituted-id` note, and a flow
     // naming that id means the first of them.
     if (source !== undefined && !bySource.has(source)) bySource.set(source, id);
+
     const local = props.id;
-    if (typeof local === 'string' && !byLocal.has(local)) {
-      byLocal.set(local, id);
+    if (typeof local === 'string') {
+      // FIRST wins here too, and for the same reason — but where a duplicated
+      // SOURCE id is the FILE's mistake and the reader has already reported it,
+      // a duplicated provisional name is the READER's, and nothing else in the
+      // pipeline is in a position to notice. So it is named: every element is
+      // still imported, and the remark says which of the two a group or a
+      // connector naming it will have landed on.
+      if (byLocal.has(local)) {
+        options.onNote?.({
+          kind: 'substituted-id',
+          elementId: id,
+          message: `Two imported elements were handed the same provisional name "${local}". Both are on the board; anything referring to that name points at the first of them.`,
+        });
+      } else {
+        byLocal.set(local, id);
+      }
     }
     return id;
   });
@@ -150,6 +178,113 @@ export function materializeInterchangeImport(
     }
   }
   return created;
+}
+
+/* ── Beside what is already there ─────────────────────────────────────── */
+
+/**
+ * The space left between a board that is already drawn and one just imported.
+ *
+ * Wide enough that the two read as two documents rather than as one crowded
+ * sheet, and narrow enough that the viewport fit which follows still shows the
+ * new one at a useful zoom.
+ */
+const IMPORT_BESIDE_GAP = 200;
+
+/** A box off one element's props, or nothing — `[x,y,w,h]`, as the store holds it. */
+function propsBound(props: SerializedElementProps): Bound | undefined {
+  const xywh = props.xywh;
+  if (typeof xywh !== 'string') return undefined;
+  try {
+    return Bound.deserialize(xywh);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * How far to move an imported board so it lands BESIDE what is already drawn.
+ *
+ * ## Why this is the seam's job and not each reader's
+ *
+ * "What arrives is a NEW board, never a merge" is already this file's rule
+ * ({@link importInterchangeFile}) — but a reader has no surface to look at, so
+ * it writes the coordinates the FILE gave it, and a second import of the same
+ * file therefore landed exactly on top of the first. Every framework had the
+ * bug and none of them could fix it: the only thing that knows what the canvas
+ * already holds is the function doing the writing.
+ *
+ * `undefined` on an EMPTY surface, and deliberately: with nothing to avoid, the
+ * board keeps the file's own coordinates, which is what every golden and every
+ * round-trip assertion is written against. Only a second import moves, which is
+ * exactly the case that was wrong.
+ *
+ * Connectors are excluded from the measurement for the reason
+ * {@link importInterchangeFile} excludes them from the viewport fit: a
+ * connector's bound is derived from a path the router has not computed yet, and
+ * it answers `[0, 0, 0, 0]` — which would anchor every offset to the origin.
+ *
+ * The list is read defensively because a SURFACE is not the only thing that ever
+ * reaches this function: several framework specs drive the pipeline through a
+ * hand-built stub that answers `addElement` and little else. A stub with no
+ * elements is an empty canvas, which is the one case that must not move.
+ */
+function importOffset(
+  drawn: readonly { elementBound?: Bound }[] | undefined,
+  arriving: readonly SerializedElementProps[]
+): { x: number; y: number } | undefined {
+  const occupied = getCommonBound(
+    (drawn ?? [])
+      .map(model => model.elementBound)
+      .filter((bound): bound is Bound => !!bound && bound.w > 0 && bound.h > 0)
+  );
+  if (!occupied) return undefined;
+
+  const boxes = arriving
+    .map(propsBound)
+    .filter((bound): bound is Bound => bound !== undefined);
+  const incoming = getCommonBound(boxes);
+  if (!incoming) return undefined;
+
+  return {
+    x: occupied.x + occupied.w + IMPORT_BESIDE_GAP - incoming.x,
+    y: occupied.y - incoming.y,
+  };
+}
+
+/**
+ * One element's props, moved.
+ *
+ * `xywh` and nothing else, with one exception: a connector end that names no
+ * element carries an ABSOLUTE position rather than an anchor within a shape, and
+ * an end left behind would stretch the line back to where the file drew it. An
+ * end WITH an id carries a fraction of its shape's box and must not be touched.
+ */
+function translateProps(
+  props: SerializedElementProps,
+  shift: { x: number; y: number }
+): SerializedElementProps {
+  const moved: SerializedElementProps = { ...props };
+  const bound = propsBound(props);
+  if (bound) {
+    moved.xywh = new Bound(
+      bound.x + shift.x,
+      bound.y + shift.y,
+      bound.w,
+      bound.h
+    ).serialize();
+  }
+  for (const side of ['source', 'target'] as const) {
+    const end = props[side] as
+      | { id?: string; position?: [number, number] }
+      | undefined;
+    if (!end || end.id !== undefined || !Array.isArray(end.position)) continue;
+    moved[side] = {
+      ...end,
+      position: [end.position[0] + shift.x, end.position[1] + shift.y],
+    };
+  }
+  return moved;
 }
 
 /* ── Saying what it cost ──────────────────────────────────────────────── */
@@ -462,8 +597,20 @@ export async function importInterchangeFile(
   // `captureSync` before opens a boundary, the writes land inside it, and the
   // second one closes it. An import a user has to undo forty times is an import
   // they cannot undo.
+  // What the WRITING found that the reading could not: a provisional name the
+  // reader handed out twice. Collected here rather than pushed into the
+  // reader's own array, which is `readonly` and is the reader's statement about
+  // the file — this is a statement about the import.
+  const written: InterchangeNote[] = [];
   std.store.captureSync();
-  const created = materializeInterchangeImport(std, format.id, result.elements);
+  const created = materializeInterchangeImport(
+    std,
+    format.id,
+    result.elements,
+    {
+      onNote: note => written.push(note),
+    }
+  );
   std.store.captureSync();
 
   // …and then bring it into view, which is what template insertion does for
@@ -505,7 +652,13 @@ export async function importInterchangeFile(
   }
   gfx.tool.setTool(DefaultTool);
 
-  reportInterchangeImport(std, format, result.report);
+  reportInterchangeImport(
+    std,
+    format,
+    written.length === 0
+      ? result.report
+      : { ...result.report, notes: [...result.report.notes, ...written] }
+  );
 }
 
 /* ── What can read a file called this ─────────────────────────────────── */

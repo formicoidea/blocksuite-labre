@@ -1,13 +1,15 @@
-import { parseCompartment } from './grammar.js';
 import {
-  type UmlActivityEdge,
+  formatActivityEdgeLabel,
+  formatTransitionLabel,
+  parseCompartment,
+} from './grammar.js';
+import {
   type UmlActivityNode,
   type UmlClassifier,
   type UmlDeploymentNode,
   type UmlModel,
   type UmlNodeBase,
   type UmlRelation,
-  type UmlTransition,
   umlCentreInside,
 } from './model.js';
 
@@ -364,41 +366,19 @@ function arrowLine(source: string, target: string, label: string): string {
     : `${source} --> ${target}`;
 }
 
-/**
- * §15.2.4's three annotations, back in one string — `name [guard] {weight = w}`.
+/*
+ * §15.2.4's and §14.2.4.8's labels — `name [guard] {weight = w}` and
+ * `trigger [guard] / effect` — are re-spelled in the notation's own syntax
+ * rather than printed as records, because a PlantUML label is read by a HUMAN
+ * looking at the picture: the brackets, the braces and the slash are what tell
+ * them which part is which, and they are the same delimiters the author typed on
+ * the canvas.
  *
- * Re-spelled in the notation's own syntax rather than printed as a record,
- * because a PlantUML label is read by a HUMAN looking at the picture: the
- * brackets and the braces are what tell them which of the three each part is,
- * and they are the same delimiters the author typed on the canvas.
+ * Both printers live in `grammar.ts`, beside the parsers they invert:
+ * `import.ts` writes the same words into an imported connector's centre label,
+ * and one grammar spelled in two files is how a guard comes back without its
+ * brackets.
  */
-function activityEdgeLabel(edge: UmlActivityEdge): string {
-  const parts: string[] = [];
-  if (edge.name) parts.push(edge.name);
-  if (edge.guard) parts.push(`[${edge.guard}]`);
-  if (edge.weight) parts.push(`{weight = ${edge.weight}}`);
-  return parts.join(' ');
-}
-
-/**
- * §14.2.4.8's label, back in one string —
- * `trigger1, trigger2 [guard] / effect`.
- *
- * The same round trip as {@link activityEdgeLabel}, and the reason it is a round
- * trip at all rather than the author's own text passed through: the model holds
- * the parsed parts (an importer needs them apart), and printing them back in the
- * BNF's own order is what makes a label the author typed loosely — a guard
- * before its trigger, a missing space — come out spelled the way §14.2.4.8
- * spells it.
- */
-function transitionLabel(transition: UmlTransition): string {
-  const parts: string[] = [];
-  if (transition.triggers.length > 0)
-    parts.push(transition.triggers.join(', '));
-  if (transition.guard) parts.push(`[${transition.guard}]`);
-  if (transition.effect) parts.push(`/ ${transition.effect}`);
-  return parts.join(' ');
-}
 
 /* ── The document ─────────────────────────────────────────────────────── */
 
@@ -758,7 +738,9 @@ export function exportPlantuml(model: UmlModel): string {
       const source = aliasOf.get(edge.sourceId);
       const target = aliasOf.get(edge.targetId);
       if (!source || !target) continue;
-      behaviourArrows.push(arrowLine(source, target, activityEdgeLabel(edge)));
+      behaviourArrows.push(
+        arrowLine(source, target, formatActivityEdgeLabel(edge))
+      );
     }
   }
 
@@ -874,7 +856,7 @@ export function exportPlantuml(model: UmlModel): string {
       const target = aliasOf.get(transition.targetId);
       if (!source || !target) continue;
       behaviourArrows.push(
-        arrowLine(source, target, transitionLabel(transition))
+        arrowLine(source, target, formatTransitionLabel(transition))
       );
     }
   }

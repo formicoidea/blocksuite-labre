@@ -265,11 +265,30 @@ function classifierKindOf(keywords: string[]): UmlClassifier['kind'] {
  *  - the DIAMOND first, because draw.io's own aggregation style carries
  *    `dashed=1` as well (the corpus's `request` edge does) and a dependency
  *    test that ran first would call it a dependency;
- *  - `endArrow=block` next, whatever the fill. A hollow triangle is §9.2.4's
- *    generalization and `endFill=0` is how draw.io spells it, but plenty of
- *    files leave the fill at its default and draw the same triangle — and there
- *    is no other UML relationship a block arrowhead could be. Dashed makes it
- *    §10.4.4's realization, solid a generalization.
+ *  - then the block arrowhead, whatever its fill.
+ *
+ * ## `block` is the UML stencil's head; the fill is a drawing mistake
+ *
+ * The two ends read their fill differently, and the asymmetry is a fact about
+ * draw.io rather than an inconsistency (lead's ruling of 15/09/2026, recorded
+ * for the PO):
+ *
+ *  - a DIAMOND means one of two UML relationships and the fill says which, so
+ *    it is READ — `startFill=0` is §11.5.4's shared aggregation, and anything
+ *    else, an absent fill included, is the composite one, because mxGraph
+ *    resolves `startFill` / `endFill` with a default of 1 and paints it solid;
+ *  - a BLOCK head means one UML relationship whatever its fill. Ordinary
+ *    draw.io arrows are `classic` or `open`; `block` is what the UML stencil
+ *    writes, and it writes `endFill=0` with it. A file that drew `block` and
+ *    left the fill alone — draw.io's own UML class template does exactly that —
+ *    is a generalization somebody drew slightly wrong, not an association.
+ *    Reading the fill here would demote the one arrow the author most clearly
+ *    meant.
+ *
+ * So a solid line with a block head is §9.2.4's generalization and a dashed one
+ * is §10.4.4's realization, and when the head is not hollow
+ * {@link isAmbiguousBlockHead} lets the caller say so in a remark — the kind is
+ * right, the DRAWING is not, and the author is the one who can fix it.
  *
  * Everything else is an association unless it is dashed, which is §7.8.4's
  * dependency; the `«use»`, `«include»` and `«extend»` labels then choose
@@ -283,20 +302,47 @@ function relationKindOf(style: MxStyle, keywords: string[]): UmlRelationKind {
   const endArrow = style.endarrow ?? '';
 
   if (startArrow === 'diamond' || startArrow === 'diamondthin') {
-    return style.startfill === '1' ? 'composition' : 'aggregation';
+    // Hollow is the SHARED aggregation; filled — and unspecified, which
+    // mxGraph draws filled — is the composite one.
+    return style.startfill === '0' ? 'aggregation' : 'composition';
   }
   if (endArrow === 'diamond' || endArrow === 'diamondthin') {
     // The whole is at the TARGET end; {@link importDrawio} flips the ends, so
     // the relation still records the whole as its source.
-    return style.endfill === '1' ? 'composition' : 'aggregation';
+    return style.endfill === '0' ? 'aggregation' : 'composition';
   }
   if (endArrow === 'block' || endArrow === 'blockthin') {
+    // Whatever the fill: `block` is the UML stencil's head, and a filled one is
+    // a triangle drawn wrong rather than a different relationship. See the
+    // header, and {@link isAmbiguousBlockHead} for what is said about it.
     return dashed ? 'realization' : 'generalization';
   }
   if (labels.includes('include')) return 'include';
   if (labels.includes('extend')) return 'extend';
   if (dashed) return 'dependency';
   return 'association';
+}
+
+/**
+ * A block arrowhead drawn SOLID — read as the generalization it is, and
+ * remarked on because the file does not draw one.
+ *
+ * `endArrow=block` with no `endFill=0` renders as a filled triangle, and UML
+ * draws the generalization triangle hollow (§9.2.4). {@link relationKindOf}
+ * takes the head at its word regardless — `block` is the UML stencil's, and the
+ * alternative is demoting the one arrow whose meaning is least in doubt — so
+ * nothing about the BOARD is wrong here. What is wrong is the drawing the file
+ * came from, which is a thing only the author can fix and only if somebody
+ * tells them. Hence a remark rather than a different reading.
+ *
+ * The same question at the source end has the opposite answer, and the header
+ * says why: a diamond's fill picks between two UML relationships, so it is read.
+ */
+function isAmbiguousBlockHead(style: MxStyle): boolean {
+  const endArrow = style.endarrow ?? '';
+  return (
+    (endArrow === 'block' || endArrow === 'blockthin') && style.endfill !== '0'
+  );
 }
 
 /** An aggregation read off the TARGET end has its whole at the wrong end. */
@@ -439,8 +485,14 @@ export function importDrawio(
     cells.filter(cell => cell.edge && cell.id).map(cell => cell.id)
   );
 
+  // The two indexes the passes below read the tree through, built in one walk:
+  // a cell by its id, and the children of a cell by its parent's. A drawing is
+  // routinely a few thousand cells and both are asked for once per cell, so
+  // scanning the list for each would be the reader's only quadratic step.
+  const byId = new Map<string, DrawioCell>();
   const childrenOf = new Map<string, DrawioCell[]>();
   for (const cell of cells) {
+    if (cell.id && !byId.has(cell.id)) byId.set(cell.id, cell);
     if (!cell.parent) continue;
     const siblings = childrenOf.get(cell.parent);
     if (siblings) siblings.push(cell);
@@ -464,7 +516,7 @@ export function importDrawio(
     // draw.io's two invisible roots — the model and its default layer.
     if (cell.id === '0' || cell.id === '1') continue;
     // A member row of a stack-laid swimlane belongs to its lane, not the sheet.
-    const host = cells.find(entry => entry.id === cell.parent);
+    const host = byId.get(cell.parent);
     if (host?.vertex && 'swimlane' in host.style) continue;
 
     const children = (childrenOf.get(cell.id) ?? []).filter(
@@ -581,6 +633,17 @@ export function importDrawio(
       ...(label.name ? { label: label.name } : {}),
     };
     relations.push(relation);
+
+    // A SOLID block head: read as the relationship it is, and named because the
+    // file draws it wrong — see {@link isAmbiguousBlockHead}.
+    if (isAmbiguousBlockHead(cell.style)) {
+      notes.push({
+        kind: 'warning',
+        sourceId: cell.id,
+        element: 'mxCell',
+        message: `read as a ${relation.kind}, but the arrowhead is drawn filled; UML draws the generalization triangle hollow (endFill=0).`,
+      });
+    }
 
     // The per-end labels — the `1`s of a multiplicity. The IR has nowhere to
     // put them until per-end labels land (`docs/adr/0018`), so they are

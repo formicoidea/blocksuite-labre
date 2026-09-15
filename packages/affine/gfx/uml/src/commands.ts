@@ -48,21 +48,47 @@ import {
  *   1. the DIAGRAM first — the sheet has to exist before anything can be put on
  *      it, and a first-time user who reaches for a class before a diagram draws
  *      a class on the void;
- *   2. then the classifiers a class diagram is mostly made of (class,
- *      interface, enumeration), then the containers and annotations (package,
- *      note), then the two shapes a USE-CASE diagram is made of (actor, use
- *      case) and the subject frame drawn round them;
- *   3. then the five relationships an author reaches for first — association,
+ *   2. then the IMPORT, in the second seat — see below, it is the one position
+ *      that actually renders;
+ *   3. then the classifiers a class diagram is mostly made of (class,
+ *      interface, enumeration), then the containers and annotations (package),
+ *      then the two shapes a USE-CASE diagram is made of (actor, use case) and
+ *      the subject frame drawn round them;
+ *   4. then the five relationships an author reaches for first — association,
  *      generalization, dependency, and the two use-case ones;
- *   4. and everything past the fourteenth slot DECLINES the row rather than
+ *   5. and everything past the fourteenth slot DECLINES the row rather than
  *      contesting it: the object (an instance diagram is a second reading of a
  *      class diagram, not the first thing anybody draws), the four remaining
- *      relationships, the two exports, and — since phase 2 — the whole of
- *      components, deployment, activities and state machines.
+ *      relationships, the two exports, the other two imports, and — since
+ *      phase 2 — the whole of components, deployment, activities and state
+ *      machines.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
  * the PO having to arbitrate an over-nomination.
+ *
+ * ## Fourteen nominated, THIRTEEN rendered — and why the import is second
+ *
+ * The cap and the row are not the same number. `SENIOR_MENU_CAP` is 14 and is
+ * what an owner may NOMINATE; what an overflowed row RENDERS is
+ * `SENIOR_MENU_RANKED_SLOTS` — `MENU_RECENT_SLOTS + MENU_USED_SLOTS` = 13 —
+ * plus the permanent "More artefacts…" button. With no usage recorded both
+ * ranking axes collapse to authored order, so **the cold start is the first
+ * THIRTEEN of this list and the fourteenth is invisible until somebody uses
+ * it**.
+ *
+ * `uml.importXmi` was authored fourteenth when it landed (tranche G) and was
+ * therefore the one nomination no new user could ever see — which is the whole
+ * of what nominating it was for. It sits second now: a board comes FROM a file,
+ * and the two things a user does to an empty canvas are draw a sheet and open
+ * one. The command that falls off the cold-start row instead is the LAST
+ * authored nomination, `uml.extendTool` — the rarer of the two use-case
+ * relationships, one click away in the catalogue, and the honest thing to
+ * spend a seat that only thirteen commands can hold.
+ *
+ * `bpmn.importXml` is authored LAST among BPMN's nominations and has the same
+ * gap; it is out of this tranche's scope, and `bpmn.spec.ts` only ever asserts
+ * its row with usage seeded.
  *
  * ## Why the aggregation / composition / realization / anchor tools decline
  *
@@ -705,7 +731,18 @@ const SPECS: Spec[] = [
   },
 ];
 
-const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
+/**
+ * The authored slot the senior row's IMPORT sits in — second, between the
+ * diagram frame and the class.
+ *
+ * A named constant rather than a literal because two things have to agree about
+ * it and they are three hundred lines apart: `uml.importXmi`'s descriptor, and
+ * the shift below that leaves the slot empty. The header says why it is this
+ * slot and not the fourteenth.
+ */
+const UML_IMPORT_ROW_ORDER = 1;
+
+const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   id: `uml.${spec.id}`,
   owner: 'uml',
   kind: spec.kind,
@@ -716,7 +753,11 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   surfaces: spec.senior
     ? ['senior-menu', 'catalogue', 'palette', 'agent']
     : ['catalogue', 'palette', 'agent'],
-  order,
+  // The sheet keeps slot 0 and everything after it shifts by one, which leaves
+  // {@link UML_IMPORT_ROW_ORDER} free for the import. A gap rather than a
+  // fractional order: `order` is sorted numerically on four surfaces and a
+  // `0.5` in the middle of it is a thing the next author has to decode.
+  order: index === 0 ? 0 : index + 1,
   scope: 'edgeless',
   // Keyless by intent, and at fifty-six commands there is no chord alphabet
   // that would not be arbitrary — still bindable from Settings › Shortcuts,
@@ -775,7 +816,9 @@ const exportCommands: CommandDescriptor[] = [
     category: 'diagrams',
     iconKey: 'uml.export-plantuml',
     surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
-    order: SPECS.length,
+    // `+ 1` because the toolbox's own orders run 0 then 2…SPECS.length — the
+    // gap that reserves {@link UML_IMPORT_ROW_ORDER} costs one at this end too.
+    order: SPECS.length + 1,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'selection',
@@ -798,7 +841,7 @@ const exportCommands: CommandDescriptor[] = [
     category: 'diagrams',
     iconKey: 'uml.export-xmi',
     surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
-    order: SPECS.length + 1,
+    order: SPECS.length + 2,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     availability: 'selection',
@@ -854,7 +897,11 @@ const importCommands: CommandDescriptor[] = [
     // contextual toolbar is a statement about a SELECTION, and the moment this
     // is most wanted is on a board with nothing on it.
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
-    order: SPECS.length + 2,
+    // SECOND, not last. What an overflowed row renders is thirteen, not the
+    // fourteen an owner may nominate, and with no usage recorded that is the
+    // first thirteen of the authored order — so a fourteenth nomination is one
+    // no new user ever sees. See the header.
+    order: UML_IMPORT_ROW_ORDER,
     scope: 'edgeless',
     defaultKeys: { mac: [], other: [] },
     // An import WRITES, so a read-only document is one it cannot run on and the

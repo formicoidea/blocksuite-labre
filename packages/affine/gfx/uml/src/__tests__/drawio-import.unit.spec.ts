@@ -20,12 +20,18 @@ import {
  * synchronous and the inflating is the command's (`drawio-decode.unit.spec.ts`,
  * `docs/adr/0019`).
  *
- * Nothing here is hand-written, and that is the point: a heuristic reader
- * proved against a fixture its own author wrote proves that the author agreed
- * with themselves. What this asserts is that eight boxes a stranger drew in
- * 2013 come back as eight classifiers with their members, and that the four
- * hollow diamonds, the two `«use»` arrows and the one hollow triangle come back
- * as the four relationships UML calls them.
+ * The corpus is not hand-written, and that is the point: a heuristic reader
+ * proved against a fixture its own author wrote proves only that the author
+ * agreed with themselves. What this asserts is that eight boxes a stranger drew
+ * in 2013 come back as eight classifiers with their members, and that the four
+ * hollow diamonds, the two `«use»` arrows and the one triangle come back as the
+ * relationships UML calls them.
+ *
+ * Its inheritance arrow is the interesting one, and it is why a real file beats
+ * an invented one: the author drew it as `endArrow=block` with no `endFill`, so
+ * draw.io paints a FILLED triangle where UML wants a hollow one. It imports as
+ * the generalization it is — `block` is the UML stencil's head — with a remark
+ * about the drawing. See `names the generalization…` below, and ADR 0019 §2.
  */
 
 /**
@@ -173,6 +179,23 @@ describe('draw.io’s own UML class example', () => {
     ]);
   });
 
+  it('names the generalization the file drew with a filled triangle', () => {
+    // The corpus is a 2013 file and spells its generalization
+    // `dashed=0;endArrow=block` — no fill, and mxGraph defaults the fill to 1,
+    // so draw.io paints a SOLID triangle where UML wants a hollow one. `block`
+    // is the UML stencil's head (ordinary draw.io arrows are `classic` or
+    // `open`), so the relationship is read as what it plainly is and the
+    // DRAWING is what gets remarked on — the board is right, the file is not,
+    // and only the author can fix that.
+    const ambiguous = read.notes.filter(
+      note => note.kind === 'warning' && note.sourceId === '44'
+    );
+    expect(ambiguous).toHaveLength(1);
+    expect(ambiguous[0].message).toContain('generalization');
+    expect(ambiguous[0].message).toContain('drawn filled');
+    expect(ambiguous[0].message).toContain('endFill=0');
+  });
+
   it('puts the WHOLE at the diamond end of every aggregation', () => {
     const byId = new Map(
       read.model.classifiers.map(entry => [entry.id, entry.name])
@@ -202,8 +225,8 @@ describe('draw.io’s own UML class example', () => {
     const general = read.model.relations.find(
       relation => relation.kind === 'generalization'
     );
-    // The hollow triangle points at the GENERAL classifier, and the relation
-    // records the SPECIFIC one as its source (`model.ts`, `UmlRelation`).
+    // The triangle points at the GENERAL classifier, and the relation records
+    // the SPECIFIC one as its source (`model.ts`, `UmlRelation`).
     expect(byId.get(general!.sourceId)).toBe('IWLayerInterface');
     expect(byId.get(general!.targetId)).toBe('IWRequestLayer');
 
@@ -276,9 +299,16 @@ describe('draw.io’s own UML class example', () => {
     expect(read.model.diagram.heading).toBe('class IWLayer');
   });
 
-  it('recognises everything in this file — no carried shapes', () => {
-    expect(read.notes.filter(note => note.element === 'mxCell')).toEqual([]);
-    expect(read.notes.filter(note => note.kind === 'warning')).toEqual([]);
+  it('recognises every SHAPE in this file — nothing carried, one remark', () => {
+    // No `carried` cell: every box in the file became an artefact. The one
+    // remark is the filled block head, which is a reading this reader had to
+    // demote rather than a shape it could not place.
+    expect(
+      read.notes.filter(
+        note => note.kind === 'carried' && note.element === 'mxCell'
+      )
+    ).toEqual([]);
+    expect(read.notes.filter(note => note.kind === 'warning')).toHaveLength(1);
   });
 });
 
@@ -402,7 +432,7 @@ describe('the shapes a class diagram is not made of', () => {
           // …and a diamond at the TARGET end puts the whole there, so the ends
           // are flipped and the relation still records the whole as its source.
           '<mxCell id="e2" style="endArrow=diamond;endFill=0;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
-          // Dashed plus a hollow triangle is a realization (§10.4.4).
+          // Dashed plus a HOLLOW triangle is a realization (§10.4.4).
           '<mxCell id="e3" style="endArrow=block;endFill=0;dashed=1;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
           // A solid open arrow with no keyword is a plain association.
           '<mxCell id="e4" value="owns" style="endArrow=open;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
@@ -428,6 +458,54 @@ describe('the shapes a class diagram is not made of', () => {
       ['extend', 'a', 'b'],
     ]);
     expect(read.model.relations[3].label).toBe('owns');
+  });
+
+  it('takes a block head at its word, and reads a diamond’s fill', () => {
+    // The asymmetry the whole rule turns on, both ends of it in one fixture.
+    //
+    // A BLOCK head means one UML relationship whatever its fill — `block` is
+    // the UML stencil's head, ordinary draw.io arrows are `classic`/`open` — so
+    // all four below are a generalization or a realization, and the fill only
+    // decides whether a remark is raised.
+    //
+    // A DIAMOND's fill picks between two UML relationships, so it is READ, with
+    // mxGraph's own default of 1 (filled = composite) for an absent one. A rule
+    // that defaulted it the other way passed every test that wrote the fill out
+    // explicitly, which every hand-written fixture does.
+    const read = importDrawio(
+      graph(
+        [
+          '<mxCell id="a" value="«k» A" style="html=1;" vertex="1" parent="1"><mxGeometry x="0" y="0" width="80" height="40" as="geometry"/></mxCell>',
+          '<mxCell id="b" value="«k» B" style="html=1;" vertex="1" parent="1"><mxGeometry x="200" y="0" width="80" height="40" as="geometry"/></mxCell>',
+          // HOLLOW, explicit — draw.io's UML stencil. No remark: nothing to say.
+          '<mxCell id="g1" style="endArrow=block;endFill=0;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+          // FILLED, explicit — still a generalization, and remarked on.
+          '<mxCell id="g2" style="endArrow=block;endFill=1;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+          // UNSPECIFIED — mxGraph paints it filled. This is the corpus's case.
+          '<mxCell id="g3" style="endArrow=block;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+          // …and the same, dashed: §10.4.4's realization.
+          '<mxCell id="g4" style="endArrow=block;dashed=1;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+          // The source end, both ways: hollow is the SHARED aggregation,
+          // unspecified is the composite one.
+          '<mxCell id="d1" style="startArrow=diamond;startFill=0;endArrow=open;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+          '<mxCell id="d2" style="startArrow=diamond;endArrow=open;html=1;" edge="1" parent="1" source="a" target="b"><mxGeometry as="geometry"/></mxCell>',
+        ].join('')
+      )
+    );
+
+    expect(read.model.relations.map(relation => relation.kind)).toEqual([
+      'generalization',
+      'generalization',
+      'generalization',
+      'realization',
+      'aggregation',
+      'composition',
+    ]);
+    // Three heads drawn filled, three remarks — and none for the hollow one,
+    // which is what makes the remark mean something.
+    const remarks = read.notes.filter(note => note.kind === 'warning');
+    expect(remarks.map(note => note.sourceId)).toEqual(['g2', 'g3', 'g4']);
+    expect(remarks[2].message).toContain('realization');
   });
 });
 

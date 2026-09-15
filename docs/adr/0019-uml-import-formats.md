@@ -80,8 +80,9 @@ made out of a style string and a blob of label HTML:
 | `shape=note`                                         | a note (prose, kept whole)   |
 | `shape=folder` / `package` / `umlFrame`              | a package                    |
 | any other `«keyword»` on a bare rectangle            | a classifier with keywords   |
-| `startArrow=diamond` (`startFill=1`)                 | aggregation (composition)    |
-| `endArrow=block`, solid / dashed                     | generalization / realization |
+| `startArrow=diamond;startFill=0` (else filled)       | aggregation (composition)    |
+| `endArrow=block`, solid / dashed line, any fill      | generalization / realization |
+| …with the head not hollow                            | the same, plus a remark      |
 | `dashed=1` + open head                               | dependency                   |
 | `«include»` / `«extend»` on such an edge             | include / extend             |
 | anything else                                        | association                  |
@@ -99,10 +100,37 @@ stated:
    cannot read is a remark the author can act on, and its geometry is kept so a
    later build that learns the shape can draw it where it was.
 
-The one ordering subtlety worth writing down: the **diamond is tested first**.
-draw.io's own aggregation style carries `dashed=1` as well, so a dependency test
-that ran first would read four of draw.io's own UML example's aggregations as
-dependencies.
+Two subtleties are worth writing down, and both are about reading the style
+rather than guessing at intent.
+
+**The diamond is tested first.** draw.io's own aggregation style carries
+`dashed=1` as well, so a dependency test that ran first would read four of
+draw.io's own UML example's aggregations as dependencies.
+
+**The two ends read their fill differently, and that is a fact about draw.io.**
+mxGraph resolves `endFill` / `startFill` with a default of `1`, so a style that
+names no fill renders a SOLID head. What follows from that differs per end
+(lead's ruling of 15/09/2026, recorded for the PO):
+
+- a **diamond** means one of two UML relationships and the fill says which, so
+  it is READ: `startFill=0` is §11.5.4's shared aggregation, and anything else —
+  an absent fill included — is the composite one, because that is what draw.io
+  paints;
+- a **block head** means one UML relationship whatever its fill. Ordinary
+  draw.io arrows are `classic` or `open`; `block` is what the UML stencil
+  writes. So a solid line with a block head is §9.2.4's generalization and a
+  dashed one is §10.4.4's realization, fill or no fill.
+
+Reading the block head's fill was tried and reversed, and the corpus is why:
+draw.io's own UML class example writes its inheritance arrow as
+`dashed=0;endArrow=block` with no fill at all — a 2013 file, painted by draw.io
+today as a filled triangle — and demoting it to an association would lose the
+one arrow whose meaning is least in doubt, on the strength of a stencil detail.
+
+The drawing is still wrong, and the author is the only one who can fix it, so
+every non-hollow block head raises a `warning`: _read as a generalization, but
+the arrowhead is drawn filled; UML draws the generalization triangle hollow
+(`endFill=0`)._ The board is right, the file is not, and the report says which.
 
 ### 3. The compressed-payload split
 
@@ -190,6 +218,23 @@ Surface identity is Labre's and never the file's (D3), positions are re-laid out
 when the format carries none, and the bottom row of every reader's loss table
 says so: an import is a NEW board beside whatever is on the surface, never a
 merge into it.
+
+**Containment is drawn, not written — so the fixed point starts at the second
+export.** On this canvas a use case is IN a subject, and a class is IN a
+package, because it is drawn inside one: `model.ts`, `plantuml.ts` and `xmi.ts`
+all read the nesting geometrically, and there is no stored parent link to read
+instead. XMI carries no such geometry — a `uml:UseCase` owned by nothing is what
+the writer emits for a case the author drew inside a subject rectangle — so the
+first re-import lays that case out by the invented layout, outside the subject,
+and the diagram it produces states slightly less than the one it came from. The
+SECOND export then writes what the second board draws, and from there the cycle
+is stable: export → import → export is a fixed point from the second turn on,
+never from the first. `xmi-import.unit.spec.ts` pins exactly that, over a use
+case diagram whose three cases are drawn inside a `Shop` subject. It is a fact
+about the FORMAT — the file carries a model, and containment drawn on a canvas
+is not part of that model — and not a defect in either end of the pipeline.
+PlantUML is unaffected: `package P { }` is syntax, so the nesting survives as
+text.
 
 ### 7. One import in the sub-menu, and it cost the note its seat
 
