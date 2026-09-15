@@ -2,10 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { exportUmlPlantuml } from '../export';
 import { parseOperation, parseProperty } from '../grammar';
+import {
+  umlSequenceColumn,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
+} from '../import';
 import { stereotypesOf } from '../keywords';
 import type {
   UmlClassifier,
   UmlComponentNode,
+  UmlMessage,
+  UmlMessageKind,
   UmlModel,
   UmlNodeBase,
   UmlPort,
@@ -101,6 +109,7 @@ function emptyModel(
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -881,6 +890,117 @@ describe('the labels beside an arrow’s two ends', () => {
     // text into an apostrophe, so a label can never unbalance the line.
     expect(two({ sourceEnd: { role: 'a "b"', raw: 'a "b"' } })).toContain(
       `order "a 'b'" -- orderline`
+    );
+  });
+});
+
+/* ── §17 — the sequence sheet ─────────────────────────────────────────── */
+
+/**
+ * One conversation with one of everything §17 draws: three participants (one of
+ * them an actor and one carrying a type), all five arrows, a bar, a cross, an
+ * `alt` with two guarded operands and a `ref` inside the first of them.
+ *
+ * The heights are the invented layout's own slots, one per EVENT — which is
+ * what the two sequence importers write and what makes the order the writer
+ * emits reproducible: see `umlSequenceSlot`.
+ */
+function sequenceDiagram(): UmlModel {
+  const column = [0, 1, 2].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+  const say = (
+    id: string,
+    kind: UmlMessageKind,
+    sourceId: string,
+    targetId: string,
+    label: string,
+    slot: number
+  ): UmlMessage => ({ id, kind, sourceId, targetId, label, y: at(slot) });
+
+  return {
+    ...emptyModel('sd1', 'sd', 'Checkout'),
+    interactions: [
+      {
+        id: 'sd1',
+        name: 'Checkout',
+        lifelines: [
+          { ...node('l1', 'Customer'), keywords: ['actor'], bounds: column[0] },
+          { ...node('l2', 'web'), type: 'Storefront', bounds: column[1] },
+          { ...node('l3', 'orders'), bounds: column[2] },
+        ],
+        messages: [
+          say('m1', 'message-sync', 'l1', 'l2', 'browse()', 0),
+          say('m2', 'message-async', 'l2', 'l3', 'openBasket()', 2),
+          say('m3', 'message-reply', 'l3', 'l2', 'basket', 3),
+          say('m4', 'message-create', 'l2', 'l3', 'new()', 6),
+          say('m5', 'message-delete', 'l2', 'd1', 'close()', 9),
+        ],
+        fragments: [
+          {
+            ...node('f1', 'signed in'),
+            operator: 'alt',
+            operands: [
+              { guard: 'signed in', y0: at(4), y1: at(7) },
+              { guard: 'else', y0: at(7), y1: at(8) },
+            ],
+            coveredLifelineIds: ['l2', 'l3'],
+            bounds: umlSequenceFragment([column[1], column[2]], at(4), at(8)),
+          },
+          {
+            ...node('f2', 'Authorise payment'),
+            operator: 'ref',
+            operands: [{ y0: at(5), y1: at(6) }],
+            coveredLifelineIds: ['l2', 'l3'],
+            bounds: umlSequenceFragment([column[1], column[2]], at(5), at(6)),
+          },
+        ],
+        executions: [
+          {
+            ...node('x1', ''),
+            lifelineId: 'l2',
+            y0: at(1),
+            y1: at(10),
+            bounds: umlSequenceExecution(column[1], at(1), at(10)),
+          },
+        ],
+        destructions: [{ ...node('d1', ''), lifelineId: 'l3', y: at(11) }],
+      },
+    ],
+  };
+}
+
+describe('a sequence diagram, as PlantUML', () => {
+  const text = exportUmlPlantuml([sequenceDiagram()]).text;
+
+  it('declares the participants before the conversation, in column order', () => {
+    expect(text).toContain('actor "Customer" as customer');
+    expect(text).toContain('participant "web : Storefront" as web');
+    expect(text).toContain('participant "orders" as orders');
+    expect(text.indexOf('participant "orders" as orders')).toBeLessThan(
+      text.indexOf('customer -> web')
+    );
+  });
+
+  it('spells §17.4.4 five arrows with the five PlantUML forms', () => {
+    expect(text).toContain('customer -> web : browse()');
+    expect(text).toContain('web ->> orders : openBasket()');
+    expect(text).toContain('orders --> web : basket');
+    expect(text).toContain('create orders');
+    expect(text).toContain('destroy orders');
+  });
+
+  it('opens a block per fragment and closes it, with the guards bracketed', () => {
+    expect(text).toContain('alt [signed in]');
+    expect(text).toContain('else [else]');
+    expect(text).toContain('ref over web, orders : Authorise payment');
+    expect(text.match(/^end$/gm)).toHaveLength(1);
+  });
+
+  it('writes the bar as PlantUML own activation pair', () => {
+    expect(text).toContain('activate web');
+    expect(text).toContain('deactivate web');
+    expect(text.indexOf('activate web')).toBeLessThan(
+      text.indexOf('deactivate web')
     );
   });
 });

@@ -1,13 +1,27 @@
 import type { InterchangeNote } from '@labre/affine-block-surface';
-import type { UmlDiagramKind } from '@labre/affine-model';
+import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
 import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model';
 
 import type { UmlBox } from './component.js';
-import { parseEndLabel, parseOperation, parseProperty } from './grammar.js';
+import { UML_NODE_BOX } from './consts.js';
+import {
+  parseEndLabel,
+  parseLifelineIdent,
+  parseOperation,
+  parseProperty,
+} from './grammar.js';
+import { umlSequenceSlot } from './import.js';
 import { stereotypesOf } from './keywords.js';
-import { ADORNED_RELATION_KINDS } from './model.js';
+import { ADORNED_RELATION_KINDS, umlLifelineAt } from './model.js';
 import type {
   UmlClassifier,
+  UmlCombinedFragment,
+  UmlDestruction,
+  UmlExecution,
+  UmlInteraction,
+  UmlLifeline,
+  UmlMessage,
+  UmlMessageKind,
   UmlModel,
   UmlNodeBase,
   UmlNote,
@@ -206,7 +220,54 @@ type UmlDrawioVertexKind =
   | 'use-case'
   | 'note'
   | 'package'
+  // §17's three, recognised off draw.io's own UML stencil (ADR 0019: this is
+  // the visual tier, and a style string is all there is to read).
+  | 'lifeline'
+  | 'execution'
+  | 'destruction'
+  | 'fragment'
   | 'unknown';
+
+/**
+ * §17.6.4's operators, as draw.io writes them in a frame's label — `<<alt>>`,
+ * `alt`, `alt [x > 0]`.
+ *
+ * What separates a combined fragment from a plain `shape=umlFrame`, which
+ * draw.io also uses for a package and for a diagram frame: the first word of the
+ * label is one of the operators, and nothing else in the style says so.
+ */
+const DRAWIO_FRAGMENT_OPERATORS = new Set<string>([
+  'alt',
+  'opt',
+  'loop',
+  'par',
+  'break',
+  'critical',
+  'seq',
+  'strict',
+  'neg',
+  'assert',
+  'ignore',
+  'consider',
+  'ref',
+]);
+
+/** The operator a frame's label opens with, and the guard after it. */
+function drawioFragmentLabel(
+  value: string
+): { operator: UmlFragmentOperator; guard: string } | undefined {
+  const text = drawioCompartments(value).flat().join(' ').trim();
+  const opened = /^(?:«|<<)?\s*([A-Za-z]+)\s*(?:»|>>)?\s*(.*)$/.exec(text);
+  if (!opened) return undefined;
+  const word = opened[1].toLowerCase();
+  if (!DRAWIO_FRAGMENT_OPERATORS.has(word)) return undefined;
+  const tail = opened[2].trim();
+  const bracketed = /^\[(.*)\]$/.exec(tail);
+  return {
+    operator: word as UmlFragmentOperator,
+    guard: (bracketed ? bracketed[1] : tail).trim(),
+  };
+}
 
 /**
  * The shape vocabulary, read off the style — the whole of this reader's
@@ -222,14 +283,33 @@ type UmlDrawioVertexKind =
 function vertexKindOf(
   style: MxStyle,
   compartments: string[][],
-  hasChildren: boolean
+  hasChildren: boolean,
+  site: { value: string; onLifeline: boolean; width: number } = {
+    value: '',
+    onLifeline: false,
+    width: 0,
+  }
 ): UmlDrawioVertexKind {
   const shape = style.shape ?? '';
+  // §17's stencil first, and `umlLifeline` before everything: draw.io draws a
+  // lifeline as a container, so a reader that tested for a swimlane or for
+  // compartments first would call the participant a class.
+  if (shape === 'umllifeline' || 'umllifeline' in style) return 'lifeline';
+  if (shape === 'umldestroy' || 'umldestroy' in style) return 'destruction';
   if (shape === 'umlactor' || 'umlactor' in style) return 'actor';
   if (shape === 'note' || 'note' in style) return 'note';
   if (shape === 'folder' || shape === 'package' || shape === 'umlframe') {
-    return 'package';
+    // §17.6.4's rectangle and §12.2.4's folder are the same `umlFrame` in this
+    // stencil; the operator written in the corner is the only thing that tells
+    // them apart, which is exactly what §17.6.4 says the pentagon is for.
+    return shape === 'umlframe' && drawioFragmentLabel(site.value)
+      ? 'fragment'
+      : 'package';
   }
+  // §17.2.4's bar: a narrow rectangle drawn ON a lifeline. draw.io gives it no
+  // shape of its own — it is a plain box parented to the participant — so the
+  // reading is the one the notation gives: where it is, and how wide.
+  if (site.onLifeline && site.width > 0 && site.width <= 24) return 'execution';
   if ('ellipse' in style || shape === 'ellipse') return 'use-case';
   if (
     'swimlane' in style &&
@@ -507,6 +587,12 @@ export function importDrawio(
   const umlNotes: UmlNote[] = [];
   const relations: UmlRelation[] = [];
   const boxes: Record<string, UmlBox> = {};
+  const lifelines: UmlLifeline[] = [];
+  const executions: UmlExecution[] = [];
+  const destructions: UmlDestruction[] = [];
+  const fragments: UmlCombinedFragment[] = [];
+  /** Every cell read as a participant — what a message's end must resolve to. */
+  const spineOf = new Map<string, string>();
 
   /* ── Vertices ───────────────────────────────────────────────────────── */
 
@@ -524,8 +610,28 @@ export function importDrawio(
       child => child.vertex
     );
     const compartments = drawioCompartments(cell.value);
-    const kind = vertexKindOf(cell.style, compartments, children.length > 0);
-    const geometry = geometryOf(cell);
+    // §17.2.4's bar is drawn INSIDE the participant's container, so its
+    // geometry is relative to it — the one place in this format where a box is
+    // not already in sheet coordinates.
+    const onLifeline = Boolean(host?.vertex) && spineOf.has(cell.parent);
+    const own = geometryOf(cell);
+    // The PARENT's own `mxGeometry`, not the box this reader gave it: a
+    // lifeline's box is rewritten below to the narrow column our element is,
+    // and a child's coordinates are relative to the CELL draw.io drew.
+    const parentBox = onLifeline
+      ? host
+        ? geometryOf(host)
+        : undefined
+      : undefined;
+    const geometry =
+      own && parentBox
+        ? { ...own, x: own.x + parentBox.x, y: own.y + parentBox.y }
+        : own;
+    const kind = vertexKindOf(cell.style, compartments, children.length > 0, {
+      value: cell.value,
+      onLifeline,
+      width: own?.w ?? 0,
+    });
     if (geometry) boxes[cell.id] = geometry;
 
     if (kind === 'unknown') {
@@ -549,6 +655,75 @@ export function importDrawio(
     };
 
     switch (kind) {
+      case 'lifeline': {
+        // The ELEMENT is the spine, not the head draw.io drew: our lifeline is a
+        // narrow column whose perimeter is where a message attaches, and the
+        // head is painted across the top of it. So the column is centred on the
+        // cell and keeps its full height.
+        const ident = parseLifelineIdent(base.name);
+        const column = geometry
+          ? {
+              x: geometry.x + geometry.w / 2 - UML_NODE_BOX.lifeline.w / 2,
+              y: geometry.y,
+              w: UML_NODE_BOX.lifeline.w,
+              h: geometry.h,
+            }
+          : undefined;
+        if (column) boxes[cell.id] = column;
+        lifelines.push({
+          ...base,
+          name: ident.selector
+            ? `${ident.name ?? ''}[${ident.selector}]`
+            : (ident.name ?? ''),
+          ...(ident.type ? { type: ident.type } : {}),
+          ...(column ? { bounds: column } : {}),
+        });
+        spineOf.set(cell.id, cell.id);
+        break;
+      }
+      case 'execution': {
+        executions.push({
+          ...base,
+          ...(geometry ? { bounds: geometry } : {}),
+          lifelineId: cell.parent,
+          y0: geometry ? geometry.y : 0,
+          y1: geometry ? geometry.y + geometry.h : 0,
+        });
+        spineOf.set(cell.id, cell.parent);
+        break;
+      }
+      case 'destruction': {
+        destructions.push({
+          ...base,
+          ...(geometry ? { bounds: geometry } : {}),
+          y: geometry ? geometry.y + geometry.h / 2 : 0,
+        });
+        break;
+      }
+      case 'fragment': {
+        const stated = drawioFragmentLabel(cell.value)!;
+        fragments.push({
+          ...base,
+          name: stated.guard,
+          operator: stated.operator,
+          // draw.io draws an operand separator as a dashed line the author put
+          // there by hand, with nothing in the file to say it is one. ONE band
+          // is the honest reading, and it is the one every `opt`, `loop` and
+          // `ref` has anyway.
+          operands: geometry
+            ? [
+                {
+                  ...(stated.guard ? { guard: stated.guard } : {}),
+                  y0: geometry.y,
+                  y1: geometry.y + geometry.h,
+                },
+              ]
+            : [{ y0: 0, y1: 0 }],
+          coveredLifelineIds: [],
+          ...(geometry ? { bounds: geometry } : {}),
+        });
+        break;
+      }
       case 'actor':
         actors.push(base);
         break;
@@ -609,8 +784,31 @@ export function importDrawio(
     ...umlNotes.map(entry => entry.id),
   ]);
 
+  /** §17.4.4's arrows, in the order the file drew them down the sheet. */
+  const messages: UmlMessage[] = [];
+  let unplaced = 0;
+
   for (const cell of cells) {
     if (!cell.edge || !cell.id) continue;
+
+    // §17.4 — a line between two participants is a MESSAGE, whatever else the
+    // style says: on a sequence sheet there is no other kind of line.
+    if (spineOf.has(cell.source) && spineOf.has(cell.target)) {
+      const at = drawioEdgeHeight(cell);
+      messages.push({
+        id: cell.id,
+        kind: drawioMessageKind(cell.style),
+        sourceId: cell.source,
+        targetId: cell.target,
+        ...(drawioCompartments(cell.value).flat().join(' ').trim()
+          ? { label: drawioCompartments(cell.value).flat().join(' ').trim() }
+          : {}),
+        // A file that drew no waypoints has still stated an ORDER — the order
+        // its cells are written in — and that is what the slots stand in for.
+        y: at ?? umlSequenceSlot(unplaced++),
+      });
+      continue;
+    }
 
     if (!drawn.has(cell.source) || !drawn.has(cell.target)) {
       notes.push(
@@ -678,17 +876,109 @@ export function importDrawio(
     notes.push({ kind: 'warning', element: 'mxfile', message: note });
   }
 
+  // ── The interaction, once every box is known ────────────────────────
+  //
+  // Two attributions by GEOMETRY, and the same two `model.ts` makes off the
+  // canvas: which spine a cross sits on, and which spines a fragment covers.
+  // draw.io states neither — a cross is a shape dropped on a line and a frame is
+  // a rectangle drawn round one — so the reading is the notation's own.
+  for (const record of destructions) {
+    const spine = umlLifelineAt(record.bounds, lifelines);
+    if (spine) record.lifelineId = spine.id;
+  }
+  for (const record of fragments) {
+    const box = record.bounds;
+    if (!box) continue;
+    record.coveredLifelineIds = lifelines
+      .filter(lifeline => {
+        const spine = lifeline.bounds
+          ? lifeline.bounds.x + lifeline.bounds.w / 2
+          : undefined;
+        return spine !== undefined && spine >= box.x && spine <= box.x + box.w;
+      })
+      .map(lifeline => lifeline.id);
+  }
+  messages.sort((a, b) => a.y - b.y);
+
+  const sheetName = diagramName || options.name;
+  const interactions: UmlInteraction[] =
+    lifelines.length > 0 ||
+    messages.length > 0 ||
+    fragments.length > 0 ||
+    executions.length > 0 ||
+    destructions.length > 0
+      ? [
+          {
+            id: UML_DRAWIO_FORMAT_ID,
+            name: sheetName?.trim() || 'Imported diagram',
+            lifelines,
+            messages,
+            fragments,
+            executions,
+            destructions,
+          },
+        ]
+      : [];
+
   const model: UmlModel = {
-    ...emptyModel(diagramName || options.name),
+    ...emptyModel(sheetName, interactions.length > 0 ? 'sd' : undefined),
     classifiers,
     packages,
     actors,
     useCases,
     notes: umlNotes,
+    interactions,
     relations,
   };
 
   return { model, notes, layout: { boxes: translate(boxes) } };
+}
+
+/**
+ * §17.4.4's arrow, read off the two things draw.io states about a line.
+ *
+ * The specification tells its three drawn messages apart by the LINE and the
+ * HEAD, and the stencil writes exactly those: a dashed line is a reply, an open
+ * head is an asynchronous send, and the filled block head the stencil uses by
+ * default is a synchronous call. `create` and `delete` share a drawing with two
+ * of the three and are told apart by what the arrow REACHES, which is geometry
+ * this tier does not read (ADR 0019) — so an arrow onto a head comes back as the
+ * call it looks like, and the author retypes it.
+ */
+function drawioMessageKind(style: MxStyle): UmlMessageKind {
+  if (style.dashed === '1') return 'message-reply';
+  const endArrow = style.endarrow ?? '';
+  if (
+    endArrow === 'open' ||
+    endArrow === 'openThin' ||
+    endArrow === 'halfCircle'
+  ) {
+    return 'message-async';
+  }
+  return 'message-sync';
+}
+
+/**
+ * The HEIGHT one message edge was drawn at — the midpoint of its two endpoints.
+ *
+ * `<mxPoint as="sourcePoint">` is where draw.io records an end that is pinned to
+ * a coordinate rather than to a cell, and on a sequence diagram that is every
+ * end: a message is attached to a lifeline at a HEIGHT, and the height is the
+ * only thing about the arrow that carries meaning (§17.4.4).
+ */
+function drawioEdgeHeight(cell: DrawioCell): number | undefined {
+  const geometry = cell.geometry;
+  if (!geometry) return undefined;
+  const heights: number[] = [];
+  for (const point of geometry.children) {
+    if (point.local !== 'mxPoint') continue;
+    const at = point.attrs.as;
+    if (at !== 'sourcePoint' && at !== 'targetPoint') continue;
+    const y = Number.parseFloat(point.attrs.y ?? '');
+    if (Number.isFinite(y)) heights.push(y);
+  }
+  if (heights.length === 0) return undefined;
+  return heights.reduce((sum, y) => sum + y, 0) / heights.length;
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
@@ -733,14 +1023,21 @@ const DIAGRAM_KIND: UmlDiagramKind = 'class';
  * the frame, which is one click and honest; guessing the kind from a majority
  * of shapes would be a second heuristic stacked on the first.
  */
-function emptyModel(name: string | undefined): UmlModel {
+function emptyModel(
+  name: string | undefined,
+  // The one kind this reader can name off the STENCIL rather than off a
+  // majority of shapes: `shape=umlLifeline` is drawn on a sequence diagram and
+  // nowhere else, so a drawing that holds one is an `sd` sheet and saying so
+  // costs the author a retag they would otherwise have to make.
+  kind: UmlDiagramKind = DIAGRAM_KIND
+): UmlModel {
   const label = name?.trim() || 'Imported diagram';
   return {
     diagram: {
       id: UML_DRAWIO_FORMAT_ID,
-      kind: DIAGRAM_KIND,
+      kind,
       name: label,
-      heading: `${UML_DIAGRAM_KIND_TAG[DIAGRAM_KIND] ?? DIAGRAM_KIND} ${label}`,
+      heading: `${UML_DIAGRAM_KIND_TAG[kind] ?? kind} ${label}`,
     },
     classifiers: [],
     packages: [],
@@ -754,6 +1051,7 @@ function emptyModel(name: string | undefined): UmlModel {
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };

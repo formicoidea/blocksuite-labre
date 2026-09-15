@@ -117,6 +117,7 @@ function emptyModel(
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };

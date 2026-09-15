@@ -5,6 +5,7 @@ import {
   type UmlSourceElement,
   umlBoxGap,
   umlHostOf,
+  umlInteractionTimeline,
   umlModelFrom,
 } from '../model';
 import { UML_ROLE } from '../roles';
@@ -43,7 +44,7 @@ function artefact(
   kind: string,
   role: string,
   box: Box,
-  words: { name?: string; label?: string } = {}
+  words: { name?: string; label?: string; ident?: string } = {}
 ): UmlSourceElement[] {
   const children: UmlSourceElement[] = [
     { id, type: 'umlNode', kind, role, xywh: `[${box.join(',')}]` },
@@ -62,6 +63,16 @@ function artefact(
       type: 'text',
       role: UML_ROLE.label,
       text: words.label,
+    });
+  }
+  // §17.3.4's lifeline HEAD — a third tier, because the clause prints a grammar
+  // for it and none for an actor's word (`roles.ts`).
+  if (words.ident !== undefined) {
+    children.push({
+      id: `${id}-ident`,
+      type: 'text',
+      role: UML_ROLE['lifeline-ident'],
+      text: words.ident,
     });
   }
   return [
@@ -786,5 +797,227 @@ describe('the labels beside a connector’s two ends', () => {
       line('e1', UML_ROLE.association, 'c1', 'c2', { sourceLabel: '   ' })
     );
     expect(model.relations[0].sourceEnd).toBeUndefined();
+  });
+});
+
+/* ── §17 — what a SEQUENCE sheet says, read off the canvas ────────────── */
+
+/**
+ * The three readings an `sd` sheet needs that no other sheet does, and every one
+ * of them is geometry the canvas states and nothing else records:
+ *
+ *  - **when** a message happens — §17.4.4 makes the vertical axis time, so the
+ *    HEIGHT an arrow was drawn at is its place in the conversation, and the
+ *    height is the anchor the author dropped the end at;
+ *  - **which spine** a bar and a cross sit on (§17.2.4), which is the same
+ *    measure-don't-guess reading a port's owner gets;
+ *  - **which lifelines** a combined fragment covers, and which of its operand
+ *    bands each message fell into (§17.6.4).
+ *
+ * All three are read off literals here, for the reason the whole file is written
+ * this way: a sheet is a handful of records, not a surface.
+ */
+
+const SD_COLUMN = { w: 16, h: 600 } as const;
+
+/** One lifeline: the narrow column, its head tier, and the group over them. */
+function lifeline(id: string, x: number, head: string): UmlSourceElement[] {
+  return artefact(
+    id,
+    'lifeline',
+    UML_ROLE.lifeline,
+    [x - SD_COLUMN.w / 2, 0, SD_COLUMN.w, SD_COLUMN.h],
+    { ident: head }
+  );
+}
+
+/** A message, anchored at a relative height on each of its two ends. */
+function message(
+  id: string,
+  role: string,
+  from: string,
+  to: string,
+  t: number,
+  text?: string
+): UmlSourceElement {
+  return {
+    id,
+    type: 'connector',
+    role,
+    source: { id: from, position: [1, t] },
+    target: { id: to, position: [0, t] },
+    ...(text === undefined ? {} : { text }),
+  };
+}
+
+const sdSheet = (...elements: UmlSourceElement[]) =>
+  umlModelFrom(diagram('sd'), elements);
+
+describe('a sequence sheet', () => {
+  const columns = [
+    ...lifeline('l1', 100, 'customer : Customer'),
+    ...lifeline('l2', 300, 'orders'),
+  ];
+
+  it('reads a lifeline head as §17.3.4 spells it', () => {
+    const [interaction] = sdSheet(...columns).interactions;
+    expect(interaction.lifelines).toEqual([
+      expect.objectContaining({
+        id: 'l1',
+        name: 'customer',
+        type: 'Customer',
+      }),
+      expect.objectContaining({ id: 'l2', name: 'orders' }),
+    ]);
+    // A bare participant name states no Classifier, and the field is absent
+    // rather than empty — the same reading every optional half of a compartment
+    // gets in this module.
+    expect(interaction.lifelines[1].type).toBeUndefined();
+  });
+
+  it('orders the messages by the height they were drawn at', () => {
+    const model = sdSheet(
+      ...columns,
+      message('m2', UML_ROLE['message-reply'], 'l2', 'l1', 0.6, 'ok'),
+      message('m1', UML_ROLE['message-sync'], 'l1', 'l2', 0.2, 'place()')
+    );
+    const [interaction] = model.interactions;
+    expect(interaction.messages.map(each => each.label)).toEqual([
+      'place()',
+      'ok',
+    ]);
+    expect(interaction.messages[0].y).toBeLessThan(interaction.messages[1].y);
+    // The same arrows are relations too — the one pass over the connectors
+    // resolved both ends and raised every warning — and both writers take the
+    // interaction rather than the list.
+    expect(model.relations).toHaveLength(2);
+    expect(model.warnings).toEqual([]);
+  });
+
+  it('gives a bar and a cross the spine they were dropped on', () => {
+    const model = sdSheet(
+      ...columns,
+      {
+        id: 'x1',
+        type: 'umlNode',
+        kind: 'execution',
+        role: UML_ROLE.execution,
+        xywh: '[294,120,12,80]',
+      },
+      {
+        id: 'd1',
+        type: 'umlNode',
+        kind: 'destruction',
+        role: UML_ROLE.destruction,
+        xywh: '[288,400,24,24]',
+      }
+    );
+    const [interaction] = model.interactions;
+    expect(interaction.executions[0]).toMatchObject({
+      lifelineId: 'l2',
+      y0: 120,
+      y1: 200,
+    });
+    expect(interaction.destructions[0]).toMatchObject({
+      lifelineId: 'l2',
+      y: 412,
+    });
+  });
+
+  it('leaves a bar drawn between two spines attached to neither', () => {
+    const [interaction] = sdSheet(...columns, {
+      id: 'x1',
+      type: 'umlNode',
+      kind: 'execution',
+      role: UML_ROLE.execution,
+      xywh: '[194,120,12,80]',
+    }).interactions;
+    expect(interaction.executions[0].lifelineId).toBeUndefined();
+  });
+
+  it('cuts a fragment into its operand bands and the spines it covers', () => {
+    const [interaction] = sdSheet(...columns, {
+      id: 'f1',
+      type: 'umlFragment',
+      role: UML_ROLE.fragment,
+      name: 'stock is free',
+      operator: 'alt',
+      operands: [
+        { id: 'o1', name: 'stock is free', size: 1 },
+        { id: 'o2', name: 'else', size: 3 },
+      ],
+      xywh: '[80,100,240,244]',
+    }).interactions;
+    const [fragment] = interaction.fragments;
+    expect(fragment.operator).toBe('alt');
+    expect(fragment.coveredLifelineIds).toEqual(['l1', 'l2']);
+    // The operator BAND is carved off the top before the bands are cut, the
+    // way `umlSheetOf` carves a frame's heading off: 244 − 44 = 200, in
+    // proportion 1 : 3.
+    expect(fragment.operands).toEqual([
+      { guard: 'stock is free', y0: 144, y1: 194 },
+      { guard: 'else', y0: 194, y1: 344 },
+    ]);
+  });
+
+  it('gives a fragment that declares no operand one band and the frame name', () => {
+    const [interaction] = sdSheet(...columns, {
+      id: 'f1',
+      type: 'umlFragment',
+      role: UML_ROLE.fragment,
+      name: 'twice',
+      operator: 'loop',
+      xywh: '[80,100,240,144]',
+    }).interactions;
+    expect(interaction.fragments[0].operands).toEqual([
+      { guard: 'twice', y0: 144, y1: 244 },
+    ]);
+  });
+
+  it('reads a `ref`’s name as the interaction it names, never as a guard', () => {
+    const [interaction] = sdSheet(...columns, {
+      id: 'f1',
+      type: 'umlFragment',
+      role: UML_ROLE.fragment,
+      name: 'Authorise payment',
+      operator: 'ref',
+      xywh: '[80,100,240,144]',
+    }).interactions;
+    expect(interaction.fragments[0].name).toBe('Authorise payment');
+    expect(interaction.fragments[0].operands[0].guard).toBeUndefined();
+  });
+
+  it('puts each message in the operand band it was drawn in', () => {
+    const model = sdSheet(
+      ...columns,
+      {
+        id: 'f1',
+        type: 'umlFragment',
+        role: UML_ROLE.fragment,
+        name: 'yes',
+        operator: 'alt',
+        operands: [
+          { id: 'o1', name: 'yes', size: 1 },
+          { id: 'o2', name: 'no', size: 1 },
+        ],
+        xywh: '[80,100,240,244]',
+      },
+      message('m1', UML_ROLE['message-sync'], 'l1', 'l2', 0.28, 'yes()'),
+      message('m2', UML_ROLE['message-sync'], 'l1', 'l2', 0.45, 'no()')
+    );
+    const [timeline] = umlInteractionTimeline(model.interactions[0]);
+    expect(timeline.at).toBe('fragment');
+    if (timeline.at !== 'fragment') return;
+    expect(
+      timeline.operands.map(band =>
+        band.entries.map(entry =>
+          entry.at === 'message' ? entry.message.label : entry.at
+        )
+      )
+    ).toEqual([['yes()'], ['no()']]);
+  });
+
+  it('draws no interaction at all on a sheet with nothing on it', () => {
+    expect(sdSheet().interactions).toEqual([]);
   });
 });

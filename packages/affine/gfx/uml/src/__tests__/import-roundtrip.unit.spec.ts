@@ -1,10 +1,28 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { exportUmlPlantuml } from '../export';
+import { exportUmlPlantuml, exportUmlXmi } from '../export';
 import { parseOperation, parseProperty } from '../grammar';
+import {
+  umlSequenceColumn,
+  umlSequenceExecution,
+  umlSequenceFragment,
+  umlSequenceSlot,
+} from '../import';
 import { stereotypesOf } from '../keywords';
-import type { UmlClassifier, UmlModel, UmlNodeBase } from '../model';
+import type {
+  UmlClassifier,
+  UmlMessage,
+  UmlMessageKind,
+  UmlModel,
+  UmlNodeBase,
+  UmlTimelineEntry,
+} from '../model';
+import { umlInteractionTimeline } from '../model';
 import { importPlantuml } from '../plantuml-import';
+import { importXmi } from '../xmi-import';
 
 /**
  * The round trip: **write a diagram, read it back, and get the diagram.**
@@ -88,6 +106,7 @@ function emptyModel(
     nodes: [],
     activities: [],
     stateMachines: [],
+    interactions: [],
     relations: [],
     warnings: [],
   };
@@ -383,5 +402,366 @@ describe('an association whose ends are adorned', () => {
   it('is a fixed point on the second pass, byte for byte', () => {
     const once = exportUmlPlantuml([adorned()]).text;
     expect(exportUmlPlantuml(reimport([adorned()])).text).toBe(once);
+  });
+});
+
+/* ── §17 — a sequence sheet, out and back ─────────────────────────────── */
+
+/**
+ * The round trip a SEQUENCE diagram has to make, and why it is a different
+ * promise from the one above.
+ *
+ * On a class sheet what has to survive is a set of statements; on a sequence
+ * sheet it is an ORDER. §17.4.4 makes the vertical axis time, so a message that
+ * came back one line higher is a different conversation — and neither file
+ * format carries a height: a `.puml` is a list of lines and an XMI `fragment`
+ * list is an ordered collection. The order is therefore turned into coordinates
+ * on the way in ({@link umlSequenceSlot}: one slot per EVENT) and read back off
+ * them on the way out, and these three tests are what pin that the two passes
+ * agree — down to which branch of the `alt` each arrow is in, and to the
+ * `activate` that sits between two of them.
+ */
+function sequenceDiagram(): UmlModel {
+  const column = [0, 1, 2].map(index => umlSequenceColumn(index, 600));
+  const at = (slot: number) => umlSequenceSlot(slot);
+
+  return {
+    ...emptyModel('sd1', 'sd', 'Checkout'),
+    interactions: [
+      {
+        id: 'sd1',
+        name: 'Checkout',
+        lifelines: [
+          {
+            ...node('l1', 'Customer'),
+            keywords: ['actor'],
+            bounds: column[0],
+          },
+          { ...node('l2', 'web'), type: 'Storefront', bounds: column[1] },
+          { ...node('l3', 'orders'), bounds: column[2] },
+        ],
+        messages: [
+          message('m1', 'message-sync', 'l1', 'l2', 'browse()', at(0)),
+          message('m2', 'message-async', 'l2', 'l3', 'openBasket()', at(2)),
+          message('m3', 'message-reply', 'l3', 'l2', 'basket', at(3)),
+          message('m4', 'message-sync', 'l1', 'l2', 'checkout()', at(5)),
+          message('m5', 'message-reply', 'l2', 'l1', 'no basket', at(7)),
+          message('m6', 'message-delete', 'l2', 'd1', 'close()', at(10)),
+        ],
+        fragments: [
+          {
+            ...node('f1', 'basket is not empty'),
+            operator: 'alt',
+            operands: [
+              { guard: 'basket is not empty', y0: at(4), y1: at(6) },
+              { guard: 'basket is empty', y0: at(6), y1: at(8) },
+            ],
+            coveredLifelineIds: ['l1', 'l2'],
+            bounds: umlSequenceFragment([column[0], column[1]], at(4), at(8)),
+          },
+        ],
+        executions: [
+          {
+            ...node('x1', ''),
+            lifelineId: 'l2',
+            y0: at(1),
+            y1: at(9),
+            bounds: umlSequenceExecution(column[1], at(1), at(9)),
+          },
+        ],
+        destructions: [{ ...node('d1', ''), lifelineId: 'l3', y: at(11) }],
+      },
+    ],
+  };
+}
+
+/** One message of the fixture — six fields, spelled once. */
+function message(
+  id: string,
+  kind: UmlMessageKind,
+  sourceId: string,
+  targetId: string,
+  label: string,
+  y: number
+): UmlMessage {
+  return { id, kind, sourceId, targetId, label, y };
+}
+
+/** The conversation as the ORDER it states, with every id resolved to a name. */
+function conversation(model: UmlModel): string[] {
+  const interaction = model.interactions[0];
+  if (!interaction) return [];
+  const spine = new Map<string, string>();
+  for (const lifeline of interaction.lifelines) {
+    spine.set(lifeline.id, lifeline.name);
+  }
+  for (const execution of interaction.executions) {
+    spine.set(execution.id, spine.get(execution.lifelineId ?? '') ?? '?');
+  }
+  for (const destruction of interaction.destructions) {
+    spine.set(destruction.id, spine.get(destruction.lifelineId ?? '') ?? '?');
+  }
+  const lines: string[] = [];
+  const walk = (entries: readonly UmlTimelineEntry[], depth: number) => {
+    const indent = '  '.repeat(depth);
+    for (const entry of entries) {
+      switch (entry.at) {
+        case 'message':
+          lines.push(
+            `${indent}${spine.get(entry.message.sourceId)} ${entry.message.kind} ${spine.get(entry.message.targetId)} : ${entry.message.label ?? ''}`
+          );
+          break;
+        case 'execution-start':
+          lines.push(`${indent}activate ${spine.get(entry.execution.id)}`);
+          break;
+        case 'execution-finish':
+          lines.push(`${indent}deactivate ${spine.get(entry.execution.id)}`);
+          break;
+        case 'destruction':
+          lines.push(`${indent}destroy ${spine.get(entry.destruction.id)}`);
+          break;
+        case 'fragment':
+          lines.push(
+            `${indent}${entry.fragment.operator} ${entry.fragment.name}`
+          );
+          for (const band of entry.operands) {
+            lines.push(`${indent}[${band.operand.guard ?? ''}]`);
+            walk(band.entries, depth + 1);
+          }
+          break;
+      }
+    }
+  };
+  walk(umlInteractionTimeline(interaction), 0);
+  return lines;
+}
+
+describe('a sequence diagram, written as PlantUML and read back', () => {
+  const original = sequenceDiagram();
+  const [returned] = reimport([original]);
+
+  it('comes back as a sequence sheet with the same three participants', () => {
+    expect(returned.diagram.kind).toBe('sd');
+    expect(returned.interactions).toHaveLength(1);
+    expect(returned.interactions[0].lifelines.map(each => each.name)).toEqual([
+      'Customer',
+      'web',
+      'orders',
+    ]);
+    // §17.3.4's `: <Type>` half, and the `actor` keyword that draws the
+    // stick figure — both are written into the head and read back off it.
+    expect(returned.interactions[0].lifelines[1].type).toBe('Storefront');
+    expect(returned.interactions[0].lifelines[0].keywords).toContain('actor');
+  });
+
+  it('says the same things in the same order, in the same branches', () => {
+    expect(conversation(returned)).toEqual(conversation(original));
+  });
+
+  it('keeps the bar over the messages it spans', () => {
+    const [interaction] = returned.interactions;
+    const bar = interaction.executions[0];
+    const inside = interaction.messages.filter(
+      each => each.y > bar.y0 && each.y < bar.y1
+    );
+    expect(inside).toHaveLength(4);
+  });
+
+  it('is a fixed point on the second pass, byte for byte', () => {
+    const once = exportUmlPlantuml([original]).text;
+    expect(exportUmlPlantuml(reimport([original])).text).toBe(once);
+  });
+});
+
+describe('a sequence diagram, written as XMI and read back', () => {
+  const original = sequenceDiagram();
+  const [returned] = importXmi(exportUmlXmi([original]).text).models;
+
+  it('comes back as one Interaction with every metaclass §17 asks for', () => {
+    const [interaction] = returned.interactions;
+    expect(interaction.lifelines).toHaveLength(3);
+    expect(interaction.messages.map(each => each.kind)).toEqual([
+      'message-sync',
+      'message-async',
+      'message-reply',
+      'message-sync',
+      'message-reply',
+      'message-delete',
+    ]);
+    expect(interaction.executions).toHaveLength(1);
+    expect(interaction.destructions).toHaveLength(1);
+    expect(interaction.fragments[0].operands.map(each => each.guard)).toEqual([
+      'basket is not empty',
+      'basket is empty',
+    ]);
+  });
+
+  it('says the same things in the same order, in the same branches', () => {
+    expect(conversation(returned)).toEqual(conversation(original));
+  });
+
+  it('is a fixed point on the second pass, byte for byte', () => {
+    const once = exportUmlXmi([original]).text;
+    expect(exportUmlXmi(importXmi(once).models).text).toBe(once);
+  });
+});
+
+/* ── The corpus: a `.puml` written by hand, the way one is in the wild ── */
+
+const corpus = (name: string) =>
+  readFileSync(join(__dirname, 'corpus', name), 'utf8').replaceAll(
+    '\r\n',
+    '\n'
+  );
+
+describe('the sequence corpus — a login and order flow', () => {
+  const { models, notes } = importPlantuml(corpus('sequence-order.puml'));
+  const [interaction] = models[0].interactions;
+
+  it('is read as one sequence sheet', () => {
+    expect(models).toHaveLength(1);
+    expect(models[0].diagram.kind).toBe('sd');
+    expect(models[0].diagram.name).toBe('Checkout — placing an order');
+  });
+
+  it('declares five participants, two of them with a type', () => {
+    expect(interaction.lifelines.map(each => each.name)).toEqual([
+      'Customer',
+      'web',
+      'orders',
+      'inventory',
+      'receipt',
+    ]);
+    expect(interaction.lifelines.map(each => each.type ?? '')).toEqual([
+      '',
+      'Storefront',
+      'OrderService',
+      'StockDB',
+      '',
+    ]);
+  });
+
+  it('reads ten messages, in the order the file writes them', () => {
+    expect(interaction.messages.map(each => each.label)).toEqual([
+      'browse()',
+      'openBasket()',
+      'basket',
+      'reserve(sku, qty)',
+      'reservation',
+      'checkout()',
+      'new(total)',
+      'confirmation',
+      'nothing to check out',
+      'close()',
+    ]);
+    expect(interaction.messages.map(each => each.kind)).toEqual([
+      'message-sync',
+      'message-async',
+      'message-reply',
+      'message-sync',
+      'message-reply',
+      'message-sync',
+      // `create receipt` on the line above — §17.4.4's createMessage.
+      'message-create',
+      'message-reply',
+      'message-reply',
+      // …and `destroy receipt` on the line below: the arrow that ENDS the
+      // participant is the deleteMessage, and PlantUML writes the pair.
+      'message-delete',
+    ]);
+    const last = interaction.messages[interaction.messages.length - 1];
+    expect(last.targetId).toBe(interaction.destructions[0].id);
+  });
+
+  it('reads three bars, one cross and four fragments', () => {
+    expect(interaction.executions).toHaveLength(3);
+    expect(interaction.destructions).toHaveLength(1);
+    expect(interaction.fragments.map(each => each.operator)).toEqual([
+      'loop',
+      'alt',
+      'ref',
+      'opt',
+    ]);
+    expect(interaction.fragments[1].operands.map(each => each.guard)).toEqual([
+      'basket is not empty',
+      'basket is empty',
+    ]);
+    expect(interaction.fragments[2].name).toBe('Authorise payment');
+  });
+
+  it('says what it invented and what it could not apply', () => {
+    expect(notes.map(entry => entry.kind)).toEqual([
+      'carried',
+      'invented-layout',
+    ]);
+    expect(notes[0].message).toContain('autonumber');
+  });
+});
+
+/* ── The corpus: an XMI interaction in Papyrus's own spelling ─────────── */
+
+describe('the Papyrus sequence fixture', () => {
+  const { models, report } = importXmi(corpus('papyrus-sequence.xmi'));
+  const [model] = models;
+
+  it('reads both interactions off a model with no package in it', () => {
+    expect(models).toHaveLength(1);
+    expect(model.diagram.kind).toBe('sd');
+    expect(model.interactions.map(each => each.name)).toEqual([
+      'PlaceOrder',
+      'Charge card',
+    ]);
+  });
+
+  it('reads the three lifelines and the four messages of the first', () => {
+    const [interaction] = model.interactions;
+    expect(interaction.lifelines.map(each => each.name)).toEqual([
+      'customer',
+      'order',
+      'stock',
+    ]);
+    expect(interaction.messages.map(each => each.label)).toEqual([
+      'place(basket)',
+      'reserve(sku)',
+      'rejected',
+      'close()',
+    ]);
+  });
+
+  it('reads the alt, its two guards and the interaction use', () => {
+    const [interaction] = model.interactions;
+    const [alt, use] = interaction.fragments;
+    expect(alt.operator).toBe('alt');
+    expect(alt.operands.map(each => each.guard)).toEqual([
+      'quantity > 0',
+      'else',
+    ]);
+    expect(alt.coveredLifelineIds).toContain('_ll_stock');
+    // §17.7.4: `refersTo` names an Interaction this document declares, and the
+    // NAME is what the board can draw.
+    expect(use.operator).toBe('ref');
+    expect(use.name).toBe('Charge card');
+  });
+
+  it('reads the bar between its two occurrences and the cross under it', () => {
+    const [interaction] = model.interactions;
+    expect(interaction.executions).toHaveLength(1);
+    expect(interaction.executions[0].y1).toBeGreaterThan(
+      interaction.executions[0].y0
+    );
+    expect(interaction.destructions).toHaveLength(1);
+    expect(interaction.destructions[0].lifelineId).toBe('_ll_order');
+  });
+
+  it('resolves every message end, and keeps what it cannot draw', () => {
+    for (const message of model.interactions[0].messages) {
+      expect(message.sourceId).not.toBe('');
+      expect(message.targetId).not.toBe('');
+    }
+    // The two `ownedAttribute` Properties a Papyrus lifeline `represents`.
+    // Neither is drawn — §17.3.4's head writes a type, not a property — so both
+    // are kept verbatim rather than swallowed (D5), which is the whole of the
+    // foreign-matter contract.
+    expect(report.quarantined).toBe(2);
   });
 });

@@ -7,16 +7,24 @@ import {
   ConnectorMode,
   TextAlign,
   UML_FRAME_BAND_HEIGHT,
+  UML_LIFELINE_HEAD,
+  type UmlFragmentOperand,
+  type UmlFragmentOperator,
   type UmlNodeKind,
 } from '@labre/affine-model';
 import { Bound, type IVec } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
-import { type UmlBox, umlCompartmentBoxes } from './component.js';
+import {
+  type UmlBox,
+  umlCompartmentBoxes,
+  umlLabelRoleOf,
+} from './component.js';
 import {
   UML_BODY_FONT_SIZE,
   UML_DIAGRAM_BOX,
   UML_EDGE_WIDTH,
+  UML_FRAGMENT_BOX,
   UML_INK,
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
@@ -34,6 +42,7 @@ import {
 import { guillemets, UML_UNLABELLED_KINDS } from './keywords.js';
 import type {
   UmlClassifier,
+  UmlLifeline,
   UmlModel,
   UmlNodeBase,
   UmlRelation,
@@ -133,6 +142,106 @@ const UML_IMPORT_CONTAINER_INSET = 40;
  * class laid over a package's tab is a class the reader cannot attribute.
  */
 const UML_IMPORT_CONTAINER_HEADER = 48;
+
+/* ── The invented SEQUENCE layout (§17.2.4) ───────────────────────────── */
+
+/**
+ * The distance between two lifeline SPINES on a sheet nobody positioned.
+ *
+ * Wide enough that a 160-unit head has 40 units of air on either side of it, and
+ * that a message label written over the gap is legible. It is also comfortably
+ * more than twice {@link UML_SPINE_TOLERANCE}, which is what stops a bar dropped
+ * on one spine from being claimed by its neighbour.
+ */
+export const UML_SD_COLUMN_GAP = 200;
+
+/**
+ * The height of ONE SLOT — the vertical distance between two consecutive things
+ * that happen.
+ *
+ * A slot per EVENT and not per message, and that is the whole trick of the
+ * sequence importers: a `.puml` and an XMI fragment list state an ORDER and no
+ * heights, the canvas states heights and no order, and `model.ts` reads the
+ * order back off the heights. Giving every event — an arrow, the start of a bar,
+ * the end of one, an `alt`, an `else`, an `end` — a slot of its own is what makes
+ * that round trip exact: no two events tie, so nothing can come back reordered.
+ */
+export const UML_SD_EVENT_STEP = 40;
+
+/** Where the first event sits: one slot below the bottom of the heads. */
+export const UML_SD_FIRST_EVENT = UML_LIFELINE_HEAD.h + UML_SD_EVENT_STEP;
+
+/** How far outside the spines it covers a combined fragment is drawn. */
+export const UML_SD_FRAGMENT_PADDING = 20;
+
+/** The height of the nth slot of an invented sequence layout. */
+export function umlSequenceSlot(index: number): number {
+  return UML_SD_FIRST_EVENT + index * UML_SD_EVENT_STEP;
+}
+
+/**
+ * The COLUMN box of the nth lifeline — the narrow tall element, not the head.
+ *
+ * `UmlNodeElementModel` makes a lifeline the spine and paints the head across
+ * the top of it, so what is laid out here is the spine: its centre is the line
+ * the conversation is measured against, and the head overflows it on both sides
+ * by the same amount.
+ */
+export function umlSequenceColumn(index: number, height: number): UmlBox {
+  const { w } = UML_NODE_BOX.lifeline;
+  return {
+    x: index * UML_SD_COLUMN_GAP - w / 2,
+    y: 0,
+    w,
+    h: Math.max(UML_NODE_BOX.lifeline.h, height),
+  };
+}
+
+/** The bar §17.2.4 draws on a spine between two occurrences. */
+export function umlSequenceExecution(
+  column: UmlBox,
+  y0: number,
+  y1: number
+): UmlBox {
+  const { w } = UML_NODE_BOX.execution;
+  // At least ONE slot tall: a bar that opened and closed on the same event is
+  // still a bar the author drew, and a zero-height rectangle is invisible and
+  // unclickable.
+  return {
+    x: column.x + column.w / 2 - w / 2,
+    y: y0,
+    w,
+    h: Math.max(UML_SD_EVENT_STEP, y1 - y0),
+  };
+}
+
+/** The cross §17.2.4 ends a lifeline with, centred on the spine. */
+export function umlSequenceDestruction(column: UmlBox, y: number): UmlBox {
+  const { w, h } = UML_NODE_BOX.destruction;
+  return { x: column.x + column.w / 2 - w / 2, y: y - h / 2, w, h };
+}
+
+/**
+ * The rectangle §17.6.4 draws round the spines a fragment covers.
+ *
+ * {@link UML_SD_FRAGMENT_PADDING} outside the outermost two, which is what makes
+ * the box cover the spines rather than end on them — `model.ts` reads coverage
+ * as "the spine runs through the box", and a rectangle whose edge lands exactly
+ * on a spine is a coin toss.
+ */
+export function umlSequenceFragment(
+  columns: readonly UmlBox[],
+  y0: number,
+  y1: number
+): UmlBox {
+  if (columns.length === 0) {
+    return { x: 0, y: y0, w: UML_FRAGMENT_BOX.w, h: Math.max(1, y1 - y0) };
+  }
+  const centres = columns.map(column => column.x + column.w / 2);
+  const left = Math.min(...centres) - UML_SD_FRAGMENT_PADDING;
+  const right = Math.max(...centres) + UML_SD_FRAGMENT_PADDING;
+  return { x: left, y: y0, w: right - left, h: Math.max(1, y1 - y0) };
+}
 
 /** What one artefact asks the layout for. */
 export interface UmlLayoutNode {
@@ -378,13 +487,29 @@ interface UmlDraft {
   /** The IR record's id — the SOURCE file's, carried verbatim (D3). */
   sourceId: string;
   /** Which surface element the artefact IS. */
-  element: 'umlNode' | 'umlSubject' | 'umlPartition' | 'umlRegion';
+  element:
+    | 'umlNode'
+    | 'umlSubject'
+    | 'umlPartition'
+    | 'umlRegion'
+    | 'umlFragment';
   /** The node kind, for `element === 'umlNode'`. */
   kind?: UmlNodeKind;
-  /** The frame's own `name` prop, for the three background elements. */
+  /** The frame's own `name` prop, for the four background elements. */
   name?: string;
   /** Which way a partition's band runs, when it is not the default. */
   orientation?: 'vertical' | 'horizontal';
+  /** A combined fragment's interaction operator (§17.6.4). */
+  operator?: UmlFragmentOperator;
+  /**
+   * A combined fragment's operand bands, as WEIGHTS.
+   *
+   * Written only for a fragment with a second operand, because the model
+   * declares the field `undefined` until one is added and a single-operand
+   * fragment written with a one-entry list would not be byte-identical to the
+   * one the toolbox draws.
+   */
+  operands?: UmlFragmentOperand[];
   /** The words of a node, by tier. `undefined` means "no such tier". */
   tiers?: { name: string; attributes?: string; operations?: string };
   size: { w: number; h: number };
@@ -403,11 +528,20 @@ interface UmlDraft {
   connectable?: boolean;
 }
 
-/** The three background frames, and the box each is created at. */
+/** The four background frames, and the box each is created at. */
 const FRAME_BOX = {
   umlSubject: UML_SUBJECT_BOX,
   umlPartition: UML_PARTITION_BOX,
   umlRegion: UML_REGION_BOX,
+  umlFragment: UML_FRAGMENT_BOX,
+} as const;
+
+/** The role each background frame carries — one table, read once below. */
+const FRAME_ROLE = {
+  umlSubject: UML_ROLE.subject,
+  umlPartition: UML_ROLE.partition,
+  umlRegion: UML_ROLE.region,
+  umlFragment: UML_ROLE.fragment,
 } as const;
 
 /** Every artefact one model draws, in the order a reader should meet them. */
@@ -431,7 +565,7 @@ function draftsOf(model: UmlModel): UmlDraft[] {
 
   const frame = (
     record: UmlNodeBase,
-    element: 'umlSubject' | 'umlPartition' | 'umlRegion',
+    element: 'umlSubject' | 'umlPartition' | 'umlRegion' | 'umlFragment',
     orientation?: 'vertical' | 'horizontal'
   ): void => {
     drafts.push({
@@ -579,11 +713,65 @@ function draftsOf(model: UmlModel): UmlDraft[] {
     }
   }
 
+  // §17 — the sequence sheet. The FRAGMENTS come first, so they are written
+  // under the conversation they qualify: a combined fragment is transparent and
+  // drawn over the lifelines, and painting order is what decides which of two
+  // overlapping backgrounds a click lands on.
+  for (const interaction of model.interactions) {
+    for (const fragment of interaction.fragments) {
+      drafts.push({
+        sourceId: fragment.id,
+        element: 'umlFragment',
+        name: fragment.name,
+        operator: fragment.operator,
+        // ONE operand is the model's `undefined` — see {@link UmlDraft.operands}.
+        // The weights are the bands' own heights, which is what keeps a
+        // re-export's operand boundaries where the file drew them.
+        ...(fragment.operands.length > 1
+          ? {
+              operands: fragment.operands.map((operand, index) => ({
+                id: `${fragment.id}-operand-${index + 1}`,
+                ...(operand.guard ? { name: operand.guard } : {}),
+                size: Math.max(1, operand.y1 - operand.y0),
+              })),
+            }
+          : {}),
+        size: FRAME_BOX.umlFragment,
+        ...(fragment.bounds ? { bounds: fragment.bounds } : {}),
+      });
+    }
+    for (const lifeline of interaction.lifelines) {
+      node(lifeline, 'lifeline', { name: umlLifelineHeadText(lifeline) });
+    }
+    // The bar and the cross carry no words (`UML_UNLABELLED_KINDS`), so each is
+    // a shape and nothing else — no tier, and therefore no group.
+    for (const execution of interaction.executions) {
+      node(execution, 'execution', undefined);
+    }
+    for (const destruction of interaction.destructions) {
+      node(destruction, 'destruction', undefined);
+    }
+  }
+
   for (const note of model.notes) {
     node(note, 'note', { name: note.body });
   }
 
   return drafts;
+}
+
+/**
+ * §17.3.4's `<name> [: <Type>]` — the one compartment a lifeline's head holds.
+ *
+ * The same line `keywords.ts` seeds a fresh head with and `parseLifelineIdent`
+ * reads back, so a lifeline imported from a file and one drawn from the toolbox
+ * hold the same text in the same tier.
+ */
+function umlLifelineHeadText(lifeline: UmlLifeline): string {
+  const stated = lifeline.type
+    ? `${lifeline.name} : ${lifeline.type}`
+    : lifeline.name;
+  return umlNameTierText({ ...lifeline, name: stated });
 }
 
 /* ── What is drawn inside what ────────────────────────────────────────── */
@@ -637,11 +825,24 @@ function containmentOf(
 
 /* ── The edges a model draws ──────────────────────────────────────────── */
 
-/** The three relationship kinds a BEHAVIOUR sheet is wired with. */
+/**
+ * The relationship kinds a BEHAVIOUR sheet is wired with — the three flows, and
+ * phase 3's five messages.
+ *
+ * All eight are in the set for one reason: each is read off the canvas into
+ * BOTH `relations` and the behaviour that owns it, and is read out of a file
+ * into the behaviour alone. The dedupe below is what lets {@link umlDrawnEdges}
+ * walk both without drawing anything twice.
+ */
 const BEHAVIOUR_KINDS = new Set<UmlRelationKind>([
   'control-flow',
   'object-flow',
   'transition',
+  'message-sync',
+  'message-async',
+  'message-reply',
+  'message-create',
+  'message-delete',
 ]);
 
 /** One line on the board: its role, its two ends and its three labels. */
@@ -662,6 +863,17 @@ export interface UmlDrawnEdge {
   sourceEnd?: string;
   /** The same, beside the target end. */
   targetEnd?: string;
+  /**
+   * The HEIGHT a message is drawn at (§17.4.4), for the five kinds that have
+   * one.
+   *
+   * Present only for a message, and it is what makes a sequence diagram
+   * readable at all: every other UML line is anchored at the centre of the two
+   * boxes it joins, and a message anchored at the centre of a 600-unit spine
+   * would put the whole conversation on one horizontal line. See
+   * {@link messageAnchors}.
+   */
+  y?: number;
 }
 
 /**
@@ -747,7 +959,74 @@ export function umlDrawnEdges(model: UmlModel): UmlDrawnEdge[] {
       });
     }
   }
+  for (const interaction of model.interactions) {
+    for (const message of interaction.messages) {
+      const at = key(message.kind, message.sourceId, message.targetId);
+      // A message read off the CANVAS is in `relations` as well, exactly as a
+      // transition is; one read out of a file is on the interaction alone. The
+      // claim is consumed either way, so the arrow is drawn once.
+      const claimedAlready = alreadyDrawn(at);
+      const already = claimedAlready
+        ? drawn.find(
+            entry =>
+              entry.kind === message.kind &&
+              entry.sourceId === message.sourceId &&
+              entry.targetId === message.targetId &&
+              entry.y === undefined
+          )
+        : undefined;
+      if (already) {
+        // The relation pass drew it with no height. The height is the one thing
+        // a message has and a relation does not, so it is filled in here rather
+        // than the arrow being drawn a second time.
+        already.y = message.y;
+        continue;
+      }
+      if (claimedAlready) continue;
+      drawn.push({
+        kind: message.kind,
+        sourceId: message.sourceId,
+        targetId: message.targetId,
+        ...(message.label ? { label: message.label } : {}),
+        y: message.y,
+      });
+    }
+  }
   return drawn;
+}
+
+/**
+ * Where a message's two ends attach — §17.4.4's horizontal line at the height it
+ * happens.
+ *
+ * On the FACING sides of the two columns, at the same relative height on each:
+ * the arrow leaves the right edge of the participant on the left and lands on
+ * the left edge of the one on the right, which is what every tool draws and what
+ * keeps the line horizontal rather than cutting diagonally through a head.
+ *
+ * A self-message — an end that resolves to the same column, or one whose box is
+ * unknown — leaves and lands on the same side, which is the loop §17.4.4 draws
+ * back onto the sender's own lifeline.
+ */
+function messageAnchors(
+  y: number,
+  from: UmlBox | undefined,
+  to: UmlBox | undefined
+): { source: IVec; target: IVec } {
+  /** Where on this box's own height the arrow sits, clamped to it. */
+  const level = (box: UmlBox | undefined): number => {
+    if (!box || !(box.h > 0)) return 0.5;
+    return Math.min(1, Math.max(0, (y - box.y) / box.h));
+  };
+  const leftward = from && to ? from.x + from.w / 2 > to.x + to.w / 2 : false;
+  const sameColumn =
+    !from || !to || Math.abs(from.x + from.w / 2 - (to.x + to.w / 2)) < 1;
+  if (sameColumn) {
+    return { source: [1, level(from)], target: [1, level(to)] };
+  }
+  return leftward
+    ? { source: [0, level(from)], target: [1, level(to)] }
+    : { source: [1, level(from)], target: [0, level(to)] };
 }
 
 /* ── The materializer ─────────────────────────────────────────────────── */
@@ -916,18 +1195,19 @@ export function umlElementsFromModel(
         elements.push({
           type: draft.element,
           id,
-          role:
-            draft.element === 'umlSubject'
-              ? UML_ROLE.subject
-              : draft.element === 'umlPartition'
-                ? UML_ROLE.partition
-                : UML_ROLE.region,
+          role: FRAME_ROLE[draft.element],
           name: draft.name ?? '',
           // The model defaults a band to vertical, and a creation that restated
           // the default would be a second place for it to be changed.
           ...(draft.orientation === 'horizontal'
             ? { orientation: 'horizontal' }
             : {}),
+          // §17.6.4's operator and its operand bands. `alt` is the model's own
+          // default and is written all the same: unlike an orientation, the
+          // operator IS the fragment, and a document that left it out would be
+          // one whose pentagon depends on a default nobody can see.
+          ...(draft.operator ? { operator: draft.operator } : {}),
+          ...(draft.operands ? { operands: draft.operands } : {}),
           xywh,
           ...payload(formatId, draft.sourceId),
         });
@@ -971,7 +1251,10 @@ export function umlElementsFromModel(
           ...umlTextProps(
             compartmented || NAMED_GLYPH_KINDS.has(kind)
               ? UML_ROLE.name
-              : UML_ROLE.label,
+              : // A lifeline's head is `uml:lifeline-ident`, every other single
+                // word is `uml:label` — the creation path's own table, read
+                // rather than restated (`component.ts`).
+                umlLabelRoleOf(kind),
             boxes.name,
             {
               fontSize: UML_NAME_FONT_SIZE,
@@ -1026,6 +1309,17 @@ export function umlElementsFromModel(
       // An end this sheet holds no artefact for: there is nothing to draw
       // between. The parser has already said so in a note of its own.
       if (!source || !target) continue;
+      // §17.4.4: a message is drawn at the height it happens, on the facing
+      // edges of the two columns. Everything else is anchored at the centre of
+      // the two boxes, which is what a structural relationship means.
+      const anchors =
+        edge.y === undefined
+          ? undefined
+          : messageAnchors(
+              edge.y,
+              boxOf.get(edge.sourceId),
+              boxOf.get(edge.targetId)
+            );
       elements.push({
         type: 'connector',
         id: mint(),
@@ -1037,8 +1331,8 @@ export function umlElementsFromModel(
         stroke: UML_INK,
         strokeWidth: UML_EDGE_WIDTH,
         ...UML_EDGE_STYLE[edge.kind],
-        source: { id: source, position: [0.5, 0.5] },
-        target: { id: target, position: [0.5, 0.5] },
+        source: { id: source, position: anchors?.source ?? [0.5, 0.5] },
+        target: { id: target, position: anchors?.target ?? [0.5, 0.5] },
         ...(edge.label ? { text: edge.label } : {}),
         ...endLabelProps(
           edge,
