@@ -1017,6 +1017,36 @@ describe('a file that is not what it claims', () => {
     );
   });
 
+  /**
+   * §17.6.4 lists thirteen interaction operators and a file may hold a
+   * fourteenth — a tool's own word, or a typo. It is DRAWN as an `alt`, because
+   * a pentagon has to say something, and the word itself is carried: the
+   * warning promises the file's own spelling is kept beside it, and this is
+   * where the promise is kept (ADR 0012 D1).
+   */
+  it('draws an unknown interaction operator as alt and carries the word', () => {
+    const { models, report, foreign } = importXmi(
+      `<uml:Model xmi:id="m" name="M">
+         <packagedElement xmi:type="uml:Package" xmi:id="p" name="P">
+           <packagedElement xmi:type="uml:Interaction" xmi:id="i1" name="Flow">
+             <lifeline xmi:type="uml:Lifeline" xmi:id="l1" name="a"/>
+             <fragment xmi:type="uml:CombinedFragment" xmi:id="f1" covered="l1" interactionOperator="coregion">
+               <operand xmi:type="uml:InteractionOperand" xmi:id="o1"/>
+             </fragment>
+           </packagedElement>
+         </packagedElement>
+       </uml:Model>`
+    );
+    expect(models[0].interactions[0].fragments[0].operator).toBe('alt');
+    expect(
+      report.notes.find(each => each.kind === 'warning')?.message
+    ).toContain('"coregion"');
+    expect(foreign['f1']?.attrs?.['f1']).toEqual({
+      interactionOperator: 'coregion',
+    });
+    expect(report.carried).toBeGreaterThan(0);
+  });
+
   it('accepts a bare uml:Package as the one sheet it is', () => {
     const { models } = importXmi(
       `<uml:Package xmi:id="p" name="Domain">

@@ -595,7 +595,9 @@ export interface UmlMessage {
  * `guard` is §17.6.4's `[…]` InteractionConstraint WITHOUT its brackets, the
  * same way {@link UmlActivityEdge.guard} and {@link UmlTransition.guard} carry
  * theirs: the brackets are the notation's delimiter, and a writer that had to
- * strip them would be parsing its own model.
+ * strip them would be parsing its own model. The canvas keeps them — they are
+ * what the author typed and what the renderer paints — and
+ * {@link umlGuardText} takes exactly one pair off on the way in here.
  *
  * `y0` and `y1` are the band's own top and bottom in canvas units, because that
  * is what decides which messages are inside WHICH operand — an `alt`'s two
@@ -1009,6 +1011,39 @@ export function umlLifelineAt<T extends UmlHostCandidate>(
  * `opt`, every `loop` and every `ref` is, and its guard is the fragment's own
  * `name`.
  */
+/**
+ * A guard as the IR spells it — §17.6.4's condition with ONE surrounding pair
+ * of brackets taken off.
+ *
+ * The canvas text is exactly what the author types, and §17.6.4.4 prints the
+ * condition **in brackets**: `[x > 0]`, `[else]`. So the brackets are stored,
+ * the renderer paints them verbatim, and the delimiter is stripped HERE, once,
+ * for both writers — PlantUML writes its own `[…]` back round the condition and
+ * XMI writes a bare `LiteralString`, and neither should have to parse the
+ * model it is given.
+ *
+ * Tolerant in both directions, because a guard is free text an author types:
+ * `x > 0` typed without brackets is the same condition and exports identically,
+ * and `[[x > 0]]` gives up exactly one pair. Only a pair that actually
+ * SURROUNDS the condition is taken — `[a] or [b]` opens and closes twice, and
+ * dropping its outer characters would turn a sentence inside out.
+ */
+export function umlGuardText(written: string | undefined): string {
+  const text = (written ?? '').trim();
+  if (text.length < 2 || !text.startsWith('[') || !text.endsWith(']')) {
+    return text;
+  }
+  let depth = 0;
+  for (const [index, character] of [...text].entries()) {
+    if (character === '[') depth += 1;
+    else if (character === ']') {
+      depth -= 1;
+      if (depth === 0 && index < text.length - 1) return text;
+    }
+  }
+  return depth === 0 ? text.slice(1, -1).trim() : text;
+}
+
 export function umlOperandBands(
   box: UmlBox,
   operands: readonly UmlFragmentOperand[] | undefined,
@@ -1018,7 +1053,10 @@ export function umlOperandBands(
   const top = box.y + band;
   const body = Math.max(0, box.h - band);
   const guardOf = (index: number, written: string | undefined) => {
-    const guard = (written ?? (index === 0 ? name : '')).trim();
+    // …and the brackets come OFF here (see {@link umlGuardText}): the canvas
+    // holds `[x > 0]` because that is what §17.6.4 draws and what the author
+    // typed, and the IR holds the condition.
+    const guard = umlGuardText(written ?? (index === 0 ? name : ''));
     return guard ? { guard } : {};
   };
 

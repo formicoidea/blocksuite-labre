@@ -1,6 +1,8 @@
 ---
 '@labre/affine-gfx-uml': minor
 '@labre/affine-model': minor
+'@labre/affine-block-surface': minor
+'@labre/affine-shared': minor
 '@labre/affine': minor
 ---
 

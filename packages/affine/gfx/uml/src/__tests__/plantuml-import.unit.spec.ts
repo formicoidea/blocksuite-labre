@@ -544,6 +544,32 @@ describe('the sequence syntax', () => {
     expect(model.classifiers).toHaveLength(2);
   });
 
+  /**
+   * …and the bare `->` is not the sequence's alone either, once a block has
+   * DECLARED a classifier: PlantUML reads `A -> B` inside a class block as a
+   * directed association, and two classes are not two participants.
+   */
+  it.each([
+    'class A\nclass B\nA -> B',
+    'interface A\nclass B\nA -> B',
+    'abstract class A\nclass B\nA -> B',
+    'enum A\nclass B\nA -> B',
+    'package P {\n  class A\n}\nclass B\nA -> B',
+  ])('reads a declared classifier with a bare `->` as a class diagram', src => {
+    const [model] = importPlantuml(src).models;
+    expect(model.diagram.kind).toBe('class');
+    expect(model.interactions).toEqual([]);
+    expect(model.classifiers.map(each => each.name)).toContain('B');
+    expect(model.relations.map(each => each.kind)).toEqual(['association']);
+  });
+
+  it('still reads a sequence that happens to name a package', () => {
+    // The veto narrows the ARROW test and nothing else: `participant` is
+    // evidence of its own.
+    const { interaction } = interactionOf('participant a\npackage P\na -> b');
+    expect(interaction.messages).toHaveLength(1);
+  });
+
   const ARROWS: [string, string][] = [
     ['a -> b', 'message-sync'],
     ['a ->> b', 'message-async'],

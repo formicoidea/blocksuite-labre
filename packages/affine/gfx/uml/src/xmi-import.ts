@@ -1792,6 +1792,12 @@ function readInteraction(
           FRAGMENT_OPERATORS.has(stated) ? stated : 'alt'
         ) as UmlFragmentOperator;
         if (!FRAGMENT_OPERATORS.has(stated)) {
+          // CARRIED, and not merely mentioned (ADR 0012 D1): the word is the
+          // one thing this fragment said that the drawing cannot, so it rides
+          // along on the element's foreign payload. `interactionOperator` is in
+          // the understood list above — a word the pentagon DOES draw is not
+          // foreign matter — so the carry is written here, where it is.
+          carryAttr(ctx, fragmentId, fragmentId, 'interactionOperator', stated);
           note(ctx, {
             kind: 'warning',
             element: child.name,

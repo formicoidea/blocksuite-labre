@@ -1263,14 +1263,33 @@ const FRAGMENT_OPERATOR_OF_WORD: Readonly<Record<string, UmlFragmentOperator>> =
     consider: 'consider',
   };
 
+/**
+ * The declarations that can only be a CLASS diagram — §9's classifiers and
+ * §12's package.
+ *
+ * The veto on the arrow test below. PlantUML accepts `A -> B` inside a class
+ * block as a **directed association**, so the single dash is not the sequence's
+ * alone once a block has declared a classifier: a file that says `class A`,
+ * `class B` and `A -> B` is two classes and an arrow between them, and reading
+ * it as a conversation would turn two types into two participants. A block that
+ * declares a classifier AND writes `participant` is still a sequence — the
+ * keyword list is evidence of its own and this only narrows the arrow.
+ */
+const CLASSIFIER_DECLARATION =
+  /^(?:abstract\s+)?(?:class|interface|enum|enumeration|entity|package|namespace)\s+\S/i;
+
 /** Is this block written in PlantUML's sequence language? */
 function looksSequential(lines: readonly string[]): boolean {
+  const declaresClassifier = lines.some(raw =>
+    CLASSIFIER_DECLARATION.test(raw.trim())
+  );
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.startsWith("'")) continue;
     const title = /^title\s+(\S+)/i.exec(line);
     if (title && KIND_OF_TAG.get(title[1]) === 'sd') return true;
     if (SEQUENCE_KEYWORD.test(line)) return true;
+    if (declaresClassifier) continue;
     const arrow = ARROW.exec(` ${line.replaceAll(DIRECTION_HINT, '--')} `);
     if (arrow && SEQUENCE_ONLY_ARROW.test(arrow[1])) return true;
   }
@@ -1284,6 +1303,31 @@ function unbracket(text: string | undefined): string | undefined {
   const inside = /^\[(.*)\]$/.exec(written);
   const guard = (inside ? inside[1] : written).trim();
   return guard || undefined;
+}
+
+/**
+ * The lifelines a fragment covers, as the RECTANGLE covers them: every column
+ * from the leftmost participant it touches to the rightmost, in declaration
+ * order.
+ *
+ * PlantUML names no coverage — it is derived from what the block's events
+ * touch — and the file may well touch the first and third participants and not
+ * the second. §17.6.4 draws ONE box round them, and a box reaching from the
+ * first to the third is drawn over the second whether the text mentions it or
+ * not. The span is therefore the honest reading, and the one that makes the
+ * file, the drawing and a re-export agree: `model.ts` reads coverage off the
+ * canvas as "the spine runs through the box", so a gapped list read here would
+ * come back filled in and the second export would not be the first.
+ */
+function coveredSpan(
+  order: readonly string[],
+  touched: ReadonlySet<string>
+): string[] {
+  const indices = order
+    .map((id, index) => (touched.has(id) ? index : -1))
+    .filter(index => index >= 0);
+  if (indices.length === 0) return [];
+  return order.slice(indices[0], indices[indices.length - 1] + 1);
 }
 
 /** §17.3.4's `<name> ['[' <selector> ']'] [':' <type>]`, as the IR holds it. */
@@ -1413,9 +1457,10 @@ function parseSequenceBlock(
     const y1 = take();
     const covered =
       fragment.covered.size > 0
-        ? interaction.lifelines
-            .filter(lifeline => fragment.covered.has(lifeline.id))
-            .map(lifeline => lifeline.id)
+        ? coveredSpan(
+            interaction.lifelines.map(lifeline => lifeline.id),
+            fragment.covered
+          )
         : interaction.lifelines.map(lifeline => lifeline.id);
     fragment.record.coveredLifelineIds = covered;
     fragment.record.operands = fragment.bands.map((band, index) => ({

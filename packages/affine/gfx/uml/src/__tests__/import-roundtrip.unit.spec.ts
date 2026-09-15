@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { exportUmlPlantuml, exportUmlXmi } from '../export';
 import { parseOperation, parseProperty } from '../grammar';
 import {
+  umlElementsFromModel,
   umlSequenceColumn,
+  umlSequenceDestruction,
   umlSequenceExecution,
   umlSequenceFragment,
   umlSequenceSlot,
@@ -18,9 +20,10 @@ import type {
   UmlMessageKind,
   UmlModel,
   UmlNodeBase,
+  UmlSourceElement,
   UmlTimelineEntry,
 } from '../model';
-import { umlInteractionTimeline } from '../model';
+import { umlInteractionTimeline, umlModelFrom } from '../model';
 import { importPlantuml } from '../plantuml-import';
 import { importXmi } from '../xmi-import';
 
@@ -281,6 +284,52 @@ function statements(model: UmlModel) {
 const reimport = (models: readonly UmlModel[]) =>
   importPlantuml(exportUmlPlantuml(models).text).models;
 
+/* ── The OTHER round trip: through the board the reader draws ─────────── */
+
+/**
+ * A materialized board as the reader of a canvas takes it.
+ *
+ * `umlElementsFromModel` emits serialized PROPS — a `children` record on a
+ * group, everything else already in the shape `umlModelFrom` reads — so the
+ * adapter is one key: a group's members are `childIds` on the way back in. No
+ * surface, no element models, no store; the same trick `model.unit.spec.ts`
+ * plays with `artefact()`, driven off the materializer's own output rather than
+ * off literals.
+ */
+function boardOf(models: readonly UmlModel[]): UmlSourceElement[] {
+  const { elements } = umlElementsFromModel(models, { formatId: 'plantuml' });
+  return elements.map(props => {
+    const { children, ...rest } = props as Record<string, unknown>;
+    return {
+      ...(rest as unknown as UmlSourceElement),
+      ...(children && typeof children === 'object'
+        ? { childIds: Object.keys(children as Record<string, unknown>) }
+        : {}),
+    };
+  });
+}
+
+/**
+ * **Draw it, then read the drawing** — the third statement of the round trip,
+ * and the one that catches what neither of the other two can.
+ *
+ * `export → import → export` never leaves the file: it proves the two PARSERS
+ * agree with the two writers, and says nothing at all about the board in
+ * between. `materialize → read` is the other half — the sheet a user actually
+ * gets — and on a sequence diagram it is the half that matters, because §17.4.4
+ * makes the ORDER of the conversation a fact about geometry: the materializer
+ * translates every box onto the sheet, `umlModelFrom` measures each message's
+ * height against the column it lands on, and if those two disagree about where
+ * the drawing is, the arrows come back at the wrong heights and the
+ * conversation is scrambled — a defect no file-to-file test can see.
+ */
+const materializeAndRead = (models: readonly UmlModel[]): UmlModel[] => {
+  const board = boardOf(models);
+  return board
+    .filter(element => element.type === 'umlDiagram')
+    .map(frame => umlModelFrom(frame, board));
+};
+
 /* ── The trip ─────────────────────────────────────────────────────────── */
 
 describe('a class diagram, written and read back', () => {
@@ -469,7 +518,14 @@ function sequenceDiagram(): UmlModel {
             bounds: umlSequenceExecution(column[1], at(1), at(9)),
           },
         ],
-        destructions: [{ ...node('d1', ''), lifelineId: 'l3', y: at(11) }],
+        destructions: [
+          {
+            ...node('d1', ''),
+            lifelineId: 'l3',
+            y: at(11),
+            bounds: umlSequenceDestruction(column[2], at(11)),
+          },
+        ],
       },
     ],
   };
@@ -763,5 +819,232 @@ describe('the Papyrus sequence fixture', () => {
     // are kept verbatim rather than swallowed (D5), which is the whole of the
     // foreign-matter contract.
     expect(report.quarantined).toBe(2);
+  });
+});
+
+/* ── The phase-3 pair: two files the playground actually wrote ────────── */
+
+/**
+ * The sequence sheet a build of THIS tranche exported, out of the playground,
+ * in both formats — the phase-1 pair's counterpart and the reference for the
+ * guard decision.
+ *
+ * Two lifelines `a : A` and `b : B`, a `loop` with the operands `[x > 0]` and
+ * `[else]`, a synchronous `doIt(x)` and its reply. The pair is what makes the
+ * bracket contract checkable against something other than our own fixtures: the
+ * canvas held `[x > 0]`, the `.puml` says `loop [x > 0]` and the XMI says
+ * `value="x > 0"`, and both files are on disk saying so.
+ */
+describe('the phase-3 export, off disk', () => {
+  const PUML = corpus('labre-phase3-export.puml');
+  const XMI = corpus('labre-phase3-export.xmi');
+
+  it('re-exports the PlantUML byte for byte', () => {
+    expect(exportUmlPlantuml(importPlantuml(PUML).models).text).toBe(PUML);
+  });
+
+  it('re-exports the XMI byte for byte', () => {
+    const { models } = importXmi(XMI);
+    expect(exportUmlXmi(models, { name: 'BlockSuite Playground' }).text).toBe(
+      XMI
+    );
+  });
+
+  it('spells the guard without its brackets in both files', () => {
+    // D2: the brackets are the NOTATION's, so the canvas keeps them and the
+    // two writers take exactly one pair off. `[[x > 0]]` is the failure.
+    expect(PUML).toContain('loop [x > 0]');
+    expect(PUML).toContain('else [else]');
+    expect(PUML).not.toContain('[[');
+    expect(XMI).toContain('value="x &gt; 0"');
+    expect(XMI).toContain('value="else"');
+  });
+
+  it('reads the same conversation out of either file', () => {
+    const [fromPuml] = importPlantuml(PUML).models;
+    const [fromXmi] = importXmi(XMI).models;
+
+    for (const model of [fromPuml, fromXmi]) {
+      expect(model.diagram.kind).toBe('sd');
+      const [interaction] = model.interactions;
+      expect(
+        interaction.lifelines.map(each => [each.name, each.type ?? ''])
+      ).toEqual([
+        ['a', 'A'],
+        ['b', 'B'],
+      ]);
+      expect(interaction.fragments.map(each => each.operator)).toEqual([
+        'loop',
+      ]);
+      expect(interaction.fragments[0].operands.map(each => each.guard)).toEqual(
+        ['x > 0', 'else']
+      );
+    }
+    // …and the ORDER, which is the whole of what a sequence diagram says. Ids
+    // are each file's own (D3), so the timeline is compared by name.
+    expect(conversation(fromXmi)).toEqual(conversation(fromPuml));
+  });
+
+  it('is a fixed point through the board as well', () => {
+    for (const [name, models] of [
+      ['plantuml', importPlantuml(PUML).models],
+      ['xmi', importXmi(XMI).models],
+    ] as const) {
+      expect(exportUmlPlantuml(materializeAndRead(models)).text, name).toBe(
+        exportUmlPlantuml(models).text
+      );
+    }
+  });
+});
+
+/* ── The sheet itself: materialize → read → the same file ─────────────── */
+
+describe('a sequence sheet, drawn on a board and read back off it', () => {
+  const synthetic = sequenceDiagram();
+  const fromCorpus = importPlantuml(corpus('sequence-order.puml')).models;
+
+  it.each([
+    ['the synthetic fixture', [synthetic]],
+    ['the corpus file', fromCorpus],
+  ] as const)('writes the same PlantUML from %s', (_name, models) => {
+    expect(exportUmlPlantuml(materializeAndRead(models)).text).toBe(
+      exportUmlPlantuml(models).text
+    );
+  });
+
+  it.each([
+    ['the synthetic fixture', [synthetic]],
+    ['the corpus file', fromCorpus],
+  ] as const)('writes the same XMI from %s', (_name, models) => {
+    expect(exportUmlXmi(materializeAndRead(models)).text).toBe(
+      exportUmlXmi(models).text
+    );
+  });
+
+  /**
+   * The specific arithmetic the byte comparison above is a proxy for.
+   *
+   * The materializer moves the whole drawing down by the heading band plus the
+   * plot inset before it places a box; a message's height has to move with it,
+   * because the height is divided against the PLACED column to give the
+   * endpoint's relative position. Left untranslated it lands `dy` too high —
+   * above the head on the first few messages, which clamps them all to the same
+   * fraction and ties the conversation.
+   */
+  it('moves every message down by the very offset the boxes moved by', () => {
+    const [read] = materializeAndRead([synthetic]);
+    const drawn = read.interactions[0];
+    const original = synthetic.interactions[0];
+
+    // What the materializer translated the drawing by, measured off a column
+    // rather than restated: the heading band plus the plot inset.
+    const dy = drawn.lifelines[0].bounds!.y - original.lifelines[0].bounds!.y;
+    expect(dy).toBeGreaterThan(0);
+
+    const heightOf = (messages: readonly UmlMessage[], label: string) =>
+      messages.find(each => each.label === label)!.y;
+    // The five arrows that run column to column. The sixth ends on the 24-unit
+    // cross rather than on a 600-unit spine, so its height is the midpoint of
+    // two very differently sized boxes and is not this arithmetic.
+    for (const label of [
+      'browse()',
+      'openBasket()',
+      'basket',
+      'checkout()',
+      'no basket',
+    ]) {
+      expect(
+        heightOf(drawn.messages, label) - heightOf(original.messages, label),
+        label
+      ).toBeCloseTo(dy);
+    }
+  });
+
+  /**
+   * §17.6.4's guard, on the canvas and in the file.
+   *
+   * The author types the brackets — the renderer prints what is typed, and
+   * §17.6.4.4 prints a condition in brackets — so the board holds `[x > 0]`,
+   * the writers strip exactly one pair, and the file says `alt [x > 0]`. The
+   * failure this pins is the one an extra pair makes: `alt [[x > 0]]`.
+   */
+  it('writes the guards in brackets and exports them in one pair', () => {
+    const board = boardOf([synthetic]);
+    const [fragment] = board.filter(
+      element => element.type === 'umlFragment'
+    ) as (UmlSourceElement & { operands?: { name?: string }[] })[];
+
+    expect(fragment.operands?.map(operand => operand.name)).toEqual([
+      '[basket is not empty]',
+      '[basket is empty]',
+    ]);
+    // …and the declared guard is EMPTY on a split fragment: its bands hold the
+    // conditions, and the two labels share one corner (`background.ts`).
+    expect(fragment.name).toBe('');
+
+    const text = exportUmlPlantuml(materializeAndRead([synthetic])).text;
+    expect(text).toContain('alt [basket is not empty]');
+    expect(text).toContain('else [basket is empty]');
+    expect(text).not.toContain('[[');
+  });
+
+  /**
+   * An UNSPLIT fragment keeps its one guard in `name`, in brackets — and a
+   * guard typed without them exports identically, because the strip is tolerant
+   * in both directions.
+   */
+  it('brackets an unsplit guard, and tolerates one typed without', () => {
+    const opt = (guard: string): UmlModel => ({
+      ...emptyModel('sd2', 'sd', 'Checkout'),
+      interactions: [
+        {
+          id: 'sd2',
+          name: 'Checkout',
+          lifelines: [
+            { ...node('l1', 'Customer'), bounds: umlSequenceColumn(0, 400) },
+            { ...node('l2', 'web'), bounds: umlSequenceColumn(1, 400) },
+          ],
+          messages: [
+            message(
+              'm1',
+              'message-sync',
+              'l1',
+              'l2',
+              'pay()',
+              umlSequenceSlot(1)
+            ),
+          ],
+          fragments: [
+            {
+              ...node('f1', guard),
+              operator: 'opt',
+              operands: [
+                { guard, y0: umlSequenceSlot(0), y1: umlSequenceSlot(2) },
+              ],
+              coveredLifelineIds: ['l1', 'l2'],
+              bounds: umlSequenceFragment(
+                [umlSequenceColumn(0, 400), umlSequenceColumn(1, 400)],
+                umlSequenceSlot(0),
+                umlSequenceSlot(2)
+              ),
+            },
+          ],
+          executions: [],
+          destructions: [],
+        },
+      ],
+    });
+
+    const [drawn] = boardOf([opt('basket is not empty')]).filter(
+      element => element.type === 'umlFragment'
+    );
+    expect(drawn.name).toBe('[basket is not empty]');
+    expect(drawn.operands).toBeUndefined();
+
+    for (const typed of ['basket is not empty', '[basket is not empty]']) {
+      const text = exportUmlPlantuml(materializeAndRead([opt(typed)])).text;
+      expect(text, typed).toContain('opt [basket is not empty]');
+      expect(text, typed).not.toContain('[[');
+    }
   });
 });

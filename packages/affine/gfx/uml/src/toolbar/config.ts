@@ -779,6 +779,11 @@ function addUmlOperand(ctx: ToolbarContext): void {
       ? operands
       : [{ id: generateElementId(), name: model.name || undefined, size }];
     crud.updateElement(model.id, {
+      // …and the guard is MOVED, never copied. The declared `guard` zone and
+      // operand zero's label are anchored in the same corner (`background.ts`),
+      // so a fragment left carrying both would paint the condition twice, one
+      // string over the other. One guard, one place.
+      name: '',
       operands: [...existing, { id: generateElementId(), size }],
     });
   }

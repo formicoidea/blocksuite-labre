@@ -40,14 +40,15 @@ import {
   formatTransitionLabel,
 } from './grammar.js';
 import { guillemets, UML_UNLABELLED_KINDS } from './keywords.js';
-import type {
-  UmlClassifier,
-  UmlLifeline,
-  UmlModel,
-  UmlNodeBase,
-  UmlRelation,
-  UmlRelationKind,
-  UmlState,
+import {
+  type UmlClassifier,
+  umlGuardText,
+  type UmlLifeline,
+  type UmlModel,
+  type UmlNodeBase,
+  type UmlRelation,
+  type UmlRelationKind,
+  type UmlState,
 } from './model.js';
 import { umlNodeProps, umlTextProps } from './presets.js';
 import { UML_ROLE } from './roles.js';
@@ -173,6 +174,21 @@ export const UML_SD_FIRST_EVENT = UML_LIFELINE_HEAD.h + UML_SD_EVENT_STEP;
 
 /** How far outside the spines it covers a combined fragment is drawn. */
 export const UML_SD_FRAGMENT_PADDING = 20;
+
+/**
+ * A guard as the CANVAS spells it — §17.6.4's condition in the brackets the
+ * notation prints it in.
+ *
+ * The mirror of `model.ts`'s {@link umlGuardText}, and the only place the three
+ * readers add them: every parser produces a bare condition (`x > 0`), the board
+ * holds the words the author would have typed (`[x > 0]`), and the reader back
+ * off the board takes the pair off again. An unguarded operand stays unguarded —
+ * a lone `[]` would be a condition nobody wrote.
+ */
+function umlGuardLabel(guard: string | undefined): string {
+  const condition = umlGuardText(guard);
+  return condition ? `[${condition}]` : '';
+}
 
 /** The height of the nth slot of an invented sequence layout. */
 export function umlSequenceSlot(index: number): number {
@@ -719,19 +735,36 @@ function draftsOf(model: UmlModel): UmlDraft[] {
   // overlapping backgrounds a click lands on.
   for (const interaction of model.interactions) {
     for (const fragment of interaction.fragments) {
+      const split = fragment.operands.length > 1;
       drafts.push({
         sourceId: fragment.id,
         element: 'umlFragment',
-        name: fragment.name,
+        // §17.7.4's `ref` names an INTERACTION and not a condition, so it is
+        // written as it is read. Every other operator's `name` is the guard of
+        // the fragment's one operand, and the canvas spells a guard the way
+        // §17.6.4 prints it — in brackets (`umlGuardText`).
+        //
+        // A SPLIT fragment writes no `name` at all: its guards live in
+        // `operands` and the declared label is anchored in the very corner the
+        // first band's is (`background.ts`), so writing both would paint the
+        // condition twice.
+        name:
+          fragment.operator === 'ref'
+            ? fragment.name
+            : split
+              ? ''
+              : umlGuardLabel(fragment.operands[0]?.guard ?? fragment.name),
         operator: fragment.operator,
         // ONE operand is the model's `undefined` — see {@link UmlDraft.operands}.
         // The weights are the bands' own heights, which is what keeps a
         // re-export's operand boundaries where the file drew them.
-        ...(fragment.operands.length > 1
+        ...(split
           ? {
               operands: fragment.operands.map((operand, index) => ({
                 id: `${fragment.id}-operand-${index + 1}`,
-                ...(operand.guard ? { name: operand.guard } : {}),
+                ...(operand.guard
+                  ? { name: umlGuardLabel(operand.guard) }
+                  : {}),
                 size: Math.max(1, operand.y1 - operand.y0),
               })),
             }
@@ -1007,6 +1040,10 @@ export function umlDrawnEdges(model: UmlModel): UmlDrawnEdge[] {
  * A self-message — an end that resolves to the same column, or one whose box is
  * unknown — leaves and lands on the same side, which is the loop §17.4.4 draws
  * back onto the sender's own lifeline.
+ *
+ * `y` and the two boxes are in ONE space — the sheet's, after the drawing has
+ * been translated onto it. The caller does the translating; a height left in
+ * the source's own space would divide against a column that had already moved.
  */
 function messageAnchors(
   y: number,
@@ -1312,11 +1349,17 @@ export function umlElementsFromModel(
       // §17.4.4: a message is drawn at the height it happens, on the facing
       // edges of the two columns. Everything else is anchored at the centre of
       // the two boxes, which is what a structural relationship means.
+      //
+      // TRANSLATED, by the very `dy` every box above was placed with: `boxOf`
+      // holds the columns as they were PUT ON THE SHEET, and a height still in
+      // the source's own space would be measured against them — putting every
+      // message endpoint `dy` above the arrow the author is shown, and handing
+      // a re-export a conversation in a different order.
       const anchors =
         edge.y === undefined
           ? undefined
           : messageAnchors(
-              edge.y,
+              edge.y + dy,
               boxOf.get(edge.sourceId),
               boxOf.get(edge.targetId)
             );

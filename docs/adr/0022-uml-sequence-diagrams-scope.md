@@ -73,8 +73,10 @@ places that read a bound:
 read by the model's overrides and by the renderer alike). Without them the user
 sees a named box and cannot click it, and the frame fits to a 16-wide sliver.
 
-Resizing a lifeline changes its **height** only — a longer spine, never a wider
-one, which is the one resize a lifeline ever wants. The label is a grouped text
+The column is only ever **wanted** taller — a longer spine is the resize a
+lifeline ever asks for — but nothing enforces that: the handles are the
+platform's, and a wider column simply widens the painted head, which
+`umlLifelineHeadRect` sizes at `max(160, w)`. The label is a grouped text
 laid out inside the head, carrying its own flat tier role
 **`uml:lifeline-ident`** and spelled by §17.3.4's `<lifelineident>`
 (`parseLifelineIdent`: `name [: Type]`, or `self`). A role of its own rather
@@ -117,6 +119,14 @@ pool. That makes the operand band the second UML zone in R9, after the activity
 partition. The fragment's whole **top band is carved out of the transparent
 frame's hit test**, so the pentagon and the first guard are clickable on a board
 that otherwise lets every click through to what is drawn on it.
+
+**A guard is stored with its brackets.** The canvas text is exactly what the
+author types, and §17.6.4.4 prints a guard as `[guard]` — so the board holds
+`[x > 0]` and `[else]`, the renderer prints them verbatim, the two exporters
+strip exactly one surrounding pair (`umlGuardText`, tolerant of a condition
+typed without them) and the three importers put a pair back on (`import.ts`).
+A `ref`'s `name` is an interaction's, never a condition, and is written as it
+is read.
 
 **A guard lives in one of two places, and which one is structural.** An UNSPLIT
 fragment already IS the one-operand fragment, so its single guard is the
@@ -206,8 +216,20 @@ an `end` each take a slot of their own, so the y the reader invents is the y the
 writer will read back. That is what makes the round trip **byte-equal** for both
 semantic formats — export → import → export is a fixed point from the FIRST
 turn, where ADR 0019 §6 could only promise it from the second for a class
-diagram's drawn containment. Pinned by seventeen tests over the corpus files
-`sequence-order.puml` and `papyrus-sequence.xmi`.
+diagram's drawn containment. Pinned by twenty-nine round-trip tests in
+`import-roundtrip.unit.spec.ts`: seven over the synthetic sheet, ten over the
+two corpus files `sequence-order.puml` and `papyrus-sequence.xmi`, five over the
+pair a playground build actually exported (`labre-phase3-export.puml` /
+`.xmi`), and seven that go the other way — **draw** the model on a board, read
+the board back with `umlModelFrom`, and write the same file. That last group is
+the one the file-to-file tests cannot stand in for: the order a sequence diagram
+states is geometry, so a drawing whose messages and whose boxes disagree about
+where the sheet is re-exports a different conversation.
+
+The coverage a fragment states is the one its rectangle DRAWS: a PlantUML block
+whose events touch the first and the third participant is one box reaching over
+the second, so the reader fills the span in (`coveredSpan`) rather than
+recording a gap the drawing cannot keep.
 
 ### 7. What is not validated, on top of ADR 0017 §4
 

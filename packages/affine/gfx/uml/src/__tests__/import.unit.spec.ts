@@ -1311,7 +1311,10 @@ describe('materializing a sequence sheet', () => {
     expect(of('umlFragment')[0]).toMatchObject({
       role: UML_ROLE.fragment,
       operator: 'opt',
-      name: 'signed in',
+      // IN BRACKETS: the canvas text is exactly what an author would type, and
+      // §17.6.4.4 prints a guard in brackets. The writers take one pair off
+      // again (`umlGuardText`), so the file still says `opt [signed in]`.
+      name: '[signed in]',
     });
   });
 
@@ -1358,11 +1361,14 @@ describe('materializing a sequence sheet', () => {
     const { elements: drawn } = umlElementsFromModel([model], {
       formatId: 'plantuml',
     });
-    expect(
-      drawn.find(element => element.type === 'umlFragment')!.operands
-    ).toEqual([
-      { id: 'f1-operand-1', name: 'yes', size: 40 },
-      { id: 'f1-operand-2', name: 'no', size: 120 },
+    const written = drawn.find(element => element.type === 'umlFragment')!;
+    expect(written.operands).toEqual([
+      { id: 'f1-operand-1', name: '[yes]', size: 40 },
+      { id: 'f1-operand-2', name: '[no]', size: 120 },
     ]);
+    // …and the declared guard is cleared: on a SPLIT fragment the conditions
+    // live in the bands, and the two labels are anchored in the same corner
+    // (`background.ts`), so writing both would paint the guard twice.
+    expect(written.name).toBe('');
   });
 });

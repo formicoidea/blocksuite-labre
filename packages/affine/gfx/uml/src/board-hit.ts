@@ -196,34 +196,6 @@ export interface UmlFragmentGeometry {
   operands?: unknown;
 }
 
-/**
- * The fragment's OPERATOR BAND, or `null` when there is no room for one.
- *
- * The diagram frame's own arithmetic against a second declaration: the band is
- * the top margin, full width, clamped to a fragment dragged shorter than its
- * own tag — the degenerate case the model's carve-out clamps too.
- */
-export function umlFragmentBand(
-  model: UmlDiagramGeometry
-): BackgroundRect | null {
-  const [, , w, h] = model.deserializedXYWH;
-  if (!(w > 0) || !(h > 0)) return null;
-
-  const plot = backgroundPlot(UML_FRAGMENT_FRAME, w, h);
-  const height = Math.min(plot.y0, h);
-  if (!(height > 0)) return null;
-
-  return { x: 0, y: 0, w, h: height };
-}
-
-/** Whether an element-local point is in the fragment's operator band. */
-export function umlInFragmentBand(
-  model: UmlDiagramGeometry,
-  local: readonly [number, number]
-): boolean {
-  return inRect(umlFragmentBand(model), local);
-}
-
 /** One operand band of a fragment: where it starts, and how tall it is. */
 export interface UmlOperandBand {
   top: number;

@@ -35,8 +35,10 @@ export const UML_LIFELINE_HEAD = { w: 160, h: 48 } as const;
  *
  * 600 is a sheet's worth of conversation: at the 40-unit rhythm a sequence
  * diagram's messages are drawn on, it holds a dozen or so exchanges before the
- * author has to drag it longer. Which is the one resize a lifeline ever wants —
- * a longer spine, never a wider one.
+ * author has to drag it longer. Which is the resize a lifeline ever WANTS — the
+ * column is only ever wanted taller. It is not the only resize it accepts:
+ * nothing constrains the handles, and a wider column simply widens the painted
+ * head, which {@link umlLifelineHeadRect} sizes at `max(160, w)`.
  */
 export const UML_LIFELINE_SPINE = 600;
 

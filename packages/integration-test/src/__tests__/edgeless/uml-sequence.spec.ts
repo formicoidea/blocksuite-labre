@@ -378,6 +378,11 @@ describe('the UML sequence toolbox draws what it declares', () => {
       entryOn('affine:surface:umlFragment', 'a.toggle-resize')
     ).toBeDefined();
 
+    // The guard the author typed while the fragment was still unsplit — the
+    // one string the split has to MOVE rather than copy.
+    fragment.name = '[stock > 0]';
+    await wait();
+
     const ctx = select(fragment);
     const addOperand = entryOn(
       'custom:affine:surface:umlFragment',
@@ -396,8 +401,14 @@ describe('the UML sequence toolbox draws what it declares', () => {
     expect(first.id).not.toBe(second.id);
     expect(first.size).toBeGreaterThan(0);
     expect(second.size).toBeCloseTo(first.size);
-    // Nothing is invented on the way in: neither band arrives guarded.
+    // Nothing is invented on the way in: the new band arrives unguarded.
     expect(second.name ?? '').toBe('');
+    // …and the guard that was the fragment's own is now the FIRST band's, and
+    // the fragment's `name` is empty. The declared guard label and operand
+    // zero's are anchored in the very same corner (`background.ts`), so a
+    // fragment left carrying both would paint the condition twice.
+    expect(first.name).toBe('[stock > 0]');
+    expect(fragment.name).toBe('');
 
     // …and a second press appends a single band to the two that are there.
     addOperand!.run!(ctx);

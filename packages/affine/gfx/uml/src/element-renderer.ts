@@ -128,8 +128,9 @@ export const UmlRegionRendererExtension = ElementRendererExtension(
  * says one word about itself, and the guard is written down in the operand
  * rather than beside the operator (`background.ts`).
  */
-export const umlFragment: ElementRenderer<UmlFragmentElementModel> =
-  withUmlFrameTag<UmlFragmentElementModel>(UML_FRAGMENT_FRAME, {
+const paintUmlFragment = withUmlFrameTag<UmlFragmentElementModel>(
+  UML_FRAGMENT_FRAME,
+  {
     prop: 'operator',
     bandHeight: UML_FRAGMENT_BAND,
     foot: UML_FRAME_TAG_FOOT,
@@ -140,7 +141,40 @@ export const umlFragment: ElementRenderer<UmlFragmentElementModel> =
     cut: UML_FRAME_TAG_CUT,
     stroke: UML_FRAME_INK,
     lineWidth: UML_FRAGMENT_BORDER_WIDTH,
-  });
+  }
+);
+
+/**
+ * A SPLIT fragment as it is painted: its declared `name` hidden behind operand
+ * zero's own guard.
+ *
+ * The contract is `background.ts`'s — an unsplit fragment's guard is the
+ * background's `name`, a split one's guards are its `operands[].name` and
+ * nothing else — and the writers keep it (`toolbar/config.ts` clears `name` as
+ * it splits, `import.ts` never writes both). This is the DEFENSIVE half: the
+ * declared guard label and operand zero's are anchored in the very same corner,
+ * so a document that still carries both — one written by an older build, or by
+ * hand — would paint two strings one over the other, which reads as a smudge
+ * rather than as a mistake. A shadowing own prop rather than a second
+ * declaration, because the suppression is conditional on another prop and the
+ * declaration language has no vocabulary for that (`visibleProp` gates on
+ * presence, never on absence).
+ */
+function umlFragmentAsPainted(
+  model: UmlFragmentElementModel
+): UmlFragmentElementModel {
+  const operands = (model as { operands?: unknown }).operands;
+  if (!Array.isArray(operands) || operands.length === 0) return model;
+  if (!(model as { name?: unknown }).name) return model;
+  return Object.create(model, {
+    name: { value: '', enumerable: true },
+  }) as UmlFragmentElementModel;
+}
+
+export const umlFragment: ElementRenderer<UmlFragmentElementModel> = (
+  model,
+  ...rest
+) => paintUmlFragment(umlFragmentAsPainted(model), ...rest);
 
 export const UmlFragmentRendererExtension = ElementRendererExtension(
   UML_FRAGMENT_FRAME.type,

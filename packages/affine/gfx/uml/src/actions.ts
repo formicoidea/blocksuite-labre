@@ -307,8 +307,10 @@ export function createUmlFragment(
  * The same element as {@link createUmlFragment} with a different operator, and
  * that is §17.7.4's own doing rather than an economy: an InteractionUse is
  * drawn as the very rectangle a combined fragment is, with `ref` in the
- * pentagon instead of `alt`, and the name of the referenced interaction written
- * in the middle. Giving it an element of its own would mean two things to
+ * pentagon instead of `alt`, and the name of the referenced interaction in the
+ * fragment's own `name` — which this pack anchors where every other guard is
+ * written, at the top-left of the plot, rather than centred as §17.7.4's figure
+ * draws it. Giving it an element of its own would mean two things to
  * select, two rows, two sets of rules and two exporters for one picture.
  *
  * It has a COMMAND of its own all the same, because it is a different modelling

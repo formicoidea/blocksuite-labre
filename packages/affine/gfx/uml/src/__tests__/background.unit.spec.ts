@@ -650,6 +650,31 @@ describe('the UML combined fragment', () => {
   });
 
   /**
+   * ONE guard per band, whatever the document holds.
+   *
+   * The contract `background.ts` states and `actions.ts` keeps: splitting a
+   * fragment MOVES `name` into `operands[0].name` and clears it. A document
+   * that carries BOTH — an older board, or a reader that wrote the guard in two
+   * places — would otherwise paint two strings in the very same corner, the
+   * declared `name` label and operand zero's, one over the other. This is the
+   * assertion that says the corner holds one string.
+   */
+  it('writes one guard per band when a split fragment still names one', () => {
+    const rec = render(
+      umlFragment,
+      { operator: 'alt', name: '[stock > 0]', operands: split },
+      W,
+      H
+    );
+
+    expect(rec.texts.map(text => text.text)).toEqual([
+      'alt',
+      '[stock > 0]',
+      '[else]',
+    ]);
+  });
+
+  /**
    * Both labels are editable-label HITS — the operator so a future gesture can
    * find it, the guard because the frame view's rename lands on it. The view
    * takes only `name`: an operator is a closed discriminant picked from the

@@ -247,7 +247,8 @@ const strict: ValidationProfile = {
     // state machine region, and at the level where somebody has said the sheet
     // is finished the reader is entitled to be asked which of the two this is.
     'uml.initial-single': 'warning',
-    // The SEQUENCE sheet's two, and both of them move.
+    // The SEQUENCE sheet's four, and all four of them move — the two about a
+    // message first.
     //
     // `uml.message-endpoints` is an endpoint grammar and passes the test every
     // other one in this table passes: §17.4.4 says a delete message "must end in
