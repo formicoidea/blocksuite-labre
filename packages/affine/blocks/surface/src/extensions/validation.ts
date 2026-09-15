@@ -119,6 +119,13 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   VIEW rather than of the artefact: every other one starts from a subject and
  *   looks around it, this one starts from the sheet and asks what has been
  *   drawn on it.
+ * - `label-syntax` — the subject's words must be SPELLED the way the notation
+ *   spells them. `label-presence` asks whether anything is written; this one
+ *   asks whether what is written parses. The first family whose verdict comes
+ *   out of a function the FRAMEWORK ships rather than out of a table the engine
+ *   interprets — a notation's grammar is a grammar, and no amount of declarative
+ *   data is going to express `[<visibility>] [/] <name> [: <type>]`. See
+ *   {@link LabelSyntaxDef} and `docs/adr/0021`.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -135,6 +142,7 @@ export type RuleFamily =
   | 'edge-locality'
   | 'reachability'
   | 'label-presence'
+  | 'label-syntax'
   | 'view-admissibility';
 
 /**
@@ -919,6 +927,123 @@ export interface LabelPresenceDef {
 }
 
 /**
+ * WHICH of an element's labels a `label-syntax` rule reads.
+ *
+ * `'center-label'` is the element's own `text` — the one property every
+ * artefact-bearing model carries, and the same slot {@link elementLabel} reads.
+ * The other two are the connector's per-END labels (`docs/adr/0020`), which is
+ * the whole reason this discriminant exists: a multiplicity is written at the
+ * end of an association and NOT in the middle of it, so a rule about `0..*` has
+ * to be able to say which of the three labels it is about.
+ *
+ * `'end-labels'` is the two ends TOGETHER, one per line. §11.5.4 puts the same
+ * grammar at both ends of an association, so a rule naming one end could only
+ * ever check half of every line drawn — and two rules would be two ids, two
+ * sentences and two entries in every profile table for one requirement. The
+ * per-line walk is what makes this honest rather than a shortcut: each end is
+ * judged on its own, and the finding quotes whichever one is wrong.
+ *
+ * Named after the notation's positions rather than after the props they live in,
+ * so a rule reads as a sentence about a drawing and the mapping to model props
+ * stays one table in this file ({@link LABEL_PROPS}).
+ */
+export type LabelTarget =
+  | 'center-label'
+  | 'source-label'
+  | 'target-label'
+  | 'end-labels';
+
+/** What a {@link LabelSyntaxDef.parse} says about ONE line. */
+export interface LabelSyntaxVerdict {
+  /** The line is spelled the way the notation spells it. */
+  ok: boolean;
+  /**
+   * WHY it is not, in the framework's own words, when it is not — a fragment,
+   * not a sentence: "no parentheses", "the multiplicity is not a range". The
+   * family prints it after the offending line, so the two read together.
+   *
+   * Absent on an `ok` verdict, and absent on a failure the framework has nothing
+   * more precise to say about. English, like every other `*Fallback` in a rule
+   * declaration: the framework owns the word, the engine never invents one.
+   */
+  reason?: string;
+}
+
+/**
+ * `label-syntax` configuration — the subject's words must PARSE.
+ *
+ * The sibling of {@link LabelPresenceDef}, one question further on. That family
+ * asks whether an artefact says anything at all; this one asks whether what it
+ * says is spelled the way the notation spells it — `- balance : Money = 0`
+ * against §9.5.4, `0..*` against §7.5.4, `after 5 s [ready] / open` against
+ * §14.2.4.8.
+ *
+ * ## The parser belongs to the FRAMEWORK, and there is no way round it
+ *
+ * Every other family in this file is a table the engine interprets: a matrix of
+ * triplets, a set of zone ids, a pair of bounds. A NOTATION'S GRAMMAR is not a
+ * table. `[<visibility>] [`/`] <name> [`:` <type>] [`[` <mult> `]`] [`=` <def>]
+ * [`{` <mods> `}`]` is a parser, and a declarative encoding of it would be a
+ * parser generator shipped inside a validation engine — for one clause of one
+ * specification, with a second dialect arriving with every notation after it.
+ *
+ * So the rule carries the FUNCTION, and the family owns only the WALK: which
+ * label to read, how to cut it into lines, which lines are notation rather than
+ * content, how to turn a `false` into a finding attributed to a frame. The
+ * framework already owns its grammar — `gfx/uml/src/grammar.ts` is that grammar,
+ * written for the exporters, and a rule that calls it is a rule that can never
+ * disagree with the file the same diagram exports to.
+ *
+ * ## What that costs, stated
+ *
+ * A rule of this family is NOT serializable. Every other rule in this library is
+ * plain data a host could ship over a wire; this one holds a closure, and a
+ * round trip through JSON loses it. The family answers that the way it answers a
+ * malformed declaration anywhere else: a rule whose `parse` is not a function
+ * evaluates NOTHING and says so once ({@link warnOnce}), rather than quietly
+ * passing every line. Nothing in this library serializes a rule today, and the
+ * day something does, the families that carry only data keep working.
+ *
+ * ## Purity, and why the engine leans on it
+ *
+ * `parse` is called once per line per evaluation, inside the pass the bench
+ * measures. It must be pure and total — strings in, a verdict out, no throw, no
+ * clock, no allocation the caller cannot name. `grammar.ts` opens with exactly
+ * that promise for exactly that reason. The family does NOT wrap the call in a
+ * `try`: a parser that throws is a bug in the framework, and swallowing it would
+ * turn a crash into a silently unchecked compartment.
+ */
+export interface LabelSyntaxDef {
+  /**
+   * The framework's own reading of ONE line — see the header on why this is a
+   * function and not a table.
+   *
+   * Handed a line already trimmed, NFC-normalised and stripped of invisible code
+   * points, and never an empty one: the walk drops those before it asks. So a
+   * checker is free to assume it has been given something a reader can see.
+   */
+  parse: (line: string) => LabelSyntaxVerdict;
+  /**
+   * `true` (the default) — the label is a LIST and each line of it is judged on
+   * its own: a compartment of attributes, a compartment of operations.
+   *
+   * `false` — the label is ONE expression and a newline inside it is still part
+   * of it: a transition's `trigger [guard] / effect`, an association end's
+   * multiplicity. The whole text, trimmed, is handed to {@link parse} as a
+   * single subject.
+   *
+   * Either way the two notational lines below are dropped, because in both
+   * readings they are notation rather than content: a BLANK line (spacing) and
+   * an ELLIPSIS — `...` or `…` — which is §9.2.4's elision marker and means
+   * "there are more, not shown". A rule that indicted one would be indicting the
+   * author for saying they had left something out.
+   */
+  perLine?: boolean;
+  /** Which label is read. Absent is `'center-label'`, the element's own text. */
+  target?: LabelTarget;
+}
+
+/**
  * `view-admissibility` configuration — WHICH ROLES the frame admits, given the
  * level the frame itself declares.
  *
@@ -1202,6 +1327,11 @@ export interface ValidationRule extends RuleMessage {
   reachability?: ReachabilityDef;
   /** `label-presence` only: the subjects are named by {@link appliesTo}. */
   label?: LabelPresenceDef;
+  /**
+   * `label-syntax` only: the subjects are named by {@link appliesTo}, and WHICH
+   * of their labels is read by {@link LabelSyntaxDef.target}.
+   */
+  labelSyntax?: LabelSyntaxDef;
   /**
    * `view-admissibility` only: the views are named by {@link backgroundRole},
    * and the subjects by the level the view declares.
@@ -4918,6 +5048,222 @@ function evaluateLabelPresence(
 }
 
 /**
+ * WHERE each {@link LabelTarget} is actually written, in order of preference.
+ *
+ * The one place in this file that names a connector's end-label props, and it
+ * names TWO spellings each on purpose: `docs/adr/0020` picks the flat pair
+ * (`sourceLabelText`, mirroring the centre label's `text`/`labelXYWH`) and a
+ * nested `{ text }` under `sourceLabel` is the shape the same fields take in an
+ * importer's serialized props and in a host that modelled the end label as one
+ * object. Reading both costs one absent-property lookup on a connector that
+ * carries neither, and buys a rule that does not break the day the model is
+ * reshaped — the same duck-typing discipline {@link elementLabel} and
+ * {@link rawEndpointIds} already hold.
+ *
+ * Own-property reads only, through {@link labelSource}: these come off a Y.Map
+ * and are whatever a peer or an importer wrote.
+ */
+const LABEL_PROPS: Readonly<
+  Record<Exclude<LabelTarget, 'end-labels'>, readonly string[]>
+> = {
+  'center-label': ['text'],
+  'source-label': ['sourceLabelText', 'sourceLabel'],
+  'target-label': ['targetLabelText', 'targetLabel'],
+};
+
+/**
+ * The RAW words of one of an element's labels — newlines and all, `''` when it
+ * carries none.
+ *
+ * {@link elementLabel} one step earlier: it trims, because "is there anything
+ * here" is the only question that family asks. This family has to keep the line
+ * structure, since a compartment is a LIST and the trimming happens per line.
+ */
+function labelSource(el: unknown, target: LabelTarget): string {
+  if (target === 'end-labels') {
+    // The two ends, one per line — see {@link LabelTarget}. An end carrying
+    // nothing contributes no line rather than an empty one, so a connector
+    // labelled at one end alone is one subject and not two.
+    return [labelSource(el, 'source-label'), labelSource(el, 'target-label')]
+      .filter(text => text.trim() !== '')
+      .join('\n');
+  }
+  const props = el as Record<string, unknown>;
+  for (const key of LABEL_PROPS[target]) {
+    const raw = props[key];
+    if (raw == null) continue;
+    if (typeof raw === 'string') return raw;
+    if (rendersAsText(raw)) return String(raw);
+    // A nested end label — `{ text: Y.Text, xywh }` — read exactly one level
+    // deep. Deeper would be guessing at a shape nobody declared.
+    const nested = (raw as { text?: unknown }).text;
+    if (typeof nested === 'string') return nested;
+    if (nested != null && rendersAsText(nested)) return String(nested);
+  }
+  return '';
+}
+
+/**
+ * §9.2.4's elision marker, in both spellings. A line that says "there are more
+ * of these, not shown" is notation, and indicting it would indict the author for
+ * having said so.
+ */
+const ELISION = new Set(['...', '…']);
+
+/**
+ * The lines of a label that SAY something — trimmed, normalised, in order.
+ *
+ * Deliberately the same three rules `gfx/uml/src/grammar.ts` `parseCompartment`
+ * holds (trim, drop blanks, drop the ellipsis), plus the invisible-code-point
+ * strip {@link elementLabel} does: a line of zero-width joiners is a line the
+ * reader cannot see, and handing it to a parser would indict the author for
+ * something invisible on both the canvas and the finding.
+ *
+ * `perLine === false` folds the whole label into ONE subject — the trimmed text,
+ * newlines kept — which is the reading a transition label or a multiplicity
+ * wants: it is one expression, not a list.
+ */
+function syntaxLines(text: string, perLine: boolean): string[] {
+  const clean = text.normalize('NFC').replace(INVISIBLE_CHARS, '');
+  const lines = perLine ? clean.split('\n') : [clean];
+  return lines
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && !ELISION.has(line));
+}
+
+/**
+ * How much of an offending line the finding's own sentence repeats.
+ *
+ * A compartment line is normally short, and a pasted one is occasionally a
+ * paragraph. The fallback sentence ends up in a bubble eight units tall, so the
+ * quotation is capped and elided rather than allowed to set the width of the
+ * panel.
+ */
+const QUOTED_LINE_MAX = 80;
+
+function quoteLine(line: string): string {
+  return line.length <= QUOTED_LINE_MAX
+    ? line
+    : `${line.slice(0, QUOTED_LINE_MAX - 1)}…`;
+}
+
+/**
+ * "Is this written the way the notation writes it?"
+ *
+ * {@link evaluateLabelPresence} asks whether the artefact says anything; this
+ * asks whether what it says PARSES. The walk is the same walk — subjects by
+ * role, frame attribution through {@link ValidationRule.backgroundRole}, one
+ * finding per offending element — and everything that makes the verdict is in
+ * the function the framework shipped ({@link LabelSyntaxDef}).
+ *
+ * ## One finding per ELEMENT, naming the FIRST bad line
+ *
+ * Not one per line, and the reason is what a compartment looks like halfway
+ * through being typed: six lines of a class's attributes with three of them
+ * unfinished is three brackets on one text element, three entries in the panel
+ * and one thing to fix. The first offending line is the one the author is going
+ * to look at, so it is the one the sentence names.
+ *
+ * The finding keeps the RULE's `messageKey` and quotes the line in the
+ * FALLBACK, which is the honest limit of this engine: a finding carries no
+ * message parameters, so a host translating the key gets the rule's own
+ * sentence and not the line. Recorded in `docs/adr/0021` rather than worked
+ * around here — inventing a parameter channel for one family would be a change
+ * to every family's contract.
+ *
+ * ## Silence
+ *
+ * The usual proportionality, and one addition. An element with no role is not a
+ * subject; a label with no visible line is nothing to parse (that is
+ * `label-presence`'s question, and a framework asking both asks them with two
+ * rules); a blank line and an ellipsis are notation. And a rule whose `parse` is
+ * not a function evaluates nothing at all and warns once — see the header of
+ * {@link LabelSyntaxDef} on why that case exists.
+ *
+ * ## Cost
+ *
+ * One label read and one `parse` per line, paid only by the elements carrying
+ * the subject role. Linear in the WORDS on the board rather than in its
+ * elements, which is the first time this file can say that — and the reason
+ * every rule of the family this library ships is `audit`, hence on-demand
+ * (PF7.6), hence off the drawing path entirely.
+ */
+function evaluateLabelSyntax(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[],
+  incremental?: IncrementalContext
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const syntax = rule.labelSyntax;
+  if (subjectRole === undefined || syntax === undefined) return [];
+  if (typeof syntax.parse !== 'function') {
+    warnOnce(
+      `label-syntax rule "${rule.id}" carries no parse function — a rule of ` +
+        `this family holds its framework's own grammar and cannot be ` +
+        `serialized; the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const target = syntax.target ?? 'center-label';
+  const perLine = syntax.perLine ?? true;
+
+  // Only resolved when something is actually wrong — a board spelled correctly
+  // pays nothing for the frames it never has to name.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const judged = incremental?.subjects;
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    if (judged !== undefined && !judged.has(el.id)) continue;
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+
+    const lines = syntaxLines(labelSource(el, target), perLine);
+    let offending: { line: string; reason?: string } | null = null;
+    for (const line of lines) {
+      const verdict = syntax.parse(line);
+      if (verdict.ok) continue;
+      offending = {
+        line,
+        ...(verdict.reason ? { reason: verdict.reason } : {}),
+      };
+      break;
+    }
+    if (offending === null) continue;
+
+    const quoted = quoteLine(offending.line);
+    const words: RuleMessage = {
+      messageKey: rule.messageKey,
+      ...(rule.messageFallback !== undefined
+        ? {
+            messageFallback:
+              offending.reason === undefined
+                ? `${rule.messageFallback} “${quoted}”`
+                : `${rule.messageFallback} “${quoted}” — ${offending.reason}.`,
+          }
+        : {}),
+      ...(rule.suggestionKey !== undefined
+        ? { suggestionKey: rule.suggestionKey }
+        : {}),
+      ...(rule.suggestionFallback !== undefined
+        ? { suggestionFallback: rule.suggestionFallback }
+        : {}),
+    };
+
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(el.elementBound, backgrounds)?.id;
+    // The TEXT element, and nothing else. A UML compartment belongs to a group
+    // and the mark is drawn on that group already ({@link anchorOf}) — the
+    // group carries no role, is never evaluated, and by the same contract never
+    // appears in a finding's `elementIds`.
+    violations.push(raise(rule, [el.id], frameId, words));
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -4925,7 +5271,7 @@ function evaluateLabelPresence(
  * where exactly that is known; every other caller — the first evaluation, a
  * gesture that must land immediately, the bench, a test — evaluates in full.
  *
- * Since PF5.4 the TWELVE families that are not `'surface'` honour it, and not
+ * Since PF5.4 the THIRTEEN families that are not `'surface'` honour it, and not
  * one of them computes what it means: {@link runRules} derives the SUBJECTS
  * each rule must judge from {@link dirtyClosure} — which reads {@link scopeOf}
  * and nothing else — and hands them down. A family's whole part in this is one
@@ -4988,6 +5334,7 @@ const RULE_FAMILIES: Record<
   'edge-locality': evaluateEdgeLocality,
   reachability: evaluateReachability,
   'label-presence': evaluateLabelPresence,
+  'label-syntax': evaluateLabelSyntax,
   'view-admissibility': evaluateViewAdmissibility,
 };
 
@@ -5039,6 +5386,12 @@ export const RULE_SCOPES: Record<RuleFamily, RuleScope> = {
   reachability: 'surface',
   // Own words; the frame is attribution only.
   'label-presence': 'element',
+  // Own words again, one question further on: the verdict is the framework's
+  // parser applied to the subject's OWN label, line by line. Nothing about the
+  // neighbourhood takes part — a compartment is right or wrong whatever is drawn
+  // beside it, and an end label is read off the connector that carries it rather
+  // than off what the connector joins.
+  'label-syntax': 'element',
   // Own role against the level the containing view declares; kept at the wider
   // level for the same reason as `tone-convention`.
   'view-admissibility': 'frame',
@@ -5712,7 +6065,7 @@ function runRules(
    * other moment, which no carry-over and no dirty-set walk can reconstruct. So
    * the answer is not "re-judge more", it is "there is nothing here to build
    * on", and that applies to {@link evaluateNoOverlap} exactly as it does to
-   * the twelve families that filter on subjects.
+   * the thirteen families that filter on subjects.
    *
    * A board with no profile registered has no regime to change and pays nothing
    * for the question.
@@ -6253,12 +6606,13 @@ export const VERDICT_PROPS = [
  *
  * ## `text`, and why it is not in the constant
  *
- * `label-presence` is the one family whose verdict turns on an element's words,
- * and words are what a user changes by TYPING. Watched unconditionally, every
- * keystroke in every shape on the board would wake the debounced evaluation —
- * a cost paid by every document, for a question most of them never ask.
+ * `label-presence` and `label-syntax` are the two families whose verdict turns
+ * on an element's words, and words are what a user changes by TYPING. Watched
+ * unconditionally, every keystroke in every shape on the board would wake the
+ * debounced evaluation — a cost paid by every document, for a question most of
+ * them never ask.
  *
- * So it is added exactly when a REAL-TIME rule of that family is registered.
+ * So it is added exactly when a REAL-TIME rule of either family is registered.
  * The moment filter is deliberate and mirrors {@link backgroundElementIds}: an
  * on-demand rule is never evaluated on the gesture path, so waking that path for
  * it would hand back precisely what declaring the second moment bought — and a
@@ -6275,7 +6629,16 @@ export function verdictPropsOf(
 ): ReadonlySet<string> {
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
-    if (rule.family === 'label-presence' && isRealtime(rule)) props.add('text');
+    // The two families whose verdict turns on an element's words. Neither is
+    // named as a constant: the second reads the same `text` slot (and, for a
+    // connector end label, props that only exist on a connector, which are
+    // watched through their own element's change anyway).
+    if (
+      (rule.family === 'label-presence' || rule.family === 'label-syntax') &&
+      isRealtime(rule)
+    ) {
+      props.add('text');
+    }
     // The level a VIEW declares decides which roles it admits, so changing it —
     // or clearing it back to "free sketch", which DELETES the key, which is why
     // `touchesVerdict` reads `oldValues` too — re-judges everything drawn on

@@ -50,4 +50,24 @@ describe('shipped rules carry a dependency scope', () => {
       }
     });
   }
+
+  /**
+   * The one family whose declaration is not pure data (ADR 0021): a
+   * `label-syntax` rule carries its framework's parse FUNCTION. The scope table
+   * has nothing to do with that — a scope is a fact about what a verdict READS —
+   * and this pins that the closure does not make the family invisible to the
+   * table the way an unknown family would be.
+   */
+  test('a family carrying a parse function still resolves', () => {
+    const syntax = Object.values(PACKS)
+      .flat()
+      .filter(rule => rule.family === 'label-syntax');
+
+    expect(syntax.length).toBeGreaterThan(0);
+    expect(RULE_SCOPES['label-syntax']).toBe('element');
+    for (const rule of syntax) {
+      expect(typeof rule.labelSyntax?.parse, rule.id).toBe('function');
+      expect(scopeOf(rule), rule.id).toBe('element');
+    }
+  });
 });
