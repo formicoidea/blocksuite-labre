@@ -23,6 +23,7 @@ One file per decision. Format and lifecycle in
 | [0016](0016-hollow-endpoint-styles.md)                         | Hollow endpoint heads                | accepted                  | `PointStyle` is persisted and append-only; an older client paints no head. Hollow heads use the card fill.   |
 | [0017](0017-uml-one-framework-with-diagram-kinds.md)           | UML is one framework                 | accepted                  | One senior button, one flag; the diagram kind is a field on the board. Scope by phase; no metamodel checked. |
 | [0018](0018-connector-per-end-labels-deferred.md)              | Per-end connector labels deferred    | accepted                  | One label per connector: the centre carries the name, end multiplicities are free text until phase 2.        |
+| [0019](0019-uml-import-formats.md)                             | UML reads three formats              | accepted                  | PlantUML and XMI in both directions, draw.io in only and `visual`; the compressed payload is the command's.  |
 
 Related documents that are not ADRs:
 

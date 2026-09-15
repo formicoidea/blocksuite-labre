@@ -1,4 +1,7 @@
-import { DefaultTool } from '@labre/affine-block-surface';
+import {
+  DefaultTool,
+  runInterchangeImportFile,
+} from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createAutoLegend } from '@labre/affine-gfx-ddd-shared';
 import {
@@ -31,9 +34,16 @@ import {
   UML_REGION_BOX,
   UML_SUBJECT_BOX,
 } from './consts.js';
+import { decodeDrawio } from './drawio-decode.js';
 import { UML_EDGE_STYLE, type UmlEdgeRole } from './edge-styles.js';
 import { umlSafeFilename } from './filename.js';
-import { UML_PLANTUML_EXPORT, UML_XMI_EXPORT } from './interchange.js';
+import {
+  UML_DRAWIO_IMPORT,
+  UML_PLANTUML_EXPORT,
+  UML_PLANTUML_IMPORT,
+  UML_XMI_EXPORT,
+  UML_XMI_IMPORT,
+} from './interchange.js';
 import {
   UML_ATTRIBUTES_SEED,
   UML_NAME_SEED,
@@ -812,4 +822,55 @@ export function exportUmlXmiFile(std: BlockStdScope): void {
     }
   );
   downloadBlob(new Blob([text], { type: mime }), filename);
+}
+
+/* ── Import (ADR 0019 — three formats in) ─────────────────────────────── */
+
+/**
+ * Read a PlantUML source the user picks, draw it, and say what it cost.
+ *
+ * The whole gesture is {@link runInterchangeImportFile}, over the capability
+ * UML declares: pick the file, run the DECLARED reader, write what it returned,
+ * fit the drawing, report. `UML_PLANTUML_IMPORT.run` is the same function
+ * labre-mcp calls, so the command and the registry cannot read the same file
+ * differently — one door, and the registry is the label on it. The picker's
+ * filter comes off `UML_PLANTUML_FORMAT` rather than a table of file types, so
+ * `.plantuml` is offered beside `.puml` because the declaration says both.
+ *
+ * Three commands and three one-line bodies, which is the point of the seam: a
+ * second format costs a declaration and a command, never a pipeline. What
+ * differs between them is the PROMISE, and the promise is made by each
+ * command's own label and description before the picker ever opens (ADR 0012
+ * P2) — two semantic readers that carry the model, and one visual reader that
+ * recognises a drawing.
+ */
+export async function importUmlPlantumlFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, UML_PLANTUML_IMPORT);
+}
+
+/** Read an XMI 2.5.1 document the user picks. The same four steps. */
+export async function importUmlXmiFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, UML_XMI_IMPORT);
+}
+
+/**
+ * Read a draw.io drawing the user picks — the one import with a step before the
+ * reader (`docs/adr/0019`).
+ *
+ * A `.drawio` file holds its `<mxGraphModel>` as base64 of a raw deflate, and
+ * inflating it needs `DecompressionStream`: a platform API, asynchronous, and
+ * therefore forbidden inside a reader that ADR 0012 P3 makes pure. So the
+ * unwrapping rides on the pipeline's `decode` hook, which runs here — where
+ * there is already an editor and an `await` — and `UML_DRAWIO_IMPORT.run` still
+ * takes decoded XML and still answers a compressed payload with a remark rather
+ * than a guess.
+ *
+ * {@link decodeDrawio} is identity for a file that is already plain XML, so the
+ * `.drawio.xml` case and the "Compressed: off" case cost nothing and take the
+ * same path.
+ */
+export async function importUmlDrawioFile(std: BlockStdScope): Promise<void> {
+  await runInterchangeImportFile(std, UML_DRAWIO_IMPORT, {
+    decode: decodeDrawio,
+  });
 }

@@ -170,7 +170,21 @@ describe('command registry invariants', () => {
       // fourteen seats the row is a PO curation question with usage data behind
       // it, not something a tranche settles from inside itself. A sequence or
       // timing pack is a fourth tranche and owes this number a re-read.
-      uml: 56,
+      //
+      // …and 59 since phase 2's imports (ADR 0019): PlantUML, XMI 2.5.1 and
+      // draw.io, three formats and therefore three rows — the same "a
+      // direction is never implied by its opposite" the two exports already
+      // stand on (`docs/adr/0012`).
+      //
+      // The NOMINATIONS moved for the first time, and did not GROW: `uml.
+      // importXmi` took a seat (R5 — an import is where a board comes from, and
+      // the sub-menu is the first thing a user opens on an empty canvas) and
+      // `uml.addNote` stood down for it. The pool is still fourteen, which is
+      // `SENIOR_MENU_CAP` exactly and leaves BPMN's single authorized
+      // over-nomination the only one in the library. Which of the fourteen an
+      // import ought to displace is a PO curation point; the choice is recorded
+      // at `uml.addNote`'s declaration for them to overturn.
+      uml: 59,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -199,7 +213,9 @@ describe('command registry invariants', () => {
     // and 173 since the same phase's behavioural half appended twenty-four: the
     // activity and state-machine artefacts, the partition and region
     // backgrounds, and the control-flow, object-flow and transition tools.
-    expect(commands).toHaveLength(173);
+    // …and 176 since UML's three imports — PlantUML, XMI and draw.io
+    // (`docs/adr/0019`).
+    expect(commands).toHaveLength(176);
   });
 
   /**

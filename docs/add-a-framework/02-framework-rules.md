@@ -35,6 +35,17 @@ toolbar.** A board comes _from_ a file; you export a board you already have.
 BPMN and C4 follow it; **Wardley's OWM export currently declares no
 `contextual-toolbar` surface**, which is a deviation to fix, not a precedent.
 
+_One_ import per framework takes the sub-menu seat, not all of them: the
+nomination budget is `SENIOR_MENU_CAP` per owner plus the single
+over-nomination the PO authorized on 2026-08-28, which `bpmn.importXml` spent
+(`registry.unit.spec.ts`). A framework that reads several formats nominates the
+one a user is most likely to arrive with and leaves the rest in the catalogue —
+BPMN nominates `.bpmn` and not its SVG fallback; UML nominates `uml.importXmi`
+and leaves PlantUML and draw.io one click away, which cost `uml.addNote` its
+seat (ADR [0019](../adr/0019-uml-import-formats.md) §7). A framework already at
+the cap therefore arrives at a curation question, and records the trade where
+the demoted entry is declared rather than settling it in a tranche.
+
 **R6. The legend is a button on the selected board's toolbar**, not a
 command: absent from catalogue, palette and shortcuts (product decision,
 2026-08-27). It emits `FrameworkLegendCreated` by hand. Seven of nine

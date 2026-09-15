@@ -41,6 +41,12 @@ export * from './profiles.js';
 export * from './rules.js';
 
 /* ── What it can be READ as: the grammar, the IR and the two writers ────── */
+// The draw.io reader and the one impure step in front of it. Two modules and
+// not one, and the split is ADR 0019's: `importDrawio` is pure and synchronous
+// like every other interchange reader (`docs/adr/0012` P3), `decodeDrawio`
+// needs `DecompressionStream` and is the command's to call.
+export * from './drawio-decode.js';
+export * from './drawio-import.js';
 export * from './export.js';
 export * from './filename.js';
 export * from './grammar.js';
@@ -48,6 +54,11 @@ export * from './interchange.js';
 export * from './model.js';
 export * from './plantuml.js';
 export * from './xmi.js';
+// The XMI reader, and the tolerant tokenizer under it. Exported for the reason
+// P3 gives: the parser is a pure function of a string, so a host that is not an
+// editor — labre-mcp, a script, a test — calls it without a surface in sight.
+export * from './xmi-import.js';
+export * from './xml-reader.js';
 
 /* ── The toolbox, for the host that composes the command registry and the
       translation-key manifest out of the frameworks it installed (see

@@ -844,3 +844,40 @@ export function parseStateBehavior(line: string): UmlStateBehavior | undefined {
     ...(expression ? { expression } : {}),
   };
 }
+
+/* ── Behaviour: the labels, printed back ──────────────────────────────── */
+
+/**
+ * §15.2.4's three annotations, back in one string — `name [guard] {weight = w}`.
+ *
+ * The inverse of {@link parseActivityEdge}, and it lives beside it for the
+ * reason every parser and printer pair should: the notation is one grammar, and
+ * two files spelling it separately is how a guard comes back without its
+ * brackets. Read by the PlantUML writer (which puts it on the arrow) and by the
+ * importers' materializer (which puts it in the connector's centre label), so a
+ * flow drawn from a file and one exported to one carry the same words.
+ */
+export function formatActivityEdgeLabel(label: UmlActivityEdgeLabel): string {
+  const parts: string[] = [];
+  if (label.name) parts.push(label.name);
+  if (label.guard) parts.push(`[${label.guard}]`);
+  if (label.weight) parts.push(`{weight = ${label.weight}}`);
+  return parts.join(' ');
+}
+
+/**
+ * §14.2.4.8's label, back in one string — `trigger1, trigger2 [guard] / effect`.
+ *
+ * The inverse of {@link parseTransition}, and a round trip rather than the
+ * author's own text passed through: the model holds the parsed parts, and
+ * printing them in the BNF's own order is what makes a label somebody typed
+ * loosely — a guard before its trigger, a missing space — come out spelled the
+ * way the clause spells it.
+ */
+export function formatTransitionLabel(label: UmlTransitionLabel): string {
+  const parts: string[] = [];
+  if (label.triggers.length > 0) parts.push(label.triggers.join(', '));
+  if (label.guard) parts.push(`[${label.guard}]`);
+  if (label.effect) parts.push(`/ ${label.effect}`);
+  return parts.join(' ');
+}

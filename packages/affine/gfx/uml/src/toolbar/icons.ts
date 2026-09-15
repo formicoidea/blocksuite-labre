@@ -573,6 +573,38 @@ export const umlExportXmiIcon = svg`<svg width="24" height="24" viewBox="0 0 24 
 </svg>`;
 
 /**
+ * The three IMPORTS — the same page glyph as the exports beside them, with the
+ * arrow turned round (`docs/adr/0019`).
+ *
+ * Deliberately the same family as `bpmnImportXmlIcon`: a file becoming a board
+ * is one gesture across this library, and a user who has met it once in BPMN
+ * should not have to learn a second picture for it in UML. What differs between
+ * the three is the mark under the page — the arrow alone for PlantUML, the
+ * angle brackets for XMI, and the two connected boxes for draw.io, which is
+ * the only one of the three whose file is a DRAWING.
+ */
+export const umlImportPlantumlIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13.5 3.5 18.5 8.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 14.5v6M13.5 17l2.5-2.5 2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/** Import XMI — the page arriving, marked as the angle-bracketed document. */
+export const umlImportXmiIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M12.5 3.5 17.5 8.5V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13.5 14.5 11 17.5 13.5 20.5M17.5 14.5 20 17.5 17.5 20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/** Import draw.io — two connected boxes, which is what the file actually holds. */
+export const umlImportDrawioIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="4" width="8" height="5.5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="12.5" y="12" width="8" height="5.5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M7 9.5v3.25h9.5v-0.75" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6 15v5.5M3.5 18 6 15.5 8.5 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/**
  * Every command glyph of the TOOLBOX, keyed by its `iconKey`.
  *
  * Registered together with the commands themselves

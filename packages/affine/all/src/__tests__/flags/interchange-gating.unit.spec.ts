@@ -41,14 +41,14 @@ function mountEdgelessProvider(flags: BlockFlags) {
  * bpmn:    `.bpmn` out, `.bpmn` in, `.svg` in — 3.
  * c4:      mermaid out — 1.
  * wardley: `.owm` out, `.owm` in, `.svg` in — 3.
- * uml:     PlantUML out, XMI out — 2.
+ * uml:     PlantUML out, PlantUML in, XMI out, XMI in, draw.io in — 5.
  *
  * A framework that adds one adds a TERM here and a row to its own test below —
  * spelled as a sum per framework rather than as a total, so a merge that brings
  * two frameworks together adds two terms instead of silently agreeing on a
  * number that is short by one.
  */
-const DECLARED_CAPABILITIES = 3 + 1 + 3 + 2;
+const DECLARED_CAPABILITIES = 3 + 1 + 3 + 5;
 
 describe('the interchange registry is flag-gated tooling', () => {
   test('BPMN declares both directions of `.bpmn`, and the SVG fallback', () => {
@@ -138,29 +138,43 @@ describe('the interchange registry is flag-gated tooling', () => {
     expect(found[0].format.tier).toBe('semantic');
   });
 
-  test('UML declares both of its writers, and neither reader', () => {
+  test('UML declares both directions of its two formats, and one reader more', () => {
     const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
       framework: 'uml',
     });
 
-    // Two rows because the unit of declaration is the TRIPLE and these are two
-    // FORMATS: XMI 2.5.1 is the OMG's own interchange, PlantUML is the source a
-    // human reads. Sorted by id, so a menu built from this list comes out the
-    // same on every boot.
+    // Five rows because the unit of declaration is the TRIPLE: three formats,
+    // both directions of the two Labre writes, and one it only reads. Sorted by
+    // id, so a menu built from this list comes out the same on every boot.
     expect(found.map(capability => capability.id)).toEqual([
+      'uml:drawio:import',
       'uml:plantuml:export',
+      'uml:plantuml:import',
       'uml:xmi:export',
+      'uml:xmi:import',
     ]);
-    // Both SEMANTIC, and that is the claim being pinned: neither is a picture.
-    // A UML class carries its attributes and operations as text the grammar
-    // parses, and both writers put that model in the file — so both owe the
-    // full preservation contract (`docs/adr/0012`, P2). The asymmetry here is
-    // the DIRECTION: phase 1 writes and cannot read, so there is no
-    // `uml:xmi:import` to pair either with.
+    // The TIERS, which are the whole of what a user is entitled to expect
+    // before the picker closes (`docs/adr/0012` P2). PlantUML and XMI are
+    // SEMANTIC in both directions — a UML class carries its attributes and
+    // operations as text the grammar parses, and both files carry that model,
+    // so both owe the full preservation contract. draw.io is VISUAL, and that
+    // is the honest label rather than a modest one: an `mxCell` says
+    // `endArrow=block`, not `uml:Generalization`, so every UML fact read out of
+    // it is a guess made from a style string (`docs/adr/0019`).
     expect(found.map(capability => capability.format.tier)).toEqual([
+      'visual',
+      'semantic',
+      'semantic',
       'semantic',
       'semantic',
     ]);
+    // …and the asymmetry left is the one ADR 0019 argues for: there is no
+    // `uml:drawio:export`, because writing a picture back is a re-render (P2).
+    // A board that came in from draw.io leaves through PlantUML or XMI with its
+    // model intact.
+    expect(
+      found.filter(capability => capability.direction === 'export')
+    ).toHaveLength(2);
   });
 
   test('it declares nothing at all with the flag off', () => {
