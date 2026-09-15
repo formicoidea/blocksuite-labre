@@ -277,27 +277,52 @@ const tierLines = (lines: number | undefined, fallback: number): number =>
   lines === undefined ? fallback : Math.max(1, Math.floor(lines));
 
 /**
- * How many lines a tier's text holds: the number of `\n` in it, plus one.
+ * How many lines one LOGICAL line of a tier is painted as — the measurement
+ * this module cannot make and {@link umlTierLineCount} therefore takes.
+ *
+ * A canvas text element is drawn WRAPPED: the renderer breaks each line at the
+ * element's own width before it paints it (`gfx/text`'s `wrapText`), so
+ * `+ findByCustomerIdAndStatus(id : CustomerId) : List<Order>` in a 168-unit
+ * compartment is one line in the document and three on the picture. Answering
+ * that needs a font context — a `getFontString` and a canvas measurer — which
+ * this module (pure, free of `std` and of the DOM) has none of, so the caller
+ * that HAS one passes the answer in.
+ */
+export type UmlTierWrap = (line: string) => number;
+
+/**
+ * How many lines a tier's text is PAINTED as.
  *
  * Takes the VALUE rather than the element, for the reason {@link umlTierText}
- * does — a `Y.Text` on a model, a string in a fixture — and counts the same way
- * a canvas text element WRAPS: it does not. A canvas tier is laid out line per
- * line from the text's own newlines, so the author's newlines are the lines.
+ * does — a `Y.Text` on a model, a string in a fixture. The author's newlines are
+ * counted always; `wrap` adds the ones the renderer makes, and without it the
+ * count is the newlines alone.
  *
- * ponytail: a line longer than the tier is wide is still ONE line here, and the
- * renderer will let it run out through the side. Measuring a wrapped line needs
- * a font context — `getFontString` + a canvas measurer — and that is a
- * measurement this module (pure, free of `std` and of the DOM) cannot make.
- * Raise the ceiling when an author complains about width, not before: the
- * overflow that actually bites is vertical, because a tier that grows downward
- * crosses the separator under it.
+ * ## Why `wrap` is not optional in practice
+ *
+ * It was, until the PO's recette of 14/09/2026. A tier is created with
+ * `hasMaxWidth`, so the text editor wraps a long signature at the compartment's
+ * width and grows the box downward while the author types — and the watcher then
+ * SHRANK that box back to one line's worth on commit, painting the wrapped
+ * remainder straight through the separator under it. Measured on a 200-unit
+ * class: three typed attribute lines, six painted, a 92.7-unit stack put back
+ * into a 54.6-unit compartment.
+ *
+ * So every caller that can measure must: `umlFitComponent` does, through
+ * `umlTierWrapper` (`node/tier-metrics.ts`), and the `wrap`-less form is what a
+ * fixture and a pure test get.
  *
  * An empty tier is one line, which is `\n`-count + 1 and also what §14.2.4
  * wants: a state's behaviour compartment is seeded EMPTY and is still ruled off.
  */
-export function umlTierLineCount(text: unknown): number {
+export function umlTierLineCount(text: unknown, wrap?: UmlTierWrap): number {
   if (text === null || text === undefined) return 1;
-  return String(text).split('\n').length;
+  const logical = String(text).split('\n');
+  if (!wrap) return logical.length;
+  // `Math.max(1, …)` so a measurer that answers 0 for an empty line — which a
+  // wrapper built on a string split can — still counts the blank line the
+  // renderer paints.
+  return logical.reduce((total, line) => total + Math.max(1, wrap(line)), 0);
 }
 
 /** The kinds drawn as a divided rectangle — everything with a compartment. */

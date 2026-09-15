@@ -35,7 +35,7 @@ import {
   type TextStyleProps,
 } from '../../consts/index';
 import { type Color, DefaultTheme } from '../../themes/index';
-import type { ConnectorLabelEnd } from './end-label.js';
+import { type ConnectorLabelEnd, connectorEndNear } from './end-label.js';
 
 export type SerializedConnection = {
   id?: string;
@@ -404,6 +404,47 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     return this.endLabelIncludesPoint('target', point);
   }
 
+  /**
+   * Whether a point is reaching for one of the ENDS — the arrowhead, and the
+   * label that belongs beside it whether or not it exists yet.
+   *
+   * ## Why a hairline has to claim more than itself
+   *
+   * A connector is a stroke a few units wide, so its hit test is the line and
+   * nothing else — and an end label is the one thing on a connector that a user
+   * aims at BEFORE it exists (`docs/adr/0018`: they aim at the arrowhead). The
+   * picker that turns a double-click into "the source label" was written
+   * generously for exactly that, and it never got the chance: past about five
+   * units off the stroke nothing answered here, so the event reached no view at
+   * all and the editor's double-click-on-empty-canvas handler dropped a text
+   * block at the arrowhead instead. A text box appears, it is not the label, and
+   * the contextual menu's own entry works — which is precisely what the PO
+   * reported on 14/09/2026.
+   *
+   * ## …and why it gives the bound element right of way
+   *
+   * An endpoint sits ON the border of the node it is attached to, so half of
+   * every grab disc is INSIDE that node — and a node's body is the target of its
+   * own gestures (a UML classifier opens its name compartment there). Claiming
+   * that half would take the gesture away from the artefact and give it to the
+   * line touching it. So the disc stops at the bound element's own box, and what
+   * is left is the half the notation writes a multiplicity in: outside the box,
+   * beside the arrowhead.
+   *
+   * Resolved through the surface rather than remembered, and `null` for an end
+   * bound to a BLOCK or to nothing: an unattached end is a free arrowhead in
+   * open canvas, and the whole disc around it is the author's target.
+   */
+  endGrabIncludesPoint(point: IVec): boolean {
+    const end = connectorEndNear(this.absolutePath, point);
+    if (!end) return false;
+
+    const boundTo = this[end].id
+      ? this.surface?.getElementById(this[end].id!)
+      : null;
+    return !boundTo?.elementBound.isPointInBound(point);
+  }
+
   override includesPoint(
     x: number,
     y: number,
@@ -414,7 +455,8 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
     if (
       this.labelIncludesPoint(currentPoint as IVec) ||
       this.sourceLabelIncludesPoint(currentPoint) ||
-      this.targetLabelIncludesPoint(currentPoint)
+      this.targetLabelIncludesPoint(currentPoint) ||
+      this.endGrabIncludesPoint(currentPoint)
     ) {
       return true;
     }

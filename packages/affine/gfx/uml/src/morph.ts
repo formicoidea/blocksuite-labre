@@ -14,6 +14,7 @@ import type { TemplateResult } from 'lit';
 
 import { umlCommandIcons, umlCommands } from './commands.js';
 import { GUILLEMET_CLOSE, GUILLEMET_OPEN, UML_NAME_SEED } from './keywords.js';
+import { type UmlFitSurface, umlFitComponent } from './node/fit.js';
 import { umlMorphClears, umlMorphProps } from './presets.js';
 import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
 
@@ -376,14 +377,27 @@ export function umlMorphedName(
 
   // The keyword line, if the SOURCE kind wrote one and it is still there.
   const fromKeyword = KEYWORD_OF_KIND[from];
-  const body =
+  let body =
     fromKeyword && lines[0]?.trim() === fromKeyword ? lines.slice(1) : lines;
+
+  const toKeyword = KEYWORD_OF_KIND[to];
+  // …and the TARGET's, if it is ALREADY there. A keyword is written once: the
+  // line below puts `toKeyword` back on top, and without this a compartment that
+  // already opened with it would come out wearing it twice —
+  // `«interface»\n«interface»\nLigne`, then three, then four. The PO's recette of
+  // 14/09/2026 saw the stack; it is reachable whenever the shape's `kind` and
+  // its name compartment disagree, which an import, a paste from a tool that
+  // writes the keyword itself, or an author typing it by hand all produce.
+  //
+  // Only the target's own keyword is dropped. A first line the author wrote —
+  // `«service»`, `«entity»`, which Annex C is explicit are not keywords — is not
+  // one of ours to take away, so it survives and the new keyword goes above it.
+  if (toKeyword && body[0]?.trim() === toKeyword) body = body.slice(1);
 
   // The name, if it is still the source kind's own prompt.
   const named =
     body.join('\n').trim() === SEEDED_NAME[from] ? [SEEDED_NAME[to]] : body;
 
-  const toKeyword = KEYWORD_OF_KIND[to];
   const next = (toKeyword ? [toKeyword, ...named] : named).join('\n');
   return next === text ? null : next;
 }
@@ -397,6 +411,22 @@ export function umlMorphedName(
  * about the metaclass, so nothing here touches them — an enumeration that used
  * to be a class keeps every feature somebody wrote on it, which is exactly what
  * makes the morph worth having.
+ *
+ * ## …and then re-fit the box, because the keyword is a LINE
+ *
+ * §9.5.4 writes `«interface»` ABOVE the name, so morphing a class called `Ligne`
+ * turns a one-line name compartment into a two-line one. Nothing used to re-lay
+ * the component for it — `UmlCompartmentWatcher` fires on an editing selection
+ * closing, and a morph opens no editor — so the keyword was written and the name
+ * under it was painted straight through the rule into the attributes
+ * compartment. That is the PO's "le titre va accumuler «interface» \n Class
+ * ligne" of 14/09/2026, measured: two lines needing 38 units in a 22.4-unit
+ * compartment, on a node that stayed 120 tall.
+ *
+ * So the same fit the watcher runs is run here, INSIDE the caller's checkpoint
+ * (`capture: false`): `applyMorph` has already opened one, and the re-layout
+ * belongs in the same single ctrl+z as the kind that made it necessary — which
+ * is exactly what {@link rewriteTier} promises about the words themselves.
  */
 function rewriteName(
   model: GfxPrimitiveElementModel,
@@ -404,6 +434,16 @@ function rewriteName(
   to: UmlNodeKind
 ) {
   rewriteTier(model, UML_ROLE.name, text => umlMorphedName(from, to, text));
+
+  const node = umlNodeOfGroup(model);
+  if (!node) return;
+  umlFitComponent(
+    node.surface as unknown as UmlFitSurface,
+    node.surface.store,
+    node.id,
+    // The morph's own checkpoint, not a second one.
+    { capture: false }
+  );
 }
 
 /**

@@ -151,6 +151,8 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
 
   private _keeping = false;
 
+  private _removing = false;
+
   private readonly _updateRect = () => {
     const element = this.element;
 
@@ -276,7 +278,26 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
         this.disposables.add(() => {
           element.display = true;
 
-          if (element.text.length === 0) {
+          // A free canvas text emptied of its words IS nothing, and deleting it
+          // is what keeps an invisible, selectable box off the board.
+          //
+          // A text that carries a ROLE is not free: it is one COMPARTMENT of a
+          // framework artefact — a `uml:name`, a `c4:type`, a lane's title — a
+          // member of a group, a slot the exporter reads and a box the layout
+          // puts back. Deleting it takes a tier out of the composite, and the
+          // author is left with a classifier that has no name compartment at
+          // all: double-clicking its body then falls through to the SHAPE's own
+          // inner text (`UmlNodeView`), which R16 keeps empty and no framework
+          // renderer paints. That is the PO's "je n'arrive pas à entrer dans
+          // l'édition de texte" of 14/09/2026, reproduced by emptying a class's
+          // title and clicking away.
+          //
+          // So an emptied tier STAYS, at its compartment's box, showing the
+          // placeholder its framework draws and answering the next double-click.
+          // `role` is the one honest test for it: it is declared on the base
+          // element model precisely to say "this element means something to a
+          // framework", and a generalist text never carries one.
+          if (element.text.length === 0 && element.role === undefined) {
             this.crud.deleteElements([element]);
           }
 
@@ -290,7 +311,17 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
         this.disposables.addFromEvent(
           this.inlineEditorContainer,
           'blur',
-          () => !this._keeping && this.remove()
+          () => {
+            // Re-entrant, and the connector label editor already says why:
+            // Chrome fires the focused child's blur SYNCHRONOUSLY inside
+            // `remove()`, before the node is detached, and the commit in
+            // `disconnectedCallback` moves the focus again. Without the flag the
+            // handler removes a node whose removal is in progress — a
+            // `NotFoundError` out of a listener nobody is awaiting.
+            if (this._keeping || this._removing) return;
+            this._removing = true;
+            this.remove();
+          }
         );
 
         this.disposables.addFromEvent(

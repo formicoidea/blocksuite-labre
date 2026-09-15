@@ -249,6 +249,59 @@ describe('umlMorphedName — the keyword follows the shape, the name does not', 
     );
   });
 
+  /**
+   * The PO's recette of 14/09/2026: « le titre va accumuler «interface» ».
+   *
+   * The rewrite drops the SOURCE kind's keyword line and writes the target's on
+   * top — which is right whenever the shape's `kind` and its name compartment
+   * agree. They do not always: an import, a paste from a tool that writes the
+   * keyword itself, an author typing `«interface»` on a plain class, or an undo
+   * landing between the two writes all leave a compartment already carrying the
+   * word the morph is about to add. One stack became two, then three.
+   *
+   * A keyword is written ONCE, so the target's own line is dropped before it is
+   * put back. An author's stereotype is not a keyword (Annex C is explicit) and
+   * is not ours to take away, so it survives underneath.
+   */
+  it('never stacks the TARGET keyword, however it got there', () => {
+    const interfaceKeyword = guillemets('interface');
+    // A class whose compartment already says «interface» — the accumulation.
+    expect(
+      umlMorphedName('class', 'interface', `${interfaceKeyword}\nLigne`)
+    ).toBeNull();
+    // …and from the third kind of the family, where the SOURCE keyword is not
+    // the one already written: `null` both times, which is the same answer said
+    // more strongly — the compartment already reads exactly as it should, so the
+    // morph writes nothing at all rather than a second line.
+    expect(
+      umlMorphedName('enumeration', 'interface', `${interfaceKeyword}\nLigne`)
+    ).toBeNull();
+    // A stereotype the author wrote is not a keyword of ours: it stays, and the
+    // notation's word goes above it.
+    expect(umlMorphedName('class', 'interface', '«service»\nLigne')).toBe(
+      `${interfaceKeyword}\n«service»\nLigne`
+    );
+  });
+
+  /**
+   * The other half of the PO's step: the title was EMPTIED first.
+   *
+   * A compartment with no words is not a compartment carrying the seed, so
+   * nothing resurrects `Class` — what a morph owes an unnamed classifier is the
+   * keyword that says what it now is, and nothing else.
+   */
+  it('does not resurrect a seed into a compartment the author emptied', () => {
+    expect(umlMorphedName('class', 'interface', '')).toBe(
+      guillemets('interface')
+    );
+    expect(umlMorphedName('class', 'interface', null)).toBe(
+      guillemets('interface')
+    );
+    expect(umlMorphedName('interface', 'class', guillemets('interface'))).toBe(
+      ''
+    );
+  });
+
   it('carries an untouched seed across, keyword and name together', () => {
     // What a classifier nobody has named still says, both halves of it.
     expect(umlMorphedName('class', 'interface', UML_NAME_SEED.class)).toBe(

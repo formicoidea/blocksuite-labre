@@ -1,18 +1,7 @@
-import type { UmlNodeKind } from '@labre/affine-model';
-import { Bound, type SerializedXYWH, type XYWH } from '@labre/global/gfx';
 import { InteractivityExtension } from '@labre/std/gfx';
 
-import {
-  type UmlBox,
-  umlCompartmentBoxes,
-  type UmlComponentGroup,
-  umlComponentSiblings,
-  umlGroupOf,
-  umlStackHeight,
-  type UmlTierLines,
-  umlTierLineCount,
-} from '../component.js';
 import { UML_ROLE } from '../roles.js';
+import { type UmlFitSurface, umlFitComponent } from './fit.js';
 
 /**
  * The four tier roles an edit can commit into.
@@ -22,8 +11,8 @@ import { UML_ROLE } from '../roles.js';
  * of a 16-wide column (`consts.ts`, `UML_LIFELINE_HEAD`), so no amount of typing
  * in it can change the element's box — a lifeline resizes in HEIGHT and that is
  * the spine's length, not the words'. Accepting it as a trigger would mean
- * asking {@link umlStackHeight} a question it answers `null` to on every
- * keystroke, which is the work this set exists to avoid.
+ * asking `umlStackHeight` a question it answers `null` to on every keystroke,
+ * which is the work this set exists to avoid.
  */
 const TIER_ROLES: ReadonlySet<string> = new Set([
   UML_ROLE.name,
@@ -36,34 +25,6 @@ const TIER_ROLES: ReadonlySet<string> = new Set([
   // question rather than silently skipped.
   UML_ROLE.label,
 ]);
-
-/**
- * The little this watcher needs of a canvas TEXT element.
- *
- * Structural, and not `TextElementModel`, for the reason `component.ts` states
- * about `UmlComponentElement`: what is read here is an id, a role, whatever the
- * tier says and where it is — four facts a fixture can state as plainly as a
- * model can, which is what lets the decision below be tested without a Yjs
- * document standing behind every box.
- */
-interface UmlTierElement {
-  id: string;
-  type: string;
-  role?: string;
-  text?: unknown;
-  xywh: SerializedXYWH;
-  isLocked(): boolean;
-}
-
-/** …and of the SHAPE those words are about. */
-interface UmlNodeShape {
-  id: string;
-  type: string;
-  kind: UmlNodeKind;
-  xywh: SerializedXYWH;
-  deserializedXYWH: XYWH;
-  isLocked(): boolean;
-}
 
 /**
  * Keeps a classifier's BOX big enough for the words in it.
@@ -81,10 +42,11 @@ interface UmlNodeShape {
  *
  * So the text is measured once, when an edit commits, and the two facts that
  * follow from it are written: the node grows to the height the stack now needs
- * ({@link umlStackHeight}), and the tiers move to the boxes that height yields.
- * The separators follow for free — the renderer reads them off the tiers
+ * (`umlStackHeight`), and the tiers move to the boxes that height yields. The
+ * separators follow for free — the renderer reads them off the tiers
  * (`node-renderer.ts`), so the rule is drawn between the compartments as they
- * ARE rather than where a default-sized stack would have put them.
+ * ARE rather than where a default-sized stack would have put them. The measuring
+ * and the writing are {@link umlFitComponent}'s, shared with the morph.
  *
  * ## Why the seam is the SELECTION and not `elementUpdated`
  *
@@ -159,109 +121,29 @@ export class UmlCompartmentWatcher extends InteractivityExtension {
   /**
    * Re-fit the classifier the committed tier belongs to.
    *
-   * Every early return below is a case where there is nothing honest to do, and
-   * writing nothing is the answer to all of them: a tier whose group was
-   * released, a group with no shape in it, a shape that is a picture rather than
-   * a divided box, a locked component, and — the common one — a stack that
-   * already fits, which is what every edit that did not change the number of
-   * lines produces.
+   * This is the TRIGGER and nothing else: what was committed has to be one of
+   * the tiers a classifier's stack is made of, or there is nothing about the
+   * layout for an edit to have changed. Everything past that — resolving the
+   * component, measuring the words, growing the box — is {@link umlFitComponent},
+   * which the morph reaches for too (`morph.ts`) so a keyword line written by a
+   * "Change type" lands in a compartment as surely as a typed one does.
    */
   private _fit(elementId: string) {
-    // A read-only document is READ: every write below would be refused, and
-    // nobody can have typed the line that would need one.
-    if (this.std.store.readonly) return;
     const surface = this.gfx.surface;
     if (!surface) return;
 
-    const tier = this._element(elementId);
+    const tier = surface.getElementById(elementId) as {
+      type?: string;
+      role?: string;
+    } | null;
     if (!tier || tier.type !== 'text') return;
     if (tier.role === undefined || !TIER_ROLES.has(tier.role)) return;
 
-    const groups = surface.elementModels.filter(
-      model => model.type === 'group'
-    ) as unknown as UmlComponentGroup[];
-    const group = umlGroupOf(elementId, groups);
-    if (!group) return;
-
-    // The same pure resolution the exporter and the node view use — group
-    // membership, then roles — so the tiers moved here are the tiers the file
-    // comes out with.
-    const component = umlComponentSiblings(group, surface.elementModels);
-    const node = component.node && this._element(component.node.id);
-    if (!node || node.type !== 'umlNode') return;
-    // `isLocked` walks the ancestors too, so this covers a locked GROUP as well
-    // as a locked shape — the two ways a reviewer freezes a component.
-    if (node.isLocked()) return;
-
-    const { kind } = node as unknown as UmlNodeShape;
-    const lines: UmlTierLines = {
-      name: umlTierLineCount(component.name?.text),
-      attributes: umlTierLineCount(component.attributes?.text),
-      operations: umlTierLineCount(component.operations?.text),
-    };
-    const required = umlStackHeight(kind, lines);
-    // A picture, not a divided box: an actor's label has no stack to overflow,
-    // and there is no height at which a stick figure "fits" its name.
-    if (required === null) return;
-
-    const [x, y, w, h] = node.deserializedXYWH;
-    const height = Math.max(h, required);
-    const boxes = umlCompartmentBoxes(kind, x, y, w, height, lines);
-
-    // Which tier goes in which box. `undefined` on either side is a component
-    // somebody took apart by hand, and it is simply skipped.
-    const moves: [string | undefined, UmlBox | undefined][] = [
-      [component.name?.id, boxes.name],
-      [component.attributes?.id, boxes.attributes],
-      [component.operations?.id, boxes.operations],
-    ];
-
-    const writes: (() => void)[] = [];
-    if (height !== h) {
-      const xywh = new Bound(x, y, w, height).serialize();
-      writes.push(() => (node.xywh = xywh));
-    }
-    for (const [id, box] of moves) {
-      if (!id || !box) continue;
-      const element = this._element(id);
-      if (!element || element.type !== 'text' || element.isLocked()) continue;
-      const xywh = new Bound(box.x, box.y, box.w, box.h).serialize();
-      if (element.xywh === xywh) continue;
-      writes.push(() => (element.xywh = xywh));
-    }
-
-    // Nothing grew and nothing moved: the stack already fits, which is what most
-    // edits produce. An unchanged write would push an empty undo entry and cost
-    // the author a ctrl-Z for nothing.
-    if (writes.length === 0) return;
-
-    // Its OWN undo entry, deliberately. The alternative — letting the writes
-    // merge into whatever the author last typed — makes the entry's contents
-    // depend on how long they paused before clicking away, and a layout that
-    // sometimes comes back with the words and sometimes does not is worse than
-    // one that always behaves the same.
-    this.std.store.captureSync();
-    // ONE transaction, so the growth and every move are ONE undo entry: an
-    // author who undoes it gets the whole layout back, rather than walking it
-    // back a tier at a time past a broken picture at every stop.
-    this.std.store.transact(() => {
-      for (const write of writes) write();
-    });
-  }
-
-  /**
-   * One element, reduced to what this file reads off it.
-   *
-   * The cast is the module boundary: `getElementById` is typed to the base
-   * element, and `kind` (a UML shape's) and `text` (a canvas text's) live on the
-   * two subclasses. Guarded by `type` at every call site, which is the same
-   * discriminant the surface stores the element under.
-   */
-  private _element(id: string): (UmlTierElement & UmlNodeShape) | null {
-    const element = this.gfx.surface?.getElementById(id);
-    return element
-      ? (element as unknown as UmlTierElement & UmlNodeShape)
-      : null;
+    umlFitComponent(
+      surface as unknown as UmlFitSurface,
+      this.std.store,
+      elementId
+    );
   }
 }
 

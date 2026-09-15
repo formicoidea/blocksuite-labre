@@ -29,6 +29,12 @@ function degraded(mode: ConnectorMode): ConnectorElementModel {
     labelIncludesPoint: () => false,
     sourceLabelIncludesPoint: () => false,
     targetLabelIncludesPoint: () => false,
+    // The end-label GRAB, which `includesPoint` consults too — and the real one,
+    // so the degraded case is exercised rather than stubbed away: an empty path
+    // has no ends to be near, which is exactly what has to stay true here.
+    endGrabIncludesPoint: proto.endGrabIncludesPoint,
+    source: {},
+    target: {},
   } as unknown as ConnectorElementModel;
 }
 

@@ -22,6 +22,53 @@ export type ConnectorLabelEnd = 'source' | 'target';
 export const DEFAULT_CONNECTOR_END_LABEL_DISTANCE = 12;
 
 /**
+ * How close to an endpoint a gesture has to land to mean "that end" — in model
+ * units, so it is a constant on the board and not on the screen (zooming out
+ * does not widen the target).
+ *
+ * `docs/adr/0018` phase 2. Deliberately generous, and for a reason a hairline
+ * makes plain: the end label a user is reaching for is usually not there yet, so
+ * there is no box to aim at, and the thing they aim at instead is the ARROWHEAD.
+ *
+ * It lives here, beside the box the same clause places, because it is one fact
+ * about the same notation and because BOTH the hit test that delivers the
+ * gesture ({@link connectorEndNear}) and the picker that decides what it meant
+ * (`pickConnectorLabelWhich`, in the gfx pack) have to agree about it. They did
+ * not until the PO's recette of 14/09/2026: the picker was generous and the hit
+ * test was the line itself, so past about five units off the stroke the
+ * double-click reached nobody and the editor's own "add text here" answered it
+ * instead.
+ */
+export const CONNECTOR_END_LABEL_GRAB = 24;
+
+/**
+ * Which END of a path a point is reaching for, or `null` for none.
+ *
+ * The nearer end wins a tie-free comparison; a point within reach of both ends
+ * of a very short connector gets the nearer one, which is the same rule
+ * `pickConnectorLabelWhich` applies and the only one that stays stable as the
+ * author drags the line.
+ *
+ * Pure, and exported, because it is the whole of a gesture's reach and a spec
+ * should be able to ask it without driving a pointer.
+ */
+export function connectorEndNear(
+  path: readonly IVec[],
+  point: IVec,
+  grab: number = CONNECTOR_END_LABEL_GRAB
+): ConnectorLabelEnd | null {
+  if (!path.length) return null;
+
+  const first = path[0];
+  const last = path[path.length - 1];
+  const toSource = Vec.dist(point, [first[0], first[1]]);
+  const toTarget = Vec.dist(point, [last[0], last[1]]);
+
+  if (Math.min(toSource, toTarget) > grab) return null;
+  return toSource <= toTarget ? 'source' : 'target';
+}
+
+/**
  * The default box for a connector end label — where it sits when nothing has
  * placed it yet.
  *

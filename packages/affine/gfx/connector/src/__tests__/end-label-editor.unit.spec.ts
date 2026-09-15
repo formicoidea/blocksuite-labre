@@ -14,7 +14,12 @@
  *
  * @vitest-environment happy-dom
  */
-import { type ConnectorElementModel, ConnectorMode } from '@labre/affine-model';
+import {
+  CONNECTOR_END_LABEL_GRAB,
+  type ConnectorElementModel,
+  connectorEndNear,
+  ConnectorMode,
+} from '@labre/affine-model';
 import {
   CHROME_WORDINGS,
   type ToolbarAction,
@@ -221,6 +226,45 @@ describe('which label a double-click is asking for', () => {
     // sane.
     const degraded = bareConnector({ absolutePath: [] });
     expect(pickConnectorLabelWhich(degraded, [0, 0])).toBe('center');
+  });
+});
+
+/**
+ * Whether the gesture ever ARRIVES, which is the other half of the same reach.
+ *
+ * `pickConnectorLabelWhich` decides which label a point asks for once the view
+ * has the double-click; `connectorEndNear` is what the connector's own hit test
+ * claims, so that the dispatcher hands it one at all. Until the PO's recette of
+ * 14/09/2026 only the first existed, and the 24-unit grab was unreachable past
+ * the line's own tolerance — a double-click aimed at the arrowhead reached
+ * nobody and `DblClickAddEdgelessText` dropped a text block there instead.
+ */
+describe('how far from an end a gesture still means that end', () => {
+  const path = bareConnector().absolutePath;
+
+  test('reaches out to the grab distance around either end', () => {
+    expect(connectorEndNear(path, [0, 0])).toBe('source');
+    expect(connectorEndNear(path, [0, CONNECTOR_END_LABEL_GRAB])).toBe(
+      'source'
+    );
+    expect(connectorEndNear(path, [200, -CONNECTOR_END_LABEL_GRAB])).toBe(
+      'target'
+    );
+    // Off the line on BOTH axes, which is where a thin connector's own hit test
+    // stops answering and this one has to.
+    expect(connectorEndNear(path, [12, 12])).toBe('source');
+  });
+
+  test('stops at the grab distance, and in the middle of the line', () => {
+    expect(
+      connectorEndNear(path, [0, CONNECTOR_END_LABEL_GRAB + 1])
+    ).toBeNull();
+    // The caption's half of the connector belongs to the caption.
+    expect(connectorEndNear(path, [100, 0])).toBeNull();
+  });
+
+  test('a connector with no path is near nothing', () => {
+    expect(connectorEndNear([], [0, 0])).toBeNull();
   });
 });
 

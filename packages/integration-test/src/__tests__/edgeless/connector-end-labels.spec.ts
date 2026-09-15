@@ -135,6 +135,34 @@ describe('a connector carries a label at each end', () => {
     return [point[0], point[1]];
   };
 
+  /**
+   * A point `offset` model units to the SIDE of the line, `along` units in from
+   * `end` — where a user aiming at an arrowhead actually lands.
+   *
+   * A connector is a hairline: the pointer is almost never ON it, and
+   * `docs/adr/0018` sized the end-label grab at 24 units precisely because the
+   * thing being aimed at is the arrowhead rather than a box that does not exist
+   * yet.
+   */
+  const besideEnd = (
+    connector: ConnectorElementModel,
+    end: 'source' | 'target',
+    along: number,
+    offset: number
+  ): IVec => {
+    const on = nearEnd(connector, end, along);
+    const path = connector.absolutePath;
+    const [from, toward] =
+      end === 'source'
+        ? [path[0], path[1] ?? path[path.length - 1]]
+        : [path[path.length - 1], path[path.length - 2] ?? path[0]];
+    const dx = toward[0] - from[0];
+    const dy = toward[1] - from[1];
+    const len = Math.hypot(dx, dy) || 1;
+    // The unit normal to the segment.
+    return [on[0] + (-dy / len) * offset, on[1] + (dx / len) * offset];
+  };
+
   /** Types into the open editor's label and commits it the way a blur does. */
   const commit = async (text: string) => {
     const editor = labelEditor();
@@ -167,6 +195,78 @@ describe('a connector carries a label at each end', () => {
     expect(connector.sourceLabel?.toString()).toBe('0..*');
     expect(connector.targetLabel).toBeUndefined();
     expect(connector.text).toBeUndefined();
+  });
+
+  /**
+   * The PO's recette of 14/09/2026: « la zone de texte apparaît mais il n'est
+   * pas possible de taper dedans. Pourtant quand j'utilise la commande du menu
+   * contextuel ça fonctionne. »
+   *
+   * Two things had to be true for that, and only one of them was tested. The
+   * editor has to MOUNT — which the cases above prove, for a double-click that
+   * lands on the line — and the caret has to end up in it, which nothing
+   * asserted: every case here commits by writing into the `Y.Text` directly,
+   * which a keyboard cannot do. So this one goes through the contenteditable the
+   * user types into.
+   */
+  test('the caret lands in the editor a double-click opened', async () => {
+    const { connector } = await addConnector();
+
+    await doubleClick(nearEnd(connector, 'source', 8));
+    const editor = labelEditor();
+    expect(editor?.which).toBe('source');
+
+    const container = editor!.inlineEditorContainer!;
+    expect(container.contains(document.activeElement)).toBe(true);
+
+    // The keystrokes a user makes, through the inline editor's own input path:
+    // `beforeinput` is what the editor binds to its event source, and it can
+    // only resolve an inline range if the caret is really in this editor. A
+    // mounted-but-unfocused overlay swallows this exactly as it swallowed the
+    // PO's typing.
+    container.dispatchEvent(
+      new InputEvent('beforeinput', {
+        inputType: 'insertText',
+        data: '0..*',
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    await wait(100);
+    expect(connector.sourceLabel?.toString()).toBe('0..*');
+
+    await closeEditor();
+    expect(connector.sourceLabel?.toString()).toBe('0..*');
+  });
+
+  /**
+   * …and the other half of the same observation: WHERE the gesture is answered.
+   *
+   * `CONNECTOR_END_LABEL_GRAB` is 24 model units and `docs/adr/0018` says why —
+   * the label is not there yet, so the target is the arrowhead. But the
+   * dispatcher only ever handed the connector view a double-click that its own
+   * hit test answered, which for a hairline is the line itself: measured, about
+   * five units. Past that the event reached nobody, `getElementByPoint` answered
+   * null, and `DblClickAddEdgelessText` took it for a double-click on empty
+   * canvas and dropped a text block at the arrowhead — a text box that appears
+   * and is not the label.
+   */
+  test('a double-click BESIDE the arrowhead still opens that end', async () => {
+    const { connector } = await addConnector();
+    const blocks = () =>
+      window.doc.getModelsByFlavour('affine:edgeless-text').length;
+    expect(blocks()).toBe(0);
+
+    // Twelve units off the line: well inside the grab, well outside anything a
+    // hairline's own hit test answers.
+    await doubleClick(besideEnd(connector, 'target', 8, 12));
+
+    expect(labelEditor()?.which).toBe('target');
+    // …and nothing was written on the canvas to stand in for it.
+    expect(blocks()).toBe(0);
+
+    await commit('1');
+    expect(connector.targetLabel?.toString()).toBe('1');
   });
 
   test('a double-click near the target end opens the other one', async () => {

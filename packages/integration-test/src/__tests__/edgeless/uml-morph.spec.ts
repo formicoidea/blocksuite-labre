@@ -13,6 +13,7 @@ import {
   umlMorphProps,
   umlNodeOfGroup,
 } from '@labre/affine-gfx-uml';
+import { getFontString, getLineHeight, wrapText } from '@labre/affine/gfx/text';
 import {
   ConnectorElementModel,
   GroupElementModel,
@@ -113,6 +114,33 @@ describe('morphing a UML artefact into a nearby kind', () => {
       (child): child is TextElementModel =>
         child instanceof TextElementModel && child.role === role
     )!;
+
+  /**
+   * How tall the canvas renderer PAINTS this tier — the renderer's own wrap at
+   * the compartment's width, times its own line height.
+   *
+   * Never a line count: a tier is created with `hasMaxWidth`, so a long line is
+   * broken before it is drawn, and "how many lines did the author type" is not
+   * the question a compartment has to fit.
+   */
+  const paintedHeight = (tier: TextElementModel) => {
+    const font = getFontString(tier);
+    const [, , w] = tier.deserializedXYWH;
+    const lines = tier.text
+      .toString()
+      .split('\n')
+      .reduce(
+        (total, line) => total + wrapText(line, font, w).split('\n').length,
+        0
+      );
+    return (
+      lines * getLineHeight(tier.fontFamily, tier.fontSize, tier.fontWeight)
+    );
+  };
+
+  /** Whether the compartment is tall enough for the words that are in it. */
+  const nameFits = (tier: TextElementModel) =>
+    tier.deserializedXYWH[3] + 0.5 >= paintedHeight(tier);
 
   /**
    * The selection made the way the real toolbar makes it: the widget derives
@@ -282,9 +310,7 @@ describe('morphing a UML artefact into a nearby kind', () => {
     const attributes = tierOf(group, UML_ROLE.attributes);
     const operations = tierOf(group, UML_ROLE.operations);
 
-    const box = group.xywh;
     const shapeBox = node.xywh;
-    const tierBoxes = [name.xywh, attributes.xywh, operations.xywh];
     const words = {
       attributes: attributes.text.toString(),
       operations: operations.text.toString(),
@@ -306,18 +332,29 @@ describe('morphing a UML artefact into a nearby kind', () => {
     expect(name.text.toString().split('\n')[0]).toBe('«interface»');
 
     // …and nothing else a user could point at. Same elements, same ids, same
-    // geometry — the compartments are what a delete-and-redraw would have cost.
+    // words — the compartments are what a delete-and-redraw would have cost.
     expect(node.xywh).toBe(shapeBox);
-    expect(group.xywh).toBe(box);
     expect(group.role).toBeUndefined();
     expect(group.childElements).toHaveLength(4);
     expect(attributes.text.toString()).toBe(words.attributes);
     expect(operations.text.toString()).toBe(words.operations);
-    expect([name.xywh, attributes.xywh, operations.xywh]).toEqual(tierBoxes);
     // The tier ROLES say which COMPARTMENT this is, never what kind of box it
     // belongs to, so the morph never touches them.
     expect(name.role).toBe(UML_ROLE.name);
     expect(operations.role).toBe(UML_ROLE.operations);
+
+    // The NAME COMPARTMENT is the one box that does move, and it has to: the
+    // keyword is a LINE (§9.5.4), so a one-line heading became a two-line one.
+    // The PO's recette of 14/09/2026 found the second line painted straight
+    // through the rule under it, because nothing re-laid the component for a
+    // morph — the watcher listens for an editor closing, and a morph opens none.
+    expect(nameFits(name)).toBe(true);
+    const [, , , nameHeight] = name.deserializedXYWH;
+    expect(nameHeight).toBeGreaterThan(paintedHeight(name) - 1);
+    // …and the tier under it starts below the heading, not inside it.
+    expect(attributes.deserializedXYWH[1]).toBeGreaterThanOrEqual(
+      name.deserializedXYWH[1] + nameHeight
+    );
   });
 
   test('a name the author wrote survives, and gains the keyword', async () => {
@@ -340,6 +377,34 @@ describe('morphing a UML artefact into a nearby kind', () => {
       '«interface»',
       'Payments',
     ]);
+    // …and it has somewhere to be written: the compartment grew with it.
+    expect(nameFits(name)).toBe(true);
+  });
+
+  /**
+   * « Le titre va accumuler «interface» » — the PO's own words, 14/09/2026.
+   *
+   * A compartment can already carry the keyword the morph is about to write: an
+   * import, a paste from a tool that spells it out, or an author typing it by
+   * hand all produce a shape whose `kind` and whose name compartment disagree.
+   * The rewrite used to stack a second line on top, and a third on the next
+   * morph. One keyword, once, however it got there.
+   */
+  test('the keyword is written once, never stacked', async () => {
+    const { group, node } = await draw('uml.addClass');
+    const name = tierOf(group, UML_ROLE.name);
+
+    window.doc.transact(() => {
+      name.text.delete(0, name.text.length);
+      name.text.insert(0, '«interface»\nLigne');
+    });
+    await wait();
+
+    applyMorph(select(group), UML_MORPH_SPEC, 'interface');
+    await wait(200);
+
+    expect(node.kind).toBe('interface');
+    expect(name.text.toString().split('\n')).toEqual(['«interface»', 'Ligne']);
   });
 
   test('one undo puts the classifier back', async () => {
