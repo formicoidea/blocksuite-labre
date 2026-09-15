@@ -122,6 +122,15 @@ export class ConnectorElementView extends GfxElementModelView<ConnectorElementMo
     // Set from the view rather than defaulted on the model because it is a
     // LOCAL fact about this peer's pointer, which is exactly what
     // `responseExtension` is for — nothing about it is written to the document.
+    //
+    // NOT gated on the model's `role`, although `endGrabIncludesPoint` is
+    // (a generalist connector keeps its hairline). Two reasons, and both are
+    // about `onCreated` running exactly once: a connector acquires its role
+    // AFTER creation often enough — an import writes the element then types it,
+    // a morph retypes it, a paste re-creates it — and a halo decided at that one
+    // moment would be missing for every one of those. And it costs nothing to
+    // keep: the extension widens the CANDIDATE set only, and the authority on
+    // what a point actually hits is the model, which now declines.
     this.model.responseExtension = [
       CONNECTOR_END_LABEL_GRAB,
       CONNECTOR_END_LABEL_GRAB,

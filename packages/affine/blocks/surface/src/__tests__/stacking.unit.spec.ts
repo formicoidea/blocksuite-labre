@@ -144,6 +144,20 @@ describe('a sheet is never raised above the backgrounds drawn on it', () => {
     expect(index > 'a2').toBe(true);
   });
 
+  it('clears a peer board without climbing over its own content', () => {
+    // The half the carve-out first missed: the frame IS buried (a peer board it
+    // merely overlaps sits above it), so it is raised — and the depth it was
+    // raised to was read off the whole stack, whose topmost overlapping
+    // background is the frame's own inner subject. Above the peer, below the
+    // subject, is the only answer that is both rules at once.
+    const peer = board('a2', '[800,0,1600,1000]');
+    const index = stackingIndexFor(board('a0'), [peer, inner('a4')])!;
+
+    expect(index).not.toBeNull();
+    expect(index > 'a2').toBe(true);
+    expect(index < 'a4').toBe(true);
+  });
+
   it('still lowers a sheet dropped over free artefacts', () => {
     // The carve-out touches `buried` alone: a sheet that lids what was drawn
     // before it is still a lid and still goes under it.

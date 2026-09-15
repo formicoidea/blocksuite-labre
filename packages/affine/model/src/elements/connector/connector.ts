@@ -414,12 +414,24 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
    * nothing else — and an end label is the one thing on a connector that a user
    * aims at BEFORE it exists (`docs/adr/0018`: they aim at the arrowhead). The
    * picker that turns a double-click into "the source label" was written
-   * generously for exactly that, and it never got the chance: past about five
-   * units off the stroke nothing answered here, so the event reached no view at
-   * all and the editor's double-click-on-empty-canvas handler dropped a text
-   * block at the arrowhead instead. A text box appears, it is not the label, and
-   * the contextual menu's own entry works — which is precisely what the PO
-   * reported on 14/09/2026.
+   * generously for exactly that, and it never got the chance: past `8` units off
+   * the stroke (plus half its width when the caller asks for a threshold —
+   * {@link includesPoint}'s own tolerance) nothing answered here, so the event
+   * reached no view at all and the editor's double-click-on-empty-canvas handler
+   * dropped a text block at the arrowhead instead. A text box appears, it is not
+   * the label, and the contextual menu's own entry works — which is precisely
+   * what the PO reported on 14/09/2026.
+   *
+   * ## …and why only a connector a FRAMEWORK typed claims it
+   *
+   * A `CONNECTOR_END_LABEL_GRAB` disc around each endpoint is a large
+   * thing to take out of the canvas, and the only gesture that needs it is the
+   * one that opens an END label — which is a notation's caption, never a plain
+   * arrow's. A connector carrying a `role` is exactly a connector some framework
+   * wrote (`uml:association`, `bpmn:sequenceFlow`); a generalist one keeps the
+   * hairline it has always had, so a double-click beside a whiteboard arrow
+   * still means "add text here" and a click there still reaches whatever is
+   * under it.
    *
    * ## …and why it gives the bound element right of way
    *
@@ -431,18 +443,28 @@ export class ConnectorElementModel extends GfxPrimitiveElementModel<ConnectorEle
    * is left is the half the notation writes a multiplicity in: outside the box,
    * beside the arrowhead.
    *
-   * Resolved through the surface rather than remembered, and `null` for an end
-   * bound to a BLOCK or to nothing: an unattached end is a free arrowhead in
-   * open canvas, and the whole disc around it is the author's target.
+   * Resolved through the surface rather than remembered, and BOTH ways: a
+   * canvas element by id, and a BLOCK — a note, an image, an embed, a frame —
+   * through the store, because those are ends a framework binds too and the
+   * element resolver alone answers `undefined` for every one of them. It did,
+   * and the whole disc was then claimed inside the note. `null` is for an end
+   * bound to NOTHING: an unattached end is a free arrowhead in open canvas, and
+   * the whole disc around it is the author's target.
    */
   endGrabIncludesPoint(point: IVec): boolean {
+    if (this.role === undefined) return false;
+
     const end = connectorEndNear(this.absolutePath, point);
     if (!end) return false;
 
-    const boundTo = this[end].id
-      ? this.surface?.getElementById(this[end].id!)
+    const id = this[end].id;
+    const boundTo = id
+      ? (this.surface?.getElementById(id) ??
+        (this.surface?.store.getBlock(id)?.model as
+          | { elementBound?: Bound }
+          | undefined))
       : null;
-    return !boundTo?.elementBound.isPointInBound(point);
+    return !boundTo?.elementBound?.isPointInBound(point);
   }
 
   override includesPoint(

@@ -19,7 +19,10 @@ import {
   isCommandAvailable,
   SENIOR_MENU_RANKED_SLOTS,
 } from '@labre/affine/std';
-import { edgelessToolbarSlotsContext } from '@labre/affine/widgets/edgeless-toolbar';
+import {
+  createPopper,
+  edgelessToolbarSlotsContext,
+} from '@labre/affine/widgets/edgeless-toolbar';
 import { ContextProvider } from '@lit/context';
 import { Subject } from 'rxjs';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -401,5 +404,102 @@ describe('the UML sub-menu seats the import', () => {
     // after the ranking, so nothing a user reached for jumps to the front.
     expect(ids.at(-1)).toBe('uml.importXmi');
     expect(ids).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+  });
+});
+
+/**
+ * …and the row has to re-rank when it is REOPENED, not when the page is
+ * reloaded (recette PO, 2026-09-15, D1).
+ *
+ * The test above proves the ranking; it proves it through `requestUpdate()`,
+ * which is a render the user never asks for. What the user does is close the
+ * toolbox and open it again — and `createPopper` caches the popover per
+ * reference and hands the SAME element back, so the row re-showed the DOM of
+ * its last opening and the seat the import had just earned was invisible until
+ * a reload.
+ *
+ * So this drives the reopen itself, through the shipped `createPopper` a senior
+ * button calls, and reads the RENDERED buttons rather than the getter behind
+ * them — the getter was never the thing that was stale.
+ */
+describe('reopening a senior row re-ranks it', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+  let host!: HTMLElement;
+  let reference!: HTMLElement;
+
+  beforeEach(async () => {
+    localStorage.removeItem(COMMAND_USAGE_KEY);
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+
+    // What `createPopper` asks of a senior BUTTON: a shadow root to append the
+    // popover into. The toolbar's resize slot, which the inner slide menu
+    // consumes through Lit context, is provided above it.
+    host = document.createElement('div');
+    new ContextProvider(host, {
+      context: edgelessToolbarSlotsContext,
+      initialValue: { resize: new Subject<{ w: number; h: number }>() },
+    });
+    reference = document.createElement('div');
+    reference.attachShadow({ mode: 'open' });
+    host.append(reference);
+    document.body.append(host);
+
+    return () => {
+      host.remove();
+      cleanup();
+    };
+  });
+
+  const open = () =>
+    // The tag is cast for the same reason the mount above uses
+    // `createElement`: the popover is a custom element `effects()` registers,
+    // and its `HTMLElementTagNameMap` entry is declared in a module this spec
+    // does not import.
+    createPopper(
+      'edgeless-uml-menu' as keyof HTMLElementTagNameMap,
+      reference,
+      {
+        setProps: element => {
+          (element as unknown as UmlMenuElement).edgeless = edgeless;
+        },
+      }
+    );
+
+  /** The ids the row actually PAINTED, off the rendered buttons. */
+  const paintedIds = (menu: UmlMenuElement) =>
+    Array.from(
+      menu.shadowRoot?.querySelectorAll<HTMLElement>('[data-command-id]') ?? []
+    ).map(button => button.dataset.commandId);
+
+  test('one import, and the reopened row shows it without a reload', async () => {
+    const first = open();
+    const menu = first.element as unknown as UmlMenuElement;
+    await menu.updateComplete;
+    await wait(0);
+
+    expect(paintedIds(menu)).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
+    expect(paintedIds(menu)).not.toContain('uml.importXmi');
+
+    // One import, recorded the way `CommandUsage` records it.
+    localStorage.setItem(
+      COMMAND_USAGE_KEY,
+      JSON.stringify({ 'uml.importXmi': { c: 1, t: Date.now() } })
+    );
+
+    first.dispose();
+    const second = open();
+    // The cached element, which is the whole point: this is the path the
+    // recette walked, not a fresh mount that could never have been stale.
+    expect(second.element).toBe(first.element);
+
+    // A SINGLE update settles it. `updateComplete` resolves `false` when
+    // another update was requested while this one ran, so this is also the
+    // no-render-loop assertion.
+    expect(await menu.updateComplete).toBe(true);
+    await wait(0);
+
+    expect(paintedIds(menu)).toContain('uml.importXmi');
+    expect(paintedIds(menu)).toHaveLength(SENIOR_MENU_RANKED_SLOTS);
   });
 });

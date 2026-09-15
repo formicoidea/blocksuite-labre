@@ -33,6 +33,7 @@ export default [
   'packages/affine/gfx/edgy/vitest.config.ts',
   'packages/affine/gfx/pointer/vitest.config.ts',
   'packages/affine/gfx/template/vitest.config.ts',
+  'packages/affine/gfx/text/vitest.config.ts',
   'packages/affine/gfx/uml/vitest.config.ts',
   'packages/affine/gfx/wardley/vitest.config.ts',
   'packages/affine/inlines/footnote/vitest.config.ts',

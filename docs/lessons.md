@@ -151,12 +151,14 @@ Container()` threw "illegal constructor" and the page hung.
     abandoned and wrong for a COMPARTMENT: the classifier lost its name
     compartment and the next double-click fell through to the shape's own
     invisible inner text.
-    _Rule:_ a text carrying a `role` belongs to a composite. It survives being
-    emptied, placeholder and all.
+    _Rule:_ a text carrying a `role` and a fixed width is a compartment tier. It
+    survives being emptied, placeholder and all; a roled label with no
+    `hasMaxWidth` — a Wardley label, a BPMN name — is still deleted.
 
 27. **A generous grab the dispatcher never honoured.** Connector end labels
     were picked within 24 units of an arrowhead, but a connector's hit test is
-    its LINE — so past about five units the double-click reached no view at
-    all and the editor's add-text-here handler answered it instead.
+    its LINE — 8 units off the stroke, plus half its width — so anywhere past
+    that the double-click reached no view at all and the editor's add-text-here
+    handler answered it instead.
     _Rule:_ a gesture's reach is the element's `includesPoint`, not the
     picker's. Widening one without the other writes dead code.

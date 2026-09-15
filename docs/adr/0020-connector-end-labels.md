@@ -159,3 +159,12 @@ One more, specific to phase 2:
   the anchor distance puts both default boxes at its far endpoint, which is
   honest about there being no room rather than pretending there is; the author
   moves the nodes apart or drags the boxes.
+
+## Amendments
+
+**2026-09-15 (tranche J, recette PO).** A connector that carries a framework
+`role` claims two `CONNECTOR_END_LABEL_GRAB` discs beside its endpoints in
+`includesPoint`, each stopping at the box of the element — canvas element or
+block — that end is bound to, so a double-click beside an arrowhead reaches the
+end label instead of the editor's add-text-here handler; a connector with no
+role keeps the hairline hit test it has always had.

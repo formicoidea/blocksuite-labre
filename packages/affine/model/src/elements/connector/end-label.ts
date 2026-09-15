@@ -35,7 +35,8 @@ export const DEFAULT_CONNECTOR_END_LABEL_DISTANCE = 12;
  * gesture ({@link connectorEndNear}) and the picker that decides what it meant
  * (`pickConnectorLabelWhich`, in the gfx pack) have to agree about it. They did
  * not until the PO's recette of 14/09/2026: the picker was generous and the hit
- * test was the line itself, so past about five units off the stroke the
+ * test was the line itself — `8` units off the stroke, plus half the stroke's
+ * width when the caller asks for a threshold — so anywhere past that the
  * double-click reached nobody and the editor's own "add text here" answered it
  * instead.
  */

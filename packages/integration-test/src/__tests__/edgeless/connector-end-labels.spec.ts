@@ -35,8 +35,17 @@ describe('a connector carries a label at each end', () => {
     return cleanup;
   });
 
-  /** Two boxes far enough apart that the line between them is open space. */
-  const addConnector = async () => {
+  /**
+   * Two boxes far enough apart that the line between them is open space.
+   *
+   * `role` is what makes the connector a NOTATION's — a `uml:association`
+   * rather than a whiteboard arrow — and since tranche J that is what decides
+   * whether it claims the grab discs beside its arrowheads. Left off by default
+   * on purpose: most of the cases below aim AT the line, where a plain
+   * connector has always answered, and the two cases that aim beside it are the
+   * ones that say which connector each answer belongs to.
+   */
+  const addConnector = async (role?: string) => {
     const surface = getSurface(window.doc, window.editor).model;
     const sourceId = surface.addElement({
       type: 'shape',
@@ -51,6 +60,7 @@ describe('a connector carries a label at each end', () => {
     const connectorId = surface.addElement({
       type: 'connector',
       mode: ConnectorMode.Straight,
+      role,
       source: { id: sourceId },
       target: { id: targetId },
     });
@@ -245,14 +255,18 @@ describe('a connector carries a label at each end', () => {
    * `CONNECTOR_END_LABEL_GRAB` is 24 model units and `docs/adr/0018` says why —
    * the label is not there yet, so the target is the arrowhead. But the
    * dispatcher only ever handed the connector view a double-click that its own
-   * hit test answered, which for a hairline is the line itself: measured, about
-   * five units. Past that the event reached nobody, `getElementByPoint` answered
-   * null, and `DblClickAddEdgelessText` took it for a double-click on empty
-   * canvas and dropped a text block at the arrowhead — a text box that appears
-   * and is not the label.
+   * hit test answered, which for a hairline is the line itself: 8 units, plus
+   * half the stroke. Past that the event reached nobody, `getElementByPoint`
+   * answered null, and `DblClickAddEdgelessText` took it for a double-click on
+   * empty canvas and dropped a text block at the arrowhead — a text box that
+   * appears and is not the label.
+   *
+   * A NOTATION's connector, since tranche J: a disc of 24 units around each
+   * endpoint is a large thing to take out of the canvas, and only the gesture
+   * that opens an end label needs it. The next case is the other side of that.
    */
   test('a double-click BESIDE the arrowhead still opens that end', async () => {
-    const { connector } = await addConnector();
+    const { connector } = await addConnector('uml:association');
     const blocks = () =>
       window.doc.getModelsByFlavour('affine:edgeless-text').length;
     expect(blocks()).toBe(0);
@@ -267,6 +281,25 @@ describe('a connector carries a label at each end', () => {
 
     await commit('1');
     expect(connector.targetLabel?.toString()).toBe('1');
+  });
+
+  /**
+   * …and a WHITEBOARD arrow keeps its hairline.
+   *
+   * The grab disc is the notation's, not every connector's: a plain arrow that
+   * claimed 24 units around each end would take a double-click meant for the
+   * canvas — "add text here", which is what it has always meant out there — and
+   * answer it with a multiplicity field on a line that has no multiplicities.
+   */
+  test('a connector no framework typed does not claim the disc', async () => {
+    const { connector } = await addConnector();
+
+    await doubleClick(besideEnd(connector, 'target', 8, 12));
+
+    expect(labelEditor()).toBeNull();
+    expect(connector.targetLabel).toBeUndefined();
+    // On the LINE it still answers exactly as it always did — which is the next
+    // test but one, on a connector built the same way.
   });
 
   test('a double-click near the target end opens the other one', async () => {

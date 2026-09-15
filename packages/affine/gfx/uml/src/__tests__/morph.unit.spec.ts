@@ -284,6 +284,51 @@ describe('umlMorphedName — the keyword follows the shape, the name does not', 
   });
 
   /**
+   * …and a compartment that arrived with the word ALREADY stacked.
+   *
+   * Dropping one line left the second in place, the rewrite came out identical
+   * to its input, and `umlMorphedName` answered `null` — so a stack a document
+   * carried in (an import, a paste, a morph run before the single-drop landed)
+   * could never be cleaned up by morphing. Every leading copy comes off.
+   */
+  it('takes off a keyword stack a document arrived with', () => {
+    const interfaceKeyword = guillemets('interface');
+
+    expect(
+      umlMorphedName(
+        'class',
+        'interface',
+        `${interfaceKeyword}\n${interfaceKeyword}\nLigne`
+      )
+    ).toBe(`${interfaceKeyword}\nLigne`);
+    // Three deep, and from the kind whose own keyword is the stacked one.
+    expect(
+      umlMorphedName(
+        'interface',
+        'interface',
+        `${interfaceKeyword}\n${interfaceKeyword}\n${interfaceKeyword}\nLigne`
+      )
+    ).toBe(`${interfaceKeyword}\nLigne`);
+    // A plain class keeps no keyword at all, stack or no stack — which is the
+    // SOURCE side of the same loop.
+    expect(
+      umlMorphedName(
+        'interface',
+        'class',
+        `${interfaceKeyword}\n${interfaceKeyword}\nLigne`
+      )
+    ).toBe('Ligne');
+    // …and a stacked source keyword does not survive under the target's.
+    expect(
+      umlMorphedName(
+        'interface',
+        'enumeration',
+        `${interfaceKeyword}\n${interfaceKeyword}\nLigne`
+      )
+    ).toBe(`${guillemets('enumeration')}\nLigne`);
+  });
+
+  /**
    * The other half of the PO's step: the title was EMPTIED first.
    *
    * A compartment with no words is not a compartment carrying the seed, so

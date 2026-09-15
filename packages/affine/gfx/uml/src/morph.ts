@@ -375,10 +375,12 @@ export function umlMorphedName(
   const text = (rawText ?? '').trim();
   const lines = text.length ? text.split('\n') : [];
 
-  // The keyword line, if the SOURCE kind wrote one and it is still there.
+  // The keyword line(s), if the SOURCE kind wrote one and it is still there.
+  // Plural for the same reason the target's loop below is: a document may
+  // arrive with the word already stacked.
   const fromKeyword = KEYWORD_OF_KIND[from];
-  let body =
-    fromKeyword && lines[0]?.trim() === fromKeyword ? lines.slice(1) : lines;
+  let body = lines;
+  while (fromKeyword && body[0]?.trim() === fromKeyword) body = body.slice(1);
 
   const toKeyword = KEYWORD_OF_KIND[to];
   // …and the TARGET's, if it is ALREADY there. A keyword is written once: the
@@ -392,7 +394,12 @@ export function umlMorphedName(
   // Only the target's own keyword is dropped. A first line the author wrote —
   // `«service»`, `«entity»`, which Annex C is explicit are not keywords — is not
   // one of ours to take away, so it survives and the new keyword goes above it.
-  if (toKeyword && body[0]?.trim() === toKeyword) body = body.slice(1);
+  // A LOOP, not one slice: a document that already stacked the keyword twice —
+  // an import, a paste from a tool that writes it itself, a morph run before
+  // this line existed — has two to take off, and taking one off left the other
+  // in place. The rewrite then came out identical to the text it started from
+  // and `umlMorphedName` answered `null`, so the stack was permanent.
+  while (toKeyword && body[0]?.trim() === toKeyword) body = body.slice(1);
 
   // The name, if it is still the source kind's own prompt.
   const named =
