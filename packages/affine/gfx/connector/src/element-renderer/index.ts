@@ -305,10 +305,9 @@ function renderEndpoint(
  *
  * Takes a label rather than the connector: the centre name and the two end
  * labels are the same drawing, and the only thing that told them apart was
- * which pair of fields the function reached into. Exported for the renderer
- * spec, which asserts that three present labels are three painted passes.
+ * which pair of fields the function reached into.
  */
-export function renderLabel(
+function renderLabel(
   label: PaintedLabel,
   ctx: CanvasRenderingContext2D,
   matrix: DOMMatrix,

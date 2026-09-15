@@ -5050,15 +5050,14 @@ function evaluateLabelPresence(
 /**
  * WHERE each {@link LabelTarget} is actually written, in order of preference.
  *
- * The one place in this file that names a connector's end-label props, and it
- * names TWO spellings each on purpose: `docs/adr/0020` picks the flat pair
- * (`sourceLabelText`, mirroring the centre label's `text`/`labelXYWH`) and a
- * nested `{ text }` under `sourceLabel` is the shape the same fields take in an
- * importer's serialized props and in a host that modelled the end label as one
- * object. Reading both costs one absent-property lookup on a connector that
- * carries neither, and buys a rule that does not break the day the model is
- * reshaped — the same duck-typing discipline {@link elementLabel} and
- * {@link rawEndpointIds} already hold.
+ * The one place in this file that names a connector's end-label props:
+ * `sourceLabel` / `targetLabel`, the flat `Y.Text` fields `docs/adr/0020`
+ * chose (mirroring the centre label's `text`). {@link labelSource} also
+ * tolerates a nested `{ text }` under the same key — the shape an importer's
+ * serialized props or a host that modelled the end label as one object would
+ * hand it — so the rule does not break the day the model is reshaped, the same
+ * duck-typing discipline {@link elementLabel} and {@link rawEndpointIds}
+ * already hold.
  *
  * Own-property reads only, through {@link labelSource}: these come off a Y.Map
  * and are whatever a peer or an importer wrote.
@@ -5067,8 +5066,8 @@ const LABEL_PROPS: Readonly<
   Record<Exclude<LabelTarget, 'end-labels'>, readonly string[]>
 > = {
   'center-label': ['text'],
-  'source-label': ['sourceLabelText', 'sourceLabel'],
-  'target-label': ['targetLabelText', 'targetLabel'],
+  'source-label': ['sourceLabel'],
+  'target-label': ['targetLabel'],
 };
 
 /**

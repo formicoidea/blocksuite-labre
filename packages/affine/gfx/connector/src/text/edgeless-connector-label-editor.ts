@@ -151,10 +151,12 @@ export function connectorLabelSeedProps(
  * What to write when an editing session ENDS, or `null` when the text is
  * already exactly what the model holds.
  *
- * A label committed empty leaves no trace: both of its fields go, so an end
- * label typed and erased is byte-identical to a connector that never carried
- * one — which is what keeps `docs/adr/0018`'s "no migration, no stored change"
- * promise true in both directions.
+ * A label committed empty clears both of its fields, so the connector reads
+ * as one that has none (`hasEndLabel` false, nothing painted, nothing
+ * exported). The KEYS stay in the Y.Map as `undefined` — the field setter
+ * writes what it is given — so only a connector that never carried an end
+ * label is byte-identical to a pre-0020 one; `docs/adr/0020`'s "no migration"
+ * promise is about that connector, not about this reset.
  *
  * Pure and exported: it is the one rule with three outcomes (delete, trim,
  * nothing) times three labels, and a spec should be able to ask it directly.
@@ -182,6 +184,26 @@ export function connectorLabelCommitProps(
   }
 
   return null;
+}
+
+/**
+ * The box an END label takes after a measurement: a label that already has a
+ * box keeps its CENTRE and takes the new size — the author's or the importer's
+ * placement survives an edit — and a label that has none yet is seeded beside
+ * its endpoint by `connectorEndLabelBox`.
+ */
+function endLabelRect(
+  connector: ConnectorElementModel,
+  which: ConnectorLabelEnd,
+  w: number,
+  h: number
+): XYWH {
+  const current = connectorLabelXYWH(connector, which);
+  if (current) {
+    const [cx, cy] = Bound.fromXYWH(current).center;
+    return [cx - w / 2, cy - h / 2, w, h];
+  }
+  return connectorEndLabelBoxFor(connector, which, { w, h });
 }
 
 export type MountConnectorLabelEditorOptions = {
@@ -300,6 +322,8 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
 
   private _keeping = false;
 
+  private _removing = false;
+
   private _resizeObserver: ResizeObserver | null = null;
 
   /**
@@ -337,10 +361,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
             newWidth,
             newHeight
           ).toXYWH()
-        : connectorEndLabelBoxFor(connector, which, {
-            w: newWidth,
-            h: newHeight,
-          });
+        : endLabelRect(connector, which, newWidth, newHeight);
 
     const current = connectorLabelXYWH(connector, which);
 
@@ -458,7 +479,12 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
           this.inlineEditorContainer,
           'blur',
           () => {
-            if (this._keeping) return;
+            // Re-entrant: Chrome fires the focused child's blur SYNCHRONOUSLY
+            // inside `remove()`, before the node is detached, and the commit
+            // in `disconnectedCallback` moves the focus again. Without the
+            // flag the handler removes a node whose removal is in progress.
+            if (this._keeping || this._removing) return;
+            this._removing = true;
             this.remove();
           }
         );

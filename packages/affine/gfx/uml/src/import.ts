@@ -1094,8 +1094,10 @@ const UML_END_LABEL_SIZE = { w: 60, h: 24 } as const;
  * "near the end of the line", and which the first re-route corrects.
  *
  * No box is written when either node has no placed box — an end whose artefact
- * this sheet never drew. The label is still written; it simply starts wherever
- * the renderer's own default puts it.
+ * this sheet never drew. The label text is still written, but a label with no
+ * box is not painted (`hasEndLabel` wants both) until the first edit seeds
+ * one; today the branch is unreachable, since an edge whose ends do not
+ * resolve is skipped before this point.
  */
 function endLabelProps(
   edge: UmlDrawnEdge,

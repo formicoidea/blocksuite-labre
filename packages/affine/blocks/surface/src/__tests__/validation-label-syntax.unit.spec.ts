@@ -320,13 +320,13 @@ describe('the three labels of a connector', () => {
     expect(
       ids(END_SYNTAX('source-label'), [
         frame(),
-        link({ sourceLabelText: 'broken' }),
+        link({ sourceLabel: 'broken' }),
       ])
     ).toEqual(['link']);
     expect(
       ids(END_SYNTAX('source-label'), [
         frame(),
-        link({ sourceLabelText: 'n: Int' }),
+        link({ sourceLabel: 'n: Int' }),
       ])
     ).toEqual([]);
   });
@@ -342,10 +342,7 @@ describe('the three labels of a connector', () => {
   });
 
   it('never confuses one end with the other, or with the centre', () => {
-    const board = [
-      frame(),
-      link({ text: 'broken', targetLabelText: 'n: Int' }),
-    ];
+    const board = [frame(), link({ text: 'broken', targetLabel: 'n: Int' })];
     expect(ids(END_SYNTAX('target-label'), board)).toEqual([]);
     expect(ids(END_SYNTAX('source-label'), board)).toEqual([]);
     // ...and the centre label is what the default target reads.
@@ -378,13 +375,13 @@ describe('the three labels of a connector', () => {
       expect(
         ids(BOTH_ENDS, [
           frame(),
-          link({ sourceLabelText: 'a: Int', targetLabelText: 'b: Int' }),
+          link({ sourceLabel: 'a: Int', targetLabel: 'b: Int' }),
         ])
       ).toEqual([]);
       expect(
         ids(BOTH_ENDS, [
           frame(),
-          link({ sourceLabelText: 'a: Int', targetLabelText: 'broken' }),
+          link({ sourceLabel: 'a: Int', targetLabel: 'broken' }),
         ])
       ).toEqual(['link']);
     });
@@ -392,7 +389,7 @@ describe('the three labels of a connector', () => {
     it('quotes the end that is wrong', () => {
       const [found] = run(BOTH_ENDS, [
         frame(),
-        link({ sourceLabelText: 'a: Int', targetLabelText: 'broken' }),
+        link({ sourceLabel: 'a: Int', targetLabel: 'broken' }),
       ]);
       expect(found.messageFallback).toContain('“broken”');
     });
@@ -401,7 +398,7 @@ describe('the three labels of a connector', () => {
       expect(
         ids(BOTH_ENDS, [
           frame(),
-          link({ sourceLabelText: 'one', targetLabelText: 'two' }),
+          link({ sourceLabel: 'one', targetLabel: 'two' }),
         ])
       ).toEqual(['link']);
     });
