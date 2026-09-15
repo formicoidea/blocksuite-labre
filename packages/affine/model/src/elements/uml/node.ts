@@ -1,7 +1,9 @@
+import { Bound, rotatePoint } from '@labre/global/gfx';
 import type { PointTestOptions } from '@labre/std/gfx';
 import { field } from '@labre/std/gfx';
 
 import { ShapeElementModel } from '../shape/index.js';
+import { umlInLifelineHead, umlLifelineHeadRect } from './lifeline.js';
 
 /**
  * The UML artefacts the pack draws. Each maps onto a native shape, decorated by
@@ -29,7 +31,10 @@ import { ShapeElementModel } from '../shape/index.js';
  *  - state machines — `state` and `final-state` (§14.2.4), and the seven
  *    pseudostates that route transitions: `choice`, `junction`,
  *    `shallow-history`, `deep-history`, `entry-point`, `exit-point` and
- *    `terminate`.
+ *    `terminate`;
+ *  - interactions — `lifeline`, the named head over a dashed spine (§17.3.4),
+ *    the `execution` bar that sits on it (§17.2.4) and the `destruction` X that
+ *    ends it.
  *
  * ## Compatibility
  *
@@ -98,7 +103,16 @@ export type UmlNodeKind =
   | 'deep-history'
   | 'entry-point'
   | 'exit-point'
-  | 'terminate';
+  | 'terminate'
+  // Interaction artefacts (phase 3): the three marks a sequence diagram is
+  // drawn out of. A `lifeline` is the participant column of §17.3.4 — a named
+  // head over a dashed spine, and the one kind whose picture is bigger than
+  // its own box (see the two overrides below). An `execution` is the thin bar
+  // of §17.2.4 saying the participant is busy; a `destruction` is the X that
+  // ends its life.
+  | 'lifeline'
+  | 'execution'
+  | 'destruction';
 
 /**
  * A UML node. Extends {@link ShapeElementModel} (a native shape) so it inherits
@@ -120,9 +134,77 @@ export class UmlNodeElementModel extends ShapeElementModel {
    * and clips at the perimeter, so an association between two classifiers
    * points at the classifiers rather than at whichever of their twelve anchors
    * the hand was nearest.
+   *
+   * ONE kind says otherwise, and the notation is why. A message in a sequence
+   * diagram attaches at a HEIGHT on its lifeline's spine — that height is WHEN
+   * it happens, and it is the whole of what a sequence diagram says (§17.4.4).
+   * Snapping every message to a 600-unit column's centre would stack the entire
+   * conversation on one horizontal line. So a `lifeline` keeps its native
+   * perimeter anchors, which lie on the column's left and right edges, 8 units
+   * either side of the spine: exactly where every UML tool draws them.
    */
   get centerAnchorOnly() {
-    return true;
+    return this.kind !== 'lifeline';
+  }
+
+  /**
+   * A lifeline's bound includes its HEAD; every other kind's is its box.
+   *
+   * §17.3.4 draws a lifeline as a named rectangle with a dashed line falling
+   * out of its bottom, and the element is the COLUMN the line runs down — 16
+   * units wide, so that a connector's native anchors land on the spine rather
+   * than 80 units off it. The head is 160 wide, so it hangs 72 units off each
+   * side of the element the platform knows about.
+   *
+   * Everything that measures an element measures `elementBound`: the selection
+   * rectangle, the marquee, "fit to frame", the group's own box. Without this
+   * override all of them would stop at the column, and a user would see a named
+   * box with a selection outline drawn down the middle of it.
+   *
+   * Nothing here is stored — it is derived from the element's own geometry — so
+   * it applies to a lifeline drawn before the override existed as well as
+   * after.
+   */
+  override get elementBound() {
+    if (this.kind !== 'lifeline') return super.elementBound;
+
+    const head = umlLifelineHeadRect(this);
+    if (!head) return super.elementBound;
+
+    const [x, y, w, h] = this.deserializedXYWH;
+    // The union, in the element's own frame: the column plus the head that
+    // overflows it. The head is flush with the top and centred, so only the two
+    // horizontal edges can move.
+    const left = Math.min(0, head.x);
+    const right = Math.max(w, head.x + head.w);
+    const local: [number, number][] = [
+      [x + left, y],
+      [x + right, y],
+      [x + right, y + h],
+      [x + left, y + h],
+    ];
+
+    const rotate = this.rotate ?? 0;
+    const points = rotate
+      ? local.map(
+          point =>
+            rotatePoint(point, [x + w / 2, y + h / 2], rotate) as [
+              number,
+              number,
+            ]
+        )
+      : local;
+
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    return new Bound(
+      minX,
+      minY,
+      Math.max(...xs) - minX,
+      Math.max(...ys) - minY
+    );
   }
 
   /**
@@ -150,10 +232,21 @@ export class UmlNodeElementModel extends ShapeElementModel {
    * applies to nodes drawn before it existed as well as after.
    */
   override includesPoint(x: number, y: number, options: PointTestOptions) {
-    return super.includesPoint(x, y, {
-      ...options,
-      ignoreTransparent: false,
-    });
+    if (
+      super.includesPoint(x, y, {
+        ...options,
+        ignoreTransparent: false,
+      })
+    ) {
+      return true;
+    }
+
+    // …plus the one carve-out the pack keeps: a lifeline's HEAD, which is the
+    // part of it a user actually aims at (§17.3.4). The column the element is
+    // is 16 units wide — a hair at any realistic zoom — and the named box over
+    // its top is 160. Without this the head would be unclickable, which is the
+    // same failure the diagram frame's heading band would have had.
+    return this.kind === 'lifeline' && umlInLifelineHead(this, x, y);
   }
 
   /**

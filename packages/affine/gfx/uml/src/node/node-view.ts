@@ -30,15 +30,17 @@ import { umlComponentSiblings, umlGroupOf } from '../component.js';
  * makes when you double-click those words directly. The author gets one editor
  * for one name whichever half of the component they aimed at.
  *
- * ## `uml:name` or `uml:label`, and why both
+ * ## `uml:name`, `uml:label` or `uml:lifeline-ident`, and why all three
  *
  * A compartmented artefact's first tier is `uml:name` — it is the NAME
  * COMPARTMENT of §11.4.4, a rectangle with a rule under it. An actor's and a use
  * case's single word is `uml:label`: the same tier, named differently because
- * there is no compartment for it to be a compartment OF (`roles.ts`). The
- * gesture is one gesture, so it accepts either and takes whichever the group
- * holds — the kind is not consulted, which means an artefact regrouped by hand
- * still opens on the words it actually has.
+ * there is no compartment for it to be a compartment OF. A lifeline's head is
+ * `uml:lifeline-ident`, a third time: §17.3.4 prints a grammar for what goes in
+ * it and the validation pack reads that grammar and no other (`roles.ts`). The
+ * gesture is one gesture, so it accepts any of the three and takes whichever the
+ * group holds — the kind is not consulted, which means an artefact regrouped by
+ * hand still opens on the words it actually has.
  *
  * ## …except on an element that has no text child
  *
@@ -73,7 +75,10 @@ export class UmlNodeView extends GfxElementModelView<UmlNodeElementModel> {
     });
   }
 
-  /** The `uml:name` (or `uml:label`) text grouped with this shape, if any. */
+  /**
+   * The `uml:name` (or `uml:label`, or `uml:lifeline-ident`) text grouped with
+   * this shape, if any.
+   */
   #name(): TextElementModel | null {
     const surface = this.gfx.surface;
     if (!surface) return null;
@@ -87,7 +92,7 @@ export class UmlNodeView extends GfxElementModelView<UmlNodeElementModel> {
     // The same pure resolution the exporter uses — group membership, then roles
     // — so the words this gesture opens are the words the file comes out with.
     const component = umlComponentSiblings(group, surface.elementModels);
-    const tier = component.name ?? component.label;
+    const tier = component.name ?? component.label ?? component.ident;
     const element = tier && surface.getElementById(tier.id);
     return element instanceof TextElementModel ? element : null;
   }

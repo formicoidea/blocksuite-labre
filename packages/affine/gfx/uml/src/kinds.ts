@@ -1,6 +1,21 @@
 import type { UmlDiagramKind } from '@labre/affine-model';
 
 /**
+ * The combined fragment's OPERATOR picker, re-exported.
+ *
+ * It lives in `operators.ts` — a fragment's operator is a different field on a
+ * different element, and thirteen entries beside the diagram kinds would make
+ * this file two tables under one name. It is re-exported here all the same,
+ * because a reader looking for "the pickers this framework declares" looks
+ * first at the file named after one of them, and because both spellings were
+ * already in use by the time the second picker landed.
+ */
+export {
+  UML_FRAGMENT_OPERATOR_MENU,
+  type UmlFragmentOperatorOption,
+} from './operators.js';
+
+/**
  * The KIND a diagram frame declares, as the picker offers it — DATA, like
  * everything else this framework contributes.
  *
@@ -119,6 +134,15 @@ export const UML_DIAGRAM_KIND_MENU: {
       kind: 'stm',
       labelKey: kindKey('stm'),
       labelFallback: 'State machine diagram',
+    },
+    // Phase 3, the interaction frame (§17.2.4). Last, and last for the reason
+    // the behaviour frames came after the structural ones: a sequence diagram
+    // is what the parts a reader has already met SAY to each other, so it only
+    // means anything once they have been drawn.
+    {
+      kind: 'sd',
+      labelKey: kindKey('sd'),
+      labelFallback: 'Sequence diagram',
     },
   ],
 };

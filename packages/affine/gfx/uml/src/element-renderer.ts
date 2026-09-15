@@ -5,6 +5,7 @@ import {
 } from '@labre/affine-block-surface';
 import type {
   UmlDiagramElementModel,
+  UmlFragmentElementModel,
   UmlPartitionElementModel,
   UmlRegionElementModel,
   UmlSubjectElementModel,
@@ -12,6 +13,7 @@ import type {
 
 import {
   UML_DIAGRAM_FRAME,
+  UML_FRAGMENT_FRAME,
   UML_PARTITION_FRAME_H,
   UML_PARTITION_FRAME_V,
   UML_REGION_FRAME,
@@ -19,6 +21,9 @@ import {
 } from './background.js';
 import {
   UML_DIAGRAM_MARGIN,
+  UML_FRAGMENT_BAND,
+  UML_FRAGMENT_BORDER_WIDTH,
+  UML_FRAGMENT_MARGIN,
   UML_FRAME_BAND_HEIGHT,
   UML_FRAME_BORDER_WIDTH,
   UML_FRAME_INK,
@@ -112,4 +117,32 @@ export const umlRegion: ElementRenderer<UmlRegionElementModel> =
 export const UmlRegionRendererExtension = ElementRendererExtension(
   UML_REGION_FRAME.type,
   umlRegion
+);
+
+/**
+ * The combined fragment (§17.6.4) — the second frame in the pack to wear Annex
+ * A's cut-corner pentagon, and the reason `frame-tag.ts` was written as a
+ * parameterised decorator rather than as the diagram frame's own private code.
+ *
+ * The word in the tag is the OPERATOR and not a derived heading: a fragment
+ * says one word about itself, and the guard is written down in the operand
+ * rather than beside the operator (`background.ts`).
+ */
+export const umlFragment: ElementRenderer<UmlFragmentElementModel> =
+  withUmlFrameTag<UmlFragmentElementModel>(UML_FRAGMENT_FRAME, {
+    prop: 'operator',
+    bandHeight: UML_FRAGMENT_BAND,
+    foot: UML_FRAME_TAG_FOOT,
+    // The plot's left inset, as the diagram frame's padding is its own: the
+    // operator is written at the plot's left edge, so a tag padded by the same
+    // number has its word centred in it, with one number and no drift.
+    padding: UML_FRAGMENT_MARGIN,
+    cut: UML_FRAME_TAG_CUT,
+    stroke: UML_FRAME_INK,
+    lineWidth: UML_FRAGMENT_BORDER_WIDTH,
+  });
+
+export const UmlFragmentRendererExtension = ElementRendererExtension(
+  UML_FRAGMENT_FRAME.type,
+  umlFragment
 );

@@ -19,6 +19,7 @@ import {
 } from '../component.js';
 import { isActGlyphKind, paintActGlyph } from './act-glyphs.js';
 import { line, solidRect, TAU } from './paint.js';
+import { isSdGlyphKind, paintSdGlyph } from './sd-glyphs.js';
 import { isStmGlyphKind, paintStmGlyph } from './stm-glyphs.js';
 
 /**
@@ -427,7 +428,10 @@ function paintGlyph(
     kind === 'action' ||
     kind === 'object-node' ||
     kind === 'decision' ||
-    kind === 'choice'
+    kind === 'choice' ||
+    // …and, since phase 3, §17.2.4's ExecutionSpecification: a thin FILLED
+    // rectangle on a lifeline's spine, which is a native rect and nothing more.
+    kind === 'execution'
   ) {
     return;
   }
@@ -446,6 +450,12 @@ function paintGlyph(
   }
   if (isStmGlyphKind(kind)) {
     paintStmGlyph(kind, ctx, box);
+    return;
+  }
+  // Phase 3's two: §17.3.4's lifeline — the one glyph in the pack that is
+  // BIGGER than the element it belongs to — and §17.2.4's destruction X.
+  if (isSdGlyphKind(kind)) {
+    paintSdGlyph(kind, ctx, box);
     return;
   }
 

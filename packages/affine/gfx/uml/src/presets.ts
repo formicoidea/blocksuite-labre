@@ -44,7 +44,7 @@ import { UML_ROLE_OF_KIND } from './roles.js';
  * The kinds whose GLYPH draws the body, so the native shape underneath paints
  * nothing at all.
  *
- * Twenty-three of thirty-five, and the node renderer is the authority on which. A package is
+ * Twenty-five of thirty-eight, and the node renderer is the authority on which. A package is
  * a tabbed folder (§12.2.4), a note a rectangle with a folded corner (Annex A),
  * an actor a stick figure (§18.1.4) — none of which a native rect can be, so
  * each is created `filled: false` with `StrokeStyle.None` and the renderer
@@ -121,6 +121,24 @@ export const GLYPH_BODY_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
   'entry-point',
   'exit-point',
   'terminate',
+  // Phase 3, the interaction marks. Two more, and again because the shape
+  // layer cannot draw the body:
+  //
+  //  - `lifeline` is §17.3.4's head box over a DASHED SPINE, and the element is
+  //    the 16-wide column the spine runs down — a native rect would paint a
+  //    tall thin box where the notation draws a line, and would paint no head
+  //    at all;
+  //  - `destruction` is a bare X (§17.2.4), two strokes and nothing else, so a
+  //    filled rectangle behind it would be a box the notation does not draw —
+  //    the argument `terminate` already makes.
+  //
+  // `execution` is deliberately NOT here: §17.2.4 draws an
+  // ExecutionSpecification as a thin FILLED RECTANGLE on the spine, which is
+  // exactly what a native rect is. The shape layer fills it, strokes it,
+  // hit-tests it and re-themes it, and a glyph over it would reimplement all
+  // four — the same call `object-node` and `action` make.
+  'lifeline',
+  'destruction',
 ]);
 
 /**
@@ -271,7 +289,7 @@ const EVERY_MORPH_KEY = new Set(
  * writes and this one does not.
  *
  * EMPTY for every kind today, because no UML preset spreads anything
- * conditionally: all thirty-five write the same key set with different values. Kept
+ * conditionally: all thirty-eight write the same key set with different values. Kept
  * anyway, and derived rather than hard-coded to `[]`, for the reason BPMN's and
  * C4's equivalents exist at all — a patch cannot express absence, and the day
  * one kind stops writing a key the previous kind's value would otherwise stay

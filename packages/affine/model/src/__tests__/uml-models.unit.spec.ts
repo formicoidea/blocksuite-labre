@@ -4,11 +4,15 @@ import {
   FrameworkBackgroundElementModel,
   ShapeElementModel,
   UML_DIAGRAM_KIND_TAG,
+  UML_FRAGMENT_BAND,
   UML_FRAME_BAND_HEIGHT,
+  UML_LIFELINE_HEAD,
   UML_PARTITION_BAND,
   UML_REGION_BAND,
   UmlDiagramElementModel,
   type UmlDiagramKind,
+  UmlFragmentElementModel,
+  type UmlFragmentOperator,
   UmlNodeElementModel,
   UmlPartitionElementModel,
   UmlRegionElementModel,
@@ -221,24 +225,26 @@ describe('the UML element models', () => {
   /**
    * The append-only promise `UmlDiagramKind` makes, seen from an OLDER client.
    *
-   * Phase 2 appended `cmp | dep` and then `act | stm`; phase 3 appends `sd`. A
-   * frame carrying one this build does not ship — `sd` here, the interaction
-   * frame — has no entry in the tag table, and writes its kind VERBATIM rather
-   * than dropping it or falling back to `class`. The document is not rewritten,
-   * and the sheet still says what it is.
+   * Phase 2 appended `cmp | dep` and then `act | stm`; phase 3 appended `sd`. A
+   * frame carrying one this build does not ship — `tim` here, Annex A's timing
+   * diagram, which `docs/adr/0022` puts out of scope — has no entry in the tag
+   * table, and writes its kind VERBATIM rather than dropping it or falling back
+   * to `class`. The document is not rewritten, and the sheet still says what it
+   * is.
    *
-   * The echo used to be spelled with `stm`, which this build now ships: the
-   * test moved on to the next unshipped kind rather than being deleted, because
-   * what it pins is the FALLBACK and not any particular string.
+   * The echo used to be spelled with `stm`, then with `sd`, both of which this
+   * build now ships: the test moves on to the next unshipped kind rather than
+   * being deleted, because what it pins is the FALLBACK and not any particular
+   * string.
    */
   it('writes a kind it has never heard of verbatim in the heading', () => {
     const diagram = detached(UmlDiagramElementModel, {
-      kind: 'sd',
+      kind: 'tim' as UmlDiagramKind,
       name: 'Order lifecycle',
     });
 
-    expect(UML_DIAGRAM_KIND_TAG).not.toHaveProperty('sd');
-    expect(diagram.heading).toBe('sd Order lifecycle');
+    expect(UML_DIAGRAM_KIND_TAG).not.toHaveProperty('tim');
+    expect(diagram.heading).toBe('tim Order lifecycle');
   });
 
   /**
@@ -571,5 +577,209 @@ describe('the UML element models', () => {
     expect(region.includesPoint(260, 316, PICK)).toBe(true);
     // Outside is still outside.
     expect(region.includesPoint(260, -40, PICK)).toBe(false);
+  });
+});
+
+/**
+ * The phase-3 additions (§17.2.4, §17.3.4, §17.6.4) — the two halves of what
+ * `packages/affine/model` is a red zone FOR: a new element type that a document
+ * written before it existed is byte-identical without, and a node kind whose
+ * picture is bigger than the box the platform knows about.
+ */
+describe('the interaction models', () => {
+  it('declares the combined fragment as a sixth persisted type', () => {
+    const fragment = detached(UmlFragmentElementModel);
+    expect(fragment.type).toBe('umlFragment');
+    expect(UmlFragmentElementModel.prototype).toBeInstanceOf(
+      FrameworkBackgroundElementModel
+    );
+    // A connector never snaps to the box round a conversation, any more than it
+    // snaps to the sheet or the swimlane (R12).
+    expect(fragment.connectable).toBe(false);
+  });
+
+  /**
+   * The defaults, and the one that is deliberately EMPTY: §17.6.4 writes a
+   * guard only where there is one, and `[ ]` under an `alt` would be the
+   * notation inventing a condition the author has not written.
+   */
+  it('seeds a fragment as an unguarded alt', () => {
+    const fragment = detached(UmlFragmentElementModel);
+    expect(fragment.operator).toBe('alt');
+    expect(fragment.name).toBe('');
+    expect(fragment.resizeEnabled).toBe(true);
+    expect(fragment.rotate).toBe(0);
+    expect(fragment.operands).toBeUndefined();
+  });
+
+  /**
+   * The BYTE IDENTITY promise `operands` makes, and the reason it is optional
+   * rather than seeded to `[]`: an `opt`, a `loop` and a `ref` are never split,
+   * so the overwhelming majority of fragments must store nothing for the field
+   * at all — exactly as a BPMN pool with no lane does.
+   */
+  it('writes nothing for a fragment that was never split', () => {
+    const fragment = detached(UmlFragmentElementModel, {
+      operator: 'opt',
+      name: '[stock > 0]',
+      xywh: '[0,0,600,260]',
+    });
+    expect(stored(fragment).has('operands')).toBe(false);
+    expect(fragment.operands).toBeUndefined();
+    // …and the field still round-trips once somebody does split it.
+    const split = detached(UmlFragmentElementModel, {
+      operands: [
+        { id: 'a', name: '[ok]', size: 1 },
+        { id: 'b', size: 2 },
+      ],
+    });
+    expect(split.operands).toHaveLength(2);
+    expect(split.operands?.[1].name).toBeUndefined();
+  });
+
+  /**
+   * An operator this build has never heard of reads back as the string it is —
+   * the same append-only promise `UmlDiagramKind` makes, on the field that IS
+   * the whole of what a fragment says.
+   */
+  it('reads an unknown operator back verbatim', () => {
+    const fragment = detached(UmlFragmentElementModel, {
+      operator: 'coregion' as UmlFragmentOperator,
+    });
+    expect(fragment.operator).toBe('coregion');
+  });
+
+  /**
+   * A fragment is picked by its BORDER and by its OPERATOR BAND — the carve-out
+   * every UML frame makes, and the only part of the box that is the fragment
+   * rather than the conversation drawn inside it.
+   */
+  it('picks a fragment by its border and its operator band', () => {
+    const fragment = detached(UmlFragmentElementModel, {
+      xywh: '[0,0,600,260]',
+      rotate: 0,
+    });
+
+    expect(fragment.includesPoint(300, 4, PICK)).toBe(true);
+    expect(fragment.includesPoint(300, UML_FRAGMENT_BAND - 1, PICK)).toBe(true);
+    expect(fragment.includesPoint(300, UML_FRAGMENT_BAND + 20, PICK)).toBe(
+      false
+    );
+    // Transparent below the band, so the messages drawn inside keep their
+    // clicks — which matters more here than on any other frame, a fragment
+    // being drawn over a conversation that is already there.
+    expect(fragment.includesPoint(300, 150, PICK)).toBe(false);
+    // The border, all the way round.
+    expect(fragment.includesPoint(4, 150, PICK)).toBe(true);
+    expect(fragment.includesPoint(596, 150, PICK)).toBe(true);
+    expect(fragment.includesPoint(300, 256, PICK)).toBe(true);
+    expect(fragment.includesPoint(300, -40, PICK)).toBe(false);
+  });
+
+  /**
+   * §17.3.4's lifeline is the one node in the pack whose PICTURE is bigger than
+   * its own box: the element is the 16-unit column the dashed spine runs down,
+   * and the named head over its top is 160 wide.
+   *
+   * `elementBound` is what the selection rectangle, the marquee, "fit to frame"
+   * and the group's own box are all measured from, so without the widening a
+   * user would see a named box with a selection outline drawn down the middle
+   * of it.
+   */
+  it('widens a lifeline bound to its head', () => {
+    const lifeline = detached(UmlNodeElementModel, {
+      kind: 'lifeline',
+      xywh: '[100,0,16,600]',
+      rotate: 0,
+    });
+
+    const bound = lifeline.elementBound;
+    const overhang = (UML_LIFELINE_HEAD.w - 16) / 2;
+    expect(bound.x).toBe(100 - overhang);
+    expect(bound.w).toBe(UML_LIFELINE_HEAD.w);
+    // Only the horizontal edges move: the head is flush with the column's top,
+    // and the spine already reaches its bottom.
+    expect(bound.y).toBe(0);
+    expect(bound.h).toBe(600);
+  });
+
+  /** Every other kind keeps the shape layer's own answer, untouched. */
+  it('leaves every other kind to the shape layer', () => {
+    const klass = detached(UmlNodeElementModel, {
+      kind: 'class',
+      xywh: '[100,0,200,120]',
+      rotate: 0,
+    });
+    expect(klass.elementBound.x).toBe(100);
+    expect(klass.elementBound.w).toBe(200);
+  });
+
+  /**
+   * …and the hit test agrees with the bound: the head is where a user aims, the
+   * column being a hair wide at any realistic zoom.
+   */
+  it('hits a lifeline on its head as well as on its column', () => {
+    const lifeline = detached(UmlNodeElementModel, {
+      kind: 'lifeline',
+      xywh: '[100,0,16,600]',
+      rotate: 0,
+      shapeType: 'rect',
+      filled: false,
+    });
+
+    // The head's left half, well outside the 16-unit column.
+    expect(lifeline.includesPoint(40, 24, PICK)).toBe(true);
+    // …its right half, likewise.
+    expect(lifeline.includesPoint(180, 24, PICK)).toBe(true);
+    // The column itself, far below the head.
+    expect(lifeline.includesPoint(108, 400, PICK)).toBe(true);
+    // Beside the spine at the same height there is nothing: the head does not
+    // run the whole length of the lifeline.
+    expect(lifeline.includesPoint(40, 400, PICK)).toBe(false);
+  });
+
+  /**
+   * The anchor rule, per kind. A message attaches at a HEIGHT on the spine —
+   * that height is WHEN it happens, and it is the whole of what a sequence
+   * diagram says — so a lifeline keeps its native perimeter anchors while every
+   * other UML node still snaps to its centre.
+   */
+  it('lets a lifeline keep its perimeter anchors, and nothing else', () => {
+    expect(
+      detached(UmlNodeElementModel, { kind: 'lifeline' }).centerAnchorOnly
+    ).toBe(false);
+    for (const kind of ['class', 'execution', 'destruction'] as const) {
+      expect(
+        detached(UmlNodeElementModel, { kind }).centerAnchorOnly,
+        kind
+      ).toBe(true);
+    }
+  });
+
+  /**
+   * A document written by phase 2 opens on phase 3 unchanged — the whole of
+   * what this file is a red-zone guard for.
+   *
+   * Nothing was renamed, nothing was backfilled and nothing new is required: a
+   * frame still carries `kind` and `name`, a node still carries `kind` alone,
+   * and neither has grown a field. So the props a phase-2 document stored are
+   * exactly the props these models read back.
+   */
+  it('opens a phase-2 document unchanged', () => {
+    const frame = detached(UmlDiagramElementModel, {
+      kind: 'stm',
+      name: 'Order lifecycle',
+      xywh: '[0,0,1400,900]',
+    });
+    expect(frame.heading).toBe('stm Order lifecycle');
+    expect([...stored(frame).keys()].sort()).toEqual(['kind', 'name', 'xywh']);
+
+    const node = detached(UmlNodeElementModel, {
+      kind: 'state',
+      xywh: '[0,0,180,90]',
+    });
+    expect(node.kind).toBe('state');
+    expect(node.centerAnchorOnly).toBe(true);
+    expect([...stored(node).keys()].sort()).toEqual(['kind', 'xywh']);
   });
 });

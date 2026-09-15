@@ -1,12 +1,21 @@
 import type { BackgroundRect } from '@labre/affine-block-surface';
-import { backgroundPlot } from '@labre/affine-block-surface';
+import {
+  backgroundInstanceZones,
+  backgroundPlot,
+} from '@labre/affine-block-surface';
 import type { UmlPartitionOrientation } from '@labre/affine-model';
 
 import {
   UML_DIAGRAM_FRAME,
+  UML_FRAGMENT_FRAME,
   UML_REGION_FRAME,
   umlPartitionFrame,
 } from './background.js';
+import {
+  UML_OPERAND_GRAB,
+  UML_OPERAND_GUARD_HEIGHT,
+  UML_OPERAND_GUARD_WIDTH,
+} from './consts.js';
 
 /**
  * Where the UML diagram frame's heading band is, in ELEMENT-LOCAL model units.
@@ -177,4 +186,144 @@ export function umlInRegionBand(
   local: readonly [number, number]
 ): boolean {
   return inRect(umlRegionBand(model), local);
+}
+
+/* ── The combined fragment ─────────────────────────────────────────────── */
+
+/** What these functions need of a fragment: its box and its operands. */
+export interface UmlFragmentGeometry {
+  deserializedXYWH: readonly number[];
+  operands?: unknown;
+}
+
+/**
+ * The fragment's OPERATOR BAND, or `null` when there is no room for one.
+ *
+ * The diagram frame's own arithmetic against a second declaration: the band is
+ * the top margin, full width, clamped to a fragment dragged shorter than its
+ * own tag — the degenerate case the model's carve-out clamps too.
+ */
+export function umlFragmentBand(
+  model: UmlDiagramGeometry
+): BackgroundRect | null {
+  const [, , w, h] = model.deserializedXYWH;
+  if (!(w > 0) || !(h > 0)) return null;
+
+  const plot = backgroundPlot(UML_FRAGMENT_FRAME, w, h);
+  const height = Math.min(plot.y0, h);
+  if (!(height > 0)) return null;
+
+  return { x: 0, y: 0, w, h: height };
+}
+
+/** Whether an element-local point is in the fragment's operator band. */
+export function umlInFragmentBand(
+  model: UmlDiagramGeometry,
+  local: readonly [number, number]
+): boolean {
+  return inRect(umlFragmentBand(model), local);
+}
+
+/** One operand band of a fragment: where it starts, and how tall it is. */
+export interface UmlOperandBand {
+  top: number;
+  height: number;
+}
+
+export interface UmlFragmentOperands {
+  plot: ReturnType<typeof backgroundPlot>;
+  bands: UmlOperandBand[];
+}
+
+/**
+ * The operand bands of this fragment, or `null` when it carries no usable
+ * partition — which is every `opt`, every `loop` and every `ref`.
+ *
+ * Derived from `backgroundInstanceZones`, the very function the renderer paints
+ * the separators from and the audit reports the zones from, so a grab zone
+ * cannot drift away from the line it is a grab zone for. The BPMN pool's
+ * `bpmnPoolBands` with one thing missing: an operand has no title strip,
+ * because §17.6.4 writes its guard in a corner rather than down a band.
+ */
+export function umlFragmentOperands(
+  model: UmlFragmentGeometry
+): UmlFragmentOperands | null {
+  const [, , w, h] = model.deserializedXYWH;
+  const plot = backgroundPlot(UML_FRAGMENT_FRAME, w, h);
+  if (!(plot.width > 0) || !(plot.height > 0)) return null;
+
+  const zones = backgroundInstanceZones(
+    UML_FRAGMENT_FRAME,
+    model as unknown as Readonly<Record<string, unknown>>
+  );
+  if (zones.length === 0) return null;
+
+  return {
+    plot,
+    bands: zones.map(zone => ({
+      top: plot.y0 + zone.rect.y * plot.height,
+      height: zone.rect.h * plot.height,
+    })),
+  };
+}
+
+/**
+ * The INTERNAL operand separator the point is on, as the index of the operand
+ * BELOW it — so `i` separates operand `i - 1` from operand `i`. `null` for
+ * anywhere else.
+ *
+ * Internal only, exactly as the pool's is: the outer edges belong to the plot,
+ * and dragging one would be a resize of the fragment, which the handles do.
+ */
+export function umlOperandBoundaryAt(
+  model: UmlFragmentGeometry,
+  local: readonly [number, number]
+): number | null {
+  const geometry = umlFragmentOperands(model);
+  if (!geometry) return null;
+  const { plot, bands } = geometry;
+
+  if (local[0] < plot.x0 || local[0] > plot.x1) return null;
+
+  for (let i = 1; i < bands.length; i++) {
+    if (Math.abs(local[1] - bands[i].top) <= UML_OPERAND_GRAB) return i;
+  }
+  return null;
+}
+
+/**
+ * The operand whose GUARD CORNER the point is in, or `null`.
+ *
+ * A corner box and not a whole band, which is the opposite call the BPMN pool
+ * makes about its lane names — and the notation is the difference. A lane's
+ * name is a TITLE written down a strip that belongs to nothing else; an
+ * operand's guard is a condition written over the messages it governs, and a
+ * rename zone covering the whole operand would swallow every double-click meant
+ * for the conversation inside it.
+ *
+ * The box is the guard's own line: as wide as {@link UML_OPERAND_GUARD_WIDTH}
+ * from the plot's left edge, as tall as the line the declaration writes it on,
+ * anchored at the same inset the renderer uses.
+ */
+export function umlOperandGuardAt(
+  model: UmlFragmentGeometry,
+  local: readonly [number, number]
+): number | null {
+  const geometry = umlFragmentOperands(model);
+  if (!geometry) return null;
+  const { plot, bands } = geometry;
+
+  for (let i = 0; i < bands.length; i++) {
+    const top = bands[i].top;
+    const height = Math.min(UML_OPERAND_GUARD_HEIGHT, bands[i].height);
+    if (
+      local[0] >= plot.x0 &&
+      local[0] <= plot.x0 + Math.min(UML_OPERAND_GUARD_WIDTH, plot.width) &&
+      local[1] >= top &&
+      local[1] <= top + height
+    ) {
+      return i;
+    }
+  }
+  return null;
 }
