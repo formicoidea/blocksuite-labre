@@ -38,7 +38,7 @@ const ALL_OFF = Object.fromEntries(
 const ALL_ON: BlockFlags = {};
 
 /**
- * The eleven categories the assembly contributes with everything on — the
+ * The twelve categories the assembly contributes with everything on — the
  * framework half of the catalogue, sorted so the list reads as a SET and a
  * reordering of `extensions/view.ts` does not break it.
  */
@@ -53,6 +53,7 @@ const ALL_CATEGORIES = [
   'Estuarine',
   'Event Storming',
   'Mind Map',
+  'UML',
   'Wardley',
 ].sort();
 
@@ -73,7 +74,7 @@ function categoriesOf(provider: ReturnType<typeof mountProvider>) {
 
 describe('the Templates-panel categories are flag-gated tooling', () => {
   test('every framework contributes its category with the flags on', () => {
-    // Eleven names, one per framework module that ships templates. `Other` is
+    // Twelve names, one per framework module that ships templates. `Other` is
     // NOT among them — it is built in, not contributed — and reading it here
     // would mean a framework had claimed the generic category.
     expect(categoriesOf(mountProvider('edgeless', ALL_ON))).toEqual(

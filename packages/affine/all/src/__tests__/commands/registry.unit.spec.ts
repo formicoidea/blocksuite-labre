@@ -137,6 +137,54 @@ describe('command registry invariants', () => {
       // 12 since the PO's recette (27/08/2026) removed the palette's static
       // Legend entry — the board's contextual auto-legend is THE legend.
       'ddd-context-map': 12,
+      // 21 at phase 1, and the first framework to arrive already past the cap:
+      // ten artefacts (the diagram frame, the four classifiers, the package, the
+      // note, the actor, the use case, the subject), nine relationship tools,
+      // and the two exports — PlantUML and XMI 2.5.1, two formats and therefore
+      // two rows (`docs/adr/0012`).
+      //
+      // …and 32 since phase 2 (components and deployment, ADR 0017's second
+      // append): the component, the port, the provided and required interface
+      // marks, the artifact, the node, the device and the execution environment
+      // — eight artefacts — plus the deploy, manifest and communication-path
+      // tools.
+      //
+      // The NOMINATIONS did not move: all eleven decline the senior row, so the
+      // pool is still the phase-1 fourteen — `SENIOR_MENU_CAP` exactly — and the
+      // curation budget below is met without an over-nomination. Which of the
+      // fourteen a component ought to displace is a PO curation point, not a
+      // tranche's to settle (`gfx/uml/src/commands.ts`).
+      //
+      // …and 56 since phase 2's behavioural half (activities and state
+      // machines, ADR 0017's third append): ten activity artefacts (the action,
+      // the five control nodes, the object node and the three signal/event
+      // actions), nine state-machine ones (the state, the final state and the
+      // seven pseudostates), the two behaviour BACKGROUNDS — a partition
+      // (§15.6.4's swimlane) and a region (§14.2.4's composite state), both
+      // filed under `boundaries` beside the subject — and three relationship
+      // tools: control flow, object flow and transition.
+      //
+      // The NOMINATIONS still did not move. All twenty-four decline the senior
+      // row, so the pool is the phase-1 fourteen for the third tranche running
+      // — `SENIOR_MENU_CAP` exactly. At fifty-six catalogue entries against
+      // fourteen seats the row is a PO curation question with usage data behind
+      // it, not something a tranche settles from inside itself. A sequence or
+      // timing pack is a fourth tranche and owes this number a re-read.
+      //
+      // …and 59 since phase 2's imports (ADR 0019): PlantUML, XMI 2.5.1 and
+      // draw.io, three formats and therefore three rows — the same "a
+      // direction is never implied by its opposite" the two exports already
+      // stand on (`docs/adr/0012`).
+      //
+      // The NOMINATIONS moved for the first time, and did not GROW: `uml.
+      // importXmi` took a seat (R5 — an import is where a board comes from, and
+      // the sub-menu is the first thing a user opens on an empty canvas) and
+      // `uml.addNote` stood down for it. The pool is still fourteen, which is
+      // `SENIOR_MENU_CAP` exactly and leaves BPMN's single authorized
+      // over-nomination the only one in the library. Which of the fourteen an
+      // import ought to displace is a PO curation point; the choice is recorded
+      // at `uml.addNote`'s declaration for them to overturn.
+      uml: 59,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
       // + map.audit + edge.invert-direction + element.read
@@ -159,8 +207,15 @@ describe('command registry invariants', () => {
     // because ADR 0012 declares interchange per framework × format × direction
     // and refuses to infer a framework from a `.svg`. …and 113 since
     // `wardley.addPorter`, 115 since the two Wardley climate arrows, and 117
-    // since the two Wardley zones.
-    expect(commands).toHaveLength(117);
+    // since the two Wardley zones. …and 138 since the UML pack landed whole,
+    // with twenty-one of its own, 149 since its phase 2 appended eleven
+    // more — the components and deployment artefacts and their three lines —
+    // and 173 since the same phase's behavioural half appended twenty-four: the
+    // activity and state-machine artefacts, the partition and region
+    // backgrounds, and the control-flow, object-flow and transition tools.
+    // …and 176 since UML's three imports — PlantUML, XMI and draw.io
+    // (`docs/adr/0019`).
+    expect(commands).toHaveLength(176);
   });
 
   /**
@@ -368,6 +423,7 @@ describe('command registry invariants', () => {
       'ddd-event-storming': 'event-storming',
       'ddd-core-domain': 'core-domain',
       'ddd-context-map': 'context-map',
+      uml: 'uml',
     });
   });
 });

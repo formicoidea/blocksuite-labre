@@ -2,7 +2,13 @@ import {
   type ConnectorElementModel,
   LocalShapeElementModel,
 } from '@labre/affine-model';
-import { Bound, serializeXYWH, Vec } from '@labre/global/gfx';
+import {
+  Bound,
+  type IVec,
+  serializeXYWH,
+  Vec,
+  type XYWH,
+} from '@labre/global/gfx';
 import type { PointerEventState } from '@labre/std';
 import {
   type DragEndContext,
@@ -13,7 +19,73 @@ import {
   GfxViewInteractionExtension,
 } from '@labre/std/gfx';
 
-import { mountConnectorLabelEditor } from '../text/edgeless-connector-label-editor';
+import {
+  type ConnectorLabelWhich,
+  mountConnectorLabelEditor,
+} from '../text/edgeless-connector-label-editor';
+
+/**
+ * How close to an endpoint a double-click has to land to mean "the label of
+ * THAT end" — in model units, so it is a constant on the board and not on the
+ * screen (zooming out does not widen the target).
+ *
+ * `docs/adr/0018` phase 2. Deliberately generous: the end label a user is
+ * reaching for is usually not there yet, so there is no box to aim at, and the
+ * thing they aim at instead is the arrowhead.
+ */
+export const CONNECTOR_END_LABEL_GRAB = 24;
+
+/** What {@link pickConnectorLabelWhich} needs, and nothing more. */
+export type ConnectorLabelHitTarget = {
+  absolutePath: readonly IVec[];
+  sourceLabelXYWH?: XYWH;
+  targetLabelXYWH?: XYWH;
+};
+
+/**
+ * Which of a connector's three labels a point is asking for.
+ *
+ * The order is what makes the gesture predictable:
+ *
+ * 1. an END LABEL BOX under the pointer — an existing label is edited where it
+ *    is drawn, never re-created somewhere else;
+ * 2. otherwise, within {@link CONNECTOR_END_LABEL_GRAB} of an ENDPOINT — the
+ *    nearer end, which is where a label the connector does not have yet gets
+ *    created;
+ * 3. otherwise the CENTRE, which is what a double-click on a connector has
+ *    always meant and stays the answer everywhere else on the line.
+ *
+ * Pure, and exported, because the ordering is the whole behaviour and a spec
+ * that had to drive a real pointer to check it would test the dispatcher.
+ */
+export function pickConnectorLabelWhich(
+  connector: ConnectorLabelHitTarget,
+  point: IVec,
+  grab: number = CONNECTOR_END_LABEL_GRAB
+): ConnectorLabelWhich {
+  const boxes = [
+    ['source', connector.sourceLabelXYWH],
+    ['target', connector.targetLabelXYWH],
+  ] as const;
+
+  for (const [end, box] of boxes) {
+    if (box && Bound.fromXYWH(box).isPointInBound(point)) return end;
+  }
+
+  const path = connector.absolutePath;
+  if (path.length) {
+    const first = path[0];
+    const last = path[path.length - 1];
+    const toSource = Vec.dist(point, [first[0], first[1]]);
+    const toTarget = Vec.dist(point, [last[0], last[1]]);
+
+    if (Math.min(toSource, toTarget) <= grab) {
+      return toSource <= toTarget ? 'source' : 'target';
+    }
+  }
+
+  return 'center';
+}
 
 export class ConnectorElementView extends GfxElementModelView<ConnectorElementModel> {
   static override type = 'connector';
@@ -47,17 +119,27 @@ export class ConnectorElementView extends GfxElementModelView<ConnectorElementMo
       return;
     }
 
-    const enterLabelEditor = (evt: PointerEventState) => {
+    const enterLabelEditor = (
+      evt: PointerEventState,
+      which: ConnectorLabelWhich = 'center'
+    ) => {
       const edgeless = this.std.view.getBlock(this.std.store.root!.id);
 
       if (edgeless && !this.model.isLocked()) {
         mountConnectorLabelEditor(
           this.model,
           edgeless,
-          this.gfx.viewport.toModelCoord(evt.x, evt.y)
+          this.gfx.viewport.toModelCoord(evt.x, evt.y),
+          { which }
         );
       }
     };
+    /** Which label the pointer is asking for, in model coordinates. */
+    const labelEndAt = (evt: PointerEventState): ConnectorLabelWhich =>
+      pickConnectorLabelWhich(
+        this.model,
+        this.gfx.viewport.toModelCoord(evt.x, evt.y)
+      );
     const getCurrentPosition = (evt: PointerEventState) => {
       const [x, y] = this.gfx.viewport.toModelCoord(evt.x, evt.y);
       return {
@@ -90,7 +172,10 @@ export class ConnectorElementView extends GfxElementModelView<ConnectorElementMo
       };
 
       view.on('dblclick', evt => {
-        enterLabelEditor(evt);
+        // This view IS the centre label's box, so the answer is not up for
+        // discussion — a short connector whose caption sits within grabbing
+        // distance of an arrowhead still edits its caption when you click it.
+        enterLabelEditor(evt, 'center');
       });
       view.on('dragstart', evt => {
         startPoint = getCurrentPosition(evt);
@@ -175,9 +260,27 @@ export class ConnectorElementView extends GfxElementModelView<ConnectorElementMo
     updateLabelElement();
 
     this.on('dblclick', evt => {
-      if (!curLabelElement) {
-        enterLabelEditor(evt);
+      // The centre label, when it exists, is a local element with its own view
+      // and its own `dblclick` above: anything that lands inside its box is
+      // already spoken for, and answering here too would mount two editors.
+      if (
+        curLabelElement &&
+        Bound.deserialize(curLabelElement.xywh).isPointInBound(
+          this.gfx.viewport.toModelCoord(evt.x, evt.y)
+        )
+      ) {
+        return;
       }
+
+      const which = labelEndAt(evt);
+
+      // Outside that box, `center` means what it meant before this tranche:
+      // open the caption editor when there is no caption yet, and otherwise do
+      // nothing (the caption is edited by clicking the caption). The two ends
+      // are new, and they answer whether the connector has a caption or not.
+      if (which === 'center' && curLabelElement) return;
+
+      enterLabelEditor(evt, which);
     });
   }
 }

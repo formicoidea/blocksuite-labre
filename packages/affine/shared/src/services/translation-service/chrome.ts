@@ -180,6 +180,23 @@ export const BOARD_RESIZE_TOGGLE: ChromeWording = [
 ];
 
 /**
+ * The orientation toggle a BANDED background carries: the one gesture that
+ * turns a frame drawn in columns into the same frame drawn in rows.
+ *
+ * Declared beside the resize toggle for the same reason and with the same
+ * scope: it names a behaviour of the frame primitive — where the name band
+ * sits and which way the bands run — rather than anything a notation calls its
+ * own. A UML activity partition is the first frame to use it (§15.6.4 draws
+ * swimlanes either way and says the choice means nothing); a BPMN pool is the
+ * obvious second, and a second key for it would be a second tooltip for one
+ * word.
+ */
+export const BOARD_ORIENTATION_TOGGLE: ChromeWording = [
+  'com.labre.board.toolbar.orientation-toggle',
+  'Vertical / horizontal bands',
+];
+
+/**
  * The legend button, in the two wordings the boards actually use: the notation
  * boards say "notation", Wardley says "components".
  *
@@ -195,6 +212,29 @@ export const BOARD_LEGEND_NOTATION: ChromeWording = [
 export const BOARD_LEGEND_COMPONENTS: ChromeWording = [
   'com.labre.board.toolbar.legend.components',
   'Generate the legend (components present)',
+];
+
+/* ── The connector's own labels ───────────────────────────────────────── */
+
+/**
+ * The two END labels a connector can carry beside its caption — where UML
+ * writes a multiplicity and a role name (`docs/adr/0018` phase 2).
+ *
+ * Declared here and not in the UML pack for the same reason the resize toggle
+ * is: they name a part of the generic CONNECTOR, which every framework draws,
+ * and a stored connector keeps its end labels with the UML tooling switched off
+ * (`docs/adr/0009`). "Source" and "target" are the connector's own words for
+ * its two ends, already the vocabulary of `frontEndpointStyle` /
+ * `rearEndpointStyle` and of the direction commands.
+ */
+export const CONNECTOR_SOURCE_LABEL: ChromeWording = [
+  'com.labre.connector.toolbar.source-label',
+  'Source label',
+];
+
+export const CONNECTOR_TARGET_LABEL: ChromeWording = [
+  'com.labre.connector.toolbar.target-label',
+  'Target label',
 ];
 
 /**
@@ -230,6 +270,9 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   LINKED_DOC_EMPTY_PREVIEW,
   SYNCED_DOC_EMPTY_PREVIEW,
   BOARD_RESIZE_TOGGLE,
+  BOARD_ORIENTATION_TOGGLE,
   BOARD_LEGEND_NOTATION,
   BOARD_LEGEND_COMPONENTS,
+  CONNECTOR_SOURCE_LABEL,
+  CONNECTOR_TARGET_LABEL,
 ];

@@ -28,7 +28,7 @@ import { OPTIONAL_BLOCKS, OPTIONAL_CAPABILITIES } from '@labre/affine/flags';
 `frame`, `image`, `latex`, `list`, `surface-ref`, `table`, `brush`,
 `mindmap`, `edgeless-media`, `template`, `link`, and the framework keys
 `wardley`, `edgy`, `cynefin-estuarine`, `bpmn`, `c4`, `ddd-event-storming`,
-`ddd-core-domain`, `ddd-context-map`, `ddd-templates`.
+`ddd-core-domain`, `ddd-context-map`, `ddd-templates`, `uml`.
 `OPTIONAL_CAPABILITIES`: `ai-audit`.
 
 The core bundle strips the framework keys from its copy of the list. They

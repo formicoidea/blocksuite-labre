@@ -1,0 +1,12 @@
+@startuml
+title class Diagram
+
+class "Class" as class {
+  + attribute : Type
+  + operation() : Type
+}
+actor "Actor" as actor
+rectangle "Subject" as subject {
+  usecase "Use case" as use_case
+}
+@enduml
