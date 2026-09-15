@@ -14,6 +14,8 @@ import {
   UML_CUBE_DEPTH,
   UML_PACKAGE_TAB,
   umlCompartmentBoxes,
+  type UmlCompartmentBoxes,
+  umlComponentSiblings,
 } from '../component.js';
 import { isActGlyphKind, paintActGlyph } from './act-glyphs.js';
 import { line, solidRect, TAU } from './paint.js';
@@ -56,6 +58,13 @@ import { isStmGlyphKind, paintStmGlyph } from './stm-glyphs.js';
  * exactly between two compartments rather than near where they were last time
  * somebody looked. The actor's figure is bounded by the top of its own label
  * box, from the same call, so the words can never land on the legs.
+ *
+ * …and once a component's tiers are ON the canvas, they are the better source
+ * still: `umlNodeCompartments` reads the separators off the body tier's own box
+ * when the group can be reached, so a classifier `UmlCompartmentWatcher` has
+ * grown for a five-line attributes compartment is ruled where its compartments
+ * now are. The default stack is the answer for a shape with no group behind it,
+ * which is every one of them at creation time.
  *
  * ## Colours come off the MODEL
  *
@@ -171,7 +180,8 @@ function paintGlyph(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  inset: number
+  inset: number,
+  boxes: UmlSeparators
 ): void {
   const x0 = inset;
   const y0 = inset;
@@ -194,7 +204,6 @@ function paintGlyph(
     // gives it rather than on a square one.
     kind === 'state'
   ) {
-    const boxes = umlCompartmentBoxes(kind, 0, 0, w, h);
     // Full width, edge to edge: §11.4.4 draws a compartment line right across
     // the classifier, unlike the inset the text tiers sit within.
     for (const split of boxes.splits) {
@@ -535,6 +544,96 @@ function paintArtifactIcon(
   ctx.stroke();
 }
 
+/* ── Where the compartments actually are ───────────────────────────────── */
+
+/**
+ * The half of {@link UmlCompartmentBoxes} the glyph layer draws from: where the
+ * separators go, and where the name is.
+ *
+ * The other two boxes are the TEXT ELEMENTS' business — they are the tiers, and
+ * they are already on the canvas — so a renderer holding them would be holding a
+ * second opinion about where words it does not draw ought to be.
+ */
+type UmlSeparators = Pick<UmlCompartmentBoxes, 'name' | 'splits'>;
+
+/**
+ * The compartment layout to stroke this node's separators from: the one its
+ * TIERS describe if they can be reached, and the default stack otherwise.
+ *
+ * ## Why the tiers and not the line counts
+ *
+ * `UmlCompartmentWatcher` grows a classifier whose attributes tier has
+ * overflowed and moves the three texts to the boxes the taller stack yields —
+ * so after an edit the compartments are no longer the default three-line stack a
+ * rectangle implies, and a renderer still drawing that stack would rule a line
+ * straight through the fourth attribute.
+ *
+ * It could be told the LINE COUNTS and recompute the same walk. It reads the
+ * tiers' own boxes instead, for two reasons. It is cheaper — `deserializedXYWH`
+ * is cached on the element, while a line count means materializing every tier's
+ * `Y.Text` into a string on every frame of every pan — and it cannot disagree
+ * with what the reader sees: a separator IS the boundary between two
+ * compartments, and reading the boundary off the compartments is the shortest
+ * possible route to that. An author who nudges a tier by hand takes the rule
+ * with them, which is the same answer.
+ *
+ * ## The ceiling
+ *
+ * ponytail: the tiers are read in the node's own unrotated frame, so a ROTATED
+ * `umlNode` falls back to the default stack. A UML group cannot be rotated
+ * (`GroupElementModel.rotate` is a constant 0), so this only reaches a shape
+ * somebody rotated out of its own group — at which point the words are not
+ * turning with it either and the picture is already the author's problem.
+ * Raising it means projecting each tier's box through `-rotate` about the
+ * node's centre, which is four lines nobody has asked for yet.
+ */
+export function umlNodeCompartments(
+  model: UmlNodeElementModel,
+  w: number,
+  h: number
+): UmlSeparators {
+  const defaults = umlCompartmentBoxes(model.kind, 0, 0, w, h);
+  const group = model.group;
+  // No splits at all is a kind that is a PICTURE (a package, an actor, a cube):
+  // there are no compartments to read off, and nothing below would mean
+  // anything. A rotated shape is the documented ceiling above.
+  if (defaults.splits.length === 0 || model.rotate || !group) return defaults;
+
+  const children = group.childElements;
+  const component = umlComponentSiblings(
+    { id: group.id, childIds: group.childIds },
+    children as unknown as { id: string; role?: string }[]
+  );
+  // The BODY tier is what both separators hang off: the line above it is where
+  // the name compartment stops, the line below it where the operations start.
+  // Its role is `uml:attributes` on all seven compartmented kinds — a slot list,
+  // a component's parts, a state's activities included (`component.ts`).
+  const body = children.find(child => child.id === component.attributes?.id);
+  if (!body) return defaults;
+
+  const [nodeX, nodeY] = model.deserializedXYWH;
+  const top = body.y - nodeY;
+  const bottom = top + body.h;
+  // A tier dragged clean off its node says nothing useful about where a line
+  // INSIDE the node goes.
+  if (!(top > 0) || !(bottom > top)) return defaults;
+
+  const name = children.find(child => child.id === component.name?.id);
+  return {
+    // The name box is read for the one thing it is used for: the rule under an
+    // INSTANCE's name (§9.8.4), which has to stay under the words once a
+    // two-line name has pushed them down.
+    name: name
+      ? { x: name.x - nodeX, y: name.y - nodeY, w: name.w, h: name.h }
+      : defaults.name,
+    // How MANY separators is the notation's answer and the default walk already
+    // made it — one for the kinds §9.8.4 / §11.6.4 / §19.3.4 / §14.2.4 draw as a
+    // name over a single body, two for a classifier. Only the positions are read
+    // off the tier.
+    splits: defaults.splits.length === 1 ? [top] : [top, bottom],
+  };
+}
+
 export const umlNode: ElementRenderer<UmlNodeElementModel> = (
   model,
   ctx,
@@ -576,7 +675,14 @@ export const umlNode: ElementRenderer<UmlNodeElementModel> = (
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  paintGlyph(model.kind, ctx, w, h, strokeWidth / 2);
+  paintGlyph(
+    model.kind,
+    ctx,
+    w,
+    h,
+    strokeWidth / 2,
+    umlNodeCompartments(model, w, h)
+  );
 };
 
 export const UmlNodeRendererExtension = ElementRendererExtension(

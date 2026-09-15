@@ -687,3 +687,104 @@ describe('a board with two diagram frames on it', () => {
     expect(umlModelFrom(right, loose).warnings).toEqual([]);
   });
 });
+
+/* ── §11.5.4's per-end adornments (ADR 0020) ──────────────────────────── */
+
+/**
+ * The two end labels a connector now carries, as the IR reads them.
+ *
+ * The fixtures put the text on the connector as a plain string, which is what
+ * `UmlSourceElement` is for: a live connector holds a `Y.Text` there and both go
+ * through `umlTierText`. The reading under test is which RELATION end each one
+ * lands on, and whether the grammar was applied at all.
+ */
+describe('the labels beside a connector’s two ends', () => {
+  const classifier = (id: string, box: Box, name: string) =>
+    artefact(id, 'class', UML_ROLE.class, box, { name });
+
+  const line = (
+    id: string,
+    role: string,
+    from: string,
+    to: string,
+    ends: { sourceLabel?: string; targetLabel?: string } = {}
+  ): UmlSourceElement => ({
+    id,
+    type: 'connector',
+    role,
+    source: { id: from },
+    target: { id: to },
+    ...ends,
+    xywh: '[0,0,0,0]',
+  });
+
+  const sheet = (edge: UmlSourceElement) =>
+    readOn('class', [
+      ...classifier('c1', [100, 100, 200, 120], 'Order'),
+      ...classifier('c2', [500, 100, 200, 120], 'LineItem'),
+      edge,
+    ]);
+
+  it('parses them on an association, each on the end it was drawn at', () => {
+    const model = sheet(
+      line('e1', UML_ROLE.association, 'c1', 'c2', {
+        sourceLabel: '1',
+        targetLabel: '0..* items',
+      })
+    );
+    expect(model.relations).toEqual([
+      {
+        kind: 'association',
+        sourceId: 'c1',
+        targetId: 'c2',
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'items',
+          raw: '0..* items',
+        },
+      },
+    ]);
+  });
+
+  it('parses them on the two aggregation flavours and a communication path', () => {
+    for (const role of [
+      UML_ROLE.aggregation,
+      UML_ROLE.composition,
+      UML_ROLE['communication-path'],
+    ]) {
+      const model = sheet(
+        line('e1', role, 'c1', 'c2', { targetLabel: '- parts' })
+      );
+      expect(model.relations[0].targetEnd).toEqual({
+        role: 'parts',
+        visibility: 'private',
+        raw: '- parts',
+      });
+    }
+  });
+
+  it('carries the raw text, unparsed, on a relationship §11.5.4 does not govern', () => {
+    // A multiplicity beside a generalization is a multiplicity of nothing: the
+    // words stay on the board, and no writer is handed a range to spell.
+    const model = sheet(
+      line('e1', UML_ROLE.generalization, 'c1', 'c2', { sourceLabel: '0..*' })
+    );
+    expect(model.relations[0].sourceEnd).toEqual({ raw: '0..*' });
+    expect(model.relations[0].targetEnd).toBeUndefined();
+  });
+
+  it('leaves both ends absent on a connector that carries neither', () => {
+    const model = sheet(line('e1', UML_ROLE.association, 'c1', 'c2'));
+    expect(model.relations).toEqual([
+      { kind: 'association', sourceId: 'c1', targetId: 'c2' },
+    ]);
+  });
+
+  it('treats a whitespace-only label as no label at all', () => {
+    const model = sheet(
+      line('e1', UML_ROLE.association, 'c1', 'c2', { sourceLabel: '   ' })
+    );
+    expect(model.relations[0].sourceEnd).toBeUndefined();
+  });
+});

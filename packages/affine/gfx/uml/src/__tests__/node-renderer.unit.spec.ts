@@ -7,9 +7,11 @@ import {
   UML_PACKAGE_TAB,
   UML_SIGNAL_POINT,
   umlCompartmentBoxes,
+  umlStackHeight,
 } from '../component.js';
 import { UML_NODE_BOX } from '../consts.js';
 import { umlNode } from '../node/node-renderer.js';
+import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 import { recordingCtx, stubMatrix } from './canvas-stub.js';
 
 /**
@@ -765,5 +767,144 @@ describe('the UML node glyph layer', () => {
       rec = recordingCtx();
       expect(() => draw(kind, 0, { w: 1, h: 1 }), kind).not.toThrow();
     }
+  });
+});
+
+/* ── Where the separators go once the tiers have moved ─────────────────── */
+
+/**
+ * `UmlCompartmentWatcher` grows a classifier whose attributes tier has
+ * overflowed and moves the three texts to the boxes the taller stack yields. A
+ * renderer still ruling the DEFAULT three-line stack would then draw its second
+ * line straight through the fourth attribute — which is what this half of the
+ * feature exists to prevent, and what these cases pin.
+ *
+ * The separators are read off the body tier's own box rather than recomputed
+ * from a line count: cheaper (no `Y.Text` materialized per frame) and impossible
+ * to disagree with, since a separator IS the boundary between two compartments.
+ */
+describe('the separators, read off the tiers', () => {
+  /** A group whose children are the shape and the tier boxes given. */
+  function grouped(
+    kind: UmlNodeKind,
+    tiers: { role: string; x: number; y: number; w: number; h: number }[]
+  ) {
+    const childElements = [
+      { id: 'shape', role: UML_ROLE_OF_KIND[kind] },
+      ...tiers.map((tier, index) => ({ id: `tier-${index}`, ...tier })),
+    ];
+    return {
+      id: 'group',
+      childIds: childElements.map(child => child.id),
+      childElements,
+    };
+  }
+
+  /** Draw one node that belongs to `group`, and hand back what was recorded. */
+  function drawGrouped(
+    kind: UmlNodeKind,
+    size: { w: number; h: number },
+    group: ReturnType<typeof grouped>,
+    rotate = 0
+  ) {
+    const recorder = recordingCtx();
+    const model = {
+      ...nodeModel(kind, rotate, size),
+      id: 'shape',
+      group,
+    } as unknown as UmlNodeElementModel;
+    umlNode(
+      model,
+      recorder.ctx,
+      stubMatrix(),
+      rendererStub,
+      null as never,
+      null as never
+    );
+    return recorder;
+  }
+
+  /** The tier boxes a stack of `lines` attributes puts on a `height` box. */
+  const tiersFor = (
+    kind: UmlNodeKind,
+    size: { w: number; h: number },
+    lines: number
+  ) => {
+    const boxes = umlCompartmentBoxes(kind, 0, 0, size.w, size.h, {
+      attributes: lines,
+    });
+    return [
+      { role: UML_ROLE.name, ...boxes.name },
+      { role: UML_ROLE.attributes, ...boxes.attributes! },
+      { role: UML_ROLE.operations, ...boxes.operations! },
+    ];
+  };
+
+  it('rules a grown classifier where its compartments now are', () => {
+    // The box the watcher would leave behind for five attribute lines, and the
+    // tiers it would leave in it.
+    const size = { w: 200, h: umlStackHeight('class', { attributes: 5 })! };
+    const tiers = tiersFor('class', size, 5);
+    const { segments } = drawGrouped('class', size, grouped('class', tiers));
+
+    const grown = umlCompartmentBoxes('class', 0, 0, size.w, size.h, {
+      attributes: 5,
+    });
+    expect(segments).toEqual(
+      grown.splits.map(y => ({ x1: INSET, y1: y, x2: size.w - INSET, y2: y }))
+    );
+    // …and emphatically NOT where the default three-line stack would put them.
+    const stencil = umlCompartmentBoxes('class', 0, 0, size.w, size.h);
+    expect(grown.splits[1]).not.toBe(stencil.splits[1]);
+  });
+
+  it('falls back to the default stack for a shape with no group', () => {
+    const size = UML_NODE_BOX.class;
+    const { splits } = umlCompartmentBoxes('class', 0, 0, size.w, size.h);
+    expect(draw('class').segments).toEqual(
+      splits.map(y => ({ x1: INSET, y1: y, x2: size.w - INSET, y2: y }))
+    );
+  });
+
+  /**
+   * ponytail's documented ceiling: the tiers are read in the node's own
+   * UNROTATED frame, so a shape somebody rotated out of its group is ruled from
+   * the default stack rather than from boxes that no longer line up with it.
+   */
+  it('falls back to the default stack on a rotated shape', () => {
+    const size = { w: 200, h: umlStackHeight('class', { attributes: 5 })! };
+    const tiers = tiersFor('class', size, 5);
+    const { segments } = drawGrouped(
+      'class',
+      size,
+      grouped('class', tiers),
+      30
+    );
+    const { splits } = umlCompartmentBoxes('class', 0, 0, size.w, size.h);
+    expect(segments.map(segment => segment.y1)).toEqual(splits);
+  });
+
+  /**
+   * §9.8.4 gives an instance ONE separator, whatever its tiers say: how many
+   * lines the notation draws is the kind's answer, and only where they go is the
+   * tiers'.
+   */
+  it('keeps the notation in charge of how MANY lines are drawn', () => {
+    const size = UML_NODE_BOX.object;
+    const boxes = umlCompartmentBoxes('object', 0, 0, size.w, size.h, {
+      name: 2,
+    });
+    const tiers = [
+      { role: UML_ROLE.name, ...boxes.name },
+      { role: UML_ROLE.attributes, ...boxes.attributes! },
+    ];
+    const { segments } = drawGrouped('object', size, grouped('object', tiers));
+
+    // One split and one underline — never two splits.
+    expect(segments).toHaveLength(2);
+    expect(segments[0].y1).toBe(boxes.attributes!.y);
+    // …and the underline follows the two-line name down, rather than sitting
+    // where a one-line name used to end.
+    expect(segments[1].y1).toBe(boxes.name.y + boxes.name.h);
   });
 });

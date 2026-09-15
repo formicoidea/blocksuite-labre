@@ -3,12 +3,13 @@ import type {
   SerializedElementProps,
 } from '@labre/affine-block-surface';
 import {
+  connectorEndLabelBox,
   ConnectorMode,
   TextAlign,
   UML_FRAME_BAND_HEIGHT,
   type UmlNodeKind,
 } from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
+import { Bound, type IVec } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
 import { type UmlBox, umlCompartmentBoxes } from './component.js';
@@ -24,7 +25,12 @@ import {
   UML_SUBJECT_BOX,
 } from './consts.js';
 import { UML_EDGE_STYLE } from './edge-styles.js';
-import { formatActivityEdgeLabel, formatTransitionLabel } from './grammar.js';
+import {
+  type UmlAssociationEnd,
+  formatActivityEdgeLabel,
+  formatEndLabel,
+  formatTransitionLabel,
+} from './grammar.js';
 import { guillemets, UML_UNLABELLED_KINDS } from './keywords.js';
 import type {
   UmlClassifier,
@@ -638,12 +644,24 @@ const BEHAVIOUR_KINDS = new Set<UmlRelationKind>([
   'transition',
 ]);
 
-/** One line on the board: its role, its two ends and its centre label. */
+/** One line on the board: its role, its two ends and its three labels. */
 export interface UmlDrawnEdge {
   kind: UmlRelationKind;
   sourceId: string;
   targetId: string;
   label?: string;
+  /**
+   * §11.5.4's adornments beside the source end, already SPELLED.
+   *
+   * A string rather than the {@link UmlAssociationEnd} record, because what the
+   * connector holds is a label — one line of text an author goes on to edit by
+   * hand. The printing is `formatEndLabel`'s, which is the same one the PlantUML
+   * writer uses, so an association imported from XMI and one exported to a
+   * `.puml` spell their ends identically.
+   */
+  sourceEnd?: string;
+  /** The same, beside the target end. */
+  targetEnd?: string;
 }
 
 /**
@@ -673,12 +691,20 @@ export interface UmlDrawnEdge {
  * was written.
  */
 export function umlDrawnEdges(model: UmlModel): UmlDrawnEdge[] {
-  const drawn: UmlDrawnEdge[] = model.relations.map(relation => ({
-    kind: relation.kind,
-    sourceId: relation.sourceId,
-    targetId: relation.targetId,
-    ...(relation.label ? { label: relation.label } : {}),
-  }));
+  const spelled = (end: UmlAssociationEnd | undefined): string =>
+    end ? formatEndLabel(end) : '';
+  const drawn: UmlDrawnEdge[] = model.relations.map(relation => {
+    const sourceEnd = spelled(relation.sourceEnd);
+    const targetEnd = spelled(relation.targetEnd);
+    return {
+      kind: relation.kind,
+      sourceId: relation.sourceId,
+      targetId: relation.targetId,
+      ...(relation.label ? { label: relation.label } : {}),
+      ...(sourceEnd ? { sourceEnd } : {}),
+      ...(targetEnd ? { targetEnd } : {}),
+    };
+  });
 
   const key = (kind: string, source: string, target: string) =>
     `${kind} ${source} ${target}`;
@@ -863,6 +889,8 @@ export function umlElementsFromModel(
 
     /** The provisional name a relation's end resolves to. */
     const shapeOf = new Map<string, string>();
+    /** Where that shape ended up — what an end label's box is measured off. */
+    const boxOf = new Map<string, UmlBox>();
 
     for (const draft of drafts) {
       const box = draft.bounds ?? { x: 0, y: 0, ...draft.size };
@@ -881,7 +909,10 @@ export function umlElementsFromModel(
 
       if (draft.element !== 'umlNode') {
         const id = mint();
-        if (draft.sourceId) shapeOf.set(draft.sourceId, id);
+        if (draft.sourceId) {
+          shapeOf.set(draft.sourceId, id);
+          boxOf.set(draft.sourceId, placed);
+        }
         elements.push({
           type: draft.element,
           id,
@@ -911,6 +942,7 @@ export function umlElementsFromModel(
       // to a lollipop.
       if (draft.sourceId && draft.connectable !== false) {
         shapeOf.set(draft.sourceId, shapeId);
+        boxOf.set(draft.sourceId, placed);
       }
       elements.push({
         ...umlNodeProps(kind, { xywh }),
@@ -1008,6 +1040,11 @@ export function umlElementsFromModel(
         source: { id: source, position: [0.5, 0.5] },
         target: { id: target, position: [0.5, 0.5] },
         ...(edge.label ? { text: edge.label } : {}),
+        ...endLabelProps(
+          edge,
+          boxOf.get(edge.sourceId),
+          boxOf.get(edge.targetId)
+        ),
       });
     }
 
@@ -1015,6 +1052,73 @@ export function umlElementsFromModel(
   }
 
   return { elements, notes };
+}
+
+/* ── The two end labels a connector is created with (ADR 0020) ─────────── */
+
+/**
+ * The box an imported end label is created with — one short line of text.
+ *
+ * A SIZE and not a measurement: nothing here can measure text (no DOM, and the
+ * module says so), and an end label is `0..*`, `1` or a short role name. The
+ * renderer re-measures the moment it paints, and the author drags it the moment
+ * they disagree.
+ */
+const UML_END_LABEL_SIZE = { w: 60, h: 24 } as const;
+
+/**
+ * `sourceLabel` / `targetLabel` and their boxes, for a connector being created.
+ *
+ * ## Why a box has to be computed at all
+ *
+ * The connector's label boxes are PERSISTED (`labelXYWH` and the two ADR 0020
+ * siblings): the model holds where the author dragged the label to, and the
+ * renderer draws it there. A connector created with a label and no box would
+ * have to be laid out by something, and nothing here is in a position to run the
+ * router — the element does not exist yet, so it has no path, and the path is
+ * what an end label is positioned along.
+ *
+ * ## The approximation, and why it is honest
+ *
+ * The straight segment between the two node CENTRES, handed to the SAME
+ * function the renderer and the editor anchor an end label with
+ * ({@link connectorEndLabelBox}) — so an imported label starts exactly where a
+ * label created by hand on the same line would.
+ *
+ * The segment is an approximation of the routed path and a close one: every UML
+ * connector this materializer creates is `ConnectorMode.Straight` (see the call
+ * site's own note) with both ends attached at `[0.5, 0.5]`, so the path the
+ * router produces is that segment clipped to the two boxes' perimeters — the
+ * same line, shorter at each end. The box therefore lands a little further in
+ * from the endpoint than the router would put it, which §11.5.4 still calls
+ * "near the end of the line", and which the first re-route corrects.
+ *
+ * No box is written when either node has no placed box — an end whose artefact
+ * this sheet never drew. The label text is still written, but a label with no
+ * box is not painted (`hasEndLabel` wants both) until the first edit seeds
+ * one; today the branch is unreachable, since an edge whose ends do not
+ * resolve is skipped before this point.
+ */
+function endLabelProps(
+  edge: UmlDrawnEdge,
+  from: UmlBox | undefined,
+  to: UmlBox | undefined
+): Record<string, unknown> {
+  if (!edge.sourceEnd && !edge.targetEnd) return {};
+
+  const centre = (box: UmlBox): IVec => [box.x + box.w / 2, box.y + box.h / 2];
+  const path = from && to ? [centre(from), centre(to)] : undefined;
+  const boxAt = (end: 'source' | 'target') =>
+    path ? connectorEndLabelBox(path, end, UML_END_LABEL_SIZE) : undefined;
+
+  const sourceBox = edge.sourceEnd ? boxAt('source') : undefined;
+  const targetBox = edge.targetEnd ? boxAt('target') : undefined;
+  return {
+    ...(edge.sourceEnd ? { sourceLabel: edge.sourceEnd } : {}),
+    ...(sourceBox ? { sourceLabelXYWH: sourceBox } : {}),
+    ...(edge.targetEnd ? { targetLabel: edge.targetEnd } : {}),
+    ...(targetBox ? { targetLabelXYWH: targetBox } : {}),
+  };
 }
 
 /** The foreign payload one element carries: its source id, and no more (D3). */

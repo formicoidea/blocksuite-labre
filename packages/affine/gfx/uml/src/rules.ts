@@ -5,6 +5,12 @@ import type {
 import type { RoleId } from '@labre/std/gfx';
 
 import { UML_SUBJECT_FRAME } from './background.js';
+import {
+  checkEndLabelMultiplicity,
+  checkOperationLine,
+  checkPropertyLine,
+  checkTransitionLabel,
+} from './grammar.js';
 import { UML_ROLE, UML_ROLES } from './roles.js';
 
 /**
@@ -31,9 +37,13 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * initial node no incoming edge, §15.7.19.4 gives a final node no outgoing one,
  * §15.7.11.4 caps a decision at two incoming edges, §15.7.9.4 keeps an object
  * node off a control flow, §14.5.11.4 gives a final state no outgoing transition
- * and §14.5.12 types a transition's two ends. SEVENTEEN rules therefore declare
- * `provenance.source: 'standard'` — the most in this library by a distance — and
- * they are the seventeen a conformance report may present as defects.
+ * and §14.5.12 types a transition's two ends. The four SPELLING rules cite four
+ * more, and they are the only clauses in the pack quoted as productions rather
+ * than as sentences: §9.5.4 (a Property), §9.6.4 (an Operation), §14.2.4.8 (a
+ * transition label) and §7.5.4 (a multiplicity range). TWENTY-ONE rules
+ * therefore declare `provenance.source: 'standard'` — the most in this library
+ * by a distance — and they are the twenty-one a conformance report may present
+ * as defects.
  *
  * The rest are `recommendation` (a reading of the notation the spec draws but
  * does not constrain: which artefacts belong on which KIND of sheet, whether an
@@ -49,7 +59,7 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * `uml.sketch` — keeps it there. A class diagram is drawn boxes-first,
  * arrows-second, words-last, and for the whole of that the drawing contradicts
  * half this file. `uml.strict` is the level somebody chooses once the diagram is
- * a deliverable, and it promotes the twenty-one rules that restate the
+ * a deliverable, and it promotes the twenty-five rules that restate the
  * specification
  * or the sheet's own declaration (`profiles.ts`).
  *
@@ -1059,6 +1069,165 @@ const unnamedActorOrUseCase: ValidationRule = {
   moment: 'on-demand',
   backgroundRole: UML_ROLE.diagram,
   label: { present: true },
+};
+
+/* ── Spelling: are the words written the way the clause writes them? ─────── */
+
+/**
+ * **U35–U38** — the four `label-syntax` rules, and the first rules in this
+ * library whose verdict is a PARSER rather than a table.
+ *
+ * `label-presence` asks whether a compartment says anything; these ask whether
+ * what it says parses. The four clauses are the four the pack already reads for
+ * its exporters — §9.5.4 (a Property), §9.6.4 (an Operation), §14.2.4.8 (a
+ * transition label) and §7.5.4 (a multiplicity range) — and the checkers are
+ * `grammar.ts`'s own, so a finding here is exactly the line that will export
+ * short. That is the strongest claim any rule in this library makes: the tool
+ * and the file agree by construction, because they read the same function.
+ *
+ * ## Why they are `standard`, and what keeps that honest
+ *
+ * Each restates a BNF the specification prints. What would make the claim
+ * dishonest is a checker stricter than the clause — "an attribute must carry a
+ * type" indicts `balance`, which §9.5.4 permits — so `grammar.ts` states the one
+ * rule its checkers follow and no rule here is allowed to add to it: a line is
+ * reported only when the lenient parse LOST something the author wrote.
+ *
+ * ## Why they are `on-demand`, explicitly
+ *
+ * The same reason {@link unnamedClassifier} is, one order of magnitude worse.
+ * These read WORDS, which a user changes by typing, and they read all of them:
+ * a class's attribute compartment is parsed line by line. Real-time, every
+ * keystroke in every compartment on the sheet would wake the debounced pass and
+ * re-run four parsers. `audit` already implies the moment (PF7.6); the line is
+ * written anyway, because `moment: undefined` means REALTIME and a later change
+ * of severity must not silently move these onto the gesture path.
+ */
+const attributeSyntax: ValidationRule = {
+  id: 'uml.attribute-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE.attributes,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.attribute-syntax',
+  messageFallback: 'This line is not an attribute:',
+  suggestionKey: 'com.labre.uml.validation.attribute-syntax.suggestion',
+  suggestionFallback:
+    'An attribute is written "- balance : Money [0..1] = 0 {readOnly}", and everything after the name is optional. A line with parentheses is an operation and belongs in the compartment below.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §9.5.4 — [<visibility>] [/] <name> [: <prop-type>] [[<multiplicity>]] [= <default>] [{<modifiers>}]',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: { parse: checkPropertyLine },
+};
+
+const operationSyntax: ValidationRule = {
+  id: 'uml.operation-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE.operations,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.operation-syntax',
+  messageFallback: 'This line is not an operation:',
+  suggestionKey: 'com.labre.uml.validation.operation-syntax.suggestion',
+  suggestionFallback:
+    'An operation is written "+ place(order : Order) : Receipt", and the parentheses are what make it one — an operation with no parameters still has them.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §9.6.4 — [<visibility>] <name> ( [<parameter-list>] ) [: [<return-type>] [[<multiplicity>]] [{<oper-property>*}]]',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: { parse: checkOperationLine },
+};
+
+/**
+ * The transition's CENTRE label, read as ONE expression.
+ *
+ * `perLine: false`, unlike the two compartments above, and the clause is the
+ * reason: §14.2.4.8's label is a single production — `trigger [guard] / effect` —
+ * where §9.5.4's compartment is a list. An author who wraps a long label onto a
+ * second line has written one label, and judging the halves separately would
+ * report a guard with no trigger and a trigger with no guard for a label that is
+ * neither.
+ */
+const transitionSyntax: ValidationRule = {
+  id: 'uml.transition-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE.transition,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.transition-syntax',
+  messageFallback: 'This transition label does not parse:',
+  suggestionKey: 'com.labre.uml.validation.transition-syntax.suggestion',
+  suggestionFallback:
+    'A transition is labelled "trigger [guard] / effect", and every part of it is optional — a transition that fires when its source state finishes carries no label at all.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §14.2.4.8 — [<trigger> [, <trigger>]*] [[<guard>]] [/ <behavior-expression>]',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: { parse: checkTransitionLabel, perLine: false },
+};
+
+/**
+ * The multiplicity written at an association's ENDS — both of them, one rule.
+ *
+ * `target: 'end-labels'` reads the two end labels as two lines of one subject
+ * (`validation.ts` {@link LabelTarget}), which is what lets one id cover a
+ * grammar §11.5.4 places at both ends. Two rules would be two sentences and two
+ * lines in every profile table for one requirement, and each could only ever
+ * check half of every line drawn.
+ *
+ * `appliesTo: uml:association` reaches aggregation and composition for free —
+ * they specialise it (`roles.ts`: §11.5.4's aggregation kind is a property of an
+ * association END, not a different relationship).
+ *
+ * ## It is silent about the ROLE name, and that is the whole design
+ *
+ * An end label is a multiplicity, a role name, a visibility marker, or any
+ * mixture of the three with no separator between them (§11.5.4). Only the range
+ * has a syntax to be wrong about, so `checkEndLabelMultiplicity` fires on a
+ * leading token that is unambiguously an attempt at one — `1..n`, `0...*` — and
+ * leaves `items`, `- owner` and even `1st choice` alone. A checker stricter than
+ * `parseEndLabel` would indict the ends the exporters read correctly.
+ */
+const multiplicitySyntax: ValidationRule = {
+  id: 'uml.multiplicity-syntax',
+  framework: 'uml',
+  family: 'label-syntax',
+  severity: 'audit',
+  appliesTo: UML_ROLE.association,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.multiplicity-syntax',
+  messageFallback: 'This end of the association is not a multiplicity:',
+  suggestionKey: 'com.labre.uml.validation.multiplicity-syntax.suggestion',
+  suggestionFallback:
+    'A range is written "1", "0..1", "0..*" or "*", with whole numbers at both bounds. A bound the file cannot hold — "1..n" — travels as part of the end’s name instead of as a range.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §7.5.4 — [<lower> ..] <upper>, read at an association end per §11.5.4',
+  },
+  moment: 'on-demand',
+  backgroundRole: UML_ROLE.diagram,
+  labelSyntax: {
+    parse: checkEndLabelMultiplicity,
+    target: 'end-labels',
+  },
 };
 
 /* ── Grammar: what each line may run between ────────────────────────────── */
@@ -2514,7 +2683,7 @@ const unreachableState: ValidationRule = {
 };
 
 /**
- * The pack, whole: thirty-four rules over eight families.
+ * The pack, whole: thirty-eight rules over nine families.
  *
  * Sixteen in phase 1, and not that brief's seventeen ids because the actor's
  * name and the use case's name are ONE rule: they are the same tier role, and
@@ -2526,7 +2695,16 @@ const unreachableState: ValidationRule = {
  * diagrams UML constrains arithmetically, so where a class diagram's pack is
  * mostly a vocabulary these are counts, degrees and a graph walk.
  *
- * ## Eight families, and the two new ones are new to the PACK, not to the engine
+ * ## The ninth family is new to the ENGINE, and it is the only one that is
+ *
+ * `label-syntax` (`docs/adr/0021`) arrived with the four spelling rules below,
+ * and it is the first family this library has added for a reason no table could
+ * meet: a notation's GRAMMAR is a parser, and the four clauses these rules cite
+ * are already written as one in `grammar.ts` for the exporters. The family owns
+ * the walk; the pack owns the reading. Everything else the fifteen roles of
+ * phase 2 needed, the engine already had.
+ *
+ * ## The other eight are the engine's, and two of them are BPMN's
  *
  * `role-count` and `reachability` are BPMN's, registered here with UML's own
  * roles and nothing else: a state machine with two beginnings and a ring of
@@ -2557,6 +2735,11 @@ export const UML_RULES: readonly ValidationRule[] = [
   // Naming: does the drawing say anything at all?
   unnamedClassifier,
   unnamedActorOrUseCase,
+  // Spelling: and is what it says written the way the clause writes it?
+  attributeSyntax,
+  operationSyntax,
+  transitionSyntax,
+  multiplicitySyntax,
   // Grammar: what each line may run between.
   generalizationEndpoints,
   generalizationSelfLoop,

@@ -6,9 +6,16 @@ import {
 } from '@labre/affine-model';
 
 import { UML_NODE_BOX, UML_REGION_BOX, UML_SUBJECT_BOX } from './consts.js';
-import { parseOperation, parseProperty, parseTransition } from './grammar.js';
+import {
+  type UmlAssociationEnd,
+  parseEndLabel,
+  parseOperation,
+  parseProperty,
+  parseTransition,
+} from './grammar.js';
 import { umlInventLayout } from './import.js';
 import { stereotypesOf } from './keywords.js';
+import { ADORNED_RELATION_KINDS } from './model.js';
 import type {
   UmlClassifier,
   UmlDeploymentNode,
@@ -679,11 +686,30 @@ function parseBlock(
     // the reason `model.ts` projects it: the label carries a grammar no
     // structural relationship has, and both writers read it off the machine.
     const isTransition = behaviour && isVertex(sourceId) && isVertex(targetId);
+    const relationKind = isTransition ? 'transition' : kind;
+
+    // §11.5.4's adornments — the quoted strings PlantUML writes between an
+    // artefact and the arrow. They belong to the end they were written at, and
+    // an operator that READS BACKWARDS (`A <|-- B` makes B the source) swaps
+    // which relation end that is: the left string is always the left artefact's,
+    // whichever end of the relation the left artefact turned out to be.
+    const endAt = (text: string | undefined): UmlAssociationEnd | undefined => {
+      const raw = text?.trim();
+      if (!raw) return undefined;
+      return ADORNED_RELATION_KINDS.has(relationKind)
+        ? parseEndLabel(raw)
+        : { raw };
+    };
+    const sourceEnd = endAt(operator.reversed ? right.end : left.end);
+    const targetEnd = endAt(operator.reversed ? left.end : right.end);
+
     const relation: UmlRelation = {
-      kind: isTransition ? 'transition' : kind,
+      kind: relationKind,
       sourceId,
       targetId,
       ...(written ? { label: written } : {}),
+      ...(sourceEnd ? { sourceEnd } : {}),
+      ...(targetEnd ? { targetEnd } : {}),
     };
     model.relations.push(relation);
     if (isTransition) {
@@ -695,16 +721,23 @@ function parseBlock(
       machine().transitions.push(transition);
     }
 
-    for (const [side, multiplicity] of [
-      ['source', left.end],
-      ['target', right.end],
-    ] as const) {
-      if (!multiplicity) continue;
-      note({
-        kind: 'carried',
-        sourceId,
-        message: `The ${side} end of the ${relation.kind} between "${left.name}" and "${right.name}" is written "${multiplicity}". Labre draws no end labels yet, so the multiplicity is recorded here and is not on the board.`,
-      });
+    // Both end labels are now DRAWN (ADR 0020), so there is nothing to carry.
+    // What is still worth saying is the one case the board keeps and no writer
+    // spells: a quoted string beside a relationship §11.5.4 gives ends no
+    // adornments to — a generalization, a dependency — is on the picture and in
+    // no export of it.
+    if (!ADORNED_RELATION_KINDS.has(relationKind)) {
+      for (const [side, end] of [
+        ['source', sourceEnd],
+        ['target', targetEnd],
+      ] as const) {
+        if (!end) continue;
+        note({
+          kind: 'warning',
+          sourceId,
+          message: `The ${side} end of the ${relation.kind} between "${left.name}" and "${right.name}" is written "${end.raw}". It is drawn on the board, but UML gives that relationship's ends no multiplicity, so no export writes it.`,
+        });
+      }
     }
     return true;
   }

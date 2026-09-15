@@ -40,6 +40,10 @@ const USE_CASE_OUTSIDE_SUBJECT = 'uml.use-case-outside-subject';
 const ACTOR_INSIDE_SUBJECT = 'uml.actor-inside-subject';
 const UNNAMED_CLASSIFIER = 'uml.unnamed-classifier';
 const UNNAMED_ACTOR_OR_USE_CASE = 'uml.unnamed-actor-or-use-case';
+const ATTRIBUTE_SYNTAX = 'uml.attribute-syntax';
+const OPERATION_SYNTAX = 'uml.operation-syntax';
+const TRANSITION_SYNTAX = 'uml.transition-syntax';
+const MULTIPLICITY_SYNTAX = 'uml.multiplicity-syntax';
 const GENERALIZATION_ENDPOINTS = 'uml.generalization-endpoints';
 const GENERALIZATION_SELF_LOOP = 'uml.generalization-self-loop';
 const REALIZATION_ENDPOINTS = 'uml.realization-endpoints';
@@ -95,6 +99,12 @@ const STANDARD_RULES = [
   DECISION_INCOMING_COUNT,
   CONTROL_FLOW_ENDPOINTS,
   TRANSITION_ENDPOINTS,
+  // The four SPELLING rules — §9.5.4, §9.6.4, §14.2.4.8 and §7.5.4, the only
+  // clauses in the pack quoted as PRODUCTIONS rather than as sentences.
+  ATTRIBUTE_SYNTAX,
+  OPERATION_SYNTAX,
+  TRANSITION_SYNTAX,
+  MULTIPLICITY_SYNTAX,
 ];
 
 interface Extra {
@@ -103,6 +113,9 @@ interface Extra {
   text?: string;
   profile?: string;
   kind?: string;
+  /** The connector's per-END labels (ADR 0020) — what §11.5.4 writes there. */
+  sourceLabel?: string;
+  targetLabel?: string;
 }
 
 function element(
@@ -121,6 +134,12 @@ function element(
         }
       : {}),
     ...(extra.text !== undefined ? { text: extra.text } : {}),
+    ...(extra.sourceLabel !== undefined
+      ? { sourceLabel: extra.sourceLabel }
+      : {}),
+    ...(extra.targetLabel !== undefined
+      ? { targetLabel: extra.targetLabel }
+      : {}),
     ...(extra.profile !== undefined
       ? { validationProfile: extra.profile }
       : {}),
@@ -218,6 +237,23 @@ const name = (id: string, text = 'Order', x = 100, y = 340) =>
 /** The one word written against an actor or inside a use case. */
 const label = (id: string, text = 'Customer', x = 100, y = 340) =>
   element(id, [x, y, 180, 24], UML_ROLE.label, { text });
+
+/**
+ * The two lower compartments, where the SPELLING rules read.
+ *
+ * Seeded with what `actions.ts` writes at creation, for the reason {@link name}
+ * is: a fresh class is prompted with `+ attribute : Type`, which parses, so the
+ * rules fire on what an author typed and never on what the stencil left.
+ */
+const attributes = (
+  id: string,
+  text = '+ attribute : Type',
+  x = 100,
+  y = 370
+) => element(id, [x, y, 180, 40], UML_ROLE.attributes, { text });
+
+const operations = (id: string, text = '+ operation()', x = 100, y = 410) =>
+  element(id, [x, y, 180, 40], UML_ROLE.operations, { text });
 
 /** A typed edge, of whichever role. */
 const edge = (id: string, role: string, source: string, target: string) =>
@@ -350,7 +386,7 @@ const conformantStateMachine = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the thirty-four rules of the pack, in reading order', () => {
+  it('ships exactly the thirty-eight rules of the pack, in reading order', () => {
     expect(UML_RULES.map(rule => rule.id)).toEqual([
       ELEMENT_OUTSIDE_FRAME,
       NOT_ADMISSIBLE_ON_KIND,
@@ -358,6 +394,10 @@ describe('what the framework ships', () => {
       ACTOR_INSIDE_SUBJECT,
       UNNAMED_CLASSIFIER,
       UNNAMED_ACTOR_OR_USE_CASE,
+      ATTRIBUTE_SYNTAX,
+      OPERATION_SYNTAX,
+      TRANSITION_SYNTAX,
+      MULTIPLICITY_SYNTAX,
       GENERALIZATION_ENDPOINTS,
       GENERALIZATION_SELF_LOOP,
       REALIZATION_ENDPOINTS,
@@ -399,7 +439,7 @@ describe('what the framework ships', () => {
    * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
    * Phase 2 doubled the vocabulary and the number below did not move.
    */
-  it('needs eight families, and asks the engine for nothing new', () => {
+  it('needs nine families, and asks the engine for ONE new one', () => {
     // The two the behaviour sheets added are BPMN's, registered here with UML's
     // own roles and nothing else: a machine with two beginnings and a ring of
     // states nothing enters are the same two questions a pool with two start
@@ -409,6 +449,10 @@ describe('what the framework ships', () => {
       'element-in-background',
       'element-in-zone',
       'label-presence',
+      // The ONE family this pack asked the engine for (ADR 0021), and the only
+      // one in the library whose verdict is a function rather than a table: a
+      // notation's grammar is a parser, and this pack already ships one.
+      'label-syntax',
       'reachability',
       'relation-endpoints',
       'role-count',
@@ -459,7 +503,7 @@ describe('what the framework ships', () => {
     expect(framedBy(UML_ROLE.region)).toEqual(
       [SHALLOW_HISTORY_OUTSIDE_REGION, DEEP_HISTORY_OUTSIDE_REGION].sort()
     );
-    expect(framedBy(UML_ROLE.diagram)).toHaveLength(29);
+    expect(framedBy(UML_ROLE.diagram)).toHaveLength(33);
     for (const rule of UML_RULES) {
       expect(rule.backgroundRole, rule.id).toBeDefined();
     }
@@ -494,7 +538,7 @@ describe('what the framework ships', () => {
         .sort();
 
     // The ten that restate a normative sentence, and exactly those.
-    expect(STANDARD_RULES).toHaveLength(17);
+    expect(STANDARD_RULES).toHaveLength(21);
     expect(byProvenance('standard')).toEqual([...STANDARD_RULES].sort());
     // The three that are OURS — membership on this canvas, a usage remark, and
     // the role-less connector this whiteboard can produce and the notation never
@@ -556,6 +600,12 @@ describe('what the framework ships', () => {
       [
         UNNAMED_CLASSIFIER,
         UNNAMED_ACTOR_OR_USE_CASE,
+        // …and the four SPELLING rules, which are the same reason one order of
+        // magnitude worse: they read all of the words, line by line.
+        ATTRIBUTE_SYNTAX,
+        OPERATION_SYNTAX,
+        TRANSITION_SYNTAX,
+        MULTIPLICITY_SYNTAX,
         UNREACHABLE_ACTION,
         UNREACHABLE_STATE,
       ].sort()
@@ -1167,6 +1217,331 @@ describe('U6 · an actor’s or a use case’s one word, emptied', () => {
         drawing([frame('uc'), actor('x', 200, 200), label('x-label', '')]),
         UNNAMED_ACTOR_OR_USE_CASE
       )
+    ).toEqual([]);
+  });
+});
+
+/**
+ * U35–U38 · the four SPELLING rules — the `label-syntax` family (ADR 0021).
+ *
+ * `label-presence` asks whether a compartment says anything; these ask whether
+ * what it says parses, against the four clauses `grammar.ts` already reads for
+ * the exporters. So a finding here is exactly the line that will export short,
+ * which is the strongest claim any rule in this pack makes.
+ *
+ * The silence cases carry the suite, as always. Three of them are structural and
+ * every one of these rules has to honour all three: a blank line is spacing, an
+ * ellipsis is §9.2.4's elision marker, and a TERSE line is not a wrong one —
+ * §9.5.4 makes everything but the name optional, so `balance` alone is a
+ * conformant Property and a rule that indicted it would hand
+ * `provenance: 'standard'` a claim UML does not make.
+ */
+describe('U35 · an attribute line that does not parse (§9.5.4)', () => {
+  const sheet = (text: string) => [
+    frame('class'),
+    klass('a', 100, 200),
+    name('a-name', 'Order'),
+    attributes('a-attrs', text),
+  ];
+
+  it('flags a line the grammar had to drop something from, on demand', () => {
+    const violations = only(checkup(sheet('balance :')), ATTRIBUTE_SYNTAX);
+
+    expect(violations).toHaveLength(1);
+    // The finding lands on the COMPARTMENT — the element the author edits.
+    expect(violations[0].elementIds).toEqual(['a-attrs']);
+    // ...and the sentence names the line and says what is wrong with it.
+    expect(violations[0].messageFallback).toContain('balance :');
+  });
+
+  it('says nothing on the drawing path', () => {
+    expect(only(drawing(sheet('balance :')), ATTRIBUTE_SYNTAX)).toEqual([]);
+  });
+
+  it('flags an operation typed into the attribute compartment', () => {
+    expect(
+      only(checkup(sheet('+ place(order : Order)')), ATTRIBUTE_SYNTAX)
+    ).toHaveLength(1);
+  });
+
+  it('raises ONE finding for a compartment with several bad lines', () => {
+    // Six lines with three of them unfinished is three brackets on one text
+    // element and one thing to fix.
+    expect(
+      only(checkup(sheet('a :\nb =\nc [n]')), ATTRIBUTE_SYNTAX)
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about lines the clause actually permits', () => {
+    for (const line of [
+      'balance',
+      'balance : Money',
+      '- /total : Money [0..*] = 0 {readOnly}',
+      'order date : Date',
+      'origin : Point = Point(0, 0)',
+    ]) {
+      expect(only(checkup(sheet(line)), ATTRIBUTE_SYNTAX), line).toEqual([]);
+    }
+  });
+
+  it('says nothing about a blank line or an ELLIPSIS', () => {
+    // §9.2.4's elision marker means "there are more, not shown", and a rule
+    // indicting it would indict the author for having said so.
+    expect(
+      only(checkup(sheet('balance : Money\n\n...\n…')), ATTRIBUTE_SYNTAX)
+    ).toEqual([]);
+  });
+
+  it('says nothing about a freshly dropped artefact, which is PROMPTED', () => {
+    expect(
+      only(checkup(sheet('+ attribute : Type')), ATTRIBUTE_SYNTAX)
+    ).toEqual([]);
+  });
+
+  it('says nothing about the OTHER compartments', () => {
+    // A rule names one subject role: the operation compartment is U36's, and
+    // the name compartment is nobody's — a classifier's name is free text.
+    expect(
+      only(
+        checkup([
+          frame('class'),
+          klass('a', 100, 200),
+          name('a-name', 'place(order'),
+          operations('a-ops', '+ place(order : Order)'),
+        ]),
+        ATTRIBUTE_SYNTAX
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('U36 · an operation line that does not parse (§9.6.4)', () => {
+  const sheet = (text: string) => [
+    frame('class'),
+    klass('a', 100, 200),
+    name('a-name', 'Order'),
+    operations('a-ops', text),
+  ];
+
+  it('flags the fall-back the parser documents: no parameter list', () => {
+    const violations = only(checkup(sheet('place')), OPERATION_SYNTAX);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].elementIds).toEqual(['a-ops']);
+    expect(violations[0].messageFallback).toContain('place');
+  });
+
+  it('flags an unreadable parameter and an unclosed parenthesis', () => {
+    expect(
+      only(checkup(sheet('place(order :)')), OPERATION_SYNTAX)
+    ).toHaveLength(1);
+    expect(
+      only(checkup(sheet('place(order : Order')), OPERATION_SYNTAX)
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about the clause’s own productions', () => {
+    for (const line of [
+      'place()',
+      '+ place(order : Order) : Receipt',
+      '# find(in id : Id) : Order [0..1] {query}',
+      'at(p : Point = Point(0, 0))',
+    ]) {
+      expect(only(checkup(sheet(line)), OPERATION_SYNTAX), line).toEqual([]);
+    }
+  });
+
+  it('says nothing on the drawing path, or about a blank compartment', () => {
+    expect(only(drawing(sheet('place')), OPERATION_SYNTAX)).toEqual([]);
+    expect(only(checkup(sheet('')), OPERATION_SYNTAX)).toEqual([]);
+    expect(only(checkup(sheet('...')), OPERATION_SYNTAX)).toEqual([]);
+  });
+});
+
+describe('U37 · a transition label that does not parse (§14.2.4.8)', () => {
+  const sheet = (text: string) => [
+    frame('stm'),
+    stateNode('s1', 200, 200),
+    name('s1-name', 'Draft', 200, 340),
+    stateNode('s2', 600, 200),
+    name('s2-name', 'Placed', 600, 340),
+    element('t', [400, 240, 200, 1], UML_ROLE.transition, {
+      source: 's1',
+      target: 's2',
+      text,
+    }),
+  ];
+
+  it('flags a guard somebody is still typing', () => {
+    const violations = only(checkup(sheet('submit [ready')), TRANSITION_SYNTAX);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].elementIds).toEqual(['t']);
+  });
+
+  it('flags a slash with no behaviour behind it', () => {
+    expect(only(checkup(sheet('submit /')), TRANSITION_SYNTAX)).toHaveLength(1);
+  });
+
+  it('says nothing about an EMPTY label — a completion transition', () => {
+    // §14.2.4.8's outermost brackets make every part optional, and a transition
+    // that fires when its source state finishes carries no label at all.
+    expect(only(checkup(sheet('')), TRANSITION_SYNTAX)).toEqual([]);
+  });
+
+  it('says nothing about the three parts, together or apart', () => {
+    for (const written of [
+      'submit',
+      '[ready]',
+      '/ open()',
+      'after 5 s, submit(a, b) [total > 0] / open()',
+    ]) {
+      expect(only(checkup(sheet(written)), TRANSITION_SYNTAX), written).toEqual(
+        []
+      );
+    }
+  });
+
+  it('reads the label as ONE expression, not as a list of lines', () => {
+    // `perLine: false`: §14.2.4.8's label is a single production, so an author
+    // who wrapped it has written one label and not two.
+    expect(
+      only(checkup(sheet('submit\n[ready] / open()')), TRANSITION_SYNTAX)
+    ).toEqual([]);
+  });
+
+  it('says nothing about another kind of line', () => {
+    expect(
+      only(
+        checkup([
+          frame('act'),
+          action('a', 200, 200),
+          action('b', 600, 200),
+          element('f', [400, 240, 200, 1], UML_ROLE['control-flow'], {
+            source: 'a',
+            target: 'b',
+            text: 'submit [ready',
+          }),
+        ]),
+        TRANSITION_SYNTAX
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('U38 · a multiplicity at an association end (§7.5.4, §11.5.4)', () => {
+  const sheet = (ends: { source?: string; target?: string }) => [
+    frame('class'),
+    klass('a', 100, 200),
+    name('a-name', 'Order'),
+    klass('b', 600, 200),
+    name('b-name', 'Line', 600, 340),
+    element('assoc', [300, 250, 300, 1], UML_ROLE.association, {
+      source: 'a',
+      target: 'b',
+      ...(ends.source !== undefined ? { sourceLabel: ends.source } : {}),
+      ...(ends.target !== undefined ? { targetLabel: ends.target } : {}),
+    }),
+  ];
+
+  it('flags a bound the file cannot hold', () => {
+    const violations = only(
+      checkup(sheet({ source: '1', target: '1..n items' })),
+      MULTIPLICITY_SYNTAX
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].elementIds).toEqual(['assoc']);
+    expect(violations[0].messageFallback).toContain('1..n items');
+  });
+
+  it('reads BOTH ends under one id, and raises one finding', () => {
+    // §11.5.4 puts the same grammar at both ends, so one rule covers them: a
+    // rule naming one end could only ever check half of every line drawn.
+    expect(
+      only(
+        checkup(sheet({ source: '0...*', target: '1..n' })),
+        MULTIPLICITY_SYNTAX
+      )
+    ).toHaveLength(1);
+    expect(
+      only(checkup(sheet({ source: '0...*' })), MULTIPLICITY_SYNTAX)
+    ).toHaveLength(1);
+  });
+
+  it('says nothing about a range the writers can hold', () => {
+    for (const range of ['1', '0..1', '0..*', '*', '[0..1]', '0..* items']) {
+      expect(
+        only(checkup(sheet({ target: range })), MULTIPLICITY_SYNTAX),
+        range
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing about a ROLE NAME, even one starting with a digit', () => {
+    // Only the range has a syntax to be wrong about. `parseEndLabel` keeps
+    // `1st choice` as a name, and a checker stricter than the parser it checks
+    // would indict an end the exporters read correctly.
+    for (const written of ['items', '- owner', '1st choice', '']) {
+      expect(
+        only(checkup(sheet({ target: written })), MULTIPLICITY_SYNTAX),
+        written
+      ).toEqual([]);
+    }
+  });
+
+  it('says nothing about an association with no end labels at all', () => {
+    expect(only(checkup(sheet({})), MULTIPLICITY_SYNTAX)).toEqual([]);
+  });
+
+  it('never reads the CENTRE label, which is the association’s name', () => {
+    expect(
+      only(
+        checkup([
+          frame('class'),
+          klass('a', 100, 200),
+          name('a-name', 'Order'),
+          klass('b', 600, 200),
+          name('b-name', 'Line', 600, 340),
+          element('assoc', [300, 250, 300, 1], UML_ROLE.association, {
+            source: 'a',
+            target: 'b',
+            text: '1..n',
+          }),
+        ]),
+        MULTIPLICITY_SYNTAX
+      )
+    ).toEqual([]);
+  });
+
+  it('reaches aggregation and composition, which specialise it', () => {
+    // §11.5.4: the aggregation kind is a property of an association END, not a
+    // different relationship — so `roleIsA` covers both for free.
+    for (const role of [UML_ROLE.aggregation, UML_ROLE.composition]) {
+      expect(
+        only(
+          checkup([
+            frame('class'),
+            klass('a', 100, 200),
+            name('a-name', 'Order'),
+            klass('b', 600, 200),
+            name('b-name', 'Line', 600, 340),
+            element('assoc', [300, 250, 300, 1], role, {
+              source: 'a',
+              target: 'b',
+              targetLabel: '1..n',
+            }),
+          ]),
+          MULTIPLICITY_SYNTAX
+        ),
+        String(role)
+      ).toHaveLength(1);
+    }
+  });
+
+  it('says nothing on the drawing path', () => {
+    expect(
+      only(drawing(sheet({ target: '1..n' })), MULTIPLICITY_SYNTAX)
     ).toEqual([]);
   });
 });

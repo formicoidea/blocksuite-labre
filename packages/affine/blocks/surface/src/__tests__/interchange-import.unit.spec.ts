@@ -383,6 +383,37 @@ describe('where an imported board lands', () => {
     });
     expect(connector.target).toEqual({ id: 'c', position: [0.5, 0.5] });
   });
+
+  it('moves a connector’s label boxes with the rest of the drawing', () => {
+    // `labelXYWH` and ADR 0020's two per-end siblings are ABSOLUTE boxes in the
+    // same space as `xywh`. A reader that creates a connector with a label
+    // already positioned — `gfx/uml`'s materializer does — would otherwise drop
+    // the text at the origin of a board it was not imported onto.
+    const { std, surface } = stubEditor();
+    materializeInterchangeImport(std, 'fmt', [box('fmt', 'a', '[0,0,100,50]')]);
+    materializeInterchangeImport(std, 'fmt', [
+      box('fmt', 'c', '[0,0,100,50]'),
+      {
+        ...element('connector', 'fmt', 'e1'),
+        source: { id: 'c', position: [0.5, 0.5] },
+        target: { id: 'c', position: [0.5, 0.5] },
+        labelXYWH: [10, 20, 60, 24],
+        sourceLabelXYWH: [0, 0, 60, 24],
+        targetLabelXYWH: [30, 40, 60, 24],
+      },
+    ]);
+
+    const drawn = Bound.deserialize(String(surface.added[1].xywh));
+    const connector = surface.added[2];
+    expect(connector.labelXYWH).toEqual([10 + drawn.x, 20 + drawn.y, 60, 24]);
+    expect(connector.sourceLabelXYWH).toEqual([drawn.x, drawn.y, 60, 24]);
+    expect(connector.targetLabelXYWH).toEqual([
+      30 + drawn.x,
+      40 + drawn.y,
+      60,
+      24,
+    ]);
+  });
 });
 
 describe('reporting an import', () => {

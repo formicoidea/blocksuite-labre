@@ -1,5 +1,6 @@
 import type { UmlBox } from './component.js';
 import {
+  type UmlAssociationEnd,
   type UmlMultiplicity,
   type UmlOperation,
   type UmlProperty,
@@ -1519,6 +1520,32 @@ function stateMachineElement(
  * whole, so the flag lands on the end typed by the target. Putting it on the
  * other end would draw the diamond on the wrong classifier in every tool that
  * opens the file.
+ *
+ * ## Which `ownedEnd` an end LABEL lands on
+ *
+ * The one drawn at the same end. §11.5.4 defines an Association end as "the
+ * connection between the line depicting an Association and the icon … depicting
+ * the connected Classifier", and everything written near it — the name string,
+ * the multiplicity, the visibility glyph — adorns the memberEnd whose TYPE is
+ * that classifier. So `relation.sourceEnd` becomes the `ownedEnd` carrying
+ * `<type idref="{source}">`, and `targetEnd` the one typed by the target.
+ *
+ * The question is worth stating because the OTHER reading is the familiar one:
+ * where a Classifier owns the end (§11.5.4's dot notation — "the dot shows that
+ * the model includes a Property of the type represented by the Classifier
+ * touched by the dot. This Property is owned by the Classifier at the other
+ * end"), the end drawn at B is an attribute OF A, and a writer that put the
+ * adornments on the owning classifier's side would swap every multiplicity on
+ * the diagram. It does not arise here: this writer owns BOTH ends on the
+ * association and types each one explicitly, so "the end at X" and "the end
+ * typed by X" are the same end, and the mapping is direct. `xmi-import.ts` reads
+ * it back through the same identity.
+ *
+ * The aggregation flag is not a counter-example: §11.5.4 has the diamond drawn
+ * at the end OPPOSITE the flagged one ("a hollow diamond is added as a terminal
+ * adornment at the end of the Association line opposite the end marked with
+ * aggregation = AggregationKind::shared"), which is precisely why it is the one
+ * adornment written across the line rather than beside its own end.
  */
 function associationElement(
   relation: UmlRelation,
@@ -1558,8 +1585,12 @@ function associationElement(
           'xmi:type': 'uml:Property',
           'xmi:id': sourceEnd,
           association: id,
+          ...endAttrs(relation.sourceEnd),
         },
-        [el('type', { 'xmi:idref': source })]
+        [
+          el('type', { 'xmi:idref': source }),
+          ...multiplicityElements(relation.sourceEnd?.multiplicity, plan.ids),
+        ]
       ),
       el(
         'ownedEnd',
@@ -1567,12 +1598,32 @@ function associationElement(
           'xmi:type': 'uml:Property',
           'xmi:id': targetEnd,
           association: id,
+          ...endAttrs(relation.targetEnd),
           ...(aggregation ? { aggregation } : {}),
         },
-        [el('type', { 'xmi:idref': target })]
+        [
+          el('type', { 'xmi:idref': target }),
+          ...multiplicityElements(relation.targetEnd?.multiplicity, plan.ids),
+        ]
       ),
     ]
   );
+}
+
+/**
+ * The `name` and `visibility` of one association end, when the label said them.
+ *
+ * Nothing when it did not, which is what keeps a connector with no end labels
+ * byte-identical to what phase 1 wrote: the fields are absent from the IR, so
+ * the attributes are absent from the file, so every golden of a plain
+ * association still matches character for character.
+ */
+function endAttrs(end: UmlAssociationEnd | undefined): XmlAttrs {
+  if (!end) return {};
+  return {
+    ...(end.role ? { name: end.role } : {}),
+    ...visibilityAttrs(end.visibility),
+  };
 }
 
 /**

@@ -161,12 +161,13 @@ is what `add-a-framework/01-definition-of-done.md` and
   hands the audit panel are judgements about a model, and §4 above says this
   engine has no model behind the drawing. Phase 2 may add them for the form
   questions; nothing is declared now.
-- **Imports** — no importer. The PlantUML and XMI **writers** ship in phase 1
-  (export only); the readers are phase 2, and when they come they owe ADR 0012's
-  full preservation contract D1–D6 — sort every node into mapped / carried /
-  quarantined, carry the residue on the element, keep the file's ids verbatim.
-  That is a chantier of its own, and shipping a lossy reader ahead of it would
-  break the promise the contract exists to make.
+- **Imports** — no importer in phase 1. The PlantUML and XMI **writers** ship
+  in phase 1 (export only); the readers came in phase 2 under ADR 0019 (PlantUML,
+  XMI and draw.io), owing ADR 0012's full preservation contract D1–D6 — sort
+  every node into mapped / carried / quarantined, carry the residue on the
+  element, keep the file's ids verbatim. Association end labels (multiplicity
+  and role) are read and written since ADR 0020 gave the connector its two end
+  labels; before that they were carried, not mapped.
 
 ## Consequences
 

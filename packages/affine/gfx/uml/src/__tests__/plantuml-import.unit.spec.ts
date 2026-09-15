@@ -251,17 +251,46 @@ describe('the relationship operators', () => {
 });
 
 describe('the end multiplicities', () => {
-  it('are recorded, and say they are not on the board', () => {
+  it('land on the relation ends, parsed, with nothing carried', () => {
     const { models, notes } = importPlantuml(
-      '@startuml\nclass A\nclass B\nA "1" *-- "0..*" B\n@enduml'
+      '@startuml\nclass A\nclass B\nA "1" *-- "0..* items" B\n@enduml'
     );
     expect(models[0].relations).toEqual([
-      { kind: 'composition', sourceId: 'A', targetId: 'B' },
+      {
+        kind: 'composition',
+        sourceId: 'A',
+        targetId: 'B',
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'items',
+          raw: '0..* items',
+        },
+      },
     ]);
-    const carried = notes.filter(note => note.kind === 'carried');
-    expect(carried).toHaveLength(2);
-    expect(carried[0].message).toContain('"1"');
-    expect(carried[1].message).toContain('"0..*"');
+    // ADR 0020: the board draws both, so there is nothing left to carry.
+    expect(notes.filter(note => note.kind === 'carried')).toHaveLength(0);
+  });
+
+  it('follow the ARTEFACT through an operator that reads backwards', () => {
+    // `A <|-- B` makes B the source, so the string written at A — the left of
+    // the line — is the TARGET end's.
+    const { models, notes } = importPlantuml(
+      '@startuml\nclass A\nclass B\nA "1" <|-- "2" B\n@enduml'
+    );
+    expect(models[0].relations[0]).toMatchObject({
+      kind: 'generalization',
+      sourceId: 'B',
+      targetId: 'A',
+      sourceEnd: { raw: '2' },
+      targetEnd: { raw: '1' },
+    });
+    // A generalization's ends take no adornments in §11.5.4, so the text is
+    // kept verbatim, drawn, and named as something no export will write.
+    expect(models[0].relations[0].sourceEnd?.multiplicity).toBeUndefined();
+    const said = notes.filter(note => note.kind === 'warning');
+    expect(said).toHaveLength(2);
+    expect(said[0].message).toContain('"2"');
   });
 
   it('never eat a quoted END NAME', () => {
@@ -404,10 +433,11 @@ describe('what the reader cannot read', () => {
 
 /* ── The corpus ───────────────────────────────────────────────────────── */
 
+// The worktree may check the corpus out with CRLF; the writer emits LF.
 const CORPUS = readFileSync(
   join(__dirname, 'corpus/labre-phase1-export.puml'),
   'utf8'
-);
+).replace(/\r\n/g, '\n');
 
 describe('the corpus file an earlier build actually exported', () => {
   /**

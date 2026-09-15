@@ -255,10 +255,16 @@ function importOffset(
 /**
  * One element's props, moved.
  *
- * `xywh` and nothing else, with one exception: a connector end that names no
+ * `xywh` and the label boxes, with one exception: a connector end that names no
  * element carries an ABSOLUTE position rather than an anchor within a shape, and
  * an end left behind would stretch the line back to where the file drew it. An
  * end WITH an id carries a fraction of its shape's box and must not be touched.
+ *
+ * A connector's three label boxes (`labelXYWH`, and ADR 0020's two per-end
+ * siblings) are absolute `[x, y, w, h]` in the same space as `xywh`, so they
+ * move with everything else. A reader that creates a connector with an end label
+ * already positioned — `gfx/uml`'s materializer does — would otherwise drop the
+ * text at the origin of a board it was not imported onto.
  */
 function translateProps(
   props: SerializedElementProps,
@@ -273,6 +279,13 @@ function translateProps(
       bound.w,
       bound.h
     ).serialize();
+  }
+  for (const key of ['labelXYWH', 'sourceLabelXYWH', 'targetLabelXYWH']) {
+    const box = props[key];
+    if (!Array.isArray(box) || box.length !== 4) continue;
+    if (!box.every(each => typeof each === 'number')) continue;
+    const [x, y, w, h] = box as number[];
+    moved[key] = [x + shift.x, y + shift.y, w, h];
   }
   for (const side of ['source', 'target'] as const) {
     const end = props[side] as

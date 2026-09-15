@@ -15,10 +15,12 @@ import {
   umlTierText,
 } from './component.js';
 import {
+  type UmlAssociationEnd,
   type UmlOperation,
   type UmlProperty,
   parseActivityEdge,
   parseCompartment,
+  parseEndLabel,
   parseOperation,
   parseProperty,
   parseStateBehavior,
@@ -83,6 +85,15 @@ export interface UmlSourceElement extends UmlComponentElement {
   /** A connector's ends. */
   source?: { id?: string } | null;
   target?: { id?: string } | null;
+  /**
+   * The two PER-END labels of a connector (ADR 0020), beside `text`.
+   *
+   * `unknown` for the reason {@link UmlSourceElement.name} is: a live connector
+   * holds a `Y.Text` and a spec hands over a string, and both go through
+   * `umlTierText`.
+   */
+  sourceLabel?: unknown;
+  targetLabel?: unknown;
 }
 
 /* ── The IR ───────────────────────────────────────────────────────────── */
@@ -261,7 +272,39 @@ export interface UmlRelation {
   targetId: string;
   /** The connector's own centre text, when it carries one. */
   label?: string;
+  /**
+   * What is written beside the SOURCE end of the line — §11.5.4's adornments.
+   *
+   * Present whenever the connector carries an end label at all, whatever the
+   * relationship is. On the four kinds §11.5.4 governs
+   * ({@link ADORNED_RELATION_KINDS}) it is PARSED — a multiplicity, a role name,
+   * a visibility glyph; on every other kind only
+   * {@link UmlAssociationEnd.raw} is filled, because a multiplicity beside a
+   * generalization is not a multiplicity of anything and writing one into a file
+   * would state a fact the metamodel has nowhere to hold. Carrying the raw text
+   * regardless is what keeps the round trip lossless: the author's words come
+   * back on the board even where no writer can spell them.
+   */
+  sourceEnd?: UmlAssociationEnd;
+  /** What is written beside the TARGET end — see {@link sourceEnd}. */
+  targetEnd?: UmlAssociationEnd;
 }
+
+/**
+ * The relationships whose end labels §11.5.4 gives a MEANING to.
+ *
+ * An Association and its two aggregation flavours, plus the CommunicationPath
+ * §19.4.3 defines as "an Association between two DeploymentTargets" — which is
+ * why it is in the set: it is an Association, so its ends are Properties and
+ * take a multiplicity like any other.
+ */
+export const ADORNED_RELATION_KINDS: ReadonlySet<UmlRelationKind> =
+  new Set<UmlRelationKind>([
+    'association',
+    'aggregation',
+    'composition',
+    'communication-path',
+  ]);
 
 /* ── The behaviour IR (§15.2.4 activities, §14.2.4 state machines) ────────── */
 
@@ -1226,11 +1269,24 @@ export function umlModelFrom(
     }
 
     const label = umlTierText(connector.text);
+    // §11.5.4's adornments, read off the two per-end labels ADR 0020 added to
+    // the connector. Parsed only where the clause applies; kept verbatim
+    // everywhere else — see {@link UmlRelation.sourceEnd}.
+    const endOf = (text: unknown): UmlAssociationEnd | undefined => {
+      const raw = umlTierText(text);
+      if (!raw) return undefined;
+      return ADORNED_RELATION_KINDS.has(kind) ? parseEndLabel(raw) : { raw };
+    };
+    const sourceEnd = endOf(connector.sourceLabel);
+    const targetEnd = endOf(connector.targetLabel);
+
     relations.push({
       kind,
       sourceId: source,
       targetId: target,
       ...(label ? { label } : {}),
+      ...(sourceEnd ? { sourceEnd } : {}),
+      ...(targetEnd ? { targetEnd } : {}),
     });
   }
 

@@ -37,9 +37,20 @@ interface PathBounds {
   maxY: number;
 }
 
+/**
+ * Which of a connector's three captions a retained `<div>` belongs to.
+ *
+ * `center` is the connector's own name; `source` / `target` are the end labels
+ * (ADR 0020). Keyed rather than indexed so a connector that gains a target
+ * label does not renumber the node the centre one is already using.
+ */
+type LabelSlot = 'center' | 'source' | 'target';
+
+const LABEL_SLOTS: readonly LabelSlot[] = ['center', 'source', 'target'];
+
 type RetainedConnectorDom = {
   defs: SVGDefsElement;
-  label: HTMLDivElement | null;
+  labels: Partial<Record<LabelSlot, HTMLDivElement>>;
   path: SVGPathElement;
   svg: SVGSVGElement;
 };
@@ -223,42 +234,73 @@ function getRetainedConnectorDom(element: HTMLElement): RetainedConnectorDom {
   svg.append(defs, path);
   element.replaceChildren(svg);
 
-  const retained = {
+  const retained: RetainedConnectorDom = {
     svg,
     defs,
     path,
-    label: null,
+    labels: {},
   };
   retainedConnectorDom.set(element, retained);
 
   return retained;
 }
 
-function getOrCreateLabelElement(retained: RetainedConnectorDom) {
-  if (retained.label) {
-    return retained.label;
+function getOrCreateLabelElement(
+  retained: RetainedConnectorDom,
+  slot: LabelSlot
+) {
+  const existing = retained.labels[slot];
+  if (existing) {
+    return existing;
   }
 
   const label = document.createElement('div');
-  retained.svg.insertAdjacentElement('afterend', label);
-  retained.label = label;
+  // Appended after the `<svg>` rather than inserted directly behind it, so the
+  // three captions land in slot order instead of in reverse creation order.
+  // Every one of them is absolutely positioned, so document order is a
+  // debugging convenience, not a layout decision.
+  (retained.svg.parentElement ?? retained.svg).append(label);
+  retained.labels[slot] = label;
 
   return label;
+}
+
+/**
+ * The text and box one slot paints, or `null` when that caption is absent.
+ *
+ * The DOM twin of `paintedLabels` on the canvas side: same three slots, same
+ * `labelStyle` shared by all three, so the two renderers cannot disagree about
+ * what a connector is showing.
+ */
+function labelContent(model: ConnectorElementModel, slot: LabelSlot) {
+  if (slot === 'center') {
+    return isConnectorWithLabel(model) && model.labelXYWH
+      ? { text: model.text?.toString() ?? '', xywh: model.labelXYWH }
+      : null;
+  }
+
+  const xywh = model.endLabelXYWH(slot);
+  return model.hasEndLabel(slot) && xywh
+    ? { text: model.endLabelText(slot)?.toString() ?? '', xywh }
+    : null;
 }
 
 function renderConnectorLabel(
   model: ConnectorElementModel,
   retained: RetainedConnectorDom,
   renderer: DomRenderer,
-  zoom: number
+  zoom: number,
+  slot: LabelSlot
 ) {
-  if (!isConnectorWithLabel(model) || !model.labelXYWH) {
-    retained.label?.remove();
-    retained.label = null;
+  const content = labelContent(model, slot);
+
+  if (!content) {
+    retained.labels[slot]?.remove();
+    delete retained.labels[slot];
     return;
   }
 
-  const [lx, ly, lw, lh] = model.labelXYWH;
+  const [lx, ly, lw, lh] = content.xywh;
   const {
     labelStyle: {
       color,
@@ -270,7 +312,7 @@ function renderConnectorLabel(
     },
   } = model;
 
-  const labelElement = getOrCreateLabelElement(retained);
+  const labelElement = getOrCreateLabelElement(retained, slot);
   labelElement.style.position = 'absolute';
   labelElement.style.left = `${lx * zoom}px`;
   labelElement.style.top = `${ly * zoom}px`;
@@ -303,7 +345,7 @@ function renderConnectorLabel(
   labelElement.style.wordWrap = 'break-word';
 
   // Add text content
-  labelElement.textContent = model.text ? model.text.toString() : '';
+  labelElement.textContent = content.text;
 }
 
 /**
@@ -442,6 +484,9 @@ export const connectorDomRenderer = (
   element.style.overflow = 'visible';
   element.style.pointerEvents = 'none';
 
-  // Render label if present
-  renderConnectorLabel(model, retained, renderer, zoom);
+  // Render each caption that is present — the centre name and the two end
+  // labels — and drop the node of any that is not.
+  for (const slot of LABEL_SLOTS) {
+    renderConnectorLabel(model, retained, renderer, zoom, slot);
+  }
 };

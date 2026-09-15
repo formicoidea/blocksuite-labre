@@ -3,8 +3,9 @@ import type { UmlDiagramKind } from '@labre/affine-model';
 import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model';
 
 import type { UmlBox } from './component.js';
-import { parseOperation, parseProperty } from './grammar.js';
+import { parseEndLabel, parseOperation, parseProperty } from './grammar.js';
 import { stereotypesOf } from './keywords.js';
+import { ADORNED_RELATION_KINDS } from './model.js';
 import type {
   UmlClassifier,
   UmlModel,
@@ -645,23 +646,29 @@ export function importDrawio(
       });
     }
 
-    // The per-end labels — the `1`s of a multiplicity. The IR has nowhere to
-    // put them until per-end labels land (`docs/adr/0018`), so they are
-    // CARRIED, named, and the note says which end each one was on.
+    // The per-end labels — the `1`s of a multiplicity. Each one is pinned to an
+    // end by its relative geometry, and lands on the relation end DRAWN there
+    // (§11.5.4). `flip` is why the two are not simply "source" and "target": an
+    // aggregation read off the target end has already had its ends swapped, so
+    // the label written at the mxCell's source belongs to the relation's target.
     for (const child of childrenOf.get(cell.id) ?? []) {
       const text = drawioCompartments(child.value).flat().join(' ');
       if (!text) continue;
-      const end = labelEndOf(child.geometry);
-      if (end === 'centre' && !relation.label) {
-        relation.label = text;
+      const at = labelEndOf(child.geometry);
+      if (at === 'centre') {
+        if (!relation.label) relation.label = text;
         continue;
       }
-      notes.push({
-        kind: 'carried',
-        sourceId: child.id,
-        element: 'edgeLabel',
-        message: `"${text}" on the ${end} end of ${cell.id} — kept on the connector, not drawn (docs/adr/0018).`,
-      });
+      const side =
+        (at === 'source') !== flip
+          ? ('sourceEnd' as const)
+          : ('targetEnd' as const);
+      // FIRST wins: draw.io lets an author stack two labels on one end, and the
+      // board draws one label per end.
+      if (relation[side]) continue;
+      relation[side] = ADORNED_RELATION_KINDS.has(relation.kind)
+        ? parseEndLabel(text)
+        : { raw: text };
     }
   }
 

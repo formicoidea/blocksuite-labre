@@ -1450,3 +1450,142 @@ describe('a state machine diagram', () => {
     expect(xml).toBe(STATE_MACHINE_GOLDEN);
   });
 });
+
+/* ── §11.5.4's per-end adornments (ADR 0020) ──────────────────────────── */
+
+/**
+ * An association whose two ends carry the adornments §11.5.4 puts beside them.
+ *
+ * Its own golden, small enough to read in one screen, because the question it
+ * answers is precise: WHICH `ownedEnd` each label lands on. The adornment drawn
+ * beside a classifier belongs to the memberEnd typed by that classifier — so the
+ * source's label is on the end whose `<type>` is the source — and the whole
+ * mapping is one `xmi:idref` away from being silently mirrored.
+ */
+const END_LABEL_GOLDEN = `<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="Shop">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Orders">
+    <packagedElement xmi:type="uml:Class" xmi:id="_3" name="Order"/>
+    <packagedElement xmi:type="uml:Class" xmi:id="_4" name="OrderLine"/>
+    <packagedElement xmi:type="uml:Association" xmi:id="_5" memberEnd="_6 _7">
+      <ownedEnd xmi:type="uml:Property" xmi:id="_6" association="_5" name="order" visibility="private">
+        <type xmi:idref="_3"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_8" value="1"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_9" value="1"/>
+      </ownedEnd>
+      <ownedEnd xmi:type="uml:Property" xmi:id="_7" association="_5" name="lines" aggregation="shared">
+        <type xmi:idref="_4"/>
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_10" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_11" value="*"/>
+      </ownedEnd>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="class"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>
+`;
+
+function adornedDiagram(): UmlModel {
+  return {
+    ...emptyModel('d1', 'class', 'Orders'),
+    classifiers: [
+      classifier('c1', 'class', 'Order'),
+      classifier('c2', 'class', 'OrderLine'),
+    ],
+    relations: [
+      {
+        ...relation('aggregation', 'c1', 'c2'),
+        sourceEnd: {
+          multiplicity: { lower: 1, upper: 1 },
+          role: 'order',
+          visibility: 'private',
+          raw: '1 -order',
+        },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'lines',
+          raw: '0..* lines',
+        },
+      },
+    ],
+  };
+}
+
+describe('an association whose ends are adorned', () => {
+  const xml = exportXmi([adornedDiagram()], { name: 'Shop' });
+  const document = parsed(xml);
+  const ends = [...document.querySelectorAll('ownedEnd')];
+
+  it('is the golden document, byte for byte', () => {
+    expect(xml).toBe(END_LABEL_GOLDEN);
+  });
+
+  it('parses, with unique ids and no dangling reference', () => {
+    expect(idsOf(document).size).toBe(11);
+    expect(danglingReferences(document)).toEqual([]);
+  });
+
+  it('puts each end’s adornments on the end TYPED by that classifier', () => {
+    const byName = (name: string) =>
+      [...document.querySelectorAll('packagedElement')]
+        .find(element => element.getAttribute('name') === name)!
+        .getAttribute('xmi:id');
+    expect(ends[0].querySelector('type')!.getAttribute('xmi:idref')).toBe(
+      byName('Order')
+    );
+    expect(ends[0].getAttribute('name')).toBe('order');
+    expect(ends[1].querySelector('type')!.getAttribute('xmi:idref')).toBe(
+      byName('OrderLine')
+    );
+    expect(ends[1].getAttribute('name')).toBe('lines');
+  });
+
+  it('writes the range as a LiteralInteger and a LiteralUnlimitedNatural', () => {
+    expect(ends[1].querySelector('lowerValue')!.getAttribute('xmi:type')).toBe(
+      'uml:LiteralInteger'
+    );
+    expect(ends[1].querySelector('upperValue')!.getAttribute('xmi:type')).toBe(
+      'uml:LiteralUnlimitedNatural'
+    );
+    expect(ends[1].querySelector('upperValue')!.getAttribute('value')).toBe(
+      '*'
+    );
+  });
+
+  it('writes the visibility glyph as the VisibilityKind it is', () => {
+    expect(ends[0].getAttribute('visibility')).toBe('private');
+    expect(ends[1].getAttribute('visibility')).toBeNull();
+  });
+
+  it('leaves the diamond where it was — on the end typed by the PART', () => {
+    // §11.5.4 draws the diamond at the end OPPOSITE the flagged one, which is
+    // why the flag is the one adornment written across the line. Adding end
+    // labels must not have moved it.
+    expect(ends[0].getAttribute('aggregation')).toBeNull();
+    expect(ends[1].getAttribute('aggregation')).toBe('shared');
+  });
+
+  it('writes nothing at all when the connector carries no end label', () => {
+    // The phase-1 shape, unchanged: absent fields, absent markup — which is
+    // what keeps every golden written before ADR 0020 byte-identical.
+    const plain = exportXmi(
+      [
+        {
+          ...emptyModel('d1', 'class', 'Orders'),
+          classifiers: [
+            classifier('c1', 'class', 'Order'),
+            classifier('c2', 'class', 'OrderLine'),
+          ],
+          relations: [relation('association', 'c1', 'c2')],
+        },
+      ],
+      { name: 'Shop' }
+    );
+    expect(plain).toContain(
+      '<ownedEnd xmi:type="uml:Property" xmi:id="_6" association="_5">'
+    );
+    expect(plain).not.toContain('lowerValue');
+    expect(plain).not.toContain('visibility');
+  });
+});

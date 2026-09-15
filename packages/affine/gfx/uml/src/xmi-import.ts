@@ -8,13 +8,15 @@ import type { UmlDiagramKind } from '@labre/affine-model';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
 import type { UmlBox } from './component.js';
-import type {
-  UmlMultiplicity,
-  UmlOperation,
-  UmlParameter,
-  UmlParameterDirection,
-  UmlProperty,
-  UmlVisibility,
+import {
+  type UmlAssociationEnd,
+  type UmlMultiplicity,
+  type UmlOperation,
+  type UmlParameter,
+  type UmlParameterDirection,
+  type UmlProperty,
+  type UmlVisibility,
+  formatEndLabel,
 } from './grammar.js';
 import type {
   UmlActivity,
@@ -840,7 +842,10 @@ interface Draft {
   /** Every artefact id this sheet owns — what a relation's ends must be in. */
   ids: Set<string>;
   /** Association ends, by their own id: what they are typed by. */
-  ends: Map<string, { typeId?: string; aggregation?: string }>;
+  ends: Map<
+    string,
+    { typeId?: string; aggregation?: string; label?: UmlAssociationEnd }
+  >;
   /** Signal ids a glyph on this sheet actually referenced. */
   usedSignals: Set<string>;
   /**
@@ -919,7 +924,9 @@ function relate(
   kind: UmlRelationKind,
   sourceId: string | undefined,
   targetId: string | undefined,
-  label?: { label?: string }
+  // The centre label AND, for an association, §11.5.4's two end labels — every
+  // part of a relation that is not its kind or its two ends.
+  label?: Partial<Pick<UmlRelation, 'label' | 'sourceEnd' | 'targetEnd'>>
 ): boolean {
   if (!sourceId || !targetId) return false;
   const relation: UmlRelation = { kind, sourceId, targetId, ...label };
@@ -1052,10 +1059,17 @@ function endTypeId(ctx: Context, node: XmlNode): string | undefined {
  * one. That is the reading `xmi.ts` writes with, and reading it back the same
  * way is what keeps a diamond on the same classifier after a round trip.
  *
- * Multiplicities ride in `interchange.xmi.attrs`, keyed by each end's own id,
- * because the canvas has nowhere to draw them yet (ADR 0018 defers per-end
- * labels, and tranche H is where they land). They are in the document from the
- * first import, which is the whole point of carrying rather than dropping.
+ * ## Where an end's adornments land
+ *
+ * On the end DRAWN at the classifier that types it — the identity §11.5.4 states
+ * and `xmi.ts` writes with, read back the same way round. So the `lowerValue` /
+ * `upperValue`, the `name` and the `visibility` of the end typed by the WHOLE
+ * become {@link UmlRelation.sourceEnd}, and the part's end becomes `targetEnd`.
+ * They used to ride in `interchange.xmi.attrs` because the canvas had nowhere to
+ * draw them (ADR 0018); ADR 0020 gave the connector two end labels, so they are
+ * now on the board and are no longer carried — carrying a fact the drawing shows
+ * would put it in the document twice and re-emit it beside the one the writer
+ * produces. Everything else an end says is still carried verbatim.
  */
 function readAssociation(
   ctx: Context,
@@ -1082,15 +1096,9 @@ function readAssociation(
     draft.ends.set(endId, {
       typeId: endTypeId(ctx, child),
       ...(aggregation && aggregation !== 'none' ? { aggregation } : {}),
+      ...adornmentsOf(ctx, child),
     });
     if (!listed.includes(endId)) listed.push(endId);
-    const multiplicity = readMultiplicity(ctx, child);
-    const endName = xmlAttr(child, 'name');
-    if (multiplicity) {
-      carryAttr(ctx, id, endId, 'lowerValue', String(multiplicity.lower));
-      carryAttr(ctx, id, endId, 'upperValue', String(multiplicity.upper));
-    }
-    if (endName) carryAttr(ctx, id, endId, 'name', endName);
     if (aggregation && aggregation !== 'none') {
       carryAttr(ctx, id, endId, 'aggregation', aggregation);
     }
@@ -1106,12 +1114,8 @@ function readAssociation(
     draft.ends.set(endId, {
       typeId: endTypeId(ctx, owned),
       ...(aggregation && aggregation !== 'none' ? { aggregation } : {}),
+      ...adornmentsOf(ctx, owned),
     });
-    const multiplicity = readMultiplicity(ctx, owned);
-    if (multiplicity) {
-      carryAttr(ctx, id, endId, 'lowerValue', String(multiplicity.lower));
-      carryAttr(ctx, id, endId, 'upperValue', String(multiplicity.upper));
-    }
   }
 
   const [first, second] = listed.map(endId => ({
@@ -1151,7 +1155,36 @@ function readAssociation(
 
   carryAttr(ctx, id, '@ends', 'source', whole.id);
   carryAttr(ctx, id, '@ends', 'target', part.id);
-  relate(draft, relationKind, whole.typeId, part.typeId, labelOf(node));
+  relate(draft, relationKind, whole.typeId, part.typeId, {
+    ...labelOf(node),
+    ...(whole.label ? { sourceEnd: whole.label } : {}),
+    ...(part.label ? { targetEnd: part.label } : {}),
+  });
+}
+
+/**
+ * The §11.5.4 adornments one association end states — or nothing.
+ *
+ * `raw` is composed rather than read off the file, because the file has no such
+ * string: XMI states the range, the name and the visibility as three separate
+ * pieces of markup, and what goes BESIDE the end on the board is their one-line
+ * spelling. {@link formatEndLabel} is the same printer the PlantUML writer uses,
+ * so an end imported from XMI and one exported to a `.puml` read identically.
+ */
+function adornmentsOf(
+  ctx: Context,
+  node: XmlNode
+): { label?: UmlAssociationEnd } {
+  const multiplicity = readMultiplicity(ctx, node);
+  const role = xmlAttr(node, 'name');
+  const visibility = visibilityAttr(node);
+  if (!multiplicity && !role && !visibility) return {};
+  const parts = {
+    ...(multiplicity ? { multiplicity } : {}),
+    ...(role ? { role } : {}),
+    ...(visibility ? { visibility } : {}),
+  };
+  return { label: { ...parts, raw: formatEndLabel({ ...parts, raw: '' }) } };
 }
 
 /** One component, with its ports and the two kinds of interface it wires. */

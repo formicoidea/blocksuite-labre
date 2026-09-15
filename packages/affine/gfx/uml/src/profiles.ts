@@ -15,12 +15,12 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * frame already set to `strict` simply stops being checked until it comes back —
  * the id stays written, untouched.
  *
- * ## Both tables spell out all THIRTY-FOUR ids
+ * ## Both tables spell out all THIRTY-EIGHT ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `uml.strict` requires
- * reads nineteen lines here instead of one file per rule, and a rule shipped
+ * reads twenty-five lines here instead of one file per rule, and a rule shipped
  * later cannot join a level in silence.
  *
  * That is also what phase 2 cost: three rules arrived with the structural sheets
@@ -66,6 +66,11 @@ const sketch: ValidationProfile = {
     'uml.actor-inside-subject': 'audit',
     'uml.unnamed-classifier': 'audit',
     'uml.unnamed-actor-or-use-case': 'audit',
+    // The four SPELLING rules — the `label-syntax` family (ADR 0021).
+    'uml.attribute-syntax': 'audit',
+    'uml.operation-syntax': 'audit',
+    'uml.transition-syntax': 'audit',
+    'uml.multiplicity-syntax': 'audit',
     'uml.generalization-endpoints': 'audit',
     'uml.generalization-self-loop': 'audit',
     'uml.realization-endpoints': 'audit',
@@ -103,7 +108,7 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. TWENTY-ONE rules move to `warning`, and the test each one passes is
+ * handed. TWENTY-FIVE rules move to `warning`, and the test each one passes is
  * the test this library always applies: whether the diagram might honestly have
  * meant it.
  *
@@ -126,6 +131,14 @@ const sketch: ValidationProfile = {
  * preference at the level where somebody has said the sheet is finished: a class
  * with no name is a class nothing in the model can refer to, and the export
  * writes it as nothing at all.
+ *
+ * Four are the SPELLING rules (ADR 0021), and they are the only promotions in
+ * this table the EXPORTER corroborates. Each fires exactly when `grammar.ts`
+ * lost something the author wrote — a `:` with no type, an operation with no
+ * parameter list, a bound the file cannot hold — so the finding is also the
+ * warning that this line will leave the sheet less structured than it was drawn.
+ * "The file will not say what the picture says" is not a style preference at the
+ * level where somebody has called the diagram a deliverable.
  *
  * One is §11.5.3's arithmetic — two composites claiming one part is a drawing
  * that cannot be built — and one is the SHEET's own declaration: a frame whose
@@ -191,6 +204,17 @@ const strict: ValidationProfile = {
     // The two naming rules.
     'uml.unnamed-classifier': 'warning',
     'uml.unnamed-actor-or-use-case': 'warning',
+    // ...and the four SPELLING rules, which are the easiest promotions in the
+    // table and the only ones the EXPORTER can corroborate: each fires exactly
+    // when `grammar.ts` lost something the author wrote, so the finding is also
+    // the warning that this line will leave the sheet less structured than it
+    // was drawn. At the level where somebody has said the diagram is a
+    // deliverable, "the file will not say what the picture says" is not a style
+    // preference (ADR 0021).
+    'uml.attribute-syntax': 'warning',
+    'uml.operation-syntax': 'warning',
+    'uml.transition-syntax': 'warning',
+    'uml.multiplicity-syntax': 'warning',
     // §11.5.3's arithmetic, and the sheet's own declaration.
     'uml.composition-single-owner': 'warning',
     'uml.not-admissible-on-kind': 'warning',

@@ -1,5 +1,7 @@
 import {
+  type UmlAssociationEnd,
   formatActivityEdgeLabel,
+  formatEndLabel,
   formatTransitionLabel,
   parseCompartment,
 } from './grammar.js';
@@ -214,6 +216,30 @@ interface Declared {
 /* ── Relations ────────────────────────────────────────────────────────── */
 
 /**
+ * One end of an arrow, with whatever §11.5.4 wrote beside it — `A "0..* items"`.
+ *
+ * PlantUML's slot for an end adornment is a QUOTED STRING between the artefact
+ * and the arrow, on the side the adornment belongs to: `A "1" -- "0..*" B`. The
+ * quotes are the format's own delimiter, which is why the text goes through
+ * {@link toPlantumlLabel} first — it turns a `"` an author typed into a `'` and
+ * flattens newlines, so an end label can never close the string early and
+ * unbalance the line.
+ *
+ * Only the four relationships §11.5.4 governs reach this function with an end
+ * filled in ({@link ADORNED_RELATION_KINDS}); everything else passes `undefined`
+ * and prints as the bare alias it always did.
+ */
+function adorned(
+  alias: string,
+  end: UmlAssociationEnd | undefined,
+  leading: boolean
+): string {
+  const text = end ? toPlantumlLabel(formatEndLabel(end)) : '';
+  if (!text) return alias;
+  return leading ? `${alias} "${text}"` : `"${text}" ${alias}`;
+}
+
+/**
  * One relationship, as the arrow PlantUML draws it with.
  *
  * The two INHERITANCE arrows read right to left — `A <|-- B` is "B is an A" —
@@ -227,14 +253,20 @@ function relationLine(
   target: string
 ): string {
   const label = relation.label ? ` : ${toPlantumlLabel(relation.label)}` : '';
+  // §11.5.4's adornments, in PlantUML's own slot for them: a quoted string
+  // between an artefact and the arrow is the label of THAT end, which is the
+  // same identity `xmi.ts` writes with — what is drawn beside an end adorns the
+  // end at that classifier.
+  const from = adorned(source, relation.sourceEnd, true);
+  const to = adorned(target, relation.targetEnd, false);
   switch (relation.kind) {
     case 'association':
-      return `${source} -- ${target}${label}`;
+      return `${from} -- ${to}${label}`;
     case 'aggregation':
       // The diamond is drawn at the LEFT end, and the source is the whole.
-      return `${source} o-- ${target}${label}`;
+      return `${from} o-- ${to}${label}`;
     case 'composition':
-      return `${source} *-- ${target}${label}`;
+      return `${from} *-- ${to}${label}`;
     case 'generalization':
       return `${target} <|-- ${source}${label}`;
     case 'realization':
@@ -260,7 +292,7 @@ function relationLine(
     case 'communication-path':
       // §19.4.4: "depicted using the same as normal Association links", and an
       // association is undirected, so the line carries no head either way.
-      return `${source} -- ${target}${label}`;
+      return `${from} -- ${to}${label}`;
     case 'control-flow':
     case 'object-flow':
     case 'transition':

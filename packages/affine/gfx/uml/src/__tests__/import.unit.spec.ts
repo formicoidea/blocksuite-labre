@@ -329,6 +329,63 @@ describe('a materialized relationship', () => {
       )
     ).toHaveLength(2);
   });
+
+  it('writes the two end labels, each with a box near its own endpoint', () => {
+    // ADR 0020: the end labels are connector FIELDS, so the materializer writes
+    // them like the centre one — a plain string that `propsToY` turns into a
+    // `Y.Text`, and a box the renderer paints at.
+    const model = threeClasses();
+    model.relations = [
+      {
+        ...relation('association', 'Order', 'Line'),
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'lines',
+          raw: '0..* lines',
+        },
+      },
+    ];
+    const imported = materialize(model).elements;
+    const [connector] = imported.filter(
+      element => element['type'] === 'connector'
+    );
+    expect(connector['sourceLabel']).toBe('1');
+    expect(connector['targetLabel']).toBe('0..* lines');
+
+    const source = connector['sourceLabelXYWH'] as number[];
+    const target = connector['targetLabelXYWH'] as number[];
+    expect(source).toHaveLength(4);
+    expect(source.every(each => Number.isFinite(each))).toBe(true);
+    // Each box sits by its OWN end: the source's is nearer the source shape.
+    const boxOf = (sourceId: string) =>
+      Bound.deserialize(
+        imported.find(
+          element =>
+            (element['interchange'] as { plantuml: { id: string } } | undefined)
+              ?.plantuml.id === sourceId && element['type'] === 'umlNode'
+        )!['xywh'] as string
+      );
+    const order = boxOf('Order').center;
+    const line = boxOf('Line').center;
+    const near = (box: number[], point: number[]) =>
+      Math.hypot(
+        box[0] + box[2] / 2 - point[0],
+        box[1] + box[3] / 2 - point[1]
+      );
+    expect(near(source, order)).toBeLessThan(near(source, line));
+    expect(near(target, line)).toBeLessThan(near(target, order));
+  });
+
+  it('writes neither field on a connector with no end labels', () => {
+    const [connector] = materialize(threeClasses()).elements.filter(
+      element => element['type'] === 'connector'
+    );
+    expect(connector['sourceLabel']).toBeUndefined();
+    expect(connector['sourceLabelXYWH']).toBeUndefined();
+    expect(connector['targetLabel']).toBeUndefined();
+    expect(connector['targetLabelXYWH']).toBeUndefined();
+  });
 });
 
 /* ── The invented layout (D4) ─────────────────────────────────────────── */

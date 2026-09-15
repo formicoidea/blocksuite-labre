@@ -14,15 +14,25 @@ import {
 } from '@labre/affine-gfx-text';
 import {
   type ConnectorElementModel,
+  type ConnectorLabelConstraintsProps,
   ConnectorMode,
   DefaultTheme,
   type LocalConnectorElementModel,
   type PointStyle,
+  type TextStyleProps,
 } from '@labre/affine-model';
-import { getBezierParameters, type PointLocation } from '@labre/global/gfx';
+import {
+  getBezierParameters,
+  type PointLocation,
+  type XYWH,
+} from '@labre/global/gfx';
 import { deltaInsertsToChunks } from '@labre/std/inline';
+import type * as Y from 'yjs';
 
-import { isConnectorWithLabel } from '../connector-manager.js';
+import {
+  isConnectorWithEndLabel,
+  isConnectorWithLabel,
+} from '../connector-manager.js';
 import {
   DEFAULT_ARROW_SIZE,
   getArrowOptions,
@@ -32,6 +42,53 @@ import {
   renderDiamond,
   renderTriangle,
 } from './utils.js';
+
+/**
+ * One painted caption: the centre label, or either end label.
+ *
+ * The renderer does not care which it is holding — a label is a text, a box,
+ * a style and a width constraint, and the three boxes on a connector differ
+ * only in where they sit. End labels deliberately reuse the connector's
+ * `labelStyle`: one font, one colour, one size per connector, so no new
+ * persisted style fields (ADR 0020).
+ */
+type PaintedLabel = {
+  text: Y.Text;
+  xywh: XYWH;
+  style: TextStyleProps;
+  constraints: ConnectorLabelConstraintsProps;
+};
+
+/** The captions this connector paints, in the order they are drawn. */
+function paintedLabels(
+  model: ConnectorElementModel | LocalConnectorElementModel
+): PaintedLabel[] {
+  const labels: PaintedLabel[] = [];
+
+  if (isConnectorWithLabel(model)) {
+    const { text, labelXYWH, labelStyle, labelConstraints } =
+      model as ConnectorElementModel;
+    labels.push({
+      text: text!,
+      xywh: labelXYWH!,
+      style: labelStyle,
+      constraints: labelConstraints,
+    });
+  }
+
+  for (const end of ['source', 'target'] as const) {
+    if (!isConnectorWithEndLabel(model, end)) continue;
+    const connectorModel = model as ConnectorElementModel;
+    labels.push({
+      text: connectorModel.endLabelText(end)!,
+      xywh: connectorModel.endLabelXYWH(end)!,
+      style: connectorModel.labelStyle,
+      constraints: connectorModel.labelConstraints,
+    });
+  }
+
+  return labels;
+}
 
 export const connector: ElementRenderer<
   ConnectorElementModel | LocalConnectorElementModel
@@ -53,24 +110,31 @@ export const connector: ElementRenderer<
 
   ctx.setTransform(matrix);
 
-  const hasLabel = isConnectorWithLabel(model);
-  let dx = 0;
-  let dy = 0;
+  const labels = paintedLabels(model);
+  // Each label's box, expressed relative to the element's own origin — the
+  // frame both the clip rects and the per-label transforms are written in.
+  let offsets: Array<[number, number]> = [];
 
-  if (hasLabel) {
+  if (labels.length) {
     ctx.save();
 
-    const { deserializedXYWH, labelXYWH } = model as ConnectorElementModel;
+    const { deserializedXYWH } = model as ConnectorElementModel;
     const [x, y, w, h] = deserializedXYWH;
-    const [lx, ly, lw, lh] = labelXYWH!;
     const offset = DEFAULT_ARROW_SIZE * strokeWidth;
 
-    dx = lx - x;
-    dy = ly - y;
+    offsets = labels.map(label => [label.xywh[0] - x, label.xywh[1] - y]);
 
+    // One subtracted rect PER label: `evenodd` over the element rect and the
+    // caption rects leaves the stroke everywhere except under a caption, so a
+    // multiplicity beside an end punches the line exactly as the centre name
+    // always has.
     const path = new Path2D();
     path.rect(-offset / 2, -offset / 2, w + offset, h + offset);
-    path.rect(dx - 3 - 0.5, dy - 3 - 0.5, lw + 6 + 1, lh + 6 + 1);
+    labels.forEach((label, index) => {
+      const [dx, dy] = offsets[index];
+      const [, , lw, lh] = label.xywh;
+      path.rect(dx - 3 - 0.5, dy - 3 - 0.5, lw + 6 + 1, lh + 6 + 1);
+    });
     ctx.clip(path, 'evenodd');
   }
 
@@ -108,15 +172,13 @@ export const connector: ElementRenderer<
     strokeColor
   );
 
-  if (hasLabel) {
+  if (labels.length) {
     ctx.restore();
 
-    renderLabel(
-      model as ConnectorElementModel,
-      ctx,
-      matrix.translate(dx, dy),
-      renderer
-    );
+    labels.forEach((label, index) => {
+      const [dx, dy] = offsets[index];
+      renderLabel(label, ctx, matrix.translate(dx, dy), renderer);
+    });
   }
 };
 
@@ -238,32 +300,32 @@ function renderEndpoint(
   }
 }
 
+/**
+ * Paints ONE caption at the origin of `matrix`.
+ *
+ * Takes a label rather than the connector: the centre name and the two end
+ * labels are the same drawing, and the only thing that told them apart was
+ * which pair of fields the function reached into.
+ */
 function renderLabel(
-  model: ConnectorElementModel,
+  label: PaintedLabel,
   ctx: CanvasRenderingContext2D,
   matrix: DOMMatrix,
   renderer: CanvasRenderer
 ) {
   const {
     text,
-    labelXYWH,
-    labelStyle: {
-      color,
-      fontSize,
-      fontWeight,
-      fontStyle,
-      fontFamily,
-      textAlign,
-    },
-    labelConstraints: { hasMaxWidth, maxWidth },
-  } = model;
+    xywh,
+    style: { color, fontSize, fontWeight, fontStyle, fontFamily, textAlign },
+    constraints: { hasMaxWidth, maxWidth },
+  } = label;
   const font = getFontString({
     fontStyle,
     fontWeight,
     fontSize,
     fontFamily,
   });
-  const [, , w, h] = labelXYWH!;
+  const [, , w, h] = xywh;
   const cx = w / 2;
   const cy = h / 2;
 
@@ -275,7 +337,7 @@ function renderLabel(
     return; // Skip actual label rendering
   }
 
-  const deltas = wrapTextDeltas(text!, font, w);
+  const deltas = wrapTextDeltas(text, font, w);
   const lines = deltaInsertsToChunks(deltas);
   const lineHeight = getLineHeight(fontFamily, fontSize, fontWeight);
   const textHeight = (lines.length - 1) * lineHeight * 0.5;
