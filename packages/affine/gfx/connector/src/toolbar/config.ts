@@ -19,6 +19,8 @@ import {
   StrokeStyle,
 } from '@labre/affine-model';
 import {
+  CONNECTOR_SOURCE_LABEL,
+  CONNECTOR_TARGET_LABEL,
   type ToolbarContext,
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
@@ -464,6 +466,42 @@ export const connectorToolbarConfig = {
         mountConnectorLabelEditor(model, rootBlock);
       },
     },
+    /**
+     * The two END labels (`docs/adr/0018` phase 2).
+     *
+     * After the caption and its style controls, because that is the order the
+     * notation itself has: an association is named in the middle and adorned at
+     * its ends. Each entry appears only while its own end is bare — an end
+     * label that exists is edited by double-clicking it, exactly as the caption
+     * is, and `g.text` has always hidden itself on the same rule.
+     *
+     * Wordings, not literals: the row is a host's UI, and a hard-coded "Source
+     * label" is the one word a translated editor cannot translate (#183).
+     */
+    ...(['source', 'target'] as const).map<ToolbarGenericAction>(end => ({
+      id: end === 'source' ? 'h.source-label' : 'h.target-label',
+      tooltipWording:
+        end === 'source' ? CONNECTOR_SOURCE_LABEL : CONNECTOR_TARGET_LABEL,
+      labelWording:
+        end === 'source' ? CONNECTOR_SOURCE_LABEL : CONNECTOR_TARGET_LABEL,
+      icon: AddTextIcon(),
+      when(ctx: ToolbarContext) {
+        const models = ctx.getSurfaceModelsByType(ConnectorElementModel);
+        if (models.length !== 1) return false;
+        return end === 'source'
+          ? !models[0].sourceLabel
+          : !models[0].targetLabel;
+      },
+      run(ctx: ToolbarContext) {
+        const model = ctx.getCurrentModelByType(ConnectorElementModel);
+        if (!model) return;
+
+        const rootBlock = getRootBlock(ctx);
+        if (!rootBlock) return;
+
+        mountConnectorLabelEditor(model, rootBlock, undefined, { which: end });
+      },
+    })),
     // id: `g.text`
     ...createTextActions(
       ConnectorElementModel,

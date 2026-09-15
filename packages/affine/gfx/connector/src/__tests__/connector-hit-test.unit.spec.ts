@@ -23,8 +23,12 @@ function degraded(mode: ConnectorMode): ConnectorElementModel {
     w: 100,
     h: 50,
     strokeWidth: 4,
+    // Every label predicate `includesPoint` consults — the centre caption and
+    // the two end labels of ADR 0020. A degraded connector has none of them.
     hasLabel: () => false,
     labelIncludesPoint: () => false,
+    sourceLabelIncludesPoint: () => false,
+    targetLabelIncludesPoint: () => false,
   } as unknown as ConnectorElementModel;
 }
 

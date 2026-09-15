@@ -3,12 +3,16 @@ import {
   EdgelessCRUDIdentifier,
 } from '@labre/affine-block-surface';
 import { getLineHeight } from '@labre/affine-gfx-text';
-import type { ConnectorElementModel } from '@labre/affine-model';
+import {
+  type ConnectorElementModel,
+  connectorEndLabelBox,
+  type ConnectorLabelEnd,
+} from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
 import { ThemeProvider } from '@labre/affine-shared/services';
 import { almostEqual } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
-import { Bound, type IVec, Vec } from '@labre/global/gfx';
+import { Bound, type IVec, Vec, type XYWH } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
 import {
   type BlockComponent,
@@ -28,10 +32,177 @@ const HORIZONTAL_PADDING = 2;
 const VERTICAL_PADDING = 2;
 const BORDER_WIDTH = 1;
 
+/** The box a label is seeded with, before the first character is typed. */
+const DEFAULT_LABEL_SIZE = { w: 16, h: 16 };
+
+/**
+ * Which of a connector's three labels a gesture is about — its centre caption,
+ * or one of the two end labels UML writes multiplicities and role names in
+ * (`docs/adr/0018` phase 2).
+ *
+ * Built on the model's own `ConnectorLabelEnd` rather than restating its two
+ * members: the ends are the model's vocabulary — they are the names of its two
+ * `Connection`s — and only the EDITOR has a third case, because only the editor
+ * has to be pointed at one label out of three.
+ */
+export type ConnectorLabelWhich = 'center' | ConnectorLabelEnd;
+
+/**
+ * The model fields each label lives in.
+ *
+ * Declared once, as data, because THREE places need the same answer — the
+ * editor's read, its resize write and its empty-commit delete — and three
+ * `which === 'center' ? … : …` chains is how one of them ends up writing the
+ * centre label's box under an end label's text.
+ */
+export const CONNECTOR_LABEL_FIELDS = {
+  center: { text: 'text', xywh: 'labelXYWH' },
+  source: { text: 'sourceLabel', xywh: 'sourceLabelXYWH' },
+  target: { text: 'targetLabel', xywh: 'targetLabelXYWH' },
+} as const satisfies Record<
+  ConnectorLabelWhich,
+  { text: string; xywh: string }
+>;
+
+/** {@link CONNECTOR_LABEL_FIELDS}, defaulting to the centre label. */
+export function connectorLabelFields(which: ConnectorLabelWhich = 'center') {
+  return CONNECTOR_LABEL_FIELDS[which];
+}
+
+/** The `Y.Text` of `which`, or `undefined` when that label does not exist. */
+export function connectorLabelText(
+  connector: ConnectorElementModel,
+  which: ConnectorLabelWhich = 'center'
+): Y.Text | undefined {
+  return which === 'center' ? connector.text : connector.endLabelText(which);
+}
+
+/** The box of `which`, or `undefined` when that label does not exist. */
+export function connectorLabelXYWH(
+  connector: ConnectorElementModel,
+  which: ConnectorLabelWhich = 'center'
+): XYWH | undefined {
+  return which === 'center'
+    ? connector.labelXYWH
+    : connector.endLabelXYWH(which);
+}
+
+/**
+ * The box an end label of `size` takes on the current path — the one geometry
+ * helper the model owns, so the renderer, the editor and the hit test all place
+ * an end label in the same spot.
+ */
+export function connectorEndLabelBoxFor(
+  connector: ConnectorElementModel,
+  which: ConnectorLabelEnd,
+  size: { w: number; h: number } = DEFAULT_LABEL_SIZE
+): XYWH {
+  return connectorEndLabelBox(connector.absolutePath, which, size);
+}
+
+/**
+ * What to write so that `which` EXISTS, or `null` when it already does.
+ *
+ * The centre label is seeded where the pointer is, riding the path by an offset
+ * distance — it has always been a caption the author places. An end label is
+ * seeded at its ENDPOINT and ignores the pointer: the whole value of one is
+ * that it follows the end when the node moves (`docs/adr/0018`, "Alternatives
+ * rejected"), so where the double-click landed says nothing about where it
+ * belongs.
+ */
+export function connectorLabelSeedProps(
+  connector: ConnectorElementModel,
+  which: ConnectorLabelWhich = 'center',
+  point?: IVec
+): Record<string, unknown> | null {
+  if (connectorLabelText(connector, which)) return null;
+
+  const fields = connectorLabelFields(which);
+  const text = new Y.Text();
+
+  if (which !== 'center') {
+    return {
+      [fields.text]: text,
+      [fields.xywh]: connectorEndLabelBoxFor(connector, which),
+    };
+  }
+
+  let labelXYWH: XYWH = connector.labelXYWH ?? [
+    0,
+    0,
+    DEFAULT_LABEL_SIZE.w,
+    DEFAULT_LABEL_SIZE.h,
+  ];
+  const labelOffset = { ...connector.labelOffset };
+
+  if (point) {
+    const center = connector.getNearestPoint(point);
+    const distance = connector.getOffsetDistanceByPoint(center as IVec);
+    const bounds = Bound.fromXYWH(labelXYWH);
+    bounds.center = center;
+    labelOffset.distance = distance;
+    labelXYWH = bounds.toXYWH();
+  }
+
+  return { text, labelXYWH, labelOffset };
+}
+
+/**
+ * What to write when an editing session ENDS, or `null` when the text is
+ * already exactly what the model holds.
+ *
+ * A label committed empty leaves no trace: both of its fields go, so an end
+ * label typed and erased is byte-identical to a connector that never carried
+ * one — which is what keeps `docs/adr/0018`'s "no migration, no stored change"
+ * promise true in both directions.
+ *
+ * Pure and exported: it is the one rule with three outcomes (delete, trim,
+ * nothing) times three labels, and a spec should be able to ask it directly.
+ */
+export function connectorLabelCommitProps(
+  raw: string,
+  which: ConnectorLabelWhich = 'center'
+): Record<string, unknown> | null {
+  const fields = connectorLabelFields(which);
+  const trimed = raw.trim();
+
+  if (trimed.length === 0) {
+    return {
+      [fields.text]: undefined,
+      [fields.xywh]: undefined,
+      // The centre label's placement along the path goes with it; an end label
+      // has no offset of its own — its place is its endpoint.
+      ...(which === 'center' ? { labelOffset: undefined } : null),
+    };
+  }
+
+  if (trimed.length < raw.length) {
+    // @TODO: trim in Y.Text?
+    return { [fields.text]: new Y.Text(trimed) };
+  }
+
+  return null;
+}
+
+export type MountConnectorLabelEditorOptions = {
+  /** Which label to edit. Defaults to the centre one. */
+  which?: ConnectorLabelWhich;
+};
+
+/**
+ * Opens the label editor on ONE of a connector's three labels.
+ *
+ * This function used to exist twice — here and byte-alike in `text.ts`, which
+ * was the copy the package barrel re-exported — so the toolbar and the keyboard
+ * reached one body and the view's double-click the other. `docs/adr/0018`
+ * phase 2 makes the difference visible (a selector only one copy would have
+ * carried), so the duplicate is gone and `text.ts` re-exports this one.
+ */
 export function mountConnectorLabelEditor(
   connector: ConnectorElementModel,
   edgeless: BlockComponent,
-  point?: IVec
+  point?: IVec,
+  options?: MountConnectorLabelEditorOptions
 ) {
   const mountElm = edgeless.querySelector('.edgeless-mount-point');
   if (!mountElm) {
@@ -41,6 +212,7 @@ export function mountConnectorLabelEditor(
     );
   }
 
+  const which = options?.which ?? 'center';
   const gfx = edgeless.std.get(GfxControllerIdentifier);
 
   gfx.tool.setTool(DefaultTool);
@@ -49,29 +221,14 @@ export function mountConnectorLabelEditor(
     editing: true,
   });
 
-  if (!connector.text) {
-    const text = new Y.Text();
-    const labelOffset = connector.labelOffset;
-    let labelXYWH = connector.labelXYWH ?? [0, 0, 16, 16];
-
-    if (point) {
-      const center = connector.getNearestPoint(point);
-      const distance = connector.getOffsetDistanceByPoint(center as IVec);
-      const bounds = Bound.fromXYWH(labelXYWH);
-      bounds.center = center;
-      labelOffset.distance = distance;
-      labelXYWH = bounds.toXYWH();
-    }
-
-    edgeless.std.get(EdgelessCRUDIdentifier).updateElement(connector.id, {
-      text,
-      labelXYWH,
-      labelOffset: { ...labelOffset },
-    });
+  const seed = connectorLabelSeedProps(connector, which, point);
+  if (seed) {
+    edgeless.std.get(EdgelessCRUDIdentifier).updateElement(connector.id, seed);
   }
 
   const editor = new EdgelessConnectorLabelEditor();
   editor.connector = connector;
+  editor.which = which;
 
   mountElm.append(editor);
   editor.updateComplete
@@ -129,32 +286,67 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
     return this.gfx.selection;
   }
 
+  /** The two model fields this editor reads and writes. */
+  get fields() {
+    return connectorLabelFields(this.which);
+  }
+
+  /** The `Y.Text` this editor is bound to. */
+  get yText() {
+    return connectorLabelText(this.connector, this.which);
+  }
+
   private _isComposition = false;
 
   private _keeping = false;
 
   private _resizeObserver: ResizeObserver | null = null;
 
+  /**
+   * Where the editor sits, in MODEL coordinates.
+   *
+   * The centre label rides the path by its offset distance, so its anchor is
+   * recomputed from the connector; an end label's box is the anchor, and it is
+   * the box that follows the endpoint (see `connectorEndLabelBox`).
+   */
+  private get _labelCenter(): IVec {
+    const { connector, which } = this;
+    if (which === 'center') {
+      return connector.getPointByOffsetDistance(connector.labelOffset.distance);
+    }
+
+    const box =
+      connectorLabelXYWH(connector, which) ??
+      connectorEndLabelBoxFor(connector, which);
+    return Bound.fromXYWH(box).center;
+  }
+
   private readonly _updateLabelRect = () => {
-    const { connector, isConnected } = this;
+    const { connector, isConnected, which } = this;
     if (!connector || !isConnected) return;
 
     if (!this.inlineEditorContainer) return;
 
     const newWidth = this.inlineEditorContainer.scrollWidth;
     const newHeight = this.inlineEditorContainer.scrollHeight;
-    const center = connector.getPointByOffsetDistance(
-      connector.labelOffset.distance
-    );
-    const bounds = Bound.fromCenter(center, newWidth, newHeight);
-    const labelXYWH = bounds.toXYWH();
 
-    if (
-      !connector.labelXYWH ||
-      labelXYWH.some((p, i) => !almostEqual(p, connector.labelXYWH![i]))
-    ) {
+    const labelXYWH =
+      which === 'center'
+        ? Bound.fromCenter(
+            connector.getPointByOffsetDistance(connector.labelOffset.distance),
+            newWidth,
+            newHeight
+          ).toXYWH()
+        : connectorEndLabelBoxFor(connector, which, {
+            w: newWidth,
+            h: newHeight,
+          });
+
+    const current = connectorLabelXYWH(connector, which);
+
+    if (!current || labelXYWH.some((p, i) => !almostEqual(p, current[i]))) {
       this.crud.updateElement(connector.id, {
-        labelXYWH,
+        [this.fields.xywh]: labelXYWH,
       });
     }
   };
@@ -179,7 +371,8 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
   }
 
   override firstUpdated() {
-    const { connector, selection, std } = this;
+    const { connector, selection, std, which } = this;
+    const fields = this.fields;
     const dispatcher = std.event;
 
     this._resizeObserver = new ResizeObserver(() => {
@@ -188,7 +381,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
     });
     this._resizeObserver.observe(this.richText);
 
-    this.connector.stash('labelXYWH');
+    this.connector.stash(fields.xywh);
 
     this.updateComplete
       .then(() => {
@@ -240,27 +433,18 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
         this.disposables.add(dispatcher.add('doubleClick', () => true));
 
         this.disposables.add(() => {
-          if (connector.text) {
-            const text = connector.text.toString();
-            const trimed = text.trim();
-            const len = trimed.length;
-            if (len === 0) {
-              // reset
-              this.crud.updateElement(connector.id, {
-                text: undefined,
-                labelXYWH: undefined,
-                labelOffset: undefined,
-              });
-            } else if (len < text.length) {
-              this.crud.updateElement(connector.id, {
-                // @TODO: trim in Y.Text?
-                text: new Y.Text(trimed),
-              });
-            }
+          const yText = connectorLabelText(connector, which);
+          if (yText) {
+            const props = connectorLabelCommitProps(yText.toString(), which);
+            if (props) this.crud.updateElement(connector.id, props);
           }
 
-          connector.labelEditing = false;
-          connector.pop('labelXYWH');
+          if (which === 'center') {
+            connector.labelEditing = false;
+          } else {
+            connector.endLabelEditing = null;
+          }
+          connector.pop(fields.xywh);
 
           selection.set({
             elements: [],
@@ -296,7 +480,15 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
           }
         );
 
-        connector.labelEditing = true;
+        // The canvas must not paint the label the overlay is showing, and only
+        // THAT one: `hasEndLabel` is gated on `endLabelEditing`, `hasLabel()`
+        // on `labelEditing`, so editing one end leaves the caption and the
+        // other end drawn (`ConnectorElementModel.hasEndLabel`).
+        if (which === 'center') {
+          connector.labelEditing = true;
+        } else {
+          connector.endLabelEditing = which;
+        }
       })
       .catch(console.error);
   }
@@ -310,7 +502,6 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
   override render() {
     const { connector } = this;
     const {
-      labelOffset: { distance },
       labelStyle: {
         fontFamily,
         fontSize,
@@ -324,7 +515,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
 
     const lineHeight = getLineHeight(fontFamily, fontSize, fontWeight);
     const { translateX, translateY, zoom } = this.gfx.viewport;
-    const [x, y] = Vec.mul(connector.getPointByOffsetDistance(distance), zoom);
+    const [x, y] = Vec.mul(this._labelCenter, zoom);
     const transformOperation = [
       'translate(-50%, -50%)',
       `translate(${translateX}px, ${translateY}px)`,
@@ -332,7 +523,8 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
       `scale(${zoom})`,
     ];
 
-    const isEmpty = !connector.text?.length && !this._isComposition;
+    const yText = this.yText;
+    const isEmpty = !yText?.length && !this._isComposition;
     const color = this.std
       .get(ThemeProvider)
       .generateColorProperty(labelColor, '#000000');
@@ -355,7 +547,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
         })}
       >
         <rich-text
-          .yText=${connector.text}
+          .yText=${yText}
           .enableFormat=${false}
           style=${isEmpty
             ? styleMap({
@@ -383,6 +575,10 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
 
   @property({ attribute: false })
   accessor connector!: ConnectorElementModel;
+
+  /** Which of the connector's three labels is being edited. */
+  @property({ attribute: false })
+  accessor which: ConnectorLabelWhich = 'center';
 
   @consume({
     context: stdContext,

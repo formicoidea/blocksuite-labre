@@ -1,6 +1,6 @@
 # ADR 0018 — Per-end connector labels are deferred; phase 1 uses free text
 
-- Status: **accepted** (September 2026)
+- Status: **superseded by [0020](0020-connector-end-labels.md)** (September 2026)
 - Deciders: Mathieu Jolly
 - Milestone: UML 2.5.1, tranche D
 - Related ADRs:
@@ -10,6 +10,12 @@
   for, and the precedent for widening a shared element),
   [0017](0017-uml-one-framework-with-diagram-kinds.md) §6, which forwards this
   question here.
+
+> **Superseded.** Phase 2 shipped in tranche H:
+> [ADR 0020](0020-connector-end-labels.md) executes the plan below, with one
+> correction — four FLAT fields rather than two nested records, because a
+> nested `Y.Text` would not be observed. Read this file for the argument; read
+> 0020 for what the connector actually carries.
 
 ## Context
 
