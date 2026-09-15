@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkEndLabelMultiplicity,
+  checkMultiplicity,
+  checkOperationLine,
+  checkPropertyLine,
+  checkTransitionLabel,
+  formatEndLabel,
+  formatMultiplicity,
   parseActivityEdge,
   parseCompartment,
+  parseEndLabel,
   parseGuard,
   parseMultiplicity,
   parseOperation,
@@ -459,5 +467,305 @@ describe('a state’s internal activities', () => {
 
   it('reports a label with nothing after it as a line half typed', () => {
     expect(parseStateBehavior('entry')).toEqual({ kind: 'entry' });
+  });
+});
+
+describe('an association end’s adornments (§11.5.4)', () => {
+  it('reads a multiplicity and the role after it', () => {
+    expect(parseEndLabel('0..* items')).toEqual({
+      multiplicity: { lower: 0, upper: '*' },
+      role: 'items',
+      raw: '0..* items',
+    });
+  });
+
+  it('reads a bare multiplicity, in every spelling §7.5.4 allows', () => {
+    expect(parseEndLabel('1')).toEqual({
+      multiplicity: { lower: 1, upper: 1 },
+      raw: '1',
+    });
+    expect(parseEndLabel('*')).toEqual({
+      multiplicity: { lower: 0, upper: '*' },
+      raw: '*',
+    });
+    // §9.5.4 brackets the same range that §11.5.4 writes bare; both parse.
+    expect(parseEndLabel('[0..1]')).toEqual({
+      multiplicity: { lower: 0, upper: 1 },
+      raw: '[0..1]',
+    });
+  });
+
+  it('reads the visibility glyph on either side of the range', () => {
+    expect(parseEndLabel('- owner')).toEqual({
+      role: 'owner',
+      visibility: 'private',
+      raw: '- owner',
+    });
+    expect(parseEndLabel('+ 0..1 a')).toEqual({
+      multiplicity: { lower: 0, upper: 1 },
+      role: 'a',
+      visibility: 'public',
+      raw: '+ 0..1 a',
+    });
+    // No space needed: `#1 b` is the spelling a property line would use.
+    expect(parseEndLabel('#1 b')).toEqual({
+      multiplicity: { lower: 1, upper: 1 },
+      role: 'b',
+      visibility: 'protected',
+      raw: '#1 b',
+    });
+  });
+
+  it('leaves a leading token that is not a range in the role', () => {
+    // Only the CLOSED grammar of §7.5.4 is taken as a multiplicity; a word is
+    // a name, whatever it starts with.
+    expect(parseEndLabel('1st choice')).toEqual({
+      role: '1st choice',
+      raw: '1st choice',
+    });
+    // A symbolic bound is legal UML and has no integer this module may invent
+    // (see `parseMultiplicity`), so it survives as the end's own words.
+    expect(parseEndLabel('1..n')).toEqual({ role: '1..n', raw: '1..n' });
+  });
+
+  it('never throws, and never loses what was typed', () => {
+    expect(parseEndLabel('')).toEqual({ raw: '' });
+    expect(parseEndLabel(undefined)).toEqual({ raw: '' });
+    expect(parseEndLabel(null)).toEqual({ raw: '' });
+    expect(parseEndLabel('  {ordered}  ')).toEqual({
+      role: '{ordered}',
+      raw: '{ordered}',
+    });
+  });
+
+  it('prints back in the clause’s own order', () => {
+    expect(
+      formatEndLabel({
+        multiplicity: { lower: 0, upper: '*' },
+        role: 'items',
+        raw: 'whatever',
+      })
+    ).toBe('0..* items');
+    expect(
+      formatEndLabel({ role: 'owner', visibility: 'private', raw: '' })
+    ).toBe('-owner');
+  });
+
+  it('prints the raw text for a label it read nothing structural out of', () => {
+    expect(formatEndLabel({ raw: '{ordered, subsets b}' })).toBe(
+      '{ordered, subsets b}'
+    );
+  });
+
+  it('round-trips every range a diagram spells in full', () => {
+    for (const raw of ['1', '0..1', '2..7', '1..*', '0..*']) {
+      expect(formatMultiplicity(parseMultiplicity(raw)!)).toBe(raw);
+    }
+    // §7.5.4's other abbreviation is READ and not written back: `*` is the
+    // spelling that reads as unfinished beside a line.
+    expect(formatMultiplicity(parseMultiplicity('*')!)).toBe('0..*');
+  });
+
+  it('is the exact inverse of itself for a label in the clause’s order', () => {
+    for (const raw of ['1', '0..* items', '-owner', '0..1 +a']) {
+      expect(formatEndLabel(parseEndLabel(raw))).toBe(raw);
+    }
+    // A marker written IN FRONT of the range is read and then printed where
+    // §11.5.4 puts it, which is beside the name. Same record, one spelling.
+    expect(formatEndLabel(parseEndLabel('+ 0..1 a'))).toBe('0..1 +a');
+  });
+});
+
+/**
+ * The STRICT half — the same grammars asked a yes/no question, and the verdict
+ * the four `label-syntax` rules actually carry (ADR 0021).
+ *
+ * One contract holds the whole suite: a line is `ok: false` when the LENIENT
+ * parse lost something the author wrote, and never merely because it is terse.
+ * §9.5.4 makes everything but the name optional, so `balance` alone is a
+ * conformant Property and the checker has to say so — a checker stricter than
+ * its clause would hand `provenance: 'standard'` a claim UML does not make.
+ *
+ * Every case below is therefore paired: the parser's own answer is asserted
+ * beside the verdict wherever the two could drift apart.
+ */
+describe('checkPropertyLine (§9.5.4, strict)', () => {
+  it('accepts every optional part being absent', () => {
+    // The contract, stated as a test: terse is not wrong.
+    expect(checkPropertyLine('balance')).toEqual({ ok: true });
+    expect(checkPropertyLine('balance : Money')).toEqual({ ok: true });
+    expect(checkPropertyLine('- /total : Money [0..*] = 0 {readOnly}')).toEqual(
+      {
+        ok: true,
+      }
+    );
+    // A name with a space in it is legal UML, and the parser says so.
+    expect(checkPropertyLine('order date : Date')).toEqual({ ok: true });
+    // A default holding parentheses is not an operation.
+    expect(checkPropertyLine('origin : Point = Point(0, 0)')).toEqual({
+      ok: true,
+    });
+  });
+
+  it('reports a line the parser had to DROP something from', () => {
+    expect(checkPropertyLine('balance :').ok).toBe(false);
+    expect(checkPropertyLine('balance =').ok).toBe(false);
+    expect(checkPropertyLine('balance {}').ok).toBe(false);
+    // ...and the lenient parse really did drop it, which is the point.
+    expect(parseProperty('balance :').type).toBeUndefined();
+    expect(parseProperty('balance =').defaultValue).toBeUndefined();
+  });
+
+  it('reports a [ ] group that is not a multiplicity range', () => {
+    expect(checkPropertyLine('orders [n]').ok).toBe(false);
+    expect(checkPropertyLine('orders [0..*]')).toEqual({ ok: true });
+    // The parser drops it from the name either way — see `parseProperty`.
+    expect(parseProperty('orders [n]').multiplicity).toBeUndefined();
+  });
+
+  it('reports an operation typed into the attribute compartment', () => {
+    const verdict = checkPropertyLine('+ place(order : Order)');
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain('operation');
+  });
+
+  it('reports an unclosed bracket before anything else', () => {
+    expect(checkPropertyLine('orders [0..*').ok).toBe(false);
+    expect(checkPropertyLine('balance {readOnly').ok).toBe(false);
+  });
+
+  it('reports a line with no name at all', () => {
+    expect(checkPropertyLine('+ : Money').ok).toBe(false);
+    expect(checkPropertyLine(': Money').ok).toBe(false);
+  });
+
+  it('is total, and says nothing about an empty line', () => {
+    expect(checkPropertyLine('')).toEqual({ ok: true });
+    expect(checkPropertyLine('   ')).toEqual({ ok: true });
+  });
+});
+
+describe('checkOperationLine (§9.6.4, strict)', () => {
+  it('accepts the clause’s own productions', () => {
+    expect(checkOperationLine('place()')).toEqual({ ok: true });
+    expect(checkOperationLine('+ place(order : Order) : Receipt')).toEqual({
+      ok: true,
+    });
+    expect(
+      checkOperationLine('# find(in id : Id) : Order [0..1] {query}')
+    ).toEqual({ ok: true });
+    // A default holding a comma and parentheses does not cut the list.
+    expect(checkOperationLine('at(p : Point = Point(0, 0))')).toEqual({
+      ok: true,
+    });
+  });
+
+  it('reports the FALL-BACK the parser documents: no parameter list', () => {
+    const verdict = checkOperationLine('place');
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain('( )');
+    // The lenient parse kept the whole line as a name, which is exactly the
+    // degradation this rule exists to report.
+    expect(parseOperation('place')).toEqual({
+      name: 'place',
+      parameters: [],
+      modifiers: [],
+    });
+  });
+
+  it('reports an unclosed parenthesis', () => {
+    expect(checkOperationLine('place(order : Order').ok).toBe(false);
+  });
+
+  it('reports text after the ) that is neither a return nor a group', () => {
+    expect(checkOperationLine('place() Receipt').ok).toBe(false);
+    // ...and the parser drops it, so the file would lose the word.
+    expect(parseOperation('place() Receipt').returnType).toBeUndefined();
+  });
+
+  it('reports an empty return type and an unreadable return multiplicity', () => {
+    expect(checkOperationLine('place() :').ok).toBe(false);
+    expect(checkOperationLine('place() : Receipt [n]').ok).toBe(false);
+  });
+
+  it('reports a parameter the parser could not read', () => {
+    expect(checkOperationLine('place(order :)').ok).toBe(false);
+    expect(checkOperationLine('place(: Order)').ok).toBe(false);
+  });
+
+  it('reports an operation with no name', () => {
+    expect(checkOperationLine('+ (order : Order)').ok).toBe(false);
+  });
+});
+
+describe('checkTransitionLabel (§14.2.4.8, strict)', () => {
+  it('accepts an EMPTY label — a completion transition', () => {
+    expect(checkTransitionLabel('')).toEqual({ ok: true });
+    expect(checkTransitionLabel(undefined)).toEqual({ ok: true });
+    expect(checkTransitionLabel(null)).toEqual({ ok: true });
+  });
+
+  it('accepts the three parts, together and apart', () => {
+    expect(checkTransitionLabel('submit')).toEqual({ ok: true });
+    expect(checkTransitionLabel('[ready]')).toEqual({ ok: true });
+    expect(checkTransitionLabel('/ open()')).toEqual({ ok: true });
+    expect(
+      checkTransitionLabel('after 5 s, submit(a, b) [total > 0] / open()')
+    ).toEqual({ ok: true });
+    // A guard holding an indexed expression closes where the author closed it.
+    expect(checkTransitionLabel('submit [a[0] > 1] / log()')).toEqual({
+      ok: true,
+    });
+  });
+
+  it('reports the parser’s two documented tolerances', () => {
+    // An unclosed `[` is "a guard somebody is still typing".
+    expect(checkTransitionLabel('submit [ready').ok).toBe(false);
+    // A `/` with nothing behind it loses the effect.
+    expect(checkTransitionLabel('submit /').ok).toBe(false);
+    expect(parseTransition('submit /').effect).toBeUndefined();
+  });
+
+  it('reports an empty guard and an empty trigger', () => {
+    expect(checkTransitionLabel('submit []').ok).toBe(false);
+    expect(checkTransitionLabel('a,,b').ok).toBe(false);
+    expect(parseTransition('a,,b').triggers).toEqual(['a', 'b']);
+  });
+
+  it('reports text after the guard that is not an effect', () => {
+    expect(checkTransitionLabel('submit [ready] then open').ok).toBe(false);
+  });
+});
+
+describe('checkMultiplicity and checkEndLabelMultiplicity (§7.5.4, §11.5.4)', () => {
+  it('accepts every range the writers can hold', () => {
+    for (const range of ['1', '0..1', '0..*', '*', '[0..1]']) {
+      expect(checkMultiplicity(range), range).toEqual({ ok: true });
+    }
+  });
+
+  it('reports a range the writers cannot hold', () => {
+    expect(checkMultiplicity('1..n').ok).toBe(false);
+    expect(checkMultiplicity('*..1').ok).toBe(false);
+    expect(checkMultiplicity('0...*').ok).toBe(false);
+    expect(parseMultiplicity('1..n')).toBeUndefined();
+  });
+
+  it('reads an END LABEL’s leading token, and only when it is a range attempt', () => {
+    expect(checkEndLabelMultiplicity('0..* items')).toEqual({ ok: true });
+    expect(checkEndLabelMultiplicity('- 0..1 owner')).toEqual({ ok: true });
+    expect(checkEndLabelMultiplicity('[0..1] owner')).toEqual({ ok: true });
+    expect(checkEndLabelMultiplicity('1..n items').ok).toBe(false);
+  });
+
+  it('leaves a ROLE NAME alone, even one starting with a digit', () => {
+    // `parseEndLabel` keeps `1st choice` as a name rather than a multiplicity of
+    // one, and a checker stricter than the parser it checks would indict an end
+    // the exporters read correctly.
+    expect(checkEndLabelMultiplicity('items')).toEqual({ ok: true });
+    expect(checkEndLabelMultiplicity('- owner')).toEqual({ ok: true });
+    expect(checkEndLabelMultiplicity('1st choice')).toEqual({ ok: true });
+    expect(parseEndLabel('1st choice').multiplicity).toBeUndefined();
+    expect(checkEndLabelMultiplicity('')).toEqual({ ok: true });
   });
 });

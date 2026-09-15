@@ -91,6 +91,11 @@ export const UML_NAME_GAP = 6;
  * is the one tier that must never be sized in lines: it is the bottom of the
  * box, and a box an author has dragged taller has dragged it taller FOR the
  * operations.
+ *
+ * Since the compartment watcher this is the DEFAULT rather than the sizing: a
+ * caller that has read the tier passes its real line count
+ * ({@link UmlTierLines}), and three is what a caller who has not read it gets —
+ * the stencil's own shape, which is every classifier's until somebody types.
  */
 export const UML_ATTRIBUTE_LINES = 3;
 
@@ -223,6 +228,64 @@ export interface UmlCompartmentBoxes {
   splits: number[];
 }
 
+/**
+ * How many LINES each compartment actually holds — the one thing a box cannot
+ * tell you.
+ *
+ * {@link umlCompartmentBoxes} is otherwise a pure function of a rectangle, and
+ * that was enough for as long as every classifier was assumed to hold the
+ * stencil it was born with: one name line, three attributes, and the operations
+ * taking the rest. An author who types five attributes into the second tier has
+ * overflowed it — the words run through the separator under them and out the
+ * bottom of the box — and nothing in a rectangle says so.
+ *
+ * So the counts are passed IN, from whoever has read the tiers
+ * ({@link umlTierLineCount}), and every field is optional: a caller that knows
+ * nothing about the words gets exactly the layout this module has always
+ * returned. `UmlCompartmentWatcher` is what supplies them after an edit
+ * commits, and the node renderer is what keeps the separators where the tiers
+ * then are.
+ *
+ * `operations` is read by {@link umlStackHeight} and NOT by
+ * {@link umlCompartmentBoxes}, and that asymmetry is the notation's: the
+ * operations compartment is the bottom of the box and always takes whatever is
+ * left (§11.4.4), so its line count says how tall the box must BE, never how
+ * tall the compartment is drawn.
+ */
+export interface UmlTierLines {
+  name?: number;
+  attributes?: number;
+  operations?: number;
+}
+
+/** A tier's line count, floored at one line, or the notation's default. */
+const tierLines = (lines: number | undefined, fallback: number): number =>
+  lines === undefined ? fallback : Math.max(1, Math.floor(lines));
+
+/**
+ * How many lines a tier's text holds: the number of `\n` in it, plus one.
+ *
+ * Takes the VALUE rather than the element, for the reason {@link umlTierText}
+ * does — a `Y.Text` on a model, a string in a fixture — and counts the same way
+ * a canvas text element WRAPS: it does not. A canvas tier is laid out line per
+ * line from the text's own newlines, so the author's newlines are the lines.
+ *
+ * ponytail: a line longer than the tier is wide is still ONE line here, and the
+ * renderer will let it run out through the side. Measuring a wrapped line needs
+ * a font context — `getFontString` + a canvas measurer — and that is a
+ * measurement this module (pure, free of `std` and of the DOM) cannot make.
+ * Raise the ceiling when an author complains about width, not before: the
+ * overflow that actually bites is vertical, because a tier that grows downward
+ * crosses the separator under it.
+ *
+ * An empty tier is one line, which is `\n`-count + 1 and also what §14.2.4
+ * wants: a state's behaviour compartment is seeded EMPTY and is still ruled off.
+ */
+export function umlTierLineCount(text: unknown): number {
+  if (text === null || text === undefined) return 1;
+  return String(text).split('\n').length;
+}
+
 /** The kinds drawn as a divided rectangle — everything with a compartment. */
 const COMPARTMENTED = new Set<UmlNodeKind>([
   'class',
@@ -352,22 +415,31 @@ export const UML_BESIDE_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
  *
  * ## What this is not
  *
- * A creation-time answer and a render-time one, and nothing more. The
- * compartments are real elements from the moment they are drawn: an author who
- * moves one has moved it, and nothing here runs again to put it back. The
- * margins are absolutes, so a node dragged taller keeps them where they were
- * and gives the extra height to the tier that takes "the rest".
+ * A creation-time answer, a render-time one and a commit-time one, and nothing
+ * more. The compartments are real elements from the moment they are drawn: an
+ * author who moves one has moved it, and nothing here runs on its own to put it
+ * back. The margins are absolutes, so a node dragged taller keeps them where
+ * they were and gives the extra height to the tier that takes "the rest".
+ *
+ * The commit-time caller is `UmlCompartmentWatcher` (`node/`), and it is the
+ * one that passes `lines`: when an edit into a tier commits, it re-asks this
+ * function where the compartments go now that the second one holds five lines
+ * instead of three, grows the node if the answer no longer fits
+ * ({@link umlStackHeight}) and writes the tiers to the boxes it gets back. It
+ * is still not a layout engine — nothing runs between keystrokes, and nothing
+ * reclaims height an author has dragged out.
  */
 export function umlCompartmentBoxes(
   kind: UmlNodeKind,
   x: number,
   y: number,
   w: number,
-  h: number
+  h: number,
+  lines?: UmlTierLines
 ): UmlCompartmentBoxes {
   const inset = w * UML_TIER_SIDE_INSET;
   const width = w - inset * 2;
-  const nameHeight = UML_NAME_FONT_SIZE * UML_TIER_LINE_HEIGHT;
+  const nameLine = UML_NAME_FONT_SIZE * UML_TIER_LINE_HEIGHT;
   const box = (top: number, height: number): UmlBox => ({
     x: x + inset,
     y: y + top,
@@ -376,8 +448,13 @@ export function umlCompartmentBoxes(
   });
 
   if (!COMPARTMENTED.has(kind)) {
+    // A glyph's label is placed against its PICTURE — beside a port, inside a
+    // cube's front face, under a stick figure — and a picture has no stack to
+    // grow. So `lines` is deliberately not read here: it would make an actor's
+    // head and its name overlap the moment somebody typed a second line, and
+    // the fix for that is a bigger element, not a taller label.
     return {
-      name: glyphLabel(kind, { box, x, y, w, h, nameHeight }),
+      name: glyphLabel(kind, { box, x, y, w, h, nameHeight: nameLine }),
       splits: [],
     };
   }
@@ -385,6 +462,7 @@ export function umlCompartmentBoxes(
   // The walk. `top` is an offset from the node's top edge throughout, which is
   // also the unit `splits` is in — so a separator is simply the value of `top`
   // at the moment one compartment closes and the next opens.
+  const nameHeight = nameLine * tierLines(lines?.name, 1);
   let top = UML_TIER_MARGIN;
   const name = box(top, nameHeight);
   top += nameHeight + UML_NAME_GAP;
@@ -403,7 +481,9 @@ export function umlCompartmentBoxes(
   }
 
   const attributesHeight =
-    UML_BODY_FONT_SIZE * UML_TIER_LINE_HEIGHT * UML_ATTRIBUTE_LINES;
+    UML_BODY_FONT_SIZE *
+    UML_TIER_LINE_HEIGHT *
+    tierLines(lines?.attributes, UML_ATTRIBUTE_LINES);
   const attributes = box(top, attributesHeight);
   top += attributesHeight;
   splits.push(top);
@@ -414,6 +494,51 @@ export function umlCompartmentBoxes(
     operations: box(top, Math.max(0, h - top - UML_TIER_MARGIN)),
     splits,
   };
+}
+
+/**
+ * How tall the node has to BE for the words its tiers hold to fit — `null` for
+ * a kind that has no stack.
+ *
+ * The same walk as {@link umlCompartmentBoxes}, read the other way round: that
+ * function is given a box and hands back where the compartments go, this one is
+ * given the compartments and hands back the box they need. Both are here so
+ * they cannot disagree, which is the whole reason the separators were computed
+ * in this module in the first place.
+ *
+ * The last tier is the one difference between the two. `umlCompartmentBoxes`
+ * gives the operations compartment (or a one-split kind's body) EVERYTHING left
+ * down to the bottom margin, because a box an author has dragged taller has
+ * dragged it taller for them; this returns the height at which "everything
+ * left" is exactly the lines it holds, which is the smallest box that fits.
+ *
+ * `null` rather than a number for a package, an actor, a cube or a mark: those
+ * are pictures the notation draws, not rectangles it divides, and there is no
+ * honest answer to "how tall must this be" for a stick figure. It doubles as
+ * the predicate — a caller that gets a number is looking at a divided box.
+ */
+export function umlStackHeight(
+  kind: UmlNodeKind,
+  lines: UmlTierLines
+): number | null {
+  if (!COMPARTMENTED.has(kind)) return null;
+
+  const bodyLine = UML_BODY_FONT_SIZE * UML_TIER_LINE_HEIGHT;
+  const head =
+    UML_TIER_MARGIN +
+    UML_NAME_FONT_SIZE * UML_TIER_LINE_HEIGHT * tierLines(lines.name, 1) +
+    UML_NAME_GAP;
+
+  if (ONE_SPLIT.has(kind)) {
+    return head + bodyLine * tierLines(lines.attributes, 1) + UML_TIER_MARGIN;
+  }
+
+  return (
+    head +
+    bodyLine * tierLines(lines.attributes, UML_ATTRIBUTE_LINES) +
+    bodyLine * tierLines(lines.operations, 1) +
+    UML_TIER_MARGIN
+  );
 }
 
 /** What a glyph kind's label needs to know about the element it belongs to. */

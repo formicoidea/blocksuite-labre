@@ -20,10 +20,11 @@ import { umlTranslationEntries } from '../translations.js';
  */
 
 /**
- * The twenty-one `uml.strict` promotes.
+ * The twenty-five `uml.strict` promotes.
  *
  * Eight restate a normative clause (§9.9.7 twice, §10.4.3, §18.1.3 twice,
- * §19.2.3, §19.3.3, §19.4.3), two are the NAMING rules, one is §11.5.3's
+ * §19.2.3, §19.3.3, §19.4.3), two are the NAMING rules, four are the SPELLING
+ * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4), one is §11.5.3's
  * arithmetic and one is the sheet's own declaration. Named for what the PROFILE
  * does and not for where the rules come from: `uml.dependency-on-object` and
  * `uml.actor-actor-association` also cite the specification and are NOT
@@ -56,6 +57,12 @@ const PROMOTED = [
   'uml.control-flow-endpoints',
   'uml.transition-endpoints',
   'uml.initial-single',
+  // ...and the four SPELLING rules (ADR 0021), which the EXPORTER corroborates:
+  // each fires exactly when the lenient grammar lost something the author wrote.
+  'uml.attribute-syntax',
+  'uml.operation-syntax',
+  'uml.transition-syntax',
+  'uml.multiplicity-syntax',
 ];
 
 /**
@@ -98,7 +105,7 @@ describe('UML validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = UML_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(34);
+    expect(ruleIds).toHaveLength(38);
     for (const profile of UML_PROFILES) {
       expect(profile.framework).toBe('uml');
       expect(profile.labelKey).toMatch(/^com\.labre\.uml\.profile\./);
@@ -130,9 +137,9 @@ describe('UML validation profiles', () => {
     }
   });
 
-  it('promotes the twenty-one on the strict profile', () => {
+  it('promotes the twenty-five on the strict profile', () => {
     const [, strict] = UML_PROFILES;
-    expect(PROMOTED).toHaveLength(21);
+    expect(PROMOTED).toHaveLength(25);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }

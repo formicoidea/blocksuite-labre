@@ -797,3 +797,90 @@ describe('a state machine diagram', () => {
     expect(puml).toBe(STATE_MACHINE_GOLDEN);
   });
 });
+
+/* ── §11.5.4's per-end adornments (ADR 0020) ──────────────────────────── */
+
+describe('the labels beside an arrow’s two ends', () => {
+  const two = (
+    ends: Partial<UmlRelation>,
+    kind: UmlRelationKind = 'association'
+  ) =>
+    exportPlantuml({
+      ...emptyModel('d1', 'class', 'Orders'),
+      classifiers: [
+        classifier('c1', 'class', 'Order', { x: 0, y: 0, w: 200, h: 120 }),
+        classifier('c2', 'class', 'OrderLine', {
+          x: 400,
+          y: 0,
+          w: 200,
+          h: 120,
+        }),
+      ],
+      relations: [{ ...relation(kind, 'c1', 'c2'), ...ends }],
+    });
+
+  it('writes each one quoted, on its own side of the arrow', () => {
+    expect(
+      two({
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'items',
+          raw: '0..* items',
+        },
+      })
+    ).toContain('order "1" -- "0..* items" orderline');
+  });
+
+  it('writes one side alone when only one end is adorned', () => {
+    expect(
+      two({
+        targetEnd: { multiplicity: { lower: 0, upper: '*' }, raw: '0..*' },
+      })
+    ).toContain('order -- "0..*" orderline');
+    expect(
+      two({ sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' } })
+    ).toContain('order "1" -- orderline');
+  });
+
+  it('writes them on both aggregation flavours and a communication path', () => {
+    const ends: Partial<UmlRelation> = {
+      sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+      targetEnd: { multiplicity: { lower: 0, upper: '*' }, raw: '0..*' },
+    };
+    expect(two(ends, 'aggregation')).toContain(
+      'order "1" o-- "0..*" orderline'
+    );
+    expect(two(ends, 'composition')).toContain(
+      'order "1" *-- "0..*" orderline'
+    );
+    expect(two(ends, 'communication-path')).toContain(
+      'order "1" -- "0..*" orderline'
+    );
+  });
+
+  it('keeps the centre label after the arrow, where it always was', () => {
+    expect(
+      two({
+        label: 'places',
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+      })
+    ).toContain('order "1" -- orderline : places');
+  });
+
+  it('writes the bare alias for a relationship §11.5.4 does not adorn', () => {
+    // A generalization's ends take no multiplicity, so the writer is handed
+    // none — the raw text stays on the board and out of the file.
+    expect(two({ sourceEnd: { raw: '1' } }, 'generalization')).toContain(
+      'orderline <|-- order'
+    );
+  });
+
+  it('cannot be closed early by a quote the author typed', () => {
+    // The quote is PlantUML's own delimiter; `toPlantumlLabel` turns one in the
+    // text into an apostrophe, so a label can never unbalance the line.
+    expect(two({ sourceEnd: { role: 'a "b"', raw: 'a "b"' } })).toContain(
+      `order "a 'b'" -- orderline`
+    );
+  });
+});

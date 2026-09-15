@@ -246,31 +246,37 @@ describe('draw.io’s own UML class example', () => {
     ]);
   });
 
-  it('keeps an edge’s own label, and carries the per-end multiplicities', () => {
+  it('keeps an edge’s own label, and reads the per-end multiplicities', () => {
     const labelled = read.model.relations.find(
       relation => relation.label !== undefined
     );
     expect(labelled).toMatchObject({ kind: 'aggregation', label: 'request' });
 
     // Five `1`s hang off the four aggregations, each pinned to an end by its
-    // relative geometry. The IR has nowhere to put an end label until
-    // `docs/adr/0018` lands, so each one is CARRIED and named.
-    const ends = read.notes.filter(note => note.element === 'edgeLabel');
-    expect(ends).toHaveLength(5);
-    expect(ends.every(note => note.kind === 'carried')).toBe(true);
-    expect(ends.map(note => note.message.includes('"1"'))).toEqual([
-      true,
-      true,
-      true,
-      true,
-      true,
-    ]);
+    // relative geometry (`mxGeometry@x`: `-1` at the source, `+1` at the
+    // target). ADR 0020 gave the connector two end labels, so each one is now
+    // READ onto the relation end it was drawn at, and nothing is carried.
+    const adorned = read.model.relations.filter(
+      relation => relation.sourceEnd || relation.targetEnd
+    );
+    expect(adorned).toHaveLength(4);
+    expect(adorned.every(relation => relation.kind === 'aggregation')).toBe(
+      true
+    );
     expect(
-      ends.filter(note => note.message.includes('source end'))
+      adorned.filter(relation => relation.sourceEnd !== undefined)
     ).toHaveLength(4);
     expect(
-      ends.filter(note => note.message.includes('target end'))
+      adorned.filter(relation => relation.targetEnd !== undefined)
     ).toHaveLength(1);
+    // `1` is §7.5.4's exact-one, read as a multiplicity rather than a name.
+    expect(adorned[0].sourceEnd).toEqual({
+      multiplicity: { lower: 1, upper: 1 },
+      raw: '1',
+    });
+    expect(
+      read.notes.filter(note => note.element === 'edgeLabel')
+    ).toHaveLength(0);
   });
 
   it('keeps the geometry, translated to the drawing’s own corner', () => {

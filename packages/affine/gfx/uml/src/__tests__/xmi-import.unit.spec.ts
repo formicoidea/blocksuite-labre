@@ -641,12 +641,85 @@ describe('the records a model comes back as', () => {
     expect([composition.sourceId, composition.targetId]).toEqual([order, line]);
     expect([aggregation.sourceId, aggregation.targetId]).toEqual([line, order]);
   });
+
+  it('reads each end’s adornments onto the relation end drawn there', () => {
+    // §11.5.4's identity, read back: what is written beside a classifier adorns
+    // the memberEnd TYPED by that classifier. The writer put the source's label
+    // on the end typed by the source, so that is where the reader finds it.
+    const model = {
+      ...emptyModel('d1', 'class', 'Orders'),
+      classifiers: [
+        classifier('c1', 'class', 'Order'),
+        classifier('c2', 'class', 'OrderLine'),
+      ],
+      relations: [
+        {
+          ...relation('association', 'c1', 'c2'),
+          sourceEnd: {
+            multiplicity: { lower: 1, upper: 1 },
+            role: 'order',
+            visibility: 'private' as const,
+            raw: '1 -order',
+          },
+          targetEnd: {
+            multiplicity: { lower: 0, upper: '*' as const },
+            role: 'lines',
+            raw: '0..* lines',
+          },
+        },
+      ],
+    };
+    const { models, foreign } = importXmi(exportXmi([model], { name: 'Shop' }));
+    const read = models[0].relations[0];
+    expect(read.sourceEnd).toEqual({
+      multiplicity: { lower: 1, upper: 1 },
+      role: 'order',
+      visibility: 'private',
+      // Composed from the three pieces of markup, in §11.5.4's own order.
+      raw: '1 -order',
+    });
+    expect(read.targetEnd).toEqual({
+      multiplicity: { lower: 0, upper: '*' },
+      role: 'lines',
+      raw: '0..* lines',
+    });
+    // They are on the BOARD now (ADR 0020), so nothing about them rides in the
+    // payload any more: the only scope left on the association is `@ends`, the
+    // pair of end ids the re-emitter needs and the drawing cannot show.
+    const carried = Object.values(foreign).find(each => each.attrs?.['@ends']);
+    expect(Object.keys(carried?.attrs ?? {})).toEqual(['@ends']);
+  });
+
+  it('re-exports an adorned association to the same bytes', () => {
+    const model = {
+      ...emptyModel('d1', 'class', 'Orders'),
+      classifiers: [
+        classifier('c1', 'class', 'Order'),
+        classifier('c2', 'class', 'OrderLine'),
+      ],
+      relations: [
+        {
+          ...relation('aggregation', 'c1', 'c2'),
+          sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+          targetEnd: {
+            multiplicity: { lower: 0, upper: '*' as const },
+            role: 'lines',
+            raw: '0..* lines',
+          },
+        },
+      ],
+    };
+    const first = exportXmi([model], { name: 'Shop' });
+    const { models } = importXmi(first);
+    expect(exportXmi(models, { name: 'Shop' })).toBe(first);
+  });
 });
 
 /* ── The corpus ───────────────────────────────────────────────────────── */
 
 const corpus = (name: string) =>
-  readFileSync(join(__dirname, 'corpus', name), 'utf8');
+  // The worktree may check the corpus out with CRLF; the writers emit LF.
+  readFileSync(join(__dirname, 'corpus', name), 'utf8').replace(/\r\n/g, '\n');
 
 describe('the phase-1 export, off disk', () => {
   const { models, report } = importXmi(corpus('labre-phase1-export.xmi'));

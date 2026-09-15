@@ -41,6 +41,7 @@ import {
 } from './element-view.js';
 import { UML_INTERCHANGE } from './interchange.js';
 import { UML_BARE_MORPH_SPEC, UML_MORPH_SPEC } from './morph.js';
+import { UmlCompartmentWatcher } from './node/compartment-watcher.js';
 import { UmlNodeRendererExtension } from './node/node-renderer.js';
 import { UmlNodeView } from './node/node-view.js';
 import { UML_PROFILES } from './profiles.js';
@@ -137,6 +138,15 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
       // a document already holds.
       context.register(umlPartitionToolbarExtension);
       context.register(umlRegionToolbarExtension);
+      // Keeps a classifier's box big enough for the words an author types into
+      // it: when an edit into a compartment commits, the stack is re-measured,
+      // the node grows if it no longer fits and the tiers move to the boxes the
+      // new box yields. Always-on for the reason `docs/adr/0009` gives — it
+      // creates nothing and adds no field, it keeps words ALREADY in the
+      // document from being drawn over their own separator, and a diagram drawn
+      // while the UML button was on must stay editable when it goes off. The
+      // same place `C4TypeLineWatcher` is registered, for the same reason.
+      context.register(UmlCompartmentWatcher);
     }
   }
 }

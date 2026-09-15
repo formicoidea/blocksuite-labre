@@ -328,3 +328,60 @@ describe('both diagrams in one document', () => {
     expect(exportUmlPlantuml(reimport(originals)).text).toBe(once);
   });
 });
+
+/* ── §11.5.4's per-end adornments (ADR 0020) ──────────────────────────── */
+
+/**
+ * The two end labels, out and back.
+ *
+ * The strongest statement the pair can make about them: the ends are written
+ * beside the arrow, read back off the quoted strings, and the SECOND export is
+ * the first byte for byte. A multiplicity that came back on the wrong end, or
+ * lost its role name, or gained a bracket would show up as a diff here.
+ */
+describe('an association whose ends are adorned', () => {
+  const adorned = (): UmlModel => ({
+    ...emptyModel('d1', 'class', 'Orders'),
+    classifiers: [
+      classifier('c1', 'class', 'Order', { x: 0, y: 0, w: 200, h: 120 }),
+      classifier('c2', 'class', 'OrderLine', { x: 400, y: 0, w: 200, h: 120 }),
+    ],
+    relations: [
+      {
+        kind: 'aggregation',
+        sourceId: 'c1',
+        targetId: 'c2',
+        sourceEnd: { multiplicity: { lower: 1, upper: 1 }, raw: '1' },
+        targetEnd: {
+          multiplicity: { lower: 0, upper: '*' },
+          role: 'lines',
+          raw: '0..* lines',
+        },
+      },
+    ],
+  });
+
+  it('writes both ends, quoted, on their own sides of the arrow', () => {
+    expect(exportUmlPlantuml([adorned()]).text).toContain(
+      'order "1" o-- "0..* lines" orderline'
+    );
+  });
+
+  it('brings each end back on the end it was written at', () => {
+    const [returned] = reimport([adorned()]);
+    expect(returned.relations[0].sourceEnd).toEqual({
+      multiplicity: { lower: 1, upper: 1 },
+      raw: '1',
+    });
+    expect(returned.relations[0].targetEnd).toEqual({
+      multiplicity: { lower: 0, upper: '*' },
+      role: 'lines',
+      raw: '0..* lines',
+    });
+  });
+
+  it('is a fixed point on the second pass, byte for byte', () => {
+    const once = exportUmlPlantuml([adorned()]).text;
+    expect(exportUmlPlantuml(reimport([adorned()])).text).toBe(once);
+  });
+});

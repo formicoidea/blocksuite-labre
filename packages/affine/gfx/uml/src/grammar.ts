@@ -3,11 +3,12 @@
  *
  * ## What these read
  *
- * Six BNFs, transcribed from UML 2.5.1 and cited where they are used. The first
- * three are phase 1's, and they are the STRUCTURAL half — what a compartment of
- * a classifier says. The last three arrived with the behaviour sheets and are
- * the same discipline applied to a LINE rather than to a box: what a transition,
- * an activity edge and a state's internal compartment say.
+ * Seven BNFs, transcribed from UML 2.5.1 and cited where they are used. The
+ * first three are phase 1's, and they are the STRUCTURAL half — what a
+ * compartment of a classifier says. Three more arrived with the behaviour sheets
+ * and are the same discipline applied to a LINE rather than to a box: what a
+ * transition, an activity edge and a state's internal compartment say. The
+ * seventh is what is written beside ONE END of a line.
  *
  *  - **§9.5.4** (printed p. 113) — a Property:
  *    `[<visibility>] [`/`] <name> [`:` <prop-type>] [`[` <multiplicity-range> `]`]
@@ -19,6 +20,9 @@
  *    `[<direction>] <parameter-name> `:` <type-expression>
  *     [`[`<multiplicity-range>`]`] [`=` <default>]`
  *  - **§7.5.4** (p. 34) — a multiplicity range: `[ <lower> `..` ] <upper>`
+ *  - **§11.5.4** (p. 201) — what may be written beside an Association end: a
+ *    name string, a multiplicity, a `<prop-modifier>` in braces, a
+ *    `<visibility>` symbol
  *  - **§14.2.4.8** (p. 331) — a Transition label:
  *    `[<trigger> [`,` <trigger>]*] [`[` <guard> `]`] [`/` <behavior-expression>]`,
  *    with `<trigger>` from §13.3.4 (p. 293): a call or signal event's name, a
@@ -480,6 +484,155 @@ export function parseCompartment(text: string | undefined | null): string[] {
     .filter(line => line.length > 0 && line !== '...' && line !== '…');
 }
 
+/* ── An association end's adornments (§11.5.4) ────────────────────────── */
+
+/**
+ * What is written BESIDE one end of an association line.
+ *
+ * §11.5.4 (printed p. 201) names exactly what may sit there: "A name string may
+ * be placed near the end of the line to show the name of the Association end",
+ * and "various other notations can be placed near the end of the line as
+ * follows: a multiplicity … a `<prop-modifier>` enclosed in curly braces … a
+ * `<visibility>` symbol".
+ *
+ * Three of the four are read; the modifier group is not, and that is the same
+ * call {@link parseActivityEdge} makes about `{stream}` — it is notation this
+ * pack does not model, and folding it into the role would rename the end. It
+ * survives in {@link raw}, which is why {@link raw} is not optional: whatever
+ * the author typed is kept verbatim, so a label the grammar reads as nothing at
+ * all is still the author's words on the board and in the file.
+ */
+export interface UmlAssociationEnd {
+  /** §7.5.4's range, brackets optional — `0..*`, `1`, `[0..1]`. */
+  multiplicity?: UmlMultiplicity;
+  /** The end's NAME — the Property the far classifier sees (§11.5.4). */
+  role?: string;
+  /** Absent when the author wrote no marker — see {@link visibilityOf}. */
+  visibility?: UmlVisibility;
+  /** Exactly what was written beside the end, trimmed. Never absent. */
+  raw: string;
+}
+
+/** The first token of an end label: a bracketed group, or a run of non-space. */
+const END_LABEL_HEAD = /^(\[[^\]]*\]|\S+)\s*([\s\S]*)$/;
+
+/**
+ * `0..* items` → a multiplicity and a role; `- owner` → a private role.
+ *
+ * MULTIPLICITY FIRST, and only from the leading token: §11.5.4 places both a
+ * name and a range beside the end with no separator between them, so something
+ * has to decide which half is which, and the leading token is the half that can
+ * be decided WITHOUT guessing — `0..*`, `1`, `*` and `[0..1]` are a closed
+ * grammar (§7.5.4), and a word is not. A leading token that does not parse as a
+ * range therefore stays part of the name, which is what keeps `1st choice` an
+ * end called "1st choice" rather than a multiplicity of one.
+ *
+ * The visibility marker is read on either side of the range — `- owner` and
+ * `+ 0..1 a` both — because §11.5.4 lists the three adornments without fixing an
+ * order between them, and an author who writes the marker first is writing the
+ * order §9.5.4 uses for a property.
+ *
+ * Never throws and never returns nothing: an end label is free text an architect
+ * typed beside a line, and the same degradation the rest of this module holds to
+ * applies — a label the grammar recognises nothing in comes back as `{ raw }`
+ * plus a role that is the whole of it.
+ */
+export function parseEndLabel(
+  label: string | undefined | null
+): UmlAssociationEnd {
+  const raw = label === null || label === undefined ? '' : String(label).trim();
+  if (!raw) return { raw: '' };
+
+  let rest = raw;
+  let visibility: UmlVisibility | undefined;
+  let multiplicity: UmlMultiplicity | undefined;
+
+  /** `+`, `-`, `#`, `~` off the front of what is left, once. */
+  const takeVisibility = (): void => {
+    if (visibility !== undefined) return;
+    const marker = VISIBILITY_MARKER.exec(rest);
+    if (!marker) return;
+    const read = visibilityOf(marker[1]);
+    if (!read) return;
+    visibility = read;
+    rest = rest.slice(marker[0].length).trim();
+  };
+
+  /** The leading token as a range, and consumed only if it is one. */
+  const takeMultiplicity = (): void => {
+    const head = END_LABEL_HEAD.exec(rest);
+    if (!head) return;
+    const read = parseMultiplicity(head[1]);
+    if (!read) return;
+    multiplicity = read;
+    rest = head[2].trim();
+  };
+
+  takeMultiplicity();
+  takeVisibility();
+  // `+ 0..1 a`: the marker was in front of the range, so the range is only now
+  // the leading token.
+  if (!multiplicity) takeMultiplicity();
+  takeVisibility();
+
+  const role = rest.trim();
+  return {
+    ...(multiplicity ? { multiplicity } : {}),
+    ...(role ? { role } : {}),
+    ...(visibility ? { visibility } : {}),
+    raw,
+  };
+}
+
+/** The glyph §7.4 gives a VisibilityKind — the inverse of {@link visibilityOf}. */
+export function visibilityMarker(visibility: UmlVisibility): string {
+  switch (visibility) {
+    case 'public':
+      return '+';
+    case 'private':
+      return '-';
+    case 'protected':
+      return '#';
+    case 'package':
+      return '~';
+  }
+}
+
+/**
+ * §7.5.4's range, spelled the way a diagram spells it — `1`, `0..1`, `0..*`.
+ *
+ * Only ONE of the clause's two abbreviations is used: an exact range is written
+ * as the single bound (`1..1` is `1`, which is how every diagram in the
+ * specification writes it), and an unbounded one is written in full (`0..*`
+ * rather than the bare `*` §7.5.4 also permits). The asymmetry is deliberate —
+ * `*` is the spelling that reads as "unfinished" beside a line, and the full
+ * form is what PlantUML, Papyrus and draw.io all print. Both parse back to the
+ * same record, so nothing is lost either way; this is the one that is read.
+ */
+export function formatMultiplicity(multiplicity: UmlMultiplicity): string {
+  const { lower, upper } = multiplicity;
+  if (lower === upper) return String(upper);
+  return `${lower}..${upper}`;
+}
+
+/**
+ * An end's adornments, back in one string — `0..* -items`.
+ *
+ * The inverse of {@link parseEndLabel}, in §11.5.4's own order: the range, then
+ * the visibility glyph, then the name. An end the grammar read nothing
+ * structural out of prints its {@link UmlAssociationEnd.raw} instead, so a label
+ * this module does not understand still comes back exactly as it was typed —
+ * the whole point of keeping `raw`.
+ */
+export function formatEndLabel(end: UmlAssociationEnd): string {
+  const parts: string[] = [];
+  if (end.multiplicity) parts.push(formatMultiplicity(end.multiplicity));
+  const marker = end.visibility ? visibilityMarker(end.visibility) : '';
+  if (end.role) parts.push(`${marker}${end.role}`);
+  else if (marker) parts.push(marker);
+  return parts.length > 0 ? parts.join(' ') : end.raw;
+}
+
 /* ── Behaviour: the transition label (§14.2.4.8) and its triggers (§13.3.4) ─ */
 
 /**
@@ -880,4 +1033,388 @@ export function formatTransitionLabel(label: UmlTransitionLabel): string {
   if (label.guard) parts.push(`[${label.guard}]`);
   if (label.effect) parts.push(`/ ${label.effect}`);
   return parts.join(' ');
+}
+
+/* ── Strict checking: the same grammars, asked a yes/no question ─────────── */
+
+/**
+ * The STRICT half of this module, and the `label-syntax` rules' whole verdict.
+ *
+ * Everything above degrades: a line the grammar cannot see structure in comes
+ * back as `{ name: <the line> }` and travels through the exporters as an element
+ * named exactly what the author wrote. That is the right answer for a WRITER —
+ * the picture keeps saying what it said — and it is no answer at all for a
+ * CHECKER, which is being asked precisely whether the degradation happened.
+ *
+ * So the checkers below re-ask the same question with the opposite bias, and
+ * they change nothing about the parsers: `parseProperty`, `parseOperation`,
+ * `parseTransition` and `parseMultiplicity` return exactly what they returned
+ * before this section existed, and the exporters read exactly what they read.
+ *
+ * ## The one rule every checker follows
+ *
+ * **A line is `ok: false` when the lenient parse LOST something.** Not when it
+ * is terse, not when it omits an optional part — §9.5.4 makes everything but
+ * `<name>` optional and a bare `balance` is a conformant Property — but when a
+ * part the author actually WROTE is not in the record: a `:` with no type after
+ * it, a `[…]` that is not a multiplicity range, an operation with no parameter
+ * list, a `/` with no behaviour behind it. Those are the cases where the drawing
+ * and the exported file stop saying the same thing, and they are the only ones
+ * a user can act on.
+ *
+ * That rule is what keeps these checks honest about the specification. A stricter
+ * reading — "an attribute must carry a type" — would indict a conformant line,
+ * and the `provenance: 'standard'` these rules declare would be claiming UML
+ * forbids what UML does not.
+ *
+ * ## The reason is a FRAGMENT, in English
+ *
+ * The engine prints it after the offending line (`validation.ts`
+ * `evaluateLabelSyntax`), so the two read as one sentence. The framework owns
+ * the word, as it owns every other `*Fallback` it ships.
+ */
+export interface UmlSyntaxCheck {
+  /** The line is spelled the way the clause spells it. */
+  ok: boolean;
+  /** Why it is not, when it is not — see the header. */
+  reason?: string;
+}
+
+/** The one `ok` value, shared so a checker never allocates on the happy path. */
+const OK: UmlSyntaxCheck = { ok: true };
+
+const bad = (reason: string): UmlSyntaxCheck => ({ ok: false, reason });
+
+/**
+ * Whether a line's `()`, `[]` and `{}` close in the order they opened.
+ *
+ * One depth over all three, exactly as {@link splitParameters} and
+ * {@link indexAtTopLevel} count them: this module never needs to know WHICH
+ * bracket is open, only that the line is still being typed. An unclosed group is
+ * the single most common half-finished state of a compartment, and every parser
+ * above has a documented degradation for it — which is why the checkers ask
+ * about it FIRST and say nothing else about such a line.
+ */
+function unbalanced(text: string): boolean {
+  let depth = 0;
+  for (const char of text) {
+    if (char === '(' || char === '[' || char === '{') depth++;
+    else if (char === ')' || char === ']' || char === '}') {
+      depth--;
+      if (depth < 0) return true;
+    }
+  }
+  return depth !== 0;
+}
+
+/**
+ * The head of {@link parseProperty}'s peel, for diagnostics alone: the modifier
+ * group and the default value lifted off, with what was found reported.
+ *
+ * Six lines duplicated from the parser rather than the parser refactored to
+ * yield them, and deliberately: `parseProperty` is read by three exporters and
+ * two importers, and a checker is not a reason to reshape it. The duplication is
+ * pinned by `grammar.unit.spec.ts`, which asserts both halves against the same
+ * lines.
+ */
+function peelPropertyTail(text: string): {
+  rest: string;
+  emptyModifierGroup: boolean;
+  danglingDefault: boolean;
+} {
+  let rest = text;
+  const modifierMatch = MODIFIER_GROUP.exec(rest);
+  const emptyModifierGroup =
+    modifierMatch !== null && modifiersOf(modifierMatch[1]).length === 0;
+  if (modifierMatch) rest = rest.slice(0, modifierMatch.index).trim();
+
+  const equals = rest.indexOf('=');
+  const danglingDefault = equals >= 0 && rest.slice(equals + 1).trim() === '';
+  if (equals >= 0) rest = rest.slice(0, equals).trim();
+
+  return { rest, emptyModifierGroup, danglingDefault };
+}
+
+/**
+ * One attribute line, checked against §9.5.4 —
+ * `[<visibility>] ['/'] <name> [':' <type>] ['[' <mult> ']'] ['=' <default>]
+ * ['{' <modifiers> '}']`.
+ *
+ * Built on {@link parseProperty} and changing nothing about it. An empty line is
+ * `ok`: the family that calls this never passes one, and a total function is
+ * easier to reason about than one with a precondition.
+ *
+ * ## The parenthesis case, and why it is worth its own sentence
+ *
+ * `place(order)` typed into the ATTRIBUTES compartment is the single most common
+ * mistake this rule catches, and it is not a spelling mistake — it is a line in
+ * the wrong box. The check runs on what is left once the default value is peeled
+ * off, so `origin : Point = Point(0, 0)` keeps its parentheses and its silence.
+ */
+export function checkPropertyLine(line: string): UmlSyntaxCheck {
+  const text = line.trim();
+  if (!text) return OK;
+  if (unbalanced(text)) return bad('a bracket is never closed');
+
+  const { rest, emptyModifierGroup, danglingDefault } = peelPropertyTail(text);
+  if (emptyModifierGroup) return bad('the { } group is empty');
+  if (danglingDefault) return bad('nothing follows the "="');
+  if (rest.includes('(')) {
+    return bad(
+      'this is an operation — it belongs in the operation compartment'
+    );
+  }
+
+  const multiplicityMatch = MULTIPLICITY_GROUP.exec(rest);
+  if (
+    multiplicityMatch &&
+    parseMultiplicity(multiplicityMatch[1]) === undefined
+  ) {
+    return bad('the [ ] multiplicity is not a range — write 1, 0..1 or 0..*');
+  }
+
+  const head = multiplicityMatch
+    ? rest.slice(0, multiplicityMatch.index).trim()
+    : rest;
+  const colon = head.indexOf(':');
+  if (colon >= 0 && head.slice(colon + 1).trim() === '') {
+    return bad('nothing follows the ":"');
+  }
+
+  if (parseProperty(text).name === '') return bad('there is no name');
+  return OK;
+}
+
+/** One `<parameter>` of §9.4.4, on the same contract as its line. */
+function checkParameter(raw: string): UmlSyntaxCheck {
+  const { rest, emptyModifierGroup, danglingDefault } = peelPropertyTail(
+    raw.trim()
+  );
+  if (emptyModifierGroup) return bad('a parameter’s { } group is empty');
+  if (danglingDefault) return bad('nothing follows a parameter’s "="');
+
+  const multiplicityMatch = MULTIPLICITY_GROUP.exec(rest);
+  if (
+    multiplicityMatch &&
+    parseMultiplicity(multiplicityMatch[1]) === undefined
+  ) {
+    return bad('a parameter’s [ ] multiplicity is not a range');
+  }
+
+  const head = multiplicityMatch
+    ? rest.slice(0, multiplicityMatch.index).trim()
+    : rest;
+  const colon = head.indexOf(':');
+  if (colon >= 0 && head.slice(colon + 1).trim() === '') {
+    return bad('nothing follows a parameter’s ":"');
+  }
+  if (parseParameter(raw).name === '') return bad('a parameter has no name');
+  return OK;
+}
+
+/**
+ * One operation line, checked against §9.6.4 —
+ * `[<visibility>] <name> '(' [<parameter-list>] ')' [':' [<return-type>]
+ * ['[' <mult> ']'] ['{' <oper-property>* '}']]`.
+ *
+ * Built on {@link parseOperation} and changing nothing about it. This is the one
+ * checker with a genuine FALL-BACK to report: a line with no parentheses is not
+ * an operation the grammar can see at all, and `parseOperation` says so by
+ * returning the whole line as a name. An author halfway through typing `place`
+ * gets that silence from the rule's `audit` severity, not from the grammar.
+ */
+export function checkOperationLine(line: string): UmlSyntaxCheck {
+  const text = line.trim();
+  if (!text) return OK;
+  if (unbalanced(text)) return bad('a bracket is never closed');
+
+  const open = text.indexOf('(');
+  if (open < 0) {
+    return bad('there is no ( ) parameter list — write name(…) : Type');
+  }
+  const close = matchingParen(text, open);
+  if (close < 0) return bad('the ( is never closed');
+
+  const head = text.slice(0, open).trim();
+  const withoutVisibility = head.replace(VISIBILITY_MARKER, '').trim();
+  if (withoutVisibility === '') return bad('there is no name');
+
+  let tail = text.slice(close + 1).trim();
+  const modifierMatch = MODIFIER_GROUP.exec(tail);
+  if (modifierMatch && modifiersOf(modifierMatch[1]).length === 0) {
+    return bad('the { } group is empty');
+  }
+  if (modifierMatch) tail = tail.slice(0, modifierMatch.index).trim();
+
+  if (tail !== '') {
+    if (!tail.startsWith(':')) {
+      return bad('the text after the ) is neither ": Type" nor a { } group');
+    }
+    let returns = tail.slice(1).trim();
+    const multiplicityMatch = MULTIPLICITY_GROUP.exec(returns);
+    if (
+      multiplicityMatch &&
+      parseMultiplicity(multiplicityMatch[1]) === undefined
+    ) {
+      return bad('the [ ] multiplicity is not a range — write 1, 0..1 or 0..*');
+    }
+    if (multiplicityMatch) {
+      returns = returns.slice(0, multiplicityMatch.index).trim();
+    }
+    if (returns === '') return bad('nothing follows the ":"');
+  }
+
+  for (const parameter of splitParameters(text.slice(open + 1, close))) {
+    const verdict = checkParameter(parameter);
+    if (!verdict.ok) return verdict;
+  }
+  return OK;
+}
+
+/**
+ * One transition label, checked against §14.2.4.8 —
+ * `[<trigger> [',' <trigger>]*] ['[' <guard> ']'] ['/' <behavior-expression>]`.
+ *
+ * Built on {@link parseTransition} and changing nothing about it. An EMPTY label
+ * is `ok` and that is the clause's own reading: a completion transition — one
+ * that fires when its source state finishes — is written with no label at all,
+ * so a rule indicting the empty string would indict half the state machines ever
+ * drawn.
+ *
+ * The parser's two documented tolerances are exactly what this reports: an
+ * unclosed `[` ("a guard somebody is still typing") and a `/` with nothing
+ * behind it.
+ */
+export function checkTransitionLabel(
+  label: string | undefined | null
+): UmlSyntaxCheck {
+  const text =
+    label === null || label === undefined ? '' : String(label).trim();
+  if (!text) return OK;
+  if (unbalanced(text)) return bad('a bracket is never closed');
+
+  const guardOpen = indexAtTopLevel(text, 0, char => char === '[');
+  let head = text;
+  let tail = '';
+  if (guardOpen >= 0) {
+    let depth = 0;
+    let guardClose = -1;
+    for (let index = guardOpen; index < text.length; index++) {
+      const char = text[index];
+      if (char === '[') depth++;
+      else if (char === ']') {
+        depth--;
+        if (depth === 0) {
+          guardClose = index;
+          break;
+        }
+      }
+    }
+    head = text.slice(0, guardOpen);
+    tail = text.slice(guardClose + 1);
+    if (parseGuard(text.slice(guardOpen + 1, guardClose)) === undefined) {
+      return bad('the [ ] guard is empty');
+    }
+  } else {
+    const slash = indexAtTopLevel(text, 0, char => char === '/');
+    if (slash >= 0) {
+      head = text.slice(0, slash);
+      tail = text.slice(slash);
+    }
+  }
+
+  const slash = indexAtTopLevel(tail, 0, char => char === '/');
+  if (slash >= 0 && tail.slice(slash + 1).trim() === '') {
+    return bad('nothing follows the "/"');
+  }
+  if (slash < 0 && tail.trim() !== '') {
+    return bad('the text after the guard is neither a "/" effect nor nothing');
+  }
+
+  // `a,,b` — the parser drops the empty part and the file loses a trigger the
+  // author typed a comma for.
+  if (head.trim() !== '') {
+    let depth = 0;
+    let current = '';
+    const parts: string[] = [];
+    for (const char of head) {
+      if (char === '[' || char === '(' || char === '{') depth++;
+      else if (char === ']' || char === ')' || char === '}') depth--;
+      if (char === ',' && depth === 0) {
+        parts.push(current);
+        current = '';
+        continue;
+      }
+      current += char;
+    }
+    parts.push(current);
+    if (parts.some(part => part.trim() === '')) {
+      return bad('a trigger between two commas is empty');
+    }
+  }
+  return OK;
+}
+
+/**
+ * One multiplicity, checked against §7.5.4 — `[<lower> '..'] <upper>`, brackets
+ * optional.
+ *
+ * The thinnest of the four: {@link parseMultiplicity} already answers
+ * `undefined` for everything that is not a range, so this is that answer with a
+ * sentence attached. The one case worth naming is the SYMBOLIC range — `n..m` is
+ * legal UML and parses to `undefined` here on purpose (the module's callers write
+ * integer bounds into files, and inventing one for `n` would be a fact the author
+ * never stated), so the reason says what the writers can hold rather than what
+ * the specification permits.
+ */
+export function checkMultiplicity(raw: string): UmlSyntaxCheck {
+  const text = raw.trim();
+  if (!text) return OK;
+  if (parseMultiplicity(text) !== undefined) return OK;
+  return bad(
+    'this is not a multiplicity — write 1, 0..1, 0..* or *, with whole numbers'
+  );
+}
+
+/**
+ * A token that is UNAMBIGUOUSLY an attempt at §7.5.4's range: it opens with a
+ * digit or a `*`, and it is either all digits and stars or it carries the `..`
+ * of a range.
+ *
+ * The gate exists because §11.5.4 puts the range and the end's NAME side by side
+ * with no separator, so the only thing that tells them apart is the shape of the
+ * leading token — {@link parseEndLabel} says exactly that, and a checker must
+ * not be stricter than the parser it checks. `1st choice` is an end called "1st
+ * choice" there and stays one here; `1..n` is a range with a symbolic bound,
+ * which this module's writers cannot hold, and is reported.
+ */
+const RANGE_ATTEMPT = /^(?:[\d*][\d*]*|[\d*][^\s]*\.\.[^\s]*)$/;
+
+/**
+ * The multiplicity an ASSOCIATION END's label opens with, when it opens with one
+ * at all — §11.5.4 beside §7.5.4.
+ *
+ * Reads the label exactly as {@link parseEndLabel} does (visibility marker off
+ * the front, then the leading token, brackets optional) and then asks
+ * {@link checkMultiplicity} about that token — but only when the token is an
+ * attempt at a range. Everything else on an end label is the ROLE name, which is
+ * free text and has no syntax to be wrong about.
+ *
+ * So `0..*`, `1`, `[0..1]` and `0..* items` are silent, `1..n` and `0...*` are
+ * reported, and `items`, `- owner` and `1st choice` are none of this rule's
+ * business.
+ */
+export function checkEndLabelMultiplicity(
+  label: string | undefined | null
+): UmlSyntaxCheck {
+  const raw = label === null || label === undefined ? '' : String(label).trim();
+  if (!raw) return OK;
+
+  const withoutVisibility = raw.replace(VISIBILITY_MARKER, '').trim();
+  const head = END_LABEL_HEAD.exec(withoutVisibility);
+  if (!head) return OK;
+
+  const token = head[1].replace(/^\[/, '').replace(/\]$/, '').trim();
+  if (!RANGE_ATTEMPT.test(token)) return OK;
+  return checkMultiplicity(token);
 }
