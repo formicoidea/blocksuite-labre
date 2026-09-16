@@ -2688,6 +2688,7 @@ __metadata:
   resolution: "@labre/affine-gfx-wardley@workspace:packages/affine/gfx/wardley"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-group": "workspace:*"

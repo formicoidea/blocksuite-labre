@@ -1,5 +1,55 @@
 # @labre/affine-gfx-connector
 
+## 0.41.0
+
+### Minor Changes
+
+- 5776733: feat(blocks): route bypassed i18n keys through the seam instead of raw literals. The DDD/EDGY/C4 auto-legends (`createAutoLegend`) now resolve every row's label and a section's own title through the role/preset key it always carried, wherever a host registers a catalogue — the Context Map "Relationships" row, the Core Domain "Sub-domains" row, the Event Storming "Stickies" row and EDGY's facet section titles (three new keys, `com.labre.edgy.legend.facet.*`) all reached this by accident before. The templates panel resolves a command-derived template's tile tooltip through the command's own `labelKey` (`resolveTemplateName`), a category's tab label through its own key (`com.labre.framework.<id>`, new `TemplateCategory.nameKey`), the "Add" hover caption through a new `com.labre.template.panel.add` key, and search now matches a translated name as well as the English one. The connector's "Reverse direction" tooltip and the edgeless embed toolbar's "Card view" / "Embed view" switcher now resolve through the same keys their page-mode counterparts already used, instead of restating the words. `UniverseTagDefs` (`TagDef` / `TagValueDef`) gains an optional `labelKey` beside `label` — backward compatible, a host pack needs no change — and the library's own Wardley-natures / Porter-competition pack uses it; every renderer of a tag label (the "Qualify" toolbar, the reading panel) resolves it. New manifest source `'tag'`. None of this changes what a catalogue-less playground shows: every fallback is the exact English text already on screen.
+- 6271b11: feat(blocks): the DDD frameworks' automatic legends, the surface/root editor chrome, the generic gfx tools (brush, connector, pointer, group, link, template) and a handful of shared services now resolve their strings through the translation seam instead of a baked-in English literal.
+
+  Every DDD auto-legend's box title ("Legend") joins the shared `com.labre.board.legend.title` wording, and each framework's section titles (Context Map's "Boundaries"/"Relationships", Core Domain's "Sub-domains"/"Team interaction modes"/"Movement", Event Storming's "Stickies"/"Flow") get their own seed key via `AutoLegendSectionSpec.titleKey`. The Context Map relationship rows drop their pre-built `"PS — Partnership"` string in favor of `labelPrefix` + the role's own translated `labelKey`, resolved at legend-build time. The Aggregate Design Canvas template tab now carries a `TemplateCategory.nameKey` instead of a literal name.
+
+  The edgeless block toolbar (turn-into menu, alignment menu, misc actions, the "More" submenu, zoom-to-selection and mindmap Tab/Enter shortcuts), the SVG importer's eighteen best-effort remarks (one key per sentence shape, `{{name}}`/`{{unit}}`/`{{kind}}` interpolated), the brush/eraser/pen tooltips, the connector toolbar (modes, styles, add-text) and quick-tool, the pointer hand/select tooltips, the group toolbar and its "Group {{n}}" seed, the link undo button, and the templates panel's search placeholder are all translated the same way — `translateKey(std, ...WORDING)` for chrome rendered with `std` in hand, a sibling `…Wording` field for static toolbar-action configs.
+
+  Three importers (markdown, mix-text, plain-text `toDocSnapshot`) resolve their "Untitled" seed through a new shared `resolveWording(provider, wording)` helper (`@labre/affine-shared/adapters`, also now backing `ClipboardAdapter`'s size-limit toasts), since these transformers carry a `ServiceProvider` but no `std`. The doc-display-meta service's "Untitled"/"Deleted doc" fallbacks, the PNG export's untitled-doc filename, the comment toolbar button and the generic notification's "Undo" action follow the same pattern.
+
+  `@labre/std`'s "Block Version Mismatched" card resolves its four wordings through a `TranslationProvider` looked up by NAME (`createIdentifier('AffineTranslationService')`) rather than by importing `@labre/affine-shared` — the dependency between the two packages runs the other way — proven by a new unit test that registers a fake provider under the same name from an independently-constructed identifier.
+
+  With no host catalogue registered, every one of these surfaces renders exactly the English text it always has.
+
+  Left as-is, and why: `MindmapElementModel.addNode`'s "New node" default is a model default (red zone) — the Tab/Enter call sites in `blocks/root` now pass the text explicitly instead, using a seed key declared in `blocks/root`'s own table since the mindmap framework's table does not carry it yet. `bracket-pairs.ts`'s pair names and the code-block language ids are internal matching keys, never displayed. The native `showOpenFilePicker` filter descriptions (`filesys.ts`) have no reasonable seam to a host catalogue from a plain module constant. `open-doc-config.ts`'s item labels are dead code today (only `.isAllowed` is read). The `senior-tool.ts` "Pen"/"Template" names are core tools with no framework descriptor, by the same design already documented for every other core tool.
+
+  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+- 47d4ac6: feat(blocks): close four i18n seams the earlier lots reported missing. A colour panel's swatch (`edgeless-color-panel`, shape/note/connector/brush pickers) now resolves its visible name and aria-label through `resolvePaletteLabel` (`@labre/affine-components/color-picker`) instead of showing `Palette.key` raw — the default theme's colours (`Red`, `LightBlue`…) translate through a shared `PALETTE_NAME_WORDINGS` table, and a framework's own swatches (Wardley's evolution-cycle colours, EDGY's facet palette) translate through their own `NamedPalette.labelWording`, with no cross-framework import. `UniverseTagDefs` (tag packs) gained an optional pack-level `labelKey` and `descriptionKey` on `TagDef` / `TagValueDef`, resolved by `translateTagLabel` / the new `translateTagDescription`; Wardley's own nature and Porter-competition tags are keyed end to end. `InterchangeNote`'s `messageKey` can now carry a whole sentence with `{{name}}` / `{{count}}` holes (`messageParams`, already wired into `reportInterchangeImport`) — the remaining 16 BPMN import remarks and refusals (the last four now throw a translatable `InterchangeImportError` instead of a plain `Error`) and the 2 remaining Wardley OWM import remarks are keyed. With no `TranslationProvider` registered every one of these reads exactly as it did before.
+
+### Patch Changes
+
+- b2781b5: refactor(blocks): one chrome word, one key. Where several packages declared the same English interface word under different keys (Copy-style verbs, text formats, display modes, Reload, Rename, Settings…), they now share one wording from `@labre/affine-shared/services`, and the key manifest carries 52 fewer entries. Nothing changes on screen, and no key that existed in a previous release is removed: the merged keys were all introduced by this release's translation work. The manifest spec now fails when a new interface word is declared under a second key (real homonyms such as « Light » or « Left » are allow-listed with a reason).
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [4ed9484]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/affine-block-surface@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-rich-text@0.41.0
+  - @labre/affine-gfx-text@0.41.0
+  - @labre/affine-widget-edgeless-toolbar@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes
