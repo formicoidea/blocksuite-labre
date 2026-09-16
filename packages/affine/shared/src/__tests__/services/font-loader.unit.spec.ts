@@ -5,6 +5,7 @@ import { FontFamily, FontStyle, FontWeight } from '@labre/affine-model';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FontConfig } from '../../services/font-loader/config';
+import { CommunityCanvasTextFonts } from '../../services/font-loader/config';
 import { FontLoaderService } from '../../services/font-loader/font-loader-service';
 
 class FakeFontFace {
@@ -128,4 +129,37 @@ describe('FontLoaderService', () => {
     expect(registry.size).toBe(0);
     await expect(service.ready).resolves.toBeUndefined();
   });
+});
+
+describe('CommunityCanvasTextFonts', () => {
+  /** The heaviest weight the list registers for a family and style. */
+  const heaviestOf = (family: FontFamily, style: FontStyle) =>
+    CommunityCanvasTextFonts.filter(
+      config => config.font === family && config.style === style
+    )
+      .map(config => config.weight)
+      .sort()
+      .pop();
+
+  it.each([
+    [FontFamily.Inter, FontStyle.Normal],
+    [FontFamily.Inter, FontStyle.Italic],
+    [FontFamily.Poppins, FontStyle.Normal],
+    [FontFamily.Poppins, FontStyle.Italic],
+    [FontFamily.BebasNeue, FontStyle.Normal],
+  ])('ships a 700 face for %s %s', (family, style) => {
+    expect(heaviestOf(family, style)).toBe(FontWeight.Bold);
+  });
+
+  /**
+   * Kalam, Satoshi and Lora have no 600 file of their own: their `SemiBold`
+   * entries already point at the 700 one, so a second Bold row would repeat
+   * the Semibold row rather than add a weight.
+   */
+  it.each([FontFamily.Kalam, FontFamily.Satoshi, FontFamily.Lora])(
+    'keeps %s on a single heavy face',
+    family => {
+      expect(heaviestOf(family, FontStyle.Normal)).toBe(FontWeight.SemiBold);
+    }
+  );
 });

@@ -323,10 +323,9 @@ export const TEXT_FORMAT_STRIKETHROUGH: ChromeWording = [
 /* ── Font weight / style ────────────────────────────────────────────────── */
 
 /**
- * The three font weights and the one non-default font style a text toolbar
- * offers — said identically by the toolbar's own "current selection" label
- * (`gfx/text`) and by the popup menu that picks them
- * (`widgets/edgeless-toolbar`).
+ * The font weights and the one non-default font style a text toolbar offers —
+ * said identically by the toolbar's own "current selection" label (`gfx/text`)
+ * and by the popup menu that picks them (`widgets/edgeless-toolbar`).
  */
 export const FONT_WEIGHT_LIGHT: ChromeWording = [
   'com.labre.font.weight.light',
@@ -342,6 +341,13 @@ export const FONT_WEIGHT_SEMIBOLD: ChromeWording = [
   'com.labre.font.weight.semibold',
   'Semibold',
 ];
+
+/**
+ * An alias (L7 dedupe): the heaviest canvas weight is said with the same word
+ * as the prose toolbar's {@link TEXT_FORMAT_BOLD}, so it shares its one key —
+ * exactly as {@link FONT_STYLE_ITALIC} does below.
+ */
+export const FONT_WEIGHT_BOLD = TEXT_FORMAT_BOLD;
 
 /**
  * An alias (L7 dedupe): the same word as {@link TEXT_FORMAT_ITALIC}, one key.

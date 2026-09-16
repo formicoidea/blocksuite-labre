@@ -50,6 +50,7 @@ import {
   TEXT_TOOLBAR_FONT,
   TEXT_TOOLBAR_FONT_STYLE,
   TEXT_TOOLBAR_FONT_STYLE_ITALIC,
+  TEXT_TOOLBAR_FONT_WEIGHT_BOLD,
   TEXT_TOOLBAR_FONT_WEIGHT_LIGHT,
   TEXT_TOOLBAR_FONT_WEIGHT_REGULAR,
   TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
@@ -72,6 +73,11 @@ const FONT_WEIGHT_LIST = [
     key: 'Semibold',
     keyWording: TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
     value: FontWeight.SemiBold,
+  },
+  {
+    key: 'Bold',
+    keyWording: TEXT_TOOLBAR_FONT_WEIGHT_BOLD,
+    value: FontWeight.Bold,
   },
 ] as const satisfies MenuItem<FontWeight>[];
 

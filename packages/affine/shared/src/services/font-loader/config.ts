@@ -10,6 +10,13 @@ export const fontConfigSchema = z.object({
 
 export type FontConfig = z.infer<typeof fontConfigSchema>;
 
+/**
+ * The AFFiNE-hosted mirror. It carries strictly fewer files than the community
+ * list: `cdn.affine.pro` answers 404 for every `Inter-Bold`, `Poppins-Bold`
+ * and `BebasNeue-Bold` spelling, so those three families offer no 700 weight
+ * here. The Kalam / Satoshi / Lora `SemiBold` entries below already point at
+ * the 700 file — those families ship a single heavy face, not two.
+ */
 export const AffineCanvasTextFonts: FontConfig[] = [
   // Inter, https://fonts.cdnfonts.com/css/inter?styles=29139,29134,29135,29136,29140,29141
   {
@@ -228,11 +235,25 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
   },
   {
     font: FontFamily.Inter,
+    url: 'https://fonts.cdnfonts.com/s/19795/Inter-Bold.woff',
+    weight: FontWeight.Bold,
+    style: FontStyle.Normal,
+  },
+  {
+    font: FontFamily.Inter,
     url: 'https://fonts.cdnfonts.com/s/19795/Inter-SemiBoldItalic.woff',
     weight: FontWeight.SemiBold,
     style: FontStyle.Italic,
   },
+  {
+    font: FontFamily.Inter,
+    url: 'https://fonts.cdnfonts.com/s/19795/Inter-BoldItalic.woff',
+    weight: FontWeight.Bold,
+    style: FontStyle.Italic,
+  },
   // Kalam, https://fonts.cdnfonts.com/css/kalam?styles=15166,170689,170687
+  // Kalam ships no 600 face: its `SemiBold` entry below already IS the 700
+  // file, so the family offers one heavy weight, not two.
   {
     font: FontFamily.Kalam,
     url: 'https://fonts.cdnfonts.com/s/13130/Kalam-Light.woff',
@@ -315,6 +336,12 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
   },
   {
     font: FontFamily.Poppins,
+    url: 'https://fonts.cdnfonts.com/s/16009/Poppins-Bold.woff',
+    weight: FontWeight.Bold,
+    style: FontStyle.Normal,
+  },
+  {
+    font: FontFamily.Poppins,
     url: 'https://fonts.cdnfonts.com/s/16009/Poppins-LightItalic.woff',
     weight: FontWeight.Light,
     style: FontStyle.Italic,
@@ -331,7 +358,15 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
     weight: FontWeight.SemiBold,
     style: FontStyle.Italic,
   },
+  {
+    font: FontFamily.Poppins,
+    url: 'https://fonts.cdnfonts.com/s/16009/Poppins-BoldItalic.woff',
+    weight: FontWeight.Bold,
+    style: FontStyle.Italic,
+  },
   // Lora, https://fonts.cdnfonts.com/css/lora-4?styles=50357,50356,50354,50355
+  // Lora ships no 600 face either: as with Kalam and Satoshi, the entries
+  // below map the 700 file onto `SemiBold` and the family has a single heavy.
   {
     font: FontFamily.Lora,
     url: 'https://fonts.cdnfonts.com/s/29883/Lora-Regular.woff',
@@ -367,6 +402,14 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
     font: FontFamily.BebasNeue,
     url: 'https://fonts.cdnfonts.com/s/14902/BebasNeue-Regular.woff',
     weight: FontWeight.Regular,
+    style: FontStyle.Normal,
+  },
+  {
+    font: FontFamily.BebasNeue,
+    // The bold face is the one Bebas Neue file whose name is spelled with a
+    // space, like the light one above and unlike the regular one.
+    url: 'https://fonts.cdnfonts.com/s/14902/BebasNeue%20Bold.woff',
+    weight: FontWeight.Bold,
     style: FontStyle.Normal,
   },
   // OrelegaOne, https://fonts.cdnfonts.com/css/orelega-one?styles=148618
