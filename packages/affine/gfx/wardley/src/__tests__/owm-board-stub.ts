@@ -47,14 +47,18 @@ export function fakeMap(
     OWM_DEFAULT_MAP_WIDTH,
     OWM_DEFAULT_MAP_HEIGHT,
   ],
-  interchange?: Record<string, ForeignInterchange>
+  interchange?: Record<string, ForeignInterchange>,
+  // A second map on the same board needs an id of its own: `containingFrame`
+  // breaks a containment tie on the smaller id, and the export's scoping picks
+  // maps out of the selection.
+  id = 'map-1'
 ): WardleyBackgroundElementModel {
   const map = Object.create(WardleyBackgroundElementModel.prototype) as Record<
     string,
     unknown
   >;
   Object.defineProperties(map, {
-    id: { value: 'map-1', enumerable: true },
+    id: { value: id, enumerable: true },
     role: { value: WARDLEY_ROLE.map, enumerable: true },
     elementBound: { value: new Bound(...bound) },
     interchange: { value: interchange, writable: true, enumerable: true },

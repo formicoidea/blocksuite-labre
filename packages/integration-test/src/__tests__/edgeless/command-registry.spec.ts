@@ -43,7 +43,7 @@ describe('command registry on the canvas', () => {
     // plus `wardley.importOwm`, which nominates the row because an import is
     // where a board comes FROM and the sub-menu is the first thing a user opens
     // on an empty canvas (PO decision of 2026-08-28). `wardley.exportOwm`
-    // declines it and lives in the catalogue.
+    // declines it and lives in the catalogue and in the selected map's "⋮".
     // Still fourteen once `wardley.importSvg` landed, and that is the point of
     // asserting it: the visual-tier fallback declines the row (the row carries
     // the NATIVE format), so the catalogue grew to sixteen and the NOMINATION

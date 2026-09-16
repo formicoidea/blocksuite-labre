@@ -98,6 +98,14 @@ export {
   wardleySafeFilename,
 } from './export';
 export { importWardleyOwm } from './import';
+// The half of the export that needs an editor, kept apart from the half that
+// does not — the same split C4's and BPMN's indexes make for the same reason:
+// what the selection scopes the file to lives here, the serializer next door.
+export {
+  wardleyBoardOf,
+  wardleyExportElementsOf,
+  wardleyMapsSelected,
+} from './actions';
 // Wardley's entries in the interchange registry (`docs/adr/0012`) — the OWM
 // DSL both ways, and the visual-tier SVG fallback. Exported whole so a host can
 // ask what Wardley can read and write without mounting an editor, and call it
