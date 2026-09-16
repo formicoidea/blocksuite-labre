@@ -22,10 +22,13 @@ import {
   TestWorkspace,
 } from '@labre/store/test';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { applyUpdate, encodeStateAsUpdate } from 'yjs';
+import { applyUpdate, encodeStateAsUpdate, Map as YMap } from 'yjs';
 
 import { effects } from '../../effects.js';
-import type { GfxPrimitiveElementModel } from '../../gfx/index.js';
+import type {
+  GfxPrimitiveElementModel,
+  SurfaceElementDamageReport,
+} from '../../gfx/index.js';
 import type { TestShapeElement } from '../test-gfx-element.js';
 import {
   RootBlockSchemaExtension,
@@ -173,5 +176,84 @@ describe('an element whose xywh is missing from the document', () => {
       String(message).includes(groupId)
     );
     expect(reports).toHaveLength(0);
+  });
+});
+
+/**
+ * The console line is for a developer looking at a browser. The map and the
+ * subject below are the same fact made COUNTABLE: the host's telemetry adapter
+ * reads them and reports how many documents open damaged (#318).
+ *
+ * The map is what makes it work at all. Element models are built when the
+ * BLOCK MODEL is created, before any view or watcher exists, so the elements a
+ * document opens with are damaged before anyone can be listening — a subject
+ * alone would report nothing, forever. The subject covers only the other case:
+ * an element that arrives later, through sync.
+ */
+describe('the surface publishes the damage it found', () => {
+  let workspace!: TestWorkspace;
+  let surfaceId!: string;
+  let surface!: SurfaceBlockModel;
+  let element!: TestShapeElement;
+
+  beforeEach(() => {
+    ({ workspace, surfaceId, surface } = setupSurface());
+    const id = surface.addElement({ type: 'testShape' });
+    element = surface.getElementById(id)! as TestShapeElement;
+  });
+
+  test('damagedElements holds what the document opened with', () => {
+    dropXYWH(surface, element);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const reopened = reopen(workspace, surfaceId);
+
+    expect([...reopened.damagedElements]).toEqual([
+      [element.id, { type: 'testShape', reason: 'missing-xywh' }],
+    ]);
+  });
+
+  test('a healthy element and a group are absent from the map', () => {
+    const groupId = surface.addElement({
+      type: 'testGroup',
+      children: { [element.id]: true },
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const reopened = reopen(workspace, surfaceId);
+
+    expect(reopened.damagedElements.has(element.id)).toBe(false);
+    expect(reopened.damagedElements.has(groupId)).toBe(false);
+    expect(reopened.damagedElements.size).toBe(0);
+  });
+
+  test('elementDamaged fires once for an element that arrives later', () => {
+    const reports: SurfaceElementDamageReport[] = [];
+    surface.elementDamaged.subscribe(report => reports.push(report));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // What a peer's update looks like on arrival: the element's Y.Map lands in
+    // the surface without ever passing through `addElement`, and `xywh` is not
+    // in it.
+    const late = new YMap<unknown>();
+    surface.store.transact(() => {
+      late.set('type', 'testShape');
+      late.set('id', 'late-1');
+      surface.elements.getValue()!.set('late-1', late);
+    });
+
+    expect(reports).toEqual([
+      { id: 'late-1', type: 'testShape', reason: 'missing-xywh' },
+    ]);
+    expect(surface.damagedElements.get('late-1')).toEqual({
+      type: 'testShape',
+      reason: 'missing-xywh',
+    });
+
+    // Deleting the element takes the damage with it: a document that no longer
+    // carries a broken element is no longer damaged by it.
+    surface.deleteElement('late-1');
+    expect(surface.damagedElements.has('late-1')).toBe(false);
+    expect(reports).toHaveLength(1);
   });
 });

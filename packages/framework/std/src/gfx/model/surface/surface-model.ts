@@ -56,6 +56,18 @@ export type MiddlewareCtx = {
 
 export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
 
+/** Why an element is considered damaged. One reason so far. */
+export type SurfaceDamageReason = 'missing-xywh';
+
+/** What the surface knows about one damaged element. */
+export type SurfaceElementDamage = {
+  type: string;
+  reason: SurfaceDamageReason;
+};
+
+/** The same fact, pushed as it happens. */
+export type SurfaceElementDamageReport = SurfaceElementDamage & { id: string };
+
 /**
  * Prop keys that are never copied onto an element, whatever the caller sends.
  *
@@ -302,6 +314,13 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
 
   elementUpdated = new Subject<ElementUpdatedData>();
 
+  /**
+   * An element was found damaged — see {@link damagedElements}. Pushed at the
+   * same moment the console line is written, so a subscriber that arrives
+   * later reads the map instead and misses nothing.
+   */
+  elementDamaged = new Subject<SurfaceElementDamageReport>();
+
   localElementAdded = new Subject<GfxLocalElementModel>();
 
   localElementDeleted = new Subject<GfxLocalElementModel>();
@@ -313,6 +332,24 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }>();
 
   private readonly _isEmpty$ = signal(false);
+
+  private readonly _damagedElements = new Map<string, SurfaceElementDamage>();
+
+  /**
+   * The elements this surface built from a Y.Map that was missing a key it
+   * declares — today only `xywh`, the bound without which the element paints
+   * nothing (see {@link _createElementFromYMap}).
+   *
+   * **State, not just a signal.** The element models are built when the block
+   * model is created, before any view or `LifeCycleWatcher` is mounted, so a
+   * subscriber to {@link elementDamaged} would always be too late for the
+   * elements the document opened with. Whoever wants to count damaged
+   * documents reads this map at mount, then subscribes for what sync brings
+   * afterwards.
+   */
+  get damagedElements(): ReadonlyMap<string, SurfaceElementDamage> {
+    return this._damagedElements;
+  }
 
   get elementModels() {
     const models: GfxPrimitiveElementModel[] = [];
@@ -522,10 +559,15 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       getFieldPropsSet(elementModel).has('xywh') &&
       !yMap.has('xywh')
     ) {
+      // The console line stays: std runs standalone, with no telemetry bus of
+      // its own. The state and the subject below are what makes the same fact
+      // COUNTABLE by a host that has one.
       console.warn(
         `[labre] surface element ${type} ${id} has no xywh: rendering it with ` +
           `a zero-size bound; the document is damaged`
       );
+      this._damagedElements.set(id, { type, reason: 'missing-xywh' });
+      this.elementDamaged.next({ id, type, reason: 'missing-xywh' });
     }
 
     const unmount = () => {
@@ -697,6 +739,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
               const { model, unmount } = this._elementModels.get(id)!;
               removeFromType(model.type, model);
               this._elementModels.delete(id);
+              this._damagedElements.delete(id);
               deletedElements.push({ model, unmount });
             }
             break;
@@ -995,9 +1038,11 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     this.elementAdded.complete();
     this.elementRemoved.complete();
     this.elementUpdated.complete();
+    this.elementDamaged.complete();
 
     this._elementModels.forEach(({ unmount }) => unmount());
     this._elementModels.clear();
+    this._damagedElements.clear();
   }
 
   getElementById(id: string): GfxPrimitiveElementModel | null {

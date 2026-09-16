@@ -9,8 +9,8 @@ import {
   FeatureFlagService,
   fillPlaceholders,
   FontConfigExtension,
-  NoopTelemetryExtension,
   ParseDocUrlExtension,
+  TelemetryExtension,
   type TranslationParams,
   TranslationExtension,
 } from '@labre/affine/shared/services';
@@ -55,8 +55,12 @@ export function getTestCommonExtensions(
 ): ExtensionType[] {
   return [
     FontConfigExtension(CommunityCanvasTextFonts),
-    // Standalone host: telemetry seam wired with the event-dropping adapter.
-    NoopTelemetryExtension,
+    // Standalone host, recette flavour: instead of the event-dropping
+    // `NoopTelemetryExtension`, the playground prints what the bus carries so
+    // an event can be checked in the console (`[telemetry] DocumentDamaged …`).
+    TelemetryExtension({
+      track: (event, props) => console.info('[telemetry]', event, props),
+    }),
     EditorSettingExtension({
       setting$: mockEditorSetting(),
     }),

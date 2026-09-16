@@ -211,6 +211,34 @@ every run without exception. Every started run ends in exactly one of
 Counts and ids only. Criterion prompts, finding wording and board content never
 cross this bus.
 
+## Document damage
+
+Not a gesture: a health event. It says what a document IS when it lands, which
+no lifecycle event can.
+
+| Event             | When                                                                                                   | Required props           |
+| ----------------- | ------------------------------------------------------------------------------------------------------ | ------------------------ |
+| `DocumentDamaged` | the editor opens a document carrying elements without geometry, or receives such elements through sync | `reason`, `elementCount` |
+
+Emitted by `DocumentDamageTelemetryWatcher` (registered next to
+`BlockLifecycleTelemetryWatcher` in the foundation view extension), which reads
+`SurfaceBlockModel.damagedElements` at mount — the element models are built
+before any watcher exists, so a subscription alone would always be too late —
+then subscribes to `elementDamaged` for what sync delivers afterwards.
+
+- **One event per document per batch**, never one per element: the opening
+  batch is sent at mount, later arrivals are aggregated in a microtask.
+- **Elements are deduplicated** by id for the watcher's lifetime, so a document
+  never counts an element twice.
+- **No ids and no content** — not the element ids, not their types, not the
+  document id. Counts only.
+- The metric the PO reads is the count of **distinct documents** that emitted
+  it, not the number of events: "how many documents open damaged" is what
+  measures the app-side persistence fix.
+
+The surface keeps its `console.warn` alongside: `@labre/std` runs standalone
+and has no bus of its own.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,
