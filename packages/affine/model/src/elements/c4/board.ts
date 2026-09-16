@@ -100,7 +100,7 @@ export class C4BoardElementModel extends FrameworkBackgroundElementModel<C4Board
   @field(0)
   accessor rotate: number = 0;
 
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,1400,900]';
 
   /**

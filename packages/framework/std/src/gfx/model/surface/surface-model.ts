@@ -56,6 +56,18 @@ export type MiddlewareCtx = {
 
 export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
 
+/** Why an element is considered damaged. One reason so far. */
+export type SurfaceDamageReason = 'missing-xywh';
+
+/** What the surface knows about one damaged element. */
+export type SurfaceElementDamage = {
+  type: string;
+  reason: SurfaceDamageReason;
+};
+
+/** The same fact, pushed as it happens. */
+export type SurfaceElementDamageReport = SurfaceElementDamage & { id: string };
+
 /**
  * Prop keys that are never copied onto an element, whatever the caller sends.
  *
@@ -302,6 +314,13 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
 
   elementUpdated = new Subject<ElementUpdatedData>();
 
+  /**
+   * An element was found damaged — see {@link damagedElements}. Pushed at the
+   * same moment the console line is written, so a subscriber that arrives
+   * later reads the map instead and misses nothing.
+   */
+  elementDamaged = new Subject<SurfaceElementDamageReport>();
+
   localElementAdded = new Subject<GfxLocalElementModel>();
 
   localElementDeleted = new Subject<GfxLocalElementModel>();
@@ -313,6 +332,24 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }>();
 
   private readonly _isEmpty$ = signal(false);
+
+  private readonly _damagedElements = new Map<string, SurfaceElementDamage>();
+
+  /**
+   * The elements this surface built from a Y.Map that was missing a key it
+   * declares — today only `xywh`, the bound without which the element paints
+   * nothing (see {@link _createElementFromYMap}).
+   *
+   * **State, not just a signal.** The element models are built when the block
+   * model is created, before any view or `LifeCycleWatcher` is mounted, so a
+   * subscriber to {@link elementDamaged} would always be too late for the
+   * elements the document opened with. Whoever wants to count damaged
+   * documents reads this map at mount, then subscribes for what sync brings
+   * afterwards.
+   */
+  get damagedElements(): ReadonlyMap<string, SurfaceElementDamage> {
+    return this._damagedElements;
+  }
 
   get elementModels() {
     const models: GfxPrimitiveElementModel[] = [];
@@ -507,6 +544,32 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     state.creating = false;
     state.skipField = false;
 
+    // A document whose Yjs state still has pending structs can carry an element
+    // whose `xywh` key never arrived. The element reads its `[0,0,0,0]` fallback
+    // and paints nothing instead of a phantom shape at the origin — say so ONCE
+    // here, where every element model is built from its Y.Map, and never again
+    // from a getter that runs several times per frame. Group-like elements are
+    // excluded for free: their `xywh` is a derived getter, not a declared field.
+    //
+    // Only a map that is IN the document is asked: a brand-new element is built
+    // from a detached Y.Map whose keys still sit in Yjs' preliminary content,
+    // where `has()` sees nothing (and warns about the premature read).
+    if (
+      yMap.doc &&
+      getFieldPropsSet(elementModel).has('xywh') &&
+      !yMap.has('xywh')
+    ) {
+      // The console line stays: std runs standalone, with no telemetry bus of
+      // its own. The state and the subject below are what makes the same fact
+      // COUNTABLE by a host that has one.
+      console.warn(
+        `[labre] surface element ${type} ${id} has no xywh: rendering it with ` +
+          `a zero-size bound; the document is damaged`
+      );
+      this._damagedElements.set(id, { type, reason: 'missing-xywh' });
+      this.elementDamaged.next({ id, type, reason: 'missing-xywh' });
+    }
+
     const unmount = () => {
       mounted = false;
       elementModel.onDestroyed();
@@ -676,6 +739,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
               const { model, unmount } = this._elementModels.get(id)!;
               removeFromType(model.type, model);
               this._elementModels.delete(id);
+              this._damagedElements.delete(id);
               deletedElements.push({ model, unmount });
             }
             break;
@@ -822,7 +886,10 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         // the same sync. Reacting to a REMOTE update with a local write is
         // redundant on a writeable peer and, on a readonly viewer, the
         // production exception `Cannot remove element in readonly mode`.
-        if (!local) return;
+        // A readonly peer never cascades either, whatever the provenance of
+        // the update: it may not write at all, and a lingering empty group is
+        // harmless — the author's own cascade arrives through sync.
+        if (!local || this.store.readonly) return;
 
         const element = this.getElementById(id)!;
 
@@ -971,9 +1038,11 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     this.elementAdded.complete();
     this.elementRemoved.complete();
     this.elementUpdated.complete();
+    this.elementDamaged.complete();
 
     this._elementModels.forEach(({ unmount }) => unmount());
     this._elementModels.clear();
+    this._damagedElements.clear();
   }
 
   getElementById(id: string): GfxPrimitiveElementModel | null {

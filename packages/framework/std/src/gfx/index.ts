@@ -133,6 +133,9 @@ export {
   SURFACE_YMAP_UNIQ_IDENTIFIER,
   SurfaceBlockModel,
   type SurfaceBlockProps,
+  type SurfaceDamageReason,
+  type SurfaceElementDamage,
+  type SurfaceElementDamageReport,
   type SurfaceMiddleware,
 } from './model/surface/surface-model.js';
 export { measureOperation } from './perf.js';

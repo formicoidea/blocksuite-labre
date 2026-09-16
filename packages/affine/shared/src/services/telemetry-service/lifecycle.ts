@@ -324,3 +324,30 @@ export type AuditEvents = {
   MapAuditCompleted: MapAuditCompletedEvent;
   MapAuditInterrupted: MapAuditInterruptedEvent;
 };
+
+/**
+ * A document was opened carrying elements the editor cannot draw — today, a
+ * surface element whose `xywh` never arrived (#318), which reads a zero-size
+ * bound and paints nothing.
+ *
+ * **Not a lifecycle event and not a user gesture: a health event.** The block
+ * taxonomy describes what someone did; this one describes what a document IS
+ * when it lands, which no existing event can say. It was already reported as a
+ * `console.warn` by the surface model — invisible to analytics, and therefore
+ * unable to answer the one question that matters after the app-side
+ * persistence fix: *how many documents open damaged*. The metric the dashboard
+ * reads is the count of DISTINCT documents, not of events.
+ *
+ * Counts only. Never an element id, never a type name, never board content.
+ */
+export interface DocumentDamagedEvent extends TelemetryEvent {
+  page?: 'doc editor' | 'whiteboard editor';
+  /** What is wrong with the elements this event counts. */
+  reason: 'missing-xywh';
+  /** How many damaged elements this batch found. */
+  elementCount: number;
+}
+
+export type DocumentHealthEvents = {
+  DocumentDamaged: DocumentDamagedEvent;
+};

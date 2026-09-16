@@ -212,7 +212,7 @@ export class BrushElementModel extends GfxPrimitiveElementModel<BrushProps> {
       ]),
     };
   })
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,0,0]';
 }
 

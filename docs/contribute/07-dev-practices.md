@@ -82,18 +82,27 @@ stdContext }) accessor std!` injects the runtime.
 - Do not write when nothing changed: an unchanged write pushes an empty undo
   entry and may persist a resolved translation as user text.
 - Every mutation entry point checks `store.readonly` first.
-- **Cascade only on local edits:**
+- **Cascade only on local edits, and only when writeable:**
 
   ```ts
   surface.elementUpdated.subscribe(({ id, props, local }) => {
-    if (!local) return;
+    if (!local || surface.store.readonly) return;
     …
   });
   ```
 
-  Without the guard every peer re-applies the cascade (connector, frame and
-  mindmap did, fixed in PR #253; regression test
-  `remote-cascade-connector.unit.spec.ts`).
+  Without the local guard every peer re-applies the cascade (connector, frame
+  and mindmap did, fixed in PR #253; regression test
+  `remote-cascade-connector.unit.spec.ts`). Without the readonly guard a local
+  edit on a store the host has put in readonly throws
+  `Cannot remove element in readonly mode` (issue #318; regression test
+  `remote-cascade.unit.spec.ts`). A cascade that cannot run is harmless: the
+  author's own cascade arrives through sync.
+
+  Write a cascade **once**. The "group emptied" cascade lived both in
+  `SurfaceBlockModel._watchGroupRelationChange` and in a `group-watcher`
+  surface middleware, so every throw fired twice; the middleware is gone and
+  the std watcher is the only implementation.
 
 ## Gfx element models and views
 

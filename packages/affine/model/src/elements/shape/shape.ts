@@ -288,7 +288,7 @@ export class ShapeElementModel extends GfxPrimitiveElementModel<ShapeProps> {
   @field()
   accessor controlPoints: (number[] | null)[] | null = null;
 
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,100,100]';
 }
 
