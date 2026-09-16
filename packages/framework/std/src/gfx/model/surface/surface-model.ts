@@ -806,10 +806,11 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
           if (isGfxGroupCompatibleModel(payload.model)) {
             this._groupLikeModels.delete(payload.id);
           }
-          // Same rule as `_watchGroupRelationChange`: the author already
+          // Same rule as `_watchGroupRelationChange`: cascade only on a local
+          // edit, and only if the store is writeable. The author already
           // dropped the block from its group, and `removeChild` is a raw
           // `transact` — on a readonly viewer it would be a silent write.
-          if (payload.isLocal) {
+          if (payload.isLocal && !this.store.readonly) {
             const group = this.getGroup(payload.id);
             if (group) {
               // oxlint-disable-next-line unicorn/prefer-dom-node-remove

@@ -84,6 +84,7 @@ const twoPeers = () => {
 
   return {
     surfaceId,
+    authorDoc,
     author,
     authorSurface: author.getBlock(surfaceId)!.model as SurfaceBlockModel,
     viewer,
@@ -207,5 +208,67 @@ describe('a readonly peer never runs the group cascade', () => {
     cascaded.empty();
     expect(authorSurface.hasElementById(cascaded.groupId)).toBe(false);
     expect(deleteElement).toHaveBeenCalledWith(cascaded.groupId);
+  });
+
+  test('a readonly store sharing the Y.Doc of a writeable one cascades nothing while the author edits', () => {
+    const { authorDoc, author, authorSurface, surfaceId } = twoPeers();
+
+    // The shape the production stack reported: two stores on ONE `Y.Doc`, one
+    // writeable and one readonly, so every transaction the author opens also
+    // reaches the readonly surface model as a LOCAL one — `readonly` is the
+    // only thing that tells the two apart.
+    const mirror = authorDoc.getStore({ readonly: true, extensions });
+    const mirrorSurface = mirror.getBlock(surfaceId)!
+      .model as SurfaceBlockModel;
+    // Both write paths of the cascade, spied on the MIRROR's own models: the
+    // author's transactions are indistinguishable from the mirror's on a
+    // shared `Y.Doc`, so the attempt is what we can attribute.
+    const deleteElement = vi.spyOn(mirrorSurface, 'deleteElement');
+
+    // The author empties a group: its own watcher collects it, the mirror's
+    // must not try to collect it a second time.
+    const childId = authorSurface.addElement({
+      type: 'testShape',
+      xywh: serializeXYWH(0, 0, 100, 100),
+    });
+    const emptiedId = authorSurface.addElement({
+      type: 'testGroup',
+      children: { [childId]: true },
+    });
+    expect(() => authorSurface.deleteElement(childId)).not.toThrow();
+    expect(authorSurface.hasElementById(emptiedId)).toBe(false);
+    expect(deleteElement).not.toHaveBeenCalled();
+
+    // The author deletes a grouped BLOCK. The group keeps a second child, so
+    // it survives the author's own `removeChild` and is still there when the
+    // mirror's subscriber runs — the mirror must leave it alone.
+    const blockId = author.addBlock(
+      'test:gfx-block',
+      { xywh: serializeXYWH(0, 0, 100, 100) },
+      surfaceId
+    );
+    const siblingId = authorSurface.addElement({
+      type: 'testShape',
+      xywh: serializeXYWH(0, 0, 100, 100),
+    });
+    const groupId = authorSurface.addElement({
+      type: 'testGroup',
+      children: { [blockId]: true, [siblingId]: true },
+    });
+    const mirrorGroup = mirrorSurface.getElementById(
+      groupId
+    ) as TestGroupElement;
+    const removeChild = vi.spyOn(mirrorGroup, 'removeChild');
+
+    expect(() =>
+      author.deleteBlock(author.getBlock(blockId)!.model)
+    ).not.toThrow();
+
+    expect(removeChild).not.toHaveBeenCalled();
+    expect(deleteElement).not.toHaveBeenCalled();
+    expect(
+      (authorSurface.getElementById(groupId) as GfxGroupLikeElementModel)
+        .childIds
+    ).toEqual([siblingId]);
   });
 });
