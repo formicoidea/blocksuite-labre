@@ -2,6 +2,7 @@ import { LoadingIcon, OpenIcon } from '@labre/affine-components/icons';
 import type { EmbedGithubModel, EmbedGithubStyles } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import { ThemeProvider } from '@labre/affine-shared/services';
+import { shouldRefreshOnPropsUpdate } from '@labre/affine-shared/utils';
 import { BlockSelection, isGfxBlockComponent } from '@labre/std';
 import { html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -105,7 +106,7 @@ export class EmbedGithubBlockComponent extends EmbedBlockComponent<
 
     this.disposables.add(
       this.model.propsUpdated.subscribe(({ key }) => {
-        if (key === 'url') {
+        if (shouldRefreshOnPropsUpdate(this.store, key)) {
           this.refreshData();
         }
       })

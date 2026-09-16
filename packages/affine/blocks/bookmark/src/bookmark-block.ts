@@ -10,7 +10,10 @@ import {
   DocModeProvider,
   LinkPreviewServiceIdentifier,
 } from '@labre/affine-shared/services';
-import { normalizeUrl } from '@labre/affine-shared/utils';
+import {
+  normalizeUrl,
+  shouldRefreshOnPropsUpdate,
+} from '@labre/affine-shared/utils';
 import { BlockSelection } from '@labre/std';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { html } from 'lit';
@@ -232,7 +235,7 @@ export class BookmarkBlockComponent extends CaptionedBlockComponent<BookmarkBloc
 
     this.disposables.add(
       this.model.propsUpdated.subscribe(({ key }) => {
-        if (key === 'url') {
+        if (shouldRefreshOnPropsUpdate(this.store, key)) {
           this.refreshData();
         }
       })
