@@ -39,6 +39,7 @@ import {
 import {
   umlDiagram,
   umlFragment,
+  umlFragmentAsPainted,
   umlPartition,
   umlRegion,
   umlSubject,
@@ -696,6 +697,69 @@ describe('the UML combined fragment', () => {
         (guard.minY + guard.maxY) / 2
       )?.prop
     ).toBe('name');
+  });
+
+  /**
+   * …and the corner that paints nothing answers NOTHING.
+   *
+   * The other half of the assertion above. Hiding the declared `name` in the
+   * renderer alone would leave the rename hit box behind: `backgroundLabelHits`
+   * given the STORED model still derives a box for it, anchored in the very
+   * corner operand zero's guard was drawn in, so a double-click there would
+   * open an editor on a string the canvas does not paint — invisible, and
+   * committing it writes a guard nobody can see. The view therefore derives its
+   * boxes from `umlFragmentAsPainted`, the same declaration the renderer is
+   * handed (`element-view.ts`, `UmlFrameView._painted`).
+   */
+  it('derives no rename box for the guard the renderer suppresses', () => {
+    const stored = { operator: 'alt', name: '[stock > 0]', operands: split };
+
+    // What the canvas writes: the operator and one guard per band. The
+    // declared `name` is not among them — it is painted nowhere.
+    const painted = render(umlFragment, stored, W, H).texts.map(
+      text => text.text
+    );
+    expect(painted).toEqual(['alt', '[stock > 0]', '[else]']);
+
+    // The STORED model sizes a box to the declared words, across the corner
+    // operand zero's guard was drawn in. That is the ghost: a wide rename
+    // target over a string the canvas does not draw.
+    const raw = backgroundLabelHits(UML_FRAGMENT_FRAME, stored, W, H);
+    const ghost = raw.find(hit => hit.prop === 'name')!;
+    expect(ghost.text).toBe('[stock > 0]');
+
+    // The PAINTED one — what the view hit-tests against — carries no words, so
+    // every box that spans any is a box the renderer actually wrote.
+    const hits = backgroundLabelHits(
+      UML_FRAGMENT_FRAME,
+      umlFragmentAsPainted(stored as never) as unknown as Record<
+        string,
+        unknown
+      >,
+      W,
+      H
+    );
+    for (const hit of hits) {
+      if (hit.text !== '') expect(painted, hit.prop).toContain(hit.text);
+    }
+
+    // An emptied label keeps a bare anchor box, and that is deliberate
+    // everywhere else in the library — it is how an unnamed frame is named. What
+    // it must not keep is the WIDTH the stored words bought it.
+    const quiet = hits.find(hit => hit.prop === 'name')!;
+    expect(quiet.text).toBe('');
+    expect(quiet.maxX).toBeLessThan(ghost.maxX);
+
+    // The proof: a point the ghost answered and the drawn words never reached
+    // now aims at no name at all, so the double-click falls to the operand
+    // gesture that owns the corner instead of opening an invisible editor.
+    expect(
+      hitTestBackgroundLabel(
+        hits,
+        (quiet.maxX + ghost.maxX) / 2,
+        (ghost.minY + ghost.maxY) / 2
+      )?.prop
+    ).not.toBe('name');
   });
 
   /** A fragment is a graph's frame like every other: no axis, no wash, no tint. */

@@ -159,8 +159,20 @@ const paintUmlFragment = withUmlFrameTag<UmlFragmentElementModel>(
  * declaration, because the suppression is conditional on another prop and the
  * declaration language has no vocabulary for that (`visibleProp` gates on
  * presence, never on absence).
+ *
+ * ## Exported, because the HIT TEST has to read the same declaration
+ *
+ * A suppression the renderer keeps to itself is a label drawn nowhere and
+ * clickable anyway: `UmlFragmentView` derives its rename boxes from
+ * `backgroundLabelHits`, and given the raw model that call still returns
+ * `name`'s box — so a double-click in the corner of such a document would open
+ * an editor on a string the canvas does not paint. The view therefore hit-tests
+ * against THIS declaration rather than the stored one
+ * (`element-view.ts`, `UmlFrameView._painted`), which is the invariant the
+ * class comment there already claims: "a label can never be drawn in one place
+ * and clicked in another".
  */
-function umlFragmentAsPainted(
+export function umlFragmentAsPainted(
   model: UmlFragmentElementModel
 ): UmlFragmentElementModel {
   const operands = (model as { operands?: unknown }).operands;
