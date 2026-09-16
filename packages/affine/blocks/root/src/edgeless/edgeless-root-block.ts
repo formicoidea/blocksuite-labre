@@ -46,6 +46,7 @@ import { repeat } from 'lit/directives/repeat.js';
 
 import { EdgelessPageKeyboardManager } from './edgeless-keyboard.js';
 import type { EdgelessRootService } from './edgeless-root-service.js';
+import { pinchZoomAction } from './utils/pinch-zoom.js';
 import { isCanvasElement } from './utils/query.js';
 
 export class EdgelessRootBlockComponent extends BlockComponent<
@@ -330,13 +331,69 @@ export class EdgelessRootBlockComponent extends BlockComponent<
     });
   }
 
+  /**
+   * A pinch (or ctrl+wheel) that the capture handler below has already turned
+   * into a canvas zoom. The dispatcher's own handler still receives the event
+   * when nothing swallowed it, and must not zoom a second time.
+   */
+  private readonly _pinchZoomed = new WeakSet<WheelEvent>();
+
+  /**
+   * Ctrl+wheel and trackpad pinch zoom the CANVAS, never the browser page.
+   *
+   * What stops a browser from page-zooming is `preventDefault()`, and the only
+   * handler that calls it hangs off the event dispatcher — a bubble-phase
+   * listener on the editor host. Two kinds of overlay keep it from ever
+   * running: popups portalled out to `document.body` (the event never reaches
+   * the host), and in-host overlays that stop the wheel on purpose so they
+   * scroll instead of the board (the element toolbar, the validation bubble,
+   * the artefact catalogue…). Under either one the page zoomed.
+   *
+   * One capture-phase listener on `document` sees the gesture before all of
+   * them, and it is deliberately narrow: pinches only — a plain wheel still
+   * belongs to whatever is under the pointer — and only inside this editor.
+   */
+  private readonly _onDocumentPinch = (e: WheelEvent) => {
+    const action = pinchZoomAction(e, this.std.host);
+    if (action === 'ignore') return;
+
+    e.preventDefault();
+    if (action === 'swallow') return;
+
+    const { viewport } = this.gfx;
+    if (viewport.locked) return;
+
+    const rect = this.getBoundingClientRect();
+    const [baseX, baseY] = viewport.toModelCoord(
+      e.clientX - rect.x,
+      e.clientY - rect.y
+    );
+    viewport.setZoom(
+      normalizeWheelDeltaY(e.deltaY, viewport.zoom),
+      new Point(baseX, baseY),
+      true
+    );
+    this._pinchZoomed.add(e);
+  };
+
   private _initWheelEvent() {
+    this._disposables.addFromEvent(document, 'wheel', this._onDocumentPinch, {
+      passive: false,
+      capture: true,
+    });
+
     this._disposables.add(
       this.std.event.add('wheel', ctx => {
         const config = this.std.getOptional(EditorSettingProvider)?.setting$;
         const state = ctx.get('defaultState');
         const e = state.event as WheelEvent;
         const edgelessScrollZoom = config?.peek().edgelessScrollZoom ?? false;
+
+        // Already zoomed, on the way down: the default action is cancelled too.
+        if (this._pinchZoomed.has(e)) {
+          e.stopPropagation();
+          return;
+        }
 
         e.preventDefault();
 
