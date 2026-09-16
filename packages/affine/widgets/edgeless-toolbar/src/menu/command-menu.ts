@@ -13,6 +13,7 @@ import {
 } from '@labre/std';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
 import { css, type CSSResultGroup, html, LitElement, nothing } from 'lit';
+import { state } from 'lit/decorators.js';
 
 import { EdgelessToolbarToolMixin } from '../mixins/tool.mixin.js';
 
@@ -82,6 +83,65 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
     return this._selection.commands;
   }
 
+  /** Whoever shows an owner's whole catalogue, when anything does. */
+  private get _catalogue() {
+    return this.edgeless.std.getOptional(ArtefactCatalogueProvider);
+  }
+
+  /**
+   * How many buttons a keypress can land on: the commands, plus the overflow
+   * button on the rows that render one. Read from the same `_selection` the
+   * render does, so the highlight can never point past what is on screen.
+   */
+  private get _slots() {
+    const { commands, overflow } = this._selection;
+    return commands.length + (overflow && this._catalogue ? 1 : 0);
+  }
+
+  /**
+   * Move the highlight by one button, wrapping at both ends.
+   *
+   * Shift+S over an open senior menu is the analogue of Shift+S over the shape
+   * tool: the same keystroke walks the row backwards. What it moves is a
+   * HIGHLIGHT and not the tool, because these commands each drop an artefact on
+   * the canvas — "run the next one on every press" would litter the board.
+   */
+  cycle(dir: 1 | -1) {
+    const slots = this._slots;
+    if (slots === 0) return;
+    if (this._active < 0) {
+      // Nothing highlighted yet: forwards enters on the first button,
+      // backwards on the last — the "previous" the shape tool gives too.
+      this._active = dir === 1 ? 0 : slots - 1;
+      return;
+    }
+    this._active = (this._active + dir + slots) % slots;
+  }
+
+  /**
+   * Run whatever the keyboard points at, and say whether it did.
+   *
+   * It goes through the same {@link _invoke} the click goes through, so a
+   * command run from the keyboard is measured and reported exactly like a
+   * clicked one. With nothing highlighted it consumes nothing and the caller's
+   * own Enter stands.
+   */
+  activate(): boolean {
+    if (this._active < 0) return false;
+    const { commands, overflow } = this._selection;
+    const command = commands[this._active];
+    if (command) {
+      this._invoke(command);
+      return true;
+    }
+    const catalogue = this._catalogue;
+    if (overflow && catalogue) {
+      catalogue.open(this.owner);
+      return true;
+    }
+    return false;
+  }
+
   private _invoke(command: CommandDescriptor) {
     // The ONE emission point: no `_track()` helper anywhere in the menus.
     runCommand(this.edgeless.std, command, {
@@ -133,9 +193,9 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
    * to a catalogue the user can still reach in full. Thirteen plus this one is
    * fourteen — the overflowed row is exactly as wide as the cap.
    */
-  private _renderCatalogueButton() {
+  private _renderCatalogueButton(index: number) {
     const std = this.edgeless.std;
-    const catalogue = std.getOptional(ArtefactCatalogueProvider);
+    const catalogue = this._catalogue;
     if (!catalogue) return nothing;
 
     const label = translateKey(
@@ -152,6 +212,8 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
             'This framework offers more than the menu can show.'
           )}</span
         >`}
+      .active=${index === this._active}
+      .hoverState=${index === this._active}
       @click=${() => catalogue.open(this.owner)}
     >
       ${MoreHorizontalIcon()}
@@ -166,18 +228,32 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
         <div class="menu-content">
           <div class="button-group-container">
             ${commands.map(
-              command =>
+              (command, index) =>
                 html`<edgeless-tool-icon-button
                   .tooltip=${this._tooltip(command)}
+                  .active=${index === this._active}
+                  .hoverState=${index === this._active}
                   @click=${() => this._invoke(command)}
                 >
                   ${getCommandIcon(std, command.iconKey)}
                 </edgeless-tool-icon-button>`
             )}
-            ${overflow ? this._renderCatalogueButton() : nothing}
+            ${overflow ? this._renderCatalogueButton(commands.length) : nothing}
           </div>
         </div>
       </edgeless-slide-menu>
     `;
   }
+
+  /**
+   * Which button the keyboard points at, `-1` while it points at none.
+   *
+   * It starts empty and stays empty until a cycling key is pressed: a menu that
+   * opened with its first artefact already lit would read as a choice the user
+   * did not make. Nothing resets it on close because each opening builds a new
+   * menu element — the only case the popover hands the same one back is a
+   * re-open during the leave transition, where the row never left the screen.
+   */
+  @state()
+  private accessor _active = -1;
 }
