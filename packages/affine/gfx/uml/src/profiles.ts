@@ -15,12 +15,12 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * frame already set to `strict` simply stops being checked until it comes back —
  * the id stays written, untouched.
  *
- * ## Both tables spell out all FORTY-TWO ids
+ * ## Both tables spell out all FORTY-THREE ids
  *
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `uml.strict` requires
- * reads thirty-two lines here instead of one file per rule, and a rule shipped
+ * reads thirty-three lines here instead of one file per rule, and a rule shipped
  * later cannot join a level in silence.
  *
  * ## Specification IS the check-up (PO, 2026-09-16)
@@ -100,6 +100,8 @@ const sketch: ValidationProfile = {
     'uml.untyped-edge': 'audit',
     'uml.composition-single-owner': 'audit',
     'uml.use-case-no-actor': 'audit',
+    // The `border-proximity` rule (ADR 0024) — §11.3.4's square on the boundary.
+    'uml.port-on-border': 'audit',
     // The behaviour sheets — fifteen more, and every one of them here too.
     'uml.node-in-partition': 'audit',
     'uml.shallow-history-outside-region': 'audit',
@@ -132,7 +134,7 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. THIRTY-TWO rules move to `warning`, and the test each one passes is
+ * handed. THIRTY-THREE rules move to `warning`, and the test each one passes is
  * the test this library always applies: whether the diagram might honestly have
  * meant it.
  *
@@ -169,6 +171,14 @@ const sketch: ValidationProfile = {
  * heading says `uc` and whose ink is classes is a contradiction inside one
  * document, and the author has already spoken, which makes it the easiest
  * promotion in the table.
+ *
+ * One is §11.3.4's PLACEMENT — `uml.port-on-border`, the newest rule in the pack
+ * and the only `border-proximity` one in the library (ADR 0024). It is the
+ * promotion the PO asked for by name on the recette of 2026-09-16, and it is the
+ * only geometric rule this level hardens: the class-side membership three stay
+ * an audit below because where a box sits is a drawing decision, and a port is
+ * the case where it is not. UML gives the square on the boundary a meaning and
+ * gives the same square in the middle of the component none.
  *
  * Three are MEMBERSHIP on the behaviour sheets — a history outside every region,
  * an action outside every partition — and they are the promotions the recette of
@@ -247,6 +257,17 @@ const strict: ValidationProfile = {
     // §11.5.3's arithmetic, and the sheet's own declaration.
     'uml.composition-single-owner': 'warning',
     'uml.not-admissible-on-kind': 'warning',
+    // §11.3.4's square ON the boundary — the `border-proximity` rule (ADR 0024),
+    // and the promotion the PO asked for by name on the recette of 2026-09-16.
+    //
+    // It passes the test every other promotion in this table passes, and it
+    // passes a second one the membership rules do not: a port in the middle of
+    // its component has no second reading. UML gives the placement a meaning and
+    // gives the drifted square none, and `model.ts` resolves a port's owner from
+    // exactly that geometry — so at the level where somebody has called the
+    // sheet a deliverable, the finding is also the warning that this port will
+    // export under no component at all.
+    'uml.port-on-border': 'warning',
     // The behaviour sheets' ARITHMETIC — the clauses a drawing cannot mean.
     // §15.3.3 gives an initial node no incoming edge, §15.7.19.4 gives a final
     // node no outgoing one, §14.5.11.4 says the same of a final state, and

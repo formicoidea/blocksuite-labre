@@ -294,6 +294,36 @@ export const UML_NODE_BOX: Record<UmlNodeKind, { w: number; h: number }> = {
   destruction: { w: 24, h: 24 },
 };
 
+/**
+ * How far a PORT's centre may sit from its component's outline before
+ * `uml.port-on-border` speaks — the tolerance of the `border-proximity` rule
+ * (ADR 0024).
+ *
+ * The glyph's own side, and derived from it rather than restated: §11.3.4 draws
+ * a port as a small square ON the boundary, and what makes that reading legible
+ * is the square's own footprint against the line, not the size of the component
+ * behind it. Three drawings, and the constant is chosen so each gets the answer
+ * the eye gives:
+ *
+ *  - HALF IN, HALF OUT — the clause's own preferred picture. The centre is on
+ *    the line, distance 0, and nothing is said.
+ *  - TANGENT INSIDE, the square just clear of the edge. The centre is 8 units
+ *    in, half the glyph, well under the tolerance: also silence, because that is
+ *    a port an author drew on the border and a tool arguing with it is a tool
+ *    switched off.
+ *  - PUSHED IN BY ITS OWN SIZE, the square a full 16 units clear of the edge.
+ *    The centre is 24 units in, past the tolerance, and the finding falls. That
+ *    is the drawing the PO made on the recette of 2026-09-16: a port dragged
+ *    into the middle of its component, which §11.3.4 gives no meaning at all.
+ *
+ * Deliberately NOT `UML_ATTACH_TOLERANCE` (`model.ts`), which is 24 and measures
+ * something else: an edge-to-edge GAP, used to decide which box a glyph belongs
+ * to when the exporters need an owner. This one measures a centre against a
+ * line, and the two numbers answering two questions is better than one number
+ * quietly meaning both.
+ */
+export const UML_PORT_BORDER_TOLERANCE = UML_NODE_BOX.port.w;
+
 /* ── The two behaviour frames ──────────────────────────────────────────── */
 
 /**

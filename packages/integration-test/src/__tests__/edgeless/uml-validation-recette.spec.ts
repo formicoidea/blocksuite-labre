@@ -373,22 +373,26 @@ describe('Specification is the check-up (PO, 2026-09-16)', () => {
 
   /**
    * Step 1 — «le check-up ne fonctionne pas», the port dragged inside its
-   * component — is a KNOWN GAP and not a defect of the mechanism above.
+   * component.
    *
-   * `uml.port-on-border` does not exist, and `gfx/uml/src/rules.ts` records why
-   * at length: §11.3.4's question is "is this small square within a band of that
-   * box's outline", and no rule family expresses it. `attachment` measures a
-   * distance to a PATH and refuses a node carrier; `element-in-background`
-   * demands FULL containment, which the notation's own preferred drawing — a
-   * port straddling the edge — breaks by construction; `no-overlap` has the
-   * opposite polarity and no tolerance, so it cannot tell "on the border" from
-   * "inside". Port ownership is read by GEOMETRY in `model.ts`, where the two
-   * exporters need it, and left unjudged by the pack.
+   * This test used to pin the opposite: `uml.port-on-border` did not exist, and
+   * `gfx/uml/src/rules.ts` recorded at length why it could not — §11.3.4's
+   * question is "is this small square within a band of that box's outline", and
+   * no rule family expressed it. `attachment` measures a distance to a PATH and
+   * refuses a node carrier; `element-in-background` demands FULL containment,
+   * which the notation's own preferred drawing breaks by construction;
+   * `no-overlap` has the opposite polarity and no tolerance. The answer was the
+   * family the question needs (`border-proximity`, `docs/adr/0024`) rather than
+   * an approximation with a neighbouring one, and the rule is now the pack's
+   * forty-third.
    *
-   * Pinned here so the recette script's expectation is a recorded gap rather
-   * than a silent absence: no level can raise a rule nobody wrote.
+   * What only a live editor answers is the same thing it answered for the three
+   * sequence rules above: whether choosing a level actually re-runs the engine
+   * over a drawing nobody has touched since. The geometry itself is the unit
+   * suites' business (`validation-border-proximity.unit.spec.ts` for the family,
+   * `gfx/uml/src/__tests__/rules.unit.spec.ts` U43 for the tolerance).
    */
-  test('says nothing about where a port sits, at EITHER level', async () => {
+  test('a port dragged inside its component lights up under Specification', async () => {
     const diagram = sheet('cmp');
     const component = surfaceModel().addElement({
       type: 'umlNode',
@@ -397,8 +401,10 @@ describe('Specification is the check-up (PO, 2026-09-16)', () => {
       xywh: '[200,200,300,200]',
     });
     expect(component).toBeTruthy();
-    // Wholly inside the component, which is the drawing the PO made.
-    surfaceModel().addElement({
+    // Wholly inside the component, which is the drawing the PO made: the square
+    // is centred at (340, 300), 140 units from the nearest edge of a box that
+    // spans x 200…500 and y 200…400 — far past the 16-unit tolerance.
+    const port = surfaceModel().addElement({
       type: 'umlNode',
       kind: 'port',
       role: UML_ROLE.port,
@@ -406,17 +412,35 @@ describe('Specification is the check-up (PO, 2026-09-16)', () => {
     });
     await settle();
 
-    for (const profileId of ['uml.sketch', 'uml.strict'] as const) {
-      choose(diagram, profileId);
-      await settle();
-      expect(
-        validation.violations$.value.map(finding => finding.ruleId),
-        profileId + ' has no rule about where a port sits'
-      ).not.toContain('uml.port-on-border');
-    }
+    // The rule EXISTS now — the difference the PO could not see from the canvas,
+    // and the half this test used to pin the other way round.
+    expect(validation.ruleOf('uml.port-on-border')).toBeDefined();
 
-    // It is absent from the pack, not quiet in it — the difference the PO could
-    // not see from the canvas.
-    expect(validation.ruleOf('uml.port-on-border')).toBeUndefined();
+    // THE SKETCH: computed, filed, and the canvas says nothing.
+    expect(validation.profileOf(frameOf(diagram))?.id).toBe('uml.sketch');
+    expect(drawn('uml.port-on-border')).toEqual([]);
+
+    // THE GESTURE, and no other.
+    expect(choose(diagram, 'uml.strict')).toBe(true);
+
+    const raised = drawn('uml.port-on-border');
+    expect(raised.length).toBeGreaterThan(0);
+    expect(raised.every(finding => finding.severity === 'warning')).toBe(true);
+    // Both artefacts are indicted: the square has drifted, or the box has grown
+    // under it, and the user is shown both brackets.
+    expect(raised[0].elementIds.sort()).toEqual([component, port].sort());
+
+    // ...and the other half of "live": the finding follows the GLYPH. Dragging
+    // the square back onto the border clears it with no second gesture and no
+    // profile change.
+    // Centred at (500, 300): exactly on the component's right edge.
+    surfaceModel().updateElement(port, { xywh: '[490,290,20,20]' });
+    await settle();
+
+    expect(drawn('uml.port-on-border')).toEqual([]);
+
+    // ...and back down to the sketch, where it says nothing either way.
+    expect(choose(diagram, 'uml.sketch')).toBe(true);
+    expect(drawn('uml.port-on-border')).toEqual([]);
   });
 });

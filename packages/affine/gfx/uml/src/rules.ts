@@ -5,6 +5,7 @@ import type {
 import type { RoleId } from '@labre/std/gfx';
 
 import { UML_SUBJECT_FRAME } from './background.js';
+import { UML_PORT_BORDER_TOLERANCE } from './consts.js';
 import {
   checkEndLabelMultiplicity,
   checkLifelineIdent,
@@ -109,14 +110,25 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  * frame in: {@link useCaseOutsideSubject} and {@link actorInsideSubject} both
  * need a subject to be inside or outside OF.
  *
- * ## Seven questions this pack deliberately does NOT ask
+ * ## Six questions this pack deliberately does NOT ask
  *
  * Not gaps in the notation — gaps in what the engine's families can be asked of
- * a UML element. The first two are phase 1's; the next two are the structural
- * sheets', and they are the two rules that brief asked for and this file could
- * not honestly write. The last three are the behaviour sheets', and two of them
- * are the same shape: a rule the brief asked for that ALREADY EXISTS under
- * another name, and would have reported one mistake twice.
+ * a UML element. The first two are phase 1's; the next is the structural
+ * sheets', one of the two rules that brief asked for and this file could not
+ * honestly write. The last three are the behaviour sheets', and two of them are
+ * the same shape: a rule the brief asked for that ALREADY EXISTS under another
+ * name, and would have reported one mistake twice.
+ *
+ * It was SEVEN until the recette of 2026-09-16, and the one that left is worth
+ * a line here because of how it left. `uml.port-on-border` was recorded in this
+ * list as unwritable — no family expressed "within a band of that box's
+ * outline" — and the PO dragged a port into the middle of a component and
+ * asked why nothing happened. The answer was not to approximate it with a
+ * family that asks a neighbouring question; it was to write the family the
+ * question needs (`border-proximity`, ADR 0024), which is the second time this
+ * pack has done that and the second time it was the right call (ADR 0021 is the
+ * first). A recorded gap is a gap somebody can close. The six below are the ones
+ * still open, and each says what would close it.
  *
  * - **an artefact of any kind drawn outside the frame.** `element-in-background`
  *   names ONE subject role, and UML's vocabulary has no single role meaning "any
@@ -135,32 +147,19 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  *   text there is nothing for a rule to read, and asking for a multiplicity in
  *   the middle of the line would be asking the author to write the notation
  *   wrongly so the tool could check it.
- * - **a PORT that sits on no component's border** (`uml.port-on-border`,
- *   §11.3.4). The family that sounds like the answer is `attachment`, and it
- *   asks a different question in both of its halves. Its `carrierRole` is
- *   required to be an **edge** role — "posed on" is measured as a distance to a
- *   PATH, and `evaluateAttachment` warns once and returns nothing for a `node`
- *   role — so a component, which is a box, can never be a carrier. And its
- *   `boundaryAxis` names a transition the FRAME declares
- *   (`FrameworkBackgroundDef.transitionBandWidth`, Wardley's evolution
- *   frontiers); a `uml:diagram` declares no axis, and the border of an ordinary
- *   element is not a frontier of the sheet. `element-in-background` cannot stand
- *   in either: it demands FULL containment, and a port that straddles its
- *   component's edge — which is §11.3.4's own preferred drawing — is by
- *   construction not contained. The question is "is this small square within a
- *   band of that box's outline", and no family expresses a band around an
- *   arbitrary element. Port ownership is therefore read by GEOMETRY in
- *   `model.ts`, where the two exporters need it, and left unjudged here.
  * - **a lollipop or socket attached to nothing** (`uml.interface-near-component`,
- *   §10.4.4, §11.6.4). The same limit, one glyph over: "the stub touches a
- *   component or a port" is an adjacency between two boxes, and `attachment`
- *   measures adjacency to a path. `no-overlap` is the only family that evaluates
- *   PAIRS and its polarity is the opposite one — it forbids a collision, it
- *   cannot require a proximity. So the adjacency is read in `model.ts` (a glyph
- *   within 24 units of a component's box names one of its interfaces) and no
- *   rule is written on it. Both close the day a family accepts a node carrier or
- *   a proximity requirement, and neither is worth a family invented for one
- *   framework.
+ *   §10.4.4, §11.6.4). The port's neighbour, and `border-proximity` does NOT
+ *   close it: that family judges a glyph the author has already put ON a box —
+ *   overlap is its gate — and a lollipop is drawn BESIDE one, touching it at a
+ *   gap rather than straddling its edge. Asking "is this stub within 24 units of
+ *   some component" is a third geometry again (`attachment` measures adjacency to
+ *   a path, `no-overlap` forbids a collision rather than requiring a
+ *   proximity), and it is the one `model.ts` already reads for the exporters. So
+ *   the adjacency stays there and no rule is written on it. What would close it
+ *   is `border-proximity` gaining an outward reading — "near the outline, inside
+ *   or out" — and that is a different requirement rather than a wider tolerance:
+ *   a stub floating in open canvas would then need a rule about it, which is a
+ *   remark about a sketch.
  * - **an ACTION with no name** (`uml.unnamed-action`) and **a STATE with no
  *   name** (`uml.unnamed-state`). Both are already reported, and adding them
  *   would report them twice. `label-presence` reads an element's OWN words and
@@ -1930,6 +1929,72 @@ const useCaseNoActor: ValidationRule = {
   },
 };
 
+/* ── Attachment: is the glyph still on the box it was drawn on? ──────────── */
+
+/**
+ * **U43** — a port that has drifted into the middle of its component.
+ *
+ * The only `border-proximity` rule in the library (ADR 0024), and the one this
+ * pack recorded for a whole phase as a question the engine could not be asked.
+ * §11.3.4 draws a Port as "a small square symbol… placed ON the boundary of the
+ * rectangle" of the EncapsulatedClassifier that owns it, and the placement IS
+ * the statement: a port on the edge says "traffic crosses here", the same square
+ * a hundred units inside says nothing the notation has a reading for. It is not
+ * decoration and it is not a matter of taste — `model.ts` resolves a port's
+ * owner from exactly this geometry, so a port dragged off the border is also a
+ * port the XMI and the PlantUML writers will file under nothing.
+ *
+ * ## The tolerance, and why it is a number of units
+ *
+ * {@link UML_PORT_BORDER_TOLERANCE} — the glyph's own 16-unit side, derived from
+ * `UML_NODE_BOX.port` rather than restated. `consts.ts` works the three drawings
+ * through: half in and half out (§11.3.4's own picture) is distance 0, tangent
+ * inside is 8, and a square pushed a full glyph clear of the edge is 24 and the
+ * finding falls. Absolute and not a ratio of the component, because what makes
+ * "on the border" legible is the square against the line and not the size of the
+ * box behind it.
+ *
+ * ## What it stays silent about
+ *
+ * A port touching NO component at all — a square dropped on blank canvas, or
+ * parked beside the sheet while the diagram is being rearranged. That is the
+ * family's own gate (`border-proximity` judges a glyph the author has already
+ * put on a box), and it is the right silence: a port belonging to nothing is
+ * somebody drawing, not somebody wrong (PRD principle 8). The same square on the
+ * border of a CUBE is silence too — the rule's carrier is `uml:component`, and
+ * `model.ts` already says a port drawn on a deployment node is a drawing this
+ * pack keeps and writes nowhere.
+ *
+ * A port ON the border but outside its component (the half of the square that
+ * sticks out being the larger half) is silence as well, at any drawing a hand
+ * produces: the centre is at most half a glyph out, which is inside the
+ * tolerance by construction.
+ */
+const portOnBorder: ValidationRule = {
+  id: 'uml.port-on-border',
+  framework: 'uml',
+  family: 'border-proximity',
+  severity: 'audit',
+  appliesTo: UML_ROLE.port,
+  roles: UML_ROLES,
+  messageKey: 'com.labre.uml.validation.port-on-border',
+  messageFallback: 'This port sits inside its component, not on its border.',
+  suggestionKey: 'com.labre.uml.validation.port-on-border.suggestion',
+  suggestionFallback:
+    'A port is where something crosses the boundary of the component, so UML draws its square ON that boundary — straddling the edge, or just touching it from inside. Drag it back to the edge: the export reads which component owns a port from where the square sits, and one in the middle of the box belongs to nothing.',
+  version: 1,
+  provenance: {
+    source: 'standard',
+    reference:
+      'OMG UML 2.5.1 §11.3.4 — "A Port is shown as a small square symbol. The square symbol is placed on the boundary of the rectangle symbol for the owning EncapsulatedClassifier"',
+  },
+  backgroundRole: UML_ROLE.diagram,
+  borderProximity: {
+    carrierRole: UML_ROLE.component,
+    tolerance: UML_PORT_BORDER_TOLERANCE,
+  },
+};
+
 /* ── Behaviour: the alphabets and the grammars of the two flow sheets ────── */
 
 /**
@@ -3102,14 +3167,15 @@ const lifelineIdentSyntax: ValidationRule = {
   labelSyntax: { parse: checkLifelineIdent, perLine: false },
 };
 /**
- * The pack, whole: forty-two rules over nine families.
+ * The pack, whole: forty-three rules over ten families.
  *
  * Sixteen in phase 1, and not that brief's seventeen ids because the actor's
  * name and the use case's name are ONE rule: they are the same tier role, and
  * two rules on one role report one emptied word twice (see
  * {@link unnamedActorOrUseCase}). The structural sheets appended three — the
- * grammars of the three edges they draw — and skipped two the engine cannot be
- * asked. The BEHAVIOUR sheets appended fifteen, which is the largest single
+ * grammars of the three edges they draw — and skipped two the engine could not
+ * be asked; one of those two came back as the forty-third rule below, once the
+ * engine grew the family it needed. The BEHAVIOUR sheets appended fifteen, which is the largest single
  * addition this library has taken: an activity and a state machine are the two
  * diagrams UML constrains arithmetically, so where a class diagram's pack is
  * mostly a vocabulary these are counts, degrees and a graph walk.
@@ -3129,14 +3195,24 @@ const lifelineIdentSyntax: ValidationRule = {
  * recorded in `docs/adr/0022` rather than approximated here. A rule that fires
  * on the wrong thing costs more than a requirement nobody checks.
  *
- * ## The ninth family is new to the ENGINE, and it is the only one that is
+ * The PO recette of 2026-09-16 appended the forty-third, and it is the one rule
+ * in the pack that was written down as impossible before it was written: a port
+ * dragged into the middle of its component (§11.3.4). See {@link portOnBorder},
+ * and the paragraph above the six remaining gaps on how it left that list.
+ *
+ * ## TWO of the ten families are new to the ENGINE, and they are the only ones
  *
  * `label-syntax` (`docs/adr/0021`) arrived with four spelling rules and carries
- * six, and it is the first family this library has added for a reason no table
+ * six, and it was the first family this library added for a reason no table
  * could meet: a notation's GRAMMAR is a parser, and the clauses these rules cite
- * are already written as one in `grammar.ts` for the exporters. The family owns
- * the walk; the pack owns the reading. Everything else the fifteen roles of
- * phase 2 needed, the engine already had.
+ * are already written as one in `grammar.ts` for the exporters.
+ * `border-proximity` (`docs/adr/0024`) is the second, and its reason is the
+ * opposite one — pure geometry that three existing families each get NEARLY
+ * right and none of them states: a distance from a glyph's centre to another
+ * artefact's outline. In both cases the family owns the walk and the pack owns
+ * the reading, and in both cases the alternative on the table was approximating
+ * the requirement with a neighbouring family. Everything else the thirty-odd
+ * roles of phases 2 and 3 needed, the engine already had.
  *
  * ## The other eight are the engine's, and two of them are BPMN's
  *
@@ -3189,6 +3265,8 @@ export const UML_RULES: readonly ValidationRule[] = [
   // Degree: how many lines may reach one artefact?
   compositionSingleOwner,
   useCaseNoActor,
+  // Attachment: is the glyph still on the box it was drawn on?
+  portOnBorder,
   // Behaviour — membership: is the drawing in the lane, in the region?
   nodeInPartition,
   shallowHistoryOutsideRegion,
