@@ -437,6 +437,13 @@ export interface FrameworkDescriptor {
 }
 ```
 
+> **Amended 2026-09-16.** `FrameworkDescriptor.iconKey` never found a reader
+> and is removed. It was meant to resolve the senior button's glyph through the
+> icon registry, but no package ever registered an `<id>.toolbar` template: a
+> senior button imports its 56×56 icon directly from its own
+> `toolbar/icons.ts`. `iconKey` stays on `CommandDescriptor` and
+> `CommandManifestEntry`, where the registry below is what resolves it.
+
 ### Icons: one source of truth, and it is the library
 
 The icons stay **in the package**, where the SVGs already live

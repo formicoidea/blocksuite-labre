@@ -9,10 +9,11 @@ convention with no test yet, it says so.
 ## Tooling: the senior button and its menu
 
 **R1. One senior button per framework, one icon, in descriptor order.**
-`FRAMEWORK_DESCRIPTORS` in `packages/affine/all/src/frameworks.ts` carries
-`iconKey`; the button's glyph is the 56×56 icon in `toolbar/icons.ts`. Row
-order is the array order (`senior-row-order.unit.spec.ts`). No test checks
-icon uniqueness across frameworks yet.
+The button's glyph is the 56×56 icon in `toolbar/icons.ts`, imported
+directly by the button — the descriptor in
+`packages/affine/all/src/frameworks.ts` carries no icon key. Row order is
+the array order (`senior-row-order.unit.spec.ts`). No test checks icon
+uniqueness across frameworks yet.
 
 **R2. The sub-menu shows at most 13 artefacts plus "More artefacts…".**
 `SENIOR_MENU_CAP = 14` and `SENIOR_MENU_RANKED_SLOTS = 13` in

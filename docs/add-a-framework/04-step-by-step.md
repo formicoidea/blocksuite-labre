@@ -115,7 +115,6 @@ to the telemetry `framework` union, and the descriptor to `frameworks.ts`:
 {
   id: 'my',
   labelKey: 'com.labre.framework.my', labelFallback: 'My framework',
-  iconKey: 'my.toolbar',
   telemetryKey: 'my', telemetrySegment: 'my toolbox',
   bundle: 'framework-my', info: 'myFramework',
   pkg: '@labre/affine-gfx-my', dir: 'affine/gfx/my',

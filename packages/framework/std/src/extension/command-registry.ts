@@ -277,7 +277,6 @@ export interface FrameworkDescriptor {
    * drift check can hold the restatements to it.
    */
   labelFallback: string;
-  iconKey: string;
   order?: number;
   /** First keystroke of this framework's chords — allocated, not ad hoc. */
   chordPrefix?: string;

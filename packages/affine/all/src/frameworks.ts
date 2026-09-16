@@ -31,7 +31,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'wardley',
     labelKey: 'com.labre.framework.wardley',
     labelFallback: 'Wardley map',
-    iconKey: 'wardley.toolbar',
     // The only allocated chord prefix: `w` was free against
     // RESERVED_EDGELESS_KEYS. The other six frameworks ship no chord, so they
     // allocate no letter — a prefix with no chord behind it is dead data, and
@@ -56,7 +55,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'edgy',
     labelKey: 'com.labre.framework.edgy',
     labelFallback: 'EDGY',
-    iconKey: 'edgy.toolbar',
     telemetryKey: 'edgy',
     telemetrySegment: 'edgy toolbox',
     bundle: 'framework-edgy',
@@ -74,7 +72,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'cynefin-estuarine',
     labelKey: 'com.labre.framework.cynefin-estuarine',
     labelFallback: 'Cynefin / Estuarine',
-    iconKey: 'cynefin.toolbar',
     // Historical PostHog value; the flag and the owner say
     // `cynefin-estuarine`, the wire says `cynefin`.
     telemetryKey: 'cynefin',
@@ -98,7 +95,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'bpmn',
     labelKey: 'com.labre.framework.bpmn',
     labelFallback: 'BPMN',
-    iconKey: 'bpmn.toolbar',
     telemetryKey: 'bpmn',
     telemetrySegment: 'bpmn toolbox',
     bundle: 'framework-bpmn',
@@ -116,7 +112,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'ddd-event-storming',
     labelKey: 'com.labre.framework.ddd-event-storming',
     labelFallback: 'Event Storming',
-    iconKey: 'ddd-event-storming.toolbar',
     telemetryKey: 'event-storming',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-event-storming',
@@ -138,7 +133,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'c4',
     labelKey: 'com.labre.framework.c4',
     labelFallback: 'C4 model',
-    iconKey: 'c4.toolbar',
     telemetryKey: 'c4',
     telemetrySegment: 'c4 toolbox',
     bundle: 'framework-c4',
@@ -157,7 +151,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'ddd-core-domain',
     labelKey: 'com.labre.framework.ddd-core-domain',
     labelFallback: 'Core Domain Chart',
-    iconKey: 'ddd-core-domain.toolbar',
     telemetryKey: 'core-domain',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-core-domain',
@@ -175,7 +168,6 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     id: 'ddd-context-map',
     labelKey: 'com.labre.framework.ddd-context-map',
     labelFallback: 'Context Map',
-    iconKey: 'ddd-context-map.toolbar',
     telemetryKey: 'context-map',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-context-map',
