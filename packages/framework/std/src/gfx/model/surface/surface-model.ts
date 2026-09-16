@@ -988,6 +988,46 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     return id;
   }
 
+  /**
+   * Build the element `addElement` would build from `props`, and stop there:
+   * FOR PREVIEWS ONLY — the model never enters the document.
+   *
+   * The props take the insertion path up to the moment the Y.Map would be
+   * attached — the `beforeAdd` middlewares (the author's last-used style), the
+   * class's `propsToY` (a string `text` becomes a `Y.Text`), the declared-prop
+   * routing — so a preview paints exactly what the placed element will. What
+   * `addElement` does next is skipped: the model is not registered (no
+   * `getElementById`, no `elementModels`), is never mounted (no observers, no
+   * `onChange`), emits no `elementAdded`, and opens no transaction.
+   *
+   * Its Y.Map is then parked in a throwaway `Y.Doc` of its own, because the
+   * values of a map that belongs to no document cannot be read (a `Y.Text`
+   * reads empty) — and a renderer needs to read them. That doc is not the
+   * store's; a renderer that WROTE to the model would still reach the store's
+   * `transact`, which is why a preview must only ever be rendered.
+   *
+   * `props.id` is required and is the caller's: nothing checks it against the
+   * document, since nothing is added to it.
+   */
+  createDetachedElement(
+    props: Record<string, unknown> & { type: string; id: string }
+  ): GfxPrimitiveElementModel {
+    const middlewareCtx: MiddlewareCtx = {
+      type: 'beforeAdd',
+      payload: { type: props.type, props: { ...props } },
+    };
+    this._middlewares.forEach(mid => mid(middlewareCtx));
+
+    const { model } = this._createElementFromProps(
+      { ...middlewareCtx.payload.props, id: props.id },
+      { onChange: () => {} }
+    );
+
+    new Y.Doc().getMap('preview').set(props.id, model.yMap);
+
+    return model;
+  }
+
   addLocalElement(elem: GfxLocalElementModel) {
     this.localElements.add(elem);
     this.localElementAdded.next(elem);

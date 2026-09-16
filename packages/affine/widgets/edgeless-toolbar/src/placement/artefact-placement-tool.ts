@@ -2,6 +2,7 @@ import {
   DefaultTool,
   EXCLUDING_MOUSE_OUT_CLASS_LIST,
   recordAction,
+  sortIndex,
   type SurfaceBlockComponent,
 } from '@labre/affine-block-surface';
 import { translateKey } from '@labre/affine-shared/services';
@@ -14,7 +15,12 @@ import {
   type PointerEventState,
   runCommand,
 } from '@labre/std';
-import { BaseTool, type GfxController } from '@labre/std/gfx';
+import {
+  BaseTool,
+  type GfxController,
+  GfxGroupLikeElementModel,
+  type GfxPrimitiveElementModel,
+} from '@labre/std/gfx';
 
 import { seniorMenuSelection } from '../menu/senior-menu-selection.js';
 import { ArtefactGhostOverlay } from './artefact-ghost-overlay.js';
@@ -81,21 +87,30 @@ export class ArtefactPlacementTool extends BaseTool<ArtefactPlacementOption> {
   }
 
   /**
-   * Measure the armed command once, and hang its ghost off the cursor.
+   * Record the armed command once, and hang its ghost off the cursor.
    *
-   * Once per arming and per cycle, never per pointer move: the measure runs the
-   * command's whole creation body against a fake, which is cheap but not free,
-   * and the footprint cannot change between two mouse positions.
+   * Once per arming and per cycle, never per pointer move: the recording runs
+   * the command's whole creation body against a fake and the preview builds a
+   * model per element, which is cheap but not free — and neither can change
+   * between two mouse positions.
+   *
+   * An artefact made of connectors only gets no ghost at all: a connector is
+   * not previewed (PO decision, 2026-09-16), and the crosshair alone says the
+   * next click places something.
    */
   createOverlay() {
     this.clearOverlay();
     const { command } = this.activatedOption;
     if (!command) return;
 
+    const preview = previewOf(this.gfx, command);
+    if (!preview) return;
+
     this._ghost = new ArtefactGhostOverlay(
       this.gfx,
-      footprintOf(command),
-      translateKey(this.std, command.labelKey, command.labelFallback)
+      preview.bound,
+      translateKey(this.std, command.labelKey, command.labelFallback),
+      preview.models
     );
     this._surfaceComponent?.renderer.addOverlay(this._ghost);
   }
@@ -173,23 +188,92 @@ export class ArtefactPlacementTool extends BaseTool<ArtefactPlacementOption> {
 }
 
 /**
- * How much room the command asks for, measured by running it against nothing.
+ * What the command would draw, recorded and BUILT by running it against
+ * nothing: its footprint, and a detached model per drawable element, in paint
+ * order. `null` when there is nothing to show but the crosshair.
  *
- * The recording's viewport centre is the origin, so what comes back is already
- * the offset around a real centre — and therefore around the cursor. A command
- * the fake cannot serve throws by design (it answers only the members creation
- * actions touch); that is not an error worth a console line here, it just means
- * the ghost falls back to a plain box rather than the tool refusing to arm.
+ * The recording's viewport centre is the origin, so every recorded box is
+ * already the offset around a real centre — and therefore around the cursor.
+ * The records go to `createDetachedElement` as they were handed to the CRUD,
+ * so a seed string becomes its `Y.Text` through the element's own `propsToY`,
+ * exactly as it will at insertion; the host's `TranslationProvider` makes the
+ * seeds come out in the author's language, as they will once placed.
+ *
+ * Skipped: connectors (never previewed) and group-likes, whose renderers draw
+ * selection chrome and look their children up in the document — the children
+ * are drawn on their own. A record the surface cannot build is skipped too.
+ *
+ * A command the fake cannot serve throws by design (it answers only the
+ * members creation actions touch); that is not an error worth a console line
+ * here, it just means the ghost falls back to a plain box rather than the tool
+ * refusing to arm. So does a recording in which nothing could be built.
  */
-function footprintOf(command: AnyCommandDescriptor): Bound {
+function previewOf(
+  gfx: GfxController,
+  command: AnyCommandDescriptor
+): { bound: Bound; models: GfxPrimitiveElementModel[] } | null {
+  let recorded: ReturnType<typeof recordAction>;
   try {
-    const { bound } = recordAction((std: BlockStdScope) => {
-      void command.run(std, { surface: 'senior-menu', source: 'internal' });
-    });
-    return bound ?? FALLBACK_FOOTPRINT;
+    recorded = recordAction(
+      (std: BlockStdScope) => {
+        // An async body records nothing it does after its first `await`, and
+        // then fails on the fake: that late failure is the same "cannot
+        // preview", not an unhandled rejection in the console.
+        Promise.resolve(
+          command.run(std, { surface: 'senior-menu', source: 'internal' })
+        ).catch(() => {});
+      },
+      { host: gfx.std }
+    );
   } catch {
-    return FALLBACK_FOOTPRINT;
+    return { bound: FALLBACK_FOOTPRINT, models: [] };
   }
+
+  const { records } = recorded;
+  if (records.length > 0 && records.every(r => r['type'] === 'connector')) {
+    return null;
+  }
+
+  // Paint order as the surface derives it: a group's children sort under the
+  // group's own index, even though the group itself is not drawn.
+  const groupIndexMap = new Map<string, { id: string; index: string }>();
+  for (const record of records) {
+    const children = record['children'];
+    if (record['type'] !== 'group' || typeof children !== 'object') continue;
+    const group = { id: String(record['id']), index: String(record['index']) };
+    for (const childId of Object.keys(children ?? {})) {
+      groupIndexMap.set(childId, group);
+    }
+  }
+  const ordered = records
+    .map(record => ({
+      record,
+      id: String(record['id']),
+      index: String(record['index']),
+    }))
+    .sort((a, b) => sortIndex(a, b, groupIndexMap));
+
+  const { surface } = gfx;
+  const models: GfxPrimitiveElementModel[] = [];
+  for (const { record, id } of ordered) {
+    const type = String(record['type']);
+    const Ctor = surface?.getConstructor(type);
+    if (
+      !surface ||
+      !Ctor ||
+      type === 'connector' ||
+      Ctor.prototype instanceof GfxGroupLikeElementModel
+    ) {
+      continue;
+    }
+    try {
+      models.push(surface.createDetachedElement({ ...record, type, id }));
+    } catch {
+      // Unbuildable here means unpaintable here; the rest still draws.
+    }
+  }
+
+  return { bound: recorded.bound ?? FALLBACK_FOOTPRINT, models };
 }
 
 /** The armed artefact, or `null` when the editor is on any other tool. */
