@@ -174,14 +174,27 @@ family accepts several subject roles.
 
 **R23. A rule family declares its dependency scope** (`RULE_SCOPES`, ADR
 0015). A rule may widen it, never narrow it. A new family without a scope
-line fails to compile. Sixteen families today; the sixteenth is
-`label-syntax` (ADR 0021), the only one whose verdict is a FUNCTION the
-framework ships rather than a table the engine interprets — a notation's
-grammar is a parser, and `gfx/uml/src/grammar.ts` is already that parser for
-the exporters. It is `'element'`-scoped (the subject's own words), judges each
-non-blank, non-elided line unless `perLine: false`, and a rule of it is not
-serializable: a declaration whose `parse` is missing evaluates nothing and
-warns once.
+line fails to compile. Seventeen families today, and the last two are the only
+ones the engine grew for a framework rather than the other way round.
+
+The sixteenth is `label-syntax` (ADR 0021), the only one whose verdict is a
+FUNCTION the framework ships rather than a table the engine interprets — a
+notation's grammar is a parser, and `gfx/uml/src/grammar.ts` is already that
+parser for the exporters. It is `'element'`-scoped (the subject's own words),
+judges each non-blank, non-elided line unless `perLine: false`, and a rule of it
+is not serializable: a declaration whose `parse` is missing evaluates nothing
+and warns once.
+
+The seventeenth is `border-proximity` (ADR 0024), the only one whose frame of
+reference is another ARTEFACT's outline rather than the sheet: the subject's
+CENTRE must sit within a declared tolerance, in model units, of the perimeter of
+a carrier `node` role it overlaps. Overlap is the gate — a subject touching no
+carrier raises nothing, so the family judges a glyph the author has already put
+on a box and never one dropped on open canvas. One finding per subject, both ids
+indicted, measured against the nearest carrier. `'surface'`-scoped for
+`attachment`'s reason: the carriers are collected from the whole surface and
+bounded by no frame. A carrier that is not a `node` role, or a tolerance of
+zero, evaluates nothing and warns once.
 
 **R24. Rules, profiles, nudges, reading, interchange, audit criteria are
 tooling**: registered from the flag-gated extension. Flag off means no

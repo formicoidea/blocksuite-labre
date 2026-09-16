@@ -76,12 +76,13 @@ const MESSAGE_ENDPOINTS = 'uml.message-endpoints';
 const MESSAGE_SYNTAX = 'uml.message-syntax';
 const UNNAMED_LIFELINE = 'uml.unnamed-lifeline';
 const LIFELINE_IDENT_SYNTAX = 'uml.lifeline-ident-syntax';
+const PORT_ON_BORDER = 'uml.port-on-border';
 
 /**
- * The twenty-four rules that restate a NORMATIVE clause — and deliberately not the same
- * list as the twelve `uml.strict` promotes (`profiles.unit.spec.ts` owns that
- * one). Provenance and severity are orthogonal: two of these ten stay a remark
- * at every level, and two of the promoted twelve are `recommendation`.
+ * The twenty-five rules that restate a NORMATIVE clause — and deliberately not the same
+ * list as the thirty-three `uml.strict` promotes (`profiles.unit.spec.ts` owns
+ * that one). Provenance and severity are orthogonal: two of these stay a remark
+ * at every level, and several of the promoted ones are `recommendation`.
  */
 const STANDARD_RULES = [
   GENERALIZATION_ENDPOINTS,
@@ -118,6 +119,10 @@ const STANDARD_RULES = [
   // here — an empty head is a `recommendation`, exactly as an empty name
   // compartment and an empty actor's word are.
   LIFELINE_IDENT_SYNTAX,
+  // ...and §11.3.4's PLACEMENT: "The square symbol is placed on the boundary of
+  // the rectangle symbol for the owning EncapsulatedClassifier" is a sentence of
+  // the specification, not a house reading of it (ADR 0024).
+  PORT_ON_BORDER,
 ];
 
 interface Extra {
@@ -285,7 +290,7 @@ const sketch = (id: string, x = 100, y = 700) => element(id, [x, y, 180, 120]);
 /**
  * The DRAWING pass, as the manager runs it: rules AND profiles, always.
  *
- * `uml.sketch` is the default and holds all forty-two rules at `audit`, so on a
+ * `uml.sketch` is the default and holds all forty-three rules at `audit`, so on a
  * sheet nobody raised THIS RETURNS NOTHING — which is the point: a diagram drawn
  * boxes-first is not measured on every gesture (PF7.6).
  */
@@ -399,7 +404,7 @@ const conformantStateMachine = () => [
 ];
 
 describe('what the framework ships', () => {
-  it('ships exactly the forty-two rules of the pack, in reading order', () => {
+  it('ships exactly the forty-three rules of the pack, in reading order', () => {
     expect(UML_RULES.map(rule => rule.id)).toEqual([
       ELEMENT_OUTSIDE_FRAME,
       NOT_ADMISSIBLE_ON_KIND,
@@ -424,6 +429,7 @@ describe('what the framework ships', () => {
       UNTYPED_EDGE,
       COMPOSITION_SINGLE_OWNER,
       USE_CASE_NO_ACTOR,
+      PORT_ON_BORDER,
       NODE_IN_PARTITION,
       SHALLOW_HISTORY_OUTSIDE_REGION,
       DEEP_HISTORY_OUTSIDE_REGION,
@@ -447,27 +453,34 @@ describe('what the framework ships', () => {
   });
 
   /**
-   * NINE families for the largest notation the library carries, and exactly one
-   * of them new.
+   * TEN families for the largest notation the library carries, and exactly two
+   * of them new to the engine.
    *
    * The claim `docs/add-a-framework` makes about the seam, tested by the hardest
    * case available: seventeen edge roles are seventeen readings of
    * `relation-endpoints`, the five frames are the membership families C4 already
    * uses, and the sheet's own declaration is the `view-admissibility` C4 opened.
    * Phase 2 doubled the vocabulary and added one family; phase 3 added a sheet,
-   * five artefacts and five edges, and the number below did not move at all.
+   * five artefacts and five edges, and the number below did not move at all. The
+   * tenth arrived on the PO recette of 2026-09-16, for a requirement this pack
+   * had recorded as unwritable (`border-proximity`, ADR 0024).
    */
-  it('needs nine families, and asks the engine for ONE new one', () => {
+  it('needs ten families, and asks the engine for TWO new ones', () => {
     // The two the behaviour sheets added are BPMN's, registered here with UML's
     // own roles and nothing else: a machine with two beginnings and a ring of
     // states nothing enters are the same two questions a pool with two start
     // events and an unreachable task ask.
     expect([...new Set(UML_RULES.map(rule => rule.family))].sort()).toEqual([
+      // The SECOND family this pack asked the engine for (ADR 0024), and the
+      // only one whose frame of reference is another artefact's OUTLINE: §11.3.4
+      // draws a port ON the boundary of its component, and `attachment`,
+      // `element-in-background` and `no-overlap` each get that nearly right.
+      'border-proximity',
       'edge-degree',
       'element-in-background',
       'element-in-zone',
       'label-presence',
-      // The ONE family this pack asked the engine for (ADR 0021), and the only
+      // The FIRST family this pack asked the engine for (ADR 0021), and the only
       // one in the library whose verdict is a function rather than a table: a
       // notation's grammar is a parser, and this pack already ships one.
       'label-syntax',
@@ -521,7 +534,7 @@ describe('what the framework ships', () => {
     expect(framedBy(UML_ROLE.region)).toEqual(
       [SHALLOW_HISTORY_OUTSIDE_REGION, DEEP_HISTORY_OUTSIDE_REGION].sort()
     );
-    expect(framedBy(UML_ROLE.diagram)).toHaveLength(37);
+    expect(framedBy(UML_ROLE.diagram)).toHaveLength(38);
     for (const rule of UML_RULES) {
       expect(rule.backgroundRole, rule.id).toBeDefined();
     }
@@ -555,8 +568,8 @@ describe('what the framework ships', () => {
         .map(rule => rule.id)
         .sort();
 
-    // The twenty-four that restate a normative sentence, and exactly those.
-    expect(STANDARD_RULES).toHaveLength(24);
+    // The twenty-five that restate a normative sentence, and exactly those.
+    expect(STANDARD_RULES).toHaveLength(25);
     expect(byProvenance('standard')).toEqual([...STANDARD_RULES].sort());
     // The three that are OURS — membership on this canvas, a usage remark, and
     // the role-less connector this whiteboard can produce and the notation never
@@ -2057,6 +2070,87 @@ describe('U19 · what a communication path may run between', () => {
 
   it('says nothing at all about a conformant component diagram', () => {
     expect(evaluate(conformantComponent())).toEqual([]);
+  });
+});
+
+/**
+ * U43 · the pack's one `border-proximity` rule (ADR 0024).
+ *
+ * The component is 220 × 120 at (200, 200), so its right edge is x = 420, and a
+ * port is the 16-unit square of `UML_NODE_BOX.port`. Every x below is chosen
+ * against that edge and quoted with the distance it puts the port's CENTRE at,
+ * because the tolerance — `UML_PORT_BORDER_TOLERANCE`, the glyph's own side — is
+ * the whole subject of the rule.
+ */
+describe('U43 · a port that has left its component border (§11.3.4)', () => {
+  const sheet = (...elements: GfxPrimitiveElementModel[]) => [
+    frame('cmp'),
+    component('c', 200, 200),
+    name('c-name', '«component»\nCart', 210, 210),
+    ...elements,
+  ];
+  const portFindings = (...elements: GfxPrimitiveElementModel[]) =>
+    only(evaluate(sheet(...elements)), PORT_ON_BORDER);
+
+  it('flags a port dragged into the middle of the component', () => {
+    // Centre at x 308, 112 units inside the right edge and 58 from the nearest
+    // one — the drawing the PO made on the recette of 2026-09-16.
+    const [violation] = portFindings(port('p', 300, 250));
+
+    expect(violation).toBeDefined();
+    // BOTH artefacts, sorted: the finding has two honest readings — the square
+    // has drifted, or the box has grown under it — and only the pair shows the
+    // user both brackets.
+    expect(violation.elementIds).toEqual(['c', 'p']);
+    expect(violation.backgroundId).toBe('frame');
+    expect(violation.messageKey).toBe(
+      'com.labre.uml.validation.port-on-border'
+    );
+  });
+
+  it('says nothing about §11.3.4 own drawing, half in and half out', () => {
+    // Centre exactly on x 420: the edge itself.
+    expect(portFindings(port('p', 412, 250))).toEqual([]);
+  });
+
+  it('says nothing about a port sat just inside the edge', () => {
+    // Tangent: the square clear of the line, its centre 8 units in — half a
+    // glyph, and a drawing an author plainly meant.
+    expect(portFindings(port('p', 404, 250))).toEqual([]);
+  });
+
+  it('holds the line exactly at the glyph own side', () => {
+    // 16 in — the tolerance itself — is silence; 17 in is the finding. The rule
+    // is written on the constant, so this is what pins the constant.
+    expect(portFindings(port('p', 396, 250))).toEqual([]);
+    expect(portFindings(port('p', 395, 250))).toHaveLength(1);
+  });
+
+  it('says nothing about a port on no component at all', () => {
+    // A square dropped on the sheet beside everything: somebody drawing, not
+    // somebody wrong (PRD principle 8). The family's own gate.
+    expect(portFindings(port('p', 900, 600))).toEqual([]);
+  });
+
+  it('says nothing about a square on a deployment cube', () => {
+    // The rule's carrier is `uml:component`. §19.4 nodes are not
+    // EncapsulatedClassifiers here, and `model.ts` already says a port drawn on
+    // a cube is a drawing this pack keeps and writes nowhere.
+    expect(
+      only(
+        evaluate([
+          frame('dep'),
+          device('d', 200, 200),
+          name('d-name', '«device»\nAppServer', 210, 210),
+          port('p', 300, 250),
+        ]),
+        PORT_ON_BORDER
+      )
+    ).toEqual([]);
+  });
+
+  it('says nothing about a conformant component diagram', () => {
+    expect(only(evaluate(conformantComponent()), PORT_ON_BORDER)).toEqual([]);
   });
 });
 

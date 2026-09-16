@@ -162,3 +162,17 @@ Container()` threw "illegal constructor" and the page hung.
     handler answered it instead.
     _Rule:_ a gesture's reach is the element's `includesPoint`, not the
     picker's. Widening one without the other writes dead code.
+
+28. **A package's own Vite cache ran the tests against an older engine.** Adding
+    a rule family to `blocks/surface` and a rule using it to `gfx/uml` made 177
+    of the UML package's 194 unit tests fail with
+    `RULE_FAMILIES[rule.family] is not a function` — the pack was right and the
+    engine it ran against was not the one on disk. `gfx/uml/node_modules/.vite`
+    held a pre-bundled copy of the surface package from before the edit, and the
+    stack trace pointed into the current source through a stale source map, so
+    the quoted line did not exist at that line number.
+    _Rule:_ a cross-package change that fails impossibly in one package's unit
+    suite — a symbol the source plainly exports reading as `undefined`, a stack
+    frame quoting a line the file does not have — is a stale
+    `<package>/node_modules/.vite`. Delete it and re-run before debugging the
+    code.

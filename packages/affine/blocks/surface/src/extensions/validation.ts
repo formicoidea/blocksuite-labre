@@ -126,6 +126,14 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   interprets — a notation's grammar is a grammar, and no amount of declarative
  *   data is going to express `[<visibility>] [/] <name> [: <type>]`. See
  *   {@link LabelSyntaxDef} and `docs/adr/0021`.
+ * - `border-proximity` — the subject must sit ON the OUTLINE of a carrier NODE,
+ *   within a declared tolerance. The family of "a port is a small square on the
+ *   border of the component that owns it" (UML §11.3.4), and the first one whose
+ *   frame of reference is another ARTEFACT's edge rather than the sheet's:
+ *   `attachment` measures a distance to a PATH and refuses a node carrier,
+ *   `element-in-background` demands full containment — which a glyph straddling
+ *   the edge breaks by construction — and `no-overlap` has the opposite polarity
+ *   and no tolerance. See {@link BorderProximityDef} and `docs/adr/0024`.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -143,7 +151,8 @@ export type RuleFamily =
   | 'reachability'
   | 'label-presence'
   | 'label-syntax'
-  | 'view-admissibility';
+  | 'view-admissibility'
+  | 'border-proximity';
 
 /**
  * What a verdict on one subject depends on (PF5.3). Ordered: each level
@@ -1140,6 +1149,87 @@ export interface ElementInZoneDef {
 }
 
 /**
+ * `border-proximity` configuration — "this small glyph belongs ON the edge of
+ * that box" (ADR 0024).
+ *
+ * The family UML §11.3.4 asked for and no other one could answer. A Port is a
+ * square drawn on the boundary of the component that owns it: half of it inside
+ * and half outside is the clause's own preferred drawing, tangent inside is
+ * just as legible, and the same square dragged into the middle of the component
+ * has stopped saying anything at all. Three families sound like the answer and
+ * none of them is:
+ *
+ * - `attachment` measures a distance to a PATH and warns once on a `node`
+ *   carrier, because a box has no path;
+ * - `element-in-background` demands FULL containment, which the straddling
+ *   drawing breaks by construction — and it frames against the sheet, not
+ *   against a neighbour;
+ * - `no-overlap` is the only family evaluating PAIRS and its polarity is the
+ *   opposite one: it forbids a collision and cannot require a proximity.
+ *
+ * So this is the first family whose frame of reference is another ARTEFACT's
+ * outline. It is not a fourth membership family: nothing about the sheet takes
+ * part in the verdict, and the rule's {@link ValidationRule.backgroundRole} is
+ * read for attribution alone, exactly as `no-overlap` reads it.
+ *
+ * ## The two roles, and where each is declared
+ *
+ * The CARRIED role is the rule's own {@link ValidationRule.appliesTo} — the
+ * subject, like every element-shaped family — and the CARRIER role is
+ * {@link carrierRole} here. Same split `attachment` makes, and for the same
+ * reason: one of the two is what the finding is about and the other is what it
+ * is measured against.
+ *
+ * ## The geometry, in one sentence
+ *
+ * The carried element's CENTRE must be within {@link tolerance} of the OUTLINE
+ * — the rectangular perimeter, not the area — of a carrier it overlaps.
+ *
+ * Centre and not extent, which is the opposite of what `attachment` measures
+ * across a transition band and is the right answer for the opposite reason: a
+ * band is wide and the subject is asked to COVER it, whereas an outline is a
+ * line and the subject is asked to SIT on it. A glyph whose box happens to clip
+ * the edge of a component it is drawn well inside of would pass an extent test
+ * while failing the eye.
+ *
+ * ## A carried element touching NO carrier is silence
+ *
+ * Not a finding, and the requirement that makes the family shippable. A square
+ * dropped on blank canvas, or beside a component while the sheet is being
+ * rearranged, is somebody drawing — and a rule that answered "this belongs on a
+ * border" would be indicting the act of sketching (PRD principle 8). The family
+ * only speaks once the author has ALREADY put the glyph on a box: the mistake it
+ * reports is a glyph that has drifted INTO one, never one that has left.
+ */
+export interface BorderProximityDef {
+  /**
+   * The role of the element the subject must be posed on.
+   *
+   * It has to be a **node** role: "on the border" is measured against a box's
+   * outline, and an edge has none. A rule naming an `edge` or a `text` role here
+   * matches nothing and warns once rather than failing silently — the same
+   * contract {@link AttachmentDef.carrierRole} states in the other direction.
+   */
+  carrierRole: RoleId;
+  /**
+   * How far, in model units, the subject's CENTRE may sit from that outline.
+   *
+   * An absolute number and deliberately not a ratio, which is the opposite
+   * choice from {@link RelativeOrderDef.toleranceRatio} and the right one here:
+   * a glyph's own footprint is what makes "on the border" legible, and a
+   * notation that draws it at a fixed size (UML's port is 16 units square) means
+   * the same thing whether the component beside it is small or enormous. A
+   * tolerance proportional to the carrier would let a port sit a hundred units
+   * inside a large component and call it a border.
+   *
+   * Absent or `0` means the centre must be exactly on the line, which no hand
+   * and no snap ever produces — a rule declaring neither is a rule that indicts
+   * every subject on the board, so the family warns once and evaluates nothing.
+   */
+  tolerance: number;
+}
+
+/**
  * WHERE a rule's authority comes from.
  *
  * - `standard` — the rule restates a normative sentence of a published
@@ -1171,7 +1261,7 @@ export type ProvenanceSource =
  *
  * ## Purely descriptive
  *
- * **No evaluator reads it.** Not one of the fourteen family functions branches
+ * **No evaluator reads it.** Not one of the seventeen family functions branches
  * on it, `evaluateRules` and `evaluateCheckup` never look at it, and a rule
  * declaring it evaluates identically to the same rule with the field removed
  * ({@link ValidationRule.provenance} is pinned inert by a test). It exists for
@@ -1298,6 +1388,11 @@ export interface ValidationRule extends RuleMessage {
   endpoints?: RelationEndpointsDef;
   /** `element-in-zone` only. */
   inZone?: ElementInZoneDef;
+  /**
+   * `border-proximity` only: the CARRIED elements are named by
+   * {@link appliesTo}, the carrier by {@link BorderProximityDef.carrierRole}.
+   */
+  borderProximity?: BorderProximityDef;
   /**
    * `no-overlap` only: how DEEP a collision has to be, in model units, before
    * it is worth reporting. Absent or `0` means any shared area at all.
@@ -4250,6 +4345,166 @@ function evaluateElementInZone(
 }
 
 /**
+ * How far `p` is from the OUTLINE of `bound` — the rectangle's perimeter, and
+ * not its area.
+ *
+ * Zero on the line, and positive on both sides of it: the distance to the
+ * nearest edge for a point inside, the ordinary distance to the rectangle for a
+ * point outside. That two-sided reading is the whole point of the function —
+ * "on the border" is a claim about a LINE, and a family measuring containment
+ * could not tell a glyph sitting on the edge from one buried in the middle.
+ *
+ * Euclidean rather than squared, unlike {@link gapSquared}: the result is
+ * compared against a tolerance a framework declares in model units, so the root
+ * has to be taken somewhere and taking it here keeps the declaration readable.
+ * One `Math.hypot` per (carrier, carried) couple that actually overlaps, which
+ * is a handful per board.
+ */
+function outlineDistance(p: Point, bound: Bound): number {
+  // Negative inside, positive outside, on each axis independently.
+  const dx = Math.max(bound.x - p[0], p[0] - bound.maxX);
+  const dy = Math.max(bound.y - p[1], p[1] - bound.maxY);
+  if (dx > 0 || dy > 0) {
+    return Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+  }
+  // Inside: the nearest of the four edges.
+  return Math.min(-dx, -dy);
+}
+
+/**
+ * "Is this glyph still ON the border of the box it was drawn on?"
+ *
+ * The `border-proximity` family (ADR 0024). See {@link BorderProximityDef} for
+ * the requirement and for the three families that cannot state it.
+ *
+ * ## The walk
+ *
+ * Two passes over the surface to index the carriers and the subjects, then per
+ * subject one test against each carrier: do the two boxes share AREA (or does
+ * the carrier contain the subject outright), and if so how far is the subject's
+ * centre from that carrier's outline. The BEST carrier — smallest distance,
+ * ties broken by the smaller id — is the one the finding is measured against and
+ * the one it names, because it is the box the author was aiming at and the only
+ * one a suggestion can point back to.
+ *
+ * Deliberately not sweep-and-pruned the way `no-overlap` is. The two populations
+ * are disjoint by role and both are small — a component sheet carries units of
+ * components and units of ports — so the couple walk is `carriers × subjects`
+ * over two handfuls, and an index would cost more to build than the walk it
+ * saves. If a framework ever writes this family on two crowded roles, the prune
+ * is the same one `evaluateNoOverlap` already documents.
+ *
+ * ## Overlap is the GATE, and the distance is the verdict
+ *
+ * A subject overlapping no carrier at all raises nothing (the family's
+ * proportionality requirement), so the only thing this reports is a glyph the
+ * author put ON a box and then pushed too far into it. Shared AREA and not a
+ * shared edge — {@link boundsOverlap}'s epsilon — because a glyph tangent
+ * OUTSIDE its carrier is within any tolerance worth declaring anyway, and
+ * treating a snapped edge as an overlap would make the gate depend on float
+ * noise.
+ *
+ * ## One finding, two ids
+ *
+ * One per SUBJECT, however many carriers it touches: the mistake is one glyph in
+ * one wrong place, and a square straddling two nested components would otherwise
+ * be reported twice for one drag. Both ids are indicted — the carrier and the
+ * carried — because the finding has two honest readings (the glyph has drifted,
+ * or the box has grown under it) and only the pair shows the user both brackets.
+ * Sorted, like every other multi-element finding in this file, so the same
+ * situation reports the same way whichever order the surface was walked in.
+ */
+function evaluateBorderProximity(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const proximity = rule.borderProximity;
+  if (subjectRole === undefined || proximity === undefined) return [];
+
+  const carrierRole = proximity.carrierRole;
+  // An outline is a box's, so the carrier has to be one. A rule naming an edge
+  // or a text role can never fire; say so once rather than shrugging.
+  const carrierKind = rule.roles[carrierRole]?.kind;
+  if (carrierKind !== 'node') {
+    warnOnce(
+      `border-proximity rule "${rule.id}" names a ` +
+        `"${carrierKind ?? 'unknown'}" role ("${carrierRole}") as its ` +
+        `carrier — only a "node" role has an outline, and "on the border" is a ` +
+        `distance to one, so this rule can never fire.`
+    );
+    return [];
+  }
+
+  const tolerance = proximity.tolerance;
+  if (!(tolerance > 0)) {
+    // A centre exactly on the line is a drawing no hand and no snap produces,
+    // so a rule declaring no tolerance would indict every subject on the board.
+    warnOnce(
+      `border-proximity rule "${rule.id}" declares no positive tolerance — ` +
+        `the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const carriers: { id: string; bound: Bound }[] = [];
+  const subjects: { id: string; bound: Bound }[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, carrierRole, rule.roles)) {
+      carriers.push({ id: el.id, bound: el.elementBound });
+      // A role that is BOTH — a framework specialising one from the other —
+      // would be a declaration that cannot mean anything here, so the carrier
+      // reading wins and the element is not also judged as a subject.
+      continue;
+    }
+    if (roleIsA(el.role, subjectRole, rule.roles)) {
+      subjects.push({ id: el.id, bound: el.elementBound });
+    }
+  }
+  if (carriers.length === 0 || subjects.length === 0) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  const violations: Violation[] = [];
+  for (const subject of subjects) {
+    const centre = centreOf(subject.bound);
+    let host: { id: string; bound: Bound } | null = null;
+    let distance = Infinity;
+    for (const carrier of carriers) {
+      if (
+        !boundsOverlap(carrier.bound, subject.bound) &&
+        !carrier.bound.contains(subject.bound)
+      ) {
+        continue;
+      }
+      const away = outlineDistance(centre, carrier.bound);
+      // Strictly nearer wins; an exact tie goes to the smaller id, never to
+      // whichever carrier the surface happened to be walked past first.
+      if (
+        away < distance ||
+        (away === distance && host !== null && carrier.id < host.id)
+      ) {
+        distance = away;
+        host = carrier;
+      }
+    }
+    // On no carrier at all: the glyph is a sketch, and this family says nothing
+    // about where a sketch sits.
+    if (host === null || distance <= tolerance) continue;
+
+    violations.push(
+      raise(
+        rule,
+        [host.id, subject.id].sort(),
+        attributeBackground(subject.bound, backgrounds)?.id
+      )
+    );
+  }
+  return violations;
+}
+
+/**
  * "Does this artefact belong on THIS view?"
  *
  * The first family whose subject is the SHEET. Every other one starts from an
@@ -5336,6 +5591,7 @@ const RULE_FAMILIES: Record<
   'label-presence': evaluateLabelPresence,
   'label-syntax': evaluateLabelSyntax,
   'view-admissibility': evaluateViewAdmissibility,
+  'border-proximity': evaluateBorderProximity,
 };
 
 /**
@@ -5395,6 +5651,12 @@ export const RULE_SCOPES: Record<RuleFamily, RuleScope> = {
   // Own role against the level the containing view declares; kept at the wider
   // level for the same reason as `tone-convention`.
   'view-admissibility': 'frame',
+  // Widened from 'element' for the reason `attachment` is: the carriers the
+  // subject is measured against are collected from the WHOLE surface and bounded
+  // by no frame, so a carrier moved, resized or deleted anywhere can flip a
+  // subject's verdict — including from "on a border" to "on no carrier at all",
+  // which is the difference between a finding and silence.
+  'border-proximity': 'surface',
 };
 
 /**

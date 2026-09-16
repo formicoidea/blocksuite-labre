@@ -20,13 +20,14 @@ import { umlTranslationEntries } from '../translations.js';
  */
 
 /**
- * The thirty-two `uml.strict` promotes.
+ * The thirty-three `uml.strict` promotes.
  *
  * Eight restate a normative clause (§9.9.7 twice, §10.4.3, §18.1.3 twice,
  * §19.2.3, §19.3.3, §19.4.3), three are the NAMING rules, six are the SPELLING
  * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4, §17.4.4, §17.3.4), three are the
  * behaviour sheets' MEMBERSHIP rules, one is §11.5.3's
- * arithmetic and one is the sheet's own declaration. Named for what the PROFILE
+ * arithmetic, one is the sheet's own declaration and one is §11.3.4's
+ * PLACEMENT. Named for what the PROFILE
  * does and not for where the rules come from: `uml.dependency-on-object` and
  * `uml.actor-actor-association` also cite the specification and are NOT
  * promoted, which is the whole reason the constant cannot be called
@@ -82,6 +83,12 @@ const PROMOTED = [
   'uml.node-in-partition',
   'uml.shallow-history-outside-region',
   'uml.deep-history-outside-region',
+  // ...and §11.3.4's PLACEMENT, the pack's one `border-proximity` rule (ADR
+  // 0024) and the promotion the PO asked for by name on the same recette. The
+  // one geometric rule this level hardens: the class-side membership three below
+  // each have a second reading under which the author is right, and a port in
+  // the middle of its component has none.
+  'uml.port-on-border',
 ];
 
 /**
@@ -122,7 +129,7 @@ describe('UML validation profiles', () => {
 
   it('spells out every rule in every profile', () => {
     const ruleIds = UML_RULES.map(rule => rule.id).sort();
-    expect(ruleIds).toHaveLength(42);
+    expect(ruleIds).toHaveLength(43);
     for (const profile of UML_PROFILES) {
       expect(profile.framework).toBe('uml');
       expect(profile.labelKey).toMatch(/^com\.labre\.uml\.profile\./);
@@ -154,9 +161,9 @@ describe('UML validation profiles', () => {
     }
   });
 
-  it('promotes the thirty-two on the strict profile', () => {
+  it('promotes the thirty-three on the strict profile', () => {
     const [, strict] = UML_PROFILES;
-    expect(PROMOTED).toHaveLength(32);
+    expect(PROMOTED).toHaveLength(33);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
