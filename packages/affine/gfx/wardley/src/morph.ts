@@ -10,6 +10,7 @@ import {
   WardleyNodeElementModel,
 } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
+import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxModel, GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
@@ -19,6 +20,10 @@ import {
   wardleyCanonicalBox,
   wardleyHandleBox,
   wardleyHandleProps,
+  WARDLEY_LABEL_H,
+  WARDLEY_LABEL_W,
+  wardleyLabelBoxFor,
+  type WardleyLabelPlacement,
   wardleyMarketDotBoxes,
   wardleyMarketDotProps,
   wardleyMarketLinkPairs,
@@ -420,6 +425,83 @@ function rewriteLabel(
 }
 
 /**
+ * The offset from a label box's left edge to the point its alignment holds
+ * fixed — the edge the words grow from.
+ */
+function anchorOffset(
+  w: number,
+  textAlign: WardleyLabelPlacement['textAlign']
+) {
+  return textAlign === 'center' ? w / 2 : textAlign === 'right' ? w : 0;
+}
+
+/**
+ * Carry the name to where the TARGET kind holds it — and only when it is still
+ * where the SOURCE kind's creation put it.
+ *
+ * ## The bug this repairs
+ *
+ * A component wears its name to the right of an 18-pixel circle. A pipeline is
+ * a 120-wide bar: written onto the same artefact, it is drawn straight OVER
+ * those words, and a filled shape answers the pointer on its whole interior
+ * while a text answers only on its box — so which of the two got the click
+ * depended on where in the label you aimed. The name could not be edited, and
+ * dragging it moved the pipeline. Rule W3 forbids precisely that overlap.
+ *
+ * ## Why only across a change of PLACE
+ *
+ * The timid rule {@link rewriteLabel} states about the words, applied to the
+ * placement: what the author put somewhere is theirs. The three circles all
+ * carry their name beside them, so a component growing into a market leaves the
+ * words exactly where they were — the circle grows underneath them and that is
+ * the documented behaviour. Only the crossing to or from the pipeline changes
+ * the PLACE, and only that moves anything.
+ *
+ * The test is on the point the label's own alignment keeps fixed rather than on
+ * its top-left, because typing into a label resizes its box around exactly that
+ * point (`edgeless-text-editor`): a renamed label is still where creation put
+ * it, and a MOVED one is not.
+ */
+function relocateLabel(
+  group: GroupElementModel,
+  from: WardleyMorphKind,
+  to: WardleyMorphKind,
+  cx: number,
+  cy: number
+) {
+  const source = wardleyLabelBoxFor(from, cx, cy);
+  const target = wardleyLabelBoxFor(to, cx, cy);
+  if (source.place === target.place) return;
+
+  const label = labelOfComposite(group);
+  if (!label || label.isLocked()) return;
+
+  const [x, y, w, h] = label.deserializedXYWH;
+  const sourceAnchorX =
+    source.x + anchorOffset(WARDLEY_LABEL_W, source.textAlign);
+  // A pixel of tolerance on each axis: a renamed label's line is measured from
+  // the font and lands within a hair of the canonical height this compares to.
+  if (Math.abs(x + anchorOffset(w, source.textAlign) - sourceAnchorX) > 1) {
+    return;
+  }
+  if (Math.abs(y + h / 2 - (source.y + WARDLEY_LABEL_H / 2)) > 1) return;
+
+  label.surface.updateElement(label.id, {
+    // The BOX keeps its own size — the words in it may be the author's, and one
+    // shrunk back to the canonical width would clip them.
+    xywh: new Bound(
+      target.x +
+        anchorOffset(WARDLEY_LABEL_W, target.textAlign) -
+        anchorOffset(w, target.textAlign),
+      target.y + WARDLEY_LABEL_H / 2 - h / 2,
+      w,
+      h
+    ).serialize(),
+    textAlign: target.textAlign,
+  });
+}
+
+/**
  * Everything the morph owes a Wardley composite beyond the props patch — the
  * `afterMorph` half of the spec, run inside the generic module's one
  * `captureSync` so all of it is a single ctrl+z.
@@ -434,7 +516,9 @@ function rewriteLabel(
  * dots crammed into it. So the target's canonical size is applied, CENTRED on
  * where the artefact already stands: the thing does not move, it becomes the
  * size its notation says it is. The label keeps its own place, which is the
- * user's.
+ * user's — with the one exception {@link relocateLabel} states: a name still
+ * standing where creation put it follows the target kind when that kind carries
+ * its name somewhere else, or the new drawing lands on top of the old words.
  *
  * ## And why the rest is here rather than in the patch
  *
@@ -466,6 +550,7 @@ export function wardleyMorphComposite(
   if (to === 'market') addMarketGlyph(selected, cx, cy);
   if (to === 'pipeline') addHandle(selected, carrier, cx, cy);
 
+  relocateLabel(selected, from, to, cx, cy);
   rewriteLabel(selected, from, to, std);
 }
 

@@ -88,7 +88,12 @@ export class GfxViewEventManager {
         if (this._draggingElement) {
           this._draggingElement.dispatch('dragend', _evt);
         }
-        this._draggingElement = last(this._hoveredElementsStack) ?? null;
+        // The same re-pick by point a click makes, and for the same reason: a
+        // stack only `pointermove` rebuilds is stale whenever the pointer
+        // arrived without one — after a toolbar action that rewrote what is
+        // under it, for instance — and a drag would then be handed to the view
+        // that USED to be there.
+        this._draggingElement = this._targetOf(_evt);
         return this._draggingElement?.dispatch('dragstart', _evt) ?? false;
       }
       case 'dragmove': {

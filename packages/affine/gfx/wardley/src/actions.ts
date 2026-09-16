@@ -34,9 +34,7 @@ import {
 } from './export';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
 import {
-  HANDLE_SIZE,
   INERTIA_SIZE,
-  LABEL_GAP,
   LINK_GREY,
   LINK_STROKE_WIDTH,
   PORTER_DEFAULT_LETTER,
@@ -51,8 +49,7 @@ import {
   wardleyHandleBox,
   wardleyHandleProps,
   wardleyInertiaProps,
-  WARDLEY_LABEL_H,
-  WARDLEY_LABEL_W,
+  wardleyLabelBoxFor,
   wardleyLabelProps,
   wardleyMarketDotBoxes,
   wardleyMarketDotProps,
@@ -60,7 +57,6 @@ import {
   wardleyMarketLinkProps,
   WARDLEY_NODE_LABEL,
   wardleyNodeLabelKey,
-  WARDLEY_NODE_SIZE,
   wardleyNodeProps,
   wardleyPorterArrowProps,
   wardleyPorterArrows,
@@ -142,11 +138,6 @@ function backgroundVariantDefaults(
 }
 
 type Surface = NonNullable<GfxController['surface']>;
-
-// The label box, now owned by `presets.ts` — the local names stay so the four
-// placements below keep reading as they did.
-const LABEL_H = WARDLEY_LABEL_H;
-const LABEL_W = WARDLEY_LABEL_W;
 
 /**
  * The single-circle node flavours: one connectable ellipse + a label to its
@@ -280,10 +271,10 @@ export function createWardleyNode(
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { w } = WARDLEY_NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
   const nodeId = addNode(surface, kind, cx, cy);
+  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
   const labelId = addLabel(
     surface,
     // Resolved HERE, once — the prompt a node nobody has named still carries,
@@ -291,8 +282,9 @@ export function createWardleyNode(
     // the translation seam: these creation sites take `GfxController`, not
     // `BlockStdScope`, directly (`WardleyView` reads the same member).
     translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    cx + w / 2 + LABEL_GAP,
-    cy - LABEL_H / 2
+    x,
+    y,
+    textAlign
   );
 
   finish(gfx, group(gfx, [nodeId, labelId]));
@@ -323,8 +315,6 @@ export function createWardleyPipeline(gfx: GfxController) {
   if (!gfx.surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const d = HANDLE_SIZE;
-  const top = cy - WARDLEY_NODE_SIZE.pipeline.h / 2;
 
   // Body: a WardleyNode rect, made non-connectable by `kind: 'pipeline'`.
   const bodyId = addNode(gfx.surface, 'pipeline', cx, cy);
@@ -336,6 +326,7 @@ export function createWardleyPipeline(gfx: GfxController) {
   );
 
   // Label centered horizontally on the pipeline, sitting ABOVE the handle.
+  const { x, y, textAlign } = wardleyLabelBoxFor('pipeline', cx, cy);
   const labelId = addLabel(
     gfx.surface,
     translateKey(
@@ -343,9 +334,9 @@ export function createWardleyPipeline(gfx: GfxController) {
       wardleyNodeLabelKey('pipeline'),
       WARDLEY_NODE_LABEL.pipeline
     ),
-    cx - 60,
-    top - d / 2 - LABEL_H - LABEL_GAP,
-    'center'
+    x,
+    y,
+    textAlign
   );
 
   // Nested groups: (handle + label), then (body + that group).
@@ -365,7 +356,6 @@ export function createWardleyMarket(gfx: GfxController) {
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const R = WARDLEY_NODE_SIZE.market.w / 2;
 
   // Outer circle = the market node (connectable, center-only).
   const circleId = addNode(surface, 'market', cx, cy);
@@ -380,6 +370,7 @@ export function createWardleyMarket(gfx: GfxController) {
     surface.addElement(wardleyMarketLinkProps(a, b))
   );
 
+  const { x, y, textAlign } = wardleyLabelBoxFor('market', cx, cy);
   const labelId = addLabel(
     surface,
     translateKey(
@@ -387,8 +378,9 @@ export function createWardleyMarket(gfx: GfxController) {
       wardleyNodeLabelKey('market'),
       WARDLEY_NODE_LABEL.market
     ),
-    cx + R + LABEL_GAP,
-    cy - LABEL_H / 2
+    x,
+    y,
+    textAlign
   );
 
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
@@ -463,20 +455,19 @@ export function createWardleyAccelerator(
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { w } = WARDLEY_NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
   const nodeId = addNode(surface, kind, cx, cy);
 
-  const rightwards = kind === 'accelerator';
+  // Which side, and which alignment, are the placement's answer: the
+  // decelerator's mirrored label is one of the two rules `presets.ts` states.
+  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
   const labelId = addLabel(
     surface,
     translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    // A label box is a fixed LABEL_W wide whatever it reads, so a right-aligned
-    // one has to start a box-width before the edge the words must end on.
-    rightwards ? cx + w / 2 + LABEL_GAP : cx - w / 2 - LABEL_GAP - LABEL_W,
-    cy - LABEL_H / 2,
-    rightwards ? 'left' : 'right',
+    x,
+    y,
+    textAlign,
     FontWeight.SemiBold
   );
 
