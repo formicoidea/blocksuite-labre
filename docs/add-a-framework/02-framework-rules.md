@@ -33,8 +33,8 @@ declare. Every command is in the catalogue.
 
 **R5. Import sits in the sub-menu, export on the board's contextual
 toolbar.** A board comes _from_ a file; you export a board you already have.
-BPMN and C4 follow it; **Wardley's OWM export currently declares no
-`contextual-toolbar` surface**, which is a deviation to fix, not a precedent.
+BPMN, C4 and Wardley follow it (the OWM export is scoped to the selected
+map's perimeter).
 
 **R6. The legend is a button on the selected board's toolbar**, not a
 command: absent from catalogue, palette and shortcuts (product decision,

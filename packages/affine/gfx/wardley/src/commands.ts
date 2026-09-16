@@ -16,7 +16,7 @@ import {
   exportOwmFile,
   importOwmFile,
   importWardleySvgFile,
-  wardleyMapsOnBoard,
+  wardleyMapsSelected,
 } from './actions';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
@@ -407,30 +407,18 @@ const importCommand: CommandDescriptor = {
 /**
  * The EXPORT — the other direction of the same format.
  *
- * It declines `'senior-menu'`, and the asymmetry with the import above is the
- * ruling BPMN already carries: the sub-menu is where a board COMES FROM, and an
- * export is what you do to a board you already have. It keeps `'catalogue'`,
- * which is the registry's own invariant rather than a category claim — a
- * command missing from the catalogue is unreachable the moment its framework
- * overflows the fourteen slots — plus the palette and the agent. No
- * `'contextual-toolbar'` either, and that is a declaration rather than an
- * oversight: a contextual-toolbar surface is rendered by an element's own
- * `ToolbarModuleConfig`, and declaring one nothing invokes would put an entry
- * in the manifest that no toolbar draws.
+ * It mirrors `bpmn.exportXml` and `c4.exportMermaid` (R5 of
+ * `docs/add-a-framework/02-framework-rules.md`): an import is where a board
+ * comes FROM, so it sits in the sub-menu; an export is what you do to a board
+ * you already have, so it sits in the selected map's "⋮" (`toolbar/config.ts`).
  *
- * `'always'` with a `when` on the BOARD, and the pair is deliberate. An export
- * READS: it needs no selection, and it is offered on a locked map and on a
- * read-only document — which is precisely the board somebody wants to take
- * away. What it DOES need is a plot to measure coordinates against, and that is
- * a fact about the surface rather than about the selection: a Wardley node has
- * no `visibility` prop, so its position on the plot IS its coordinate, and with
- * no map there is nothing to invert. `'selection'` would be BPMN's shape copied
- * for the look of it — that command's precondition genuinely is a selected
- * pool, and this one's is not.
+ * An export READS, so `availability: 'selection'` with a `when` on the selected
+ * MAP is the whole precondition: it is offered on a locked map and on a
+ * read-only document — precisely the map somebody wants to take away.
  *
- * **v1 writes one map.** An OWM document is one map; a board holding several is
- * written against the first in document order and the export says so out loud
- * in its warnings.
+ * **Scope: the selected map's perimeter.** The file holds that map and what it
+ * wholly contains ({@link wardleyExportElementsOf}). Selecting several maps
+ * still writes one map, and the export says so out loud in its warnings.
  */
 const exportCommand: CommandDescriptor = {
   id: 'wardley.exportOwm',
@@ -440,17 +428,17 @@ const exportCommand: CommandDescriptor = {
   labelFallback: 'Export Wardley map (OWM)',
   descriptionKey: 'com.labre.commands.wardley.exportOwm.description',
   descriptionFallback:
-    'Download the map as an OnlineWardleyMaps .owm file, ready to open in any Wardley mapping tool.',
+    'Download the selected map as an OnlineWardleyMaps .owm file — the components inside its perimeter, ready to open in any Wardley mapping tool.',
   category: 'interchange',
   iconKey: 'wardley.export-owm',
-  surfaces: ['catalogue', 'palette', 'agent'],
+  surfaces: ['catalogue', 'contextual-toolbar', 'palette', 'agent'],
   order: SPECS.length + 1,
   scope: 'edgeless',
   defaultKeys: { mac: [], other: [] },
-  availability: 'always',
+  availability: 'selection',
   run: exportOwmFile,
   telemetry: { framework: 'wardley', element: 'board:export-owm' },
-  when: std => wardleyMapsOnBoard(std).length > 0,
+  when: std => wardleyMapsSelected(std).length > 0,
 };
 
 /**

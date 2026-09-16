@@ -1,5 +1,6 @@
 import {
   backgroundSize,
+  containingFrame,
   DefaultTool,
   indexOverBackgrounds,
   runInterchangeImportFile,
@@ -14,6 +15,7 @@ import {
   FrameworkBackgroundElementModel,
   PointStyle,
   StrokeStyle,
+  TextElementModel,
   WardleyBackgroundElementModel,
   type WardleyBgVariant,
 } from '@labre/affine-model';
@@ -24,7 +26,11 @@ import {
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  type GfxController,
+  GfxControllerIdentifier,
+  type GfxPrimitiveElementModel,
+} from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background';
 import { WARDLEY_SVG_IMPORT } from './interchange';
@@ -670,43 +676,95 @@ export function activateWardleyConnector(
 const EXPORT_WARNINGS_KEY = 'com.labre.commands.wardley.exportOwm.warnings';
 const EXPORT_WARNINGS_FALLBACK = 'What this export could not write down';
 
-/** The maps on the surface — what the export command is offered against. */
-export function wardleyMapsOnBoard(
+/**
+ * The Wardley maps in the SELECTION — what the export is offered against.
+ *
+ * No read-only filter, for `c4BoardsForExport`'s reason: an export writes
+ * nothing, and a map published read-only is precisely the one somebody wants to
+ * take away.
+ */
+export function wardleyMapsSelected(
   std: BlockStdScope
 ): WardleyBackgroundElementModel[] {
-  const surface = std.get(GfxControllerIdentifier).surface;
-  return (surface?.elementModels ?? []).filter(
+  return std
+    .get(GfxControllerIdentifier)
+    .selection.selectedElements.filter(
+      (model): model is WardleyBackgroundElementModel =>
+        model instanceof WardleyBackgroundElementModel
+    );
+}
+
+/**
+ * The elements the export speaks about, in DOCUMENT order: the selected map(s)
+ * and what they wholly contain.
+ *
+ * Membership is `containingFrame` on the map's element bound — whole
+ * containment, ties to the smaller id — which is the one answer the validation
+ * engine and the legend already give (PF2.4). The candidates are EVERY map on
+ * the surface and not just the selected ones, so an artefact inside two
+ * overlapping maps is attributed here exactly as the engine attributes it.
+ */
+export function wardleyExportElementsOf(
+  std: BlockStdScope
+): GfxPrimitiveElementModel[] {
+  const elements =
+    std.get(GfxControllerIdentifier).surface?.elementModels ?? [];
+  const allMaps = elements.filter(
     (model): model is WardleyBackgroundElementModel =>
       model instanceof WardleyBackgroundElementModel
   );
+  const selected = new Set<GfxPrimitiveElementModel>(wardleyMapsSelected(std));
+
+  return elements.filter(element => {
+    if (element instanceof WardleyBackgroundElementModel) {
+      return selected.has(element);
+    }
+    // ponytail: a label is the NAME of a node, not an artefact of its own, so it
+    // crosses UNSCOPED. `matchLabels` (export.ts) only binds one within
+    // LABEL_MATCH_TOLERANCE of a kept node and drops the rest, while a long name
+    // beside a node near the right edge legitimately hangs over the map bound —
+    // scoping labels by containment would export that node unnamed.
+    if (
+      element instanceof TextElementModel &&
+      element.role === WARDLEY_ROLE.label
+    ) {
+      return true;
+    }
+    const map = containingFrame(
+      element.elementBound,
+      allMaps,
+      candidate => candidate.elementBound
+    );
+    return map !== null && selected.has(map);
+  });
 }
 
 /**
- * Everything on the surface the exporter speaks about, in document order.
+ * What the exporter speaks about, as a picked board.
  *
- * The half that needs an editor, and only that half: reading the surface. The
- * picking is {@link wardleyBoardFrom}, which the interchange capability calls
- * with the same elements and no `std` at all (`docs/adr/0012`, P3).
+ * The half that needs an editor, and only that half: reading the surface and
+ * scoping it to the selection. The picking is {@link wardleyBoardFrom}, which
+ * the interchange capability calls with the same elements and no `std` at all
+ * (`docs/adr/0012`, P3).
  */
 export function wardleyBoardOf(std: BlockStdScope): WardleyExportBoard {
-  return wardleyBoardFrom(
-    std.get(GfxControllerIdentifier).surface?.elementModels ?? []
-  );
+  return wardleyBoardFrom(wardleyExportElementsOf(std));
 }
 
 /**
- * Serialize the board as an OWM document and hand it to the browser.
+ * Serialize the selected map as an OWM document and hand it to the browser.
  *
  * Three steps, and only the first and the last know what an editor is: read the
- * surface, run the DECLARED capability, download what it produced. The middle
- * step is not re-implemented here — the document, the filename and the content
- * type all come out of `WARDLEY_OWM_EXPORT.run`, so the command and the
- * registry cannot describe the same map differently. There is one door, and the
- * registry is the label on it.
+ * selected map's perimeter, run the DECLARED capability, download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `WARDLEY_OWM_EXPORT.run`, so
+ * the command and the registry cannot describe the same map differently.
+ *
+ * Selecting SEVERAL maps still produces one file: an OWM document is one map,
+ * and `exportWardleyOwmWithWarnings` says so out loud in its warnings.
  */
 export function exportOwmFile(std: BlockStdScope): void {
-  const elements =
-    std.get(GfxControllerIdentifier).surface?.elementModels ?? [];
+  const elements = wardleyExportElementsOf(std);
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
   const { text, filename, mime, warnings } = WARDLEY_OWM_EXPORT.run(elements, {
     name: wardleySafeFilename(title),

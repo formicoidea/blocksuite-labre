@@ -1,6 +1,7 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { WardleyBackgroundElementModel } from '@labre/affine-model';
 import {
+  ActionPlacement,
   BOARD_LEGEND_COMPONENTS,
   BOARD_RESIZE_TOGGLE,
   type ChromeWording,
@@ -8,12 +9,17 @@ import {
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
-import { BlockFlavourIdentifier } from '@labre/std';
+import {
+  BlockFlavourIdentifier,
+  getRegisteredCommands,
+  runCommand,
+} from '@labre/std';
 import { html, type TemplateResult } from 'lit';
 
 import { createWardleyLegend } from '../legend';
-import { wardleyLegendIcon } from './icons';
+import { wardleyExportOwmIcon, wardleyLegendIcon } from './icons';
 
 /** The seven toolbar tooltips this file used to hard-code as English literals. */
 const EVOLUTION_AXIS_TOGGLE: ChromeWording = [
@@ -230,6 +236,57 @@ function booleanToggle(
   };
 }
 
+const findCommand = (ctx: ToolbarContext, id: string) =>
+  getRegisteredCommands(ctx.std).find(candidate => candidate.id === id);
+
+/**
+ * A "⋮" entry that INVOKES a registered command instead of restating what it
+ * does — the shape `docs/adr/0010` M3 introduced, and the reason the export has
+ * one behaviour, one availability rule and one telemetry emission whether it is
+ * reached from here, from the catalogue, from the palette, from
+ * Settings › Shortcuts or from the agent.
+ *
+ * Two things the widget imposes: a menu line is drawn from `label` (a tooltip on
+ * a line that is already words would be a second copy of them), and
+ * `placement: ActionPlacement.More` is what partitions it out of the row —
+ * `renderToolbar` splits on exactly that flag.
+ *
+ * `generate` rather than a static entry because the i18n seam needs `std`:
+ * `translateKey` is what reaches the host's catalogue.
+ *
+ * Kept local, as BPMN's pool row and C4's board row keep their own copies.
+ */
+function commandMoreAction(
+  id: string,
+  commandId: string,
+  labelKey: string,
+  labelFallback: string,
+  icon: TemplateResult
+) {
+  return {
+    id,
+    placement: ActionPlacement.More,
+    when: (ctx: ToolbarContext) => {
+      const command = findCommand(ctx, commandId);
+      return command !== undefined && (command.when?.(ctx.std) ?? true);
+    },
+    generate: (ctx: ToolbarContext) => ({
+      icon,
+      label: translateKey(ctx.std, labelKey, labelFallback),
+      run: (runCtx: ToolbarContext) => {
+        const command = findCommand(runCtx, commandId);
+        if (!command) return;
+        // The same `source` the row's own entries report: the "⋮" is a
+        // degradation of the row, not a surface of its own.
+        runCommand(runCtx.std, command, {
+          surface: 'contextual-toolbar',
+          source: 'toolbar:general',
+        });
+      },
+    }),
+  };
+}
+
 export const wardleyToolbarConfig = {
   actions: [
     booleanToggle(
@@ -322,6 +379,20 @@ export const wardleyToolbarConfig = {
           });
       },
     },
+    // The OWM export, in the "⋮" — R5 of
+    // `docs/add-a-framework/02-framework-rules.md`, the position
+    // `bpmn.exportXml` and `c4.exportMermaid` already hold on their own boards.
+    // This module is registered ALWAYS-ON (`view.ts`) while the commands are
+    // flag-gated, and that needs no extra guard: the entry's `when` looks the
+    // command up in the registry and withdraws when the wardley flag left it
+    // unregistered.
+    commandMoreAction(
+      'z.export-owm',
+      'wardley.exportOwm',
+      'com.labre.commands.wardley.exportOwm',
+      'Export Wardley map (OWM)',
+      wardleyExportOwmIcon
+    ),
   ],
   when: ctx =>
     ctx.getSurfaceModelsByType(WardleyBackgroundElementModel).length > 0,
