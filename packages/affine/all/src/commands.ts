@@ -4,7 +4,11 @@ import {
   readingCommands,
   tagCommands,
 } from '@labre/affine-block-root';
-import { auditCommands, mapQualityCommands } from '@labre/affine-block-surface';
+import {
+  auditCommands,
+  exportSvgCommands,
+  mapQualityCommands,
+} from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { c4Commands } from '@labre/affine-gfx-c4';
 import { edgeDirectionCommands } from '@labre/affine-gfx-connector';
@@ -87,6 +91,12 @@ export function buildCommandRegistry(
  * stay reachable on a board whose framework tooling is switched off; it is
  * registered from the always-on connector view extension for the same reason.
  *
+ * `export.svg` joins them on the same terms (`docs/adr/0017`): a board is a
+ * `FrameworkBackgroundElementModel` whatever framework drew it, and the picture
+ * it hands back is the canvas renderer's output replayed into SVG — so the
+ * command belongs to no framework, and a framework toggled off must still be
+ * able to export the boards already on the canvas.
+ *
  * `auditCommands` is `'core'`-owned but NOT always-on: it rides the `ai-audit`
  * capability switch, which is a second axis (see `OPTIONAL_CAPABILITIES`). The
  * read side is filtered here, the registration side by `AuditViewExtension` in
@@ -107,6 +117,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...readingCommands,
       ...shapeCommands,
       ...mapQualityCommands,
+      ...exportSvgCommands,
       ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],

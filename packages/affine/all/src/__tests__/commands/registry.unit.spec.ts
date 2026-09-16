@@ -149,7 +149,7 @@ describe('command registry invariants', () => {
       'ddd-context-map': 12,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
-      // + map.audit + edge.invert-direction + element.read
+      // + map.audit + edge.invert-direction + element.read + export.svg
       //
       // `map.audit` is counted here because `getCommands()` is called with no
       // flags and `ai-audit` defaults to enabled, like every switch. Its
@@ -162,15 +162,18 @@ describe('command registry invariants', () => {
       // conflict. They are the whole point of this test — the line that
       // notices a command appearing or vanishing — so re-derive them at every
       // merge instead of trusting the diff.
-      core: 12,
+      // 13 since `export.svg` (`docs/adr/0017`): core-owned because a board is
+      // a `FrameworkBackgroundElementModel` whatever framework drew it.
+      core: 13,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
     // because ADR 0012 declares interchange per framework × format × direction
     // and refuses to infer a framework from a `.svg`. …and 113 since
-    // `wardley.addPorter`, 115 since the two Wardley climate arrows, and 117
-    // since the two Wardley zones.
-    expect(commands).toHaveLength(117);
+    // `wardley.addPorter`, 115 since the two Wardley climate arrows, 117
+    // since the two Wardley zones, and 118 since `export.svg` — the one
+    // interchange row that is NOT per framework (`docs/adr/0017`).
+    expect(commands).toHaveLength(118);
   });
 
   /**

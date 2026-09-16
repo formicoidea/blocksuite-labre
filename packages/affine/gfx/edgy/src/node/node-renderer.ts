@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import { shape as shapeRenderer } from '@labre/affine-gfx-shape';
 import { DefaultTheme, type EdgyNodeElementModel } from '@labre/affine-model';
@@ -54,7 +55,7 @@ export const edgyNode: ElementRenderer<EdgyNodeElementModel> = (
   ctx.translate(-PERSON_GLYPH_VIEWBOX / 2, -PERSON_GLYPH_VIEWBOX / 2);
   ctx.fillStyle = color;
   for (const d of PERSON_GLYPH_PATHS) {
-    ctx.fill(new Path2D(d));
+    ctx.fill(taggedPath2D(d));
   }
 };
 

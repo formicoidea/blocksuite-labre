@@ -1,9 +1,9 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { BpmnPoolElementModel } from '@labre/affine-model';
 import {
-  ActionPlacement,
   BOARD_RESIZE_TOGGLE,
   type ChromeWording,
+  commandMoreAction,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -114,49 +114,6 @@ function commandAction(
         },
       };
     },
-  };
-}
-
-/**
- * The same thing, for the "⋮" menu instead of the row.
- *
- * Two differences, and the widget imposes both: a menu line is drawn from
- * `label` (a tooltip on a line that is already words would be a second copy of
- * them), and `placement: ActionPlacement.More` is what partitions it out of the
- * row in the first place — `renderToolbar` splits on exactly that flag, and the
- * entries it collects come from every module contributing to the element,
- * so a framework can add to the "⋮" without owning it.
- */
-function commandMoreAction(
-  id: string,
-  commandId: string,
-  labelKey: string,
-  labelFallback: string,
-  icon: TemplateResult
-) {
-  return {
-    id,
-    placement: ActionPlacement.More,
-    when: (ctx: ToolbarContext) => {
-      const command = findCommand(ctx, commandId);
-      return command !== undefined && (command.when?.(ctx.std) ?? true);
-    },
-    generate: (ctx: ToolbarContext) => ({
-      icon,
-      label: translateKey(ctx.std, labelKey, labelFallback),
-      run: (runCtx: ToolbarContext) => {
-        const command = findCommand(runCtx, commandId);
-        if (!command) return;
-        // The same `source` the row's own entries report: the "⋮" is a
-        // degradation of the row, not a surface of its own, and the
-        // `ElementCreationSource` union deliberately names places rather than
-        // widths (`docs/adr/0008`).
-        runCommand(runCtx.std, command, {
-          surface: 'contextual-toolbar',
-          source: 'toolbar:general',
-        });
-      },
-    }),
   };
 }
 
