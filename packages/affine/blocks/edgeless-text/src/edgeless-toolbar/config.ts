@@ -27,7 +27,17 @@ const FONT_SIZE_LIST = [
 export const edgelessTextToolbarConfig = {
   // No need to adjust element bounds, which updates itself using ResizeObserver
   actions: [
-    ...createTextActions(EdgelessTextBlockModel, 'edgeless-text'),
+    ...createTextActions(
+      EdgelessTextBlockModel,
+      'edgeless-text',
+      undefined,
+      // Surface *element* models carry their style props on the instance, which
+      // is what the shared actions read by default. This is a *block* model:
+      // they live under `props`, so without this projection every dropdown
+      // would read `undefined` and keep showing the fallbacks (Regular /
+      // Normal / Inter / Left) whatever the text actually is.
+      model => model.props
+    ),
     {
       // The shared `d.font-size` action is disabled for edgeless text (the
       // model has no `fontSize` prop); this one drives `scale` instead, the
