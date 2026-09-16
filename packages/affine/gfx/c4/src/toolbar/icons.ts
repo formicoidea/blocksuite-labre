@@ -155,7 +155,10 @@ export const c4ExportMermaidIcon = svg`<svg width="24" height="24" viewBox="0 0 
  *
  * {@link c4ExportMermaidIcon} is deliberately NOT here and is added to
  * `c4CommandIcons` in `commands.ts` instead: this record is the TOOLBOX — the
- * thirteen glyphs of things C4 DRAWS — and an export draws nothing.
+ * thirteen glyphs of things C4 DRAWS — and an export draws nothing. The same
+ * goes for {@link c4ToolbarIcon}, registered there under `c4.toolbar` for
+ * `FrameworkDescriptor.iconKey`; it is the one key that test exempts from the
+ * glyph ⇄ command bijection.
  *
  * The legend's glyph is in neither, because the legend is no longer a command at
  * all: it is `dddLegendIcon`, referenced straight from `config.ts` by the button

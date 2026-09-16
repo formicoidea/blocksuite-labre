@@ -135,6 +135,10 @@ Tests: `registry.unit.spec.ts`, `board-role.unit.spec.ts`,
 - `toolbar/icons.ts` (56×56 toolbar icon, 24×24 artefact icons),
   `toolbar/senior-tool.ts`, `toolbar/my-senior-button.ts`,
   `toolbar/my-menu.ts` (`extends EdgelessCommandMenu`), `effects.ts`.
+- `myCommandIcons` holds one entry per command `iconKey` **plus**
+  `'my.toolbar': myToolbarIcon` — the descriptor's `iconKey` from step 7 must
+  resolve through `getCommandIcon` (`registry.unit.spec.ts`, "every framework
+  declares its own senior icon key").
 - `templates/index.ts`: `[...examples, ...templateFromCommand(myCommands)]`.
 - `view.ts`, second half:
 

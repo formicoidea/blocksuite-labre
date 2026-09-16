@@ -19,6 +19,7 @@ import {
   edgyOutcomeIcon,
   edgyPeopleIcon,
   edgyRelationIcon,
+  edgyToolbarIcon,
 } from './toolbar/icons';
 
 /**
@@ -164,4 +165,7 @@ export const edgyCommandIcons: Record<string, TemplateResult> = {
   'edgy.object': edgyObjectIcon,
   'edgy.activity': edgyActivityIcon,
   'edgy.relation': edgyRelationIcon,
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'edgy.toolbar': edgyToolbarIcon,
 };

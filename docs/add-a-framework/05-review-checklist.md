@@ -20,6 +20,8 @@ change to one. Paste it in the PR and tick.**
 
 - [ ] Every command has `iconKey`, `labelKey` with fallback, `surfaces`,
       `category`, `telemetry`. The board command has `board: true`.
+- [ ] The descriptor's `iconKey` (`<segment>.toolbar`) is registered in the
+      framework's icon table, pointing at the senior button's 56×56 glyph.
 - [ ] At most 14 senior-menu nominations. Import in the sub-menu, export on
       the board toolbar.
 - [ ] Roles are `my:<local>`, kebab-case, `as const satisfies`. Edge roles

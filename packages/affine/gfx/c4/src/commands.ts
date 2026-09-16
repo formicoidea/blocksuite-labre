@@ -9,7 +9,11 @@ import {
   createC4Node,
   exportC4MermaidFile,
 } from './actions';
-import { c4ExportMermaidIcon, C4_TOOLBOX_ICONS } from './toolbar/icons';
+import {
+  c4ExportMermaidIcon,
+  c4ToolbarIcon,
+  C4_TOOLBOX_ICONS,
+} from './toolbar/icons';
 
 /**
  * The C4 toolbox as commands — the single source every surface reads: the
@@ -320,4 +324,7 @@ export const c4Commands: CommandDescriptor[] = [
 export const c4CommandIcons: Record<string, TemplateResult> = {
   ...C4_TOOLBOX_ICONS,
   'c4.export-mermaid': c4ExportMermaidIcon,
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'c4.toolbar': c4ToolbarIcon,
 };

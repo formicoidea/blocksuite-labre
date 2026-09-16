@@ -3,6 +3,7 @@ import {
   addMarker,
   cdSubdomainSeedKey,
   CD_SUBDOMAINS,
+  coreDomainToolbarIcon,
   MOVEMENT_COLOR,
   placeDddElement,
   teamTopologySeedKey,
@@ -147,5 +148,9 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
   })
 );
 
-export const coreDomainCommandIcons: Record<string, TemplateResult> =
-  Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon]));
+export const coreDomainCommandIcons: Record<string, TemplateResult> = {
+  ...Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon])),
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'ddd-core-domain.toolbar': coreDomainToolbarIcon,
+};
