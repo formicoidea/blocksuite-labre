@@ -84,11 +84,46 @@ export class PolygonDrawingOverlay extends ToolOverlay {
     return this._strokeStyle === 'none' ? 'transparent' : this._strokeColor;
   }
 
+  /**
+   * The marker shown at the pointer while the tool is armed and empty: the same
+   * dot the first placed vertex gets, plus a light ring, so the promise the
+   * cursor makes is the shape the click keeps.
+   */
+  private _renderFirstVertexHint(
+    ctx: CanvasRenderingContext2D,
+    [cx, cy]: [number, number]
+  ): void {
+    const zoom = this.gfx.viewport.zoom;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, VERTEX_INDICATOR_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = this._strokeColor;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, CLOSE_SNAP_INDICATOR_RADIUS / zoom, 0, Math.PI * 2);
+    ctx.strokeStyle = this._strokeColor;
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([]);
+    ctx.globalAlpha = this.globalAlpha * 0.4;
+    ctx.stroke();
+    ctx.globalAlpha = this.globalAlpha;
+  }
+
   override render(ctx: CanvasRenderingContext2D, _rc: RoughCanvas): void {
     const { vertices, cursorPos, isDrawing } = this;
     ctx.globalAlpha = this.globalAlpha;
 
-    if (!isDrawing || vertices.length === 0) return;
+    if (vertices.length === 0) {
+      // Nothing is placed yet, so there is no outline to preview — but the tool
+      // IS armed, and until now the canvas said nothing about it. Marking where
+      // the next click would land a corner is what tells the author the board
+      // is waiting for a first vertex rather than ignoring the pointer.
+      if (cursorPos) this._renderFirstVertexHint(ctx, cursorPos);
+      return;
+    }
+
+    if (!isDrawing) return;
 
     const effectiveStroke = this._effectiveStrokeColor();
     const strokeWidth = Math.max(this._strokeWidth, 1);
