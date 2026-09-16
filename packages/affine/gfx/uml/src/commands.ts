@@ -46,7 +46,12 @@ import {
  *
  * That makes the head of the NOMINATION list the cold start every new user
  * meets, which is the lesson BPMN learned in a live recette (#144) and the
- * reason the order below is authored rather than grouped by family. It reads:
+ * reason the order below is authored rather than grouped by family — and, since
+ * the PO ruling of 2026-09-16, the reason the first nineteen entries INTERLEAVE
+ * their catalogue sections rather than running one after another: the catalogue
+ * is now filed by diagram kind (see {@link Spec.category}), it gathers a
+ * section's rows wherever they sit in the list, and the row does not gather at
+ * all. So the row is what the head of the array spells out. It reads:
  *
  *   1. the DIAGRAM first — the sheet has to exist before anything can be put on
  *      it, and a first-time user who reaches for a class before a diagram draws
@@ -65,6 +70,16 @@ import {
  *      of sequence diagrams;
  *   5. and the INTERCHANGE last, after every artefact and every relation of
  *      every kind: the two exports, then the three imports. See below.
+ *
+ * Four entries that decline the row are nonetheless authored WITHIN its first
+ * nineteen slots, and that is the interleave: `uml.addObject` has to precede the
+ * class relations and `uml.addNote` the general ones, or their sections would
+ * read relations-before-elements. The traffic runs the other way exactly once:
+ * "General" lists its generalization before its dependency because the ROW
+ * does, and the 2026-09-16 ruling orders a section by TYPE — elements, then
+ * boundaries, then relations — without ordering the relations inside it. This
+ * is the one sequence in which both readings are true at once, which is why
+ * both are pinned.
  *
  * Fourteen nominations is `SENIOR_MENU_CAP` exactly, which is the curation
  * budget `registry.unit.spec.ts` enforces — the pack stays inside it without
@@ -115,18 +130,47 @@ interface Spec {
   iconKey: keyof typeof UML_TOOLBOX_ICONS;
   kind: 'artefact' | 'tool';
   /**
-   * The catalogue section this entry is filed under. All four ids are existing
-   * library sections C4 and BPMN already use, and they already mean what UML
-   * means by them: the frame is a `diagrams` entry, a classifier an `elements`
-   * one, a typed line a `relations` one, and the subject a `boundaries` one —
-   * a subject is neither an element of the model nor the sheet it is drawn on,
-   * exactly as a C4 boundary is neither.
+   * The catalogue section this entry is filed under — by DIAGRAM KIND since the
+   * PO ruling of 2026-09-16, in the order of the frame's own kind picker
+   * (`kinds.ts`).
    *
-   * The fifth section every other framework has — `interchange` — is not in
+   * ## Why not the library's `elements` / `boundaries` / `relations`
+   *
+   * Because at sixty-nine entries those three headers stop sorting anything.
+   * They are the right shape for C4 (thirteen entries, one notation) and for
+   * EDGY; UML is nine notations packed into one framework, and a reader looking
+   * for the shapes of a sequence diagram was being handed one "Elements"
+   * section holding fifty of them, from a lifeline to a deep history. The kind
+   * is the axis a UML author already thinks in — it is what the frame's own
+   * heading declares (`class Orders`, `sd Checkout`) and what the picker on its
+   * row offers — so the catalogue is filed under it.
+   *
+   * ## `general`, and what earns a place in it
+   *
+   * The artefacts SEVERAL kinds share: the frame itself, the package, the note,
+   * and the four relationships that are not the property of one notation
+   * (generalization, dependency, realization, anchor). It is sorted by type the
+   * way the three old sections were — elements, then boundaries, then
+   * relations — because within one section that reading still works.
+   *
+   * An id spells its own header: `humanizeCategory('state-machine-diagram')` is
+   * "State machine diagram", which is the kind picker's own wording, so the
+   * header key and its English fallback are DERIVED
+   * (`commandCategoryTranslationEntries`) rather than minted beside it.
+   *
+   * The tenth section every other framework has — `interchange` — is not in
    * this union because nothing in {@link SPECS} draws a file: the exports and
    * the imports declare it themselves, below.
    */
-  category: 'diagrams' | 'elements' | 'boundaries' | 'relations';
+  category:
+    | 'general'
+    | 'class-diagram'
+    | 'use-case-diagram'
+    | 'component-diagram'
+    | 'deployment-diagram'
+    | 'activity-diagram'
+    | 'state-machine-diagram'
+    | 'sequence-diagram';
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
@@ -142,13 +186,26 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
-  /* ── The sheet everything else is drawn on ──────────────────────────── */
+  /* ── The cold row, authored in the order it paints ─────────────────── */
+  // The first nineteen entries are authored in SUB-MENU order rather than
+  // in catalogue order, and since the PO ruling of 2026-09-16 the two
+  // readings no longer coincide. One `order` still feeds both surfaces, but
+  // the catalogue GROUPS by `category` — a section gathers its rows wherever
+  // they sit in this list — while the row does not group at all. So the
+  // thirteen a cold start paints come first, in the order they paint, and
+  // the six entries that decline the row but belong to one of their three
+  // sections are slotted in where that section needs them: `addObject`
+  // before the class relations, `addNote` before the general ones, and the
+  // four below the last seat.
+  //
+  // Both readings are pinned in `commands-manifest.unit.spec.ts` — the
+  // nominated fourteen, the rendered thirteen, and the nine sections.
   {
     id: 'addDiagram',
     label: 'UML diagram',
     iconKey: 'uml.diagram',
     kind: 'artefact',
-    category: 'diagrams',
+    category: 'general',
     element: 'board',
     board: true,
     senior: true,
@@ -158,13 +215,12 @@ const SPECS: Spec[] = [
     // born a class diagram; the picker on its own row is what changes it.
     run: std => createUmlDiagram(std),
   },
-  /* ── The classifiers a class diagram is mostly made of ──────────────── */
   {
     id: 'addClass',
     label: 'Class',
     iconKey: 'uml.class',
     kind: 'artefact',
-    category: 'elements',
+    category: 'class-diagram',
     element: 'node:class',
     senior: true,
     run: std => createUmlClassifier(std, 'class'),
@@ -174,7 +230,7 @@ const SPECS: Spec[] = [
     label: 'Interface',
     iconKey: 'uml.interface',
     kind: 'artefact',
-    category: 'elements',
+    category: 'class-diagram',
     element: 'node:interface',
     senior: true,
     run: std => createUmlClassifier(std, 'interface'),
@@ -184,28 +240,79 @@ const SPECS: Spec[] = [
     label: 'Enumeration',
     iconKey: 'uml.enumeration',
     kind: 'artefact',
-    category: 'elements',
+    category: 'class-diagram',
     element: 'node:enumeration',
     senior: true,
     run: std => createUmlClassifier(std, 'enumeration'),
   },
-  /* ── What holds them and what comments on them ──────────────────────── */
   {
     id: 'addPackage',
     label: 'Package',
     iconKey: 'uml.package',
     kind: 'artefact',
-    category: 'elements',
+    category: 'general',
     element: 'node:package',
     senior: true,
     run: std => createUmlNode(std, 'package'),
+  },
+  {
+    id: 'addActor',
+    label: 'Actor',
+    iconKey: 'uml.actor',
+    kind: 'artefact',
+    category: 'use-case-diagram',
+    element: 'node:actor',
+    senior: true,
+    run: std => createUmlNode(std, 'actor'),
+  },
+  {
+    id: 'addUseCase',
+    label: 'Use case',
+    iconKey: 'uml.use-case',
+    kind: 'artefact',
+    category: 'use-case-diagram',
+    element: 'node:use-case',
+    senior: true,
+    run: std => createUmlNode(std, 'use-case'),
+  },
+  {
+    id: 'addSubject',
+    label: 'Subject',
+    iconKey: 'uml.subject',
+    kind: 'artefact',
+    category: 'use-case-diagram',
+    element: 'boundary:subject',
+    senior: true,
+    run: createUmlSubject,
+  },
+  {
+    // An instance diagram is a SECOND reading of a class diagram — you draw one
+    // once the classes exist — so it is the first thing to leave the row.
+    id: 'addObject',
+    label: 'Object',
+    iconKey: 'uml.object',
+    kind: 'artefact',
+    category: 'class-diagram',
+    element: 'node:object',
+    senior: false,
+    run: std => createUmlClassifier(std, 'object'),
+  },
+  {
+    id: 'associationTool',
+    label: 'Association',
+    iconKey: 'uml.association',
+    kind: 'tool',
+    category: 'class-diagram',
+    element: 'connector:association',
+    senior: true,
+    run: std => activateUmlEdge(std, 'association'),
   },
   {
     id: 'addNote',
     label: 'Note',
     iconKey: 'uml.note',
     kind: 'artefact',
-    category: 'elements',
+    category: 'general',
     element: 'node:note',
     senior: false,
     // ponytail: DEMOTED from the nominated fourteen to make room for
@@ -223,54 +330,12 @@ const SPECS: Spec[] = [
     // than being part of one. Revisit with the phase-2 recette.
     run: std => createUmlNode(std, 'note'),
   },
-  /* ── The two shapes a USE-CASE diagram is made of, and their frame ───── */
-  {
-    id: 'addActor',
-    label: 'Actor',
-    iconKey: 'uml.actor',
-    kind: 'artefact',
-    category: 'elements',
-    element: 'node:actor',
-    senior: true,
-    run: std => createUmlNode(std, 'actor'),
-  },
-  {
-    id: 'addUseCase',
-    label: 'Use case',
-    iconKey: 'uml.use-case',
-    kind: 'artefact',
-    category: 'elements',
-    element: 'node:use-case',
-    senior: true,
-    run: std => createUmlNode(std, 'use-case'),
-  },
-  {
-    id: 'addSubject',
-    label: 'Subject',
-    iconKey: 'uml.subject',
-    kind: 'artefact',
-    category: 'boundaries',
-    element: 'boundary:subject',
-    senior: true,
-    run: createUmlSubject,
-  },
-  /* ── The relationships an author reaches for first ──────────────────── */
-  {
-    id: 'associationTool',
-    label: 'Association',
-    iconKey: 'uml.association',
-    kind: 'tool',
-    category: 'relations',
-    element: 'connector:association',
-    senior: true,
-    run: std => activateUmlEdge(std, 'association'),
-  },
   {
     id: 'generalizationTool',
     label: 'Generalization',
     iconKey: 'uml.generalization',
     kind: 'tool',
-    category: 'relations',
+    category: 'general',
     element: 'connector:generalization',
     senior: true,
     run: std => activateUmlEdge(std, 'generalization'),
@@ -280,7 +345,7 @@ const SPECS: Spec[] = [
     label: 'Dependency',
     iconKey: 'uml.dependency',
     kind: 'tool',
-    category: 'relations',
+    category: 'general',
     element: 'connector:dependency',
     senior: true,
     run: std => activateUmlEdge(std, 'dependency'),
@@ -290,7 +355,7 @@ const SPECS: Spec[] = [
     label: 'Include',
     iconKey: 'uml.include',
     kind: 'tool',
-    category: 'relations',
+    category: 'use-case-diagram',
     element: 'connector:include',
     senior: true,
     run: std => activateUmlEdge(std, 'include'),
@@ -300,30 +365,18 @@ const SPECS: Spec[] = [
     label: 'Extend',
     iconKey: 'uml.extend',
     kind: 'tool',
-    category: 'relations',
+    category: 'use-case-diagram',
     element: 'connector:extend',
     senior: true,
     run: std => activateUmlEdge(std, 'extend'),
   },
-  /* ── Past the fourteenth slot: declared, reachable, off the row ──────── */
-  {
-    // An instance diagram is a SECOND reading of a class diagram — you draw one
-    // once the classes exist — so it is the first thing to leave the row.
-    id: 'addObject',
-    label: 'Object',
-    iconKey: 'uml.object',
-    kind: 'artefact',
-    category: 'elements',
-    element: 'node:object',
-    senior: false,
-    run: std => createUmlClassifier(std, 'object'),
-  },
+  /* ── Past the thirteenth seat, still in the three sections above ────── */
   {
     id: 'aggregationTool',
     label: 'Aggregation',
     iconKey: 'uml.aggregation',
     kind: 'tool',
-    category: 'relations',
+    category: 'class-diagram',
     element: 'connector:aggregation',
     senior: false,
     run: std => activateUmlEdge(std, 'aggregation'),
@@ -333,7 +386,7 @@ const SPECS: Spec[] = [
     label: 'Composition',
     iconKey: 'uml.composition',
     kind: 'tool',
-    category: 'relations',
+    category: 'class-diagram',
     element: 'connector:composition',
     senior: false,
     run: std => activateUmlEdge(std, 'composition'),
@@ -343,7 +396,7 @@ const SPECS: Spec[] = [
     label: 'Realization',
     iconKey: 'uml.realization',
     kind: 'tool',
-    category: 'relations',
+    category: 'general',
     element: 'connector:realization',
     senior: false,
     run: std => activateUmlEdge(std, 'realization'),
@@ -353,26 +406,24 @@ const SPECS: Spec[] = [
     label: 'Anchor',
     iconKey: 'uml.anchor',
     kind: 'tool',
-    category: 'relations',
+    category: 'general',
     element: 'connector:anchor',
     senior: false,
     run: std => activateUmlEdge(std, 'anchor'),
   },
-  /* ── Phase 2: components (§11.6.4, §11.3.4, §10.4.4) ─────────────────── */
-  // Every one of the eleven below declines the row, and it is ONE decision
-  // rather than eleven: the phase-1 fourteen are what a user meets on a cold
-  // start, they are the class and use-case diagrams an architect draws first,
-  // and phase 2 does not get to re-argue that from inside its own tranche.
-  // The PO's curation point #1 is where `uml.addComponent` contests a seat —
-  // most likely `uml.addNote`'s — and until it is made the whole of components
-  // and deployment lives in the catalogue, the palette and the agent, which is
-  // the registry's own invariant: the catalogue is the TOTAL surface.
+  /* ── Component diagram (§11.6.4, §11.3.4, §10.4.4) ──────────────────── */
+  // Nothing from here down contests the row, and it is ONE decision rather
+  // than fifty: the thirteen a user meets on a cold start are the class and
+  // use-case diagrams an architect draws first, and no later tranche gets to
+  // re-argue that from inside itself. Which is why the sections below can be
+  // authored the way the catalogue reads them — by DIAGRAM KIND, in the order
+  // of the frame's own kind picker (`kinds.ts`) — with nothing to interleave.
   {
     id: 'addComponent',
     label: 'Component',
     iconKey: 'uml.component',
     kind: 'artefact',
-    category: 'elements',
+    category: 'component-diagram',
     element: 'node:component',
     senior: false,
     run: std => createUmlClassifier(std, 'component'),
@@ -382,7 +433,7 @@ const SPECS: Spec[] = [
     label: 'Port',
     iconKey: 'uml.port',
     kind: 'artefact',
-    category: 'elements',
+    category: 'component-diagram',
     element: 'node:port',
     senior: false,
     run: std => createUmlNode(std, 'port'),
@@ -392,7 +443,7 @@ const SPECS: Spec[] = [
     label: 'Provided interface',
     iconKey: 'uml.provided-interface',
     kind: 'artefact',
-    category: 'elements',
+    category: 'component-diagram',
     element: 'node:provided-interface',
     senior: false,
     run: std => createUmlNode(std, 'provided-interface'),
@@ -402,18 +453,18 @@ const SPECS: Spec[] = [
     label: 'Required interface',
     iconKey: 'uml.required-interface',
     kind: 'artefact',
-    category: 'elements',
+    category: 'component-diagram',
     element: 'node:required-interface',
     senior: false,
     run: std => createUmlNode(std, 'required-interface'),
   },
-  /* ── Phase 2: deployment (§19.2.4, §19.3.4, §19.4.4) ─────────────────── */
+  /* ── Deployment diagram (§19.2.4, §19.3.4, §19.4.4) ─────────────────── */
   {
     id: 'addArtifact',
     label: 'Artifact',
     iconKey: 'uml.artifact',
     kind: 'artefact',
-    category: 'elements',
+    category: 'deployment-diagram',
     element: 'node:artifact',
     senior: false,
     run: std => createUmlClassifier(std, 'artifact'),
@@ -423,7 +474,7 @@ const SPECS: Spec[] = [
     label: 'Node',
     iconKey: 'uml.node',
     kind: 'artefact',
-    category: 'elements',
+    category: 'deployment-diagram',
     element: 'node:node',
     senior: false,
     run: std => createUmlNode(std, 'node'),
@@ -433,7 +484,7 @@ const SPECS: Spec[] = [
     label: 'Device',
     iconKey: 'uml.device',
     kind: 'artefact',
-    category: 'elements',
+    category: 'deployment-diagram',
     element: 'node:device',
     senior: false,
     run: std => createUmlNode(std, 'device'),
@@ -443,7 +494,7 @@ const SPECS: Spec[] = [
     label: 'Execution environment',
     iconKey: 'uml.execution-environment',
     kind: 'artefact',
-    category: 'elements',
+    category: 'deployment-diagram',
     element: 'node:execution-environment',
     senior: false,
     run: std => createUmlNode(std, 'execution-environment'),
@@ -453,7 +504,7 @@ const SPECS: Spec[] = [
     label: 'Deploy',
     iconKey: 'uml.deploy',
     kind: 'tool',
-    category: 'relations',
+    category: 'deployment-diagram',
     element: 'connector:deploy',
     senior: false,
     run: std => activateUmlEdge(std, 'deploy'),
@@ -463,7 +514,7 @@ const SPECS: Spec[] = [
     label: 'Manifest',
     iconKey: 'uml.manifest',
     kind: 'tool',
-    category: 'relations',
+    category: 'deployment-diagram',
     element: 'connector:manifest',
     senior: false,
     run: std => activateUmlEdge(std, 'manifest'),
@@ -473,27 +524,18 @@ const SPECS: Spec[] = [
     label: 'Communication path',
     iconKey: 'uml.communication-path',
     kind: 'tool',
-    category: 'relations',
+    category: 'deployment-diagram',
     element: 'connector:communication-path',
     senior: false,
     run: std => activateUmlEdge(std, 'communication-path'),
   },
-  /* ── Phase 2: activities (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ─ */
-  // The same ONE decision the eleven above made, restated for twenty-four: the
-  // senior row is the phase-1 fourteen, and a behaviour tranche does not get to
-  // re-argue it from inside itself either. At this many catalogue entries the
-  // row would be arbitrary whatever it held, and the honest place for that
-  // arbitration is a PO curation point with the usage data in front of it —
-  // which is also why `uml.addAction`, the single most-drawn shape of an
-  // activity diagram, declines a seat it would plainly deserve. Everything is
-  // reachable: the catalogue is the TOTAL surface, and the palette and the
-  // agent carry every one of them.
+  /* ── Activity diagram (§15.2.4, §15.3.4, §15.4.4, §16.3.4, §16.10.4) ── */
   {
     id: 'addAction',
     label: 'Action',
     iconKey: 'uml.action',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:action',
     senior: false,
     run: std => createUmlNode(std, 'action'),
@@ -503,7 +545,7 @@ const SPECS: Spec[] = [
     label: 'Initial node',
     iconKey: 'uml.initial',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:initial',
     senior: false,
     run: std => createUmlNode(std, 'initial'),
@@ -513,7 +555,7 @@ const SPECS: Spec[] = [
     label: 'Activity final',
     iconKey: 'uml.activity-final',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:activity-final',
     senior: false,
     run: std => createUmlNode(std, 'activity-final'),
@@ -523,7 +565,7 @@ const SPECS: Spec[] = [
     label: 'Flow final',
     iconKey: 'uml.flow-final',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:flow-final',
     senior: false,
     run: std => createUmlNode(std, 'flow-final'),
@@ -533,7 +575,7 @@ const SPECS: Spec[] = [
     label: 'Decision',
     iconKey: 'uml.decision',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:decision',
     senior: false,
     run: std => createUmlNode(std, 'decision'),
@@ -543,7 +585,7 @@ const SPECS: Spec[] = [
     label: 'Fork',
     iconKey: 'uml.fork',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:fork',
     senior: false,
     run: std => createUmlNode(std, 'fork'),
@@ -553,7 +595,7 @@ const SPECS: Spec[] = [
     label: 'Object node',
     iconKey: 'uml.object-node',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:object-node',
     senior: false,
     run: std => createUmlNode(std, 'object-node'),
@@ -563,7 +605,7 @@ const SPECS: Spec[] = [
     label: 'Send signal',
     iconKey: 'uml.send-signal',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:send-signal',
     senior: false,
     run: std => createUmlNode(std, 'send-signal'),
@@ -573,7 +615,7 @@ const SPECS: Spec[] = [
     label: 'Accept event',
     iconKey: 'uml.accept-event',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:accept-event',
     senior: false,
     run: std => createUmlNode(std, 'accept-event'),
@@ -583,32 +625,54 @@ const SPECS: Spec[] = [
     label: 'Time event',
     iconKey: 'uml.time-event',
     kind: 'artefact',
-    category: 'elements',
+    category: 'activity-diagram',
     element: 'node:time-event',
     senior: false,
     run: std => createUmlNode(std, 'time-event'),
   },
   {
-    // A swimlane is filed under `boundaries` for the reason the subject is: it
-    // is neither an element of the model nor the sheet the model is drawn on,
-    // it is a band drawn ROUND part of the drawing, and what belongs to it is
-    // read back from where things sit (§15.6.4).
+    // A swimlane is a BOUNDARY, which is why it sits after the activity's
+    // elements and before its two flows: it is neither an element of the model
+    // nor the sheet the model is drawn on, it is a band drawn ROUND part of the
+    // drawing, and what belongs to it is read back from where things sit
+    // (§15.6.4). Its kind is what files it; its type is what places it inside
+    // that section.
     id: 'addPartition',
     label: 'Partition',
     iconKey: 'uml.partition',
     kind: 'artefact',
-    category: 'boundaries',
+    category: 'activity-diagram',
     element: 'boundary:partition',
     senior: false,
     run: createUmlPartition,
   },
-  /* ── Phase 2: state machines (§14.2.4) ───────────────────────────────── */
+  {
+    id: 'controlFlowTool',
+    label: 'Control flow',
+    iconKey: 'uml.control-flow',
+    kind: 'tool',
+    category: 'activity-diagram',
+    element: 'connector:control-flow',
+    senior: false,
+    run: std => activateUmlEdge(std, 'control-flow'),
+  },
+  {
+    id: 'objectFlowTool',
+    label: 'Object flow',
+    iconKey: 'uml.object-flow',
+    kind: 'tool',
+    category: 'activity-diagram',
+    element: 'connector:object-flow',
+    senior: false,
+    run: std => activateUmlEdge(std, 'object-flow'),
+  },
+  /* ── State machine diagram (§14.2.4) ────────────────────────────────── */
   {
     id: 'addState',
     label: 'State',
     iconKey: 'uml.state',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:state',
     senior: false,
     // The one behaviour artefact that walks the CLASSIFIER path: §14.2.4 draws
@@ -621,7 +685,7 @@ const SPECS: Spec[] = [
     label: 'Final state',
     iconKey: 'uml.final-state',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:final-state',
     senior: false,
     run: std => createUmlNode(std, 'final-state'),
@@ -631,7 +695,7 @@ const SPECS: Spec[] = [
     label: 'Choice',
     iconKey: 'uml.choice',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:choice',
     senior: false,
     run: std => createUmlNode(std, 'choice'),
@@ -641,7 +705,7 @@ const SPECS: Spec[] = [
     label: 'Junction',
     iconKey: 'uml.junction',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:junction',
     senior: false,
     run: std => createUmlNode(std, 'junction'),
@@ -651,7 +715,7 @@ const SPECS: Spec[] = [
     label: 'Shallow history',
     iconKey: 'uml.shallow-history',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:shallow-history',
     senior: false,
     run: std => createUmlNode(std, 'shallow-history'),
@@ -661,7 +725,7 @@ const SPECS: Spec[] = [
     label: 'Deep history',
     iconKey: 'uml.deep-history',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:deep-history',
     senior: false,
     run: std => createUmlNode(std, 'deep-history'),
@@ -671,7 +735,7 @@ const SPECS: Spec[] = [
     label: 'Entry point',
     iconKey: 'uml.entry-point',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:entry-point',
     senior: false,
     run: std => createUmlNode(std, 'entry-point'),
@@ -681,7 +745,7 @@ const SPECS: Spec[] = [
     label: 'Exit point',
     iconKey: 'uml.exit-point',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:exit-point',
     senior: false,
     run: std => createUmlNode(std, 'exit-point'),
@@ -691,70 +755,42 @@ const SPECS: Spec[] = [
     label: 'Terminate',
     iconKey: 'uml.terminate',
     kind: 'artefact',
-    category: 'elements',
+    category: 'state-machine-diagram',
     element: 'node:terminate',
     senior: false,
     run: std => createUmlNode(std, 'terminate'),
   },
   {
     // A composite state, as the container it is drawn as (§14.2.4) — and a
-    // `boundaries` entry for the same reason the partition beside it is one:
-    // what is IN a region is read back from geometry, never from a list.
+    // BOUNDARY for the same reason the partition is one: what is IN a region is
+    // read back from geometry, never from a list. So it closes its kind's
+    // elements, just before the transition tool.
     id: 'addRegion',
     label: 'Region',
     iconKey: 'uml.region',
     kind: 'artefact',
-    category: 'boundaries',
+    category: 'state-machine-diagram',
     element: 'boundary:region',
     senior: false,
     run: createUmlRegion,
-  },
-  /* ── Phase 2: the behaviour lines ────────────────────────────────────── */
-  {
-    id: 'controlFlowTool',
-    label: 'Control flow',
-    iconKey: 'uml.control-flow',
-    kind: 'tool',
-    category: 'relations',
-    element: 'connector:control-flow',
-    senior: false,
-    run: std => activateUmlEdge(std, 'control-flow'),
-  },
-  {
-    id: 'objectFlowTool',
-    label: 'Object flow',
-    iconKey: 'uml.object-flow',
-    kind: 'tool',
-    category: 'relations',
-    element: 'connector:object-flow',
-    senior: false,
-    run: std => activateUmlEdge(std, 'object-flow'),
   },
   {
     id: 'transitionTool',
     label: 'Transition',
     iconKey: 'uml.transition',
     kind: 'tool',
-    category: 'relations',
+    category: 'state-machine-diagram',
     element: 'connector:transition',
     senior: false,
     run: std => activateUmlEdge(std, 'transition'),
   },
-  /* ── Phase 3: sequence diagrams (§17.2.4, §17.4.4, §17.6.4, §17.7.4) ─── */
-  // The same ONE decision phases 2 and 2b made, restated for ten: the senior
-  // row is the phase-1 fourteen and a sequence tranche does not get to
-  // re-argue it from inside itself either. `uml.addLifeline` is the entry with
-  // the strongest claim on a seat — a sequence diagram is the second-most-drawn
-  // UML diagram after the class diagram — and it is a PO curation point with
-  // usage data behind it rather than this tranche's to take. Everything is
-  // reachable: the catalogue is the TOTAL surface, and the palette and the
-  // agent carry all sixty-nine.
+  /* ── Sequence diagram (§17.2.4, §17.4.4, §17.6.4, §17.7.4) ──────────── */
   {
     id: 'addLifeline',
     label: 'Lifeline',
     iconKey: 'uml.lifeline',
     kind: 'artefact',
-    category: 'elements',
+    category: 'sequence-diagram',
     element: 'node:lifeline',
     senior: false,
     run: std => createUmlNode(std, 'lifeline'),
@@ -764,7 +800,7 @@ const SPECS: Spec[] = [
     label: 'Execution',
     iconKey: 'uml.execution',
     kind: 'artefact',
-    category: 'elements',
+    category: 'sequence-diagram',
     element: 'node:execution',
     senior: false,
     run: std => createUmlNode(std, 'execution'),
@@ -774,22 +810,23 @@ const SPECS: Spec[] = [
     label: 'Destruction',
     iconKey: 'uml.destruction',
     kind: 'artefact',
-    category: 'elements',
+    category: 'sequence-diagram',
     element: 'node:destruction',
     senior: false,
     run: std => createUmlNode(std, 'destruction'),
   },
   {
-    // A combined fragment is filed under `boundaries` for the reason the
-    // partition and the region are: it is neither an element of the model nor
-    // the sheet the model is drawn on, it is a box drawn ROUND part of the
-    // drawing, and what is inside it is read back from where things sit
-    // (§17.6.4).
+    // A combined fragment is a BOUNDARY for the reason the partition and the
+    // region are: it is neither an element of the model nor the sheet the model
+    // is drawn on, it is a box drawn ROUND part of the drawing, and what is
+    // inside it is read back from where things sit (§17.6.4). So it and the
+    // interaction use close the sequence diagram's elements, before its five
+    // message tools.
     id: 'addFragment',
     label: 'Combined fragment',
     iconKey: 'uml.fragment',
     kind: 'artefact',
-    category: 'boundaries',
+    category: 'sequence-diagram',
     element: 'boundary:fragment',
     senior: false,
     // Wrapped rather than passed by reference, the same call `uml.addDiagram`
@@ -806,18 +843,17 @@ const SPECS: Spec[] = [
     label: 'Interaction use',
     iconKey: 'uml.interaction-use',
     kind: 'artefact',
-    category: 'boundaries',
+    category: 'sequence-diagram',
     element: 'boundary:interaction-use',
     senior: false,
     run: createUmlInteractionUse,
   },
-  /* ── Phase 3: the five message lines ─────────────────────────────────── */
   {
     id: 'messageSyncTool',
     label: 'Synchronous message',
     iconKey: 'uml.message-sync',
     kind: 'tool',
-    category: 'relations',
+    category: 'sequence-diagram',
     element: 'connector:message-sync',
     senior: false,
     run: std => activateUmlEdge(std, 'message-sync'),
@@ -827,7 +863,7 @@ const SPECS: Spec[] = [
     label: 'Asynchronous message',
     iconKey: 'uml.message-async',
     kind: 'tool',
-    category: 'relations',
+    category: 'sequence-diagram',
     element: 'connector:message-async',
     senior: false,
     run: std => activateUmlEdge(std, 'message-async'),
@@ -837,7 +873,7 @@ const SPECS: Spec[] = [
     label: 'Reply message',
     iconKey: 'uml.message-reply',
     kind: 'tool',
-    category: 'relations',
+    category: 'sequence-diagram',
     element: 'connector:message-reply',
     senior: false,
     run: std => activateUmlEdge(std, 'message-reply'),
@@ -847,7 +883,7 @@ const SPECS: Spec[] = [
     label: 'Create message',
     iconKey: 'uml.message-create',
     kind: 'tool',
-    category: 'relations',
+    category: 'sequence-diagram',
     element: 'connector:message-create',
     senior: false,
     run: std => activateUmlEdge(std, 'message-create'),
@@ -857,7 +893,7 @@ const SPECS: Spec[] = [
     label: 'Delete message',
     iconKey: 'uml.message-delete',
     kind: 'tool',
-    category: 'relations',
+    category: 'sequence-diagram',
     element: 'connector:message-delete',
     senior: false,
     run: std => activateUmlEdge(std, 'message-delete'),
@@ -933,12 +969,16 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
  *
  * `interchange`, which is where BPMN and Wardley already file theirs and which
  * is therefore the section a host that translated the header once has already
- * translated. UML shipped them under `diagrams` — the section its FRAME is
- * filed under — and the consequence was the one the PO's recette of 2026-09-14
- * reported: `groupCommandsByCategory` orders sections by the order their
- * category is first MET, so five interchange commands sat inside the first
- * section of the catalogue, above every artefact the framework draws. Their own
- * section, authored last, puts them where the other two frameworks put theirs.
+ * translated. It is also the one section {@link Spec.category} did NOT re-file
+ * by diagram kind on 2026-09-16, and could not have: an XMI file is not a kind
+ * of diagram, it is what a diagram of any kind is written to.
+ *
+ * UML shipped them under `diagrams` — the section its FRAME was filed under —
+ * and the consequence was the one the PO's recette of 2026-09-14 reported:
+ * `groupCommandsByCategory` orders sections by the order their category is
+ * first MET, so five interchange commands sat inside the first section of the
+ * catalogue, above every artefact the framework draws. Their own section,
+ * authored last, puts them where the other two frameworks put theirs.
  *
  * On the frame's own row they sit in the "⋮" rather than as buttons, and in the
  * ALWAYS-ON toolbar module — the entry hides itself when the command is absent

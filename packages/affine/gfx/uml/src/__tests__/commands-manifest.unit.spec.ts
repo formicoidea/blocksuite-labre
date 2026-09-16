@@ -1,4 +1,5 @@
 import {
+  commandCategoryTranslationEntries,
   SENIOR_MENU_CAP,
   selectSeniorMenuCommands,
   toShortcutManifestEntry,
@@ -7,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { umlCommands, umlCommandIcons } from '../commands.js';
 import { umlCommandsManifest } from '../commands-manifest.js';
+import { UML_DIAGRAM_KIND_MENU } from '../kinds.js';
 
 /**
  * The UML toolbox as a whole, and its `./commands-manifest` projection.
@@ -143,7 +145,7 @@ describe('the uml command inventory', () => {
    * that owns it sits above this package; it is three lines and it is the
    * behaviour this test is about.
    */
-  it('files the interchange in its own section, last in the catalogue', () => {
+  it('files the catalogue by diagram kind, interchange last', () => {
     const sections: string[] = [];
     const rows = new Map<string, string[]>();
     for (const command of catalogue) {
@@ -155,16 +157,114 @@ describe('the uml command inventory', () => {
       rows.get(category)!.push(command.id);
     }
 
-    // The four artefact sections in the order UML draws them, then the fifth —
-    // the one BPMN and Wardley already file their own imports and exports
-    // under, so a host that translated the header once has translated it for
-    // every framework.
+    // The eight artefact sections, then the ninth — the one BPMN and Wardley
+    // already file their own imports and exports under, so a host that
+    // translated the header once has translated it for every framework.
+    //
+    // The eight are the PO's ruling of 2026-09-16: the catalogue is filed by
+    // DIAGRAM KIND, in the order of the frame's own kind picker
+    // (`UML_DIAGRAM_KIND_MENU`), with the artefacts several kinds share under
+    // "General" first. It replaces the four library sections UML used to
+    // borrow — `elements` over fifty rows, from a lifeline to a deep history,
+    // sorted nothing at this size.
     expect(sections).toEqual([
-      'diagrams',
-      'elements',
-      'boundaries',
-      'relations',
+      'general',
+      'class-diagram',
+      'use-case-diagram',
+      'component-diagram',
+      'deployment-diagram',
+      'activity-diagram',
+      'state-machine-diagram',
+      'sequence-diagram',
       'interchange',
+    ]);
+    // …and each section's own rows: elements, then boundaries, then relations,
+    // which is how the ruling orders a section internally. The order is NOT
+    // this array's — the panel gathers a category wherever its rows sit along
+    // the order-sorted list — so a section reading correctly here is a claim
+    // about the interleave at the head of `commands.ts`, not about its layout.
+    expect(rows.get('general')).toEqual([
+      'uml.addDiagram',
+      'uml.addPackage',
+      'uml.addNote',
+      // Generalization before dependency because the senior ROW is authored
+      // that way and one `order` serves both surfaces. The ruling orders a
+      // section by type, not the relations inside it, so this costs nothing.
+      'uml.generalizationTool',
+      'uml.dependencyTool',
+      'uml.realizationTool',
+      'uml.anchorTool',
+    ]);
+    expect(rows.get('class-diagram')).toEqual([
+      'uml.addClass',
+      'uml.addInterface',
+      'uml.addEnumeration',
+      'uml.addObject',
+      'uml.associationTool',
+      'uml.aggregationTool',
+      'uml.compositionTool',
+    ]);
+    expect(rows.get('use-case-diagram')).toEqual([
+      'uml.addActor',
+      'uml.addUseCase',
+      'uml.addSubject',
+      'uml.includeTool',
+      'uml.extendTool',
+    ]);
+    expect(rows.get('component-diagram')).toEqual([
+      'uml.addComponent',
+      'uml.addPort',
+      'uml.addProvidedInterface',
+      'uml.addRequiredInterface',
+    ]);
+    expect(rows.get('deployment-diagram')).toEqual([
+      'uml.addArtifact',
+      'uml.addNode',
+      'uml.addDevice',
+      'uml.addExecutionEnvironment',
+      'uml.deployTool',
+      'uml.manifestTool',
+      'uml.communicationPathTool',
+    ]);
+    expect(rows.get('activity-diagram')).toEqual([
+      'uml.addAction',
+      'uml.addInitial',
+      'uml.addActivityFinal',
+      'uml.addFlowFinal',
+      'uml.addDecision',
+      'uml.addFork',
+      'uml.addObjectNode',
+      'uml.addSendSignal',
+      'uml.addAcceptEvent',
+      'uml.addTimeEvent',
+      'uml.addPartition',
+      'uml.controlFlowTool',
+      'uml.objectFlowTool',
+    ]);
+    expect(rows.get('state-machine-diagram')).toEqual([
+      'uml.addState',
+      'uml.addFinalState',
+      'uml.addChoice',
+      'uml.addJunction',
+      'uml.addShallowHistory',
+      'uml.addDeepHistory',
+      'uml.addEntryPoint',
+      'uml.addExitPoint',
+      'uml.addTerminate',
+      'uml.addRegion',
+      'uml.transitionTool',
+    ]);
+    expect(rows.get('sequence-diagram')).toEqual([
+      'uml.addLifeline',
+      'uml.addExecution',
+      'uml.addDestruction',
+      'uml.addFragment',
+      'uml.addInteractionUse',
+      'uml.messageSyncTool',
+      'uml.messageAsyncTool',
+      'uml.messageReplyTool',
+      'uml.messageCreateTool',
+      'uml.messageDeleteTool',
     ]);
     // Exports first, then imports: what leaves a board you have, before what
     // arrives on one you do not.
@@ -175,9 +275,51 @@ describe('the uml command inventory', () => {
       'uml.importPlantuml',
       'uml.importDrawio',
     ]);
-    // …and the first section is the SHEET alone, which is the whole of what a
-    // "Diagrams" heading should hold.
-    expect(rows.get('diagrams')).toEqual(['uml.addDiagram']);
+  });
+
+  /**
+   * Every section header a host is asked to translate, and the English it gets
+   * for free — derived from the category id by `humanizeCategory`, never minted
+   * beside it, which is what lets a kind's header read the same words the
+   * frame's own picker offers (`kinds.ts`).
+   */
+  it('derives a header key and its English from every category', () => {
+    expect(
+      commandCategoryTranslationEntries(umlCommands).map(entry => [
+        entry.key,
+        entry.fallback,
+      ])
+    ).toEqual([
+      ['com.labre.catalogue.category.general', 'General'],
+      ['com.labre.catalogue.category.class-diagram', 'Class diagram'],
+      ['com.labre.catalogue.category.use-case-diagram', 'Use case diagram'],
+      ['com.labre.catalogue.category.component-diagram', 'Component diagram'],
+      ['com.labre.catalogue.category.deployment-diagram', 'Deployment diagram'],
+      ['com.labre.catalogue.category.activity-diagram', 'Activity diagram'],
+      [
+        'com.labre.catalogue.category.state-machine-diagram',
+        'State machine diagram',
+      ],
+      ['com.labre.catalogue.category.sequence-diagram', 'Sequence diagram'],
+      ['com.labre.catalogue.category.interchange', 'Interchange'],
+    ]);
+    // …and the seven kind headers are the picker's own wordings, letter for
+    // letter: a reader who filed a frame under "Sequence diagram" finds its
+    // shapes under "Sequence diagram".
+    const pickerWordings = new Set(
+      UML_DIAGRAM_KIND_MENU.options.map(option => option.labelFallback)
+    );
+    for (const header of [
+      'Class diagram',
+      'Use case diagram',
+      'Component diagram',
+      'Deployment diagram',
+      'Activity diagram',
+      'State machine diagram',
+      'Sequence diagram',
+    ]) {
+      expect(pickerWordings.has(header), header).toBe(true);
+    }
   });
 
   it('overflows, and renders a capped row with the way to the rest', () => {
