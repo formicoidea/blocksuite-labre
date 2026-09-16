@@ -7,6 +7,7 @@ import {
   effect,
   type ReadonlySignal,
   signal,
+  untracked,
 } from '@preact/signals-core';
 import type { TemplateResult } from 'lit-html';
 
@@ -141,32 +142,47 @@ export class ResourceController implements Disposable {
   }
 
   updateState(state: Partial<BlobState>) {
-    this.state$.value = { ...this.state$.value, ...state };
+    // `peek()`, never `.value`: merging must not subscribe whatever effect
+    // happens to be running to `state$`, otherwise the write below re-runs
+    // that effect, which writes again — see `subscribe()` and issue #319.
+    this.state$.value = { ...this.state$.peek(), ...state };
   }
 
   // The explicit return type keeps declaration emit off signals-core's
   // `DisposeFn`, whose `[Symbol.dispose]` member tsc cannot serialize.
   subscribe(): () => void {
     return effect(() => {
+      // Only the blob id is tracked: a new id re-runs the effect, nothing else
+      // does. The subscription body stays `untracked` because a host whose
+      // `blobState$` replays on subscribe (a `BehaviorSubject`) writes `state$`
+      // synchronously from inside this very effect; tracked, that write would
+      // re-run the effect, re-subscribe, replay, write again — until
+      // signals-core gives up with `Cycle detected` (issue #319).
       const blobId = this.blobId$.value;
       if (!blobId) return;
 
-      const blobState$ = this.engine?.blobState$(blobId);
-      if (!blobState$) return;
+      return untracked(() => {
+        const blobState$ = this.engine?.blobState$(blobId);
+        if (!blobState$) return;
 
-      const subscription = blobState$.subscribe(state => {
-        let { uploading, downloading, errorMessage } = state;
-        if (state.overSize) {
-          uploading = false;
-          downloading = false;
-        } else if ((uploading || downloading) && errorMessage) {
-          errorMessage = null;
-        }
+        const subscription = blobState$.subscribe(state => {
+          let { uploading, downloading, errorMessage } = state;
+          if (state.overSize) {
+            uploading = false;
+            downloading = false;
+          } else if ((uploading || downloading) && errorMessage) {
+            errorMessage = null;
+          }
 
-        this.updateState({ ...state, uploading, downloading, errorMessage });
+          // A later emission can land while some unrelated effect is being
+          // evaluated; it must not become a dependency of that effect either.
+          untracked(() =>
+            this.updateState({ ...state, uploading, downloading, errorMessage })
+          );
+        });
+
+        return () => subscription.unsubscribe();
       });
-
-      return () => subscription.unsubscribe();
     });
   }
 
