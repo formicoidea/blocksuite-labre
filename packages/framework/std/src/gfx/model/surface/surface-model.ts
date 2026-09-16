@@ -822,7 +822,10 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         // the same sync. Reacting to a REMOTE update with a local write is
         // redundant on a writeable peer and, on a readonly viewer, the
         // production exception `Cannot remove element in readonly mode`.
-        if (!local) return;
+        // A readonly peer never cascades either, whatever the provenance of
+        // the update: it may not write at all, and a lingering empty group is
+        // harmless — the author's own cascade arrives through sync.
+        if (!local || this.store.readonly) return;
 
         const element = this.getElementById(id)!;
 
