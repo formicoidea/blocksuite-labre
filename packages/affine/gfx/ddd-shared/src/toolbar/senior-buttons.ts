@@ -1,8 +1,12 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
 import { translateKey } from '@labre/affine-shared/services';
-import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
+import {
+  armedArtefact,
+  EdgelessToolbarToolMixin,
+} from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
+import type { CommandOwner } from '@labre/std';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 
 /**
@@ -65,6 +69,20 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
 
   protected abstract icon: TemplateResult;
 
+  /** Whose artefacts light this button up while one of them is armed. */
+  protected abstract owner: CommandOwner;
+
+  /**
+   * Lit while one of THIS framework's artefacts is armed under the cursor, as
+   * well as while its menu is open. The menu closes the moment the pointer goes
+   * to the board, so without this the ghost would be traceable to no button at
+   * all — and Shift+S, which walks that ghost along this framework's row, would
+   * read as a keystroke belonging to nothing.
+   */
+  private get _armed() {
+    return armedArtefact(this.gfx)?.owner === this.owner;
+  }
+
   private _toggleMenu() {
     if (this.popper) {
       this.popper.dispose();
@@ -83,7 +101,7 @@ export abstract class DddSeniorButtonBase extends EdgelessToolbarToolMixin(
         ? ''
         : translateKey(this.edgeless.std, this.labelKey, this.label)}
       .tooltipOffset=${4}
-      .active=${!!this.popper}
+      .active=${!!this.popper || this._armed}
       @click=${this._toggleMenu}
     >
       <div class="ddd-root">

@@ -49,6 +49,21 @@ undocumented.
 allocated one (`w`). A prefix must be unique and outside
 `RESERVED_EDGELESS_KEYS` (`registry.unit.spec.ts`).
 
+**R7b. An artefact command is PLACED, not run** (PO decision, 2026-09-16;
+lettered rather than renumbered so the thirty references below stay valid).
+Choosing a command of kind `artefact` — in the sub-menu, in the catalogue, or
+with Enter on the keyboard highlight — arms `ArtefactPlacementTool`
+(`packages/affine/widgets/edgeless-toolbar/src/placement/`) instead of running
+it: a dashed ghost at the command's true footprint follows the cursor, Shift+S
+cycles the armed artefact backwards along the owner's row, and the click on
+the canvas is what runs the command. The action still creates at the viewport
+centre — no framework code takes a point — and the tool moves what was created
+by the offset between that centre and the click. Kind `tool` is unaffected: a
+link tool, the evolution arrow and `wardley.addAreaPolygon` arm their own
+gesture and run on the spot, as before. A framework needs no code for any of
+this beyond its senior button naming its own owner
+(`artefact-placement.unit.spec.ts`).
+
 ## Templates
 
 **R8. The Templates category holds the worked examples and one entry per
@@ -187,6 +202,10 @@ wire value and is frozen (`registry.unit.spec.ts`).
 **R29. Command telemetry is emitted by `runCommand`** from the descriptor's
 `telemetry` field (`command-telemetry.ts`). Nothing emits in `actions.ts`.
 The board-placing command declares `board: true` (`board-role.unit.spec.ts`).
+Arming an artefact (R7b) is not an invocation: it emits nothing and records no
+usage, exactly as picking a shape variant does. The emission happens when the
+artefact LANDS, through the same `runCommand`, so a framework's numbers are
+what they were — a user who arms one and changes their mind has not used it.
 
 **R30. Every user-visible string is a `com.labre.*` key** derived in
 `translations.ts` from the declarations, so the published framework bundle

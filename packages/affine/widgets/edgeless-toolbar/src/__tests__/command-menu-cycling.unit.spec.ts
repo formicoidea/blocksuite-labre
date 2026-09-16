@@ -3,6 +3,7 @@ import type {
   AnyCommandDescriptor,
   BlockComponent,
   BlockStdScope,
+  CommandKind,
   CommandOwner,
 } from '@labre/std';
 import type { ToolType } from '@labre/std/gfx';
@@ -34,11 +35,15 @@ beforeAll(() => {
   }
 });
 
-const command = (id: string, run = () => {}): AnyCommandDescriptor =>
+const command = (
+  id: string,
+  run = () => {},
+  kind: CommandKind = 'artefact'
+): AnyCommandDescriptor =>
   ({
     id,
     owner: 'wardley',
-    kind: 'artefact',
+    kind,
     labelKey: `com.labre.commands.${id}`,
     labelFallback: id,
     surfaces: ['senior-menu'],
@@ -50,11 +55,17 @@ const command = (id: string, run = () => {}): AnyCommandDescriptor =>
 /**
  * Enough of a `std` for the menu to render: it resolves no translation, no
  * icon table and no usage measure, and answers the catalogue seam only when a
- * test hands one in.
+ * test hands one in. `setTool` stands in for the placement tool an artefact
+ * entry now arms.
  */
-const stubEdgeless = (catalogue?: { open: (owner: string) => void }) => {
+const stubEdgeless = (
+  catalogue?: { open: (owner: string) => void },
+  setTool: (...args: unknown[]) => void = () => {}
+) => {
   const std = {
-    get: () => ({ tool: { currentToolOption$: { value: null } } }),
+    get: () => ({
+      tool: { currentToolOption$: { value: null }, setTool },
+    }),
     getOptional: (identifier: unknown) =>
       identifier === ArtefactCatalogueProvider ? catalogue : undefined,
     provider: { getAll: () => new Map() },
@@ -67,10 +78,11 @@ const mount = async (
   options: {
     overflow?: boolean;
     catalogue?: { open: (owner: string) => void };
+    setTool?: (...args: unknown[]) => void;
   } = {}
 ) => {
   const menu = new TestCommandMenu();
-  menu.edgeless = stubEdgeless(options.catalogue);
+  menu.edgeless = stubEdgeless(options.catalogue, options.setTool);
   // The real `_selection` reads the command registry through the DI container;
   // what the cycling cares about is only its shape.
   Object.defineProperty(menu, '_selection', {
@@ -150,16 +162,36 @@ describe('EdgelessCommandMenu keyboard cycling', () => {
     expect(marks(menu)).toEqual([false, true]);
   });
 
-  test('Enter runs the highlighted command, and nothing when none is', async () => {
+  test('Enter arms the highlighted artefact, and nothing when none is', async () => {
     const run = vi.fn();
-    const menu = await mount([command('a'), command('b', run)]);
+    const setTool = vi.fn();
+    const artefact = command('b', run);
+    const menu = await mount([command('a'), artefact], { setTool });
 
     expect(menu.activate()).toBe(false);
+    expect(setTool).not.toHaveBeenCalled();
+
+    menu.cycle(-1);
+    expect(menu.activate()).toBe(true);
+    // An artefact is ARMED, not created: the ghost goes under the cursor and
+    // the click on the canvas is what runs the command (PO, 2026-09-16).
+    expect(setTool).toHaveBeenCalledTimes(1);
+    expect(setTool.mock.calls[0][1]).toEqual({
+      owner: 'wardley',
+      command: artefact,
+    });
     expect(run).not.toHaveBeenCalled();
+  });
+
+  test('Enter still RUNS a command that is not an artefact', async () => {
+    const run = vi.fn();
+    const setTool = vi.fn();
+    const menu = await mount([command('link', run, 'tool')], { setTool });
 
     menu.cycle(-1);
     expect(menu.activate()).toBe(true);
     expect(run).toHaveBeenCalledTimes(1);
+    expect(setTool).not.toHaveBeenCalled();
   });
 
   test('an empty menu has nothing to highlight', async () => {

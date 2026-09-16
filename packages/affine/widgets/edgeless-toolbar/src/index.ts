@@ -9,4 +9,6 @@ export * from './draggable';
 export * from './edgeless-toolbar';
 export * from './extension';
 export * from './menu/command-menu';
+export * from './menu/senior-menu-selection';
 export * from './mixins';
+export * from './placement';

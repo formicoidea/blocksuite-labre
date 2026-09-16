@@ -17,6 +17,7 @@ export * from './query';
 export * from './reading';
 export * from './reading-toolbar';
 export * from './reading-widget';
+export * from './record-action';
 export * from './spotlight';
 export * from './surface-middleware';
 export * from './svg-sketch';

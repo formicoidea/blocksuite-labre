@@ -1,7 +1,10 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
 import { translateKey } from '@labre/affine-shared/services';
-import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
+import {
+  armedArtefact,
+  EdgelessToolbarToolMixin,
+} from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -67,6 +70,11 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
     menu.element.edgeless = this.edgeless;
   }
 
+  /** Lit while one of THIS framework's artefacts is armed. See the Wardley one. */
+  private get _armed() {
+    return armedArtefact(this.gfx)?.owner === 'cynefin-estuarine';
+  }
+
   override render() {
     return html`<edgeless-toolbar-button
       class="ce-button"
@@ -78,7 +86,7 @@ export class EdgelessCynefinEstuarineSeniorButton extends EdgelessToolbarToolMix
             'Cynefin / Estuarine'
           )}
       .tooltipOffset=${4}
-      .active=${!!this.popper}
+      .active=${!!this.popper || this._armed}
       @click=${this._toggleMenu}
     >
       <div class="ce-root">

@@ -1,12 +1,10 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import { TranslationProvider } from '@labre/affine-shared/services';
+import { recordAction } from '@labre/affine-block-surface';
 import { Bound } from '@labre/global/gfx';
 import type {
   BlockStdScope,
   CommandDescriptor,
   CommandInvocation,
 } from '@labre/std';
-import { generateKeyBetween, GfxControllerIdentifier } from '@labre/std/gfx';
 import * as Y from 'yjs';
 
 import {
@@ -52,150 +50,49 @@ export function snapshotFromAction(
   name: string,
   host?: BlockStdScope
 ): ReturnType<typeof makeTemplateSnapshot> {
-  const elements = new Map<string, Record<string, unknown>>();
-  let n = 0;
-  let lastIndex: string | null = null;
-  const nextIndex = () => (lastIndex = generateKeyBetween(lastIndex, null));
+  const { records } = recordAction(run, { host, encode: toSnapshotProps });
 
-  const addElement = (props: Record<string, unknown>) => {
-    const id = `el-${n++}`;
-    const record: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(props)) {
-      if (value !== undefined) record[key] = value;
-    }
-    record['id'] = id;
-
-    // ponytail: the Y conversions are hard-coded (`text`, and a group's
-    // `children` / `title`) instead of asking each element class for its own
-    // `propsToY`. Ceiling: it covers every prop the framework actions pass
-    // today. Upgrade path: run the real `propsToY` once the element-ctor map is
-    // reachable without a live surface.
-    const text = record['text'];
-    if (typeof text === 'string') record['text'] = surfaceText(text);
-    else if (text instanceof Y.Text)
-      record['text'] = surfaceText(materialize(text));
-
-    if (record['type'] === 'group') {
-      const children = record['children'];
-      if (children && typeof children === 'object') {
-        record['children'] = surfaceYMap(
-          Object.fromEntries(Object.keys(children).map(key => [key, true]))
-        );
-      }
-      const title = record['title'];
-      if (typeof title === 'string') record['title'] = surfaceText(title);
-      else if (title instanceof Y.Text)
-        record['title'] = surfaceText(materialize(title));
-    }
-
-    if (record['index'] === undefined) record['index'] = nextIndex();
-
-    // The model members an action reads back off `getElementById`, kept
-    // non-enumerable so they never leak into the snapshot.
-    Object.defineProperties(record, {
-      group: { value: null },
-      deserializedXYWH: {
-        get: () =>
-          typeof record['xywh'] === 'string'
-            ? Bound.deserialize(record['xywh'])
-            : null,
-      },
-    });
-
-    elements.set(id, record);
-    return id;
-  };
-
-  const records = () => [...elements.values()];
-
-  const surface = {
-    addElement,
-    getElementById: (id: string) => elements.get(id) ?? null,
-    getElementsByType: (type: string) =>
-      records().filter(el => el['type'] === type),
-    get elementModels() {
-      return records();
-    },
-  };
-
-  const gfx = {
-    surface,
-    viewport: { centerX: 0, centerY: 0, zoom: 1, center: { x: 0, y: 0 } },
-    doc: { captureSync: () => {} },
-    selection: { set: () => {}, selectedElements: [] },
-    tool: { setTool: () => {} },
-    layer: {
-      generateIndex: () => nextIndex(),
-      getReorderedIndex: (_model: unknown, direction: string) => {
-        const sorted = records()
-          .map(el => String(el['index']))
-          .sort();
-        return direction === 'back'
-          ? generateKeyBetween(null, sorted[0] ?? null)
-          : generateKeyBetween(sorted[sorted.length - 1] ?? null, null);
-      },
-      get canvasElements() {
-        return records();
-      },
-    },
-    std: null as unknown as BlockStdScope,
-  };
-
-  const crud = {
-    addElement: (type: string, props: Record<string, unknown>) =>
-      addElement({ ...props, type }),
-  };
-
-  const std = {
-    get: (identifier: { identifierName?: string }) => {
-      if (identifier === (GfxControllerIdentifier as unknown)) return gfx;
-      if (identifier === (EdgelessCRUDIdentifier as unknown)) return crud;
-      throw new Error(
-        `snapshotFromAction: unsupported service "${identifier?.identifierName ?? String(identifier)}"`
-      );
-    },
-    getOptional: (identifier: unknown) =>
-      identifier === (TranslationProvider as unknown)
-        ? host?.getOptional(TranslationProvider)
-        : undefined,
-    command: {
-      // Really run the command, so a group built by `createGroupCommand` is
-      // whatever that command says a group is — no second definition here.
-      exec: (
-        cmd: (
-          ctx: Record<string, unknown>,
-          next: (r?: unknown) => void
-        ) => void,
-        payload: Record<string, unknown>
-      ) => {
-        let out: unknown;
-        cmd({ std: gfx.std, ...payload }, r => {
-          out = r;
-        });
-        return [{}, out ?? {}];
-      },
-    },
-    store: {
-      readonly: false,
-      captureSync: () => {},
-      id: 'doc:template',
-      workspace: { meta: { getDocMeta: () => undefined } },
-    },
-  };
-
-  gfx.std = std as unknown as BlockStdScope;
-  run(gfx.std);
-
-  if (elements.size === 0) {
+  if (records.length === 0) {
     throw new Error(
       'snapshotFromAction: the action added no element (a tool-arming command?)'
     );
   }
 
-  normalizeToOrigin(records());
+  normalizeToOrigin(records);
 
-  return makeTemplateSnapshot(Object.fromEntries(elements), name);
+  return makeTemplateSnapshot(
+    Object.fromEntries(records.map(record => [String(record['id']), record])),
+    name
+  );
+}
+
+/**
+ * The Y-carrying props, in the serialized form a snapshot holds them in.
+ *
+ * ponytail: the conversions are hard-coded (`text`, and a group's `children` /
+ * `title`) instead of asking each element class for its own `propsToY`.
+ * Ceiling: it covers every prop the framework actions pass today. Upgrade path:
+ * run the real `propsToY` once the element-ctor map is reachable without a live
+ * surface.
+ */
+function toSnapshotProps(record: Record<string, unknown>) {
+  const text = record['text'];
+  if (typeof text === 'string') record['text'] = surfaceText(text);
+  else if (text instanceof Y.Text)
+    record['text'] = surfaceText(materialize(text));
+
+  if (record['type'] === 'group') {
+    const children = record['children'];
+    if (children && typeof children === 'object') {
+      record['children'] = surfaceYMap(
+        Object.fromEntries(Object.keys(children).map(key => [key, true]))
+      );
+    }
+    const title = record['title'];
+    if (typeof title === 'string') record['title'] = surfaceText(title);
+    else if (title instanceof Y.Text)
+      record['title'] = surfaceText(materialize(title));
+  }
 }
 
 /** The connector endpoints that carry a free position rather than an anchor. */

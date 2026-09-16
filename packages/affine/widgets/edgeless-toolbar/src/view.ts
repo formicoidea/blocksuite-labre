@@ -7,6 +7,7 @@ import { artefactCatalogueDefaultExtension } from './catalogue/artefact-catalogu
 import { edgelessArtefactCatalogueWidget } from './catalogue/artefact-catalogue-widget';
 import { edgelessToolbarWidget } from './edgeless-toolbar';
 import { effects } from './effects';
+import { ArtefactPlacementTool } from './placement/artefact-placement-tool';
 
 export class EdgelessToolbarViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgeless-toolbar-widget';
@@ -27,6 +28,10 @@ export class EdgelessToolbarViewExtension extends ViewExtensionProvider {
       // sidebar overrides the seam and the widget then never opens.
       context.register(edgelessArtefactCatalogueWidget);
       context.register(artefactCatalogueDefaultExtension);
+      // Unconditionally too, and for the same reason: the tool is generic
+      // chrome driven by whatever commands are registered, so a framework whose
+      // flag is off simply never arms it. See `docs/adr/0009`.
+      context.register(ArtefactPlacementTool);
     }
   }
 }
