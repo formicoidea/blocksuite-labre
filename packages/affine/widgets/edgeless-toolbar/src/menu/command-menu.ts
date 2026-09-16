@@ -9,6 +9,7 @@ import {
   runCommand,
 } from '@labre/std';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
+import { SignalWatcher } from '@labre/global/lit';
 import { css, type CSSResultGroup, html, LitElement, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 
@@ -30,9 +31,15 @@ import { seniorMenuSelection } from './senior-menu-selection.js';
  * There is now exactly one renderer, and it enumerates
  * `getCommandsForSurface(std, owner, 'senior-menu')`. A framework subclass
  * declares its owner and its tool type, nothing else. See `docs/adr/0008`.
+ *
+ * `SignalWatcher` and not the mixin's own effect: the mixin registers that
+ * effect in `connectedCallback`, and bails out when `edgeless` is still unset —
+ * which it always is here, because the senior button assigns it AFTER appending
+ * the popover. So the row is re-rendered by reading the tool signal in
+ * {@link _armed} during render, the way the senior buttons do it.
  */
 export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
-  LitElement
+  SignalWatcher(LitElement)
 ) {
   /**
    * Typed as a group so a subclass can extend rather than replace it — the DDD
