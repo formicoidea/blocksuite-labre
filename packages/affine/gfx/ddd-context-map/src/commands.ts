@@ -68,6 +68,11 @@ interface Spec {
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
   board?: true;
+  /**
+   * `tool` when the entry ARMS a drawing tool instead of placing an artefact:
+   * the placement tool must not wrap it, and it reports `FrameworkToolPicked`.
+   */
+  kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -130,6 +135,7 @@ const SPECS: Spec[] = [
       label: preset.label,
       iconKey: `ddd-context-map.relationship.${preset.kind}`,
       element: `relationship:${preset.kind}`,
+      kind: 'tool',
       icon: relationSwatch(preset.dashed, preset.upDown),
       // No longer a placement: the nine patterns arm the connector tool and the
       // user DRAWS the relation between two contexts. See
@@ -149,7 +155,7 @@ export const contextMapCommands: CommandDescriptor[] = SPECS.map(
   (spec, order) => ({
     id: `ddd-context-map.${spec.id}`,
     owner: 'ddd-context-map',
-    kind: 'artefact',
+    kind: spec.kind ?? 'artefact',
     labelKey: `com.labre.commands.ddd-context-map.${spec.id}`,
     labelFallback: spec.label,
     category: 'map',

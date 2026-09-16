@@ -52,6 +52,11 @@ interface Spec {
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
   board?: true;
+  /**
+   * `tool` when the entry ARMS a drawing tool instead of placing an artefact:
+   * the placement tool must not wrap it, and it reports `FrameworkToolPicked`.
+   */
+  kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -127,6 +132,7 @@ const SPECS: Spec[] = [
     label: 'Flow',
     iconKey: 'ddd-event-storming.flow',
     element: 'flow',
+    kind: 'tool',
     icon: flowSwatch,
     // No longer a placement: the entry arms the connector tool and the user
     // DRAWS the flow between two stickies. See `activateEventStormingFlow` for
@@ -139,7 +145,7 @@ export const eventStormingCommands: CommandDescriptor[] = SPECS.map(
   (spec, order) => ({
     id: `ddd-event-storming.${spec.id}`,
     owner: 'ddd-event-storming',
-    kind: 'artefact',
+    kind: spec.kind ?? 'artefact',
     labelKey: `com.labre.commands.ddd-event-storming.${spec.id}`,
     labelFallback: spec.label,
     category: 'stickies',
