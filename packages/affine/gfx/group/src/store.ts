@@ -7,7 +7,6 @@ import {
   groupToMarkdownAdapterMatcher,
   groupToPlainTextAdapterMatcher,
 } from './adapter';
-import { groupRelationWatcherExtension } from './group-watcher';
 
 export class GroupStoreExtension extends StoreExtensionProvider {
   override name = 'affine-group-gfx';
@@ -16,6 +15,5 @@ export class GroupStoreExtension extends StoreExtensionProvider {
     super.setup(context);
     context.register(groupToPlainTextAdapterMatcher);
     context.register(groupToMarkdownAdapterMatcher);
-    context.register(groupRelationWatcherExtension);
   }
 }

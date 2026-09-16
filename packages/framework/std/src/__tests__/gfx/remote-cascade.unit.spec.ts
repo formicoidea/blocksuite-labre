@@ -8,6 +8,7 @@ import { applyUpdate, encodeStateAsUpdate } from 'yjs';
 
 import { effects } from '../../effects.js';
 import type { GfxGroupLikeElementModel } from '../../gfx/index.js';
+import type { TestGroupElement } from '../test-gfx-element.js';
 import {
   RootBlockSchemaExtension,
   type SurfaceBlockModel,
@@ -162,4 +163,49 @@ describe('a remote change never triggers a local cascade', () => {
       expect(localWrites()).toBe(0);
     }
   );
+});
+
+describe('a readonly peer never runs the group cascade', () => {
+  test('a group emptied by a LOCAL write is kept while the store is readonly, and collected again once it is writeable', () => {
+    const { author, authorSurface } = twoPeers();
+    const deleteElement = vi.spyOn(authorSurface, 'deleteElement');
+
+    // One group holding one child, emptied by dropping the child straight
+    // from the group's `Y.Map` so the transaction is LOCAL — the shape of the
+    // update the production stack reported, where the host had flipped the
+    // store to readonly under a still-running local edit.
+    const emptiableGroup = () => {
+      const childId = authorSurface.addElement({
+        type: 'testShape',
+        xywh: serializeXYWH(0, 0, 100, 100),
+      });
+      const groupId = authorSurface.addElement({
+        type: 'testGroup',
+        children: { [childId]: true },
+      });
+      return {
+        groupId,
+        empty: () => {
+          const group = authorSurface.getElementById(
+            groupId
+          ) as TestGroupElement;
+          author.transact(() => group.children.delete(childId));
+        },
+      };
+    };
+
+    const kept = emptiableGroup();
+    author.readonly = true;
+    expect(kept.empty).not.toThrow();
+    expect(authorSurface.hasElementById(kept.groupId)).toBe(true);
+    expect(deleteElement).not.toHaveBeenCalled();
+
+    // The normal path is untouched: a writeable peer still collects the group
+    // it just emptied.
+    author.readonly = false;
+    const cascaded = emptiableGroup();
+    cascaded.empty();
+    expect(authorSurface.hasElementById(cascaded.groupId)).toBe(false);
+    expect(deleteElement).toHaveBeenCalledWith(cascaded.groupId);
+  });
 });
