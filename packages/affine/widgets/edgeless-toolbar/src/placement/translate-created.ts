@@ -64,7 +64,14 @@ export function translateCreated(
 
   if (dx !== 0 || dy !== 0) {
     const updateElement = gfx.std.get(EdgelessCRUDIdentifier).updateElement;
-    const updateBlock = gfx.std.store.updateBlock;
+    // Wrapped, not handed over: `Store.updateBlock` is a prototype method that
+    // reads `this.readonly` and `this._crud`. `updateXYWH` happens to re-bind it
+    // (`updateBlock.call(ele.store, …)`), so today nothing breaks — but an
+    // unbound method sitting in a variable is a landmine that reads correct, and
+    // the day that `.call` becomes a plain call the first canvas block placed
+    // would throw on `readonly` of undefined.
+    const updateBlock: typeof gfx.std.store.updateBlock = (model, props) =>
+      gfx.std.store.updateBlock(model, props);
     for (const model of top) {
       const bound = Bound.deserialize(model.xywh);
       bound.x += dx;

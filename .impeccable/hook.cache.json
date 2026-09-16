@@ -18,29 +18,6 @@
           "findings": []
         }
       }
-    },
-    "0c74103e-8243-493a-a080-4b2e1a660dc5": {
-      "updatedAt": 1789587311352,
-      "files": {
-        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\agent-a3369ae9bc3449e64\\packages\\affine\\blocks\\surface\\src\\extensions\\record-action.ts": {
-          "editCount": 1,
-          "findings": [],
-          "stopBaseline": { "version": 1, "engine": "0.1.5", "counts": {} }
-        },
-        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\agent-a3369ae9bc3449e64\\packages\\affine\\gfx\\template\\src\\snapshot-from-action.ts": {
-          "editCount": 2,
-          "findings": []
-        },
-        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\agent-a3369ae9bc3449e64\\packages\\affine\\blocks\\surface\\src\\extensions\\index.ts": {
-          "editCount": 2,
-          "findings": []
-        },
-        "C:\\Users\\m.jolly\\Dev\\blocksuite-labre\\.claude\\worktrees\\agent-a3369ae9bc3449e64\\packages\\affine\\blocks\\surface\\src\\__tests__\\record-action.unit.spec.ts": {
-          "editCount": 1,
-          "findings": [],
-          "stopBaseline": { "version": 1, "engine": "0.1.5", "counts": {} }
-        }
-      }
     }
   }
 }

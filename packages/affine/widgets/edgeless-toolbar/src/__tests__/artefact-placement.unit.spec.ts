@@ -1,5 +1,5 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import { ConnectorElementModel } from '@labre/affine-model';
+import { ConnectorElementModel, NoteBlockModel } from '@labre/affine-model';
 import {
   type AnyCommandDescriptor,
   type BlockStdScope,
@@ -203,20 +203,41 @@ describe('translateCreated', () => {
 
     const shape = { id: 'shape', xywh: '[0,0,100,50]', group: null };
 
-    const { gfx, updateElement } = stubGfx({
+    const { gfx, updateElement, updateBlock, std } = stubGfx({
       models: { shape, group, child, connector },
     });
 
+    // A canvas BLOCK, reached through `updateXYWH`'s note branch — the one path
+    // that writes through the store rather than the surface CRUD. The store it
+    // carries is the harness's, so a receiver-sensitive call is exercised for
+    // real instead of being assumed away.
+    const note = Object.defineProperties(
+      Object.create(NoteBlockModel.prototype),
+      {
+        id: { value: 'note' },
+        xywh: { value: '[0,0,400,200]', writable: true },
+        group: { value: null },
+        store: { value: std.store },
+        props: { value: { edgeless: { scale: 1 } } },
+      }
+    ) as NoteBlockModel;
+    (
+      gfx as unknown as { getElementById: (id: string) => unknown }
+    ).getElementById = (id: string) =>
+      ({ shape, group, child, connector, note })[
+        id as 'shape' | 'group' | 'child' | 'connector' | 'note'
+      ] ?? null;
+
     const placed = translateCreated(
       gfx,
-      ['shape', 'group', 'child', 'connector'],
+      ['shape', 'group', 'child', 'connector', 'note'],
       200,
       -30
     );
 
     // The child is carried by the group it was created inside, so it is neither
     // moved twice nor offered to the selection.
-    expect(placed).toEqual(['shape', 'group', 'connector']);
+    expect(placed).toEqual(['shape', 'group', 'connector', 'note']);
     expect(updateElement).toHaveBeenCalledWith('shape', {
       xywh: '[200,-30,100,50]',
     });
@@ -228,6 +249,13 @@ describe('translateCreated', () => {
       'connector',
       expect.anything()
     );
+    // The canvas block moves too, and its store write lands on the store — not
+    // on an undefined receiver.
+    expect(updateElement).toHaveBeenCalledWith('note', {
+      xywh: '[200,-30,400,200]',
+    });
+    expect(updateBlock).toHaveBeenCalledTimes(1);
+    expect(updateBlock.mock.instances[0]).toBe(std.store);
   });
 
   test('a placement that lands on the centre writes nothing', () => {
