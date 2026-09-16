@@ -50,6 +50,19 @@ describe('createSvgContext', () => {
     expect(svg).toContain('Wardley');
   });
 
+  test('text leaves with the public font name and no dangling decoration', () => {
+    const { ctx, serialize } = createSvgContext(200, 100);
+
+    ctx.font = '24px "blocksuite:surface:Inter", sans-serif';
+    ctx.fillText('Alpha', 5, 30);
+
+    const svg = serialize();
+
+    expect(svg).toContain('font-family="&quot;Inter&quot;, sans-serif"');
+    expect(svg).not.toContain('blocksuite:surface:');
+    expect(svg).not.toContain('text-decoration="undefined"');
+  });
+
   test('the root svg carries a viewBox, px sizes and the namespace', () => {
     const svg = createSvgContext(640, 480).serialize();
 

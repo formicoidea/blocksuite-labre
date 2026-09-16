@@ -273,22 +273,30 @@ function installPathOps(ctx: SvgCanvasInternals) {
 
 /** Adds `viewBox` / `xmlns` / px units to the root `<svg>` if they are missing. */
 function finishSvg(svg: string, width: number, height: number): string {
-  return svg.replace(/<svg\b[^>]*>/, tag => {
-    let out = tag;
-    if (!/\sviewBox=/.test(out)) {
-      out = out.replace(/^<svg/, `<svg viewBox="0 0 ${width} ${height}"`);
-    }
-    if (!/\sxmlns=/.test(out)) {
-      out = out.replace(/^<svg/, `<svg xmlns="http://www.w3.org/2000/svg"`);
-    }
-    out = /\swidth=/.test(out)
-      ? out.replace(/\swidth="[^"]*"/, ` width="${width}px"`)
-      : out.replace(/^<svg/, `<svg width="${width}px"`);
-    out = /\sheight=/.test(out)
-      ? out.replace(/\sheight="[^"]*"/, ` height="${height}px"`)
-      : out.replace(/^<svg/, `<svg height="${height}px"`);
-    return out;
-  });
+  return (
+    svg
+      // Models store fonts under the loader's own face name
+      // (`blocksuite:surface:Inter`); outside the editor only `Inter` exists.
+      .replace(/blocksuite:surface:/g, '')
+      // svgcanvas writes the (unset) text decoration out literally.
+      .replace(/ text-decoration="undefined"/g, '')
+      .replace(/<svg\b[^>]*>/, tag => {
+        let out = tag;
+        if (!/\sviewBox=/.test(out)) {
+          out = out.replace(/^<svg/, `<svg viewBox="0 0 ${width} ${height}"`);
+        }
+        if (!/\sxmlns=/.test(out)) {
+          out = out.replace(/^<svg/, `<svg xmlns="http://www.w3.org/2000/svg"`);
+        }
+        out = /\swidth=/.test(out)
+          ? out.replace(/\swidth="[^"]*"/, ` width="${width}px"`)
+          : out.replace(/^<svg/, `<svg width="${width}px"`);
+        out = /\sheight=/.test(out)
+          ? out.replace(/\sheight="[^"]*"/, ` height="${height}px"`)
+          : out.replace(/^<svg/, `<svg height="${height}px"`);
+        return out;
+      })
+  );
 }
 
 /**
