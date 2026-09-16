@@ -35,6 +35,8 @@ function stub() {
     baseline: string;
   }> = [];
   const dashes: number[][] = [];
+  /** The corner radius of every `arcTo` the card path traced. */
+  const radii: number[] = [];
   const fills: string[] = [];
   const strokes: string[] = [];
   const gradients: number[] = [];
@@ -66,7 +68,16 @@ function stub() {
       mx = x;
       my = y;
     }),
-    arcTo: vi.fn(),
+    // `arcTo` THROWS on a negative radius exactly as Canvas2D does — it raises
+    // `IndexSizeError` rather than clamping, and since the surface render loop
+    // wraps no renderer in a `try`, one such throw aborts the rest of the frame
+    // and leaves the save stack unbalanced. A stub that quietly accepted -0.75
+    // would let this renderer pass its tests and blank a real canvas.
+    arcTo: vi.fn((...args: number[]) => {
+      const r = args[4];
+      if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
+      radii.push(r);
+    }),
     fill: vi.fn(() => {
       ops.push('fill');
       if (typeof ctx.fillStyle === 'string') fills.push(ctx.fillStyle);
@@ -120,6 +131,7 @@ function stub() {
     rects,
     texts,
     dashes,
+    radii,
     fills,
     strokes,
     gradients,
@@ -807,5 +819,61 @@ describe('a declaration with a side band', () => {
     expect(rec.ctx.arcTo).toHaveBeenCalledTimes(4);
     // And the default text baseline is the one every text has always used.
     expect(rec.texts.every(t => t.baseline === 'alphabetic')).toBe(true);
+  });
+});
+
+/**
+ * A background dragged — or restored — to nothing.
+ *
+ * The resize manager sets no minimum size, and a damaged document hands the
+ * renderer `[0,0,0,0]` (#318/#321), so the drawable card can come out NEGATIVE:
+ * the border is subtracted from both dimensions, and a 1.5 border on a 1-unit
+ * card asks for a corner radius of -0.75 — the very value production reported.
+ * `arcTo` raises `IndexSizeError` on it instead of clamping, and since the
+ * surface render loop wraps no renderer in a `try`, that throw does not lose a
+ * background: it aborts the rest of the frame and blanks every other element of
+ * the canvas.
+ *
+ * The stub throws the same way the browser does, so this is the real invariant
+ * and not a paraphrase of it.
+ */
+describe('a background with no area', () => {
+  /** The production case: a hairline border wider than the card it insets. */
+  const HAIRLINE: FrameworkBackgroundDef = {
+    ...FULL,
+    chrome: {
+      ...FULL.chrome,
+      surface: {
+        fill: '@wash',
+        border: { color: '@ink', width: 1.5, radius: 4 },
+      },
+    },
+  };
+
+  it('survives every degenerate size without asking for a negative radius', () => {
+    const sizes = [
+      { w: 0, h: 0 },
+      { w: 1, h: 1 },
+      { w: 1, h: 40 },
+      { w: 40, h: 1 },
+    ];
+    for (const def of [BARE, FULL, BANDED, HAIRLINE]) {
+      for (const { w, h } of sizes) {
+        const where = `${def.type} ${w}x${h}`;
+        let rec: ReturnType<typeof paint> | undefined;
+        expect(() => (rec = paint(def, {}, w, h)), where).not.toThrow();
+        for (const r of rec?.radii ?? []) {
+          expect(r, where).toBeGreaterThanOrEqual(0);
+        }
+      }
+    }
+  });
+
+  it('paints nothing at all rather than a card of no size', () => {
+    const rec = paint(HAIRLINE, {}, 0, 0);
+    expect(rec.ops).toEqual([]);
+    expect(rec.fills).toEqual([]);
+    expect(rec.strokes).toEqual([]);
+    expect(rec.texts).toEqual([]);
   });
 });
