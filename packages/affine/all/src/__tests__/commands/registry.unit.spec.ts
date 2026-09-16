@@ -1,4 +1,5 @@
 import { RESERVED_EDGELESS_KEYS } from '@labre/affine-block-root';
+import { recordAction } from '@labre/affine-block-surface';
 import { bpmnCommandIcons } from '@labre/affine-gfx-bpmn';
 import { c4CommandIcons } from '@labre/affine-gfx-c4';
 import { cynefinEstuarineCommandIcons } from '@labre/affine-gfx-cynefin-estuarine';
@@ -515,5 +516,39 @@ describe('menu and manifest enumerate the same source', () => {
         `${id} sub-menu entries absent from its catalogue`
       ).toEqual([]);
     }
+  });
+});
+
+/**
+ * A command that ARMS a drawing tool creates nothing when it runs — the user
+ * draws the relation afterwards. Declared as an `artefact`, the placement tool
+ * (`ArtefactPlacementTool`) wraps it: the placing click arms the connector and
+ * returns straight to the default tool, so the relation can never be drawn
+ * from the sub-menu. Found on 2026-09-17 for the Event Storming flow, the Core
+ * Domain movement and the nine Context Map relationships.
+ */
+describe('a command that arms a drawing tool is declared as a tool', () => {
+  test('no artefact command arms a tool when it runs', () => {
+    const offenders = commands
+      .filter(c => c.owner !== 'core' && c.kind === 'artefact')
+      .flatMap(c => {
+        try {
+          const { armedTool } = recordAction(std => {
+            const result = c.run(std, {
+              surface: 'senior-menu',
+              source: 'internal',
+            });
+            // An async action (a template insertion) is not a tool; its
+            // rejection on the recording fake is not this test's business.
+            if (result instanceof Promise) result.catch(() => {});
+          });
+          return armedTool ? [`${c.id} arms "${armedTool}"`] : [];
+        } catch {
+          // An action the recording fake cannot run is measured elsewhere
+          // (the placement tool falls back to its dashed box).
+          return [];
+        }
+      });
+    expect(offenders).toEqual([]);
   });
 });

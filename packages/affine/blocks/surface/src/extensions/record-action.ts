@@ -20,6 +20,14 @@ export interface RecordedAction {
    * carries a box at all.
    */
   bound: Bound | null;
+  /**
+   * The name of the tool the action armed, other than the default one it may
+   * return to after placing — `connector` for a command that lets the user
+   * DRAW a relation. Such a command creates nothing on its own and must be
+   * declared `kind: 'tool'`, or the placement tool wraps it and cancels the
+   * drawing it armed. `null` when nothing was armed.
+   */
+  armedTool: string | null;
 }
 
 /** Hook applied to a finished record before it is kept. See {@link recordAction}. */
@@ -97,6 +105,12 @@ export function recordAction(
 
   const records = () => [...elements.values()];
 
+  let armedTool: string | null = null;
+  const setTool = (tool: { toolName?: string } | string) => {
+    const name = typeof tool === 'string' ? tool : tool?.toolName;
+    if (name && name !== 'default') armedTool = name;
+  };
+
   const surface = {
     addElement,
     getElementById: (id: string) => elements.get(id) ?? null,
@@ -115,7 +129,7 @@ export function recordAction(
     viewport: { centerX: 0, centerY: 0, zoom: 1, center: { x: 0, y: 0 } },
     doc: { captureSync: () => {} },
     selection: { set: () => {}, selectedElements: [] },
-    tool: { setTool: () => {} },
+    tool: { setTool },
     layer: {
       generateIndex: () => nextIndex(),
       getReorderedIndex: (_model: unknown, direction: string) => {
@@ -178,7 +192,7 @@ export function recordAction(
   gfx.std = std as unknown as BlockStdScope;
   run(gfx.std);
 
-  return { records: records(), bound: uniteBounds(records()) };
+  return { records: records(), bound: uniteBounds(records()), armedTool };
 }
 
 /** The union of whatever boxes the records carry. */
