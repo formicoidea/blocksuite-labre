@@ -5,21 +5,17 @@ import {
 import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { C4BoardElementModel } from '@labre/affine-model';
 import {
-  ActionPlacement,
   BOARD_LEGEND_NOTATION,
   BOARD_RESIZE_TOGGLE,
+  commandMoreAction,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
   translateKey,
 } from '@labre/affine-shared/services';
-import {
-  BlockFlavourIdentifier,
-  getRegisteredCommands,
-  runCommand,
-} from '@labre/std';
-import { html, nothing, type TemplateResult } from 'lit';
+import { BlockFlavourIdentifier } from '@labre/std';
+import { html, nothing } from 'lit';
 
 import { createC4Legend } from '../actions';
 import { C4_BOARD_LEVEL_MENU, type C4BoardLevelOption } from '../levels';
@@ -77,63 +73,6 @@ const CheckIcon = html`<svg
 >
   <path d="M5 12.5l4.5 4.5L19 7.5" />
 </svg>`;
-
-const findCommand = (ctx: ToolbarContext, id: string) =>
-  getRegisteredCommands(ctx.std).find(candidate => candidate.id === id);
-
-/**
- * A "⋮" entry that INVOKES a registered command instead of restating what it
- * does — the shape `docs/adr/0010` M3 introduced, and the reason the export has
- * one behaviour, one availability rule and one telemetry emission whether it is
- * reached from here, from the catalogue, from the palette, from
- * Settings › Shortcuts or from the agent.
- *
- * Two things the widget imposes: a menu line is drawn from `label` (a tooltip on
- * a line that is already words would be a second copy of them), and
- * `placement: ActionPlacement.More` is what partitions it out of the row in the
- * first place — `renderToolbar` splits on exactly that flag, and the entries it
- * collects come from every module contributing to the element, so a framework
- * can add to the "⋮" without owning it.
- *
- * `generate` rather than a static entry because the i18n seam needs `std`:
- * `translateKey` is what reaches the host's catalogue, and a hard-coded English
- * label would be the one wording a host could not override.
- *
- * Lifted from the BPMN pool's row, where `bpmn.exportXml` sits in exactly this
- * position.
- */
-function commandMoreAction(
-  id: string,
-  commandId: string,
-  labelKey: string,
-  labelFallback: string,
-  icon: TemplateResult
-) {
-  return {
-    id,
-    placement: ActionPlacement.More,
-    when: (ctx: ToolbarContext) => {
-      const command = findCommand(ctx, commandId);
-      return command !== undefined && (command.when?.(ctx.std) ?? true);
-    },
-    generate: (ctx: ToolbarContext) => ({
-      icon,
-      label: translateKey(ctx.std, labelKey, labelFallback),
-      run: (runCtx: ToolbarContext) => {
-        const command = findCommand(runCtx, commandId);
-        if (!command) return;
-        // The same `source` the row's own entries report: the "⋮" is a
-        // degradation of the row, not a surface of its own, and the
-        // `ElementCreationSource` union deliberately names places rather than
-        // widths (`docs/adr/0008`).
-        runCommand(runCtx.std, command, {
-          surface: 'contextual-toolbar',
-          source: 'toolbar:general',
-        });
-      },
-    }),
-  };
-}
 
 /**
  * The selected C4 board's contextual toolbar: the resize toggle, and the

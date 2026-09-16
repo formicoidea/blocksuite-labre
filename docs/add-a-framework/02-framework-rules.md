@@ -34,7 +34,10 @@ declare. Every command is in the catalogue.
 **R5. Import sits in the sub-menu, export on the board's contextual
 toolbar.** A board comes _from_ a file; you export a board you already have.
 BPMN, C4 and Wardley follow it (the OWM export is scoped to the selected
-map's perimeter).
+map's perimeter). That is about a framework's NATIVE format. The **SVG export
+is generic** and needs nothing from a framework: one core command
+(`export.svg`) and one wildcard toolbar module
+(`custom:affine:surface:*#export-svg`) serve every board — see R34.
 
 **R6. The legend is a button on the selected board's toolbar**, not a
 command: absent from catalogue, palette and shortcuts (product decision,
@@ -87,6 +90,19 @@ header instead.
 **R14. Extend `FrameworkBackgroundElementModel`; never copy its overrides.**
 Boards that re-implemented them were skipped by `instanceof` and dropped
 elements sank (PR #231).
+
+**R34. Every board exports as SVG**, and gets it for free. "Export SVG" sits in
+the "⋮" of every board's contextual toolbar — one core command `export.svg`
+(`packages/affine/blocks/surface/src/extensions/export-svg/command.ts`) and one
+wildcard module `custom:affine:surface:*#export-svg` (`…/export-svg/toolbar.ts`),
+both keyed on `FrameworkBackgroundElementModel` and neither naming a framework
+(ADR 0017). A framework contributes nothing; what it must not do is draw its
+board as anything other than a `FrameworkBackgroundElementModel` (R14).
+`export-svg-boards.unit.spec.ts` names every framework's board class and checks
+the entry lights up for each; `board-svg-export.spec.ts` (integration) renders
+one board of every kind and parses the result. Numbered R34 — the file's numbers
+are allocated in order of creation, not by section, and existing rules are never
+renumbered.
 
 ## Artefacts
 

@@ -21,6 +21,7 @@ One file per decision. Format and lifecycle in
 | [0014](0014-senior-submenu-rules.md)                           | Senior sub-menu rules                | accepted, amended         | Cap 13 + 1, declared eligibility, recency and frequency, one mechanism for every framework.                  |
 | [0015](0015-rule-dependency-scope.md)                          | Rule dependency scope                | accepted                  | A rule family declares what its verdict depends on; a rule may only widen it.                                |
 | [0016](0016-every-displayed-string-through-a-key.md)           | Every displayed string through a key | accepted                  | Params and `Intl` cross the seam; wordings per package; a shrinking baseline guards against new literals.    |
+| [0017](0017-board-svg-export.md)                               | Board SVG export                     | accepted                  | The canvas renderer replays into svgcanvas; one core command and one wildcard "⋮" entry for every board.     |
 
 Related documents that are not ADRs:
 

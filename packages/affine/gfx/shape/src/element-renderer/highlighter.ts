@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import {
   DefaultTheme,
@@ -32,7 +33,7 @@ export const highlighter: ElementRenderer<HighlighterElementModel> = (
 
   ctx.fillStyle = color;
 
-  ctx.fill(new Path2D(model.commands));
+  ctx.fill(taggedPath2D(model.commands));
 };
 
 export const HighlighterElementRendererExtension = ElementRendererExtension(

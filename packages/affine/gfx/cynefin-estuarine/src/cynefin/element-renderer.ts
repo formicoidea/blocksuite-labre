@@ -2,6 +2,7 @@ import {
   type CanvasRenderer,
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { CynefinElementModel } from '@labre/affine-model';
 import {
@@ -88,7 +89,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   for (const [d, lw, miter] of DARK_BACK_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
-    ctx.stroke(new Path2D(d));
+    ctx.stroke(taggedPath2D(d));
   }
   ctx.lineJoin = 'round';
 
@@ -106,7 +107,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   if (model.showLiminalLine) {
     ctx.strokeStyle = COLORS.teal;
     ctx.lineWidth = TEAL_WIDTH;
-    ctx.stroke(new Path2D(TEAL_PATH));
+    ctx.stroke(taggedPath2D(TEAL_PATH));
   }
 
   // ── Dark boundary strokes (over the teal curve) ─────────────────────
@@ -114,7 +115,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   for (const [d, lw, miter] of DARK_FRONT_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
-    ctx.stroke(new Path2D(d));
+    ctx.stroke(taggedPath2D(d));
   }
   ctx.lineJoin = 'round';
 

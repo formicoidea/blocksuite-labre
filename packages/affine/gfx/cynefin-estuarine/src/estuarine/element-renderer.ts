@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
 import {
@@ -84,21 +85,21 @@ export function estuarineCurves(): readonly EstuarineCurve[] {
   return (_curves ??= [
     {
       key: 'liminal',
-      path: new Path2D(LIMINAL_PATH),
+      path: taggedPath2D(LIMINAL_PATH),
       color: COLORS.liminal,
       width: LIMINAL_WIDTH,
       visibleProp: 'showLiminal',
     },
     {
       key: 'volatile',
-      path: new Path2D(VOLATILE_PATH),
+      path: taggedPath2D(VOLATILE_PATH),
       color: COLORS.volatile,
       width: VOLATILE_WIDTH,
       visibleProp: 'showVolatile',
     },
     {
       key: 'counterfactual',
-      path: new Path2D(COUNTERFACTUAL_PATH),
+      path: taggedPath2D(COUNTERFACTUAL_PATH),
       color: COLORS.counterfactual,
       width: COUNTERFACTUAL_WIDTH,
       visibleProp: 'showCounterfactual',
