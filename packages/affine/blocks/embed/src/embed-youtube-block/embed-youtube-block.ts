@@ -5,6 +5,7 @@ import type {
 } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import { ThemeProvider } from '@labre/affine-shared/services';
+import { shouldRefreshOnPropsUpdate } from '@labre/affine-shared/utils';
 import { BlockSelection } from '@labre/std';
 import { html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
@@ -84,7 +85,7 @@ export class EmbedYoutubeBlockComponent extends EmbedBlockComponent<
     this.disposables.add(
       this.model.propsUpdated.subscribe(({ key }) => {
         this.requestUpdate();
-        if (key === 'url') {
+        if (shouldRefreshOnPropsUpdate(this.store, key)) {
           this.refreshData();
         }
       })

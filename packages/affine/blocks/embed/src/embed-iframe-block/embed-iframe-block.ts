@@ -14,7 +14,10 @@ import {
   TOAST_NO_LINK_FOUND,
   translateKey,
 } from '@labre/affine-shared/services';
-import { matchModels } from '@labre/affine-shared/utils';
+import {
+  matchModels,
+  shouldRefreshOnPropsUpdate,
+} from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { BlockSelection } from '@labre/std';
 import { flip, offset, shift } from '@floating-ui/dom';
@@ -389,7 +392,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
     // refresh data when original url changes
     this.disposables.add(
       this.model.propsUpdated.subscribe(({ key }) => {
-        if (key === 'url') {
+        if (shouldRefreshOnPropsUpdate(this.store, key)) {
           this.refreshData().catch(console.error);
         }
       })
