@@ -507,6 +507,27 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     state.creating = false;
     state.skipField = false;
 
+    // A document whose Yjs state still has pending structs can carry an element
+    // whose `xywh` key never arrived. The element reads its `[0,0,0,0]` fallback
+    // and paints nothing instead of a phantom shape at the origin — say so ONCE
+    // here, where every element model is built from its Y.Map, and never again
+    // from a getter that runs several times per frame. Group-like elements are
+    // excluded for free: their `xywh` is a derived getter, not a declared field.
+    //
+    // Only a map that is IN the document is asked: a brand-new element is built
+    // from a detached Y.Map whose keys still sit in Yjs' preliminary content,
+    // where `has()` sees nothing (and warns about the premature read).
+    if (
+      yMap.doc &&
+      getFieldPropsSet(elementModel).has('xywh') &&
+      !yMap.has('xywh')
+    ) {
+      console.warn(
+        `[labre] surface element ${type} ${id} has no xywh: rendering it with ` +
+          `a zero-size bound; the document is damaged`
+      );
+    }
+
     const unmount = () => {
       mounted = false;
       elementModel.onDestroyed();

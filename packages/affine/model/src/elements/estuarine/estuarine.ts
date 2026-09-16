@@ -47,6 +47,6 @@ export class EstuarineElementModel extends FrameworkBackgroundElementModel<Estua
   @field(0)
   accessor rotate: number = 0;
 
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,690,801]';
 }

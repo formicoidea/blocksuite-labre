@@ -66,20 +66,25 @@ export type BaseElementProps = {
 /**
  * Declared `@field()`s that {@link GfxPrimitiveElementModel.clearField} refuses
  * to remove, because they have no meaningful ABSENT state: every one of them is
- * read unconditionally, with no fallback, by code that has no way to cope.
+ * read unconditionally by code that has no way to cope with its absence.
  *
  * - `index` — the fractional z-order key. Gone, the element's stacking is
  *   `undefined` and the layer manager sorts it nowhere, silently.
- * - `xywh` — gone, `elementBound` collapses to `{0,0,0,0}` and the renderer
- *   throws `"undefined" is not valid JSON` on every frame.
+ * - `xywh` — gone, the element reads `[0,0,0,0]` (its declared fallback, so it
+ *   draws nothing rather than a phantom shape at the origin) and the surface
+ *   reports it once, at mount. A zero-size element is unusable, not optional,
+ *   so it stays here: nothing may CLEAR a bound on purpose.
  * - `seed` — the roughness seed; gone, the hand-drawn renderers produce a
  *   different shape on every repaint.
  *
  * An optional field is exactly one whose accessor declares a usable default (or
- * `undefined`), and those stay clearable. This list is the short answer to
- * "which declared fields are not optional"; it is a deny-list on purpose, so a
- * new optional field needs no ceremony and a new structural one is a deliberate
- * addition here.
+ * `undefined`), and those stay clearable. A read fallback is not the same thing
+ * as a usable default: `xywh` now falls back to `[0,0,0,0]` so a damaged
+ * document keeps painting, which is damage control, not an optional state.
+ *
+ * This list is the short answer to "which declared fields are not optional"; it
+ * is a deny-list on purpose, so a new optional field needs no ceremony and a
+ * new structural one is a deliberate addition here.
  */
 const UNCLEARABLE_ELEMENT_FIELDS = new Set<string>(['index', 'seed', 'xywh']);
 
