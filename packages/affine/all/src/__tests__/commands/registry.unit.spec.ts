@@ -1,5 +1,15 @@
 import { RESERVED_EDGELESS_KEYS } from '@labre/affine-block-root';
-import { wardleyCommands } from '@labre/affine-gfx-wardley';
+import { bpmnCommandIcons } from '@labre/affine-gfx-bpmn';
+import { c4CommandIcons } from '@labre/affine-gfx-c4';
+import { cynefinEstuarineCommandIcons } from '@labre/affine-gfx-cynefin-estuarine';
+import { contextMapCommandIcons } from '@labre/affine-gfx-ddd-context-map';
+import { coreDomainCommandIcons } from '@labre/affine-gfx-ddd-core-domain';
+import { eventStormingCommandIcons } from '@labre/affine-gfx-ddd-event-storming';
+import { edgyCommandIcons } from '@labre/affine-gfx-edgy';
+import {
+  wardleyCommandIcons,
+  wardleyCommands,
+} from '@labre/affine-gfx-wardley';
 import {
   canonicalCombo,
   FRAMEWORK_IDS,
@@ -369,6 +379,46 @@ describe('command registry invariants', () => {
       'ddd-core-domain': 'core-domain',
       'ddd-context-map': 'context-map',
     });
+  });
+});
+
+/**
+ * Rule R1 of `docs/add-a-framework/02-framework-rules.md`: a framework owns its
+ * senior glyph. `FrameworkDescriptor.iconKey` names it, and the framework's own
+ * command-icon table is what holds it — so a host (or the catalogue) can resolve
+ * the button's picture through `getCommandIcon` without importing the module.
+ */
+describe('every framework declares its own senior icon key', () => {
+  /**
+   * Each table as its framework's `CommandExtension` registers it. Typed off
+   * one of them — `Record<string, TemplateResult>` — rather than importing
+   * `lit`, which this package does not declare as a dependency.
+   */
+  const TABLES: Record<FrameworkId, typeof wardleyCommandIcons> = {
+    wardley: wardleyCommandIcons,
+    edgy: edgyCommandIcons,
+    'cynefin-estuarine': cynefinEstuarineCommandIcons,
+    bpmn: bpmnCommandIcons,
+    c4: c4CommandIcons,
+    'ddd-event-storming': eventStormingCommandIcons,
+    'ddd-core-domain': coreDomainCommandIcons,
+    'ddd-context-map': contextMapCommandIcons,
+  };
+
+  test('iconKey is non-empty, unique across frameworks, and of the form <segment>.toolbar', () => {
+    const keys = FRAMEWORK_DESCRIPTORS.map(d => d.iconKey);
+    for (const d of FRAMEWORK_DESCRIPTORS) {
+      expect(d.iconKey, d.id).toMatch(/^[a-z][a-z0-9-]*\.toolbar$/);
+    }
+    // Two frameworks sharing a key would silently draw the same button twice.
+    expect(new Set(keys).size).toBe(FRAMEWORK_DESCRIPTORS.length);
+  });
+
+  test("iconKey is registered in the framework's own icon table", () => {
+    for (const d of FRAMEWORK_DESCRIPTORS) {
+      // A key no table holds resolves to nothing — the failure this pins.
+      expect(TABLES[d.id][d.iconKey], `${d.id} → ${d.iconKey}`).toBeDefined();
+    }
   });
 });
 

@@ -40,6 +40,7 @@ import {
   wardleyOpportunityIcon,
   wardleyPipelineIcon,
   wardleyPorterIcon,
+  wardleyToolbarIcon,
 } from './toolbar/icons';
 
 /**
@@ -551,4 +552,7 @@ export const wardleyCommandIcons: Record<string, TemplateResult> = {
   'wardley.import-owm': wardleyImportOwmIcon,
   'wardley.export-owm': wardleyExportOwmIcon,
   'wardley.import-svg': wardleyImportSvgIcon,
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'wardley.toolbar': wardleyToolbarIcon,
 };

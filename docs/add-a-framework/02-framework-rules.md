@@ -11,8 +11,9 @@ convention with no test yet, it says so.
 **R1. One senior button per framework, one icon, in descriptor order.**
 `FRAMEWORK_DESCRIPTORS` in `packages/affine/all/src/frameworks.ts` carries
 `iconKey`; the button's glyph is the 56×56 icon in `toolbar/icons.ts`. Row
-order is the array order (`senior-row-order.unit.spec.ts`). No test checks
-icon uniqueness across frameworks yet.
+order is the array order (`senior-row-order.unit.spec.ts`). `iconKey` is
+non-empty, unique and registered in the framework's icon table
+(`registry.unit.spec.ts`, "every framework declares its own senior icon key").
 
 **R2. The sub-menu shows at most 13 artefacts plus "More artefacts…".**
 `SENIOR_MENU_CAP = 14` and `SENIOR_MENU_RANKED_SLOTS = 13` in

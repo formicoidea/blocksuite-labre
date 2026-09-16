@@ -3,6 +3,7 @@ import {
   esStickySeedKey,
   ES_HOTSPOT,
   ES_STICKIES,
+  eventStormingToolbarIcon,
   placeDddElement,
   STICKY_SIZE,
 } from '@labre/affine-gfx-ddd-shared';
@@ -157,5 +158,9 @@ export const eventStormingCommands: CommandDescriptor[] = SPECS.map(
   })
 );
 
-export const eventStormingCommandIcons: Record<string, TemplateResult> =
-  Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon]));
+export const eventStormingCommandIcons: Record<string, TemplateResult> = {
+  ...Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon])),
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'ddd-event-storming.toolbar': eventStormingToolbarIcon,
+};

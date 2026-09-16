@@ -8,6 +8,7 @@ import {
 } from './actions';
 import {
   cynefinMenuIcon,
+  cynefinToolbarIcon,
   estuarineMenuIcon,
   hexagonMenuIcon,
 } from './toolbar/icons';
@@ -81,4 +82,8 @@ export const cynefinEstuarineCommandIcons: Record<string, TemplateResult> = {
   'cynefin.frame': cynefinMenuIcon,
   'estuarine.map': estuarineMenuIcon,
   'estuarine.hexagon': hexagonMenuIcon,
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`. Historical key: `cynefin`, not
+  // `cynefin-estuarine`.
+  'cynefin.toolbar': cynefinToolbarIcon,
 };

@@ -3,6 +3,7 @@ import {
   addCloud,
   CLOUD,
   CM_RELATIONSHIPS,
+  contextMapToolbarIcon,
   placeDddElement,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
@@ -167,5 +168,9 @@ export const contextMapCommands: CommandDescriptor[] = SPECS.map(
   })
 );
 
-export const contextMapCommandIcons: Record<string, TemplateResult> =
-  Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon]));
+export const contextMapCommandIcons: Record<string, TemplateResult> = {
+  ...Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon])),
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'ddd-context-map.toolbar': contextMapToolbarIcon,
+};
