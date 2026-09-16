@@ -213,7 +213,7 @@ export class HighlighterElementModel extends GfxPrimitiveElementModel<Highlighte
       ]),
     };
   })
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,0,0]';
 }
 

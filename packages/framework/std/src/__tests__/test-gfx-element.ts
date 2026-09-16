@@ -22,7 +22,7 @@ export class TestShapeElement extends GfxPrimitiveElementModel {
   @field()
   accessor rotate: number = 0;
 
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,10,10]';
 
   @convert(val => {
@@ -62,7 +62,7 @@ export class TestPaddedElement extends GfxPrimitiveElementModel {
   @field()
   accessor rotate: number = 0;
 
-  @field()
+  @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,10,10]';
 
   @field()

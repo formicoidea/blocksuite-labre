@@ -18,6 +18,14 @@ export function serializeXYWH(
 }
 
 export function deserializeXYWH(xywh: string): XYWH {
+  // An ABSENT value is not a parse failure: a document whose Yjs state has
+  // pending structs can hand us an element whose `xywh` key is simply missing.
+  // Say nothing here — this getter runs several times per frame per element,
+  // and the surface already reports the damaged element once, at mount.
+  if (xywh === null || xywh === undefined) {
+    return [0, 0, 0, 0];
+  }
+
   try {
     return JSON.parse(xywh) as XYWH;
   } catch (e) {
