@@ -16,6 +16,7 @@ import {
   DNDAPIExtension,
   DocDisplayMetaService,
   DocModeService,
+  DocumentDamageTelemetryWatcher,
   EditPropsStore,
   EmbedOptionService,
   FileSizeLimitService,
@@ -84,6 +85,7 @@ export class FoundationViewExtension extends ViewExtensionProvider<FoundationVie
       BlockCommentManager,
       // Inert without an injected TelemetryService; see telemetry README.
       BlockLifecycleTelemetryWatcher,
+      DocumentDamageTelemetryWatcher,
     ]);
     context.register(clipboardConfigs);
     if (this.isEdgeless(context.scope)) {

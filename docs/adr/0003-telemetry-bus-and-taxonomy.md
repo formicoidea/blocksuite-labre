@@ -33,3 +33,8 @@ Contract documented in
 - A new framework reuses the three framework events — no new event names.
 - Legacy AFFiNE events remain for compatibility; new code prefers the
   taxonomies.
+- Later addition (September 2026): `DocumentDamaged`, a **health** event rather
+  than a gesture — a document opened carrying elements the editor cannot draw.
+  It sits outside the two taxonomies above on purpose: they describe user
+  intent, this one describes the state of a document as it lands. Same rules
+  apply — counts only, no ids, no content.

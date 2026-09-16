@@ -1,6 +1,7 @@
 export * from './block-lifecycle-watcher.js';
 export * from './citation.js';
 export * from './database.js';
+export * from './document-damage-watcher.js';
 export * from './lifecycle.js';
 export * from './link.js';
 export * from './noop.js';
