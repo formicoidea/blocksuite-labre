@@ -51,6 +51,13 @@ export const wardleyNode: ElementRenderer<WardleyNodeElementModel> = (
 
   const strokeWidth = model.strokeWidth || 1;
   const R = Math.min(w, h) / 2 - strokeWidth / 2;
+  // A node dragged smaller than its own stroke leaves the glyph no room: every
+  // radius below is a fraction of `R`, and `arc` throws `IndexSizeError` on a
+  // negative one rather than clamping — which, since the surface render loop
+  // wraps no renderer in a `try`, aborts the rest of the frame. The hatch step
+  // is a fraction of `R` too, so `R === 0` would also spin its loop forever.
+  // The native circle underneath is already painted; the glyph simply stops.
+  if (!(R > 0)) return;
   const color = renderer.getColorValue(
     model.strokeColor,
     DefaultTheme.shapeStrokeColor,
@@ -63,7 +70,10 @@ export const wardleyNode: ElementRenderer<WardleyNodeElementModel> = (
   if (model.kind === 'anchor') {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, R - strokeWidth / 2, 0, Math.PI * 2);
+    // The clip is inset by half a stroke again, which can land under zero on a
+    // node barely wider than its border: clipped to nothing, the glyph paints
+    // nothing, which is the honest picture at that size.
+    ctx.arc(cx, cy, Math.max(0, R - strokeWidth / 2), 0, Math.PI * 2);
     ctx.clip();
 
     ctx.lineWidth = strokeWidth;

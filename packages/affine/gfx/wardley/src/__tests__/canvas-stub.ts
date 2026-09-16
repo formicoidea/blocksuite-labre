@@ -43,6 +43,13 @@ export interface RecordedText {
   vertical: boolean;
 }
 
+/** A circle, as the node glyphs draw them. */
+export interface Curve {
+  x: number;
+  y: number;
+  r: number;
+}
+
 export interface RecordedGradient {
   from: [number, number];
   to: [number, number];
@@ -52,6 +59,7 @@ export interface RecordedGradient {
 export function recordingCtx() {
   const segments: Segment[] = [];
   const arcs: number[][] = [];
+  const curves: Curve[] = [];
   const rects: FilledRect[] = [];
   const texts: RecordedText[] = [];
   const gradients: RecordedGradient[] = [];
@@ -90,6 +98,18 @@ export function recordingCtx() {
     arcTo: vi.fn((...args: number[]) => {
       arcs.push(args);
     }),
+    // The node glyphs draw circles (the person's head, the ecosystem's rings).
+    // `arc` THROWS on a negative radius exactly as Canvas2D does — it raises
+    // `IndexSizeError` rather than clamping, and since the surface render loop
+    // wraps no renderer in a `try`, one such throw aborts the rest of the frame
+    // and leaves the save stack unbalanced. A stub that quietly accepted -1.5
+    // would let a renderer pass its tests and blank a real canvas.
+    arc: vi.fn((x: number, y: number, r: number) => {
+      if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
+      curves.push({ x, y, r });
+    }),
+    clip: vi.fn(),
+    bezierCurveTo: vi.fn(),
     fill: vi.fn(() => {
       if (typeof ctx.fillStyle === 'string') fills.push(ctx.fillStyle);
     }),
@@ -158,6 +178,7 @@ export function recordingCtx() {
   return {
     ctx: ctx as unknown as CanvasRenderingContext2D,
     segments,
+    curves,
     rects,
     texts,
     gradients,
