@@ -7,6 +7,7 @@ import {
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createGroupCommand } from '@labre/affine-gfx-group';
+import { PolygonTool } from '@labre/affine-gfx-shape';
 import {
   ConnectorMode,
   FontWeight,
@@ -513,6 +514,42 @@ export function createWardleyArea(gfx: GfxController, shape: WardleyAreaShape) {
   lowerWardleyArea(gfx, id);
 
   finish(gfx, id);
+}
+
+/**
+ * Arm the interactive polygon tool to draw a ZONE, corner by corner.
+ *
+ * The polygonal half of the kind is a TOOL and the rectangular half an artefact,
+ * and the asymmetry is the gesture rather than an inconsistency: a rectangle has
+ * one shape whatever its size, so placing one and dragging its handles is the
+ * whole of drawing it — while a polygon IS its corners, and a prefabricated
+ * pentagon parked in the middle of the map is never the outline anybody wanted
+ * (PO decision of 2026-09-16). The author clicks each corner and closes on the
+ * first one; Escape cancels and fewer than three corners draws nothing, both of
+ * which the tool already decides.
+ *
+ * What comes back is a Wardley area and not a plain polygon, because the tool
+ * creates the element from the props handed here — same fill, rim, role and
+ * inner-text settings as {@link createWardleyArea} writes, from the same
+ * description — and then lowers it the way that function does.
+ */
+export function activateWardleyAreaPolygon(gfx: GfxController) {
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+
+  gfx.tool.setTool(PolygonTool, {
+    // The box and the default pentagon in here are a placeholder: the tool
+    // spreads this bag before the outline the author drew, so both are
+    // overwritten. They are still stated rather than stripped, because what a
+    // zone IS has exactly one description (`presets.ts`) and taking two keys
+    // out of it here would be a second one.
+    props: wardleyAreaProps('polygon', {
+      xywh: wardleyAreaBox('polygon', cx, cy),
+    }),
+    // A zone is lowered the moment it exists, for the reason
+    // {@link createWardleyArea} gives at length: drawn last it would paint over
+    // every component it groups and intercept their clicks.
+    onCreated: lowerWardleyArea,
+  });
 }
 
 /**

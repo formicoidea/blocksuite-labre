@@ -29,7 +29,26 @@ const MIN_VERTEX_DISTANCE = 5;
  */
 const CLOSE_SNAP_DISTANCE = 10;
 
-export type PolygonToolOption = Record<string, unknown>;
+export type PolygonToolOption = {
+  /**
+   * Props the activation stamps on the shape the closed outline produces — the
+   * same seam `ConnectorTool`'s `role` / `style` options are: a framework arms
+   * this tool to draw ITS artefact (a Wardley zone) rather than a plain
+   * polygon, so the element is born typed instead of being converted after the
+   * fact. Absent for the plain polygon tool, which keeps drawing a shape.
+   *
+   * Merged BEFORE the geometry: a framework's description of an artefact
+   * carries the box and the outline it would have been born with, and the
+   * outline the author just drew must win over both.
+   */
+  props?: Record<string, unknown>;
+  /**
+   * Called once the element exists, for the placement an element description
+   * cannot express — a Wardley zone has to be lowered to just above the map it
+   * covers, which depends on what is already on the board.
+   */
+  onCreated?: (gfx: GfxController, id: string) => void;
+};
 
 /**
  * PolygonTool allows users to draw arbitrary polygons by clicking to place
@@ -287,8 +306,15 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
     const id = this.gfx.surface!.addElement({
       type: CanvasElementType.SHAPE,
       shapeType: ShapeType.Polygon,
-      xywh: bound.serialize(),
       radius: 0,
+      // What the activation asked for, if anything — it may change the element
+      // type itself, which is how a framework gets its own artefact out of this
+      // gesture. Spread here so the geometry below always wins: the props of a
+      // framework artefact describe the shape it would have been born with,
+      // outline included, and that outline is exactly what the author just
+      // replaced by drawing.
+      ...this.activatedOption.props,
+      xywh: bound.serialize(),
       vertices: normalizedVertices,
       isClosed: true,
       smoothFlags: smoothFlagsForModel,
@@ -296,6 +322,8 @@ export class PolygonTool extends BaseTool<PolygonToolOption> {
         ? { controlPoints: controlPointsForModel }
         : {}),
     });
+
+    this.activatedOption.onCreated?.(this.gfx, id);
 
     this.std.getOptional(TelemetryProvider)?.track('CanvasElementAdded', {
       control: 'canvas:draw',

@@ -3,6 +3,7 @@ import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import {
+  activateWardleyAreaPolygon,
   activateWardleyConnector,
   createWardleyAccelerator,
   createWardleyArea,
@@ -284,7 +285,8 @@ const SPECS: Spec[] = [
   // around a chain that already exists, so it is the last gesture of a map and
   // reads as the last entry of the row. Two entries and ONE kind — the shape is
   // the choice, and offering it as two buttons is what saves the author a trip
-  // through "switch type" for the commonest case.
+  // through "switch type" for the commonest case. One kind, but two GESTURES:
+  // the rectangle is placed, the polygon is drawn corner by corner.
   //
   // Keyless, like the porter and the two climate arrows: the `w` chord seats
   // eight artefacts and a framework binds past that by host override.
@@ -302,9 +304,16 @@ const SPECS: Spec[] = [
     label: 'Area (polygon)',
     iconKey: 'wardley.area-polygon',
     category: 'areas',
-    kind: 'artefact',
+    // A TOOL, and the only entry of this row that is one: a polygon IS its
+    // corners, so the author draws them rather than receiving a pentagon to
+    // reshape (PO decision of 2026-09-16, #343). `element` is untouched — the
+    // artefact this gesture produces is the same one — and the change of kind
+    // is what moves its event from `FrameworkElementAdded` to
+    // `FrameworkToolPicked`, which is the truth about a tool: it is picked, and
+    // the drawing may still be abandoned with Escape.
+    kind: 'tool',
     element: 'node:area-polygon',
-    run: gfx => createWardleyArea(gfx, 'polygon'),
+    run: activateWardleyAreaPolygon,
   },
 ];
 
