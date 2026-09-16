@@ -47,6 +47,11 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
+import {
+  EDGELESS_TOOLBAR_WIDGET,
+  EdgelessCommandMenu,
+  type EdgelessToolbarWidget,
+} from '@labre/affine-widget-edgeless-toolbar';
 import { IS_MAC } from '@labre/global/env';
 import { Bound, getCommonBound } from '@labre/global/gfx';
 import { SurfaceSelection, TextSelection } from '@labre/std';
@@ -84,6 +89,25 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
 
   get std() {
     return this.rootComponent.std;
+  }
+
+  /**
+   * The framework sub-menu the toolbar has open, when it has one open.
+   *
+   * Asked of the widget rather than of a service because the popover is not a
+   * tool: it is a transient element the toolbar parks in `activePopper`, and
+   * only the generic command menu answers to the keys below — a colour picker
+   * or a note sub-menu sitting in the same slot keeps its own behaviour.
+   */
+  private get _seniorMenu(): EdgelessCommandMenu | null {
+    // A keystroke aimed at a canvas text editor belongs to that editor, open
+    // menu or not — the same condition the shape cycling below already has.
+    if (this.rootComponent.service.selection.editing) return null;
+    const toolbar = this.rootComponent.widgetComponents[
+      EDGELESS_TOOLBAR_WIDGET
+    ] as EdgelessToolbarWidget | undefined;
+    const element = toolbar?.activePopper?.element;
+    return element instanceof EdgelessCommandMenu ? element : null;
   }
 
   constructor(override rootComponent: EdgelessRootBlockComponent) {
@@ -220,6 +244,14 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
             .catch(console.error);
         },
         'Shift-s': () => {
+          // Over an open senior menu the very same keystroke steps backwards
+          // through the artefacts it offers — the shape tool's "previous
+          // variant", applied to the row a framework opened.
+          const menu = this._seniorMenu;
+          if (menu) {
+            menu.cycle(-1);
+            return;
+          }
           if (this.rootComponent.service.locked) return;
           const controller = rootComponent.gfx.tool.currentTool$.peek();
           if (
@@ -351,10 +383,23 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         },
 
         ArrowLeft: () => {
+          // Same highlight as Shift+S, spelled the way a row of buttons is
+          // normally walked. The guard also keeps the arrows from nudging the
+          // selection behind a menu the user is reading.
+          const menu = this._seniorMenu;
+          if (menu) {
+            menu.cycle(-1);
+            return;
+          }
           this._move('ArrowLeft');
         },
 
         ArrowRight: () => {
+          const menu = this._seniorMenu;
+          if (menu) {
+            menu.cycle(1);
+            return;
+          }
           this._move('ArrowRight');
         },
 
@@ -375,6 +420,10 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         },
 
         Enter: () => {
+          // A highlighted sub-menu button consumes Enter; with nothing
+          // highlighted the menu takes nothing and the canvas keeps its own.
+          if (this._seniorMenu?.activate()) return;
+
           const { service } = rootComponent;
           const selection = service.selection;
           const elements = selection.selectedElements;
