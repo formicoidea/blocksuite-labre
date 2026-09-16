@@ -49,12 +49,12 @@ export const TOAST_LINKED_DOC_CREATED: ChromeWording = [
 
 export const TOAST_NOTE_REMOVED_FROM_PAGE: ChromeWording = [
   'com.labre.toast.note-removed-from-page-mode',
-  'Note removed from Page Mode',
+  'Note removed from Document Mode',
 ];
 
 export const TOAST_FRAME_INSERTED_INTO_PAGE: ChromeWording = [
   'com.labre.toast.frame-inserted-into-page',
-  'Frame inserted into Page.',
+  'Frame inserted into Document.',
 ];
 
 export const TOAST_NO_LINK_FOUND: ChromeWording = [
@@ -175,7 +175,7 @@ export const LINKED_DOC_EMPTY_PREVIEW: ChromeWording = [
 
 export const SYNCED_DOC_EMPTY_PREVIEW: ChromeWording = [
   'com.labre.embed.synced-doc.empty-preview',
-  'Preview of the page will be displayed here.',
+  'Preview of the document will be displayed here.',
 ];
 
 /* ── The board toolbars every framework shares ────────────────────────── */
@@ -938,11 +938,11 @@ export const DISPLAY_MODE_BOTH: ChromeWording = [
 ];
 export const DISPLAY_MODE_EDGELESS: ChromeWording = [
   'com.labre.note.display-mode.edgeless',
-  'Edgeless',
+  'Canvas',
 ];
 export const DISPLAY_MODE_PAGE: ChromeWording = [
   'com.labre.note.display-mode.page',
-  'Page',
+  'Document',
 ];
 export const DISPLAY_MODE_SHOW_IN: ChromeWording = [
   'com.labre.note.display-mode.show-in',
@@ -994,7 +994,7 @@ export const TOOLBAR_CREATE_LINKED_DOC_TITLE: ChromeWording = [
  */
 export const EDGELESS_CONTENT_LABEL: ChromeWording = [
   'com.labre.surface-ref.type.edgeless',
-  'Edgeless content',
+  'Canvas content',
 ];
 
 /**
@@ -1030,7 +1030,7 @@ export const IMAGE_LABEL: ChromeWording = ['com.labre.image.label', 'Image'];
  */
 export const TOOLBAR_INSERT_INTO_PAGE: ChromeWording = [
   'com.labre.frame.toolbar.insert-into-page',
-  'Insert into Page',
+  'Insert into Document',
 ];
 
 /**

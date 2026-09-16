@@ -245,17 +245,17 @@ export const NOTE_DISPLAY_MODE_PAGE = DISPLAY_MODE_PAGE;
 
 export const NOTE_TOAST_DISPLAYED_IN_PAGE_MODE: ChromeWording = [
   'com.labre.note.toast.displayed-in-page-mode',
-  'Note displayed in Page Mode',
+  'Note displayed in Document Mode',
 ];
 
 export const NOTE_TOAST_REMOVED_FROM_PAGE_BODY: ChromeWording = [
   'com.labre.note.toast.removed-from-page.body',
-  'Content removed from your page. Find it in the TOC for quick navigation.',
+  'Content removed from your document. Find it in the TOC for quick navigation.',
 ];
 
 export const NOTE_TOAST_ADDED_TO_PAGE_BODY: ChromeWording = [
   'com.labre.note.toast.added-to-page.body',
-  'Content added to your page. Find it in the TOC for quick navigation.',
+  'Content added to your document. Find it in the TOC for quick navigation.',
 ];
 
 export const NOTE_TOAST_VIEW_IN_TOC: ChromeWording = [
@@ -265,17 +265,17 @@ export const NOTE_TOAST_VIEW_IN_TOC: ChromeWording = [
 
 export const NOTE_TOOLBAR_DISPLAY_IN_PAGE: ChromeWording = [
   'com.labre.note.toolbar.display-in-page',
-  'Display in Page',
+  'Display in Document',
 ];
 
 export const NOTE_TOOLBAR_DISPLAYED_IN_PAGE: ChromeWording = [
   'com.labre.note.toolbar.displayed-in-page',
-  'Displayed in Page',
+  'Displayed in Document',
 ];
 
 export const NOTE_TOOLBAR_REMOVE_FROM_PAGE_TOOLTIP: ChromeWording = [
   'com.labre.note.toolbar.remove-from-page-tooltip',
-  'This note is part of Page Mode. Click to remove it from the page.',
+  'This note is part of Document Mode. Click to remove it from the document.',
 ];
 
 export const NOTE_TOOLBAR_SLICER: ChromeWording = [

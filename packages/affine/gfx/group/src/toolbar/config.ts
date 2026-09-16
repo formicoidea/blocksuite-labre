@@ -35,9 +35,9 @@ export const groupToolbarConfig = {
   actions: [
     {
       id: 'a.insert-into-page',
-      label: 'Insert into Page',
+      label: 'Insert into Document',
       labelWording: GROUP_TOOLBAR_INSERT_INTO_PAGE,
-      tooltip: 'Insert into Page',
+      tooltip: 'Insert into Document',
       tooltipWording: GROUP_TOOLBAR_INSERT_INTO_PAGE,
       icon: InsertIntoPageIcon(),
       when: ctx => ctx.getSurfaceModelsByType(GroupElementModel).length === 1,

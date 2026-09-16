@@ -38,7 +38,7 @@ export const FRAME_PANEL_DARK_BACKGROUND: ChromeWording = [
 
 export const FRAME_PANEL_EMPTY_PLACEHOLDER: ChromeWording = [
   'com.labre.frame-panel.body.empty-placeholder',
-  'Add frames to organize and present your Edgeless',
+  'Add frames to organize and present your Canvas',
 ];
 
 /**

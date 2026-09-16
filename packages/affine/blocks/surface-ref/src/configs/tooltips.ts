@@ -31,7 +31,7 @@ export const EdgelessTooltip = html`<svg width="170" height="106" viewBox="0 0 1
 export const FrameTooltip = html`<svg width="170" height="89" viewBox="0 0 170 89" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_5269_147682)">
 <rect width="170" height="89" fill="white"/>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0px"><tspan x="8" y="16.6364">Create a blank frame in Edgeless</tspan></text>
+<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0px"><tspan x="8" y="16.6364">Create a blank frame in Canvas</tspan></text>
 <rect x="16" y="45" width="164" height="59" rx="3" stroke="black" stroke-opacity="0.52" stroke-width="2"/>
 <rect x="15" y="27" width="32" height="13" rx="3" fill="black" fill-opacity="0.95"/>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="8" font-weight="500" letter-spacing="0px"><tspan x="19" y="35.8182">Frame</tspan></text>
@@ -48,7 +48,7 @@ export const FrameTooltip = html`<svg width="170" height="89" viewBox="0 0 170 8
 export const MindMapTooltip = html`<svg width="170" height="106" viewBox="0 0 170 106" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_5150_67028)">
 <rect width="170" height="106" fill="white"/>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0px"><tspan x="8" y="16.6364">Create a mind map in Edgeless</tspan></text>
+<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0px"><tspan x="8" y="16.6364">Create a mind map in Canvas</tspan></text>
 <g filter="url(#filter0_d_5150_67028)">
 <rect x="21" y="53" width="59" height="19" rx="5" stroke="#29A3FA" stroke-width="2"/>
 <text fill="black" xml:space="preserve" style="white-space: pre" font-family="Poppins" font-size="8" font-weight="500" letter-spacing="0px"><tspan x="30.5" y="65.076">Mind Map</tspan></text>

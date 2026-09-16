@@ -140,12 +140,12 @@ export const SLASH_MENU_GROUP_CONTENT_MEDIA: ChromeWording = [
 
 export const SLASH_MENU_GROUP_PAGE: ChromeWording = [
   'com.labre.slash-menu.group.page',
-  'Page',
+  'Document',
 ];
 
 export const SLASH_MENU_GROUP_EDGELESS_ELEMENT: ChromeWording = [
   'com.labre.slash-menu.group.edgeless-element',
-  'Edgeless Element',
+  'Canvas Element',
 ];
 
 export const SLASH_MENU_GROUP_DATE: ChromeWording = [

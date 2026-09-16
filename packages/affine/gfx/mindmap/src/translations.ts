@@ -157,7 +157,7 @@ export const MINDMAP_ADD_MEDIA_TOOLTIP: ChromeWording = [
 
 export const MINDMAP_EDGELESS_TEXT_TOOLTIP: ChromeWording = [
   'com.labre.mindmap.toolbar.edgeless-text',
-  'Edgeless Text',
+  'Canvas Text',
 ];
 
 /** The promoted "Add file" senior tool's own name/tooltip. */
