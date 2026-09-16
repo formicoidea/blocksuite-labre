@@ -64,13 +64,21 @@ const INVOCATION: CommandInvocation = {
 };
 
 /**
- * The four templates written by hand, and why each one is.
+ * The five templates written by hand, and why each one is.
  *
- * The two maps are arrangements no command draws. "Link" and "Evolution arrow"
- * are samples of a STROKE: their commands activate a tool and draw nothing at
- * all, so there is no artefact to record — the user draws it.
+ * The two maps are arrangements no command draws. "Link", "Evolution arrow" and
+ * "Area (polygon)" are the three whose commands activate a TOOL and draw
+ * nothing at all, so there is no artefact to record — the user draws it. Their
+ * cards still offer the artefact ready-made, because a panel card inserts a
+ * snapshot and cannot arm a tool.
  */
-const HAND_AUTHORED = ['Tea Shop', 'Kodak inertia', 'Link', 'Evolution arrow'];
+const HAND_AUTHORED = [
+  'Tea Shop',
+  'Kodak inertia',
+  'Link',
+  'Evolution arrow',
+  'Area (polygon)',
+];
 
 const shipped = wardleyTemplateCategory.templates;
 if (typeof shipped === 'function') {

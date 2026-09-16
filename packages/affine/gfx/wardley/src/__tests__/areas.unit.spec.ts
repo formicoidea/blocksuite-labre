@@ -5,10 +5,15 @@ import {
   WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
+import { PolygonTool } from '@labre/affine-gfx-shape';
 import { Bound } from '@labre/global/gfx';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, type Mock, vi } from 'vitest';
 
-import { createWardleyArea, wardleyAreaIndexOver } from '../actions';
+import {
+  activateWardleyAreaPolygon,
+  createWardleyArea,
+  wardleyAreaIndexOver,
+} from '../actions';
 import { wardleyFillColor } from '../toolbar/node-config';
 import { wardleyCommands } from '../commands';
 import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
@@ -480,6 +485,78 @@ describe('the fill a picked swatch writes', () => {
   });
 });
 
+/* ── Drawing one corner by corner ─────────────────────────────────────── */
+
+describe('arming the polygon tool', () => {
+  /** The `{ props, onCreated }` bag the command hands the tool. */
+  function armed() {
+    const { gfx, added } = fakeGfx();
+    activateWardleyAreaPolygon(gfx);
+
+    const setTool = (gfx as unknown as { tool: { setTool: Mock } }).tool
+      .setTool;
+    expect(setTool).toHaveBeenCalledTimes(1);
+    const [tool, option] = setTool.mock.calls[0] as [
+      unknown,
+      { props: Record<string, unknown>; onCreated: unknown },
+    ];
+    return { tool, option, gfx, added };
+  }
+
+  it('arms the editor’s own polygon tool and draws nothing yet', () => {
+    // The whole point of the PO's decision: the corners are the gesture, so
+    // nothing is on the board until the author has placed them.
+    const { tool, added } = armed();
+
+    expect(tool).toBe(PolygonTool);
+    expect(added).toEqual([]);
+  });
+
+  it('hands it exactly the zone the rectangle path would have drawn', () => {
+    const { option } = armed();
+
+    // Read off the pack rather than restated: a zone drawn corner by corner and
+    // a zone placed ready-made must be the same artefact, or a map would
+    // validate differently depending on which button drew it.
+    expect(option.props).toMatchObject({
+      type: 'wardleyNode',
+      kind: 'area',
+      role: WARDLEY_ROLE.area,
+      shapeType: 'polygon',
+      fillColor: AREA_FILL,
+      strokeColor: AREA_STROKE,
+      strokeWidth: AREA_STROKE_WIDTH,
+      textFitMode: TextFitMode.Overflow,
+    });
+    expect(option.props).not.toHaveProperty('text');
+  });
+
+  it('lowers the zone the tool creates, exactly as the ready-made one is', () => {
+    // A zone drawn last would paint over every component it groups and eat
+    // their clicks — the tool cannot know that, so the activation says it.
+    const map = fakeBackground('map', 'a0', '[0,0,1600,900]');
+    const component = fakePlain('component', 'a1', '[90,190,18,18]');
+    const { gfx, elements } = fakeGfx([map, component]);
+    activateWardleyAreaPolygon(gfx);
+    const [, option] = (gfx as unknown as { tool: { setTool: Mock } }).tool
+      .setTool.mock.calls[0] as [
+      unknown,
+      { onCreated: (gfx: unknown, id: string) => void },
+    ];
+
+    // What the tool does once the outline closes: the element is on the surface
+    // at the top of the stack, and the hook is handed its id.
+    const id = (
+      gfx as unknown as { surface: { addElement: (p: unknown) => string } }
+    ).surface.addElement({ xywh: '[100,100,200,200]' });
+    option.onCreated(gfx, id);
+
+    const index = elements.get(id)!.index;
+    expect(index > map.index).toBe(true);
+    expect(index < component.index).toBe(true);
+  });
+});
+
 /* ── The sub-menu ─────────────────────────────────────────────────────── */
 
 describe('the two commands', () => {
@@ -501,6 +578,15 @@ describe('the two commands', () => {
     // Both nominate the row — the PO's amendment of 2026-09-03 to ADR 0014 R4.
     expect(command.surfaces).toContain('senior-menu');
     expect(command.surfaces).toContain('catalogue');
+  });
+
+  it('places the rectangle and DRAWS the polygon', () => {
+    // One kind, two gestures — and the kind of the command is what says so. It
+    // is also what moves the polygon's event from `FrameworkElementAdded` to
+    // `FrameworkToolPicked`: a tool is picked, and the drawing may still be
+    // abandoned with Escape.
+    expect(find('wardley.addAreaRect').kind).toBe('artefact');
+    expect(find('wardley.addAreaPolygon').kind).toBe('tool');
   });
 
   it('declares them last of the toolbox, after the connectors', () => {

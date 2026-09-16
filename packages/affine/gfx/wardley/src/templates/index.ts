@@ -21,6 +21,7 @@ import {
   NODE_STROKE,
   WARDLEY_RED,
 } from '../node/consts';
+import { WARDLEY_AREA_SIZE, wardleyAreaProps } from '../presets';
 import { WARDLEY_ROLE } from '../roles';
 import { wardleyMaps } from './maps';
 
@@ -107,10 +108,10 @@ const areaPreview = (outline: string) =>
   `<svg ${ATTRS} fill="none">${outline}</svg>`;
 
 /**
- * The two hand-drawn palette swatches' own tile names (`Template.nameKey`):
- * neither derives from a command, since `linkTool` / `evolutionArrow`
- * activate a tool rather than draw anything (see `tpl` below and its
- * docstring).
+ * The three hand-drawn palette swatches' own tile names (`Template.nameKey`):
+ * none derives from a command, since `linkTool` / `evolutionArrow` /
+ * `addAreaPolygon` activate a tool rather than draw anything (see `tpl` below
+ * and its docstring).
  */
 export const WARDLEY_TEMPLATE_NAME_LINK: ChromeWording = [
   'com.labre.wardley.template.link',
@@ -119,6 +120,10 @@ export const WARDLEY_TEMPLATE_NAME_LINK: ChromeWording = [
 export const WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW: ChromeWording = [
   'com.labre.wardley.template.evolution-arrow',
   'Evolution arrow',
+];
+export const WARDLEY_TEMPLATE_NAME_AREA_POLYGON: ChromeWording = [
+  'com.labre.wardley.template.area-polygon',
+  'Area (polygon)',
 ];
 
 /** A hand-composed template — what is left once the artefacts are derived. */
@@ -138,7 +143,7 @@ function tpl(
 }
 
 /**
- * A zone, plus the one thing a snapshot cannot say.
+ * A zone card, plus the one thing a snapshot cannot say.
  *
  * `createWardleyArea` lowers the zone the moment it exists, to just above the
  * framework backgrounds it covers — otherwise the wash sits on top of every
@@ -146,9 +151,9 @@ function tpl(
  * ALREADY ON THE BOARD, which a snapshot knows nothing about, so the panel
  * replays it on the freshly inserted element instead.
  */
-function areaTemplate(id: string, preview: string): Template {
+function areaTemplate(template: Template): Template {
   return {
-    ...templateFromCommand(byId(id), preview),
+    ...template,
     afterInsert: (std, insertedIds) =>
       lowerWardleyArea(std.get(GfxControllerIdentifier), insertedIds[0]),
   };
@@ -261,15 +266,31 @@ export const wardleyTemplateCategory: TemplateCategory = {
       WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW[0]
     ),
     areaTemplate(
-      'wardley.addAreaRect',
-      areaPreview(
-        '<rect x="24" y="16" width="87" height="48" rx="2" fill="#c6dbfc" fill-opacity="0.25" stroke="#5b9cf6" stroke-width="1.5"/>'
+      templateFromCommand(
+        byId('wardley.addAreaRect'),
+        areaPreview(
+          '<rect x="24" y="16" width="87" height="48" rx="2" fill="#c6dbfc" fill-opacity="0.25" stroke="#5b9cf6" stroke-width="1.5"/>'
+        )
       )
     ),
+    // Hand-composed, like the two connector swatches and for the same reason:
+    // `wardley.addAreaPolygon` arms the polygon tool (#343) and draws nothing,
+    // so there is no action to record. A panel card cannot arm a tool — it
+    // inserts a snapshot — so the card keeps offering the zone ready-made, and
+    // the author who wants to place the corners uses the sub-menu. The props
+    // still come from the pack, so the two zones cannot disagree.
     areaTemplate(
-      'wardley.addAreaPolygon',
-      areaPreview(
-        '<path d="M67 12 L110 43 L94 68 H40 L24 43 Z" fill="#c6dbfc" fill-opacity="0.25" stroke="#5b9cf6" stroke-width="1.5" stroke-linejoin="round"/>'
+      tpl(
+        WARDLEY_TEMPLATE_NAME_AREA_POLYGON[1],
+        areaPreview(
+          '<path d="M67 12 L110 43 L94 68 H40 L24 43 Z" fill="#c6dbfc" fill-opacity="0.25" stroke="#5b9cf6" stroke-width="1.5" stroke-linejoin="round"/>'
+        ),
+        {
+          area: wardleyAreaProps('polygon', {
+            xywh: `[0,0,${WARDLEY_AREA_SIZE.polygon.w},${WARDLEY_AREA_SIZE.polygon.h}]`,
+          }),
+        },
+        WARDLEY_TEMPLATE_NAME_AREA_POLYGON[0]
       )
     ),
   ],
