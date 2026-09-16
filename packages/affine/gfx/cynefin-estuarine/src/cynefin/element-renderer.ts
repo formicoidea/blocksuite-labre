@@ -18,6 +18,7 @@ import {
   DASH_RECTS,
   DOMAINS,
   HATCHES,
+  HEADING_SIZE,
   MARKERS,
   REF_H,
   REF_W,
@@ -26,6 +27,7 @@ import {
   TEAL_PATH,
   TEAL_WIDTH,
 } from './consts';
+import { cynefinHeadingText } from './labels';
 
 /**
  * Canvas renderer for the Liminal Cynefin diagram — reproduces the official SVG:
@@ -133,8 +135,12 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   if (model.showTitles) {
     ctx.textAlign = 'left';
     ctx.fillStyle = COLORS.heading;
-    ctx.font = `700 30px ${FONT_FAMILY}`;
-    for (const d of DOMAINS) ctx.fillText(tr(d.heading), d.x, d.hy);
+    ctx.font = `700 ${HEADING_SIZE}px ${FONT_FAMILY}`;
+    // The user's own word when they have renamed this domain, the catalogue's
+    // otherwise — the same precedence a declared background applies.
+    for (const d of DOMAINS) {
+      ctx.fillText(cynefinHeadingText(model, d, tr), d.x, d.hy);
+    }
 
     ctx.textAlign = 'center';
     for (const m of MARKERS) {

@@ -11,6 +11,12 @@ export type CynefinProps = FrameworkBackgroundProps & {
   showDescriptions?: boolean;
   /** When false the teal "iterate" liminal curve is hidden. */
   showLiminalLine?: boolean;
+
+  // ── Editable domain headings (double-click on the canvas to edit) ─────
+  complexTitle?: string;
+  complicatedTitle?: string;
+  chaoticTitle?: string;
+  clearTitle?: string;
 };
 
 /**
@@ -41,6 +47,29 @@ export class CynefinElementModel extends FrameworkBackgroundElementModel<Cynefin
 
   @field(true)
   accessor showLiminalLine: boolean = true;
+
+  // ── Editable domain headings ──────────────────────────────────────────
+  //
+  // ADDITIVE and OPTIONAL, on the Wardley pattern: defaulted to `undefined`
+  // they stay absent from the Y.Map until something assigns them, so a diagram
+  // placed before this change carries none of them and is byte-identical to one
+  // placed after. Absent is also what lets the drawing fall through to the
+  // catalogue — a hard default here would put the four domains in English
+  // forever.
+  //
+  // The HEADINGS only: the decision sentences, the subheadings and the Aporia /
+  // Confusion markers are the notation itself and carry no prop.
+  @field()
+  accessor complexTitle: string | undefined = undefined;
+
+  @field()
+  accessor complicatedTitle: string | undefined = undefined;
+
+  @field()
+  accessor chaoticTitle: string | undefined = undefined;
+
+  @field()
+  accessor clearTitle: string | undefined = undefined;
 
   @field(0)
   accessor rotate: number = 0;

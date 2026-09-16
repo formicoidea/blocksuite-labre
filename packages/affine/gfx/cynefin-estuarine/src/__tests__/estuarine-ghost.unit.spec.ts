@@ -279,6 +279,20 @@ describe('estuarine ghost — renderer', () => {
     for (const entry of fillTexts) expect(entry.alpha).toBe(1);
   });
 
+  it('paints the legend the user renamed, not the one it shipped with', () => {
+    // Issue #355: a legend is renamed by double-clicking it, and everything
+    // downstream of the canvas — the reading panel, the SVG export — reads the
+    // same `estuarineLegendText`, so a word that reaches `fillText` reaches
+    // them too. The other two are untouched: one prop per legend.
+    const { fillTexts } = render(fakeMap({ liminalLabel: 'SEUIL' }));
+
+    expect(fillTexts.map(entry => entry.text)).toEqual([
+      'SEUIL',
+      'VOLATILE',
+      'COUNTER FACTUAL',
+    ]);
+  });
+
   it('builds each Path2D exactly once, on the first paint', () => {
     const first = estuarineCurves();
     render(fakeMap());

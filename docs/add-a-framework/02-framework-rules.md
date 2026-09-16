@@ -86,7 +86,13 @@ header instead.
 
 **R14. Extend `FrameworkBackgroundElementModel`; never copy its overrides.**
 Boards that re-implemented them were skipped by `instanceof` and dropped
-elements sank (PR #231).
+elements sank (PR #231). The same holds on the VIEW side: extend
+`DeclaredBackgroundView` — or `FrameworkBackgroundView` when the board paints
+its words without a declaration — from
+`packages/affine/blocks/surface/src/framework-background/background-view.ts`,
+and say only WHERE the labels are. Copying the in-place `<input>` instead is
+how four boards ended up with no double-click rename at all (issue #355); the
+gesture is pinned once, in `framework-background-view.unit.spec.ts`.
 
 ## Artefacts
 

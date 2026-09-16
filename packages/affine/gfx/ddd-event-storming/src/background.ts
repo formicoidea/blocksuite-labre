@@ -129,6 +129,10 @@ export const EVENT_STORMING_BACKGROUND: FrameworkBackgroundDef = {
       stroke: { color: '@axis', width: 6 },
       title: {
         id: 'timeAxisTitle',
+        // Renamable in place (issue #355): a workshop that storms a release
+        // rather than a day writes its own word under the arrow, and the
+        // catalogue keeps serving "Time" to every board that has not.
+        prop: 'timeAxisTitle',
         labelKey: 'com.labre.event-storming.background.axis.time',
         fallback: 'Time',
         // Pushed down with the SIZE, not just with the stroke.

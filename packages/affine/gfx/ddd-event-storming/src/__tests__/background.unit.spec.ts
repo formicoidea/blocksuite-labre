@@ -1,5 +1,6 @@
 import {
   backgroundAxisFact,
+  backgroundLabelText,
   backgroundSize,
 } from '@labre/affine-block-surface';
 import { ES_STICKIES } from '@labre/affine-gfx-ddd-shared';
@@ -35,6 +36,19 @@ describe('the event storming board declaration', () => {
       'com.labre.event-storming.background.axis.time'
     );
     expect(time.title?.fallback).toBe('Time');
+    // Renamable in place (issue #355): the prop wins over the catalogue, which
+    // wins over the shipped English — one reader, `backgroundLabelText`, for
+    // the canvas, the reading panel and the SVG export alike.
+    expect(time.title?.prop).toBe('timeAxisTitle');
+    expect(backgroundLabelText(time.title!, {})).toBe('Time');
+    expect(backgroundLabelText(time.title!, { timeAxisTitle: 'Déroulé' })).toBe(
+      'Déroulé'
+    );
+    // And the prop is a real field of the persisted board, not just a name in
+    // a declaration — the one drift this repo has ever had.
+    expect('timeAxisTitle' in EventStormingBoardElementModel.prototype).toBe(
+      true
+    );
     // The fact `es.against-timeline` reads: forward is +x, i.e. later is right.
     expect(
       backgroundAxisFact(EVENT_STORMING_BACKGROUND, 'time')?.forward

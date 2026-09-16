@@ -1,6 +1,9 @@
-import { FrameworkBackgroundInteractionExtension } from '@labre/affine-block-surface';
+import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
+import {
+  DeclaredBackgroundView,
+  FrameworkBackgroundInteractionExtension,
+} from '@labre/affine-block-surface';
 import type { EventStormingBoardElementModel } from '@labre/affine-model';
-import { GfxElementModelView } from '@labre/std/gfx';
 
 import { EVENT_STORMING_BACKGROUND } from './background';
 
@@ -8,12 +11,18 @@ import { EVENT_STORMING_BACKGROUND } from './background';
  * View for the Event Storming board. Registering it ensures `gfx.view.get(model)`
  * returns a view (required so move / select interactions work).
  *
- * No double-click label editor, unlike the Wardley map: the only text on the
- * card is the axis word, which the declaration owns and the model carries no
- * prop for — there is nothing here the user edits in place.
+ * Extends {@link DeclaredBackgroundView}, so the one word the board writes on
+ * itself — the time axis title — is renamed in place by a double-click, like
+ * every other framework background (issue #355). This file used to say the
+ * board had nothing to edit because the declaration bound no prop; binding one
+ * is the fix, and the gesture then comes for free.
  */
-export class EventStormingView extends GfxElementModelView<EventStormingBoardElementModel> {
+export class EventStormingView extends DeclaredBackgroundView<EventStormingBoardElementModel> {
   static override type: string = 'eventStorming';
+
+  protected override get def(): FrameworkBackgroundDef {
+    return EVENT_STORMING_BACKGROUND;
+  }
 }
 
 /**

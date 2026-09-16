@@ -1,4 +1,5 @@
-import { backgroundSize } from '@labre/affine-block-surface';
+import { backgroundSize, backgroundTexts } from '@labre/affine-block-surface';
+import { CoreDomainChartElementModel } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import { describe, expect, it } from 'vitest';
 
@@ -286,5 +287,44 @@ describe('the migration reading', () => {
       x2: 838,
       y2: 770,
     });
+  });
+});
+
+/**
+ * Renaming a label in place (issue #355).
+ *
+ * The chart had no such gesture: its words were i18n keys and nothing else, so
+ * a team whose axis is not called "Complexity" had nowhere to say so. Binding
+ * each drawn word to a prop is the whole fix — the renderer, the reading panel
+ * and the SVG export all read it through `backgroundLabelText`, so what is
+ * pinned here is that the chart PAINTS the user's word, and that every prop the
+ * declaration names is a real field of the persisted element.
+ */
+describe('the labels the user may rewrite', () => {
+  it("paints the user's own word in place of the vocabulary", () => {
+    const words = render(
+      chart({ differentiationTitle: 'Valeur métier', zoneCore: 'Cœur' })
+    ).texts.map(x => x.text);
+
+    expect(words).toContain('Valeur métier');
+    expect(words).not.toContain('Business differentiation');
+    expect(words).toContain('Cœur');
+    expect(words).not.toContain('Core');
+    // Untouched labels keep the vocabulary: one prop per drawn word.
+    expect(words).toContain('Complexity');
+  });
+
+  it('binds every drawn word to a real field of the chart', () => {
+    const props = backgroundTexts(CORE_DOMAIN_BACKGROUND).map(
+      text => text.prop
+    );
+
+    // Every word, no exception: three axis titles (two readings of the
+    // vertical one), the four Low/High ticks and the seven named zones.
+    expect(props.filter(prop => prop === undefined)).toEqual([]);
+    expect(new Set(props).size).toBe(props.length);
+    for (const prop of props) {
+      expect(prop! in CoreDomainChartElementModel.prototype).toBe(true);
+    }
   });
 });

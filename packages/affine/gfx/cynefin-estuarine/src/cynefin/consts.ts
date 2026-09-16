@@ -20,6 +20,15 @@ import type { ChromeWording } from '@labre/affine-shared/services';
 export const REF_W = 1080;
 export const REF_H = 777;
 
+/**
+ * Type size of a domain heading, in reference units.
+ *
+ * Named because two things read it: the renderer, which draws the word, and the
+ * hit test that offers it to a double-click. A size that lived only in the
+ * renderer's font string would let the target drift away from the word.
+ */
+export const HEADING_SIZE = 30;
+
 export const COLORS = {
   boundary: '#333333',
   teal: '#2a9d99',
@@ -207,6 +216,17 @@ const LINE_RESPOND_PRACTICES: ChromeWording = [
  */
 export interface DomainBlock {
   heading: ChromeWording;
+  /**
+   * The model prop the heading is renamed into (issue #355).
+   *
+   * The domain HEADINGS are the only words of this drawing a user may rewrite,
+   * and that line is drawn on notation rather than on effort: a team renames
+   * "Complex" to the word its own people use, but the Probe / Sense / Respond
+   * sentences, the "ordered system" subheadings and the Aporia / Confusion
+   * markers ARE Cynefin — rewriting them would leave a diagram that looks like
+   * the framework and no longer says what it says.
+   */
+  prop: string;
   /** Left edge shared by heading, subheading and body lines. */
   x: number;
   /** Heading (h1) baseline. */
@@ -226,6 +246,7 @@ export interface DomainBlock {
 export const DOMAINS: ReadonlyArray<DomainBlock> = [
   {
     heading: HEADING_COMPLEX,
+    prop: 'complexTitle',
     x: 37,
     hy: 31,
     subheading: SUBHEADING_ADAPTIVE,
@@ -253,6 +274,7 @@ export const DOMAINS: ReadonlyArray<DomainBlock> = [
   },
   {
     heading: HEADING_COMPLICATED,
+    prop: 'complicatedTitle',
     x: 779,
     hy: 31,
     subheading: SUBHEADING_ORDERED,
@@ -275,6 +297,7 @@ export const DOMAINS: ReadonlyArray<DomainBlock> = [
   },
   {
     heading: HEADING_CHAOTIC,
+    prop: 'chaoticTitle',
     x: 37,
     hy: 587,
     subheading: SUBHEADING_UNORDERED,
@@ -302,6 +325,7 @@ export const DOMAINS: ReadonlyArray<DomainBlock> = [
   },
   {
     heading: HEADING_CLEAR,
+    prop: 'clearTitle',
     x: 779,
     hy: 587,
     subheading: SUBHEADING_ORDERED,
