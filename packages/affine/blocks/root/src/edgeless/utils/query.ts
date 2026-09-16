@@ -92,6 +92,10 @@ export function getCursorMode(edgelessTool: ToolOptionWithType) {
       return drawingCursor;
     case 'eraser':
     case 'shape':
+    // The polygon tool is armed long before it draws anything — the first
+    // click only places a corner — so the cursor is the only thing that says
+    // the next click lands on the canvas rather than selecting.
+    case 'polygon':
     case 'connector':
     case 'frame':
     case 'affine:note':

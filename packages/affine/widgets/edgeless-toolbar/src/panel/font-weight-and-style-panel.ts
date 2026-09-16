@@ -8,6 +8,7 @@ import {
 import {
   type ChromeWording,
   FONT_STYLE_ITALIC,
+  FONT_WEIGHT_BOLD,
   FONT_WEIGHT_LIGHT,
   FONT_WEIGHT_REGULAR,
   FONT_WEIGHT_SEMIBOLD,
@@ -20,10 +21,17 @@ import { property } from 'lit/decorators.js';
 import { join } from 'lit/directives/join.js';
 import { repeat } from 'lit/directives/repeat.js';
 
+/**
+ * How each weight is named. The panel does not offer this list: it offers the
+ * faces the current family actually has loaded, and only borrows the wording
+ * from here — so a family that ships no 700 file simply never draws a Bold
+ * row.
+ */
 const FONT_WEIGHT_CHOOSE: [FontWeight, ChromeWording][] = [
   [FontWeight.Light, FONT_WEIGHT_LIGHT],
   [FontWeight.Regular, FONT_WEIGHT_REGULAR],
   [FontWeight.SemiBold, FONT_WEIGHT_SEMIBOLD],
+  [FontWeight.Bold, FONT_WEIGHT_BOLD],
 ];
 
 export class EdgelessFontWeightAndStylePanel extends LitElement {
