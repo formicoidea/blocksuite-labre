@@ -10,6 +10,7 @@ import {
 } from '@labre/affine-rich-text';
 import {
   calculateCollapsedSiblings,
+  isNativeFocusableTarget,
   matchModels,
 } from '@labre/affine-shared/utils';
 import { IS_MAC } from '@labre/global/env';
@@ -101,6 +102,8 @@ export const ParagraphKeymapExtension = KeymapExtension(
         return true;
       },
       Enter: ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const { store } = std;
         const text = std.selection.find(TextSelection);
         if (!text) return;
@@ -195,6 +198,8 @@ export const ParagraphKeymapExtension = KeymapExtension(
         return true;
       },
       Tab: ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [success] = std.command
           .chain()
           .pipe(canIndentParagraphCommand)
@@ -207,6 +212,8 @@ export const ParagraphKeymapExtension = KeymapExtension(
         return true;
       },
       'Shift-Tab': ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [success] = std.command
           .chain()
           .pipe(canDedentParagraphCommand)

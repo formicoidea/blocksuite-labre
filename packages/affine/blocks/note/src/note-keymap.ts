@@ -16,6 +16,7 @@ import {
 } from '@labre/affine-shared/commands';
 import {
   asyncGetBlockComponent,
+  isNativeFocusableTarget,
   matchModels,
 } from '@labre/affine-shared/utils';
 import {
@@ -434,6 +435,7 @@ class NoteKeymap {
 
   private readonly _onEnter = (ctx: UIEventStateContext) => {
     const event = ctx.get('defaultState').event;
+    if (isNativeFocusableTarget(event.target)) return;
     const [result] = this._std.command
       .chain()
       .pipe(getBlockSelectionsCommand)
@@ -569,6 +571,8 @@ class NoteKeymap {
       ...this._bindQuickActionHotKey(),
       ...this._bindTextConversionHotKey(),
       Tab: ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [success] = this.std.command.exec(indentBlocks);
 
         if (!success) return;
@@ -577,6 +581,8 @@ class NoteKeymap {
         return true;
       },
       'Shift-Tab': ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [success] = this.std.command.exec(dedentBlocks);
 
         if (!success) return;
