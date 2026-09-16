@@ -137,6 +137,21 @@ export class GfxViewEventManager {
   }
 
   /**
+   * Whether ANY view answers at a model point — "is this spot taken?" asked of
+   * the view layer rather than of the models.
+   *
+   * The two layers do not answer the same thing (see {@link _answersAt}), so
+   * whoever treats a point as empty canvas has to ask both: the model says
+   * "select me?", the view says "is this mine?". A framework background is the
+   * case that forced this out — it is picked by its border alone, yet its
+   * labels answer the double-click that renames them, so the model calls their
+   * zone empty while the view is about to use it.
+   */
+  hasViewAt(x: number, y: number): boolean {
+    return this._viewsAt(x, y).length > 0;
+  }
+
+  /**
    * The views under a MODEL point, in PAINT ORDER — the topmost last.
    *
    * One walk, used by the hover bookkeeping and by {@link _targetOf}, so "what
