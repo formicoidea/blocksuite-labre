@@ -564,9 +564,12 @@ describe('what the framework ships', () => {
    *
    * `c4.strict` is what contradicts that, for the board that CHOOSES it: it
    * rewrites eleven severities to `warning`, which the canvas does draw, and a
-   * canvas verdict has to be computed while the user draws. Two of the eleven
-   * declare the second moment themselves and keep it — the rule's own statement
-   * is the stronger one — so nine come back.
+   * canvas verdict has to be computed while the user draws. All eleven come
+   * back, the two that declare `moment: 'on-demand'` included — a level that
+   * NAMES a rule at a drawn severity is the statement that decides the moment
+   * (PO, 2026-09-16: "Specification is the check-up"). Before that recette those
+   * two kept their declared moment and were drawn by nothing at all, which was
+   * the whole of the bug.
    */
   describe('the level in force decides the moment', () => {
     /** Every rule `profileId` shows to nobody — `audit`, or silenced outright. */
@@ -580,13 +583,11 @@ describe('what the framework ships', () => {
       }).map(rule => rule.id);
     };
 
-    /** …plus the ones that declare the second moment whatever a level says. */
-    const declared = C4_RULES.filter(rule => rule.moment === 'on-demand').map(
-      rule => rule.id
-    );
-
-    const expected = (profileId: string) =>
-      [...new Set([...quietUnder(profileId), ...declared])].sort();
+    /**
+     * A declared `'on-demand'` is no longer added on top: both C4 tables NAME
+     * every rule, so what the level says about a rule is the whole answer.
+     */
+    const expected = (profileId: string) => [...quietUnder(profileId)].sort();
 
     it('takes the whole pack off the drawing path on the sketch default', () => {
       const ids = checkupRules(C4_RULES, [board()], C4_PROFILES)
@@ -608,10 +609,6 @@ describe('what the framework ships', () => {
       expect(ids).toEqual(expected('c4.strict'));
       expect(ids).toEqual(
         [
-          // Declared on-demand already, and promoted — the moment they declare
-          // themselves still wins, because it is the stronger statement.
-          UNLABELED_RELATIONSHIP,
-          UNNAMED_ELEMENT,
           // Audit at every level: never drawn, never computed on a gesture.
           ISOLATED_SYSTEM,
           ISOLATED_CONTAINER,

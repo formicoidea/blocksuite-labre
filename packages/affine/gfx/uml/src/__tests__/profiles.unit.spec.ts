@@ -20,11 +20,12 @@ import { umlTranslationEntries } from '../translations.js';
  */
 
 /**
- * The twenty-nine `uml.strict` promotes.
+ * The thirty-two `uml.strict` promotes.
  *
  * Eight restate a normative clause (§9.9.7 twice, §10.4.3, §18.1.3 twice,
  * §19.2.3, §19.3.3, §19.4.3), three are the NAMING rules, six are the SPELLING
- * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4, §17.4.4, §17.3.4), one is §11.5.3's
+ * ones (§9.5.4, §9.6.4, §14.2.4.8, §7.5.4, §17.4.4, §17.3.4), three are the
+ * behaviour sheets' MEMBERSHIP rules, one is §11.5.3's
  * arithmetic and one is the sheet's own declaration. Named for what the PROFILE
  * does and not for where the rules come from: `uml.dependency-on-object` and
  * `uml.actor-actor-association` also cite the specification and are NOT
@@ -74,10 +75,18 @@ const PROMOTED = [
   // word, which is the whole reason the role exists (`roles.ts`).
   'uml.unnamed-lifeline',
   'uml.lifeline-ident-syntax',
+  // ...and the behaviour sheets' three MEMBERSHIP rules (PO, 2026-09-16). A
+  // history pseudostate outside every region and an action outside every
+  // partition are glyphs whose whole meaning is the container they sit in —
+  // unlike a class parked beside its frame, which still reads as that class.
+  'uml.node-in-partition',
+  'uml.shallow-history-outside-region',
+  'uml.deep-history-outside-region',
 ];
 
 /**
- * The thirteen that stay an audit at every level — membership, and remarks.
+ * The ten that stay an audit at every level — membership on the class side, and
+ * remarks.
  *
  * `uml.object-flow-endpoints` is the one worth pausing on: it is an ENDPOINT
  * rule and every other one is promoted. §15.4.4 lets an action's pins be
@@ -94,9 +103,6 @@ const PANEL_ONLY = [
   'uml.untyped-edge',
   'uml.use-case-no-actor',
   'uml.object-flow-endpoints',
-  'uml.node-in-partition',
-  'uml.shallow-history-outside-region',
-  'uml.deep-history-outside-region',
   'uml.unreachable-action',
   'uml.unreachable-state',
 ];
@@ -148,16 +154,16 @@ describe('UML validation profiles', () => {
     }
   });
 
-  it('promotes the twenty-nine on the strict profile', () => {
+  it('promotes the thirty-two on the strict profile', () => {
     const [, strict] = UML_PROFILES;
-    expect(PROMOTED).toHaveLength(29);
+    expect(PROMOTED).toHaveLength(32);
     for (const id of PROMOTED) {
       expect(strict.rules[id], id).toBe('warning');
     }
   });
 
   it('keeps the panel-only rules an audit at BOTH levels', () => {
-    expect(PANEL_ONLY).toHaveLength(13);
+    expect(PANEL_ONLY).toHaveLength(10);
     for (const id of PANEL_ONLY) {
       for (const profile of UML_PROFILES) {
         expect(profile.rules[id], `${profile.id}/${id}`).toBe('audit');

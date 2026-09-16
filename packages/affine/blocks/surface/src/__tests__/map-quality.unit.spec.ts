@@ -18,6 +18,7 @@ import {
   type ValidationFrameworkDef,
   type ValidationProfile,
   type ValidationRule,
+  verdictPropsOf,
 } from '../extensions/validation.js';
 
 /**
@@ -303,10 +304,153 @@ describe('the on-demand moment (PF5.14)', () => {
       });
 
       it('guards the frames of an audit rule all the same', () => {
-        // `backgroundElementIds` reads the DECLARED moment and no level: an
-        // extra guarded frame costs one id and can never make a verdict wrong.
+        // `backgroundElementIds` reads the moment STATICALLY and never a chosen
+        // level: an extra guarded frame costs one id and can never make a
+        // verdict wrong.
         expect([...backgroundElementIds([AUDIT], on())]).toEqual(['frame']);
       });
+    });
+  });
+
+  /**
+   * **Specification IS the check-up** (PO recette of 2026-09-16).
+   *
+   * The arbitration above, for the rule that declares the second moment OUT
+   * LOUD. Until that recette an explicit `moment: 'on-demand'` won against any
+   * table, on the argument that a framework which made the declaration is not
+   * overruled by one. The consequence was a rule a level had explicitly raised
+   * to `'warning'` that was then drawn by nothing, ever: `uml.strict` promotes
+   * nine of them, the PO chose Specification, emptied a lifeline's head, and the
+   * canvas stayed silent.
+   *
+   * So a level that NAMES the rule at a drawn severity now decides the moment
+   * too. The narrow reading is the point: a promotion is a framework writing
+   * `'warning'` beside an id, and a rule a table merely fails to mention keeps
+   * whatever it declared, however its own severity happens to resolve.
+   */
+  describe('a level that PROMOTES a declared on-demand rule', () => {
+    const SKETCH: ValidationProfile = {
+      id: 'test.quality.sketch',
+      framework: 'test',
+      labelKey: 'com.labre.test.quality.sketch',
+      fallback: 'Sketch',
+      isDefault: true,
+      rules: {
+        'test.tone-off-convention': 'audit',
+        'test.majority-nature': 'audit',
+      },
+    };
+    const SPEC: ValidationProfile = {
+      id: 'test.quality.spec',
+      framework: 'test',
+      labelKey: 'com.labre.test.quality.spec',
+      fallback: 'Specification',
+      rules: {
+        'test.tone-off-convention': 'warning',
+        'test.majority-nature': 'audit',
+      },
+    };
+    const PACK = [SKETCH, SPEC];
+
+    /** The same board, with the frame switched to a level. A red node: the
+     *  tone convention sanctions greys, so it has something to say. */
+    const board = (profileId?: string) => [
+      element('frame', [0, 0, 1000, 1000], {
+        role: 'test:frame',
+        ...(profileId === undefined ? {} : { validationProfile: profileId }),
+      }),
+      element('n1', [100, 100, 20, 20], {
+        role: 'test:node',
+        strokeColor: '#d6455d',
+      }),
+    ];
+
+    it('leaves it on demand while every frame is on the default', () => {
+      // `test.quality.spec` is registered and promotes it — for nobody, because
+      // no frame on this surface has chosen it.
+      expect(evaluateRules([TONE], board(), PACK)).toEqual([]);
+      expect(checkupRules([TONE], board(), PACK).map(r => r.id)).toEqual([
+        'test.tone-off-convention',
+      ]);
+    });
+
+    it('puts it on the drawing path the moment a frame chooses that level', () => {
+      const raised = board('test.quality.spec');
+      const drawn = evaluateRules([TONE], raised, PACK);
+
+      expect(drawn.map(v => v.ruleId)).toEqual(['test.tone-off-convention']);
+      // …at the severity the level rewrote, which is what the canvas draws.
+      expect(drawn[0].severity).toBe('warning');
+      // …and it MOVES rather than doubling: a promoted rule leaves the check-up
+      // at the same moment it joins the gesture path.
+      expect(checkupRules([TONE], raised, PACK)).toEqual([]);
+    });
+
+    it('is not promoted by a level that stays silent about it', () => {
+      // A rule whose OWN severity is drawn, that no table mentions. The
+      // fallback resolves to `warning` — and a fallback is not a decision, so
+      // the framework's `'on-demand'` stands.
+      const LOUD: ValidationRule = {
+        ...TONE,
+        id: 'test.tone-loud',
+        severity: 'warning',
+      };
+
+      expect(evaluateRules([LOUD], board('test.quality.spec'), PACK)).toEqual(
+        []
+      );
+      expect(
+        checkupRules([LOUD], board('test.quality.spec'), PACK).map(r => r.id)
+      ).toEqual(['test.tone-loud']);
+    });
+
+    it('keeps `off` out of it, at either level', () => {
+      const SILENCED = [
+        SKETCH,
+        { ...SPEC, rules: { 'test.tone-off-convention': 'off' as const } },
+      ];
+
+      expect(
+        checkupRules([TONE], board('test.quality.spec'), SILENCED).map(
+          r => r.id
+        )
+      ).toEqual(['test.tone-off-convention']);
+    });
+
+    /**
+     * The frame bookkeeping and the watched props follow, or the promotion
+     * would raise the finding once — on the switch — and then never again.
+     *
+     * Both are computed ONCE, against the registry, before any frame has chosen
+     * anything, so they ask the static question: could ANY registered level
+     * promote this rule. Over-answering costs one id or one watched property;
+     * under-answering costs a verdict that never reappears.
+     */
+    it('guards the promoted rule’s frames, and watches the words it reads', () => {
+      // No registry: the declaration is the whole answer, exactly as before.
+      expect([...backgroundElementIds([TONE], board())]).toEqual([]);
+      // With the registry that promotes it: the frame is remembered.
+      expect([...backgroundElementIds([TONE], board(), PACK)]).toEqual([
+        'frame',
+      ]);
+
+      const NAMING: ValidationRule = {
+        ...TONE,
+        id: 'test.unnamed-node',
+        family: 'label-presence',
+      };
+      // Nobody promotes it: typing costs nothing, as it did before.
+      expect(verdictPropsOf([NAMING]).has('text')).toBe(false);
+      expect(verdictPropsOf([NAMING], PACK).has('text')).toBe(false);
+      // A level promotes it: `text` joins the props a keystroke re-judges on.
+      const promoting: ValidationProfile[] = [
+        SKETCH,
+        {
+          ...SPEC,
+          rules: { ...SPEC.rules, 'test.unnamed-node': 'warning' as const },
+        },
+      ];
+      expect(verdictPropsOf([NAMING], promoting).has('text')).toBe(true);
     });
   });
 

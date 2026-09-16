@@ -153,6 +153,14 @@ every transform.
 nobody. The default profile is the most permissive and writes nothing on the
 element. Changing profile leaves granted exceptions alone.
 
+**The strict profile IS the check-up** (PO, 2026-09-16): a level that NAMES a
+rule at a drawn severity puts it on the drawing path, `moment: 'on-demand'`
+included, so its findings appear on the canvas on the switch and on every edit
+afterwards. A rule nothing promotes keeps its declared moment and is reached
+only by `runCheckup`. A rule too costly for the gesture path therefore stays
+`audit` at EVERY level — that is the only way to keep it off, and it is what
+`uml.unreachable-*` does.
+
 **R22. Rules run only when a board of the framework exists on the surface.**
 A lone node is a sketch. A node beside a map _is_ judged and attributed to
 the nearest map: that is the "element outside its board" finding. Rules
