@@ -17,10 +17,12 @@ import {
   WidgetComponent,
   WidgetViewExtension,
 } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import { armArtefact } from '../placement/artefact-placement-tool.js';
 import {
   CATALOGUE_CATEGORY_KEY_PREFIX,
   type CatalogueGroup,
@@ -430,11 +432,19 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
   }
 
   /**
-   * Run the command. The panel STAYS OPEN.
+   * Arm an artefact, run anything else. The panel STAYS OPEN either way.
    *
-   * `runCommand` is the one bottleneck (ADR 0008): the telemetry and the usage
-   * measure are emitted there, and `surface: 'catalogue'` is what makes this
-   * panel distinguishable from the sub-menu in the numbers.
+   * An artefact row arms the placement tool exactly as the senior menu's does
+   * (PO decision, 2026-09-16): the ghost goes under the cursor and the click on
+   * the canvas says where. The panel is one gesture away from the board, so it
+   * can stay open behind the ghost.
+   *
+   * For everything else `runCommand` is the one bottleneck (ADR 0008): the
+   * telemetry and the usage measure are emitted there, and `surface:
+   * 'catalogue'` is what makes this panel distinguishable from the sub-menu in
+   * the numbers. An armed artefact reports at PLACEMENT instead, through the
+   * tool, so its `surface` reads `'senior-menu'` — the row it belongs to,
+   * whichever surface offered it.
    *
    * Staying open is the PO's call (recette, 27/08/2026), reversing the first
    * default: a catalogue is where a user furnishes a diagram, and furnishing is
@@ -443,6 +453,14 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
    * or a click on the canvas.
    */
   private _invoke(command: AnyCommandDescriptor) {
+    if (command.kind === 'artefact') {
+      armArtefact(
+        this.std.get(GfxControllerIdentifier),
+        command.owner,
+        command
+      );
+      return;
+    }
     runCommand(this.std, command, {
       surface: 'catalogue',
       source: 'toolbar:general',

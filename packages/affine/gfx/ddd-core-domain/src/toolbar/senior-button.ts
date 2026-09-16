@@ -8,4 +8,5 @@ export class EdgelessDddCoreDomainSeniorButton extends DddSeniorButtonBase {
   protected override label = 'Core Domain Chart';
   protected override labelKey = 'com.labre.framework.ddd-core-domain';
   protected override icon = coreDomainToolbarIcon;
+  protected override owner = 'ddd-core-domain' as const;
 }

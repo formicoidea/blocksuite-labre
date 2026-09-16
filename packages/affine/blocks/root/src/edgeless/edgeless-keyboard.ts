@@ -48,6 +48,7 @@ import {
 } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import {
+  cycleArmedArtefact,
   EDGELESS_TOOLBAR_WIDGET,
   EdgelessCommandMenu,
   type EdgelessToolbarWidget,
@@ -246,13 +247,23 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         'Shift-s': () => {
           // Over an open senior menu the very same keystroke steps backwards
           // through the artefacts it offers — the shape tool's "previous
-          // variant", applied to the row a framework opened.
+          // variant", applied to the row a framework opened. With an artefact
+          // armed the menu walks the TOOL instead, so the ghost moves with the
+          // highlight.
           const menu = this._seniorMenu;
           if (menu) {
             menu.cycle(-1);
             return;
           }
           if (this.rootComponent.service.locked) return;
+          // The same walk with no menu open: the framework's row is what the
+          // armed artefact belongs to, whether or not it is on screen.
+          if (
+            !this.rootComponent.service.selection.editing &&
+            cycleArmedArtefact(rootComponent.gfx, -1)
+          ) {
+            return;
+          }
           const controller = rootComponent.gfx.tool.currentTool$.peek();
           if (
             this.rootComponent.service.selection.editing ||
