@@ -181,6 +181,21 @@ import { UML_ROLE, UML_ROLES } from './roles.js';
  *   which touches their ids, their message keys, both profiles and the host
  *   catalogues — a change worth making on its own rather than smuggled in
  *   beside fifteen new rules. Recorded here so it stays a decision.
+ *
+ *   **2026-09-16: the rename is BLOCKED, and the list above is why it looked
+ *   cheap.** It misses the one reader that is not code: a DOCUMENT. An id is
+ *   not merely declared and displayed, it is STORED — "excuse this finding"
+ *   writes it into the element's own
+ *   `GfxPrimitiveElementModel.validationExceptions`, a `@field()`, so it lands
+ *   in the Y.Map, syncs to every peer and survives a copy. Rename the rule and
+ *   no stored exception matches it any more: every waiver a user granted
+ *   against these two lapses in silence, the finding returns on a board that
+ *   had settled it, and the orphaned entry stays behind for good. Only
+ *   `validationProfile` was thought to reach a document; exceptions are the
+ *   second path and they are keyed by RULE id. So the wording can still be
+ *   widened — `messageFallback` and the message keys are display and nothing
+ *   stores them — but the IDS are frozen until something migrates
+ *   `validationExceptions`, which is a store concern. See `docs/adr/0017`.
  * - **one beginning per REGION** rather than per sheet. §14.5.6.4 bounds the
  *   initial vertex per Region and a state machine with three composite states
  *   legitimately draws four discs; `role-count` counts per instance of ONE
@@ -1157,9 +1172,16 @@ const unnamedClassifier: ValidationRule = {
  * shape. `label-presence` reads the subject's own words and cannot see what the
  * text is grouped WITH.
  *
- * So the id names the tier rather than either shape, the sentence fits both, and
- * the day a family can ask "which kind of artefact is this text grouped with"
- * the rule splits in two with no data to migrate.
+ * So the SUBJECT is the tier rather than either shape — `appliesTo` is
+ * `UML_ROLE.label` and says so — the sentence fits both, and the day a family
+ * can ask "which kind of artefact is this text grouped with" the rule splits in
+ * two with no data to migrate.
+ *
+ * The ID does not say that, and it is stuck not saying it: `uml.unnamed-label`
+ * is the name this rule should carry, and the id is frozen because documents
+ * store it (see the "what this pack does NOT report" note above). The tier is
+ * therefore stated here and in `appliesTo`, which is where a reader who needs
+ * it will look.
  */
 const unnamedActorOrUseCase: ValidationRule = {
   id: 'uml.unnamed-actor-or-use-case',

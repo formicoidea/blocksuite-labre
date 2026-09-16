@@ -201,3 +201,25 @@ clause (interaction overview and timing) so a reader of that clause finds them.
 §7's "no importer in phase 1" was already closed by
 [0019](0019-uml-import-formats.md); phase 3 adds no capability, only sequence
 content to the three formats already declared.
+
+**2026-09-16 (hygiene).** A published rule id is FROZEN, and the reason is that
+documents hold it. PF-UML.5 proposed renaming `uml.unnamed-classifier` and
+`uml.unnamed-actor-or-use-case` to name the tier each one reads (`uml:name`,
+`uml:label`) rather than the artefacts it is about — the two ids are the odd
+pair in the pack, and `rules.ts` argues at length for the tier reading. The
+rename was NOT made: `GfxPrimitiveElementModel.validationExceptions` is a
+`@field()`, so "excuse this finding" (`ValidationManager.setException`, the
+violation detail widget) writes the rule id itself into the element's Y.Map,
+where it syncs to every peer, joins the undo stack and survives a copy. A
+renamed id does not match a stored exception, so every waiver a user has
+granted against these two rules would silently lapse and the finding would come
+back on documents that had already settled it — with the orphaned entry left
+behind for good.
+
+Only PROFILE ids were thought to reach a document (`validationProfile`, §PF9.1);
+exceptions are the second path and they are keyed by RULE id. So the naming a
+rule id carries is fixed at the moment it ships, and the tier a rule reads is
+documented where it costs nothing to say — in `rules.ts`, beside the
+declaration, which is where it is said today. Any future renaming needs a
+migration that rewrites stored `validationExceptions`, which is a
+`packages/framework/store` concern and a red zone.

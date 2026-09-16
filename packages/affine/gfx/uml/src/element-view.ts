@@ -37,6 +37,7 @@ import {
   umlOperandGuardAt,
 } from './board-hit.js';
 import { UML_OPERAND_MIN_HEIGHT } from './consts.js';
+import { umlFragmentAsPainted } from './element-renderer.js';
 
 /**
  * The one gesture every UML frame carries: a double-click on the name edits it
@@ -67,6 +68,23 @@ abstract class UmlFrameView<
 > extends GfxElementModelView<T> {
   /** The declaration this view hit-tests against — the one the renderer paints. */
   protected abstract get def(): FrameworkBackgroundDef;
+
+  /**
+   * The model this view hit-tests against — the one the RENDERER was handed.
+   *
+   * The stored model for every frame but one, and the hook exists for that one:
+   * a combined fragment paints through `umlFragmentAsPainted`, which hides a
+   * declared `name` that operand zero's guard already covers. The boxes
+   * `backgroundLabelHits` derives are only the drawn words if they are derived
+   * from the same declaration — otherwise the suppressed corner stays clickable
+   * and opens an editor on a string nothing paints.
+   *
+   * A getter and not a cached value: the props it reads are the document's, and
+   * a view outlives every edit to them.
+   */
+  protected get _painted(): T {
+    return this.model;
+  }
 
   /** The in-place `<input>` used to edit the name, or null when idle. */
   private _editor: HTMLInputElement | null = null;
@@ -114,9 +132,13 @@ abstract class UmlFrameView<
       ly = uy - by;
     }
 
+    // The GEOMETRY above is the element's own, and the DECLARATION here is the
+    // painted one: the two differ only in the props the renderer suppresses,
+    // and a box is a drawn label's box only if it was derived from the words
+    // that were drawn. See {@link _painted}.
     const hits = backgroundLabelHits(
       this.def,
-      this.model as unknown as Record<string, unknown>,
+      this._painted as unknown as Record<string, unknown>,
       w,
       h,
       this.gfx.std.getOptional(TranslationProvider)
@@ -453,6 +475,22 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
 
   protected override get def(): FrameworkBackgroundDef {
     return UML_FRAGMENT_FRAME;
+  }
+
+  /**
+   * The suppression the renderer applies, read back here so the rename boxes
+   * are the drawn words and nothing else.
+   *
+   * On a SPLIT fragment written by an older build the stored model carries both
+   * `name` and `operands`, and the canvas paints operand zero's guard over the
+   * declared one's corner — i.e. paints `name` nowhere. `umlFragmentAsPainted`
+   * is the single statement of which of the two wins; calling it here is what
+   * keeps {@link _renameTargetAt}'s fallback from opening an editor on the
+   * invisible corner. The operand branch of that method is unaffected: it reads
+   * `operands`, which the suppression never touches.
+   */
+  protected override get _painted(): UmlFragmentElementModel {
+    return umlFragmentAsPainted(this.model);
   }
 
   override onCreated(): void {
