@@ -20,7 +20,6 @@ import {
  *
  *  - events    — envelope (message), clock (timer), solid disc (terminate);
  *  - tasks     — a person (user) or a gear (service) in the top-left corner;
- *  - activity  — the `+` box at the bottom edge (sub-process, call activity);
  *  - gateway   — the X (exclusive) or the `+` (parallel);
  *  - data      — folded page, cylinder, open bracket.
  *
@@ -42,6 +41,13 @@ import {
  *   two and the one that is legible zoomed out.
  * - The **timer** has no hour ticks and the **data store** no shelf lines: at
  *   the sizes this canvas draws them, both read as noise around the shape.
+ * - The **collapsed `[+]`** of the sub-process and the call activity is not
+ *   drawn at all. In bpmn.io that boxed plus is a BUTTON — it unfolds the
+ *   process the box stands for. Labre has no such gesture: a process defined
+ *   elsewhere is a linked document, which carries a symbol of its own. Drawn
+ *   here the marker would promise an action nothing performs, so the two kinds
+ *   are bare and the call activity is told apart by its thick border, a
+ *   creation-time preset (`CALL_ACTIVITY_WIDTH` in `consts.ts`).
  *
  * Mirrors the EDGY node renderer.
  */
@@ -50,13 +56,19 @@ import {
  * The artefacts BPMN draws BARE — a plain native shape with nothing on it.
  * Everything else in the union is decorated here.
  *
- * `group` is bare for a different reason from the other three. They are
- * undecorated because the notation puts no marker on them; the group has a
- * distinctive look — a dashed, rounded, unfilled rectangle — and it is here
- * because that look is expressible as a native shape's own properties
- * (`strokeStyle: dash`, `radius`, `filled: false`). Drawing it by hand would
- * have meant re-implementing dashes the shape renderer already does, and losing
- * the editability that comes free with them.
+ * Three of them are here because the notation puts no marker on them at all.
+ * The other three are here for reasons of their own:
+ *
+ * - `group` has a distinctive look — a dashed, rounded, unfilled rectangle —
+ *   and it is bare because that look is expressible as a native shape's own
+ *   properties (`strokeStyle: dash`, `radius`, `filled: false`). Drawing it by
+ *   hand would have meant re-implementing dashes the shape renderer already
+ *   does, and losing the editability that comes free with them.
+ * - `subProcess` and `callActivity` do carry a marker in the notation — the
+ *   collapsed `[+]` — and Labre drops it on purpose, because here it opens
+ *   nothing (see the note on simplifications above). What tells the call
+ *   activity from the sub-process is its thick border, a creation-time preset
+ *   rather than anything drawn here.
  *
  * Written as the short list rather than the long one, so that the glyph kinds
  * are DERIVED from the model's union instead of restated beside it: a kind
@@ -70,6 +82,8 @@ const UNDECORATED_KINDS = {
   startEvent: true,
   endEvent: true,
   task: true,
+  subProcess: true,
+  callActivity: true,
   group: true,
 } as const;
 
@@ -240,31 +254,6 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
       ctx.moveTo(ox + Math.cos(a) * rBody, oy + Math.sin(a) * rBody);
       ctx.lineTo(ox + Math.cos(a) * rOuter, oy + Math.sin(a) * rOuter);
     }
-    ctx.stroke();
-    return;
-  }
-
-  if (kind === 'subProcess' || kind === 'callActivity') {
-    // The collapsed marker: a small boxed `+` on the bottom edge, saying
-    // "there is a whole process folded up in here". The call activity carries
-    // the SAME marker — what tells the two apart is its thick border, which is
-    // a creation-time preset rather than anything drawn here.
-    const side = unit * 0.2;
-    const bx = cx;
-    const by = h - unit * 0.1 - side / 2;
-    const half = side / 2;
-    const arm = side * 0.3;
-    ctx.lineWidth = Math.max(1, unit * 0.028);
-    ctx.beginPath();
-    ctx.moveTo(bx - half, by - half);
-    ctx.lineTo(bx + half, by - half);
-    ctx.lineTo(bx + half, by + half);
-    ctx.lineTo(bx - half, by + half);
-    ctx.lineTo(bx - half, by - half);
-    ctx.moveTo(bx - arm, by);
-    ctx.lineTo(bx + arm, by);
-    ctx.moveTo(bx, by - arm);
-    ctx.lineTo(bx, by + arm);
     ctx.stroke();
     return;
   }
