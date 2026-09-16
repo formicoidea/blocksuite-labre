@@ -99,10 +99,22 @@ export const ESTUARINE_CANVAS_WORDINGS: readonly ChromeWording[] = [
   LABEL_VOLATILE,
 ];
 
-/** Uppercase legends: anchored centre, alphabetic baseline, with letter-spacing. */
+/**
+ * Uppercase legends: anchored centre, alphabetic baseline, with letter-spacing.
+ *
+ * `prop` names the model key a double-click renames the legend into (issue
+ * #355), and `visibleProp` the toggle that shows it — the legend is painted
+ * with its curve and hidden with it, so it is aimable exactly when it is drawn.
+ *
+ * The three legends and nothing else: the italic `e` / `t` axis letters are
+ * notation, not words (PO decision, and the reason they carry no i18n key
+ * either), so they are not renamable.
+ */
 export const LABELS = {
   counterfactual: {
     wording: LABEL_COUNTERFACTUAL,
+    prop: 'counterfactualLabel',
+    visibleProp: 'showCounterfactual',
     x: 422,
     y: 25,
     size: 20,
@@ -110,6 +122,8 @@ export const LABELS = {
   },
   liminal: {
     wording: LABEL_LIMINAL,
+    prop: 'liminalLabel',
+    visibleProp: 'showLiminal',
     x: 316,
     y: 192,
     size: 18,
@@ -117,6 +131,8 @@ export const LABELS = {
   },
   volatile: {
     wording: LABEL_VOLATILE,
+    prop: 'volatileLabel',
+    visibleProp: 'showVolatile',
     x: 219,
     y: 783,
     size: 20,

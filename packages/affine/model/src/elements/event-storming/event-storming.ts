@@ -4,7 +4,10 @@ import { field } from '@labre/std/gfx';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 
-export type EventStormingBoardProps = FrameworkBackgroundProps;
+export type EventStormingBoardProps = FrameworkBackgroundProps & {
+  /** The one word on the board, renamed by double-clicking it. */
+  timeAxisTitle?: string;
+};
 
 /**
  * The Event Storming board: the paper roll a Big Picture is stormed on.
@@ -25,12 +28,10 @@ export type EventStormingBoardProps = FrameworkBackgroundProps;
  * have. The v2 note lives here so the day lanes land, the reason they were not
  * here is on the record.
  *
- * Adds no field of its own beyond the primitive's `resizeEnabled`, so a board
- * is byte-identical to what {@link FrameworkBackgroundElementModel} already
- * persists. It is created 3200 × 1400 — a Big Picture is WIDE, because the
- * timeline is the point — and freely resizable in both directions: the roll
- * grows sideways all morning as events are remembered, and locking its
- * proportion would fight the hand.
+ * It is created 3200 × 1400 — a Big Picture is WIDE, because the timeline is
+ * the point — and freely resizable in both directions: the roll grows sideways
+ * all morning as events are remembered, and locking its proportion would fight
+ * the hand.
  */
 export class EventStormingBoardElementModel extends FrameworkBackgroundElementModel<EventStormingBoardProps> {
   get type() {
@@ -39,6 +40,18 @@ export class EventStormingBoardElementModel extends FrameworkBackgroundElementMo
 
   @field(true)
   accessor resizeEnabled: boolean = true;
+
+  /**
+   * The word written under the time arrow, when the user has renamed it.
+   *
+   * ADDITIVE and OPTIONAL, on the Wardley pattern: defaulted to `undefined` it
+   * stays absent from the Y.Map until something assigns it, so a board stormed
+   * before this change carries no such key and is byte-identical to one stormed
+   * after. Absent is also what lets the declaration fall through to its i18n
+   * key — a hard default here would put the board in English forever.
+   */
+  @field()
+  accessor timeAxisTitle: string | undefined = undefined;
 
   @field(0)
   accessor rotate: number = 0;
