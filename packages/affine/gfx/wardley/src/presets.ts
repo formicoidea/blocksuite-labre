@@ -30,6 +30,7 @@ import {
   INERTIA_COLOR,
   LABEL_DEFAULT,
   LABEL_FONT_SIZE,
+  LABEL_GAP,
   MARKET_DOT_RING,
   MARKET_DOT_SIZE,
   MARKET_DOT_STROKE_WIDTH,
@@ -333,6 +334,70 @@ export const WARDLEY_LABEL_H = LABEL_FONT_SIZE + 8;
  * the words end on a given edge is to start the box a full width before it.
  */
 export const WARDLEY_LABEL_W = 120;
+
+/**
+ * Where a kind carries its NAME, and how the words sit in the box.
+ *
+ * The one description of a placement the four creation sites and the morph all
+ * read. Restated at each site it had already started to drift — and a morph
+ * that rewrites the BOX of an artefact without knowing where that kind holds
+ * its name leaves the words under the new drawing, which is W3's overlap and a
+ * label the pointer can no longer reach.
+ *
+ * `place` is the coarse half of the answer, and the only one a morph acts on:
+ * the three circles and the two arrows all wear their name BESIDE them, so an
+ * artefact that grows from one to the next leaves the words exactly where they
+ * are; the pipeline is the one kind that holds it ABOVE, and crossing between
+ * the two is what has to move something.
+ */
+export type WardleyLabelPlacement = {
+  x: number;
+  y: number;
+  textAlign: 'left' | 'center' | 'right';
+  place: 'beside' | 'above';
+};
+
+/** Where a node of one kind, centred on (cx, cy), carries its label. */
+export function wardleyLabelBoxFor(
+  kind: WardleyLabelledKind,
+  cx: number,
+  cy: number
+): WardleyLabelPlacement {
+  const { w } = WARDLEY_NODE_SIZE[kind];
+
+  // A pipeline is a 120-wide bar, and a name written to the right of it would
+  // stand a bar's length away from the thing it names. So the words go above
+  // the handle, centred on the body.
+  if (kind === 'pipeline') {
+    const top = cy - WARDLEY_NODE_SIZE.pipeline.h / 2;
+    return {
+      x: cx - WARDLEY_LABEL_W / 2,
+      y: top - HANDLE_SIZE / 2 - WARDLEY_LABEL_H - LABEL_GAP,
+      textAlign: 'center',
+      place: 'above',
+    };
+  }
+
+  // A decelerator points LEFT, and the reference puts the words on the side the
+  // arrow's shaft is on so the reading runs into the arrow rather than across
+  // it. A label box is a fixed width whatever it reads, so a right-aligned one
+  // has to start a box-width before the edge its words must end on.
+  if (kind === 'decelerator') {
+    return {
+      x: cx - w / 2 - LABEL_GAP - WARDLEY_LABEL_W,
+      y: cy - WARDLEY_LABEL_H / 2,
+      textAlign: 'right',
+      place: 'beside',
+    };
+  }
+
+  return {
+    x: cx + w / 2 + LABEL_GAP,
+    y: cy - WARDLEY_LABEL_H / 2,
+    textAlign: 'left',
+    place: 'beside',
+  };
+}
 
 /**
  * The NAME beside an artefact, as props — a native free-text element.
