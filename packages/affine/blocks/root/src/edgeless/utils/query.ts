@@ -96,6 +96,10 @@ export function getCursorMode(edgelessTool: ToolOptionWithType) {
     // click only places a corner — so the cursor is the only thing that says
     // the next click lands on the canvas rather than selecting.
     case 'polygon':
+    // An armed framework artefact: the ghost says WHAT lands, the crosshair
+    // says WHERE — and it is all there is for an artefact with nothing drawable
+    // to preview (a lone connector).
+    case 'artefact-placement':
     case 'connector':
     case 'frame':
     case 'affine:note':
