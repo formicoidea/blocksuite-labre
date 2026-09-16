@@ -1,6 +1,7 @@
 import { textKeymap } from '@labre/affine-inline-preset';
 import { ListBlockSchema } from '@labre/affine-model';
 import { getSelectedModelsCommand } from '@labre/affine-shared/commands';
+import { isNativeFocusableTarget } from '@labre/affine-shared/utils';
 import { IS_MAC } from '@labre/global/env';
 import { KeymapExtension, TextSelection } from '@labre/std';
 
@@ -20,6 +21,8 @@ export const ListKeymapExtension = KeymapExtension(
   std => {
     return {
       Enter: ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const text = std.selection.find(TextSelection);
         if (!text) return false;
 
@@ -48,6 +51,8 @@ export const ListKeymapExtension = KeymapExtension(
         return true;
       },
       Tab: ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [_, { selectedModels }] = std.command
           .chain()
           .pipe(getSelectedModelsCommand, {
@@ -72,6 +77,8 @@ export const ListKeymapExtension = KeymapExtension(
         return true;
       },
       'Shift-Tab': ctx => {
+        if (isNativeFocusableTarget(ctx.get('keyboardState').raw.target))
+          return;
         const [_, { selectedModels }] = std.command
           .chain()
           .pipe(getSelectedModelsCommand, {
