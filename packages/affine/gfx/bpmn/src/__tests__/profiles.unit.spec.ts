@@ -417,13 +417,14 @@ describe('what the framework ships as rules', () => {
       }).map(rule => rule.id);
     };
 
-    /** …plus the ones that declare the second moment whatever a level says. */
-    const declared = ALL_RULES.filter(rule => rule.moment === 'on-demand').map(
-      rule => rule.id
-    );
-
-    const expected = (profileId: string) =>
-      [...new Set([...quietUnder(profileId), ...declared])].sort();
+    /**
+     * A declared `'on-demand'` is no longer added on top: both BPMN levels
+     * NAME every rule, so what the level says about a rule is the whole answer
+     * (PO, 2026-09-16: "Specification is the check-up"). Under the sketch
+     * default that is the same set as before; under the descriptive level the
+     * graph sweep it promotes to `warning` runs while the user draws.
+     */
+    const expected = (profileId: string) => [...quietUnder(profileId)].sort();
 
     it('takes the whole pack off the drawing path on the sketch default', () => {
       // Twenty-two rules, none of which the sketch shows: a process drawn at
@@ -446,8 +447,8 @@ describe('what the framework ships as rules', () => {
         .sort();
 
       // Derived from the table, never counted by hand: the five the level
-      // leaves at `audit`, plus the graph sweep that declares the moment
-      // itself. Everything else is judged while the user draws again.
+      // leaves at `audit`. Everything else — the graph sweep included, since
+      // the level names it at `warning` — is judged while the user draws.
       expect(checkup).toEqual(expected('bpmn.descriptive'));
       expect(checkup).toEqual([
         'bpmn.activity-dead-end',
@@ -455,7 +456,6 @@ describe('what the framework ships as rules', () => {
         'bpmn.implicit-split',
         'bpmn.single-blank-start',
         'bpmn.unlabeled-step',
-        'bpmn.unreachable-step',
       ]);
     });
   });

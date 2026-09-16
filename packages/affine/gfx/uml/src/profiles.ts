@@ -20,8 +20,23 @@ import type { ValidationProfile } from '@labre/affine-block-surface';
  * Every severity a user can get is either the one its rule declares or one of
  * these lines — nothing is raised implicitly (PF9.4). Spelling them all out is
  * what makes the level READABLE: a reviewer asking what `uml.strict` requires
- * reads twenty-nine lines here instead of one file per rule, and a rule shipped
+ * reads thirty-two lines here instead of one file per rule, and a rule shipped
  * later cannot join a level in silence.
+ *
+ * ## Specification IS the check-up (PO, 2026-09-16)
+ *
+ * A promotion in the table below does two things now, not one. It raises the
+ * severity, as it always did; and when the rule declared `moment: 'on-demand'`
+ * it also puts the rule back on the DRAWING path, so its findings appear on the
+ * canvas like any other warning, on the switch and on every edit afterwards
+ * (`ValidationManager`'s `momentOf`). Nine of the rules promoted here are
+ * declared on-demand, and until that recette every one of them was raised to
+ * `warning` by this table and then drawn by nothing at all.
+ *
+ * The corollary is the cost note: a rule promoted here is a rule the frame
+ * budget pays for. `uml.unreachable-action` and `uml.unreachable-state` are
+ * graph walks and stay `audit` at BOTH levels partly for that reason — they
+ * remain on-demand, and a host that wants them asks for a check-up.
  *
  * That is also what the later phases cost: three rules arrived with the
  * structural sheets, fifteen more with the behaviour ones and four with the
@@ -117,7 +132,7 @@ const sketch: ValidationProfile = {
  *
  * The level somebody chooses when a diagram stops being a thinking aid and
  * becomes something another team — or a generator, or an XMI importer — will be
- * handed. TWENTY-NINE rules move to `warning`, and the test each one passes is
+ * handed. THIRTY-TWO rules move to `warning`, and the test each one passes is
  * the test this library always applies: whether the diagram might honestly have
  * meant it.
  *
@@ -155,7 +170,12 @@ const sketch: ValidationProfile = {
  * document, and the author has already spoken, which makes it the easiest
  * promotion in the table.
  *
- * ## The thirteen that do NOT move, and why the table spells them out
+ * Three are MEMBERSHIP on the behaviour sheets — a history outside every region,
+ * an action outside every partition — and they are the promotions the recette of
+ * 2026-09-16 added. The reasoning, and why the class-side membership rules did
+ * not come with them, is on the lines themselves.
+ *
+ * ## The ten that do NOT move, and why the table spells them out
  *
  * `uml.element-outside-frame`, `uml.use-case-outside-subject`,
  * `uml.actor-inside-subject`, `uml.dependency-on-object`,
@@ -270,6 +290,28 @@ const strict: ValidationProfile = {
     // the exported participant will carry a name the picture does not show.
     'uml.unnamed-lifeline': 'warning',
     'uml.lifeline-ident-syntax': 'warning',
+    // The three MEMBERSHIP rules of the behaviour sheets (PO, 2026-09-16).
+    //
+    // They were `audit` here until the recette, filed with the class-side three
+    // on the argument that where a glyph sits is a drawing decision — a history
+    // placed beside the composite state because the box is too small, an action
+    // parked between two lanes while the lanes are being redrawn. The PO settled
+    // it the other way for the BEHAVIOUR sheets, and the distinction holds: a
+    // class parked beside its frame still reads as that class, whereas a history
+    // pseudostate outside every region and an action outside every partition are
+    // glyphs whose whole MEANING is the container they are in. §14.2.4 makes the
+    // history a vertex OF a region — it is what "resume where this region left
+    // off" is about — and §15.6.3 makes a partition the statement of who
+    // performs the action. Drawn outside, neither says anything at all, and at
+    // the level where somebody has called the sheet a deliverable that is not a
+    // matter of taste.
+    //
+    // The three class-side membership rules below are NOT promoted with them,
+    // for the reason the header gives: each has a second reading under which the
+    // author is right, and these three do not.
+    'uml.node-in-partition': 'warning',
+    'uml.shallow-history-outside-region': 'warning',
+    'uml.deep-history-outside-region': 'warning',
     // The seven that do not move — see the header.
     'uml.element-outside-frame': 'audit',
     'uml.use-case-outside-subject': 'audit',
@@ -278,7 +320,7 @@ const strict: ValidationProfile = {
     'uml.actor-actor-association': 'audit',
     'uml.untyped-edge': 'audit',
     'uml.use-case-no-actor': 'audit',
-    // …and the six the behaviour sheets add to that list.
+    // …and the three the behaviour sheets add to that list.
     //
     // `uml.object-flow-endpoints` is the ONE endpoint rule this level leaves
     // alone, and the reason is §15.4.4: an action's pins may be elided, a pin IS
@@ -287,14 +329,6 @@ const strict: ValidationProfile = {
     // pin to draw, so promoting it would harden a remark the author cannot act
     // on.
     'uml.object-flow-endpoints': 'audit',
-    // The three MEMBERSHIP rules, for the reason the class-side three stay
-    // here: where a glyph sits on the canvas is a drawing decision, and each has
-    // a reading under which the author is right — an action parked between two
-    // lanes while the lanes are being redrawn, a history placed beside the
-    // composite state it belongs to because the box is too small.
-    'uml.node-in-partition': 'audit',
-    'uml.shallow-history-outside-region': 'audit',
-    'uml.deep-history-outside-region': 'audit',
     // The two graph walks. "Nothing reaches this" is true of most of a diagram
     // for most of the time it is being drawn, and it is already `on-demand` for
     // that reason (`rules.ts`) — a level of requirement that hardened it would

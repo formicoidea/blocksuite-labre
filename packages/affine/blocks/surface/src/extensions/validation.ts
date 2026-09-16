@@ -1848,18 +1848,19 @@ function backgroundsOf(
  * measures against have nothing to invalidate — and a framework whose only rules
  * are on-demand has no incremental pass to protect in the first place.
  *
- * The DECLARED moment, deliberately, and not the one the levels in force decide
- * ({@link momentOf}): this is a set of ids and not a verdict, so an audit rule
- * whose frames it guards costs one extra id and can never make an answer wrong,
- * where reading the levels here would mean re-reading the surface for it.
+ * The moment is read STATICALLY ({@link couldBeRealtime}) and not per instance:
+ * this is a set of ids and not a verdict, so a rule some level could promote
+ * costs one extra id and can never make an answer wrong, where reading the
+ * chosen levels here would mean re-reading the surface for it.
  */
 export function backgroundElementIds(
   rules: readonly ValidationRule[],
-  elements: readonly GfxPrimitiveElementModel[]
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const rule of rules) {
-    if (!isRealtime(rule)) continue;
+    if (!couldBeRealtime(rule, profiles)) continue;
     for (const background of backgroundsOf(rule, elements))
       ids.add(background.id);
   }
@@ -5506,13 +5507,17 @@ function attributeAll(
  * it, an incremental pass keeps verdicts measured against a map the user has
  * just stopped calling a map, or judged at a level nobody holds any more.
  *
- * Real-time rules only, and the DECLARED moment, exactly like
- * {@link backgroundElementIds} and for the same reason: an on-demand rule never
- * takes part in an incremental pass, so it has nothing to invalidate.
+ * Real-time rules only, read statically ({@link couldBeRealtime}), exactly like
+ * {@link backgroundElementIds} and for the same reason: an on-demand rule no
+ * level can promote never takes part in an incremental pass, so it has nothing
+ * to invalidate — and one that a level CAN promote has to be remembered here
+ * before anybody chooses that level, because the memory is what the pass after
+ * the choice reads.
  */
 export function frameMembership(
   rules: readonly ValidationRule[],
-  elements: readonly GfxPrimitiveElementModel[]
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlyMap<string, readonly string[]> {
   const membership = new Map<string, string[]>();
   const add = (id: string, frameId: string) => {
@@ -5524,7 +5529,7 @@ export function frameMembership(
   const done = new Set<string>();
   let levelled = false;
   for (const rule of rules) {
-    if (!isRealtime(rule)) continue;
+    if (!couldBeRealtime(rule, profiles)) continue;
     levelled = true;
     const key = frameKey(rule);
     if (key === null || done.has(key)) continue;
@@ -5895,16 +5900,65 @@ export function dirtyClosure(
 }
 
 /**
+ * Whether a level in force on this surface PROMOTES `rule` — names it, by id,
+ * at a severity the drawing user is shown.
+ *
+ * Named, and not merely resolved: {@link profileSeverity} falls back to the
+ * rule's own severity for a rule a table is silent about, and a fallback is not
+ * a decision. A promotion is a framework writing `'warning'` beside an id, which
+ * is the one statement strong enough to overrule the rule's own `'on-demand'`
+ * ({@link momentOf}).
+ *
+ * The same walk {@link isRuleAuditOnly} does — the framework's default level
+ * unconditionally, then every level a root instance on this surface has CHOSEN.
+ */
+function isRulePromoted(
+  rule: ValidationRule,
+  chosen: Map<string, string> | null,
+  index: ProfileIndex | null
+): boolean {
+  if (index === null) return false;
+
+  const promotes = (profile: ValidationProfile | undefined): boolean =>
+    profile !== undefined &&
+    profile.framework === rule.framework &&
+    Object.hasOwn(profile.rules, rule.id) &&
+    isDrawn(profile.rules[rule.id]);
+
+  if (promotes(index.defaults.get(rule.framework))) return true;
+  if (chosen === null) return false;
+  for (const id of chosen.values()) {
+    if (promotes(index.byId.get(id))) return true;
+  }
+  return false;
+}
+
+/**
  * The moment `rule` is evaluated at, GIVEN the levels of requirement in force
  * on this surface — the one decision {@link runRules} takes before it reads a
  * single element.
  *
- * A rule that declares the second moment keeps it, whatever any level says: an
- * explicit `'on-demand'` is the stronger statement, and a framework that made
- * it is not overruled by a table. Everything else turns on
- * {@link isRuleAuditOnly}: an `audit` finding is dropped before anything draws
- * it ({@link userFacingViolations}), so computing one inside the frame budget
- * buys the user nothing.
+ * Everything turns on {@link isRuleAuditOnly}: an `audit` finding is dropped
+ * before anything draws it ({@link userFacingViolations}), so computing one
+ * inside the frame budget buys the user nothing.
+ *
+ * ## A declared `'on-demand'` yields to a level that PROMOTES the rule
+ *
+ * It did not, until the UML recette of 2026-09-16. An explicit `'on-demand'`
+ * used to win against any table, on the argument that a framework which made
+ * that declaration is not overruled by one — and the consequence was a rule a
+ * level had explicitly raised to `'warning'` that still drew nothing, ever, on
+ * any gesture. `uml.strict` promotes nine of them; the PO chose Specification,
+ * emptied a lifeline's head, and the canvas stayed silent.
+ *
+ * So the arbitration is the other way round, and it is the narrow one:
+ * **choosing a level that NAMES the rule at a drawn severity puts it back on
+ * the drawing path** ({@link isRulePromoted}). A framework keeping a rule
+ * `'audit'` at every level keeps the second moment with it — which is how
+ * `uml.unreachable-*` stays a graph walk nobody pays for on a gesture — and a
+ * declaration nothing promotes is untouched. The rule stays the framework's to
+ * make: it makes it in its profile table now, where the rest of the level lives,
+ * instead of in two places that could disagree.
  *
  * Mixed levels resolve towards EVALUATING, exactly as {@link isRuleSilent}
  * needs `'off'` everywhere before it skips: one frame held to a level that
@@ -5917,7 +5971,9 @@ function momentOf(
   chosen: Map<string, string> | null,
   index: ProfileIndex | null
 ): ValidationMoment {
-  if ((rule.moment ?? 'realtime') !== 'realtime') return 'on-demand';
+  if ((rule.moment ?? 'realtime') !== 'realtime') {
+    return isRulePromoted(rule, chosen, index) ? 'realtime' : 'on-demand';
+  }
   return isRuleAuditOnly(rule, chosen, index) ? 'on-demand' : 'realtime';
 }
 
@@ -5932,6 +5988,36 @@ function momentOf(
  */
 function isRealtime(rule: ValidationRule): boolean {
   return (rule.moment ?? 'realtime') === 'realtime';
+}
+
+/**
+ * Whether the drawing path may EVER have to evaluate `rule` on this assembly:
+ * it declares the real-time moment, or some REGISTERED level promotes it past
+ * `audit`, which is what puts it back on that path ({@link momentOf}).
+ *
+ * The three callers below are the ones with no instance to read a chosen level
+ * from — they are computed once, against the registry, before any surface
+ * exists. Asking "could any level in this assembly promote it" is the honest
+ * static approximation of "does a level in force promote it": it can only
+ * over-answer, and over-answering costs one extra id in a set or one extra
+ * watched property, where under-answering costs a verdict that never appears
+ * and a stale one that never clears.
+ *
+ * `profiles` defaults to none, so a caller that has no registry — every unit
+ * fixture, and every host reading the declarations in the abstract — gets the
+ * declared moment, exactly as before.
+ */
+function couldBeRealtime(
+  rule: ValidationRule,
+  profiles: readonly ValidationProfile[]
+): boolean {
+  if (isRealtime(rule)) return true;
+  return profiles.some(
+    profile =>
+      profile.framework === rule.framework &&
+      Object.hasOwn(profile.rules, rule.id) &&
+      isDrawn(profile.rules[rule.id])
+  );
 }
 
 /** The exceptions an element carries, always an array, never a copy to keep. */
@@ -6203,7 +6289,11 @@ export function evaluateCheckup(
     'on-demand',
     seed === undefined
       ? undefined
-      : { dirty: seed, previous: [], wasIn: frameMembership(rules, elements) }
+      : {
+          dirty: seed,
+          previous: [],
+          wasIn: frameMembership(rules, elements, profiles),
+        }
   );
 }
 
@@ -6611,20 +6701,27 @@ export const VERDICT_PROPS = [
  * debounced evaluation — a cost paid by every document, for a question most of
  * them never ask.
  *
- * So it is added exactly when a REAL-TIME rule of either family is registered.
- * The moment filter is deliberate and mirrors {@link backgroundElementIds}: an
- * on-demand rule is never evaluated on the gesture path, so waking that path for
- * it would hand back precisely what declaring the second moment bought — and a
- * framework that wants its naming checked while the user types says so by
- * declaring the rule real-time, which is the one place that decision belongs.
+ * So it is added exactly when a rule of either family COULD reach the gesture
+ * path — it declares the real-time moment, or some registered level promotes it
+ * ({@link couldBeRealtime}). The filter mirrors {@link backgroundElementIds}: an
+ * on-demand rule no level can promote is never evaluated on the gesture path, so
+ * waking that path for it would hand back precisely what declaring the second
+ * moment bought.
  *
- * The DECLARED moment, like {@link backgroundElementIds} and for the same
- * reason: this set is computed ONCE per manager, before any surface exists to
- * read a level from, and watching a prop nothing turns out to need costs a
+ * The level half of that test is what makes "Specification is the check-up"
+ * true for the two families that read WORDS. `uml.strict` promotes six spelling
+ * rules and three naming ones; without the promoted rules' `text` in this set,
+ * choosing Specification would raise them once, on the switch, and then never
+ * again while the user retyped the very word the finding is about.
+ *
+ * Read STATICALLY, like {@link backgroundElementIds} and for the same reason:
+ * this set is computed ONCE per manager, before any surface exists to read a
+ * chosen level from, and watching a prop nothing turns out to need costs a
  * debounced pass that finds nothing — never a wrong verdict.
  */
 export function verdictPropsOf(
-  rules: readonly ValidationRule[]
+  rules: readonly ValidationRule[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlySet<string> {
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
@@ -6634,7 +6731,7 @@ export function verdictPropsOf(
     // watched through their own element's change anyway).
     if (
       (rule.family === 'label-presence' || rule.family === 'label-syntax') &&
-      isRealtime(rule)
+      couldBeRealtime(rule, profiles)
     ) {
       props.add('text');
     }
@@ -6856,7 +6953,10 @@ export class ValidationManager extends InteractivityExtension {
    * beside the rules it is derived from — see {@link verdictPropsOf}.
    */
   private get _watchedProps(): ReadonlySet<string> {
-    this._verdictProps ??= verdictPropsOf(this._activeRules);
+    this._verdictProps ??= verdictPropsOf(
+      this._activeRules,
+      this._activeProfiles
+    );
     return this._verdictProps;
   }
 
@@ -7046,8 +7146,16 @@ export class ValidationManager extends InteractivityExtension {
         : undefined
     );
     this._evaluated = true;
-    this._backgrounds = backgroundElementIds(rules, surface.elementModels);
-    this._membership = frameMembership(rules, surface.elementModels);
+    this._backgrounds = backgroundElementIds(
+      rules,
+      surface.elementModels,
+      this._activeProfiles
+    );
+    this._membership = frameMembership(
+      rules,
+      surface.elementModels,
+      this._activeProfiles
+    );
     // Stay silent when nothing changed: `violations$` is the seam a host panel
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;

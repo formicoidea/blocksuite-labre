@@ -97,6 +97,14 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Custom: 'custom colour tab vs custom frame preset (gender differs in French)',
   Elements: 'catalogue category header (derived table) vs C4 legend section',
   Frames: 'catalogue category header (derived table) vs C4 legend section',
+  // UML's catalogue section for what several diagram kinds share (PO ruling of
+  // 2026-09-16), beside the sketch/general toggle every canvas style panel
+  // offers. A merge is impossible either way round: the header's key is DERIVED
+  // from the category id by `commandCategoryTranslationEntries`, so it cannot
+  // be pointed at `com.labre.style.general`, and the two are not the same word
+  // in a language that inflects — a section of a list against the plain
+  // rendering of a stroke.
+  General: 'UML catalogue section (derived table) vs canvas style toggle',
   Group: 'verb (group the selection) vs noun (a group)',
   Left: 'mind-map layout direction vs text alignment',
   Light: 'light colour mode vs light font weight',
