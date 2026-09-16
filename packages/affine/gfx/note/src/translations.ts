@@ -40,7 +40,7 @@ export const GFX_NOTE_SHADOW_FLOATION: ChromeWording = [
 /* ── `./components/note-display-mode-panel.ts` ────────────────────────────
  * A different wording from `blocks/note`'s own display-mode dropdown (which
  * says "Both" / "Edgeless" / "Page"): this panel's labels read "In Both" /
- * "In Page Only" / "In Edgeless Only", so they get their own keys.
+ * "In Page Only" / "In Canvas Only", so they get their own keys.
  */
 
 export const GFX_NOTE_DISPLAY_MODE_BOTH: ChromeWording = [
@@ -55,7 +55,7 @@ export const GFX_NOTE_DISPLAY_MODE_PAGE_ONLY: ChromeWording = [
 
 export const GFX_NOTE_DISPLAY_MODE_EDGELESS_ONLY: ChromeWording = [
   'com.labre.gfx-note.display-mode.in-edgeless-only',
-  'In Edgeless Only',
+  'In Canvas Only',
 ];
 
 /* ── `./toolbar/note-menu.ts` — the "add to note" quick-tool row ────────── */
