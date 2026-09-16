@@ -46,7 +46,7 @@ export const OUTLINE_NOTICE_HIDDEN_LABEL: ChromeWording = [
 
 export const OUTLINE_NOTICE_HIDDEN_TEXT: ChromeWording = [
   'com.labre.outline.notice.hidden-text',
-  'Some contents are not visible on edgeless.',
+  'Some contents are not visible on canvas.',
 ];
 
 /**

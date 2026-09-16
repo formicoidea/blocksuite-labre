@@ -88,7 +88,7 @@ const CHROME_TABLE_PREFIXES = [
  * reason a merge would be wrong; copied from the dedupe plan's own
  * `keepSeparateWords`, plus the four words whose merge GROUP kept a
  * `keepSeparate` key alongside its canonical ("Confirm", "Equation", "Link",
- * "Page").
+ * "Document", formerly "Page").
  */
 const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Background: 'frame fill vs text highlight background',
@@ -113,13 +113,13 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   // from the generic confirm button), "Equation" (the LaTeX slash menu's own
   // block-item NAME, distinct from the inline/block empty-placeholder),
   // "Link" (Wardley's own template-link wording — a framework never imports
-  // another package's key), "Page" (the slash menu's own group header,
+  // another package's key), "Document" (formerly "Page"; the slash menu's own group header,
   // distinct from the note's display-mode word).
   Confirm:
     "the reading panel's own confirm-nature wording, not the generic verb",
   Equation: "the LaTeX slash-menu block item's own name, not the placeholder",
   Link: "Wardley's own framework-owned template wording",
-  Page: "the slash menu's own group header, not the note's display mode",
+  Document: "the slash menu's own group header, not the note's display mode",
 };
 
 /**
@@ -204,11 +204,11 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.toast.linked-doc-created', 'Linked doc created');
     pinned(
       'com.labre.toast.note-removed-from-page-mode',
-      'Note removed from Page Mode'
+      'Note removed from Document Mode'
     );
     pinned(
       'com.labre.toast.frame-inserted-into-page',
-      'Frame inserted into Page.'
+      'Frame inserted into Document.'
     );
     pinned('com.labre.toast.no-link-found', 'No link found');
   });

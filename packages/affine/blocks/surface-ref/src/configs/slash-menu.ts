@@ -89,7 +89,7 @@ const surfaceRefSlashMenuConfig: SlashMenuConfig = {
       icon: MindmapIcon(),
       tooltip: {
         figure: MindMapTooltip,
-        caption: 'Edgeless',
+        caption: 'Canvas',
         captionWording: SURFACE_REF_SLASH_TOOLTIP_EDGELESS,
       },
       group: `5_Edgeless Element@${index++}`,
@@ -150,7 +150,7 @@ const surfaceRefSlashMenuConfig: SlashMenuConfig = {
       group: `5_Edgeless Element@${index++}`,
       tooltip: {
         figure: EdgelessTooltip,
-        caption: 'Edgeless',
+        caption: 'Canvas',
         captionWording: SURFACE_REF_SLASH_TOOLTIP_EDGELESS,
       },
       action: () => {
@@ -167,7 +167,7 @@ const surfaceRefSlashMenuConfig: SlashMenuConfig = {
       group: `5_Edgeless Element@${index++}`,
       tooltip: {
         figure: EdgelessTooltip,
-        caption: 'Edgeless',
+        caption: 'Canvas',
         captionWording: SURFACE_REF_SLASH_TOOLTIP_EDGELESS,
       },
       action: () => {

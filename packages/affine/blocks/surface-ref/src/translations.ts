@@ -129,27 +129,27 @@ export const SURFACE_REF_PLACEHOLDER_DELETED_MINDMAP: ChromeWording = [
 
 export const SURFACE_REF_PLACEHOLDER_DELETED_EDGELESS: ChromeWording = [
   'com.labre.surface-ref.placeholder.deleted.edgeless',
-  'The edgeless content is deleted or not in this doc.',
+  'The canvas content is deleted or not in this doc.',
 ];
 
 export const SURFACE_REF_PLACEHOLDER_CANNOT_DISPLAY_FRAME: ChromeWording = [
   'com.labre.surface-ref.placeholder.cannot-display.frame',
-  'The frame is inserted but cannot display in edgeless mode. Switch to page mode to view the block.',
+  'The frame is inserted but cannot display in canvas mode. Switch to document mode to view the block.',
 ];
 
 export const SURFACE_REF_PLACEHOLDER_CANNOT_DISPLAY_GROUP: ChromeWording = [
   'com.labre.surface-ref.placeholder.cannot-display.group',
-  'The group is inserted but cannot display in edgeless mode. Switch to page mode to view the block.',
+  'The group is inserted but cannot display in canvas mode. Switch to document mode to view the block.',
 ];
 
 export const SURFACE_REF_PLACEHOLDER_CANNOT_DISPLAY_MINDMAP: ChromeWording = [
   'com.labre.surface-ref.placeholder.cannot-display.mindmap',
-  'The mind map is inserted but cannot display in edgeless mode. Switch to page mode to view the block.',
+  'The mind map is inserted but cannot display in canvas mode. Switch to document mode to view the block.',
 ];
 
 export const SURFACE_REF_PLACEHOLDER_CANNOT_DISPLAY_EDGELESS: ChromeWording = [
   'com.labre.surface-ref.placeholder.cannot-display.edgeless',
-  'The edgeless content is inserted but cannot display in edgeless mode. Switch to page mode to view the block.',
+  'The canvas content is inserted but cannot display in canvas mode. Switch to document mode to view the block.',
 ];
 
 /**

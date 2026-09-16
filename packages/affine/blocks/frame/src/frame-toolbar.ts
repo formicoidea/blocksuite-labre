@@ -59,9 +59,9 @@ const builtinSurfaceToolbarConfig = {
   actions: [
     {
       id: 'a.insert-into-page',
-      label: 'Insert into Page',
+      label: 'Insert into Document',
       labelWording: FRAME_TOOLBAR_INSERT_INTO_PAGE,
-      tooltip: 'Insert into Page',
+      tooltip: 'Insert into Document',
       tooltipWording: FRAME_TOOLBAR_INSERT_INTO_PAGE,
       icon: InsertIntoPageIcon(),
       when: ctx => ctx.getSurfaceModelsByType(FrameBlockModel).length === 1,

@@ -16,8 +16,8 @@
       "true"
     ],
     "packages/affine/blocks/surface-ref/src/configs/tooltips.ts": [
-      "Create a blank frame in Edgeless",
-      "Create a mind map in Edgeless",
+      "Create a blank frame in Canvas",
+      "Create a mind map in Canvas",
       "Frame",
       "Group",
       "Mind Map"
@@ -673,6 +673,7 @@
       "Loom",
       "NewPage",
       "NumberedList",
+      "Page",
       "Redo",
       "RightTab",
       "StrikeThrough",

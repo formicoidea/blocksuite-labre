@@ -323,9 +323,9 @@ const builtinSurfaceToolbarConfig = {
     conversionsActionGroup,
     {
       id: 'b.insert-to-page',
-      label: 'Insert to page',
+      label: 'Insert to document',
       labelWording: EMBED_DOC_INSERT_TO_PAGE,
-      tooltip: 'Insert to page',
+      tooltip: 'Insert to document',
       tooltipWording: EMBED_DOC_INSERT_TO_PAGE,
       icon: InsertIntoPageIcon(),
       run: ctx => {

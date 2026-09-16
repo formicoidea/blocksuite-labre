@@ -9,7 +9,7 @@ import {
  */
 export const DRAG_PREVIEW_SHAPE: ChromeWording = [
   'com.labre.drag-handle.preview.shape',
-  'Edgeless shape',
+  'Canvas shape',
 ];
 
 export const DRAG_PREVIEW_IMAGE: ChromeWording = [

@@ -50,7 +50,7 @@ export const EMBED_DOC_UPDATED_LABEL: ChromeWording = [
 
 export const EMBED_DOC_INSERT_TO_PAGE: ChromeWording = [
   'com.labre.embed-doc.toolbar.insert-to-page',
-  'Insert to page',
+  'Insert to document',
 ];
 
 export const EMBED_DOC_DUPLICATE_AS_NOTE: ChromeWording = [
