@@ -8,12 +8,37 @@ import {
 
 import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommands } from './commands.js';
+import { UML_DRAWIO_REMARKS } from './drawio-import.js';
+import { UML_LAYOUT_REMARKS } from './import.js';
 import { UML_DIAGRAM_KIND_MENU } from './kinds.js';
+import { UML_LEGEND_SECTION_WORDINGS } from './legend.js';
 import { UML_FRAGMENT_OPERATOR_MENU } from './operators.js';
+import { UML_PLANTUML_REMARKS } from './plantuml-import.js';
 import { UML_PROFILES } from './profiles.js';
 import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
 import { UML_RULES } from './rules.js';
+import { UML_XMI_REMARKS } from './xmi-import.js';
+
+/**
+ * The auto-legend's own section titles ({@link UML_LEGEND_SECTION_WORDINGS})
+ * and the fixed-wording remarks the three readers and the materializer
+ * produce — chrome, not seeds: both are re-rendered every time the box is
+ * built or the report is drawn, never written into a document.
+ *
+ * Derived from the very tables the code reads (the fallback IS
+ * `UML_PLANTUML_REMARKS[…][1]`, never restated), so the wording a host is
+ * offered and the wording the library shows cannot drift. Mirrors BPMN's
+ * `importRemarkEntries` exactly, one table per reader instead of one.
+ */
+const chromeEntries = (): TranslationKeyManifestEntry[] =>
+  [
+    ...UML_LEGEND_SECTION_WORDINGS,
+    ...Object.values(UML_PLANTUML_REMARKS),
+    ...Object.values(UML_XMI_REMARKS),
+    ...Object.values(UML_DRAWIO_REMARKS),
+    ...Object.values(UML_LAYOUT_REMARKS),
+  ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -67,6 +92,7 @@ export const umlTranslationEntries: TranslationKeyManifestEntry[] =
       // three declarations beside it are.
       UML_FRAGMENT_OPERATOR_MENU,
     ]),
+    chromeEntries(),
     // AFTER the two groups above — see the header on why the order decides
     // which source each key is reported under.
     collectTranslationKeys('rule', UML_RULES),

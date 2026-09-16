@@ -442,10 +442,12 @@ function classifierNameText(classifier: UmlClassifier): string {
   if (classifier.kind !== 'object' || !classifier.instanceOf) {
     return umlNameTierText(classifier);
   }
-  return umlNameTierText({
-    ...classifier,
-    name: `${classifier.name} : ${classifier.instanceOf}`,
-  });
+  // Composed into a local exactly as `umlLifelineHeadText` composes a
+  // lifeline's head, and for the same reason: both halves are the FILE's own
+  // words and the colon between them is §11.6.4's notation, so there is no
+  // sentence here for a catalogue to translate.
+  const stated = `${classifier.name} : ${classifier.instanceOf}`;
+  return umlNameTierText({ ...classifier, name: stated });
 }
 
 /** A state's second compartment — §14.2.4.4's internal activities, in order. */
@@ -1127,6 +1129,28 @@ export interface UmlMaterializeResult {
 const importId = (n: number) => `uml-import-${n}`;
 
 /**
+ * The MATERIALIZER's own two remarks, as `[key, English]` pairs — raised by
+ * {@link umlElementsFromModel} whichever reader produced the model, which is
+ * why they are declared here rather than in any one reader's table.
+ *
+ * Same shape and same reasons as `UML_PLANTUML_REMARKS`
+ * (`plantuml-import.ts`, where the contract is written out): one entry per
+ * SHAPE of sentence, the `{{count}}` / `{{heading}}` holes filled at the call
+ * site by `InterchangeNote.messageParams`, the English kept here as the
+ * fallback so a report drawn with no host catalogue reads exactly as before.
+ */
+export const UML_LAYOUT_REMARKS = {
+  allInvented: [
+    'com.labre.uml.import.layout.all-invented',
+    'This source carries no coordinates, so the {{count}} artefacts of "{{heading}}" were laid out by Labre, in rows by generalization depth. The positions are ours, not the file\'s.',
+  ],
+  someInvented: [
+    'com.labre.uml.import.layout.some-invented',
+    '{{count}} of the artefacts of "{{heading}}" were drawn nowhere in the source, so Labre laid them out below the rest. Their positions are ours, not the file\'s.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
+/**
  * Every model as the elements of a board — one `umlDiagram` frame per model,
  * the artefacts drawn on it, and the connectors between them.
  *
@@ -1154,10 +1178,20 @@ export function umlElementsFromModel(
       notes.push({
         kind: 'invented-layout',
         sourceId: model.diagram.id,
+        // Two SHAPES of sentence, so two keys — never one key whose wording
+        // depends on a branch the host cannot see.
+        messageKey:
+          invented === drafts.length
+            ? UML_LAYOUT_REMARKS.allInvented[0]
+            : UML_LAYOUT_REMARKS.someInvented[0],
         message:
           invented === drafts.length
             ? `This source carries no coordinates, so the ${invented} artefacts of "${model.diagram.heading}" were laid out by Labre, in rows by generalization depth. The positions are ours, not the file's.`
             : `${invented} of the artefacts of "${model.diagram.heading}" were drawn nowhere in the source, so Labre laid them out below the rest. Their positions are ours, not the file's.`,
+        messageParams: {
+          count: invented,
+          heading: model.diagram.heading,
+        },
       });
     }
 

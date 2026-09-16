@@ -506,6 +506,27 @@ function cellsOf(graph: XmlNode): DrawioCell[] {
     });
 }
 
+/**
+ * The one remark this reader raises whose wording is FIXED, as a
+ * `[key, English]` pair — the same table, the same shape and the same reasons
+ * as `UML_PLANTUML_REMARKS` (`plantuml-import.ts`, where the contract is
+ * written out): one entry per SHAPE of sentence, the `{{kind}}` hole filled at
+ * the call site by `InterchangeNote.messageParams`, the English kept here as
+ * the fallback.
+ *
+ * The reader's refusals ({@link importDrawio}'s `refused`) and its two
+ * {@link carried} fragments are deliberately NOT here: a remark that names
+ * something out of the file with no sentence shape worth sharing — a raw style
+ * dump, a one-off diagnostic — carries no key and stays English, which is what
+ * `InterchangeNote.messageKey`'s own contract asks for.
+ */
+export const UML_DRAWIO_REMARKS = {
+  ambiguousBlockHead: [
+    'com.labre.uml.import.drawio.ambiguous-block-head',
+    'read as a {{kind}}, but the arrowhead is drawn filled; UML draws the generalization triangle hollow (endFill=0).',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
 /* ── The reading ──────────────────────────────────────────────────────── */
 
 const carried = (
@@ -840,7 +861,9 @@ export function importDrawio(
         kind: 'warning',
         sourceId: cell.id,
         element: 'mxCell',
+        messageKey: UML_DRAWIO_REMARKS.ambiguousBlockHead[0],
         message: `read as a ${relation.kind}, but the arrowhead is drawn filled; UML draws the generalization triangle hollow (endFill=0).`,
+        messageParams: { kind: relation.kind },
       });
     }
 

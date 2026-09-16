@@ -5,6 +5,10 @@ import {
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
 import { StrokeStyle, type UmlNodeKind } from '@labre/affine-model';
+import {
+  BOARD_LEGEND_TITLE,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 import type { RoleId } from '@labre/std/gfx';
 
 import {
@@ -272,8 +276,42 @@ const RELATION_ROLES: readonly UmlEdgeRole[] = [
   'message-delete',
 ];
 
+/**
+ * This legend's own three section titles.
+ *
+ * Declared here beside the sections they head, and keyed per FRAMEWORK rather
+ * than shared with C4's identical three: a framework never imports another's
+ * wording (`translation-service/README.md`), so "Elements" is UML's own word
+ * about UML's own vocabulary, and a host is free to word it differently on a
+ * class diagram than on a context diagram. The box's own title is the one
+ * exception — every board that has a legend says the same generic "Legend",
+ * and reuses `BOARD_LEGEND_TITLE` for it.
+ */
+const SECTION_ELEMENTS: ChromeWording = [
+  'com.labre.uml.legend.section.elements',
+  'Elements',
+];
+const SECTION_FRAMES: ChromeWording = [
+  'com.labre.uml.legend.section.frames',
+  'Frames',
+];
+const SECTION_RELATIONS: ChromeWording = [
+  'com.labre.uml.legend.section.relations',
+  'Relations',
+];
+
+/** Every section `titleKey` above, for `translations.ts`'s manifest. */
+export const UML_LEGEND_SECTION_WORDINGS: readonly ChromeWording[] = [
+  SECTION_ELEMENTS,
+  SECTION_FRAMES,
+  SECTION_RELATIONS,
+];
+
 export const UML_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  // The shared auto-legend box's own generic chrome, resolved through the same
+  // key every board that has one reuses — see `AutoLegendSpec.title`.
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   width: 300,
   // A picture needs room a colour chip does not: 34 × 24 is enough for a class
   // to show its two compartment rules and for an actor to show a head, arms and
@@ -284,11 +322,13 @@ export const UML_AUTO_LEGEND: AutoLegendSpec = {
   roles: UML_ROLES,
   sections: [
     {
-      title: 'Elements',
+      title: SECTION_ELEMENTS[1],
+      titleKey: SECTION_ELEMENTS[0],
       entries: ELEMENT_KINDS.map(kind => nodeEntry(kind, kind === 'node')),
     },
     {
-      title: 'Frames',
+      title: SECTION_FRAMES[1],
+      titleKey: SECTION_FRAMES[0],
       entries: [
         { role: UML_ROLE.subject, row: frameRow(UML_ROLE.subject) },
         { role: UML_ROLE.partition, row: frameRow(UML_ROLE.partition) },
@@ -299,7 +339,8 @@ export const UML_AUTO_LEGEND: AutoLegendSpec = {
       ],
     },
     {
-      title: 'Relations',
+      title: SECTION_RELATIONS[1],
+      titleKey: SECTION_RELATIONS[0],
       entries: RELATION_ROLES.map(role =>
         edgeEntry(role, role === 'association')
       ),

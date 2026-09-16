@@ -1,5 +1,6 @@
 import { ConnectorElementModel } from '@labre/affine-model';
 import {
+  fillPlaceholders,
   NotificationProvider,
   translateKey,
 } from '@labre/affine-shared/services';
@@ -157,10 +158,19 @@ export function materializeInterchangeImport(
       // still imported, and the remark says which of the two a group or a
       // connector naming it will have landed on.
       if (byLocal.has(local)) {
+        // The English is FILLED from the wording rather than restated beside
+        // it, so the sentence a host translates and the sentence a playground
+        // with no catalogue reads cannot drift apart.
+        const messageParams = { name: local };
         options.onNote?.({
           kind: 'substituted-id',
           elementId: id,
-          message: `Two imported elements were handed the same provisional name "${local}". Both are on the board; anything referring to that name points at the first of them.`,
+          messageKey: IMPORT_DUPLICATE_NAME_KEY,
+          message: fillPlaceholders(
+            IMPORT_DUPLICATE_NAME_FALLBACK,
+            messageParams
+          ),
+          messageParams,
         });
       } else {
         byLocal.set(local, id);
@@ -318,6 +328,18 @@ const IMPORT_CARRIED_KEY = 'com.labre.interchange.import.carried';
 const IMPORT_CARRIED_FALLBACK = 'carried';
 const IMPORT_QUARANTINED_KEY = 'com.labre.interchange.import.quarantined';
 const IMPORT_QUARANTINED_FALLBACK = 'quarantined';
+/**
+ * The one remark the MATERIALIZER raises itself (see the provisional-name note
+ * on `SerializedElementProps`) — this pipeline's own words about its own
+ * substitution, not a reader's, so it is keyed here with the rest of the
+ * pipeline's chrome rather than in any one format's table. `{{name}}` is the
+ * provisional name the reader minted, filled from `messageParams` by
+ * `resolveNoteMessage` exactly as a reader's own remark is.
+ */
+const IMPORT_DUPLICATE_NAME_KEY =
+  'com.labre.interchange.import.duplicate-provisional-name';
+const IMPORT_DUPLICATE_NAME_FALLBACK =
+  'Two imported elements were handed the same provisional name "{{name}}". Both are on the board; anything referring to that name points at the first of them.';
 
 /**
  * How many remarks the second notification spells out before it hands the

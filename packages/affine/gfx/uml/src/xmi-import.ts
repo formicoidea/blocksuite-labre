@@ -281,6 +281,56 @@ export const UML_XMI_QUARANTINE_REASON = {
     'in the document, verbatim, and not written back.',
 } as const;
 
+/**
+ * The remarks this reader raises whose wording is FIXED, as `[key, English]`
+ * pairs — the same table, the same shape and the same reasons as
+ * `UML_PLANTUML_REMARKS` (`plantuml-import.ts`, where the contract is written
+ * out) and BPMN's own `BPMN_IMPORT_REMARKS`: one entry per SHAPE of sentence,
+ * `{{name}}` holes filled at the call site by `InterchangeNote.messageParams`,
+ * the English kept here as the fallback so a playground with no catalogue
+ * reads exactly what it read before.
+ *
+ * {@link UML_XMI_QUARANTINE_REASON} above is NOT part of it, and cannot be:
+ * its plain string is also written verbatim into
+ * `ForeignInterchange.quarantined[].reason` — data, never translated — so it
+ * cannot become a `[key, english]` pair without breaking that contract. BPMN
+ * carries the identical constraint on its own quarantine reasons.
+ */
+export const UML_XMI_REMARKS = {
+  mintedId: [
+    'com.labre.uml.import.xmi.minted-id',
+    '<{{tag}}> carries no xmi:id, so one was minted for it. Nothing in the file can refer to it, and nothing does.',
+  ],
+  unlistedOperator: [
+    'com.labre.uml.import.xmi.unlisted-operator',
+    'This combined fragment\'s operator is "{{operator}}", which UML 2.5.1 §17.6.4 does not list. It is drawn as an "alt" and the file\'s own word is kept beside it.',
+  ],
+  undrawnOccurrence: [
+    'com.labre.uml.import.xmi.undrawn-occurrence',
+    'A message in "{{name}}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the document.',
+  ],
+  wrongRoot: [
+    'com.labre.uml.import.xmi.wrong-root',
+    'A UML interchange file opens on <uml:Model> or <uml:Package>; this one opens on <{{tag}}>. Nothing was imported.',
+  ],
+  noXml: [
+    'com.labre.uml.import.xmi.no-xml',
+    'There is no XML element in this file, so there is no model in it.',
+  ],
+  offSheetRelation: [
+    'com.labre.uml.import.xmi.off-sheet-relation',
+    'A {{kind}} in "{{name}}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the document.',
+  ],
+  modelWithoutDiagram: [
+    'com.labre.uml.import.xmi.model-without-diagram',
+    'This file carries a model and no diagram, which is what the UML interchange format is for. Every position on the canvas was invented; none of them came from the file.',
+  ],
+  nestedWithoutDrawing: [
+    'com.labre.uml.import.xmi.nested-without-drawing',
+    '{{count}} element(s) are declared inside another in this file — a class in a package, a use case in its subject. Labre states that by DRAWING one box inside the other, and this file carries no drawing, so they were laid out side by side. Move them into the box to say it again.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
 /* ── Reading one node ─────────────────────────────────────────────────── */
 
 /** The local half of a qualified name — `uml:Class` is `Class`. */
@@ -444,9 +494,9 @@ function map(ctx: Context, node: XmlNode): string {
     note(ctx, {
       kind: 'substituted-id',
       element: node.name,
-      message:
-        `<${node.name}> carries no xmi:id, so one was minted for it. Nothing ` +
-        `in the file can refer to it, and nothing does.`,
+      messageKey: UML_XMI_REMARKS.mintedId[0],
+      message: `<${node.name}> carries no xmi:id, so one was minted for it. Nothing in the file can refer to it, and nothing does.`,
+      messageParams: { tag: node.name },
     });
   }
   ctx.scopeOf.set(node, id);
@@ -1802,10 +1852,9 @@ function readInteraction(
             kind: 'warning',
             element: child.name,
             sourceId: fragmentId,
-            message:
-              `This combined fragment's operator is "${stated}", which UML ` +
-              `2.5.1 §17.6.4 does not list. It is drawn as an "alt" and the ` +
-              `file's own word is kept beside it.`,
+            messageKey: UML_XMI_REMARKS.unlistedOperator[0],
+            message: `This combined fragment's operator is "${stated}", which UML 2.5.1 §17.6.4 does not list. It is drawn as an "alt" and the file's own word is kept beside it.`,
+            messageParams: { operator: stated },
           });
         }
         const declared = (xmlAttr(child, 'covered') ?? '')
@@ -1902,10 +1951,9 @@ function readInteraction(
         kind: 'warning',
         element: child.name,
         sourceId: messageId,
-        message:
-          `A message in "${interaction.name}" names an occurrence this sheet ` +
-          `has no lifeline for, so it is not drawn. The file still says it, ` +
-          `and nothing was removed from the document.`,
+        messageKey: UML_XMI_REMARKS.undrawnOccurrence[0],
+        message: `A message in "${interaction.name}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the document.`,
+        messageParams: { name: interaction.name },
       });
       continue;
     }
@@ -2415,10 +2463,18 @@ export function importXmi(
     note(ctx, {
       kind: 'warning',
       ...(opened ? { element: opened } : {}),
-      message: opened
-        ? `A UML interchange file opens on <uml:Model> or <uml:Package>; this ` +
-          `one opens on <${opened}>. Nothing was imported.`
-        : `There is no XML element in this file, so there is no model in it.`,
+      // Two SHAPES of sentence, so two keys — never one key whose wording
+      // depends on a branch the host cannot see.
+      ...(opened
+        ? {
+            messageKey: UML_XMI_REMARKS.wrongRoot[0],
+            message: `A UML interchange file opens on <uml:Model> or <uml:Package>; this one opens on <${opened}>. Nothing was imported.`,
+            messageParams: { tag: opened },
+          }
+        : {
+            messageKey: UML_XMI_REMARKS.noXml[0],
+            message: UML_XMI_REMARKS.noXml[1],
+          }),
     });
     return {
       models: [],
@@ -2510,10 +2566,9 @@ export function importXmi(
       }
       note(ctx, {
         kind: 'warning',
-        message:
-          `A ${relation.kind} in "${model.diagram.name}" runs to an element ` +
-          `that is not on this sheet, so it is not drawn. The file still says ` +
-          `it, and nothing was removed from the document.`,
+        messageKey: UML_XMI_REMARKS.offSheetRelation[0],
+        message: `A ${relation.kind} in "${model.diagram.name}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the document.`,
+        messageParams: { kind: relation.kind, name: model.diagram.name },
       });
     }
     model.relations = kept;
@@ -2556,10 +2611,8 @@ export function importXmi(
   if (Object.keys(ctx.layout).length === 0 && ctx.counts.mapped > 0) {
     note(ctx, {
       kind: 'invented-layout',
-      message:
-        `This file carries a model and no diagram, which is what the UML ` +
-        `interchange format is for. Every position on the canvas was ` +
-        `invented; none of them came from the file.`,
+      messageKey: UML_XMI_REMARKS.modelWithoutDiagram[0],
+      message: UML_XMI_REMARKS.modelWithoutDiagram[1],
     });
 
     // The one statement a file can make that this reader can read and cannot
@@ -2571,12 +2624,13 @@ export function importXmi(
     if (nested > 0) {
       note(ctx, {
         kind: 'warning',
-        message:
-          `${nested} ${nested === 1 ? 'element is' : 'elements are'} declared ` +
-          `inside another in this file — a class in a package, a use case in ` +
-          `its subject. Labre states that by DRAWING one box inside the other, ` +
-          `and this file carries no drawing, so they were laid out side by ` +
-          `side. Move them into the box to say it again.`,
+        // The one wording this lot changed: the count's own singular/plural
+        // is the HOST's (ADR 0023), so the English fallback stays neutral —
+        // `{{count}} element(s) are` — exactly as BPMN's `{{count}} lane(s)`
+        // does, rather than picking English's agreement in the library.
+        messageKey: UML_XMI_REMARKS.nestedWithoutDrawing[0],
+        message: `${nested} element(s) are declared inside another in this file — a class in a package, a use case in its subject. Labre states that by DRAWING one box inside the other, and this file carries no drawing, so they were laid out side by side. Move them into the box to say it again.`,
+        messageParams: { count: nested },
       });
     }
   }

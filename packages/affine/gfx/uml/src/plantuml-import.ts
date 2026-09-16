@@ -123,6 +123,70 @@ export interface UmlPlantumlImport {
   notes: InterchangeNote[];
 }
 
+/**
+ * The remarks this reader raises whose wording is FIXED, as `[key, English]`
+ * pairs — one entry per SHAPE of sentence, never one per exact string: a
+ * remark that names something out of the file (a line of PlantUML, a
+ * declaration's alias) carries `{{name}}` holes in the fallback here, filled
+ * at the call site by `messageParams` (`InterchangeNote.messageParams`) —
+ * never by minting a new key for every value the file happens to carry.
+ *
+ * A reader is a pure function of text (`docs/adr/0012`, P3) and has no `std`,
+ * so it cannot ask the host's catalogue for anything: it declares the key
+ * (and, where the sentence has a hole, the params) on the note, and
+ * `reportInterchangeImport` resolves both when it draws the report
+ * (`InterchangeNote.messageKey` / `.messageParams`). The English string stays
+ * here and stays the fallback, so the console table and a playground with no
+ * catalogue read exactly what they read before: `translateKey` fills a `{{…}}`
+ * hole from `messageParams` even with no `TranslationProvider` registered
+ * (`fillPlaceholders`), so the ENGLISH sentence a call site builds is
+ * unchanged by giving it a key. BPMN's `BPMN_IMPORT_REMARKS` is the same table
+ * for the same reasons, and this one is written to match it — including
+ * declaring it in the reader's OWN file rather than in a shared one, so the
+ * wording sits beside the line that raises it.
+ *
+ * Plural wording is the host's: where a count can be 0, 1 or many, the
+ * fallback stays grammatically neutral (`'{{count}} element(s)'`) rather than
+ * picking English's own singular/plural.
+ *
+ * They are contributed to the manifest by `./translations.ts`, with the
+ * framework, because they ship in the UML bundle rather than in core.
+ */
+export const UML_PLANTUML_REMARKS = {
+  relationEnd: [
+    'com.labre.uml.import.plantuml.relation-end',
+    'The {{side}} end of the {{kind}} between "{{left}}" and "{{right}}" is written "{{raw}}". It is drawn on the board, but UML gives that relationship\'s ends no multiplicity, so no export writes it.',
+  ],
+  duplicateDeclaration: [
+    'com.labre.uml.import.plantuml.duplicate-declaration',
+    'This document declares "{{name}}" twice. The second declaration was read as a separate artefact under an id of Labre\'s own.',
+  ],
+  renderDirective: [
+    'com.labre.uml.import.plantuml.render-directive',
+    '"{{line}}" says how to DRAW the diagram. Labre\'s canvas has a look of its own, so the directive is recorded here and not applied.',
+  ],
+  unreadLine: [
+    'com.labre.uml.import.plantuml.unread-line',
+    'Labre does not read "{{line}}", so it is not on the board. The line is recorded here exactly as the file wrote it.',
+  ],
+  stateSyntax: [
+    'com.labre.uml.import.plantuml.state-syntax',
+    '"{{heading}}" is written in PlantUML\'s state-diagram syntax, which Labre reads as a state machine. The frame keeps the kind the title gave it.',
+  ],
+  autonumber: [
+    'com.labre.uml.import.plantuml.autonumber',
+    '"{{line}}" numbers the messages as the renderer draws them. A Labre board writes no numbers on its arrows, so the directive is recorded here and not applied.',
+  ],
+  inventedSequenceLayout: [
+    'com.labre.uml.import.plantuml.invented-sequence-layout',
+    'PlantUML carries no coordinates, so "{{heading}}" was laid out by Labre — the participants side by side in the order the file declares them, and one step down the page per message. The ORDER is the file\'s; the positions are ours.',
+  ],
+  inventedLayout: [
+    'com.labre.uml.import.plantuml.invented-layout',
+    'PlantUML carries no coordinates, so "{{heading}}" was laid out by Labre — in rows by generalization depth, with every container sized to fit what it holds. The positions are ours, not the file\'s.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
 /* ── The vocabulary ───────────────────────────────────────────────────── */
 
 /** Annex A's frame tags, read back: `class Orders` → the `class` kind. */
@@ -761,7 +825,15 @@ function parseBlock(
         note({
           kind: 'warning',
           sourceId,
+          messageKey: UML_PLANTUML_REMARKS.relationEnd[0],
           message: `The ${side} end of the ${relation.kind} between "${left.name}" and "${right.name}" is written "${end.raw}". It is drawn on the board, but UML gives that relationship's ends no multiplicity, so no export writes it.`,
+          messageParams: {
+            side,
+            kind: relation.kind,
+            left: left.name,
+            right: right.name,
+            raw: end.raw,
+          },
         });
       }
     }
@@ -807,7 +879,9 @@ function parseBlock(
       note({
         kind: 'substituted-id',
         sourceId: wanted,
+        messageKey: UML_PLANTUML_REMARKS.duplicateDeclaration[0],
         message: `This document declares "${wanted}" twice. The second declaration was read as a separate artefact under an id of Labre's own.`,
+        messageParams: { name: wanted },
       });
     }
     const id = entries.has(wanted) ? `${wanted}-${++minted}` : wanted;
@@ -987,7 +1061,9 @@ function parseBlock(
       note({
         kind: 'carried',
         element: line.split(/\s+/)[0],
+        messageKey: UML_PLANTUML_REMARKS.renderDirective[0],
         message: `"${line}" says how to DRAW the diagram. Labre's canvas has a look of its own, so the directive is recorded here and not applied.`,
+        messageParams: { line },
       });
       continue;
     }
@@ -999,7 +1075,9 @@ function parseBlock(
 
     note({
       kind: 'carried',
+      messageKey: UML_PLANTUML_REMARKS.unreadLine[0],
       message: `Labre does not read "${line}", so it is not on the board. The line is recorded here exactly as the file wrote it.`,
+      messageParams: { line },
     });
   }
 
@@ -1045,7 +1123,9 @@ function parseBlock(
     note({
       kind: 'warning',
       sourceId: model.diagram.id,
+      messageKey: UML_PLANTUML_REMARKS.stateSyntax[0],
       message: `"${model.diagram.heading}" is written in PlantUML's state-diagram syntax, which Labre reads as a state machine. The frame keeps the kind the title gave it.`,
+      messageParams: { heading: model.diagram.heading },
     });
   }
 
@@ -1181,10 +1261,17 @@ export function importPlantuml(source: string): UmlPlantumlImport {
       // makes the vertical axis TIME, so the order of the file's lines is the
       // one thing about the drawing that is the author's, and the columns and
       // the spacing are ours.
+      // Two SHAPES of sentence, so two keys — never one key whose wording
+      // depends on a branch the host cannot see.
+      messageKey:
+        model.interactions.length > 0
+          ? UML_PLANTUML_REMARKS.inventedSequenceLayout[0]
+          : UML_PLANTUML_REMARKS.inventedLayout[0],
       message:
         model.interactions.length > 0
           ? `PlantUML carries no coordinates, so "${model.diagram.heading}" was laid out by Labre — the participants side by side in the order the file declares them, and one step down the page per message. The ORDER is the file's; the positions are ours.`
           : `PlantUML carries no coordinates, so "${model.diagram.heading}" was laid out by Labre — in rows by generalization depth, with every container sized to fit what it holds. The positions are ours, not the file's.`,
+      messageParams: { heading: model.diagram.heading },
     });
   }
   return { models, notes };
@@ -1650,7 +1737,9 @@ function parseSequenceBlock(
       note({
         kind: 'carried',
         element: 'autonumber',
+        messageKey: UML_PLANTUML_REMARKS.autonumber[0],
         message: `"${line}" numbers the messages as the renderer draws them. A Labre board writes no numbers on its arrows, so the directive is recorded here and not applied.`,
+        messageParams: { line },
       });
       continue;
     }
@@ -1666,7 +1755,9 @@ function parseSequenceBlock(
       note({
         kind: 'carried',
         element: line.split(/\s+/)[0],
+        messageKey: UML_PLANTUML_REMARKS.renderDirective[0],
         message: `"${line}" says how to DRAW the diagram. Labre's canvas has a look of its own, so the directive is recorded here and not applied.`,
+        messageParams: { line },
       });
       continue;
     }
@@ -1822,7 +1913,9 @@ function parseSequenceBlock(
 
     note({
       kind: 'carried',
+      messageKey: UML_PLANTUML_REMARKS.unreadLine[0],
       message: `Labre does not read "${line}", so it is not on the board. The line is recorded here exactly as the file wrote it.`,
+      messageParams: { line },
     });
   }
 

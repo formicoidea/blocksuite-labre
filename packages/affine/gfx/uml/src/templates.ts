@@ -116,6 +116,8 @@ const historyPreview = (mark = '') =>
 
 export const umlTemplateCategory: TemplateCategory = {
   name: 'UML',
+  // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
+  nameKey: 'com.labre.framework.uml',
   templates: [
     // The sheet: the frame with its cut-corner name tag, and two classifiers
     // joined by an association on it.
