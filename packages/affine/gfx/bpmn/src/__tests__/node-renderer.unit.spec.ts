@@ -99,13 +99,21 @@ const ALL_KINDS = [
 /**
  * The kinds this renderer must not touch — a plain shape and nothing on it.
  *
- * `group` is here for a different reason from the other three. They carry no
- * marker in the notation at all; the group has a distinctive look — dashed,
- * rounded, unfilled — but every part of it is a native shape property, so the
- * glyph layer has nothing left to add. A stroke drawn here would be one the
- * shape toolbar could not edit.
+ * Three of them carry no marker in the notation at all. The group has a
+ * distinctive look — dashed, rounded, unfilled — but every part of it is a
+ * native shape property, so the glyph layer has nothing left to add; a stroke
+ * drawn here would be one the shape toolbar could not edit. The sub-process and
+ * the call activity carry the collapsed `[+]` in the notation, and Labre drops
+ * it deliberately: that box is a button in bpmn.io and opens nothing here.
  */
-const UNDECORATED = ['startEvent', 'endEvent', 'task', 'group'] as const;
+const UNDECORATED = [
+  'startEvent',
+  'endEvent',
+  'task',
+  'subProcess',
+  'callActivity',
+  'group',
+] as const;
 
 describe('the BPMN node glyph layer', () => {
   it('draws on every decorated kind and on no other', () => {
@@ -245,18 +253,24 @@ describe('the BPMN node glyph layer', () => {
     }
   });
 
-  it('gives the sub-process and the call activity the identical boxed +', () => {
-    const sub = draw('subProcess');
-    rec = recordingCtx();
-    const call = draw('callActivity');
-    // Four sides of the marker box, plus the two strokes of the `+`.
-    expect(sub.segments).toHaveLength(6);
-    expect(call.segments).toEqual(sub.segments);
-    // On the bottom edge, horizontally centred — where a collapsed marker goes.
-    const { w, h } = NODE_SIZE.subProcess;
-    for (const s of sub.segments) {
-      expect(s.y1).toBeGreaterThan(h / 2);
-      expect(Math.abs(s.x1 - w / 2)).toBeLessThan(w / 4);
+  /**
+   * The collapsed `[+]` is a BUTTON in bpmn.io — click it and the folded
+   * process opens. Labre has no such gesture (a process defined elsewhere is a
+   * linked document, with a symbol of its own), so the marker was a control
+   * that did nothing, and it is gone. Both kinds are now the bare native
+   * rectangle, and the call activity's thick border — a creation-time preset,
+   * not a stroke this layer draws — is the whole distinction.
+   */
+  it('leaves the sub-process and the call activity bare, with no collapsed +', () => {
+    for (const kind of ['subProcess', 'callActivity'] as const) {
+      rec = recordingCtx();
+      const { segments, curves, fills, ops } = draw(kind);
+      expect(segments, kind).toHaveLength(0);
+      expect(curves, kind).toHaveLength(0);
+      expect(fills, kind).toHaveLength(0);
+      // Not a single canvas operation: the renderer returns before it even
+      // sets up the glyph frame, exactly like a plain task.
+      expect(ops, kind).toHaveLength(0);
     }
   });
 

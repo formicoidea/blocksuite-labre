@@ -28,8 +28,9 @@ export const END_WIDTH = 4;
 export const NODE_STROKE_WIDTH = 2;
 
 /**
- * The call activity's border, which the spec draws THICK — it is the one way to
- * tell it from the sub-process, since both carry the same `+` marker. Same
+ * The call activity's border, which the spec draws THICK — and here it is the
+ * ONLY way to tell it from the sub-process, since Labre draws neither of them
+ * with the notation's collapsed `+` (`node/node-renderer.ts`). Same
  * weight as the end-event ring, and for the same reason: this is the heaviest
  * line the notation uses, and it is spent on "this one stands for a whole
  * process defined somewhere else".

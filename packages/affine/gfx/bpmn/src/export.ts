@@ -1801,9 +1801,11 @@ export function exportBpmnXmlWithWarnings(
       id: minter.mint('Shape', node.id),
       bpmnElement: node.id,
     };
-    // The pack draws the COLLAPSED sub-process only — a task-sized box with a
-    // `+` — and `isExpanded="false"` is how DI says exactly that. Without it a
-    // tool is free to draw an expanded container the author never made.
+    // The pack draws the COLLAPSED sub-process only — a task-sized box, with
+    // no body folded open inside it — and `isExpanded="false"` is how DI says
+    // exactly that. Without it a tool is free to draw an expanded container the
+    // author never made. (Labre leaves the `+` marker itself off the box, which
+    // is a drawing choice and says nothing about the DI flag.)
     if (
       node.model.kind === 'subProcess' ||
       node.model.kind === 'callActivity'

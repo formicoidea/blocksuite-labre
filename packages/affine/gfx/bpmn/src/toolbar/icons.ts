@@ -107,18 +107,21 @@ export const bpmnTaskServiceIcon = svg`<svg width="24" height="24" viewBox="0 0 
   <path d="M7.6 8.9 V9.3 M7.6 12.7 V13.1 M5.5 11 H5.9 M9.3 11 H9.7 M6.1 9.5 L6.4 9.8 M8.8 12.2 L9.1 12.5 M9.1 9.5 L8.8 9.8 M6.4 12.2 L6.1 12.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
 </svg>`;
 
-/** Sub-process — the rectangle with the collapsed [+] marker on its bottom edge. */
+/**
+ * Sub-process — the plain rectangle, like the task it is drawn as.
+ *
+ * The notation puts a collapsed [+] on its bottom edge and the canvas does not
+ * paint one (see `node/node-renderer.ts`): that box is a button everywhere else
+ * and opens nothing here. A palette glyph says what lands on the board, so it
+ * has none either, and the menu label is what tells this entry from the task.
+ */
 export const bpmnSubProcessIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="3.5" y="6.5" width="17" height="11" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
-  <rect x="9.6" y="12.6" width="4.8" height="4.8" stroke="currentColor" stroke-width="1.1"/>
-  <path d="M12 13.8 V16.2 M10.8 15 H13.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
 </svg>`;
 
-/** Call activity — the same [+] marker, on the notation's THICKEST border. */
+/** Call activity — the same bare rectangle, on the notation's THICKEST border. */
 export const bpmnCallActivityIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="4" y="7" width="16" height="10" rx="2.5" stroke="currentColor" stroke-width="3"/>
-  <rect x="9.6" y="12.2" width="4.8" height="4.8" stroke="currentColor" stroke-width="1.1"/>
-  <path d="M12 13.4 V15.8 M10.8 14.6 H13.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
 </svg>`;
 
 /** Exclusive gateway — diamond with an X. */

@@ -109,9 +109,10 @@ export const NODE_PRESETS: Record<BpmnNodeKind, BpmnNodePreset> = {
     stroke: EVENT_END,
     width: END_WIDTH,
   },
-  // Activities: the same rounded rectangle, and a marker tells them apart —
-  // except the call activity, whose thick border IS the distinction (it carries
-  // the same `+` as the sub-process).
+  // Activities: the same rounded rectangle, and a corner marker tells the two
+  // typed tasks apart. The sub-process wears nothing (its collapsed `+` opens
+  // nothing here, so it is not drawn) and the call activity's thick border IS
+  // its distinction.
   task: {
     shapeType: 'rect',
     stroke: NEUTRAL_STROKE,
