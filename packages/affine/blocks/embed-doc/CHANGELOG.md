@@ -1,5 +1,46 @@
 # @labre/affine-block-embed-doc
 
+## 0.41.0
+
+### Minor Changes
+
+- c4661f2: feat(blocks): slash-menu and toolbar preview illustrations carry no more baked-in English text. Every `<text>`/`<tspan>` run in a preview SVG (tweet, Linear, attachment, PDF, link, callout, new/linked doc, photo, and the note block's text/heading/code-block/quote/divider/list/bold/italic/strikethrough/underline/todo previews, plus the slash-menu's copy/delete/move/now/today/tomorrow/yesterday previews) is redrawn as a neutral skeleton bar instead, so no illustration will ever need a translation catalogue entry. Nothing else in these SVGs changed (masks, icons, shapes, embedded images are untouched), and no host-visible behavior changes outside the previews themselves. The surface-ref (Frame/Mind Map/Group) previews are unchanged: those labels name canvas elements that will not necessarily be renamed, so the PO kept their text as-is.
+- 5744cfd: feat(blocks): the AFFiNE chrome of media, documents, embeds and frames now resolves through the translation seam instead of raw English literals. Attachment's and image's slash-menu items, toolbars (Replace, Turn into card view, Download/Upload toasts with the file name or a formatted size) and error messages; bookmark's, embed-doc's and embed's slash-menu items, card-style switchers, "Open doc"/"Open this doc" toolbars, iframe error/idle/invalid-URL/link-popup cards and the HTML embed's empty state; surface-ref's slash-menu items (mind map, frame, group, including the live "Frame: {{title}}"/"Group: {{title}}" list entries, previously built by string concatenation) and its per-kind placeholder cards (deleted / cannot-display, one full sentence per reference kind); frame's dense-menu, surface toolbar, presentation mode (previous/next, fullscreen, frame order, reached-first/last) and the frame panel's header and settings menu — all now carry keys, resolved via `translateKey`/`labelWording`/`tooltipWording`/`nameWording`/`descriptionWording`/`captionWording`. Words shared across two or more of these packages (Caption, Download, Reload, Rename, Frame, Settings, Loading…, Untitled, the four card-style labels…) moved to `@labre/affine-shared/services`'s `chrome.ts` as single shared keys rather than being restated per package. Every non-framework package touched gained its own `./translations` export subpath, imported by `packages/affine/all/src/translations.ts`. With no catalogue registered every surface reads exactly as it did before — no visible change for a host that has not wired a `TranslationService`.
+
+  Left untouched, and why: the surface-ref preview-tooltip illustrations (`configs/tooltips.ts`) keep their English figures per an earlier PO decision; displayed domains/URLs are unchanged per PO decision; the three linked-doc export adapters' (`embed-doc/src/embed-linked-doc-block/adapters/{html,markdown,plain-text}.ts`) own "untitled" fallback stays a plain literal — per the L2b lot's precedent, the paste/import pipeline's `Transformer` carries an optional `provider` never wired to the editor's `TranslationProvider` by any existing caller, so resolving a key there would be dead code rather than a real translation path; the `embed-youtube-block`, `embed-loom-block`, `embed-figma-block` and `embed-github-block` directories are out of scope (postponed embeds).
+
+  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+### Patch Changes
+
+- a513f05: Displayed English now says "Canvas" where it said "Edgeless" and "Document" where "Page" named the document mode (display-mode options, note and frame toolbars, toasts, slash-menu group headers, surface-ref placeholders, the frame and mind-map slash-menu previews). Translation keys, identifiers and stored values are unchanged. Three keys that already shipped change their English fallback: `com.labre.embed.synced-doc.empty-preview`, `com.labre.toast.frame-inserted-into-page` and `com.labre.toast.note-removed-from-page-mode`. The mobile keyboard toolbar is left as is.
+- b2781b5: refactor(blocks): one chrome word, one key. Where several packages declared the same English interface word under different keys (Copy-style verbs, text formats, display modes, Reload, Rename, Settings…), they now share one wording from `@labre/affine-shared/services`, and the key manifest carries 52 fewer entries. Nothing changes on screen, and no key that existed in a previous release is removed: the merged keys were all introduced by this release's translation work. The manifest spec now fails when a new interface word is declared under a second key (real homonyms such as « Light » or « Left » are allow-listed with a reason).
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [4ed9484]
+- Updated dependencies [c4661f2]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/affine-widget-slash-menu@0.41.0
+  - @labre/affine-block-embed@0.41.0
+  - @labre/affine-block-surface@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-rich-text@0.41.0
+  - @labre/affine-inline-reference@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes

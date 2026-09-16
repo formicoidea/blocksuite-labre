@@ -1,5 +1,143 @@
 # @labre/affine
 
+## 0.41.0
+
+### Minor Changes
+
+- 6cfe313: feat(blocks): the translation seam takes interpolation parameters and the host's locale. `TranslationService.t(key, params?)` and `translateKey(std, key, fallback, params?)` carry the values of a sentence with holes in it; fallbacks use i18next placeholders (`{{name}}`), and the library fills them itself when the host has no entry. `hostLocale(std)` gives the host's full language tag for `Intl` formatting. Each package now declares its own wordings, which the key manifest collects. The slash menu resolves `nameWording`, `descriptionWording`, `captionWording` and its group headers against the host's catalogue, and search matches both the translated and the English name. Templates rebuild the text they write into the document in the inserting editor's language (`Template.localize`). With no `TranslationProvider` registered, nothing changes on screen. A host adapter should forward `params`: `t: (key, params) => i18n.exists(key, params) ? i18n.t(key, params) : undefined`.
+- 5776733: feat(blocks): route bypassed i18n keys through the seam instead of raw literals. The DDD/EDGY/C4 auto-legends (`createAutoLegend`) now resolve every row's label and a section's own title through the role/preset key it always carried, wherever a host registers a catalogue — the Context Map "Relationships" row, the Core Domain "Sub-domains" row, the Event Storming "Stickies" row and EDGY's facet section titles (three new keys, `com.labre.edgy.legend.facet.*`) all reached this by accident before. The templates panel resolves a command-derived template's tile tooltip through the command's own `labelKey` (`resolveTemplateName`), a category's tab label through its own key (`com.labre.framework.<id>`, new `TemplateCategory.nameKey`), the "Add" hover caption through a new `com.labre.template.panel.add` key, and search now matches a translated name as well as the English one. The connector's "Reverse direction" tooltip and the edgeless embed toolbar's "Card view" / "Embed view" switcher now resolve through the same keys their page-mode counterparts already used, instead of restating the words. `UniverseTagDefs` (`TagDef` / `TagValueDef`) gains an optional `labelKey` beside `label` — backward compatible, a host pack needs no change — and the library's own Wardley-natures / Porter-competition pack uses it; every renderer of a tag label (the "Qualify" toolbar, the reading panel) resolves it. New manifest source `'tag'`. None of this changes what a catalogue-less playground shows: every fallback is the exact English text already on screen.
+- 75770e1: feat(blocks): every seed the DDD frameworks, the generic diagrams and the gfx-primitive packages write into a document at creation now resolves through the translation seam (`translateKey`, ADR 0016), so a document created in a translated host starts in that language instead of English — a document created before these keys existed keeps its plain text.
+
+  Event Storming's eight sticky captions and its hotspot; Core Domain's five sub-domain dots and three Team Topologies markers (both palettes derived from tables shared in `ddd-shared`, exported once as `dddSharedTranslationEntries` and spread into each consuming framework rather than restated); Context Map's bounded-context bubble and its cloud's "System" name; Cynefin/Estuarine's two hand-composed compositions ("Decision sorting"'s four domain stickies, "Constraint map"'s three hexagon captions); the standalone "Aggregate Design Canvas" template's header and nine section titles; the five generic ("Other") templates — SWOT's four quadrant labels, Kanban's card/column words, the Business Model Canvas's title and nine section names, Fishbone's category/effect/item words, Gantt's phase names and its `{{n}}`-parameterised week header; a frame's and a group's default title (`Frame {{n}}` / `Group {{n}}`); the "/ Mind Map" slash command's and the drag-from-basket mindmap tool's root and child captions; the four starter mindmap templates' root and three topic captions; and an imported `.mm`/`.opml` file's untitled-node fallback.
+
+  Every hand-composed template touched (the mindmap starters, the two Cynefin/Estuarine compositions, the Aggregate Design Canvas, the five generic diagrams) gained a `localize` rebuild mirroring the derived-template mechanism already in place: without a host catalogue every one of them still inserts byte-identical English content. Non-framework packages that write seeds now have their own small `translations.ts`, listed under a new `PACKAGE_SEED_WORDINGS` table in the manifest (source `seed`, alongside the existing chrome-sourced `PACKAGE_WORDINGS`) — the same minimal extension the seed-source manifest already needed for a framework's own seeds.
+
+  Left untouched, and why: the DDD Context Map's nine relationship patterns write no seed at all since WS2 (the palette arms the connector tool rather than dropping a labelled group — nothing to translate); the mindmap model's own "New node" default (a red zone — `packages/affine/model`) and the two callers that rely on it sit in packages outside this lot's scope; the code and shared-adapter "Plain Text"/"Untitled" fallbacks run in the paste/import pipeline's `Transformer`, whose optional `provider` is never wired to the editor's `TranslationProvider` by any existing caller.
+
+  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+- 4ed9484: feat(blocks): dates and numbers cross the i18n seam through `Intl`, not a hard-coded English table. `formatLocale(std)` (`hostLocale(std) ?? 'en-US'`) joins `hostLocale` as the one locale every `Intl.*Format` call resolves against. The "@" link-to-doc menu's overflow count ("1,234 more docs") now formats through `Intl.NumberFormat(formatLocale(std))` instead of string concatenation, so a host's locale gets its own thousands separator. The outline (plan) panel's five block-preview placeholders (Bookmark / Code Block / Database / Image / Attachment — shown when a block has nothing else to preview) were misfiled into the same audit lot as date/number formatting although they are plain words; they now carry their own keys (`com.labre.outline.placeholder.*`) and cross the translation seam like the rest of the editor's chrome. With no catalogue registered every surface reads exactly as it did before.
+- 6271b11: feat(blocks): the DDD frameworks' automatic legends, the surface/root editor chrome, the generic gfx tools (brush, connector, pointer, group, link, template) and a handful of shared services now resolve their strings through the translation seam instead of a baked-in English literal.
+
+  Every DDD auto-legend's box title ("Legend") joins the shared `com.labre.board.legend.title` wording, and each framework's section titles (Context Map's "Boundaries"/"Relationships", Core Domain's "Sub-domains"/"Team interaction modes"/"Movement", Event Storming's "Stickies"/"Flow") get their own seed key via `AutoLegendSectionSpec.titleKey`. The Context Map relationship rows drop their pre-built `"PS — Partnership"` string in favor of `labelPrefix` + the role's own translated `labelKey`, resolved at legend-build time. The Aggregate Design Canvas template tab now carries a `TemplateCategory.nameKey` instead of a literal name.
+
+  The edgeless block toolbar (turn-into menu, alignment menu, misc actions, the "More" submenu, zoom-to-selection and mindmap Tab/Enter shortcuts), the SVG importer's eighteen best-effort remarks (one key per sentence shape, `{{name}}`/`{{unit}}`/`{{kind}}` interpolated), the brush/eraser/pen tooltips, the connector toolbar (modes, styles, add-text) and quick-tool, the pointer hand/select tooltips, the group toolbar and its "Group {{n}}" seed, the link undo button, and the templates panel's search placeholder are all translated the same way — `translateKey(std, ...WORDING)` for chrome rendered with `std` in hand, a sibling `…Wording` field for static toolbar-action configs.
+
+  Three importers (markdown, mix-text, plain-text `toDocSnapshot`) resolve their "Untitled" seed through a new shared `resolveWording(provider, wording)` helper (`@labre/affine-shared/adapters`, also now backing `ClipboardAdapter`'s size-limit toasts), since these transformers carry a `ServiceProvider` but no `std`. The doc-display-meta service's "Untitled"/"Deleted doc" fallbacks, the PNG export's untitled-doc filename, the comment toolbar button and the generic notification's "Undo" action follow the same pattern.
+
+  `@labre/std`'s "Block Version Mismatched" card resolves its four wordings through a `TranslationProvider` looked up by NAME (`createIdentifier('AffineTranslationService')`) rather than by importing `@labre/affine-shared` — the dependency between the two packages runs the other way — proven by a new unit test that registers a fake provider under the same name from an independently-constructed identifier.
+
+  With no host catalogue registered, every one of these surfaces renders exactly the English text it always has.
+
+  Left as-is, and why: `MindmapElementModel.addNode`'s "New node" default is a model default (red zone) — the Tab/Enter call sites in `blocks/root` now pass the text explicitly instead, using a seed key declared in `blocks/root`'s own table since the mindmap framework's table does not carry it yet. `bracket-pairs.ts`'s pair names and the code-block language ids are internal matching keys, never displayed. The native `showOpenFilePicker` filter descriptions (`filesys.ts`) have no reasonable seam to a host catalogue from a plain module constant. `open-doc-config.ts`'s item labels are dead code today (only `.isAllowed` is read). The `senior-tool.ts` "Pen"/"Template" names are core tools with no framework descriptor, by the same design already documented for every other core tool.
+
+  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+- 924f7d6: feat(blocks): the text blocks' and the slash menu's AFFiNE chrome resolves through the translation seam instead of raw English literals. The note block's edgeless surface — the style panel (fill color / shadow / border / corner-radius section titles, the custom-color tab, the "Note Style" button), the shadow/border/display-mode dropdowns, the surface toolbar's slicer/size/display-in-page buttons and their four notifications ("Note displayed in Page Mode", "Content removed/added…", "View in Toc") — now carries `translateKey`/`labelWording`/`tooltipWording` pairs everywhere `std` reaches or the toolbar's own static-config seam applies. The note's slash-menu tooltip captions, its conversion/format item names (`nameWording`, reusing the shared block-type words below), and the "Other Headings" submenu follow the same pattern; the move-up/move-down hotkey config's internal label now reads the shared wording's own fallback instead of restating it, so it can never drift from what the slash menu's own "Actions" group says. The paragraph block's placeholders (the empty-paragraph "Type '/' for commands" and the six heading-level placeholders) resolve through a lookup table a host's custom `getPlaceholder` is free to ignore. `gfx/note`'s "add note" senior tool, its quick-tool row (Image/File/Link, and every block kind offered), and its own shadow/display-mode panels are keyed too — distinct from `blocks/note`'s wording where the two surfaces say different words (e.g. "In Both" vs "Both"), including the pre-existing "Floation shadow" typo, kept letter-for-letter apart from `blocks/note`'s "Floating shadow". The code block's toolbar (copy/caption/comment/duplicate/delete/more, wrap/line-number toggles, the language search placeholder, the "Plain Text" fallback and the copy-failure toast) and the latex block's two slash-menu items (name/description/tooltip intro) and its empty/error placeholders are keyed; language names themselves stay English (proper names). The callout block's single slash-menu item is keyed. Block-type words used in more than one of these packages (Text, Heading 1-6, Code Block, Quote, Divider, Bulleted/Numbered/To-do List) and the note shadow options shared between `blocks/note` and `gfx/note` now live once in `@labre/affine-shared`'s `chrome.ts`. With no catalogue registered every surface reads exactly as it did before this change, letter for letter.
+- 1dac32d: feat(blocks): translate the edgeless toolbar, canvas tools and generic widgets at the seam. The edgeless toolbar (font weight/style, style toggles, tool tooltips, zoom bar), the mindmap and shape frameworks (senior/quick tools, style and layout menus, shape names, templates category tab), the text toolbar, the outline panel and its floating mini-viewer, the adapter/debug panel, the document title placeholder, the drag-and-drop preview, the auto-connect index badges, the "+" auto-complete panel and floating link button, the "⋮" overflow menu, and the "@" linked-doc menu (including its import dialog and the remote-cursor fallback name) now resolve through `translateKey`/`ChromeWording` instead of hardcoded English. A new `com.labre.mindmap.seed.new-node` seed replaces the mindmap model's own "New node" default at every call site in these packages. With no `TranslationProvider` registered every surface reads exactly as before, letter for letter.
+
+### Patch Changes
+
+- 26988c0: fix(blocks): the Aggregate Design Canvas template's translation keys no longer make `@labre/core` import the ddd-aggregate bundle. The package exports `dddAggregateTranslationEntries` from its root, like a framework bundle exports its `…TranslationEntries`; a bundled host composes them with core's manifest when it installs `@formicoidea/labre-framework-ddd-aggregate`. The monorepo manifest is unchanged.
+- b2781b5: refactor(blocks): one chrome word, one key. Where several packages declared the same English interface word under different keys (Copy-style verbs, text formats, display modes, Reload, Rename, Settings…), they now share one wording from `@labre/affine-shared/services`, and the key manifest carries 52 fewer entries. Nothing changes on screen, and no key that existed in a previous release is removed: the merged keys were all introduced by this release's translation work. The manifest spec now fails when a new interface word is declared under a second key (real homonyms such as « Light » or « Left » are allow-listed with a reason).
+- Updated dependencies [26988c0]
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [515103b]
+- Updated dependencies [75770e1]
+- Updated dependencies [4ed9484]
+- Updated dependencies [c4661f2]
+- Updated dependencies [c226803]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+- Updated dependencies [2764603]
+  - @labre/affine-gfx-ddd-aggregate@0.41.0
+  - @labre/affine-block-embed-doc@0.41.0
+  - @labre/affine-block-frame@0.41.0
+  - @labre/affine-block-note@0.41.0
+  - @labre/affine-block-surface-ref@0.41.0
+  - @labre/affine-fragment-frame-panel@0.41.0
+  - @labre/affine-fragment-outline@0.41.0
+  - @labre/affine-gfx-group@0.41.0
+  - @labre/affine-gfx-mindmap@0.41.0
+  - @labre/affine-gfx-note@0.41.0
+  - @labre/affine-shared@0.41.0
+  - @labre/affine-widget-drag-handle@0.41.0
+  - @labre/affine-widget-slash-menu@0.41.0
+  - @labre/affine-gfx-template@0.41.0
+  - @labre/affine-block-embed@0.41.0
+  - @labre/affine-block-surface@0.41.0
+  - @labre/affine-gfx-bpmn@0.41.0
+  - @labre/affine-gfx-c4@0.41.0
+  - @labre/affine-gfx-connector@0.41.0
+  - @labre/affine-gfx-cynefin-estuarine@0.41.0
+  - @labre/affine-gfx-ddd-context-map@0.41.0
+  - @labre/affine-gfx-ddd-core-domain@0.41.0
+  - @labre/affine-gfx-ddd-event-storming@0.41.0
+  - @labre/affine-gfx-ddd-shared@0.41.0
+  - @labre/affine-gfx-edgy@0.41.0
+  - @labre/affine-gfx-wardley@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-widget-linked-doc@0.41.0
+  - @labre/affine-block-attachment@0.41.0
+  - @labre/affine-block-bookmark@0.41.0
+  - @labre/affine-block-callout@0.41.0
+  - @labre/affine-block-image@0.41.0
+  - @labre/affine-block-root@0.41.0
+  - @labre/affine-gfx-brush@0.41.0
+  - @labre/affine-gfx-pointer@0.41.0
+  - @labre/affine-gfx-link@0.41.0
+  - @labre/affine-block-paragraph@0.41.0
+  - @labre/affine-block-code@0.41.0
+  - @labre/affine-block-latex@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-rich-text@0.41.0
+  - @labre/affine-inline-latex@0.41.0
+  - @labre/affine-inline-link@0.41.0
+  - @labre/affine-inline-mention@0.41.0
+  - @labre/affine-inline-preset@0.41.0
+  - @labre/affine-inline-reference@0.41.0
+  - @labre/affine-inline-footnote@0.41.0
+  - @labre/affine-block-edgeless-text@0.41.0
+  - @labre/affine-fragment-adapter-panel@0.41.0
+  - @labre/affine-fragment-doc-title@0.41.0
+  - @labre/affine-gfx-shape@0.41.0
+  - @labre/affine-gfx-text@0.41.0
+  - @labre/affine-widget-edgeless-auto-connect@0.41.0
+  - @labre/affine-widget-edgeless-selected-rect@0.41.0
+  - @labre/affine-widget-edgeless-toolbar@0.41.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.41.0
+  - @labre/affine-widget-remote-selection@0.41.0
+  - @labre/affine-widget-toolbar@0.41.0
+  - @labre/affine-widget-edgeless-dragging-area@0.41.0
+  - @labre/affine-widget-keyboard-toolbar@0.41.0
+  - @labre/affine-widget-note-slicer@0.41.0
+  - @labre/affine-block-data-view@0.41.0
+  - @labre/affine-block-database@0.41.0
+  - @labre/affine-block-divider@0.41.0
+  - @labre/affine-block-list@0.41.0
+  - @labre/affine-block-table@0.41.0
+  - @labre/data-view@0.41.0
+  - @labre/affine-foundation@0.41.0
+  - @labre/affine-inline-comment@0.41.0
+  - @labre/affine-widget-frame-title@0.41.0
+  - @labre/affine-widget-page-dragging-area@0.41.0
+  - @labre/affine-widget-scroll-anchoring@0.41.0
+  - @labre/affine-widget-viewport-overlay@0.41.0
+  - @labre/affine-gfx-turbo-renderer@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+  - @labre/sync@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes

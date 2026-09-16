@@ -1,5 +1,40 @@
 # @labre/affine-gfx-shape
 
+## 0.41.0
+
+### Minor Changes
+
+- 1dac32d: feat(blocks): translate the edgeless toolbar, canvas tools and generic widgets at the seam. The edgeless toolbar (font weight/style, style toggles, tool tooltips, zoom bar), the mindmap and shape frameworks (senior/quick tools, style and layout menus, shape names, templates category tab), the text toolbar, the outline panel and its floating mini-viewer, the adapter/debug panel, the document title placeholder, the drag-and-drop preview, the auto-connect index badges, the "+" auto-complete panel and floating link button, the "⋮" overflow menu, and the "@" linked-doc menu (including its import dialog and the remote-cursor fallback name) now resolve through `translateKey`/`ChromeWording` instead of hardcoded English. A new `com.labre.mindmap.seed.new-node` seed replaces the mindmap model's own "New node" default at every call site in these packages. With no `TranslationProvider` registered every surface reads exactly as before, letter for letter.
+- 47d4ac6: feat(blocks): close four i18n seams the earlier lots reported missing. A colour panel's swatch (`edgeless-color-panel`, shape/note/connector/brush pickers) now resolves its visible name and aria-label through `resolvePaletteLabel` (`@labre/affine-components/color-picker`) instead of showing `Palette.key` raw — the default theme's colours (`Red`, `LightBlue`…) translate through a shared `PALETTE_NAME_WORDINGS` table, and a framework's own swatches (Wardley's evolution-cycle colours, EDGY's facet palette) translate through their own `NamedPalette.labelWording`, with no cross-framework import. `UniverseTagDefs` (tag packs) gained an optional pack-level `labelKey` and `descriptionKey` on `TagDef` / `TagValueDef`, resolved by `translateTagLabel` / the new `translateTagDescription`; Wardley's own nature and Porter-competition tags are keyed end to end. `InterchangeNote`'s `messageKey` can now carry a whole sentence with `{{name}}` / `{{count}}` holes (`messageParams`, already wired into `reportInterchangeImport`) — the remaining 16 BPMN import remarks and refusals (the last four now throw a translatable `InterchangeImportError` instead of a plain `Error`) and the 2 remaining Wardley OWM import remarks are keyed. With no `TranslationProvider` registered every one of these reads exactly as it did before.
+
+### Patch Changes
+
+- b2781b5: refactor(blocks): one chrome word, one key. Where several packages declared the same English interface word under different keys (Copy-style verbs, text formats, display modes, Reload, Rename, Settings…), they now share one wording from `@labre/affine-shared/services`, and the key manifest carries 52 fewer entries. Nothing changes on screen, and no key that existed in a previous release is removed: the merged keys were all introduced by this release's translation work. The manifest spec now fails when a new interface word is declared under a second key (real homonyms such as « Light » or « Left » are allow-listed with a reason).
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [4ed9484]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/affine-block-surface@0.41.0
+  - @labre/affine-gfx-connector@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-rich-text@0.41.0
+  - @labre/affine-gfx-text@0.41.0
+  - @labre/affine-widget-edgeless-toolbar@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes
