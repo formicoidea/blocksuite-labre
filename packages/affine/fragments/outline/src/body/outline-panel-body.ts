@@ -1,6 +1,6 @@
 import { changeNoteDisplayMode } from '@labre/affine-block-note';
 import { NoteBlockModel, NoteDisplayMode } from '@labre/affine-model';
-import { DocModeProvider } from '@labre/affine-shared/services';
+import { DocModeProvider, translateKey } from '@labre/affine-shared/services';
 import { focusTitle, matchModels } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -26,6 +26,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { when } from 'lit/directives/when.js';
 
 import { type TocContext, tocContext } from '../config';
+import { OUTLINE_EMPTY_PANEL, OUTLINE_HIDDEN_CONTENTS } from '../translations';
 import type {
   ClickBlockEvent,
   DisplayModeChangeEvent,
@@ -122,7 +123,7 @@ export class OutlinePanelBody extends SignalWatcher(
         data-testid="empty-panel-placeholder"
         class=${styles.emptyPanelPlaceholder}
       >
-        Use headings to create a table of contents.
+        ${translateKey(this.editor.std, ...OUTLINE_EMPTY_PANEL)}
       </div>
     </div>`;
   }
@@ -447,7 +448,9 @@ export class OutlinePanelBody extends SignalWatcher(
       ${when(
         items.length > 0,
         () =>
-          html`<div class=${styles.edgelessCardListTitle}>Hidden Contents</div>`
+          html`<div class=${styles.edgelessCardListTitle}>
+            ${translateKey(this.editor.std, ...OUTLINE_HIDDEN_CONTENTS)}
+          </div>`
       )}
       ${this._renderNoteCards(items)}
     </div>`;

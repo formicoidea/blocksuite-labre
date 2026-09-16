@@ -1,4 +1,5 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import { TranslationProvider } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type {
   BlockStdScope,
@@ -40,10 +41,16 @@ function materialize(text: Y.Text): string {
  * placement actions actually touch and throws on anything else, so an
  * unsupported action fails loudly at build time instead of producing a
  * half-empty template.
+ *
+ * `host` is the editor the template is being inserted into. Its
+ * `TranslationProvider`, and nothing else from it, is handed to the action, so
+ * the seeds the action writes come out in the host's language. Without a host,
+ * the action writes its English fallbacks.
  */
 export function snapshotFromAction(
   run: (std: BlockStdScope) => void,
-  name: string
+  name: string,
+  host?: BlockStdScope
 ): ReturnType<typeof makeTemplateSnapshot> {
   const elements = new Map<string, Record<string, unknown>>();
   let n = 0;
@@ -148,7 +155,10 @@ export function snapshotFromAction(
         `snapshotFromAction: unsupported service "${identifier?.identifierName ?? String(identifier)}"`
       );
     },
-    getOptional: () => undefined,
+    getOptional: (identifier: unknown) =>
+      identifier === (TranslationProvider as unknown)
+        ? host?.getOptional(TranslationProvider)
+        : undefined,
     command: {
       // Really run the command, so a group built by `createGroupCommand` is
       // whatever that command says a group is — no second definition here.
@@ -243,13 +253,15 @@ export function templateFromCommand(
   preview: string,
   name = command.labelFallback ?? command.id
 ): Template {
+  const run = (std: BlockStdScope) => {
+    void command.run(std, INVOCATION);
+  };
   return {
     name,
     type: 'template',
     preview,
     commandId: command.id,
-    content: snapshotFromAction(std => {
-      void command.run(std, INVOCATION);
-    }, name),
+    content: snapshotFromAction(run, name),
+    localize: host => snapshotFromAction(run, name, host),
   };
 }

@@ -38,7 +38,8 @@
     ".": "./src/index.ts",
     "./turbo-painter": "./src/turbo/paragraph-painter.worker.ts",
     "./store": "./src/store.ts",
-    "./view": "./src/view.ts"
+    "./view": "./src/view.ts",
+    "./translations": "./src/translations.ts"
   },
   "files": [
     "src",
@@ -46,5 +47,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.40.0"
+  "version": "0.41.0"
 }

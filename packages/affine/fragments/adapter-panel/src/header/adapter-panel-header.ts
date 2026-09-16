@@ -6,7 +6,11 @@ import { consume } from '@lit/context';
 import { css, html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
 
-import { type AdapterPanelContext, adapterPanelContext } from '../config';
+import {
+  adapterPanelContext,
+  adapterPanelLabel,
+  type AdapterPanelContext,
+} from '../config';
 
 export const AFFINE_ADAPTER_PANEL_HEADER = 'affine-adapter-panel-header';
 
@@ -88,7 +92,10 @@ export class AdapterPanelHeader extends SignalWatcher(LitElement) {
       <div class="adapter-panel-header">
         <div class="adapter-selector" @click="${this._toggleAdapterMenu}">
           <span class="adapter-selector-label">
-            ${this.activeAdapter.label}
+            ${adapterPanelLabel(
+              this._context.std,
+              this.activeAdapter.labelWording
+            )}
           </span>
           ${ArrowDownSmallIcon({ width: '16px', height: '16px' })}
         </div>

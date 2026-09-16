@@ -1,5 +1,43 @@
 # @labre/affine-gfx-c4
 
+## 0.41.0
+
+### Minor Changes
+
+- 5776733: feat(blocks): route bypassed i18n keys through the seam instead of raw literals. The DDD/EDGY/C4 auto-legends (`createAutoLegend`) now resolve every row's label and a section's own title through the role/preset key it always carried, wherever a host registers a catalogue — the Context Map "Relationships" row, the Core Domain "Sub-domains" row, the Event Storming "Stickies" row and EDGY's facet section titles (three new keys, `com.labre.edgy.legend.facet.*`) all reached this by accident before. The templates panel resolves a command-derived template's tile tooltip through the command's own `labelKey` (`resolveTemplateName`), a category's tab label through its own key (`com.labre.framework.<id>`, new `TemplateCategory.nameKey`), the "Add" hover caption through a new `com.labre.template.panel.add` key, and search now matches a translated name as well as the English one. The connector's "Reverse direction" tooltip and the edgeless embed toolbar's "Card view" / "Embed view" switcher now resolve through the same keys their page-mode counterparts already used, instead of restating the words. `UniverseTagDefs` (`TagDef` / `TagValueDef`) gains an optional `labelKey` beside `label` — backward compatible, a host pack needs no change — and the library's own Wardley-natures / Porter-competition pack uses it; every renderer of a tag label (the "Qualify" toolbar, the reading panel) resolves it. New manifest source `'tag'`. None of this changes what a catalogue-less playground shows: every fallback is the exact English text already on screen.
+- 515103b: feat(blocks): every seed the four gfx-primitive frameworks write into a document — a BPMN pool's and lane's default name, the two worked BPMN scenes, a C4 component's title and description tier and a boundary's name, a Wardley node's/pipeline's/market's/accelerator's caption and a background variant's axis titles, the two shipped Wardley maps, an EDGY facets diagram's three circle names, the "EDGY dynamic" metamodel template and its four hand-composed scenes — now resolves through the translation seam at placement (`translateKey`, ADR 0016), so a document created in a translated host starts in that language instead of English. Every hand-composed template (BPMN's two scenes, Wardley's two maps, EDGY's four scenes and its metamodel card) gained a `localize` rebuild, mirroring the derived-template mechanism already in place: without a host catalogue every one of them still inserts byte-identical English content. C4's type-line bracket word and technology placeholder, and the dead `AREA_LABEL` in Wardley, are deliberately left English — see this lot's notes. Model defaults (`BpmnPoolElementModel.name`, `C4BoundaryElementModel.name`, `EdgyFacetsElementModel`'s three labels) are untouched; existing documents keep their stored text exactly as before.
+- c226803: feat(blocks): the five framework packages (Wardley, EDGY, Cynefin/Estuarine, BPMN, C4) resolve their remaining chrome and seeds through the translation seam instead of hard-coded English. Toolbar tooltips (Wardley's seven axis/gradient toggles, EDGY's facet-labels/hover-spotlight, Cynefin's three and Estuarine's four) carry a `…Wording`; Wardley's auto-legend (title, row descriptions, the two gradient captions, the Porter panel) and EDGY's legend section titles ("Base elements", "Relations") resolve at build time; Cynefin's canvas (headings, subheadings, the ten Probe/Sense/Respond decision lines, the seven teal annotations, the three exaptation sub-labels, the two markers and their note) and Estuarine's three curve legends resolve through the `CanvasRenderer`'s host, with the decision lines drawn as one run once a host answers rather than assuming the English bold-lead split; Cynefin's and Estuarine's Templates-panel tabs carry their own `nameKey`. BPMN's nine export warnings and four import quarantine notes are keyed (the export ones with `{{count}}`/`{{names}}` params, neutral on plural); Wardley's five fixed-wording OWM import remarks are too. C4's four type-line words and its technology placeholder now resolve through the host at both placement and every edit commit (`C4TypeLineWatcher`), and the comparisons that decide whether a type line is still the untouched prompt accept either the English literal or the host's own resolved wording — the shipped French proposal keeps these five words identical to English so a translated document still round-trips correctly through the `std`-free exporter. C4's own legend section titles ("Elements", "Frames", "Relations") are keyed too. With no `TranslationProvider` registered every surface reads byte-identical to before.
+- 223b280: feat(blocks): close three shared translation seams the earlier i18n lots flagged as missing, then translate every string that was waiting on them. `Template.nameKey` gives a hand-composed template (a worked scene, an example map) a tile name of its own -- `resolveTemplateName` checks it before the `commandId`-derived path -- and every BPMN, Wardley, EDGY, Cynefin, Estuarine and mind-map hand-authored card now carries one. `AutoLegendSpec.titleKey` (already resolved by `createAutoLegend`) is now set for EDGY and C4's own "Legend" boxes, so both translate through the shared `BOARD_LEGEND_TITLE` key exactly like the three DDD boards already did. `MorphSpec.afterMorph` takes an optional 4th `std` parameter, which the morph toolbar now passes through: morphing an untouched TRANSLATED placeholder rewrites it to the target kind's own translated placeholder (`c4MorphedTypeLine`, `wardleyMorphedLabel`), where it used to fall back to English. Beyond the three seams: the note tool's overlay caption and a document's "Untitled" fallback (`inlines/reference`, the linked-doc HTML/Markdown exporters) now resolve through the shared `BLOCK_NAME_TEXT` / `DOC_UNTITLED` wordings instead of a raw literal; the "Template" senior-tool button gained a `labelKey`. Per a PO decision (2026-09-12), the linked-doc import dialog's English fallback now says "Labre" instead of the inherited "AFFiNE" in the two sentences that named it. Every addition is optional and retro-compatible: with no `TranslationProvider` registered, nothing on screen changes.
+
+### Patch Changes
+
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [75770e1]
+- Updated dependencies [4ed9484]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/affine-gfx-template@0.41.0
+  - @labre/affine-block-surface@0.41.0
+  - @labre/affine-gfx-connector@0.41.0
+  - @labre/affine-gfx-ddd-shared@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-gfx-pointer@0.41.0
+  - @labre/affine-gfx-shape@0.41.0
+  - @labre/affine-gfx-text@0.41.0
+  - @labre/affine-widget-edgeless-toolbar@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+
 ## 0.40.0
 
 ### Minor Changes

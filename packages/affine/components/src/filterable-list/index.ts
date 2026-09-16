@@ -1,13 +1,18 @@
 import { PAGE_HEADER_HEIGHT } from '@labre/affine-shared/consts';
+import { translateKey } from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
 import { DoneIcon, SearchIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
 import { autoPlacement, offset, type Placement, size } from '@floating-ui/dom';
+import { consume } from '@lit/context';
 import { html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
 import { type AdvancedPortalOptions, createLitPortal } from '../portal';
 import { filterableListStyles } from './styles.js';
+import { FILTERABLE_LIST_SEARCH_PLACEHOLDER } from '../translations.js';
 import type { FilterableListItem, FilterableListOptions } from './types.js';
 
 export * from './types.js';
@@ -16,6 +21,9 @@ export class FilterableListComponent<Props = unknown> extends WithDisposable(
   LitElement
 ) {
   static override styles = filterableListStyles;
+
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   private _buildContent(items: FilterableListItem<Props>[]) {
     return items.map((item, idx) => {
@@ -132,7 +140,10 @@ export class FilterableListComponent<Props = unknown> extends WithDisposable(
           <input
             id="filter-input"
             type="text"
-            placeholder=${this.options?.placeholder ?? 'Search'}
+            placeholder=${this.options?.placeholder ??
+            (this.std
+              ? translateKey(this.std, ...FILTERABLE_LIST_SEARCH_PLACEHOLDER)
+              : FILTERABLE_LIST_SEARCH_PLACEHOLDER[1])}
             @input="${() => {
               this._filterText = this._filterInput?.value;
               this._curFocusIndex = 0;

@@ -12,6 +12,9 @@ import {
   type AttachmentUploadedEvent,
   FileSizeLimitProvider,
   TelemetryProvider,
+  TOAST_DOWNLOAD_IN_PROGRESS,
+  TOAST_UPLOAD_SIZE_LIMIT,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { formatSize } from '@labre/affine-shared/utils';
 import { Bound, type IVec, Vec } from '@labre/global/gfx';
@@ -20,6 +23,10 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { BlockModel } from '@labre/store';
 
 import type { AttachmentBlockComponent } from './attachment-block';
+import {
+  ATTACHMENT_TOAST_DOWNLOAD_FAILED,
+  ATTACHMENT_TOAST_DOWNLOADING,
+} from './translations';
 
 export async function getAttachmentBlob(model: AttachmentBlockModel) {
   const { sourceId$, type$ } = model.props;
@@ -39,10 +46,10 @@ export async function getAttachmentBlob(model: AttachmentBlockModel) {
  * the download process may take a long time!
  */
 export function downloadAttachmentBlob(block: AttachmentBlockComponent) {
-  const { host, model, blobUrl, resourceController } = block;
+  const { host, model, blobUrl, resourceController, std } = block;
 
   if (resourceController.state$.peek().downloading) {
-    toast(host, 'Download in progress...');
+    toast(host, translateKey(std, ...TOAST_DOWNLOAD_IN_PROGRESS));
     return;
   }
 
@@ -50,13 +57,21 @@ export function downloadAttachmentBlob(block: AttachmentBlockComponent) {
   const shortName = name.length < 20 ? name : name.slice(0, 20) + '...';
 
   if (!blobUrl) {
-    toast(host, `Failed to download ${shortName}!`);
+    toast(
+      host,
+      translateKey(std, ...ATTACHMENT_TOAST_DOWNLOAD_FAILED, {
+        name: shortName,
+      })
+    );
     return;
   }
 
   resourceController.updateState({ downloading: true });
 
-  toast(host, `Downloading ${shortName}`);
+  toast(
+    host,
+    translateKey(std, ...ATTACHMENT_TOAST_DOWNLOADING, { name: shortName })
+  );
 
   const tmpLink = document.createElement('a');
   const event = new MouseEvent('click');
@@ -94,7 +109,10 @@ function hasExceeded(
 
   if (exceeded) {
     const size = formatSize(maxFileSize);
-    toast(std.host, `You can only upload files less than ${size}`);
+    toast(
+      std.host,
+      translateKey(std, ...TOAST_UPLOAD_SIZE_LIMIT, { size: size ?? '' })
+    );
   }
 
   return exceeded;

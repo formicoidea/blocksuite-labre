@@ -15,6 +15,47 @@ import { html, type TemplateResult } from 'lit';
 import { createWardleyLegend } from '../legend';
 import { wardleyLegendIcon } from './icons';
 
+/** The seven toolbar tooltips this file used to hard-code as English literals. */
+const EVOLUTION_AXIS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.evolution-axis',
+  'Evolution axis (X)',
+];
+const EVOLUTION_PHASE_LABELS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.evolution-phase-labels',
+  'Evolution phase labels',
+];
+const COLUMNS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.columns',
+  'Columns (dividers)',
+];
+const CORNER_LABELS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.corner-labels',
+  'Labels Uncharted / Industrialized',
+];
+const GRADIENT_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.gradient',
+  'Show / hide the gradient',
+];
+const VALUE_CHAIN_AXIS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.value-chain-axis',
+  'Value Chain axis (Y)',
+];
+const VISIBILITY_LABELS_TOGGLE: ChromeWording = [
+  'com.labre.wardley.toolbar.visibility-labels',
+  'Labels Visible / Invisible',
+];
+
+/** Every wording above, for `translations.ts`'s manifest contribution. */
+export const WARDLEY_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
+  EVOLUTION_AXIS_TOGGLE,
+  EVOLUTION_PHASE_LABELS_TOGGLE,
+  COLUMNS_TOGGLE,
+  CORNER_LABELS_TOGGLE,
+  GRADIENT_TOGGLE,
+  VALUE_CHAIN_AXIS_TOGGLE,
+  VISIBILITY_LABELS_TOGGLE,
+];
+
 const ResizeIcon = html`<svg
   width="24"
   height="24"
@@ -204,32 +245,32 @@ export const wardleyToolbarConfig = {
       actions: [
         booleanToggle(
           'b.1-axis-x',
-          'Evolution axis (X)',
+          EVOLUTION_AXIS_TOGGLE,
           XAxisIcon,
           'showXAxis'
         ),
         booleanToggle(
           'b.2-column-labels',
-          'Evolution phase labels',
+          EVOLUTION_PHASE_LABELS_TOGGLE,
           ColumnLabelsIcon,
           'showColumnLabels'
         ),
         booleanToggle(
           'b.3-columns',
-          'Columns (dividers)',
+          COLUMNS_TOGGLE,
           ColumnsIcon,
           'showColumnDividers'
         ),
         booleanToggle(
           'b.4-corner-labels',
-          'Labels Uncharted / Industrialized',
+          CORNER_LABELS_TOGGLE,
           CornerLabelsIcon,
           'showCornerLabels'
         ),
         // Only relevant when the selection has a gradient variant.
         booleanToggle(
           'b.5-gradient',
-          'Show / hide the gradient',
+          GRADIENT_TOGGLE,
           GradientIcon,
           'showGradient',
           ctx =>
@@ -245,13 +286,13 @@ export const wardleyToolbarConfig = {
       actions: [
         booleanToggle(
           'c.1-axis-y',
-          'Value Chain axis (Y)',
+          VALUE_CHAIN_AXIS_TOGGLE,
           YAxisIcon,
           'showYAxis'
         ),
         booleanToggle(
           'c.2-visibility-labels',
-          'Labels Visible / Invisible',
+          VISIBILITY_LABELS_TOGGLE,
           VisibilityIcon,
           'showVisibilityLabels'
         ),

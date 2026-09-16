@@ -9,15 +9,30 @@
  * boundary between "the app misconfigured a pack" and "the user lost their
  * board".
  */
+import type { BlockStdScope } from '@labre/std';
 import type { RoleDefs } from '@labre/std/gfx';
 import { describe, expect, test } from 'vitest';
 
 import {
   buildUniverseRegistry,
   tagAppliesToRole,
+  tagDefsTranslationEntries,
   type TagDef,
+  translateTagDescription,
+  translateTagLabel,
   type UniverseTagDefs,
 } from '../../services/universe-tag-defs-service.js';
+
+/** No host: every `translateKey` call falls through to its own fallback. */
+const NO_HOST_STD = {
+  getOptional: () => undefined,
+} as unknown as BlockStdScope;
+
+/** A host whose catalogue answers `entries` and nothing else. */
+const stdWith = (entries: Record<string, string>): BlockStdScope =>
+  ({
+    getOptional: () => ({ t: (key: string) => entries[key] }),
+  }) as unknown as BlockStdScope;
 
 /** A three-role vocabulary with one specialisation, enough to exercise `roleIsA`. */
 const ROLES: RoleDefs = {
@@ -300,6 +315,235 @@ describe('ordering', () => {
       'wardley:beta',
       'wardley:alpha',
       'wardley:zeta',
+    ]);
+  });
+});
+
+describe('translateTagLabel', () => {
+  test('with no `labelKey`, is exactly `label` — a host pack needs no change', () => {
+    expect(
+      translateTagLabel(NO_HOST_STD, {
+        label: 'Criticité',
+        labelKey: undefined,
+      })
+    ).toBe('Criticité');
+  });
+
+  test('with no host, renders the fallback letter for letter', () => {
+    expect(
+      translateTagLabel(NO_HOST_STD, {
+        label: 'Nature',
+        labelKey: 'com.labre.wardley.tag.nature',
+      })
+    ).toBe('Nature');
+  });
+
+  test("prefers the host's catalogue entry over the baked fallback", () => {
+    const std = stdWith({ 'com.labre.wardley.tag.nature': 'Nature (FR)' });
+    expect(
+      translateTagLabel(std, {
+        label: 'Nature',
+        labelKey: 'com.labre.wardley.tag.nature',
+      })
+    ).toBe('Nature (FR)');
+  });
+});
+
+describe('tagDefsTranslationEntries', () => {
+  test('one entry per `labelKey`, the tag AND its values, fallback from `label`', () => {
+    const entries = tagDefsTranslationEntries(
+      pack({
+        tags: [
+          nature({
+            labelKey: 'com.labre.wardley.tag.nature',
+            values: [
+              {
+                id: 'wardley:nature/data',
+                label: 'Data',
+                labelKey: 'com.labre.wardley.tag.nature.data',
+              },
+              // No `labelKey`: no entry, same as a host pack that never sets one.
+              { id: 'wardley:nature/activity', label: 'Activity' },
+            ],
+          }),
+        ],
+      })
+    );
+
+    expect(entries).toEqual([
+      {
+        key: 'com.labre.wardley.tag.nature',
+        fallback: 'Nature',
+        source: 'tag',
+      },
+      {
+        key: 'com.labre.wardley.tag.nature.data',
+        fallback: 'Data',
+        source: 'tag',
+      },
+    ]);
+  });
+
+  test('a host pack with no `labelKey` at all contributes nothing', () => {
+    expect(tagDefsTranslationEntries(pack())).toEqual([]);
+  });
+
+  test('an `open` tag has no values to walk', () => {
+    expect(
+      tagDefsTranslationEntries(
+        pack({
+          tags: [
+            nature({
+              labelKey: 'com.labre.wardley.tag.nature',
+              values: 'open',
+            }),
+          ],
+        })
+      )
+    ).toEqual([
+      {
+        key: 'com.labre.wardley.tag.nature',
+        fallback: 'Nature',
+        source: 'tag',
+      },
+    ]);
+  });
+});
+
+describe('merging `labelKey` across packs', () => {
+  test('is cosmetic — the last pack to declare it wins, like `label`', () => {
+    const registry = buildUniverseRegistry([
+      pack({ tags: [nature({ labelKey: 'com.labre.wardley.tag.nature' })] }),
+      pack({
+        packId: 'wardley-client',
+        tags: [nature({ labelKey: undefined })],
+      }),
+    ]);
+
+    // The second pack said nothing about `labelKey` (left `undefined`), so the
+    // first pack's still stands — absent never blanks what an earlier pack said.
+    expect(registry.tag('wardley:nature')?.labelKey).toBe(
+      'com.labre.wardley.tag.nature'
+    );
+  });
+});
+
+// L7-s2: `descriptionKey` (`TagDef` / `TagValueDef`) and the pack's own
+// `labelKey` — the two seams `translateTagDescription` and
+// `tagDefsTranslationEntries` gained to resolve them. Additive, on the same
+// shape as `labelKey` above.
+describe('translateTagDescription', () => {
+  test('with no `descriptionKey`, is exactly `description` unresolved', () => {
+    expect(
+      translateTagDescription(NO_HOST_STD, {
+        description: 'Ce que ce composant fait.',
+        descriptionKey: undefined,
+      })
+    ).toBe('Ce que ce composant fait.');
+  });
+
+  test('with no `description` either, is `undefined` — never a placeholder', () => {
+    expect(
+      translateTagDescription(NO_HOST_STD, {
+        description: undefined,
+        descriptionKey: undefined,
+      })
+    ).toBeUndefined();
+  });
+
+  test('with no host, renders the fallback letter for letter', () => {
+    expect(
+      translateTagDescription(NO_HOST_STD, {
+        description: 'What kind of thing this component is.',
+        descriptionKey: 'com.labre.wardley.tag.nature.description',
+      })
+    ).toBe('What kind of thing this component is.');
+  });
+
+  test("prefers the host's catalogue entry over the baked fallback", () => {
+    const std = stdWith({
+      'com.labre.wardley.tag.nature.description': 'Ce que ce composant est.',
+    });
+    expect(
+      translateTagDescription(std, {
+        description: 'What kind of thing this component is.',
+        descriptionKey: 'com.labre.wardley.tag.nature.description',
+      })
+    ).toBe('Ce que ce composant est.');
+  });
+});
+
+describe("translateTagLabel resolves a PACK's own label too", () => {
+  test('the pack shape (`{ label, labelKey }`) needs no dedicated function', () => {
+    expect(
+      translateTagLabel(NO_HOST_STD, {
+        label: 'Wardley',
+        labelKey: 'com.labre.wardley.tag-pack.label',
+      })
+    ).toBe('Wardley');
+
+    const std = stdWith({ 'com.labre.wardley.tag-pack.label': 'Wardley (FR)' });
+    expect(
+      translateTagLabel(std, {
+        label: 'Wardley',
+        labelKey: 'com.labre.wardley.tag-pack.label',
+      })
+    ).toBe('Wardley (FR)');
+  });
+});
+
+describe('tagDefsTranslationEntries: pack label and descriptions', () => {
+  test("the pack's own `labelKey` contributes one entry, fallback from `label`", () => {
+    const entries = tagDefsTranslationEntries(
+      pack({ labelKey: 'com.labre.wardley.tag-pack.label' })
+    );
+    expect(entries).toEqual([
+      {
+        key: 'com.labre.wardley.tag-pack.label',
+        fallback: 'Wardley',
+        source: 'tag',
+      },
+    ]);
+  });
+
+  test('a pack with no `labelKey` contributes no pack-level entry — unchanged', () => {
+    expect(tagDefsTranslationEntries(pack())).toEqual([]);
+  });
+
+  test('`descriptionKey` on the tag and on a value, fallback from `description`', () => {
+    const entries = tagDefsTranslationEntries(
+      pack({
+        tags: [
+          nature({
+            description: 'What kind of thing this component is.',
+            descriptionKey: 'com.labre.wardley.tag.nature.description',
+            values: [
+              {
+                id: 'wardley:nature/data',
+                label: 'Data',
+                description: 'Something that is RECORDED.',
+                descriptionKey: 'com.labre.wardley.tag.nature.data.description',
+              },
+              // No `descriptionKey`: no entry, same as a host pack that never
+              // sets one.
+              { id: 'wardley:nature/activity', label: 'Activity' },
+            ],
+          }),
+        ],
+      })
+    );
+
+    expect(entries).toEqual([
+      {
+        key: 'com.labre.wardley.tag.nature.description',
+        fallback: 'What kind of thing this component is.',
+        source: 'tag',
+      },
+      {
+        key: 'com.labre.wardley.tag.nature.data.description',
+        fallback: 'Something that is RECORDED.',
+        source: 'tag',
+      },
     ]);
   });
 });

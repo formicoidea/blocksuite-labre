@@ -9,6 +9,7 @@ import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import { CROP_LABELED } from './consts';
+import { edgyElementLabel, edgyElementLabelKey } from './metamodel';
 import {
   LABEL_GAP,
   NODE_LABEL,
@@ -67,6 +68,27 @@ export function createEdgyFacets(std: BlockStdScope) {
     // The frame: what makes this an EDGY board rather than three circles, and
     // what a finding is attributed to.
     role: EDGY_ROLE.facets,
+    // The three facet names, written HERE rather than left to the model's
+    // defaults (`EdgyFacetsElementModel.identityLabel` etc — a red-zone
+    // field: a document created before this key existed keeps its literal
+    // 'Identity' / 'Architecture' / 'Experience' verbatim). Shares its key
+    // with the very same words wherever the metamodel names a zone
+    // (`edgyElementLabelKey`, `templates/dynamic.ts`, `templates/index.ts`).
+    identityLabel: translateKey(
+      std,
+      edgyElementLabelKey('identity'),
+      edgyElementLabel('identity')
+    ),
+    architectureLabel: translateKey(
+      std,
+      edgyElementLabelKey('architecture'),
+      edgyElementLabel('architecture')
+    ),
+    experienceLabel: translateKey(
+      std,
+      edgyElementLabelKey('experience'),
+      edgyElementLabel('experience')
+    ),
     xywh: new Bound(
       centerX - width / 2,
       centerY - height / 2,
@@ -86,9 +108,15 @@ export async function createEdgyDynamic(std: BlockStdScope) {
   if (!gfx.surface) return;
 
   const job = createTemplateJob(std, 'template');
-  const bound = await job.insertTemplate(
-    structuredClone(edgyDynamicTemplate.content)
-  );
+  // Resolved through `localize` rather than the raw `content`: this action IS
+  // the command the Templates panel derives "EDGY dynamic" from
+  // (`templates/dynamic.ts`), and inserting the English snapshot here would
+  // make the two paths disagree — a senior-menu insertion staying English
+  // while the very same card from the panel comes out translated.
+  const snapshot = edgyDynamicTemplate.localize
+    ? edgyDynamicTemplate.localize(std)
+    : edgyDynamicTemplate.content;
+  const bound = await job.insertTemplate(structuredClone(snapshot));
   if (bound) {
     const padding = 20 / gfx.viewport.zoom;
     gfx.viewport.setViewportByBound(

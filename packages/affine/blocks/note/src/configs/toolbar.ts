@@ -24,6 +24,20 @@ import { html } from 'lit';
 
 import { changeNoteDisplayMode } from '../commands';
 import { NoteConfigExtension } from '../config';
+import {
+  NOTE_TOAST_ADDED_TO_PAGE_BODY,
+  NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
+  NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
+  NOTE_TOAST_VIEW_IN_TOC,
+  NOTE_TOOLBAR_AUTO_HEIGHT,
+  NOTE_TOOLBAR_CUSTOMIZED_HEIGHT,
+  NOTE_TOOLBAR_CUTTING_MODE,
+  NOTE_TOOLBAR_DISPLAY_IN_PAGE,
+  NOTE_TOOLBAR_DISPLAYED_IN_PAGE,
+  NOTE_TOOLBAR_REMOVE_FROM_PAGE_TOOLTIP,
+  NOTE_TOOLBAR_SIZE,
+  NOTE_TOOLBAR_SLICER,
+} from '../translations.js';
 
 const trackBaseProps = {
   category: 'note',
@@ -54,6 +68,7 @@ const builtinSurfaceToolbarConfig = {
 
         return html`
           <edgeless-note-display-mode-dropdown-menu
+            .std=${ctx.std}
             @select=${onSelect}
             .displayMode="${displayMode}"
           >
@@ -82,9 +97,13 @@ const builtinSurfaceToolbarConfig = {
             NoteDisplayMode.DocAndEdgeless
         );
         const label$ = computed(() =>
-          firstModel.props.displayMode$.value === NoteDisplayMode.EdgelessOnly
-            ? 'Display in Page'
-            : 'Displayed in Page'
+          translateKey(
+            ctx.std,
+            ...(firstModel.props.displayMode$.value ===
+            NoteDisplayMode.EdgelessOnly
+              ? NOTE_TOOLBAR_DISPLAY_IN_PAGE
+              : NOTE_TOOLBAR_DISPLAYED_IN_PAGE)
+          )
         );
         const onSelect = () => {
           const newMode =
@@ -107,7 +126,10 @@ const builtinSurfaceToolbarConfig = {
           content: html`<editor-icon-button
             aria-label="${label$.value}"
             .showTooltip="${shouldShowTooltip$.value}"
-            .tooltip="${'This note is part of Page Mode. Click to remove it from the page.'}"
+            .tooltip="${translateKey(
+              ctx.std,
+              ...NOTE_TOOLBAR_REMOVE_FROM_PAGE_TOOLTIP
+            )}"
             data-testid="display-in-page"
             @click=${() => onSelect()}
           >
@@ -148,12 +170,7 @@ const builtinSurfaceToolbarConfig = {
     },
     {
       id: 'e.slicer',
-      label: 'Slicer',
       icon: ScissorsIcon(),
-      tooltip: html`<affine-tooltip-content-with-shortcut
-        data-tip="${'Cutting mode'}"
-        data-shortcut="${'-'}"
-      ></affine-tooltip-content-with-shortcut>`,
       active: false,
       when(ctx) {
         return (
@@ -161,13 +178,21 @@ const builtinSurfaceToolbarConfig = {
           ctx.features.getFlag('enable_advanced_block_visibility')
         );
       },
-      run(ctx) {
-        ctx.std.get(EdgelessLegacySlotIdentifier).toggleNoteSlicer.next();
+      generate(ctx) {
+        return {
+          label: translateKey(ctx.std, ...NOTE_TOOLBAR_SLICER),
+          tooltip: html`<affine-tooltip-content-with-shortcut
+            data-tip="${translateKey(ctx.std, ...NOTE_TOOLBAR_CUTTING_MODE)}"
+            data-shortcut="${'-'}"
+          ></affine-tooltip-content-with-shortcut>`,
+          run(ctx) {
+            ctx.std.get(EdgelessLegacySlotIdentifier).toggleNoteSlicer.next();
+          },
+        };
       },
     },
     {
       id: 'f.auto-height',
-      label: 'Size',
       when(ctx) {
         const elements = ctx.getSurfaceModelsByType(NoteBlockModel);
         return (
@@ -185,16 +210,17 @@ const builtinSurfaceToolbarConfig = {
         const { collapse } = firstModel.props.edgeless$.value;
         const options: Pick<ToolbarAction, 'tooltip' | 'icon'> = collapse
           ? {
-              tooltip: 'Auto height',
+              tooltip: translateKey(ctx.std, ...NOTE_TOOLBAR_AUTO_HEIGHT),
               icon: AutoHeightIcon(),
             }
           : {
-              tooltip: 'Customized height',
+              tooltip: translateKey(ctx.std, ...NOTE_TOOLBAR_CUSTOMIZED_HEIGHT),
               icon: CustomizedHeightIcon(),
             };
 
         return {
           ...options,
+          label: translateKey(ctx.std, ...NOTE_TOOLBAR_SIZE),
           run(ctx) {
             ctx.store.captureSync();
 
@@ -306,23 +332,23 @@ function setDisplayMode(
     newMode === NoteDisplayMode.EdgelessOnly
       ? {
           title: translateKey(ctx.std, ...TOAST_NOTE_REMOVED_FROM_PAGE),
-          message: 'Content removed from your page.',
+          message: translateKey(ctx.std, ...NOTE_TOAST_REMOVED_FROM_PAGE_BODY),
         }
       : {
-          title: 'Note displayed in Page Mode',
-          message: 'Content added to your page.',
+          title: translateKey(ctx.std, ...NOTE_TOAST_DISPLAYED_IN_PAGE_MODE),
+          message: translateKey(ctx.std, ...NOTE_TOAST_ADDED_TO_PAGE_BODY),
         };
 
   const notification = ctx.std.getOptional(NotificationProvider);
   notification?.notifyWithUndoAction({
     title: data.title,
-    message: `${data.message} Find it in the TOC for quick navigation.`,
+    message: data.message,
     accent: 'success',
     duration: 5 * 1000,
     actions: [
       {
         key: 'view-in-toc',
-        label: 'View in Toc',
+        label: translateKey(ctx.std, ...NOTE_TOAST_VIEW_IN_TOC),
         onClick: () => {
           const sidebar = ctx.std.getOptional(SidebarExtensionIdentifier);
           sidebar?.open('outline');

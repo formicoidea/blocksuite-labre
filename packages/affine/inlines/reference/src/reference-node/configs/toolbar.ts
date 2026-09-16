@@ -10,6 +10,8 @@ import {
   type ToolbarActionGroup,
   toolbarActionLabel,
   type ToolbarModuleConfig,
+  translateKey,
+  UNTITLED_DOC_LABEL,
 } from '@labre/affine-shared/services';
 import {
   cloneReferenceInfoWithoutAliases,
@@ -42,7 +44,7 @@ export const builtinInlineReferenceToolbarConfig = {
 
         const originalTitle =
           ctx.std.get(DocDisplayMetaProvider).title(target.referenceInfo.pageId)
-            .value || 'Untitled';
+            .value || translateKey(ctx.std, ...UNTITLED_DOC_LABEL);
         const open = (event: MouseEvent) => target.open({ event });
 
         return html`<affine-linked-doc-title

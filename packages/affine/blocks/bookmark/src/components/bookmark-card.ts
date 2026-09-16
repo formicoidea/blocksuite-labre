@@ -1,7 +1,11 @@
 import { getEmbedCardIcons } from '@labre/affine-block-embed';
 import { LoadingIcon, WebIcon16 } from '@labre/affine-components/icons';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import {
+  CHROME_LOADING,
+  ThemeProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { getHostName } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { OpenInNewIcon } from '@blocksuite/icons/lit';
@@ -12,6 +16,12 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import type { BookmarkBlockComponent } from '../bookmark-block.js';
 import { styles } from '../styles.js';
+import {
+  BOOKMARK_ALT_BANNER,
+  BOOKMARK_ALT_ICON,
+  BOOKMARK_LINK_CARD_FALLBACK,
+  BOOKMARK_RETRIEVE_FAILED,
+} from '../translations.js';
 
 export class BookmarkCard extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -52,11 +62,13 @@ export class BookmarkCard extends SignalWatcher(
       /^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:/\n]+)/im
     )?.[1];
 
+    const { std } = this.bookmark;
+
     const titleText = this.loading
-      ? 'Loading...'
+      ? translateKey(std, ...CHROME_LOADING)
       : !title
         ? this.error
-          ? (domainName ?? 'Link card')
+          ? (domainName ?? translateKey(std, ...BOOKMARK_LINK_CARD_FALLBACK))
           : ''
         : title;
 
@@ -64,23 +76,29 @@ export class BookmarkCard extends SignalWatcher(
     const { EmbedCardBannerIcon } = getEmbedCardIcons(theme);
     const imageProxyService = this.bookmark.store.get(ImageProxyService);
 
+    const iconAlt = translateKey(std, ...BOOKMARK_ALT_ICON);
+    const bannerAlt = translateKey(std, ...BOOKMARK_ALT_BANNER);
+
     const titleIcon = this.loading
       ? LoadingIcon()
       : icon
-        ? html`<img src=${imageProxyService.buildUrl(icon)} alt="icon" />`
+        ? html`<img src=${imageProxyService.buildUrl(icon)} alt=${iconAlt} />`
         : WebIcon16;
 
     const descriptionText = this.loading
       ? ''
       : !description
         ? this.error
-          ? 'Failed to retrieve link information.'
+          ? translateKey(std, ...BOOKMARK_RETRIEVE_FAILED)
           : url
         : (description ?? '');
 
     const bannerImage =
       !this.loading && image
-        ? html`<img src=${imageProxyService.buildUrl(image)} alt="banner" />`
+        ? html`<img
+            src=${imageProxyService.buildUrl(image)}
+            alt=${bannerAlt}
+          />`
         : EmbedCardBannerIcon;
 
     return html`

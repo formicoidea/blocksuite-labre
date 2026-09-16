@@ -2,8 +2,10 @@ import { ImageBlockModel } from '@labre/affine-model';
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOOLBAR_CAPTION,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
+  TOOLBAR_DOWNLOAD,
   TOOLBAR_DUPLICATE,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -21,6 +23,7 @@ import type { ExtensionType } from '@labre/store';
 
 import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
+import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';
 import { duplicate } from '../utils';
 
 const trackBaseProps = {
@@ -33,6 +36,7 @@ const builtinToolbarConfig = {
     {
       id: 'a.download',
       tooltip: 'Download',
+      tooltipWording: TOOLBAR_DOWNLOAD,
       icon: DownloadIcon(),
       run(ctx) {
         const block = ctx.getCurrentBlockByType(ImageBlockComponent);
@@ -42,6 +46,7 @@ const builtinToolbarConfig = {
     {
       id: 'b.caption',
       tooltip: 'Caption',
+      tooltipWording: TOOLBAR_CAPTION,
       icon: CaptionIcon(),
       run(ctx) {
         const block = ctx.getCurrentBlockByType(ImageBlockComponent);
@@ -90,6 +95,7 @@ const builtinToolbarConfig = {
         {
           id: 'a.turn-into-card-view',
           label: 'Turn into card view',
+          labelWording: IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW,
           icon: BookmarkIcon(),
           when(ctx) {
             const supported =
@@ -129,6 +135,7 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'a.download',
       tooltip: 'Download',
+      tooltipWording: TOOLBAR_DOWNLOAD,
       icon: DownloadIcon(),
       run(ctx) {
         const block = ctx.getCurrentBlockByType(ImageEdgelessBlockComponent);
@@ -138,6 +145,7 @@ const builtinSurfaceToolbarConfig = {
     {
       id: 'b.caption',
       tooltip: 'Caption',
+      tooltipWording: TOOLBAR_CAPTION,
       icon: CaptionIcon(),
       run(ctx) {
         const block = ctx.getCurrentBlockByType(ImageEdgelessBlockComponent);

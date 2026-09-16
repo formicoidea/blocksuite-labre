@@ -2,7 +2,10 @@ import {
   cleanSpecifiedTail,
   getTextContentFromInlineRange,
 } from '@labre/affine-rich-text';
-import { VirtualKeyboardProvider } from '@labre/affine-shared/services';
+import {
+  translateKey,
+  VirtualKeyboardProvider,
+} from '@labre/affine-shared/services';
 import { getViewportElement } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
@@ -19,6 +22,7 @@ import type {
   LinkedMenuItem,
 } from './config.js';
 import { mobileLinkedDocMenuStyles } from './styles.js';
+import { LINKED_DOC_OVERFLOW_MORE } from './translations.js';
 import { resolveSignal } from './utils.js';
 
 export const AFFINE_MOBILE_LINKED_DOC_MENU = 'affine-mobile-linked-doc-menu';
@@ -53,7 +57,10 @@ export class AffineMobileLinkedDocMenu extends SignalWatcher(
         }}
       >
         ${MoreHorizontalIcon()}
-        <div class="text">${group.overflowText || 'more'}</div>
+        <div class="text">
+          ${group.overflowText ||
+          translateKey(this.context.std, ...LINKED_DOC_OVERFLOW_MORE)}
+        </div>
       </div>`;
     }
 

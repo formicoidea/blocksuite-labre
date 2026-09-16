@@ -59,6 +59,7 @@ import {
   wardleyMarketLinkPairs,
   wardleyMarketLinkProps,
   WARDLEY_NODE_LABEL,
+  wardleyNodeLabelKey,
   WARDLEY_NODE_SIZE,
   wardleyNodeProps,
   wardleyPorterArrowProps,
@@ -79,47 +80,66 @@ import { WARDLEY_ROLE } from './roles';
  */
 
 /**
+ * The three axis words a translated variant's background is seeded with —
+ * declared once, so the resolver below and the manifest
+ * (`../translations.ts`) read the very same fallback.
+ */
+export const WARDLEY_AXIS_SEED = {
+  opportunity: {
+    key: 'com.labre.wardley.seed.axis-opportunity',
+    fallback: 'Opportunity',
+  },
+  benefit: {
+    key: 'com.labre.wardley.seed.axis-benefit',
+    fallback: 'Benefit',
+  },
+  investment: {
+    key: 'com.labre.wardley.seed.axis-investment',
+    fallback: 'Investment',
+  },
+} as const;
+
+/**
  * Per-variant default label overrides applied at creation (all remain editable
  * afterwards via the inline editor / toggles). The gradient itself is driven by
  * `variant` in the renderer.
  *
- * TODO(PF2 follow-up): these write ENGLISH PROSE into the document. Since PF2
- * the ten label props default to `undefined` precisely so the declaration's
- * i18n keys are reachable — but a map created as `opportunity` or `benefit`
- * lands with "Opportunity" / "Benefit" / "Investment" already persisted as if
- * the user had typed them, so those three are un-localisable for the life of
- * the document. Only `classic` and `evolution-gradient` are fully localisable
- * today.
- *
- * The fix is to make the variant part of the declaration — one axis/end-label
- * set per variant, each naming its own `labelKey` — rather than a bag of prop
- * overrides applied at creation. Out of scope here (it changes what a variant
- * IS). This is now the ONLY copy: the four background templates are derived
- * from these four commands, so the table goes away in one place.
+ * Resolved through the translation seam since the i18n pass (#278): the ten
+ * label props still default to `undefined` on the declaration itself, but
+ * `opportunity` and `benefit` are the two variants whose Y axis is PROSE the
+ * gesture bakes into the document at creation — `WARDLEY_AXIS_SEED` above is
+ * what a host's catalogue is offered for the three words, resolved HERE, once,
+ * exactly like every other seed in this file. `classic` and
+ * `evolution-gradient` keep the classic labels (Value Chain / Uncharted /
+ * Industrialized…), which are declaration `labelKey`s and were already fully
+ * localisable — this function names no override for them.
  */
-const BACKGROUND_VARIANT_DEFAULTS: Record<
-  WardleyBgVariant,
-  Record<string, unknown>
-> = {
-  classic: {},
-  // The Y axis becomes "Opportunity"; phase labels keep the classic defaults.
-  opportunity: {
-    yAxisTitle: 'Opportunity',
-    showVisibilityLabels: false,
-    showCornerLabels: false,
-  },
-  // The Y axis splits into Benefit (top) / Investment (bottom) around a zero
-  // line drawn by the renderer.
-  benefit: {
-    yAxisTitle: '',
-    visibilityHigh: 'Benefit',
-    visibilityLow: 'Investment',
-    showCornerLabels: false,
-  },
-  // Keeps the classic labels (Value Chain / Uncharted / Industrialized…); only
-  // the grey gradient differs.
-  'evolution-gradient': {},
-};
+function backgroundVariantDefaults(
+  gfx: GfxController
+): Record<WardleyBgVariant, Record<string, unknown>> {
+  const axis = (def: { key: string; fallback: string }) =>
+    translateKey(gfx.std, def.key, def.fallback);
+  return {
+    classic: {},
+    // The Y axis becomes "Opportunity"; phase labels keep the classic defaults.
+    opportunity: {
+      yAxisTitle: axis(WARDLEY_AXIS_SEED.opportunity),
+      showVisibilityLabels: false,
+      showCornerLabels: false,
+    },
+    // The Y axis splits into Benefit (top) / Investment (bottom) around a zero
+    // line drawn by the renderer.
+    benefit: {
+      yAxisTitle: '',
+      visibilityHigh: axis(WARDLEY_AXIS_SEED.benefit),
+      visibilityLow: axis(WARDLEY_AXIS_SEED.investment),
+      showCornerLabels: false,
+    },
+    // Keeps the classic labels (Value Chain / Uncharted / Industrialized…); only
+    // the grey gradient differs.
+    'evolution-gradient': {},
+  };
+}
 
 type Surface = NonNullable<GfxController['surface']>;
 
@@ -237,7 +257,7 @@ export function createWardleyBackground(
     // declaration decides, and the toolbar toggle takes over from there.
     resizeEnabled: WARDLEY_BACKGROUND.geometry.resizable,
     variant,
-    ...BACKGROUND_VARIANT_DEFAULTS[variant],
+    ...backgroundVariantDefaults(gfx)[variant],
     xywh: new Bound(
       centerX - width / 2,
       centerY - height / 2,
@@ -266,7 +286,11 @@ export function createWardleyNode(
   const nodeId = addNode(surface, kind, cx, cy);
   const labelId = addLabel(
     surface,
-    WARDLEY_NODE_LABEL[kind],
+    // Resolved HERE, once — the prompt a node nobody has named still carries,
+    // exactly like a BPMN node's caption. `gfx.std` is how this file reaches
+    // the translation seam: these creation sites take `GfxController`, not
+    // `BlockStdScope`, directly (`WardleyView` reads the same member).
+    translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
     cx + w / 2 + LABEL_GAP,
     cy - LABEL_H / 2
   );
@@ -314,7 +338,11 @@ export function createWardleyPipeline(gfx: GfxController) {
   // Label centered horizontally on the pipeline, sitting ABOVE the handle.
   const labelId = addLabel(
     gfx.surface,
-    WARDLEY_NODE_LABEL.pipeline,
+    translateKey(
+      gfx.std,
+      wardleyNodeLabelKey('pipeline'),
+      WARDLEY_NODE_LABEL.pipeline
+    ),
     cx - 60,
     top - d / 2 - LABEL_H - LABEL_GAP,
     'center'
@@ -354,7 +382,11 @@ export function createWardleyMarket(gfx: GfxController) {
 
   const labelId = addLabel(
     surface,
-    WARDLEY_NODE_LABEL.market,
+    translateKey(
+      gfx.std,
+      wardleyNodeLabelKey('market'),
+      WARDLEY_NODE_LABEL.market
+    ),
     cx + R + LABEL_GAP,
     cy - LABEL_H / 2
   );
@@ -439,7 +471,7 @@ export function createWardleyAccelerator(
   const rightwards = kind === 'accelerator';
   const labelId = addLabel(
     surface,
-    WARDLEY_NODE_LABEL[kind],
+    translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
     // A label box is a fixed LABEL_W wide whatever it reads, so a right-aligned
     // one has to start a box-width before the edge the words must end on.
     rightwards ? cx + w / 2 + LABEL_GAP : cx - w / 2 - LABEL_GAP - LABEL_W,

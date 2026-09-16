@@ -1,5 +1,8 @@
+import { translateKey } from '@labre/affine-shared/services';
 import type { AffineTextStyleAttributes } from '@labre/affine-shared/types';
-import { PropTypes, requiredProperties } from '@labre/std';
+import type { BlockStdScope } from '@labre/std';
+import { PropTypes, requiredProperties, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -7,6 +10,14 @@ import { html } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
 import { EditorChevronDown } from '../toolbar';
+import {
+  COLOR_LABEL,
+  COLOR_NAME_WORDINGS,
+  HIGHLIGHT_BACKGROUND_LABEL,
+  HIGHLIGHT_DEFAULT_BACKGROUND,
+  HIGHLIGHT_DEFAULT_FOREGROUND,
+  HIGHLIGHT_LABEL,
+} from '../translations.js';
 
 const colors = [
   'default',
@@ -35,6 +46,9 @@ export type HighlightType = Pick<
   updateHighlight: PropTypes.instanceOf(Function),
 })
 export class HighlightDropdownMenu extends LitElement {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   @property({ attribute: false })
   accessor updateHighlight!: (styles: HighlightType) => void;
 
@@ -45,14 +59,35 @@ export class HighlightDropdownMenu extends LitElement {
     this.updateHighlight(style);
   };
 
+  private _colorLabel(color: string, background: boolean): string {
+    if (color === 'default') {
+      const wording = background
+        ? HIGHLIGHT_DEFAULT_BACKGROUND
+        : HIGHLIGHT_DEFAULT_FOREGROUND;
+      return this.std ? translateKey(this.std, ...wording) : wording[1];
+    }
+    const wording = COLOR_NAME_WORDINGS[color];
+    if (!wording) return color;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
   override render() {
     const prefix = '--affine-text-highlight';
+    const label = this.std
+      ? translateKey(this.std, ...HIGHLIGHT_LABEL)
+      : HIGHLIGHT_LABEL[1];
+    const backgroundLabel = this.std
+      ? translateKey(this.std, ...HIGHLIGHT_BACKGROUND_LABEL)
+      : HIGHLIGHT_BACKGROUND_LABEL[1];
+    const colorLabel = this.std
+      ? translateKey(this.std, ...COLOR_LABEL)
+      : COLOR_LABEL[1];
 
     return html`
       <editor-menu-button
         .contentPadding="${'8px'}"
         .button=${html`
-          <editor-icon-button aria-label="highlight" .tooltip="${'Highlight'}">
+          <editor-icon-button aria-label="${label}" .tooltip="${label}">
             <affine-highlight-duotone-icon
               style=${styleMap({
                 '--color':
@@ -65,7 +100,7 @@ export class HighlightDropdownMenu extends LitElement {
         `}
       >
         <div data-size="large" data-orientation="vertical">
-          <div class="highlight-heading">Color</div>
+          <div class="highlight-heading">${colorLabel}</div>
           ${repeat(colors, color => {
             const isDefault = color === 'default';
             const value = isDefault
@@ -82,13 +117,13 @@ export class HighlightDropdownMenu extends LitElement {
                   })}
                 ></affine-text-duotone-icon>
                 <span class="label capitalize"
-                  >${isDefault ? `${color} color` : color}</span
+                  >${this._colorLabel(color, false)}</span
                 >
               </editor-menu-action>
             `;
           })}
 
-          <div class="highlight-heading">Background</div>
+          <div class="highlight-heading">${backgroundLabel}</div>
           ${repeat(colors, color => {
             const isDefault = color === 'default';
             const value = isDefault ? null : `var(${prefix}-${color})`;
@@ -105,7 +140,7 @@ export class HighlightDropdownMenu extends LitElement {
                 ></affine-text-duotone-icon>
 
                 <span class="label capitalize"
-                  >${isDefault ? `${color} background` : color}</span
+                  >${this._colorLabel(color, true)}</span
                 >
               </editor-menu-action>
             `;

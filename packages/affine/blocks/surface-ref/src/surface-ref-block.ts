@@ -461,6 +461,7 @@ export class SurfaceRefBlockComponent extends BlockComponent<SurfaceRefBlockMode
           .referenceModel=${_referencedModel}
           .refFlavour=${model.props.refFlavour$.value}
           .theme=${theme}
+          .std=${this.std}
         ></surface-ref-placeholder>`
       : this._renderRefContent();
 

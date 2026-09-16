@@ -3,6 +3,7 @@ import {
   CM_BUBBLE,
   CM_RELATIONSHIPS,
 } from '@labre/affine-gfx-ddd-shared';
+import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { CONTEXT_MAP_AUTO_LEGEND } from '../legend';
@@ -21,8 +22,16 @@ describe('the Context Map auto-legend table derives from the presets', () => {
     expect(relationships.entries.map(e => e.role)).toEqual(
       CM_RELATIONSHIPS.map(preset => CM_PATTERN_ROLE[preset.kind])
     );
+    // The spec's own `row.label` is the PRE-TRANSLATION placeholder
+    // (`preset.label` alone): `resolveRowLabel` combines it with
+    // `labelPrefix` and the role's translated `labelKey` at legend-build
+    // time — see the "what a drawn board puts in its legend" block below for
+    // the resolved, combined string.
+    expect(relationships.entries.map(e => e.labelPrefix)).toEqual(
+      CM_RELATIONSHIPS.map(preset => preset.abbrev)
+    );
     expect(relationships.entries.map(e => e.row.label)).toEqual(
-      CM_RELATIONSHIPS.map(preset => `${preset.abbrev} — ${preset.label}`)
+      CM_RELATIONSHIPS.map(preset => preset.label)
     );
   });
 
@@ -72,10 +81,17 @@ describe('the Context Map auto-legend table derives from the presets', () => {
 });
 
 describe('what a drawn board puts in its legend', () => {
+  // No host catalogue: `translateKey` falls through to the fallback it is
+  // given, so the plain English wording is still what these rows show.
+  const NO_HOST_STD = {
+    getOptional: () => undefined,
+  } as unknown as BlockStdScope;
+
   it('lists the contexts and the patterns actually drawn, and nothing else', () => {
     const sections = autoLegendSections(
       new Set([CONTEXT_MAP_ROLE.context, CM_PATTERN_ROLE.acl]),
-      CONTEXT_MAP_AUTO_LEGEND
+      CONTEXT_MAP_AUTO_LEGEND,
+      NO_HOST_STD
     );
     expect(sections.map(s => s.rows.map(r => r.label))).toEqual([
       ['Bounded context'],

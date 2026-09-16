@@ -2,6 +2,7 @@ import type { EmbedIframeBlockModel } from '@labre/affine-model';
 import {
   EmbedIframeService,
   NotificationProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { isValidUrl, stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
@@ -13,6 +14,13 @@ import {
 } from '@labre/std';
 import { LitElement } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+
+import {
+  EMBED_IFRAME_CREATION_ERROR_FALLBACK,
+  EMBED_IFRAME_CREATION_ERROR_TITLE,
+  EMBED_IFRAME_INVALID_URL_MESSAGE,
+  EMBED_IFRAME_INVALID_URL_TITLE,
+} from '../../translations';
 
 export class EmbedIframeLinkInputBase extends WithDisposable(LitElement) {
   // this method is used to track the event when the user inputs the link
@@ -28,8 +36,8 @@ export class EmbedIframeLinkInputBase extends WithDisposable(LitElement) {
   protected tryToAddBookmark(url: string) {
     if (!isValidUrl(url)) {
       this.notificationService?.notify({
-        title: 'Invalid URL',
-        message: 'Please enter a valid URL',
+        title: translateKey(this.std, ...EMBED_IFRAME_INVALID_URL_TITLE),
+        message: translateKey(this.std, ...EMBED_IFRAME_INVALID_URL_MESSAGE),
         accent: 'error',
         onClose: function (): void {},
       });
@@ -95,8 +103,11 @@ export class EmbedIframeLinkInputBase extends WithDisposable(LitElement) {
     } catch (error) {
       this.track('failure');
       this.notificationService?.notify({
-        title: 'Error in embed iframe creation',
-        message: error instanceof Error ? error.message : 'Please try again',
+        title: translateKey(this.std, ...EMBED_IFRAME_CREATION_ERROR_TITLE),
+        message:
+          error instanceof Error
+            ? error.message
+            : translateKey(this.std, ...EMBED_IFRAME_CREATION_ERROR_FALLBACK),
         accent: 'error',
         onClose: function (): void {},
       });

@@ -1,8 +1,11 @@
 import type { ImageBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { ImageIcon } from '@blocksuite/icons/lit';
 import { BlockComponent } from '@labre/std';
 import { css, html } from 'lit';
+
+import { IMAGE_PREVIEW_TITLE } from '../translations';
 
 export class ImagePlaceholderBlockComponent extends BlockComponent<ImageBlockModel> {
   static override styles = css`
@@ -45,7 +48,9 @@ export class ImagePlaceholderBlockComponent extends BlockComponent<ImageBlockMod
     >
       <div class="placeholder-preview-content">
         ${ImageIcon({ width: '24px', height: '24px' })}
-        <span class="text">Image Block</span>
+        <span class="text"
+          >${translateKey(this.std, ...IMAGE_PREVIEW_TITLE)}</span
+        >
       </div>
     </div>`;
   }

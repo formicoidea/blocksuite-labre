@@ -23,10 +23,19 @@ import { css, html, LitElement, nothing, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
+import { translateKey } from '@labre/affine-shared/services';
+
 import { getMindMaps, type ToolbarMindmapItem } from './assets.js';
 import { mediaRender, textRender } from './basket-elements.js';
 import { importMindMapIcon, mindmapMenuMediaIcon, textIcon } from './icons.js';
 import { MindMapPlaceholder } from './mindmap-importing-placeholder.js';
+import {
+  MINDMAP_ADD_MEDIA_TOOLTIP,
+  MINDMAP_EDGELESS_TEXT_TOOLTIP,
+  MINDMAP_IMPORT_FAILED_TOAST,
+  MINDMAP_IMPORT_TOOLTIP,
+  MINDMAP_TOOLTIP,
+} from '../translations.js';
 
 type TextItem = {
   type: 'text';
@@ -173,7 +182,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
       </button>
       <affine-tooltip tip-position="top" .offset=${12}>
         <affine-tooltip-content-with-shortcut
-          data-tip="${'Support import of FreeMind,OPML.'}"
+          data-tip="${translateKey(this.std, ...MINDMAP_IMPORT_TOOLTIP)}"
         ></affine-tooltip-content-with-shortcut>
       </affine-tooltip>
     </div>`;
@@ -181,6 +190,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
 
   private _onImportMindMap(bound: Bound) {
     const placeholder = new MindMapPlaceholder();
+    placeholder.std = this.std;
 
     placeholder.style.position = 'absolute';
     placeholder.style.left = `${bound.x}px`;
@@ -205,7 +215,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
           other: 'failed',
           module: 'toolbar',
         });
-        toast(this.edgeless.host, 'Import failed, please try again');
+        toast(
+          this.edgeless.host,
+          translateKey(this.std, ...MINDMAP_IMPORT_FAILED_TOAST)
+        );
         console.error(e);
       })
       .finally(() => {
@@ -307,7 +320,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
               </button>
               <affine-tooltip tip-position="top" .offset=${12}>
                 <affine-tooltip-content-with-shortcut
-                  data-tip="${'Add media'}"
+                  data-tip="${translateKey(
+                    this.std,
+                    ...MINDMAP_ADD_MEDIA_TOOLTIP
+                  )}"
                 ></affine-tooltip-content-with-shortcut>
               </affine-tooltip>
             </div>
@@ -338,7 +354,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
               </button>
               <affine-tooltip tip-position="top" .offset=${12}>
                 <affine-tooltip-content-with-shortcut
-                  data-tip="${'Edgeless Text'}"
+                  data-tip="${translateKey(
+                    this.std,
+                    ...MINDMAP_EDGELESS_TEXT_TOOLTIP
+                  )}"
                   data-shortcup="${'T'}"
                 ></affine-tooltip-content-with-shortcut>
               </affine-tooltip>
@@ -388,7 +407,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                   </button>
                   <affine-tooltip tip-position="top" .offset=${12}>
                     <affine-tooltip-content-with-shortcut
-                      data-tip="${'Mind Map'}"
+                      data-tip="${translateKey(this.std, ...MINDMAP_TOOLTIP)}"
                       data-shortcup="${'M'}"
                     ></affine-tooltip-content-with-shortcut>
                   </affine-tooltip>

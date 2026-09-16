@@ -1,13 +1,21 @@
-import { PropTypes, requiredProperties } from '@labre/std';
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
+import { PropTypes, requiredProperties, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { html } from 'lit-html';
+
+import { DOC_TITLE_ARIA } from '../translations.js';
 
 @requiredProperties({
   title: PropTypes.string,
   open: PropTypes.instanceOf(Function),
 })
 export class DocTitle extends LitElement {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     editor-icon-button .label {
       min-width: 60px;
@@ -42,7 +50,9 @@ export class DocTitle extends LitElement {
 
     return html`
       <editor-icon-button
-        aria-label="Doc title"
+        aria-label="${this.std
+          ? translateKey(this.std, ...DOC_TITLE_ARIA)
+          : DOC_TITLE_ARIA[1]}"
         .hover=${false}
         .labelHeight="${'20px'}"
         .tooltip=${title}

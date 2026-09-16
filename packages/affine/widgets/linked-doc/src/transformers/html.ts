@@ -4,8 +4,10 @@ import {
   fileNameMiddleware,
   filePathMiddleware,
   HtmlAdapter,
+  resolveWording,
   titleMiddleware,
 } from '@labre/affine-shared/adapters';
+import { CHROME_UNTITLED } from '@labre/affine-shared/services';
 import { Container } from '@labre/global/di';
 import { sha } from '@labre/global/utils';
 import type { ExtensionType, Schema, Store, Workspace } from '@labre/store';
@@ -60,7 +62,7 @@ async function exportDoc(doc: Store) {
   });
 
   let downloadBlob: Blob;
-  const docTitle = doc.meta?.title || 'Untitled';
+  const docTitle = doc.meta?.title || resolveWording(provider, CHROME_UNTITLED);
   let name: string;
   const contentBlob = new Blob([htmlResult.file], { type: 'plain/text' });
   if (htmlResult.assetsIds.length > 0) {

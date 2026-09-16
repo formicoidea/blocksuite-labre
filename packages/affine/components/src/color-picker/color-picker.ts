@@ -1,6 +1,10 @@
 import type { Color } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { on, once, stopPropagation } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { batch, computed, signal } from '@preact/signals-core';
 import { html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
@@ -38,6 +42,13 @@ import {
   rgbToHex,
   rgbToHsv,
 } from './utils.js';
+import {
+  COLOR_PICKER_MODE_DARK,
+  COLOR_PICKER_MODE_LIGHT,
+  COLOR_PICKER_MODE_NORMAL,
+  COLOR_PICKER_TAB_COLORS,
+  COLOR_PICKER_TAB_CUSTOM,
+} from '../translations.js';
 
 const TABS: NavTab<NavType>[] = [
   { type: 'colors', name: 'Colors' },
@@ -48,6 +59,25 @@ export class EdgelessColorPicker extends SignalWatcher(
   WithDisposable(LitElement)
 ) {
   static override styles = COLOR_PICKER_STYLE;
+
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  private _tabLabel(name: string): string {
+    const wording =
+      name === 'Custom' ? COLOR_PICKER_TAB_CUSTOM : COLOR_PICKER_TAB_COLORS;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
+  private _modeLabel(name: string): string {
+    const wording =
+      name === 'Light'
+        ? COLOR_PICKER_MODE_LIGHT
+        : name === 'Dark'
+          ? COLOR_PICKER_MODE_DARK
+          : COLOR_PICKER_MODE_NORMAL;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
 
   #alphaRect = new DOMRect();
 
@@ -490,7 +520,7 @@ export class EdgelessColorPicker extends SignalWatcher(
                 ?active=${type === this.navType$.value}
                 @click=${() => this.#switchNavTab(type)}
               >
-                ${name}
+                ${this._tabLabel(name)}
               </button>
             `
           )}
@@ -514,7 +544,7 @@ export class EdgelessColorPicker extends SignalWatcher(
                   ${TransparentIcon()}
                   <div class="color"></div>
                 </div>
-                <div>${name}</div>
+                <div>${this._modeLabel(name)}</div>
               </button>
             </div>
           `

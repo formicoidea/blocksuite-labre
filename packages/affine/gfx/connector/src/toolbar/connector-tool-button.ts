@@ -1,5 +1,5 @@
-import { ConnectorMode, getConnectorModeName } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
+import { ConnectorMode } from '@labre/affine-model';
+import { EditPropsStore, translateKey } from '@labre/affine-shared/services';
 import { QuickToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import {
@@ -11,6 +11,7 @@ import { computed } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
 
 import { ConnectorTool } from '../connector-tool';
+import { CONNECTOR_MODE_WORDING } from '../translations';
 
 const IcomMap = {
   [ConnectorMode.Straight]: ConnectorLIcon(),
@@ -56,7 +57,10 @@ export class EdgelessConnectorToolButton extends QuickToolMixin(
         .tooltip=${this.popper
           ? ''
           : html`<affine-tooltip-content-with-shortcut
-              data-tip="${getConnectorModeName(mode)}"
+              data-tip="${translateKey(
+                this.edgeless.std,
+                ...CONNECTOR_MODE_WORDING[mode]
+              )}"
               data-shortcut="${'C'}"
             ></affine-tooltip-content-with-shortcut>`}
         .tooltipOffset=${17}

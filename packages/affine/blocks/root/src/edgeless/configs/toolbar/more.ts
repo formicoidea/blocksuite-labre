@@ -70,6 +70,16 @@ import { getSortedCloneElements } from '../../utils/clone-utils';
 import { moveConnectors } from '../../utils/connector';
 import { deleteElements } from '../../utils/crud';
 import {
+  ROOT_TOOLBAR_BRING_FORWARD,
+  ROOT_TOOLBAR_EDIT_LINK,
+  ROOT_TOOLBAR_FRAME_SECTION,
+  ROOT_TOOLBAR_GROUP_SECTION,
+  ROOT_TOOLBAR_RELOAD,
+  ROOT_TOOLBAR_REMOVE_LINK,
+  ROOT_TOOLBAR_SEND_BACKWARD,
+  ROOT_TOOLBAR_TURN_INTO_LINKED_DOC,
+} from '../../../translations.js';
+import {
   createLinkedDocFromEdgelessElements,
   createLinkedDocFromNote,
 } from './render-linked-doc';
@@ -83,6 +93,7 @@ export const moreActions = [
       {
         id: 'a.create-frame',
         label: 'Frame section',
+        labelWording: ROOT_TOOLBAR_FRAME_SECTION,
         icon: FrameIcon(),
         run(ctx) {
           const frame = ctx.std
@@ -104,6 +115,7 @@ export const moreActions = [
       {
         id: 'b.create-group',
         label: 'Group section',
+        labelWording: ROOT_TOOLBAR_GROUP_SECTION,
         icon: GroupIcon(),
         when(ctx) {
           const models = ctx.getSurfaceModels();
@@ -133,6 +145,7 @@ export const moreActions = [
       {
         id: 'b.bring-forward',
         label: 'Bring Forward',
+        labelWording: ROOT_TOOLBAR_BRING_FORWARD,
         icon: ArrowUpBigIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -142,6 +155,7 @@ export const moreActions = [
       {
         id: 'c.send-backward',
         label: 'Send Backward',
+        labelWording: ROOT_TOOLBAR_SEND_BACKWARD,
         icon: ArrowDownBigIcon(),
         run(ctx) {
           const models = ctx.getSurfaceModels();
@@ -198,6 +212,7 @@ export const moreActions = [
       {
         id: 'reload',
         label: 'Reload',
+        labelWording: ROOT_TOOLBAR_RELOAD,
         icon: ResetIcon(),
         when(ctx) {
           const models = ctx.getSurfaceModels();
@@ -227,6 +242,7 @@ export const moreActions = [
       {
         id: 'a.turn-into-linked-doc',
         label: 'Turn into linked doc',
+        labelWording: ROOT_TOOLBAR_TURN_INTO_LINKED_DOC,
         icon: LinkedPageIcon(),
         when(ctx) {
           const models = ctx.getSurfaceModels();
@@ -399,6 +415,7 @@ export const moreActions = [
       {
         id: 'c.edit-element-link',
         label: 'Edit link',
+        labelWording: ROOT_TOOLBAR_EDIT_LINK,
         icon: LinkIcon(),
         when(ctx) {
           const el = getLinkableElement(ctx);
@@ -412,6 +429,7 @@ export const moreActions = [
       {
         id: 'c.remove-element-link',
         label: 'Remove link',
+        labelWording: ROOT_TOOLBAR_REMOVE_LINK,
         icon: UnlinkIcon(),
         when(ctx) {
           const el = getLinkableElement(ctx);

@@ -1,5 +1,6 @@
 import { autoLegendSections, roleLabel } from '@labre/affine-gfx-ddd-shared';
 import { PointStyle, StrokeStyle, type UmlNodeKind } from '@labre/affine-model';
+import type { BlockStdScope } from '@labre/std';
 import type { RoleId } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
@@ -8,6 +9,11 @@ import { UML_EDGE_STYLE, type UmlEdgeRole } from '../edge-styles.js';
 import { UML_AUTO_LEGEND } from '../legend.js';
 import { umlNodeProps } from '../presets.js';
 import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from '../roles.js';
+
+/** A std with no host catalogue: every wording resolves to its fallback. */
+const NO_HOST_STD = {
+  getOptional: () => null,
+} as unknown as BlockStdScope;
 
 /**
  * The diagram frame's automatic legend, checked the way the three DDD boards'
@@ -104,7 +110,8 @@ describe('the two `exact` entries, and why only two', () => {
   it('keeps a plain "Node" row off a board of devices', () => {
     const rows = autoLegendSections(
       new Set([UML_ROLE.device]),
-      UML_AUTO_LEGEND
+      UML_AUTO_LEGEND,
+      NO_HOST_STD
     ).flatMap(section => section.rows.map(row => row.label));
     expect(rows).toEqual([roleLabel(UML_ROLES, UML_ROLE.device)]);
   });
@@ -112,7 +119,8 @@ describe('the two `exact` entries, and why only two', () => {
   it('keeps a plain "Association" row off a board of diamonds', () => {
     const rows = autoLegendSections(
       new Set([UML_ROLE.composition]),
-      UML_AUTO_LEGEND
+      UML_AUTO_LEGEND,
+      NO_HOST_STD
     ).flatMap(section => section.rows.map(row => row.label));
     expect(rows).toEqual([roleLabel(UML_ROLES, UML_ROLE.composition)]);
   });
@@ -129,7 +137,8 @@ describe('what a drawn sheet puts in its legend', () => {
         UML_ROLE.deploy,
         UML_ROLE.manifest,
       ]),
-      UML_AUTO_LEGEND
+      UML_AUTO_LEGEND,
+      NO_HOST_STD
     );
     expect(sections.map(section => section.rows.map(row => row.label))).toEqual(
       [

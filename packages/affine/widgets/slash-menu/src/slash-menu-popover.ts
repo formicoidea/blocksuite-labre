@@ -7,6 +7,7 @@ import {
 import {
   DocModeProvider,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import type { AffineInlineEditor } from '@labre/affine-shared/types';
 import {
@@ -14,7 +15,6 @@ import {
   getCurrentNativeRange,
   getPopperPosition,
   isControlledKeyboardEvent,
-  isFuzzyMatch,
   substringMatchScore,
 } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
@@ -34,6 +34,7 @@ import {
   AFFINE_SLASH_MENU_TRIGGER_KEY,
 } from './consts.js';
 import { slashItemToolTipStyle, styles } from './styles.js';
+import { slashMenuGroupWording } from './translations.js';
 import type {
   SlashMenuActionItem,
   SlashMenuContext,
@@ -45,7 +46,11 @@ import {
   isSubMenuItem,
   isTextInputKey,
   parseGroup,
+  resolveSlashItemDescription,
+  resolveSlashItemName,
+  resolveSlashTooltipCaption,
   slashItemClassName,
+  slashItemMatchesQuery,
 } from './utils.js';
 type InnerSlashMenuContext = SlashMenuContext & {
   onClickItem: (item: SlashMenuActionItem) => void;
@@ -125,6 +130,13 @@ export class SlashMenu extends WithDisposable(LitElement) {
       return;
     }
 
+    const std = this.context.std;
+    const bestScore = (item: SlashMenuItem) =>
+      Math.max(
+        substringMatchScore(item.name, searchStr),
+        substringMatchScore(resolveSlashItemName(std, item), searchStr)
+      );
+
     // Layer order traversal
     let depth = 0;
     let queue = this.items;
@@ -135,9 +147,7 @@ export class SlashMenu extends WithDisposable(LitElement) {
       );
 
       this._filteredItems = this._filteredItems.concat(
-        queue.filter(({ name, searchAlias = [] }) =>
-          [name, ...searchAlias].some(str => isFuzzyMatch(str, searchStr))
-        )
+        queue.filter(item => slashItemMatchesQuery(std, item, searchStr))
       );
 
       // We search first and second layer
@@ -157,10 +167,7 @@ export class SlashMenu extends WithDisposable(LitElement) {
     }
 
     this._filteredItems.sort((a, b) => {
-      return -(
-        substringMatchScore(a.name, searchStr) -
-        substringMatchScore(b.name, searchStr)
-      );
+      return -(bestScore(a) - bestScore(b));
     });
 
     this._queryState = this._filteredItems.length === 0 ? 'no_result' : 'on';
@@ -413,7 +420,11 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
   };
 
   private readonly _renderActionItem = (item: SlashMenuActionItem) => {
-    const { name, icon, description, tooltip } = item;
+    const { name, icon, tooltip } = item;
+    const std = this.context.std;
+    const displayName = resolveSlashItemName(std, item);
+    const displayDescription = resolveSlashItemDescription(std, item);
+    const caption = tooltip && resolveSlashTooltipCaption(std, tooltip);
 
     const hover = item === this._activeItem;
 
@@ -421,8 +432,8 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
       class="slash-menu-item ${slashItemClassName(item)}"
       width="100%"
       height="44px"
-      text=${name}
-      subText=${ifDefined(description)}
+      text=${displayName}
+      subText=${ifDefined(displayDescription)}
       data-testid="${name}"
       hover=${hover}
       @mousemove=${() => {
@@ -443,7 +454,7 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
         }}
       >
         <div class="tooltip-figure">${tooltip.figure}</div>
-        <div class="tooltip-caption">${tooltip.caption}</div>
+        <div class="tooltip-caption">${caption}</div>
       </affine-tooltip>`}
     </icon-button>`;
   };
@@ -452,10 +463,14 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
     groupName: string,
     items: SlashMenuItem[]
   ) => {
+    const wording = slashMenuGroupWording(groupName);
+    const displayGroupName = wording
+      ? translateKey(this.context.std, ...wording)
+      : groupName;
     return html`<div class="slash-menu-group">
       ${when(
         !this.context.searching,
-        () => html`<div class="slash-menu-group-name">${groupName}</div>`
+        () => html`<div class="slash-menu-group-name">${displayGroupName}</div>`
       )}
       ${items.map(this._renderItem)}
     </div>`;
@@ -468,7 +483,10 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
   };
 
   private readonly _renderSubMenuItem = (item: SlashMenuSubMenu) => {
-    const { name, icon, description } = item;
+    const { name, icon } = item;
+    const std = this.context.std;
+    const displayName = resolveSlashItemName(std, item);
+    const displayDescription = resolveSlashItemDescription(std, item);
 
     const hover = item === this._activeItem;
 
@@ -476,8 +494,8 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
       class="slash-menu-item ${slashItemClassName(item)}"
       width="100%"
       height="44px"
-      text=${name}
-      subText=${ifDefined(description)}
+      text=${displayName}
+      subText=${ifDefined(displayDescription)}
       data-testid="${name}"
       hover=${hover}
       @mousemove=${() => {
@@ -506,7 +524,11 @@ export class InnerSlashMenu extends WithDisposable(LitElement) {
       return;
     }
 
-    const ele = shadowRoot.querySelector(`icon-button[text="${item.name}"]`);
+    // `text` now carries the RESOLVED (translated) name — not `item.name` — so
+    // the lookup keys on `data-testid`, which stays the English identity.
+    const ele = shadowRoot.querySelector(
+      `icon-button[data-testid="${item.name}"]`
+    );
     if (!ele) {
       return;
     }

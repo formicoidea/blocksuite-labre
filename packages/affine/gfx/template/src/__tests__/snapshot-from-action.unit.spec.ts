@@ -1,4 +1,8 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  TranslationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import {
   GfxControllerIdentifier,
@@ -373,6 +377,44 @@ describe('templateFromCommand', () => {
         elementsOf(template.content as ReturnType<typeof makeTemplateSnapshot>)
       )
     ).toEqual(['el-0']);
+  });
+});
+
+describe('a derived template speaks the inserting editor’s language', () => {
+  const command = {
+    id: 'demo.addBox',
+    labelFallback: 'Box',
+    run: (std: BlockStdScope) => {
+      surfaceOf(std).addElement({
+        type: 'shape',
+        xywh: '[0,0,10,10]',
+        text: translateKey(std, 'com.labre.demo.seed.box', 'Box'),
+      });
+    },
+  } as unknown as CommandDescriptor;
+
+  const textOf = (content: unknown) =>
+    elementsOf(content as ReturnType<typeof makeTemplateSnapshot>)['el-0'].text;
+
+  const hostWith = (t?: (key: string) => string | undefined) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  it('localizes the seeds through the host provider, and only through it', () => {
+    const template = templateFromCommand(command, 'preview.svg');
+    expect(textOf(template.content)).toEqual(surfaceText('Box'));
+    expect(textOf(template.localize!(hostWith(() => 'Boîte')))).toEqual(
+      surfaceText('Boîte')
+    );
+  });
+
+  it('without a provider, inserts exactly the English build', () => {
+    const template = templateFromCommand(command, 'preview.svg');
+    expect(JSON.stringify(template.localize!(hostWith()))).toBe(
+      JSON.stringify(template.content)
+    );
   });
 });
 

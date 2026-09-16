@@ -3,6 +3,10 @@ import {
   ElementRendererExtension,
 } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 
 import { FONT_FAMILY } from '../utils';
 import {
@@ -201,8 +205,11 @@ export function applyEstuarineTransform(
 export const estuarine: ElementRenderer<EstuarineElementModel> = (
   model,
   ctx,
-  matrix
+  matrix,
+  renderer
 ) => {
+  const tr = (wording: ChromeWording): string =>
+    renderer ? translateKey(renderer.std, ...wording) : wording[1];
   const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
   const cy = h / 2;
@@ -254,7 +261,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // Anchored proportionally, typed isotropically — never inside the stretch.
   const hasSpacing = 'letterSpacing' in ctx;
   const legend = (l: {
-    text: string;
+    wording: ChromeWording;
     x: number;
     y: number;
     size: number;
@@ -267,7 +274,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
     if (hasSpacing) {
       ctx.letterSpacing = `${LABEL_LETTER_SPACING * fit.strokeScale}px`;
     }
-    ctx.fillText(l.text, ax(l.x), ay(l.y));
+    ctx.fillText(tr(l.wording), ax(l.x), ay(l.y));
     if (hasSpacing) ctx.letterSpacing = '0px';
   };
 

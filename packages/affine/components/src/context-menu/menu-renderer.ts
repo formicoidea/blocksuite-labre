@@ -1,3 +1,4 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { IS_MOBILE } from '@labre/global/env';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -7,7 +8,8 @@ import {
   CloseIcon,
   SearchIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import type { BlockStdScope } from '@labre/std';
+import { ShadowlessElement, stdContext } from '@labre/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import {
   autoPlacement,
@@ -18,6 +20,7 @@ import {
   type ReferenceElement,
   shift,
 } from '@floating-ui/dom';
+import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
@@ -26,11 +29,15 @@ import { styleMap } from 'lit/directives/style-map.js';
 import type { MenuFocusable } from './focusable.js';
 import { Menu, type MenuConfig, type MenuOptions } from './menu.js';
 import type { MenuComponentInterface } from './types.js';
+import { CONTEXT_MENU_DONE, CONTEXT_MENU_NO_RESULTS } from '../translations.js';
 
 export class MenuComponent
   extends SignalWatcher(WithDisposable(ShadowlessElement))
   implements MenuComponentInterface
 {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     affine-menu {
       font-family: var(--affine-font-family);
@@ -161,7 +168,11 @@ export class MenuComponent
       ${this.renderTitle()} ${this.renderSearch()}
       <div class="affine-menu-body">
         ${result.length === 0 && this.menu.enableSearch
-          ? html` <div class="no-results">No Results</div>`
+          ? html` <div class="no-results">
+              ${this.std
+                ? translateKey(this.std, ...CONTEXT_MENU_NO_RESULTS)
+                : CONTEXT_MENU_NO_RESULTS[1]}
+            </div>`
           : ''}
         ${result}
       </div>
@@ -253,6 +264,9 @@ export class MobileMenuComponent
   extends SignalWatcher(WithDisposable(ShadowlessElement))
   implements MenuComponentInterface
 {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     mobile-menu {
       height: 100%;
@@ -358,7 +372,9 @@ export class MobileMenuComponent
           margin-right: 10px;
          "
         >
-          Done
+          ${this.std
+            ? translateKey(this.std, ...CONTEXT_MENU_DONE)
+            : CONTEXT_MENU_DONE[1]}
         </div>
       </div>
     `;

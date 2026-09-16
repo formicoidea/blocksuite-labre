@@ -5,6 +5,10 @@ import {
   ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  type ChromeWording,
+  TOOLBAR_FRAME,
+} from '@labre/affine-shared/services';
+import {
   EdgelessIcon,
   FrameIcon,
   GroupIcon,
@@ -12,6 +16,12 @@ import {
 } from '@blocksuite/icons/lit';
 import { type GfxModel } from '@labre/std/gfx';
 import { html, type TemplateResult } from 'lit';
+
+import {
+  SURFACE_REF_TYPE_EDGELESS,
+  SURFACE_REF_TYPE_GROUP,
+  SURFACE_REF_TYPE_MINDMAP,
+} from './translations';
 
 export const noContentPlaceholder = html`
   <svg
@@ -111,26 +121,32 @@ export const noContentPlaceholder = html`
   </svg>
 `;
 
+/**
+ * `wording`, not a plain `name`: the placeholder card (`components/placeholder.ts`)
+ * resolves it through the seam at render, the same "static config a widget
+ * resolves" pattern `labelWording` follows — the English identity lives in
+ * the wording's own fallback (`translations.ts`) rather than restated here.
+ */
 export const TYPE_ICON_MAP: {
   [key: string]: {
-    name: string;
+    wording: ChromeWording;
     icon: TemplateResult;
   };
 } = {
   'affine:frame': {
-    name: 'Frame',
+    wording: TOOLBAR_FRAME,
     icon: FrameIcon(),
   },
   group: {
-    name: 'Group',
+    wording: SURFACE_REF_TYPE_GROUP,
     icon: GroupIcon(),
   },
   mindmap: {
-    name: 'Mind map',
+    wording: SURFACE_REF_TYPE_MINDMAP,
     icon: MindmapIcon(),
   },
   edgeless: {
-    name: 'Edgeless content',
+    wording: SURFACE_REF_TYPE_EDGELESS,
     icon: EdgelessIcon(),
   },
 };

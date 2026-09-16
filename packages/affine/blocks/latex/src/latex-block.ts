@@ -2,6 +2,7 @@ import { selectBlock } from '@labre/affine-block-note';
 import { CaptionedBlockComponent } from '@labre/affine-components/caption';
 import { createLitPortal } from '@labre/affine-components/portal';
 import type { LatexBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { BlockSelection } from '@labre/std';
 import type { Placement } from '@floating-ui/dom';
 import { effect } from '@preact/signals-core';
@@ -10,6 +11,10 @@ import { html, render } from 'lit';
 import { query } from 'lit/decorators.js';
 
 import { latexBlockStyles } from './styles.js';
+import {
+  LATEX_EMPTY_PLACEHOLDER,
+  LATEX_ERROR_PLACEHOLDER,
+} from './translations.js';
 
 export class LatexBlockComponent extends CaptionedBlockComponent<LatexBlockModel> {
   static override styles = latexBlockStyles;
@@ -51,7 +56,9 @@ export class LatexBlockComponent extends CaptionedBlockComponent<LatexBlockModel
 
         if (latex.length === 0) {
           render(
-            html`<span class="latex-block-empty-placeholder">Equation</span>`,
+            html`<span class="latex-block-empty-placeholder"
+              >${translateKey(this.std, ...LATEX_EMPTY_PLACEHOLDER)}</span
+            >`,
             katexContainer
           );
         } else {
@@ -65,7 +72,7 @@ export class LatexBlockComponent extends CaptionedBlockComponent<LatexBlockModel
             delete katexContainer['_$litPart$'];
             render(
               html`<span class="latex-block-error-placeholder"
-                >Error equation</span
+                >${translateKey(this.std, ...LATEX_ERROR_PLACEHOLDER)}</span
               >`,
               katexContainer
             );

@@ -66,7 +66,8 @@ export class ClipboardAdapter extends BaseAdapter<string> {
     const map = assets.getAssets();
     const blobs: Record<string, FileSnapshot> = await encodeClipboardBlobs(
       map,
-      this._onError
+      this._onError,
+      this.provider
     );
     return {
       file: JSON.stringify({

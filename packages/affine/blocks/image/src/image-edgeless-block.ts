@@ -3,6 +3,7 @@ import { LoadingIcon } from '@labre/affine-components/icons';
 import { Peekable } from '@labre/affine-components/peek';
 import { ResourceController } from '@labre/affine-components/resource';
 import { type ImageBlockModel, ImageBlockSchema } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { cssVarV2, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { formatSize } from '@labre/affine-shared/utils';
 import { BrokenImageIcon, ImageIcon } from '@blocksuite/icons/lit';
@@ -14,6 +15,7 @@ import { query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
+import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from './translations';
 import {
   copyImageBlob,
   downloadImageBlob,
@@ -89,7 +91,7 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
 
   private _handleError() {
     this.resourceController.updateState({
-      errorMessage: 'Failed to download image!',
+      errorMessage: translateKey(this.std, ...IMAGE_TOAST_DOWNLOAD_FAILED),
     });
   }
 
@@ -112,7 +114,8 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
 
   override renderGfxBlock() {
     const blobUrl = this.blobUrl;
-    const { rotate = 0, size = 0, caption = 'Image' } = this.model.props;
+    const imageLabel = translateKey(this.std, ...IMAGE_LABEL);
+    const { rotate = 0, size = 0, caption = imageLabel } = this.model.props;
 
     const containerStyleMap = styleMap({
       display: 'flex',
@@ -130,7 +133,7 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
       }),
       errorIcon: BrokenImageIcon(),
       icon: ImageIcon(),
-      title: 'Image',
+      title: imageLabel,
       description: formatSize(size),
     });
 

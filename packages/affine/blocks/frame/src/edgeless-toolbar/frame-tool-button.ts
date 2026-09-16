@@ -1,3 +1,4 @@
+import { TOOLBAR_FRAME, translateKey } from '@labre/affine-shared/services';
 import { QuickToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { FrameIcon } from '@blocksuite/icons/lit';
 import { css, html, LitElement } from 'lit';
@@ -28,7 +29,7 @@ export class EdgelessFrameToolButton extends QuickToolMixin(LitElement) {
         .tooltip=${this.popper
           ? ''
           : html`<affine-tooltip-content-with-shortcut
-              data-tip="${'Frame'}"
+              data-tip="${translateKey(this.edgeless.std, ...TOOLBAR_FRAME)}"
               data-shortcut="${'F'}"
             ></affine-tooltip-content-with-shortcut>`}
         .tooltipOffset=${17}

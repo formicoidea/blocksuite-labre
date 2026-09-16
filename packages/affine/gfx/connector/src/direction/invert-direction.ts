@@ -132,81 +132,88 @@ export function invertEdge(model: ConnectorElementModel): void {
 /** The registered id, so a toolbar entry can invoke it rather than copy it. */
 export const INVERT_EDGE_DIRECTION = 'edge.invert-direction';
 
-const invertEdgeDirection: CommandDescriptor<InvertEdgeDirectionParams> = {
-  id: INVERT_EDGE_DIRECTION,
-  owner: 'core',
-  kind: 'action',
-  // NOT under `com.labre.keyboardShortcuts.*`: like `pivot.bind`, this one is
-  // keyless by intent and lives on the contextual toolbar, in the palette and
-  // in the agent — filing it under "keyboard shortcuts" would mislead a
-  // translator.
-  labelKey: 'com.labre.command.edge.invert-direction',
-  labelFallback: 'Reverse direction',
-  descriptionKey: 'com.labre.command.edge.invert-direction.description',
-  descriptionFallback:
-    'Swap the two ends of this relation: what was the subject becomes the object.',
-  surfaces: ['contextual-toolbar', 'palette', 'agent'],
-  scope: 'edgeless',
-  // Keyless by intent — still bindable from Settings › Shortcuts, which is what
-  // `toShortcutDescriptor` being total buys.
-  defaultKeys: { mac: [], other: [] },
-  availability: 'selection',
-  // Narrows `'selection'`, never contradicts it: a read-only document and a
-  // selection holding no typed edge both have nothing to invert. Read-only
-  // rides here rather than on `availability` for the reason `pivot.bind`
-  // documents — the union does not compose, and `'selection'` is the
-  // precondition a catalogue has to show.
-  when: std => isInvertible(std) && invertibleEdges(std).length > 0,
-  params: invertEdgeDirectionParams,
-  run: (std, invocation, params) => {
-    // `params ?? {}`, and the `??` is load-bearing: every in-library call site
-    // invokes this command with NO arguments — the contextual toolbar, the
-    // palette and `toShortcutDescriptor`'s handler all call
-    // `runCommand(std, command, invocation)` — and `safeParse(undefined)` fails
-    // on the OBJECT itself, not on a field. Parsing the argument as it arrives
-    // made the command a silent no-op everywhere except a caller that passed
-    // `elementIds` explicitly, which was exactly the one shape the first tests
-    // exercised. The schema's own optionality is what makes `{}` valid, so this
-    // reads "no arguments" rather than "invalid arguments".
-    const parsed = invertEdgeDirectionParams.safeParse(params ?? {});
-    if (!parsed.success) {
-      console.error(
-        'edge.invert-direction: invalid params',
-        parsed.error.issues
-      );
-      return;
-    }
+/**
+ * Exported (not just registered through {@link edgeDirectionCommands}) so the
+ * contextual-toolbar entry can read its `labelKey` / `labelFallback` straight
+ * off the descriptor — see `toolbar/config.ts`'s `b.invert-direction` — rather
+ * than restating the wording as a second literal.
+ */
+export const invertEdgeDirection: CommandDescriptor<InvertEdgeDirectionParams> =
+  {
+    id: INVERT_EDGE_DIRECTION,
+    owner: 'core',
+    kind: 'action',
+    // NOT under `com.labre.keyboardShortcuts.*`: like `pivot.bind`, this one is
+    // keyless by intent and lives on the contextual toolbar, in the palette and
+    // in the agent — filing it under "keyboard shortcuts" would mislead a
+    // translator.
+    labelKey: 'com.labre.command.edge.invert-direction',
+    labelFallback: 'Reverse direction',
+    descriptionKey: 'com.labre.command.edge.invert-direction.description',
+    descriptionFallback:
+      'Swap the two ends of this relation: what was the subject becomes the object.',
+    surfaces: ['contextual-toolbar', 'palette', 'agent'],
+    scope: 'edgeless',
+    // Keyless by intent — still bindable from Settings › Shortcuts, which is what
+    // `toShortcutDescriptor` being total buys.
+    defaultKeys: { mac: [], other: [] },
+    availability: 'selection',
+    // Narrows `'selection'`, never contradicts it: a read-only document and a
+    // selection holding no typed edge both have nothing to invert. Read-only
+    // rides here rather than on `availability` for the reason `pivot.bind`
+    // documents — the union does not compose, and `'selection'` is the
+    // precondition a catalogue has to show.
+    when: std => isInvertible(std) && invertibleEdges(std).length > 0,
+    params: invertEdgeDirectionParams,
+    run: (std, invocation, params) => {
+      // `params ?? {}`, and the `??` is load-bearing: every in-library call site
+      // invokes this command with NO arguments — the contextual toolbar, the
+      // palette and `toShortcutDescriptor`'s handler all call
+      // `runCommand(std, command, invocation)` — and `safeParse(undefined)` fails
+      // on the OBJECT itself, not on a field. Parsing the argument as it arrives
+      // made the command a silent no-op everywhere except a caller that passed
+      // `elementIds` explicitly, which was exactly the one shape the first tests
+      // exercised. The schema's own optionality is what makes `{}` valid, so this
+      // reads "no arguments" rather than "invalid arguments".
+      const parsed = invertEdgeDirectionParams.safeParse(params ?? {});
+      if (!parsed.success) {
+        console.error(
+          'edge.invert-direction: invalid params',
+          parsed.error.issues
+        );
+        return;
+      }
 
-    // The load-bearing half of the read-only gate: `when` is consulted by the
-    // SURFACES, and `runCommand` consults neither it nor `availability` — the
-    // palette and the agent reach `run` directly.
-    if (!isInvertible(std)) return;
+      // The load-bearing half of the read-only gate: `when` is consulted by the
+      // SURFACES, and `runCommand` consults neither it nor `availability` — the
+      // palette and the agent reach `run` directly.
+      if (!isInvertible(std)) return;
 
-    const edges = invertibleEdges(std, parsed.data.elementIds);
-    if (edges.length === 0) return;
+      const edges = invertibleEdges(std, parsed.data.elementIds);
+      if (edges.length === 0) return;
 
-    // BEFORE the writes, not after: `Store.transact` is not an undo boundary,
-    // and without this an inversion issued within 500 ms of a drag would be
-    // undone TOGETHER with the drag. One capture for the whole gesture is also
-    // what makes several selected edges reverse in a single undo step.
-    std.store.captureSync();
-    for (const { model } of edges) invertEdge(model);
+      // BEFORE the writes, not after: `Store.transact` is not an undo boundary,
+      // and without this an inversion issued within 500 ms of a drag would be
+      // undone TOGETHER with the drag. One capture for the whole gesture is also
+      // what makes several selected edges reverse in a single undo step.
+      std.store.captureSync();
+      for (const { model } of edges) invertEdge(model);
 
-    // The ONE emission for this gesture, and not through `runCommand`'s
-    // bottleneck: that emitter maps a static `{ framework, element }` onto the
-    // three CREATION events, and an inversion creates nothing.
-    const roles = new Set(edges.map(edge => edge.role.id));
-    const role = roles.size === 1 ? [...roles][0] : undefined;
-    std.getOptional(TelemetryProvider)?.track('EdgeDirectionInverted', {
-      page: 'whiteboard editor',
-      ...(role !== undefined ? { role } : {}),
-      ...(role !== undefined ? { framework: role.split(':')[0] } : {}),
-      elementCount: edges.length,
-      control: invocation.source,
-      module: invocation.surface,
-    });
-  },
-};
+      // The ONE emission for this gesture, and not through `runCommand`'s
+      // bottleneck: that emitter maps a static `{ framework, element }` onto the
+      // three CREATION events, and an inversion creates nothing.
+      const roles = new Set(edges.map(edge => edge.role.id));
+      const role = roles.size === 1 ? [...roles][0] : undefined;
+      std.getOptional(TelemetryProvider)?.track('EdgeDirectionInverted', {
+        page: 'whiteboard editor',
+        ...(role !== undefined ? { role } : {}),
+        ...(role !== undefined ? { framework: role.split(':')[0] } : {}),
+        elementCount: edges.length,
+        control: invocation.source,
+        module: invocation.surface,
+      });
+    },
+  };
 
 /**
  * The registry's element type erases the parameter contract, and `run`

@@ -12,6 +12,7 @@ import {
   RootBlockSchemaExtension,
   type CodeBlockModel,
 } from '@labre/affine-model';
+import type { BlockStdScope } from '@labre/std';
 import { type Store, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { describe, expect, it } from 'vitest';
@@ -44,11 +45,16 @@ function aCodeBlock(): { store: Store; model: CodeBlockModel } {
   return { store, model: store.getBlock(codeId)!.model as CodeBlockModel };
 }
 
+/** A stubbed std with no TranslationProvider registered — the toggle item
+ * still renders its English fallback, same as before this wording existed. */
+const stubStd = { getOptional: () => undefined } as unknown as BlockStdScope;
+
 /** The slice of CodeBlockComponent the toggle entries actually touch. */
 function stubComponent(store: Store, model: CodeBlockModel) {
   return {
     model,
     store,
+    std: stubStd,
     get showLineNumbers() {
       return model.props.lineNumber ?? true;
     },

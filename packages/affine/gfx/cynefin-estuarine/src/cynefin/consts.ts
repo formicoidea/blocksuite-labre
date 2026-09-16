@@ -1,7 +1,20 @@
+import type { ChromeWording } from '@labre/affine-shared/services';
+
 /**
  * Visual constants for the Liminal Cynefin diagram, reproduced from the official
  * SVG (viewBox 0 0 1080 777). All geometry is authored in that fixed reference
  * space and scaled uniformly to the element bounds by the renderer.
+ *
+ * ## i18n
+ *
+ * Every word painted on the diagram — domain headings and subheadings, the
+ * Probe/Sense/Respond decision lines, the teal annotations, the small
+ * exaptation sub-labels and the two central markers — carries a `…Key`
+ * alongside its English text, resolved by `element-renderer.ts` through the
+ * `CanvasRenderer` it is handed at paint time (the 4th argument every
+ * `ElementRenderer` receives, `renderer.std`). The letters "A" and "C" on the
+ * two markers are notation, not words, and are deliberately NOT keyed (PO
+ * decision) — only their spelled-out NAMES ("Aporia", "Confusion") are.
  */
 
 export const REF_W = 1080;
@@ -100,121 +113,322 @@ export const DASH_RECTS: ReadonlyArray<
   [1019, 310, 11.8, 167.3],
 ];
 
+/* ── i18n: headings, subheadings and decision lines ───────────────────── */
+
+const HEADING_COMPLEX: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.heading.complex',
+  'Complex',
+];
+const HEADING_COMPLICATED: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.heading.complicated',
+  'Complicated',
+];
+const HEADING_CHAOTIC: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.heading.chaotic',
+  'Chaotic',
+];
+const HEADING_CLEAR: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.heading.clear',
+  'Clear',
+];
+
+const SUBHEADING_ADAPTIVE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.subheading.adaptive-system',
+  'Adaptive system',
+];
+/** Shared by Complicated and Clear — the same word, one key. */
+const SUBHEADING_ORDERED: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.subheading.ordered-system',
+  'Ordered system',
+];
+const SUBHEADING_UNORDERED: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.subheading.un-ordered-system',
+  'Un-ordered system',
+];
+
+/**
+ * The ten distinct decision sentences (two are shared verbatim between two
+ * domains — "Sense how the context reacts", "Sense the context with
+ * analytical methods" — one key each, reused rather than duplicated).
+ *
+ * The fallback is the FULL sentence (`lead` + `rest` concatenated): the
+ * renderer draws `lead` bold and `rest` roman as two `fillText` calls only
+ * while NO host answered (byte-identical to before these keys existed); once
+ * a host resolves the key, the whole sentence is drawn as one run — a
+ * translation is not guaranteed to keep the same first word, so splitting it
+ * at the English boundary would be a guess.
+ */
+const LINE_PROBE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.probe',
+  'Probe the context with parallel experiments',
+];
+const LINE_SENSE_REACTS: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.sense-reacts',
+  'Sense how the context reacts',
+];
+const LINE_RESPOND_AMPLIFY: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.respond-amplify',
+  'Respond by amplifying positive experiments',
+];
+const LINE_SENSE_ANALYTICAL: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.sense-analytical',
+  'Sense the context with analytical methods',
+];
+const LINE_ANALYSE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.analyse',
+  'Analyse observations',
+];
+const LINE_RESPOND_MANY_SOLUTIONS: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.respond-many-solutions',
+  'Respond by applying one of many good solutions',
+];
+const LINE_ACT: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.act',
+  'Act on the context to stabilize (it or yourself)',
+];
+const LINE_RESPOND_REACT: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.respond-react',
+  'Respond by re-acting',
+];
+const LINE_CATEGORIZE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.categorize',
+  'Categorize observations',
+];
+const LINE_RESPOND_PRACTICES: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.line.respond-practices',
+  'Respond by applying tried and true practices',
+];
+
 /**
  * The four domain blocks. Each has a heading (h1) and, when descriptions are
- * shown, a subheading (h2) and three decision lines whose lead word is bold.
- * All three text levels share the block's left `x`.
+ * shown, a subheading (h2) and three decision lines whose lead word is bold
+ * (English, no host) or drawn whole (translated). All three text levels share
+ * the block's left `x`.
  */
 export interface DomainBlock {
-  heading: string;
+  heading: ChromeWording;
   /** Left edge shared by heading, subheading and body lines. */
   x: number;
   /** Heading (h1) baseline. */
   hy: number;
-  subheading: string;
+  subheading: ChromeWording;
   /** Subheading (h2) baseline. */
   sy: number;
-  /** Decision lines: bold lead word + remainder, with their baseline. */
-  lines: ReadonlyArray<{ lead: string; rest: string; y: number }>;
+  /** Decision lines: bold lead word + remainder + the full sentence's key. */
+  lines: ReadonlyArray<{
+    lead: string;
+    rest: string;
+    wording: ChromeWording;
+    y: number;
+  }>;
 }
 
 export const DOMAINS: ReadonlyArray<DomainBlock> = [
   {
-    heading: 'Complex',
+    heading: HEADING_COMPLEX,
     x: 37,
     hy: 31,
-    subheading: 'Adaptive system',
+    subheading: SUBHEADING_ADAPTIVE,
     sy: 53,
     lines: [
-      { lead: 'Probe', rest: ' the context with parallel experiments', y: 71 },
-      { lead: 'Sense', rest: ' how the context reacts', y: 90 },
-      { lead: 'Respond', rest: ' by amplifying positive experiments', y: 109 },
-    ],
-  },
-  {
-    heading: 'Complicated',
-    x: 779,
-    hy: 31,
-    subheading: 'Ordered system',
-    sy: 53,
-    lines: [
-      { lead: 'Sense', rest: ' the context with analytical methods', y: 71 },
-      { lead: 'Analyse', rest: ' observations', y: 90 },
+      {
+        lead: 'Probe',
+        rest: ' the context with parallel experiments',
+        wording: LINE_PROBE,
+        y: 71,
+      },
+      {
+        lead: 'Sense',
+        rest: ' how the context reacts',
+        wording: LINE_SENSE_REACTS,
+        y: 90,
+      },
       {
         lead: 'Respond',
-        rest: ' by applying one of many good solutions',
+        rest: ' by amplifying positive experiments',
+        wording: LINE_RESPOND_AMPLIFY,
         y: 109,
       },
     ],
   },
   {
-    heading: 'Chaotic',
+    heading: HEADING_COMPLICATED,
+    x: 779,
+    hy: 31,
+    subheading: SUBHEADING_ORDERED,
+    sy: 53,
+    lines: [
+      {
+        lead: 'Sense',
+        rest: ' the context with analytical methods',
+        wording: LINE_SENSE_ANALYTICAL,
+        y: 71,
+      },
+      { lead: 'Analyse', rest: ' observations', wording: LINE_ANALYSE, y: 90 },
+      {
+        lead: 'Respond',
+        rest: ' by applying one of many good solutions',
+        wording: LINE_RESPOND_MANY_SOLUTIONS,
+        y: 109,
+      },
+    ],
+  },
+  {
+    heading: HEADING_CHAOTIC,
     x: 37,
     hy: 587,
-    subheading: 'Un-ordered system',
+    subheading: SUBHEADING_UNORDERED,
     sy: 609,
     lines: [
       {
         lead: 'Act',
         rest: ' on the context to stabilize (it or yourself)',
+        wording: LINE_ACT,
         y: 627,
       },
-      { lead: 'Sense', rest: ' how the context reacts', y: 646 },
-      { lead: 'Respond', rest: ' by re-acting', y: 665 },
+      {
+        lead: 'Sense',
+        rest: ' how the context reacts',
+        wording: LINE_SENSE_REACTS,
+        y: 646,
+      },
+      {
+        lead: 'Respond',
+        rest: ' by re-acting',
+        wording: LINE_RESPOND_REACT,
+        y: 665,
+      },
     ],
   },
   {
-    heading: 'Clear',
+    heading: HEADING_CLEAR,
     x: 779,
     hy: 587,
-    subheading: 'Ordered system',
+    subheading: SUBHEADING_ORDERED,
     sy: 609,
     lines: [
-      { lead: 'Sense', rest: ' the context with analytical methods', y: 627 },
-      { lead: 'Categorize', rest: ' observations', y: 646 },
+      {
+        lead: 'Sense',
+        rest: ' the context with analytical methods',
+        wording: LINE_SENSE_ANALYTICAL,
+        y: 627,
+      },
+      {
+        lead: 'Categorize',
+        rest: ' observations',
+        wording: LINE_CATEGORIZE,
+        y: 646,
+      },
       {
         lead: 'Respond',
         rest: ' by applying tried and true practices',
+        wording: LINE_RESPOND_PRACTICES,
         y: 665,
       },
     ],
   },
 ];
 
-/** Teal annotation labels (centered): [text, x, y]. */
-export const TEAL_LABELS: ReadonlyArray<readonly [string, number, number]> = [
-  ['iterate', 510, 16],
-  ['iterate', 533, 230],
-  ['strategy by design', 257, 225],
-  ['radical innovation', 268, 390],
-  ['by design', 268, 406],
-  ['extreme repurposing', 217, 496],
-  ['good practice', 814, 196],
-  ['best practice', 751, 459],
+/* ── i18n: teal annotations and small exaptation sub-labels ────────────── */
+
+const TEAL_ITERATE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.iterate',
+  'iterate',
+];
+const TEAL_STRATEGY_BY_DESIGN: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.strategy-by-design',
+  'strategy by design',
+];
+const TEAL_RADICAL_INNOVATION: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.radical-innovation',
+  'radical innovation',
+];
+const TEAL_BY_DESIGN: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.by-design',
+  'by design',
+];
+const TEAL_EXTREME_REPURPOSING: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.extreme-repurposing',
+  'extreme repurposing',
+];
+const TEAL_GOOD_PRACTICE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.good-practice',
+  'good practice',
+];
+const TEAL_BEST_PRACTICE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.teal.best-practice',
+  'best practice',
 ];
 
-/** Small exaptation sub-labels (centered): [text, x, y]. */
-export const SMALL_LABELS: ReadonlyArray<readonly [string, number, number]> = [
-  ['dispositional exaptation', 257, 239],
-  ['stimulated exaptation', 268, 419],
-  ['stress-based exaptation', 217, 510],
+/** Teal annotation labels (centered): [wording, x, y]. */
+export const TEAL_LABELS: ReadonlyArray<
+  readonly [ChromeWording, number, number]
+> = [
+  [TEAL_ITERATE, 510, 16],
+  [TEAL_ITERATE, 533, 230],
+  [TEAL_STRATEGY_BY_DESIGN, 257, 225],
+  [TEAL_RADICAL_INNOVATION, 268, 390],
+  [TEAL_BY_DESIGN, 268, 406],
+  [TEAL_EXTREME_REPURPOSING, 217, 496],
+  [TEAL_GOOD_PRACTICE, 814, 196],
+  [TEAL_BEST_PRACTICE, 751, 459],
+];
+
+const SMALL_DISPOSITIONAL: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.small.dispositional-exaptation',
+  'dispositional exaptation',
+];
+const SMALL_STIMULATED: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.small.stimulated-exaptation',
+  'stimulated exaptation',
+];
+const SMALL_STRESS_BASED: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.small.stress-based-exaptation',
+  'stress-based exaptation',
+];
+
+/** Small exaptation sub-labels (centered): [wording, x, y]. */
+export const SMALL_LABELS: ReadonlyArray<
+  readonly [ChromeWording, number, number]
+> = [
+  [SMALL_DISPOSITIONAL, 257, 239],
+  [SMALL_STIMULATED, 268, 419],
+  [SMALL_STRESS_BASED, 217, 510],
+];
+
+/* ── i18n: the two central markers ──────────────────────────────────── */
+
+const MARKER_APORIA_NAME: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.marker.aporia',
+  'Aporia',
+];
+const MARKER_CONFUSION_NAME: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.marker.confusion',
+  'Confusion',
+];
+const MARKER_APORIA_NOTE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.marker.aporia-note',
+  'prepare to exit',
 ];
 
 /**
  * The two central markers — Aporia (A) and Confusion (C) — each a big glyph and
  * a name, with an optional teal note ("prepare to exit"). All centered.
+ *
+ * `letter` is the notation itself ("A" / "C") and is deliberately NOT keyed
+ * (PO decision) — only the spelled-out `name` is.
  */
 export interface Marker {
   letter: string;
   /** Big glyph position. */
   lx: number;
   ly: number;
-  name: string;
+  name: ChromeWording;
   /** Name (body) position. */
   nx: number;
   ny: number;
-  /** Optional teal note position + text. */
-  note?: { text: string; x: number; y: number };
+  /** Optional teal note position + wording. */
+  note?: { wording: ChromeWording; x: number; y: number };
 }
 
 export const MARKERS: ReadonlyArray<Marker> = [
@@ -222,10 +436,56 @@ export const MARKERS: ReadonlyArray<Marker> = [
     letter: 'A',
     lx: 444,
     ly: 334,
-    name: 'Aporia',
+    name: MARKER_APORIA_NAME,
     nx: 447,
     ny: 349,
-    note: { text: 'prepare to exit', x: 449, y: 366 },
+    note: { wording: MARKER_APORIA_NOTE, x: 449, y: 366 },
   },
-  { letter: 'C', lx: 531, ly: 419, name: 'Confusion', nx: 529, ny: 436 },
+  {
+    letter: 'C',
+    lx: 531,
+    ly: 419,
+    name: MARKER_CONFUSION_NAME,
+    nx: 529,
+    ny: 436,
+  },
+];
+
+/**
+ * Every wording this file paints, for `translations.ts`'s manifest
+ * contribution. Deduplicated by key (`iterate` and the two shared lines are
+ * each listed once), which is what `mergeTranslationEntries` needs to see one
+ * entry per key rather than two identical ones.
+ */
+export const CYNEFIN_CANVAS_WORDINGS: readonly ChromeWording[] = [
+  HEADING_COMPLEX,
+  HEADING_COMPLICATED,
+  HEADING_CHAOTIC,
+  HEADING_CLEAR,
+  SUBHEADING_ADAPTIVE,
+  SUBHEADING_ORDERED,
+  SUBHEADING_UNORDERED,
+  LINE_PROBE,
+  LINE_SENSE_REACTS,
+  LINE_RESPOND_AMPLIFY,
+  LINE_SENSE_ANALYTICAL,
+  LINE_ANALYSE,
+  LINE_RESPOND_MANY_SOLUTIONS,
+  LINE_ACT,
+  LINE_RESPOND_REACT,
+  LINE_CATEGORIZE,
+  LINE_RESPOND_PRACTICES,
+  TEAL_ITERATE,
+  TEAL_STRATEGY_BY_DESIGN,
+  TEAL_RADICAL_INNOVATION,
+  TEAL_BY_DESIGN,
+  TEAL_EXTREME_REPURPOSING,
+  TEAL_GOOD_PRACTICE,
+  TEAL_BEST_PRACTICE,
+  SMALL_DISPOSITIONAL,
+  SMALL_STIMULATED,
+  SMALL_STRESS_BASED,
+  MARKER_APORIA_NAME,
+  MARKER_CONFUSION_NAME,
+  MARKER_APORIA_NOTE,
 ];

@@ -1,7 +1,10 @@
 import { type ShapeName, ShapeType } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
+
+import { SHAPE_TOOL_NAME } from '../translations.js';
 
 import { PolygonTool } from '../polygon-tool.js';
 import { ShapeTool } from '../shape-tool.js';
@@ -79,7 +82,7 @@ export class EdgelessShapeToolButton extends EdgelessToolbarToolMixin(
         .tooltip=${this.popper
           ? ''
           : html`<affine-tooltip-content-with-shortcut
-              data-tip="${'Shape'}"
+              data-tip="${translateKey(this.edgeless.std, ...SHAPE_TOOL_NAME)}"
               data-shortcut="${'S'}"
             ></affine-tooltip-content-with-shortcut>`}
         .tooltipOffset=${5}

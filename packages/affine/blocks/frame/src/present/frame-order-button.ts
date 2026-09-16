@@ -1,4 +1,5 @@
 import type { FrameBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { LayerIcon } from '@blocksuite/icons/lit';
@@ -6,6 +7,7 @@ import type { BlockComponent } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
 
+import { FRAME_PRESENT_FRAME_ORDER } from '../translations.js';
 import type { EdgelessFrameOrderMenu } from './frame-order-menu.js';
 
 export class EdgelessFrameOrderButton extends WithDisposable(LitElement) {
@@ -48,7 +50,9 @@ export class EdgelessFrameOrderButton extends WithDisposable(LitElement) {
       <edgeless-tool-icon-button
         class="edgeless-frame-order-button"
         .iconSize=${'24px'}
-        .tooltip=${this.popperShow ? '' : 'Frame Order'}
+        .tooltip=${this.popperShow
+          ? ''
+          : translateKey(this.edgeless.std, ...FRAME_PRESENT_FRAME_ORDER)}
         @click=${() => {
           if (readonly) return;
           this._edgelessFrameOrderPopper?.toggle();

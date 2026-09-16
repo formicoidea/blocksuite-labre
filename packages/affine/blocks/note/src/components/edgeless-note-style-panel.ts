@@ -13,7 +13,7 @@ import {
   type NoteShadow,
   resolveColor,
 } from '@labre/affine-model';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import {
   type ColorEvent,
@@ -26,6 +26,16 @@ import { BlockStdScope, PropTypes, requiredProperties } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
+
+import {
+  NOTE_STYLE_BACK,
+  NOTE_STYLE_BORDER_SECTION,
+  NOTE_STYLE_CORNER_RADIUS,
+  NOTE_STYLE_CUSTOM_COLOR,
+  NOTE_STYLE_FILL_COLOR,
+  NOTE_STYLE_PANEL_LABEL,
+  NOTE_STYLE_SHADOW_SECTION,
+} from '../translations.js';
 
 @requiredProperties({
   notes: PropTypes.arrayOf(model => model instanceof NoteBlockModel),
@@ -292,11 +302,14 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
   private _renderStylePanel() {
     return html`<div class="edgeless-note-style-panel">
       <div class="edgeless-note-style-section">
-        <div class="edgeless-note-style-section-title">Fill color</div>
+        <div class="edgeless-note-style-section-title">
+          ${translateKey(this.std, ...NOTE_STYLE_FILL_COLOR)}
+        </div>
         <edgeless-color-panel
           role="listbox"
           .value=${this._background}
           .theme=${this._theme}
+          .std=${this.std}
           .palettes=${DefaultTheme.NoteBackgroundColorPalettes}
           .hasTransparent=${false}
           .columns=${DefaultTheme.NoteBackgroundColorPalettes.length + 1}
@@ -309,8 +322,11 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
         </edgeless-color-panel>
       </div>
       <div class="edgeless-note-style-section">
-        <div class="edgeless-note-style-section-title">Shadow</div>
+        <div class="edgeless-note-style-section-title">
+          ${translateKey(this.std, ...NOTE_STYLE_SHADOW_SECTION)}
+        </div>
         <edgeless-note-shadow-menu
+          .std=${this.std}
           .background=${this._background}
           .theme=${this._theme}
           .value=${this._shadow}
@@ -321,7 +337,9 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
         class="edgeless-note-style-section"
         data-testid="affine-note-border-style-panel"
       >
-        <div class="edgeless-note-style-section-title">Border</div>
+        <div class="edgeless-note-style-section-title">
+          ${translateKey(this.std, ...NOTE_STYLE_BORDER_SECTION)}
+        </div>
         <edgeless-line-styles-panel
           .lineSize=${this._borderSize}
           .lineStyle=${this._borderStyle}
@@ -332,7 +350,9 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
         class="edgeless-note-style-section"
         data-testid="affine-note-corner-radius-panel"
       >
-        <div class="edgeless-note-style-section-title">Corner Radius</div>
+        <div class="edgeless-note-style-section-title">
+          ${translateKey(this.std, ...NOTE_STYLE_CORNER_RADIUS)}
+        </div>
         <div class="edgeless-note-corner-radius-panel">
           <affine-slider
             .value=${this._borderRadius}
@@ -377,13 +397,13 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
     return html`<div class="edgeless-note-style-custom-color-panel">
       <div class="edgeless-note-style-section-title">
         <editor-icon-button
-          aria-label="Back"
+          aria-label=${translateKey(this.std, ...NOTE_STYLE_BACK)}
           .iconSize=${'16px'}
           @click=${this._switchToStyleTab}
         >
           ${ArrowLeftSmallIcon()}
         </editor-icon-button>
-        Custom color
+        ${translateKey(this.std, ...NOTE_STYLE_CUSTOM_COLOR)}
       </div>
       <edgeless-color-picker
         class="edgeless-note-custom-color-picker"
@@ -406,7 +426,10 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
       <editor-menu-button
         .contentPadding=${'8px'}
         .button=${html`
-          <editor-icon-button aria-label="Note Style" .tooltip=${'Note Style'}>
+          <editor-icon-button
+            aria-label=${translateKey(this.std, ...NOTE_STYLE_PANEL_LABEL)}
+            .tooltip=${translateKey(this.std, ...NOTE_STYLE_PANEL_LABEL)}
+          >
             ${PaletteIcon()}
           </editor-icon-button>
         `}

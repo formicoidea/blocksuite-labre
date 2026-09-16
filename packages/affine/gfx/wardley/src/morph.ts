@@ -9,6 +9,8 @@ import {
   TextElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import type { GfxModel, GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
@@ -24,6 +26,7 @@ import {
   WARDLEY_NODE_LABEL,
   wardleyMorphClears,
   wardleyMorphProps,
+  wardleyNodeLabelKey,
 } from './presets';
 import { WARDLEY_ROLE } from './roles';
 
@@ -192,15 +195,30 @@ export function wardleyNodeOfComponent(
  *
  * Pure and total over every string: the input is a canvas text element somebody
  * may have typed anything into.
+ *
+ * `std` is OPTIONAL: "untouched" means equal to the English prompt OR to the
+ * host's own resolved wording for `from`'s kind, and the target's prompt is
+ * likewise resolved through the host when one is given — mirroring
+ * `c4MorphedTypeLine`'s fix for the identical class of gap. With no `std`
+ * this behaves exactly as it always has (English only). The morph toolbar's
+ * `afterMorph` callback (`MorphSpec`, `packages/affine/blocks/surface`) now
+ * hands its callee the inserting editor's `std`, so `rewriteLabel` below
+ * passes it straight through.
  */
 export function wardleyMorphedLabel(
   from: WardleyMorphKind,
   to: WardleyMorphKind,
-  rawText: string | null | undefined
+  rawText: string | null | undefined,
+  std?: BlockStdScope
 ): string | null {
-  return (rawText ?? '').trim() === WARDLEY_NODE_LABEL[from]
-    ? WARDLEY_NODE_LABEL[to]
-    : null;
+  const text = (rawText ?? '').trim();
+  const fromPrompt = std
+    ? translateKey(std, wardleyNodeLabelKey(from), WARDLEY_NODE_LABEL[from])
+    : WARDLEY_NODE_LABEL[from];
+  if (text !== WARDLEY_NODE_LABEL[from] && text !== fromPrompt) return null;
+  return std
+    ? translateKey(std, wardleyNodeLabelKey(to), WARDLEY_NODE_LABEL[to])
+    : WARDLEY_NODE_LABEL[to];
 }
 
 /** The centre of an element, from the box it currently occupies. */
@@ -385,13 +403,14 @@ function removeHandle(
 function rewriteLabel(
   group: GroupElementModel,
   from: WardleyMorphKind,
-  to: WardleyMorphKind
+  to: WardleyMorphKind,
+  std?: BlockStdScope
 ) {
   const label = labelOfComposite(group);
   if (!label || label.isLocked()) return;
 
   const text = label.text.toString().trim();
-  const next = wardleyMorphedLabel(from, to, text);
+  const next = wardleyMorphedLabel(from, to, text, std);
   if (next === null || next === text) return;
 
   label.surface.store.transact(() => {
@@ -430,7 +449,8 @@ function rewriteLabel(
 export function wardleyMorphComposite(
   selected: GfxPrimitiveElementModel,
   from: WardleyMorphKind,
-  to: WardleyMorphKind
+  to: WardleyMorphKind,
+  std?: BlockStdScope
 ) {
   if (!(selected instanceof GroupElementModel)) return;
   const carrier = wardleyNodeOfComponent(selected);
@@ -446,7 +466,7 @@ export function wardleyMorphComposite(
   if (to === 'market') addMarketGlyph(selected, cx, cy);
   if (to === 'pipeline') addHandle(selected, carrier, cx, cy);
 
-  rewriteLabel(selected, from, to);
+  rewriteLabel(selected, from, to, std);
 }
 
 /**

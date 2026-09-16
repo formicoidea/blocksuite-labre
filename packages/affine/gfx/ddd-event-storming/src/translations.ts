@@ -1,3 +1,5 @@
+import { dddSharedTranslationEntries } from '@labre/affine-gfx-ddd-shared';
+import type { ChromeWording } from '@labre/affine-shared/services';
 import {
   collectTranslationKeys,
   commandCategoryTranslationEntries,
@@ -13,6 +15,22 @@ import { EVENT_STORMING_PROFILES } from './profiles.js';
 import { EVENT_STORMING_READING } from './reading.js';
 import { EVENT_STORMING_ROLES } from './roles.js';
 import { EVENT_STORMING_RULES } from './rules.js';
+
+/**
+ * The automatic legend's own section titles (`legend.ts`) — text stamped onto
+ * the board the moment the legend is built (`createAutoLegend`), like any
+ * other seed. The box title itself is NOT here: it says the shared word
+ * "Legend", so it reuses `BOARD_LEGEND_TITLE`
+ * (`@labre/affine-shared/services`) instead of a key of its own.
+ */
+export const ES_SEED_LEGEND_STICKIES: ChromeWording = [
+  'com.labre.ddd-event-storming.seed.legend-stickies',
+  'Stickies',
+];
+export const ES_SEED_LEGEND_FLOW: ChromeWording = [
+  'com.labre.ddd-event-storming.seed.legend-flow',
+  'Flow',
+];
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -46,5 +64,15 @@ export const eventStormingTranslationEntries: TranslationKeyManifestEntry[] =
     // framework's own `roles`, so walking it reaches every role key the `role`
     // line above already named. `mergeTranslationEntries` keeps the FIRST
     // occurrence, which is what makes each key report the source it comes from.
-    collectTranslationKeys('reading', EVENT_STORMING_READING)
+    collectTranslationKeys('reading', EVENT_STORMING_READING),
+    // The seeds baked into a placed sticky (`commands.ts`), derived from the
+    // shared palette in `ddd-shared` rather than restated — spread whole
+    // rather than imported from a sibling DDD framework (never allowed), and
+    // de-duplicated with whatever this framework already listed.
+    dddSharedTranslationEntries,
+    [ES_SEED_LEGEND_STICKIES, ES_SEED_LEGEND_FLOW].map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'seed' as const,
+    }))
   );

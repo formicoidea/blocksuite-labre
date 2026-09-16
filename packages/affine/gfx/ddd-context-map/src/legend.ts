@@ -5,8 +5,13 @@ import {
   LABEL_COLOR,
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
+import { BOARD_LEGEND_TITLE } from '@labre/affine-shared/services';
 
 import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from './roles';
+import {
+  CONTEXT_MAP_SEED_LEGEND_BOUNDARIES,
+  CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS,
+} from './translations';
 
 /**
  * What the Context Map board's automatic legend can say — a TABLE, and nothing
@@ -27,12 +32,14 @@ import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from './roles';
  * the day the cloud earns a role its row lands here in one line.
  */
 export const CONTEXT_MAP_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   width: 290,
   roles: CONTEXT_MAP_ROLES,
   sections: [
     {
-      title: 'Boundaries',
+      title: CONTEXT_MAP_SEED_LEGEND_BOUNDARIES[1],
+      titleKey: CONTEXT_MAP_SEED_LEGEND_BOUNDARIES[0],
       entries: [
         {
           role: CONTEXT_MAP_ROLE.context,
@@ -45,18 +52,24 @@ export const CONTEXT_MAP_AUTO_LEGEND: AutoLegendSpec = {
       ],
     },
     {
-      title: 'Relationships',
+      title: CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS[1],
+      titleKey: CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS[0],
       // One entry per PATTERN, not one for `context-map:relationship`: a legend
       // that said "Relationship" would document nothing a reader could use. The
       // dashed sample marks the two "no real integration" patterns, exactly as
       // the board draws them.
       entries: CM_RELATIONSHIPS.map(preset => ({
         role: CM_PATTERN_ROLE[preset.kind],
+        labelPrefix: preset.abbrev,
         row: {
           swatch: 'line' as const,
           color: LABEL_COLOR,
           dashed: preset.dashed,
-          label: `${preset.abbrev} — ${preset.label}`,
+          // Overwritten by `resolveRowLabel` (labelPrefix + the role's own
+          // translated `labelKey`, which every one of the nine patterns
+          // carries) the moment the legend is actually built — this is the
+          // pre-translation placeholder only.
+          label: preset.label,
         },
       })),
     },

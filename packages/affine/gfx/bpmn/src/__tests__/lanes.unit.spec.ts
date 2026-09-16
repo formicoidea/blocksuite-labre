@@ -76,7 +76,10 @@ function fakePool(id: string, lanes?: BpmnLane[], locked = false) {
 /** A `std` holding just enough for the lane actions: a selection and a CRUD. */
 function fakeStd(
   pools: BpmnPoolElementModel[],
-  options: { readonly?: boolean } = {}
+  options: {
+    readonly?: boolean;
+    translate?: (key: string, params?: unknown) => string | undefined;
+  } = {}
 ) {
   const updates: { id: string; props: Record<string, unknown> }[] = [];
   let captures = 0;
@@ -102,6 +105,12 @@ function fakeStd(
     },
     get: (identifier: unknown) =>
       identifier === GfxControllerIdentifier ? gfx : crud,
+    // No `TranslationProvider` by default: `addBpmnLane` falls back to the
+    // English `Lane {{n}}` literal, exactly as it did before the lane name
+    // went through the translation seam (#278). A test that passes
+    // `translate` gets one registered instead.
+    getOptional: () =>
+      options.translate ? { t: options.translate } : undefined,
   } as unknown as BlockStdScope;
 
   return { std, updates, captures: () => captures };
@@ -243,11 +252,11 @@ describe('adding a lane', () => {
     ]);
   });
 
-  it('writes the default name as plain document data, not a vocabulary key', () => {
-    // Exactly like the pool's own `'Pool'` default: the string is persisted and
-    // is the author's to rewrite. A `labelKey` here would let a host's locale
-    // silently retitle a lane somebody named, and would make one document say
-    // different things to different readers.
+  it('writes the RESOLVED name as plain document data, never the key itself', () => {
+    // Exactly like the pool's own `'Pool'` default: the seed is resolved once,
+    // at placement, and what lands in the Y.Map is the WORDS — a plain string
+    // the author is free to rewrite from that moment on, never the
+    // `com.labre.bpmn.seed.lane` key a host's catalogue is asked for.
     const { model } = fakePool('p1');
     const { std, updates } = fakeStd([model]);
 
@@ -256,6 +265,22 @@ describe('adding a lane', () => {
     const written = updates[0].props.lanes as BpmnLane[];
     expect(written[0].name).toBe('Lane 1');
     expect(JSON.stringify(written)).not.toContain('com.labre');
+  });
+
+  it('resolves the name through a host catalogue when one is registered', () => {
+    const { model } = fakePool('p1');
+    const { std, updates } = fakeStd([model], {
+      translate: (key, params) =>
+        key === 'com.labre.bpmn.seed.lane'
+          ? `Couloir ${(params as { n: number }).n}`
+          : undefined,
+    });
+
+    addBpmnLane(std);
+    addBpmnLane(std);
+
+    const written = updates[1].props.lanes as BpmnLane[];
+    expect(written.map(lane => lane.name)).toEqual(['Couloir 1', 'Couloir 2']);
   });
 
   it('gives the newcomer the AVERAGE of the weights already there', () => {

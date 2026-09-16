@@ -4,6 +4,7 @@ import {
   cleanSpecifiedTail,
   getTextContentFromInlineRange,
 } from '@labre/affine-rich-text';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVar } from '@labre/affine-shared/theme';
 import {
   createKeydownObserver,
@@ -22,6 +23,7 @@ import throttle from 'lodash-es/throttle';
 
 import type { LinkedDocContext, LinkedMenuGroup } from './config.js';
 import { linkedDocPopoverStyles } from './styles.js';
+import { LINKED_DOC_OVERFLOW_MORE } from './translations.js';
 import { createLinkedDocKeydownInterceptor, resolveSignal } from './utils.js';
 
 @requiredProperties({
@@ -138,7 +140,9 @@ export class LinkedDocPopover extends SignalWatcher(
     if (isOverflow && !isExpanded && group.maxDisplay) {
       items = items.concat({
         key: `${group.name} More`,
-        name: resolveSignal(group.overflowText) || 'more',
+        name:
+          resolveSignal(group.overflowText) ||
+          translateKey(this.context.std, ...LINKED_DOC_OVERFLOW_MORE),
         icon: MoreHorizontalIcon({ width: '24px', height: '24px' }),
         action: () => {
           this._expanded.set(group.name, true);

@@ -366,6 +366,29 @@ function buildCore() {
     // The two files have the SAME shape on purpose — a one-line
     // `{ owner: '<id>', … }` entry per framework — so one rule covers them and
     // a new framework needs no edit here.
+    if (!fw.shortcuts) {
+      // An auxiliary bundle (no commands, no senior button) may still contribute
+      // translation entries: same one-line group shape, stripped the same way
+      // when present — core must never import a package that ships apart.
+      const fileAbs = path.join(CORE_SRC, 'translations.ts');
+      const source = fs.readFileSync(fileAbs, 'utf8');
+      if (new RegExp(`from\\s*['"]${escapeRe(fw.pkg)}['"]`).test(source)) {
+        dropStatement(
+          fileAbs,
+          new RegExp(
+            `import\\s*\\{[^}]*\\}\\s*from\\s*['"]${escapeRe(fw.pkg)}['"];?\\r?\\n`
+          ),
+          1,
+          `${fw.out} translation entries import`
+        );
+        dropLines(
+          fileAbs,
+          new RegExp(`^\\s*\\{\\s*owner:\\s*'${escapeRe(fw.id)}',`),
+          1,
+          `${fw.out} translation entries group`
+        );
+      }
+    }
     if (fw.shortcuts) {
       for (const [file, label] of [
         ['commands.ts', 'commands'],

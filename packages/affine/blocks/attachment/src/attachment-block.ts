@@ -46,6 +46,11 @@ import { filter } from 'rxjs/operators';
 import { AttachmentEmbedProvider } from './embed';
 import { styles } from './styles';
 import { downloadAttachmentBlob, getFileType, refreshData } from './utils';
+import {
+  ATTACHMENT_BUTTON_RELOAD,
+  ATTACHMENT_BUTTON_RETRY,
+  ATTACHMENT_BUTTON_UPGRADE,
+} from './translations';
 
 type AttachmentResolvedStateInfo = ResolvedStateInfo & {
   kind?: TemplateResult;
@@ -296,7 +301,8 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
             }
           }}
         >
-          ${UpgradeIcon()} Upgrade
+          ${UpgradeIcon()}
+          ${translateKey(this.std, ...ATTACHMENT_BUTTON_UPGRADE)}
         </button>
       `
     );
@@ -304,6 +310,9 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
 
   protected renderNormalButton = (needUpload: boolean) => {
     const label = needUpload ? 'retry' : 'reload';
+    const labelWording = needUpload
+      ? ATTACHMENT_BUTTON_RETRY
+      : ATTACHMENT_BUTTON_RELOAD;
     const run = async () => {
       if (needUpload) {
         await this.resourceController.upload();
@@ -337,7 +346,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
           }
         }}
       >
-        ${ResetIcon()} ${label}
+        ${ResetIcon()} ${translateKey(this.std, ...labelWording)}
       </button>
     `;
   };

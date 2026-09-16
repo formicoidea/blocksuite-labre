@@ -3,12 +3,17 @@ import {
   type AutoLegendSpec,
   roleLabel,
 } from '@labre/affine-gfx-ddd-shared';
+import {
+  BOARD_LEGEND_TITLE,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_ZONE_FILL,
   EDGY_ZONES,
   edgyElementLabel,
+  edgyElementLabelKey,
   type EdgyElementName,
   type EdgyZone,
 } from './metamodel';
@@ -58,10 +63,16 @@ function zoneEntries(zone: EdgyZone) {
     }));
 }
 
+/**
+ * A facet's section title says the facet's own name, so it reuses the key the
+ * metamodel's seeds already carry (`edgyElementLabelKey`): the legend and the
+ * facets diagram say "Identity" with one key, not two.
+ */
 const FACET_SECTIONS: AutoLegendSectionSpec[] = EDGY_ZONES.filter(
   zone => zone.group === 'facet'
 ).map(zone => ({
   title: edgyElementLabel(zone.id),
+  titleKey: edgyElementLabelKey(zone.id),
   entries: zoneEntries(zone.id),
 }));
 
@@ -72,6 +83,7 @@ const FACET_SECTIONS: AutoLegendSectionSpec[] = EDGY_ZONES.filter(
  */
 const INTERSECTIONS_SECTION: AutoLegendSectionSpec = {
   title: 'Intersections',
+  titleKey: 'com.labre.edgy.seed.intersections-title',
   entries: EDGY_ZONES.filter(zone => zone.group === 'intersection').flatMap(
     zone => zoneEntries(zone.id)
   ),
@@ -92,6 +104,7 @@ const INTERSECTIONS_SECTION: AutoLegendSectionSpec = {
  */
 const BASE_SECTION: AutoLegendSectionSpec = {
   title: 'Base elements',
+  titleKey: 'com.labre.edgy.legend.section.base-elements',
   entries: (['people', 'outcome', 'object', 'activity'] as const).map(kind => ({
     role: EDGY_ROLE[kind],
     exact: true,
@@ -112,6 +125,7 @@ const BASE_SECTION: AutoLegendSectionSpec = {
  */
 const RELATIONS_SECTION: AutoLegendSectionSpec = {
   title: 'Relations',
+  titleKey: 'com.labre.edgy.legend.section.relations',
   entries: [
     {
       role: EDGY_ROLE.relation,
@@ -125,8 +139,23 @@ const RELATIONS_SECTION: AutoLegendSectionSpec = {
   ],
 };
 
+/**
+ * The two section titles above that are this framework's OWN word rather than
+ * a role's — `titleKey` reuses a role's key where the section says a role's
+ * name (the facets, the intersections), but "Base elements" and "Relations"
+ * name a GROUPING of roles, so each mints a key of its own. For
+ * `translations.ts`'s manifest.
+ */
+export const EDGY_LEGEND_CHROME_WORDINGS: readonly ChromeWording[] = [
+  ['com.labre.edgy.legend.section.base-elements', 'Base elements'],
+  ['com.labre.edgy.legend.section.relations', 'Relations'],
+];
+
 export const EDGY_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  // The shared DDD auto-legend box's own generic chrome, resolved through
+  // the same key every board that has one reuses — see `AutoLegendSpec.title`.
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   roles: EDGY_ROLES,
   sections: [
     ...FACET_SECTIONS,

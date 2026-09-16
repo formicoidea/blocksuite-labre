@@ -1,6 +1,7 @@
 import { ImageBlockModel, type RootBlockModel } from '@labre/affine-model';
 import { FetchUtils, ImageProxyService } from '@labre/affine-shared/adapters';
 import { CANVAS_EXPORT_IGNORE_TAGS } from '@labre/affine-shared/consts';
+import { CHROME_UNTITLED, translateKey } from '@labre/affine-shared/services';
 import type { Viewport } from '@labre/affine-shared/types';
 import { isInsidePageEditor, matchModels } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
@@ -517,8 +518,9 @@ export class ExportManager {
       return;
     }
 
+    const title = (this.doc.root as RootBlockModel).props.title.toString();
     FileExporter.exportPng(
-      (this.doc.root as RootBlockModel).props.title.toString(),
+      title.trim() || translateKey(this.std, ...CHROME_UNTITLED),
       canvasImage.toDataURL('image/png')
     );
   }

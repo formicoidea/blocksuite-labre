@@ -1,4 +1,6 @@
+import { translateKey } from '@labre/affine-shared/services';
 import type { Disposable } from '@labre/global/disposable';
+import type { BlockStdScope } from '@labre/std';
 import type { BlobEngine, BlobState } from '@labre/sync';
 import {
   computed,
@@ -7,6 +9,11 @@ import {
   signal,
 } from '@preact/signals-core';
 import type { TemplateResult } from 'lit-html';
+
+import {
+  RESOURCE_NOT_FOUND_WORDINGS,
+  RESOURCE_RETRIEVE_FAILED_WORDINGS,
+} from '../translations.js';
 
 export type ResourceKind = 'Blob' | 'File' | 'Image';
 
@@ -72,7 +79,14 @@ export class ResourceController implements Disposable {
 
   constructor(
     readonly blobId$: ReadonlySignal<string | undefined>,
-    readonly kind: ResourceKind = 'File'
+    readonly kind: ResourceKind = 'File',
+    /**
+     * Optional: lets `blob()`'s error messages resolve through a host's
+     * catalogue. Absent (the common case: most callers construct this
+     * controller outside any rendered component), the English fallback shows
+     * exactly as before.
+     */
+    readonly std?: BlockStdScope
   ) {}
 
   // This is a tradeoff, initializing `Blob Sync Engine`.
@@ -170,10 +184,16 @@ export class ResourceController implements Disposable {
 
       blob = (await this.engine.get(blobId)) ?? null;
 
-      if (!blob) errorMessage = `${this.kind} not found`;
+      if (!blob) {
+        const wording = RESOURCE_NOT_FOUND_WORDINGS[this.kind];
+        errorMessage = this.std
+          ? translateKey(this.std, ...wording)
+          : wording[1];
+      }
     } catch (err) {
       console.error(err);
-      errorMessage = `Failed to retrieve ${this.kind}`;
+      const wording = RESOURCE_RETRIEVE_FAILED_WORDINGS[this.kind];
+      errorMessage = this.std ? translateKey(this.std, ...wording) : wording[1];
     }
 
     if (errorMessage) this.updateState({ errorMessage });

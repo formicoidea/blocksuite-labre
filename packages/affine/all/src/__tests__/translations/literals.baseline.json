@@ -1,0 +1,686 @@
+{
+  "kept": {
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/html.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/markdown.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
+    "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/plain-text.ts": [
+      "+ o.node.props.pageId) ??"
+    ],
+    "packages/affine/blocks/list/src/turbo/list-layout-handler.ts": [
+      "true"
+    ],
+    "packages/affine/blocks/paragraph/src/turbo/paragraph-layout-handler.ts": [
+      "true"
+    ],
+    "packages/affine/blocks/surface-ref/src/configs/tooltips.ts": [
+      "Create a blank frame in Canvas",
+      "Create a mind map in Canvas",
+      "Frame",
+      "Group",
+      "Mind Map"
+    ],
+    "packages/affine/blocks/surface/src/extensions/interchange-import.ts": [
+      "${} ${}"
+    ],
+    "packages/affine/components/src/icon-picker/emoji-data.ts": [
+      "Activity",
+      "Animals & Nature",
+      "Flags",
+      "Food & Drink",
+      "Objects",
+      "Smileys & People",
+      "Symbols",
+      "Travel & Places"
+    ],
+    "packages/affine/fragments/doc-title/src/doc-title.ts": [
+      "true"
+    ],
+    "packages/affine/gfx/bpmn/src/export.ts": [
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>n${}n"
+    ],
+    "packages/affine/gfx/brush/src/toolbar/senior-tool.ts": [
+      "Pen"
+    ],
+    "packages/affine/gfx/c4/src/templates.ts": [
+      "C4"
+    ],
+    "packages/affine/gfx/shape/src/toolbar/senior-tool.ts": [
+      "Shape"
+    ],
+    "packages/affine/gfx/text/src/toolbar/actions.ts": [
+      "Aa"
+    ],
+    "packages/affine/shared/src/consts/bracket-pairs.ts": [
+      "corner bracket",
+      "curly bracket",
+      "double quote",
+      "fullwidth angle bracket",
+      "fullwidth double quote",
+      "fullwidth parenthesis",
+      "fullwidth single quote",
+      "fullwidth square bracket",
+      "single quote",
+      "square bracket",
+      "white corner bracket"
+    ],
+    "packages/affine/shared/src/utils/file/filesys.ts": [
+      "Audios",
+      "Html",
+      "Images",
+      "Markdown",
+      "MindMap",
+      "Videos",
+      "Zip"
+    ],
+    "packages/framework/std/src/event/keymap.ts": [
+      "+ name ); } return normalized; } function modifiers(name: string, event: KeyboardEvent, shift = true) { if (event.altKey) name ="
+    ],
+    "packages/framework/std/src/inline/components/v-text.ts": [
+      "true"
+    ],
+    "packages/framework/std/src/inline/utils/text.ts": [
+      "true"
+    ]
+  },
+  "deferred": {
+    "packages/affine/blocks/data-view/src/configs/slash-menu.ts": [
+      "To-do List",
+      "Todo"
+    ],
+    "packages/affine/blocks/data-view/src/configs/tooltips.ts": [
+      "Here is an example of todo list.",
+      "Make a list for building preview."
+    ],
+    "packages/affine/blocks/data-view/src/data-view-block.ts": [
+      "Copy",
+      "Delete Database",
+      "Untitled"
+    ],
+    "packages/affine/blocks/database/src/adapters/notion-html.ts": [
+      "Table View"
+    ],
+    "packages/affine/blocks/database/src/components/title/index.ts": [
+      "Untitled",
+      "Untitled",
+      "true"
+    ],
+    "packages/affine/blocks/database/src/configs/slash-menu.ts": [
+      "Calendar View",
+      "Display items by date in a calendar.",
+      "Display items in a table format.",
+      "Kanban View",
+      "Kanban View",
+      "Table View",
+      "Table View",
+      "Visualize data in a dashboard."
+    ],
+    "packages/affine/blocks/database/src/configs/tooltips.ts": [
+      "Display items in a table format.",
+      "Done",
+      "Done",
+      "Done",
+      "Here is an example of todo list.",
+      "In Progress",
+      "In Progress",
+      "In Progress",
+      "Make a list for building preview.",
+      "Status",
+      "Task 1",
+      "Task 1",
+      "Task 2",
+      "Task 3",
+      "Task 4",
+      "Task 5",
+      "Title",
+      "Todo",
+      "Ungroups",
+      "Untitled Kanban",
+      "Untitled Table",
+      "Visualize data in a dashboard."
+    ],
+    "packages/affine/blocks/database/src/database-block.ts": [
+      "Database title",
+      "Delete Database"
+    ],
+    "packages/affine/blocks/database/src/database-dnd-preview-block.ts": [
+      "Database Block"
+    ],
+    "packages/affine/blocks/database/src/detail-panel/block-renderer.ts": [
+      "Untitled"
+    ],
+    "packages/affine/blocks/database/src/detail-panel/note-renderer.ts": [
+      "Click to create a linked doc in center peek."
+    ],
+    "packages/affine/blocks/database/src/properties/created-time/define.ts": [
+      "Created Time"
+    ],
+    "packages/affine/blocks/database/src/properties/link/define.ts": [
+      "Link"
+    ],
+    "packages/affine/blocks/database/src/properties/rich-text/define.ts": [
+      "Text"
+    ],
+    "packages/affine/blocks/database/src/properties/title/define.ts": [
+      "Title"
+    ],
+    "packages/affine/blocks/embed/src/embed-figma-block/configs/slash-menu.ts": [
+      "Embed a Figma document.",
+      "Figma",
+      "Figma"
+    ],
+    "packages/affine/blocks/embed/src/embed-figma-block/configs/tooltips.ts": [
+      "AFFiNE Design System - Jul 2077",
+      "Edited just now",
+      "Embed a Figma document."
+    ],
+    "packages/affine/blocks/embed/src/embed-figma-block/embed-figma-block.ts": [
+      "Figma"
+    ],
+    "packages/affine/blocks/embed/src/embed-github-block/configs/slash-menu.ts": [
+      "GitHub",
+      "GitHub Repo",
+      "Link to a GitHub repository."
+    ],
+    "packages/affine/blocks/embed/src/embed-github-block/configs/tooltips.ts": [
+      "AFFiNE",
+      "Link to a GitHub repository.",
+      "Write, Draw and Plan All at Once.",
+      "toeverything/"
+    ],
+    "packages/affine/blocks/embed/src/embed-github-block/embed-github-block.ts": [
+      "Assignees",
+      "No one",
+      "banner"
+    ],
+    "packages/affine/blocks/embed/src/embed-loom-block/configs/slash-menu.ts": [
+      "Embed a Loom video.",
+      "Loom"
+    ],
+    "packages/affine/blocks/embed/src/embed-loom-block/configs/tooltips.ts": [
+      "1 min",
+      "AFFiNE Team",
+      "Embed a loom video."
+    ],
+    "packages/affine/blocks/embed/src/embed-loom-block/embed-loom-block.ts": [
+      "banner"
+    ],
+    "packages/affine/blocks/embed/src/embed-youtube-block/configs/slash-menu.ts": [
+      "Embed a YouTube video.",
+      "YouTube",
+      "YouTube Video"
+    ],
+    "packages/affine/blocks/embed/src/embed-youtube-block/configs/tooltips.ts": [
+      "Embed a YouTube video."
+    ],
+    "packages/affine/blocks/embed/src/embed-youtube-block/embed-youtube-block.ts": [
+      "YouTube Video",
+      "banner",
+      "creator"
+    ],
+    "packages/affine/blocks/table/src/color.ts": [
+      "Blue",
+      "Green",
+      "Grey",
+      "Orange",
+      "Purple",
+      "Red",
+      "Teal",
+      "Yellow"
+    ],
+    "packages/affine/blocks/table/src/configs/slash-menu.ts": [
+      "Create a simple table.",
+      "Table",
+      "Table"
+    ],
+    "packages/affine/blocks/table/src/configs/tooltips.ts": [
+      "&#x1f947; First",
+      "&#x1f948; Second",
+      "&#x1f949; Third",
+      "China",
+      "Country",
+      "Insert editable tabular data.",
+      "Japan",
+      "Ranking",
+      "USA",
+      "Weekly Overtime (Hrs)"
+    ],
+    "packages/affine/blocks/table/src/table-cell.ts": [
+      "Background color",
+      "Background color",
+      "Background color",
+      "Clear column contents",
+      "Clear column style",
+      "Clear contents",
+      "Clear row contents",
+      "Clear row style",
+      "Copy",
+      "Default",
+      "Default",
+      "Default",
+      "Delete",
+      "Delete",
+      "Duplicate",
+      "Duplicate",
+      "Insert Above",
+      "Insert Below",
+      "Insert Left",
+      "Insert Right",
+      "Move Down",
+      "Move Left",
+      "Move Right",
+      "Move Up",
+      "Paste"
+    ],
+    "packages/affine/components/src/date-picker/date-picker.ts": [
+      "Clear",
+      "TODAY",
+      "clear",
+      "next month",
+      "previous month",
+      "today"
+    ],
+    "packages/affine/data-view/src/core/common/properties.ts": [
+      "Properties"
+    ],
+    "packages/affine/data-view/src/core/common/property-menu.ts": [
+      "Property name",
+      "Property type",
+      "Type"
+    ],
+    "packages/affine/data-view/src/core/component/tags/colors.ts": [
+      "Blue",
+      "Green",
+      "Grey",
+      "Magenta",
+      "Orange",
+      "Purple",
+      "Red",
+      "Teal",
+      "White",
+      "Yellow"
+    ],
+    "packages/affine/data-view/src/core/component/tags/multi-tag-select.ts": [
+      "Create",
+      "Create",
+      "Delete",
+      "Select tag or create one",
+      "Type here...",
+      "Type here..."
+    ],
+    "packages/affine/data-view/src/core/detail/detail.ts": [
+      "Add Property",
+      "Add property"
+    ],
+    "packages/affine/data-view/src/core/detail/field.ts": [
+      "Delete",
+      "Duplicate",
+      "Empty",
+      "Move Down",
+      "Move Up",
+      "Property settings"
+    ],
+    "packages/affine/data-view/src/core/filter/add-filter.ts": [
+      "Add filter group",
+      "New filter"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/boolean.ts": [
+      "Is checked",
+      "Is unchecked"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/date.ts": [
+      "After",
+      "Before"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/multi-tag.ts": [
+      "Contains all",
+      "Contains one of",
+      "Does not contains all",
+      "Does not contains one of"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/string.ts": [
+      "Contains",
+      "Does no contains",
+      "Ends with",
+      "Is",
+      "Is not",
+      "Starts with"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/tag.ts": [
+      "Is not one of",
+      "Is one of"
+    ],
+    "packages/affine/data-view/src/core/filter/filter-fn/unknown.ts": [
+      "Is empty",
+      "Is not empty"
+    ],
+    "packages/affine/data-view/src/core/filter/literal/define.ts": [
+      "Checked",
+      "Type a value...",
+      "Type a value...",
+      "Unchecked"
+    ],
+    "packages/affine/data-view/src/core/group-by/renderer/number-group.ts": [
+      "Ungroups"
+    ],
+    "packages/affine/data-view/src/core/group-by/renderer/select-group.ts": [
+      "Ungroups"
+    ],
+    "packages/affine/data-view/src/core/group-by/renderer/string-group.ts": [
+      "Ungroups"
+    ],
+    "packages/affine/data-view/src/core/group-by/setting.ts": [
+      "Day",
+      "Group",
+      "Group By",
+      "Group By",
+      "Group by",
+      "Group dates by",
+      "Group dates by",
+      "Groups",
+      "Month",
+      "Newest first",
+      "Oldest first",
+      "Order",
+      "Order",
+      "Relative",
+      "Remove Grouping",
+      "Remove grouping",
+      "Week (starts Monday)",
+      "Week (starts Sunday)",
+      "Year"
+    ],
+    "packages/affine/data-view/src/core/sort/add-sort.ts": [
+      "New sort"
+    ],
+    "packages/affine/data-view/src/property-presets/checkbox/define.ts": [
+      "Checkbox"
+    ],
+    "packages/affine/data-view/src/property-presets/date/define.ts": [
+      "Date"
+    ],
+    "packages/affine/data-view/src/property-presets/multi-select/define.ts": [
+      "Multi-select"
+    ],
+    "packages/affine/data-view/src/property-presets/number/define.ts": [
+      "Number"
+    ],
+    "packages/affine/data-view/src/property-presets/number/utils/formats.ts": [
+      "British Pound",
+      "Chinese Yuan",
+      "Euro",
+      "Indian Rupee",
+      "Japanese Yen",
+      "Number",
+      "Number With Commas",
+      "Percent",
+      "US Dollar"
+    ],
+    "packages/affine/data-view/src/property-presets/progress/define.ts": [
+      "Progress"
+    ],
+    "packages/affine/data-view/src/property-presets/select/define.ts": [
+      "Select"
+    ],
+    "packages/affine/data-view/src/property-presets/text/define.ts": [
+      "Plain-Text"
+    ],
+    "packages/affine/data-view/src/view-presets/calendar/calendar-view-manager.ts": [
+      "Date",
+      "End Date"
+    ],
+    "packages/affine/data-view/src/view-presets/calendar/pc/view.ts": [
+      "${} ${}",
+      "+ New row",
+      "Add a row to any date, it'll appear here on the calendar.",
+      "Calendar by",
+      "Connect calendar",
+      "Create date property",
+      "Date range",
+      "Dismiss",
+      "End date",
+      "External calendars",
+      "Failed to load calendar entries",
+      "New row",
+      "New row",
+      "Next month",
+      "None",
+      "Nothing here yet",
+      "Previous month",
+      "Select or create date property",
+      "Show all workspace calendars",
+      "Today"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/mobile/group.ts": [
+      "Add",
+      "Delete Cards",
+      "Ungroup"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/mobile/menu.ts": [
+      "Delete Card",
+      "Expand Card",
+      "Insert After",
+      "Insert Before",
+      "Move To"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/pc/group.ts": [
+      "Add",
+      "Delete Cards",
+      "Ungroup"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/pc/header.ts": [
+      "Group"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/pc/menu.ts": [
+      "Delete Card",
+      "Expand Card",
+      "Insert After",
+      "Insert Before",
+      "Move To"
+    ],
+    "packages/affine/data-view/src/view-presets/table/mobile/column-header.ts": [
+      "Delete",
+      "Duplicate",
+      "Hide In View",
+      "Insert Left Column",
+      "Insert Right Column",
+      "Move Left",
+      "Move Right",
+      "Number Format",
+      "Number Format",
+      "Property settings"
+    ],
+    "packages/affine/data-view/src/view-presets/table/mobile/group.ts": [
+      "Delete Cards",
+      "New Record",
+      "Ungroup"
+    ],
+    "packages/affine/data-view/src/view-presets/table/mobile/menu.ts": [
+      "Delete Row",
+      "Expand Row"
+    ],
+    "packages/affine/data-view/src/view-presets/table/mobile/table-view-ui-logic.ts": [
+      "New Group"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/controller/clipboard.ts": [
+      "${} cell${} copied to clipboard",
+      "${} row${} copied to clipboard"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/bottom/group-footer.ts": [
+      "New Record"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/bottom/stats/column-stats-column.ts": [
+      "None"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/top/group-header.ts": [
+      "Delete Cards",
+      "Ungroup"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/top/header/column-header.ts": [
+      "Property type"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/top/header/number-format-bar.ts": [
+      "&lpar;&nbsp;${}&nbsp;&rpar;",
+      "decrease decimal places",
+      "increase decimal places"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/group/top/header/single-column-header.ts": [
+      "Delete",
+      "Duplicate",
+      "Filter",
+      "Hide In View",
+      "Insert Left Column",
+      "Insert Right Column",
+      "Move Left",
+      "Move Right",
+      "Number Format",
+      "Sort Ascending",
+      "Sort Descending"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/row/menu.ts": [
+      "Copy",
+      "Delete Row",
+      "Delete Rows",
+      "Expand Row",
+      "Insert After",
+      "Insert Before"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc-virtual/table-view-ui-logic.ts": [
+      "New Group"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/controller/clipboard.ts": [
+      "${} cell${} copied to clipboard",
+      "${} row${} copied to clipboard"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/group.ts": [
+      "Delete Cards",
+      "New Record",
+      "Ungroup"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/header/database-header-column.ts": [
+      "Delete",
+      "Duplicate",
+      "Filter",
+      "Hide In View",
+      "Insert Left Column",
+      "Insert Right Column",
+      "Move Left",
+      "Move Right",
+      "Number Format",
+      "Sort Ascending",
+      "Sort Descending"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/header/number-format-bar.ts": [
+      "&lpar;&nbsp;${}&nbsp;&rpar;",
+      "decrease decimal places",
+      "increase decimal places"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/menu.ts": [
+      "Copy",
+      "Delete Row",
+      "Delete Rows",
+      "Expand Row",
+      "Insert After",
+      "Insert Before"
+    ],
+    "packages/affine/data-view/src/view-presets/table/pc/table-view-ui-logic.ts": [
+      "New Group"
+    ],
+    "packages/affine/data-view/src/view-presets/table/stats/column-stats-column.ts": [
+      "None"
+    ],
+    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/condition-view.ts": [
+      "Delete"
+    ],
+    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/group-panel-view.ts": [
+      "Add filter",
+      "Add filter group",
+      "And",
+      "Delete",
+      "Delete",
+      "Duplicate",
+      "Filter group",
+      "Or"
+    ],
+    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/list-view.ts": [
+      "${} Add filter"
+    ],
+    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/root-panel-view.ts": [
+      "Add",
+      "Delete",
+      "Duplicate",
+      "Filters"
+    ],
+    "packages/affine/data-view/src/widget-presets/quick-setting-bar/sort/root-panel.ts": [
+      "Add sort",
+      "Delete"
+    ],
+    "packages/affine/data-view/src/widget-presets/tools/presets/search/search.ts": [
+      "Esc",
+      "Search...",
+      "to clear all"
+    ],
+    "packages/affine/data-view/src/widget-presets/tools/presets/table-add-row/add-row.ts": [
+      "New",
+      "New Record"
+    ],
+    "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
+      "${} shown",
+      "Delete",
+      "Duplicate",
+      "Filter",
+      "Group",
+      "Layout",
+      "Layout",
+      "Properties",
+      "Show Vertical lines",
+      "Show block icon",
+      "Sort",
+      "Sort",
+      "View name",
+      "View settings"
+    ],
+    "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
+      "${} More",
+      "Create ${}",
+      "Delete",
+      "Duplicate",
+      "Edit View",
+      "Move Left",
+      "Move Right",
+      "View name"
+    ],
+    "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
+      "BulletedList",
+      "CheckBox",
+      "CodeBlock",
+      "CollapseTab",
+      "Default Color",
+      "Default Color",
+      "Document Group&Frame",
+      "Embeds",
+      "Figma",
+      "Frame:",
+      "Github",
+      "Group:",
+      "Heading ${}",
+      "InlineTex",
+      "Kanban view",
+      "LinkedPage",
+      "List",
+      "Loom",
+      "NewPage",
+      "NumberedList",
+      "Page",
+      "Redo",
+      "RightTab",
+      "StrikeThrough",
+      "Table view",
+      "UnderLine",
+      "Youtube"
+    ]
+  },
+  "pending": {}
+}

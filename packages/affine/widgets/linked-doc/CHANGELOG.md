@@ -1,5 +1,40 @@
 # @labre/affine-widget-linked-doc
 
+## 0.41.0
+
+### Minor Changes
+
+- 4ed9484: feat(blocks): dates and numbers cross the i18n seam through `Intl`, not a hard-coded English table. `formatLocale(std)` (`hostLocale(std) ?? 'en-US'`) joins `hostLocale` as the one locale every `Intl.*Format` call resolves against. The "@" link-to-doc menu's overflow count ("1,234 more docs") now formats through `Intl.NumberFormat(formatLocale(std))` instead of string concatenation, so a host's locale gets its own thousands separator. The outline (plan) panel's five block-preview placeholders (Bookmark / Code Block / Database / Image / Attachment — shown when a block has nothing else to preview) were misfiled into the same audit lot as date/number formatting although they are plain words; they now carry their own keys (`com.labre.outline.placeholder.*`) and cross the translation seam like the rest of the editor's chrome. With no catalogue registered every surface reads exactly as it did before.
+- 1dac32d: feat(blocks): translate the edgeless toolbar, canvas tools and generic widgets at the seam. The edgeless toolbar (font weight/style, style toggles, tool tooltips, zoom bar), the mindmap and shape frameworks (senior/quick tools, style and layout menus, shape names, templates category tab), the text toolbar, the outline panel and its floating mini-viewer, the adapter/debug panel, the document title placeholder, the drag-and-drop preview, the auto-connect index badges, the "+" auto-complete panel and floating link button, the "⋮" overflow menu, and the "@" linked-doc menu (including its import dialog and the remote-cursor fallback name) now resolve through `translateKey`/`ChromeWording` instead of hardcoded English. A new `com.labre.mindmap.seed.new-node` seed replaces the mindmap model's own "New node" default at every call site in these packages. With no `TranslationProvider` registered every surface reads exactly as before, letter for letter.
+- 223b280: feat(blocks): close three shared translation seams the earlier i18n lots flagged as missing, then translate every string that was waiting on them. `Template.nameKey` gives a hand-composed template (a worked scene, an example map) a tile name of its own -- `resolveTemplateName` checks it before the `commandId`-derived path -- and every BPMN, Wardley, EDGY, Cynefin, Estuarine and mind-map hand-authored card now carries one. `AutoLegendSpec.titleKey` (already resolved by `createAutoLegend`) is now set for EDGY and C4's own "Legend" boxes, so both translate through the shared `BOARD_LEGEND_TITLE` key exactly like the three DDD boards already did. `MorphSpec.afterMorph` takes an optional 4th `std` parameter, which the morph toolbar now passes through: morphing an untouched TRANSLATED placeholder rewrites it to the target kind's own translated placeholder (`c4MorphedTypeLine`, `wardleyMorphedLabel`), where it used to fall back to English. Beyond the three seams: the note tool's overlay caption and a document's "Untitled" fallback (`inlines/reference`, the linked-doc HTML/Markdown exporters) now resolve through the shared `BLOCK_NAME_TEXT` / `DOC_UNTITLED` wordings instead of a raw literal; the "Template" senior-tool button gained a `labelKey`. Per a PO decision (2026-09-12), the linked-doc import dialog's English fallback now says "Labre" instead of the inherited "AFFiNE" in the two sentences that named it. Every addition is optional and retro-compatible: with no `TranslationProvider` registered, nothing on screen changes.
+
+### Patch Changes
+
+- b2781b5: refactor(blocks): one chrome word, one key. Where several packages declared the same English interface word under different keys (Copy-style verbs, text formats, display modes, Reload, Rename, Settings…), they now share one wording from `@labre/affine-shared/services`, and the key manifest carries 52 fewer entries. Nothing changes on screen, and no key that existed in a previous release is removed: the merged keys were all introduced by this release's translation work. The manifest spec now fails when a new interface word is declared under a second key (real homonyms such as « Light » or « Left » are allow-listed with a reason).
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [4ed9484]
+- Updated dependencies [c4661f2]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-block-image@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-rich-text@0.41.0
+  - @labre/affine-inline-reference@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes

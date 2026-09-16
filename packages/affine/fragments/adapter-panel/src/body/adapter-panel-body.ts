@@ -6,11 +6,13 @@ import { css, html, LitElement } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
 import {
+  ADAPTERS,
+  adapterPanelContext,
+  adapterPanelLabel,
   type AdapterItem,
   type AdapterPanelContext,
-  adapterPanelContext,
-  ADAPTERS,
 } from '../config';
+import { ADAPTER_PANEL_PREVIEW, ADAPTER_PANEL_SOURCE } from '../translations';
 
 export const AFFINE_ADAPTER_PANEL_BODY = 'affine-adapter-panel-body';
 
@@ -147,13 +149,16 @@ export class AdapterPanelBody extends SignalWatcher(LitElement) {
             class="html-toggle-item"
             ?active=${!this.isHtmlPreview}
             @click=${() => (this._context.isHtmlPreview$.value = false)}
-            >Source</span
+            >${adapterPanelLabel(this._context.std, ADAPTER_PANEL_SOURCE)}</span
           >
           <span
             class="html-toggle-item"
             ?active=${this.isHtmlPreview}
             @click=${() => (this._context.isHtmlPreview$.value = true)}
-            >Preview</span
+            >${adapterPanelLabel(
+              this._context.std,
+              ADAPTER_PANEL_PREVIEW
+            )}</span
           >
         </div>
       </div>

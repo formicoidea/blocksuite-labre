@@ -8,6 +8,7 @@ import { ImageSelection } from '@labre/affine-shared/selection';
 import {
   BlockCommentManager,
   ToolbarRegistryIdentifier,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { formatSize } from '@labre/affine-shared/utils';
 import { IS_MOBILE } from '@labre/global/env';
@@ -21,6 +22,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import type { ImageBlockPageComponent } from './components/page-image-block';
+import { IMAGE_LABEL } from './translations';
 import {
   copyImageBlob,
   downloadImageBlob,
@@ -150,7 +152,7 @@ export class ImageBlockComponent extends CaptionedBlockComponent<ImageBlockModel
       }),
       errorIcon: BrokenImageIcon(),
       icon: ImageIcon(),
-      title: 'Image',
+      title: translateKey(this.std, ...IMAGE_LABEL),
       description: formatSize(size),
     });
 

@@ -2,6 +2,7 @@ import {
   type OpenDocMode,
   type ToolbarAction,
   ToolbarContext,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -13,6 +14,11 @@ import { ifDefined } from 'lit-html/directives/if-defined.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 
 import { EditorChevronDown } from '../toolbar';
+import {
+  OPEN_DOC_MENU_ARIA,
+  OPEN_DOC_WITH_ARIA,
+  OPEN_LABEL,
+} from '../translations.js';
 
 @requiredProperties({
   actions: PropTypes.array,
@@ -86,13 +92,15 @@ export class OpenDocDropdownMenu extends SignalWatcher(
         @click=${() => currentAction.run?.(context)}
       >
         ${currentAction.icon}
-        <span class="label">Open</span>
+        <span class="label">${translateKey(context.std, ...OPEN_LABEL)}</span>
       </editor-icon-button>
       <editor-menu-button
-        aria-label="Open doc menu"
+        aria-label="${translateKey(context.std, ...OPEN_DOC_MENU_ARIA)}"
         .contentPadding="${'8px'}"
         .button=${html`
-          <editor-icon-button aria-label="Open doc with">
+          <editor-icon-button
+            aria-label="${translateKey(context.std, ...OPEN_DOC_WITH_ARIA)}"
+          >
             ${EditorChevronDown}
           </editor-icon-button>
         `}

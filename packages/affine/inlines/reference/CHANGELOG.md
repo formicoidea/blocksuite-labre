@@ -1,5 +1,43 @@
 # @labre/affine-inline-reference
 
+## 0.41.0
+
+### Minor Changes
+
+- feca957: feat(blocks): the shared component library, rich text and the inline nodes (link, reference, mention, latex, the text-format bar, the footnote popup) resolve their chrome, placeholders, aria-labels, toasts, tooltips, dropdown labels, empty states, through the translation seam (translateKey, ADR 0016) instead of hard-coded English. Most of these components have no std of their own; where one now renders inside the editor's DOM it consumes stdContext (the same seam block-caption.ts already used), so with no provider registered every surface reads exactly as it did before.
+
+  ResourceController.blob()'s "Image not found" / "Failed to retrieve Image" pair becomes one key per kind times message (Blob, File, Image, six keys total): the kind set is closed and the seam has no grammar to recompose a sentence from a noun, so each whole sentence gets its own key rather than a parameterised hole. The highlight menu's and icon picker's shared colour names, the icon picker's eight emoji-mart group names, and the Confirm/Cancel/Save/Reset verbs shared by the two embed-card modals and the reference popup, are each declared once and reused rather than re-minted per caller.
+
+  rich-text/src/conversion.ts's text-block primitive names and descriptions (Text, Heading 1 through Heading 6, Bulleted List, Numbered List, To-do List, Code Block, Quote, Divider, the one list the slash menu and the format bar's Turn into menu both read) move to a new Block types section of chrome.ts's shared CHROME_WORDINGS, so the text-block packages (blocks/note, blocks/paragraph, blocks/list, widgets/slash-menu) can point at the same keys instead of minting their own. The LaTeX equation's empty/error placeholders and the untitled-document fallback are declared there too, for the same reason.
+
+  Left untouched, with the reason: the date-picker (components/src/date-picker) is rendered only by the postponed data-view/database/table surfaces; the "A / C" and "e / t" notation letters, SeniorTool.name, and the resize-handle aria-labels are PO decisions out of scope for every lot.
+
+  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+- 223b280: feat(blocks): close three shared translation seams the earlier i18n lots flagged as missing, then translate every string that was waiting on them. `Template.nameKey` gives a hand-composed template (a worked scene, an example map) a tile name of its own -- `resolveTemplateName` checks it before the `commandId`-derived path -- and every BPMN, Wardley, EDGY, Cynefin, Estuarine and mind-map hand-authored card now carries one. `AutoLegendSpec.titleKey` (already resolved by `createAutoLegend`) is now set for EDGY and C4's own "Legend" boxes, so both translate through the shared `BOARD_LEGEND_TITLE` key exactly like the three DDD boards already did. `MorphSpec.afterMorph` takes an optional 4th `std` parameter, which the morph toolbar now passes through: morphing an untouched TRANSLATED placeholder rewrites it to the target kind's own translated placeholder (`c4MorphedTypeLine`, `wardleyMorphedLabel`), where it used to fall back to English. Beyond the three seams: the note tool's overlay caption and a document's "Untitled" fallback (`inlines/reference`, the linked-doc HTML/Markdown exporters) now resolve through the shared `BLOCK_NAME_TEXT` / `DOC_UNTITLED` wordings instead of a raw literal; the "Template" senior-tool button gained a `labelKey`. Per a PO decision (2026-09-12), the linked-doc import dialog's English fallback now says "Labre" instead of the inherited "AFFiNE" in the two sentences that named it. Every addition is optional and retro-compatible: with no `TranslationProvider` registered, nothing on screen changes.
+
+### Patch Changes
+
+- Updated dependencies [a513f05]
+- Updated dependencies [6cfe313]
+- Updated dependencies [5776733]
+- Updated dependencies [4ed9484]
+- Updated dependencies [6271b11]
+- Updated dependencies [924f7d6]
+- Updated dependencies [5744cfd]
+- Updated dependencies [feca957]
+- Updated dependencies [1dac32d]
+- Updated dependencies [b2781b5]
+- Updated dependencies [223b280]
+- Updated dependencies [47d4ac6]
+  - @labre/affine-shared@0.41.0
+  - @labre/std@0.41.0
+  - @labre/affine-components@0.41.0
+  - @labre/affine-model@0.41.0
+  - @labre/affine-ext-loader@0.41.0
+  - @labre/global@0.41.0
+  - @labre/store@0.41.0
+
 ## 0.40.0
 
 ### Patch Changes

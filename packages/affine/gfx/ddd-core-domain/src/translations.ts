@@ -1,3 +1,5 @@
+import { dddSharedTranslationEntries } from '@labre/affine-gfx-ddd-shared';
+import type { ChromeWording } from '@labre/affine-shared/services';
 import {
   collectTranslationKeys,
   commandCategoryTranslationEntries,
@@ -13,6 +15,26 @@ import { CORE_DOMAIN_PROFILES } from './profiles.js';
 import { CORE_DOMAIN_READINGS } from './reading.js';
 import { CORE_DOMAIN_ROLES } from './roles.js';
 import { CORE_DOMAIN_RULES } from './rules.js';
+
+/**
+ * The automatic legend's own section titles (`core-domain/legend.ts`) — text
+ * stamped onto the chart the moment the legend is built
+ * (`createAutoLegend`), like any other seed. The box title itself is NOT
+ * here: it says the shared word "Legend", so it reuses `BOARD_LEGEND_TITLE`
+ * (`@labre/affine-shared/services`) instead of a key of its own.
+ */
+export const CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-subdomains',
+  'Sub-domains',
+];
+export const CORE_DOMAIN_SEED_LEGEND_TEAM_MODES: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-team-modes',
+  'Team interaction modes',
+];
+export const CORE_DOMAIN_SEED_LEGEND_MOVEMENT: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-movement',
+  'Movement',
+];
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -44,5 +66,15 @@ export const coreDomainTranslationEntries: TranslationKeyManifestEntry[] =
     // framework's own `roles`, so walking it reaches every role key the `role`
     // line above already named. `mergeTranslationEntries` keeps the FIRST
     // occurrence, which is what makes each key report the source it comes from.
-    collectTranslationKeys('reading', CORE_DOMAIN_READINGS)
+    collectTranslationKeys('reading', CORE_DOMAIN_READINGS),
+    // The seeds baked into a placed dot / marker (`commands.ts`), derived from
+    // the shared tables in `ddd-shared` rather than restated — spread whole
+    // rather than imported from a sibling DDD framework (never allowed), and
+    // de-duplicated with whatever this framework already listed.
+    dddSharedTranslationEntries,
+    [
+      CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS,
+      CORE_DOMAIN_SEED_LEGEND_TEAM_MODES,
+      CORE_DOMAIN_SEED_LEGEND_MOVEMENT,
+    ].map(([key, fallback]) => ({ key, fallback, source: 'seed' as const }))
   );

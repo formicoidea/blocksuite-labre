@@ -5,17 +5,25 @@ import {
   FontStyle,
   FontWeight,
 } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  FONT_STYLE_ITALIC,
+  FONT_WEIGHT_LIGHT,
+  FONT_WEIGHT_REGULAR,
+  FONT_WEIGHT_SEMIBOLD,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { DoneIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { choose } from 'lit/directives/choose.js';
 import { join } from 'lit/directives/join.js';
 import { repeat } from 'lit/directives/repeat.js';
 
-const FONT_WEIGHT_CHOOSE: [FontWeight, () => string][] = [
-  [FontWeight.Light, () => 'Light'],
-  [FontWeight.Regular, () => 'Regular'],
-  [FontWeight.SemiBold, () => 'Semibold'],
+const FONT_WEIGHT_CHOOSE: [FontWeight, ChromeWording][] = [
+  [FontWeight.Light, FONT_WEIGHT_LIGHT],
+  [FontWeight.Regular, FONT_WEIGHT_REGULAR],
+  [FontWeight.SemiBold, FONT_WEIGHT_SEMIBOLD],
 ];
 
 export class EdgelessFontWeightAndStylePanel extends LitElement {
@@ -67,6 +75,19 @@ export class EdgelessFontWeightAndStylePanel extends LitElement {
     }
   }
 
+  /** The wording for a font weight — translated when `std` is available. */
+  private _weightLabel(weight: FontWeight) {
+    const wording = FONT_WEIGHT_CHOOSE.find(([w]) => w === weight)?.[1];
+    if (!wording) return '';
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
+  private get _italicLabel() {
+    return this.std
+      ? translateKey(this.std, ...FONT_STYLE_ITALIC)
+      : FONT_STYLE_ITALIC[1];
+  }
+
   override render() {
     let fontFaces = TextUtils.getFontFacesByFontFamily(this.fontFamily);
     // Compatible with old data
@@ -99,7 +120,7 @@ export class EdgelessFontWeightAndStylePanel extends LitElement {
                     @click=${() =>
                       this._onSelect(fontFace.weight as FontWeight)}
                   >
-                    ${choose(fontFace.weight, FONT_WEIGHT_CHOOSE)}
+                    ${this._weightLabel(fontFace.weight as FontWeight)}
                     ${active ? DoneIcon() : nothing}
                   </edgeless-tool-icon-button>
                 `;
@@ -131,8 +152,8 @@ export class EdgelessFontWeightAndStylePanel extends LitElement {
                         FontStyle.Italic
                       )}
                   >
-                    ${choose(fontFace.weight, FONT_WEIGHT_CHOOSE)} Italic
-                    ${active ? DoneIcon() : nothing}
+                    ${this._weightLabel(fontFace.weight as FontWeight)}
+                    ${this._italicLabel} ${active ? DoneIcon() : nothing}
                   </edgeless-tool-icon-button>
                 `;
               }
@@ -160,4 +181,10 @@ export class EdgelessFontWeightAndStylePanel extends LitElement {
   accessor onSelect:
     | ((fontWeight: FontWeight, fontStyle: FontStyle) => void)
     | undefined;
+
+  /** Set by the caller that has one (`gfx/text`'s `createTextActions`) —
+   * optional so this panel still renders (in English) when created with
+   * none. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 }

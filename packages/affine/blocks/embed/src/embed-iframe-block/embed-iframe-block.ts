@@ -43,6 +43,7 @@ import {
 import { embedIframeBlockStyles } from './style.js';
 import type { EmbedIframeStatusCardOptions } from './types.js';
 import { safeGetIframeSrc } from './utils.js';
+import { EMBED_IFRAME_NO_LINK_MESSAGE } from '../translations.js';
 
 export type EmbedIframeStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -131,7 +132,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
     if (!link) {
       this.notificationService?.notify({
         title: translateKey(this.std, ...TOAST_NO_LINK_FOUND),
-        message: 'Please set a link to the block',
+        message: translateKey(this.std, ...EMBED_IFRAME_NO_LINK_MESSAGE),
         accent: 'warning',
         onClose: function (): void {},
       });
@@ -326,6 +327,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
   private readonly _renderContent = () => {
     if (this.isIdle$.value) {
       return html`<embed-iframe-idle-card
+        .std=${this.std}
         .options=${this._statusCardOptions}
       ></embed-iframe-idle-card>`;
     }

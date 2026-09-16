@@ -1,10 +1,20 @@
 import { LineWidth, StrokeStyle } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { WithDisposable } from '@labre/global/lit';
 import { BanIcon, DashLineIcon, StraightLineIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
+
+import {
+  LINE_STYLE_DASH,
+  LINE_STYLE_NONE,
+  LINE_STYLE_SOLID,
+} from '../translations.js';
 
 export type LineDetailType =
   | {
@@ -34,7 +44,17 @@ const LINE_STYLE_LIST = [
   },
 ];
 
+const LINE_STYLE_WORDINGS: Readonly<Record<string, readonly [string, string]>> =
+  {
+    Solid: LINE_STYLE_SOLID,
+    Dash: LINE_STYLE_DASH,
+    None: LINE_STYLE_NONE,
+  };
+
 export class EdgelessLineStylesPanel extends WithDisposable(LitElement) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     edgeless-line-width-panel {
       flex: 1;
@@ -80,7 +100,9 @@ export class EdgelessLineStylesPanel extends WithDisposable(LitElement) {
           return html`
             <editor-icon-button
               class=${classMap(classInfo)}
-              .tooltip="${key}"
+              .tooltip="${this.std
+                ? translateKey(this.std, ...LINE_STYLE_WORDINGS[key])
+                : LINE_STYLE_WORDINGS[key][1]}"
               .withHover=${active}
               @click=${() => this.select({ type: 'style', value })}
             >

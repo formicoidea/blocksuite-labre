@@ -2,8 +2,10 @@ import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { createTextActions } from '@labre/affine-gfx-text';
 import { EdgelessTextBlockModel } from '@labre/affine-model';
 import {
+  FONT_SIZE_LABEL,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getMostCommonValue } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
@@ -65,7 +67,7 @@ export const edgelessTextToolbarConfig = {
 
         return html`<affine-size-dropdown-menu
           @select=${onPick}
-          .label="${'Font size'}"
+          .label="${translateKey(ctx.std, ...FONT_SIZE_LABEL)}"
           .sizes=${FONT_SIZE_LIST}
           .size$=${size$}
           .minSize=${1}

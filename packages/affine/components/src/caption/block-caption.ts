@@ -1,4 +1,5 @@
 import type { DocMode } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
@@ -15,6 +16,8 @@ import { Text } from '@labre/store';
 import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { query, state } from 'lit/decorators.js';
+
+import { CAPTION_PLACEHOLDER } from '../translations.js';
 
 export interface BlockCaptionProps {
   caption: string | null | undefined;
@@ -145,7 +148,7 @@ export class BlockCaptionEditor<
 
     return html`<textarea
       .disabled=${this.doc.readonly}
-      placeholder="Write a caption"
+      placeholder=${translateKey(this.std, ...CAPTION_PLACEHOLDER)}
       class="block-caption-editor"
       .value=${this.caption ?? ''}
       @input=${this._onInputChange}

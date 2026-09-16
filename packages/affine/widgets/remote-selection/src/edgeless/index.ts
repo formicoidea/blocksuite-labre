@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import type { RootBlockModel } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import {
   getSelectedRect,
   isTopLevelBlock,
@@ -16,6 +17,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { RemoteColorManager } from '../manager/remote-color-manager';
+import { REMOTE_SELECTION_UNKNOWN_USER } from '../translations.js';
 
 export const AFFINE_EDGELESS_REMOTE_SELECTION_WIDGET =
   'affine-edgeless-remote-selection-widget';
@@ -265,7 +267,8 @@ export class EdgelessRemoteSelectionWidget extends WidgetComponent<RootBlockMode
               backgroundColor: _remoteColorManager.get(id),
             })}
           >
-            ${cursor.user?.name ?? 'Unknown'}
+            ${cursor.user?.name ??
+            translateKey(this.std, ...REMOTE_SELECTION_UNKNOWN_USER)}
           </div>
         </div>`;
       }

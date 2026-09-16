@@ -1,3 +1,4 @@
+import type { ChromeWording } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 import type { TemplateResult } from 'lit';
@@ -10,11 +11,28 @@ export type SlashMenuContext = {
 export type SlashMenuTooltip = {
   figure: TemplateResult;
   caption: string;
+  /**
+   * {@link caption}, said as an i18n key with its English default — resolved
+   * against the host's catalogue when the tooltip renders, and shown instead
+   * of `caption` there. Mirrors `ToolbarAction.labelWording`: a static
+   * literal is the one wording a host cannot override.
+   */
+  captionWording?: ChromeWording;
 };
 
 type SlashMenuItemBase = {
   name: string;
+  /**
+   * The same word as {@link name}, said as an i18n key with its English
+   * default — resolved against the host's catalogue when the item renders,
+   * and shown instead of `name` there. `name` stays the item's English
+   * identity: it is what tests and `searchAlias` match against, and what
+   * `slashItemClassName` derives a CSS class from.
+   */
+  nameWording?: ChromeWording;
   description?: string;
+  /** {@link nameWording}, for {@link description}. */
+  descriptionWording?: ChromeWording;
   icon?: TemplateResult;
   /**
    * This field defines sorting and grouping of menu items like VSCode.

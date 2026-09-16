@@ -1,4 +1,8 @@
 import { type AutoLegendSpec, roleLabel } from '@labre/affine-gfx-ddd-shared';
+import {
+  BOARD_LEGEND_TITLE,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
 
 import { BOUNDARY_STROKE, NODE_PALETTE, RELATIONSHIP_STROKE } from './consts';
 import { C4_ROLE, C4_ROLES } from './roles';
@@ -38,13 +42,38 @@ import { C4_ROLE, C4_ROLES } from './roles';
  * and system, for the same reason: the grey says "out of scope", not "a
  * different sort of thing".
  */
+/** This section's own keys. */
+const SECTION_ELEMENTS: ChromeWording = [
+  'com.labre.c4.legend.section.elements',
+  'Elements',
+];
+const SECTION_FRAMES: ChromeWording = [
+  'com.labre.c4.legend.section.frames',
+  'Frames',
+];
+const SECTION_RELATIONS: ChromeWording = [
+  'com.labre.c4.legend.section.relations',
+  'Relations',
+];
+
+/** Every section `titleKey` above, for `translations.ts`'s manifest. */
+export const C4_LEGEND_SECTION_WORDINGS: readonly ChromeWording[] = [
+  SECTION_ELEMENTS,
+  SECTION_FRAMES,
+  SECTION_RELATIONS,
+];
+
 export const C4_AUTO_LEGEND: AutoLegendSpec = {
-  title: 'Legend',
+  // The shared DDD auto-legend box's own generic chrome, resolved through
+  // the same key every board that has one reuses — see `AutoLegendSpec.title`.
+  title: BOARD_LEGEND_TITLE[1],
+  titleKey: BOARD_LEGEND_TITLE[0],
   width: 290,
   roles: C4_ROLES,
   sections: [
     {
       title: 'Elements',
+      titleKey: SECTION_ELEMENTS[0],
       entries: [
         {
           role: C4_ROLE.person,
@@ -92,6 +121,7 @@ export const C4_AUTO_LEGEND: AutoLegendSpec = {
     },
     {
       title: 'Frames',
+      titleKey: SECTION_FRAMES[0],
       entries: [
         {
           role: C4_ROLE.boundary,
@@ -109,6 +139,7 @@ export const C4_AUTO_LEGEND: AutoLegendSpec = {
     },
     {
       title: 'Relations',
+      titleKey: SECTION_RELATIONS[0],
       entries: [
         {
           role: C4_ROLE.relationship,

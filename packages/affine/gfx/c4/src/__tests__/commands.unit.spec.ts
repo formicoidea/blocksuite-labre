@@ -5,6 +5,10 @@ import {
   StrokeStyle,
 } from '@labre/affine-model';
 import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
+import {
+  TranslationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
 import {
   type BlockStdScope,
@@ -510,6 +514,29 @@ describe('the c4 automatic legend', () => {
     expect(roles).not.toContain(C4_ROLE.board);
   });
 
+  it('carries a titleKey for the box title, translated with a host and unchanged without one', () => {
+    expect(C4_AUTO_LEGEND.title).toBe('Legend');
+    expect(C4_AUTO_LEGEND.titleKey).toBe('com.labre.board.legend.title');
+    const NO_HOST_STD = {
+      getOptional: () => undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(NO_HOST_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
+    ).toBe('Legend');
+    const HOSTED_STD = {
+      getOptional: (id: unknown) =>
+        id === TranslationProvider
+          ? {
+              t: (key: string) =>
+                key === C4_AUTO_LEGEND.titleKey ? 'Légende' : undefined,
+            }
+          : undefined,
+    } as unknown as BlockStdScope;
+    expect(
+      translateKey(HOSTED_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
+    ).toBe('Légende');
+  });
+
   it('asks for an exact match on the container, and only there', () => {
     // `c4:database` specialises `c4:container`, so an inclusive entry would put
     // a "Container" row on a board carrying nothing but cylinders — a row
@@ -531,8 +558,13 @@ describe('the c4 automatic legend', () => {
    * would have listed "Boundary" twice or not at all.
    */
   it('lists the one Boundary row for a board drawn at either level', () => {
+    // No host catalogue: `translateKey` falls through to the fallback it is
+    // given, so the plain English wording is still what these rows show.
+    const NO_HOST_STD = {
+      getOptional: () => undefined,
+    } as unknown as BlockStdScope;
     const framesOf = (present: string[]) =>
-      autoLegendSections(new Set(present), C4_AUTO_LEGEND).find(
+      autoLegendSections(new Set(present), C4_AUTO_LEGEND, NO_HOST_STD).find(
         section => section.title === 'Frames'
       );
     for (const role of [

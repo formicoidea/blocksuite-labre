@@ -1,5 +1,6 @@
 import type { ShapeToolOption } from '@labre/affine-gfx-shape';
 import { ShapeType } from '@labre/affine-model';
+import type { ChromeWording } from '@labre/affine-shared/services';
 import {
   DiamondIcon,
   EllipseIcon,
@@ -18,12 +19,22 @@ import {
   ScribbledSquareIcon,
   ScribbledTriangleIcon,
 } from './icons';
+import {
+  SHAPE_NAME_DIAMOND,
+  SHAPE_NAME_ELLIPSE,
+  SHAPE_NAME_POLYGON,
+  SHAPE_NAME_ROUNDED_RECT,
+  SHAPE_NAME_SQUARE,
+  SHAPE_NAME_TRIANGLE,
+} from '../translations';
 
 type Config = {
   name: ShapeToolOption['shapeName'];
   generalIcon: TemplateResult<1>;
   scribbledIcon: TemplateResult<1>;
   tooltip: string;
+  /** {@link tooltip}, for the translation seam. */
+  tooltipWording: ChromeWording;
   disabled: boolean;
 };
 
@@ -33,6 +44,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: SquareIcon(),
     scribbledIcon: ScribbledSquareIcon,
     tooltip: 'Square',
+    tooltipWording: SHAPE_NAME_SQUARE,
     disabled: false,
   },
   {
@@ -40,6 +52,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: EllipseIcon(),
     scribbledIcon: ScribbledEllipseIcon,
     tooltip: 'Ellipse',
+    tooltipWording: SHAPE_NAME_ELLIPSE,
     disabled: false,
   },
   {
@@ -47,6 +60,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: DiamondIcon(),
     scribbledIcon: ScribbledDiamondIcon,
     tooltip: 'Diamond',
+    tooltipWording: SHAPE_NAME_DIAMOND,
     disabled: false,
   },
   {
@@ -54,6 +68,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: TriangleIcon(),
     scribbledIcon: ScribbledTriangleIcon,
     tooltip: 'Triangle',
+    tooltipWording: SHAPE_NAME_TRIANGLE,
     disabled: false,
   },
   {
@@ -61,6 +76,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: GeneralPolygonIcon,
     scribbledIcon: ScribbledPolygonIcon,
     tooltip: 'Polygon',
+    tooltipWording: SHAPE_NAME_POLYGON,
     disabled: false,
   },
   {
@@ -68,6 +84,7 @@ export const ShapeComponentConfig: Config[] = [
     generalIcon: RoundedRectangleIcon(),
     scribbledIcon: ScribbledRoundedRectangleIcon,
     tooltip: 'Rounded rectangle',
+    tooltipWording: SHAPE_NAME_ROUNDED_RECT,
     disabled: false,
   },
 ];

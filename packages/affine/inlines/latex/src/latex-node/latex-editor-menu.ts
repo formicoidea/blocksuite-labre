@@ -1,6 +1,6 @@
 import { ColorScheme } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVar } from '@labre/affine-shared/theme';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -15,6 +15,7 @@ import { codeToTokensBase, type ThemedToken } from 'shiki';
 import * as Y from 'yjs';
 
 import { LatexEditorUnitSpecExtension } from '../inline-spec';
+import { LATEX_LINE_BREAK_HINT } from '../translations.js';
 
 export const LatexEditorInlineManagerExtension =
   InlineManagerExtension<AffineTextAttributes>({
@@ -195,7 +196,9 @@ export class LatexEditorMenu extends SignalWatcher(
           })}</span
         >
       </div>
-      <div class="latex-editor-hint">Shift Enter to line break</div>
+      <div class="latex-editor-hint">
+        ${translateKey(this.std, ...LATEX_LINE_BREAK_HINT)}
+      </div>
     </div>`;
   }
 

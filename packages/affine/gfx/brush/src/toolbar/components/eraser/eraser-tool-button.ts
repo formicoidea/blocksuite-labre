@@ -1,9 +1,10 @@
 import { DefaultTool } from '@labre/affine-block-surface';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { css, html, LitElement } from 'lit';
 
 import { EraserTool } from '../../../eraser-tool';
+import { BRUSH_TOOLTIP_ERASER } from '../../../translations.js';
 import { EdgelessEraserDarkIcon, EdgelessEraserLightIcon } from './icons.js';
 
 export class EdgelessEraserToolButton extends EdgelessToolbarToolMixin(
@@ -61,7 +62,7 @@ export class EdgelessEraserToolButton extends EdgelessToolbarToolMixin(
       <edgeless-toolbar-button
         class="edgeless-eraser-button"
         .tooltip=${html`<affine-tooltip-content-with-shortcut
-          data-tip="${'Eraser'}"
+          data-tip="${translateKey(this.edgeless.std, ...BRUSH_TOOLTIP_ERASER)}"
           data-shortcut="${'E'}"
         ></affine-tooltip-content-with-shortcut>`}
         .tooltipOffset=${4}

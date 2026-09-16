@@ -1,6 +1,10 @@
 import { EdgelessFrameManager } from '@labre/affine-block-frame';
 import type { FrameBlockModel } from '@labre/affine-model';
-import { DocModeProvider, EditPropsStore } from '@labre/affine-shared/services';
+import {
+  DocModeProvider,
+  EditPropsStore,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -18,6 +22,7 @@ import type {
   FrameCard,
   SelectEvent,
 } from '../card/frame-card.js';
+import { FRAME_PANEL_EMPTY_PLACEHOLDER } from '../translations.js';
 import { startDragging } from '../utils/drag.js';
 
 const compare = EdgelessFrameManager.framePresentationComparator;
@@ -243,7 +248,7 @@ export class FramePanelBody extends SignalWatcher(
   private _renderEmptyContent() {
     const emptyContent = html` <div class="no-frame-container">
       <div class="no-frame-placeholder">
-        Add frames to organize and present your Edgeless
+        ${translateKey(this.editorHost.std, ...FRAME_PANEL_EMPTY_PLACEHOLDER)}
       </div>
     </div>`;
 

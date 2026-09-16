@@ -41,8 +41,10 @@ import {
   type ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  BLOCK_NAME_TEXT,
   EditPropsStore,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { IS_MAC } from '@labre/global/env';
@@ -59,11 +61,14 @@ import {
 } from '@labre/std/gfx';
 
 import { PageKeyboardManager } from '../keyboard/keyboard-manager.js';
+import {
+  ROOT_MINDMAP_SEED_NEW_NODE,
+  ROOT_TOAST_ZOOM_TO_SELECTION,
+} from '../translations.js';
 import type { EdgelessRootBlockComponent } from './edgeless-root-block.js';
 import {
   DEFAULT_NOTE_CHILD_FLAVOUR,
   DEFAULT_NOTE_CHILD_TYPE,
-  DEFAULT_NOTE_TIP,
 } from './utils/consts.js';
 import { deleteElements } from './utils/crud.js';
 import { isCanvasElement } from './utils/query.js';
@@ -115,7 +120,11 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           this._setEdgelessTool(NoteTool, {
             childFlavour: DEFAULT_NOTE_CHILD_FLAVOUR,
             childType: DEFAULT_NOTE_CHILD_TYPE,
-            tip: DEFAULT_NOTE_TIP,
+            // The overlay's placeholder caption — rendered by
+            // `@labre/affine-gfx-note`'s `NoteTool`, so resolved through the
+            // shared "Text" wording rather than the raw `DEFAULT_NOTE_TIP`
+            // literal.
+            tip: translateKey(this.std, ...BLOCK_NAME_TEXT),
           });
         },
         p: () => {
@@ -302,7 +311,10 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
             return;
           }
 
-          toast(this.rootComponent.host, 'Zoom to selection');
+          toast(
+            this.rootComponent.host,
+            translateKey(this.std, ...ROOT_TOAST_ZOOM_TO_SELECTION)
+          );
 
           this.gfx.viewport.setViewportByBound(
             bound,
@@ -409,7 +421,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           const currentNode = mindmap.getNode(elements[0].id)!;
           const node = mindmap.getNode(elements[0].id)!;
           const parent = mindmap.getParentNode(node.id) ?? node;
-          const id = mindmap.addNode(parent.id, currentNode.id, 'after');
+          const id = mindmap.addNode(parent.id, currentNode.id, 'after', {
+            text: translateKey(this.std, ...ROOT_MINDMAP_SEED_NEW_NODE),
+          });
           const target = service.crud.getElementById(id) as ShapeElementModel;
 
           requestAnimationFrame(() => {
@@ -442,7 +456,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           if (mindmap.isLocked()) return;
 
           const node = mindmap.getNode(elements[0].id)!;
-          const id = mindmap.addNode(node.id);
+          const id = mindmap.addNode(node.id, undefined, 'after', {
+            text: translateKey(this.std, ...ROOT_MINDMAP_SEED_NEW_NODE),
+          });
           const target = service.crud.getElementById(id) as ShapeElementModel;
 
           if (node.detail.collapsed) {

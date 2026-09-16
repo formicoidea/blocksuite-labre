@@ -25,9 +25,11 @@ import {
   TextFitMode,
 } from '@labre/affine-model';
 import {
+  STYLE_MENU_LABEL,
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getMostCommonValue } from '@labre/affine-shared/utils';
 import {
@@ -54,12 +56,28 @@ import type { ShapeToolOption } from '../shape-tool';
 import { applyTextFitMode, nextTextFitMode } from '../text-fit';
 import { mountShapeTextEditor } from '../text/edgeless-shape-text-editor';
 import { ShapeComponentConfig } from './shape-menu-config';
+import {
+  SHAPE_ADD_TEXT_TOOLTIP,
+  SHAPE_EDIT_VERTICES_TOOLTIP,
+  SHAPE_SWITCH_TYPE_LABEL,
+  SHAPE_TEXT_FIT_ARIA,
+  SHAPE_TEXT_FIT_CONTAINED,
+  SHAPE_TEXT_FIT_GROW,
+  SHAPE_TEXT_FIT_OVERFLOW,
+  SHAPE_TEXT_FIT_TOOLTIP,
+} from '../translations';
 
-/** Icon + label per text fit mode for the cycling toolbar button. */
+/** Icon + wording per text fit mode for the cycling toolbar button. */
 const TEXT_FIT_UI = {
-  [TextFitMode.Grow]: { icon: AutoHeightIcon(), label: 'Grow shape' },
-  [TextFitMode.Contained]: { icon: AutoSizeIcon(), label: 'Contained text' },
-  [TextFitMode.Overflow]: { icon: ScaleAltIcon(), label: 'Overflow text' },
+  [TextFitMode.Grow]: { icon: AutoHeightIcon(), wording: SHAPE_TEXT_FIT_GROW },
+  [TextFitMode.Contained]: {
+    icon: AutoSizeIcon(),
+    wording: SHAPE_TEXT_FIT_CONTAINED,
+  },
+  [TextFitMode.Overflow]: {
+    icon: ScaleAltIcon(),
+    wording: SHAPE_TEXT_FIT_OVERFLOW,
+  },
 } as const;
 
 export const shapeToolbarConfig = {
@@ -104,8 +122,10 @@ export const shapeToolbarConfig = {
         return renderMenu({
           icon: ShapeIcon(),
           label: 'Switch shape type',
+          labelWording: SHAPE_SWITCH_TYPE_LABEL,
           items: ShapeComponentConfig.map(item => ({
             key: item.tooltip,
+            keyWording: item.tooltipWording,
             value: item.name,
             icon:
               shapeStyle === ShapeStyle.General
@@ -115,6 +135,7 @@ export const shapeToolbarConfig = {
           })),
           currentValue: shapeName,
           onPick,
+          std: ctx.std,
         });
       },
     },
@@ -141,9 +162,11 @@ export const shapeToolbarConfig = {
 
         return renderMenu({
           label: 'Style',
+          labelWording: STYLE_MENU_LABEL,
           items: LINE_STYLE_LIST,
           currentValue: shapeStyle === ShapeStyle.Scribbled,
           onPick,
+          std: ctx.std,
         });
       },
     },
@@ -278,6 +301,7 @@ export const shapeToolbarConfig = {
     {
       id: 'f.text',
       tooltip: 'Add text',
+      tooltipWording: SHAPE_ADD_TEXT_TOOLTIP,
       icon: AddTextIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModelsByType(ShapeElementModel);
@@ -296,6 +320,7 @@ export const shapeToolbarConfig = {
     {
       id: 'f1.edit-vertices',
       tooltip: 'Edit vertices',
+      tooltipWording: SHAPE_EDIT_VERTICES_TOOLTIP,
       icon: EditIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModelsByType(ShapeElementModel);
@@ -331,12 +356,19 @@ export const shapeToolbarConfig = {
         const mode =
           getMostCommonValue(models, 'textFitMode') ?? TextFitMode.Grow;
         const next = nextTextFitMode(mode);
-        const { icon, label } = TEXT_FIT_UI[mode];
+        const { icon, wording } = TEXT_FIT_UI[mode];
+        const label = translateKey(ctx.std, ...wording);
+        const nextLabel = translateKey(ctx.std, ...TEXT_FIT_UI[next].wording);
 
         return html`
           <editor-icon-button
-            aria-label="Text fit: ${label}"
-            .tooltip=${`Text fit: ${label} — click for ${TEXT_FIT_UI[next].label}`}
+            aria-label="${translateKey(ctx.std, ...SHAPE_TEXT_FIT_ARIA, {
+              label,
+            })}"
+            .tooltip=${translateKey(ctx.std, ...SHAPE_TEXT_FIT_TOOLTIP, {
+              label,
+              nextLabel,
+            })}
             @click=${() => applyTextFitMode(ctx.std, models, next)}
           >
             ${icon}

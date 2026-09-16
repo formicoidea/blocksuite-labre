@@ -3,7 +3,12 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { EditPropsStore } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  TOOLBAR_HIDE_TOOLBAR,
+  TOOLBAR_SETTINGS,
+  translateKey,
+} from '@labre/affine-shared/services';
 import {
   CopyIcon,
   DoneIcon,
@@ -70,18 +75,19 @@ export class EmbedHtmlFullscreenToolbar extends LitElement {
 
   private readonly _popSettings = () => {
     this._popperVisible = true;
+    const { std } = this.embedHtml;
     popMenu(popupTargetFromElement(this._fullScreenToolbarContainer), {
       options: {
         items: [
           () =>
             html` <div class="settings-header">
-              <span>Settings</span>
+              <span>${translateKey(std, ...TOOLBAR_SETTINGS)}</span>
             </div>`,
           menu.group({
             name: 'thing',
             items: [
               menu.toggleSwitch({
-                name: 'Hide toolbar',
+                name: translateKey(std, ...TOOLBAR_HIDE_TOOLBAR),
                 on: this.autoHideToolbar,
                 onChange: on => {
                   this.autoHideToolbar = on;

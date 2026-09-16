@@ -1,18 +1,82 @@
+import { ATTACHMENT_WORDINGS } from '@labre/affine-block-attachment/translations';
+import { BOOKMARK_WORDINGS } from '@labre/affine-block-bookmark/translations';
+import { EMBED_WORDINGS } from '@labre/affine-block-embed/translations';
+import { EMBED_DOC_WORDINGS } from '@labre/affine-block-embed-doc/translations';
+import {
+  FRAME_CHROME_WORDINGS,
+  FRAME_WORDINGS,
+} from '@labre/affine-block-frame/translations';
+import { IMAGE_WORDINGS } from '@labre/affine-block-image/translations';
 import {
   EXEMPTION_FALLBACK,
   PROVENANCE_FALLBACK,
   SEVERITY_FALLBACK,
+  SVG_SKETCH_WORDINGS,
 } from '@labre/affine-block-surface';
+import {
+  SURFACE_REF_CHROME_WORDINGS,
+  SURFACE_REF_WORDINGS,
+} from '@labre/affine-block-surface-ref/translations';
+import { ADAPTER_PANEL_WORDINGS } from '@labre/affine-fragment-adapter-panel/translations';
+import { DOC_TITLE_WORDINGS } from '@labre/affine-fragment-doc-title/translations';
+import { OUTLINE_WORDINGS } from '@labre/affine-fragment-outline/translations';
+import { COMPONENTS_WORDINGS } from '@labre/affine-components/translations';
+import {
+  ROOT_CHROME_WORDINGS,
+  ROOT_SEED_WORDINGS,
+} from '@labre/affine-block-root/translations';
 import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
+import { BRUSH_WORDINGS } from '@labre/affine-gfx-brush/translations';
 import { c4TranslationEntries } from '@labre/affine-gfx-c4';
+import { CONNECTOR_WORDINGS } from '@labre/affine-gfx-connector/translations';
 import { cynefinEstuarineTranslationEntries } from '@labre/affine-gfx-cynefin-estuarine';
+import { dddAggregateTranslationEntries } from '@labre/affine-gfx-ddd-aggregate';
 import { contextMapTranslationEntries } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingTranslationEntries } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyTranslationEntries } from '@labre/affine-gfx-edgy';
 import { umlTranslationEntries } from '@labre/affine-gfx-uml';
+import {
+  GROUP_CHROME_WORDINGS,
+  GROUP_WORDINGS,
+} from '@labre/affine-gfx-group/translations';
+import {
+  MINDMAP_CHROME_WORDINGS,
+  MINDMAP_SEED_WORDINGS,
+} from '@labre/affine-gfx-mindmap/translations';
+import { SHAPE_WORDINGS } from '@labre/affine-gfx-shape/translations';
+import { POINTER_WORDINGS } from '@labre/affine-gfx-pointer/translations';
+import { FRAME_PANEL_WORDINGS } from '@labre/affine-fragment-frame-panel/translations';
+import {
+  TEMPLATE_PACKAGE_WORDINGS,
+  TEMPLATE_SEED_WORDINGS,
+} from '@labre/affine-gfx-template/translations';
+import { TEXT_WORDINGS } from '@labre/affine-gfx-text/translations';
 import { wardleyTranslationEntries } from '@labre/affine-gfx-wardley';
-import { CHROME_WORDINGS } from '@labre/affine-shared/services';
+import { LATEX_WORDINGS as INLINE_LATEX_WORDINGS } from '@labre/affine-inline-latex/translations';
+import { LINK_WORDINGS } from '@labre/affine-inline-link/translations';
+import { MENTION_WORDINGS } from '@labre/affine-inline-mention/translations';
+import { PRESET_WORDINGS } from '@labre/affine-inline-preset/translations';
+import { REFERENCE_WORDINGS } from '@labre/affine-inline-reference/translations';
+import {
+  CHROME_WORDINGS,
+  type ChromeWording,
+} from '@labre/affine-shared/services';
+import { CALLOUT_WORDINGS } from '@labre/affine-block-callout/translations';
+import { CODE_WORDINGS } from '@labre/affine-block-code/translations';
+import { LATEX_WORDINGS } from '@labre/affine-block-latex/translations';
+import { NOTE_WORDINGS } from '@labre/affine-block-note/translations';
+import { PARAGRAPH_WORDINGS } from '@labre/affine-block-paragraph/translations';
+import { GFX_NOTE_WORDINGS } from '@labre/affine-gfx-note/translations';
+import { DRAG_HANDLE_WORDINGS } from '@labre/affine-widget-drag-handle/translations';
+import { AUTO_CONNECT_WORDINGS } from '@labre/affine-widget-edgeless-auto-connect/translations';
+import { EDGELESS_SELECTED_RECT_WORDINGS } from '@labre/affine-widget-edgeless-selected-rect/translations';
+import { EDGELESS_TOOLBAR_WORDINGS } from '@labre/affine-widget-edgeless-toolbar/translations';
+import { ZOOM_TOOLBAR_WORDINGS } from '@labre/affine-widget-edgeless-zoom-toolbar/translations';
+import { LINKED_DOC_WORDINGS } from '@labre/affine-widget-linked-doc/translations';
+import { REMOTE_SELECTION_WORDINGS } from '@labre/affine-widget-remote-selection/translations';
+import { SLASH_MENU_WORDINGS } from '@labre/affine-widget-slash-menu/translations';
+import { TOOLBAR_WIDGET_WORDINGS } from '@labre/affine-widget-toolbar/translations';
 import {
   collectTranslationKeys,
   commandCategoryTranslationEntries,
@@ -21,6 +85,7 @@ import {
   mergeTranslationEntries,
   type TranslationKeyManifestEntry,
 } from '@labre/std';
+import { STD_WORDINGS } from '@labre/std/translations';
 
 import { getCommands } from './commands.js';
 import { FRAMEWORK_DESCRIPTORS } from './frameworks.js';
@@ -85,6 +150,20 @@ interface FrameworkTranslationGroup {
   owner: FrameworkId;
   entries: readonly TranslationKeyManifestEntry[];
 }
+
+/**
+ * The auxiliary bundles' contributions (`AUXILIARY_BUNDLES` in `frameworks.ts`):
+ * packages that ship as their own bundle without being a framework. Same
+ * one-line `{ owner: '<label>', … }` shape as the framework groups, so
+ * `scripts/build-bundles.mjs` strips them from core's copy the same way.
+ */
+const AUXILIARY_TRANSLATION_GROUPS: {
+  owner: string;
+  entries: readonly TranslationKeyManifestEntry[];
+}[] = [
+  // One line per bundle: the bundler strips it by its `owner`.
+  { owner: 'ddd-aggregate', entries: dddAggregateTranslationEntries },
+];
 
 const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
   { owner: 'wardley', entries: wardleyTranslationEntries },
@@ -191,7 +270,10 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   // Artefact catalogue sidepanel
   ['com.labre.catalogue.title', 'Artefacts'],
   ['com.labre.catalogue.close', 'Close'],
-  ['com.labre.catalogue.other', 'Other'],
+  // `com.labre.catalogue.other` USED to be here — L7 dedupe moved it to
+  // `chrome.ts` (`CATALOGUE_OTHER`), the same word as the templates-panel's
+  // own "Other" category tab, and its one call site now imports the constant
+  // instead of restating the literal.
   ['com.labre.catalogue.ranked', 'Recent & frequent'],
   // Qualify (tags) toolbar
   ['com.labre.tags.toolbar.label', 'Qualify'],
@@ -287,6 +369,84 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
 ];
 
 /**
+ * The block and widget packages' own wordings — one `readonly ChromeWording[]`
+ * per package, declared in that package's `translations.ts` beside the code
+ * that renders them, and walked here rather than restated.
+ *
+ * Per package and not one central table because the wordings belong to the
+ * package that renders them (an image toolbar's "Download" is the image
+ * block's), and because a single file every block edits is a file every
+ * parallel change conflicts on. Framework wordings do NOT go here: they travel
+ * in the framework's own `…TranslationEntries`, so a bundled host gets them
+ * with the framework bundle.
+ */
+const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
+  SLASH_MENU_WORDINGS,
+  OUTLINE_WORDINGS,
+  TEMPLATE_PACKAGE_WORDINGS,
+  NOTE_WORDINGS,
+  GFX_NOTE_WORDINGS,
+  CODE_WORDINGS,
+  LATEX_WORDINGS,
+  CALLOUT_WORDINGS,
+  PARAGRAPH_WORDINGS,
+  ADAPTER_PANEL_WORDINGS,
+  DOC_TITLE_WORDINGS,
+  SHAPE_WORDINGS,
+  TEXT_WORDINGS,
+  MINDMAP_CHROME_WORDINGS,
+  DRAG_HANDLE_WORDINGS,
+  AUTO_CONNECT_WORDINGS,
+  EDGELESS_SELECTED_RECT_WORDINGS,
+  EDGELESS_TOOLBAR_WORDINGS,
+  ZOOM_TOOLBAR_WORDINGS,
+  LINKED_DOC_WORDINGS,
+  REMOTE_SELECTION_WORDINGS,
+  TOOLBAR_WIDGET_WORDINGS,
+  COMPONENTS_WORDINGS,
+  INLINE_LATEX_WORDINGS,
+  LINK_WORDINGS,
+  MENTION_WORDINGS,
+  PRESET_WORDINGS,
+  REFERENCE_WORDINGS,
+  BRUSH_WORDINGS,
+  CONNECTOR_WORDINGS,
+  GROUP_CHROME_WORDINGS,
+  POINTER_WORDINGS,
+  ROOT_CHROME_WORDINGS,
+  SVG_SKETCH_WORDINGS,
+  STD_WORDINGS,
+  ATTACHMENT_WORDINGS,
+  BOOKMARK_WORDINGS,
+  IMAGE_WORDINGS,
+  EMBED_WORDINGS,
+  EMBED_DOC_WORDINGS,
+  SURFACE_REF_CHROME_WORDINGS,
+  FRAME_CHROME_WORDINGS,
+  FRAME_PANEL_WORDINGS,
+];
+
+/**
+ * Like {@link PACKAGE_WORDINGS}, for a non-framework package's SEEDS: text a
+ * creation action writes INTO the document, not chrome. Kept as its own
+ * source rather than folded into `PACKAGE_WORDINGS` under `chrome` — the two
+ * answer different questions for a host building a catalogue: a seed is
+ * translated once and becomes document content forever (a document created
+ * before the key existed keeps its plain text), while a chrome wording is
+ * re-rendered on every locale switch. `manifest.unit.spec.ts`'s "a placed
+ * artefact is seeded through the seam" pins a few of these by key, exactly as
+ * it does for a framework's own seeds.
+ */
+const PACKAGE_SEED_WORDINGS: readonly (readonly ChromeWording[])[] = [
+  FRAME_WORDINGS,
+  GROUP_WORDINGS,
+  MINDMAP_SEED_WORDINGS,
+  SURFACE_REF_WORDINGS,
+  TEMPLATE_SEED_WORDINGS,
+  ROOT_SEED_WORDINGS,
+];
+
+/**
  * Every i18n key THIS package can ask the host for, with its English fallback
  * where one ships.
  *
@@ -304,6 +464,7 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
     commandTranslationEntries(getCommands()),
     collectTranslationKeys('framework', FRAMEWORK_DESCRIPTORS),
     ...FRAMEWORK_TRANSLATION_GROUPS.map(group => group.entries),
+    ...AUXILIARY_TRANSLATION_GROUPS.map(group => group.entries),
     chromeTableEntries(),
     catalogueCategoryEntries(),
     // The editor's own shared vocabulary — the toasts, the toolbar verbs, the
@@ -311,7 +472,7 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
     // `@labre/affine-shared/services` beside nothing at all, and walked here
     // rather than restated. Same rule as the tables above: a wording added to
     // `CHROME_WORDINGS` reaches a host with no second edit.
-    CHROME_WORDINGS.map(([key, fallback]) => ({
+    [...CHROME_WORDINGS, ...PACKAGE_WORDINGS.flat()].map(([key, fallback]) => ({
       key,
       fallback,
       source: 'chrome' as const,
@@ -320,6 +481,15 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
       key,
       fallback,
       source: 'chrome' as const,
+    })),
+    // The non-framework packages' own SEEDS — text a creation action writes
+    // INTO the document (a frame's default title, a starter mindmap's
+    // captions), never re-rendered once placed. See
+    // `PACKAGE_SEED_WORDINGS`.
+    PACKAGE_SEED_WORDINGS.flat().map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'seed' as const,
     }))
   );
 }

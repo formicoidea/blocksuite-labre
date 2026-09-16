@@ -11,16 +11,21 @@ import {
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  TOOLBAR_CAPTION,
   TOOLBAR_CARD_VIEW,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
+  TOOLBAR_DOWNLOAD,
   TOOLBAR_DUPLICATE,
   TOOLBAR_EMBED_VIEW,
+  TOOLBAR_RELOAD,
+  TOOLBAR_RENAME,
   type ToolbarAction,
   type ToolbarActionGroup,
   toolbarActionLabel,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { getBlockProps } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
@@ -44,6 +49,11 @@ import { keyed } from 'lit/directives/keyed.js';
 import { AttachmentBlockComponent } from '../attachment-block';
 import { RenameModal } from '../components/rename-model';
 import { AttachmentEmbedProvider } from '../embed';
+import {
+  ATTACHMENT_TOOLBAR_HORIZONTAL_STYLE,
+  ATTACHMENT_TOOLBAR_REPLACE,
+  ATTACHMENT_TOOLBAR_VERTICAL_STYLE,
+} from '../translations';
 
 const trackBaseProps = {
   category: 'attachment',
@@ -161,6 +171,7 @@ export const attachmentViewDropdownMenu = {
 const replaceAction = {
   id: 'c.replace',
   tooltip: 'Replace attachment',
+  tooltipWording: ATTACHMENT_TOOLBAR_REPLACE,
   icon: ReplaceIcon(),
   disabled(ctx) {
     const block = ctx.getCurrentBlockByType(AttachmentBlockComponent);
@@ -179,6 +190,7 @@ const replaceAction = {
 const downloadAction = {
   id: 'd.download',
   tooltip: 'Download',
+  tooltipWording: TOOLBAR_DOWNLOAD,
   icon: DownloadIcon(),
   run(ctx) {
     const block = ctx.getCurrentBlockByType(AttachmentBlockComponent);
@@ -195,6 +207,7 @@ const downloadAction = {
 const captionAction = {
   id: 'e.caption',
   tooltip: 'Caption',
+  tooltipWording: TOOLBAR_CAPTION,
   icon: CaptionIcon(),
   run(ctx) {
     const block = ctx.getCurrentBlockByType(AttachmentBlockComponent);
@@ -218,10 +231,12 @@ const builtinToolbarConfig = {
         const abortController = new AbortController();
         abortController.signal.onabort = () => ctx.show();
 
+        const renameLabel = translateKey(ctx.std, ...TOOLBAR_RENAME);
+
         return html`
           <editor-icon-button
-            aria-label="Rename"
-            .tooltip="${'Rename'}"
+            aria-label=${renameLabel}
+            .tooltip="${renameLabel}"
             @click=${() => {
               ctx.hide();
 
@@ -290,6 +305,7 @@ const builtinToolbarConfig = {
       placement: ActionPlacement.More,
       id: 'b.refresh',
       label: 'Reload',
+      labelWording: TOOLBAR_RELOAD,
       icon: ResetIcon(),
       run(ctx) {
         const block = ctx.getCurrentBlockByType(AttachmentBlockComponent);
@@ -331,10 +347,12 @@ const builtinSurfaceToolbarConfig = {
         {
           id: 'horizontalThin',
           label: 'Horizontal style',
+          labelWording: ATTACHMENT_TOOLBAR_HORIZONTAL_STYLE,
         },
         {
           id: 'cubeThick',
           label: 'Vertical style',
+          labelWording: ATTACHMENT_TOOLBAR_VERTICAL_STYLE,
         },
       ],
       content(ctx) {

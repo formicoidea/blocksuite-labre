@@ -1,8 +1,14 @@
 import {
+  type CanvasRenderer,
   type ElementRenderer,
   ElementRendererExtension,
 } from '@labre/affine-block-surface';
 import type { CynefinElementModel } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  TranslationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 
 import { FONT_FAMILY, refScale } from '../utils';
 import {
@@ -28,12 +34,39 @@ import {
  * (heading + Probe/Sense/Respond decisions), the teal annotation labels and the
  * central Aporia (A) / Confusion (C) markers. Drawn in the fixed reference space
  * and scaled uniformly to the element bounds.
+ *
+ * ## i18n
+ *
+ * Every word above is a `ChromeWording` (`./consts.ts`), resolved through the
+ * `CanvasRenderer` this function is handed as its 4th argument — the same
+ * `renderer.std` `framework-background/renderer.ts` reads for a declared
+ * background. `renderer` is optional (absent in a bare unit test that calls
+ * this function with three arguments), in which case every wording reads its
+ * English fallback, byte-identical to before these keys existed.
+ *
+ * The three-line decisions are the one wrinkle: with no host they are drawn as
+ * they always were — a bold lead word plus the roman remainder, two
+ * `fillText` calls — because that split is known to be exactly the English
+ * text. Once a host answers, the WHOLE sentence is drawn as one run: a
+ * translation is not guaranteed to keep the same first word, so guessing where
+ * to split it would be inventing typography the translator never asked for.
  */
 export const cynefin: ElementRenderer<CynefinElementModel> = (
   model,
   ctx,
-  matrix
+  matrix,
+  renderer
 ) => {
+  const tr = (wording: ChromeWording): string =>
+    renderer ? translateKey(renderer.std, ...wording) : wording[1];
+  // The host's catalogue, or `null` with no host — used to decide whether a
+  // decision line is drawn bold-lead/roman-rest (English, exactly as before)
+  // or as one translated run. See the docstring above.
+  const hasHost = Boolean(
+    (renderer as CanvasRenderer | undefined)?.std.getOptional(
+      TranslationProvider
+    )
+  );
   const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
   const cy = h / 2;
@@ -101,34 +134,43 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
     ctx.textAlign = 'left';
     ctx.fillStyle = COLORS.heading;
     ctx.font = `700 30px ${FONT_FAMILY}`;
-    for (const d of DOMAINS) ctx.fillText(d.heading, d.x, d.hy);
+    for (const d of DOMAINS) ctx.fillText(tr(d.heading), d.x, d.hy);
 
     ctx.textAlign = 'center';
     for (const m of MARKERS) {
       ctx.fillStyle = COLORS.body;
       ctx.font = `700 38px ${FONT_FAMILY}`;
+      // The letter itself is notation, not a word — never translated.
       ctx.fillText(m.letter, m.lx, m.ly);
       ctx.font = `13.5px ${FONT_FAMILY}`;
-      ctx.fillText(m.name, m.nx, m.ny);
+      ctx.fillText(tr(m.name), m.nx, m.ny);
     }
   }
 
   // ── Explanatory text: subheadings, decisions, annotations, notes ────
   if (model.showDescriptions) {
-    // Subheadings (h2) + bold-lead decision lines
+    // Subheadings (h2) + decision lines
     ctx.textAlign = 'left';
     for (const d of DOMAINS) {
       ctx.fillStyle = COLORS.heading;
       ctx.font = `700 15px ${FONT_FAMILY}`;
-      ctx.fillText(d.subheading, d.x, d.sy);
+      ctx.fillText(tr(d.subheading), d.x, d.sy);
 
       ctx.fillStyle = COLORS.body;
-      for (const { lead, rest, y } of d.lines) {
-        ctx.font = `700 13.5px ${FONT_FAMILY}`;
-        ctx.fillText(lead, d.x, y);
-        const leadW = ctx.measureText(lead).width;
-        ctx.font = `13.5px ${FONT_FAMILY}`;
-        ctx.fillText(rest, d.x + leadW, y);
+      for (const { lead, rest, wording, y } of d.lines) {
+        if (hasHost) {
+          // A translated sentence: one run, no assumed bold-lead boundary.
+          ctx.font = `13.5px ${FONT_FAMILY}`;
+          ctx.fillText(tr(wording), d.x, y);
+        } else {
+          // No host: exactly the bold-lead / roman-rest split that shipped
+          // before these keys existed.
+          ctx.font = `700 13.5px ${FONT_FAMILY}`;
+          ctx.fillText(lead, d.x, y);
+          const leadW = ctx.measureText(lead).width;
+          ctx.font = `13.5px ${FONT_FAMILY}`;
+          ctx.fillText(rest, d.x + leadW, y);
+        }
       }
     }
 
@@ -137,18 +179,20 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
     // Teal annotation labels
     ctx.fillStyle = COLORS.teal;
     ctx.font = `700 15px ${FONT_FAMILY}`;
-    for (const [t, x, y] of TEAL_LABELS) ctx.fillText(t, x, y);
+    for (const [wording, x, y] of TEAL_LABELS) ctx.fillText(tr(wording), x, y);
 
     // Small exaptation sub-labels
     ctx.fillStyle = COLORS.body;
     ctx.font = `10.5px ${FONT_FAMILY}`;
-    for (const [t, x, y] of SMALL_LABELS) ctx.fillText(t, x, y);
+    for (const [wording, x, y] of SMALL_LABELS) {
+      ctx.fillText(tr(wording), x, y);
+    }
 
     // Marker notes ("prepare to exit")
     ctx.fillStyle = COLORS.teal;
     ctx.font = `700 15px ${FONT_FAMILY}`;
     for (const m of MARKERS) {
-      if (m.note) ctx.fillText(m.note.text, m.note.x, m.note.y);
+      if (m.note) ctx.fillText(tr(m.note.wording), m.note.x, m.note.y);
     }
   }
 };

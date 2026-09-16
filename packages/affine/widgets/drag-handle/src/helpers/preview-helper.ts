@@ -171,6 +171,7 @@ export class PreviewHelper {
 
       const edgelessPreview = new EdgelessDndPreviewElement();
       edgelessPreview.elementTypes = blockTypes;
+      edgelessPreview.std = this.widget.std;
 
       return {
         left: 12,

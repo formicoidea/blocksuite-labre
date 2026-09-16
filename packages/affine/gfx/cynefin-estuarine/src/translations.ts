@@ -7,9 +7,18 @@ import {
 } from '@labre/std';
 
 import { cynefinEstuarineCommands } from './commands.js';
+import { CYNEFIN_CANVAS_WORDINGS } from './cynefin/consts.js';
+import { CYNEFIN_TOOLBAR_WORDINGS } from './cynefin/toolbar/config.js';
+import { ESTUARINE_CANVAS_WORDINGS } from './estuarine/consts.js';
 import { ESTUARINE_NUDGES } from './estuarine/nudges.js';
 import { ESTUARINE_READING } from './estuarine/reading.js';
 import { ESTUARINE_ROLES } from './estuarine/roles.js';
+import { ESTUARINE_TOOLBAR_WORDINGS } from './estuarine/toolbar/config.js';
+import {
+  CYNEFIN_ESTUARINE_TEMPLATE_CATEGORY_WORDINGS,
+  CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS,
+  CYNEFIN_ESTUARINE_TEMPLATE_SEEDS,
+} from './templates/index.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest.
@@ -46,5 +55,44 @@ export const cynefinEstuarineTranslationEntries: TranslationKeyManifestEntry[] =
     // This profile declares no relation, so today it contributes no key of its
     // own — walking it costs nothing and means the day it gains one the
     // manifest already names it.
-    collectTranslationKeys('reading', ESTUARINE_READING)
+    collectTranslationKeys('reading', ESTUARINE_READING),
+    // The seeds the two hand-composed templates write into the document
+    // (`templates/index.ts`), resolved through `Template.localize` rather than
+    // a creation action — no command draws these two scenes.
+    CYNEFIN_ESTUARINE_TEMPLATE_SEEDS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'seed' as const,
+    })),
+    // The Templates-panel tab names — chrome, resolved by the panel widget,
+    // never written into a document.
+    CYNEFIN_ESTUARINE_TEMPLATE_CATEGORY_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
+    // The two hand-composed templates' own tile names — chrome as well, and
+    // distinct from the seeds they WRITE above.
+    CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
+    // The two frameworks' own toolbar tooltips.
+    [...CYNEFIN_TOOLBAR_WORDINGS, ...ESTUARINE_TOOLBAR_WORDINGS].map(
+      ([key, fallback]) => ({ key, fallback, source: 'chrome' as const })
+    ),
+    // Every word the Cynefin frame's canvas renderer paints (headings,
+    // decisions, annotations, markers) — fixed notation, not document seeds.
+    CYNEFIN_CANVAS_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
+    // The Estuarine map's own three curve legends.
+    ESTUARINE_CANVAS_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    }))
   );

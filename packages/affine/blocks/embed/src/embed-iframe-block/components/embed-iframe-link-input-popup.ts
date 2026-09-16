@@ -1,6 +1,7 @@
 import {
   DocModeProvider,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { CloseIcon } from '@blocksuite/icons/lit';
@@ -10,6 +11,12 @@ import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 
+import {
+  EMBED_CONFIRM,
+  EMBED_IFRAME_LINK_POPUP_DESCRIPTION,
+  EMBED_IFRAME_LINK_POPUP_PLACEHOLDER,
+  EMBED_IFRAME_LINK_POPUP_TITLE,
+} from '../../translations';
 import { EmbedIframeLinkInputBase } from './embed-iframe-link-input-base';
 
 type EmbedLinkInputPopupVariant = 'default' | 'mobile';
@@ -236,6 +243,25 @@ export class EmbedIframeLinkInputPopup extends EmbedIframeLinkInputBase {
     const options = { ...DEFAULT_OPTIONS, ...this.options };
     const { showCloseButton, variant, title, description, placeholder } =
       options;
+    const { std } = this;
+
+    // The three wordings below are ALWAYS the (untranslated) defaults today —
+    // no caller overrides them (see `../../translations.ts`,
+    // `EMBED_IFRAME_LINK_POPUP_TITLE`'s doc comment) — but the identity check
+    // keeps a future custom `options.title/description/placeholder` showing
+    // its own literal instead of being silently translated as if it were ours.
+    const titleText =
+      title === DEFAULT_OPTIONS.title
+        ? translateKey(std, ...EMBED_IFRAME_LINK_POPUP_TITLE)
+        : title;
+    const descriptionText =
+      description === DEFAULT_OPTIONS.description
+        ? translateKey(std, ...EMBED_IFRAME_LINK_POPUP_DESCRIPTION)
+        : description;
+    const placeholderText =
+      placeholder === DEFAULT_OPTIONS.placeholder
+        ? translateKey(std, ...EMBED_IFRAME_LINK_POPUP_PLACEHOLDER)
+        : placeholder;
 
     const modalMainWrapperClass = classMap({
       'link-input-popup-main-wrapper': true,
@@ -252,13 +278,13 @@ export class EmbedIframeLinkInputPopup extends EmbedIframeLinkInputBase {
             `
           : nothing}
         <div class="link-input-popup-content-wrapper">
-          <div class="title">${title}</div>
-          <div class="description">${description}</div>
+          <div class="title">${titleText}</div>
+          <div class="description">${descriptionText}</div>
           <div class="input-container">
             <input
               class="link-input"
               type="text"
-              placeholder=${ifDefined(placeholder)}
+              placeholder=${ifDefined(placeholderText)}
               @input=${this.handleInput}
               @keydown=${this.handleKeyDown}
             />
@@ -270,7 +296,7 @@ export class EmbedIframeLinkInputPopup extends EmbedIframeLinkInputBase {
             @click=${this.onConfirm}
             ?disabled=${this.isInputEmpty()}
           >
-            Confirm
+            ${translateKey(std, ...EMBED_CONFIRM)}
           </div>
         </div>
       </div>

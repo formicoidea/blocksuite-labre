@@ -1,3 +1,7 @@
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import {
   EmbedIcon,
@@ -6,37 +10,47 @@ import {
   PageIcon,
   ShapeIcon,
 } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import {
+  DRAG_PREVIEW_EMBED,
+  DRAG_PREVIEW_FRAME,
+  DRAG_PREVIEW_GENERIC,
+  DRAG_PREVIEW_IMAGE,
+  DRAG_PREVIEW_NOTE,
+  DRAG_PREVIEW_SHAPE,
+} from '../../translations.js';
+
 const BLOCK_PREVIEW_ICON_MAP: Record<
   string,
   {
     icon: typeof ShapeIcon;
-    name: string;
+    wording: ChromeWording;
   }
 > = {
   shape: {
     icon: ShapeIcon,
-    name: 'Edgeless shape',
+    wording: DRAG_PREVIEW_SHAPE,
   },
   'affine:image': {
     icon: ImageIcon,
-    name: 'Image block',
+    wording: DRAG_PREVIEW_IMAGE,
   },
   'affine:note': {
     icon: PageIcon,
-    name: 'Note block',
+    wording: DRAG_PREVIEW_NOTE,
   },
   'affine:frame': {
     icon: FrameIcon,
-    name: 'Frame block',
+    wording: DRAG_PREVIEW_FRAME,
   },
   'affine:embed-': {
     icon: EmbedIcon,
-    name: 'Embed block',
+    wording: DRAG_PREVIEW_EMBED,
   },
 };
 
@@ -97,6 +111,11 @@ export class EdgelessDndPreviewElement extends LitElement {
     type: string;
   }[] = [];
 
+  /** Set by the caller that has one (`preview-helper.ts`) — optional so this
+   * element still renders (in English) when created with none. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
+
   private _getPreviewIcon(type: string) {
     if (BLOCK_PREVIEW_ICON_MAP[type]) {
       return BLOCK_PREVIEW_ICON_MAP[type];
@@ -108,13 +127,14 @@ export class EdgelessDndPreviewElement extends LitElement {
 
     return {
       icon: ShapeIcon,
-      name: 'Edgeless content',
+      wording: DRAG_PREVIEW_GENERIC,
     };
   }
 
   override render() {
     const blocks = repeat(this.elementTypes.slice(0, 3), ({ type }, index) => {
-      const { icon, name } = this._getPreviewIcon(type);
+      const { icon, wording } = this._getPreviewIcon(type);
+      const name = this.std ? translateKey(this.std, ...wording) : wording[1];
 
       return html`<div
         class="edgeless-dnd-preview-block"

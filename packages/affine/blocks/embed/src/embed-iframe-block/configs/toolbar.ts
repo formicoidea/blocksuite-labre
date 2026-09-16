@@ -8,12 +8,14 @@ import {
 import {
   ActionPlacement,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CAPTION,
   TOOLBAR_CARD_VIEW,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   TOOLBAR_EMBED_VIEW,
   TOOLBAR_INLINE_VIEW,
+  TOOLBAR_RELOAD,
   type ToolbarAction,
   type ToolbarActionGroup,
   toolbarActionLabel,
@@ -46,6 +48,10 @@ import {
   notifyDocCreated,
   promptDocTitle,
 } from '../../common/render-linked-doc';
+import {
+  EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC,
+  EMBED_IFRAME_TOOLBAR_ORIGINAL,
+} from '../../translations';
 import { EmbedIframeBlockComponent } from '../embed-iframe-block';
 
 const trackBaseProps = {
@@ -64,6 +70,7 @@ const openLinkAction = (id: string): ToolbarAction => {
     id,
     when: showWhenUrlExists,
     tooltip: 'Original',
+    tooltipWording: EMBED_IFRAME_TOOLBAR_ORIGINAL,
     icon: OpenInNewIcon(),
     run(ctx) {
       const component = ctx.getCurrentBlockByType(EmbedIframeBlockComponent);
@@ -82,6 +89,7 @@ const captionAction = (id: string): ToolbarAction => {
     id,
     when: showWhenUrlExists,
     tooltip: 'Caption',
+    tooltipWording: TOOLBAR_CAPTION,
     icon: CaptionIcon(),
     run(ctx) {
       const component = ctx.getCurrentBlockByType(EmbedIframeBlockComponent);
@@ -212,6 +220,7 @@ export const builtinToolbarConfig = {
     {
       id: 'e.convert-to-linked-doc',
       tooltip: 'Create Linked Doc',
+      tooltipWording: EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC,
       icon: LinkedPageIcon(),
       run(ctx) {
         const model = ctx.getCurrentModelByType(EmbedIframeBlockModel);
@@ -302,6 +311,7 @@ export const builtinToolbarConfig = {
       placement: ActionPlacement.More,
       id: 'b.reload',
       label: 'Reload',
+      labelWording: TOOLBAR_RELOAD,
       icon: ResetIcon(),
       run(ctx) {
         const component = ctx.getCurrentBlockByType(EmbedIframeBlockComponent);

@@ -9,6 +9,9 @@ import {
 import {
   FileSizeLimitProvider,
   NativeClipboardProvider,
+  TOAST_DOWNLOAD_IN_PROGRESS,
+  TOAST_UPLOAD_SIZE_LIMIT,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   convertToPng,
@@ -30,6 +33,12 @@ import {
 } from './components/image-block-fallback';
 import type { ImageBlockComponent } from './image-block';
 import type { ImageEdgelessBlockComponent } from './image-edgeless-block';
+import {
+  IMAGE_TOAST_COPIED,
+  IMAGE_TOAST_DOWNLOAD_FAILED,
+  IMAGE_TOAST_DOWNLOADING,
+  IMAGE_TOAST_READ_SIZE_FAILED,
+} from './translations';
 
 const DEFAULT_ATTACHMENT_NAME = 'affine-attachment';
 
@@ -63,21 +72,21 @@ export async function refreshData(
 export async function downloadImageBlob(
   block: ImageBlockComponent | ImageEdgelessBlockComponent
 ) {
-  const { host, blobUrl, resourceController } = block;
+  const { host, blobUrl, resourceController, std } = block;
 
   if (!blobUrl) {
-    toast(host, 'Failed to download image!');
+    toast(host, translateKey(std, ...IMAGE_TOAST_DOWNLOAD_FAILED));
     return;
   }
 
   if (resourceController.state$.peek().downloading) {
-    toast(host, 'Download in progress...');
+    toast(host, translateKey(std, ...TOAST_DOWNLOAD_IN_PROGRESS));
     return;
   }
 
   resourceController.updateState({ downloading: true });
 
-  toast(host, 'Downloading image...');
+  toast(host, translateKey(std, ...IMAGE_TOAST_DOWNLOADING));
 
   const tmpLink = document.createElement('a');
   const event = new MouseEvent('click');
@@ -160,7 +169,7 @@ export async function copyImageBlob(
       ]);
     }
 
-    toast(host, 'Copied image to clipboard');
+    toast(host, translateKey(std, ...IMAGE_TOAST_COPIED));
   } catch (error) {
     console.error(error);
   }
@@ -221,7 +230,10 @@ function hasExceeded(
 
   if (exceeded) {
     const size = formatSize(maxFileSize);
-    toast(std.host, `You can only upload files less than ${size}`);
+    toast(
+      std.host,
+      translateKey(std, ...TOAST_UPLOAD_SIZE_LIMIT, { size: size ?? '' })
+    );
   }
 
   return exceeded;
@@ -235,7 +247,7 @@ async function buildPropsWith(std: BlockStdScope, file: File) {
   ]);
 
   if (!(imageSize.width * imageSize.height)) {
-    toast(std.host, 'Failed to read image size, please try another image');
+    toast(std.host, translateKey(std, ...IMAGE_TOAST_READ_SIZE_FAILED));
     throw new Error('Failed to read image size');
   }
 

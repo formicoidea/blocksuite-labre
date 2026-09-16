@@ -7,6 +7,7 @@ import { PanTool } from '@labre/affine-gfx-pointer';
 import type { FrameBlockModel } from '@labre/affine-model';
 import {
   EditPropsStore,
+  translateKey,
   ViewportElementProvider,
 } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
@@ -32,6 +33,16 @@ import {
   type NavigatorMode,
 } from '../frame-manager';
 import { PresentTool } from '../present-tool';
+import {
+  FRAME_PRESENT_ENTER_FULLSCREEN,
+  FRAME_PRESENT_EXIT_FULLSCREEN,
+  FRAME_PRESENT_NEXT,
+  FRAME_PRESENT_NO_FRAME_TITLE,
+  FRAME_PRESENT_PREVIOUS,
+  FRAME_PRESENT_REACHED_FIRST,
+  FRAME_PRESENT_REACHED_LAST,
+  FRAME_PRESENT_REQUIRES_ONE_FRAME,
+} from '../translations';
 
 export class PresentationToolbar extends EdgelessToolbarToolMixin(
   SignalWatcher(LitElement)
@@ -246,7 +257,10 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
     const min = 0;
     const max = frames.length - 1;
     if (this._currentFrameIndex === frames.length - 1) {
-      toast(this.host, 'You have reached the last frame');
+      toast(
+        this.host,
+        translateKey(this.edgeless.std, ...FRAME_PRESENT_REACHED_LAST)
+      );
     } else {
       this._currentFrameIndex = clamp(this._currentFrameIndex + 1, min, max);
     }
@@ -257,7 +271,10 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
     const min = 0;
     const max = frames.length - 1;
     if (this._currentFrameIndex === 0) {
-      toast(this.host, 'You have reached the first frame');
+      toast(
+        this.host,
+        translateKey(this.edgeless.std, ...FRAME_PRESENT_REACHED_FIRST)
+      );
     } else {
       this._currentFrameIndex = clamp(this._currentFrameIndex - 1, min, max);
     }
@@ -325,7 +342,10 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
             if (!store.getStorage('presentNoFrameToastShown')) {
               toast(
                 this.host,
-                'The presentation requires at least 1 frame. You can firstly create a frame.',
+                translateKey(
+                  this.edgeless.std,
+                  ...FRAME_PRESENT_REQUIRES_ONE_FRAME
+                ),
                 5000
               );
               store.setStorage('presentNoFrameToastShown', true);
@@ -390,6 +410,7 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
     const current = this._currentFrameIndex;
     const frames = this._frames;
     const frame = frames[current];
+    const { std } = this.edgeless;
 
     return html`
       <style>
@@ -399,7 +420,7 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
       </style>
       <edgeless-tool-icon-button
         .iconContainerPadding=${0}
-        .tooltip=${'Previous'}
+        .tooltip=${translateKey(std, ...FRAME_PRESENT_PREVIOUS)}
         .iconSize=${'24px'}
         @click=${() => this._previousFrame()}
       >
@@ -414,7 +435,8 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
               class="edgeless-frame-navigator-title"
               @click=${() => this._moveToCurrentFrame()}
             >
-              ${frame?.props.title ?? 'no frame'}
+              ${frame?.props.title ??
+              translateKey(std, ...FRAME_PRESENT_NO_FRAME_TITLE)}
             </span>`}
 
         <span class="edgeless-frame-navigator-count">
@@ -423,7 +445,7 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
       </div>
 
       <edgeless-tool-icon-button
-        .tooltip=${'Next'}
+        .tooltip=${translateKey(std, ...FRAME_PRESENT_NEXT)}
         @click=${() => this._nextFrame()}
         .iconContainerPadding=${0}
         .iconSize=${'24px'}
@@ -436,8 +458,8 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
       <div class="config-buttons">
         <edgeless-tool-icon-button
           .tooltip=${document.fullscreenElement
-            ? 'Exit Full Screen'
-            : 'Enter Full Screen'}
+            ? translateKey(std, ...FRAME_PRESENT_EXIT_FULLSCREEN)
+            : translateKey(std, ...FRAME_PRESENT_ENTER_FULLSCREEN)}
           @click=${() => this._toggleFullScreen()}
           .iconContainerPadding=${0}
           .iconContainerWidth=${'24px'}

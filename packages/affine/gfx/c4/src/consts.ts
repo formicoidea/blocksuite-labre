@@ -323,6 +323,25 @@ export const NODE_LABEL: Record<C4NodeKind, string> = {
   component: 'Component',
 };
 
+/**
+ * The i18n key {@link NODE_LABEL} is the English default of — mirrors BPMN's
+ * {@link nodeLabelKey} exactly, one package over: resolved at placement
+ * (`createC4Node`, the NAME tier) and never afterwards, since the title is
+ * content from the moment it lands and an author is free to retype it.
+ *
+ * Safe to translate where the type line is not: the exporter reads a
+ * component's NAME verbatim (`c4StatedName`) with no placeholder suppression,
+ * so nothing downstream compares this text against the English literal.
+ */
+export const nodeLabelKey = (kind: C4NodeKind) => `com.labre.c4.seed.${kind}`;
+
+/**
+ * The prompt a fresh description tier carries, resolved at placement exactly
+ * like {@link DESCRIPTION_PLACEHOLDER} below is the English default of.
+ */
+export const DESCRIPTION_PLACEHOLDER_KEY =
+  'com.labre.c4.seed.description-placeholder';
+
 /* ── The board ─────────────────────────────────────────────────────────── */
 
 export const FONT_FAMILY = 'Inter, sans-serif';
@@ -430,6 +449,16 @@ export const BOUNDARY_LABEL: Record<C4BoundaryVariant, string> = {
   system: 'System boundary',
   container: 'Container boundary',
 };
+
+/**
+ * The i18n key {@link BOUNDARY_LABEL} is the English default of — resolved at
+ * placement (`createC4Boundary`) exactly like {@link nodeLabelKey}: the name
+ * is exported verbatim (`export.ts`, `boundary.name`) with no comparison
+ * against the English literal, so translating it is as safe as a component's
+ * title.
+ */
+export const boundaryLabelKey = (variant: C4BoundaryVariant) =>
+  `com.labre.c4.seed.boundary-${variant}`;
 
 /* ── The relationship ──────────────────────────────────────────────────── */
 

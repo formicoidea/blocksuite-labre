@@ -50,6 +50,8 @@ import orderBy from 'lodash-es/orderBy';
 import partition from 'lodash-es/partition';
 import toPairs from 'lodash-es/toPairs';
 
+import { TOOLBAR_MORE_MENU_ARIA } from './translations.js';
+
 export const sideMap = new Map([
   // includes frame element
   ['affine:surface:frame', { top: 28 }],
@@ -653,7 +655,10 @@ export function renderToolbar(
           `${flavour}:${key}`,
           html`
             <editor-menu-button
-              aria-label="More menu"
+              aria-label="${translateKey(
+                context.std,
+                ...TOOLBAR_MORE_MENU_ARIA
+              )}"
               .contentPadding="${'8px'}"
               .button=${html`
                 <editor-icon-button

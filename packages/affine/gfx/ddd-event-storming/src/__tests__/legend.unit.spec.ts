@@ -3,6 +3,7 @@ import {
   ES_HOTSPOT,
   ES_STICKIES,
 } from '@labre/affine-gfx-ddd-shared';
+import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { EVENT_STORMING_AUTO_LEGEND } from '../legend';
@@ -54,6 +55,12 @@ describe('the Event Storming auto-legend table derives from the palette', () => 
 });
 
 describe('what a stormed board puts in its legend', () => {
+  // No host catalogue: `translateKey` falls through to the fallback it is
+  // given, so the plain English wording is still what these rows show.
+  const NO_HOST_STD = {
+    getOptional: () => undefined,
+  } as unknown as BlockStdScope;
+
   it('lists the kinds actually stuck to it, and nothing else', () => {
     const sections = autoLegendSections(
       new Set([
@@ -61,7 +68,8 @@ describe('what a stormed board puts in its legend', () => {
         ES_STICKY_ROLE.command,
         ES_ROLE.flow,
       ]),
-      EVENT_STORMING_AUTO_LEGEND
+      EVENT_STORMING_AUTO_LEGEND,
+      NO_HOST_STD
     );
     expect(sections.map(s => s.rows.map(r => r.label))).toEqual([
       ['Domain event', 'Command'],
@@ -72,7 +80,8 @@ describe('what a stormed board puts in its legend', () => {
   it('drops the Flow section on a board with no arc drawn yet', () => {
     const sections = autoLegendSections(
       new Set([ES_STICKY_ROLE.hotspot]),
-      EVENT_STORMING_AUTO_LEGEND
+      EVENT_STORMING_AUTO_LEGEND,
+      NO_HOST_STD
     );
     expect(sections.map(s => s.title)).toEqual(['Stickies']);
   });

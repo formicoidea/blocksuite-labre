@@ -23,6 +23,7 @@ import {
   type ToolbarAction,
   type ToolbarContext,
   type ToolbarModuleConfig,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import {
@@ -37,6 +38,13 @@ import {
 import type { GfxModel } from '@labre/std/gfx';
 import { html } from 'lit';
 
+import {
+  ROOT_TOOLBAR_ALIGN_OBJECTS,
+  ROOT_TOOLBAR_CLICK_TO_UNLOCK,
+  ROOT_TOOLBAR_FRAME,
+  ROOT_TOOLBAR_GROUP,
+  ROOT_TOOLBAR_RELEASE_FROM_GROUP,
+} from '../../../translations.js';
 import { renderAlignmentMenu } from './alignment';
 import { moreActions } from './more';
 
@@ -46,6 +54,7 @@ export const builtinMiscToolbarConfig = {
       placement: ActionPlacement.Start,
       id: 'a.release-from-group',
       tooltip: 'Release from group',
+      tooltipWording: ROOT_TOOLBAR_RELEASE_FROM_GROUP,
       icon: ReleaseFromGroupIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModels();
@@ -77,8 +86,10 @@ export const builtinMiscToolbarConfig = {
       placement: ActionPlacement.Start,
       id: 'b.add-frame',
       label: 'Frame',
+      labelWording: ROOT_TOOLBAR_FRAME,
       showLabel: true,
       tooltip: 'Frame',
+      tooltipWording: ROOT_TOOLBAR_FRAME,
       icon: FrameIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModels();
@@ -120,8 +131,10 @@ export const builtinMiscToolbarConfig = {
       placement: ActionPlacement.Start,
       id: 'c.add-group',
       label: 'Group',
+      labelWording: ROOT_TOOLBAR_GROUP,
       showLabel: true,
       tooltip: 'Group',
+      tooltipWording: ROOT_TOOLBAR_GROUP,
       icon: GroupingIcon(),
       when(ctx) {
         const models = ctx.getSurfaceModels();
@@ -170,8 +183,8 @@ export const builtinMiscToolbarConfig = {
 
         return renderAlignmentMenu(ctx, models, {
           icon: AlignLeftIcon(),
-          label: 'Align objects',
-          tooltip: 'Align objects',
+          label: translateKey(ctx.std, ...ROOT_TOOLBAR_ALIGN_OBJECTS),
+          tooltip: translateKey(ctx.std, ...ROOT_TOOLBAR_ALIGN_OBJECTS),
         });
       },
     },
@@ -325,6 +338,7 @@ export const builtinLockedToolbarConfig = {
       placement: ActionPlacement.End,
       id: 'b.unlock',
       label: 'Click to unlock',
+      labelWording: ROOT_TOOLBAR_CLICK_TO_UNLOCK,
       showLabel: true,
       icon: UnlockIcon(),
       run(ctx) {

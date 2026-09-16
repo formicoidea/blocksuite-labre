@@ -8,11 +8,60 @@ import {
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
 import { c4Commands } from './commands.js';
+import {
+  BOUNDARY_LABEL,
+  boundaryLabelKey,
+  DESCRIPTION_PLACEHOLDER,
+  DESCRIPTION_PLACEHOLDER_KEY,
+  NODE_LABEL,
+  nodeLabelKey,
+} from './consts.js';
+import { C4_LEGEND_SECTION_WORDINGS } from './legend.js';
 import { C4_BOARD_LEVEL_MENU } from './levels.js';
 import { C4_PROFILES } from './profiles.js';
 import { C4_READINGS } from './reading.js';
 import { C4_ROLES } from './roles.js';
 import { C4_RULES } from './rules.js';
+import { C4_TYPE_LINE_WORDINGS } from './type-line.js';
+
+/**
+ * The captions a placed component and a placed boundary are seeded with — the
+ * fallback IS `NODE_LABEL[kind]` / `BOUNDARY_LABEL[variant]`, never restated,
+ * mirroring BPMN's `seedEntries` exactly. The type line's own bracketed word
+ * and the technology placeholder ARE here too (`C4_TYPE_LINE_WORDINGS`),
+ * resolved at placement (`createC4Node`, `actions.ts`) and rebuilt through the
+ * same seam on every edit commit (`C4TypeLineWatcher`).
+ */
+const seedEntries = (): TranslationKeyManifestEntry[] => [
+  ...Object.entries(NODE_LABEL).map(([kind, label]) => ({
+    key: nodeLabelKey(kind as keyof typeof NODE_LABEL),
+    fallback: label,
+    source: 'seed' as const,
+  })),
+  ...Object.entries(BOUNDARY_LABEL).map(([variant, label]) => ({
+    key: boundaryLabelKey(variant as keyof typeof BOUNDARY_LABEL),
+    fallback: label,
+    source: 'seed' as const,
+  })),
+  {
+    key: DESCRIPTION_PLACEHOLDER_KEY,
+    fallback: DESCRIPTION_PLACEHOLDER,
+    source: 'seed' as const,
+  },
+  ...C4_TYPE_LINE_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'seed' as const,
+  })),
+];
+
+/** The auto-legend's own section titles ({@link C4_LEGEND_SECTION_WORDINGS}). */
+const legendSectionEntries = (): TranslationKeyManifestEntry[] =>
+  C4_LEGEND_SECTION_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -53,6 +102,8 @@ export const c4TranslationEntries: TranslationKeyManifestEntry[] =
       // reaches a host's catalogue by construction.
       C4_BOARD_LEVEL_MENU,
     ]),
+    seedEntries(),
+    legendSectionEntries(),
     // AFTER the two above, and the order is load-bearing: a rule carries its
     // framework's `roles` and, for `c4.person-in-boundary`, the boundary's own
     // declaration, so walking the rules reaches keys those two lists already

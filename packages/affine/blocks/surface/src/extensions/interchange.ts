@@ -122,21 +122,26 @@ export interface InterchangeNote {
   message: string;
   /**
    * The i18n key {@link message} is the English default of — set only when the
-   * remark is a FIXED sentence.
+   * remark is a FIXED sentence, one per SHAPE of sentence rather than one per
+   * exact string (a `{{name}}` hole is filled by {@link messageParams}, not by
+   * minting a new key for every value the file happens to carry).
    *
    * A reader is a pure function of text (`docs/adr/0012`, P3): it has no `std`,
    * so it cannot reach the host's catalogue and hands the key over instead, and
    * `reportInterchangeImport` resolves it when it draws the report. That is the
-   * whole of the seam here, and it deliberately covers only the remarks that
-   * say the same thing every time.
+   * whole of the seam here.
    *
-   * A remark that NAMES something out of the file — an element, an id, a count
-   * of lanes — carries no key and stays English. The seam has no interpolation
-   * and no pluralisation (both are the host's), so the alternative would be to
-   * invent a grammar for sentences with holes in them, which is exactly what
-   * the three interchange count labels already refuse to do.
+   * A remark that names something out of the file with no sentence shape worth
+   * sharing (a raw dump, a one-off diagnostic) carries no key and stays
+   * English — the seam still has no pluralisation, which is the host's.
    */
   messageKey?: string;
+  /**
+   * `{{name}}`-style values for {@link messageKey}'s placeholders — the file's
+   * own words (a unit, a tag name), never a sentence of their own. Ignored
+   * when {@link messageKey} is absent.
+   */
+  messageParams?: Record<string, string | number>;
 }
 
 /**
@@ -192,6 +197,43 @@ export interface InterchangeReport {
    * about the file rather than a gap in the reader.
    */
   sourceVersion?: string;
+}
+
+/**
+ * A reader's own refusal — THROWN, not returned, because the report's three
+ * counts (`InterchangeReport`) cannot say "this is not a file I can read": a
+ * report of three zeroes would claim an empty document where there was none
+ * (see `importInterchangeFile`, "Failure is an exception, and it says which
+ * one", `interchange-import.ts`).
+ *
+ * Carries the reader's own English sentence as `Error.message`, so every
+ * existing `catch` site that only ever did `error.message` keeps reading
+ * exactly what it read before — plus the same optional key/params pair
+ * {@link InterchangeNote} carries, on the same seam: a reader has no `std`
+ * (`docs/adr/0012`, P3) and cannot translate its own refusal, so the catch
+ * site that DOES have one (`importInterchangeFile`) resolves it exactly as
+ * `remarkLine` resolves a note.
+ *
+ * Optional and additive: a reader that still throws a plain `Error` (or any
+ * other capability's failure) is caught exactly as before — this class only
+ * gives the catch site a SECOND thing to check, never a first requirement.
+ */
+export class InterchangeImportError extends Error {
+  readonly messageKey?: string;
+  readonly messageParams?: Record<string, string | number>;
+
+  constructor(
+    message: string,
+    options?: {
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
+    }
+  ) {
+    super(message);
+    this.name = 'InterchangeImportError';
+    this.messageKey = options?.messageKey;
+    this.messageParams = options?.messageParams;
+  }
 }
 
 /** What the caller tells an exporter about the document it is producing. */

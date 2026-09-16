@@ -11,7 +11,10 @@ import {
   type RootBlockModel,
   SurfaceRefBlockModel,
 } from '@labre/affine-model';
-import { FeatureFlagService } from '@labre/affine-shared/services';
+import {
+  FeatureFlagService,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { matchModels, stopPropagation } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import {
@@ -26,6 +29,11 @@ import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
+
+import {
+  AUTO_CONNECT_HIDDEN_ON_PAGE,
+  AUTO_CONNECT_PAGE_MODE_INDEX,
+} from './translations.js';
 
 const PAGE_VISIBLE_INDEX_LABEL_WIDTH = 44;
 const PAGE_VISIBLE_INDEX_LABEL_HEIGHT = 24;
@@ -262,7 +270,10 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
         return html`<div style=${style} class="edgeless-only-index-label">
           ${InvisibleIcon({ width: '20px', height: '20px' })}
           <affine-tooltip tip-position="bottom">
-            ${getIndexLabelTooltip(SmallDocIcon, 'Hidden on page')}
+            ${getIndexLabelTooltip(
+              SmallDocIcon,
+              translateKey(this.std, ...AUTO_CONNECT_HIDDEN_ON_PAGE)
+            )}
           </affine-tooltip>
         </div>`;
       }
@@ -483,7 +494,10 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
             >
               ${index}
               <affine-tooltip tip-position="bottom">
-                ${getIndexLabelTooltip(SmallDocIcon, 'Page mode index')}
+                ${getIndexLabelTooltip(
+                  SmallDocIcon,
+                  translateKey(this.std, ...AUTO_CONNECT_PAGE_MODE_INDEX)
+                )}
               </affine-tooltip>
             </div>
           `);

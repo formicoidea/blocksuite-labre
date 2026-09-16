@@ -28,6 +28,13 @@ export type TranslationKeySource =
   | 'audit-criterion'
   | 'reading'
   /**
+   * A `UniverseTagDefs` tag or tag-value label (`@labre/affine-shared`'s
+   * `TagDef.labelKey` / `TagValueDef.labelKey`) — the library's OWN pack only
+   * (`WARDLEY_TAG_DEFS`). A host's app-seeded pack carries its own wording in
+   * `label` and needs no key at all.
+   */
+  | 'tag'
+  /**
    * The words a framework WRITES ONTO THE CANVAS when an artefact is placed —
    * the "Task" a fresh BPMN task is captioned with, the "People" under an EDGY
    * person. Document content and not chrome, which is why they are a source of
