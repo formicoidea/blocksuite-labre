@@ -10,7 +10,7 @@ import {
 import type { GfxModel } from '@labre/std/gfx';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import { pointerdown, pointerup, wait } from '../utils/common.js';
+import { drag, pointerdown, pointerup, wait } from '../utils/common.js';
 import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -227,5 +227,87 @@ describe('the UML diagram frame, as the recette drove it', () => {
     await wait();
 
     expectSheetUnderneath(frame, above);
+  });
+});
+
+/**
+ * O1, second reading (2026-09-16): « je peux sélectionner un UML diagram depuis
+ * l'aire à l'intérieur ». The gesture that did it is the MARQUEE — a drag on the
+ * sheet draws a selection rectangle, and box selection kept every element the
+ * rectangle overlapped, the sheet included. A board joins a marquee only when
+ * the marquee holds all of it (`FrameworkBackgroundElementModel.boxSelectable`).
+ */
+describe('a marquee drawn on the UML sheet does not take the sheet', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  const W = 1400;
+  const H = 900;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  const surface = () => getSurface(window.doc, window.editor).model;
+  const host = () => window.editor.host as HTMLElement;
+  const at = (x: number, y: number) => {
+    const [vx, vy] = edgeless.gfx.viewport.toViewCoord(x, y);
+    return { x: vx, y: vy };
+  };
+
+  const addFrame = async () => {
+    const id = surface().addElement({
+      type: 'umlDiagram',
+      role: UML_ROLE.diagram,
+      kind: 'class',
+      name: 'Orders',
+      xywh: `[0,0,${W},${H}]`,
+    });
+    await wait();
+    return id;
+  };
+
+  const marquee = async (x0: number, y0: number, x1: number, y1: number) => {
+    edgeless.gfx.selection.clear();
+    await wait();
+    drag(host(), at(x0, y0), at(x1, y1));
+    await wait();
+    return edgeless.gfx.selection.selectedIds;
+  };
+
+  test('a rectangle dragged inside the frame leaves it unselected', async () => {
+    const frame = await addFrame();
+    expect(await marquee(300, 200, 700, 500)).not.toContain(frame);
+  });
+
+  test('…but it takes the classes it lassoes', async () => {
+    await addFrame();
+    const cls = surface().addElement({
+      type: 'umlNode',
+      kind: 'class',
+      role: UML_ROLE.class,
+      filled: true,
+      xywh: `[400,300,240,120]`,
+    });
+    await wait();
+    expect(await marquee(300, 200, 700, 500)).toEqual([cls]);
+  });
+
+  test('a rectangle that holds the whole frame takes it', async () => {
+    const frame = await addFrame();
+    expect(await marquee(-50, -50, W + 50, H + 50)).toContain(frame);
+  });
+
+  test('and a C4 board answers the same way', async () => {
+    const board = surface().addElement({
+      type: 'c4Board',
+      role: 'c4:board',
+      name: 'System',
+      xywh: `[0,0,${W},${H}]`,
+    });
+    await wait();
+    expect(await marquee(300, 200, 700, 500)).not.toContain(board);
+    expect(await marquee(-50, -50, W + 50, H + 50)).toContain(board);
   });
 });

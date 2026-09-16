@@ -391,3 +391,31 @@ describe('the picking regression the recette reported', () => {
     expect(pick([shape, board] as never, 5, 450)).toEqual([board]);
   });
 });
+
+describe('a framework background joins a box selection only when the box holds it', () => {
+  /**
+   * The second door into the interior the recette found (O1, 2026-09-16):
+   * a marquee drawn on the sheet — three classes lassoed inside a frame, or a
+   * drag started on the empty sheet — kept the board, because box selection
+   * keeps every element whose bound overlaps the rectangle. The native
+   * `affine:frame` block only joins a box that contains it; the boards now
+   * answer the same way, from the model, for every framework at once.
+   */
+  const board = () =>
+    detached(EdgyBoardElementModel, {
+      xywh: '[0,0,1600,900]',
+      rotate: 0,
+    });
+
+  it('stays out of a marquee drawn on its sheet', () => {
+    expect(board().boxSelectable(new Bound(300, 200, 400, 300))).toBe(false);
+  });
+
+  it('stays out of a marquee that only crosses its border', () => {
+    expect(board().boxSelectable(new Bound(-100, -100, 400, 300))).toBe(false);
+  });
+
+  it('joins a marquee that takes the whole board', () => {
+    expect(board().boxSelectable(new Bound(-10, -10, 1620, 920))).toBe(true);
+  });
+});

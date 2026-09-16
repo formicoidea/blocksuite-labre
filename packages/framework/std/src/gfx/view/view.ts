@@ -1,7 +1,7 @@
 import { type Container, createIdentifier } from '@labre/global/di';
 import { DisposableGroup } from '@labre/global/disposable';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
-import { type Bound, type IVec } from '@labre/global/gfx';
+import { Bound, type IVec } from '@labre/global/gfx';
 import type { Extension } from '@labre/store';
 
 import type { PointerEventState } from '../../event/index.js';
@@ -209,7 +209,21 @@ export class GfxElementModelView<
     this.model.xywh = currentBound.moveDelta(dx, dy).serialize();
   }
 
-  onBoxSelected(_: BoxSelectionContext): boolean | void {}
+  /**
+   * Whether a box (marquee) selection takes this element. `false` keeps it
+   * out; anything else keeps the default (any overlap selects).
+   *
+   * A model may carry its own answer as `boxSelectable(box)` — a framework
+   * background does, to join a marquee only when the marquee contains it —
+   * and the default view defers to it, so every view of such a model gets the
+   * rule without restating it.
+   */
+  onBoxSelected(context: BoxSelectionContext): boolean | void {
+    const model = this.model as { boxSelectable?: (box: Bound) => boolean };
+    if (typeof model.boxSelectable === 'function') {
+      return model.boxSelectable(Bound.from(context.box));
+    }
+  }
 
   /**
    * Called when the view is destroyed.
