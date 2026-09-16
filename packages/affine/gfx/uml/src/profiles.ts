@@ -174,8 +174,9 @@ const sketch: ValidationProfile = {
  *
  * One is §11.3.4's PLACEMENT — `uml.port-on-border`, the newest rule in the pack
  * and the only `border-proximity` one in the library (ADR 0024). It is the
- * promotion the PO asked for by name on the recette of 2026-09-16, and it is the
- * only geometric rule this level hardens: the class-side membership three stay
+ * promotion the PO recette of 2026-09-16 called for (a port dragged inside its
+ * component raised nothing, ticket PF-UML.6), and it is the only geometric rule
+ * this level hardens: the class-side membership three stay
  * an audit below because where a box sits is a drawing decision, and a port is
  * the case where it is not. UML gives the square on the boundary a meaning and
  * gives the same square in the middle of the component none.
@@ -258,7 +259,7 @@ const strict: ValidationProfile = {
     'uml.composition-single-owner': 'warning',
     'uml.not-admissible-on-kind': 'warning',
     // §11.3.4's square ON the boundary — the `border-proximity` rule (ADR 0024),
-    // and the promotion the PO asked for by name on the recette of 2026-09-16.
+    // and the promotion the PO recette of 2026-09-16 called for (PF-UML.6).
     //
     // It passes the test every other promotion in this table passes, and it
     // passes a second one the membership rules do not: a port in the middle of
