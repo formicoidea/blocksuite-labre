@@ -275,13 +275,16 @@ export const CodeExtension = InlineMarkdownExtension<AffineTextAttributes>({
 
 // typographic replacement: word -- + space => word — + space
 // not convert: --- + space (divider shortcut), --flag + space, inside inline code
+// an odd number of backticks before the dashes means a code span is still open:
+// the closing backtick has not run yet, so the dashes are code in the making
 export const EmDashExtension = InlineMarkdownExtension<AffineTextAttributes>({
   name: 'em-dash',
   pattern: /(?:^|[^-])--\s$/,
-  action: ({ inlineEditor, inlineRange, undoManager }) => {
+  action: ({ inlineEditor, inlineRange, prefixText, undoManager }) => {
     const dashes = { index: inlineRange.index - 3, length: 2 };
     const format = inlineEditor.getFormat(dashes);
     if (format.code) return;
+    if ((prefixText.match(/`/g) ?? []).length % 2 === 1) return;
 
     undoManager.stopCapturing();
 
