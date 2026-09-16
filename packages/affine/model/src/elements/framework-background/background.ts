@@ -54,6 +54,25 @@ export abstract class FrameworkBackgroundElementModel<
     return points.some(point => bounds.containsPoint(point));
   }
 
+  /**
+   * A marquee takes a board only when it takes the WHOLE board.
+   *
+   * Box selection keeps every element whose bound overlaps the rectangle the
+   * pointer drew, which for a board means any rectangle drawn on its sheet —
+   * the author lassoing three classes inside a frame got the frame too, and a
+   * drag started on the empty sheet selected the sheet itself. That is the
+   * interior answering a gesture R9 reserves for the border and the bands
+   * (`includesPoint`), through a different door.
+   *
+   * The native `affine:frame` block already draws the line here: it joins a
+   * box selection only when the box contains it. Same rule, same reason.
+   * Consulted by the default `GfxElementModelView.onBoxSelected`; a view that
+   * overrides that hook without calling it makes its own decision.
+   */
+  boxSelectable(box: Bound): boolean {
+    return box.contains(this.elementBound);
+  }
+
   override getLineIntersections(start: IVec, end: IVec) {
     const points = getPointsFromBoundWithRotation(this);
     return linePolygonIntersects(start, end, points);

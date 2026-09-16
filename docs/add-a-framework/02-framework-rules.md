@@ -80,7 +80,9 @@ added to a BPMN pool (ADR
 `packages/affine/model/src/elements/framework-background/hit-test.ts`;
 `framework-background-hit-test.unit.spec.ts`. An already-selected board can
 be dragged from anywhere inside (`ignoreTransparent: false`). Double-click in
-a label zone edits the label.
+a label zone edits the label. A marquee takes a board only when it holds the
+whole board (`boxSelectable`, the native frame block's rule): a rectangle drawn
+on the sheet lassoes what is drawn there, never the sheet.
 
 **R10. A board is a floor, never a lid.** Anything overlapping a board is
 kept above it; boards can stack and each stays under its own artefacts — but a
